@@ -10,6 +10,7 @@ import type { ClauseFields } from "@/lib/core/encoding";
 import {
     GEO_CLAUSE_KEY,
     FULFILMENT_V2_CLAUSE_KEY,
+    HANDOFF_CLAUSE_KEY,
     PROXIMITY_POLICY_CLAUSE_KEY,
     MERCHANT_PROCESS_CLAUSE_KEY,
     COURIER_PROCESS_CLAUSE_KEY,
@@ -53,12 +54,12 @@ export function cf(flat: FlatClauseFields): ClauseFields {
 
     const ful: Record<string, unknown> = {};
     if (flat.fulfilmentModalities) ful.modalities = flat.fulfilmentModalities;
-    // coordination is a sub-clause under delivery; handoff is a top-level
-    // sub-clause (any physical exchange) — the clause JSON.
+    // coordination is a sub-clause under delivery — the clause JSON.
     if (flat.fulfilmentCoordinations) ful.delivery = { coordination: flat.fulfilmentCoordinations };
-    if (flat.fulfilmentHandoffPoints) ful.handoff = flat.fulfilmentHandoffPoints;
     if (Object.keys(ful).length > 0) out[FULFILMENT_V2_CLAUSE_KEY] = ful;
 
+    // hand-off is its own clause now (figaro-handoff-v1).
+    if (flat.fulfilmentHandoffPoints) out[HANDOFF_CLAUSE_KEY] = { handoff: flat.fulfilmentHandoffPoints };
     if (flat.proximityBands) out[PROXIMITY_POLICY_CLAUSE_KEY] = { bands: flat.proximityBands };
     for (const clauseId of flat.ghgStandards ?? []) out[clauseId] = {};
     if (flat.merchantProcessIncluded) out[MERCHANT_PROCESS_CLAUSE_KEY] = {};

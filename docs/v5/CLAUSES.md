@@ -24,7 +24,7 @@ CLAUDE.md keeps the lockstep principle; this file owns the full table, the archi
   plus a generic `encodeContentFromSpec` — bridge between TS objects and
   the ABI bytes expected by the on-chain validator. Each clause's encoder
   is the canonical TS-side declaration of its field-to-position mapping.
-  13 distinct encoder shapes across the 17 runtime-attestable clauses
+  13 distinct encoder shapes across the 18 runtime-attestable clauses
   (the 5 GHG sister clauses share one shape). Topology has no encoder —
   it's a manifest-only clause with no runtime attestation.
 
@@ -92,7 +92,7 @@ Conformance is locked across the prover test crates:
 - `prover/clause/tests/encode_conformance.rs` — per-clause
   canonical-encoder output is byte-for-byte equal to viem's
   `encodeAbiParameters` output for the same input (covers all 13 distinct
-  encoder shapes across the 17 runtime-attestable clauses). Test vectors
+  encoder shapes across the 18 runtime-attestable clauses). Test vectors
   were captured from the TypeScript encoders.
 - `prover/lib/tests/parity.rs` — kernel-integration tests
   (`attest_as_seller_with_valid_content_proof_passes`,
@@ -135,9 +135,9 @@ Lives off-chain as JSON at the URI hashed into `ClauseRegistry.uriHash`.
 Built-in specs ship in `sdk/src/clauses/examples/` and
 `frontend/lib/shared/clauses/` (the application's working copy).
 
-## The 18 protocol clauses
+## The 19 protocol clauses
 
-17 runtime-attestable clauses (each with a Layer C validator) plus the
+18 runtime-attestable clauses (each with a Layer C validator) plus the
 manifest-only `figaro-topology-v1`.
 
 | clauseId | What it carries | Attestation surface |
@@ -145,7 +145,8 @@ manifest-only `figaro-topology-v1`.
 | `figaro-topology-v1` | DAG lineage (parent order hashes) | **Manifest-only** (no runtime validator) |
 | `figaro-commerce-v1` | Currency, payment, line items | Layer A + C |
 | `figaro-geo-v2` | Origin / destination geohash + mass + volume + class of service | Layer A + C |
-| `figaro-fulfilment-v2` | Fulfilment method — modality + coordination + handoff point | Layer A + C |
+| `figaro-fulfilment-v2` | Fulfilment method — modality + coordination | Layer A + C |
+| `figaro-handoff-v1` | Hand-off point — where the physical exchange happens (proximity-policy nests under it) | Layer A + C |
 | `figaro-ghg-protocol-v1` | GHG Protocol Corporate Standard + scope (Category-2) | Layer A + C |
 | `figaro-ghg-iso-14064-v1` | ISO 14064 family + scope (Category-2) | Layer A + C |
 | `figaro-ghg-pas-2050-v1` | PAS 2050 product carbon footprint + scope (Category-2) | Layer A + C |

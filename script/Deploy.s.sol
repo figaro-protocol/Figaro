@@ -19,6 +19,7 @@ import "../src/ClauseRegistrationHelper.sol";
 import "../src/clauseValidators/FigaroCommerceV1Validator.sol";
 import "../src/clauseValidators/FigaroGeoV2Validator.sol";
 import "../src/clauseValidators/FigaroFulfilmentV2Validator.sol";
+import "../src/clauseValidators/FigaroHandoffV1Validator.sol";
 import "../src/clauseValidators/FigaroGHGProtocolV1Validator.sol";
 import "../src/clauseValidators/FigaroGHGISO14064V1Validator.sol";
 import "../src/clauseValidators/FigaroGHGPAS2050V1Validator.sol";
@@ -115,6 +116,9 @@ contract Deploy is Script {
             keccak256("figaro-fulfilment-v2"), 1, keccak256("ipfs://figaro-fulfilment/v2"), keccak256("fulfilment")
         );
         clauses.registerClause(
+            keccak256("figaro-handoff-v1"), 1, keccak256("ipfs://figaro-handoff/v1"), keccak256("fulfilment")
+        );
+        clauses.registerClause(
             keccak256("figaro-ghg-protocol-v1"), 1, keccak256("ipfs://figaro-ghg-protocol/v1"), keccak256("emissions")
         );
         clauses.registerClause(
@@ -183,7 +187,7 @@ contract Deploy is Script {
             keccak256("ipfs://figaro-offset-policy/v1"),
             keccak256("emissions")
         );
-        console.log("Registered 18 reference clauses");
+        console.log("Registered 19 reference clauses");
 
         // ── Clause validators ───────────────────────────────────────
         // Deploy per-clause validator contracts and wire them into the
@@ -400,6 +404,9 @@ contract Deploy is Script {
             keccak256("figaro-fulfilment-v2"), address(new FigaroFulfilmentV2Validator())
         );
         attestation.setValidator(
+            keccak256("figaro-handoff-v1"), address(new FigaroHandoffV1Validator())
+        );
+        attestation.setValidator(
             keccak256("figaro-ghg-protocol-v1"), address(new FigaroGHGProtocolV1Validator())
         );
         attestation.setValidator(
@@ -441,6 +448,6 @@ contract Deploy is Script {
         attestation.setValidator(
             keccak256("figaro-offset-policy-v1"), address(new FigaroOffsetPolicyV1Validator())
         );
-        console.log("Registered 17 clause validators with AttestationCoordinator");
+        console.log("Registered 18 clause validators with AttestationCoordinator");
     }
 }

@@ -4,6 +4,7 @@ import {
     computeAgreementHash,
     MERCHANT_PROCESS_CLAUSE_KEY,
     FULFILMENT_V2_CLAUSE_KEY,
+    HANDOFF_CLAUSE_KEY,
     GEO_CLAUSE_KEY,
     type Agreement,
     type AgreementSection,
@@ -24,7 +25,8 @@ function agreement(sections: AgreementSection[]): Agreement {
 describe("validateCommitmentAgreement (Layer A, pre-commit)", () => {
     it("passes a valid agreement when the hash matches the content", () => {
         const a = agreement([
-            { clause: FULFILMENT_V2_CLAUSE_KEY, data: { modalities: ["delivery"], delivery: { coordination: ["seller-assigned"] }, handoff: ["face-to-face"] } },
+            { clause: FULFILMENT_V2_CLAUSE_KEY, data: { modalities: ["delivery"], delivery: { coordination: ["seller-assigned"] } } },
+            { clause: HANDOFF_CLAUSE_KEY, data: { handoff: ["face-to-face"] } },
         ]);
         const result = validateCommitmentAgreement(a, computeAgreementHash(a));
         expect(result.ok).toBe(true);

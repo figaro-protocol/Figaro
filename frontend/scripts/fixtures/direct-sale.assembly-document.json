@@ -4,11 +4,13 @@
     {
       "clauses": {
         "figaro-fulfilment-v2": {
-          "handoff": [
-            "face-to-face"
-          ],
           "modalities": [
             "consume-onsite"
+          ]
+        },
+        "figaro-handoff-v1": {
+          "handoff": [
+            "face-to-face"
           ]
         },
         "figaro-merchant-process-v1": {},

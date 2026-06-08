@@ -4,34 +4,52 @@
     {
       "clauses": {
         "figaro-fulfilment-v2": {
-          "coordinations": [
-            "seller-assigned"
-          ],
-          "handoffPoints": [
-            "face-to-face"
-          ],
+          "delivery": {
+            "coordination": [
+              "seller-assigned"
+            ]
+          },
           "modalities": [
             "delivery"
           ]
         },
-        "figaro-merchant-process-v1": {}
-      },
-      "id": "order-0",
-      "parentOrderIds": []
-    },
-    {
-      "clauses": {
-        "figaro-courier-process-v1": {},
+        "figaro-handoff-v1": {
+          "handoff": [
+            "face-to-face"
+          ]
+        },
+        "figaro-merchant-process-v1": {},
         "figaro-proximity-policy-v1": {
           "bands": [
             "zone-wifi"
           ]
+        },
+        "figaro-topology-v1": {
+          "parentOrderIds": []
         }
       },
-      "id": "order-1",
-      "parentOrderIds": [
-        "order-0"
-      ]
+      "id": "order-0"
+    },
+    {
+      "clauses": {
+        "figaro-courier-process-v1": {},
+        "figaro-handoff-v1": {
+          "handoff": [
+            "face-to-face"
+          ]
+        },
+        "figaro-proximity-policy-v1": {
+          "bands": [
+            "zone-wifi"
+          ]
+        },
+        "figaro-topology-v1": {
+          "parentOrderIds": [
+            "order-0"
+          ]
+        }
+      },
+      "id": "order-1"
     }
   ],
   "slug": "local-commerce"

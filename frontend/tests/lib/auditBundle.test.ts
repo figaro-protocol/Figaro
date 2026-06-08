@@ -5,6 +5,7 @@ import {
     type Agreement,
     COMMERCE_CLAUSE_KEY,
     FULFILMENT_V2_CLAUSE_KEY,
+    HANDOFF_CLAUSE_KEY,
     GEO_CLAUSE_KEY,
     GHG_MEASUREMENT_CLAUSE_KEY,
     APPLICABLE_LAW_CLAUSE_KEY,
@@ -258,7 +259,8 @@ describe("extractInvoice", () => {
 describe("extractBillOfLading", () => {
     const order = makeOrder();
     const agreement = makeAgreement([
-        { clause: FULFILMENT_V2_CLAUSE_KEY, data: { modalities: ["pickup"], handoff: ["face-to-face"] } },
+        { clause: FULFILMENT_V2_CLAUSE_KEY, data: { modalities: ["pickup"] } },
+        { clause: HANDOFF_CLAUSE_KEY, data: { handoff: ["face-to-face"] } },
         { clause: GEO_CLAUSE_KEY, data: { originGeohash: "u4pruydqqvj", destinationGeohash: "u4pruydqqvk", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
     ]);
 

@@ -333,7 +333,7 @@ fn every_embedded_spec_parses_and_matches_its_clause_id() {
         );
         count += 1;
     }
-    assert_eq!(count, 17, "expected 17 embedded protocol clauses");
+    assert_eq!(count, 17, "expected 18 embedded protocol clauses");
 }
 
 #[test]

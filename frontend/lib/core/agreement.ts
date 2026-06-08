@@ -169,9 +169,12 @@ export interface AgreementLineItem {
 export const COMMERCE_CLAUSE_KEY = "figaro-commerce-v1";
 export const GEO_CLAUSE_KEY = "figaro-geo-v2";
 export const TOPOLOGY_CLAUSE_KEY = "figaro-topology-v1";
-/** Fulfilment-composition clause. Three orthogonal fields (modality,
- *  coordination, handoffPoint) in one clause. */
+/** Fulfilment-composition clause. Two orthogonal fields (modality,
+ *  coordination). The hand-off point is its own clause now (HANDOFF_CLAUSE_KEY). */
 export const FULFILMENT_V2_CLAUSE_KEY = "figaro-fulfilment-v2";
+/** Hand-off point — where the physical exchange happens for an order. Its own
+ *  clause; the proximity policy nests under its `handoff` field. */
+export const HANDOFF_CLAUSE_KEY = "figaro-handoff-v1";
 /** Decentralized off-chain arbitration via Kleros. Sister clauses would
  *  cover other ODR providers — `figaro-arbitration-<provider>-v1`. */
 export const ARBITRATION_KLEROS_CLAUSE_KEY = "figaro-arbitration-kleros-v1";

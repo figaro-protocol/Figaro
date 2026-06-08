@@ -56,7 +56,6 @@ const FULFILMENT_SECTION: AgreementSection = {
     data: {
         modalities: ["delivery"],
         coordinations: ["dutch-auction"],
-        handoffPoints: ["face-to-face"],
     },
 };
 

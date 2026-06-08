@@ -37,7 +37,7 @@ owning doc, not here.
 `docs/v5/` files** (full Document Index at the bottom). Primary inventories:
 
 - **`docs/v5/CONTRACTS.md`** — smart-contract inventory: kernel, attestation, clause, mechanism modules, FIG token, batch verifier, mocks, "what does NOT exist".
-- **`docs/v5/CLAUSES.md`** — clause validation architecture (Layer A/B/C), the 18-clause table, the adding-a-clause checklist, third-party deployment discipline.
+- **`docs/v5/CLAUSES.md`** — clause validation architecture (Layer A/B/C), the 19-clause table, the adding-a-clause checklist, third-party deployment discipline.
 - **`docs/v5/FRONTEND.md`** — frontend route catalogue, lib map, designer surface, wallet-provider scope rules.
 - **`docs/v5/TESTING.md`** — Foundry / Halmos / Certora / Echidna / TLA+ / Vitest / Playwright / Rust prover harness inventory.
 - **`docs/v5/LOCAL_DEV.md`** — commands, env vars, Docker-hosted services, deployment scripts.
@@ -280,7 +280,7 @@ All contracts live in `src/` (Solidity 0.8.26, Foundry); V3 in `archive-v3/`. No
 
 A new clause is **not done until all three layers ship in lockstep**: Layer A (TypeScript, `@figaro/core/clauses`), Layer B (Rust SP1 prover, `prover/clause/` — generic, parses any spec at runtime), Layer C (per-clause `IClauseValidator` in `src/clauseValidators/`, bound via `AttestationCoordinator.setValidator` — permissionless, first-write-wins, immutable; no validator → `ValidatorNotSet`). Skip a layer and the gate either rejects all attestations under that clauseId or silently accepts content the spec would reject.
 
-18 protocol clauses total: 17 runtime-attestable (each with a validator) + `figaro-topology-v1` (manifest-only, no validator, DAG reconstructed off-chain by indexers from the signed manifest). Layer detail, the full clause table, the **adding-a-new-clause checklist** (the 9 lockstep steps), and third-party atomic register+bind discipline → `CLAUSES.md`. Count source of truth: `ls frontend/lib/shared/clauses/*.json | wc -l` (runtime-attestable = files minus `figaro-topology-v1`).
+19 protocol clauses total: 18 runtime-attestable (each with a validator) + `figaro-topology-v1` (manifest-only, no validator, DAG reconstructed off-chain by indexers from the signed manifest). Layer detail, the full clause table, the **adding-a-new-clause checklist** (the 9 lockstep steps), and third-party atomic register+bind discipline → `CLAUSES.md`. Count source of truth: `ls frontend/lib/shared/clauses/*.json | wc -l` (runtime-attestable = files minus `figaro-topology-v1`).
 
 ### Frontend
 

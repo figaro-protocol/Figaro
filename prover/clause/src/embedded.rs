@@ -35,7 +35,7 @@ macro_rules! embed {
     };
 }
 
-/// The 17 runtime-attestable protocol clauses.
+/// The 18 runtime-attestable protocol clauses.
 const EMBEDDED_SPECS: &[EmbeddedSpec] = &[
     embed!("figaro-ghg-protocol-v1"),
     embed!("figaro-ghg-iso-14064-v1"),
@@ -45,6 +45,7 @@ const EMBEDDED_SPECS: &[EmbeddedSpec] = &[
     embed!("figaro-ghg-measurement-v1"),
     embed!("figaro-geo-v2"),
     embed!("figaro-fulfilment-v2"),
+    embed!("figaro-handoff-v1"),
     embed!("figaro-arbitration-kleros-v1"),
     embed!("figaro-applicable-law-v1"),
     embed!("figaro-commerce-v1"),
@@ -57,7 +58,7 @@ const EMBEDDED_SPECS: &[EmbeddedSpec] = &[
 ];
 
 /// The canonical spec JSON for a clauseId hash, or `None` if the clauseId
-/// is not one of the 17 runtime-attestable protocol clauses (third-party
+/// is not one of the 18 runtime-attestable protocol clauses (third-party
 /// clauses, `figaro-topology-v1`, etc.).
 pub fn embedded_spec_json(clause_id: &B256) -> Option<&'static str> {
     EMBEDDED_SPECS

@@ -163,7 +163,7 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
     // coordination. When the node offers multiple, downstream surfaces (cart,
     // edge pill) collapse to the first.
     const fulfilmentMethod = fulfilment?.method ?? undefined;
-    const handoffMode = fulfilment?.handoffPoints?.[0];
+    const handoffMode = data.agreementSummary?.handoff?.points?.[0];
     const ghgStandard = typeof ghg?.standard === "string" ? ghg.standard : undefined;
     const ghgScope = typeof ghg?.scope === "number" || typeof ghg?.scope === "string" ? ghg.scope : undefined;
 

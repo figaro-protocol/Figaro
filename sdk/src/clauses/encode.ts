@@ -64,12 +64,18 @@ export interface GeoContent {
 
 export type FulfilmentModality = "consume-onsite" | "pickup" | "delivery" | "virtual";
 export type FulfilmentCoordination = "buyer-assigned" | "seller-assigned" | "dutch-auction";
-export type FulfilmentHandoffPoint = "face-to-face" | "dead-drop" | "parking-area" | "locker";
 
 export interface FulfilmentV2Content {
     modalities: readonly FulfilmentModality[];
     coordinations: readonly FulfilmentCoordination[];
-    handoffPoints: readonly FulfilmentHandoffPoint[];
+}
+
+/** Hand-off point — its own clause now (figaro-handoff-v1), no longer a
+ *  fulfilment field. */
+export type HandoffPoint = "face-to-face" | "dead-drop" | "parking-area" | "locker";
+
+export interface HandoffV1Content {
+    handoff: readonly HandoffPoint[];
 }
 
 /** Kleros subcourt. `none` is a sentinel (index 0; not a valid selection). */

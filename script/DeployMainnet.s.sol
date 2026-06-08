@@ -17,6 +17,7 @@ import "../src/ProcessOffsetReceipt.sol";
 import "../src/clauseValidators/FigaroCommerceV1Validator.sol";
 import "../src/clauseValidators/FigaroGeoV2Validator.sol";
 import "../src/clauseValidators/FigaroFulfilmentV2Validator.sol";
+import "../src/clauseValidators/FigaroHandoffV1Validator.sol";
 import "../src/clauseValidators/FigaroGHGProtocolV1Validator.sol";
 import "../src/clauseValidators/FigaroGHGISO14064V1Validator.sol";
 import "../src/clauseValidators/FigaroGHGPAS2050V1Validator.sol";
@@ -154,6 +155,9 @@ contract DeployMainnet is Script {
             keccak256("figaro-fulfilment-v2"), 1, keccak256("ipfs://figaro-fulfilment/v2"), keccak256("fulfilment")
         );
         clauses.registerClause(
+            keccak256("figaro-handoff-v1"), 1, keccak256("ipfs://figaro-handoff/v1"), keccak256("fulfilment")
+        );
+        clauses.registerClause(
             keccak256("figaro-ghg-protocol-v1"), 1, keccak256("ipfs://figaro-ghg-protocol/v1"), keccak256("emissions")
         );
         clauses.registerClause(
@@ -222,7 +226,7 @@ contract DeployMainnet is Script {
             keccak256("ipfs://figaro-offset-policy/v1"),
             keccak256("emissions")
         );
-        console.log("ClauseRegistry: 18 reference clauses registered");
+        console.log("ClauseRegistry: 19 reference clauses registered");
 
         // ── SellerRegistry ────────────────────────────────────────
         // PLACEHOLDER VALUES — DO NOT SHIP TO MAINNET WITHOUT REVIEW.
@@ -294,6 +298,8 @@ contract DeployMainnet is Script {
             keccak256("figaro-geo-v2"), address(new FigaroGeoV2Validator()));
         _wireValidator(attestation, "FulfilmentV2Validator:       ",
             keccak256("figaro-fulfilment-v2"), address(new FigaroFulfilmentV2Validator()));
+        _wireValidator(attestation, "HandoffV1Validator:          ",
+            keccak256("figaro-handoff-v1"), address(new FigaroHandoffV1Validator()));
         _wireValidator(attestation, "GHGProtocolV1Validator:      ",
             keccak256("figaro-ghg-protocol-v1"), address(new FigaroGHGProtocolV1Validator()));
         _wireValidator(attestation, "GHGISO14064V1Validator:      ",
@@ -323,7 +329,7 @@ contract DeployMainnet is Script {
         _wireValidator(attestation, "OffsetPolicyV1Validator:       ",
             keccak256("figaro-offset-policy-v1"), address(new FigaroOffsetPolicyV1Validator()));
 
-        console.log("AttestationCoordinator: 17 validators wired");
+        console.log("AttestationCoordinator: 18 validators wired");
     }
 
     function _wireValidator(

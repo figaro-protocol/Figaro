@@ -2,7 +2,7 @@
  * Embedded protocol clause specs — TypeScript mirror of
  * `prover/clause/src/embedded.rs`.
  *
- * Bundles the 18 Figaro protocol spec JSONs from `./examples/` so SDK
+ * Bundles the 19 Figaro protocol spec JSONs from `./examples/` so SDK
  * consumers (agreement encoder, validator wrappers, etc.) can look up
  * a canonical spec by its human-readable clauseId without an
  * out-of-band fetch. Specs are parsed lazily on first lookup and
@@ -24,6 +24,7 @@ import commerceSpec from "./examples/figaro-commerce-v1.json" with { type: "json
 import consentSpec from "./examples/figaro-consent-v1.json" with { type: "json" };
 import courierProcessSpec from "./examples/figaro-courier-process-v1.json" with { type: "json" };
 import fulfilmentSpec from "./examples/figaro-fulfilment-v2.json" with { type: "json" };
+import handoffSpec from "./examples/figaro-handoff-v1.json" with { type: "json" };
 import geoSpec from "./examples/figaro-geo-v2.json" with { type: "json" };
 import ghgCustomSpec from "./examples/figaro-ghg-custom-v1.json" with { type: "json" };
 import ghgEN16258Spec from "./examples/figaro-ghg-en-16258-v1.json" with { type: "json" };
@@ -44,6 +45,7 @@ const RAW_SPECS: Readonly<Record<string, unknown>> = {
     "figaro-consent-v1": consentSpec,
     "figaro-courier-process-v1": courierProcessSpec,
     "figaro-fulfilment-v2": fulfilmentSpec,
+    "figaro-handoff-v1": handoffSpec,
     "figaro-geo-v2": geoSpec,
     "figaro-ghg-custom-v1": ghgCustomSpec,
     "figaro-ghg-en-16258-v1": ghgEN16258Spec,

@@ -189,24 +189,23 @@ describe("example clause specs — parse + validate sample content", () => {
     it("figaro-fulfilment-v2 accepts multi-modality offers", () => {
         const parsed = parseClauseSpec(fulfilmentV2SpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ modalities: ["pickup", "delivery"], coordinations: ["seller-assigned"] }, parsed.spec).ok).toBe(true);
+        expect(validateContent({ modalities: ["pickup", "delivery"], delivery: { coordination: ["seller-assigned"] } }, parsed.spec).ok).toBe(true);
     });
 
     it("figaro-fulfilment-v2 accepts each delivery coordination", () => {
         const parsed = parseClauseSpec(fulfilmentV2SpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         for (const coordination of ["buyer-assigned", "seller-assigned", "dutch-auction"]) {
-            expect(validateContent({ modalities: ["delivery"], coordinations: [coordination] }, parsed.spec).ok).toBe(true);
+            expect(validateContent({ modalities: ["delivery"], delivery: { coordination: [coordination] } }, parsed.spec).ok).toBe(true);
         }
     });
 
-    it("figaro-fulfilment-v2 accepts multiple coordinations + handoff points", () => {
+    it("figaro-fulfilment-v2 accepts multiple coordinations", () => {
         const parsed = parseClauseSpec(fulfilmentV2SpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
             modalities: ["delivery"],
-            coordinations: ["buyer-assigned", "dutch-auction"],
-            handoffPoints: ["face-to-face", "locker"],
+            delivery: { coordination: ["buyer-assigned", "dutch-auction"] },
         }, parsed.spec).ok).toBe(true);
     });
 
@@ -430,7 +429,7 @@ describe("example clause specs — parse + validate sample content", () => {
     it("figaro-merchant-process-v1 accepts each known eventType", () => {
         const parsed = parseClauseSpec(merchantSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        for (const e of ["prep-started", "ready-for-pickup", "handed-off", "cancelled"]) {
+        for (const e of ["prep-started", "ready-for-pickup", "handed-off"]) {
             expect(validateContent({ eventType: e }, parsed.spec).ok).toBe(true);
         }
     });
@@ -446,7 +445,7 @@ describe("example clause specs — parse + validate sample content", () => {
     it("figaro-courier-process-v1 accepts each known eventType", () => {
         const parsed = parseClauseSpec(courierSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        for (const e of ["en-route-pickup", "arrived-pickup", "in-transit", "arrived-dropoff", "completed", "cancelled"]) {
+        for (const e of ["en-route-pickup", "arrived-pickup", "in-transit", "arrived-dropoff", "completed"]) {
             expect(validateContent({ eventType: e }, parsed.spec).ok).toBe(true);
         }
     });

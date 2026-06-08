@@ -78,7 +78,7 @@ describe("buildOrderAgreement", () => {
         const summary = summarizeAgreement(agreement);
         expect(summary?.fulfilment?.modalities).toEqual(["delivery"]);
         expect(summary?.fulfilment?.coordinations).toEqual(["dutch-auction"]);
-        expect(summary?.fulfilment?.handoffPoints).toEqual(["face-to-face"]);
+        expect(summary?.handoff?.points).toEqual(["face-to-face"]);
         expect(summary?.fulfilment?.method).toBe("deliver:dutch-auction");
         expect(summary?.ghg).toEqual({
             clauseKeys: ["figaro-ghg-iso-14064-v1"],
@@ -111,13 +111,13 @@ describe("buildOrderAgreement", () => {
                 fulfilmentHandoffPoints: ["face-to-face", "locker"],
             }),
         });
-        const fulfilment = summarizeAgreement(agreement)?.fulfilment;
-        expect(fulfilment?.modalities).toEqual(["pickup", "delivery"]);
-        expect(fulfilment?.coordinations).toEqual(["buyer-assigned", "dutch-auction"]);
-        expect(fulfilment?.handoffPoints).toEqual(["face-to-face", "locker"]);
+        const summary = summarizeAgreement(agreement);
+        expect(summary?.fulfilment?.modalities).toEqual(["pickup", "delivery"]);
+        expect(summary?.fulfilment?.coordinations).toEqual(["buyer-assigned", "dutch-auction"]);
+        expect(summary?.handoff?.points).toEqual(["face-to-face", "locker"]);
     });
 
-    it("drops unknown handoffPoint values (the v2 enum is closed)", () => {
+    it("drops the handoff clause when all values are unknown (the enum is closed)", () => {
         const agreement = buildOrderAgreement({
             buyer: BUYER,
             seller: SELLER,
@@ -129,7 +129,7 @@ describe("buildOrderAgreement", () => {
                 fulfilmentHandoffPoints: ["teleport"],
             }),
         });
-        expect(summarizeAgreement(agreement)?.fulfilment?.handoffPoints).toEqual([]);
+        expect(summarizeAgreement(agreement)?.handoff).toBeUndefined();
     });
 });
 

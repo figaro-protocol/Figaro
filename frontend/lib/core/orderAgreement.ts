@@ -3,6 +3,7 @@ import {
     type AgreementLineItem,
     buildAgreement,
     FULFILMENT_V2_CLAUSE_KEY,
+    HANDOFF_CLAUSE_KEY,
     GEO_CLAUSE_KEY,
     GHG_CLAUSE_KEY,
     GHG_DISCLOSURE_CLAUSE_KEYS,
@@ -118,11 +119,14 @@ export interface AgreementSummary {
         modalities: readonly string[];
         /** Courier coordinations offered. Non-empty IFF delivery is in modalities. */
         coordinations: readonly string[];
-        /** Handoff points offered. */
-        handoffPoints: readonly string[];
         /** Single canonical method derived from `modalities[0]` + `coordinations[0]`.
          *  null when modalities is empty, or delivery is offered without coordination. */
         method: CanonicalFulfilmentMethod | null;
+    };
+    /** Hand-off points (its own clause now — present on any order with a physical
+     *  exchange, including a bare courier order that carries no fulfilment). */
+    handoff?: {
+        points: readonly string[];
     };
     ghg?: {
         /** Clause keys of each GHG disclosure clause in the agreement
@@ -213,10 +217,15 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
                 const coords = arrOf(deliveryIn.coordination).filter((c) => allowedCoordinations.includes(c));
                 data.delivery = { coordination: coords.length > 0 ? coords : ["seller-assigned"] };
             }
-            const allowedHandoff = clauseEnumValues(FULFILMENT_V2_CLAUSE_KEY, "handoff");
-            const handoff = arrOf(fulfilment.handoff).filter((h) => allowedHandoff.includes(h));
-            if (handoff.length > 0) data.handoff = handoff;
             return { clause: FULFILMENT_V2_CLAUSE_KEY, data };
+        },
+        [HANDOFF_CLAUSE_KEY]: (fields) => {
+            // Hand-off is its own clause now (where the physical exchange
+            // happens); the proximity policy nests under its `handoff` field.
+            const allowedHandoff = clauseEnumValues(HANDOFF_CLAUSE_KEY, "handoff");
+            const handoff = arrOf(fields.handoff).filter((h) => allowedHandoff.includes(h));
+            if (handoff.length === 0) return null;
+            return { clause: HANDOFF_CLAUSE_KEY, data: { handoff } };
         },
         [PROXIMITY_POLICY_CLAUSE_KEY]: (fields) => {
             const allowedBands = clauseEnumValues(PROXIMITY_POLICY_CLAUSE_KEY, "bands");
@@ -370,6 +379,7 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
     const topologySection = getSection(agreement, TOPOLOGY_CLAUSE_KEY);
     const fulfilmentSection = getSection(agreement, FULFILMENT_V2_CLAUSE_KEY);
     const proximitySection = getSection(agreement, PROXIMITY_POLICY_CLAUSE_KEY);
+    const handoffSection = getSection(agreement, HANDOFF_CLAUSE_KEY);
     const arbitrationSection = getSection(agreement, ARBITRATION_KLEROS_CLAUSE_KEY);
     const applicableLawSection = getSection(agreement, APPLICABLE_LAW_CLAUSE_KEY);
     const consentSection = getSection(agreement, CONSENT_CLAUSE_KEY);
@@ -407,23 +417,16 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
                 const modalities = Array.isArray(data.modalities)
                     ? data.modalities as readonly string[]
                     : [];
-                // coordination is a sub-clause under delivery; handoff is a
-                // top-level sub-clause (any physical exchange).
+                // coordination is a sub-clause under delivery (hand-off is its
+                // own clause now — see `handoff` below).
                 const delivery = (data.delivery ?? {}) as Record<string, unknown>;
                 const coordinations = Array.isArray(delivery.coordination)
                     ? delivery.coordination as readonly string[]
                     : [];
-                const handoffPoints = Array.isArray(data.handoff)
-                    ? data.handoff as readonly string[]
-                    : [];
                 const method = deriveCanonicalFulfilmentMethod(modalities, coordinations);
                 return {
-                    // Summary output stays flat so downstream lenses (canvas
-                    // pill, cart, audit) don't change; only the section + builder
-                    // moved to the nested shape under delivery.
                     modalities,
                     coordinations,
-                    handoffPoints,
                     method,
                 };
             })()
@@ -442,6 +445,13 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
             ? {
                 bands: Array.isArray(proximitySection.data.bands)
                     ? proximitySection.data.bands as readonly string[]
+                    : [],
+            }
+            : undefined,
+        handoff: handoffSection
+            ? {
+                points: Array.isArray(handoffSection.data.handoff)
+                    ? handoffSection.data.handoff as readonly string[]
                     : [],
             }
             : undefined,

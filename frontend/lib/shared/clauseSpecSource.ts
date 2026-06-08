@@ -20,6 +20,7 @@ import commerceSpecRaw from "@/lib/shared/clauses/figaro-commerce-v1.json";
 import consentSpecRaw from "@/lib/shared/clauses/figaro-consent-v1.json";
 import courierProcessSpecRaw from "@/lib/shared/clauses/figaro-courier-process-v1.json";
 import fulfilmentV2SpecRaw from "@/lib/shared/clauses/figaro-fulfilment-v2.json";
+import handoffV1SpecRaw from "@/lib/shared/clauses/figaro-handoff-v1.json";
 import geoV2SpecRaw from "@/lib/shared/clauses/figaro-geo-v2.json";
 import ghgCustomSpecRaw from "@/lib/shared/clauses/figaro-ghg-custom-v1.json";
 import ghgEn16258SpecRaw from "@/lib/shared/clauses/figaro-ghg-en-16258-v1.json";
@@ -45,6 +46,7 @@ const BUILT_IN_SPECS: ReadonlyArray<[unknown, string]> = [
     [consentSpecRaw, "figaro-consent-v1"],
     [courierProcessSpecRaw, "figaro-courier-process-v1"],
     [fulfilmentV2SpecRaw, "figaro-fulfilment-v2"],
+    [handoffV1SpecRaw, "figaro-handoff-v1"],
     [geoV2SpecRaw, "figaro-geo-v2"],
     [ghgCustomSpecRaw, "figaro-ghg-custom-v1"],
     [ghgEn16258SpecRaw, "figaro-ghg-en-16258-v1"],

@@ -44,21 +44,6 @@
                     "description": "How the courier order is coordinated across the DAG. seller-assigned = the seller's regular courier. buyer-assigned = the buyer picks the courier. dutch-auction = an open auction with no prior relationship."
                 }
             ]
-        },
-        {
-            "name": "handoff",
-            "type": "array",
-            "required": false,
-            "items": {
-                "type": "enum",
-                "values": [
-                    "face-to-face",
-                    "dead-drop",
-                    "parking-area",
-                    "locker"
-                ]
-            },
-            "description": "Where the physical exchange happens — for on-site, pickup, or delivery."
         }
     ],
     "block": {

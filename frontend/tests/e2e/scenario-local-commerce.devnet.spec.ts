@@ -1,39 +1,36 @@
 /**
- * scenario-direct-sale.devnet.spec.ts
+ * scenario-local-commerce.devnet.spec.ts
  *
- * SCENARIO — `direct-sale` (1 node, consume-onsite, tracked + proximity-verified)
+ * SCENARIO — `local-commerce` (2 nodes, seller-assigned delivery)
  *
- *   Models: an on-premise sale — a café counter, a bar, a market stall where
- *   you consume on site. The buyer↔merchant handoff IS the certification edge:
- *   the merchant runs the prep-started → ready-for-pickup → handed-off
- *   lifecycle (figaro-merchant-process-v1; arrival/acceptance are core, not
- *   merchant-process events) and both parties attest proximity at handoff
- *   (figaro-proximity-policy-v1, face-to-face). The tracked, proximity-verified
- *   counterpart of `kiosk-sale` (the bare, no-process pickup).
+ *   Models: a merchant sells for delivery and arranges its OWN courier — a
+ *   restaurant dispatching its own rider (seller-assigned). Two co-equal bonded
+ *   relationships the buyer commits to: the merchant order and the courier order.
  *
- *   Catalogues: the on-site seller (1).
+ *   Catalogues: merchant (goods) + courier (delivery) — 2.
  *
- *   Template (what the designer publishes; commerce/topology/geo are added at
- *   commit by the projection, not stored here):
+ *   Template (what the designer publishes; commerce/topology are added at commit
+ *   by the projection, not stored here):
  *
- *     order[0]  buyer ↔ seller  parents: []
- *       figaro-fulfilment-v2       { modalities: [consume-onsite], handoff: { points: [face-to-face] } }
+ *     order[0]  buyer ↔ merchant  parents: []
+ *       figaro-fulfilment-v2       { modalities: [delivery],
+ *                                    delivery: { coordination: [seller-assigned] },
+ *                                    handoff: [face-to-face] }
  *       figaro-merchant-process-v1 { }
+ *     order[1]  buyer ↔ courier   parents: [order-0]   (value-topology edge; co-equal)
+ *       figaro-courier-process-v1  { }
  *       figaro-proximity-policy-v1 { bands: [zone-wifi] }
  *
- * PHASE 1 of the 2× e2e convention — the design-canvas test. It drives the real
- * designer UI ALL THE WAY THROUGH to the IPFS pin AND the on-chain anchor
- * (`AssemblyRegistry.registerAssembly`), exactly as a builder publishes on
- * testnet/mainnet. **The publish PERSISTS** — there is no snapshot/revert. The
- * runtime test (`direct-sale-runtime`) then CONSUMES this anchored + pinned
- * assembly via the registry → IPFS, as a participant would on mainnet — it does
- * NOT re-author or re-seed it.
+ *   Delivery is expressed by the TOPOLOGY (a second courier order carrying
+ *   courier-process), NOT by a side-effect spawn — the designer DRAWS the courier
+ *   node. The merchant's fulfilment-v2 records the delivery modality + the
+ *   seller-assigned coordination; the courier order IS the delivery.
  *
- * Mainnet semantics: the slug is FIXED (`direct-sale`) and an assembly is
- * published ONCE. On a fresh devnet this authors + publishes; on a non-fresh
- * devnet where it's already anchored, the publish is a no-op and the test just
- * re-verifies the persisted artifact (idempotent — like mainnet, you don't
- * republish an existing assembly).
+ * PHASE 1 of the 2× e2e convention — the design-canvas test. Drives the real
+ * designer UI all the way to the IPFS pin AND the on-chain anchor
+ * (`AssemblyRegistry.registerAssembly`). The publish PERSISTS; the runtime test
+ * (`local-commerce-runtime`) then CONSUMES this anchored + pinned assembly via
+ * the registry → IPFS — it does NOT re-author or re-seed it.
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo.
  */
@@ -68,19 +65,19 @@ const ASSEMBLY_REGISTRY_ABI = parseAbi([
     'event AssemblyRegistered(bytes32 indexed slugHash, address indexed author, string slug, bytes32 contentHash, string metadataURI)',
 ]);
 
-test.describe('Author + publish the direct-sale assembly (devnet)', () => {
-    // Multi-route nav + IPFS pin + on-chain tx. NO evmSnapshot/evmRevert — the
-    // publish must PERSIST for the runtime test (and /assemblies) to consume it.
+test.describe('Author + publish the local-commerce assembly (devnet)', () => {
+    // Multi-node draw + multi-route nav + IPFS pin + on-chain tx. NO snapshot —
+    // the publish must PERSIST for the runtime test (and /assemblies) to consume.
     test.setTimeout(180_000);
 
-    test('designer canvas authors + publishes direct-sale; it persists, anchored on-chain + pinned in IPFS', async ({ page }) => {
+    test('designer canvas authors + publishes local-commerce; it persists, anchored on-chain + pinned in IPFS', async ({ page }) => {
         const config = readLocalDeploymentConfig();
         const assemblyRegistry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY
             ?? config.assemblyRegistry) as Hex;
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
-        const slug = 'direct-sale';
-        const draftName = 'Direct Sale';
+        const slug = 'local-commerce';
+        const draftName = 'Local Commerce';
         const slugHash = keccak256(toHex(slug));
 
         const alreadyAnchored = await publicClient.getContractEvents({
@@ -103,34 +100,54 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
             await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
             await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
 
-            // Blank seed = one root order. Open its agreement drawer.
+            // Blank seed = one root order (the merchant). Capture its id, then DRAW
+            // the courier sub-order under it (the delivery leg — a co-equal order,
+            // not a side-effect spawn).
             const orderNodes = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])');
             await expect(orderNodes).toHaveCount(1, { timeout: 10000 });
-            await orderNodes.first().click();
-            await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
+            const rootTestId = await orderNodes.first().getAttribute('data-testid');
+            const rootId = rootTestId!.replace('order-node-', '');
 
-            // ── Compose clauses in the Registry tab ────────────────────────
-            // consume-onsite is a physical modality (no courier sub-order — only
-            // delivery spawns one); the proximity band on the root is the
-            // buyer↔merchant handoff edge; merchant-process anchors the
-            // consume-onsite lifecycle (prep-started → ready-for-pickup →
-            // handed-off). The graph stays a single node.
+            await page.getByTestId(`btn-add-suborder-${rootId}`).click();
+            await expect(orderNodes).toHaveCount(2, { timeout: 10000 });
+            const allTestIds = await orderNodes.evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')));
+            const courierId = allTestIds.find((t) => t !== `order-node-${rootId}`)!.replace('order-node-', '');
+
+            // ── Compose the MERCHANT order: delivery (seller-assigned) + handoff,
+            //    and the merchant-process lifecycle anchor ──────────────────────
+            await page.getByTestId(`order-node-${rootId}`).click();
+            await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
             await page.getByTestId('drawer-tab-registry').click();
             await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
 
             await page.getByTestId('drawer-registry-clause-figaro-fulfilment-v2').check();
-            await page.getByTestId('drawer-field-figaro-fulfilment-v2-modalities-consume-onsite').check();
-
-            // Hand-off is its own clause now; proximity nests under its handoff field.
+            await page.getByTestId('drawer-field-figaro-fulfilment-v2-modalities-delivery').check();
+            // The delivery sub-clause (coordination) surfaces once delivery is the
+            // chosen modality — gated by the spec, never hardcoded.
+            const coordination = page.getByTestId('drawer-field-figaro-fulfilment-v2-delivery-coordination-seller-assigned');
+            await coordination.waitFor({ state: 'visible', timeout: 5000 });
+            await coordination.check();
+            // The merchant→courier hand-off + its proximity certification (proximity
+            // nests under the hand-off clause's field).
             await page.getByTestId('drawer-registry-clause-figaro-handoff-v1').check();
             await page.getByTestId('drawer-field-figaro-handoff-v1-handoff-face-to-face').check();
             await page.getByTestId('drawer-registry-clause-figaro-proximity-policy-v1').check();
             await page.getByTestId('drawer-field-figaro-proximity-policy-v1-bands-zone-wifi').check();
-
             await page.getByTestId('drawer-registry-clause-figaro-merchant-process-v1').check();
-            await expect(orderNodes).toHaveCount(1, { timeout: 10000 });
 
-            // Name + publish (fixed slug → "direct-sale").
+            // ── Compose the COURIER order: courier-process + the courier→buyer
+            //    hand-off + its proximity certification ────────────────────────
+            await page.getByTestId(`drawer-node-tab-${courierId}`).click();
+            await page.getByTestId('drawer-tab-registry').click();
+            await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
+            await page.getByTestId('drawer-registry-clause-figaro-courier-process-v1').check();
+            await page.getByTestId('drawer-registry-clause-figaro-handoff-v1').check();
+            await page.getByTestId('drawer-field-figaro-handoff-v1-handoff-face-to-face').check();
+            await page.getByTestId('drawer-registry-clause-figaro-proximity-policy-v1').check();
+            await page.getByTestId('drawer-field-figaro-proximity-policy-v1-bands-zone-wifi').check();
+            await expect(orderNodes).toHaveCount(2, { timeout: 10000 });
+
+            // Name + publish (fixed slug → "local-commerce").
             await page.getByTestId('designer-name-input').fill(draftName);
             await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
             await page.getByTestId('designer-review').click();
@@ -169,7 +186,7 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
         const cid = metadataURI.slice('ipfs://'.length);
         await assertPinnedInIpfs(cid);
 
-        // ── It is the correct no-hash template — the three composed clauses ─
+        // ── It is the correct no-hash 2-node template ──────────────────────
         const assemblyDoc = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
             slug: string;
             name: string;
@@ -179,9 +196,11 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
             }>;
         };
         expect(assemblyDoc.slug).toBe(slug);
-        expect(assemblyDoc.orders).toHaveLength(1);
-        const root = assemblyDoc.orders[0];
-        // The DAG is a clause: root's figaro-topology-v1 carries empty parents.
+        expect(assemblyDoc.orders).toHaveLength(2);
+        const [root, courier] = assemblyDoc.orders;
+
+        // order[0] — the merchant: delivery (seller-assigned) + merchant-process +
+        // the merchant→courier hand-off, proximity-certified.
         expect(root.clauses['figaro-topology-v1']).toEqual({ parentOrderIds: [] });
         expect(Object.keys(root.clauses).sort()).toEqual([
             'figaro-fulfilment-v2',
@@ -190,17 +209,29 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
             'figaro-proximity-policy-v1',
             'figaro-topology-v1',
         ]);
-        expect(root.clauses['figaro-fulfilment-v2'].modalities).toEqual(['consume-onsite']);
-        expect(root.clauses['figaro-fulfilment-v2'].delivery).toBeUndefined();
+        expect(root.clauses['figaro-fulfilment-v2'].modalities).toEqual(['delivery']);
+        expect(root.clauses['figaro-fulfilment-v2'].delivery).toEqual({ coordination: ['seller-assigned'] });
         expect(root.clauses['figaro-fulfilment-v2'].handoff).toBeUndefined();
         expect(root.clauses['figaro-handoff-v1'].handoff).toEqual(['face-to-face']);
         expect(root.clauses['figaro-proximity-policy-v1'].bands).toEqual(['zone-wifi']);
 
+        // order[1] — the courier: courier-process + the courier→buyer hand-off,
+        // proximity-certified, parent = order-0.
+        expect(courier.clauses['figaro-topology-v1']).toEqual({ parentOrderIds: ['order-0'] });
+        expect(Object.keys(courier.clauses).sort()).toEqual([
+            'figaro-courier-process-v1',
+            'figaro-handoff-v1',
+            'figaro-proximity-policy-v1',
+            'figaro-topology-v1',
+        ]);
+        expect(courier.clauses['figaro-handoff-v1'].handoff).toEqual(['face-to-face']);
+        expect(courier.clauses['figaro-proximity-policy-v1'].bands).toEqual(['zone-wifi']);
+
         // Drift-guard on the published template's SHAPE (an output check — NOT the
         // runtime's data source; the runtime reads this assembly from chain→IPFS).
         const fixtureOrders = captureOrGuardAssemblyDocument(assemblyDoc, {
-            slug: 'direct-sale',
-            name: 'Direct Sale',
+            slug: 'local-commerce',
+            name: 'Local Commerce',
         });
         expect(normalizeAssemblyTemplateOrders(assemblyDoc.orders)).toEqual(fixtureOrders);
 
