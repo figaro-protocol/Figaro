@@ -74,6 +74,12 @@ else
     bash scripts/deploy-mock-kleros.sh
 fi
 
+# ── 5. Clauses — pin specs to IPFS + anchor on ClauseRegistry ────────────────
+# Deploy.s.sol deploys the registry but no longer registers clauses; this is the
+# single clause-population path (same script prod/testnet/mainnet uses). Idempotent.
+note "Clauses (pin → IPFS, anchor → ClauseRegistry)"
+(cd frontend && node scripts/populate-clauses.mjs)
+
 note "devnet ready"
 echo "  chain     : $RPC_URL"
 echo "  contracts : frontend/.env.local  (+ .deployments/local.json)"
