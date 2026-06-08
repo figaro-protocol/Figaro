@@ -85,6 +85,12 @@ async function onboardViaWizard(page: import("@playwright/test").Page, spec: Sel
     // row; roster sellers currently list a single product).
     await page.locator('[id^="item-"][id$="-name"]').first().fill(spec.products[0].name);
     await page.locator('[id^="item-"][id$="-price"]').first().fill(spec.products[0].price);
+    // Category — a courier's delivery service must be categorised "delivery" so
+    // the checkout's SellerCataloguePicker surfaces it; ordinary goods leave it
+    // blank (the form defaults to "General").
+    if (spec.products[0].category) {
+        await page.locator('[id^="item-"][id$="-category"]').first().fill(spec.products[0].category);
+    }
     await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/sellers\/assemblies/);
 

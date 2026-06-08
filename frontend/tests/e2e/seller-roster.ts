@@ -33,6 +33,11 @@ interface SellerProductSpec {
     name: string;
     /** Decimal-string price in the default token. */
     price: string;
+    /** Catalogue category. A courier's delivery service MUST be `"delivery"` —
+     *  the checkout's SellerCataloguePicker only surfaces a partner's items whose
+     *  category is `"delivery"`. Omit for ordinary goods (the wizard defaults the
+     *  category to "General"). */
+    category?: string;
 }
 
 export interface SellerSpec {
@@ -105,6 +110,6 @@ export const SELLER_ROSTER: readonly SellerSpec[] = [
         specialty: "last-mile delivery",
         geohash: "9q8yyk8yw",
         assemblies: ["local-commerce"],
-        products: [{ name: "Standard delivery", price: "1" }],
+        products: [{ name: "Standard delivery", price: "1", category: "delivery" }],
     },
 ];
