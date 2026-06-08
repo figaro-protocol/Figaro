@@ -7,8 +7,11 @@
  *   - identity (Parties) — buyer / seller / DAG position, read from the order
  *     + topology.
  *   - registry — every clause registered on `ClauseRegistry`, read live from
- *     the chain, grouped by each clause's `block.drawerArticle` (sorted into
- *     ARTICLE_ORDER, unknown keys appended), a checkbox per clause.
+ *     the chain, grouped by `groupClausesByArticle()` (the single clause
+ *     classification, shared with the /clauses inventory — grouping + order come
+ *     from the spec's `block.drawerArticle`, never a hardcoded list), a checkbox
+ *     per clause. Companion clauses (named as another's `sisterClauseId`) are
+ *     surfaced by their sister at commit, not listed here.
  *
  * The legacy per-article clause-editing tabs (and their hardcoded option
  * enums / sentinels / spec-card field controls) were removed; clause
@@ -21,44 +24,19 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Order } from "@/lib/core/store";
-import type { AgreementEdits } from "@/lib/designer/syntheticProcess";
 import { loadAgreement } from "@/lib/core/agreementStore";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/mechanisms/useClauseRegistry";
-import { getClauseSpec, clauseNestsUnder } from "@/lib/shared/clauseSpecSource";
+import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
+import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, isCompanionClause } from "@/lib/shared/clauseSpecSource";
+import { ClausesByArticle } from "@/components/core/ClausesByArticle";
 import type { FieldSpec } from "@figaro/core/clauses";
-
-/**
- * Sort order for the registry article groups. Unknown article keys are
- * appended alphabetically. This orders the groups; it does not relabel them —
- * each group renders its `drawerArticle` key verbatim.
- */
-const ARTICLE_ORDER: readonly string[] = [
-    "identity",
-    "order",
-    "fulfilment",
-    "logistics",
-    "attestations",
-    "emissions",
-    "consent",
-    "dispute-resolution",
-];
-
-// Articles NOT surfaced as toggles on the registry tab: identity (topology)
-// and order (commerce) are defaults — always present, never toggled; logistics
-// (geo) is captured at runtime, not chosen here.
-const HIDDEN_ARTICLES: ReadonlySet<string> = new Set(["identity", "order", "logistics"]);
 
 interface Props {
     /** Currently-selected order. May be null in `embedded` mode (renders an
         empty state). */
     order: Order | null;
     onClose: () => void;
-    /** Retained for caller compatibility; the drawer no longer composes the
-     *  agreement (clause editing moved off the legacy tabs). */
-    onChange: (edits: AgreementEdits) => void;
-    hasChildren?: boolean;
-    parentDeliveryActive?: boolean;
     /** Inline flex-column block (no fixed positioning) when true. */
     embedded?: boolean;
     /** Tabs stay navigable but every control is disabled — used by /view. */
@@ -80,8 +58,6 @@ interface Props {
     onPrivilegedTokenChange?: (value: string) => void;
     /** Per-chain common-token list that populates the privileged-token choice. */
     commonTokens?: ReadonlyArray<{ address: string; symbol: string; name: string }>;
-    /** The live assembly template (stringified) for the in-drawer preview. */
-    templateJson?: string;
 }
 
 export function AgreementDrawer({
@@ -99,7 +75,6 @@ export function AgreementDrawer({
     commonTokens,
 }: Props) {
     const [openSection, setOpenSection] = useState<string | null>(null);
-    const [tokenChecked, setTokenChecked] = useState(false);
     const [minimized, setMinimized] = useState(false);
     const [headerHeight, setHeaderHeight] = useState(108);
 
@@ -114,52 +89,7 @@ export function AgreementDrawer({
         return () => ro.disconnect();
     }, [embedded]);
 
-    // The clause set is network state — read live from
-    // `ClauseRegistry.ClauseRegistered`.
-    const { data: registeredClauses } = useAllRegisteredClauses();
 
-    // The raw registry list, grouped by each clause's `block.drawerArticle`
-    // and sorted into ARTICLE_ORDER (unknown article keys appended). Clauses
-    // whose name doesn't resolve, or that declare no article, fall under the
-    // "(unclassified)" bucket. `null` while the first read is in flight.
-    const registryGroups = useMemo<{ article: string; entries: RegisteredClauseEvent[] }[] | null>(() => {
-        if (registeredClauses === null) return null;
-        const byArticle = new Map<string, RegisteredClauseEvent[]>();
-        for (const entry of registeredClauses) {
-            const spec = entry.clauseName ? getClauseSpec(entry.clauseName) : undefined;
-            // Activation-only clauses (category-1 with no drawerArticle — e.g.
-            // figaro-proximity-proof-v1, figaro-ghg-measurement-v1) are surfaced
-            // by their activating sibling at commit, never selected directly.
-            // Keep them out of the selectable list rather than dumping them in a
-            // "(unclassified)" bucket. (Clauses with no spec still show — a
-            // third-party clause we don't bundle a spec for is legitimately on
-            // the network and selectable.)
-            if (spec && spec.block?.tier === "category-1" && !spec.block.drawerArticle) {
-                continue;
-            }
-            const article = spec?.block?.drawerArticle ?? "(unclassified)";
-            const list = byArticle.get(article) ?? [];
-            list.push(entry);
-            byArticle.set(article, list);
-        }
-        // The assembly-level privileged-token choice lives in the consent
-        // section but is NOT a clause — it must be available regardless of
-        // whether any consent clause is registered. So when the token picker
-        // is in play, ensure a consent group exists to host it.
-        if (onPrivilegedTokenChange && !byArticle.has("consent")) {
-            byArticle.set("consent", []);
-        }
-        const ordered = ARTICLE_ORDER.filter((a) => byArticle.has(a));
-        const extras = [...byArticle.keys()]
-            .filter((a) => !ARTICLE_ORDER.includes(a))
-            .sort();
-        return [...ordered, ...extras]
-            .filter((article) => !HIDDEN_ARTICLES.has(article))
-            .map((article) => ({
-                article,
-                entries: byArticle.get(article)!,
-            }));
-    }, [registeredClauses, onPrivilegedTokenChange]);
 
     // Auto-open Parties on each new order.
     useEffect(() => {
@@ -383,6 +313,89 @@ export function AgreementDrawer({
                     )}
 
                     {openSection === "registry" && (
+                        <ClauseRegistryPanel
+                            selectedClauseValues={selectedClauseValues}
+                            onToggleClause={onToggleClause}
+                            onSetClauseField={onSetClauseField}
+                            privilegedToken={privilegedToken}
+                            onPrivilegedTokenChange={onPrivilegedTokenChange}
+                            commonTokens={commonTokens}
+                        />
+                    )}
+
+                    </fieldset>
+                </div>
+            </div>
+            </>)}
+        </aside>
+    );
+}
+
+/**
+ * One registered clause on the registry tab: a checkbox to compose it onto the
+ * order, plus its design-time fields when selected (category-1 process clauses
+ * toggle whole — no fields). Under any field, renders the clauses that declare
+ * `block.nestsUnder === <that field's name>` (read from the spec, never
+ * hardcoded) — e.g. proximity-policy nested under the fulfilment clause's
+ * `handoff` field. Recurses, so a nested clause can host deeper nesting.
+ */
+interface ClauseRegistryPanelProps {
+    selectedClauseValues?: Record<string, Record<string, unknown>>;
+    onToggleClause?: (clauseId: string, next: boolean) => void;
+    onSetClauseField?: (clauseId: string, field: string, value: unknown) => void;
+    privilegedToken?: string;
+    onPrivilegedTokenChange?: (value: string) => void;
+    commonTokens?: ReadonlyArray<{ address: string; symbol: string; name: string }>;
+}
+
+/**
+ * The clause-registry content of the drawer — the single composition surface.
+ * Reads the on-chain clause set (chain → IPFS), groups it via the one shared
+ * `groupClausesByArticle()` classification, and renders a checkbox per clause. Owns its
+ * own loading state; the drawer shell knows nothing about clauses. The
+ * assembly-level privileged-token choice is hosted in the consent group (not a clause).
+ */
+function ClauseRegistryPanel({
+    selectedClauseValues,
+    onToggleClause,
+    onSetClauseField,
+    privilegedToken,
+    onPrivilegedTokenChange,
+    commonTokens,
+}: ClauseRegistryPanelProps) {
+    // The clause set is network state — read live from `ClauseRegistry.ClauseRegistered`,
+    // each spec fetched from its on-chain `metadataURI` (chain → IPFS). `clauseSpecsVersion`
+    // bumps as specs resolve so the grouping recomputes against the warm cache.
+    const { data: registeredClauses } = useAllRegisteredClauses();
+    const { version: clauseSpecsVersion } = useClauseSpecs();
+    const [tokenChecked, setTokenChecked] = useState(false);
+
+    // THE single clause classification, shared with the /clauses inventory.
+    const registryGroups = useMemo<{ article: string; entries: RegisteredClauseEvent[] }[] | null>(() => {
+        if (registeredClauses === null) return null;
+        const eventByName = new Map<string, RegisteredClauseEvent>();
+        for (const e of registeredClauses) if (e.clauseName) eventByName.set(e.clauseName, e);
+
+        const groups = groupClausesByArticle()
+            .map((g) => ({
+                article: g.article,
+                entries: g.clauses
+                    .filter((c) => !isCompanionClause(c.clauseId))
+                    .map((c) => eventByName.get(c.clauseId))
+                    .filter((e): e is RegisteredClauseEvent => e !== undefined),
+            }))
+            .filter((g) => g.entries.length > 0);
+
+        // The privileged-token choice lives in the consent section but is NOT a clause —
+        // host it even if no consent clause exists.
+        if (onPrivilegedTokenChange && !groups.some((g) => g.article === "consent")) {
+            groups.push({ article: "consent", entries: [] });
+        }
+        return groups;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [registeredClauses, onPrivilegedTokenChange, clauseSpecsVersion]);
+
+    return (
                         <section data-testid="drawer-section-registry">
                             <p className="text-[11px] text-neutral-500 mb-3">
                                 Compose this order&rsquo;s terms. Check a clause to add it &mdash;
@@ -406,88 +419,75 @@ export function AgreementDrawer({
                                     No clauses registered on the network this site is reading.
                                 </p>
                             ) : (
-                                <div className="space-y-5" data-testid="drawer-registry-list">
-                                    {(registryGroups ?? []).map((group) => (
-                                        <div key={group.article} data-testid={`drawer-registry-group-${group.article}`}>
-                                            <p className="text-[11px] font-semibold text-neutral-700 mb-2">
-                                                {group.article}
-                                            </p>
-                                            <ul className="space-y-2">
-                                                {group.entries
-                                                    .filter((clause) => !(clause.clauseName && clauseNestsUnder(clause.clauseName)))
-                                                    .map((clause, i) => (
-                                                        <li key={`${clause.clauseIdHash}-${i}`}>
-                                                            <ClauseControl
-                                                                clause={clause}
-                                                                registeredClauses={registeredClauses}
-                                                                selectedClauseValues={selectedClauseValues}
-                                                                onToggleClause={onToggleClause}
-                                                                onSetClauseField={onSetClauseField}
-                                                            />
-                                                        </li>
-                                                    ))}
-                                                {group.article === "consent" && onPrivilegedTokenChange && (commonTokens?.length ?? 0) > 0 && (
-                                                    <li>
-                                                        <label className="flex items-center gap-2 text-xs text-neutral-700">
-                                                            <input
-                                                                type="checkbox"
-                                                                className="h-3.5 w-3.5"
-                                                                checked={tokenChecked || !!privilegedToken}
-                                                                onChange={(e) => {
-                                                                    if (e.target.checked) {
-                                                                        setTokenChecked(true);
-                                                                    } else {
-                                                                        setTokenChecked(false);
-                                                                        onPrivilegedTokenChange("");
-                                                                    }
-                                                                }}
-                                                                data-testid="drawer-registry-clause-privileged-token"
-                                                            />
-                                                            <span className="font-mono text-[11px]">privileged-token</span>
-                                                        </label>
-                                                        {(tokenChecked || !!privilegedToken) && (
-                                                            <div className="ml-6 mt-2" data-testid="drawer-privileged-token-group">
-                                                                <select
-                                                                    value={privilegedToken ?? ""}
-                                                                    onChange={(e) => onPrivilegedTokenChange(e.target.value)}
-                                                                    data-testid="drawer-privileged-token"
-                                                                    className="text-xs bg-white border border-neutral-300 rounded px-2 py-1.5 min-h-11 w-full hover:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                >
-                                                                    <option value="" disabled>Select a token…</option>
-                                                                    {(commonTokens ?? []).map((t) => (
-                                                                        <option key={t.address} value={t.address}>
-                                                                            {t.symbol}
-                                                                        </option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
-                                                        )}
-                                                    </li>
+                                <ClausesByArticle
+                                    sections={(registryGroups ?? []).map((g) => ({
+                                        article: g.article,
+                                        items: g.entries.filter(
+                                            (c) => !(c.clauseName && clauseNestsUnder(c.clauseName)),
+                                        ),
+                                    }))}
+                                    rootTestId="drawer-registry-list"
+                                    rootClassName="space-y-5"
+                                    listClassName="space-y-2"
+                                    headingClassName="text-[11px] font-semibold text-neutral-700 mb-2"
+                                    sectionTestId={(article) => `drawer-registry-group-${article}`}
+                                    renderClause={(clause, i) => (
+                                        <li key={`${clause.clauseIdHash}-${i}`}>
+                                            <ClauseControl
+                                                clause={clause}
+                                                registeredClauses={registeredClauses}
+                                                selectedClauseValues={selectedClauseValues}
+                                                onToggleClause={onToggleClause}
+                                                onSetClauseField={onSetClauseField}
+                                            />
+                                        </li>
+                                    )}
+                                    renderSectionFooter={(article) =>
+                                        article === "consent" && onPrivilegedTokenChange && (commonTokens?.length ?? 0) > 0 ? (
+                                            <li>
+                                                <label className="flex items-center gap-2 text-xs text-neutral-700">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="h-3.5 w-3.5"
+                                                        checked={tokenChecked || !!privilegedToken}
+                                                        onChange={(e) => {
+                                                            if (e.target.checked) {
+                                                                setTokenChecked(true);
+                                                            } else {
+                                                                setTokenChecked(false);
+                                                                onPrivilegedTokenChange("");
+                                                            }
+                                                        }}
+                                                        data-testid="drawer-registry-clause-privileged-token"
+                                                    />
+                                                    <span className="font-mono text-[11px]">privileged-token</span>
+                                                </label>
+                                                {(tokenChecked || !!privilegedToken) && (
+                                                    <div className="ml-6 mt-2" data-testid="drawer-privileged-token-group">
+                                                        <select
+                                                            value={privilegedToken ?? ""}
+                                                            onChange={(e) => onPrivilegedTokenChange(e.target.value)}
+                                                            data-testid="drawer-privileged-token"
+                                                            className="text-xs bg-white border border-neutral-300 rounded px-2 py-1.5 min-h-11 w-full hover:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        >
+                                                            <option value="" disabled>Select a token…</option>
+                                                            {(commonTokens ?? []).map((t) => (
+                                                                <option key={t.address} value={t.address}>
+                                                                    {t.symbol}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
                                                 )}
-                                            </ul>
-                                        </div>
-                                    ))}
-                                </div>
+                                            </li>
+                                        ) : null
+                                    }
+                                />
                             )}
                         </section>
-                    )}
-
-                    </fieldset>
-                </div>
-            </div>
-            </>)}
-        </aside>
     );
 }
 
-/**
- * One registered clause on the registry tab: a checkbox to compose it onto the
- * order, plus its design-time fields when selected (category-1 process clauses
- * toggle whole — no fields). Under any field, renders the clauses that declare
- * `block.nestsUnder === <that field's name>` (read from the spec, never
- * hardcoded) — e.g. proximity-policy nested under the fulfilment clause's
- * `handoff` field. Recurses, so a nested clause can host deeper nesting.
- */
 function ClauseControl({
     clause,
     registeredClauses,

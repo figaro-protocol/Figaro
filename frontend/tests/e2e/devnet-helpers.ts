@@ -66,9 +66,7 @@ export const CORE_PROCESS_VIEW_ABI = parseAbi([
     'function processes(bytes32 processId) view returns (address rootBuyer, address currency, uint256 cumulativeValue, uint32 activeOrderCount)',
 ]);
 
-/** ERC-20 `balanceOf` — bond-debit / settlement assertions read it at each stage.
- *  (`SELLER_REGISTERED_EVENT_ABI`, the onboarding-assertion event, is exported
- *  from its existing definition further down.) */
+/** ERC-20 `balanceOf` — bond-debit / settlement assertions read it at each stage. */
 export const ERC20_BALANCE_ABI = parseAbi([
     'function balanceOf(address) view returns (uint256)',
 ]);
@@ -543,91 +541,6 @@ export async function ensureTokenApprovals(coreAddress: `0x${string}`, tokenAddr
     }
 }
 
-async function ensureGhgClause(clauseRegistryAddress: `0x${string}`, signerKey: `0x${string}`): Promise<`0x${string}`> {
-    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const signer = privateKeyToAccount(signerKey);
-    const signerClient = createWalletClient({ account: signer, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-
-    const clauseUriHash = keccak256(stringToHex('ipfs://figaro-ghg-iso-14064/v1'));
-
-    // Check if already registered (idempotent)
-    let alreadyRegistered = false;
-    try {
-        alreadyRegistered = await publicClient.readContract({
-            address: clauseRegistryAddress,
-            abi: CLAUSE_REGISTRY_ABI,
-            functionName: 'registered',
-            args: [GHG_CLAUSE_ID],
-        }) as boolean;
-    } catch { /* not deployed or not registered */ }
-
-    if (!alreadyRegistered) {
-        const { request } = await publicClient.simulateContract({
-            account: signer.address,
-            address: clauseRegistryAddress,
-            abi: CLAUSE_REGISTRY_ABI,
-            functionName: 'registerClause',
-            args: [GHG_CLAUSE_ID, 1n, clauseUriHash, keccak256(stringToHex('emissions'))],
-        });
-        await publicClient.waitForTransactionReceipt({ hash: await signerClient.writeContract(request) });
-    }
-
-    return GHG_CLAUSE_ID;
-}
-
-async function seedGhgDisclosureScenario(): Promise<SeededGhgScenario> {
-    const localConfig = readLocalDeploymentConfig();
-    const coreAddress = resolve('NEXT_PUBLIC_FIGARO_CORE', localConfig.figaroCore)!;
-    const tokenAddress = resolve('NEXT_PUBLIC_TOKEN_ADDRESS', localConfig.tokenAddress)!;
-    const coordinatorAddress = resolve('NEXT_PUBLIC_ATTESTATION_COORDINATOR', localConfig.attestationCoordinator)!;
-    const clauseRegistryAddress = resolve('NEXT_PUBLIC_CLAUSE_REGISTRY', localConfig.clauseRegistry)!;
-    if (!coreAddress || !tokenAddress || !coordinatorAddress || !clauseRegistryAddress) {
-        throw new Error('Missing deployment env for GHG seed (need FIGARO_CORE, TOKEN, ATTESTATION_COORDINATOR, CLAUSE_REGISTRY)');
-    }
-
-    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const buyer = privateKeyToAccount(BUYER_PRIVATE_KEY);
-    const restaurant = privateKeyToAccount(RESTAURANT_PRIVATE_KEY);
-    const supplier = privateKeyToAccount(SUPPLIER_PRIVATE_KEY);
-    const supplierClient = createWalletClient({ account: supplier, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-
-    const clauseId = await ensureGhgClause(clauseRegistryAddress, BUYER_PRIVATE_KEY);
-    await ensureTokenApprovals(coreAddress, tokenAddress, BUYER_PRIVATE_KEY, RESTAURANT_PRIVATE_KEY, SUPPLIER_PRIVATE_KEY);
-
-    // Root order: buyer ↔ restaurant, GHG-disclosure clause committed.
-    const { processId, orderHash: rootOrderHash } = await createRootOrder({
-        buyerKey: BUYER_PRIVATE_KEY, sellerKey: RESTAURANT_PRIVATE_KEY, coreAddress, tokenAddress, payment: 1_000000000000000000n,
-        agreement: ghgDisclosureAgreement(buyer.address as `0x${string}`, restaurant.address as `0x${string}`),
-    });
-    // Supplier sub-order: buyer ↔ supplier, same clause committed so the
-    // supplier's inventory attestation can build an inclusion proof.
-    const { orderHash: supplierOrderHash, commitment: supplierCommitment } = await createSubOrder({
-        processId, buyerKey: BUYER_PRIVATE_KEY, sellerKey: SUPPLIER_PRIVATE_KEY, coreAddress, tokenAddress,
-        payment: 400000000000000000n, parentOrderHashes: [rootOrderHash],
-        agreement: ghgDisclosureAgreement(buyer.address as `0x${string}`, supplier.address as `0x${string}`),
-    });
-
-    // Inventory-stage attestation from supplier. Category-2 clause — content
-    // must byte-equal the committed sectionData.
-    const { sectionData, proof } = agreementReceipt(supplierCommitment, GHG_CLAUSE_KEY);
-    const { request: attestReq } = await publicClient.simulateContract({
-        account: supplier.address, address: coordinatorAddress, abi: ATTESTATION_COORDINATOR_ABI,
-        functionName: 'attestAsSeller',
-        args: [supplierCommitment, supplierCommitment, clauseId, DISCLOSURE_KIND.inventory, sectionData, proof, sectionData],
-    });
-    await publicClient.waitForTransactionReceipt({ hash: await supplierClient.writeContract(attestReq) });
-
-    return { clauseId, processId, rootOrderHash, supplierOrderHash };
-}
-
-
-
-
-
-
-
-
-
 // ── Delivery lifecycle seed ─────────────────────────────────────────────────
 
 const DUTCH_AUCTION_TEST_ABI = parseAbi([
@@ -1079,59 +992,6 @@ export async function assertAssemblyOnInventory(page: Page, slug: string): Promi
     await expect(row).toContainText(slug);
 }
 
-// ── Seller-adoption verification (the same standard as the assembly, applied to
-// a seller): a registered seller must be anchored on SellerRegistry, its profile
-// PINNED in IPFS (assertPinnedInIpfs, above), and SURFACED where a buyer finds it
-// — its public page and /discover. Reusable across every seller-onboarding spec.
-
-/**
- * Assert a registered seller surfaces on its public page `/s/[seller]` — its
- * name and (optionally) a listed product. Navigates the page.
- */
-export async function assertSellerProfileSurfaces(
-    page: Page,
-    seller: string,
-    opts: { name: string; product?: string },
-): Promise<void> {
-    await page.goto(`/s/${seller}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
-    const detail = page.getByTestId('seller-detail-view');
-    try {
-        await detail.waitFor({ state: 'visible', timeout: 30000 });
-    } catch {
-        await page.reload({ waitUntil: 'domcontentloaded' });
-        await detail.waitFor({ state: 'visible', timeout: 30000 });
-    }
-    await expect(detail).toContainText(opts.name);
-    if (opts.product) await expect(detail).toContainText(opts.product);
-}
-
-/**
- * Assert a registered seller surfaces on the `/discover` inventory. /discover
- * lists all sellers when the buyer's location isn't granted (the Playwright
- * default), so the seller's card is matchable by name. Navigates the page.
- */
-export async function assertSellerOnDiscovery(page: Page, name: string): Promise<void> {
-    await page.goto('/discover?e2e=devnet', { waitUntil: 'domcontentloaded' });
-    const cards = page.getByTestId('seller-card');
-    await expect(cards.first()).toBeVisible({ timeout: 30000 });
-    await expect(
-        cards.filter({ hasText: name }).first(),
-        `seller "${name}" should surface on /discover`,
-    ).toBeVisible({ timeout: 15000 });
-}
-
-/** SellerRegistry registration event — carries the profile metadataURI. Also the
- *  onboarding-assertion ABI imported by runtime specs (see shared preamble above). */
-export const SELLER_REGISTERED_EVENT_ABI = parseAbi([
-    'event SellerRegistered(address indexed seller, string metadataURI)',
-]);
-
-/** Kernel commit event — one per order. Lets a runtime spec read each committed
- *  order's seller (e.g. to assert a buyer-assigned courier order's seller IS the
- *  courier the buyer chose). */
-export const ORDER_COMMITTED_EVENT_ABI = parseAbi([
-    'event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 cumulativeValue, bytes32 agreementHash, uint256 salt, uint256 deadline)',
-]);
 
 // ── Mainnet-faithful seller discovery ───────────────────────────────────────
 // Runtime specs must consume sellers the way a mainnet client does: read
@@ -1140,6 +1000,12 @@ export const ORDER_COMMITTED_EVENT_ABI = parseAbi([
 // spec that takes seller identity from a TS file is not testing mainnet usage.
 // (This mirrors what the indexer / `discoveryService` does; it additionally keeps
 // the `assemblyBindings` that the buyer-facing `SellerCatalogue` projection drops.)
+
+/** SellerRegistry registration event — carries the profile metadataURI. Internal
+ *  to discovery; read by `discoverSellers`. */
+const SELLER_REGISTERED_EVENT_ABI = parseAbi([
+    'event SellerRegistered(address indexed seller, string metadataURI)',
+]);
 
 export interface DiscoveredSeller {
     address: `0x${string}`;

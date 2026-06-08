@@ -137,96 +137,13 @@ contract DeployMainnet is Script {
         _clauses = address(clauses);
         console.log("ClauseRegistry:         ", _clauses);
 
-        // The 4th argument is the family — keccak256 of the primary category from each
-        // clause's Layer-A spec. The RPGF SP1 program reads `family` (not `clauseId`) to
-        // decide Tier-1 weighting — see prover/rpgf/src/formula.rs. Tier-1 families are
-        // {keccak256("geo"), keccak256("fulfilment")}; future clauses registered under
-        // those families inherit the Tier-1 boost without redeploying the FIG system.
-        clauses.registerClause(
-            keccak256("figaro-topology-v1"), 1, keccak256("ipfs://figaro-topology/v1"), keccak256("topology")
-        );
-        clauses.registerClause(
-            keccak256("figaro-commerce-v1"), 1, keccak256("ipfs://figaro-commerce/v1"), keccak256("commerce")
-        );
-        clauses.registerClause(
-            keccak256("figaro-geo-v2"), 1, keccak256("ipfs://figaro-geo/v2"), keccak256("geo")
-        );
-        clauses.registerClause(
-            keccak256("figaro-fulfilment-v2"), 1, keccak256("ipfs://figaro-fulfilment/v2"), keccak256("fulfilment")
-        );
-        clauses.registerClause(
-            keccak256("figaro-handoff-v1"), 1, keccak256("ipfs://figaro-handoff/v1"), keccak256("fulfilment")
-        );
-        clauses.registerClause(
-            keccak256("figaro-ghg-protocol-v1"), 1, keccak256("ipfs://figaro-ghg-protocol/v1"), keccak256("emissions")
-        );
-        clauses.registerClause(
-            keccak256("figaro-ghg-iso-14064-v1"),
-            1,
-            keccak256("ipfs://figaro-ghg-iso-14064/v1"),
-            keccak256("emissions")
-        );
-        clauses.registerClause(
-            keccak256("figaro-ghg-pas-2050-v1"), 1, keccak256("ipfs://figaro-ghg-pas-2050/v1"), keccak256("emissions")
-        );
-        clauses.registerClause(
-            keccak256("figaro-ghg-en-16258-v1"), 1, keccak256("ipfs://figaro-ghg-en-16258/v1"), keccak256("emissions")
-        );
-        clauses.registerClause(
-            keccak256("figaro-ghg-custom-v1"), 1, keccak256("ipfs://figaro-ghg-custom/v1"), keccak256("emissions")
-        );
-        clauses.registerClause(
-            keccak256("figaro-ghg-measurement-v1"),
-            1,
-            keccak256("ipfs://figaro-ghg-measurement/v1"),
-            keccak256("emissions")
-        );
-        clauses.registerClause(
-            keccak256("figaro-proximity-policy-v1"),
-            1,
-            keccak256("ipfs://figaro-proximity-policy/v1"),
-            keccak256("proximity")
-        );
-        clauses.registerClause(
-            keccak256("figaro-proximity-proof-v1"),
-            1,
-            keccak256("ipfs://figaro-proximity-proof/v1"),
-            keccak256("proximity")
-        );
-        clauses.registerClause(
-            keccak256("figaro-merchant-process-v1"),
-            1,
-            keccak256("ipfs://figaro-merchant-process/v1"),
-            keccak256("seller-process")
-        );
-        clauses.registerClause(
-            keccak256("figaro-courier-process-v1"),
-            1,
-            keccak256("ipfs://figaro-courier-process/v1"),
-            keccak256("seller-process")
-        );
-        clauses.registerClause(
-            keccak256("figaro-arbitration-kleros-v1"),
-            1,
-            keccak256("ipfs://figaro-arbitration-kleros/v1"),
-            keccak256("arbitration")
-        );
-        clauses.registerClause(
-            keccak256("figaro-applicable-law-v1"),
-            1,
-            keccak256("ipfs://figaro-applicable-law/v1"),
-            keccak256("jurisdiction")
-        );
-        clauses.registerClause(
-            keccak256("figaro-consent-v1"), 1, keccak256("ipfs://figaro-consent/v1"), keccak256("consent")
-        );
-        clauses.registerClause(
-            keccak256("figaro-offset-policy-v1"),
-            1,
-            keccak256("ipfs://figaro-offset-policy/v1"),
-            keccak256("emissions")
-        );
-        console.log("ClauseRegistry: 19 reference clauses registered");
+        // Clauses are NOT registered here. Their content is pinned to IPFS +
+        // anchored on ClauseRegistry by frontend/scripts/populate-clauses.mjs —
+        // the single clause-population path for prod/testnet/mainnet, so each
+        // on-chain (contentHash, metadataURI) points at a REAL pinned spec, not a
+        // placeholder hash. The validators above are bound at deploy time
+        // (clauseId hash → IClauseValidator); clause content registration is the
+        // post-deploy population step. Run populate-clauses.mjs after broadcast.
 
         // ── SellerRegistry ────────────────────────────────────────
         // PLACEHOLDER VALUES — DO NOT SHIP TO MAINNET WITHOUT REVIEW.

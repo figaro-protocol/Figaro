@@ -131,9 +131,9 @@ export const EV_AUCTION_CLAIMED = parseAbiItem(
 
 export const CLAUSE_REGISTRY_ABI = parseAbi([
     "function registered(bytes32 clauseId) view returns (bool)",
-    "function registerClause(bytes32 clauseId, uint64 version, bytes32 uriHash, bytes32 family) external",
+    "function registerClause(string clauseId, uint64 version, bytes32 contentHash, string metadataURI, bytes32 family) external",
     "function setMechanismClause(bytes32 clauseId) external",
-    "event ClauseRegistered(bytes32 indexed clauseId, uint64 version, bytes32 uriHash, bytes32 indexed family, address indexed registrar)",
+    "event ClauseRegistered(string clauseId, uint64 version, bytes32 contentHash, string metadataURI, bytes32 indexed family, address indexed registrar)",
     "event MechanismClauseSet(address indexed mechanism, bytes32 indexed clauseId)",
 ]);
 
@@ -147,7 +147,7 @@ export const CLAUSE_REGISTRY_ABI = parseAbi([
 export const CLAUSE_REGISTRATION_HELPER_ABI = parseAbi([
     "function clauseRegistry() view returns (address)",
     "function attestationCoordinator() view returns (address)",
-    "function registerClauseAndValidator(bytes32 clauseId, uint64 version, bytes32 uriHash, bytes32 family, address validator) external",
+    "function registerClauseAndValidator(string clauseId, uint64 version, bytes32 contentHash, string metadataURI, bytes32 family, address validator) external",
 ]);
 
 // ── FigaroBatchVerifier ABI ──────────────────────────────────────────────────

@@ -59,28 +59,30 @@ contract ClauseRegistrationHelper {
     ///         in AttestationCoordinator atomically — both writes happen in
     ///         the same transaction, so no front-runner can capture the
     ///         validator binding between them.
-    /// @param clauseId  keccak256 of the human-readable clause name.
-    /// @param version   Clause version number (passed through to ClauseRegistry).
-    /// @param uriHash   keccak256 of the off-chain spec URI.
-    /// @param family    keccak256 of the family slug (passed through to ClauseRegistry).
-    /// @param validator Address of the deployed `IClauseValidator` contract for `clauseId`.
+    /// @param clauseId    Human-readable clause name (e.g. "figaro-courier-process-v1").
+    /// @param version     Clause version number (passed through to ClauseRegistry).
+    /// @param contentHash keccak256 of the canonical spec JSON.
+    /// @param metadataURI Off-chain spec locator (IPFS).
+    /// @param family      keccak256 of the family slug (passed through to ClauseRegistry).
+    /// @param validator   Address of the deployed `IClauseValidator` contract for `clauseId`.
     /// @dev Reverts on any of the underlying contract reverts:
     ///      - `ClauseRegistry.AlreadyRegistered(clauseId)` if clause is already registered
-    ///      - `ClauseRegistry.ZeroUriHash()` if uriHash is zero
-    ///      - `ClauseRegistry.ZeroFamily()` if family is zero
+    ///      - `ClauseRegistry.EmptyMetadataURI()` / `EmptyClauseId()` / `ZeroContentHash()` / `ZeroFamily()`
     ///      - `AttestationCoordinator.ZeroValidator()` if validator is zero
     ///      - `AttestationCoordinator.ValidatorAlreadySet(clauseId)` if a binding already exists
     ///      - `AttestationCoordinator.InvalidValidatorBinding(clauseId, ...)` on clauseId mismatch
     ///      Solidity transaction semantics guarantee atomicity: any revert in the
-    ///      second call rolls back the first call (and vice versa).
+    ///      second call rolls back the first call (and vice versa). The validator is
+    ///      bound under the clauseId HASH — the canonical on-chain key.
     function registerClauseAndValidator(
-        bytes32 clauseId,
+        string calldata clauseId,
         uint64 version,
-        bytes32 uriHash,
+        bytes32 contentHash,
+        string calldata metadataURI,
         bytes32 family,
         address validator
     ) external {
-        clauseRegistry.registerClause(clauseId, version, uriHash, family);
-        attestationCoordinator.setValidator(clauseId, validator);
+        clauseRegistry.registerClause(clauseId, version, contentHash, metadataURI, family);
+        attestationCoordinator.setValidator(keccak256(bytes(clauseId)), validator);
     }
 }

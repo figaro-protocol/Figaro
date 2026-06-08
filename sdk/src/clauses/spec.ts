@@ -85,16 +85,10 @@ export type FieldSpec =
     | ArrayFieldSpec
     | ObjectFieldSpec;
 
-/** Drawer article a clause composes into on the designer canvas. */
-export type ClauseDrawerArticle =
-    | "identity"
-    | "order"
-    | "fulfilment"
-    | "logistics"
-    | "attestations"
-    | "emissions"
-    | "dispute-resolution"
-    | "consent";
+/** Drawer article a clause composes into on the designer canvas. A free-form
+ *  string read straight from the spec — the set of articles and their grouping
+ *  are whatever the registered clauses declare, never a closed list. */
+export type ClauseDrawerArticle = string;
 
 /** Doctrinal tier per the protocol-extension doctrine. Independent of the
  *  designer-palette category (`BlockMetadata.category`); the two used to be
@@ -181,11 +175,6 @@ const VALID_FIELD_TYPES: ReadonlySet<string> = new Set([
 
 const VALID_STRING_FORMATS: ReadonlySet<string> = new Set([
     "bytes32-hex", "address-hex", "bytes-hex", "iso-datetime",
-]);
-
-const VALID_DRAWER_ARTICLES: ReadonlySet<string> = new Set([
-    "identity", "order", "fulfilment", "logistics",
-    "attestations", "emissions", "dispute-resolution", "consent",
 ]);
 
 const VALID_CLAUSE_TIERS: ReadonlySet<string> = new Set([
@@ -385,8 +374,8 @@ function parseBlockBinding(
         return null;
     }
     if (raw.drawerArticle !== undefined) {
-        if (typeof raw.drawerArticle !== "string" || !VALID_DRAWER_ARTICLES.has(raw.drawerArticle)) {
-            errors.push({ path: `${path}.drawerArticle`, message: `drawerArticle must be one of: ${[...VALID_DRAWER_ARTICLES].join(", ")}` });
+        if (typeof raw.drawerArticle !== "string" || raw.drawerArticle.length === 0) {
+            errors.push({ path: `${path}.drawerArticle`, message: "drawerArticle must be a non-empty string when present" });
             return null;
         }
     }

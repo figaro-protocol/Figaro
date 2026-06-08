@@ -36,22 +36,32 @@ pragma solidity 0.8.26;
 ///      Only the dedup guard (has this clauseId been registered?) and
 ///      events survive.
 contract ClauseRegistry {
-    /// @notice Dedup guard — true if clauseId has been registered.
+    /// @notice Dedup guard — true if clauseId (by keccak256 hash) has been registered.
     mapping(bytes32 => bool) public registered;
 
     // ── Events ──────────────────────────────────────────────────────
 
     /// @notice Emitted when a new clause is registered.
-    /// @param clauseId   keccak256 of the human-readable clause name.
-    /// @param version    Clause version number.
-    /// @param uriHash    keccak256 of the off-chain spec URI (IPFS, etc.).
-    /// @param family     keccak256 of the family slug (e.g. "geo", "fulfilment").
-    ///                   Indexers + the RPGF SP1 program key Tier-1 weighting off
-    ///                   this; new clauses joining an existing Tier-1 family
-    ///                   inherit the weight without redeployment.
-    /// @param registrar  Address that registered the clause.
+    /// @param clauseId    Human-readable clause name (e.g. "figaro-courier-process-v1").
+    ///                    Non-indexed so the string is recoverable from the log —
+    ///                    indexers reconstruct the clauseId without a preimage table.
+    /// @param version     Clause version number.
+    /// @param contentHash keccak256 of the canonical off-chain spec JSON — integrity.
+    /// @param metadataURI Off-chain spec locator (IPFS, etc.). The pointer that lets
+    ///                    any reader FETCH the spec from chain state alone — the same
+    ///                    role `metadataURI` plays in SellerRegistry / AssemblyRegistry.
+    /// @param family      keccak256 of the family slug (e.g. "geo", "fulfilment").
+    ///                    Indexers + the RPGF SP1 program key Tier-1 weighting off
+    ///                    this; new clauses joining an existing Tier-1 family
+    ///                    inherit the weight without redeployment.
+    /// @param registrar   Address that registered the clause.
     event ClauseRegistered(
-        bytes32 indexed clauseId, uint64 version, bytes32 uriHash, bytes32 indexed family, address indexed registrar
+        string clauseId,
+        uint64 version,
+        bytes32 contentHash,
+        string metadataURI,
+        bytes32 indexed family,
+        address indexed registrar
     );
 
     /// @notice Emitted when a mechanism declares which clause it uses.
@@ -63,24 +73,37 @@ contract ClauseRegistry {
 
     error AlreadyRegistered(bytes32 clauseId);
     error NotRegistered(bytes32 clauseId);
-    error ZeroUriHash();
+    error EmptyClauseId();
+    error EmptyMetadataURI();
+    error ZeroContentHash();
     error ZeroFamily();
 
     // ── Clause registration (permissionless) ────────────────────────
 
     /// @notice Register a clause. Anyone can call. Reverts if already registered.
-    /// @param clauseId  keccak256 of the human-readable clause name.
-    /// @param version   Clause version number.
-    /// @param uriHash   keccak256 of the off-chain spec URI.
-    /// @param family    keccak256 of the family slug (e.g. `keccak256("geo")`).
-    ///                  Permanently bound to the clause; consumed by the RPGF
-    ///                  Tier-1 weighting in `prover/rpgf/src/formula.rs`.
-    function registerClause(bytes32 clauseId, uint64 version, bytes32 uriHash, bytes32 family) external {
-        if (uriHash == bytes32(0)) revert ZeroUriHash();
+    /// @param clauseId    Human-readable clause name (e.g. "figaro-courier-process-v1").
+    ///                    The on-chain key is its keccak256 hash.
+    /// @param version     Clause version number.
+    /// @param contentHash keccak256 of the canonical spec JSON (integrity).
+    /// @param metadataURI Off-chain spec locator (IPFS) — readers FETCH the spec from it.
+    /// @param family      keccak256 of the family slug (e.g. `keccak256("geo")`).
+    ///                    Permanently bound to the clause; consumed by the RPGF
+    ///                    Tier-1 weighting in `prover/rpgf/src/formula.rs`.
+    function registerClause(
+        string calldata clauseId,
+        uint64 version,
+        bytes32 contentHash,
+        string calldata metadataURI,
+        bytes32 family
+    ) external {
+        if (bytes(clauseId).length == 0) revert EmptyClauseId();
+        if (bytes(metadataURI).length == 0) revert EmptyMetadataURI();
+        if (contentHash == bytes32(0)) revert ZeroContentHash();
         if (family == bytes32(0)) revert ZeroFamily();
-        if (registered[clauseId]) revert AlreadyRegistered(clauseId);
-        registered[clauseId] = true;
-        emit ClauseRegistered(clauseId, version, uriHash, family, msg.sender);
+        bytes32 idHash = keccak256(bytes(clauseId));
+        if (registered[idHash]) revert AlreadyRegistered(idHash);
+        registered[idHash] = true;
+        emit ClauseRegistered(clauseId, version, contentHash, metadataURI, family, msg.sender);
     }
 
     // ── Mechanism self-declaration (permissionless) ─────────────────

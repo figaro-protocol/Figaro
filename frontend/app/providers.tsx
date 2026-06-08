@@ -10,6 +10,7 @@ import { CommerceProvider } from "@/lib/commerce";
 import "@rainbow-me/rainbowkit/styles.css";
 import { RpcBanner } from "@/components/core/RpcBanner";
 import ClientInit from "@/components/core/ClientInit";
+import { ClauseSpecsLoader } from "@/components/core/ClauseSpecsLoader";
 import { HandoffCleanupProvider } from "@/components/core/HandoffCleanupProvider";
 import { CommitmentSignPreviewProvider } from "@/components/core/CommitmentSignPreviewProvider";
 import { ConfigurationBanner } from "@/components/core/ConfigurationBanner";
@@ -25,6 +26,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                         <CommerceProvider>
                             <ConfigurationBanner />
                             <ClientInit />
+                            <ClauseSpecsLoader />
                             <HandoffCleanupProvider />
                             <CommitmentSignPreviewProvider />
                             {children}

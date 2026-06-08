@@ -1,9 +1,11 @@
 #!/bin/bash
 # lint-clause-counts.sh — Gate: every prose/test reference to the clause
-# count must match the on-disk count in `frontend/lib/shared/clauses/`.
+# count must match the on-disk count in `sdk/src/clauses/examples/` (the
+# canonical Layer-A specs; the frontend no longer bundles a copy — it loads
+# them from ClauseRegistry → IPFS).
 #
 # Source of truth (single):
-#   total   = `ls frontend/lib/shared/clauses/*.json | wc -l`
+#   total   = `ls sdk/src/clauses/examples/*.json | wc -l`
 #   runtime = total - 1   (subtract figaro-topology-v1, manifest-only)
 #
 # Rationale: every clause add/remove silently desyncs ~10 downstream
@@ -35,7 +37,7 @@
 
 set -u
 
-CLAUSES_DIR="frontend/lib/shared/clauses"
+CLAUSES_DIR="sdk/src/clauses/examples"
 
 if [ ! -d "$CLAUSES_DIR" ]; then
     echo "[clause-counts] clauses dir not found: $CLAUSES_DIR" >&2

@@ -33,8 +33,13 @@ contract ClauseRegistrationHelperTest is Test {
     AttestationCoordinator coordinator;
     ClauseRegistrationHelper helper;
 
+    // The clause id passed to register*; TEST_CLAUSE is its keccak256 hash — the
+    // on-chain key the registry dedups on and the coordinator binds the validator
+    // under. metadataURI is the IPFS locator; contentHash the spec digest.
+    string constant TEST_CLAUSE_ID = "test-clause-v1";
     bytes32 constant TEST_CLAUSE = keccak256("test-clause-v1");
-    bytes32 constant URI_HASH = keccak256("ipfs://test-clause/v1");
+    string constant TEST_URI = "ipfs://test-clause/v1";
+    bytes32 constant TEST_CONTENT = keccak256("test-clause-v1-spec");
     bytes32 constant TEST_FAMILY = keccak256("test-family");
 
     function setUp() public {
@@ -65,7 +70,7 @@ contract ClauseRegistrationHelperTest is Test {
 
     function test_happyPath_registersAndBinds() public {
         MockValidator validator = new MockValidator(TEST_CLAUSE);
-        helper.registerClauseAndValidator(TEST_CLAUSE, 1, URI_HASH, TEST_FAMILY, address(validator));
+        helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, TEST_FAMILY, address(validator));
 
         assertTrue(registry.registered(TEST_CLAUSE));
         assertEq(coordinator.clauseValidator(TEST_CLAUSE), address(validator));
@@ -74,12 +79,14 @@ contract ClauseRegistrationHelperTest is Test {
     function test_emitsBothEvents() public {
         MockValidator validator = new MockValidator(TEST_CLAUSE);
 
-        vm.expectEmit(true, true, true, true, address(registry));
-        emit ClauseRegistry.ClauseRegistered(TEST_CLAUSE, 1, URI_HASH, TEST_FAMILY, address(helper));
+        // ClauseRegistered indexes family + registrar (2 topics); clauseId is now
+        // a non-indexed string in data, so check data too.
+        vm.expectEmit(true, true, false, true, address(registry));
+        emit ClauseRegistry.ClauseRegistered(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, TEST_FAMILY, address(helper));
         vm.expectEmit(true, true, false, false, address(coordinator));
         emit AttestationCoordinator.ValidatorSet(TEST_CLAUSE, address(validator));
 
-        helper.registerClauseAndValidator(TEST_CLAUSE, 1, URI_HASH, TEST_FAMILY, address(validator));
+        helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, TEST_FAMILY, address(validator));
     }
 
     function test_registrarRecordedAsHelperAddress() public {
@@ -89,14 +96,14 @@ contract ClauseRegistrationHelperTest is Test {
         MockValidator validator = new MockValidator(TEST_CLAUSE);
 
         vm.recordLogs();
-        helper.registerClauseAndValidator(TEST_CLAUSE, 1, URI_HASH, TEST_FAMILY, address(validator));
+        helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, TEST_FAMILY, address(validator));
 
         Vm.Log[] memory logs = vm.getRecordedLogs();
-        bytes32 topic = keccak256("ClauseRegistered(bytes32,uint64,bytes32,bytes32,address)");
+        bytes32 topic = keccak256("ClauseRegistered(string,uint64,bytes32,string,bytes32,address)");
         for (uint256 i = 0; i < logs.length; i++) {
-            // Indexed: clauseId, family, registrar → 3 indexed + topic0 = 4 topics.
-            if (logs[i].topics.length == 4 && logs[i].topics[0] == topic) {
-                address registrar = address(uint160(uint256(logs[i].topics[3])));
+            // Indexed: family, registrar → 2 indexed + topic0 = 3 topics.
+            if (logs[i].topics.length == 3 && logs[i].topics[0] == topic) {
+                address registrar = address(uint160(uint256(logs[i].topics[2])));
                 assertEq(registrar, address(helper), "registrar should be helper");
                 return;
             }
@@ -108,28 +115,34 @@ contract ClauseRegistrationHelperTest is Test {
 
     function test_revertsIfClauseAlreadyRegistered() public {
         // Pre-register the clause directly via ClauseRegistry.
-        registry.registerClause(TEST_CLAUSE, 1, URI_HASH, TEST_FAMILY);
+        registry.registerClause(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, TEST_FAMILY);
         MockValidator validator = new MockValidator(TEST_CLAUSE);
 
         vm.expectRevert(abi.encodeWithSelector(ClauseRegistry.AlreadyRegistered.selector, TEST_CLAUSE));
-        helper.registerClauseAndValidator(TEST_CLAUSE, 1, URI_HASH, TEST_FAMILY, address(validator));
+        helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, TEST_FAMILY, address(validator));
     }
 
-    function test_revertsIfZeroUriHash() public {
+    function test_revertsIfZeroContentHash() public {
         MockValidator validator = new MockValidator(TEST_CLAUSE);
-        vm.expectRevert(ClauseRegistry.ZeroUriHash.selector);
-        helper.registerClauseAndValidator(TEST_CLAUSE, 1, bytes32(0), TEST_FAMILY, address(validator));
+        vm.expectRevert(ClauseRegistry.ZeroContentHash.selector);
+        helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, bytes32(0), TEST_URI, TEST_FAMILY, address(validator));
+    }
+
+    function test_revertsIfEmptyMetadataURI() public {
+        MockValidator validator = new MockValidator(TEST_CLAUSE);
+        vm.expectRevert(ClauseRegistry.EmptyMetadataURI.selector);
+        helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, "", TEST_FAMILY, address(validator));
     }
 
     function test_revertsIfZeroFamily() public {
         MockValidator validator = new MockValidator(TEST_CLAUSE);
         vm.expectRevert(ClauseRegistry.ZeroFamily.selector);
-        helper.registerClauseAndValidator(TEST_CLAUSE, 1, URI_HASH, bytes32(0), address(validator));
+        helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, bytes32(0), address(validator));
     }
 
     function test_revertsIfZeroValidator() public {
         vm.expectRevert(AttestationCoordinator.ZeroValidator.selector);
-        helper.registerClauseAndValidator(TEST_CLAUSE, 1, URI_HASH, TEST_FAMILY, address(0));
+        helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, TEST_FAMILY, address(0));
     }
 
     function test_revertsIfValidatorClauseIdMismatch() public {
@@ -143,7 +156,7 @@ contract ClauseRegistrationHelperTest is Test {
                 wrongClauseId
             )
         );
-        helper.registerClauseAndValidator(TEST_CLAUSE, 1, URI_HASH, TEST_FAMILY, address(validator));
+        helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, TEST_FAMILY, address(validator));
     }
 
     function test_revertsIfValidatorAlreadyBound() public {
@@ -159,7 +172,7 @@ contract ClauseRegistrationHelperTest is Test {
         // Helper attempts: register clause + bind a different validator. The bind fails.
         MockValidator legitimate = new MockValidator(TEST_CLAUSE);
         vm.expectRevert(abi.encodeWithSelector(AttestationCoordinator.ValidatorAlreadySet.selector, TEST_CLAUSE));
-        helper.registerClauseAndValidator(TEST_CLAUSE, 1, URI_HASH, TEST_FAMILY, address(legitimate));
+        helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, TEST_FAMILY, address(legitimate));
     }
 
     // ── Atomicity (both-or-neither) ──────────────────────────────────────────
@@ -172,7 +185,7 @@ contract ClauseRegistrationHelperTest is Test {
         bytes32 wrongClauseId = keccak256("wrong-clause-v1");
         MockValidator validator = new MockValidator(wrongClauseId);
 
-        try helper.registerClauseAndValidator(TEST_CLAUSE, 1, URI_HASH, TEST_FAMILY, address(validator)) {
+        try helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, TEST_FAMILY, address(validator)) {
             revert("expected revert");
         } catch {
             assertFalse(registry.registered(TEST_CLAUSE), "clause should not be registered after failed bind");
@@ -180,7 +193,7 @@ contract ClauseRegistrationHelperTest is Test {
     }
 
     function test_atomicity_failedZeroValidatorDoesNotLeaveClauseRegistered() public {
-        try helper.registerClauseAndValidator(TEST_CLAUSE, 1, URI_HASH, TEST_FAMILY, address(0)) {
+        try helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, TEST_FAMILY, address(0)) {
             revert("expected revert");
         } catch {
             assertFalse(registry.registered(TEST_CLAUSE), "clause should not be registered after failed bind");
@@ -195,7 +208,7 @@ contract ClauseRegistrationHelperTest is Test {
 
         // Helper attempts — fails on setValidator.
         MockValidator legitimate = new MockValidator(TEST_CLAUSE);
-        try helper.registerClauseAndValidator(TEST_CLAUSE, 1, URI_HASH, TEST_FAMILY, address(legitimate)) {
+        try helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, TEST_FAMILY, address(legitimate)) {
             revert("expected revert");
         } catch {
             assertFalse(registry.registered(TEST_CLAUSE), "clause should not be registered after failed bind");
@@ -215,7 +228,7 @@ contract ClauseRegistrationHelperTest is Test {
     function test_helperBoundClauseCannotBeReBoundDirectly() public {
         // Register + bind via helper.
         MockValidator validator = new MockValidator(TEST_CLAUSE);
-        helper.registerClauseAndValidator(TEST_CLAUSE, 1, URI_HASH, TEST_FAMILY, address(validator));
+        helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, TEST_FAMILY, address(validator));
 
         // Direct setValidator call after helper-bind should also revert
         // (first-write-wins is enforced at the coordinator level, helper is not special).

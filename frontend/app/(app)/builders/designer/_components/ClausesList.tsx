@@ -83,9 +83,8 @@ export function ClausesList() {
                         <p className="text-[11px] text-ink-muted mt-1">
                             version {clause.version}
                             {" · "}
-                            uri{" "}
-                            <span title={clause.uriHash} className="font-mono">
-                                {truncateHex(clause.uriHash, { head: 10, tail: 6 })}
+                            <span title={clause.metadataURI} className="font-mono">
+                                {clause.metadataURI || "(no spec uri)"}
                             </span>
                             {" · block "}
                             {clause.blockNumber.toString()}

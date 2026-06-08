@@ -99,8 +99,9 @@ contract Deploy is Script {
 
         // Clauses are NOT registered here. They are pinned to IPFS + anchored
         // on ClauseRegistry by frontend/scripts/populate-clauses.mjs — the single
-        // clause-population path for prod/testnet/mainnet, so each on-chain uriHash
-        // points at a REAL pinned spec (not a placeholder). Run it after deploy.
+        // clause-population path for prod/testnet/mainnet, so each on-chain
+        // (contentHash, metadataURI) points at a REAL pinned spec (not a
+        // placeholder). Run it after deploy.
 
         // ── Clause validators ───────────────────────────────────────
         // Deploy per-clause validator contracts and wire them into the

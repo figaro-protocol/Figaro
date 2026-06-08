@@ -43,7 +43,6 @@ import {
 import { templateToOrders } from "@/lib/designer/assemblyDocumentToDraft";
 import type { AssemblyTemplate } from "@/lib/designer/assemblyTemplate";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
-import { computeAgreementHints } from "@/lib/designer/agreementHints";
 import type { Order } from "@/lib/core/store";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 
@@ -346,7 +345,6 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     const selectedOrder = selectedOrderId
         ? (orders.find((o) => o.id === selectedOrderId) ?? null)
         : null;
-    const agreementHints = computeAgreementHints(orders, selectedOrderId);
 
     return (
         <div className="h-screen bg-canvas flex flex-col" data-testid="assembly-view-page">
@@ -411,11 +409,6 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 <AgreementDrawer
                     order={selectedOrder}
                     onClose={() => setSelectedOrderId(null)}
-                    onChange={() => {
-                        /* read-only — drawer body is fieldset-disabled so nothing can fire onChange */
-                    }}
-                    hasChildren={agreementHints.hasChildren}
-                    parentDeliveryActive={agreementHints.parentDeliveryActive}
                     embedded
                     readOnly
                 />

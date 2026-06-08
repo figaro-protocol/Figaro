@@ -131,9 +131,10 @@ content (no on-chain JSON parsing). They are pure / view contracts.
 
 ## Clause-spec format
 
-Lives off-chain as JSON at the URI hashed into `ClauseRegistry.uriHash`.
-Built-in specs ship in `sdk/src/clauses/examples/` and
-`frontend/lib/shared/clauses/` (the application's working copy).
+Lives off-chain as JSON at the `metadataURI` emitted by `ClauseRegistry`
+(content integrity is the event's `contentHash`). The canonical Layer-A specs
+ship in `sdk/src/clauses/examples/`; the frontend no longer bundles a copy — it
+loads each spec from `ClauseRegistry` → IPFS at runtime.
 
 ## The 19 protocol clauses
 
@@ -267,8 +268,8 @@ to undo once `clauseId` is bound on chain.
 
 ## Adding a new clause — checklist
 
-1. JSON spec in `sdk/src/clauses/examples/<clause>.json`.
-2. Mirror in `frontend/lib/shared/clauses/<clause>.json` (preloaded by `clauseSpecSource`).
+1. JSON spec in `sdk/src/clauses/examples/<clause>.json` (the canonical Layer-A spec) + import it into `sdk/src/clauses/embedded.ts`.
+2. `populate-clauses.mjs` pins it to IPFS + anchors `(clauseId, contentHash, metadataURI)` on `ClauseRegistry`; the frontend loads it chain→IPFS via `clauseSpecSource` (no frontend copy, no preload).
 3. SDK content encoder in `sdk/src/clauses/encode.ts` + export from `index.ts`.
 4. SDK examples test in `sdk/tests/clauses/examples.test.ts`.
 5. Solidity `Foo<Clause>V1Validator.sol` in `src/clauseValidators/`. Validate function MUST be declared `external pure override` (no external state reads, no `block.*`/`tx.*`, no external calls). Use `bytes32 public constant override clauseId = keccak256("...")` so the clauseId is a compile-time literal — `immutable` constructor-set clauseIds force the override to `view` and forfeit the EVM-enforced determinism guarantee. See `IClauseValidator` NatSpec for the rationale.

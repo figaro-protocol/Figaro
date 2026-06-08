@@ -34,11 +34,9 @@ import {
     collectDescendants,
     createSyntheticRootOrder,
     createSyntheticSubOrder,
-    editSyntheticAgreement,
     isRootOrder,
     mergeSyntheticParent,
     startSyntheticSession,
-    type AgreementEdits,
     type SyntheticProcessSession,
 } from "@/lib/designer/syntheticProcess";
 import {
@@ -56,7 +54,6 @@ import { buildAssemblyTemplate } from "@/lib/designer/assemblyTemplate";
 import { maxCommitsLandableInOneBlock, maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { getCommonTokens } from "@/lib/shared/commonTokens";
 import { useChainId, usePublicClient } from "wagmi";
-import { computeAgreementHints } from "@/lib/designer/agreementHints";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import { loadAgreement } from "@/lib/core/agreementStore";
 
@@ -317,15 +314,6 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
         [atOrderCapacity, maxOrders, orders, session],
     );
 
-    const handleEditAgreement = useCallback((orderId: string, edits: AgreementEdits) => {
-        setOrders((prev) => {
-            const target = prev.find((o) => o.id === orderId);
-            if (!target) return prev;
-            const updated = editSyntheticAgreement(target, edits);
-            return prev.map((o) => (o.id === orderId ? updated : o));
-        });
-    }, []);
-
     const handleDeleteNode = useCallback(
         (orderId: string) => {
             setOrders((prev) => {
@@ -540,8 +528,6 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
         );
     }
 
-    const agreementHints = computeAgreementHints(orders, selectedOrderId);
-
     // The live no-hash assembly template emitted from the design — per order:
     // who's bound, its DAG parents, and the selected clauses.
     const assemblyTemplate = useMemo(
@@ -666,11 +652,6 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                     orders={orders}
                     onSelectOrder={setSelectedOrderId}
                     onClose={() => setSelectedOrderId(null)}
-                    onChange={(edits) => {
-                        if (selectedOrderId) handleEditAgreement(selectedOrderId, edits);
-                    }}
-                    hasChildren={agreementHints.hasChildren}
-                    parentDeliveryActive={agreementHints.parentDeliveryActive}
                     selectedClauseValues={
                         selectedOrderId ? (clausesByOrderId[selectedOrderId] ?? {}) : undefined
                     }
@@ -686,7 +667,6 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
                     privilegedToken={privilegedToken}
                     onPrivilegedTokenChange={setPrivilegedToken}
                     commonTokens={commonTokens}
-                    templateJson={JSON.stringify(assemblyTemplate, null, 2)}
                     embedded
                 />
             </div>

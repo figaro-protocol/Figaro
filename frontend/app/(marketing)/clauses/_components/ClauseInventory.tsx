@@ -1,50 +1,37 @@
 "use client";
 
 import { useMemo } from "react";
-import { keccak256, toBytes } from "viem";
 import { useAllRegisteredClauses } from "@/lib/mechanisms/useClauseRegistry";
-import { CLAUSES_BY_ARTICLE } from "@/lib/shared/clauseSpecSource";
-
-/** keccak256 of a human-readable clauseId — the on-chain digest, matching
- *  Solidity's `keccak256("figaro-foo-v1")`. */
-function clauseIdHash(clauseId: string): string {
-    return keccak256(toBytes(clauseId)).toLowerCase();
-}
+import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
+import { groupClausesByArticle } from "@/lib/shared/clauseSpecSource";
+import { ClausesByArticle } from "@/components/core/ClausesByArticle";
 
 /**
- * The `/clauses` inventory, read live from `ClauseRegistry`.
+ * The `/clauses` inventory, read live from `ClauseRegistry` → IPFS.
  *
  * The on-chain `ClauseRegistered` event set is the source of truth for WHICH
- * clauses exist. The bundled spec source (`CLAUSES_BY_ARTICLE`) is only the
- * content store — it supplies each registered clause's title, description,
- * and the article it groups under. A clause registered on-chain whose spec
- * this build does not carry is counted, not named.
+ * clauses exist; `useClauseSpecs` fetches each clause's spec from its on-chain
+ * `metadataURI` and groups them by article. Nothing is bundled — a clause whose
+ * spec the gateway can't serve is registered, counted, but not named.
  *
  * This is a client component because the marketing tier mounts no wallet
- * provider; `useAllRegisteredClauses` reads through the standalone viem
- * client. The page that embeds it stays a server component — it keeps the
- * route metadata and the static prose.
+ * provider; the reads go through the standalone viem client + the IPFS gateway.
+ * The page that embeds it stays a server component.
  */
 export function ClauseInventory() {
     const { data } = useAllRegisteredClauses();
+    const { loadedCount, version } = useClauseSpecs();
 
     const inventory = useMemo(() => {
         if (data === null) return null;
-        const onChain = new Set(data.map((e) => e.clauseIdHash.toLowerCase()));
-        const articles = CLAUSES_BY_ARTICLE.map((group) => ({
-            article: group.article,
-            label: group.label,
-            clauses: group.clauses.filter((s) => onChain.has(clauseIdHash(s.clauseId))),
-        })).filter((group) => group.clauses.length > 0);
+        // Every loaded spec came from an on-chain event → group them by article.
+        const articles = groupClausesByArticle();
         const liveKnown = articles.reduce((n, g) => n + g.clauses.length, 0);
-        const knownHashes = new Set(
-            CLAUSES_BY_ARTICLE.flatMap((g) => g.clauses.map((s) => clauseIdHash(s.clauseId))),
-        );
-        const unbundled = data.filter(
-            (e) => !knownHashes.has(e.clauseIdHash.toLowerCase()),
-        ).length;
+        const unbundled = data.length - liveKnown; // registered, spec not (yet) resolvable
         return { articles, liveKnown, unbundled, total: data.length };
-    }, [data]);
+        // `version` bumps as specs resolve, so the grouping recomputes once warm.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data, version, loadedCount]);
 
     if (inventory === null) {
         return (
@@ -91,31 +78,26 @@ export function ClauseInventory() {
                     </>
                 ) : null}
             </p>
-            <div className="space-y-8">
-                {articles.map((group) => (
-                    <div key={group.article}>
-                        <h3 className="text-base font-semibold text-ink-heading mb-3">
-                            {group.label}
-                        </h3>
-                        <ul className="space-y-3">
-                            {group.clauses.map((clause) => (
-                                <li
-                                    key={clause.clauseId}
-                                    id={`clause-${clause.clauseId}`}
-                                    className="flex flex-col sm:flex-row gap-1 sm:gap-3 scroll-mt-24"
-                                >
-                                    <span className="font-mono text-xs text-ink-muted sm:w-56 sm:shrink-0">
-                                        {clause.clauseId}
-                                    </span>
-                                    <span className="text-sm text-ink-body">
-                                        {clause.description}
-                                    </span>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                ))}
-            </div>
+            <ClausesByArticle
+                sections={articles.map((g) => ({ article: g.article, label: g.label, items: g.clauses }))}
+                rootClassName="space-y-8"
+                listClassName="space-y-3"
+                renderHeading={(label) => (
+                    <h3 className="text-base font-semibold text-ink-heading mb-3">{label}</h3>
+                )}
+                renderClause={(clause) => (
+                    <li
+                        key={clause.clauseId}
+                        id={`clause-${clause.clauseId}`}
+                        className="flex flex-col sm:flex-row gap-1 sm:gap-3 scroll-mt-24"
+                    >
+                        <span className="font-mono text-xs text-ink-muted sm:w-56 sm:shrink-0">
+                            {clause.clauseId}
+                        </span>
+                        <span className="text-sm text-ink-body">{clause.description}</span>
+                    </li>
+                )}
+            />
         </>
     );
 }

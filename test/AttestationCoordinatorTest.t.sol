@@ -59,6 +59,12 @@ contract AttestationCoordinatorTest is Test {
 
     uint256 constant INITIAL_BALANCE = 10_000 ether;
 
+    string constant LIFECYCLE_CLAUSE_ID = "figaro-courier-process-v1";
+    string constant GHG_CLAUSE_ID = "figaro-ghg-iso-14064-v1";
+    string constant PROXIMITY_CLAUSE_ID = "figaro-proximity-proof-v1";
+    string constant COMMERCE_CLAUSE_ID = "figaro-commerce-v1";
+    string constant FULFILMENT_CLAUSE_ID = "figaro-fulfilment-v2";
+
     bytes32 constant LIFECYCLE_CLAUSE = keccak256("figaro-courier-process-v1");
     bytes32 constant GHG_CLAUSE = keccak256("figaro-ghg-iso-14064-v1");
     bytes32 constant PROXIMITY_CLAUSE = keccak256("figaro-proximity-proof-v1");
@@ -83,13 +89,14 @@ contract AttestationCoordinatorTest is Test {
 
         // ── ClauseRegistry: register all local-commerce clauses ────────
         clauses = new ClauseRegistry();
-        bytes32 testUri = keccak256("ipfs://figaro-test-uri");
+        bytes32 testContentHash = keccak256("spec-json");
+        string memory testUri = "ipfs://figaro-test-uri";
         bytes32 testFamily = keccak256("test-family");
-        clauses.registerClause(LIFECYCLE_CLAUSE, 1, testUri, testFamily);
-        clauses.registerClause(GHG_CLAUSE, 1, testUri, testFamily);
-        clauses.registerClause(PROXIMITY_CLAUSE, 1, testUri, testFamily);
-        clauses.registerClause(COMMERCE_CLAUSE, 1, testUri, testFamily);
-        clauses.registerClause(FULFILMENT_CLAUSE, 1, testUri, testFamily);
+        clauses.registerClause(LIFECYCLE_CLAUSE_ID, 1, testContentHash, testUri, testFamily);
+        clauses.registerClause(GHG_CLAUSE_ID, 1, testContentHash, testUri, testFamily);
+        clauses.registerClause(PROXIMITY_CLAUSE_ID, 1, testContentHash, testUri, testFamily);
+        clauses.registerClause(COMMERCE_CLAUSE_ID, 1, testContentHash, testUri, testFamily);
+        clauses.registerClause(FULFILMENT_CLAUSE_ID, 1, testContentHash, testUri, testFamily);
 
         // ── AttestationCoordinator: register a permissive validator for each clause ─
         // Production deployments register the real per-clause validators from

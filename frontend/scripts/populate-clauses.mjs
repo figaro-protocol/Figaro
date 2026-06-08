@@ -3,14 +3,17 @@
  * populate-clauses.mjs — the ONE clause-population path for PRODUCTION / TESTNET /
  * MAINNET. Pre-populates ClauseRegistry + IPFS with the protocol's clause specs.
  *
- * For each Layer-A clause spec in `frontend/lib/shared/clauses/*.json`:
+ * For each Layer-A clause spec in `sdk/src/clauses/examples/*.json` (the canonical
+ * lockstep source — @figaro/core/clauses):
  *   1. pin the spec JSON to IPFS (real CID), and
- *   2. `registerClause(clauseId, version, uriHash = keccak256(uri), family)` on
- *      ClauseRegistry.
+ *   2. `registerClause(clauseId, version, contentHash, metadataURI, family)` on
+ *      ClauseRegistry — anchoring the IPFS LOCATOR (metadataURI) + the spec
+ *      integrity digest (contentHash), so any reader fetches the spec from chain
+ *      state alone (the shape SellerRegistry / AssemblyRegistry already use).
  *
- * This REPLACES the placeholder clause registration that used to live in
- * `script/Deploy.s.sol` (which anchored `keccak256("ipfs://figaro-x/v1")` — a hash
- * of a made-up URI that no pinned spec can match) AND the bundled `BUILT_IN_SPECS`.
+ * This REPLACES the placeholder clause registration that used to live in the
+ * deploy scripts (which anchored `keccak256("ipfs://figaro-x/v1")` — a hash of a
+ * made-up URI that no pinned spec can match) AND the deleted bundled specs.
  * After this runs, every clause is genuinely on-chain + on-IPFS — one SSoT.
  *
  * Idempotent: a clause already on the registry is skipped (first-write-wins).
@@ -30,7 +33,9 @@ import {
 import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CLAUSES_DIR = path.resolve(__dirname, '../lib/shared/clauses');
+// Canonical Layer-A specs — the SDK lockstep source (@figaro/core/clauses), the
+// single origin pinned to IPFS. No frontend-bundled copy exists anymore.
+const CLAUSES_DIR = path.resolve(__dirname, '../../sdk/src/clauses/examples');
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545';
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 
@@ -42,7 +47,7 @@ export const LOCAL_ANVIL = defineChain({
 });
 
 const CLAUSE_REGISTRY_ABI = parseAbi([
-    'function registerClause(bytes32 clauseId, uint64 version, bytes32 uriHash, bytes32 family) external',
+    'function registerClause(string clauseId, uint64 version, bytes32 contentHash, string metadataURI, bytes32 family) external',
     'function registered(bytes32) view returns (bool)',
 ]);
 
@@ -103,23 +108,26 @@ export async function populateClauses({ publicClient, walletClient, account, reg
             continue;
         }
 
-        // Pin the spec, then anchor the integrity hash of its real IPFS URI.
-        const uri = await pinJSON(ipfsApiUrl, JSON.stringify(spec));
-        const uriHash = keccak256(toHex(uri));
+        // Pin the spec to IPFS (the locator readers fetch from), and anchor its
+        // content digest (integrity) + that locator on-chain.
+        const canonical = JSON.stringify(spec);
+        const metadataURI = await pinJSON(ipfsApiUrl, canonical);
+        const contentHash = keccak256(toHex(canonical));
         const version = BigInt(spec.version ?? 1);
-        const family = keccak256(toHex((spec.categories ?? ['general'])[0]));
+        const familySlug = (spec.categories ?? ['general'])[0];
+        const family = keccak256(toHex(familySlug));
 
         const { request } = await publicClient.simulateContract({
             account: account.address,
             address: registry,
             abi: CLAUSE_REGISTRY_ABI,
             functionName: 'registerClause',
-            args: [clauseId, version, uriHash, family],
+            args: [clauseIdStr, version, contentHash, metadataURI, family],
         });
         const hash = await walletClient.writeContract(request);
         await publicClient.waitForTransactionReceipt({ hash });
         registered += 1;
-        log(`  ✓ ${clauseIdStr} v${version} — pinned ${uri} (family ${(spec.categories ?? ['general'])[0]})`);
+        log(`  ✓ ${clauseIdStr} v${version} — pinned ${metadataURI} (family ${familySlug})`);
     }
     return registered;
 }
