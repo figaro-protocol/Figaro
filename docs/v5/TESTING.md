@@ -97,7 +97,7 @@ against Anvil + deployed contracts (action in the UI, reaction in the UI). By ar
   `seeded-assembly-fork`, `published-list-ui`.
 - Sellers: `sellers-onboarding`, `seller-edit-ui`, `seller-withdraw`.
 - Order / role surfaces: `seller-timeline`, `spectator-view`, `audit-page`,
-  `audit-page-seller`, `local-commerce-offset-scenario` (full multi-role
+  `audit-page-seller`, `local-commerce-offset-runtime` (full multi-role
   emissions-aware runtime: commit → coordinate → emissions → offset → resolve),
   `local-commerce-pickup-runtime` (full buyer↔merchant pickup runtime: commit
   → merchant lifecycle → both parties witness proximity-proof at handoff →
@@ -106,7 +106,7 @@ against Anvil + deployed contracts (action in the UI, reaction in the UI). By ar
   seller; per-party clause-exercise is open — see backlog).
 - Attestation + delivery: `proximity-proof-ui`.
 - GHG / offsets: `offset-retirement-ui`. (GHG panel-level coverage also
-  lives end-to-end in `local-commerce-offset-scenario`.)
+  lives end-to-end in `local-commerce-offset-runtime`.)
 - Dispute: `dispute-ui`. FIG token: `fig-claim-ui`.
 
 Retired from the e2e suite (drove no UI — contract tests misfiled into Playwright;

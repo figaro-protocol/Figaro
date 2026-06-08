@@ -146,4 +146,21 @@ export const SELLER_ROSTER: readonly SellerSpec[] = [
         assemblies: ["local-commerce-dutch"],
         products: [{ name: "Margherita pizza", price: "1" }],
     },
+    // local-commerce-offset (2-node seller-assigned delivery + GHG emissions
+    // disclosure): the emissions-aware variant. The merchant prepares the goods
+    // and discloses its prep emissions; the courier delivers and discloses the
+    // delivery emissions; the buyer retires the process emissions through the
+    // offset ROUTER (Klima/Toucan, mocked locally) — not a seller. Seller-assigned,
+    // so Harbor designates Cardinal Couriers (anvil[8]) as its courier; Cardinal is
+    // reused as the delivery service. Same neighbourhood (9q8yyk8y* cells).
+    {
+        addressIndex: 11,
+        address: "0x71bE63f3384f5fb98995898A86B02Fb2426c5788",
+        name: "Harbor Provisions",
+        specialty: "grocery, emissions-disclosed delivery",
+        geohash: "9q8yyk8yz",
+        assemblies: ["local-commerce-offset"],
+        courierAddresses: { "local-commerce-offset": ["0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f"] },
+        products: [{ name: "Grocery box", price: "1" }],
+    },
 ];

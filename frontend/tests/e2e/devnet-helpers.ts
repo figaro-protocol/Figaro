@@ -97,10 +97,6 @@ export function useChainSnapshot(test: PlaywrightLifecycleHooks): void {
     test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 }
 
-const ATTESTATION_EVENT_ABI = parseAbi([
-    'event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)',
-]);
-
 const BUYER_PRIVATE_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
 const RESTAURANT_PRIVATE_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d' as const;
 const SUPPLIER_PRIVATE_KEY = '0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a' as const;
@@ -114,7 +110,6 @@ const DISCLOSURE_KIND = { commitment: 0, inventory: 1, restatement: 2, verificat
 const MERCHANT_PROCESS_CLAUSE_KEY = 'figaro-merchant-process-v1';
 const MERCHANT_PROCESS_CLAUSE_ID = keccak256(stringToHex(MERCHANT_PROCESS_CLAUSE_KEY));
 const COURIER_PROCESS_CLAUSE_KEY = 'figaro-courier-process-v1';
-const GHG_MEASUREMENT_CLAUSE_ID = keccak256(stringToHex('figaro-ghg-measurement-v1'));
 const PROXIMITY_POLICY_CLAUSE_KEY = 'figaro-proximity-policy-v1';
 const PROXIMITY_PROOF_CLAUSE_KEY = 'figaro-proximity-proof-v1';
 const PROXIMITY_PROOF_CLAUSE_ID = keccak256(stringToHex(PROXIMITY_PROOF_CLAUSE_KEY));
@@ -1583,22 +1578,14 @@ export async function runDeliveryCoordination(
         };
     },
 ): Promise<void> {
-    const config = readLocalDeploymentConfig();
-    const coordinator = (process.env.NEXT_PUBLIC_ATTESTATION_COORDINATOR
-        ?? config.attestationCoordinator) as Hex;
-    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-
-    // NOTE: submitEmissionsAsCurrentSeller below still polls the chain to confirm
-    // the measurement landed — a remaining UI-bypass on the OFFSET path only (not
-    // exercised by the base local-commerce/onsite flows). To convert when the
-    // offset scenario is brought up: wait for the ghg panel's own submitted state.
-
     // Inline emissions submit — file a figaro-ghg-measurement-v1 grams
     // measurement for the currently-active seller wallet on the order page.
     // Folded into the seller's continuous session (rather than a separate
-    // gotoAsWallet) so every agreement-dependent piece of state is hot.
+    // gotoAsWallet) so every agreement-dependent piece of state is hot. The
+    // reaction is waited on IN THE UI (the panel's "Current" inventory for this
+    // order, which surfaces once the measurement lands) — not a chain poll; the
+    // on-chain attestation is the spec's out-of-band confirmation.
     const submitEmissionsAsCurrentSeller = async (
-        seller: Hex,
         orderHash: Hex,
         grams: string,
     ): Promise<void> => {
@@ -1610,19 +1597,8 @@ export async function runDeliveryCoordination(
         const submit = page.getByTestId('ghg-submit-actual');
         await expect(submit).toBeEnabled({ timeout: 10_000 });
         await submit.click();
-        const deadline = Date.now() + 90_000;
-        for (;;) {
-            const events = await publicClient.getContractEvents({
-                address: coordinator,
-                abi: ATTESTATION_EVENT_ABI,
-                eventName: 'Attestation',
-                args: { orderHash, attester: seller },
-                fromBlock: 0n,
-            });
-            if (events.some((e) => (e.args as { clauseId?: Hex }).clauseId === GHG_MEASUREMENT_CLAUSE_ID)) break;
-            if (Date.now() > deadline) throw new Error(`emissions measurement for ${orderHash} timed out`);
-            await new Promise((r) => setTimeout(r, 1000));
-        }
+        const detail = page.getByTestId(`ghg-order-detail-${orderHash.slice(0, 10)}`);
+        await detail.getByTestId('ghg-current-actual').waitFor({ state: 'visible', timeout: 90_000 });
     };
 
     // ── Merchant walks figaro-merchant-process-v1 to the handed-off +
@@ -1630,7 +1606,6 @@ export async function runDeliveryCoordination(
     await walkMerchantToHandoff(page, { processId: opts.processId, merchant: opts.merchant });
     if (opts.emissions?.merchant) {
         await submitEmissionsAsCurrentSeller(
-            opts.merchant as Hex,
             opts.emissions.merchant.orderHash,
             opts.emissions.merchant.grams,
         );
@@ -1655,7 +1630,6 @@ export async function runDeliveryCoordination(
     await expect(proofBtn).toHaveCount(0, { timeout: 90_000 });
     if (opts.emissions?.courier) {
         await submitEmissionsAsCurrentSeller(
-            opts.courier as Hex,
             opts.emissions.courier.orderHash,
             opts.emissions.courier.grams,
         );

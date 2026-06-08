@@ -234,7 +234,7 @@ All runtime specs below predate the fulfilment retirement and read the dead
 | `local-commerce` | `scenario-local-commerce` | `local-commerce-runtime` |
 | `local-commerce-buyer-assigned` | `scenario-local-commerce-buyer-assigned` | `local-commerce-buyer-assigned-runtime` |
 | `local-commerce-dutch` | `scenario-local-commerce-dutch` | `local-commerce-dutch-runtime` |
-| `local-commerce-offset` | (to author) | `local-commerce-offset-scenario` (rewrite) |
+| `local-commerce-offset` | `scenario-local-commerce-offset` | `local-commerce-offset-runtime` |
 | `local-food-basket` | (to author) | (to author) |
 
 `direct-sale-runtime` is the mainnet-compliant direct-sale runtime against the

@@ -137,7 +137,7 @@ function OrderAttestationDetail({
                 <div className="flex items-center justify-between gap-2">
                     <span className="font-medium text-black text-sm">Emissions Inventory</span>
                     {latestActual?.actualGrams != null && (
-                        <span className="text-xs text-green-700 font-medium">
+                        <span className="text-xs text-green-700 font-medium" data-testid="ghg-current-actual">
                             Current: {formatActualGrams(latestActual.actualGrams)}
                         </span>
                     )}

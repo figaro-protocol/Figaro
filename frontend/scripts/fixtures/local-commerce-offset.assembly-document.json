@@ -1,179 +1,58 @@
 {
-  "agreements": {
-    "0x717a83bf143a38dd1550f0d8cc29a2e0e4eabd19fca0ebeabd3d6270950e7ec8": {
-      "buyer": "0xde51000000000000000000000000000000000000",
-      "sections": [
-        {
-          "data": {
-            "klerosCourt": "general",
-            "klerosMinJurors": 3
-          },
-          "clause": "figaro-arbitration-kleros-v1"
-        },
-        {
-          "data": {
-            "currency": "0x0000000000000000000000000000000000000000",
-            "lineItems": [],
-            "payment": "500000000000000000"
-          },
-          "clause": "figaro-commerce-v1"
-        },
-        {
-          "data": {},
-          "clause": "figaro-courier-process-v1"
-        },
-        {
-          "data": {
-            "classOfService": "S",
-            "destinationGeohash": "0",
-            "massGrams": 1,
-            "originGeohash": "0",
-            "volumeMl": 1
-          },
-          "clause": "figaro-geo-v2"
-        },
-        {
-          "data": {
-            "scope": 1
-          },
-          "clause": "figaro-ghg-iso-14064-v1"
-        },
-        {
-          "data": {},
-          "clause": "figaro-ghg-measurement-v1"
-        },
-        {
-          "data": {
-            "bands": [
-              "zone-wifi"
-            ]
-          },
-          "clause": "figaro-proximity-policy-v1"
-        },
-        {
-          "data": {
-            "band": "zone-wifi",
-            "deviceSig": "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-            "nonce": "0x0000000000000000000000000000000000000000000000000000000000000000"
-          },
-          "clause": "figaro-proximity-proof-v1"
-        },
-        {
-          "data": {
-            "parentOrderHashes": [
-              "0xorder0proces0000000000000000000000000000000000000000000000000000"
-            ],
-            "topologyMode": "explicit"
-          },
-          "clause": "figaro-topology-v1"
-        }
-      ],
-      "seller": "0xde51000000000000000000000000000000000003",
-      "version": "a1"
-    },
-    "0x8c44f72f5f944906e26dac247a9b91470ac6e7bf8edd3b3d1377ca2076e19a13": {
-      "buyer": "0xde51000000000000000000000000000000000000",
-      "sections": [
-        {
-          "data": {
-            "klerosCourt": "general",
-            "klerosMinJurors": 3
-          },
-          "clause": "figaro-arbitration-kleros-v1"
-        },
-        {
-          "data": {
-            "currency": "0x0000000000000000000000000000000000000000",
-            "lineItems": [],
-            "payment": "1000000000000000000"
-          },
-          "clause": "figaro-commerce-v1"
-        },
-        {
-          "data": {
-            "coordinations": [
-              "seller-assigned"
-            ],
-            "handoffPoints": [
-              "face-to-face"
-            ],
-            "modalities": [
-              "delivery"
-            ]
-          },
-          "clause": "figaro-fulfilment-v2"
-        },
-        {
-          "data": {
-            "classOfService": "S",
-            "destinationGeohash": "0",
-            "massGrams": 1,
-            "originGeohash": "0",
-            "volumeMl": 1
-          },
-          "clause": "figaro-geo-v2"
-        },
-        {
-          "data": {
-            "scope": 1
-          },
-          "clause": "figaro-ghg-iso-14064-v1"
-        },
-        {
-          "data": {},
-          "clause": "figaro-ghg-measurement-v1"
-        },
-        {
-          "data": {},
-          "clause": "figaro-merchant-process-v1"
-        },
-        {
-          "data": {
-            "parentOrderHashes": [],
-            "topologyMode": "root"
-          },
-          "clause": "figaro-topology-v1"
-        }
-      ],
-      "seller": "0xde51000000000000000000000000000000000001",
-      "version": "a1"
-    }
-  },
   "name": "Local Commerce Offset",
-  "nextOrderIndex": 3,
-  "nextSellerIndex": 4,
   "orders": [
     {
-      "agreementHash": "0x8c44f72f5f944906e26dac247a9b91470ac6e7bf8edd3b3d1377ca2076e19a13",
-      "buyer": "0xde51000000000000000000000000000000000000",
-      "buyerBond": "2000000000000000000",
-      "cumulativeValue": "1000000000000000000",
-      "currency": "0x0000000000000000000000000000000000000000",
-      "deadline": "1779908613",
-      "id": "0xorder0proces0000000000000000000000000000000000000000000000000000",
-      "payment": "1000000000000000000",
-      "processId": "0xprocess19e6a9b254c0000000000000000000000000000000000000000000000",
-      "salt": "1",
-      "seller": "0xde51000000000000000000000000000000000001",
-      "sellerBond": "2000000000000000000",
-      "state": 0
+      "clauses": {
+        "figaro-fulfilment-v2": {
+          "delivery": {
+            "coordination": [
+              "seller-assigned"
+            ]
+          },
+          "modalities": [
+            "delivery"
+          ]
+        },
+        "figaro-ghg-iso-14064-v1": {},
+        "figaro-handoff-v1": {
+          "handoff": [
+            "face-to-face"
+          ]
+        },
+        "figaro-merchant-process-v1": {},
+        "figaro-proximity-policy-v1": {
+          "bands": [
+            "zone-wifi"
+          ]
+        },
+        "figaro-topology-v1": {
+          "parentOrderIds": []
+        }
+      },
+      "id": "order-0"
     },
     {
-      "agreementHash": "0x717a83bf143a38dd1550f0d8cc29a2e0e4eabd19fca0ebeabd3d6270950e7ec8",
-      "buyer": "0xde51000000000000000000000000000000000000",
-      "buyerBond": "1000000000000000000",
-      "cumulativeValue": "1500000000000000000",
-      "currency": "0x0000000000000000000000000000000000000000",
-      "deadline": "1779908613",
-      "id": "0xorder2proces0000000000000000000000000000000000000000000000000000",
-      "payment": "500000000000000000",
-      "processId": "0xprocess19e6a9b254c0000000000000000000000000000000000000000000000",
-      "salt": "3",
-      "seller": "0xde51000000000000000000000000000000000003",
-      "sellerBond": "3000000000000000000",
-      "state": 0
+      "clauses": {
+        "figaro-courier-process-v1": {},
+        "figaro-ghg-iso-14064-v1": {},
+        "figaro-handoff-v1": {
+          "handoff": [
+            "face-to-face"
+          ]
+        },
+        "figaro-proximity-policy-v1": {
+          "bands": [
+            "zone-wifi"
+          ]
+        },
+        "figaro-topology-v1": {
+          "parentOrderIds": [
+            "order-0"
+          ]
+        }
+      },
+      "id": "order-1"
     }
   ],
-  "processId": "0xprocess19e6a9b254c0000000000000000000000000000000000000000000000",
   "slug": "local-commerce-offset"
 }
