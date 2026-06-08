@@ -1,0 +1,59 @@
+{
+  "name": "Local Commerce Dispute",
+  "orders": [
+    {
+      "clauses": {
+        "figaro-arbitration-kleros-v1": {
+          "klerosCourt": "general"
+        },
+        "figaro-fulfilment-v2": {
+          "delivery": {
+            "coordination": [
+              "seller-assigned"
+            ]
+          },
+          "modalities": [
+            "delivery"
+          ]
+        },
+        "figaro-handoff-v1": {
+          "handoff": [
+            "face-to-face"
+          ]
+        },
+        "figaro-merchant-process-v1": {},
+        "figaro-proximity-policy-v1": {
+          "bands": [
+            "zone-wifi"
+          ]
+        },
+        "figaro-topology-v1": {
+          "parentOrderIds": []
+        }
+      },
+      "id": "order-0"
+    },
+    {
+      "clauses": {
+        "figaro-courier-process-v1": {},
+        "figaro-handoff-v1": {
+          "handoff": [
+            "face-to-face"
+          ]
+        },
+        "figaro-proximity-policy-v1": {
+          "bands": [
+            "zone-wifi"
+          ]
+        },
+        "figaro-topology-v1": {
+          "parentOrderIds": [
+            "order-0"
+          ]
+        }
+      },
+      "id": "order-1"
+    }
+  ],
+  "slug": "local-commerce-dispute"
+}

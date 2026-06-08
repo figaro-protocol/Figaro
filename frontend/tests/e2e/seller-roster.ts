@@ -163,4 +163,19 @@ export const SELLER_ROSTER: readonly SellerSpec[] = [
         courierAddresses: { "local-commerce-offset": ["0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f"] },
         products: [{ name: "Grocery box", price: "1" }],
     },
+    // local-commerce-dispute (2-node seller-assigned delivery + an authored Kleros
+    // arbitration forum): the dispute variant. The merchant order names Kleros
+    // General Court via figaro-arbitration-kleros-v1, so the runtime recourse
+    // surface (/audit) offers that court — clause-driven, not a global default.
+    // Seller-assigned: Sterling Goods designates Cardinal Couriers (anvil[8]).
+    {
+        addressIndex: 12,
+        address: "0xFABB0ac9d68B0B445fB7357272Ff202C5651694a",
+        name: "Sterling Goods",
+        specialty: "general goods, delivery with named recourse",
+        geohash: "9q8yyk8z0",
+        assemblies: ["local-commerce-dispute"],
+        courierAddresses: { "local-commerce-dispute": ["0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f"] },
+        products: [{ name: "Hardware kit", price: "1" }],
+    },
 ];
