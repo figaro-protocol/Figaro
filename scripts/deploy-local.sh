@@ -71,11 +71,14 @@ if [ -z "$CORE_ADDR" ]; then
   exit 1
 fi
 
-# ── Fund anvil[10..19] with ETH for gas — LAUNCH-INDEPENDENT, local Anvil only ──
-# Deploy.s.sol mints MOCK to anvil[1..19], but a default `anvil` only gives ETH
-# to indices 0-9. Top these up via anvil_setBalance so all 20 accounts can pay
-# gas — no `--accounts 20` launch flag required, so whoever owns anvil starts it
-# however they like. Skipped on non-Anvil RPCs (anvil_setBalance is Anvil-only).
+# ── Gas top-up for anvil[10..19] — belt-and-suspenders, local Anvil only ──
+# Anvil MUST be started with `--accounts 20` so indices 10-19 are unlocked
+# SIGNERS — a default `anvil` only unlocks (and funds) 0-9, and sellers beyond
+# anvil[9] (see tests/e2e/seller-roster.ts) cannot sign otherwise. `--accounts
+# 20` also funds all 20 with ETH, so this setBalance loop is just a safety net
+# (e.g. if anvil was started with fewer). `anvil_setBalance` only funds gas — it
+# does NOT unlock a signer, which is why the launch flag is required. Skipped on
+# non-Anvil RPCs (anvil_setBalance is Anvil-only).
 case "$RPC_URL" in
   *127.0.0.1*|*localhost*)
     GAS_ETH=0x21e19e0c9bab2400000  # 10000 ETH, matching anvil's default funding

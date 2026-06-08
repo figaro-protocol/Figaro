@@ -233,7 +233,7 @@ All runtime specs below predate the fulfilment retirement and read the dead
 | `direct-sale` | `scenario-direct-sale` | `direct-sale-runtime` |
 | `local-commerce` | `scenario-local-commerce` | `local-commerce-runtime` |
 | `local-commerce-buyer-assigned` | `scenario-local-commerce-buyer-assigned` | `local-commerce-buyer-assigned-runtime` |
-| `local-commerce-dutch` | (to author) | `dutch-auction-checkout` (rewrite) |
+| `local-commerce-dutch` | `scenario-local-commerce-dutch` | `local-commerce-dutch-runtime` |
 | `local-commerce-offset` | (to author) | `local-commerce-offset-scenario` (rewrite) |
 | `local-food-basket` | (to author) | (to author) |
 

@@ -34,7 +34,7 @@ echo "🔧 Step 2: Starting local Ethereum node..."
 if lsof -Pi :8545 -sTCP:LISTEN -t >/dev/null ; then
     echo "⚠️  Port 8545 already in use. Assuming Anvil is running..."
 else
-    anvil --port 8545 > /dev/null 2>&1 &
+    anvil --port 8545 --accounts 20 > /dev/null 2>&1 &
     ANVIL_PID=$!
     echo "✅ Anvil started (PID: $ANVIL_PID)"
     sleep 2

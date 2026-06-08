@@ -41,8 +41,11 @@ interface SellerProductSpec {
 }
 
 export interface SellerSpec {
-    /** Anvil index — MUST be ≥5 (disjoint from the buyer/test range anvil[0..4],
-     *  so a seller never collides with a buyer or an "unregistered wallet" check). */
+    /** Anvil index — MUST be in [5, 19]: ≥5 keeps it disjoint from the buyer/test
+     *  range anvil[0..4] (no collision with a buyer or an "unregistered wallet"
+     *  check); ≤19 because the devnet signs via Anvil's unlocked accounts and
+     *  Anvil is started with `--accounts 20` (indices 0-19). A seller at anvil[20+]
+     *  has no signer → registration fails with "No Signer available". */
     addressIndex: number;
     address: `0x${string}`;
     name: string;
@@ -125,6 +128,22 @@ export const SELLER_ROSTER: readonly SellerSpec[] = [
         specialty: "prepared food, buyer-arranged delivery",
         geohash: "9q8yyk8yx",
         assemblies: ["local-commerce-buyer-assigned"],
+        products: [{ name: "Margherita pizza", price: "1" }],
+    },
+    // local-commerce-dutch (2-node dutch-auction delivery): a merchant that sells
+    // for delivery and DEFERS the courier edge to a descending-price auction — it
+    // designates no courier and the buyer picks none. At checkout only the food
+    // order commits + the courier auction opens; any seller may CLAIM the job and
+    // commit the courier order at the cleared price. The runtime reuses Cardinal
+    // Couriers (anvil[8]) as the claiming courier (priced by the auction, not a
+    // catalogue). Same neighbourhood (9q8yyk8y* cells).
+    {
+        addressIndex: 10,
+        address: "0xBcd4042DE499D14e55001CcbB24a551F3b954096",
+        name: "Pomodoro Kitchen",
+        specialty: "prepared food, auction-arranged delivery",
+        geohash: "9q8yyk8yy",
+        assemblies: ["local-commerce-dutch"],
         products: [{ name: "Margherita pizza", price: "1" }],
     },
 ];
