@@ -231,8 +231,8 @@ All runtime specs below predate the fulfilment retirement and read the dead
 |---|---|---|
 | `kiosk-sale` | `scenario-kiosk-sale` | `kiosk-sale-runtime` |
 | `direct-sale` | `scenario-direct-sale` | `direct-sale-runtime` |
-| `local-commerce` | (to re-author, derived-modality model) | `local-commerce-scenario` (rewrite) |
-| `local-commerce-buyer-assigned` | (to author) | `buyer-assigned-checkout` (rewrite) |
+| `local-commerce` | `scenario-local-commerce` | `local-commerce-runtime` |
+| `local-commerce-buyer-assigned` | `scenario-local-commerce-buyer-assigned` | `local-commerce-buyer-assigned-runtime` |
 | `local-commerce-dutch` | (to author) | `dutch-auction-checkout` (rewrite) |
 | `local-commerce-offset` | (to author) | `local-commerce-offset-scenario` (rewrite) |
 | `local-food-basket` | (to author) | (to author) |

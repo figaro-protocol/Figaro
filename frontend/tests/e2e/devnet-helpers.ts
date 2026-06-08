@@ -1187,6 +1187,13 @@ export const SELLER_REGISTERED_EVENT_ABI = parseAbi([
     'event SellerRegistered(address indexed seller, string metadataURI)',
 ]);
 
+/** Kernel commit event — one per order. Lets a runtime spec read each committed
+ *  order's seller (e.g. to assert a buyer-assigned courier order's seller IS the
+ *  courier the buyer chose). */
+export const ORDER_COMMITTED_EVENT_ABI = parseAbi([
+    'event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 cumulativeValue, bytes32 agreementHash, uint256 salt, uint256 deadline)',
+]);
+
 /** Resolve an `ipfs://` URI to a Kubo-gateway URL. */
 function resolveIpfsURI(uri: string): string {
     const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080';
@@ -1286,9 +1293,7 @@ export async function evmIncreaseTime(seconds: number): Promise<void> {
  *
  * Extracted from the local-commerce devnet specs where the buyer commit is
  * pure SETUP for what the spec actually exercises (the dispute path, the
- * full multi-role scenario). `local-commerce-purchase` keeps its own inline
- * copy on purpose: there the placement UI — the assembly-array surface, the
- * negotiated-price and courier-clause assertions — IS the spec's subject.
+ * full multi-role scenario).
  *
  * The two-iteration modal loop is correct, not a flake: each commit (food,
  * then courier) gates on its own AgreementPreviewModal, and the hidden-wait

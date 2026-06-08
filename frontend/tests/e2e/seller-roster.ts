@@ -112,4 +112,19 @@ export const SELLER_ROSTER: readonly SellerSpec[] = [
         assemblies: ["local-commerce"],
         products: [{ name: "Standard delivery", price: "1", category: "delivery" }],
     },
+    // local-commerce-buyer-assigned (2-node buyer-assigned delivery): a merchant
+    // that sells for delivery but lets the BUYER pick the courier at checkout —
+    // so it designates NO courier (no `courierAddresses`). The buyer enters a
+    // courier's address and prices the delivery from that courier's own
+    // catalogue; the runtime reuses Cardinal Couriers (anvil[8]) as the courier,
+    // chosen by address. Same neighbourhood (9q8yyk8y* cells).
+    {
+        addressIndex: 9,
+        address: "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720",
+        name: "Saffron Table",
+        specialty: "prepared food, buyer-arranged delivery",
+        geohash: "9q8yyk8yx",
+        assemblies: ["local-commerce-buyer-assigned"],
+        products: [{ name: "Margherita pizza", price: "1" }],
+    },
 ];
