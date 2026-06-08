@@ -28,29 +28,25 @@
  */
 import { test, expect, ANVIL_ACCOUNTS, gotoAsWallet } from './devnet-multi-test';
 import { type Hex } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
 import {
     CORE_PROCESS_VIEW_ABI,
     ERC20_BALANCE_ABI,
-    SELLER_REGISTERED_EVENT_ABI,
     acceptOrderInInboxUI,
     assertPinnedInIpfs,
-    ensureTokenApprovals,
+    discoverSellerByAssembly,
+    ensureTokenApprovalsByAddress,
     localPublicClient,
     placeBilateralOrderUI,
     readLocalDeploymentConfig,
     useChainSnapshot,
     walkMerchantToHandoff,
 } from './devnet-helpers';
-import { SELLER_ROSTER } from './seller-roster';
 import { formatToken } from '../../lib/shared/utils';
 
-// Buyer = anvil[0]; seller = the direct-sale roster seller (anvil[6]).
-const BUYER_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
-const CAFE_SELLER_KEY = '0x92db14e403b83dfe3df233f83dfa3a0d7096f21ca9b0d6d6b8d88b2b4ec1564e' as const;
-const BUYER_ADDR = ANVIL_ACCOUNTS[0];
-
-const cafe = SELLER_ROSTER.find((s) => s.assemblies.includes('direct-sale'));
+// Buyer = anvil[0] (the connected wallet). The seller is DISCOVERED from
+// SellerRegistry events + IPFS by its on-chain binding — no roster, no keys;
+// wallets + approvals go through the unlocked RPC by address.
+const BUYER_ADDR = ANVIL_ACCOUNTS[0] as Hex;
 
 useChainSnapshot(test);
 
@@ -63,30 +59,15 @@ test.describe('direct-sale runtime — on-site commit, handoff certification, re
         // Accept every native window.confirm — confirm-receipt raises one.
         page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
 
-        expect(cafe, 'direct-sale seller must be in SELLER_ROSTER').toBeTruthy();
-        expect(privateKeyToAccount(CAFE_SELLER_KEY).address.toLowerCase())
-            .toBe(cafe!.address.toLowerCase());
-
         const config = readLocalDeploymentConfig();
         const coreAddress = (process.env.NEXT_PUBLIC_FIGARO_CORE ?? config.figaroCore) as Hex;
         const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? config.tokenAddress) as Hex;
-        const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY ?? config.sellerRegistry) as Hex;
         const publicClient = localPublicClient();
 
-        // Prerequisite: the café must already be onboarded (consumed from chain).
-        const registered = await publicClient.getContractEvents({
-            address: sellerRegistry,
-            abi: SELLER_REGISTERED_EVENT_ABI,
-            eventName: 'SellerRegistered',
-            args: { seller: cafe!.address },
-            fromBlock: 0n,
-        });
-        expect(
-            registered.length,
-            `Aurora Café (${cafe!.address}) is not registered — run sellers-onboarding first`,
-        ).toBeGreaterThanOrEqual(1);
+        // Discover the seller from chain → IPFS by its on-chain binding.
+        const cafe = await discoverSellerByAssembly('direct-sale');
 
-        await ensureTokenApprovals(coreAddress, tokenAddress, BUYER_KEY, CAFE_SELLER_KEY);
+        await ensureTokenApprovalsByAddress(coreAddress, tokenAddress, BUYER_ADDR, cafe.address);
 
         const balanceOf = (who: `0x${string}`) => publicClient.readContract({
             address: tokenAddress, abi: ERC20_BALANCE_ABI, functionName: 'balanceOf', args: [who],

@@ -24,29 +24,24 @@
  */
 import { test, expect, ANVIL_ACCOUNTS, gotoAsWallet } from './devnet-multi-test';
 import { type Hex } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
 import {
     CORE_PROCESS_VIEW_ABI,
-    SELLER_REGISTERED_EVENT_ABI,
-    ensureTokenApprovals,
+    courierAddressFor,
+    discoverSellerByAssembly,
+    discoverSellers,
+    ensureTokenApprovalsByAddress,
     localPublicClient,
     placeLocalCommerceOrderUI,
     readLocalDeploymentConfig,
     runDeliveryCoordination,
     useChainSnapshot,
 } from './devnet-helpers';
-import { SELLER_ROSTER } from './seller-roster';
 
-// Buyer = anvil[0]. Sellers come from the roster (the single source) — the
-// merchant is the local-commerce seller that designates a courier; the courier
-// is the local-commerce seller that does not.
-const BUYER_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
-const MERCHANT_KEY = '0x4bbbf85ce3377467afe5d46f804f221813b2bb87f24d81f60f1fcdbf7cbf4356' as const; // anvil[7]
-const COURIER_KEY = '0xdbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97' as const; // anvil[8]
-const BUYER_ADDR = ANVIL_ACCOUNTS[0];
-
-const merchant = SELLER_ROSTER.find((s) => s.assemblies.includes('local-commerce') && !!s.courierAddresses);
-const courier = SELLER_ROSTER.find((s) => s.assemblies.includes('local-commerce') && !s.courierAddresses);
+// Buyer = anvil[0] (the connected wallet — "the user"). Sellers are DISCOVERED
+// from SellerRegistry events + IPFS by their on-chain assemblyBindings — no
+// roster, no hardcoded addresses/names/keys. Driving wallets + token approvals go
+// through the unlocked RPC by address, so the runtime needs no private keys.
+const BUYER_ADDR = ANVIL_ACCOUNTS[0] as Hex;
 
 useChainSnapshot(test);
 
@@ -58,39 +53,27 @@ test.describe('local-commerce runtime — 2-node delivery commit, coordination, 
     test('buyer commits both orders, merchant + courier coordinate, buyer resolves — all through the UI', async ({ page }) => {
         page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
 
-        expect(merchant, 'local-commerce merchant must be in SELLER_ROSTER').toBeTruthy();
-        expect(courier, 'local-commerce courier must be in SELLER_ROSTER').toBeTruthy();
-        expect(privateKeyToAccount(MERCHANT_KEY).address.toLowerCase()).toBe(merchant!.address.toLowerCase());
-        expect(privateKeyToAccount(COURIER_KEY).address.toLowerCase()).toBe(courier!.address.toLowerCase());
-
         const config = readLocalDeploymentConfig();
         const coreAddress = (process.env.NEXT_PUBLIC_FIGARO_CORE ?? config.figaroCore) as Hex;
         const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? config.tokenAddress) as Hex;
-        const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY ?? config.sellerRegistry) as Hex;
         const publicClient = localPublicClient();
 
-        // Prerequisite: both sellers onboarded (consumed from chain, not seeded).
-        for (const s of [merchant!, courier!]) {
-            const registered = await publicClient.getContractEvents({
-                address: sellerRegistry,
-                abi: SELLER_REGISTERED_EVENT_ABI,
-                eventName: 'SellerRegistered',
-                args: { seller: s.address },
-                fromBlock: 0n,
-            });
-            expect(
-                registered.length,
-                `${s.name} (${s.address}) is not registered — run sellers-onboarding first`,
-            ).toBeGreaterThanOrEqual(1);
-        }
+        // Discover the sellers the mainnet way (events → IPFS → on-chain bindings):
+        // the merchant is the local-commerce seller that designates a courier; the
+        // courier is the one it designated on-chain.
+        const sellers = await discoverSellers();
+        const merchant = await discoverSellerByAssembly('local-commerce', { withCourier: true }, sellers);
+        const courierAddr = courierAddressFor(merchant, 'local-commerce');
+        const courier = sellers.find((s) => s.address.toLowerCase() === courierAddr.toLowerCase());
+        expect(courier, `courier ${courierAddr} (designated by ${merchant.name}) must be a registered seller`).toBeTruthy();
 
-        await ensureTokenApprovals(coreAddress, tokenAddress, BUYER_KEY, MERCHANT_KEY, COURIER_KEY);
+        await ensureTokenApprovalsByAddress(coreAddress, tokenAddress, BUYER_ADDR, merchant.address, courier!.address);
 
         // ── 1. Buyer commits the food + courier orders ──────────────────────
         // No item ids: pick the merchant's + courier's first catalogue items off
-        // the network. The courier is the merchant's roster partner, by name.
+        // the network. The courier is the merchant's on-chain partner, by name.
         const processId = await placeLocalCommerceOrderUI(page, {
-            merchant: merchant!.address,
+            merchant: merchant.address,
             courier: { partnerName: courier!.name },
         });
 

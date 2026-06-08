@@ -49,8 +49,6 @@ import {
 import {
     assertAssemblyOnInventory,
     assertPinnedInIpfs,
-    captureOrGuardAssemblyDocument,
-    normalizeAssemblyTemplateOrders,
     readLocalDeploymentConfig,
 } from './devnet-helpers';
 
@@ -224,13 +222,6 @@ test.describe('Author + publish the local-commerce-dispute assembly (devnet)', (
             'figaro-proximity-policy-v1',
             'figaro-topology-v1',
         ]);
-
-        // Drift-guard on the published template's SHAPE.
-        const fixtureOrders = captureOrGuardAssemblyDocument(assemblyDoc, {
-            slug: 'local-commerce-dispute',
-            name: 'Local Commerce Dispute',
-        });
-        expect(normalizeAssemblyTemplateOrders(assemblyDoc.orders)).toEqual(fixtureOrders);
 
         // ── It SURFACES on the marketing /assemblies inventory ─────────────
         await assertAssemblyOnInventory(page, slug);

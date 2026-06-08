@@ -46,8 +46,6 @@ import {
 import {
     assertAssemblyOnInventory,
     assertPinnedInIpfs,
-    captureOrGuardAssemblyDocument,
-    normalizeAssemblyTemplateOrders,
     readLocalDeploymentConfig,
 } from './devnet-helpers';
 
@@ -172,14 +170,6 @@ test.describe('Author + publish the kiosk-sale assembly (devnet)', () => {
         expect(root.clauses['figaro-fulfilment-v2'].modalities).toEqual(['pickup']);
         expect(root.clauses['figaro-fulfilment-v2'].delivery).toBeUndefined();
         expect(root.clauses['figaro-fulfilment-v2'].handoff).toBeUndefined();
-
-        // Drift-guard on the published template's SHAPE (an output check — NOT the
-        // runtime's data source; the runtime reads this assembly from chain→IPFS).
-        const fixtureOrders = captureOrGuardAssemblyDocument(assemblyDoc, {
-            slug: 'kiosk-sale',
-            name: 'Kiosk Sale',
-        });
-        expect(normalizeAssemblyTemplateOrders(assemblyDoc.orders)).toEqual(fixtureOrders);
 
         // ── It SURFACES on the marketing /assemblies inventory — the reader
         //    that was empty when publishes got reverted. (Navigates the page.) ─

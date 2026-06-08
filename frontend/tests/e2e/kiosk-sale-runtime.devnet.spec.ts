@@ -33,17 +33,16 @@ import {
     parseAbi,
     type Hex,
 } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
 import {
     acceptOrderInInboxUI,
     assertPinnedInIpfs,
-    ensureTokenApprovals,
+    discoverSellerByAssembly,
+    ensureTokenApprovalsByAddress,
     evmRevert,
     evmSnapshot,
     placeBilateralOrderUI,
     readLocalDeploymentConfig,
 } from './devnet-helpers';
-import { SELLER_ROSTER } from './seller-roster';
 import { formatToken } from '../../lib/shared/utils';
 
 const RPC_URL = 'http://127.0.0.1:8545';
@@ -54,18 +53,12 @@ const LOCAL_ANVIL = defineChain({
     rpcUrls: { default: { http: [RPC_URL] } },
 });
 
-// Buyer = anvil[0]; seller = the kiosk-sale roster seller (anvil[5]).
-const BUYER_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
-const KIOSK_SELLER_KEY = '0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba' as const;
-const BUYER_ADDR = ANVIL_ACCOUNTS[0];
-
-const kiosk = SELLER_ROSTER.find((s) => s.assemblies.includes('kiosk-sale'));
+// Buyer = anvil[0] (the connected wallet). The seller is DISCOVERED from chain →
+// IPFS by its on-chain binding — no roster, no keys; approvals via unlocked RPC.
+const BUYER_ADDR = ANVIL_ACCOUNTS[0] as Hex;
 
 const CORE_VIEW_ABI = parseAbi([
     'function processes(bytes32 processId) view returns (address rootBuyer, address currency, uint256 cumulativeValue, uint32 activeOrderCount)',
-]);
-const SELLER_REGISTRY_ABI = parseAbi([
-    'event SellerRegistered(address indexed seller, string metadataURI)',
 ]);
 const ERC20_BAL_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
@@ -87,35 +80,16 @@ test.describe('kiosk-sale runtime — buyer checkout → seller accept → resol
         // before resolving (and checkout may too).
         page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
 
-        expect(kiosk, 'kiosk-sale seller must be in SELLER_ROSTER').toBeTruthy();
-        // The roster address must be the wallet we hold the key for.
-        expect(privateKeyToAccount(KIOSK_SELLER_KEY).address.toLowerCase())
-            .toBe(kiosk!.address.toLowerCase());
-
         const config = readLocalDeploymentConfig();
         const coreAddress = (process.env.NEXT_PUBLIC_FIGARO_CORE ?? config.figaroCore) as Hex;
         const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? config.tokenAddress) as Hex;
-        const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY ?? config.sellerRegistry) as Hex;
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
-        // Prerequisite check: the seller must already be onboarded (consumed
-        // from chain, not created here). Fail loudly if the pipeline's
-        // onboarding stage has not run.
-        const registered = await publicClient.getContractEvents({
-            address: sellerRegistry,
-            abi: SELLER_REGISTRY_ABI,
-            eventName: 'SellerRegistered',
-            args: { seller: kiosk!.address },
-            fromBlock: 0n,
-        });
-        expect(
-            registered.length,
-            `Kiosk Corner (${kiosk!.address}) is not registered — run sellers-onboarding first`,
-        ).toBeGreaterThanOrEqual(1);
-
-        // Both wallets approve the payment token (standard ERC-20 prerequisite,
-        // the same setup every commit test does — not part of the commit).
-        await ensureTokenApprovals(coreAddress, tokenAddress, BUYER_KEY, KIOSK_SELLER_KEY);
+        // Discover the seller from chain → IPFS by its on-chain binding (throws if
+        // not onboarded). Both wallets approve the payment token by address via the
+        // unlocked RPC — no keys.
+        const kiosk = await discoverSellerByAssembly('kiosk-sale');
+        await ensureTokenApprovalsByAddress(coreAddress, tokenAddress, BUYER_ADDR, kiosk.address);
 
         // Real token balances are the ground truth for the whole point of the
         // protocol — bonds lock at commit, payment moves at resolve, bonds

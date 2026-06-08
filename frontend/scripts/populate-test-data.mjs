@@ -28,6 +28,8 @@ const REGISTRATION_DEPOSIT = 1_000_000_000_000_000n; // 0.001 ETH
 
 const SELLER_REGISTRY_ABI = parseAbi([
     'function register(string metadataURI) external payable',
+    'function updateProfile(string metadataURI) external',
+    'error AlreadyRegistered()',
 ]);
 const ERC20_VIEW_ABI = parseAbi([
     'function symbol() view returns (string)',
@@ -106,14 +108,12 @@ async function main() {
             location: { geohash: s.geohash },
             acceptedTokens: [{ address: mockToken, symbol: tokenSymbol, name: tokenName }],
             defaultTokenAddress: mockToken,
-            version: '0.1.0',
             assemblyBindings: s.bind.map((assemblySlug) => {
                 const courierIdx = s.courierIndices?.[assemblySlug];
                 return {
                     bindingId: `${assemblySlug}:${account.address.toLowerCase()}`,
                     subjectAddress: account.address,
                     assemblySlug,
-                    networkTargets: ['local-anvil'],
                     counterpartyBindings: courierIdx
                         ? [{ clauseId: 'figaro-courier-process-v1', addresses: courierIdx.map(addressForIndex) }]
                         : [],
@@ -131,8 +131,15 @@ async function main() {
             await publicClient.waitForTransactionReceipt({ hash });
             console.log(`  ✓ ${s.name} (anvil[${s.addressIndex}]) — registered; profile ${metadataURI}`);
         } catch (err) {
-            if (isAlreadyRegistered(err)) console.log(`  · ${s.name} — already registered, skipped`);
-            else throw err;
+            if (!isAlreadyRegistered(err)) throw err;
+            // Already registered — refresh the pinned profile so a re-run repairs it.
+            const { request } = await publicClient.simulateContract({
+                account: account.address, address: sellerRegistry, abi: SELLER_REGISTRY_ABI,
+                functionName: 'updateProfile', args: [metadataURI],
+            });
+            const hash = await sellerClient.writeContract(request);
+            await publicClient.waitForTransactionReceipt({ hash });
+            console.log(`  ↻ ${s.name} — already registered; profile updated ${metadataURI}`);
         }
     }
     console.log('\nDone — test clauses + sellers pre-populated.');

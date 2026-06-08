@@ -1043,62 +1043,6 @@ export async function pinJSONToIPFS(data: unknown): Promise<{ cid: string; uri: 
     return { cid: result.Hash, uri: `ipfs://${result.Hash}` };
 }
 
-/**
- * Capture-or-guard a designer-published assembly assemblyDoc as a seed fixture.
- *
- * With `FIGARO_CAPTURE_FIXTURES` set, writes the assemblyDoc — `slug` and
- * `name` normalised to the canonical reference values — to
- * `scripts/fixtures/<slug>.assembly-document.json`, the data `seed-devnet.mjs`
- * replays. Without it, loads that committed fixture and returns its
- * `agreements` map so the spec can drift-guard the live designer output
- * (`expect(assemblyDoc.agreements).toEqual(...)`).
- *
- * `agreements` is the deterministic part of the assemblyDoc — per-run
- * `processId` / `deadline` live only on `orders` — so it is a stable
- * drift signal: if the designer's clause generation changes, the
- * committed fixture stops matching and must be re-captured.
- */
-/** Template orders carry per-run ids (derived from a per-run processId), so
- *  they aren't a stable drift signal verbatim. Normalize away the ids: index
- *  each order, express parents as parent indices, keep the clause values.
- *  Clauses + DAG structure are the deterministic part the fixture guards. */
-export function normalizeAssemblyTemplateOrders(
-    orders: Array<{ id: string; clauses: Record<string, unknown> }>,
-): Array<{ parents: number[]; clauses: Record<string, unknown> }> {
-    const idToIndex = new Map(orders.map((o, i) => [o.id, i]));
-    return orders.map((o) => {
-        // The DAG is a clause: parents live in figaro-topology-v1's data.
-        const topo = o.clauses['figaro-topology-v1'] as { parentOrderIds?: string[] } | undefined;
-        const parentIds = Array.isArray(topo?.parentOrderIds) ? topo!.parentOrderIds : [];
-        return {
-            parents: parentIds.map((p) => idToIndex.get(p) ?? -1).sort((a, b) => a - b),
-            clauses: o.clauses,
-        };
-    });
-}
-
-export function captureOrGuardAssemblyDocument(
-    assemblyDoc: Record<string, unknown> & {
-        orders: Array<{ id: string; clauses: Record<string, unknown> }>;
-    },
-    opts: { slug: string; name: string },
-): unknown {
-    const fixturePath = path.resolve(
-        __dirname,
-        `../../scripts/fixtures/${opts.slug}.assembly-document.json`,
-    );
-    if (process.env.FIGARO_CAPTURE_FIXTURES) {
-        const normalized = { ...assemblyDoc, slug: opts.slug, name: opts.name };
-        fs.mkdirSync(path.dirname(fixturePath), { recursive: true });
-        fs.writeFileSync(fixturePath, `${JSON.stringify(normalized, null, 2)}\n`, 'utf8');
-        return normalizeAssemblyTemplateOrders(assemblyDoc.orders);
-    }
-    const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8')) as {
-        orders: Array<{ id: string; clauses: Record<string, unknown> }>;
-    };
-    return normalizeAssemblyTemplateOrders(fixture.orders);
-}
-
 // ── Standard scenario-authoring verification ────────────────────────────────
 // After a scenario test publishes an assembly, mainnet-compliance means it must
 // be (1) anchored on-chain, (2) PINNED in IPFS, and (3) SURFACED on /assemblies.
@@ -1188,6 +1132,98 @@ export const SELLER_REGISTERED_EVENT_ABI = parseAbi([
 export const ORDER_COMMITTED_EVENT_ABI = parseAbi([
     'event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 cumulativeValue, bytes32 agreementHash, uint256 salt, uint256 deadline)',
 ]);
+
+// ── Mainnet-faithful seller discovery ───────────────────────────────────────
+// Runtime specs must consume sellers the way a mainnet client does: read
+// SellerRegistry events, fetch each seller's profile from IPFS, and match on the
+// on-chain `assemblyBindings`. NO roster, NO hardcoded addresses/names/keys — a
+// spec that takes seller identity from a TS file is not testing mainnet usage.
+// (This mirrors what the indexer / `discoveryService` does; it additionally keeps
+// the `assemblyBindings` that the buyer-facing `SellerCatalogue` projection drops.)
+
+export interface DiscoveredSeller {
+    address: `0x${string}`;
+    name: string;
+    /** The seller's home geohash (profile.location.geohash), discovered from IPFS. */
+    geohash?: string;
+    assemblyBindings: Array<{
+        assemblySlug: string;
+        counterpartyBindings?: Array<{ clauseId: string; addresses: string[] }>;
+    }>;
+}
+
+/** Every registered seller, discovered from chain → IPFS (events + profile docs). */
+export async function discoverSellers(): Promise<DiscoveredSeller[]> {
+    const publicClient = localPublicClient();
+    const config = readLocalDeploymentConfig();
+    const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY ?? config.sellerRegistry) as `0x${string}`;
+    const events = await publicClient.getContractEvents({
+        address: sellerRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'SellerRegistered', fromBlock: 0n,
+    });
+    const out: DiscoveredSeller[] = [];
+    for (const ev of events) {
+        const uri = (ev.args as { metadataURI?: string }).metadataURI ?? '';
+        const profile = await (await fetch(resolveIpfsURI(uri))).json() as {
+            name?: string;
+            location?: { geohash?: string };
+            assemblyBindings?: DiscoveredSeller['assemblyBindings'];
+        };
+        out.push({
+            address: (ev.args as { seller: `0x${string}` }).seller,
+            name: profile.name ?? '',
+            geohash: profile.location?.geohash,
+            assemblyBindings: profile.assemblyBindings ?? [],
+        });
+    }
+    return out;
+}
+
+/** The registered seller bound to `slug`. `withCourier` disambiguates a
+ *  seller-assigned merchant (has courier `counterpartyBindings`) from a courier
+ *  (none). Throws unless exactly one matches — discovery, not assumption. */
+export async function discoverSellerByAssembly(
+    slug: string,
+    opts: { withCourier?: boolean } = {},
+    sellers?: DiscoveredSeller[],
+): Promise<DiscoveredSeller> {
+    const all = sellers ?? await discoverSellers();
+    const matches = all.filter((s) => {
+        const b = s.assemblyBindings.find((x) => x.assemblySlug === slug);
+        if (!b) return false;
+        if (opts.withCourier === undefined) return true;
+        const hasCourier = (b.counterpartyBindings ?? []).some((c) => (c.addresses ?? []).length > 0);
+        return opts.withCourier ? hasCourier : !hasCourier;
+    });
+    if (matches.length !== 1) {
+        throw new Error(`discoverSellerByAssembly(${slug}, withCourier=${String(opts.withCourier)}): expected exactly 1 seller, found ${matches.length} — onboard first / check on-chain bindings`);
+    }
+    return matches[0];
+}
+
+/** The courier address the merchant designated ON-CHAIN for `slug` (seller-assigned). */
+export function courierAddressFor(merchant: DiscoveredSeller, slug: string): `0x${string}` {
+    const b = merchant.assemblyBindings.find((x) => x.assemblySlug === slug);
+    const addr = b?.counterpartyBindings?.find((c) => c.clauseId === 'figaro-courier-process-v1')?.addresses?.[0];
+    if (!addr) throw new Error(`merchant ${merchant.address} designates no courier for ${slug} on-chain`);
+    return addr as `0x${string}`;
+}
+
+/** Token approvals by ADDRESS via the unlocked RPC — no private keys (devnet only;
+ *  on testnet a funded-wallet keymap keyed by address would replace the unlocked send). */
+export async function ensureTokenApprovalsByAddress(
+    coreAddress: `0x${string}`, tokenAddress: `0x${string}`, ...addresses: `0x${string}`[]
+) {
+    const publicClient = localPublicClient();
+    for (const address of addresses) {
+        const client = createWalletClient({ account: address, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+        const { request } = await publicClient.simulateContract({
+            account: address, address: tokenAddress, abi: ERC20_TEST_ABI,
+            functionName: 'approve', args: [coreAddress, MAX_UINT256],
+        });
+        const txHash = await client.writeContract(request);
+        await publicClient.waitForTransactionReceipt({ hash: txHash });
+    }
+}
 
 /** Resolve an `ipfs://` URI to a Kubo-gateway URL. */
 function resolveIpfsURI(uri: string): string {

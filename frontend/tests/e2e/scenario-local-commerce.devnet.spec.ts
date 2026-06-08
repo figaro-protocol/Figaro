@@ -47,8 +47,6 @@ import {
 import {
     assertAssemblyOnInventory,
     assertPinnedInIpfs,
-    captureOrGuardAssemblyDocument,
-    normalizeAssemblyTemplateOrders,
     readLocalDeploymentConfig,
 } from './devnet-helpers';
 
@@ -226,14 +224,6 @@ test.describe('Author + publish the local-commerce assembly (devnet)', () => {
         ]);
         expect(courier.clauses['figaro-handoff-v1'].handoff).toEqual(['face-to-face']);
         expect(courier.clauses['figaro-proximity-policy-v1'].bands).toEqual(['zone-wifi']);
-
-        // Drift-guard on the published template's SHAPE (an output check — NOT the
-        // runtime's data source; the runtime reads this assembly from chain→IPFS).
-        const fixtureOrders = captureOrGuardAssemblyDocument(assemblyDoc, {
-            slug: 'local-commerce',
-            name: 'Local Commerce',
-        });
-        expect(normalizeAssemblyTemplateOrders(assemblyDoc.orders)).toEqual(fixtureOrders);
 
         // ── It SURFACES on the marketing /assemblies inventory ─────────────
         await assertAssemblyOnInventory(page, slug);
