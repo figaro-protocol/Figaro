@@ -22,7 +22,7 @@ import { getAttestationsByProcess, type RuntimeAttestation } from "@/lib/core/in
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { CapabilityActionDescriptor, CapabilityExecutionInput, CapabilityModel, OrderNodeModel } from "@/lib/semantic/models";
 import { buildResolutionCommitments } from "@/lib/core/commitmentStore";
-import { executeTransactionCapabilityAction } from "@/lib/core/executeTransactionCapability";
+import { executeTransactionCapabilityAction } from "@/lib/semantic/executeTransactionCapability";
 import { keccak256, stringToHex, toHex, type Hex } from "viem";
 
 /** Per-attestation device witness for runtime PROOF clauses (e.g. proximity).

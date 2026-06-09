@@ -19,14 +19,13 @@ vi.mock('@/lib/core/eventCache', () => ({
 }));
 
 // Provide a non-null sellerRegistry so the event fetchers don't short-circuit.
-vi.mock('@/lib/mechanisms/contracts', () => ({
-    MECHANISM_CONTRACTS: { sellerRegistry: '0x1111111111111111111111111111111111111111' },
-    getSellerRegistry: () => '0x1111111111111111111111111111111111111111',
-    SELLER_REGISTRY_ABI: [],
-}));
-
+// The indexer reads it from core's CONTRACTS (core/ never imports mechanisms/).
 vi.mock('@/lib/core/contracts', () => ({
-    CONTRACTS: { batchVerifier: null, orderManager: null },
+    CONTRACTS: {
+        batchVerifier: null,
+        orderManager: null,
+        sellerRegistry: '0x1111111111111111111111111111111111111111',
+    },
 }));
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

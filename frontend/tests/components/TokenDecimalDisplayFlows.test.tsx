@@ -95,7 +95,7 @@ vi.mock("@/lib/shared/runtimeServicesContext", () => ({
     }),
 }));
 
-vi.mock("@/lib/shared/coordinationMessagingService", () => ({
+vi.mock("@/lib/handoff/coordinationMessagingService", () => ({
     fetchCommitmentPayloadJsonByCid: mocks.fetchCommitmentPayloadJsonByCid,
 }));
 

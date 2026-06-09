@@ -22,7 +22,6 @@ import { parseAbiItem } from "viem";
 import { cachedGetLogs } from "./eventCache";
 import { hexEqual } from "@/lib/shared/evm";
 import { CONTRACTS } from "./contracts";
-import { MECHANISM_CONTRACTS } from "@/lib/mechanisms/contracts";
 import {
     EV_ORDER_COMMITTED,
     EV_ORDER_SELLER,
@@ -267,25 +266,25 @@ export async function getAttestationsByProcess(
 // ---------------------------------------------------------------------------
 
 export async function getAllSellerRegistered(client: PublicClient, chainId: number) {
-    if (!MECHANISM_CONTRACTS.sellerRegistry && !CONTRACTS.batchVerifier) return [];
+    if (!CONTRACTS.sellerRegistry && !CONTRACTS.batchVerifier) return [];
     return cachedGetLogsMulti(client, chainId,
-        [MECHANISM_CONTRACTS.sellerRegistry, CONTRACTS.batchVerifier],
+        [CONTRACTS.sellerRegistry, CONTRACTS.batchVerifier],
         { event: EV_SELLER_REGISTERED, eventName: "SellerRegistered" },
     );
 }
 
 async function getAllSellerProfileUpdated(client: PublicClient, chainId: number) {
-    if (!MECHANISM_CONTRACTS.sellerRegistry && !CONTRACTS.batchVerifier) return [];
+    if (!CONTRACTS.sellerRegistry && !CONTRACTS.batchVerifier) return [];
     return cachedGetLogsMulti(client, chainId,
-        [MECHANISM_CONTRACTS.sellerRegistry, CONTRACTS.batchVerifier],
+        [CONTRACTS.sellerRegistry, CONTRACTS.batchVerifier],
         { event: EV_SELLER_PROFILE_UPDATED, eventName: "SellerProfileUpdated" },
     );
 }
 
 async function getAllSellerWithdrawn(client: PublicClient, chainId: number) {
-    if (!MECHANISM_CONTRACTS.sellerRegistry && !CONTRACTS.batchVerifier) return [];
+    if (!CONTRACTS.sellerRegistry && !CONTRACTS.batchVerifier) return [];
     return cachedGetLogsMulti(client, chainId,
-        [MECHANISM_CONTRACTS.sellerRegistry, CONTRACTS.batchVerifier],
+        [CONTRACTS.sellerRegistry, CONTRACTS.batchVerifier],
         { event: EV_SELLER_WITHDRAWN, eventName: "SellerWithdrawn" },
     );
 }
@@ -465,7 +464,7 @@ export async function getRpgfMinterClaimStatus(
     stageIndex: number,
     account: string,
 ): Promise<boolean> {
-    const addr = MECHANISM_CONTRACTS.rpgfMinter;
+    const addr = CONTRACTS.rpgfMinter;
     if (!addr) return false;
     const logs = await cachedGetLogs(client, chainId, {
         address: addr,

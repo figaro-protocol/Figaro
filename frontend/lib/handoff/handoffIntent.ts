@@ -2,7 +2,7 @@ import {
     DEFAULT_HANDOFF_PERSISTENCE_SERVICE,
     type HandoffPersistenceService,
     type PendingHandoffIntent,
-} from "@/lib/shared/handoffPersistenceService";
+} from "@/lib/handoff/handoffPersistenceService";
 
 export type { PendingHandoffIntent };
 

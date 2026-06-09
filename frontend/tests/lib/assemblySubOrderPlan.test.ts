@@ -3,7 +3,7 @@ import {
     planSubOrderSellers,
     resolveSubOrderPayment,
     type AssemblyDocumentOrder,
-} from "@/lib/core/assemblySubOrderPlan";
+} from "@/lib/commerce/assemblySubOrderPlan";
 import type { BoundAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
 import type { SellerCatalogue } from "@/lib/seller/types";
 

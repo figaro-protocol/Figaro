@@ -1,11 +1,11 @@
 import type { CatalogueService } from "@/lib/shared/catalogueService";
 import { DEFAULT_CATALOGUE_SERVICE } from "@/lib/shared/catalogueService";
-import type { CoordinationMessagingService } from "@/lib/shared/coordinationMessagingService";
-import { DEFAULT_COORDINATION_MESSAGING_SERVICE } from "@/lib/shared/coordinationMessagingService";
-import type { DiscoveryService } from "@/lib/shared/discoveryService";
-import { DEFAULT_DISCOVERY_SERVICE } from "@/lib/shared/discoveryService";
-import type { HandoffPersistenceService } from "@/lib/shared/handoffPersistenceService";
-import { DEFAULT_HANDOFF_PERSISTENCE_SERVICE } from "@/lib/shared/handoffPersistenceService";
+import type { CoordinationMessagingService } from "@/lib/handoff/coordinationMessagingService";
+import { DEFAULT_COORDINATION_MESSAGING_SERVICE } from "@/lib/handoff/coordinationMessagingService";
+import type { DiscoveryService } from "@/lib/seller/discoveryService";
+import { DEFAULT_DISCOVERY_SERVICE } from "@/lib/seller/discoveryService";
+import type { HandoffPersistenceService } from "@/lib/handoff/handoffPersistenceService";
+import { DEFAULT_HANDOFF_PERSISTENCE_SERVICE } from "@/lib/handoff/handoffPersistenceService";
 import type { IpfsService } from "@/lib/shared/ipfsService";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import type { TokenConversionService } from "@/lib/shared/tokenConversion";

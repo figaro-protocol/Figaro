@@ -3,7 +3,7 @@ import {
     HANDOFF_KEY_STORAGE_KEY,
     type HandoffPersistenceService,
     type HandoffKeyRecord,
-} from "@/lib/shared/handoffPersistenceService";
+} from "@/lib/handoff/handoffPersistenceService";
 
 export type { HandoffKeyRecord };
 ;

@@ -20,7 +20,7 @@ import {
     HANDOFF_KEY_STORAGE_KEY,
     HANDOFF_PURGE_QUEUE_KEY,
     PENDING_HANDOFF_INTENT_STORAGE_KEY,
-} from "@/lib/shared/handoffPersistenceService";
+} from "@/lib/handoff/handoffPersistenceService";
 
 describe("handoffPersistenceService", () => {
     const originalDateNow = Date.now;

@@ -37,7 +37,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual } from "@/lib/shared/evm";
 import { useWalletProcessRows, type ProcessRow } from "@/lib/core/walletProcessQueries";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
-import { fetchCommitmentPayloadJsonByCid } from "@/lib/shared/coordinationMessagingService";
+import { fetchCommitmentPayloadJsonByCid } from "@/lib/handoff/coordinationMessagingService";
 import { useSellerListings } from "@/lib/mechanisms/useSellerListings";
 import { displayNameForAddress } from "@/lib/shared/sellerListing";
 import type { Listing } from "@/lib/shared/sellerListing";

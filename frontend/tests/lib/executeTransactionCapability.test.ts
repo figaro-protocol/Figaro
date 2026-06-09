@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { executeTransactionCapabilityAction } from "@/lib/core/executeTransactionCapability";
+import { executeTransactionCapabilityAction } from "@/lib/semantic/executeTransactionCapability";
 
 describe("executeTransactionCapabilityAction", () => {
     it("dispatches disclosure commitments with descriptor defaults", async () => {

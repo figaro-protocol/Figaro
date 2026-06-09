@@ -4,7 +4,7 @@ import {
     type PersistHandoffArtifactsParams,
     type PersistedHandoffArtifacts,
     type OrderWithManifest,
-} from "@/lib/shared/handoffPersistenceService";
+} from "@/lib/handoff/handoffPersistenceService";
 
 export type {
     PersistHandoffArtifactsParams,

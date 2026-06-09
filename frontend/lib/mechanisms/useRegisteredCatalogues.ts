@@ -19,7 +19,7 @@ import type { SellerCatalogue } from "@/lib/seller/types";
 import {
     DEFAULT_DISCOVERY_SERVICE,
     type DiscoveryService,
-} from "@/lib/shared/discoveryService";
+} from "@/lib/seller/discoveryService";
 
 export interface UseRegisteredCataloguesResult {
     catalogues: SellerCatalogue[];

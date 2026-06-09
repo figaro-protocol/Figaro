@@ -22,7 +22,7 @@
 import { computeCommitmentProcessId, computeOrderHash } from "@/lib/core/commitmentStore";
 import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
 import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
-import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/core/assemblySubOrderPlan";
+import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/commerce/assemblySubOrderPlan";
 import { templateParentOrderIds } from "@/lib/designer/assemblyTemplate";
 import { shareCommitmentPayload } from "@/lib/core/commitmentShare";
 import { CONTRACTS } from "@/lib/core/contracts";
@@ -30,7 +30,7 @@ import type { Commitment } from "@/lib/core/useFigaroActions";
 import type { CommitmentPayloadMeta } from "@/lib/core/useCommitmentFlow";
 import type { BoundAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
 import type { SellerCatalogue } from "@/lib/seller/types";
-import type { CoordinationMessagingService } from "@/lib/shared/coordinationMessagingService";
+import type { CoordinationMessagingService } from "@/lib/handoff/coordinationMessagingService";
 import type { IpfsService } from "@/lib/shared/ipfsService";
 
 export interface AssemblyCheckoutLineItem {

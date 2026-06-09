@@ -24,7 +24,7 @@ import { primeAgreementArtifact } from "@/lib/core/agreementStore";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 import { formatToken } from "@/lib/shared/utils";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
-import { fetchCommitmentPayloadJsonByCid } from "@/lib/shared/coordinationMessagingService";
+import { fetchCommitmentPayloadJsonByCid } from "@/lib/handoff/coordinationMessagingService";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 type InboxStatus = "idle" | "listening" | "received" | "error";

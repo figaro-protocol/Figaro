@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/Button";
 import { useCommerce, useCheckout } from "@/lib/commerce";
 import { useCartStore, type FulfillmentMode } from "@/lib/seller/cartStore";
 import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
-import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/core/assemblySubOrderPlan";
+import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/commerce/assemblySubOrderPlan";
 import { executeAssemblyCheckout } from "@/lib/commerce/assemblyCheckout";
 import { templateParentOrderIds } from "@/lib/designer/assemblyTemplate";
 import { CONTRACTS } from "@/lib/core/contracts";

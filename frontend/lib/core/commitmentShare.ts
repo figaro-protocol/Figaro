@@ -10,7 +10,6 @@
  */
 
 import type { CommitmentPayload } from "@/lib/core/useCommitmentFlow";
-import type { CoordinationMessagingService } from "@/lib/shared/coordinationMessagingService";
 import type { IpfsService } from "@/lib/shared/ipfsService";
 import { computeOrderHash } from "@/lib/core/commitmentStore";
 import { CONTRACTS } from "@/lib/core/contracts";
@@ -37,6 +36,19 @@ interface WalletMessageSigner {
     signMessage(params: { message: string }): Promise<`0x${string}`>;
 }
 
+/** The one transport capability this module needs — structural, so core/
+ *  depends on no feature layer. `CoordinationMessagingService` (handoff/)
+ *  satisfies it. */
+interface CommitmentPayloadRelay {
+    sendCommitmentPayload(params: {
+        address: string;
+        walletClient?: WalletMessageSigner | null;
+        recipientAddress: string;
+        orderId: string;
+        payloadCid: string;
+    }): Promise<void>;
+}
+
 /**
  * Pin `payload` to IPFS and relay its CID to `recipientAddress` over the
  * coordination channel, keyed by the commitment's on-chain order hash.
@@ -47,7 +59,7 @@ export async function shareCommitmentPayload(params: {
     senderAddress: string;
     walletClient?: WalletMessageSigner | null;
     chainId: number;
-    coordinationMessaging: CoordinationMessagingService;
+    coordinationMessaging: CommitmentPayloadRelay;
     evidenceTransport: Pick<IpfsService, "pinBlob">;
 }): Promise<void> {
     const {

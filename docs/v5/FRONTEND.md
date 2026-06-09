@@ -29,15 +29,15 @@ The `/builders/designer` tool is a DAG editor (`ProcessGraphCanvas` + `Agreement
 
 - **`core/`** — FigaroCore hooks, commitment/agreement utilities
 - **`audit/`** — Audit-bundle assembly + verification (read path for `/audit/[processId]`)
-- **`commerce/`** — Checkout / cart provider (`CommerceProvider`, `useCheckout`)
+- **`commerce/`** — Checkout / cart provider (`CommerceProvider`, `useCheckout`), the assembly commit algorithm + sub-order planner (`assemblyCheckout.ts`, `assemblySubOrderPlan.ts`)
 - **`designer/`** — Synthetic DAG session + autosave + fork (`syntheticProcess.ts`, `syntheticDesignStore.ts`, `forkAssembly.ts`, `assemblyDocumentToDraft.ts`, `deriveDesignSurface.ts`, `agreementHints.ts`)
 - **`dispute/`** — Kleros evidence, delivery attestation 4 modes
-- **`handoff/`** — ECDH key exchange, per-order encryption
+- **`handoff/`** — ECDH key exchange, per-order encryption, the coordination-messaging + handoff-persistence service implementations (`coordinationMessagingService.ts`, `handoffPersistenceService.ts`)
 - **`mechanisms/`** — Mechanism hooks (Dutch auction, courier process, DID:web, attestation coordinator, FIG token, …)
 - **`sellers/`** — Seller-profile / onboarding state helpers
-- **`seller/`** — Seller-side catalogue / seller helpers
+- **`seller/`** — Seller-side catalogue / seller helpers, the discovery-service implementation (`discoveryService.ts`)
 - **`semantic/`** — Runtime-process model derivation: `deriveProcessModelFromRuntime.ts`, `financialsProjection.ts`, `models.ts`
-- **`shared/`** — Wagmi config (`chains.ts`, `connectors.ts`, `rpc.ts`), IPFS (`ipfsService.ts`), clause specs (`clauseSpecSource.ts` + `clauses/`), seller + catalogue metadata (`sellerProfileMetadata.ts`, `sellerCatalogueMetadata.ts`, `discoveryService.ts`), slug↔label tables (`assemblyLabels.ts`)
+- **`shared/`** — Wagmi config (`chains.ts`, `connectors.ts`, `rpc.ts`), IPFS (`ipfsService.ts`), clause specs (`clauseSpecSource.ts` + `clauses/`), seller + catalogue metadata (`sellerProfileMetadata.ts`, `sellerCatalogueMetadata.ts`), slug↔label tables (`assemblyLabels.ts`). `shared/` is the generic leaf — it imports no other `lib/` layer; the one sanctioned exception is the runtime-services DI seam (`runtimeServices.ts` + `runtimeServicesContext.tsx`), which assembles feature-layer service implementations. Enforced by `scripts/lint-lib-import-direction.sh` (with the core/-imports-no-feature-layer rule).
 
 ## Designer tool surface (`frontend/`)
 

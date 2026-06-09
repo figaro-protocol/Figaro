@@ -12,6 +12,7 @@ export {
     FIG_TOKEN_ABI,
     RPGF_MINTER_ABI,
 } from "@figaro/core";
+import { CONTRACTS } from "@/lib/core/contracts";
 
 // ── GHG Disclosure — aligned to real reporting standards ──────────────────────
 //
@@ -46,7 +47,7 @@ export const DISCLOSURE_KIND = {
 
 // ── GHG Measurement — runtime grams CO2e, Category-1 ─────────────────────────
 //
-// Grams measurements live in `figaro-ghg-measurement-v1` because the
+// Grams measurements live in the runtime measurement companion clause because the
 // disclosure clause (above) is Category-2 and enforces content == sectionData
 // byte-equality, which is incompatible with freely-varying grams values.
 //
@@ -74,14 +75,16 @@ export const MEASUREMENT_KIND_LABELS = [
 // ── Addresses ────────────────────────────────────────────────────────────────
 
 export const MECHANISM_CONTRACTS = {
-    dutchAuction: (process.env.NEXT_PUBLIC_DUTCH_AUCTION || "") as `0x${string}`,
+    // Re-sourced from core's CONTRACTS where the core indexer also reads the
+    // address — ONE env read per address (core/ never imports mechanisms/).
+    dutchAuction: CONTRACTS.dutchAuction,
     ghgReporting: (
         process.env.NEXT_PUBLIC_GHG_REPORTING_MODULE ||
         ""
     ) as `0x${string}`,
-    sellerRegistry: (process.env.NEXT_PUBLIC_SELLER_REGISTRY || "") as `0x${string}`,
+    sellerRegistry: CONTRACTS.sellerRegistry,
     figToken: (process.env.NEXT_PUBLIC_FIG_TOKEN_ADDRESS || "") as `0x${string}`,
-    rpgfMinter: (process.env.NEXT_PUBLIC_RPGF_MINTER || "") as `0x${string}`,
+    rpgfMinter: CONTRACTS.rpgfMinter,
 };
 
 function resolveAddress(addr: `0x${string}`): `0x${string}` | null {

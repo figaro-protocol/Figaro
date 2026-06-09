@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
     DEFAULT_COORDINATION_MESSAGING_SERVICE,
     fetchCommitmentPayloadJsonByCid,
-} from "@/lib/shared/coordinationMessagingService";
+} from "@/lib/handoff/coordinationMessagingService";
 
 const sendHandoffKeyMock = vi.fn();
 const onWrappedKeyMock = vi.fn();

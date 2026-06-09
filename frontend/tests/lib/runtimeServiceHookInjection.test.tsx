@@ -25,7 +25,7 @@ import {
 import type { SellerCatalogue } from "@/lib/seller/types";
 import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
 import type { CatalogueService } from "@/lib/shared/catalogueService";
-import type { DiscoveryService } from "@/lib/shared/discoveryService";
+import type { DiscoveryService } from "@/lib/seller/discoveryService";
 import type { IpfsService } from "@/lib/shared/ipfsService";
 import type { RuntimeServices } from "@/lib/shared/runtimeServices";
 
@@ -77,7 +77,7 @@ vi.mock("@/lib/shared/catalogueService", () => ({
     },
 }));
 
-vi.mock("@/lib/shared/discoveryService", () => ({
+vi.mock("@/lib/seller/discoveryService", () => ({
     DEFAULT_DISCOVERY_SERVICE: {
         listFallbackRestaurants: (...args: unknown[]) => defaultListFallbackRestaurantsMock(...args),
         isRegistryConfigured: (...args: unknown[]) => defaultIsRegistryConfiguredMock(...args),
@@ -96,7 +96,7 @@ vi.mock("@/lib/shared/ipfsService", () => ({
     },
 }));
 
-vi.mock("@/lib/shared/coordinationMessagingService", () => ({
+vi.mock("@/lib/handoff/coordinationMessagingService", () => ({
     DEFAULT_COORDINATION_MESSAGING_SERVICE: {
         sendHandoffKey: (...args: unknown[]) => defaultSendHandoffKeyMock(...args),
         subscribeHandoffKey: (...args: unknown[]) => defaultSubscribeHandoffKeyMock(...args),
@@ -107,7 +107,7 @@ vi.mock("@/lib/shared/coordinationMessagingService", () => ({
     },
 }));
 
-vi.mock("@/lib/shared/handoffPersistenceService", () => ({
+vi.mock("@/lib/handoff/handoffPersistenceService", () => ({
     HANDOFF_KEY_STORAGE_KEY: "figaro-handoff-keys",
     DEFAULT_HANDOFF_PERSISTENCE_SERVICE: {
         saveHandoffKey: (...args: unknown[]) => defaultSaveHandoffKeyMock(...args),

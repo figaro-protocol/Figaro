@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     createDiscoveryService,
-} from '@/lib/shared/discoveryService';
+} from '@/lib/seller/discoveryService';
 
 const getActiveSellersMock = vi.fn();
 const fetchDocumentMock = vi.fn();
