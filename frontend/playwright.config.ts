@@ -44,7 +44,9 @@ export default defineConfig({
     },
 
     webServer: {
-        command: `PORT=${PLAYWRIGHT_PORT} npm run dev`,
+        // NEXT_DISTDIR isolates the e2e build (`.next-e2e`) from the developer's
+        // interactive :3000 build (`.next`) so neither clobbers the other's cache.
+        command: `NEXT_DISTDIR=.next-e2e PORT=${PLAYWRIGHT_PORT} npm run dev`,
         url: PLAYWRIGHT_BASE_URL,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,

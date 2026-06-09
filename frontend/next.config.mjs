@@ -8,6 +8,12 @@
 const nextConfig = {
     reactStrictMode: true,
 
+    // Build directory. Defaults to `.next`. The Playwright e2e webServer sets
+    // NEXT_DISTDIR=.next-e2e so its :3100 build is isolated from the developer's
+    // interactive :3000 server — the two share no build dir, so an e2e run can
+    // never clobber the interactive build (and vice versa).
+    distDir: process.env.NEXT_DISTDIR || '.next',
+
     // Proxy /rpc → local Anvil node so browser requests avoid CORS and
     // all wagmi/viem transport calls work via a same-origin path.
     // Disabled in production builds to prevent open RPC proxy exposure.

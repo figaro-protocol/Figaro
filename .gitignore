@@ -15,6 +15,7 @@ yarn-error.log*
 
 # Next.js
 frontend/.next/
+frontend/.next-e2e/
 frontend/out/
 frontend/build/
 frontend/playwright-report/
