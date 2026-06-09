@@ -1,10 +1,9 @@
 /**
  * Delivery coordinator event source for the evidence timeline.
  *
- * Per-role sovereign event logs (figaro-merchant-process-v1,
- * figaro-courier-process-v1) plus proximity proofs
- * (figaro-proximity-proof-v1) come from AttestationCoordinator's unified
- * Attestation event. Proximity proofs carry their proof bytes
+ * Every clause's runtime attestations — lifecycle ladders, proximity
+ * proofs, any permissionless clause — come from AttestationCoordinator's
+ * unified Attestation event. Proximity proofs carry their proof bytes
  * (band, nonce, deviceSig) in the on-chain `content` payload; the event's
  * `contentRef = keccak256(content)` is a verification digest, not an
  * off-chain pointer.
@@ -22,24 +21,11 @@ import { type PublicClient } from "viem";
 import type { CoordinatorEventSource, TimelineEvent } from "@/lib/dispute/evidenceTimeline";
 import { CONTRACTS, ATTESTATION_COORDINATOR_ABI } from "@/lib/core/contracts";
 import { describeAttestation } from "@/lib/shared/clauseSpecSource";
-import { MERCHANT_PROCESS_CLAUSE_ID } from "@/lib/mechanisms/useMerchantProcess";
-import { COURIER_PROCESS_CLAUSE_ID, PROXIMITY_CLAUSE_ID } from "@/lib/mechanisms/useCourierProcess";
 
-// Merchant + courier lifecycle labels are the clause's OWN event codes, read
-// straight from the spec (`describeAttestation`) — never a frontend label map.
-// (A hardcoded map drifted: it numbered handed-off as stage 4 and invented an
-// 8-rung courier ladder the courier clause enum never had.)
-
-// Proximity band labels stay a local map: the on-chain band stage is the proof
-// clause's enum ordinal + 1 (the validator rejects band 0 / "None"), so it is
-// NOT a direct enum lookup — see `committedBand` in deriveProcessModelFromRuntime.
-const BAND_LABELS: Record<number, string> = {
-    0: "None",
-    1: "Zone (WiFi ~30m)",
-    2: "Nearby (BLE ~10m)",
-    3: "Contact (NFC ~4cm)",
-    4: "Visual (QR ~1-3m)",
-};
+// Every attestation — whatever clause — is labeled from its OWN spec via
+// describeAttestation (clause title + the enum value at `stage`). No clause
+// names, no per-clause label maps: a permissionlessly-registered clause's
+// attestations appear on the timeline with correct labels, unchanged.
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -65,11 +51,10 @@ async function getBlockTimestamp(
 /**
  * Create a CoordinatorEventSource for per-role lifecycle attestations.
  *
- * All attestations (lifecycle, proximity, GHG) come through the unified
- * Attestation event. The per-role clauses surface as merchant and courier
- * events with role-specific labels. Proximity proofs are standard
- * attestations under the figaro-proximity-proof-v1 clause; proof bytes
- * live in the on-chain `content` payload.
+ * All attestations (lifecycle, proximity, disclosure) come through the
+ * unified Attestation event, each labeled from its own spec. Proximity
+ * proofs are standard attestations under the proximity proof clause;
+ * proof bytes live in the on-chain `content` payload.
  */
 export function createDeliveryCoordinatorSource(): CoordinatorEventSource {
     return {
@@ -100,60 +85,29 @@ export function createDeliveryCoordinatorSource(): CoordinatorEventSource {
                     contentRef: string;
                 }>;
                 const clauseId = a.clauseId;
+                if (!clauseId) continue;
                 const stage = Number(a.stage ?? 0);
                 const ts = await getBlockTimestamp(client, log.blockNumber!, blockCache);
 
-                if (clauseId === MERCHANT_PROCESS_CLAUSE_ID) {
-                    events.push({
-                        label: describeAttestation(MERCHANT_PROCESS_CLAUSE_ID, stage).eventLabel,
-                        blockNumber: log.blockNumber!,
-                        timestamp: ts,
-                        iso: new Date(ts * 1000).toISOString(),
-                        txHash: log.transactionHash!,
-                        orderHash: a.orderHash ?? "",
-                        eventName: "Attestation",
-                        details: {
-                            attester: a.attester ?? "",
-                            stage: String(stage),
-                            contentRef: a.contentRef ?? "",
-                            clause: "merchant-process",
-                        },
-                    });
-                } else if (clauseId === COURIER_PROCESS_CLAUSE_ID) {
-                    events.push({
-                        label: describeAttestation(COURIER_PROCESS_CLAUSE_ID, stage).eventLabel,
-                        blockNumber: log.blockNumber!,
-                        timestamp: ts,
-                        iso: new Date(ts * 1000).toISOString(),
-                        txHash: log.transactionHash!,
-                        orderHash: a.orderHash ?? "",
-                        eventName: "Attestation",
-                        details: {
-                            attester: a.attester ?? "",
-                            stage: String(stage),
-                            contentRef: a.contentRef ?? "",
-                            clause: "courier-process",
-                        },
-                    });
-                } else if (clauseId === PROXIMITY_CLAUSE_ID) {
-                    // ── Proximity proof attestation ──
-                    // Stage encodes the band type: 1=Zone, 2=Nearby, 3=Contact, 4=Visual
-                    events.push({
-                        label: `Proximity Proof — ${BAND_LABELS[stage] ?? `Band ${stage}`}`,
-                        blockNumber: log.blockNumber!,
-                        timestamp: ts,
-                        iso: new Date(ts * 1000).toISOString(),
-                        txHash: log.transactionHash!,
-                        orderHash: a.orderHash ?? "",
-                        eventName: "Attestation",
-                        details: {
-                            attester: a.attester ?? "",
-                            stage: String(stage),
-                            contentRef: a.contentRef ?? "",
-                            clause: "proximity",
-                        },
-                    });
-                }
+                // Label any attestation from its own spec — title + the enum value
+                // at `stage`. No clause names; unknown clauses fall back to a short
+                // hash + stage (describeAttestation handles it).
+                const { clauseTitle, eventLabel } = describeAttestation(clauseId, stage);
+                events.push({
+                    label: `${clauseTitle} — ${eventLabel}`,
+                    blockNumber: log.blockNumber!,
+                    timestamp: ts,
+                    iso: new Date(ts * 1000).toISOString(),
+                    txHash: log.transactionHash!,
+                    orderHash: a.orderHash ?? "",
+                    eventName: "Attestation",
+                    details: {
+                        attester: a.attester ?? "",
+                        stage: String(stage),
+                        contentRef: a.contentRef ?? "",
+                        clauseId,
+                    },
+                });
             }
 
             return events;

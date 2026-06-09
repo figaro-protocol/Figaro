@@ -33,6 +33,8 @@
     "block": {
         "tier": "category-1",
         "drawerArticle": "attestations",
+        "attestation": "seller",
+        "handoffStages": ["arrived-pickup", "arrived-dropoff"],
         "mechanismKinds": [
             "coordinator"
         ],

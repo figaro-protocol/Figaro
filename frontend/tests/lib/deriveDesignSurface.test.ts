@@ -1,10 +1,17 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeAll, beforeEach } from "vitest";
 import { getMechanismKindsForDesign } from "@/lib/designer/deriveDesignSurface";
 import {
     startSyntheticSession,
     createSyntheticRootOrder,
     createSyntheticSubOrder,
 } from "@/lib/designer/syntheticProcess";
+import { primeClauseSpecs } from "./primeClauseSpecs";
+
+// Mechanism kinds are read from each clause spec's `block.mechanismKinds` —
+// prime the cache with the canonical Layer-A specs.
+beforeAll(async () => {
+    await primeClauseSpecs();
+});
 
 describe("getMechanismKindsForDesign", () => {
     beforeEach(() => {

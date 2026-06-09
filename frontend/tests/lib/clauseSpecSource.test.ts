@@ -7,22 +7,22 @@ import {
     setClauseSpecFetcher,
     _resetClauseSpecCache_TESTING_ONLY,
 } from "@/lib/shared/clauseSpecSource";
+import { primeClauseSpecs } from "./primeClauseSpecs";
 
 afterEach(() => {
     _resetClauseSpecCache_TESTING_ONLY();
 });
 
-describe("clauseSpecSource — built-in specs", () => {
-    it("preloads figaro-topology-v1 and figaro-fulfilment-v2", () => {
-        const ids = listKnownClauseIds();
-        expect(ids).toContain("figaro-topology-v1");
-        expect(ids).toContain("figaro-fulfilment-v2");
+describe("clauseSpecSource — chain-only cache", () => {
+    it("starts empty — no bundled specs, nothing resolves before a load", () => {
+        expect(listKnownClauseIds()).toEqual([]);
+        expect(getClauseSpec("figaro-topology-v1")).toBeUndefined();
     });
 
-    it("getClauseSpec resolves a built-in synchronously", () => {
-        const spec = getClauseSpec("figaro-fulfilment-v2");
-        expect(spec).toBeDefined();
-        expect(spec?.clauseId).toBe("figaro-fulfilment-v2");
+    it("resolves a canonical Layer-A spec synchronously after an explicit load", async () => {
+        await primeClauseSpecs(["figaro-topology-v1"]);
+        expect(listKnownClauseIds()).toContain("figaro-topology-v1");
+        expect(getClauseSpec("figaro-topology-v1")?.clauseId).toBe("figaro-topology-v1");
     });
 
     it("returns undefined for an unknown clauseId without throwing", () => {

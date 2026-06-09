@@ -3,17 +3,19 @@
 /**
  * Role-aware process queries used by `/orders` (buyer surface) and
  * `/inbox` (seller surface). Both pages need the same shape: one row
- * per process the connected wallet initiated in a given role, plus the
- * root order's metadata (counterparty, payment, currency, status).
+ * per commitment the connected wallet holds in a given role, plus that
+ * order's metadata (counterparty, payment, currency, status).
  *
- * Diverges from `useWalletProcessIds` in two ways:
- *  1. Strict role filter (this wallet is the *root* buyer or seller, not
- *     a participant in a sub-order under someone else's process).
- *  2. Carries root-order metadata so the row can render counterparty +
- *     payment without a second indexer call.
+ * Role asymmetry, straight from the kernel's star shape:
+ *  - BUYER: the buyer is the buyer on EVERY order in its process
+ *    (buyer == rootBuyer, FigaroCore commit invariant), so buyer rows
+ *    dedupe to the ROOT commit — one row per process.
+ *  - SELLER: a seller holds only its OWN order(s); nodes are co-equal,
+ *    so a seller of a sub-order in someone else's process still sees its
+ *    order — one row per committed order, no root filter.
  *
- * Root-order detection: in FigaroCore the root commit's `processId`
- * equals its own `orderHash`. Sub-orders inherit the root's processId.
+ * Diverges from `useWalletProcessIds` by carrying order metadata so the
+ * row can render counterparty + payment without a second indexer call.
  */
 
 import { useEffect, useState } from "react";
@@ -54,10 +56,10 @@ function bigintArg(log: CommittedLog, key: string): bigint {
 }
 
 /**
- * Reads the connected wallet's processes filtered by role. For
- * `role: "buyer"` returns processes where the wallet is the rootBuyer.
- * For `role: "seller"` returns processes where the wallet is the
- * seller-of-record on the root commit.
+ * Reads the connected wallet's commitments filtered by role. For
+ * `role: "buyer"` returns one row per process where the wallet is the
+ * rootBuyer (the root commit). For `role: "seller"` returns one row per
+ * committed order the wallet sells — root or sub-order alike.
  */
 export function useWalletProcessRows(role: PartyRole): {
     rows: ProcessRow[];
@@ -86,32 +88,33 @@ export function useWalletProcessRows(role: PartyRole): {
                 const allRoleLogs = await fetcher(publicClient, chainId, address);
                 if (cancelled) return;
 
-                // Root-order filter: cumulativeValue == payment iff this is
-                // the root commit. Per FigaroCore.sol's commit() path, a
-                // root passes `expectedCumulativeValue == payment` (line 177)
-                // while every sub-order has `cumulativeValue = parent +
-                // payment > payment` (line 191). A pre-V5 version of this
-                // filter compared processId === orderHash; that was correct
-                // when orderHash was the EIP-712 digest, but V5 derives
-                // orderHash = keccak256(processId || structHash) so the
-                // two are never equal — that filter returned an empty list
-                // for every wallet.
-                const rootLogs = allRoleLogs.filter(
-                    (log) => bigintArg(log, "cumulativeValue") === bigintArg(log, "payment"),
-                );
-                if (rootLogs.length === 0) {
+                // BUYER rows dedupe to the root commit — the buyer is buyer
+                // on every order in its process (kernel star shape), so
+                // without this filter each sub-order would add a duplicate
+                // row for the same process. Root detection: cumulativeValue
+                // == payment iff this is the root commit (FigaroCore.sol:177;
+                // every sub-order accumulates parent + payment > payment).
+                // SELLER rows are per-order: a seller holds only its own
+                // order(s), and a sub-order seller in someone else's process
+                // must still see what it is fulfilling — no root filter.
+                const roleLogs = role === "buyer"
+                    ? allRoleLogs.filter(
+                        (log) => bigintArg(log, "cumulativeValue") === bigintArg(log, "payment"),
+                    )
+                    : allRoleLogs;
+                if (roleLogs.length === 0) {
                     if (!cancelled) setRows([]);
                     return;
                 }
 
-                // Resolved-state map covers each root we care about.
+                // Resolved-state map covers each order we care about.
                 const allResolved = await getAllOrderResolved(publicClient, chainId);
                 if (cancelled) return;
                 const resolvedSet = new Set(
                     allResolved.map((log) => arg(log, "orderHash")).filter(Boolean),
                 );
 
-                const built: ProcessRow[] = rootLogs.map((log) => ({
+                const built: ProcessRow[] = roleLogs.map((log) => ({
                     processId: arg(log, "processId"),
                     rootOrderHash: arg(log, "orderHash"),
                     counterparty: arg(log, role === "buyer" ? "seller" : "buyer"),

@@ -52,7 +52,7 @@ export function useCheckout(
 
     // ── Order signing + broadcast ───────────────────────────────
     const {
-        signAndBroadcast,
+        signCommitment,
         initiateAsParty,
         broadcast,
         payload,
@@ -76,7 +76,7 @@ export function useCheckout(
         },
 
         // Order flow
-        signAndPlace: signAndBroadcast,
+        signCommitment,
         initiateAsParty,
         broadcast,
         order: {

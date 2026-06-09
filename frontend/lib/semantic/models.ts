@@ -83,82 +83,31 @@ interface SubmitDisclosureInventoryCapabilityAction {
     orderHash: string;
 }
 
-/** Merchant-process event types — re-exported from the SDK clause enum to
- *  keep the capability descriptor and the on-chain validator's enum in
- *  lockstep. */
-export type MerchantProcessEventKind =
-    | "prep-started"
-    | "ready-for-pickup"
-    | "handed-off";
-
-/** Courier-process event types — re-exported from the SDK clause enum. */
-export type CourierProcessEventKind =
-    | "en-route-pickup"
-    | "arrived-pickup"
-    | "in-transit"
-    | "arrived-dropoff"
-    | "completed";
-
-/** Subset of courier-process events that require on-chain proximity proof —
- *  the two handoff edges (pickup, dropoff). */
-export type CourierProximityProofEventKind = Extract<
-    CourierProcessEventKind,
-    "arrived-pickup" | "arrived-dropoff"
->;
-
-interface SubmitMerchantProcessSignalCapabilityAction {
+/** Generic runtime attestation — the SELLER of an order advances ANY
+ *  category-1 clause's enum ladder. One descriptor for every runtime-attestable
+ *  clause; the engine names no clause. The executor builds the on-chain content
+ *  from the clause spec as `{ [ladderField]: eventCode }`. Replaces the former
+ *  per-clause merchant-process / courier-process descriptors. */
+export interface SubmitClauseAttestationCapabilityAction {
     executionType: "transaction";
-    kind: "submit-merchant-process-signal";
+    kind: "submit-clause-attestation";
     orderHash: string;
-    eventType: MerchantProcessEventKind;
+    /** Human clauseId (the readable registry id, not its keccak hash). */
+    clauseId: string;
+    /** Enum ordinal of the stage being attested (the on-chain stage). */
+    stage: number;
+    /** The enum stage CODE — content = `{ [ladderField]: eventCode }`. */
+    eventCode: string;
+    /** The spec field holding the enum (the ladder, or the proof's band). */
+    ladderField: string;
+    /** WHICH party attests — from the clause spec's `attestation` field. "seller"
+     *  for lifecycle clauses; "buyer" surfaces only for a `bilateral` clause. */
+    party: "seller" | "buyer";
+    /** True when the clause is a runtime PROOF (a companion of a committed clause,
+     *  e.g. proximity-proof) — the executor supplies the per-attestation device
+     *  witness (nonce + signature) on top of the spec fields. */
+    isProof?: boolean;
     roleOrderHash?: string;
-}
-
-interface SubmitCourierProcessSignalCapabilityAction {
-    executionType: "transaction";
-    kind: "submit-courier-process-signal";
-    orderHash: string;
-    eventType: CourierProcessEventKind;
-    roleOrderHash?: string;
-}
-
-/** Courier-process attestation paired with a proximity-proof attestation —
- *  used at the two handoff edges where on-chain proximity evidence
- *  accompanies the role-event log entry. The committed proximity band is
- *  carried on the descriptor (read from the agreement by the builder) so the
- *  generic renderer needs no per-action input; the executor mints the
- *  nonce + device-signature placeholder and assembles the proof. */
-interface SubmitCourierProcessSignalWithProofCapabilityAction {
-    executionType: "transaction";
-    kind: "submit-courier-process-signal-with-proof";
-    orderHash: string;
-    eventType: CourierProximityProofEventKind;
-    band: number;
-    roleOrderHash?: string;
-}
-
-/** Merchant-process `handed-off` paired with a proximity-proof cross-witness
- *  against whichever order carries the proximity policy (the seller's own
- *  order on a pickup/on-site handoff, or a downstream sub-order the merchant
- *  cross-witnesses). Band carried on the descriptor, as above. */
-interface SubmitMerchantProcessSignalWithProofCapabilityAction {
-    executionType: "transaction";
-    kind: "submit-merchant-process-signal-with-proof";
-    orderHash: string;
-    proximityTargetOrderHash: string;
-    eventType: Extract<MerchantProcessEventKind, "handed-off">;
-    band: number;
-}
-
-/** Buyer's symmetric proximity-proof witness at a buyer↔seller handoff (no
- *  intermediary). The buyer co-signs `figaro-proximity-proof-v1` against the
- *  root order; there is no buyer process clause per the kernel-participant
- *  principle, so this is the one runtime witness the buyer attests. */
-interface SubmitBuyerProximityProofCapabilityAction {
-    executionType: "transaction";
-    kind: "submit-buyer-proximity-proof";
-    orderHash: string;
-    band: number;
 }
 
 interface ClaimAuctionCapabilityAction {
@@ -197,11 +146,7 @@ export type CapabilityActionDescriptor =
     | WithdrawSellerDepositCapabilityAction
     | SubmitDisclosureCommitmentCapabilityAction
     | SubmitDisclosureInventoryCapabilityAction
-    | SubmitMerchantProcessSignalCapabilityAction
-    | SubmitMerchantProcessSignalWithProofCapabilityAction
-    | SubmitCourierProcessSignalCapabilityAction
-    | SubmitCourierProcessSignalWithProofCapabilityAction
-    | SubmitBuyerProximityProofCapabilityAction
+    | SubmitClauseAttestationCapabilityAction
     | ClaimAuctionCapabilityAction
     | ClaimAirdropCapabilityAction
     | ClaimVestingCapabilityAction
@@ -215,20 +160,6 @@ function isClaimAuctionCapability(
     capability: CapabilityModel,
 ): capability is CapabilityModelWithAction<ClaimAuctionCapabilityAction> {
     return capability.action.executionType === "transaction" && capability.action.kind === "claim-auction";
-}
-
-function isMerchantProcessSignalCapability(
-    capability: CapabilityModel,
-): capability is CapabilityModelWithAction<SubmitMerchantProcessSignalCapabilityAction> {
-    return capability.action.executionType === "transaction"
-        && capability.action.kind === "submit-merchant-process-signal";
-}
-
-function isCourierProcessSignalCapability(
-    capability: CapabilityModel,
-): capability is CapabilityModelWithAction<SubmitCourierProcessSignalCapabilityAction> {
-    return capability.action.executionType === "transaction"
-        && capability.action.kind === "submit-courier-process-signal";
 }
 
 function isDisclosureCommitmentCapability(
@@ -366,8 +297,8 @@ export interface ProcessModel {
     processId: string;
     rootOrderId: string;
     currency?: `0x${string}`;
-    /** The root order's committed fulfilment modality code (figaro-fulfilment-v2
-     *  `modalities[0]`), surfaced by the builder so the order page can show it
+    /** The root order's committed fulfilment modality code (the fulfilment
+     *  clause's `modalities[0]`), surfaced by the builder so the order page can show it
      *  without reading a clause section itself. Null when uncommitted. */
     rootFulfilmentModality?: string | null;
     orders: OrderNodeModel[];

@@ -2,9 +2,7 @@ import type { Hex } from "viem";
 import type {
     CapabilityActionDescriptor,
     CapabilityExecutionInput,
-    CourierProcessEventKind,
-    CourierProximityProofEventKind,
-    MerchantProcessEventKind,
+    SubmitClauseAttestationCapabilityAction,
     VestingVariant,
 } from "@/lib/semantic/models";
 
@@ -22,11 +20,10 @@ export interface TransactionCapabilityExecutors {
     withdrawSellerDeposit?: () => TransactionExecutionResult;
     submitDisclosureCommitment?: (orderHash: string) => TransactionExecutionResult;
     submitDisclosureInventory?: (orderHash: string, grams: bigint) => TransactionExecutionResult;
-    submitMerchantProcessSignal?: (orderHash: string, eventType: MerchantProcessEventKind, roleOrderHash?: string) => TransactionExecutionResult;
-    submitMerchantProcessSignalWithProof?: (orderHash: string, proximityTargetOrderHash: string, band: number) => TransactionExecutionResult;
-    submitCourierProcessSignal?: (orderHash: string, eventType: CourierProcessEventKind, roleOrderHash?: string) => TransactionExecutionResult;
-    submitCourierProcessSignalWithProof?: (orderHash: string, eventType: CourierProximityProofEventKind, band: number, roleOrderHash?: string) => TransactionExecutionResult;
-    submitBuyerProximityProof?: (orderHash: string, band: number) => TransactionExecutionResult;
+    /** Generic runtime attestation — advances any clause's enum ladder (and pairs
+     *  a proximity proof when the descriptor carries one). Replaces the per-clause
+     *  merchant/courier executors. */
+    submitClauseAttestation?: (action: SubmitClauseAttestationCapabilityAction) => TransactionExecutionResult;
     claimAuction?: (auctionId: string) => TransactionExecutionResult;
     claimAirdrop?: (amount: bigint, proof: `0x${string}`[]) => TransactionExecutionResult;
     claimVesting?: (variant: VestingVariant) => TransactionExecutionResult;
@@ -109,35 +106,11 @@ export async function executeTransactionCapabilityAction(
             )(action.orderHash, grams);
             break;
         }
-        case "submit-merchant-process-signal":
+        case "submit-clause-attestation":
             txHash = await ensureExecutor(
-                executors.submitMerchantProcessSignal,
-                "Merchant-process execution is unavailable.",
-            )(action.orderHash, action.eventType, action.roleOrderHash);
-            break;
-        case "submit-merchant-process-signal-with-proof":
-            txHash = await ensureExecutor(
-                executors.submitMerchantProcessSignalWithProof,
-                "Merchant-process handoff execution is unavailable.",
-            )(action.orderHash, action.proximityTargetOrderHash, action.band);
-            break;
-        case "submit-courier-process-signal":
-            txHash = await ensureExecutor(
-                executors.submitCourierProcessSignal,
-                "Courier-process execution is unavailable.",
-            )(action.orderHash, action.eventType, action.roleOrderHash);
-            break;
-        case "submit-courier-process-signal-with-proof":
-            txHash = await ensureExecutor(
-                executors.submitCourierProcessSignalWithProof,
-                "Courier-process proof execution is unavailable.",
-            )(action.orderHash, action.eventType, action.band, action.roleOrderHash);
-            break;
-        case "submit-buyer-proximity-proof":
-            txHash = await ensureExecutor(
-                executors.submitBuyerProximityProof,
-                "Buyer proximity-proof execution is unavailable.",
-            )(action.orderHash, action.band);
+                executors.submitClauseAttestation,
+                "Clause attestation execution is unavailable.",
+            )(action);
             break;
         case "claim-auction":
             txHash = await ensureExecutor(

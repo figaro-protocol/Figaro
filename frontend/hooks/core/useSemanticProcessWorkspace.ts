@@ -10,8 +10,9 @@ import { CONTRACTS, CORE_ABI } from "@/lib/core/contracts";
 import { OrderState, useOrderStore } from "@/lib/core/store";
 import { useFigaroActions } from "@/lib/core/useFigaroActions";
 import { isE2EMockSession } from "@/lib/shared/e2e";
-import { useMerchantProcessActions } from "@/lib/mechanisms/useMerchantProcess";
-import { useCourierProcessActions, encodeProximityProofContent, PROXIMITY_CLAUSE_ID, type ProximityProof } from "@/lib/mechanisms/useCourierProcess";
+import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
+import { encodeContentFromSpec } from "@figaro/core/clauses";
 import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
 import { useGhgDisclosureActions } from "@/lib/mechanisms/useGHGDisclosure";
 import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
@@ -22,19 +23,16 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { CapabilityActionDescriptor, CapabilityExecutionInput, CapabilityModel, OrderNodeModel } from "@/lib/semantic/models";
 import { buildResolutionCommitments } from "@/lib/core/commitmentStore";
 import { executeTransactionCapabilityAction } from "@/lib/core/executeTransactionCapability";
-import { toHex, type Hex } from "viem";
+import { keccak256, stringToHex, toHex, type Hex } from "viem";
 
-/** Structural device-signature placeholder for proximity proofs. The
- *  figaro-proximity-proof-v1 validator checks only deviceSig length ∈ [65,512];
- *  the real per-handoff witness comes from a device sensor (BLE/NFC/Wi-Fi)
- *  whose capture SDK is not built yet. (Moved out of the order page — the page
- *  names no clause; the integration seam mints the proof from the band the
- *  builder read off the agreement.) */
+/** Per-attestation device witness for runtime PROOF clauses (e.g. proximity).
+ *  The validator checks only nonce ≠ 0 and deviceSig length ∈ [65,512]; the real
+ *  per-handoff witness comes from a device sensor (BLE/NFC/Wi-Fi) whose capture
+ *  SDK is not built yet. This is the device-capture seam — a runtime VALUE
+ *  provider, not clause knowledge. */
 const PROXIMITY_DEVICE_SIG_PLACEHOLDER: Hex = `0x${"01".repeat(65)}`;
-
-function buildProximityProof(band: number): ProximityProof {
+function deviceWitness(): { nonce: Hex; deviceSig: Hex } {
     return {
-        band,
         nonce: toHex(crypto.getRandomValues(new Uint8Array(32))),
         deviceSig: PROXIMITY_DEVICE_SIG_PLACEHOLDER,
     };
@@ -76,9 +74,12 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     const [selectedParentOrderIds, setSelectedParentOrderIds] = useState<Set<string>>(new Set());
     const [subOrderParent, setSubOrderParent] = useState<{ orderIds: string[]; currency?: `0x${string}` } | null>(null);
     const processReloadKey = useOrderStore((state) => state.processReloadKey);
+    // Subscribe to the clause-spec warm: the generic capability deriver reads each
+    // clause's spec (tier, ladder, attestation) from the chain→IPFS cache, so the
+    // model must re-derive once a late-loading spec resolves. `version` bumps as
+    // specs warm; reading it here re-renders + re-derives processModel below.
+    const { version: clauseSpecsVersion } = useClauseSpecs();
     const { resolveProcess, hash, isPending, mockIsSuccess } = useFigaroActions();
-    const merchantProcessActions = useMerchantProcessActions();
-    const courierProcessActions = useCourierProcessActions();
     const attestationActions = useAttestationCoordinatorActions();
     const dutchAuctionActions = useDutchAuctionActions();
     const registerSeller = useRegisterSeller();
@@ -99,8 +100,6 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     });
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
     const isActionPending = isPending
-        || merchantProcessActions.isPending
-        || courierProcessActions.isPending
         || attestationActions.isPending
         || dutchAuctionActions.isPending
         || registerSeller.isPending
@@ -108,8 +107,6 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         || withdrawSellerDeposit.isPending
         || ghgDisclosureActions.isPending;
     const isActionConfirming = isConfirming
-        || merchantProcessActions.isConfirming
-        || courierProcessActions.isConfirming
         || attestationActions.isConfirming
         || dutchAuctionActions.isConfirming
         || registerSeller.isConfirming
@@ -118,8 +115,6 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         || ghgDisclosureActions.isConfirming;
     const isActionSuccess = isSuccess
         || mockIsSuccess
-        || merchantProcessActions.isSuccess
-        || courierProcessActions.isSuccess
         || attestationActions.isSuccess
         || dutchAuctionActions.isSuccess
         || registerSeller.isSuccess
@@ -170,6 +165,10 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         return () => { cancelled = true; };
     }, [publicClient, effectiveProcessId, processReloadKey]);
 
+    // `clauseSpecsVersion` is read so this inline derivation re-runs once a
+    // late-loading clause spec resolves (the generic deriver needs each clause's
+    // spec to surface its capability).
+    void clauseSpecsVersion;
     const processModel = effectiveSummary
         ? deriveProcessModelFromRuntime(
             effectiveSummary,
@@ -209,7 +208,13 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
 
     const waitForTransactionConfirmation = async (txHash?: `0x${string}`) => {
         if (isE2EMock || !publicClient || !txHash) return;
-        await publicClient.waitForTransactionReceipt({ hash: txHash });
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+        // A mined-but-reverted tx must surface as a failure, not flow on as
+        // success — otherwise the capability sticks in its in-flight state
+        // with no error (the publish-flow rule: receipt + status check).
+        if (receipt.status !== "success") {
+            throw new Error("Transaction reverted on-chain.");
+        }
     };
 
     const resolveActiveProcess = async (targetProcessId: string) => {
@@ -266,28 +271,25 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                 withdrawSellerDeposit: () => withdrawSellerDeposit.withdraw(),
                 submitDisclosureCommitment: ghgDisclosureActions.submitCommitmentForOrder,
                 submitDisclosureInventory: ghgDisclosureActions.submitActualForOrder,
-                submitMerchantProcessSignal: (orderHash, eventType, roleOrderHash) =>
-                    merchantProcessActions.signal({ orderHash, eventType, roleOrderHash }),
-                submitMerchantProcessSignalWithProof: (orderHash, proximityTargetOrderHash, band) =>
-                    merchantProcessActions.signalWithProof({
-                        merchantOrderHash: orderHash,
-                        proximityTargetOrderHash,
-                        eventType: "handed-off",
-                        proof: buildProximityProof(band),
-                    }),
-                submitCourierProcessSignal: (orderHash, eventType, roleOrderHash) =>
-                    courierProcessActions.signal({ orderHash, eventType, roleOrderHash }),
-                submitCourierProcessSignalWithProof: (orderHash, eventType, band, roleOrderHash) =>
-                    courierProcessActions.signalWithProof({ orderHash, eventType, proof: buildProximityProof(band), roleOrderHash }),
-                submitBuyerProximityProof: (orderHash, band) => {
-                    const proof = buildProximityProof(band);
-                    return attestationActions.submitBuyerAttestation({
-                        orderHash: orderHash as Hex,
-                        clauseId: PROXIMITY_CLAUSE_ID,
-                        stage: band,
-                        content: encodeProximityProofContent(proof),
-                        failureMessage: "Buyer proximity proof failed",
-                    });
+                // ONE generic attestation path — the clause spec drives the on-chain
+                // content (enum ladder, or a proof's band) and who attests (party,
+                // from block.attestation). Names no clause; a permissionless clause
+                // attests through here unchanged. Proof clauses get the device witness.
+                submitClauseAttestation: (action) => {
+                    const spec = getClauseSpec(action.clauseId);
+                    if (!spec) throw new Error(`Clause spec not loaded: ${action.clauseId}`);
+                    const fields: Record<string, unknown> = { [action.ladderField]: action.eventCode };
+                    if (action.isProof) Object.assign(fields, deviceWitness());
+                    const args = {
+                        orderHash: action.orderHash as Hex,
+                        clauseId: keccak256(stringToHex(action.clauseId)) as Hex,
+                        stage: action.stage,
+                        content: encodeContentFromSpec(spec, fields),
+                        failureMessage: `${action.clauseId} ${action.eventCode} attestation failed`,
+                    };
+                    return action.party === "buyer"
+                        ? attestationActions.submitBuyerAttestation(args)
+                        : attestationActions.submitSellerAttestation({ ...args, roleOrderHash: action.roleOrderHash as Hex | undefined });
                 },
                 claimAuction: dutchAuctionActions.claim,
             }, input);

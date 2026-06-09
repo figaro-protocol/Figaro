@@ -11,13 +11,20 @@
  * in production. The fix landed in
  * `lib/semantic/deriveProcessModelFromRuntime.ts:roleCapabilities`.
  */
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import {
     GHG_MEASUREMENT_CLAUSE_KEY,
     GHG_CLAUSE_KEY,
     type Agreement,
     computeAgreementHash,
 } from "@/lib/core/agreement";
+import { primeClauseSpecs } from "./primeClauseSpecs";
+
+// The disclosure capabilities derive from each clause's spec (block
+// mechanismKinds + companion links) — prime the chain-fed cache.
+beforeAll(async () => {
+    await primeClauseSpecs();
+});
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
 import { type Order, OrderState } from "@/lib/core/store";
 import { ANVIL_ACCOUNTS } from "../anvilAccounts";

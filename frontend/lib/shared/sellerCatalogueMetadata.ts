@@ -1,5 +1,5 @@
 /**
- * Shipping/handling class — feeds the figaro-geo-v2 `classOfService` field
+ * Shipping/handling class — feeds the geo clause's `classOfService` field
  * at commit time. String literals are the canonical storage shape; the
  * geo validator's uint8 encoding (1=standard, 2=express, 3=fragile,
  * 4=cold-chain) is a assemblyDoc-encoder concern, not a storage concern.
@@ -11,7 +11,9 @@ export type CatalogueClassOfService =
     | "cold-chain";
 
 /** Higher number = higher handling priority when a multi-item shipment
- *  must collapse to a single class-of-service annotation. */
+ *  must collapse to a single class-of-service annotation.
+ *  @public — pending consumer: the rewritten checkout's class-of-service
+ *  collapse (scenario migrations re-wire it). */
 export const CLASS_PRIORITY: Record<CatalogueClassOfService, number> = {
     "standard": 1,
     "express": 2,
@@ -20,8 +22,8 @@ export const CLASS_PRIORITY: Record<CatalogueClassOfService, number> = {
 };
 
 /** Single-character codes consumed by the geo-content encoder
- *  (figaro-geo-v2 `classOfService` field). */
-export const CLASS_TO_SHORT_CODE: Record<CatalogueClassOfService, "S" | "E" | "F" | "C"> = {
+ *  (the geo clause's `classOfService` field). */
+const CLASS_TO_SHORT_CODE: Record<CatalogueClassOfService, "S" | "E" | "F" | "C"> = {
     "standard": "S",
     "express": "E",
     "fragile": "F",
@@ -30,7 +32,7 @@ export const CLASS_TO_SHORT_CODE: Record<CatalogueClassOfService, "S" | "E" | "F
 
 /**
  * Normalize a `classOfService` input to the SDK encoder's short-code form.
- * The figaro-geo-v2 encoder requires single-letter codes ("S"/"E"/"F"/"C")
+ * The geo-content encoder requires single-letter codes ("S"/"E"/"F"/"C")
  * because the on-chain ABI encodes the field as `uint8`. The catalogue
  * layer (and a number of upstream surfaces) stores the long form
  * ("standard"/"express"/"fragile"/"cold-chain"); this helper accepts
@@ -130,11 +132,8 @@ export interface CatalogueItemMetadata {
      * When the buyer selects this item, these attestations become part of
      * the corresponding AgreementSection and are hashed into agreementHash.
      *
-     * Example — allergen attestation:
-     *   { "figaro-allergen-v1": { "allergenFree": ["peanuts", "gluten"] } }
-     *
-     * Example — organic certification:
-     *   { "figaro-certification-v1": { "certifier": "USDA", "type": "organic" } }
+     * Example: a third-party allergen clause keyed by its registry id with
+     * `{ "allergenFree": ["peanuts", "gluten"] }` as its attestation data.
      */
     clauseAttestations?: Record<string, Record<string, unknown>>;
 }
@@ -200,21 +199,17 @@ export interface AcceptedTokenMetadata {
  * A clause the seller declares support for. This is the seller's composability
  * surface — each entry binds the seller to a registered clause from ClauseRegistry.
  *
- * Examples:
- *   - "figaro-merchant-process-v1" → merchant attests their internal order-fulfilment events
- *   - "figaro-courier-process-v1" → courier attests their internal transport events
- *   - "figaro-ghg-iso-14064-v1" → seller reports GHG emissions per ISO 14064
- *   - "figaro-proximity-policy-v1" → seller commits a required proximity band at agreement time
- *     (paired runtime sister: "figaro-proximity-proof-v1" carrying band+nonce+sig per handoff)
- *   - "figaro-commerce-v1" → seller uses the commerce attestation clause
+ * The set is OPEN: any clause registered in ClauseRegistry — lifecycle
+ * ladders, disclosure standards, proximity policies, clauses this codebase
+ * has never seen — is declarable; what a declaration MEANS is read from the
+ * clause's own spec, never from a list here.
  *
  * This replaces V3's TemplateRegistry: instead of matching protocol-defined
  * templates, each seller composes their own capability set by declaring which
  * clauses they operate under. The buyer reads this to know what to expect.
  */
 interface SupportedClauseDeclaration {
-    /** Clause key — must match a registered clause in ClauseRegistry.
-     *  e.g. "figaro-ghg-iso-14064-v1" */
+    /** Clause key — must match a registered clause in ClauseRegistry. */
     clauseKey: string;
     /** Optional seller-specific configuration for this clause.
      *  e.g. for GHG: { methodology: "iso-14064-1", scopes: [1, 2, 3] } */

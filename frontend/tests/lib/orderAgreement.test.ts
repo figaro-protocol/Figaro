@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { getSection } from "@/lib/core/agreement";
 import {
     buildOrderAgreement,
@@ -8,10 +8,18 @@ import {
 } from "@/lib/core/orderAgreement";
 import { ANVIL_ACCOUNTS } from "../anvilAccounts";
 import { cf } from "./__fixtures__/clauseFields";
+import { primeClauseSpecs } from "./primeClauseSpecs";
 
 const BUYER = ANVIL_ACCOUNTS[0];
 const SELLER = ANVIL_ACCOUNTS[1];
 const CURRENCY = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
+
+// The agreement build reads clause specs (structural clauses, sister anchors,
+// enum vocabularies) from the chain-fed cache — prime it with the canonical
+// Layer-A specs.
+beforeAll(async () => {
+    await primeClauseSpecs();
+});
 
 describe("buildOrderAgreement", () => {
     it("builds canonical sections for a root order", () => {

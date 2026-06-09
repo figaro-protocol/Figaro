@@ -35,7 +35,7 @@ import {
 } from '@figaro/core/clauses';
 import { DEFAULT_AGREEMENT_HASH } from '@/lib/core/contracts';
 import { GHG_CLAUSE_KEY, GHG_CLAUSE_ID } from '@/lib/core/agreement';
-import { ZERO_PROCESS_ID } from '@/lib/shared/evm';
+import { ZERO_PROCESS_ID, ZERO_ADDRESS, hexEqual } from '@/lib/shared/evm';
 import { gotoAsWallet } from './devnet-multi-test';
 
 const RPC_URL = 'http://127.0.0.1:8545';
@@ -289,6 +289,7 @@ type DeploymentConfig = {
     tokenAddress?: `0x${string}`;
     attestationCoordinator?: `0x${string}`;
     clauseRegistry?: `0x${string}`;
+    clauseRegistrationHelper?: `0x${string}`;
     dutchAuction?: `0x${string}`;
     sellerRegistry?: `0x${string}`;
     assemblyRegistry?: `0x${string}`;
@@ -312,6 +313,7 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
             if (key === 'NEXT_PUBLIC_TOKEN_ADDRESS') config.tokenAddress = value;
             if (key === 'NEXT_PUBLIC_ATTESTATION_COORDINATOR') config.attestationCoordinator = value;
             if (key === 'NEXT_PUBLIC_CLAUSE_REGISTRY') config.clauseRegistry = value;
+            if (key === 'NEXT_PUBLIC_CLAUSE_REGISTRATION_HELPER') config.clauseRegistrationHelper = value;
             if (key === 'NEXT_PUBLIC_DUTCH_AUCTION') config.dutchAuction = value;
             if (key === 'NEXT_PUBLIC_SELLER_REGISTRY') config.sellerRegistry = value;
             if (key === 'NEXT_PUBLIC_ASSEMBLY_REGISTRY') config.assemblyRegistry = value;
@@ -324,6 +326,7 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
         config.tokenAddress = config.tokenAddress ?? contents.tokenAddress;
         config.attestationCoordinator = config.attestationCoordinator ?? (contents as any).attestationCoordinator;
         config.clauseRegistry = config.clauseRegistry ?? (contents as any).clauseRegistry;
+        config.clauseRegistrationHelper = config.clauseRegistrationHelper ?? (contents as any).clauseRegistrationHelper;
         config.dutchAuction = config.dutchAuction ?? (contents as any).dutchAuction;
         config.sellerRegistry = config.sellerRegistry ?? contents.sellerRegistry;
         config.assemblyRegistry = config.assemblyRegistry ?? (contents as any).assemblyRegistry;
@@ -933,6 +936,84 @@ export async function clearFigClaimsFixture(stageIndex: 0 | 1 | 2): Promise<void
     }
 }
 
+const CLAUSE_REGISTRATION_HELPER_ABI = parseAbi([
+    'function registerClauseAndValidator(string clauseId, uint64 version, bytes32 contentHash, string metadataURI, bytes32 family, address validator) external',
+]);
+
+const COORDINATOR_VALIDATOR_ABI = parseAbi([
+    'function clauseValidator(bytes32 clauseId) view returns (address)',
+    'function setValidator(bytes32 clauseId, address validator) external',
+]);
+
+/**
+ * Register a never-seen clause the way a real third party must: deploy its own
+ * `IClauseValidator` (here the constructor-parameterized `MockClauseValidator`,
+ * compiled by forge), then register Layer A + bind Layer C ATOMICALLY via
+ * `ClauseRegistrationHelper.registerClauseAndValidator` — the third-party
+ * register+bind discipline from `docs/v5/CLAUSES.md`. Registering without a
+ * validator leaves every attestation under the clauseId reverting
+ * `ValidatorNotSet`. Idempotent: returns early when the clauseId is registered.
+ */
+export async function registerNovelClause(
+    spec: { clauseId: string; categories: readonly string[] } & Record<string, unknown>,
+): Promise<void> {
+    const cfg = readLocalDeploymentConfig();
+    const registry = (process.env.NEXT_PUBLIC_CLAUSE_REGISTRY ?? cfg.clauseRegistry) as `0x${string}`;
+    const helper = (process.env.NEXT_PUBLIC_CLAUSE_REGISTRATION_HELPER
+        ?? cfg.clauseRegistrationHelper) as `0x${string}` | undefined;
+    if (!helper) throw new Error('ClauseRegistrationHelper address not configured (NEXT_PUBLIC_CLAUSE_REGISTRATION_HELPER)');
+    const coordinator = (process.env.NEXT_PUBLIC_ATTESTATION_COORDINATOR
+        ?? cfg.attestationCoordinator) as `0x${string}`;
+    const pub = localPublicClient();
+    const idHash = keccak256(stringToHex(spec.clauseId));
+    const registrar = privateKeyToAccount(BUYER_PRIVATE_KEY);
+    const wallet = createWalletClient({ account: registrar, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+
+    // The third party's own Layer-C validator, one per clauseId (binding checks
+    // the validator self-attests the clauseId it serves).
+    const deployValidator = async (): Promise<`0x${string}`> => {
+        const artifact = JSON.parse(fs.readFileSync(
+            path.resolve(__dirname, '../../../out/MockClauseValidator.sol/MockClauseValidator.json'), 'utf8',
+        )) as { abi: unknown[]; bytecode: { object: `0x${string}` } };
+        const deployHash = await wallet.deployContract({
+            abi: artifact.abi as never, bytecode: artifact.bytecode.object, args: [idHash],
+        });
+        const deployReceipt = await pub.waitForTransactionReceipt({ hash: deployHash });
+        if (!deployReceipt.contractAddress) throw new Error('MockClauseValidator deployment returned no address');
+        return deployReceipt.contractAddress;
+    };
+
+    if (await pub.readContract({ address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registered', args: [idHash] })) {
+        // Already registered (persisted devnet). Heal the half-registered state
+        // a validator-less registration leaves behind: bind a validator now —
+        // setValidator is permissionless first-write-wins, so this is a no-op
+        // when a binding already exists.
+        const bound = await pub.readContract({
+            address: coordinator, abi: COORDINATOR_VALIDATOR_ABI, functionName: 'clauseValidator', args: [idHash],
+        });
+        if (!hexEqual(bound as string, ZERO_ADDRESS)) return;
+        const validator = await deployValidator();
+        const { request } = await pub.simulateContract({
+            account: registrar.address, address: coordinator, abi: COORDINATOR_VALIDATOR_ABI,
+            functionName: 'setValidator', args: [idHash, validator],
+        });
+        await pub.waitForTransactionReceipt({ hash: await wallet.writeContract(request) });
+        return;
+    }
+
+    const { uri } = await pinJSONToIPFS(spec);
+    const contentHash = keccak256(stringToHex(JSON.stringify(spec)));
+    const family = keccak256(stringToHex(spec.categories[0]));
+    const validator = await deployValidator();
+
+    const { request } = await pub.simulateContract({
+        account: registrar.address, address: helper, abi: CLAUSE_REGISTRATION_HELPER_ABI,
+        functionName: 'registerClauseAndValidator',
+        args: [spec.clauseId, 1n, contentHash, uri, family, validator],
+    });
+    await pub.waitForTransactionReceipt({ hash: await wallet.writeContract(request) });
+}
+
 /**
  * Pin a JSON document to the local Kubo daemon and return the CID + ipfs URI.
  *
@@ -1249,6 +1330,10 @@ export async function placeLocalCommerceOrderUI(
     await addButton.click();
     await expect(page.locator('[data-testid^="cart-line-"]').first()).toBeVisible({ timeout: 10000 });
 
+    // Browse → checkout: fulfilment + courier + commit live on the checkout surface.
+    await page.getByTestId('btn-review-order').click();
+    await page.getByTestId('checkout-view').waitFor({ state: 'visible', timeout: 30000 });
+
     await expect(page.getByTestId(`option-fulfilment-${fulfilmentMode}`)).toHaveCount(1, { timeout: 20000 });
     await page.getByTestId('select-fulfilment-mode').selectOption(fulfilmentMode);
     await page.getByTestId('input-delivery-geohash').fill(geohash);
@@ -1332,42 +1417,34 @@ export async function placeBilateralOrderUI(
     await addButton.click();
     await expect(page.locator('[data-testid^="cart-line-"]').first()).toBeVisible({ timeout: 10000 });
 
-    // The buyer must pick a fulfilment option — the seller's bound assemblies
-    // surface here by their MODALITY (e.g. "Pickup", "Delivery …"), as do plain
-    // modes. Select the explicit one if given, otherwise the first real
-    // (non-"Select one") option.
+    // Browse → checkout: the seller page is browse-only; review-order navigates
+    // to /s/<seller>/checkout where fulfilment is chosen and the order commits.
+    await page.getByTestId('btn-review-order').click();
+    await page.getByTestId('checkout-view').waitFor({ state: 'visible', timeout: 30000 });
+
+    // A fulfilment selector appears ONLY when the seller binds more than one
+    // assembly (the buyer picks which offering). A single-assembly seller shows
+    // none — skip it. The options + labels come from the assemblies themselves.
     const fulfilmentSelect = page.getByTestId('select-fulfilment-mode');
-    await fulfilmentSelect.waitFor({ state: 'visible', timeout: 20000 });
-    if (opts.expectFulfilmentLabel) {
-        // The buyer can SEE the fulfilment modality they're choosing.
-        await expect(fulfilmentSelect.locator('option', { hasText: opts.expectFulfilmentLabel }))
-            .toHaveCount(1, { timeout: 20000 });
-    }
-    if (opts.fulfilmentMode) {
-        await expect(page.getByTestId(`option-fulfilment-${opts.fulfilmentMode}`)).toHaveCount(1, { timeout: 20000 });
-        await fulfilmentSelect.selectOption(opts.fulfilmentMode);
-    } else {
-        const optionValues = await fulfilmentSelect.locator('option').evaluateAll(
-            (opts2) => opts2.map((o) => (o as HTMLOptionElement).value).filter((v) => v !== ''),
-        );
-        expect(optionValues.length, 'seller offers at least one fulfilment option').toBeGreaterThan(0);
-        await fulfilmentSelect.selectOption(optionValues[0]);
-    }
-    // Delivery modes need a geohash; pickup/onsite/assembly modes do not.
-    const geohashInput = page.getByTestId('input-delivery-geohash');
-    if (opts.geohash && await geohashInput.isVisible().catch(() => false)) {
-        await geohashInput.fill(opts.geohash);
+    if (await fulfilmentSelect.isVisible().catch(() => false)) {
+        if (opts.expectFulfilmentLabel) {
+            await expect(fulfilmentSelect.locator('option', { hasText: opts.expectFulfilmentLabel }))
+                .toHaveCount(1, { timeout: 20000 });
+        }
+        if (opts.fulfilmentMode) {
+            await fulfilmentSelect.selectOption(opts.fulfilmentMode);
+        } else {
+            const optionValues = await fulfilmentSelect.locator('option').evaluateAll(
+                (opts2) => opts2.map((o) => (o as HTMLOptionElement).value).filter((v) => v !== ''),
+            );
+            if (optionValues.length > 0) await fulfilmentSelect.selectOption(optionValues[0]);
+        }
     }
 
     await page.getByTestId('btn-place-order').click();
 
-    // Pre-sign agreement preview (buyer verifies the hash matches the terms).
-    const previewModal = page.getByTestId('agreement-preview-modal');
-    await previewModal.waitFor({ state: 'visible', timeout: 45000 });
-    await page.getByTestId('preview-confirm').click();
-    await previewModal.waitFor({ state: 'hidden', timeout: 45000 });
-
-    // Relay the buyer-signed payload to the seller's inbox.
+    // No pre-sign modal at checkout — the inline agreement terms ARE the review;
+    // place-order signs directly. Relay the buyer-signed payload to the seller.
     await page.getByTestId('buyer-share-panel').waitFor({ state: 'visible', timeout: 45000 });
     await page.getByTestId('send-commitment-xmtp').click();
     await expect(page.getByTestId('commitment-xmtp-status')).toContainText(/sent over XMTP/i, { timeout: 45000 });
@@ -1383,6 +1460,17 @@ export async function placeBilateralOrderUI(
  * appears only once the seller's `commit` lands on-chain.
  */
 export async function acceptOrderInInboxUI(page: Page, sellerAddress: string): Promise<Hex> {
+    // Block watermark BEFORE the accept: the devnet persists across runs, so
+    // this seller may already have committed orders. The accept is confirmed
+    // by the commit THIS accept lands (out-of-band chain read), then asserted
+    // in the UI by that exact processId's active row — never by diffing row
+    // sets (the rows query loads async; a snapshot race makes an old row look
+    // "new" and the spec ends up driving a previous run's process).
+    const pub = localPublicClient();
+    const cfg = readLocalDeploymentConfig();
+    const coreAddress = (process.env.NEXT_PUBLIC_FIGARO_CORE ?? cfg.figaroCore) as `0x${string}`;
+    const fromBlock = (await pub.getBlockNumber()) + 1n;
+
     await gotoAsWallet(page, sellerAddress, '/inbox?e2e=devnet');
 
     const pendingCard = page.getByTestId('inbox-pending-card');
@@ -1395,11 +1483,26 @@ export async function acceptOrderInInboxUI(page: Page, sellerAddress: string): P
     await page.getByTestId('preview-confirm').click();
     await previewModal.waitFor({ state: 'hidden', timeout: 45000 });
 
-    // The active row is keyed by the committed processId.
-    const activeRow = page.locator('[data-testid^="inbox-active-row-0x"]');
-    await activeRow.first().waitFor({ state: 'visible', timeout: 90000 });
-    const testId = await activeRow.first().getAttribute('data-testid');
-    return testId!.replace('inbox-active-row-', '') as Hex;
+    // Out-of-band: the counter-sign broadcast a commit by THIS seller.
+    let processId = '' as Hex | '';
+    await expect
+        .poll(async () => {
+            const logs = await pub.getContractEvents({
+                address: coreAddress, abi: CORE_ABI, eventName: 'OrderCommitted',
+                fromBlock, toBlock: 'latest',
+            });
+            const mine = logs.find((l) => {
+                const args = l.args as { seller?: string };
+                return !!args.seller && args.seller.toLowerCase() === sellerAddress.toLowerCase();
+            });
+            processId = ((mine?.args as { processId?: Hex } | undefined)?.processId ?? '') as Hex | '';
+            return processId;
+        }, { timeout: 90000, message: 'the counter-signed commit lands on-chain' })
+        .not.toBe('');
+
+    // UI reaction: the committed process's row reaches the seller's inbox.
+    await page.getByTestId(`inbox-active-row-${processId}`).waitFor({ state: 'visible', timeout: 90000 });
+    return processId as Hex;
 }
 
 /**

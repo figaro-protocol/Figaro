@@ -37,6 +37,7 @@
     ],
     "block": {
         "tier": "category-1",
+        "attestation": "bilateral",
         "mechanismKinds": [
             "attestation"
         ],

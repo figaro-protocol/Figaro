@@ -196,4 +196,37 @@ describe("parseClauseSpec — meta-clause validation", () => {
         });
         expect(result.ok).toBe(false);
     });
+
+    // The generic runtime engine reads block.attestation to surface a clause's
+    // attestation to the right party/parties (seller, or bilateral), no names.
+    it("preserves block.attestation through the parse", () => {
+        const result = parseClauseSpec({
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            fields: [{ name: "band", type: "enum", values: ["zone-wifi"], required: true }],
+            block: { tier: "category-1", mechanismKinds: [], moduleIds: [], attestation: "bilateral" },
+        });
+        expect(result.ok).toBe(true);
+        if (result.ok) expect(result.spec.block?.attestation).toBe("bilateral");
+    });
+
+    it("rejects an invalid block.attestation", () => {
+        const result = parseClauseSpec({
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            fields: [{ name: "x", type: "string", required: true }],
+            block: { tier: "category-1", mechanismKinds: [], moduleIds: [], attestation: "buyer" },
+        });
+        expect(result.ok).toBe(false);
+    });
+
+    // The generic engine reads block.handoffStages to pair a proximity cross-witness
+    // at the physical hand-off stages of a lifecycle clause — round-trip it.
+    it("preserves block.handoffStages through the parse", () => {
+        const result = parseClauseSpec({
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            fields: [{ name: "eventType", type: "enum", values: ["a", "handed-off"], required: true }],
+            block: { tier: "category-1", mechanismKinds: [], moduleIds: [], handoffStages: ["handed-off"] },
+        });
+        expect(result.ok).toBe(true);
+        if (result.ok) expect(result.spec.block?.handoffStages).toEqual(["handed-off"]);
+    });
 });

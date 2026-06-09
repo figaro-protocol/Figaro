@@ -1,82 +1,37 @@
 "use client";
 
 /**
- * SellerDetailView — per-seller landing page rendered at `/s/[seller]`.
+ * SellerDetailView — the buyer's BROWSE surface at `/s/[seller]`.
  *
- * Replaces the prior `/i/<assembly>?seller=<addr>` UX where the buyer
- * landed in a generic assembly runtime that re-listed all sellers. This
- * page is seller-shaped: hero with branding, full menu grid, inline cart
- * with explicit "Place order" CTA, and post-commit redirect to
- * `/orders/<processId>` (Increment 2).
+ * Browse only: the seller's branding/hero, public-graph track record, and
+ * catalogue grid. The buyer selects items into the merchant-scoped cart and
+ * follows the "Review order" CTA to `/s/[seller]/checkout`, where fulfilment is
+ * chosen and the bonded order is committed. This page composes NO order and
+ * holds NO checkout state — that concern lives entirely on the checkout surface.
  *
  * Data sources:
- *  - `useRegisteredCatalogues` — IPFS / fixture catalogue discovery.
- *  - `resolveRuntimeSubjectByAddress` — display name + branding metadata.
- *  - `useCheckout` — token balance, approval, commit flow.
- *  - `useCartStore` — global cart state (shared with CartModule).
- *
- * Keeps the existing `SellerBrandingModule` wrapper so accent colour /
- * logo bleed-through still works under the same merchant-skin convention.
+ *  - `useRegisteredCatalogues` — IPFS catalogue discovery.
+ *  - `useSellerTrackRecord` — on-chain settlement/coordination history.
+ *  - `useCartStore` — global cart state (selection only; commit is checkout's).
  */
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useChainId, usePublicClient } from "wagmi";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
 import { ContentImage } from "@/components/shared/ContentImage";
 import { SellerBrandingModule, SellerLogo } from "@/components/modules/SellerBrandingModule";
-import { useCommerce, useCheckout } from "@/lib/commerce";
-import { useCartStore, type FulfillmentMode } from "@/lib/seller/cartStore";
+import { useCommerce } from "@/lib/commerce";
+import { useCartStore } from "@/lib/seller/cartStore";
 import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
-import { computeCommitmentProcessId, computeOrderHash } from "@/lib/core/commitmentStore";
-import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
-import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
-import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/core/assemblySubOrderPlan";
-import { templateParentOrderIds } from "@/lib/designer/assemblyTemplate";
 import { CONTRACTS } from "@/lib/core/contracts";
-import {
-    APPLICABLE_LAW_CLAUSE_KEY,
-    ARBITRATION_KLEROS_CLAUSE_KEY,
-    MERCHANT_PROCESS_CLAUSE_KEY,
-    GEO_CLAUSE_KEY,
-} from "@/lib/core/agreement";
-import type { ClauseFields } from "@/lib/core/encoding";
-import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
-import { sellerAuctionId, stashSellerDraft } from "@/lib/mechanisms/sellerAuction";
-import { CommitmentSharePanel } from "@/components/core/CommitmentSharePanel";
-import { SellerCataloguePicker, type SellerSelection } from "@/components/core/SellerCataloguePicker";
 import { SellerTrackRecord } from "@/components/core/SellerTrackRecord";
 import { useSellerTrackRecord } from "@/lib/mechanisms/useSellerTrackRecord";
 import { useTokenSymbol } from "@/components/sellers/TokenAddressInput";
-import { calculateBonds } from "@figaro/core";
-import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
-import { formatToken, parseToken } from "@/lib/shared/utils";
-import { isE2EMockSession, isE2EDevnetSession } from "@/lib/shared/e2e";
-import {
-    FULFILMENT_MODE_LABELS,
-    isDeliveryFulfilment,
-} from "@/lib/seller/fulfilmentRouting";
-import { useSellerBoundAssemblies } from "@/lib/mechanisms/useAssemblyRegistry";
-import { useDeviceLocation } from "@/hooks/core/useDeviceLocation";
-import { DEFAULT_COORDINATION_MESSAGING_SERVICE } from "@/lib/shared/coordinationMessagingService";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
-import { type CatalogueClassOfService, CLASS_PRIORITY, CLASS_TO_SHORT_CODE } from "@/lib/shared/sellerCatalogueMetadata";
 
-import type { CatalogueItem, SellerCatalogue } from "@/lib/seller/types";
-
-const ALL_FULFILMENT_MODES: FulfillmentMode[] = [
-    "consume-onsite",
-    "pickup",
-    "virtual",
-    "deliver:buyer-assigned",
-    "deliver:seller-assigned",
-    "deliver:dutch-auction",
-];
-
+import type { CatalogueItem } from "@/lib/seller/types";
 
 interface Props {
     sellerAddress: string;
@@ -88,9 +43,6 @@ export function SellerDetailView({ sellerAddress }: Props) {
         ? (sellerAddressLower as `0x${string}`)
         : undefined;
 
-    const router = useRouter();
-    const chainId = useChainId();
-    const publicClient = usePublicClient();
     const { catalogues: sellerCatalogues, isLoading: cataloguesLoading } = useRegisteredCatalogues();
 
     const sellerCatalogue = useMemo(
@@ -98,191 +50,33 @@ export function SellerDetailView({ sellerAddress }: Props) {
         [sellerCatalogues, sellerAddressLower],
     );
 
-    // Identity lookup is reserved for follow-on enrichment (seller
-    // attestations, did:web profiles). The runtime fixture's accent colour
-    // currently lives in the catalogue branding metadata, not the
-    // SubjectRecord — `SellerBrandingModule` reads the catalogue path
-    // already. Surface accent here only when we can read it cheaply; default
-    // to undefined so SellerBrandingModule's CSS variable wins.
-    const accentTone: string | undefined = undefined;
-
     const { address: buyer } = useCommerce();
-    // The seller's accepted-token identity declaration: pricing-token +
-    // accepted-tokens come from THEIR profile, not from project-level
-    // CONTRACTS.* env vars. The env-var fallback only kicks in for fixture /
-    // pre-clause-split catalogues that don't carry a defaultTokenAddress.
+    // The seller's accepted-token identity — pricing token comes from THEIR
+    // profile; env-var fallback only for fixture / pre-clause-split catalogues.
     const currency = (sellerCatalogue?.defaultTokenAddress
         ?? CONTRACTS.mockToken
         ?? CONTRACTS.permitToken) as `0x${string}`;
     const { data: resolvedSymbol } = useTokenSymbol(currency);
     const tokenSymbol = resolvedSymbol
-        ?? sellerCatalogue?.acceptedTokens?.find(
-            (t) => hexEqual(t.address, currency),
-        )?.symbol
+        ?? sellerCatalogue?.acceptedTokens?.find((t) => hexEqual(t.address, currency))?.symbol
         ?? "";
-    const {
-        decimals: tokenDecimals,
-        balance: tokenBalance,
-        needsAuthorization: needsApproval,
-        authorize: approve,
-        authorization: { isPending: isApprovePending, isConfirming: isApproveConfirming, isSuccess: isApproveSuccess },
-        signAndPlace,
-        initiateAsParty,
-        order: { step: commitStep, error: commitError, payload },
-        resetOrder: resetCommitment,
-    } = useCheckout(currency);
 
-    const { items, addItem, removeItem, removeLine, updateItemPrice, clearCart, getTotalPrice, getItemCount, fulfillmentMode, setFulfillmentMode, deliveryMaxPrice } = useCartStore();
-    const { createAuction } = useDutchAuctionActions();
-    const { openConnectModal } = useConnectModal();
+    const { items, addItem, removeItem, clearCart } = useCartStore();
+    const { trackRecord, isLoading: trackRecordLoading } = useSellerTrackRecord(sellerAddressLower);
 
-    const itemCount = getItemCount();
-    const totalPrice = getTotalPrice();
-    const totalPriceAmount = items.length > 0 && totalPrice ? parseToken(totalPrice, tokenDecimals) : 0n;
-    const buyerBondAmount = totalPriceAmount > 0n
-        ? calculateBonds(totalPriceAmount, totalPriceAmount).buyerBond
-        : 0n;
-
-    // Bound-assembly modalities take precedence over the catalogue's
-    // legacy fulfillmentModes field — the assembly is the authoritative
-    // source of what this commerce class supports. When the merchant has
-    // no on-chain bindings the catalogue still drives the choice set.
-    const { assemblies: boundAssemblies, modalities: boundModalities, hasOnChainBinding } =
-        useSellerBoundAssemblies(sellerAddressTyped);
-
-    const supportedModes: FulfillmentMode[] = useMemo(() => {
-        if (hasOnChainBinding && boundModalities.length > 0) {
-            return ALL_FULFILMENT_MODES.filter((m) => boundModalities.includes(m));
-        }
-        if (!sellerCatalogue?.fulfillmentModes || sellerCatalogue.fulfillmentModes.length === 0) {
-            return ALL_FULFILMENT_MODES;
-        }
-        return ALL_FULFILMENT_MODES.filter((m) => sellerCatalogue.fulfillmentModes!.includes(m));
-    }, [sellerCatalogue?.fulfillmentModes, boundModalities, hasOnChainBinding]);
-
-    // Buyer-facing delivery options = the seller's array of bound
-    // assemblies. Each bound assembly is one option; its root fulfilment
-    // method is the cart selection. A merchant with no on-chain bindings
-    // falls back to the catalogue-derived `supportedModes`.
-    const assemblyOptions = useMemo(
-        () => boundAssemblies.flatMap((a) =>
-            a.fulfilmentMethod
-                // Label by the fulfilment MODALITY the buyer is choosing
-                // ("Pickup", "Delivery …"), not the internal assembly name —
-                // the dropdown is a fulfilment selector, so the modality is the
-                // meaningful, buyer-facing choice.
-                ? [{ method: a.fulfilmentMethod as FulfillmentMode, name: FULFILMENT_MODE_LABELS[a.fulfilmentMethod] ?? a.name }]
-                : [],
-        ),
-        [boundAssemblies],
-    );
-    const fulfilmentOptions: { method: FulfillmentMode; name: string }[] = useMemo(
-        () => (assemblyOptions.length > 0
-            ? assemblyOptions
-            : supportedModes.map((m) => ({ method: m, name: FULFILMENT_MODE_LABELS[m] ?? m }))),
-        [assemblyOptions, supportedModes],
-    );
-
-    // If the cart's persisted choice isn't supported by this merchant's
-    // assembly, CLEAR it. The buyer must explicitly pick a supported mode
-    // — no silent snap-to-first-available.
-    useEffect(() => {
-        if (
-            fulfillmentMode
-            && fulfilmentOptions.length > 0
-            && !fulfilmentOptions.some((o) => o.method === fulfillmentMode)
-        ) {
-            setFulfillmentMode(undefined);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [fulfilmentOptions]);
-
-    // Cart hygiene — two cases, both clear the persisted cart on mount:
-    //   1. Cross-merchant leak: cart items belong to a different merchant
-    //      than the one being viewed (zustand persists to one global key).
-    //   2. Self-view: the connected wallet IS the merchant. Buyer == seller
-    //      is allowed by the protocol but degenerate — leftover items from
-    //      a prior testing session shouldn't auto-prepopulate the cart on
-    //      a merchant's own profile page.
+    // Cart hygiene — clear the persisted cart on mount when it leaked across
+    // merchants (zustand persists to one global key) or when the connected
+    // wallet IS this merchant (buyer == seller is allowed but degenerate, and
+    // leftover items shouldn't auto-prepopulate a merchant's own page).
     useEffect(() => {
         if (items.length === 0) return;
-        const allMatchCurrent = items.every(
-            (item) => hexEqual(item.sellerAddress, sellerAddressLower),
-        );
+        const allMatchCurrent = items.every((item) => hexEqual(item.sellerAddress, sellerAddressLower));
         const isSelfView = hexEqual(buyer, sellerAddressLower);
         if (!allMatchCurrent || isSelfView) {
             clearCart();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sellerAddressLower, buyer]);
-
-    const balance = tokenBalance ?? 0n;
-    const hasInsufficientBalance = !!buyer && tokenBalance !== undefined && balance < buyerBondAmount;
-    const isApproving = isApprovePending || isApproveConfirming;
-    const pendingCheckout = useRef(false);
-    const [checkoutError, setCheckoutError] = useState<string | null>(null);
-    // Buyer's delivery location for delivery-fulfilment checkout. The geohash
-    // is the merkle-committed location term on the courier order's
-    // figaro-geo-v2 section; precision 9 ≈ a few metres.
-    const deliveryLocation = useDeviceLocation(9);
-    // The human-readable street address — sent to the courier over the
-    // coordination channel (off-agreement; the operational delivery detail).
-    const [deliveryAddress, setDeliveryAddress] = useState("");
-    // The buyer's courier selection — chosen through SellerCataloguePicker
-    // (the merchant's partner list for seller-assigned, any address for
-    // buyer-assigned). null until a courier + delivery item are chosen.
-    const [sellerSelection, setSellerSelection] = useState<SellerSelection | null>(null);
-    // Courier addresses the merchant designated for the picked delivery
-    // assembly — the seller-assigned partner list.
-    const sellerPartnerAddresses = useMemo(() => {
-        const picked = boundAssemblies.find((a) => a.fulfilmentMethod === fulfillmentMode);
-        return picked?.counterpartyBindings
-            .find((cb) => cb.clauseId === "figaro-courier-process-v1")?.addresses ?? [];
-    }, [boundAssemblies, fulfillmentMode]);
-    // The merchant's public-graph track record — settlement + coordination
-    // history reconstructed from on-chain events.
-    const { trackRecord, isLoading: trackRecordLoading } = useSellerTrackRecord(sellerAddressLower);
-
-    // Auto-chain: when approval confirms, proceed to commit signing.
-    useEffect(() => {
-        if (pendingCheckout.current && isApproveSuccess) {
-            pendingCheckout.current = false;
-            void executeCheckout();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isApproveSuccess]);
-
-    // Post-broadcast: route to /orders/<processId>. Mirrors CartModule's
-    // redirect from Increment 2 — both surfaces converge on the per-order
-    // page after a successful commit.
-    const redirectedForCommitment = useRef<string | null>(null);
-    // Set while executeCheckout is mid-flight on a multi-order assembly —
-    // suppresses this single-commit redirect so the courier commit runs
-    // before navigation; executeCheckout owns the redirect in that path.
-    const multiOrderCheckout = useRef(false);
-    useEffect(() => {
-        if (commitStep !== "done") return;
-        if (multiOrderCheckout.current) return;
-        if (!payload?.commitment) return;
-        const fingerprint = `${payload.commitment.agreementHash}:${payload.commitment.salt}`;
-        if (redirectedForCommitment.current === fingerprint) return;
-        redirectedForCommitment.current = fingerprint;
-        try {
-            const processId = computeCommitmentProcessId(
-                payload.commitment,
-                chainId,
-                CONTRACTS.core,
-            );
-            clearCart();
-            resetCommitment();
-            router.push(`/orders/${processId}`);
-        } catch (cause) {
-            console.error("SellerDetailView: failed to compute processId", cause);
-            clearCart();
-            resetCommitment();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [commitStep, payload, chainId]);
 
     if (cataloguesLoading) {
         return (
@@ -338,430 +132,20 @@ export function SellerDetailView({ sellerAddress }: Props) {
         return cartItem?.quantity || 0;
     };
 
-    // Filter cart to items from THIS merchant only — the inline cart on this
-    // page is merchant-scoped. Items from other merchants live in the global
-    // cart but aren't shown here.
+    // The merchant-scoped cart — the basis for the "Review order" summary. The
+    // bond math, fulfilment, and commit all live on the checkout surface.
     const cartItems = items.filter((it) => it.sellerId === sellerCatalogue.id);
-    // Product-driven assembly selection — when a cart item names an assembly
-    // (CatalogueItemMetadata.assemblySlug), the product picks the process and
-    // the fulfilment-mode dropdown is bypassed.
-    const cartProductAssemblySlug = cartItems
-        .map((it) => sellerCatalogue.menu.find((m) => m.id === it.menuItemId)?.assemblySlug)
-        .find((slug): slug is string => !!slug);
-    // The pricing policy of a cart line's catalogue item — drives the
-    // buyer-set price input in the cart aside below.
-    const menuPolicyOf = (menuItemId: string) =>
-        sellerCatalogue.menu.find((m) => m.id === menuItemId)?.pricingPolicy ?? "fixed";
-    const cartTotal = cartItems.reduce(
-        // `item.price` may be empty mid-edit on a buyer-set line — treat as 0;
-        // the executeCheckout guard blocks an unpriced buyer-set commit.
-        (sum, item) => sum + parseToken(item.price || "0", tokenDecimals) * BigInt(item.quantity),
-        0n,
-    );
-    const buyerBond = cartTotal > 0n
-        ? calculateBonds(cartTotal, cartTotal).buyerBond
-        : 0n;
-
-    // Product-driven assembly: the price the buyer pays is the sum of every
-    // contributor's cut, each priced LIVE from that contributor's own
-    // catalogue (rate negotiated with this merchant), plus the lead's own
-    // orders. Built from the SAME planSubOrderSellers + resolveSubOrderPayment
-    // the checkout commits with, so the shown total equals what commits. The
-    // buyer sees what each seller actually gets — Figaro's transparency.
-    // Plain computation, not a hook: this sits after the component's
-    // loading/not-found early return, so a useMemo here would run
-    // conditionally and break the Rules of Hooks. The cost is a 4-order
-    // topological sort — negligible per render.
-    const kitBreakdown = ((): { rows: Array<{ name: string; payment: bigint }>; total: bigint } | null => {
-        if (!cartProductAssemblySlug) return null;
-        const assembly = boundAssemblies.find((a) => a.assemblyDoc.slug === cartProductAssemblySlug);
-        if (!assembly || assembly.assemblyDoc.orders.length <= 1) return null;
-        const lead = sellerCatalogue.address as `0x${string}`;
-        const nameOf = (addr: `0x${string}`) =>
-            sellerCatalogues.find((c) => hexEqual(c.address, addr))?.name ?? truncateHex(addr);
-        let plan: ReturnType<typeof planSubOrderSellers>;
-        try {
-            plan = planSubOrderSellers(assembly);
-        } catch {
-            return null;
-        }
-        const rows = [
-            { name: nameOf(lead), payment: cartTotal },
-            ...plan.map(({ node, seller }) => ({
-                name: seller ? nameOf(seller) : "(unbound)",
-                payment: seller
-                    ? resolveSubOrderPayment({ node, seller, leadAddress: lead, sellerCatalogues, tokenDecimals })
-                    : 0n,
-            })),
-        ];
-        return { rows, total: rows.reduce((s, r) => s + r.payment, 0n) };
-    })();
-
-    // Sum mass + volume across the cart (in metric — storage shape). Each
-    // line aggregates as `perItem * quantity`. Display formats to the
-    // catalogue's unitSystem at render time; the commit-time assemblyDoc
-    // sends the metric numbers directly.
+    const cartCount = cartItems.reduce((sum, it) => sum + it.quantity, 0);
+    const cartSubtotal = cartItems.reduce((sum, it) => sum + parseFloat(it.price || "0") * it.quantity, 0);
     const cartUnitSystem = sellerCatalogue.unitSystem ?? "metric";
-    const cartMassGrams = cartItems.reduce((sum, cartItem) => {
-        const menuItem = sellerCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
-        if (!menuItem?.massGrams) return sum;
-        return sum + menuItem.massGrams * cartItem.quantity;
-    }, 0);
-    const cartVolumeMl = cartItems.reduce((sum, cartItem) => {
-        const menuItem = sellerCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
-        if (!menuItem?.volumeMl) return sum;
-        return sum + menuItem.volumeMl * cartItem.quantity;
-    }, 0);
-    // Highest-priority class across the cart. Default "standard" when
-    // no item carries a class annotation.
-    const cartClassOfService: CatalogueClassOfService = cartItems.reduce<CatalogueClassOfService>(
-        (highest, cartItem) => {
-            const menuItem = sellerCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
-            const itemClass = menuItem?.classOfService;
-            if (!itemClass) return highest;
-            return CLASS_PRIORITY[itemClass] > CLASS_PRIORITY[highest] ? itemClass : highest;
-        },
-        "standard",
-    );
-
-    const executeCheckout = async () => {
-        if (!buyer) {
-            setCheckoutError("Connect your wallet to place an order.");
-            return;
-        }
-        if (cartItems.length === 0) return;
-        // Product-driven selection: a catalogue item may name the assembly it
-        // composes (e.g. a kit assembled by several sellers). When the cart
-        // carries such an item the PRODUCT picks the assembly — the buyer
-        // selects what they want, not how it's fulfilled. Falls back to the
-        // fulfilment-mode dropdown for ordinary single-/two-party assemblies.
-        const productAssemblySlug = cartItems
-            .map((it) => sellerCatalogue.menu.find((m) => m.id === it.menuItemId)?.assemblySlug)
-            .find((slug): slug is string => !!slug);
-        if (!fulfillmentMode && !productAssemblySlug) {
-            setCheckoutError("Select a fulfilment mode before placing the order.");
-            return;
-        }
-        // A buyer-set item must carry a buyer-entered price before commit.
-        const unpricedBuyerSet = cartItems.find(
-            (it) => menuPolicyOf(it.menuItemId) === "buyer-set" && !(parseFloat(it.price) > 0),
-        );
-        if (unpricedBuyerSet) {
-            setCheckoutError(`Enter your price for "${unpricedBuyerSet.name}" before placing the order.`);
-            return;
-        }
-        const sellerAddress = sellerCatalogue.address as `0x${string}`;
-        // The picked assembly drives the order. Product-driven: the cart item
-        // names the assembly by slug. Otherwise a multi-order assembly
-        // (e.g. local-commerce) is selected by fulfilment mode. The kernel sees
-        // a linear commit chain; the parent edges are off-chain topology.
-        const pickedAssembly = productAssemblySlug
-            ? boundAssemblies.find((a) => a.assemblyDoc.slug === productAssemblySlug)
-            : boundAssemblies.find((a) => a.fulfilmentMethod === fulfillmentMode);
-        const isMultiOrder = !!pickedAssembly && pickedAssembly.assemblyDoc.orders.length > 1;
-        // The template's root order carries the design-time clause choices
-        // (fulfilment / merchant-process / jurisdiction / ghg / proximity);
-        // checkout spreads them and overlays the buyer's runtime geo.
-        const pickedRoot =
-            pickedAssembly?.assemblyDoc.orders.find((o) => templateParentOrderIds(o).length === 0) ??
-            pickedAssembly?.assemblyDoc.orders[0];
-        try {
-            setCheckoutError(null);
-            const prepared = await prepareOrderCommitment({
-                buyer,
-                seller: sellerAddress,
-                currency,
-                payment: cartTotal,
-                lineItems: cartItems.map((item) => ({
-                    itemId: item.menuItemId,
-                    name: item.name,
-                    quantity: item.quantity,
-                    // `item.price` is the catalogue's display string ("0.01"
-                    // MOCK) — must be parsed to wei BEFORE the agreement
-                    // encoder, which calls `BigInt(unitPrice)` directly
-                    // (agreement.ts:420). Same parseToken pattern
-                    // the cart-total computation already uses at line 273.
-                    unitPrice: parseToken(item.price, tokenDecimals).toString(),
-                })),
-                clauseFields: {
-                    // Spread the template root's design-time clause choices —
-                    // fulfilment, merchant-process, jurisdiction, ghg, proximity
-                    // all ride along verbatim (single shape, no extraction).
-                    ...(pickedRoot?.clauses ?? {}),
-                    // Product-driven (no assembly): a delivery mode still anchors
-                    // the merchant lifecycle on the root (the merchant→courier
-                    // handoff is a merchant-process event).
-                    ...(!pickedRoot && fulfillmentMode?.startsWith("deliver:")
-                        ? { [MERCHANT_PROCESS_CLAUSE_KEY]: {} }
-                        : {}),
-                    // Runtime geo, overlaid on whatever the design carried — this
-                    // locates the exchange on the flow graph. Origin is always the
-                    // seller's home location (its profile geohash). Destination is
-                    // where the goods/value land: the buyer's device location for a
-                    // delivery, or the seller's location for an on-site / pickup
-                    // exchange (consumed/collected at the seller — be it a counter,
-                    // a factory cell, or a process on one machine). mass / volume
-                    // strings are parsed by `clauseFieldsToGeoSection`; class_ is the
-                    // SDK short code.
-                    [GEO_CLAUSE_KEY]: {
-                        origin: sellerCatalogue?.geohash ?? "",
-                        destination: fulfillmentMode?.startsWith("deliver:")
-                            ? (deliveryLocation.geohash ?? "")
-                            : (sellerCatalogue?.geohash ?? ""),
-                        ...(cartMassGrams > 0 ? { mass: `${cartMassGrams} g` } : {}),
-                        ...(cartVolumeMl > 0 ? { volume: `${cartVolumeMl} ml` } : {}),
-                        class_: CLASS_TO_SHORT_CODE[cartClassOfService],
-                    },
-                },
-            });
-            // Layer A — the buyer does not sign an invalid agreement. Validate
-            // the merkle root + every present clause's content before signing;
-            // block with an inline error if anything is off. The seller runs the
-            // same check before counter-signing (Inbox).
-            const buyerCheck = validateCommitmentAgreement(prepared.agreement, prepared.agreementHash);
-            if (!buyerCheck.ok) {
-                setCheckoutError(
-                    `This order isn't valid to sign yet: ${buyerCheck.issues
-                        .map((i) => `${i.clause} ${i.path}: ${i.message}`)
-                        .join("; ")}`,
-                );
-                return;
-            }
-            // Single-order, distinct parties → the real bilateral relay: the
-            // buyer signs, the CommitmentSharePanel (rendered below at
-            // `awaiting-counter`) relays the pinned payload to the seller's
-            // inbox, and the seller counter-signs + broadcasts. This is the
-            // mainnet path, and it now runs in devnet too — no auto-signing the
-            // counterparty over RPC. A self-commit has no counterparty and the
-            // multi-order relay is follow-on work, so both fall through to the
-            // direct-commit path below.
-            const isSelfCommit = hexEqual(buyer, sellerAddressLower);
-            if (!isMultiOrder && !isSelfCommit) {
-                await initiateAsParty(prepared.commitment, "buyer", prepared.commitmentMeta);
-                return;
-            }
-            const immediateCommit = isE2EMockSession() || isE2EDevnetSession();
-            if (!immediateCommit) {
-                // Production two-party relay for the self / multi-order cases.
-                await initiateAsParty(prepared.commitment, "buyer", prepared.commitmentMeta);
-                return;
-            }
-            if (!isMultiOrder) {
-                // Single-order self-commit — commit; the redirect effect routes
-                // to /orders/<processId>.
-                await signAndPlace(prepared.commitment, prepared.commitmentMeta, "buyer");
-                return;
-            }
-
-            // ── Multi-order assembly: commit the root, then walk the
-            //    assemblyDoc's remaining orders in topological order ──────────
-            // Generic over any topology (delivery's root→courier, the
-            // kit-assembly diamond, …). Each non-root order's seller is read
-            // from the seller's counterpartyBindings by the clause that
-            // order carries; its clauses come from the assembly assemblyDoc; its
-            // synthetic parent ids are remapped to the real on-chain order
-            // hashes as they commit; the global cumulative value accumulates
-            // in commit order. The Dutch-auction edge and SellerCataloguePicker
-            // stay as the delivery-specific INPUT path, applied to the order
-            // carrying figaro-courier-process-v1.
-            multiOrderCheckout.current = true;
-            await signAndPlace(prepared.commitment, prepared.commitmentMeta, "buyer");
-
-            const assemblyDoc = pickedAssembly!.assemblyDoc;
-            const processId = computeCommitmentProcessId(prepared.commitment, chainId, CONTRACTS.core);
-            const rootOrder = assemblyDoc.orders[0];
-            const realOrderHash = new Map<string, `0x${string}`>([
-                [rootOrder.id, computeOrderHash(prepared.commitment, chainId, CONTRACTS.core)],
-            ]);
-            let cumulativeValue = cartTotal;
-
-            // Jurisdiction is authored on the root and inherited by every
-            // sub-order's committed agreement.
-            const inheritedJurisdiction: ClauseFields = {};
-            for (const k of [ARBITRATION_KLEROS_CLAUSE_KEY, APPLICABLE_LAW_CLAUSE_KEY]) {
-                const v = (pickedRoot?.clauses ?? {})[k];
-                if (v) inheritedJurisdiction[k] = v;
-            }
-
-            // Topologically ordered non-root orders, each with its resolved
-            // seller. Shared with the cart breakdown (planSubOrderSellers) so
-            // the price the buyer sees is the price that commits.
-            for (const { node, seller: boundSeller } of planSubOrderSellers(pickedAssembly!)) {
-                const nodeClauses = Object.keys(node.clauses);
-                const parentOrderHashes = templateParentOrderIds(node)
-                    .map((pid) => realOrderHash.get(pid))
-                    .filter((h): h is `0x${string}` => !!h);
-                const isCourierEdge = nodeClauses.includes("figaro-courier-process-v1")
-                    && fulfillmentMode?.startsWith("deliver:");
-
-                // ── Dutch-auction courier edge: deferred to an auction ──
-                // It joins the process when a courier claims it; the order
-                // page commits it post-claim from the stashed draft.
-                if (isCourierEdge && fulfillmentMode === "deliver:dutch-auction") {
-                    stashSellerDraft(processId, {
-                        buyer,
-                        currency,
-                        processId,
-                        parentOrderHashes,
-                        clauseFields: {
-                            ...node.clauses,
-                            ...inheritedJurisdiction,
-                            [GEO_CLAUSE_KEY]: {
-                                origin: sellerCatalogue?.geohash ?? "",
-                                destination: deliveryLocation.geohash ?? "",
-                                ...(cartMassGrams > 0 ? { mass: `${cartMassGrams} g` } : {}),
-                                ...(cartVolumeMl > 0 ? { volume: `${cartVolumeMl} ml` } : {}),
-                                class_: CLASS_TO_SHORT_CODE[cartClassOfService],
-                            },
-                        },
-                        deliveryAddress: deliveryAddress.trim() || undefined,
-                    });
-                    const auctionTxHash = await createAuction(
-                        sellerAuctionId(processId),
-                        parseToken(deliveryMaxPrice, tokenDecimals),
-                        processId,
-                        currency,
-                    );
-                    if (publicClient && auctionTxHash) {
-                        await publicClient.waitForTransactionReceipt({ hash: auctionTxHash });
-                    }
-                    continue;
-                }
-
-                // ── Resolve this order's seller, payment, and clauses ──
-                let seller: `0x${string}`;
-                let payment: bigint;
-                let clauseFields: ClauseFields;
-                let sellerToNotify: `0x${string}` | null = null;
-
-                if (isCourierEdge) {
-                    // Delivery: the buyer chose the courier, the price, and the
-                    // destination through SellerCataloguePicker.
-                    if (!sellerSelection) {
-                        multiOrderCheckout.current = false;
-                        setCheckoutError("Choose a seller and a delivery service before placing the order.");
-                        return;
-                    }
-                    seller = sellerSelection.seller;
-                    payment = parseToken(sellerSelection.price, tokenDecimals);
-                    sellerToNotify = seller;
-                    clauseFields = {
-                        ...node.clauses,
-                        ...inheritedJurisdiction,
-                        [GEO_CLAUSE_KEY]: {
-                            origin: sellerCatalogue?.geohash ?? "",
-                            destination: deliveryLocation.geohash ?? "",
-                            ...(cartMassGrams > 0 ? { mass: `${cartMassGrams} g` } : {}),
-                            ...(cartVolumeMl > 0 ? { volume: `${cartVolumeMl} ml` } : {}),
-                            class_: CLASS_TO_SHORT_CODE[cartClassOfService],
-                        },
-                    };
-                } else {
-                    // Generic sub-order: seller resolved upstream from the
-                    // seller's counterpartyBindings (shared with the cart
-                    // breakdown); clauses read from the assembly assemblyDoc.
-                    if (!boundSeller) {
-                        multiOrderCheckout.current = false;
-                        setCheckoutError("This assembly has a sub-order with no designated counterparty — the seller must bind one.");
-                        return;
-                    }
-                    seller = boundSeller;
-                    // Contributor nodes are priced LIVE from the contributor's
-                    // own catalogue (rate negotiated with the lead); the lead's
-                    // own nodes keep the assemblyDoc figure. Returns a bigint, so
-                    // the cumulative add stays numeric.
-                    payment = resolveSubOrderPayment({
-                        node, seller, leadAddress: sellerAddress,
-                        sellerCatalogues, tokenDecimals,
-                    });
-                    clauseFields = { ...node.clauses };
-                }
-
-                cumulativeValue += payment;
-                const subPrepared = await prepareOrderCommitment({
-                    buyer,
-                    seller,
-                    currency,
-                    payment,
-                    processId,
-                    parentOrderHashes,
-                    expectedCumulativeValue: cumulativeValue,
-                    clauseFields,
-                });
-                await signAndPlace(subPrepared.commitment, subPrepared.commitmentMeta, "buyer");
-                realOrderHash.set(
-                    node.id,
-                    computeOrderHash(subPrepared.commitment, chainId, CONTRACTS.core),
-                );
-
-                // Delivery: hand the human-readable address to the courier.
-                if (sellerToNotify && deliveryAddress.trim()) {
-                    try {
-                        await DEFAULT_COORDINATION_MESSAGING_SERVICE.sendHandoffAddress({
-                            address: buyer,
-                            recipientAddress: sellerToNotify,
-                            orderId: computeOrderHash(subPrepared.commitment, chainId, CONTRACTS.core),
-                            deliveryAddress: deliveryAddress.trim(),
-                        });
-                    } catch (cause) {
-                        console.warn("Handoff address send to seller failed", cause);
-                    }
-                }
-            }
-
-            // All orders committed — navigate to the process page.
-            multiOrderCheckout.current = false;
-            clearCart();
-            resetCommitment();
-            router.push(`/orders/${processId}`);
-        } catch (cause: unknown) {
-            multiOrderCheckout.current = false;
-            const msg = extractErrorMessage(cause, "Signing failed");
-            setCheckoutError(msg);
-        }
-    };
-
-    const handlePlaceOrder = () => {
-        if (!buyer) {
-            // No wallet connected — open the RainbowKit connect modal rather
-            // than reporting an error. Once the user signs in, the page
-            // re-renders with `buyer` set and the button text shifts to
-            // "Place order"; the user can then click again to commit.
-            openConnectModal?.();
-            return;
-        }
-        if (cartItems.length === 0) return;
-        if (hasInsufficientBalance) {
-            setCheckoutError(
-                `Insufficient funds. Required: ${formatToken(buyerBond, tokenDecimals)}, available: ${formatToken(balance, tokenDecimals)}`,
-            );
-            return;
-        }
-        setCheckoutError(null);
-        if (needsApproval(buyerBond)) {
-            try {
-                pendingCheckout.current = true;
-                approve(buyerBond * 10n);
-            } catch {
-                pendingCheckout.current = false;
-                setCheckoutError("Payment authorization failed. Please try again.");
-            }
-        } else {
-            void executeCheckout();
-        }
-    };
 
     const categories = Array.from(new Set(sellerCatalogue.menu.map((item) => item.category)));
-    const placingOrder = commitStep === "signing" || commitStep === "broadcasting" || commitStep === "ready";
 
     return (
         <SellerBrandingModule sellerAddress={sellerAddressTyped}>
             <div data-testid="seller-detail-view" data-seller-address={sellerAddressLower} className="container mx-auto px-6 py-10 max-w-5xl space-y-8">
                 <div>
-                    <Link
-                        href="/discover"
-                        className="text-sm text-neutral-500 hover:text-black"
-                    >
+                    <Link href="/discover" className="text-sm text-neutral-500 hover:text-black">
                         ← Back to discover
                     </Link>
                 </div>
@@ -777,12 +161,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                         />
                         <div className="flex-1 min-w-0">
                             {sellerCatalogue.specialty && (
-                                <p
-                                    className="text-xs font-semibold text-neutral-500"
-                                    style={accentTone ? { color: accentTone } : undefined}
-                                >
-                                    {sellerCatalogue.specialty}
-                                </p>
+                                <p className="text-xs font-semibold text-neutral-500">{sellerCatalogue.specialty}</p>
                             )}
                             <h1 className="mt-1 text-4xl font-bold text-black">{sellerCatalogue.name}</h1>
                             <p className="mt-3 max-w-2xl text-base text-neutral-700">{sellerCatalogue.description}</p>
@@ -852,7 +231,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                                                 </p>
                                                             )}
                                                             <div className="flex items-center justify-between">
-                                                                <span className="font-semibold text-blue-700" style={accentTone ? { color: accentTone } : undefined}>
+                                                                <span className="font-semibold text-blue-700">
                                                                     {menuItem.price}{tokenSymbol ? ` ${tokenSymbol}` : ""}
                                                                 </span>
                                                                 {quantity === 0 ? (
@@ -861,7 +240,6 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                                                         onClick={() => handleAddItem(menuItem)}
                                                                         disabled={!menuItem.available}
                                                                         className="rounded border border-black px-3 py-1.5 text-sm font-semibold text-black hover:bg-neutral-100 disabled:opacity-40"
-                                                                        style={menuItem.available && accentTone ? { backgroundColor: accentTone, borderColor: accentTone, color: "#ffffff" } : undefined}
                                                                         data-testid={`btn-add-${menuItem.id}`}
                                                                     >
                                                                         Add
@@ -881,7 +259,6 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                                                             type="button"
                                                                             onClick={() => handleAddItem(menuItem)}
                                                                             className="w-8 h-8 rounded border border-black bg-black text-white hover:bg-neutral-800"
-                                                                            style={accentTone ? { backgroundColor: accentTone, borderColor: accentTone } : undefined}
                                                                             aria-label={`Add another ${menuItem.name}`}
                                                                         >
                                                                             +
@@ -899,7 +276,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                         ))}
                     </section>
 
-                    {/* Inline cart */}
+                    {/* Order summary — selection only; review + commit on checkout. */}
                     <aside
                         className="sticky top-6 rounded-lg border border-neutral-200 bg-white p-5 space-y-4"
                         data-testid="seller-cart"
@@ -912,271 +289,33 @@ export function SellerDetailView({ sellerAddress }: Props) {
                             </p>
                         ) : (
                             <>
-                                <ul className="space-y-3 text-sm">
+                                <ul className="space-y-2 text-sm">
                                     {cartItems.map((item) => (
                                         <li
                                             key={item.menuItemId}
-                                            className="space-y-1"
+                                            className="flex items-baseline justify-between gap-2"
                                             data-testid={`cart-line-${item.menuItemId}`}
                                         >
-                                            <div className="flex items-baseline gap-2">
-                                                <span className="flex-1 min-w-0 text-black font-medium truncate">
-                                                    {item.name}
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeLine(item.menuItemId, sellerCatalogue.id)}
-                                                    className="text-neutral-400 hover:text-red-600 text-lg leading-none px-1 shrink-0"
-                                                    aria-label={`Remove ${item.name} from cart`}
-                                                    data-testid={`cart-line-delete-${item.menuItemId}`}
-                                                >
-                                                    ×
-                                                </button>
-                                            </div>
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => removeItem(item.menuItemId, sellerCatalogue.id)}
-                                                        className="w-7 h-7 rounded border border-neutral-300 bg-white text-black text-base hover:bg-neutral-100"
-                                                        aria-label={`Remove one ${item.name}`}
-                                                        data-testid={`cart-line-decrement-${item.menuItemId}`}
-                                                    >
-                                                        −
-                                                    </button>
-                                                    <span className="w-6 text-center text-black font-semibold tabular-nums">
-                                                        {item.quantity}
-                                                    </span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => addItem({ ...item, quantity: 1 })}
-                                                        className="w-7 h-7 rounded border border-neutral-300 bg-white text-black text-base hover:bg-neutral-100"
-                                                        aria-label={`Add another ${item.name}`}
-                                                        data-testid={`cart-line-increment-${item.menuItemId}`}
-                                                    >
-                                                        +
-                                                    </button>
-                                                </div>
-                                                {menuPolicyOf(item.menuItemId) === "buyer-set" ? (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <input
-                                                            type="text"
-                                                            inputMode="decimal"
-                                                            value={item.price}
-                                                            onChange={(e) => updateItemPrice(item.menuItemId, sellerCatalogue.id, e.target.value)}
-                                                            placeholder="Your price"
-                                                            aria-label={`Your price for ${item.name}`}
-                                                            data-testid={`cart-line-buyer-price-${item.menuItemId}`}
-                                                            className="w-24 rounded border border-neutral-300 px-2 py-1 text-right text-sm tabular-nums"
-                                                        />
-                                                        <span className="text-xs text-neutral-500 shrink-0">
-                                                            {tokenSymbol ? `${tokenSymbol} ` : ""}× {item.quantity}
-                                                        </span>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-neutral-900 font-semibold tabular-nums">
-                                                        {(parseFloat(item.price) * item.quantity).toFixed(4)}{tokenSymbol ? ` ${tokenSymbol}` : ""}
-                                                    </span>
-                                                )}
-                                            </div>
+                                            <span className="flex-1 min-w-0 text-black font-medium truncate">
+                                                {item.name} <span className="text-neutral-400">× {item.quantity}</span>
+                                            </span>
+                                            <span className="text-neutral-900 tabular-nums shrink-0">
+                                                {(parseFloat(item.price || "0") * item.quantity).toFixed(4)}{tokenSymbol ? ` ${tokenSymbol}` : ""}
+                                            </span>
                                         </li>
                                     ))}
                                 </ul>
-
-                                <div className="border-t border-neutral-200 pt-3 space-y-1.5 text-sm">
-                                    {kitBreakdown ? (
-                                        // Each contributor's cut, priced live from their own
-                                        // catalogue — the buyer sees what every seller gets.
-                                        <div className="space-y-1" data-testid="cart-contributor-breakdown">
-                                            {kitBreakdown.rows.map((row, i) => (
-                                                <div key={i} className="flex justify-between">
-                                                    <span className="text-neutral-600">{row.name}</span>
-                                                    <span className="text-neutral-900 tabular-nums">
-                                                        {formatToken(row.payment, tokenDecimals)}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                            <div className="flex justify-between border-t border-neutral-200 pt-1.5 font-medium">
-                                                <span className="text-neutral-700">Total to all sellers</span>
-                                                <span className="text-neutral-900 tabular-nums" data-testid="cart-kit-total">
-                                                    {formatToken(kitBreakdown.total, tokenDecimals)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="flex justify-between">
-                                            <span className="text-neutral-600">Payment to seller</span>
-                                            <span className="text-neutral-900 tabular-nums">
-                                                {formatToken(cartTotal, tokenDecimals)}
-                                            </span>
-                                        </div>
-                                    )}
-                                    <div className="flex justify-between">
-                                        <span className="text-neutral-600">Your bond (refundable on resolve)</span>
-                                        <span className="text-neutral-900 tabular-nums">
-                                            {formatToken(cartTotal, tokenDecimals)}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between border-t border-neutral-200 pt-1.5 font-semibold">
-                                        <span className="text-black">Locked at commit</span>
-                                        <span className="text-black tabular-nums">
-                                            {formatToken(buyerBond, tokenDecimals)}
-                                        </span>
-                                    </div>
-                                    {(cartMassGrams > 0 || cartVolumeMl > 0) && (
-                                        <div
-                                            className="flex justify-between text-[11px] text-neutral-500 pt-1.5 border-t border-neutral-200"
-                                            data-testid="cart-logistics-total"
-                                        >
-                                            <span>Shipment</span>
-                                            <span className="tabular-nums">
-                                                {cartMassGrams > 0 ? formatMass(cartMassGrams, cartUnitSystem) : ""}
-                                                {cartMassGrams > 0 && cartVolumeMl > 0 ? " · " : ""}
-                                                {cartVolumeMl > 0 ? formatVolume(cartVolumeMl, cartUnitSystem) : ""}
-                                            </span>
-                                        </div>
-                                    )}
+                                <div className="flex justify-between border-t border-neutral-200 pt-3 text-sm font-semibold">
+                                    <span className="text-black">Subtotal</span>
+                                    <span className="text-black tabular-nums" data-testid="cart-subtotal">
+                                        {cartSubtotal.toFixed(4)}{tokenSymbol ? ` ${tokenSymbol}` : ""}
+                                    </span>
                                 </div>
-
-                                {cartProductAssemblySlug ? (
-                                    <div
-                                        data-testid="product-assembly-note"
-                                        className="rounded border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-600"
-                                    >
-                                        Fulfilled as the{" "}
-                                        <span className="font-mono">{cartProductAssemblySlug}</span>{" "}
-                                        assembly — multiple sellers, each settled in the same resolve.
-                                    </div>
-                                ) : (
-                                <div>
-                                    <label
-                                        htmlFor="fulfilment-mode-select"
-                                        className="text-xs font-semibold text-neutral-500 mb-1 block"
-                                    >
-                                        Fulfilment
-                                    </label>
-                                    <select
-                                        id="fulfilment-mode-select"
-                                        value={fulfillmentMode ?? ""}
-                                        onChange={(e) =>
-                                            setFulfillmentMode(
-                                                e.target.value === ""
-                                                    ? undefined
-                                                    : (e.target.value as FulfillmentMode),
-                                            )
-                                        }
-                                        className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
-                                        data-testid="select-fulfilment-mode"
-                                    >
-                                        <option value="" data-testid="option-fulfilment-unset">
-                                            Select one
-                                        </option>
-                                        {fulfilmentOptions.map((opt) => (
-                                            <option key={opt.method} value={opt.method} data-testid={`option-fulfilment-${opt.method}`}>
-                                                {opt.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                )}
-
-                                {fulfillmentMode?.startsWith("deliver:") && (
-                                    <div className="space-y-1.5" data-testid="delivery-location-block">
-                                        <label
-                                            htmlFor="delivery-geohash-input"
-                                            className="text-xs font-semibold text-neutral-500 block"
-                                        >
-                                            Delivery location
-                                        </label>
-                                        <div className="flex gap-2">
-                                            <input
-                                                id="delivery-geohash-input"
-                                                type="text"
-                                                value={deliveryLocation.geohash ?? ""}
-                                                onChange={(e) => deliveryLocation.setManualGeohash(e.target.value)}
-                                                placeholder="geohash, e.g. dr5regw3p"
-                                                data-testid="input-delivery-geohash"
-                                                className="flex-1 rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => deliveryLocation.request()}
-                                                data-testid="btn-use-my-location"
-                                                className="shrink-0 rounded border border-neutral-300 px-3 py-2 text-xs text-neutral-600 hover:border-neutral-500"
-                                            >
-                                                Use my location
-                                            </button>
-                                        </div>
-                                        <p className="text-[11px] text-neutral-500">
-                                            Where the seller delivers — committed to the order as a geohash.
-                                        </p>
-                                        <textarea
-                                            value={deliveryAddress}
-                                            onChange={(e) => setDeliveryAddress(e.target.value)}
-                                            placeholder="Street address, apt, entry notes — sent to the seller"
-                                            data-testid="input-delivery-address"
-                                            rows={2}
-                                            className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
-                                        />
-
-                                        {(fulfillmentMode === "deliver:seller-assigned"
-                                            || fulfillmentMode === "deliver:buyer-assigned") && (
-                                            <div className="pt-1">
-                                                <SellerCataloguePicker
-                                                    key={fulfillmentMode}
-                                                    mode={fulfillmentMode}
-                                                    partnerAddresses={sellerPartnerAddresses}
-                                                    sellerAddress={sellerAddressLower}
-                                                    tokenSymbol={tokenSymbol}
-                                                    onSelect={setSellerSelection}
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                <Button
-                                    onClick={handlePlaceOrder}
-                                    disabled={
-                                        isApproving
-                                        || placingOrder
-                                        || cartItems.length === 0
-                                        || (!fulfillmentMode && !cartProductAssemblySlug)
-                                        || (fulfillmentMode?.startsWith("deliver:") && !deliveryLocation.geohash)
-                                        || ((fulfillmentMode === "deliver:seller-assigned" || fulfillmentMode === "deliver:buyer-assigned") && !sellerSelection)
-                                    }
-                                    data-testid="btn-place-order"
-                                    className="w-full"
-                                >
-                                    {!buyer
-                                        ? "Connect wallet to order"
-                                        : isApproving
-                                            ? "Approving payment…"
-                                            : placingOrder
-                                                ? "Placing order…"
-                                                : (!fulfillmentMode && !cartProductAssemblySlug)
-                                                    ? "Select fulfilment to order"
-                                                    : "Place order"}
-                                </Button>
-
-                                {(checkoutError || commitError) && (
-                                    <p className="text-sm text-red-600" data-testid="seller-checkout-error">
-                                        {checkoutError ?? commitError}
-                                    </p>
-                                )}
-
-                                {/* Bilateral relay: once the buyer has signed,
-                                    surface the signed commitment so they can send
-                                    it to the seller's inbox for counter-signing. */}
-                                {commitStep === "awaiting-counter" && payload && (
-                                    <div className="pt-2" data-testid="buyer-share-panel">
-                                        <CommitmentSharePanel
-                                            payload={payload}
-                                            step={commitStep}
-                                            tokenDecimals={tokenDecimals}
-                                        />
-                                    </div>
-                                )}
+                                <Link href={`/s/${sellerAddressLower}/checkout`} className="block">
+                                    <Button className="w-full" data-testid="btn-review-order">
+                                        Review order ({cartCount})
+                                    </Button>
+                                </Link>
                             </>
                         )}
                     </aside>

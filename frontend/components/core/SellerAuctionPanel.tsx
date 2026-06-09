@@ -7,29 +7,33 @@
  * Incremental process assembly: the buyer opened a descending-price auction
  * for the seller job at checkout (no delivery order committed then). This
  * panel lets a seller claim the job at the decaying price, and — once
- * claimed — lets the claiming seller commit the delivery order into the
- * open process at the cleared price. The seller drives that commit: the
- * deferred edge commits when it resolves, by the party that resolved it.
+ * claimed — lets the claiming seller sign the delivery order into the open
+ * process at the cleared price and relay it to the buyer, who counter-signs
+ * it in their inbox and broadcasts the commit (the bilateral relay — the
+ * same share path the checkout uses).
  *
  * Renders null for any process with no seller auction — so it is inert on
  * seller-assigned / consume-onsite / pickup processes.
  *
  * Device-local draft: the delivery order's build parameters were stashed at
- * checkout (`sellerAuction.ts`). Cross-device transport (IPFS pin + XMTP
- * CID) is the documented follow-on for a production relay.
+ * checkout (`sellerAuction.ts`). Cross-device transport of the DRAFT is the
+ * documented follow-on; the signed payload itself rides the share path
+ * (IPFS pin + coordination channel).
  */
 
 import { useState } from "react";
 import { formatUnits, parseAbi, type Hex } from "viem";
-import { useAccount, useChainId, usePublicClient, useReadContract } from "wagmi";
+import { useAccount, useChainId, useReadContract, useWalletClient } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { useDutchAuction } from "@/lib/mechanisms/useDutchAuction";
 import { useCommitmentFlow } from "@/lib/core/useCommitmentFlow";
 import { sellerAuctionId, loadSellerDraft } from "@/lib/mechanisms/sellerAuction";
 import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
+import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
+import { shareCommitmentPayload } from "@/lib/core/commitmentShare";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { computeOrderHash } from "@/lib/core/commitmentStore";
-import { DEFAULT_COORDINATION_MESSAGING_SERVICE } from "@/lib/shared/coordinationMessagingService";
+import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { hexEqual, ZERO_ADDRESS } from "@/lib/shared/evm";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -48,8 +52,9 @@ interface Props {
 export function SellerAuctionPanel({ processId }: Props) {
     const pid = processId as Hex;
     const { address } = useAccount();
-    const publicClient = usePublicClient();
+    const { data: walletClient } = useWalletClient();
     const chainId = useChainId();
+    const { coordinationMessaging, evidenceTransport } = useRuntimeServices();
 
     const { data: processData, refetch: refetchProcess } = useReadContract({
         address: CONTRACTS.core,
@@ -66,11 +71,12 @@ export function SellerAuctionPanel({ processId }: Props) {
     // The seller auction is keyed deterministically off the processId, so
     // this panel finds it without any state passed from checkout.
     const auction = useDutchAuction({ id: sellerAuctionId(pid), currency, payment: 0n });
-    const { signAndBroadcast } = useCommitmentFlow();
+    const { signCommitment } = useCommitmentFlow();
     const { decimals } = useTokenDecimals(currency);
 
     const [error, setError] = useState("");
-    const [committing, setCommitting] = useState(false);
+    const [relaying, setRelaying] = useState(false);
+    const [sentToBuyer, setSentToBuyer] = useState(false);
 
     // No auction for this process — the panel is inert (seller-assigned,
     // consume-onsite, pickup, direct-sale all land here).
@@ -97,7 +103,7 @@ export function SellerAuctionPanel({ processId }: Props) {
             return;
         }
         setError("");
-        setCommitting(true);
+        setRelaying(true);
         try {
             // Read the process's cumulative value fresh: the delivery order's
             // expectedCumulativeValue must equal cumulativeValue + payment
@@ -116,28 +122,45 @@ export function SellerAuctionPanel({ processId }: Props) {
                 expectedCumulativeValue: cumulative + sellerPayment,
                 clauseFields: draft.clauseFields,
             });
-            // The seller is the seller of this order. In devnet the buyer's
-            // counter-signature is auto-collected from Anvil; in production
-            // this is where the IPFS/XMTP relay carries the partial
-            // commitment to the buyer for a counter-signature.
-            const txHash = await signAndBroadcast(prepared.commitment, prepared.commitmentMeta, "seller");
-            // Wait for the commit to mine before refetching — a stale read
-            // would leave the panel showing the commit button with no
-            // automatic recovery.
-            if (publicClient && txHash) {
-                await publicClient.waitForTransactionReceipt({ hash: txHash });
+            // Layer A — the seller does not sign an invalid order (the same
+            // gate the checkout runs at the buyer's sign point).
+            const check = validateCommitmentAgreement(prepared.agreement, prepared.agreementHash);
+            if (!check.ok) {
+                setError(
+                    `The delivery order isn't valid to sign yet: ${check.issues
+                        .map((i) => `${i.clause} ${i.path}: ${i.message}`)
+                        .join("; ")}`,
+                );
+                return;
             }
-            await refetchProcess();
+            // Bilateral relay: the seller signs its side and shares the
+            // partial commitment to the buyer, who counter-signs in their
+            // inbox and broadcasts — the same share path as the checkout.
+            const sellerSig = await signCommitment(prepared.commitment);
+            await shareCommitmentPayload({
+                payload: {
+                    commitment: prepared.commitment,
+                    sellerSig,
+                    agreement: prepared.commitmentMeta.agreement,
+                    agreementUri: prepared.commitmentMeta.agreementUri,
+                },
+                recipientAddress: draft.buyer,
+                senderAddress: address,
+                walletClient,
+                chainId,
+                coordinationMessaging,
+                evidenceTransport,
+            });
+            setSentToBuyer(true);
 
-            // Send the buyer's physical delivery address to the seller over
-            // the coordination channel — best-effort: the delivery order has
-            // already committed, so a channel failure must not surface as a
-            // commit error. Mirrors executeCheckout's seller-/buyer-assigned
-            // handoff-address send; in the dutch-auction flow the buyer
-            // stashed the address in the seller draft at checkout.
+            // Stash the buyer's physical delivery address in the seller's own
+            // channel store — best-effort: the relay has already gone out, so
+            // a channel failure must not surface as a relay error. In the
+            // dutch-auction flow the buyer stashed the address in the seller
+            // draft at checkout.
             if (draft.deliveryAddress) {
                 try {
-                    await DEFAULT_COORDINATION_MESSAGING_SERVICE.sendHandoffAddress({
+                    await coordinationMessaging.sendHandoffAddress({
                         address,
                         recipientAddress: address,
                         orderId: computeOrderHash(prepared.commitment, chainId, CONTRACTS.core),
@@ -148,9 +171,9 @@ export function SellerAuctionPanel({ processId }: Props) {
                 }
             }
         } catch (cause) {
-            setError(extractErrorMessage(cause, "Delivery-order commit failed"));
+            setError(extractErrorMessage(cause, "Delivery-order relay failed"));
         } finally {
-            setCommitting(false);
+            setRelaying(false);
         }
     };
 
@@ -204,15 +227,21 @@ export function SellerAuctionPanel({ processId }: Props) {
                             Delivery order committed — it is now a bonded order in this process.
                         </p>
                     ) : auction.isMyJob ? (
-                        <button
-                            type="button"
-                            onClick={() => void handleCommit()}
-                            disabled={committing}
-                            data-testid="btn-commit-seller-order"
-                            className="w-full text-sm px-4 py-2 rounded border border-sky-700 bg-sky-700 hover:bg-sky-800 text-white font-semibold disabled:opacity-50"
-                        >
-                            {committing ? "Committing…" : "Commit delivery order"}
-                        </button>
+                        sentToBuyer ? (
+                            <p className="text-xs text-sky-700" data-testid="seller-auction-sent">
+                                Delivery order signed and sent to the buyer to counter-sign.
+                            </p>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => void handleCommit()}
+                                disabled={relaying}
+                                data-testid="btn-commit-seller-order"
+                                className="w-full text-sm px-4 py-2 rounded border border-sky-700 bg-sky-700 hover:bg-sky-800 text-white font-semibold disabled:opacity-50"
+                            >
+                                {relaying ? "Signing…" : "Sign & send delivery order"}
+                            </button>
+                        )
                     ) : (
                         <p className="text-xs text-sky-700">
                             Awaiting the seller&apos;s delivery-order commit.

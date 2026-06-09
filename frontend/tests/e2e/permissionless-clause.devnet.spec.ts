@@ -34,6 +34,7 @@ import {
     placeBilateralOrderUI,
     acceptOrderInInboxUI,
     readLocalDeploymentConfig,
+    registerNovelClause,
 } from './devnet-helpers';
 
 const RPC_URL = 'http://127.0.0.1:8545';
@@ -45,12 +46,6 @@ const LOCAL_ANVIL = defineChain({
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 const REGISTRAR_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as Hex; // anvil[0]
 const BUYER_ADDR = privateKeyToAccount(REGISTRAR_KEY).address;
-
-const CLAUSE_REGISTRY_ABI = [
-    { type: 'function', name: 'registered', stateMutability: 'view', inputs: [{ type: 'bytes32' }], outputs: [{ type: 'bool' }] },
-    { type: 'function', name: 'registerClause', stateMutability: 'nonpayable',
-      inputs: [{ name: 'clauseId', type: 'string' }, { name: 'version', type: 'uint64' }, { name: 'contentHash', type: 'bytes32' }, { name: 'metadataURI', type: 'string' }, { name: 'family', type: 'bytes32' }], outputs: [] },
-] as const;
 
 const SELLER_REGISTRY_ABI = [
     { type: 'function', name: 'register', stateMutability: 'payable', inputs: [{ name: 'metadataURI', type: 'string' }], outputs: [] },
@@ -90,24 +85,9 @@ const NOVEL_SPEC = {
     block: { tier: 'category-1', drawerArticle: 'attestations', mechanismKinds: ['coordinator'], moduleIds: [] },
 };
 
-async function registerNovelClause(): Promise<void> {
-    const cfg = readLocalDeploymentConfig();
-    const registry = (process.env.NEXT_PUBLIC_CLAUSE_REGISTRY ?? cfg.clauseRegistry) as Hex;
-    const pub = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const idHash = keccak256(toHex(NOVEL_CLAUSE_ID));
-    if (await pub.readContract({ address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registered', args: [idHash] })) return;
-
-    const canonical = JSON.stringify(NOVEL_SPEC);
-    const { uri } = await pinJSONToIPFS(NOVEL_SPEC);
-    const contentHash = keccak256(toHex(canonical));
-    const family = keccak256(toHex(NOVEL_SPEC.categories[0]));
-    const wallet = createWalletClient({ account: privateKeyToAccount(REGISTRAR_KEY), chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const { request } = await pub.simulateContract({
-        account: privateKeyToAccount(REGISTRAR_KEY).address, address: registry, abi: CLAUSE_REGISTRY_ABI,
-        functionName: 'registerClause', args: [NOVEL_CLAUSE_ID, 1n, contentHash, uri, family],
-    });
-    await pub.waitForTransactionReceipt({ hash: await wallet.writeContract(request) });
-}
+// The novel clause registers + binds through the shared third-party path
+// (devnet-helpers `registerNovelClause`): its own MockClauseValidator deployed
+// and bound atomically via ClauseRegistrationHelper.
 
 // Register a seller (anvil[14]) bound to the novel assembly with a catalogue item,
 // the same profile shape populate-test-data pins. Setup DATA, not a tested surface.
@@ -147,21 +127,17 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green', () => {
     test.setTimeout(240_000);
 
     test('a brand-new clause flows drawer → encode → commit → runtime with zero code changes', async ({ page }) => {
-        // THE GATE. Expected-RED today: the novel clause flows drawer → encode →
-        // commit, but the runtime capability engine (deriveProcessModelFromRuntime)
-        // hardcodes clause knowledge, so it surfaces NO capability to attest it.
-        // The de-hardcoding migration (project_backlog "De-hardcode ALL clause
-        // knowledge") drives this to green. When it PASSES, Playwright reports an
-        // unexpected pass — REMOVE this test.fail() then: the clause pipeline is
-        // permissionless and "green" finally means what it should.
-        test.fail();
+        // THE GATE — and it is GREEN. A brand-new clause registered at test time
+        // flows drawer → encode → commit → runtime with ZERO code changes: the
+        // generic attestation engine surfaces its attestation capability from the
+        // spec alone. If this ever regresses, the pipeline has re-learned a clause.
         page.on('dialog', (d) => { d.accept().catch(() => {}); });
         const cfg = readLocalDeploymentConfig();
         const coreAddress = (process.env.NEXT_PUBLIC_FIGARO_CORE ?? cfg.figaroCore) as Hex;
         const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? cfg.tokenAddress) as Hex;
 
-        // ── Setup: mint the novel clause on-chain (pin + register) ──────────
-        await registerNovelClause();
+        // ── Setup: mint the novel clause on-chain (pin + register + bind) ───
+        await registerNovelClause(NOVEL_SPEC);
 
         // Author + publish ONCE (persisted, like a real builder). On a re-run the
         // slug is already anchored, so skip straight to the runtime path.

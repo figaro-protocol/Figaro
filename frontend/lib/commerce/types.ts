@@ -53,11 +53,12 @@ export interface CheckoutHandle {
     authorize: (amount: bigint) => void;
     authorization: AuthorizationState;
 
-    // Order placement — two modes:
-    //   signAndPlace: signs both sides + submits (devnet / same-wallet)
-    //   initiateAsParty: signs one side, returns payload for counter-signing
-    signAndPlace: (commitment: Commitment, meta?: CommitmentPayloadMeta, initiatorRole?: PartyRole) => Promise<`0x${string}` | undefined>;
-    initiateAsParty: (commitment: Commitment, role: PartyRole, meta?: CommitmentPayloadMeta) => Promise<CommitmentPayload>;
+    // Order placement — the bilateral relay:
+    //   initiateAsParty: signs one side, sets the shareable payload (root order)
+    //   signCommitment:  signs one side, returns the sig (sub-orders, relayed
+    //                    without touching the share-panel payload state)
+    initiateAsParty: (commitment: Commitment, role: PartyRole, meta?: CommitmentPayloadMeta, opts?: { skipPreview?: boolean }) => Promise<CommitmentPayload>;
+    signCommitment: (commitment: Commitment, opts?: { skipPreview?: boolean }) => Promise<`0x${string}`>;
     broadcast: (payload: CommitmentPayload) => Promise<`0x${string}` | undefined>;
 
     // Order status

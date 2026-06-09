@@ -75,7 +75,6 @@ describe("useCommitmentFlow", () => {
         sessionStorage.clear();
         mocked.currentAddress = "0x00000000000000000000000000000000000000b0" as `0x${string}`;
         window.history.pushState({}, "", "/");
-        Reflect.deleteProperty(window as Window & { ethereum?: unknown }, "ethereum");
     });
 
     it("initiates a seller proposal with only the seller signature attached", async () => {
@@ -96,37 +95,4 @@ describe("useCommitmentFlow", () => {
         expect(result.current.step).toBe("awaiting-counter");
     });
 
-    it("auto-collects the counterparty signature only in explicit devnet mode", async () => {
-        mocked.signTypedDataAsync.mockResolvedValue("0xsellersig");
-        mocked.commit.mockResolvedValue("0xcommittx");
-        window.history.pushState({}, "", "/?e2e=devnet");
-
-        const request = vi.fn(async ({ method }: { method: string }) => {
-            if (method === "eth_signTypedData_v4") {
-                return "0xbuyersig";
-            }
-            if (method === "eth_sendTransaction") {
-                return "0xapprovaltx";
-            }
-            throw new Error(`Unexpected method: ${method}`);
-        });
-        Object.defineProperty(window, "ethereum", {
-            configurable: true,
-            value: { request },
-        });
-
-        const { result } = renderHook(() => useCommitmentFlow());
-        const commitment = makeCommitment();
-
-        let txHash;
-        await act(async () => {
-            txHash = await result.current.signAndBroadcast(commitment, undefined, "seller");
-        });
-
-        expect(txHash).toBe("0xcommittx");
-        expect(mocked.commit).toHaveBeenCalledWith(commitment, "0xbuyersig", "0xsellersig");
-        expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "eth_signTypedData_v4" }));
-        expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "eth_sendTransaction" }));
-        expect(result.current.step).toBe("done");
-    });
 });

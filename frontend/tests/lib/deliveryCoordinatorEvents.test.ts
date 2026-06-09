@@ -1,6 +1,17 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeAll, beforeEach } from "vitest";
 import { keccak256, stringToHex } from "viem";
 import { createDeliveryCoordinatorSource } from "@/lib/mechanisms/deliveryCoordinatorEvents";
+import { primeClauseSpecs } from "./primeClauseSpecs";
+
+// The source labels every attestation from its clause's OWN spec — prime the
+// cache with the canonical Layer-A specs the chain would point at.
+beforeAll(async () => {
+    await primeClauseSpecs([
+        "figaro-merchant-process-v1",
+        "figaro-courier-process-v1",
+        "figaro-proximity-proof-v1",
+    ]);
+});
 
 // ---------------------------------------------------------------------------
 // Mock CONTRACTS.attestationCoordinator
@@ -103,12 +114,12 @@ describe("createDeliveryCoordinatorSource", () => {
         const events = await source.fetchEvents(client as any, "0xabc" as `0x${string}`);
 
         expect(events).toHaveLength(1);
-        expect(events[0].label).toBe("handed-off");
+        expect(events[0].label).toBe("Merchant internal process events — handed-off");
         expect(events[0].eventName).toBe("Attestation");
         expect(events[0].orderHash).toBe("0xorder1");
         expect(events[0].timestamp).toBe(1700000100);
         expect(events[0].details.attester).toBe("0xRestaurant");
-        expect(events[0].details.clause).toBe("merchant-process");
+        expect(events[0].details.clauseId).toBe(MERCHANT_CLAUSE_ID);
     });
 
     it("maps proximity clause attestation with band stage", async () => {
@@ -120,7 +131,7 @@ describe("createDeliveryCoordinatorSource", () => {
                     orderHash: "0xorder2",
                     clauseId: PROXIMITY_CLAUSE_ID,
                     attester: "0xDriver",
-                    stage: 2, // Nearby (BLE ~10m)
+                    stage: 1, // band ordinal: nearby-ble
                     contentRef: "0xproofhash",
                 }),
             ],
@@ -129,10 +140,9 @@ describe("createDeliveryCoordinatorSource", () => {
         const events = await source.fetchEvents(client as any, "0xabc" as `0x${string}`);
 
         expect(events).toHaveLength(1);
-        expect(events[0].label).toContain("Proximity Proof");
-        expect(events[0].label).toContain("Nearby (BLE ~10m)");
+        expect(events[0].label).toBe("Proximity proof (runtime) — nearby-ble");
         expect(events[0].eventName).toBe("Attestation");
-        expect(events[0].details.clause).toBe("proximity");
+        expect(events[0].details.clauseId).toBe(PROXIMITY_CLAUSE_ID);
     });
 
     it("maps proximity clause attestation with NFC band", async () => {
@@ -144,7 +154,7 @@ describe("createDeliveryCoordinatorSource", () => {
                     orderHash: "0xorder3",
                     clauseId: PROXIMITY_CLAUSE_ID,
                     attester: "0xDriver",
-                    stage: 3, // Contact (NFC ~4cm)
+                    stage: 2, // band ordinal: contact-nfc
                     contentRef: "0xproofhash",
                 }),
             ],
@@ -153,7 +163,7 @@ describe("createDeliveryCoordinatorSource", () => {
         const events = await source.fetchEvents(client as any, "0xabc" as `0x${string}`);
 
         expect(events).toHaveLength(1);
-        expect(events[0].label).toContain("Contact (NFC ~4cm)");
+        expect(events[0].label).toBe("Proximity proof (runtime) — contact-nfc");
     });
 
     it("maps courier-process Attestation for completed (stage 4, the clause enum)", async () => {
@@ -174,20 +184,23 @@ describe("createDeliveryCoordinatorSource", () => {
         const events = await source.fetchEvents(client as any, "0xabc" as `0x${string}`);
 
         expect(events).toHaveLength(1);
-        expect(events[0].label).toBe("completed");
+        expect(events[0].label).toBe("Courier internal process events — completed");
         expect(events[0].eventName).toBe("Attestation");
-        expect(events[0].details.clause).toBe("courier-process");
+        expect(events[0].details.clauseId).toBe(COURIER_CLAUSE_ID);
     });
 
-    it("filters out events with non-process and non-proximity clauseId", async () => {
-        const otherClause = keccak256(stringToHex("figaro-ghg-iso-14064-v1"));
+    it("surfaces attestations from a clause it has never seen (permissionless fallback label)", async () => {
+        // A third-party clause whose spec is NOT in the cache: the attestation
+        // still appears on the timeline, labeled by short hash + stage. No
+        // clause is filtered out — the timeline is clause-agnostic.
+        const novelClause = keccak256(stringToHex("acme-cold-chain-v1"));
         const source = createDeliveryCoordinatorSource();
         const client = createMockClient({
             Attestation: [
                 makeMockLog("Attestation", {
                     processId: "0xabc",
                     orderHash: "0xorder5",
-                    clauseId: otherClause,
+                    clauseId: novelClause,
                     attester: "0xSomeone",
                     stage: 0,
                     contentRef: "0x",
@@ -196,7 +209,9 @@ describe("createDeliveryCoordinatorSource", () => {
         });
 
         const events = await source.fetchEvents(client as any, "0xabc" as `0x${string}`);
-        expect(events).toHaveLength(0);
+        expect(events).toHaveLength(1);
+        expect(events[0].label).toBe(`${novelClause.slice(0, 10)}… — stage 0`);
+        expect(events[0].details.clauseId).toBe(novelClause);
     });
 
     it("collects events from merchant, courier, and proximity clauses", async () => {
@@ -237,9 +252,9 @@ describe("createDeliveryCoordinatorSource", () => {
 
         expect(events).toHaveLength(3);
         expect(events.map((e) => e.label)).toEqual([
-            "handed-off",   // merchant stage 2
-            "in-transit",   // courier stage 2
-            expect.stringContaining("Proximity Proof"),
+            "Merchant internal process events — handed-off",   // merchant stage 2
+            "Courier internal process events — in-transit",    // courier stage 2
+            "Proximity proof (runtime) — contact-nfc",         // band ordinal 2
         ]);
     });
 

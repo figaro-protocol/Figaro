@@ -1,0 +1,597 @@
+"use client";
+
+/**
+ * CheckoutView — the buyer's order surface at `/s/[seller]/checkout`.
+ *
+ * Driven EXCLUSIVELY by the seller's bound assembly. The checkout names no
+ * clause and knows no modality: it resolves the assembly from the seller's
+ * profile, walks the assembly's own topology + clauses, computes the bond,
+ * validates Layer A, runs the bilateral / multi-order commit, and redirects to
+ * `/orders/<processId>`. Every order's clauses come straight from the assembly
+ * template; every sub-order's seller is resolved generically from the assembly's
+ * `counterpartyBindings`. No dutch-auction, no courier picker, no fulfilment
+ * taxonomy, no buyer-set pricing — those are the assembly's concerns, not the
+ * checkout's.
+ *
+ * The cart is read-only here: it is the buyer's line-item selection, edited on
+ * the browse page. Checkout reads it, it does not mutate it.
+ */
+
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useChainId, useWalletClient } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { Button } from "@/components/ui/Button";
+import { useCommerce, useCheckout } from "@/lib/commerce";
+import { useCartStore, type FulfillmentMode } from "@/lib/seller/cartStore";
+import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
+import { computeCommitmentProcessId, computeOrderHash } from "@/lib/core/commitmentStore";
+import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
+import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
+import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/core/assemblySubOrderPlan";
+import { templateParentOrderIds } from "@/lib/designer/assemblyTemplate";
+import { CONTRACTS } from "@/lib/core/contracts";
+import { CommitmentSharePanel } from "@/components/core/CommitmentSharePanel";
+import { useTokenSymbol } from "@/components/sellers/TokenAddressInput";
+import { calculateBonds } from "@figaro/core";
+import { extractErrorMessage } from "@/lib/shared/errors";
+import { hexEqual } from "@/lib/shared/evm";
+import { truncateHex } from "@/lib/shared/formatHex";
+import { formatToken, parseToken } from "@/lib/shared/utils";
+import { shareCommitmentPayload } from "@/lib/core/commitmentShare";
+import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
+import { useSellerBoundAssemblies } from "@/lib/mechanisms/useAssemblyRegistry";
+import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
+import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+
+interface Props {
+    sellerAddress: string;
+}
+
+export function CheckoutView({ sellerAddress }: Props) {
+    const sellerAddressLower = sellerAddress.toLowerCase();
+    const sellerAddressTyped = sellerAddressLower.startsWith("0x")
+        ? (sellerAddressLower as `0x${string}`)
+        : undefined;
+
+    const chainId = useChainId();
+    const { data: walletClient } = useWalletClient();
+    const { coordinationMessaging, evidenceTransport } = useRuntimeServices();
+    const { catalogues: sellerCatalogues, isLoading: cataloguesLoading } = useRegisteredCatalogues();
+
+    const sellerCatalogue = useMemo(
+        () => sellerCatalogues.find((r) => hexEqual(r.address, sellerAddressLower)) ?? null,
+        [sellerCatalogues, sellerAddressLower],
+    );
+
+    const { address: buyer } = useCommerce();
+    // The order settles in the seller's default token. `acceptedTokens` is the
+    // set the buyer may swap into (the swap-and-commit path); the default is the
+    // settlement currency. Env-var fallback only for fixture / pre-clause-split
+    // catalogues with no defaultTokenAddress.
+    const currency = (sellerCatalogue?.defaultTokenAddress
+        ?? CONTRACTS.mockToken
+        ?? CONTRACTS.permitToken) as `0x${string}`;
+    const { data: resolvedSymbol } = useTokenSymbol(currency);
+    const tokenSymbol = resolvedSymbol
+        ?? sellerCatalogue?.acceptedTokens?.find((t) => hexEqual(t.address, currency))?.symbol
+        ?? "";
+    const {
+        decimals: tokenDecimals,
+        balance: tokenBalance,
+        needsAuthorization: needsApproval,
+        authorize: approve,
+        authorization: { isPending: isApprovePending, isConfirming: isApproveConfirming, isSuccess: isApproveSuccess },
+        signCommitment,
+        initiateAsParty,
+        order: { step: commitStep, error: commitError, payload },
+    } = useCheckout(currency);
+
+    const { items, getTotalPrice, fulfillmentMode, setFulfillmentMode } = useCartStore();
+    const { openConnectModal } = useConnectModal();
+
+    const totalPrice = getTotalPrice();
+    const totalPriceAmount = items.length > 0 && totalPrice ? parseToken(totalPrice, tokenDecimals) : 0n;
+    const buyerBondAmount = totalPriceAmount > 0n
+        ? calculateBonds(totalPriceAmount, totalPriceAmount).buyerBond
+        : 0n;
+
+    const { assemblies: boundAssemblies } = useSellerBoundAssemblies(sellerAddressTyped);
+
+    // The buyer's fulfilment options ARE the seller's bound assemblies — each
+    // assembly that carries a fulfilment modality is one option, labelled by the
+    // assembly's own name. The modality string comes from the assembly; the
+    // checkout hardcodes no taxonomy.
+    const fulfilmentOptions: { method: FulfillmentMode; name: string }[] = useMemo(
+        () => boundAssemblies.flatMap((a) =>
+            a.fulfilmentMethod
+                ? [{ method: a.fulfilmentMethod as FulfillmentMode, name: a.name }]
+                : [],
+        ),
+        [boundAssemblies],
+    );
+
+    // If the cart's persisted choice isn't offered by this seller, clear it.
+    useEffect(() => {
+        if (
+            fulfillmentMode
+            && fulfilmentOptions.length > 0
+            && !fulfilmentOptions.some((o) => o.method === fulfillmentMode)
+        ) {
+            setFulfillmentMode(undefined);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fulfilmentOptions]);
+
+    const balance = tokenBalance ?? 0n;
+    const hasInsufficientBalance = !!buyer && tokenBalance !== undefined && balance < buyerBondAmount;
+    const isApproving = isApprovePending || isApproveConfirming;
+    const pendingCheckout = useRef(false);
+    const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+    // Auto-chain: when approval confirms, proceed to commit signing.
+    useEffect(() => {
+        if (pendingCheckout.current && isApproveSuccess) {
+            pendingCheckout.current = false;
+            void executeCheckout();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isApproveSuccess]);
+
+    // No post-place redirect: in the bilateral relay the buyer signs + shares,
+    // then stays on the share panel; each order commits when its seller
+    // counter-signs in their inbox. The buyer is never the broadcaster here.
+
+    if (cataloguesLoading) {
+        return (
+            <div className="container mx-auto px-6 py-16 max-w-3xl">
+                <p className="text-xs font-semibold text-neutral-500 mb-3">Checkout</p>
+                <h1 className="text-3xl font-bold text-black">Loading…</h1>
+            </div>
+        );
+    }
+
+    if (!sellerCatalogue) {
+        return (
+            <div className="container mx-auto px-6 py-16 max-w-3xl space-y-4">
+                <p className="text-xs font-semibold text-neutral-500 mb-3">Seller not found</p>
+                <h1 className="text-3xl font-bold text-black">No seller registered for {truncateHex(sellerAddressLower, { head: 10, tail: 0 })}</h1>
+                <Link href="/discover" className="inline-block underline text-sm text-black hover:text-neutral-600">
+                    ← Back to discover
+                </Link>
+            </div>
+        );
+    }
+
+    // Filter cart to items from THIS merchant only — the buyer's line-item input,
+    // read-only here (edited on the browse page).
+    const cartItems = items.filter((it) => it.sellerId === sellerCatalogue.id);
+    // The assembly the buyer is ordering from attaches to the seller PROFILE. One
+    // bound assembly -> use it; several -> the chosen modality disambiguates which.
+    // Every order commits against a published assembly — there is no fallback.
+    const pickedAssembly = boundAssemblies.length === 1
+        ? boundAssemblies[0]
+        : boundAssemblies.find((a) => a.fulfilmentMethod === fulfillmentMode);
+    // Ready to place when a profile-bound assembly is resolved and its fulfilment
+    // (only if it composes one) is chosen.
+    const orderReady = !!pickedAssembly && (!pickedAssembly.fulfilmentMethod || !!fulfillmentMode);
+    // The root order carries the design-time clauses the buyer is bonding to.
+    // Surfaced inline below so the buyer reviews the terms before signing — the
+    // visible terms + the explicit place-order click replace the modal gate.
+    const pickedRoot = pickedAssembly
+        ? (pickedAssembly.assemblyDoc.orders.find((o) => templateParentOrderIds(o).length === 0)
+            ?? pickedAssembly.assemblyDoc.orders[0])
+        : undefined;
+    const orderClauseIds = pickedRoot ? Object.keys(pickedRoot.clauses) : [];
+    const cartTotal = cartItems.reduce(
+        (sum, item) => sum + parseToken(item.price || "0", tokenDecimals) * BigInt(item.quantity),
+        0n,
+    );
+    const buyerBond = cartTotal > 0n
+        ? calculateBonds(cartTotal, cartTotal).buyerBond
+        : 0n;
+
+    // Multi-order price transparency: the buyer pays the lead's cut plus every
+    // contributor's cut, each priced LIVE from that contributor's own catalogue.
+    // Built from the SAME planSubOrderSellers + resolveSubOrderPayment the commit
+    // walks, so the shown total equals what commits.
+    const kitBreakdown = ((): { rows: Array<{ name: string; payment: bigint }>; total: bigint } | null => {
+        const assembly = pickedAssembly;
+        if (!assembly || assembly.assemblyDoc.orders.length <= 1) return null;
+        const lead = sellerCatalogue.address as `0x${string}`;
+        const nameOf = (addr: `0x${string}`) =>
+            sellerCatalogues.find((c) => hexEqual(c.address, addr))?.name ?? truncateHex(addr);
+        let plan: ReturnType<typeof planSubOrderSellers>;
+        try {
+            plan = planSubOrderSellers(assembly);
+        } catch {
+            return null;
+        }
+        const rows = [
+            { name: nameOf(lead), payment: cartTotal },
+            ...plan.map(({ node, seller }) => ({
+                name: seller ? nameOf(seller) : "(unbound)",
+                payment: seller
+                    ? resolveSubOrderPayment({ node, seller, leadAddress: lead, sellerCatalogues, tokenDecimals })
+                    : 0n,
+            })),
+        ];
+        return { rows, total: rows.reduce((s, r) => s + r.payment, 0n) };
+    })();
+
+    const cartUnitSystem = sellerCatalogue.unitSystem ?? "metric";
+    const cartMassGrams = cartItems.reduce((sum, cartItem) => {
+        const menuItem = sellerCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
+        if (!menuItem?.massGrams) return sum;
+        return sum + menuItem.massGrams * cartItem.quantity;
+    }, 0);
+    const cartVolumeMl = cartItems.reduce((sum, cartItem) => {
+        const menuItem = sellerCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
+        if (!menuItem?.volumeMl) return sum;
+        return sum + menuItem.volumeMl * cartItem.quantity;
+    }, 0);
+
+    const executeCheckout = async () => {
+        if (!buyer) {
+            setCheckoutError("Connect your wallet to place an order.");
+            return;
+        }
+        if (cartItems.length === 0) return;
+        if (!orderReady) {
+            setCheckoutError("Choose how you'd like to order before placing it.");
+            return;
+        }
+        const leadSellerAddress = sellerCatalogue.address as `0x${string}`;
+        // Every order commits against a published, profile-bound assembly — no
+        // synthesized fallback. `orderReady` already guarantees this; assert it
+        // for the type. The kernel sees a linear commit chain; the parent edges
+        // are off-chain topology reconstructed from the assembly.
+        if (!pickedAssembly) {
+            setCheckoutError("This seller has no published assembly to order from.");
+            return;
+        }
+        const isMultiOrder = pickedAssembly.assemblyDoc.orders.length > 1;
+        // `pickedRoot` (computed in render scope) carries the design-time clause
+        // choices, spread verbatim — the checkout names no clause.
+        if (!pickedRoot) {
+            setCheckoutError("This assembly has no root order.");
+            return;
+        }
+        try {
+            setCheckoutError(null);
+            const prepared = await prepareOrderCommitment({
+                buyer,
+                seller: leadSellerAddress,
+                currency,
+                payment: cartTotal,
+                lineItems: cartItems.map((item) => ({
+                    itemId: item.menuItemId,
+                    name: item.name,
+                    quantity: item.quantity,
+                    unitPrice: parseToken(item.price, tokenDecimals).toString(),
+                })),
+                clauseFields: { ...pickedRoot.clauses },
+            });
+            // Layer A — the buyer does not sign an invalid agreement.
+            const buyerCheck = validateCommitmentAgreement(prepared.agreement, prepared.agreementHash);
+            if (!buyerCheck.ok) {
+                setCheckoutError(
+                    `This order isn't valid to sign yet: ${buyerCheck.issues
+                        .map((i) => `${i.clause} ${i.path}: ${i.message}`)
+                        .join("; ")}`,
+                );
+                return;
+            }
+            // Single order (distinct parties OR self-commit) → the bilateral
+            // relay: the buyer signs + shares via the buyer-share-panel; the
+            // seller counter-signs the one order in their inbox.
+            if (!isMultiOrder) {
+                await initiateAsParty(prepared.commitment, "buyer", prepared.commitmentMeta, { skipPreview: true });
+                return;
+            }
+
+            // ── Multi-order assembly: the buyer funds EVERY order up front. The
+            //    root's processId is its EIP-712 digest (deterministic), so each
+            //    sub-order is prepared, signed, and relayed before any commit.
+            //    Sub-orders go straight onto the coordination channel to their
+            //    bound sellers; the root goes through the buyer-share-panel last.
+            //    Each seller counter-signs its own order in their inbox — the
+            //    kernel enforces commit order (root creates the process, subs
+            //    extend it), so the sellers accept root-first. Each sub-order's
+            //    seller + clauses come from the assembly; no clause is named. ───
+            const processId = computeCommitmentProcessId(prepared.commitment, chainId, CONTRACTS.core);
+            const realOrderHash = new Map<string, `0x${string}`>([
+                [pickedRoot.id, computeOrderHash(prepared.commitment, chainId, CONTRACTS.core)],
+            ]);
+            let cumulativeValue = cartTotal;
+
+            for (const { node, seller: boundSeller } of planSubOrderSellers(pickedAssembly)) {
+                if (!boundSeller) {
+                    setCheckoutError("This assembly has a sub-order with no designated counterparty — the seller must bind one.");
+                    return;
+                }
+                const parentOrderHashes = templateParentOrderIds(node)
+                    .map((pid) => realOrderHash.get(pid))
+                    .filter((h): h is `0x${string}` => !!h);
+                const payment = resolveSubOrderPayment({
+                    node, seller: boundSeller, leadAddress: leadSellerAddress,
+                    sellerCatalogues, tokenDecimals,
+                });
+                cumulativeValue += payment;
+                const subPrepared = await prepareOrderCommitment({
+                    buyer,
+                    seller: boundSeller,
+                    currency,
+                    payment,
+                    processId,
+                    parentOrderHashes,
+                    expectedCumulativeValue: cumulativeValue,
+                    clauseFields: { ...node.clauses },
+                });
+                // Layer A — the buyer does not sign an invalid sub-order either.
+                const subCheck = validateCommitmentAgreement(subPrepared.agreement, subPrepared.agreementHash);
+                if (!subCheck.ok) {
+                    setCheckoutError(
+                        `A sub-order isn't valid to sign yet: ${subCheck.issues
+                            .map((i) => `${i.clause} ${i.path}: ${i.message}`)
+                            .join("; ")}`,
+                    );
+                    return;
+                }
+                const subSig = await signCommitment(subPrepared.commitment, { skipPreview: true });
+                await shareCommitmentPayload({
+                    payload: {
+                        commitment: subPrepared.commitment,
+                        buyerSig: subSig,
+                        agreement: subPrepared.commitmentMeta.agreement,
+                        agreementUri: subPrepared.commitmentMeta.agreementUri,
+                    },
+                    recipientAddress: boundSeller,
+                    senderAddress: buyer,
+                    walletClient,
+                    chainId,
+                    coordinationMessaging,
+                    evidenceTransport,
+                });
+                realOrderHash.set(
+                    node.id,
+                    computeOrderHash(subPrepared.commitment, chainId, CONTRACTS.core),
+                );
+            }
+
+            // Root last → the buyer-share-panel shows the root for the buyer to
+            // relay to the lead. The lead accepts → root commits → the already
+            // shared sub-orders unlock for their sellers to accept.
+            await initiateAsParty(prepared.commitment, "buyer", prepared.commitmentMeta, { skipPreview: true });
+        } catch (cause: unknown) {
+            const msg = extractErrorMessage(cause, "Signing failed");
+            setCheckoutError(msg);
+        }
+    };
+
+    const handlePlaceOrder = () => {
+        if (!buyer) {
+            openConnectModal?.();
+            return;
+        }
+        if (cartItems.length === 0) return;
+        if (hasInsufficientBalance) {
+            setCheckoutError(
+                `Insufficient funds. Required: ${formatToken(buyerBond, tokenDecimals)}, available: ${formatToken(balance, tokenDecimals)}`,
+            );
+            return;
+        }
+        setCheckoutError(null);
+        if (needsApproval(buyerBond)) {
+            try {
+                pendingCheckout.current = true;
+                approve(buyerBond * 10n);
+            } catch {
+                pendingCheckout.current = false;
+                setCheckoutError("Payment authorization failed. Please try again.");
+            }
+        } else {
+            void executeCheckout();
+        }
+    };
+
+    const placingOrder = commitStep === "signing" || commitStep === "broadcasting" || commitStep === "ready";
+
+    return (
+        <div data-testid="checkout-view" data-seller-address={sellerAddressLower} className="container mx-auto px-6 py-10 max-w-2xl space-y-6">
+            <div>
+                <Link href={`/s/${sellerAddressLower}`} className="text-sm text-neutral-500 hover:text-black">
+                    ← Back to {sellerCatalogue.name}
+                </Link>
+            </div>
+
+            <header className="space-y-1">
+                <p className="text-xs font-semibold text-neutral-500">Checkout</p>
+                <h1 className="text-2xl font-bold text-black">Order from {sellerCatalogue.name}</h1>
+            </header>
+
+            <section
+                className="rounded-lg border border-neutral-200 bg-white p-5 space-y-4"
+                data-testid="checkout-cart"
+            >
+                {cartItems.length === 0 ? (
+                    <p className="text-sm text-neutral-500">
+                        Your cart is empty.{" "}
+                        <Link href={`/s/${sellerAddressLower}`} className="underline text-black hover:text-neutral-600">
+                            Browse {sellerCatalogue.name}&apos;s catalogue
+                        </Link>{" "}
+                        to add items.
+                    </p>
+                ) : (
+                    <>
+                        {/* Read-only line items — the buyer's selection, edited on browse. */}
+                        <ul className="space-y-2 text-sm">
+                            {cartItems.map((item) => (
+                                <li
+                                    key={item.menuItemId}
+                                    className="flex items-baseline justify-between gap-2"
+                                    data-testid={`cart-line-${item.menuItemId}`}
+                                >
+                                    <span className="flex-1 min-w-0 text-black font-medium truncate">
+                                        {item.name} <span className="text-neutral-400">× {item.quantity}</span>
+                                    </span>
+                                    <span className="text-neutral-900 font-semibold tabular-nums shrink-0">
+                                        {(parseFloat(item.price || "0") * item.quantity).toFixed(4)}{tokenSymbol ? ` ${tokenSymbol}` : ""}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+
+                        <div className="border-t border-neutral-200 pt-3 space-y-1.5 text-sm">
+                            {kitBreakdown ? (
+                                <div className="space-y-1" data-testid="cart-contributor-breakdown">
+                                    {kitBreakdown.rows.map((row, i) => (
+                                        <div key={i} className="flex justify-between">
+                                            <span className="text-neutral-600">{row.name}</span>
+                                            <span className="text-neutral-900 tabular-nums">
+                                                {formatToken(row.payment, tokenDecimals)}
+                                            </span>
+                                        </div>
+                                    ))}
+                                    <div className="flex justify-between border-t border-neutral-200 pt-1.5 font-medium">
+                                        <span className="text-neutral-700">Total to all sellers</span>
+                                        <span className="text-neutral-900 tabular-nums" data-testid="cart-kit-total">
+                                            {formatToken(kitBreakdown.total, tokenDecimals)}
+                                        </span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex justify-between">
+                                    <span className="text-neutral-600">Payment to seller</span>
+                                    <span className="text-neutral-900 tabular-nums">
+                                        {formatToken(cartTotal, tokenDecimals)}
+                                    </span>
+                                </div>
+                            )}
+                            <div className="flex justify-between">
+                                <span className="text-neutral-600">Your bond (refundable on resolve)</span>
+                                <span className="text-neutral-900 tabular-nums">
+                                    {formatToken(cartTotal, tokenDecimals)}
+                                </span>
+                            </div>
+                            <div className="flex justify-between border-t border-neutral-200 pt-1.5 font-semibold">
+                                <span className="text-black">Locked at commit</span>
+                                <span className="text-black tabular-nums">
+                                    {formatToken(buyerBond, tokenDecimals)}
+                                </span>
+                            </div>
+                            {(cartMassGrams > 0 || cartVolumeMl > 0) && (
+                                <div
+                                    className="flex justify-between text-[11px] text-neutral-500 pt-1.5 border-t border-neutral-200"
+                                    data-testid="cart-logistics-total"
+                                >
+                                    <span>Shipment</span>
+                                    <span className="tabular-nums">
+                                        {cartMassGrams > 0 ? formatMass(cartMassGrams, cartUnitSystem) : ""}
+                                        {cartMassGrams > 0 && cartVolumeMl > 0 ? " · " : ""}
+                                        {cartVolumeMl > 0 ? formatVolume(cartVolumeMl, cartUnitSystem) : ""}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Inline agreement terms — the clauses the buyer is
+                            bonding to, read straight from the assembly. This is
+                            the pre-sign review (replaces the modal gate): the
+                            buyer sees the terms, then place-order signs them. */}
+                        {orderClauseIds.length > 0 && (
+                            <div className="space-y-1 border-t border-neutral-200 pt-3" data-testid="checkout-agreement-terms">
+                                <p className="text-xs font-semibold text-neutral-500">Agreement</p>
+                                <ul className="text-xs text-neutral-600 space-y-0.5">
+                                    {orderClauseIds.map((clauseId) => (
+                                        <li key={clauseId} data-testid={`agreement-clause-${clauseId}`}>
+                                            {getClauseSpec(clauseId)?.title ?? clauseId}
+                                        </li>
+                                    ))}
+                                </ul>
+                                <p className="text-[11px] text-neutral-400">
+                                    Placing the order signs this agreement and locks your bond.
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Which bound assembly to order from — shown only when the
+                            seller offers more than one. The options + labels come
+                            from the assemblies themselves; the checkout hardcodes
+                            no modality. */}
+                        {fulfilmentOptions.length > 0 && (
+                            <div>
+                                <label
+                                    htmlFor="fulfilment-mode-select"
+                                    className="text-xs font-semibold text-neutral-500 mb-1 block"
+                                >
+                                    Fulfilment
+                                </label>
+                                <select
+                                    id="fulfilment-mode-select"
+                                    value={fulfillmentMode ?? ""}
+                                    onChange={(e) =>
+                                        setFulfillmentMode(
+                                            e.target.value === ""
+                                                ? undefined
+                                                : (e.target.value as FulfillmentMode),
+                                        )
+                                    }
+                                    className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                                    data-testid="select-fulfilment-mode"
+                                >
+                                    <option value="" data-testid="option-fulfilment-unset">
+                                        Select one
+                                    </option>
+                                    {fulfilmentOptions.map((opt) => (
+                                        <option key={opt.method} value={opt.method} data-testid={`option-fulfilment-${opt.method}`}>
+                                            {opt.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
+                        <Button
+                            onClick={handlePlaceOrder}
+                            disabled={
+                                isApproving
+                                || placingOrder
+                                || cartItems.length === 0
+                                || !orderReady
+                            }
+                            data-testid="btn-place-order"
+                            className="w-full"
+                        >
+                            {!buyer
+                                ? "Connect wallet to order"
+                                : isApproving
+                                    ? "Approving payment…"
+                                    : placingOrder
+                                        ? "Placing order…"
+                                        : !orderReady
+                                            ? "Select an option to order"
+                                            : "Place order"}
+                        </Button>
+
+                        {(checkoutError || commitError) && (
+                            <p className="text-sm text-red-600" data-testid="seller-checkout-error">
+                                {checkoutError ?? commitError}
+                            </p>
+                        )}
+
+                        {commitStep === "awaiting-counter" && payload && (
+                            <div className="pt-2" data-testid="buyer-share-panel">
+                                <CommitmentSharePanel
+                                    payload={payload}
+                                    step={commitStep}
+                                    tokenDecimals={tokenDecimals}
+                                />
+                            </div>
+                        )}
+                    </>
+                )}
+            </section>
+        </div>
+    );
+}

@@ -10,6 +10,8 @@
  * the key to decrypt the sealed manifest and reveal the destination address.
  */
 
+import { isE2EMockSession, isE2EDevnetSession } from "@/lib/shared/e2e";
+
 // ── Message types ──────────────────────────────────────────────
 
 export interface HandoffKeyMessage {
@@ -54,7 +56,7 @@ export interface CommitmentSignatureMessage {
 }
 
 /** Handoff address: the buyer sends the human-readable delivery address to
- *  the assigned courier. The geohash on the courier order's figaro-geo-v2
+ *  the assigned courier. The geohash on the courier order's geo clause
  *  section is the on-agreement location commitment; this carries the
  *  street-level detail (apartment, entry notes) the courier needs. */
 export interface HandoffAddressMessage {
@@ -204,8 +206,10 @@ export async function getCoordinationChannel(
     const cached = channelCache.get(key);
     if (cached) return cached;
 
-    // In any e2e mode fall back to the mock channel.
-    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("e2e")) {
+    // In any e2e mode fall back to the mock channel. Uses the shared,
+    // sessionStorage-backed detector so the mode survives param-dropping
+    // <Link> navigations (e.g. browse → /checkout), not just the entry URL.
+    if (isE2EMockSession() || isE2EDevnetSession()) {
         const { createMockChannel } = await import("./mockChannel");
         const ch = createMockChannel(address);
         channelCache.set(key, ch);

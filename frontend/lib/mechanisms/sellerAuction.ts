@@ -25,7 +25,7 @@ import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
  * between checkout and the order page.
  */
 export function sellerAuctionId(processId: Hex): Hex {
-    return keccak256(encodePacked(["bytes32", "string"], [processId, "figaro-seller-auction-v1"]));
+    return keccak256(encodePacked(["bytes32", "string"], [processId, "seller-auction-v1"]));
 }
 
 /**
@@ -46,6 +46,8 @@ export interface SellerAuctionDraft {
 
 const draftKey = (processId: string) => `figaro:seller-draft:${processId}`;
 
+/** @public — pending consumer: the rewritten checkout's dutch deferred-edge
+ *  stash (scenario-local-commerce-dutch migration); `loadSellerDraft`'s producer. */
 export function stashSellerDraft(processId: string, draft: SellerAuctionDraft): void {
     writeJsonStorage(draftKey(processId), draft);
 }

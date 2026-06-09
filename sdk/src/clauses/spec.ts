@@ -147,6 +147,23 @@ export interface ClauseBlockBinding {
      *  read this to exclude it from selectable lists (the drawer never offers a
      *  structural clause as a checkbox). Omit for elective clauses. */
     structural?: boolean;
+    /** WHO attests this runtime (category-1) clause: "seller" (the order's seller
+     *  — the default for lifecycle clauses like merchant/courier process) or
+     *  "bilateral" (BOTH buyer and seller witness — e.g. the proximity proof of
+     *  physical presence). The generic runtime capability engine reads this to
+     *  surface the attestation to the right party/parties, with no clause names in
+     *  the engine. Omit for non-attestable clauses. */
+    attestation?: "seller" | "bilateral";
+    /** Enum stage CODES of this lifecycle clause's ladder that are PHYSICAL
+     *  HAND-OFFS — the moments value changes hands (e.g. merchant-process
+     *  `handed-off`; courier-process `arrived-pickup`/`arrived-dropoff`). At such
+     *  a stage the generic engine pairs a proximity cross-witness: the attesting
+     *  seller also signs the proximity proof on whichever order in the process
+     *  carries it (its own, or — across the topology edge — the counterparty's),
+     *  so both sides of the hand-off witness the same proof. Distinct from
+     *  `attestation` (who) — this is WHICH stages are hand-offs. Omit for clauses
+     *  with no physical exchange. */
+    handoffStages?: readonly string[];
 }
 
 export interface ClauseSpec {
@@ -416,6 +433,16 @@ function parseBlockBinding(
         errors.push({ path: `${path}.structural`, message: "structural must be a boolean when present" });
         return null;
     }
+    if (raw.attestation !== undefined && raw.attestation !== "seller" && raw.attestation !== "bilateral") {
+        errors.push({ path: `${path}.attestation`, message: "attestation must be 'seller' or 'bilateral' when present" });
+        return null;
+    }
+    let handoffStages: readonly string[] | undefined;
+    if (raw.handoffStages !== undefined) {
+        const h = parseStringArray(raw.handoffStages, `${path}.handoffStages`, errors);
+        if (h === null) return null;
+        handoffStages = h;
+    }
     return {
         tier: tier as ClauseTier,
         ...(raw.drawerArticle !== undefined && { drawerArticle: raw.drawerArticle as ClauseDrawerArticle }),
@@ -425,6 +452,8 @@ function parseBlockBinding(
         ...(raw.sisterClauseId !== undefined && { sisterClauseId: raw.sisterClauseId as string }),
         ...(raw.nestsUnder !== undefined && { nestsUnder: raw.nestsUnder as string }),
         ...(raw.structural !== undefined && { structural: raw.structural as boolean }),
+        ...(raw.attestation !== undefined && { attestation: raw.attestation as "seller" | "bilateral" }),
+        ...(handoffStages !== undefined && { handoffStages }),
     };
 }
 

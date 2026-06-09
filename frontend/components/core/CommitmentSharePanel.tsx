@@ -23,20 +23,18 @@ import type {
 import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import type { MessageSendStatus } from "@/lib/shared/messageSendStatus";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { computeOrderHash } from "@/lib/core/commitmentStore";
-import { CONTRACTS } from "@/lib/core/contracts";
+import {
+    serializeCommitmentPayload,
+    buildTransportPayload,
+    shareCommitmentPayload,
+} from "@/lib/core/commitmentShare";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { strippingReviver } from "@/lib/shared/safeJson";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 // ── Serialization helpers ──────────────────────────────────────
-
-/** Serialize commitment payload to a compact JSON string (bigints → hex strings). */
-function serializePayload(p: CommitmentPayload): string {
-    return JSON.stringify(p, (_key, value) =>
-        typeof value === "bigint" ? `0x${value.toString(16)}` : value,
-    );
-}
+// serialize / transport helpers live in @/lib/core/commitmentShare (shared with
+// the multi-order checkout); this file keeps only the inbound deserializer.
 
 /** Deserialize a JSON payload back to typed commitment (hex strings → bigints). */
 export function deserializePayload(json: string): CommitmentPayload {
@@ -55,17 +53,6 @@ export function deserializePayload(json: string): CommitmentPayload {
         }
     }
     return raw as CommitmentPayload;
-}
-
-function buildTransportPayload(payload: CommitmentPayload): CommitmentPayload {
-    if (payload.agreement && payload.agreementUri) {
-        return {
-            ...payload,
-            agreement: undefined,
-        };
-    }
-
-    return payload;
 }
 
 /** Share-panel has no waiting state — exclude from the canonical send union. */
@@ -142,7 +129,7 @@ export function CommitmentSharePanel({
     const [transportError, setTransportError] = useState<string | null>(null);
     const [transportRecipient, setTransportRecipient] = useState<string | null>(null);
 
-    const serialized = payload ? serializePayload(buildTransportPayload(payload)) : null;
+    const serialized = payload ? serializeCommitmentPayload(buildTransportPayload(payload)) : null;
     const recipientAddress = payload ? resolveRecipientAddress(payload, address) : null;
 
     useEffect(() => {
@@ -194,25 +181,17 @@ export function CommitmentSharePanel({
             return;
         }
 
-        if (!CONTRACTS.core) {
-            setTransportStatus("error");
-            setTransportError("Core contract address is not configured, so the transport order ID cannot be derived.");
-            return;
-        }
-
         setTransportStatus("sending");
         setTransportError(null);
         try {
-            const orderId = computeOrderHash(payload.commitment, chainId, CONTRACTS.core);
-            const payloadJson = serializePayload(buildTransportPayload(payload));
-            const blob = new Blob([payloadJson], { type: "application/json" });
-            const payloadCid = await evidenceTransport.pinBlob(blob);
-            await coordinationMessaging.sendCommitmentPayload({
-                address,
-                walletClient,
+            await shareCommitmentPayload({
+                payload,
                 recipientAddress,
-                orderId,
-                payloadCid,
+                senderAddress: address,
+                walletClient,
+                chainId,
+                coordinationMessaging,
+                evidenceTransport,
             });
             setTransportRecipient(recipientAddress);
             setTransportStatus("sent");

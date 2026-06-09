@@ -1,7 +1,7 @@
 /**
  * fulfilmentRouting — helpers that map a CanonicalFulfilmentMethod to:
  *   - The default handoff point that goes into the agreement assemblyDoc
- *     (figaro-fulfilment-v2 handoffPoint enum).
+ *     (the fulfilment clause's handoffPoint enum).
  *   - The assembly slug whose runtime/UI shape matches the chosen
  *     fulfilment topology (1-node `direct-sale` for consume-onsite/pickup;
  *     2+ node `local-commerce` for delivery variants).
@@ -42,7 +42,9 @@ function mapFulfilmentToAssemblySlug(
     return "local-commerce";
 }
 
-/** True for the 3 `deliver:*` variants. False for `consume-onsite` and `pickup`. */
+/** True for the 3 `deliver:*` variants. False for `consume-onsite` and `pickup`.
+ *  @public — pending consumer: the rewritten checkout's fulfilment routing
+ *  (buyer-assigned / dutch scenario migrations). */
 export function isDeliveryFulfilment(method: CanonicalFulfilmentMethod): boolean {
     return method.startsWith("deliver:");
 }

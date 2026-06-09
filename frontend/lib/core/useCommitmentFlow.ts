@@ -21,7 +21,6 @@ import { COMMITMENT_TYPES } from "@figaro/core";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { useFigaroActions, Commitment } from "@/lib/core/useFigaroActions";
 import { ZERO_ADDRESS, ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
-import { getE2EModeFromSearchParams } from "@/lib/shared/e2e";
 import type { PartyRole } from "@/lib/core/walletProcessQueries";
 import { isValidAddress } from "@/components/sellers/TokenAddressInput";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -75,49 +74,6 @@ function assertValidSigningDomain(domain: {
 
 // ── EIP-712 Type Definition (imported from SDK) ───────────────
 // COMMITMENT_TYPES imported from @figaro/core above
-
-interface JsonRpcRequest {
-    method: string;
-    params?: unknown[];
-}
-
-interface InjectedEthereumProvider {
-    request<T = unknown>(args: JsonRpcRequest): Promise<T>;
-}
-
-/**
- * Direct `window.ethereum` access for the **devnet shortcut path only**.
- *
- * Production signing flows go through wagmi's `useSignTypedData` and the
- * EIP-6963-discovered provider — not this helper. Reading `window.ethereum`
- * directly is a known soft attack surface (a malicious browser extension
- * can shadow the property after page load), so the helper bails on
- * production builds even if some future call site tries to use it. See
- * `docs/v5/AUDIT_REPORT.md` "Web2 / UI / Specific-Feature Audits → UI ↔ MetaMask Injection Threat Model".
- *
- * The threat model 🟡 Priority 2 fix landed here: gate the helper to dev
- * builds + scope the call to the devnet shortcut branch. Production calls
- * are blocked at runtime, not just by upstream control flow.
- */
-function getInjectedEthereumProvider(): InjectedEthereumProvider | null {
-    if (typeof window === "undefined") {
-        return null;
-    }
-
-    if (process.env.NODE_ENV === "production") {
-        // Defense-in-depth: even if some future code path tries to call
-        // this in prod, it bails. Production sign flows must go through
-        // wagmi connectors (EIP-6963 discovery), never direct window.ethereum.
-        return null;
-    }
-
-    const candidate = (window as Window & { ethereum?: Partial<InjectedEthereumProvider> }).ethereum;
-    if (!candidate || typeof candidate.request !== "function") {
-        return null;
-    }
-
-    return candidate as InjectedEthereumProvider;
-}
 
 // ── Serializable payload for sharing ───────────────────────────
 
@@ -238,7 +194,10 @@ export function useCommitmentFlow() {
 
     // ── Sign a Commitment ──────────────────────────────────────
 
-    const signCommitment = useCallback(async (commitment: Commitment): Promise<`0x${string}`> => {
+    const signCommitment = useCallback(async (
+        commitment: Commitment,
+        opts?: { skipPreview?: boolean },
+    ): Promise<`0x${string}`> => {
         setError(null);
         setStep("signing");
         try {
@@ -247,21 +206,26 @@ export function useCommitmentFlow() {
             assertValidSigningDomain(domain);
 
             // Threat-model 🟡 Priority 4: gate signing on a pre-sign agreement
-            // preview. The wallet prompt only shows the agreementHash; the
-            // user has no way to verify in MetaMask that the hash matches the
-            // intended terms. This loads the agreement (if available locally)
-            // and posts a confirmation request to the global
-            // CommitmentSignPreviewProvider, which renders an
-            // AgreementPreviewModal showing the human-readable terms next to
-            // the hash. Only after the user clicks Confirm does the wallet
-            // prompt open.
-            const agreement = loadAgreement(commitment.agreementHash);
-            const approved = await requestSignConfirmation(commitment, agreement);
-            if (!approved) {
-                const msg = "Signing cancelled by user";
-                setError(msg);
-                setStep("idle");
-                throw new Error(msg);
+            // preview. The wallet prompt only shows the agreementHash; the user
+            // has no way to verify in MetaMask that the hash matches the intended
+            // terms. The global CommitmentSignPreviewProvider renders an
+            // AgreementPreviewModal showing the human-readable terms next to the
+            // hash before the wallet opens.
+            //
+            // `skipPreview` is set by callers that ALREADY show the agreement
+            // terms inline (the checkout surface) — there the visible terms plus
+            // the explicit place-order click are the confirmation, so the modal
+            // would be a redundant second gate. Contexts with no inline display
+            // (the inbox counter-sign) leave it on.
+            if (!opts?.skipPreview) {
+                const agreement = loadAgreement(commitment.agreementHash);
+                const approved = await requestSignConfirmation(commitment, agreement);
+                if (!approved) {
+                    const msg = "Signing cancelled by user";
+                    setError(msg);
+                    setStep("idle");
+                    throw new Error(msg);
+                }
             }
 
             const sig = await signTypedDataAsync({
@@ -295,8 +259,9 @@ export function useCommitmentFlow() {
         commitment: Commitment,
         role: PartyRole,
         meta?: CommitmentPayloadMeta,
+        opts?: { skipPreview?: boolean },
     ): Promise<CommitmentPayload> => {
-        const sig = await signCommitment(commitment);
+        const sig = await signCommitment(commitment, opts);
 
         const p: CommitmentPayload = {
             commitment,
@@ -379,119 +344,6 @@ export function useCommitmentFlow() {
         }
     }, [commit, domain.chainId, domain.verifyingContract]);
 
-    // ── Convenience: sign + broadcast in one step (both parties same wallet, devnet) ──
-
-    const signAndBroadcast = useCallback(async (
-        commitment: Commitment,
-        meta?: CommitmentPayloadMeta,
-        initiatorRole?: PartyRole,
-    ) => {
-        const e2eMode = typeof window === "undefined"
-            ? null
-            : getE2EModeFromSearchParams(window.location.search);
-        const isE2EMock = e2eMode === "mock" && process.env.NODE_ENV !== "production";
-        const isDevnet = e2eMode === "devnet" && process.env.NODE_ENV !== "production";
-        const sameParty = hexEqual(commitment.buyer, commitment.seller);
-        const resolvedInitiatorRole = initiatorRole
-            ?? (hexEqual(address, commitment.buyer)
-                ? "buyer"
-                : hexEqual(address, commitment.seller)
-                    ? "seller"
-                    : undefined);
-
-        let buyerSig: `0x${string}` | undefined;
-        let sellerSig: `0x${string}` | undefined;
-
-        if (isE2EMock) {
-            const mockSig = ("0x" + "00".repeat(65)) as `0x${string}`;
-            buyerSig = mockSig;
-            sellerSig = mockSig;
-        } else {
-            if (!sameParty && !resolvedInitiatorRole) {
-                const msg = "Connected wallet must match the buyer or seller to initiate this commitment";
-                setError(msg);
-                setStep("error");
-                throw new Error(msg);
-            }
-
-            const initiatorSig = await signCommitment(commitment);
-
-            if (sameParty) {
-                buyerSig = initiatorSig;
-                sellerSig = initiatorSig;
-            } else if (resolvedInitiatorRole === "buyer") {
-                buyerSig = initiatorSig;
-            } else {
-                sellerSig = initiatorSig;
-            }
-
-            if (isDevnet) {
-                // Devnet-only path: resolve the injected provider lazily so a
-                // production build cannot accidentally enter this branch with
-                // a `window.ethereum` reference cached in scope.
-                // `getInjectedEthereumProvider` is also gated to NODE_ENV !==
-                // "production" as defense-in-depth.
-                const injectedProvider = getInjectedEthereumProvider();
-                if (!injectedProvider || !resolvedInitiatorRole) {
-                    throw new Error("Devnet shortcut requires an injected provider and a recognized participant role");
-                }
-
-                const counterpartyAddress = resolvedInitiatorRole === "buyer"
-                    ? commitment.seller
-                    : commitment.buyer;
-
-                // Devnet: request the missing counterparty signature via raw RPC
-                // against Anvil's unlocked accounts. Serialization must match viem:
-                //   - BigInt -> decimal string
-                //   - EIP712Domain omitted from the explicit types map
-                const typedData = JSON.stringify({
-                    types: COMMITMENT_TYPES,
-                    primaryType: "Commitment",
-                    domain,
-                    message: Object.fromEntries(
-                        Object.entries(commitment).map(([k, v]) =>
-                            [k, typeof v === "bigint" ? v.toString() : v]
-                        )
-                    ),
-                });
-                const counterpartySig = await injectedProvider.request<`0x${string}`>({
-                    method: "eth_signTypedData_v4",
-                    params: [counterpartyAddress, typedData],
-                });
-
-                if (resolvedInitiatorRole === "buyer") {
-                    sellerSig = counterpartySig;
-                } else {
-                    buyerSig = counterpartySig;
-                }
-
-                if (commitment.currency) {
-                    const coreHex = (CONTRACTS.core as string).slice(2).toLowerCase().padStart(64, "0");
-                    const approveData = `0x095ea7b3${coreHex}${"f".repeat(64)}`;
-                    await injectedProvider.request<`0x${string}`>({
-                        method: "eth_sendTransaction",
-                        params: [{ from: counterpartyAddress, to: commitment.currency, data: approveData }],
-                    });
-                }
-            } else if (!buyerSig || !sellerSig) {
-                const msg = "Normal wallets must use the multi-party signing flow before broadcasting";
-                setError(msg);
-                setStep("error");
-                throw new Error(msg);
-            }
-        }
-
-        const p: CommitmentPayload = {
-            commitment,
-            buyerSig,
-            sellerSig,
-            agreement: meta?.agreement,
-            agreementUri: meta?.agreementUri,
-        };
-        setPayload(p);
-        return broadcast(p);
-    }, [address, signCommitment, broadcast, domain]);
-
     return {
         // State
         step,
@@ -503,7 +355,6 @@ export function useCommitmentFlow() {
         initiateAsParty,
         counterSign,
         broadcast,
-        signAndBroadcast,
         reset,
     } as const;
 }

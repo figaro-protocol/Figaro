@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { beforeAll, describe, it, expect } from "vitest";
 import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
+import { primeClauseSpecs } from "./primeClauseSpecs";
 import {
     computeAgreementHash,
     MERCHANT_PROCESS_CLAUSE_KEY,
@@ -17,6 +18,12 @@ import {
 
 const BUYER = `0x${"11".repeat(20)}` as `0x${string}`;
 const SELLER = `0x${"22".repeat(20)}` as `0x${string}`;
+
+// Content validation resolves each section's spec from the chain-fed cache —
+// prime it with the canonical Layer-A specs.
+beforeAll(async () => {
+    await primeClauseSpecs();
+});
 
 function agreement(sections: AgreementSection[]): Agreement {
     return { version: "a1", buyer: BUYER, seller: SELLER, sections } as Agreement;

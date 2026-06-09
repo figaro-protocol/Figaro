@@ -24,7 +24,7 @@ const SPEC_LOAD_ERRORS = new Map<string, string>();
 
 /** clauseId → the parent FIELD name it nests under in the drawer, read from the
  *  spec's `block.nestsUnder`. Populated as specs load. Drives the drawer's
- *  cross-clause nesting (e.g. figaro-proximity-policy-v1 renders nested under the
+ *  cross-clause nesting (e.g. a proximity policy renders nested under the
  *  fulfilment clause's `handoff` field). Read from the spec; never a hardcoded tree. */
 const NESTS_UNDER = new Map<string, string>();
 
@@ -35,7 +35,7 @@ const HASH_TO_ID = new Map<string, string>();
 
 /** clauseIds that some other loaded spec names as its `block.sisterClauseId` —
  *  i.e. companion clauses, emitted by their sister at commit rather than chosen
- *  directly (e.g. figaro-proximity-proof-v1, figaro-ghg-measurement-v1). Derived
+ *  directly (proximity proofs, runtime measurements). Derived
  *  purely from the JSON; populated as specs load. */
 const COMPANION_IDS = new Set<string>();
 
@@ -138,6 +138,36 @@ export function clauseIsStructural(clauseId: string): boolean {
     return getClauseSpec(clauseId)?.block?.structural === true;
 }
 
+/** WHO attests a runtime clause — "seller" (the order's seller, default) or
+ *  "bilateral" (both buyer and seller witness, e.g. proximity proof). Read from
+ *  `block.attestation`; the generic runtime engine surfaces the attestation to
+ *  the right party/parties without naming any clause. */
+export function clauseAttestation(clauseId: string): "seller" | "bilateral" {
+    return getClauseSpec(clauseId)?.block?.attestation ?? "seller";
+}
+
+/** The enum stage CODES of a lifecycle clause that are PHYSICAL HAND-OFFS (value
+ *  changes hands). Read from `block.handoffStages`; the generic engine pairs a
+ *  proximity cross-witness at these stages. Empty when the clause has no hand-off. */
+/** @public — engine reader shipped with `block.handoffStages` (the data is in
+ *  the specs); the proximity cross-witness pairing consumes it when the generic
+ *  handoff wiring lands. */
+export function clauseHandoffStages(clauseId: string): readonly string[] {
+    return getClauseSpec(clauseId)?.block?.handoffStages ?? [];
+}
+
+/** The first enum-type field of a clause — the runtime "stage ladder" (the
+ *  `eventType` enum on merchant/courier, or any category-1 clause's ladder).
+ *  Returns the field name + its ordered values, or null when the clause has no
+ *  enum field (e.g. ghg-measurement's grams). The generic runtime engine reads
+ *  this to advance ANY runtime-attestable clause without naming it. */
+export function clauseLadderField(clauseId: string): { name: string; values: readonly string[] } | null {
+    for (const field of getClauseSpec(clauseId)?.fields ?? []) {
+        if (field.type === "enum") return { name: field.name, values: field.values };
+    }
+    return null;
+}
+
 // ── Spec-derived reads ───────────────────────────────────────────────────────
 
 /** When a clause is attested. Derived from block.tier: category-1 ⇒ runtime
@@ -167,12 +197,6 @@ export function describeAttestation(
     const spec = id ? getClauseSpec(id) : undefined;
     if (!spec) return { clauseTitle: `${clauseIdHash.slice(0, 10)}…`, eventLabel: `stage ${stage}` };
     return { clauseTitle: spec.title, eventLabel: firstEnumValues(spec)?.[stage] ?? `stage ${stage}` };
-}
-
-/** The uint8 ordinal of an enum CODE in a clause's enum vocabulary — the inverse
- *  of describeAttestation. The single source for on-chain enum indices. -1 if unknown. */
-export function clauseEnumOrdinal(clauseId: string, code: string): number {
-    return firstEnumValues(getClauseSpec(clauseId))?.indexOf(code) ?? -1;
 }
 
 /** The enum values a clause field admits, read STRAIGHT from the spec — the SSoT
