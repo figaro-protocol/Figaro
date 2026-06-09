@@ -48,7 +48,10 @@ function commerceLineItems(agreement: Agreement | null): Array<{
     unitPrice: string;
 }> {
     if (!agreement) return [];
-    const commerce = agreement.sections.find((s) => s.clause === "figaro-commerce-v1");
+    // Structural, not nominal: the line-item table renders from whichever
+    // section carries a `lineItems` array — no clause is named, so a
+    // third-party commerce-equivalent clause gets the same rendering.
+    const commerce = agreement.sections.find((s) => Array.isArray(s.data?.lineItems));
     if (!commerce) return [];
     const items = commerce.data?.lineItems;
     if (!Array.isArray(items)) return [];
@@ -65,7 +68,7 @@ function commerceLineItems(agreement: Agreement | null): Array<{
 
 function nonCommerceSections(agreement: Agreement | null): AgreementSection[] {
     if (!agreement) return [];
-    return agreement.sections.filter((s) => s.clause !== "figaro-commerce-v1");
+    return agreement.sections.filter((s) => !Array.isArray(s.data?.lineItems));
 }
 
 export function AgreementPreviewModal({ commitment, agreement, onConfirm, onCancel }: Props) {

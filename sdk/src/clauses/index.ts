@@ -68,6 +68,7 @@ export type {
 } from "./encode.js";
 
 export {
+    CONSENT_EIP712_TYPES,
     EMPTY_CONTENT,
     encodeContentFromSpec,
 } from "./encode.js";

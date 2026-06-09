@@ -156,6 +156,18 @@ export interface ConsentContent {
     documents: readonly ConsentDocument[];
 }
 
+/** EIP-712 type for a single consent-document signature — field order is
+ *  exactly `ConsentDocument`'s tuple order (the order this module's ABI
+ *  encoder uses). Surfaces gathering a consent signature import this rather
+ *  than re-declaring the shape, so the order has ONE home. */
+export const CONSENT_EIP712_TYPES = {
+    Consent: [
+        { name: "documentHash", type: "bytes32" },
+        { name: "documentVersion", type: "string" },
+        { name: "documentTitle", type: "string" },
+    ],
+} as const;
+
 export type CourierEvent =
     | "en-route-pickup"
     | "arrived-pickup"

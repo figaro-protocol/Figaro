@@ -34,8 +34,8 @@ import {
     buildAuditBundleEvidence,
     buildFigaroMetaEvidence,
     fetchRuling,
-    createDispute,
-    submitEvidence,
+    createDisputeWithMetaEvidence,
+    submitDisputeEvidence,
     getArbitrationCost,
     type KlerosConfig,
     type DisputeStatus,
@@ -94,12 +94,12 @@ function buildEvidenceDisplayURI(processId: string, chainId: number, coreAddress
 interface DisputeStatusPanelProps {
     processId: `0x${string}`;
     /** Kleros configuration. If omitted, the panel shows as "not configured".
-     *  The caller derives it from the assembly's `figaro-arbitration-kleros-v1`
+     *  The caller derives it from the assembly's arbitration clause
      *  clause — the court is the clause's; the arbitrableProxy address is
      *  deployment config. */
     klerosConfig?: KlerosConfig;
     /** Recourse forum(s) the assembly's dispute-resolution clauses authored
-     *  (`figaro-arbitration-kleros-v1` and/or `figaro-applicable-law-v1`) —
+     *  (arbitration and/or applicable-law clauses) —
      *  surfaced so the disputing party sees the forum the designer named.
      *  Display-only; the Kleros flow runs on klerosConfig. */
     recourses?: readonly JurisdictionRecourse[];
@@ -199,17 +199,13 @@ export function DisputeStatusPanel({
             const chainId = await publicClient.getChainId();
             const evidenceDisplayURI = buildEvidenceDisplayURI(processId, chainId, CONTRACTS.core);
 
-            const metaEvidence = buildFigaroMetaEvidence(undefined, evidenceDisplayURI);
-            const metaEvidenceCID = await evidenceTransport.pinJSON(metaEvidence);
-            const metaEvidenceURI = evidenceTransport.buildPath(metaEvidenceCID);
-
-            const newId = await createDispute(
+            const { localDisputeId: newId } = await createDisputeWithMetaEvidence({
                 walletClient,
                 publicClient,
                 klerosConfig,
-                metaEvidenceURI,
-                2, // two ruling options
-            );
+                metaEvidence: buildFigaroMetaEvidence(undefined, evidenceDisplayURI),
+                evidenceTransport,
+            });
 
             saveDisputeId(processId, newId);
             setDisputeId(newId);
@@ -251,13 +247,15 @@ export function DisputeStatusPanel({
             // Pin the PDF blob to IPFS, then build the Evidence envelope
             // pointing at it. The envelope itself is a JSON pin.
             const bundleCID = await evidenceTransport.pinBlob(pdfBlob);
-            const evidence = buildAuditBundleEvidence(processId, bundleCID, role, {
-                redacted: bundleRedact,
+            const { txHash } = await submitDisputeEvidence({
+                walletClient,
+                klerosConfig,
+                localDisputeId: disputeId,
+                evidence: buildAuditBundleEvidence(processId, bundleCID, role, {
+                    redacted: bundleRedact,
+                }),
+                evidenceTransport,
             });
-            const evidenceCID = await evidenceTransport.pinJSON(evidence);
-            const evidenceURI = evidenceTransport.buildPath(evidenceCID);
-
-            const txHash = await submitEvidence(walletClient, klerosConfig, disputeId, evidenceURI);
             setLastEvidenceTxHash(txHash);
         } catch (e: unknown) {
             const message = extractErrorMessage(e, String(e));

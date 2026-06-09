@@ -30,6 +30,7 @@
  * via {@link createDispute} / {@link submitEvidence} in `klerosProxy.ts`.
  */
 
+import { recoverTypedDataAddress } from "viem";
 import type { Address, Hex } from "viem";
 import type { KlerosMetaEvidence, KlerosEvidence } from "./klerosEvidence";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -114,12 +115,12 @@ export interface DisputedConsentAttestation {
     /**
      * keccak256 hex digest of the canonical consent document. The
      * EIP-712 message field this hash anchors is `documentHash` per the
-     * `figaro-consent-v1` clause.
+     * consent clause.
      */
     documentHash: Hex;
-    /** Semver document version (`figaro-consent-v1` `documentVersion`). */
+    /** Semver document version (the consent clause's `documentVersion`). */
     documentVersion: string;
-    /** Human-readable document title (`figaro-consent-v1` `documentTitle`). */
+    /** Human-readable document title (the consent clause's `documentTitle`). */
     documentTitle: string;
     /**
      * The 65-byte EIP-712 signature produced when the participant signed
@@ -347,4 +348,85 @@ export function buildConsentDisputeEvidence(
         fileHash: input.receiptCid,
         fileTypeExtension: "pdf",
     };
+}
+
+// ── Consent-dispute claim — typed-data shape + signing ──────────────────────
+//
+// The claim a participant signs before submitting a consent dispute. One
+// home for the domain, the EIP-712 type, the browser-side claim digest, and
+// the sign+recover step — the page renders state around it.
+
+const CONSENT_DISPUTE_CLAIM_DOMAIN_NAME = "Figaro Consent Dispute Claim";
+const CONSENT_DISPUTE_CLAIM_DOMAIN_VERSION = "1";
+
+const CONSENT_DISPUTE_CLAIM_TYPES = {
+    DisputeClaim: [
+        { name: "receiptCid", type: "string" },
+        { name: "documentHash", type: "bytes32" },
+        { name: "citedSection", type: "string" },
+        { name: "claimDigest", type: "bytes32" },
+        { name: "submittedAt", type: "string" },
+    ],
+} as const;
+
+/** Browser-side digest of the free-text claim — the EIP-712 leaf binds the
+ *  cited section + claim text without putting the full text on the wallet
+ *  prompt. */
+async function computeConsentClaimDigest(
+    claimText: string,
+    citedSection: string,
+): Promise<Hex> {
+    const payload = JSON.stringify({ citedSection, claimText });
+    const bytes = new TextEncoder().encode(payload);
+    const hash = await crypto.subtle.digest("SHA-256", bytes);
+    return `0x${Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, "0")).join("")}` as Hex;
+}
+
+interface TypedDataSigner {
+    (args: {
+        domain: Record<string, unknown>;
+        types: typeof CONSENT_DISPUTE_CLAIM_TYPES;
+        primaryType: "DisputeClaim";
+        message: Record<string, unknown>;
+    }): Promise<Hex>;
+}
+
+/** Digest, sign, and recover a consent-dispute claim. Pure of UI state —
+ *  the caller provides the wallet's typed-data signer and renders the result. */
+export async function signConsentDisputeClaim(params: {
+    signTypedData: TypedDataSigner;
+    chainId: number;
+    verifyingContract: Address;
+    receiptCid: string;
+    documentHash: Hex;
+    citedSection: string;
+    claimText: string;
+    submittedAt: string;
+}): Promise<{ claimDigest: Hex; signature: Hex; submitter: Address }> {
+    const {
+        signTypedData, chainId, verifyingContract,
+        receiptCid, documentHash, citedSection, claimText, submittedAt,
+    } = params;
+    const claimDigest = await computeConsentClaimDigest(claimText, citedSection);
+    const message = { receiptCid, documentHash, citedSection, claimDigest, submittedAt };
+    const domain = {
+        name: CONSENT_DISPUTE_CLAIM_DOMAIN_NAME,
+        version: CONSENT_DISPUTE_CLAIM_DOMAIN_VERSION,
+        chainId,
+        verifyingContract,
+    } as const;
+    const signature = await signTypedData({
+        domain,
+        types: CONSENT_DISPUTE_CLAIM_TYPES,
+        primaryType: "DisputeClaim",
+        message,
+    });
+    const submitter = await recoverTypedDataAddress({
+        domain,
+        types: CONSENT_DISPUTE_CLAIM_TYPES,
+        primaryType: "DisputeClaim",
+        message,
+        signature,
+    });
+    return { claimDigest, signature, submitter };
 }

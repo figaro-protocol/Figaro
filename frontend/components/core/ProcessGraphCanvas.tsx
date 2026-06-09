@@ -16,7 +16,7 @@
  * node renderer, GHG-disclosure-per-order rendering, edge construction.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
     ReactFlow,
     Node,
@@ -38,8 +38,8 @@ import { Order, OrderState } from "@/lib/core/store";
 import { hexEqual, isEmptyHex } from "@/lib/shared/evm";
 import { formatToken } from "@/lib/shared/utils";
 import { Card } from "@/components/ui/Card";
-import { loadAgreement } from "@/lib/core/agreementStore";
-import { buildAgreementsFromCache, deriveOrderDepths, deriveOrderTopology } from "@/lib/core/orderTopology";
+import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
+import { deriveOrderDepths, deriveOrderTopology } from "@/lib/core/orderTopology";
 import { summarizeAgreement, type AgreementSummary } from "@/lib/core/orderAgreement";
 import {
     useOrderDisclosureTasks,
@@ -495,6 +495,13 @@ export function ProcessGraphCanvas({
     onDeleteNode,
     designerMode = false,
 }: ProcessGraphCanvasProps) {
+    // IPFS-first agreement hydration (the shared singleton) — the canvas never
+    // reads localStorage synchronously; nodes rebuild as hydration completes.
+    const agreementHashes = useMemo(
+        () => orders.map((o) => o.agreementHash).filter((h): h is string => Boolean(h)),
+        [orders],
+    );
+    const agreements = useProcessAgreements(agreementHashes);
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
@@ -503,7 +510,7 @@ export function ProcessGraphCanvas({
     const [activeLens, setActiveLens] = useState<GraphLens>("default");
 
     useEffect(() => {
-        const topology = deriveOrderTopology(orders, buildAgreementsFromCache(orders));
+        const topology = deriveOrderTopology(orders, agreements);
         const depthMap = deriveOrderDepths(orders, topology);
         const depthBuckets = new Map<number, string[]>();
         orders.forEach(o => {
@@ -530,7 +537,9 @@ export function ProcessGraphCanvas({
             const isBuyer = walletAddress ? hexEqual(walletAddress, order.buyer) : false;
             const isSeller = walletAddress ? hexEqual(walletAddress, order.seller) : false;
 
-            const agreementSummary = summarizeAgreement(loadAgreement(order.agreementHash as Hex));
+            const agreementSummary = summarizeAgreement(
+                (order.agreementHash ? agreements.get(order.agreementHash) : undefined) ?? null,
+            );
             const knownParents = (topology.get(order.id)?.parentOrderIds ?? []).filter(
                 (pid) => pid !== order.id && knownOrderIds.has(pid),
             );
@@ -577,7 +586,7 @@ export function ProcessGraphCanvas({
 
         setNodes(newNodes);
         setEdges(newEdges);
-    }, [orders, walletAddress, decimals, activeLens, designerMode, setNodes, setEdges, onDeleteNode]);
+    }, [orders, agreements, walletAddress, decimals, activeLens, designerMode, setNodes, setEdges, onDeleteNode]);
 
     return (
         <div>

@@ -12,15 +12,14 @@
  *      receipt) + "Continue to app" button. Sets `figaro-consent-complete`
  *      flag and redirects to `/discover`.
  *
- * The signature is the artifact. The Figaro consent clause (`figaro-consent-v1`)
+ * The signature is the artifact. The protocol's consent clause
  * defines the typed-data shape the protocol uses for any future flow that
  * wants consent as a clause inside a bonded commitment; the beta ceremony
  * here exercises only the typed-data primitive — no `commit`, no
  * `attestAsBuyer`, no kernel state mutation.
  *
- * Field order in the `Consent` type below MUST match
- * `encodeConsentContent` in `sdk/src/clauses/encode.ts` exactly:
- *   [bytes32 documentHash, string documentVersion, string documentTitle].
+ * The `Consent` typed-data shape is imported from the SDK encoder module
+ * (`CONSENT_EIP712_TYPES`) — the field order has one home.
  */
 
 import { useEffect, useState } from "react";
@@ -31,6 +30,7 @@ import {
     useSignTypedData,
 } from "wagmi";
 import { recoverTypedDataAddress, type Address, type Hex } from "viem";
+import { CONSENT_EIP712_TYPES } from "@figaro/core/clauses";
 
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -52,13 +52,7 @@ const CONSENT_DOMAIN_NAME = "Figaro Beta Consent";
 const CONSENT_DOMAIN_VERSION = "1";
 const CONSENT_COMPLETE_KEY = "figaro-consent-complete";
 
-const CONSENT_TYPES = {
-    Consent: [
-        { name: "documentHash", type: "bytes32" },
-        { name: "documentVersion", type: "string" },
-        { name: "documentTitle", type: "string" },
-    ],
-} as const;
+const CONSENT_TYPES = CONSENT_EIP712_TYPES;
 
 type Stage = "pre-connect" | "pre-sign" | "signing" | "pinning" | "post-sign";
 

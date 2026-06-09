@@ -10,7 +10,7 @@
  * pipe-separated manifest blob — was removed. The kernel Commitment carries
  * no manifest field; an order's content is its agreementHash (the merkle
  * root over agreement sections), and order logistics travel as the
- * figaro-geo-v2 agreement section. The codec targeted an on-chain `bytes
+ * geo agreement section. The codec targeted an on-chain `bytes
  * manifest` parameter that the V5 kernel does not have.
  */
 
@@ -127,17 +127,3 @@ function cosLabel(cos: string): string {
 // ---------------------------------------------------------------------------
 // Manifest clause IDs
 // ---------------------------------------------------------------------------
-
-/**
- * Well-known clause IDs. These are keccak256 of the clause key string,
- * matching what ManifestClauseRegistry stores on-chain.
- *
- * The clause ID identifies the manifest encoding format. The protocol core
- * treats manifest bytes as opaque — the clause tells the UI how to decode.
- */
-const MANIFEST_CLAUSES = {
-    /** Fulfilment-composition: modality + coordination + handoff point. */
-    FULFILMENT_V2: "figaro-fulfilment-v2",
-    /** Commerce manifest: handoff fields + itemized line items. */
-    COMMERCE_V1: "figaro-commerce-v1",
-} as const;

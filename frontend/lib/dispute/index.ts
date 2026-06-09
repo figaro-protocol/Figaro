@@ -52,21 +52,19 @@ export {
 } from "./klerosCourts";
 export type {  KlerosCourtKey } from "./klerosCourts";
 
-// Kleros ArbitrableProxy interaction
+// Kleros ArbitrableProxy interaction. The raw createDispute/submitEvidence
+// primitives are composed by ./disputeSubmission — surfaces use those
+// pin-then-act sequences, not the primitives directly.
 export {
     getArbitrationCost,
     fetchRuling,
-    createDispute,
-    submitEvidence,
-    
-    
 } from "./klerosProxy";
 export type {
     DisputeStatus,
     KlerosConfig,
 } from "./klerosProxy";
 
-// Process-jurisdiction recourse — reads the figaro-jurisdiction-v1 clause
+// Process-jurisdiction recourse — reads the jurisdiction clause
 // the assembly authored and resolves the Layer-3 recourse forum(s).
 export {
     resolveProcessRecourse,
@@ -81,3 +79,10 @@ export type {
 // Delivery attestations
 ;
 ;
+
+export {
+    createDisputeWithMetaEvidence,
+    submitDisputeEvidence,
+} from "./disputeSubmission";
+
+export { signConsentDisputeClaim } from "./consentDisputeEvidence";

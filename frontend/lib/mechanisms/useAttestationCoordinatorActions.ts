@@ -172,6 +172,11 @@ export function useAttestationCoordinatorActions() {
     return {
         submitSellerAttestation,
         submitBuyerAttestation,
+        // Composable building blocks — a custom attestation surface can
+        // reconstruct the commitment and build the inclusion receipt without
+        // re-implementing either step.
+        loadCommitment,
+        buildReceipt,
         isPending,
         isConfirming,
         isSuccess,

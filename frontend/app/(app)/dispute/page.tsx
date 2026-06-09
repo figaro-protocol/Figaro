@@ -58,23 +58,24 @@ import {
     useSignTypedData,
     useWalletClient,
 } from "wagmi";
-import { recoverTypedDataAddress, type Address, type Hex } from "viem";
+import { type Address, type Hex } from "viem";
 
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { CONTRACTS } from "@/lib/core/contracts";
-import { ZERO_ADDRESS, bytesToHex } from "@/lib/shared/evm";
+import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { isValidAddress } from "@/components/sellers/TokenAddressInput";
 import {
     buildConsentDisputeEvidence,
     buildConsentDisputeMetaEvidence,
-    createDispute,
+    createDisputeWithMetaEvidence,
     encodeArbitratorExtraData,
     getArbitrationCost,
     getKlerosCourt,
     KLEROS_COURTS,
-    submitEvidence,
+    submitDisputeEvidence,
+    signConsentDisputeClaim,
     type DisputedConsentAttestation,
     type ConsentDisputeParty,
     type KlerosConfig,
@@ -93,19 +94,6 @@ import { extractErrorMessage } from "@/lib/shared/errors";
  * `Figaro Beta Consent` domain used by /consent — a claim signature is
  * a different speech act and must not be replay-able as a consent.
  */
-const CLAIM_DOMAIN_NAME = "Figaro Consent Dispute Claim";
-const CLAIM_DOMAIN_VERSION = "1";
-
-const CONSENT_DISPUTE_CLAIM_TYPES = {
-    DisputeClaim: [
-        { name: "receiptCid", type: "string" },
-        { name: "documentHash", type: "bytes32" },
-        { name: "citedSection", type: "string" },
-        { name: "claimDigest", type: "bytes32" },
-        { name: "submittedAt", type: "string" },
-    ],
-} as const;
-
 const KLEROS_RESOLVER_BASE = "https://resolve.kleros.io";
 
 const MIN_CLAIM_LENGTH = 200;
@@ -163,19 +151,6 @@ interface SubmissionResult {
     submitEvidenceTxHash: Hex | null;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers — local claim digest (browser-side hashing for the EIP-712 leaf)
-// ---------------------------------------------------------------------------
-
-async function computeClaimDigest(
-    claimText: string,
-    citedSection: string,
-): Promise<Hex> {
-    const payload = JSON.stringify({ citedSection, claimText });
-    const bytes = new TextEncoder().encode(payload);
-    const hash = await crypto.subtle.digest("SHA-256", bytes);
-    return `0x${bytesToHex(new Uint8Array(hash))}` as Hex;
-}
 
 function isValidCid(value: string): boolean {
     return /^(Qm[1-9A-HJ-NP-Za-km-z]{44}|bafy[a-z2-7]{55,})$/.test(value);
@@ -324,36 +299,17 @@ export default function DisputePage() {
         setError(null);
         try {
             const submittedAt = new Date().toISOString();
-            const claimDigest = await computeClaimDigest(
-                compose.claimText,
-                resolvedCitedSection,
-            );
-            const message = {
+            // Digest + EIP-712 sign + recover live in lib/dispute
+            // (signConsentDisputeClaim) — the page renders state around it.
+            const { claimDigest, signature, submitter } = await signConsentDisputeClaim({
+                signTypedData: (args) => signTypedDataAsync(args as never) as Promise<Hex>,
+                chainId,
+                verifyingContract: (CONTRACTS.core || ZERO_ADDRESS) as Address,
                 receiptCid: selection.receiptCid,
                 documentHash: selection.documentHash,
                 citedSection: resolvedCitedSection,
-                claimDigest,
+                claimText: compose.claimText,
                 submittedAt,
-            };
-            const verifyingContract = (CONTRACTS.core || ZERO_ADDRESS) as Address;
-            const domain = {
-                name: CLAIM_DOMAIN_NAME,
-                version: CLAIM_DOMAIN_VERSION,
-                chainId,
-                verifyingContract,
-            } as const;
-            const signature = await signTypedDataAsync({
-                domain,
-                types: CONSENT_DISPUTE_CLAIM_TYPES,
-                primaryType: "DisputeClaim",
-                message,
-            }) as Hex;
-            const submitter = await recoverTypedDataAddress({
-                domain,
-                types: CONSENT_DISPUTE_CLAIM_TYPES,
-                primaryType: "DisputeClaim",
-                message,
-                signature,
             });
             setSignedClaim({ submittedAt, signature, submitter, claimDigest });
             setStep("submit");
@@ -372,34 +328,22 @@ export default function DisputePage() {
         setSubmitting(true);
         setError(null);
         try {
-            // 1. Pin the MetaEvidence (dispute context).
-            const metaEvidence = buildConsentDisputeMetaEvidence();
-            const metaEvidenceCid = await evidenceTransport.pinJSON(metaEvidence);
-            const metaEvidenceURI = evidenceTransport.buildPath(metaEvidenceCid);
-
-            // 2. Pin the per-submission Evidence (claim + receipt
-            //    pointer + claim signature).
-            const evidenceCid = await evidenceTransport.pinJSON(evidencePreview);
-            const evidenceURI = evidenceTransport.buildPath(evidenceCid);
-
-            // 3. Create the dispute on the Kleros ArbitrableProxy
-            //    (pays arbitration deposit; signs + submits tx).
-            //    Two ruling options: "breach upheld" / "no breach".
-            const localDisputeId = await createDispute(
+            // The two pin-then-act sequences live in lib/dispute
+            // (disputeSubmission); the page only builds the consent payloads.
+            const { metaEvidenceCid, localDisputeId } = await createDisputeWithMetaEvidence({
                 walletClient,
                 publicClient,
                 klerosConfig,
-                metaEvidenceURI,
-                2,
-            );
-
-            // 4. Submit the Evidence to the freshly-created dispute.
-            const submitEvidenceTxHash = await submitEvidence(
+                metaEvidence: buildConsentDisputeMetaEvidence(),
+                evidenceTransport,
+            });
+            const { evidenceCid, txHash: submitEvidenceTxHash } = await submitDisputeEvidence({
                 walletClient,
                 klerosConfig,
                 localDisputeId,
-                evidenceURI,
-            );
+                evidence: evidencePreview,
+                evidenceTransport,
+            });
 
             setSubmission({
                 metaEvidenceCid,
