@@ -25,10 +25,8 @@ import { Button } from "@/components/ui/Button";
 import { useCommerce, useCheckout } from "@/lib/commerce";
 import { useCartStore, type FulfillmentMode } from "@/lib/seller/cartStore";
 import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
-import { computeCommitmentProcessId, computeOrderHash } from "@/lib/core/commitmentStore";
-import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
-import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
 import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/core/assemblySubOrderPlan";
+import { executeAssemblyCheckout } from "@/lib/commerce/assemblyCheckout";
 import { templateParentOrderIds } from "@/lib/designer/assemblyTemplate";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { CommitmentSharePanel } from "@/components/core/CommitmentSharePanel";
@@ -38,7 +36,6 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatToken, parseToken } from "@/lib/shared/utils";
-import { shareCommitmentPayload } from "@/lib/core/commitmentShare";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { useSellerBoundAssemblies } from "@/lib/mechanisms/useAssemblyRegistry";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
@@ -250,7 +247,6 @@ export function CheckoutView({ sellerAddress }: Props) {
             setCheckoutError("This seller has no published assembly to order from.");
             return;
         }
-        const isMultiOrder = pickedAssembly.assemblyDoc.orders.length > 1;
         // `pickedRoot` (computed in render scope) carries the design-time clause
         // choices, spread verbatim — the checkout names no clause.
         if (!pickedRoot) {
@@ -259,110 +255,36 @@ export function CheckoutView({ sellerAddress }: Props) {
         }
         try {
             setCheckoutError(null);
-            const prepared = await prepareOrderCommitment({
-                buyer,
-                seller: leadSellerAddress,
-                currency,
-                payment: cartTotal,
-                lineItems: cartItems.map((item) => ({
-                    itemId: item.menuItemId,
-                    name: item.name,
-                    quantity: item.quantity,
-                    unitPrice: parseToken(item.price, tokenDecimals).toString(),
-                })),
-                clauseFields: { ...pickedRoot.clauses },
-            });
-            // Layer A — the buyer does not sign an invalid agreement.
-            const buyerCheck = validateCommitmentAgreement(prepared.agreement, prepared.agreementHash);
-            if (!buyerCheck.ok) {
-                setCheckoutError(
-                    `This order isn't valid to sign yet: ${buyerCheck.issues
-                        .map((i) => `${i.clause} ${i.path}: ${i.message}`)
-                        .join("; ")}`,
-                );
-                return;
-            }
-            // Single order (distinct parties OR self-commit) → the bilateral
-            // relay: the buyer signs + shares via the buyer-share-panel; the
-            // seller counter-signs the one order in their inbox.
-            if (!isMultiOrder) {
-                await initiateAsParty(prepared.commitment, "buyer", prepared.commitmentMeta, { skipPreview: true });
-                return;
-            }
-
-            // ── Multi-order assembly: the buyer funds EVERY order up front. The
-            //    root's processId is its EIP-712 digest (deterministic), so each
-            //    sub-order is prepared, signed, and relayed before any commit.
-            //    Sub-orders go straight onto the coordination channel to their
-            //    bound sellers; the root goes through the buyer-share-panel last.
-            //    Each seller counter-signs its own order in their inbox — the
-            //    kernel enforces commit order (root creates the process, subs
-            //    extend it), so the sellers accept root-first. Each sub-order's
-            //    seller + clauses come from the assembly; no clause is named. ───
-            const processId = computeCommitmentProcessId(prepared.commitment, chainId, CONTRACTS.core);
-            const realOrderHash = new Map<string, `0x${string}`>([
-                [pickedRoot.id, computeOrderHash(prepared.commitment, chainId, CONTRACTS.core)],
-            ]);
-            let cumulativeValue = cartTotal;
-
-            for (const { node, seller: boundSeller } of planSubOrderSellers(pickedAssembly)) {
-                if (!boundSeller) {
-                    setCheckoutError("This assembly has a sub-order with no designated counterparty — the seller must bind one.");
-                    return;
-                }
-                const parentOrderHashes = templateParentOrderIds(node)
-                    .map((pid) => realOrderHash.get(pid))
-                    .filter((h): h is `0x${string}` => !!h);
-                const payment = resolveSubOrderPayment({
-                    node, seller: boundSeller, leadAddress: leadSellerAddress,
-                    sellerCatalogues, tokenDecimals,
-                });
-                cumulativeValue += payment;
-                const subPrepared = await prepareOrderCommitment({
+            // The whole commit algorithm — root prepare/validate, the bilateral
+            // single-order relay, or the multi-order walk (sub-orders signed +
+            // relayed to their bound sellers, root through the buyer-share-panel
+            // last) — lives in lib/commerce/assemblyCheckout. The surface keeps
+            // guards and error display only.
+            await executeAssemblyCheckout(
+                {
                     buyer,
-                    seller: boundSeller,
+                    leadSellerAddress,
                     currency,
-                    payment,
-                    processId,
-                    parentOrderHashes,
-                    expectedCumulativeValue: cumulativeValue,
-                    clauseFields: { ...node.clauses },
-                });
-                // Layer A — the buyer does not sign an invalid sub-order either.
-                const subCheck = validateCommitmentAgreement(subPrepared.agreement, subPrepared.agreementHash);
-                if (!subCheck.ok) {
-                    setCheckoutError(
-                        `A sub-order isn't valid to sign yet: ${subCheck.issues
-                            .map((i) => `${i.clause} ${i.path}: ${i.message}`)
-                            .join("; ")}`,
-                    );
-                    return;
-                }
-                const subSig = await signCommitment(subPrepared.commitment, { skipPreview: true });
-                await shareCommitmentPayload({
-                    payload: {
-                        commitment: subPrepared.commitment,
-                        buyerSig: subSig,
-                        agreement: subPrepared.commitmentMeta.agreement,
-                        agreementUri: subPrepared.commitmentMeta.agreementUri,
-                    },
-                    recipientAddress: boundSeller,
-                    senderAddress: buyer,
-                    walletClient,
+                    payment: cartTotal,
+                    lineItems: cartItems.map((item) => ({
+                        itemId: item.menuItemId,
+                        name: item.name,
+                        quantity: item.quantity,
+                        unitPrice: parseToken(item.price, tokenDecimals).toString(),
+                    })),
+                    assembly: pickedAssembly,
+                    sellerCatalogues,
+                    tokenDecimals,
+                },
+                {
                     chainId,
+                    signCommitment,
+                    initiateAsParty,
+                    walletClient,
                     coordinationMessaging,
                     evidenceTransport,
-                });
-                realOrderHash.set(
-                    node.id,
-                    computeOrderHash(subPrepared.commitment, chainId, CONTRACTS.core),
-                );
-            }
-
-            // Root last → the buyer-share-panel shows the root for the buyer to
-            // relay to the lead. The lead accepts → root commits → the already
-            // shared sub-orders unlock for their sellers to accept.
-            await initiateAsParty(prepared.commitment, "buyer", prepared.commitmentMeta, { skipPreview: true });
+                },
+            );
         } catch (cause: unknown) {
             const msg = extractErrorMessage(cause, "Signing failed");
             setCheckoutError(msg);
