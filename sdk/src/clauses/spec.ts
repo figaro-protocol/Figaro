@@ -136,6 +136,12 @@ export interface ClauseBlockBinding {
      *  figaro-ghg-measurement-v1); the emitter dedups. Omit for unsistered
      *  clauses. */
     sisterClauseId?: string;
+    /** The FIELD name (on another, parent clause) this clause nests under in the
+     *  designer drawer — a containment relationship read from the spec, never a
+     *  hardcoded tree. The drawer renders this clause nested beneath the parent
+     *  clause's matching field (e.g. figaro-proximity-policy-v1 nests under the
+     *  hand-off clause's `handoff` field). Omit for top-level clauses. */
+    nestsUnder?: string;
 }
 
 export interface ClauseSpec {
@@ -395,6 +401,12 @@ function parseBlockBinding(
             return null;
         }
     }
+    if (raw.nestsUnder !== undefined) {
+        if (typeof raw.nestsUnder !== "string" || raw.nestsUnder.length === 0) {
+            errors.push({ path: `${path}.nestsUnder`, message: "nestsUnder must be a non-empty string when present" });
+            return null;
+        }
+    }
     return {
         tier: tier as ClauseTier,
         ...(raw.drawerArticle !== undefined && { drawerArticle: raw.drawerArticle as ClauseDrawerArticle }),
@@ -402,6 +414,7 @@ function parseBlockBinding(
         moduleIds,
         ...(routes !== undefined && { routes }),
         ...(raw.sisterClauseId !== undefined && { sisterClauseId: raw.sisterClauseId as string }),
+        ...(raw.nestsUnder !== undefined && { nestsUnder: raw.nestsUnder as string }),
     };
 }
 

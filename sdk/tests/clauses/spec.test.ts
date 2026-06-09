@@ -152,4 +152,26 @@ describe("parseClauseSpec — meta-clause validation", () => {
         });
         expect(result.ok).toBe(false);
     });
+
+    // The drawer's cross-clause nesting (e.g. figaro-proximity-policy-v1 under the
+    // hand-off clause's `handoff` field) is read from block.nestsUnder. The parser
+    // MUST round-trip it — dropping it silently makes the nested clause invisible.
+    it("preserves block.nestsUnder through the parse", () => {
+        const result = parseClauseSpec({
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            fields: [{ name: "bands", type: "string", required: true }],
+            block: { tier: "category-2", drawerArticle: "fulfilment", mechanismKinds: [], moduleIds: [], nestsUnder: "handoff" },
+        });
+        expect(result.ok).toBe(true);
+        if (result.ok) expect(result.spec.block?.nestsUnder).toBe("handoff");
+    });
+
+    it("rejects an empty-string block.nestsUnder", () => {
+        const result = parseClauseSpec({
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            fields: [{ name: "x", type: "string", required: true }],
+            block: { tier: "category-2", mechanismKinds: [], moduleIds: [], nestsUnder: "" },
+        });
+        expect(result.ok).toBe(false);
+    });
 });
