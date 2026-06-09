@@ -131,6 +131,13 @@ export function clauseNestsUnder(clauseId: string): string | null {
     return NESTS_UNDER.get(clauseId) ?? null;
 }
 
+/** True if a clause is STRUCTURAL — composed on every order by the agreement
+ *  build, not a designer choice (commerce, topology). Read from the spec's
+ *  `block.structural`; generic surfaces exclude it from selectable lists. */
+export function clauseIsStructural(clauseId: string): boolean {
+    return getClauseSpec(clauseId)?.block?.structural === true;
+}
+
 // ── Spec-derived reads ───────────────────────────────────────────────────────
 
 /** When a clause is attested. Derived from block.tier: category-1 ⇒ runtime

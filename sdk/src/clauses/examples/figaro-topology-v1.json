@@ -29,6 +29,7 @@
     "block": {
         "tier": "manifest-only",
         "drawerArticle": "identity",
+        "structural": true,
         "mechanismKinds": ["core"],
         "moduleIds": ["process-graph", "order-node"]
     }

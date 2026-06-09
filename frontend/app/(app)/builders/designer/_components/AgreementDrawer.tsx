@@ -28,7 +28,7 @@ import { loadAgreement } from "@/lib/core/agreementStore";
 import { summarizeAgreement } from "@/lib/core/orderAgreement";
 import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/mechanisms/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
-import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, isCompanionClause } from "@/lib/shared/clauseSpecSource";
+import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, isCompanionClause, clauseIsStructural } from "@/lib/shared/clauseSpecSource";
 import { ClausesByArticle } from "@/components/core/ClausesByArticle";
 import type { FieldSpec } from "@figaro/core/clauses";
 
@@ -380,7 +380,7 @@ function ClauseRegistryPanel({
             .map((g) => ({
                 article: g.article,
                 entries: g.clauses
-                    .filter((c) => !isCompanionClause(c.clauseId))
+                    .filter((c) => !isCompanionClause(c.clauseId) && !clauseIsStructural(c.clauseId))
                     .map((c) => eventByName.get(c.clauseId))
                     .filter((e): e is RegisteredClauseEvent => e !== undefined),
             }))

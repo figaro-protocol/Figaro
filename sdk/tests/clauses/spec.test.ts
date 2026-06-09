@@ -174,4 +174,26 @@ describe("parseClauseSpec — meta-clause validation", () => {
         });
         expect(result.ok).toBe(false);
     });
+
+    // Structural clauses (commerce, topology) are composed on every order by the
+    // build, never offered as a designer choice. Generic surfaces read this flag
+    // to exclude them — it MUST round-trip through the parse.
+    it("preserves block.structural through the parse", () => {
+        const result = parseClauseSpec({
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            fields: [{ name: "x", type: "string", required: true }],
+            block: { tier: "category-2", mechanismKinds: [], moduleIds: [], structural: true },
+        });
+        expect(result.ok).toBe(true);
+        if (result.ok) expect(result.spec.block?.structural).toBe(true);
+    });
+
+    it("rejects a non-boolean block.structural", () => {
+        const result = parseClauseSpec({
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            fields: [{ name: "x", type: "string", required: true }],
+            block: { tier: "category-2", mechanismKinds: [], moduleIds: [], structural: "yes" },
+        });
+        expect(result.ok).toBe(false);
+    });
 });

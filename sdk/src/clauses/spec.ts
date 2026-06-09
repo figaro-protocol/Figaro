@@ -142,6 +142,11 @@ export interface ClauseBlockBinding {
      *  clause's matching field (e.g. figaro-proximity-policy-v1 nests under the
      *  hand-off clause's `handoff` field). Omit for top-level clauses. */
     nestsUnder?: string;
+    /** Structural clause — composed on EVERY order by the agreement build, not a
+     *  designer choice (figaro-commerce-v1, figaro-topology-v1). Generic surfaces
+     *  read this to exclude it from selectable lists (the drawer never offers a
+     *  structural clause as a checkbox). Omit for elective clauses. */
+    structural?: boolean;
 }
 
 export interface ClauseSpec {
@@ -407,6 +412,10 @@ function parseBlockBinding(
             return null;
         }
     }
+    if (raw.structural !== undefined && typeof raw.structural !== "boolean") {
+        errors.push({ path: `${path}.structural`, message: "structural must be a boolean when present" });
+        return null;
+    }
     return {
         tier: tier as ClauseTier,
         ...(raw.drawerArticle !== undefined && { drawerArticle: raw.drawerArticle as ClauseDrawerArticle }),
@@ -415,6 +424,7 @@ function parseBlockBinding(
         ...(routes !== undefined && { routes }),
         ...(raw.sisterClauseId !== undefined && { sisterClauseId: raw.sisterClauseId as string }),
         ...(raw.nestsUnder !== undefined && { nestsUnder: raw.nestsUnder as string }),
+        ...(raw.structural !== undefined && { structural: raw.structural as boolean }),
     };
 }
 
