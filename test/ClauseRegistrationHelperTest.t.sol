@@ -5,27 +5,8 @@ import "forge-std/Test.sol";
 import {ClauseRegistry} from "../src/ClauseRegistry.sol";
 import {AttestationCoordinator} from "../src/AttestationCoordinator.sol";
 import {ClauseRegistrationHelper} from "../src/ClauseRegistrationHelper.sol";
-import {IClauseValidator} from "../src/IClauseValidator.sol";
+import {MockClauseValidator} from "../src/mocks/MockClauseValidator.sol";
 import {FigaroCore} from "../src/FigaroCore.sol";
-
-/// @notice Minimal validator that reports a constructor-set clauseId. Used to
-///         exercise the binding-mismatch revert path in the helper.
-contract MockValidator is IClauseValidator {
-    bytes32 public immutable override clauseId;
-
-    constructor(bytes32 _clauseId) {
-        clauseId = _clauseId;
-    }
-
-    function validate(
-        bytes32, /* id */
-        uint8, /* stage */
-        bytes calldata, /* sectionData */
-        bytes calldata /* content */
-    ) external view override {
-        // permissive — accepts any input
-    }
-}
 
 contract ClauseRegistrationHelperTest is Test {
     FigaroCore core;
@@ -69,7 +50,7 @@ contract ClauseRegistrationHelperTest is Test {
     // ── Happy path ──────────────────────────────────────────────────────────
 
     function test_happyPath_registersAndBinds() public {
-        MockValidator validator = new MockValidator(TEST_CLAUSE);
+        MockClauseValidator validator = new MockClauseValidator(TEST_CLAUSE);
         helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, TEST_FAMILY, address(validator));
 
         assertTrue(registry.registered(TEST_CLAUSE));
@@ -77,7 +58,7 @@ contract ClauseRegistrationHelperTest is Test {
     }
 
     function test_emitsBothEvents() public {
-        MockValidator validator = new MockValidator(TEST_CLAUSE);
+        MockClauseValidator validator = new MockClauseValidator(TEST_CLAUSE);
 
         // ClauseRegistered indexes family + registrar (2 topics); clauseId is now
         // a non-indexed string in data, so check data too.
@@ -93,7 +74,7 @@ contract ClauseRegistrationHelperTest is Test {
         // The helper's address (not the calling EOA's) appears as the
         // ClauseRegistered.registrar. Documented behavior — clause authors who
         // want to be on record as the registrar should call ClauseRegistry directly.
-        MockValidator validator = new MockValidator(TEST_CLAUSE);
+        MockClauseValidator validator = new MockClauseValidator(TEST_CLAUSE);
 
         vm.recordLogs();
         helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, TEST_FAMILY, address(validator));
@@ -116,26 +97,26 @@ contract ClauseRegistrationHelperTest is Test {
     function test_revertsIfClauseAlreadyRegistered() public {
         // Pre-register the clause directly via ClauseRegistry.
         registry.registerClause(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, TEST_FAMILY);
-        MockValidator validator = new MockValidator(TEST_CLAUSE);
+        MockClauseValidator validator = new MockClauseValidator(TEST_CLAUSE);
 
         vm.expectRevert(abi.encodeWithSelector(ClauseRegistry.AlreadyRegistered.selector, TEST_CLAUSE));
         helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, TEST_FAMILY, address(validator));
     }
 
     function test_revertsIfZeroContentHash() public {
-        MockValidator validator = new MockValidator(TEST_CLAUSE);
+        MockClauseValidator validator = new MockClauseValidator(TEST_CLAUSE);
         vm.expectRevert(ClauseRegistry.ZeroContentHash.selector);
         helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, bytes32(0), TEST_URI, TEST_FAMILY, address(validator));
     }
 
     function test_revertsIfEmptyMetadataURI() public {
-        MockValidator validator = new MockValidator(TEST_CLAUSE);
+        MockClauseValidator validator = new MockClauseValidator(TEST_CLAUSE);
         vm.expectRevert(ClauseRegistry.EmptyMetadataURI.selector);
         helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, "", TEST_FAMILY, address(validator));
     }
 
     function test_revertsIfZeroFamily() public {
-        MockValidator validator = new MockValidator(TEST_CLAUSE);
+        MockClauseValidator validator = new MockClauseValidator(TEST_CLAUSE);
         vm.expectRevert(ClauseRegistry.ZeroFamily.selector);
         helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, bytes32(0), address(validator));
     }
@@ -147,7 +128,7 @@ contract ClauseRegistrationHelperTest is Test {
 
     function test_revertsIfValidatorClauseIdMismatch() public {
         bytes32 wrongClauseId = keccak256("wrong-clause-v1");
-        MockValidator validator = new MockValidator(wrongClauseId);
+        MockClauseValidator validator = new MockClauseValidator(wrongClauseId);
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -163,14 +144,14 @@ contract ClauseRegistrationHelperTest is Test {
         // Front-runner pre-binds a validator for TEST_CLAUSE via direct setValidator call,
         // BEFORE the clause is registered. The helper call should revert when it
         // reaches setValidator.
-        MockValidator preBound = new MockValidator(TEST_CLAUSE);
+        MockClauseValidator preBound = new MockClauseValidator(TEST_CLAUSE);
         coordinator.setValidator(TEST_CLAUSE, address(preBound));
 
         // Clause is NOT yet registered in ClauseRegistry.
         assertFalse(registry.registered(TEST_CLAUSE));
 
         // Helper attempts: register clause + bind a different validator. The bind fails.
-        MockValidator legitimate = new MockValidator(TEST_CLAUSE);
+        MockClauseValidator legitimate = new MockClauseValidator(TEST_CLAUSE);
         vm.expectRevert(abi.encodeWithSelector(AttestationCoordinator.ValidatorAlreadySet.selector, TEST_CLAUSE));
         helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, TEST_FAMILY, address(legitimate));
     }
@@ -183,7 +164,7 @@ contract ClauseRegistrationHelperTest is Test {
 
     function test_atomicity_failedValidatorMismatchDoesNotLeaveClauseRegistered() public {
         bytes32 wrongClauseId = keccak256("wrong-clause-v1");
-        MockValidator validator = new MockValidator(wrongClauseId);
+        MockClauseValidator validator = new MockClauseValidator(wrongClauseId);
 
         try helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, TEST_FAMILY, address(validator)) {
             revert("expected revert");
@@ -202,12 +183,12 @@ contract ClauseRegistrationHelperTest is Test {
 
     function test_atomicity_failedAlreadyBoundDoesNotLeaveClauseRegistered() public {
         // Pre-bind a validator for TEST_CLAUSE via direct setValidator call.
-        MockValidator preBound = new MockValidator(TEST_CLAUSE);
+        MockClauseValidator preBound = new MockClauseValidator(TEST_CLAUSE);
         coordinator.setValidator(TEST_CLAUSE, address(preBound));
         assertFalse(registry.registered(TEST_CLAUSE), "precondition: clause not yet registered");
 
         // Helper attempts — fails on setValidator.
-        MockValidator legitimate = new MockValidator(TEST_CLAUSE);
+        MockClauseValidator legitimate = new MockClauseValidator(TEST_CLAUSE);
         try helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, TEST_FAMILY, address(legitimate)) {
             revert("expected revert");
         } catch {
@@ -227,12 +208,12 @@ contract ClauseRegistrationHelperTest is Test {
 
     function test_helperBoundClauseCannotBeReBoundDirectly() public {
         // Register + bind via helper.
-        MockValidator validator = new MockValidator(TEST_CLAUSE);
+        MockClauseValidator validator = new MockClauseValidator(TEST_CLAUSE);
         helper.registerClauseAndValidator(TEST_CLAUSE_ID, 1, TEST_CONTENT, TEST_URI, TEST_FAMILY, address(validator));
 
         // Direct setValidator call after helper-bind should also revert
         // (first-write-wins is enforced at the coordinator level, helper is not special).
-        MockValidator second = new MockValidator(TEST_CLAUSE);
+        MockClauseValidator second = new MockClauseValidator(TEST_CLAUSE);
         vm.expectRevert(abi.encodeWithSelector(AttestationCoordinator.ValidatorAlreadySet.selector, TEST_CLAUSE));
         coordinator.setValidator(TEST_CLAUSE, address(second));
     }

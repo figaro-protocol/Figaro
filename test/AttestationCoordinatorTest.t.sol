@@ -9,32 +9,8 @@ import "../src/ClauseRegistry.sol";
 import "../src/IRoleResolver.sol";
 import "../src/IClauseValidator.sol";
 import "../src/mocks/MockPermitToken.sol";
+import {MockClauseValidator} from "../src/mocks/MockClauseValidator.sol";
 import {AgreementTestHelper} from "./helpers/AgreementTestHelper.sol";
-
-/// @dev Permissive test validator — implements IClauseValidator for a given
-///      clauseId and accepts any content. Used only in these tests to isolate
-///      coordinator semantics from per-clause validation rules. Production
-///      validators live in src/clauseValidators/.
-contract PermissiveTestValidator is IClauseValidator {
-    bytes32 public immutable override clauseId;
-    error ClauseIdMismatch(bytes32 got, bytes32 expected);
-    constructor(bytes32 _clauseId) {
-        clauseId = _clauseId;
-    }
-    function validate(
-        bytes32 id,
-        uint8, /* stage */
-        bytes calldata, /* sectionData */
-        bytes calldata /* content */
-    ) external view override {
-        // Test mock uses `view` because Solidity treats reading the
-        // constructor-set `immutable clauseId` as a state read. Production
-        // validators in src/clauseValidators/ are `external pure override`
-        // because they decode against compile-time `constant` clauseIds —
-        // see IClauseValidator NatSpec for the discipline.
-        if (id != clauseId) revert ClauseIdMismatch(id, clauseId);
-    }
-}
 
 /// @title AttestationCoordinatorTest
 /// @notice Tests for the rewritten zero-storage attestation coordinator.
@@ -101,12 +77,12 @@ contract AttestationCoordinatorTest is Test {
         // ── AttestationCoordinator: register a permissive validator for each clause ─
         // Production deployments register the real per-clause validators from
         // src/clauseValidators/. These tests isolate coordinator semantics, so
-        // they use PermissiveTestValidator (accepts any content).
-        coordinator.setValidator(LIFECYCLE_CLAUSE, address(new PermissiveTestValidator(LIFECYCLE_CLAUSE)));
-        coordinator.setValidator(GHG_CLAUSE,       address(new PermissiveTestValidator(GHG_CLAUSE)));
-        coordinator.setValidator(PROXIMITY_CLAUSE, address(new PermissiveTestValidator(PROXIMITY_CLAUSE)));
-        coordinator.setValidator(COMMERCE_CLAUSE,  address(new PermissiveTestValidator(COMMERCE_CLAUSE)));
-        coordinator.setValidator(FULFILMENT_CLAUSE, address(new PermissiveTestValidator(FULFILMENT_CLAUSE)));
+        // they use MockClauseValidator (accepts any content).
+        coordinator.setValidator(LIFECYCLE_CLAUSE, address(new MockClauseValidator(LIFECYCLE_CLAUSE)));
+        coordinator.setValidator(GHG_CLAUSE,       address(new MockClauseValidator(GHG_CLAUSE)));
+        coordinator.setValidator(PROXIMITY_CLAUSE, address(new MockClauseValidator(PROXIMITY_CLAUSE)));
+        coordinator.setValidator(COMMERCE_CLAUSE,  address(new MockClauseValidator(COMMERCE_CLAUSE)));
+        coordinator.setValidator(FULFILMENT_CLAUSE, address(new MockClauseValidator(FULFILMENT_CLAUSE)));
 
         // AttestationCoordinator declares which clauses it uses.
         // In production this is called from the deploy script (post-audit amendment);
@@ -724,7 +700,7 @@ contract AttestationCoordinatorTest is Test {
 
     function test_setValidator_rejectsAlreadySet() public {
         // LIFECYCLE_CLAUSE validator is already set in setUp()
-        PermissiveTestValidator v = new PermissiveTestValidator(LIFECYCLE_CLAUSE);
+        MockClauseValidator v = new MockClauseValidator(LIFECYCLE_CLAUSE);
         vm.expectRevert(abi.encodeWithSelector(
             AttestationCoordinator.ValidatorAlreadySet.selector, LIFECYCLE_CLAUSE
         ));
@@ -733,7 +709,7 @@ contract AttestationCoordinatorTest is Test {
 
     function test_setValidator_rejectsMismatchedBinding() public {
         // Validator claims it handles UNUSED_CLAUSE, but we try to register under a different ID.
-        PermissiveTestValidator v = new PermissiveTestValidator(UNUSED_CLAUSE);
+        MockClauseValidator v = new MockClauseValidator(UNUSED_CLAUSE);
         bytes32 differentId = keccak256("figaro-yet-another-v1");
         vm.expectRevert(abi.encodeWithSelector(
             AttestationCoordinator.InvalidValidatorBinding.selector, differentId, UNUSED_CLAUSE
@@ -742,7 +718,7 @@ contract AttestationCoordinatorTest is Test {
     }
 
     function test_setValidator_happyPath() public {
-        PermissiveTestValidator v = new PermissiveTestValidator(UNUSED_CLAUSE);
+        MockClauseValidator v = new MockClauseValidator(UNUSED_CLAUSE);
         coordinator.setValidator(UNUSED_CLAUSE, address(v));
         assertEq(coordinator.clauseValidator(UNUSED_CLAUSE), address(v));
     }
@@ -842,7 +818,7 @@ contract AttestationCoordinatorTest is Test {
         // (Certora rule 8) and not what this fuzz targets.
         vm.assume(coordinator.clauseValidator(clauseId) == address(0));
 
-        PermissiveTestValidator v = new PermissiveTestValidator(boundId);
+        MockClauseValidator v = new MockClauseValidator(boundId);
         vm.expectRevert(abi.encodeWithSelector(
             AttestationCoordinator.InvalidValidatorBinding.selector, clauseId, boundId
         ));
