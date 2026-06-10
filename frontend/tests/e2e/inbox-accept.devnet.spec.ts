@@ -35,6 +35,7 @@
  * plan.
  */
 import { test, expect, ANVIL_ACCOUNTS, gotoAsWallet, seedAgreementForWallet, simulateXmtpCommitmentArrival } from './devnet-multi-test';
+import { CORE_ABI } from '@figaro/core';
 import {
     createPublicClient,
     defineChain,
@@ -67,9 +68,6 @@ const SELLER_ADDR = ANVIL_ACCOUNTS[1];
 
 const ZERO_PROCESS_ID = `0x${'0'.repeat(64)}` as Hex;
 
-const ORDER_COMMITTED_ABI = parseAbi([
-    'event OrderCommitted(bytes32 indexed processId, bytes32 indexed orderHash, address indexed seller, address buyer, uint256 payment)',
-]);
 const CORE_VIEW_ABI = parseAbi([
     'function processes(bytes32 processId) view returns (address rootBuyer, address currency, uint256 cumulativeValue, uint32 activeOrderCount)',
 ]);
@@ -184,7 +182,7 @@ test.describe('/inbox pending → accept → on-chain commit (devnet)', () => {
         await expect
             .poll(async () => {
                 const logs = await publicClient.getContractEvents({
-                    address: coreAddress, abi: ORDER_COMMITTED_ABI, eventName: 'OrderCommitted',
+                    address: coreAddress, abi: CORE_ABI, eventName: 'OrderCommitted',
                     fromBlock, toBlock: 'latest',
                 });
                 const mine = logs.find((l) => {
