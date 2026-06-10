@@ -26,8 +26,9 @@ import {
     createPublicClient, createWalletClient, http,
     type Hex,
 } from 'viem';
-import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
+import { privateKeyToAccount } from 'viem/accounts';
 import {
+    seedRegisteredSeller,
     pinJSONToIPFS,
     discoverSellerByAssembly,
     ensureTokenApprovalsByAddress,
@@ -39,15 +40,12 @@ import {
     RPC_URL,
     LOCAL_ANVIL,
 } from './devnet-helpers';
-import { ANVIL_KEYS } from '../anvilAccounts';
+import { ANVIL_KEYS, anvilKeyAt } from '../anvilAccounts';
 
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 const REGISTRAR_KEY = ANVIL_KEYS[0] as Hex; // anvil[0] — the buyer
 const BUYER_ADDR = privateKeyToAccount(REGISTRAR_KEY).address;
 
-const SELLER_REGISTRY_ABI = [
-    { type: 'function', name: 'register', stateMutability: 'payable', inputs: [{ name: 'metadataURI', type: 'string' }], outputs: [] },
-] as const;
 
 
 // The novel clause — a runtime-attestable lifecycle with one enum ladder. Modeled
@@ -66,42 +64,31 @@ const NOVEL_SPEC = {
     block: { tier: 'category-1', drawerArticle: 'attestations', mechanismKinds: ['coordinator'], moduleIds: [] },
 };
 
-// The novel clause registers + binds through the shared third-party path
-// (devnet-helpers `registerNovelClause`): its own MockClauseValidator deployed
-// and bound atomically via ClauseRegistrationHelper.
-
-// Register a seller (anvil[14]) bound to the novel assembly with a catalogue item,
-// the same profile shape populate-test-data pins. Setup DATA, not a tested surface.
+// The probe seller registers through the CANONICAL idempotent seeder
+// (devnet-helpers.seedRegisteredSeller): register once, updateProfile on
+// re-runs — which also SELF-HEALS if another spec's wallet hygiene ever
+// stamps a different profile onto this index. Setup DATA, not a tested
+// surface. Index census: 14 is this probe's own (see anvilAccounts).
 async function registerNovelSeller(): Promise<Hex> {
     const cfg = readLocalDeploymentConfig();
-    const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY ?? cfg.sellerRegistry) as Hex;
     const token = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? cfg.tokenAddress) as Hex;
-    const account = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 14 });
-    const catalogue = {
-        subjectAddress: account.address, version: '0.1.0', unitSystem: 'metric',
+    const key = anvilKeyAt(14);
+    const address = privateKeyToAccount(key).address;
+    const { uri: catalogueURI } = await pinJSONToIPFS({
+        subjectAddress: address, version: '0.1.0', unitSystem: 'metric',
         menu: [{ id: 'probe-item', name: 'Probe Item', description: 'probe', price: '1', pricingPolicy: 'fixed', category: 'General', available: true }],
-    };
-    const { uri: catalogueURI } = await pinJSONToIPFS(catalogue);
-    const profile = {
-        subjectAddress: account.address, name: 'Probe Seller', specialty: 'permissionless probe',
-        catalogueURI, location: { geohash: '9q8yyk8yu' },
-        acceptedTokens: [{ address: token, symbol: 'MOCK', name: 'Mock Token' }],
-        defaultTokenAddress: token,
-        assemblyBindings: [{ bindingId: `${NOVEL_SLUG}:${account.address.toLowerCase()}`, subjectAddress: account.address, assemblySlug: NOVEL_SLUG, counterpartyBindings: [] }],
-    };
-    const { uri: profileURI } = await pinJSONToIPFS(profile);
-    const pub = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const wallet = createWalletClient({ account, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    try {
-        const { request } = await pub.simulateContract({
-            account: account.address, address: sellerRegistry, abi: SELLER_REGISTRY_ABI,
-            functionName: 'register', args: [profileURI], value: 1000000000000000n,
-        });
-        await pub.waitForTransactionReceipt({ hash: await wallet.writeContract(request) });
-    } catch (e) {
-        if (!String(e).includes('AlreadyRegistered') && !String(e).includes('reverted')) throw e;
-    }
-    return account.address as Hex;
+    });
+    await seedRegisteredSeller({
+        walletKey: key,
+        profile: {
+            name: 'Probe Seller', specialty: 'permissionless probe',
+            catalogueURI, location: { geohash: '9q8yyk8yu' },
+            acceptedTokens: [{ address: token, symbol: 'MOCK', chainId: 31337 }],
+            defaultTokenAddress: token,
+            assemblyBindings: [{ bindingId: `${NOVEL_SLUG}:${address.toLowerCase()}`, subjectAddress: address, assemblySlug: NOVEL_SLUG, counterpartyBindings: [] }],
+        },
+    });
+    return address as Hex;
 }
 
 test.describe('PERMISSIONLESS CLAUSE — the definition of green', () => {

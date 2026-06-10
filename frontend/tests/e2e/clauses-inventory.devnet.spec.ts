@@ -18,14 +18,27 @@
  * clauses via `Deploy.s.sol`).
  */
 import { test, expect } from '@playwright/test';
+import { CLAUSE_REGISTRY_ABI } from '@figaro/core';
+import { localPublicClient, readLocalDeploymentConfig } from './devnet-helpers';
 
 test.describe('Clauses marketing inventory (devnet)', () => {
     test('renders the on-chain registered clause set, grouped by article', async ({ page }) => {
+        // The page must show EXACTLY what the chain holds — read the live
+        // registered-clause count from ClauseRegistered events (the network is
+        // the source of truth; the count grows when specs register novel
+        // clauses, so a hardcoded figure is wrong on any non-fresh chain).
+        const publicClient = localPublicClient();
+        const registry = (process.env.NEXT_PUBLIC_CLAUSE_REGISTRY
+            ?? readLocalDeploymentConfig().clauseRegistry) as `0x${string}`;
+        const registered = await publicClient.getContractEvents({
+            address: registry, abi: CLAUSE_REGISTRY_ABI, eventName: 'ClauseRegistered', fromBlock: 0n,
+        });
+        const liveCount = new Set(registered.map((e) => (e.args as { clauseId?: string }).clauseId)).size;
+
         await page.goto('/clauses');
 
         // The count line is ClauseInventory's resolved-state proof.
-        // Deploy.s.sol registers all 18 reference clauses, so liveKnown=18.
-        await expect(page.getByText(/18 clauses are registered/)).toBeVisible({
+        await expect(page.getByText(new RegExp(`${liveCount} clauses are registered`))).toBeVisible({
             timeout: 15_000,
         });
 

@@ -796,6 +796,7 @@ export interface SeedSellerProfile {
     description?: string;
     specialty?: string;
     catalogueURI?: string;
+    location?: { geohash?: string };
     acceptedTokens?: Array<{ address: `0x${string}`; symbol: string; chainId: number }>;
     defaultTokenAddress?: `0x${string}`;
     /** The assemblies this seller adopts. The assembly-driven checkout only
@@ -1146,10 +1147,11 @@ export async function assertAssemblyOnInventory(page: Page, slug: string): Promi
 // (This mirrors what the indexer / `discoveryService` does; it additionally keeps
 // the `assemblyBindings` that the buyer-facing `SellerCatalogue` projection drops.)
 
-/** SellerRegistry registration event — carries the profile metadataURI. Internal
+/** SellerRegistry registration events — carry the profile metadataURI. Internal
  *  to discovery; read by `discoverSellers`. */
 const SELLER_REGISTERED_EVENT_ABI = parseAbi([
     'event SellerRegistered(address indexed seller, string metadataURI)',
+    'event SellerProfileUpdated(address indexed seller, string metadataURI)',
     'event SellerWithdrawn(address indexed seller, uint256 deposit)',
 ]);
 
@@ -1166,16 +1168,22 @@ export interface DiscoveredSeller {
 
 /** Every LIVE registered seller, discovered from chain → IPFS (events +
  *  profile docs). Mainnet-realistic tolerance: a withdrawn wallet is skipped
- *  (registrations must outnumber withdrawals), and a profile that fails to
+ *  (registrations must outnumber withdrawals), a profile that fails to
  *  fetch or parse is skipped rather than crashing discovery — anyone can
- *  register a garbage URI; consumers must tolerate it. */
+ *  register a garbage URI; consumers must tolerate it — and the live profile
+ *  is the most recent `SellerProfileUpdated` post-dating the surviving
+ *  registration (mirrors `lib/core/indexer.ts`; `updateProfile` is a
+ *  by-design SellerRegistry surface). */
 export async function discoverSellers(): Promise<DiscoveredSeller[]> {
     const publicClient = localPublicClient();
     const config = readLocalDeploymentConfig();
     const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY ?? config.sellerRegistry) as `0x${string}`;
-    const [events, withdrawals] = await Promise.all([
+    const [events, updates, withdrawals] = await Promise.all([
         publicClient.getContractEvents({
             address: sellerRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'SellerRegistered', fromBlock: 0n,
+        }),
+        publicClient.getContractEvents({
+            address: sellerRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'SellerProfileUpdated', fromBlock: 0n,
         }),
         publicClient.getContractEvents({
             address: sellerRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'SellerWithdrawn', fromBlock: 0n,
@@ -1186,6 +1194,17 @@ export async function discoverSellers(): Promise<DiscoveredSeller[]> {
         const a = ((w.args as { seller?: string }).seller ?? '').toLowerCase();
         withdrawnCount.set(a, (withdrawnCount.get(a) ?? 0) + 1);
     }
+    const updatesByAddr = new Map<string, Array<{ uri: string; block: bigint; logIndex: number }>>();
+    for (const u of updates) {
+        const a = ((u.args as { seller?: string }).seller ?? '').toLowerCase();
+        const list = updatesByAddr.get(a) ?? [];
+        list.push({
+            uri: (u.args as { metadataURI?: string }).metadataURI ?? '',
+            block: u.blockNumber ?? 0n,
+            logIndex: u.logIndex ?? 0,
+        });
+        updatesByAddr.set(a, list);
+    }
     const registeredCount = new Map<string, number>();
     const out: DiscoveredSeller[] = [];
     for (const ev of events) {
@@ -1193,7 +1212,17 @@ export async function discoverSellers(): Promise<DiscoveredSeller[]> {
         const key = address.toLowerCase();
         registeredCount.set(key, (registeredCount.get(key) ?? 0) + 1);
         if ((registeredCount.get(key) ?? 0) <= (withdrawnCount.get(key) ?? 0)) continue;
-        const uri = (ev.args as { metadataURI?: string }).metadataURI ?? '';
+        // Live profile URI = max over (this registration, post-dating updates)
+        // by (block, logIndex); updates pre-dating the surviving registration
+        // (e.g. before a withdraw→re-register cycle) never win.
+        let uri = (ev.args as { metadataURI?: string }).metadataURI ?? '';
+        let latest = { block: ev.blockNumber ?? 0n, logIndex: ev.logIndex ?? 0 };
+        for (const u of updatesByAddr.get(key) ?? []) {
+            if (u.block > latest.block || (u.block === latest.block && u.logIndex > latest.logIndex)) {
+                uri = u.uri;
+                latest = { block: u.block, logIndex: u.logIndex };
+            }
+        }
         let profile: {
             name?: string;
             location?: { geohash?: string };

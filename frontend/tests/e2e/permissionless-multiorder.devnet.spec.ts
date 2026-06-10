@@ -34,8 +34,9 @@ import {
     createPublicClient, createWalletClient, http,
     parseEther, type Hex,
 } from 'viem';
-import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
+import { privateKeyToAccount } from 'viem/accounts';
 import {
+    seedRegisteredSeller,
     pinJSONToIPFS,
     discoverSellerByAssembly,
     ensureTokenApprovalsByAddress,
@@ -50,15 +51,12 @@ import {
     RPC_URL,
     LOCAL_ANVIL,
 } from './devnet-helpers';
-import { ANVIL_KEYS } from '../anvilAccounts';
+import { ANVIL_KEYS, anvilKeyAt } from '../anvilAccounts';
 
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 const REGISTRAR_KEY = ANVIL_KEYS[0] as Hex; // anvil[0] — the buyer
 const BUYER_ADDR = privateKeyToAccount(REGISTRAR_KEY).address;
 
-const SELLER_REGISTRY_ABI = [
-    { type: 'function', name: 'register', stateMutability: 'payable', inputs: [{ name: 'metadataURI', type: 'string' }], outputs: [] },
-] as const;
 const TOKEN_MINT_ABI = [
     { type: 'function', name: 'mint', stateMutability: 'nonpayable', inputs: [{ name: 'to', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [] },
 ] as const;
@@ -107,10 +105,13 @@ async function fundToken(addr: Hex, amount: bigint): Promise<void> {
 }
 
 /**
- * Register a seller at `addressIndex` with one catalogue item. Optionally bind it
- * to an assembly (the LEAD) with `counterpartyBindings` that name the contributor
- * for a sub-order's clause; a contributor is priced from a `component` item.
- * Setup DATA, the same profile shape the onboarding wizard pins.
+ * Register a seller at `addressIndex` with one catalogue item, through the
+ * CANONICAL idempotent seeder (register once, updateProfile on re-runs —
+ * self-healing if anything else ever stamped this index). Optionally bind it
+ * to an assembly (the LEAD) with `counterpartyBindings` that name the
+ * contributor for a sub-order's clause; a contributor is priced from a
+ * `component` item. Setup DATA, the same profile shape the wizard pins.
+ * Index census: 15/16 are this spec's own (see anvilAccounts).
  */
 async function registerSeller(opts: {
     addressIndex: number;
@@ -119,36 +120,26 @@ async function registerSeller(opts: {
     counterpartyBindings?: Array<{ clauseId: string; addresses: string[] }>;
 }): Promise<Hex> {
     const cfg = readLocalDeploymentConfig();
-    const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY ?? cfg.sellerRegistry) as Hex;
     const token = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? cfg.tokenAddress) as Hex;
-    const account = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: opts.addressIndex });
-    const catalogue = {
-        subjectAddress: account.address, version: '0.1.0', unitSystem: 'metric',
+    const key = anvilKeyAt(opts.addressIndex);
+    const address = privateKeyToAccount(key).address;
+    const { uri: catalogueURI } = await pinJSONToIPFS({
+        subjectAddress: address, version: '0.1.0', unitSystem: 'metric',
         menu: [{ id: `probe-item-${opts.addressIndex}`, name: `Probe Item ${opts.addressIndex}`, description: 'probe', price: '1', pricingPolicy: 'fixed', category: opts.itemCategory, available: true }],
-    };
-    const { uri: catalogueURI } = await pinJSONToIPFS(catalogue);
-    const profile: Record<string, unknown> = {
-        subjectAddress: account.address, name: `Probe Seller ${opts.addressIndex}`, specialty: 'permissionless probe',
-        catalogueURI, location: { geohash: '9q8yyk8yu' },
-        acceptedTokens: [{ address: token, symbol: 'MOCK', name: 'Mock Token' }],
-        defaultTokenAddress: token,
-        assemblyBindings: opts.assemblySlug
-            ? [{ bindingId: `${opts.assemblySlug}:${account.address.toLowerCase()}`, subjectAddress: account.address, assemblySlug: opts.assemblySlug, counterpartyBindings: opts.counterpartyBindings ?? [] }]
-            : [],
-    };
-    const { uri: profileURI } = await pinJSONToIPFS(profile);
-    const pub = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const wallet = createWalletClient({ account, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    try {
-        const { request } = await pub.simulateContract({
-            account: account.address, address: sellerRegistry, abi: SELLER_REGISTRY_ABI,
-            functionName: 'register', args: [profileURI], value: 1000000000000000n,
-        });
-        await pub.waitForTransactionReceipt({ hash: await wallet.writeContract(request) });
-    } catch (e) {
-        if (!String(e).includes('AlreadyRegistered') && !String(e).includes('reverted')) throw e;
-    }
-    return account.address as Hex;
+    });
+    await seedRegisteredSeller({
+        walletKey: key,
+        profile: {
+            name: `Probe Seller ${opts.addressIndex}`, specialty: 'permissionless probe',
+            catalogueURI, location: { geohash: '9q8yyk8yu' },
+            acceptedTokens: [{ address: token, symbol: 'MOCK', chainId: 31337 }],
+            defaultTokenAddress: token,
+            assemblyBindings: opts.assemblySlug
+                ? [{ bindingId: `${opts.assemblySlug}:${address.toLowerCase()}`, subjectAddress: address, assemblySlug: opts.assemblySlug, counterpartyBindings: opts.counterpartyBindings ?? [] }]
+                : [],
+        },
+    });
+    return address as Hex;
 }
 
 

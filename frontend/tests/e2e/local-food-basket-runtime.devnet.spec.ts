@@ -10,7 +10,7 @@
  *      DESIGNATES the contributors via ordered counterpartyBindings — the
  *      courier-process binding names the courier; the topology binding's
  *      address array fills the two BARE producer orders in commit order
- *      (farm, then bakery). Producers (anvil[14]/[15]) are seeded with
+ *      (farm, then bakery). Producers (anvil[17]/[18]) are seeded with
  *      single-item catalogues — each sub-order prices LIVE from its own
  *      seller's first available item.
  *   2. Buyer places ONE basket order; the 4-node assembly relays all four;
@@ -54,11 +54,12 @@ const BUYER_ADDR = ANVIL_ACCOUNTS[0] as Hex;
 // The hub — this spec's own seller, at a wallet no scenario seller uses.
 const HUB_KEY = anvilKeyAt(4);
 const HUB_ADDR = privateKeyToAccount(HUB_KEY).address;
-// The producers — derived live from the default mnemonic (indices 14/15 are
-// outside the populate roster's [5..13] range).
-const FARM_KEY = anvilKeyAt(14);
+// The producers — derived live from the default mnemonic. Index census:
+// 0-3 keys table, 4 hub, 5-12 populate sellers, 13 wizard, 14-16 the
+// permissionless probes — 17/18 are free.
+const FARM_KEY = anvilKeyAt(17);
 const FARM_ADDR = privateKeyToAccount(FARM_KEY).address;
-const BAKERY_KEY = anvilKeyAt(15);
+const BAKERY_KEY = anvilKeyAt(18);
 const BAKERY_ADDR = privateKeyToAccount(BAKERY_KEY).address;
 // Producer catalogue prices — each sub-order commits at its seller's own
 // first-available item price (the live-pricing rule, lead included).
