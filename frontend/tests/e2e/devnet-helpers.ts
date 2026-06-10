@@ -1309,114 +1309,6 @@ export async function evmIncreaseTime(seconds: number): Promise<void> {
     await snapshotClient.request({ method: 'evm_mine' as any } as any);
 }
 
-/**
- * Drive the buyer's local-commerce checkout through the UI — browse the
- * seeded merchant, add the catalogue item, pick a delivery fulfilment
- * mode, place the order, confirm both agreement-preview modals (the food
- * order, then the courier order) — and return the committed processId.
- *
- * Extracted from the local-commerce devnet specs where the buyer commit is
- * pure SETUP for what the spec actually exercises (the dispute path, the
- * full multi-role scenario).
- *
- * The two-iteration modal loop is correct, not a flake: each commit (food,
- * then courier) gates on its own AgreementPreviewModal, and the hidden-wait
- * sequences modal-1 → modal-2 — without it iteration 2 races the stale
- * first modal, whose confirm is already resolved (the click is a no-op).
- */
-export async function placeLocalCommerceOrderUI(
-    page: Page,
-    opts: {
-        merchant: string;
-        /** Catalogue item to buy. Omit to pick the seller's FIRST catalogue item
-         *  off the network (no hardcoded id) — the mainnet pattern. */
-        itemId?: string;
-        fulfilmentMode?: string;
-        geohash?: string;
-        deliveryAddress?: string;
-        /** Courier selection for a delivery mode, driven through
-         *  SellerCataloguePicker after the fulfilment mode is set. */
-        courier?: {
-            /** seller-assigned: the courier to pick from the merchant's
-             *  partner dropdown, by name. */
-            partnerName?: string;
-            /** buyer-assigned: the courier's address to enter. */
-            address?: string;
-            /** The delivery item to select. Omit to pick the courier's FIRST
-             *  catalogue item off the network (no hardcoded id). */
-            deliveryItemId?: string;
-            /** If the delivery item is buyer-set, the token amount to enter. */
-            buyerSetPrice?: string;
-        };
-    },
-): Promise<Hex> {
-    const fulfilmentMode = opts.fulfilmentMode ?? 'deliver:seller-assigned';
-    const geohash = opts.geohash ?? 'dr5regw3pg';
-    const deliveryAddress = opts.deliveryAddress ?? '12 Market St, Apt 4B — ring bell';
-
-    await page.goto(`/s/${opts.merchant}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
-    const detailView = page.getByTestId('seller-detail-view');
-    try {
-        await detailView.waitFor({ state: 'visible', timeout: 30000 });
-    } catch {
-        await page.reload({ waitUntil: 'domcontentloaded' });
-        await detailView.waitFor({ state: 'visible', timeout: 30000 });
-    }
-    // Pick the named item, or the seller's first catalogue item off the network.
-    const addButton = opts.itemId
-        ? page.getByTestId(`btn-add-${opts.itemId}`)
-        : page.locator('[data-testid^="btn-add-"]').first();
-    try {
-        await addButton.waitFor({ state: 'visible', timeout: 15000 });
-    } catch {
-        await page.reload({ waitUntil: 'domcontentloaded' });
-        await detailView.waitFor({ state: 'visible', timeout: 30000 });
-        await addButton.waitFor({ state: 'visible', timeout: 30000 });
-    }
-    await addButton.click();
-    await expect(page.locator('[data-testid^="cart-line-"]').first()).toBeVisible({ timeout: 10000 });
-
-    // Browse → checkout: fulfilment + courier + commit live on the checkout surface.
-    await page.getByTestId('btn-review-order').click();
-    await page.getByTestId('checkout-view').waitFor({ state: 'visible', timeout: 30000 });
-
-    await expect(page.getByTestId(`option-fulfilment-${fulfilmentMode}`)).toHaveCount(1, { timeout: 20000 });
-    await page.getByTestId('select-fulfilment-mode').selectOption(fulfilmentMode);
-    await page.getByTestId('input-delivery-geohash').fill(geohash);
-    await page.getByTestId('input-delivery-address').fill(deliveryAddress);
-    if (opts.courier) {
-        // Drive SellerCataloguePicker — seller-assigned picks the courier
-        // from the merchant's partner dropdown, buyer-assigned enters an
-        // address; both then choose a delivery item from the courier's
-        // catalogue (and name the price for a buyer-set item).
-        if (fulfilmentMode === 'deliver:seller-assigned') {
-            await page.getByTestId('select-seller-partner')
-                .selectOption({ label: opts.courier.partnerName! });
-        } else {
-            await page.getByTestId('input-seller-address').fill(opts.courier.address!);
-        }
-        const deliveryItem = opts.courier.deliveryItemId
-            ? page.getByTestId(`seller-item-${opts.courier.deliveryItemId}`)
-            : page.locator('[data-testid^="seller-item-"]').first();
-        await deliveryItem.waitFor({ state: 'visible', timeout: 30000 });
-        await deliveryItem.click();
-        if (opts.courier.buyerSetPrice) {
-            await page.getByTestId('input-seller-buyer-price').fill(opts.courier.buyerSetPrice);
-        }
-    }
-    await page.getByTestId('btn-place-order').click();
-
-    for (let i = 0; i < 2; i++) {
-        const modal = page.getByTestId('agreement-preview-modal');
-        await modal.waitFor({ state: 'visible', timeout: 45000 });
-        await page.getByTestId('preview-confirm').click();
-        await modal.waitFor({ state: 'hidden', timeout: 45000 });
-    }
-
-    await page.waitForURL(/\/orders\/0x[0-9a-fA-F]+/, { timeout: 90000 });
-    await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
-    return page.url().match(/\/orders\/(0x[0-9a-fA-F]+)/)![1] as Hex;
-}
 
 /**
  * Buyer side of the REAL bilateral relay for a single-order sale.
@@ -1445,8 +1337,10 @@ export async function placeBilateralOrderUI(
         fulfilmentMode?: string;
         geohash?: string;
         /** buyer-assigned coordination: the courier address the buyer enters in
-         *  the SellerCataloguePicker; the first delivery item is selected. */
-        buyerAssignedCourier?: { address: string };
+         *  the SellerCataloguePicker; the first delivery item is selected. For
+         *  a buyer-set item (no fixed price) pass `buyerSetPrice` — the buyer
+         *  names the delivery fee and the courier order commits at it. */
+        buyerAssignedCourier?: { address: string; buyerSetPrice?: string };
     },
 ): Promise<void> {
     await page.goto(`/s/${opts.seller}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
@@ -1512,6 +1406,11 @@ export async function placeBilateralOrderUI(
         const deliveryItem = page.locator('[data-testid^="seller-item-"]').first();
         await expect(deliveryItem, 'the chosen courier publishes a delivery item').toBeVisible({ timeout: 30000 });
         await deliveryItem.check();
+        if (opts.buyerAssignedCourier.buyerSetPrice) {
+            const priceInput = page.getByTestId('input-seller-buyer-price');
+            await priceInput.waitFor({ state: 'visible', timeout: 10000 });
+            await priceInput.fill(opts.buyerAssignedCourier.buyerSetPrice);
+        }
     }
 
     await page.getByTestId('btn-place-order').click();
