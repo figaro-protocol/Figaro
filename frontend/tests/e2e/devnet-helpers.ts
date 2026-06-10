@@ -775,6 +775,7 @@ async function attestGhgAsBuyer(
  *  the seed helper independent of the frontend's full ABI export. */
 const SELLER_REGISTRY_REGISTER_ABI = parseAbi([
     'function register(string metadataURI) external payable',
+    'function updateProfile(string metadataURI) external',
     'event SellerRegistered(address indexed seller, string metadataURI)',
 ]);
 
@@ -790,6 +791,15 @@ export interface SeedSellerProfile {
     catalogueURI?: string;
     acceptedTokens?: Array<{ address: `0x${string}`; symbol: string; chainId: number }>;
     defaultTokenAddress?: `0x${string}`;
+    /** The assemblies this seller adopts. The assembly-driven checkout only
+     *  enables place-order for a seller whose profile binds a PUBLISHED
+     *  assembly — a profile without bindings is browse-only. */
+    assemblyBindings?: Array<{
+        bindingId: string;
+        subjectAddress: `0x${string}`;
+        assemblySlug: string;
+        counterpartyBindings: Array<{ clauseId: string; addresses: string[] }>;
+    }>;
 }
 
 /** Result of `seedRegisteredSeller`. Includes the on-chain address (derived
@@ -837,15 +847,37 @@ export async function seedRegisteredSeller(opts: {
 
     const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
     const sellerClient = createWalletClient({ account: seller, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const { request } = await publicClient.simulateContract({
-        account: seller.address,
+    // Idempotent on the PERSISTED devnet: `register` reverts AlreadyRegistered
+    // on a second call, so re-runs route through `updateProfile` (profile
+    // updates are by design). Registered-or-not is read from the event stream
+    // — the network is the source of truth, the contract exposes no view.
+    const priorRegistrations = await publicClient.getContractEvents({
         address: sellerRegistry,
         abi: SELLER_REGISTRY_REGISTER_ABI,
-        functionName: 'register',
-        args: [profileURI],
-        value: SELLER_REGISTRATION_DEPOSIT,
+        eventName: 'SellerRegistered',
+        args: { seller: seller.address },
+        fromBlock: 0n,
     });
-    await publicClient.waitForTransactionReceipt({ hash: await sellerClient.writeContract(request) });
+    if (priorRegistrations.length > 0) {
+        const { request } = await publicClient.simulateContract({
+            account: seller.address,
+            address: sellerRegistry,
+            abi: SELLER_REGISTRY_REGISTER_ABI,
+            functionName: 'updateProfile',
+            args: [profileURI],
+        });
+        await publicClient.waitForTransactionReceipt({ hash: await sellerClient.writeContract(request) });
+    } else {
+        const { request } = await publicClient.simulateContract({
+            account: seller.address,
+            address: sellerRegistry,
+            abi: SELLER_REGISTRY_REGISTER_ABI,
+            functionName: 'register',
+            args: [profileURI],
+            value: SELLER_REGISTRATION_DEPOSIT,
+        });
+        await publicClient.waitForTransactionReceipt({ hash: await sellerClient.writeContract(request) });
+    }
 
     return {
         address: seller.address as `0x${string}`,

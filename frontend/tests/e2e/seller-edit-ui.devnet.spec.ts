@@ -35,8 +35,6 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
-    evmRevert,
-    evmSnapshot,
     pinJSONToIPFS,
     readLocalDeploymentConfig,
     seedRegisteredSeller,
@@ -105,8 +103,12 @@ async function waitForOneUpdateEvent(
             args: { seller },
             fromBlock,
         });
-        if (events.length === 1 && events[0].args.metadataURI !== initialURI) {
-            return { metadataURI: events[0].args.metadataURI as string };
+        // On the PERSISTED devnet the idempotent seeder itself emits an
+        // updateProfile event carrying initialURI — exclude it, then require
+        // exactly ONE distinct update (the UI edit; no double-fire).
+        const uiUpdates = events.filter((e) => e.args.metadataURI !== initialURI);
+        if (uiUpdates.length === 1) {
+            return { metadataURI: uiUpdates[0].args.metadataURI as string };
         }
         await new Promise((r) => setTimeout(r, 1000));
     }
@@ -115,20 +117,16 @@ async function waitForOneUpdateEvent(
     );
 }
 
-let outerSnapshot: string;
-test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
-test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
-
 test.describe('Seller edit UI surfaces (devnet)', () => {
-    let testSnapshot: string;
+    // PERSISTED, like mainnet: no chain snapshot/revert. Each test re-seeds
+    // anvil[0]'s profile to its baseline via the idempotent seeder (register
+    // once, updateProfile thereafter) and leaves its edits behind.
     let blockBefore: bigint;
 
     test.beforeEach(async () => {
-        testSnapshot = await evmSnapshot();
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         blockBefore = await publicClient.getBlockNumber();
     });
-    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 
     // IPFS pin + register + form mount + tx + receipt + IPFS re-pin add up.
     test.setTimeout(180_000);

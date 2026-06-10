@@ -1,54 +1,46 @@
 /**
  * place-order.devnet.spec.ts
  *
- * Phase 2 C2 of the e2e remediation plan: the full place-order flow
- * on `/s/[seller]` (cart → btn-place-order → approval → commit →
- * redirect to /orders/<processId>) had no devnet coverage. G11
- * (`seller-page.devnet.spec.ts`) covers the browse + cart-add
- * surface but stops short of the commit; the seller-page-specific
- * checkout pipeline was the gap.
+ * The full place-order flow on `/s/[seller]` → checkout: cart →
+ * assembly-option selection → btn-place-order → bilateral relay →
+ * seller counter-sign → on-chain commit. `seller-page.devnet.spec.ts`
+ * covers the browse + cart-add surface; this spec owns the commit path.
  *
  * What this exercises:
- *   - Seller-side IPFS pin of catalogue + profile + SellerRegistry.register
- *     (lifted from G11's seed).
- *   - Buyer (anvil[0]) navigates to /s/<sellerAddress>.
- *   - Click `btn-add-<itemId>` → cart line appears.
- *   - Select `consume-onsite` from `select-fulfilment-mode`.
- *   - Token approval if buyer doesn't yet have allowance.
- *   - Click `btn-place-order` → commit flow → redirect to
- *     /orders/<processId>.
- *   - Assert: page URL is /orders/<some-hex>, order-timeline-view
- *     renders, status pill is the just-placed state.
+ *   - Seller-side IPFS pin of catalogue + profile and the idempotent
+ *     SellerRegistry registration (register, or updateProfile on re-runs).
+ *     The profile BINDS the published `direct-sale` assembly — the
+ *     assembly-driven checkout only enables place-order for a seller whose
+ *     profile names a published assembly.
+ *   - Buyer (anvil[0]) navigates to /s/<sellerAddress>, adds the item,
+ *     selects the consume-onsite assembly option, places + relays the order.
+ *   - Seller counter-signs in its inbox → on-chain bilateral commit.
+ *   - Assert: the buyer's order page renders; rootBuyer + activeOrderCount
+ *     verified on-chain out-of-band.
  *
- * Requires Anvil + ./deploy-local.sh + Kubo for the catalogue/profile pin.
+ * PERSISTED, like mainnet: no chain snapshot/revert. Each run pins a fresh
+ * profile/catalogue, updates the seller's registration, and leaves a new
+ * committed (active) order behind — open orders are normal network state.
+ *
+ * Prerequisite: scenario-direct-sale has anchored the `direct-sale` assembly
+ * on this devnet (the scenario specs run first).
+ *
+ * Requires Anvil + ./scripts/deploy-local.sh + Kubo.
  */
 import { test, expect, ANVIL_ACCOUNTS, gotoAsWallet } from './devnet-multi-test';
-import {
-    createPublicClient,
-    defineChain,
-    http,
-    type Hex,
-} from 'viem';
+import { createPublicClient, http, type Hex } from 'viem';
 import {
     acceptOrderInInboxUI,
     ensureTokenApprovals,
-    evmRevert,
-    evmSnapshot,
     pinJSONToIPFS,
     placeBilateralOrderUI,
     readLocalDeploymentConfig,
     seedRegisteredSeller,
     CORE_PROCESS_VIEW_ABI,
+    LOCAL_ANVIL,
+    RPC_URL,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
-
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 
 const BUYER_KEY = ANVIL_KEYS[0];
 const SELLER_KEY = ANVIL_KEYS[1];
@@ -64,7 +56,7 @@ async function seedRegisteredSellerWithCatalogue(): Promise<SeededSeller> {
     const config = readLocalDeploymentConfig();
     const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? config.tokenAddress) as Hex;
 
-    const itemId = `g11-c2-item-${Date.now()}`;
+    const itemId = `place-order-item-${Date.now()}`;
     const itemName = 'Place-Order Test Item';
 
     // Spec-specific catalogue; the registration itself goes through the
@@ -95,25 +87,25 @@ async function seedRegisteredSellerWithCatalogue(): Promise<SeededSeller> {
             catalogueURI,
             acceptedTokens: [{ address: tokenAddress, symbol: 'MOCK', chainId: 31337 }],
             defaultTokenAddress: tokenAddress,
+            // The checkout enables place-order only for a profile that binds a
+            // PUBLISHED assembly — bind the persisted direct-sale (consume-onsite).
+            assemblyBindings: [{
+                bindingId: `direct-sale:${SELLER_ADDR.toLowerCase()}`,
+                subjectAddress: SELLER_ADDR as `0x${string}`,
+                assemblySlug: 'direct-sale',
+                counterpartyBindings: [],
+            }],
         },
     });
 
     return { address: SELLER_ADDR as Hex, itemId, itemName };
 }
 
-let outerSnapshot: string;
-test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
-test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
-
 test.describe('/s/[seller] full place-order flow (devnet)', () => {
-    let testSnapshot: string;
-    test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
-    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
-
     // IPFS round-trip + discovery + sign + commit pushes this past 60s.
     test.setTimeout(180_000);
 
-    test('buyer browses the seller catalogue, adds item, picks fulfilment, places the order via the bilateral relay', async ({ page }) => {
+    test('buyer browses the seller catalogue, adds item, picks the assembly option, places the order via the bilateral relay', async ({ page }) => {
         const config = readLocalDeploymentConfig();
         const coreAddress = (process.env.NEXT_PUBLIC_FIGARO_CORE ?? config.figaroCore) as Hex;
         const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? config.tokenAddress) as Hex;

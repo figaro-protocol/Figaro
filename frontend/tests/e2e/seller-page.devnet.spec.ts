@@ -4,97 +4,59 @@
  * /s/[seller] is the buyer-facing catalogue page — branding hero,
  * menu grid, cart, place-order CTA. The page reads the seller's
  * profile + catalogue from IPFS via useRegisteredCatalogues and
- * mounts the cart against useCheckout. No devnet coverage existed
- * pre-2026-05-19.
+ * mounts the cart against useCheckout.
  *
  * Seed flow (no UI wizard):
  *   1. Pin a SellerCatalogueMetadata JSON to local Kubo.
- *   2. Pin an SellerProfileMetadata JSON that points to the
- *      catalogue CID.
- *   3. Register the seller on-chain with the profile URI.
- *   4. Open /s/<sellerAddress>?e2e=devnet from a buyer wallet.
+ *   2. Register/update the seller through the canonical idempotent
+ *      seeder (devnet-helpers.seedRegisteredSeller) with a profile
+ *      pointing at the catalogue. NO assembly binding — this page is
+ *      browse-only and must render for a binding-less profile too.
+ *   3. Open /s/<sellerAddress>?e2e=devnet from a buyer wallet.
  *
  * Assertions: the seller-detail-view shell renders for the seller
  * address, the menu item from the seeded catalogue appears, clicking
- * Add lands a cart line. The full place-order tx flow (approval +
- * commitment signing + redirect) is deferred — it's exercised by the
- * commit-side tests (commitment-share.devnet, lifecycle.devnet). What
- * this spec specifically protects is the seller-page composition:
- * IPFS-pinned seller profile + catalogue → SellerDetailView's
- * menu render → cart.
+ * Add lands a cart line. The full place-order flow is owned by
+ * place-order.devnet.spec.ts; what this spec protects is the
+ * seller-page composition: IPFS-pinned profile + catalogue →
+ * SellerDetailView's menu render → cart.
+ *
+ * PERSISTED, like mainnet: no chain snapshot/revert — each run re-pins
+ * the profile/catalogue and updates the registration in place.
  *
  * Requires:
- *   - Anvil + ./deploy-local.sh
+ *   - Anvil + ./scripts/deploy-local.sh
  *   - Kubo running on http://127.0.0.1:5001 with CORS configured for
  *     http://localhost:3100 (per CLAUDE.md "Docker-hosted services").
  */
 import { test, expect, ANVIL_ACCOUNTS } from './devnet-multi-test';
+import { type Hex } from 'viem';
 import {
-    createPublicClient,
-    createWalletClient,
-    defineChain,
-    http,
-    parseAbi,
-    parseEther,
-    type Hex,
-} from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
-import {
-    evmRevert,
-    evmSnapshot,
     pinJSONToIPFS,
     readLocalDeploymentConfig,
+    seedRegisteredSeller,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
-
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 
 const SELLER_KEY = ANVIL_KEYS[1];
 const SELLER_ADDR = ANVIL_ACCOUNTS[1];
 
-const REGISTRATION_DEPOSIT = parseEther('0.001');
-
-const SELLER_REGISTRY_ABI = parseAbi([
-    'function register(string metadataURI) external payable',
-    'event SellerRegistered(address indexed seller, string metadataURI)',
-    'error AlreadyRegistered()',
-]);
-
-function getRegistryAddress(): Hex {
-    const config = readLocalDeploymentConfig();
-    const addr = (process.env.NEXT_PUBLIC_SELLER_REGISTRY
-        ?? config.sellerRegistry
-        ?? '') as Hex;
-    if (!addr || addr.length !== 42) {
-        throw new Error('NEXT_PUBLIC_SELLER_REGISTRY not set — run ./deploy-local.sh');
-    }
-    return addr;
-}
-
 interface SeededSeller {
     address: Hex;
-    profileURI: string;
-    catalogueURI: string;
     itemId: string;
     itemName: string;
 }
 
 /**
- * Pins an seller profile + catalogue to the local Kubo and registers
- * the seller on-chain. Returns the URIs and the seeded menu item's
- * id/name so the test can locate it via testid.
+ * Pin a seller catalogue to the local Kubo and register/update the seller
+ * on-chain via the canonical seeder. Returns the seeded menu item's id/name
+ * so the test can locate it via testid.
  */
 async function seedRegisteredSellerWithCatalogue(): Promise<SeededSeller> {
     const config = readLocalDeploymentConfig();
     const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? config.tokenAddress) as Hex;
 
-    const itemId = `g11-item-${Date.now()}`;
+    const itemId = `seller-page-item-${Date.now()}`;
     const itemName = 'Devnet Test Item';
 
     const catalogue = {
@@ -115,55 +77,21 @@ async function seedRegisteredSellerWithCatalogue(): Promise<SeededSeller> {
     };
     const { uri: catalogueURI } = await pinJSONToIPFS(catalogue);
 
-    const profile = {
-        subjectAddress: SELLER_ADDR,
-        name: `Devnet Seller ${Date.now()}`,
-        description: 'Seller seeded by seller-page.devnet.spec.ts',
-        catalogueURI,
-        acceptedTokens: [
-            {
-                address: tokenAddress,
-                symbol: 'MOCK',
-                chainId: 31337,
-            },
-        ],
-        defaultTokenAddress: tokenAddress,
-    };
-    const { uri: profileURI } = await pinJSONToIPFS(profile);
-
-    // ── Register on-chain ────────────────────────────────────────────
-    const registry = getRegistryAddress();
-    const seller = privateKeyToAccount(SELLER_KEY);
-    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const sellerClient = createWalletClient({ account: seller, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const { request } = await publicClient.simulateContract({
-        account: seller.address,
-        address: registry,
-        abi: SELLER_REGISTRY_ABI,
-        functionName: 'register',
-        args: [profileURI],
-        value: REGISTRATION_DEPOSIT,
+    await seedRegisteredSeller({
+        walletKey: SELLER_KEY,
+        profile: {
+            name: `Devnet Seller ${Date.now()}`,
+            description: 'Seller seeded by seller-page.devnet.spec.ts',
+            catalogueURI,
+            acceptedTokens: [{ address: tokenAddress, symbol: 'MOCK', chainId: 31337 }],
+            defaultTokenAddress: tokenAddress,
+        },
     });
-    await publicClient.waitForTransactionReceipt({ hash: await sellerClient.writeContract(request) });
 
-    return {
-        address: SELLER_ADDR as Hex,
-        profileURI,
-        catalogueURI,
-        itemId,
-        itemName,
-    };
+    return { address: SELLER_ADDR as Hex, itemId, itemName };
 }
 
-let outerSnapshot: string;
-test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
-test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
-
 test.describe('/s/[seller] (devnet)', () => {
-    let testSnapshot: string;
-    test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
-    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
-
     // Discovery + IPFS round-trip pushes this past the 60s default.
     test.setTimeout(120_000);
 
