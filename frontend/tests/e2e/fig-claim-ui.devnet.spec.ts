@@ -17,6 +17,10 @@
  *   - amount = 1 ether wei.
  *   - proof = []  (single-leaf tree: leaf == root, empty proof verifies).
  *
+ * A merkle claim is once-ever by design, so on the PERSISTED devnet only
+ * the first run can claim; re-runs assert the returning-claimant UI
+ * (Status: Claimed, no button) plus the once-ever on-chain invariants.
+ *
  * Requires Anvil + ./deploy-local.sh.
  */
 import { test, expect, ANVIL_ACCOUNTS } from './devnet-multi-test';
@@ -62,7 +66,7 @@ test.describe('/fig/claim UI (devnet)', () => {
     // Auto-connect + IPFS + on-chain tx pushes this past 60s.
     test.setTimeout(120_000);
 
-    test('ClaimPanel → click Claim FIG → Claimed event emits and balance increases', async ({ page }) => {
+    test('ClaimPanel → click Claim FIG → Claimed event emits and balance increases (or renders the claimed state on a persisted chain)', async ({ page }) => {
         const claimant = ANVIL_ACCOUNTS[0] as Hex;
         const airdrop = (process.env.NEXT_PUBLIC_RPGF_MINTER ?? '') as Hex;
         const fig = (process.env.NEXT_PUBLIC_FIG_TOKEN_ADDRESS ?? '') as Hex;
@@ -93,7 +97,6 @@ test.describe('/fig/claim UI (devnet)', () => {
             address: airdrop, abi: AIRDROP_ABI,
             functionName: 'claimed', args: [0, claimant],
         });
-        expect(claimedBefore).toBe(false);
 
         await page.goto('/fig/claim?e2e=devnet', { waitUntil: 'domcontentloaded' });
 
@@ -115,23 +118,34 @@ test.describe('/fig/claim UI (devnet)', () => {
         await expect(page.getByText(/FIG Claim — Year 2 \(30%\)/)).toBeVisible({ timeout: 15000 });
         await expect(page.getByText(`Amount: ${CLAIM_AMOUNT.toString()}`)).toBeVisible();
 
-        const claimButton = page.getByRole('button', { name: 'Claim FIG' });
-        await expect(claimButton).toBeVisible({ timeout: 10000 });
-        await claimButton.click();
+        if (claimedBefore) {
+            // A merkle claim is once-ever BY DESIGN, so on the persisted
+            // devnet (mainnet rehearsal) a re-run cannot claim again. The UI
+            // contract for a returning claimant: Status: Claimed, no button
+            // (ClaimPanel.tsx renders the button only while unclaimed).
+            await expect(page.getByText(/Status:\s*Claimed/)).toBeVisible({ timeout: 10000 });
+            await expect(page.getByRole('button', { name: 'Claim FIG' })).toHaveCount(0);
+        } else {
+            const claimButton = page.getByRole('button', { name: 'Claim FIG' });
+            await expect(claimButton).toBeVisible({ timeout: 10000 });
+            await claimButton.click();
 
-        // "Claim successful!" is the terminal txStatus on the happy
-        // path (ClaimPanel.tsx:83). Allow a generous timeout for the
-        // simulate + write + wait-for-receipt round trip.
-        await expect(page.getByText(/Claim successful!/)).toBeVisible({ timeout: 60000 });
-        await expect(page.getByText(/Status:\s*Claimed/)).toBeVisible({ timeout: 5000 });
+            // "Claim successful!" is the terminal txStatus on the happy
+            // path (ClaimPanel.tsx:83). Allow a generous timeout for the
+            // simulate + write + wait-for-receipt round trip.
+            await expect(page.getByText(/Claim successful!/)).toBeVisible({ timeout: 60000 });
+            await expect(page.getByText(/Status:\s*Claimed/)).toBeVisible({ timeout: 5000 });
 
-        // On-chain assertions — Claimed event + balance delta + flag.
-        const balanceAfter = await publicClient.readContract({
-            address: fig, abi: FIG_TOKEN_ABI,
-            functionName: 'balanceOf', args: [claimant],
-        });
-        expect(balanceAfter - balanceBefore).toBe(CLAIM_AMOUNT);
+            // Balance delta — only observable on the run that claims.
+            const balanceAfter = await publicClient.readContract({
+                address: fig, abi: FIG_TOKEN_ABI,
+                functionName: 'balanceOf', args: [claimant],
+            });
+            expect(balanceAfter - balanceBefore).toBe(CLAIM_AMOUNT);
+        }
 
+        // On-chain invariants — hold on every run: the stage is claimed and
+        // the Claimed event exists EXACTLY once, ever (once-ever semantics).
         const claimedAfter = await publicClient.readContract({
             address: airdrop, abi: AIRDROP_ABI,
             functionName: 'claimed', args: [0, claimant],
