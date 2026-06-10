@@ -8,12 +8,10 @@
  * out-of-band fetch. Specs are parsed lazily on first lookup and
  * cached.
  *
- * The Layer-A source of truth lives in
- * `frontend/lib/shared/clauses/<clauseId>.json`; the copies under
- * `sdk/src/clauses/examples/` are kept byte-identical (clause-lockstep
- * memory). The Rust prover embeds the frontend copies directly via
- * `include_str!`; the SDK imports the example copies because
- * `resolveJsonModule` only resolves inside the package tree.
+ * The Layer-A source of truth is `sdk/src/clauses/examples/<clauseId>.json`
+ * (the canonical specs `populate-clauses.mjs` pins to IPFS; the frontend
+ * loads them chain→IPFS with no bundled copy). The Rust prover embeds the
+ * same files directly via `include_str!`.
  */
 
 import { parseClauseSpec, type ClauseSpec } from "./spec.js";
