@@ -41,8 +41,6 @@ import { privateKeyToAccount } from 'viem/accounts';
 import {
     createRootOrder,
     ensureTokenApprovals,
-    evmRevert,
-    evmSnapshot,
     merchantProcessAgreement,
     readLocalDeploymentConfig,
 } from './devnet-helpers';
@@ -69,19 +67,15 @@ const MERCHANT_PROCESS_CLAUSE_ID = keccak256(stringToHex('figaro-merchant-proces
  *  events at all; see useMerchantProcess.ts and OrderTimelineView's
  *  HAPPY_PATH_EVENTS). */
 const HAPPY_PATH: Array<{ event: string; stage: number }> = [
-    { event: 'prep-started', stage: 2 },
-    { event: 'ready-for-pickup', stage: 3 },
-    { event: 'handed-off', stage: 4 },
+    // Stage = the clause spec's enum ordinal (the generic engine submits the
+    // next un-attested index of figaro-merchant-process-v1's 3-value ladder).
+    { event: 'prep-started', stage: 0 },
+    { event: 'ready-for-pickup', stage: 1 },
+    { event: 'handed-off', stage: 2 },
 ];
 
-let outerSnapshot: string;
-test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
-test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
 
 test.describe('OrderTimelineView seller side (devnet)', () => {
-    let testSnapshot: string;
-    test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
-    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 
     // Three sequential signs + tx confirms; 60s isn't enough.
     test.setTimeout(180_000);
@@ -134,11 +128,11 @@ test.describe('OrderTimelineView seller side (devnet)', () => {
         // handler is defensive — see reference_e2e_flake_patterns #8).
         page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
 
-        // The seller advances the lifecycle through the ONE capability rail.
-        // The plain merchant-process-signal capability rotates prep-started →
-        // ready-for-pickup → handed-off (this seed carries no proximity policy,
-        // so the handoff is a plain signal too) under one testid.
-        const signalBtn = page.getByTestId('capability-execute-submit-merchant-process-signal');
+        // The seller advances the lifecycle through the ONE clause-agnostic
+        // rail: the generic submit-clause-attestation capability rotates its
+        // label prep-started → ready-for-pickup → handed-off (this seed
+        // carries no proximity policy, so no witness capability joins it).
+        const signalBtn = page.getByTestId('capability-execute-submit-clause-attestation');
         for (const step of HAPPY_PATH) {
             await expect(signalBtn).toBeEnabled({ timeout: 30000 });
             await signalBtn.click();
@@ -162,7 +156,7 @@ test.describe('OrderTimelineView seller side (devnet)', () => {
             await expect(page.getByTestId(`timeline-event-${step.event}`)).toBeVisible({ timeout: 30000 });
         }
 
-        // After handed-off, no merchant capability remains.
-        await expect(page.locator('[data-testid^="capability-execute-submit-merchant-process-signal"]')).toHaveCount(0);
+        // After handed-off, the seller's generic rail retires.
+        await expect(page.getByTestId('capability-execute-submit-clause-attestation')).toHaveCount(0);
     });
 });

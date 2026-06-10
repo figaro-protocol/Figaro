@@ -44,14 +44,8 @@ const LOCAL_ANVIL = defineChain({
 });
 
 
-let outerSnapshot: string;
-test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
-test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
 
 test.describe('Designer publish (devnet)', () => {
-    let testSnapshot: string;
-    test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
-    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 
     // Multi-route nav + IPFS pin + on-chain tx pushes this past 60s.
     test.setTimeout(180_000);

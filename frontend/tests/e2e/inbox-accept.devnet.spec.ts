@@ -45,8 +45,6 @@ import {
 import { privateKeyToAccount } from 'viem/accounts';
 import {
     ensureTokenApprovals,
-    evmRevert,
-    evmSnapshot,
     merchantProcessAgreement,
     readLocalDeploymentConfig,
     signCommitment,
@@ -69,18 +67,15 @@ const SELLER_ADDR = ANVIL_ACCOUNTS[1];
 
 const ZERO_PROCESS_ID = `0x${'0'.repeat(64)}` as Hex;
 
+const ORDER_COMMITTED_ABI = parseAbi([
+    'event OrderCommitted(bytes32 indexed processId, bytes32 indexed orderHash, address indexed seller, address buyer, uint256 payment)',
+]);
 const CORE_VIEW_ABI = parseAbi([
     'function processes(bytes32 processId) view returns (address rootBuyer, address currency, uint256 cumulativeValue, uint32 activeOrderCount)',
 ]);
 
-let outerSnapshot: string;
-test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
-test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
 
 test.describe('/inbox pending → accept → on-chain commit (devnet)', () => {
-    let testSnapshot: string;
-    test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
-    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 
     // counterSign + broadcast + indexer poll for the active row.
     test.setTimeout(180_000);
@@ -101,7 +96,10 @@ test.describe('/inbox pending → accept → on-chain commit (devnet)', () => {
         const agreement = merchantProcessAgreement(buyer.address as Hex, seller.address as Hex);
         const agreementHash = computeAgreementHash(agreement);
         const salt = BigInt(Date.now()) * 1000n + BigInt(Math.floor(Math.random() * 1000));
-        const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+        // Deadline from CHAIN time (see devnet-helpers — the devnet clock
+        // may be far ahead of wall time on the persisted chain).
+        const chainNow = (await createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) }).getBlock({ blockTag: 'latest' })).timestamp;
+        const deadline = chainNow + 3600n;
 
         const commitment = {
             processId: ZERO_PROCESS_ID,
@@ -148,6 +146,12 @@ test.describe('/inbox pending → accept → on-chain commit (devnet)', () => {
             senderIdentity: buyer.address,
         });
 
+        // Block watermark BEFORE the accept — the devnet persists across runs,
+        // so this seller's inbox carries history; the accept is confirmed by
+        // the commit THIS accept lands, never by row-set counting.
+        const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+        const fromBlock = (await publicClient.getBlockNumber()) + 1n;
+
         await gotoAsWallet(page, SELLER_ADDR, '/inbox?e2e=devnet');
         await page.getByTestId('inbox').waitFor({ timeout: 30000 });
 
@@ -172,28 +176,33 @@ test.describe('/inbox pending → accept → on-chain commit (devnet)', () => {
         // success signals.
         await expect(pendingCard).toHaveCount(0, { timeout: 60000 });
 
-        // On-chain commit landed: the new process must show on the
-        // seller's wallet — useWalletProcessRows polls events and
-        // surfaces inbox-active-row-<processId>. We don't know the
-        // processId in advance (it's the digest derived during
-        // commit), so wait for ANY active row to appear and then
-        // cross-check against the kernel's processes() view.
-        const activeRow = page.locator('[data-testid^="inbox-active-row-"]');
-        await expect(activeRow).toHaveCount(1, { timeout: 60000 });
+        // On-chain commit landed: read the processId out-of-band from the
+        // OrderCommitted event THIS accept broadcast (the block watermark
+        // scopes it to this run), then assert that exact row reaches the
+        // seller's inbox — never row-set counting on a persisted chain.
+        let processId = '' as Hex | '';
+        await expect
+            .poll(async () => {
+                const logs = await publicClient.getContractEvents({
+                    address: coreAddress, abi: ORDER_COMMITTED_ABI, eventName: 'OrderCommitted',
+                    fromBlock, toBlock: 'latest',
+                });
+                const mine = logs.find((l) => {
+                    const args = l.args as { seller?: string };
+                    return !!args.seller && args.seller.toLowerCase() === SELLER_ADDR.toLowerCase();
+                });
+                processId = ((mine?.args as { processId?: Hex } | undefined)?.processId ?? '') as Hex | '';
+                return processId;
+            }, { timeout: 60000, message: 'the counter-signed commit lands on-chain' })
+            .not.toBe('');
 
-        // Extract the processId from the testid and verify the
-        // on-chain ProcessState carries the buyer-as-rootBuyer + the
-        // committed payment.
-        const testIdValue = await activeRow.getAttribute('data-testid');
-        expect(testIdValue).toMatch(/^inbox-active-row-0x[0-9a-fA-F]+$/);
-        const processId = testIdValue!.replace('inbox-active-row-', '') as Hex;
+        await page.getByTestId(`inbox-active-row-${processId}`).waitFor({ state: 'visible', timeout: 60000 });
 
-        const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const processState = await publicClient.readContract({
             address: coreAddress,
             abi: CORE_VIEW_ABI,
             functionName: 'processes',
-            args: [processId],
+            args: [processId as Hex],
         });
         expect(processState[0].toLowerCase()).toBe(BUYER_ADDR.toLowerCase()); // rootBuyer
         expect(processState[2]).toBe(payment); // cumulativeValue

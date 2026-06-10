@@ -4,6 +4,23 @@ import { saveAgreement, publishAgreement } from "@/lib/core/agreementStore";
 import { buildOrderAgreement, type BuildOrderAgreementParams } from "@/lib/core/orderAgreement";
 import type { Agreement } from "@/lib/core/agreement";
 import { ZERO_PROCESS_ID } from "@/lib/shared/evm";
+import { publicClient } from "@/lib/shared/wagmi";
+
+/**
+ * Commitment deadline from CHAIN time. `block.timestamp` is the clock the
+ * kernel checks (FigaroCore's DeadlineExpired guard) — a wall-clock deadline
+ * silently expires whenever the device clock and the chain disagree (a
+ * skewed device on mainnet; a time-traveled devnet). Falls back to the
+ * wall-clock figure only if the chain read fails.
+ */
+async function computeChainDeadline(ttlSeconds = 3600n): Promise<bigint> {
+    try {
+        const block = await publicClient.getBlock({ blockTag: "latest" });
+        return block.timestamp + ttlSeconds;
+    } catch {
+        return computeDeadline();
+    }
+}
 
 
 
@@ -77,6 +94,7 @@ export async function prepareOrderCommitment(
 ): Promise<PreparedAgreementArtifact & { commitment: Commitment }> {
     const agreement = buildOrderAgreement(params);
     const preparedAgreement = await persistAgreementArtifact(agreement);
+    const deadline = params.deadline ?? await computeChainDeadline();
 
     return {
         ...preparedAgreement,
@@ -89,7 +107,7 @@ export async function prepareOrderCommitment(
             expectedCumulativeValue: params.expectedCumulativeValue,
             agreementHash: preparedAgreement.agreementHash,
             salt: params.salt,
-            deadline: params.deadline,
+            deadline,
         }),
     };
 }

@@ -19,14 +19,8 @@
 import { test, expect } from './devnet-multi-test';
 import { evmRevert, evmSnapshot } from './devnet-helpers';
 
-let outerSnapshot: string;
-test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
-test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
 
 test.describe('Assembly read-only inspector — /view/[slug] (devnet)', () => {
-    let testSnapshot: string;
-    test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
-    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 
     // The publish leg is canvas → review → IPFS pin → on-chain tx.
     test.setTimeout(180_000);

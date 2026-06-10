@@ -372,7 +372,10 @@ export async function createRootOrder(opts: {
     const seller = privateKeyToAccount(opts.sellerKey);
 
     const salt = BigInt(Date.now()) * 1000n + BigInt(Math.floor(Math.random() * 1000));
-    const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+    // Deadline from CHAIN time — block.timestamp is the clock the kernel
+    // checks; the persisted devnet's clock may be far ahead of wall time
+    // (the withdraw spec's lock-elapse time travel persists).
+    const deadline = (await localPublicClient().getBlock({ blockTag: 'latest' })).timestamp + 3600n;
 
     const agreementHash = opts.agreement
         ? computeAgreementHash(opts.agreement)
@@ -439,7 +442,10 @@ export async function createSubOrder(opts: {
     const expectedCumulativeValue = currentCumulativeValue + opts.payment;
 
     const salt = BigInt(Date.now()) * 1000n + BigInt(Math.floor(Math.random() * 1000));
-    const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+    // Deadline from CHAIN time — block.timestamp is the clock the kernel
+    // checks; the persisted devnet's clock may be far ahead of wall time
+    // (the withdraw spec's lock-elapse time travel persists).
+    const deadline = (await localPublicClient().getBlock({ blockTag: 'latest' })).timestamp + 3600n;
 
     const agreementHash = opts.agreement
         ? computeAgreementHash(opts.agreement)
@@ -777,6 +783,7 @@ const SELLER_REGISTRY_REGISTER_ABI = parseAbi([
     'function register(string metadataURI) external payable',
     'function updateProfile(string metadataURI) external',
     'event SellerRegistered(address indexed seller, string metadataURI)',
+    'event SellerWithdrawn(address indexed seller, uint256 deposit)',
 ]);
 
 const SELLER_REGISTRATION_DEPOSIT = parseEther('0.001');
@@ -850,15 +857,26 @@ export async function seedRegisteredSeller(opts: {
     // Idempotent on the PERSISTED devnet: `register` reverts AlreadyRegistered
     // on a second call, so re-runs route through `updateProfile` (profile
     // updates are by design). Registered-or-not is read from the event stream
-    // — the network is the source of truth, the contract exposes no view.
-    const priorRegistrations = await publicClient.getContractEvents({
-        address: sellerRegistry,
-        abi: SELLER_REGISTRY_REGISTER_ABI,
-        eventName: 'SellerRegistered',
-        args: { seller: seller.address },
-        fromBlock: 0n,
-    });
-    if (priorRegistrations.length > 0) {
+    // — the network is the source of truth, the contract exposes no view. A
+    // wallet is registered iff registrations OUTNUMBER withdrawals (the
+    // withdraw spec's wallet cycles register→withdraw every run).
+    const [priorRegistrations, priorWithdrawals] = await Promise.all([
+        publicClient.getContractEvents({
+            address: sellerRegistry,
+            abi: SELLER_REGISTRY_REGISTER_ABI,
+            eventName: 'SellerRegistered',
+            args: { seller: seller.address },
+            fromBlock: 0n,
+        }),
+        publicClient.getContractEvents({
+            address: sellerRegistry,
+            abi: SELLER_REGISTRY_REGISTER_ABI,
+            eventName: 'SellerWithdrawn',
+            args: { seller: seller.address },
+            fromBlock: 0n,
+        }),
+    ]);
+    if (priorRegistrations.length > priorWithdrawals.length) {
         const { request } = await publicClient.simulateContract({
             account: seller.address,
             address: sellerRegistry,

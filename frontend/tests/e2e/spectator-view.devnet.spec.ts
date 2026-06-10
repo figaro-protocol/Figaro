@@ -17,8 +17,6 @@ import { test, expect, ANVIL_ACCOUNTS, gotoAsWallet } from './devnet-multi-test'
 import {
     createRootOrder,
     ensureTokenApprovals,
-    evmRevert,
-    evmSnapshot,
     readLocalDeploymentConfig,
 } from './devnet-helpers';
 import type { Hex } from 'viem';
@@ -29,14 +27,8 @@ const SELLER_KEY = ANVIL_KEYS[1];
 // Spectator: anvil[3], neither buyer nor seller on the seeded order.
 const SPECTATOR_ADDR = ANVIL_ACCOUNTS[3];
 
-let outerSnapshot: string;
-test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
-test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
 
 test.describe('OrderTimelineView spectator role (devnet)', () => {
-    let testSnapshot: string;
-    test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
-    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 
     test('wallet not party to the order sees the read-only header + no action buttons', async ({ page }) => {
         const config = readLocalDeploymentConfig();
@@ -62,14 +54,12 @@ test.describe('OrderTimelineView spectator role (devnet)', () => {
             /Read-only — your wallet is neither buyer nor seller on this order/,
         );
 
-        // Spectator "Status" copy — OrderTimelineView.tsx:500-504.
-        await expect(page.getByTestId('order-timeline-view')).toContainText(
-            /You are not party to this order\. Open the audit page for the public record\./,
-        );
+        // The spectator's path to the public record — the audit link renders.
+        await expect(page.getByTestId('order-timeline-view')).toContainText(/View audit record/);
 
-        // None of the role-bound action buttons render for a spectator.
-        await expect(page.getByTestId('btn-confirm-receipt')).toHaveCount(0);
-        await expect(page.locator('[data-testid^="btn-merchant-next-"]')).toHaveCount(0);
+        // No role-bound action surfaces for a spectator: the capability rail
+        // derives NOTHING for a wallet that is neither buyer nor seller.
+        await expect(page.locator('[data-testid^="capability-execute-"]')).toHaveCount(0);
 
         // The buyer "You are the buyer" + seller "You are the seller"
         // strings must NOT appear in the header.

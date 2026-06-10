@@ -16,7 +16,7 @@
  * Requires: Anvil + ./deploy-local.sh
  *   NEXT_PUBLIC_SELLER_REGISTRY must be set in .env.local.
  */
-import { test, expect } from './devnet-multi-test';
+import { test, expect, gotoAsWallet, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import {
     createPublicClient,
     createWalletClient,
@@ -29,8 +29,6 @@ import {
 import { privateKeyToAccount } from 'viem/accounts';
 import {
     evmIncreaseTime,
-    evmRevert,
-    evmSnapshot,
     readLocalDeploymentConfig,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
@@ -43,10 +41,13 @@ const LOCAL_ANVIL = defineChain({
     rpcUrls: { default: { http: [RPC_URL] } },
 });
 
-// Anvil[0] is the default e2e=devnet account (matches inject-ethereum-multi.js
-// initial ACCOUNT). Using it keeps the page's auto-connect wallet aligned
+// gotoAsWallet connects the page as the dedicated anvil[3] wallet
 // with the on-chain registration we seed below.
-const SELLER_KEY = ANVIL_KEYS[0];
+// anvil[3] — a wallet DEDICATED to this spec: it ends each run WITHDRAWN,
+// which would sabotage any spec that keeps its wallet persistently
+// registered (anvil[0] is seller-edit-ui's, anvil[1] place-order's).
+const SELLER_KEY = ANVIL_KEYS[3];
+const SELLER_ADDR = ANVIL_ACCOUNTS[3];
 
 const REGISTRATION_DEPOSIT = parseEther('0.001');
 const LOCK_PERIOD_SECONDS = 365 * 24 * 60 * 60; // matches Deploy.s.sol
@@ -120,28 +121,27 @@ async function isRegistered(): Promise<boolean> {
     return registered.length > withdrawn.length;
 }
 
-let outerSnapshot: string;
-test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
-test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
 
 test.describe('SellerRegistry.withdraw (devnet)', () => {
-    let testSnapshot: string;
-    test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
-    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 
     // The DepositLocked revert path is contract behavior, covered in Foundry
     // (test/SellerRegistryTest.t.sol) — a viem-only revert assertion is not
     // e2e (no UI action, no UI reaction), so it does not live here.
 
     test('withdraw after lock elapses — UI clicks through, receipt renders, registration cleared', async ({ page }) => {
-        await registerSeller('ipfs://test-G9-withdraw');
+        // Idempotent on the persisted devnet: the wallet ends each run
+        // withdrawn, so re-runs re-register; a crashed run may leave it
+        // registered — skip the register then.
+        if (!(await isRegistered())) {
+            await registerSeller('ipfs://test-G9-withdraw');
+        }
         await evmIncreaseTime(LOCK_PERIOD_SECONDS + 60);
 
         // Hit /sellers — RegisteredCard renders when profileOf().registeredAt > 0.
         // The metadataURI ("ipfs://test-G9-withdraw") won't resolve to a real
         // profile JSON, so the dashboard will surface "Couldn't fetch profile
         // from IPFS" — that's fine; the WithdrawRow renders regardless.
-        await page.goto('/sellers?e2e=devnet', { waitUntil: 'load' });
+        await gotoAsWallet(page, SELLER_ADDR, '/sellers?e2e=devnet');
 
         // Wait for the WithdrawRow's idle text — proves the dashboard
         // (not the welcome view) is on screen.

@@ -22,8 +22,6 @@ import { test, expect, ANVIL_ACCOUNTS, gotoAsWallet } from './devnet-multi-test'
 import {
     createRootOrder,
     ensureTokenApprovals,
-    evmRevert,
-    evmSnapshot,
     readLocalDeploymentConfig,
     resolveProcessOnChain,
 } from './devnet-helpers';
@@ -34,14 +32,8 @@ const BUYER_KEY = ANVIL_KEYS[0];
 const SELLER_KEY = ANVIL_KEYS[1];
 const SELLER_ADDR = ANVIL_ACCOUNTS[1];
 
-let outerSnapshot: string;
-test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
-test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
 
 test.describe('/audit/[processId] seller view (devnet)', () => {
-    let testSnapshot: string;
-    test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
-    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 
     test('seller sees the same financials view as the buyer for a resolved process', async ({ page }) => {
         const config = readLocalDeploymentConfig();

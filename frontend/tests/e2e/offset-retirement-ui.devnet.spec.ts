@@ -38,8 +38,6 @@ import { privateKeyToAccount } from 'viem/accounts';
 import {
     createRootOrder,
     ensureTokenApprovals,
-    evmRevert,
-    evmSnapshot,
     readLocalDeploymentConfig,
 } from './devnet-helpers';
 import {
@@ -76,20 +74,14 @@ const PROCESS_OFFSET_RECEIPT_ABI = parseAbi([
     'event ReceiptRecorded(bytes32 indexed processId, address indexed buyer, bytes32 indexed retirementTxHash, address aggregator, uint256 tonsRetired, address inputToken, uint256 inputAmount)',
 ]);
 
-let outerSnapshot: string;
-test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
-test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
 
 test.describe('Offset retirement UI (devnet)', () => {
-    let testSnapshot: string;
     let blockBefore: bigint;
 
     test.beforeEach(async () => {
-        testSnapshot = await evmSnapshot();
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         blockBefore = await publicClient.getBlockNumber();
     });
-    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 
     // Order commit + page mount + 3 sequential txs + receipt waits.
     test.setTimeout(240_000);

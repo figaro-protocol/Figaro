@@ -8,7 +8,7 @@
  * but OrderTimelineView derived `role` from the root order only — a
  * courier (seller of a non-root sub-order) fell through to "spectator"
  * and the handoff action was unreachable. D2 added the courier role
- * branch + the `btn-courier-proximity-proof` button.
+ * branch through the ONE clause-agnostic capability rail.
  *
  * Flow:
  *   1. Seed a root order (buyer ↔ restaurant) + a courier sub-order
@@ -27,7 +27,7 @@
  *
  * Requires Anvil + ./deploy-local.sh + Kubo.
  */
-import { test, expect, gotoAsWallet, seedAgreementForWallet } from './devnet-multi-test';
+import { test, expect, seedAgreementForWallet } from './devnet-multi-test';
 import {
     createPublicClient,
     defineChain,
@@ -40,10 +40,9 @@ import {
 import { privateKeyToAccount } from 'viem/accounts';
 import {
     createRootOrder,
+    walkClauseAttestations,
     createSubOrder,
     ensureTokenApprovals,
-    evmRevert,
-    evmSnapshot,
     proximityHandoffAgreement,
     readLocalDeploymentConfig,
 } from './devnet-helpers';
@@ -69,25 +68,19 @@ const ATTESTATION_COORDINATOR_EVENT_ABI = parseAbi([
     'event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)',
 ]);
 
-let outerSnapshot: string;
-test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
-test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
 
 test.describe('Courier proximity proof via UI (devnet)', () => {
-    let testSnapshot: string;
     let blockBefore: bigint;
 
     test.beforeEach(async () => {
-        testSnapshot = await evmSnapshot();
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         blockBefore = await publicClient.getBlockNumber();
     });
-    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 
     // Two seed commits + nav + two handoffs, each two attestation txs.
     test.setTimeout(240_000);
 
-    test('courier submits proximity proofs for both handoff edges — pickup then dropoff', async ({ page }) => {
+    test('courier walks its ladder and witnesses the proximity proof through the generic rail', async ({ page }) => {
         const config = readLocalDeploymentConfig();
         const coreAddress = (process.env.NEXT_PUBLIC_FIGARO_CORE ?? config.figaroCore) as Hex;
         const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? config.tokenAddress) as Hex;
@@ -134,66 +127,34 @@ test.describe('Courier proximity proof via UI (devnet)', () => {
         // localStorage before the page mounts.
         await seedAgreementForWallet(page, courierAgreement);
 
-        await gotoAsWallet(page, COURIER_ADDR, `/orders/${processId}?e2e=devnet`);
+        // The courier walks its order's attestations through the ONE
+        // clause-agnostic rail: the 5-stage courier-process ladder + the
+        // bilateral proximity witness at the committed band (6 clicks).
+        // (Per-handoff-edge proof PAIRING is the deferred engine-spec work —
+        // at HEAD each party witnesses its order's proof once.)
+        await walkClauseAttestations(page, {
+            wallet: COURIER_ADDR, processId, clicks: 6, who: 'courier',
+        });
 
-        await page.getByTestId('order-timeline-view').waitFor({ timeout: 30_000 });
-
-        // The button renders only in the courier role branch — its
-        // presence proves the courier-order derivation worked.
-        const proofButton = page.getByTestId('btn-courier-proximity-proof');
-        await expect(proofButton).toBeEnabled({ timeout: 30_000 });
-        await proofButton.click();
-
-        // signalWithProof fires two attestations; assert the
-        // figaro-proximity-proof-v1 one landed on the sub-order.
+        // Out-of-band: the courier-process ladder is fully attested (enum
+        // ordinals 0..4 — arrived-pickup is 1, arrived-dropoff is 3) and the
+        // proximity proof landed at the committed band (zone-wifi = ordinal 0).
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-        const deadline = Date.now() + 90_000;
-        let events: Array<{ args: { stage: number; clauseId: Hex } }> = [];
-        while (Date.now() < deadline) {
-            const all = await publicClient.getContractEvents({
-                address: coordinator,
-                abi: ATTESTATION_COORDINATOR_EVENT_ABI,
-                eventName: 'Attestation',
-                args: { orderHash: deliveryOrderHash, attester: COURIER_ADDR as Hex },
-                fromBlock: blockBefore,
-            });
-            events = (all as typeof events).filter((e) => e.args.clauseId === PROXIMITY_PROOF_CLAUSE_ID);
-            if (events.length >= 1) break;
-            await new Promise((r) => setTimeout(r, 1000));
-        }
-        expect(events.length).toBeGreaterThanOrEqual(1);
-        // band 'zone-wifi' → stage 1 (PROXIMITY_BAND_INDEX).
-        expect(events[0].args.stage).toBe(1);
-
-        // The UI surfaced no submission error.
-        await expect(page.getByTestId('courier-action-error')).toHaveCount(0);
-
-        // ── Second handoff: courier→buyer dropoff ──────────────────────
-        // The button reads the courier-process event log — arrived-pickup is
-        // now attested, so the next click certifies the dropoff edge.
-        await expect(proofButton).toBeEnabled({ timeout: 30_000 });
-        await proofButton.click();
-
-        // The courier-process events now span both handoff edges:
-        // arrived-pickup (stage 3, handoff 1) then arrived-dropoff (stage 5).
-        const courierDeadline = Date.now() + 90_000;
-        let courierStages: number[] = [];
-        while (Date.now() < courierDeadline) {
-            const all = await publicClient.getContractEvents({
-                address: coordinator,
-                abi: ATTESTATION_COORDINATOR_EVENT_ABI,
-                eventName: 'Attestation',
-                args: { orderHash: deliveryOrderHash, attester: COURIER_ADDR as Hex },
-                fromBlock: blockBefore,
-            });
-            courierStages = (all as Array<{ args: { stage: number; clauseId: Hex } }>)
-                .filter((e) => e.args.clauseId === COURIER_PROCESS_CLAUSE_ID)
-                .map((e) => Number(e.args.stage));
-            if (courierStages.includes(5)) break;
-            await new Promise((r) => setTimeout(r, 1000));
-        }
-        expect(courierStages).toContain(3); // arrived-pickup (handoff 1)
-        expect(courierStages).toContain(5); // arrived-dropoff (handoff 2)
-        await expect(page.getByTestId('courier-action-error')).toHaveCount(0);
+        const all = await publicClient.getContractEvents({
+            address: coordinator,
+            abi: ATTESTATION_COORDINATOR_EVENT_ABI,
+            eventName: 'Attestation',
+            args: { orderHash: deliveryOrderHash, attester: COURIER_ADDR as Hex },
+            fromBlock: blockBefore,
+        });
+        const courierStages = (all as Array<{ args: { stage: number; clauseId: Hex } }>)
+            .filter((e) => e.args.clauseId === COURIER_PROCESS_CLAUSE_ID)
+            .map((e) => Number(e.args.stage))
+            .sort((a, b) => a - b);
+        expect(courierStages).toEqual([0, 1, 2, 3, 4]);
+        const proofEvents = (all as Array<{ args: { stage: number; clauseId: Hex } }>)
+            .filter((e) => e.args.clauseId === PROXIMITY_PROOF_CLAUSE_ID);
+        expect(proofEvents.length).toBe(1);
+        expect(Number(proofEvents[0].args.stage)).toBe(0); // zone-wifi
     });
 });

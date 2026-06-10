@@ -82,14 +82,8 @@ async function registerAssembly(slug: string, metadataURI: string): Promise<void
     });
 }
 
-let outerSnapshot: string;
-test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
-test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
 
 test.describe('Assemblies marketing inventory (devnet)', () => {
-    let testSnapshot: string;
-    test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
-    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 
     test('renders a newly-published assembly from on-chain events', async ({ page }) => {
         const slug = `inventory-smoke-${Date.now()}`;

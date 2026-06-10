@@ -18,8 +18,6 @@ import { test, expect } from '@playwright/test';
 import {
     createRootOrder,
     ensureTokenApprovals,
-    evmRevert,
-    evmSnapshot,
     readLocalDeploymentConfig,
     resolveProcessOnChain,
 } from './devnet-helpers';
@@ -29,14 +27,8 @@ import { ANVIL_KEYS } from '../anvilAccounts';
 const BUYER_KEY = ANVIL_KEYS[0];
 const SELLER_KEY = ANVIL_KEYS[1];
 
-let outerSnapshot: string;
-test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
-test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
 
 test.describe('/audit/[processId] (devnet)', () => {
-    let testSnapshot: string;
-    test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
-    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 
     test('renders financials view for a resolved process — process id, line item, cash flow', async ({ page }) => {
         const config = readLocalDeploymentConfig();

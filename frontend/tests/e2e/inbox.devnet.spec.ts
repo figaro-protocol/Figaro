@@ -19,8 +19,6 @@ import { test, expect, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import {
     createRootOrder,
     ensureTokenApprovals,
-    evmRevert,
-    evmSnapshot,
     readLocalDeploymentConfig,
 } from './devnet-helpers';
 import type { Hex } from 'viem';
@@ -30,14 +28,8 @@ const BUYER_KEY = ANVIL_KEYS[0];
 const SELLER_KEY = ANVIL_KEYS[1];
 const SELLER_ADDR = ANVIL_ACCOUNTS[1];
 
-let outerSnapshot: string;
-test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
-test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
 
 test.describe('/inbox (devnet)', () => {
-    let testSnapshot: string;
-    test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
-    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 
     test('seller sees an active row for an on-chain order where they are the counterparty', async ({ page }) => {
         const config = readLocalDeploymentConfig();

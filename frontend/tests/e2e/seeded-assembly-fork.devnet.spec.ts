@@ -32,14 +32,8 @@ import { evmRevert, evmSnapshot } from './devnet-helpers';
 const SEEDED_SLUG = 'direct-sale';
 const SEEDED_NAME = 'Direct Sale';
 
-let outerSnapshot: string;
-test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
-test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
 
 test.describe('Fork a seeded assembly from /view/[slug] (devnet)', () => {
-    let testSnapshot: string;
-    test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
-    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 
     // On-chain resolve + IPFS assemblyDoc fetch + fork hydration + nav.
     test.setTimeout(180_000);

@@ -32,8 +32,6 @@ import {
 import {
     createRootOrder,
     ensureTokenApprovals,
-    evmRevert,
-    evmSnapshot,
     readLocalDeploymentConfig,
     waitForWalletConnected,
 } from './devnet-helpers';
@@ -61,20 +59,14 @@ const KLEROS_PROXY_EVENT_ABI = parseAbi([
     'event Evidence(address indexed arbitrator, uint256 indexed evidenceGroupID, address indexed party, string evidence)',
 ]);
 
-let outerSnapshot: string;
-test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
-test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
 
 test.describe('Dispute create + evidence via the audit page (devnet)', () => {
-    let testSnapshot: string;
     let blockBefore: bigint;
 
     test.beforeEach(async () => {
-        testSnapshot = await evmSnapshot();
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         blockBefore = await publicClient.getBlockNumber();
     });
-    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 
     // On-chain seed + two Kleros txs + an in-browser audit-bundle PDF build.
     test.setTimeout(180_000);
