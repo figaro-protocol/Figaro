@@ -35,6 +35,8 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { evmRevert, evmSnapshot, readLocalDeploymentConfig } from './devnet-helpers';
+import { ASSEMBLY_REGISTRY_ABI } from '@/lib/mechanisms/useAssemblyRegistry';
+import { ANVIL_KEYS } from '../anvilAccounts';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -43,11 +45,8 @@ const LOCAL_ANVIL = defineChain({
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
     rpcUrls: { default: { http: [RPC_URL] } },
 });
-const AUTHOR_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
+const AUTHOR_KEY = ANVIL_KEYS[0];
 const REGISTRATION_DEPOSIT = parseEther('0.001');
-const ASSEMBLY_REGISTRY_ABI = parseAbi([
-    'function registerAssembly(string slug, bytes32 contentHash, string metadataURI) external payable',
-]);
 
 function getRegistryAddress(): Hex {
     const config = readLocalDeploymentConfig();

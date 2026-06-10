@@ -23,7 +23,7 @@
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import {
-    createPublicClient, createWalletClient, defineChain, http, keccak256, toHex,
+    createPublicClient, createWalletClient, http,
     type Hex,
 } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
@@ -35,39 +35,20 @@ import {
     acceptOrderInInboxUI,
     readLocalDeploymentConfig,
     registerNovelClause,
+    assemblyAnchored,
+    RPC_URL,
+    LOCAL_ANVIL,
 } from './devnet-helpers';
+import { ANVIL_KEYS } from '../anvilAccounts';
 
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337, name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
-const REGISTRAR_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as Hex; // anvil[0]
+const REGISTRAR_KEY = ANVIL_KEYS[0] as Hex; // anvil[0] — the buyer
 const BUYER_ADDR = privateKeyToAccount(REGISTRAR_KEY).address;
 
 const SELLER_REGISTRY_ABI = [
     { type: 'function', name: 'register', stateMutability: 'payable', inputs: [{ name: 'metadataURI', type: 'string' }], outputs: [] },
 ] as const;
 
-const ASSEMBLY_REGISTERED_ABI = [
-    { type: 'event', name: 'AssemblyRegistered', inputs: [
-        { name: 'slugHash', type: 'bytes32', indexed: true }, { name: 'author', type: 'address', indexed: true },
-        { name: 'slug', type: 'string', indexed: false }, { name: 'contentHash', type: 'bytes32', indexed: false },
-        { name: 'metadataURI', type: 'string', indexed: false } ] },
-] as const;
-
-async function assemblyAnchored(slug: string): Promise<boolean> {
-    const cfg = readLocalDeploymentConfig();
-    const registry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? cfg.assemblyRegistry) as Hex;
-    const pub = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const events = await pub.getContractEvents({
-        address: registry, abi: ASSEMBLY_REGISTERED_ABI, eventName: 'AssemblyRegistered',
-        args: { slugHash: keccak256(toHex(slug)) }, fromBlock: 0n,
-    });
-    return events.length > 0;
-}
 
 // The novel clause — a runtime-attestable lifecycle with one enum ladder. Modeled
 // on figaro-merchant-process-v1's shape, but a name nothing in the repo knows.

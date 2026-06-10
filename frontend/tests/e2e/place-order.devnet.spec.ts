@@ -25,14 +25,10 @@
 import { test, expect, ANVIL_ACCOUNTS, gotoAsWallet } from './devnet-multi-test';
 import {
     createPublicClient,
-    createWalletClient,
     defineChain,
     http,
-    parseAbi,
-    parseEther,
     type Hex,
 } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
 import {
     acceptOrderInInboxUI,
     ensureTokenApprovals,
@@ -41,7 +37,10 @@ import {
     pinJSONToIPFS,
     placeBilateralOrderUI,
     readLocalDeploymentConfig,
+    seedRegisteredSeller,
+    CORE_PROCESS_VIEW_ABI,
 } from './devnet-helpers';
+import { ANVIL_KEYS } from '../anvilAccounts';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -51,26 +50,9 @@ const LOCAL_ANVIL = defineChain({
     rpcUrls: { default: { http: [RPC_URL] } },
 });
 
-const BUYER_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
-const SELLER_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d' as const;
+const BUYER_KEY = ANVIL_KEYS[0];
+const SELLER_KEY = ANVIL_KEYS[1];
 const SELLER_ADDR = ANVIL_ACCOUNTS[1];
-
-const REGISTRATION_DEPOSIT = parseEther('0.001');
-
-const SELLER_REGISTRY_ABI = parseAbi([
-    'function register(string metadataURI) external payable',
-]);
-
-function getRegistryAddress(): Hex {
-    const config = readLocalDeploymentConfig();
-    const addr = (process.env.NEXT_PUBLIC_SELLER_REGISTRY
-        ?? config.sellerRegistry
-        ?? '') as Hex;
-    if (!addr || addr.length !== 42) {
-        throw new Error('NEXT_PUBLIC_SELLER_REGISTRY not set — run ./deploy-local.sh');
-    }
-    return addr;
-}
 
 interface SeededSeller {
     address: Hex;
@@ -85,6 +67,8 @@ async function seedRegisteredSellerWithCatalogue(): Promise<SeededSeller> {
     const itemId = `g11-c2-item-${Date.now()}`;
     const itemName = 'Place-Order Test Item';
 
+    // Spec-specific catalogue; the registration itself goes through the
+    // canonical seeder (devnet-helpers.seedRegisteredSeller).
     const catalogue = {
         subjectAddress: SELLER_ADDR,
         version: '1.0.0',
@@ -103,29 +87,16 @@ async function seedRegisteredSellerWithCatalogue(): Promise<SeededSeller> {
     };
     const { uri: catalogueURI } = await pinJSONToIPFS(catalogue);
 
-    const profile = {
-        subjectAddress: SELLER_ADDR,
-        name: `Devnet Seller ${Date.now()}`,
-        description: 'Seller seeded by place-order.devnet.spec.ts',
-        catalogueURI,
-        acceptedTokens: [{ address: tokenAddress, symbol: 'MOCK', chainId: 31337 }],
-        defaultTokenAddress: tokenAddress,
-    };
-    const { uri: profileURI } = await pinJSONToIPFS(profile);
-
-    const registry = getRegistryAddress();
-    const seller = privateKeyToAccount(SELLER_KEY);
-    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const sellerClient = createWalletClient({ account: seller, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const { request } = await publicClient.simulateContract({
-        account: seller.address,
-        address: registry,
-        abi: SELLER_REGISTRY_ABI,
-        functionName: 'register',
-        args: [profileURI],
-        value: REGISTRATION_DEPOSIT,
+    await seedRegisteredSeller({
+        walletKey: SELLER_KEY,
+        profile: {
+            name: `Devnet Seller ${Date.now()}`,
+            description: 'Seller seeded by place-order.devnet.spec.ts',
+            catalogueURI,
+            acceptedTokens: [{ address: tokenAddress, symbol: 'MOCK', chainId: 31337 }],
+            defaultTokenAddress: tokenAddress,
+        },
     });
-    await publicClient.waitForTransactionReceipt({ hash: await sellerClient.writeContract(request) });
 
     return { address: SELLER_ADDR as Hex, itemId, itemName };
 }
@@ -177,9 +148,7 @@ test.describe('/s/[seller] full place-order flow (devnet)', () => {
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const processState = await publicClient.readContract({
             address: coreAddress,
-            abi: parseAbi([
-                'function processes(bytes32) view returns (address rootBuyer, address currency, uint256 cumulativeValue, uint32 activeOrderCount)',
-            ]),
+            abi: CORE_PROCESS_VIEW_ABI,
             functionName: 'processes',
             args: [processId],
         });

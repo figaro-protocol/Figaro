@@ -18,6 +18,7 @@ import {
     type Hex,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
+import { ANVIL_KEYS } from '../anvilAccounts';
 import {
     COMMITMENT_TYPES,
     CORE_ABI,
@@ -38,9 +39,9 @@ import { GHG_CLAUSE_KEY, GHG_CLAUSE_ID } from '@/lib/core/agreement';
 import { ZERO_PROCESS_ID, ZERO_ADDRESS, hexEqual } from '@/lib/shared/evm';
 import { gotoAsWallet } from './devnet-multi-test';
 
-const RPC_URL = 'http://127.0.0.1:8545';
+export const RPC_URL = 'http://127.0.0.1:8545';
 const MAX_UINT256 = (2n ** 256n) - 1n;
-const LOCAL_ANVIL = defineChain({
+export const LOCAL_ANVIL = defineChain({
     id: 31337,
     name: 'Localhost',
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
@@ -95,9 +96,9 @@ export function useChainSnapshot(test: PlaywrightLifecycleHooks): void {
     test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 }
 
-const BUYER_PRIVATE_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
-const RESTAURANT_PRIVATE_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d' as const;
-const SUPPLIER_PRIVATE_KEY = '0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a' as const;
+const BUYER_PRIVATE_KEY = ANVIL_KEYS[0];
+const RESTAURANT_PRIVATE_KEY = ANVIL_KEYS[1];
+const SUPPLIER_PRIVATE_KEY = ANVIL_KEYS[2];
 
 const ERC20_TEST_ABI = parseAbi([
     'function approve(address spender, uint256 amount) external returns (bool)',
@@ -1058,6 +1059,26 @@ export async function assertPinnedInIpfs(cid: string): Promise<void> {
     }
     const body = await res.json() as { Keys?: Record<string, { Type?: string }> };
     expect(body.Keys?.[cid], `CID ${cid} must be pinned in the local Kubo node`).toBeTruthy();
+}
+
+const ASSEMBLY_REGISTERED_EVENT_ABI = [
+    { type: 'event', name: 'AssemblyRegistered', inputs: [
+        { name: 'slugHash', type: 'bytes32', indexed: true }, { name: 'author', type: 'address', indexed: true },
+        { name: 'slug', type: 'string', indexed: false }, { name: 'contentHash', type: 'bytes32', indexed: false },
+        { name: 'metadataURI', type: 'string', indexed: false } ] },
+] as const;
+
+/** True when `slug` is anchored on the AssemblyRegistry (any author) — the
+ *  persisted-stage check the permissionless specs use to author ONCE. */
+export async function assemblyAnchored(slug: string): Promise<boolean> {
+    const cfg = readLocalDeploymentConfig();
+    const registry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? cfg.assemblyRegistry) as `0x${string}`;
+    const pub = localPublicClient();
+    const events = await pub.getContractEvents({
+        address: registry, abi: ASSEMBLY_REGISTERED_EVENT_ABI, eventName: 'AssemblyRegistered',
+        args: { slugHash: keccak256(stringToHex(slug)) }, fromBlock: 0n,
+    });
+    return events.length > 0;
 }
 
 /**

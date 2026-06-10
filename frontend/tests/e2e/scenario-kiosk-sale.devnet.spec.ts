@@ -48,6 +48,7 @@ import {
     assertPinnedInIpfs,
     readLocalDeploymentConfig,
 } from './devnet-helpers';
+import { ASSEMBLY_REGISTRY_ABI } from '@/lib/mechanisms/useAssemblyRegistry';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -58,9 +59,6 @@ const LOCAL_ANVIL = defineChain({
 });
 const IPFS_GATEWAY = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080';
 
-const ASSEMBLY_REGISTRY_ABI = parseAbi([
-    'event AssemblyRegistered(bytes32 indexed slugHash, address indexed author, string slug, bytes32 contentHash, string metadataURI)',
-]);
 
 test.describe('Author + publish the kiosk-sale assembly (devnet)', () => {
     // Multi-route nav + IPFS pin + on-chain tx. NO evmSnapshot/evmRevert — the

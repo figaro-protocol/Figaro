@@ -31,6 +31,7 @@ import {
     placeLocalCommerceOrderUI,
     readLocalDeploymentConfig,
 } from './devnet-helpers';
+import { ANVIL_KEYS } from '../anvilAccounts';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -41,7 +42,7 @@ const LOCAL_ANVIL = defineChain({
 });
 
 // Buyer — anvil[0], the default ?e2e=devnet account.
-const BUYER_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
+const BUYER_KEY = ANVIL_KEYS[0];
 // Swift Courier — seeded courier on anvil[7]; its catalogue carries the
 // buyer-set "Name-your-price" delivery item (delivery-quote).
 const SWIFT_COURIER_ADDR = '0x14dC79964da2C08b23698B3D3cc7Ca32193d9955' as const;

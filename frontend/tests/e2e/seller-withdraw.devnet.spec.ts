@@ -33,6 +33,7 @@ import {
     evmSnapshot,
     readLocalDeploymentConfig,
 } from './devnet-helpers';
+import { ANVIL_KEYS } from '../anvilAccounts';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -45,7 +46,7 @@ const LOCAL_ANVIL = defineChain({
 // Anvil[0] is the default e2e=devnet account (matches inject-ethereum-multi.js
 // initial ACCOUNT). Using it keeps the page's auto-connect wallet aligned
 // with the on-chain registration we seed below.
-const SELLER_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
+const SELLER_KEY = ANVIL_KEYS[0];
 
 const REGISTRATION_DEPOSIT = parseEther('0.001');
 const LOCK_PERIOD_SECONDS = 365 * 24 * 60 * 60; // matches Deploy.s.sol
@@ -128,24 +129,9 @@ test.describe('SellerRegistry.withdraw (devnet)', () => {
     test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
     test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
 
-    test('withdraw before lock elapses reverts with DepositLocked', async () => {
-        await registerSeller('ipfs://test-G9-locked');
-
-        const registry = getRegistryAddress();
-        const seller = privateKeyToAccount(SELLER_KEY);
-        const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-
-        await expect(
-            publicClient.simulateContract({
-                account: seller.address,
-                address: registry,
-                abi: SELLER_REGISTRY_ABI,
-                functionName: 'withdraw',
-            }),
-        ).rejects.toThrow(/DepositLocked/);
-
-        expect(await isRegistered()).toBe(true);
-    });
+    // The DepositLocked revert path is contract behavior, covered in Foundry
+    // (test/SellerRegistryTest.t.sol) — a viem-only revert assertion is not
+    // e2e (no UI action, no UI reaction), so it does not live here.
 
     test('withdraw after lock elapses — UI clicks through, receipt renders, registration cleared', async ({ page }) => {
         await registerSeller('ipfs://test-G9-withdraw');

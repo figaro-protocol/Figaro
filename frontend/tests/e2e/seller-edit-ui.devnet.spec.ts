@@ -41,6 +41,8 @@ import {
     readLocalDeploymentConfig,
     seedRegisteredSeller,
 } from './devnet-helpers';
+import { ASSEMBLY_REGISTRY_ABI } from '@/lib/mechanisms/useAssemblyRegistry';
+import { ANVIL_KEYS } from '../anvilAccounts';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -50,16 +52,12 @@ const LOCAL_ANVIL = defineChain({
     rpcUrls: { default: { http: [RPC_URL] } },
 });
 
-const SELLER_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
+const SELLER_KEY = ANVIL_KEYS[0];
 
 const SELLER_REGISTRY_ABI = parseAbi([
     'event SellerProfileUpdated(address indexed seller, string metadataURI)',
 ]);
 
-const ASSEMBLY_REGISTRY_ABI = parseAbi([
-    'function registerAssembly(string slug, bytes32 contentHash, string metadataURI) external payable',
-    'event AssemblyRegistered(bytes32 indexed slugHash, address indexed author, string slug, bytes32 contentHash, string metadataURI)',
-]);
 
 const ASSEMBLY_REGISTRATION_DEPOSIT = parseEther('0.001');
 
