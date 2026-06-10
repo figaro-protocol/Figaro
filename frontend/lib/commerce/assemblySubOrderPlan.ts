@@ -73,8 +73,9 @@ export function planSubOrderSellers(
  * publishes no matching item.
  *
  * Open refinement (kit-assembly): the node→catalogue-item mapping is currently
- * the seller's "component" item; a richer rule (itemId on the binding, or a
- * per-node category) is the remaining decision.
+ * the seller's first available item — catalogue categories are seller-authored
+ * free-form values, never a closed set this code may branch on. A richer rule
+ * (itemId on the binding) is the remaining decision.
  */
 export function resolveSubOrderPayment(args: {
     node: AssemblyDocumentOrder;
@@ -85,7 +86,7 @@ export function resolveSubOrderPayment(args: {
 }): bigint {
     const { seller, leadAddress, sellerCatalogues, tokenDecimals } = args;
     const catalogue = sellerCatalogues.find((c) => hexEqual(c.address, seller));
-    const item = catalogue?.menu.find((i) => i.category === "component");
+    const item = catalogue?.menu.find((i) => i.available !== false);
     if (!item) return 0n;
     return parseToken(resolveCatalogueItemPrice(item, leadAddress).price, tokenDecimals);
 }

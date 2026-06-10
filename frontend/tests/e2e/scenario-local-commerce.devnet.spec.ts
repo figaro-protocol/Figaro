@@ -14,11 +14,13 @@
  *
  *     order[0]  buyer ↔ merchant  parents: []
  *       figaro-fulfilment-v2       { modalities: [delivery],
- *                                    delivery: { coordination: [seller-assigned] },
- *                                    handoff: [face-to-face] }
+ *                                    delivery: { coordination: [seller-assigned] } }
+ *       figaro-handoff-v1          { handoff: [face-to-face] }
  *       figaro-merchant-process-v1 { }
+ *       figaro-proximity-policy-v1 { bands: [zone-wifi] }
  *     order[1]  buyer ↔ courier   parents: [order-0]   (value-topology edge; co-equal)
  *       figaro-courier-process-v1  { }
+ *       figaro-handoff-v1          { handoff: [face-to-face] }
  *       figaro-proximity-policy-v1 { bands: [zone-wifi] }
  *
  *   Delivery is expressed by the TOPOLOGY (a second courier order carrying
@@ -32,34 +34,42 @@
  * (`local-commerce-runtime`) then CONSUMES this anchored + pinned assembly via
  * the registry → IPFS — it does NOT re-author or re-seed it.
  *
+ * Drawer contract (chain→IPFS): clause checkboxes render only after the spec
+ * cache warms from ClauseRegistry → IPFS, so every checkbox is awaited into
+ * existence before it is checked — same contract as the permissionless specs.
+ *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo.
  */
 import { test, expect } from './devnet-multi-test';
+import type { Page } from '@playwright/test';
+import { createPublicClient, http, keccak256, toHex, type Hex } from 'viem';
 import {
-    createPublicClient,
-    defineChain,
-    http,
-    keccak256,
-    parseAbi,
-    toHex,
-    type Hex,
-} from 'viem';
-import {
+    addSubOrder,
     assertAssemblyOnInventory,
     assertPinnedInIpfs,
+    assemblyAnchored,
+    nodeIds,
     readLocalDeploymentConfig,
+    LOCAL_ANVIL,
+    RPC_URL,
 } from './devnet-helpers';
 import { ASSEMBLY_REGISTRY_ABI } from '@/lib/mechanisms/useAssemblyRegistry';
 
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 const IPFS_GATEWAY = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080';
 
+/** Compose one clause (and its field selections) in the open drawer — each
+ *  control awaited into existence first (chain→IPFS spec warm; field controls
+ *  are spec-gated and may render only after the parent selection). */
+async function composeClause(page: Page, clause: string, fields: readonly string[] = []) {
+    const box = page.getByTestId(`drawer-registry-clause-${clause}`);
+    await expect(box, `drawer surfaces ${clause}`).toHaveCount(1, { timeout: 20000 });
+    await box.check();
+    for (const field of fields) {
+        const control = page.getByTestId(field);
+        await expect(control, `drawer surfaces ${field}`).toHaveCount(1, { timeout: 10000 });
+        await control.check();
+    }
+}
 
 test.describe('Author + publish the local-commerce assembly (devnet)', () => {
     // Multi-node draw + multi-route nav + IPFS pin + on-chain tx. NO snapshot —
@@ -76,38 +86,20 @@ test.describe('Author + publish the local-commerce assembly (devnet)', () => {
         const draftName = 'Local Commerce';
         const slugHash = keccak256(toHex(slug));
 
-        const alreadyAnchored = await publicClient.getContractEvents({
-            address: assemblyRegistry,
-            abi: ASSEMBLY_REGISTRY_ABI,
-            eventName: 'AssemblyRegistered',
-            args: { slugHash },
-            fromBlock: 0n,
-        });
-
-        if (alreadyAnchored.length === 0) {
+        if (!(await assemblyAnchored(slug))) {
             // ── Author via the real designer canvas + publish (pin + anchor) ──
-            await page.addInitScript(() => {
-                try {
-                    window.localStorage.removeItem('figaro:designer:current');
-                    window.localStorage.removeItem('figaro:designer:drafts');
-                } catch { /* noop */ }
-            });
             await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
             await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
             await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
 
-            // Blank seed = one root order (the merchant). Capture its id, then DRAW
-            // the courier sub-order under it (the delivery leg — a co-equal order,
-            // not a side-effect spawn).
+            // Blank seed = one root order (the merchant). DRAW the courier
+            // sub-order under it (the delivery leg — a co-equal order, not a
+            // side-effect spawn).
             const orderNodes = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])');
             await expect(orderNodes).toHaveCount(1, { timeout: 10000 });
-            const rootTestId = await orderNodes.first().getAttribute('data-testid');
-            const rootId = rootTestId!.replace('order-node-', '');
-
-            await page.getByTestId(`btn-add-suborder-${rootId}`).click();
+            const [rootId] = await nodeIds(page);
+            const courierId = await addSubOrder(page, rootId);
             await expect(orderNodes).toHaveCount(2, { timeout: 10000 });
-            const allTestIds = await orderNodes.evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')));
-            const courierId = allTestIds.find((t) => t !== `order-node-${rootId}`)!.replace('order-node-', '');
 
             // ── Compose the MERCHANT order: delivery (seller-assigned) + handoff,
             //    and the merchant-process lifecycle anchor ──────────────────────
@@ -116,32 +108,27 @@ test.describe('Author + publish the local-commerce assembly (devnet)', () => {
             await page.getByTestId('drawer-tab-registry').click();
             await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
 
-            await page.getByTestId('drawer-registry-clause-figaro-fulfilment-v2').check();
-            await page.getByTestId('drawer-field-figaro-fulfilment-v2-modalities-delivery').check();
-            // The delivery sub-clause (coordination) surfaces once delivery is the
-            // chosen modality — gated by the spec, never hardcoded.
-            const coordination = page.getByTestId('drawer-field-figaro-fulfilment-v2-delivery-coordination-seller-assigned');
-            await coordination.waitFor({ state: 'visible', timeout: 5000 });
-            await coordination.check();
-            // The merchant→courier hand-off + its proximity certification (proximity
-            // nests under the hand-off clause's field).
-            await page.getByTestId('drawer-registry-clause-figaro-handoff-v1').check();
-            await page.getByTestId('drawer-field-figaro-handoff-v1-handoff-face-to-face').check();
-            await page.getByTestId('drawer-registry-clause-figaro-proximity-policy-v1').check();
-            await page.getByTestId('drawer-field-figaro-proximity-policy-v1-bands-zone-wifi').check();
-            await page.getByTestId('drawer-registry-clause-figaro-merchant-process-v1').check();
+            // The delivery sub-clause (coordination) surfaces once delivery is
+            // the chosen modality — gated by the spec, never hardcoded.
+            await composeClause(page, 'figaro-fulfilment-v2', [
+                'drawer-field-figaro-fulfilment-v2-modalities-delivery',
+                'drawer-field-figaro-fulfilment-v2-delivery-coordination-seller-assigned',
+            ]);
+            // The merchant→courier hand-off + its proximity certification
+            // (proximity nests under the hand-off clause's field).
+            await composeClause(page, 'figaro-handoff-v1', ['drawer-field-figaro-handoff-v1-handoff-face-to-face']);
+            await composeClause(page, 'figaro-proximity-policy-v1', ['drawer-field-figaro-proximity-policy-v1-bands-zone-wifi']);
+            await composeClause(page, 'figaro-merchant-process-v1');
 
             // ── Compose the COURIER order: courier-process + the courier→buyer
             //    hand-off + its proximity certification ────────────────────────
             await page.getByTestId(`drawer-node-tab-${courierId}`).click();
             await page.getByTestId('drawer-tab-registry').click();
             await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
-            await page.getByTestId('drawer-registry-clause-figaro-courier-process-v1').check();
-            await page.getByTestId('drawer-registry-clause-figaro-handoff-v1').check();
-            await page.getByTestId('drawer-field-figaro-handoff-v1-handoff-face-to-face').check();
-            await page.getByTestId('drawer-registry-clause-figaro-proximity-policy-v1').check();
-            await page.getByTestId('drawer-field-figaro-proximity-policy-v1-bands-zone-wifi').check();
-            await expect(orderNodes).toHaveCount(2, { timeout: 10000 });
+            await composeClause(page, 'figaro-courier-process-v1');
+            await composeClause(page, 'figaro-handoff-v1', ['drawer-field-figaro-handoff-v1-handoff-face-to-face']);
+            await composeClause(page, 'figaro-proximity-policy-v1', ['drawer-field-figaro-proximity-policy-v1-bands-zone-wifi']);
+            await expect(orderNodes, 'composing clauses never draws nodes').toHaveCount(2, { timeout: 10000 });
 
             // Name + publish (fixed slug → "local-commerce").
             await page.getByTestId('designer-name-input').fill(draftName);
@@ -183,7 +170,7 @@ test.describe('Author + publish the local-commerce assembly (devnet)', () => {
         await assertPinnedInIpfs(cid);
 
         // ── It is the correct no-hash 2-node template ──────────────────────
-        const assemblyDoc = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
+        const assemblyTemplate = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
             slug: string;
             name: string;
             orders: Array<{
@@ -191,9 +178,9 @@ test.describe('Author + publish the local-commerce assembly (devnet)', () => {
                 clauses: Record<string, Record<string, unknown>>;
             }>;
         };
-        expect(assemblyDoc.slug).toBe(slug);
-        expect(assemblyDoc.orders).toHaveLength(2);
-        const [root, courier] = assemblyDoc.orders;
+        expect(assemblyTemplate.slug).toBe(slug);
+        expect(assemblyTemplate.orders).toHaveLength(2);
+        const [root, courier] = assemblyTemplate.orders;
 
         // order[0] — the merchant: delivery (seller-assigned) + merchant-process +
         // the merchant→courier hand-off, proximity-certified.

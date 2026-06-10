@@ -72,30 +72,6 @@ export const ERC20_BALANCE_ABI = parseAbi([
     'function balanceOf(address) view returns (uint256)',
 ]);
 
-/** Minimal Playwright hook surface — structural, so this file needs no import of
- *  the test object (avoids a cycle with devnet-multi-test). */
-interface PlaywrightLifecycleHooks {
-    beforeAll(fn: () => void | Promise<void>): void;
-    afterAll(fn: () => void | Promise<void>): void;
-    beforeEach(fn: () => void | Promise<void>): void;
-    afterEach(fn: () => void | Promise<void>): void;
-}
-
-/** Per-test chain isolation: snapshot the chain before the suite and before each
- *  test, revert after each test and after the suite. The real txs run + are
- *  asserted (in the UI and on-chain) BEFORE the revert — the rollback is teardown
- *  for re-runnability against the persisted authoring + onboarding stages, never a
- *  substitute for executing. (Mainnet has no evm_revert; there each run persists.)
- *  Call once at the top of a `test.describe`: `useChainSnapshot(test)`. */
-export function useChainSnapshot(test: PlaywrightLifecycleHooks): void {
-    let outerSnapshot: string;
-    let testSnapshot: string;
-    test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
-    test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
-    test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
-    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
-}
-
 const BUYER_PRIVATE_KEY = ANVIL_KEYS[0];
 const RESTAURANT_PRIVATE_KEY = ANVIL_KEYS[1];
 const SUPPLIER_PRIVATE_KEY = ANVIL_KEYS[2];
@@ -1551,56 +1527,37 @@ export async function acceptOrderInInboxUI(page: Page, sellerAddress: string): P
 
 
 /**
- * Merchant side of a tracked handoff: walk figaro-merchant-process-v1
- * (prep-started → ready-for-pickup) then fire the handed-off event +
- * cross-witness proximity-proof via `btn-merchant-proximity-proof`. Waits for
- * BOTH the handed-off stage and the proximity-proof attestation to land
- * on-chain. Shared by delivery coordination (merchant→courier handoff) and the
- * onsite/pickup flows (merchant→buyer handoff) — the merchant lifecycle is
- * identical; only the counter-witness (courier vs buyer) differs.
+ * Walk a wallet's clause attestations through the ONE generic rail
+ * (`capability-execute-submit-clause-attestation`) — clause-agnostic: the
+ * engine derives one capability per un-attested stage of every category-1
+ * clause the wallet's orders carry (labels are the clause's own event codes),
+ * so the walk never names a clause. `clicks` is scenario knowledge: how many
+ * attestations this party owes (ladder stages + proof witnesses).
  *
- * Arrival and acceptance are NOT in this walk: the order's existence and the
- * seller's acceptance are core (the bilateral commit / inbox counter-sign),
- * not merchant-process events. The merchant ladder begins at prep-started.
+ * The rail is EVENT-DRIVEN: it re-derives from the indexer, so the next
+ * button (re)appears only once the prior attestation has been indexed —
+ * `toBeEnabled` rides out that gap; sequencing is purely the UI reaction,
+ * never a chain read. After the final click, the wallet's generic rail
+ * retires to zero.
  *
- * Module-private: its only caller is `runDeliveryCoordination` below. Drives
- * pre-generic-rail testids — migrates with the local-commerce pair.
+ * Arrival and acceptance are NOT attestations: the order's existence and the
+ * seller's acceptance are core (the bilateral commit / inbox counter-sign).
  */
-async function walkMerchantToHandoff(
+export async function walkClauseAttestations(
     page: Page,
-    opts: { processId: Hex; merchant: string },
+    opts: { wallet: string; processId: Hex; clicks: number; who?: string },
 ): Promise<void> {
-    await gotoAsWallet(page, opts.merchant, `/orders/${opts.processId}?e2e=devnet`);
+    const who = opts.who ?? opts.wallet.slice(0, 8);
+    await gotoAsWallet(page, opts.wallet, `/orders/${opts.processId}?e2e=devnet`);
     await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
-
-    // The seller advances the merchant lifecycle entirely through the capability
-    // rail — ONE flow. The rail is EVENT-DRIVEN: it re-derives from the indexer,
-    // so each step's button only appears once the prior attestation has been
-    // indexed. We drive AND sequence purely off that UI reaction (the rail
-    // rotating its label, then retiring) — never a chain read. The button's text
-    // is the stage code (CapabilityRail renders `capability.label`):
-    // prep-started → ready-for-pickup are plain signals (the text rotates under
-    // one testid); handed-off is the with-proof capability when the handoff
-    // cross-witnesses a proximity policy, else the plain signal.
-    const signalBtn = page.getByTestId('capability-execute-submit-merchant-process-signal');
-    const handoffBtn = page.getByTestId('capability-execute-submit-merchant-process-signal-with-proof');
-
-    for (const stage of ['prep-started', 'ready-for-pickup'] as const) {
-        const btn = signalBtn.filter({ hasText: stage });
-        await expect(btn, `merchant rail should surface ${stage}`).toBeEnabled({ timeout: 90_000 });
+    const railBtn = page.getByTestId('capability-execute-submit-clause-attestation');
+    for (let i = 0; i < opts.clicks; i++) {
+        const btn = railBtn.first();
+        await expect(btn, `${who}: generic rail surfaces attestation ${i + 1}/${opts.clicks}`)
+            .toBeEnabled({ timeout: 90_000 });
         await btn.click();
     }
-
-    // handed-off: whichever the rail derived — the with-proof cross-witness, or
-    // the plain signal when the merchant order carries no proximity policy.
-    const handedOffBtn = signalBtn.filter({ hasText: 'handed-off' }).or(handoffBtn);
-    await expect(handedOffBtn, 'merchant rail should surface handed-off').toBeEnabled({ timeout: 90_000 });
-    await handedOffBtn.click();
-
-    // UI reaction: every merchant-process capability retires once handed-off (and
-    // its proximity cross-witness) has landed and the rail has re-derived.
-    await expect(page.locator('[data-testid^="capability-execute-submit-merchant-process-signal"]'))
-        .toHaveCount(0, { timeout: 90_000 });
+    await expect(railBtn, `${who}: rail retires once every clause is run`).toHaveCount(0, { timeout: 90_000 });
 }
 
 /**
@@ -1611,13 +1568,17 @@ async function walkMerchantToHandoff(
  * (seller-assigned, buyer-assigned, dutch-auction); only how the courier
  * order is created differs.
  *
- *   - Merchant walks figaro-merchant-process-v1: prep-started →
- *     ready-for-pickup → handed-off (arrival/acceptance are core, not here).
- *   - Courier submits both handoff proximity proofs — arrived-pickup
- *     (stage 3) then arrived-dropoff (stage 5); each must land on-chain
- *     before the next click, so the button targets the right edge.
+ * Each order carries its own proximity-certified hand-off edge, and the proof
+ * clause is bilateral — BOTH parties of that order witness it:
  *
- * Asserts both handoff stages attested. The caller resolves.
+ *   - Merchant: its merchant-process ladder (3 stages: prep-started →
+ *     ready-for-pickup → handed-off; arrival/acceptance are core, not here)
+ *     + the zone witness on its own order (merchant→courier edge) = 4.
+ *   - Courier: its courier-process ladder (5 stages) + the zone witness on
+ *     its own order (courier→buyer edge) = 6.
+ *
+ * Everything goes through the ONE clause-agnostic rail. The caller adds the
+ * buyer's co-witness on EACH order (2) and resolves.
  */
 export async function runDeliveryCoordination(
     page: Page,
@@ -1654,9 +1615,10 @@ export async function runDeliveryCoordination(
         await detail.getByTestId('ghg-current-actual').waitFor({ state: 'visible', timeout: 90_000 });
     };
 
-    // ── Merchant walks figaro-merchant-process-v1 to the handed-off +
-    //    cross-witness proximity-proof (shared with the onsite/pickup flows) ──
-    await walkMerchantToHandoff(page, { processId: opts.processId, merchant: opts.merchant });
+    // ── Merchant: 3 ladder stages + its own-order zone witness ─────────────
+    await walkClauseAttestations(page, {
+        wallet: opts.merchant, processId: opts.processId, clicks: 4, who: 'merchant',
+    });
     if (opts.emissions?.merchant) {
         await submitEmissionsAsCurrentSeller(
             opts.emissions.merchant.orderHash,
@@ -1664,23 +1626,10 @@ export async function runDeliveryCoordination(
         );
     }
 
-    // ── Courier submits both handoff proximity proofs ──
-    // Driven through the capability rail (one flow). The courier-process
-    // with-proof capability rotates arrived-pickup → arrived-dropoff under the
-    // same testid; click it for each handoff edge.
-    await gotoAsWallet(page, opts.courier, `/orders/${opts.processId}?e2e=devnet`);
-    await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
-    // The courier's with-proof capability rotates its label across the two handoff
-    // edges (arrived-pickup → arrived-dropoff) and retires once both land. Sequence
-    // off that event-driven UI reaction — never a chain read.
-    const proofBtn = page.getByTestId('capability-execute-submit-courier-process-signal-with-proof');
-    for (const edge of ['arrived-pickup', 'arrived-dropoff'] as const) {
-        const btn = proofBtn.filter({ hasText: edge });
-        await expect(btn, `courier rail should surface ${edge}`).toBeEnabled({ timeout: 90_000 });
-        await btn.click();
-    }
-    // UI reaction: the courier handoff capability retires once both proofs land.
-    await expect(proofBtn).toHaveCount(0, { timeout: 90_000 });
+    // ── Courier: 5 ladder stages + its own-order zone witness ──────────────
+    await walkClauseAttestations(page, {
+        wallet: opts.courier, processId: opts.processId, clicks: 6, who: 'courier',
+    });
     if (opts.emissions?.courier) {
         await submitEmissionsAsCurrentSeller(
             opts.emissions.courier.orderHash,

@@ -4,25 +4,31 @@
  * RUNTIME (lifecycle Phase 4) for the seller-assigned `local-commerce` scenario
  * — a 2-node delivery sale, every role through its own UI, the mainnet way:
  *
- *   1. Buyer (anvil[0]) browses the onboarded merchant (Rosa's Kitchen), picks
- *      delivery (seller-assigned), and the merchant's roster courier (Cardinal
- *      Couriers) fills the courier sub-order — the food order (buyer↔merchant)
- *      and the courier order (buyer↔courier) both commit.
- *   2. Merchant walks figaro-merchant-process-v1; courier submits both handoff
- *      proximity proofs (runDeliveryCoordination).
- *   3. Buyer resolves the process — atomic settlement of both orders.
+ *   1. Buyer (anvil[0]) browses the onboarded merchant, picks delivery
+ *      (seller-assigned), and the merchant's designated courier fills the
+ *      courier sub-order — the food order (buyer↔merchant) and the courier
+ *      order (buyer↔courier) both commit.
+ *   2. Merchant walks its merchant-process ladder; the courier walks its
+ *      courier-process ladder and witnesses the proximity proof on its own
+ *      order — all through the ONE clause-agnostic capability rail
+ *      (runDeliveryCoordination).
+ *   3. Buyer co-witnesses proximity (the proof clause is bilateral), then
+ *      resolves the process — atomic settlement of both orders.
  *
- * Consumes the seller + assembly from chain→IPFS (authored by
- * scenario-local-commerce + sellers-onboarding). No seed, no fixtures, no
- * hardcoded addresses — the roster is the single source of sellers.
+ * Consumes the sellers + assembly from chain→IPFS (authored by
+ * scenario-local-commerce; sellers onboarded against this devnet). No seed,
+ * no fixtures, no hardcoded addresses.
  *
- * Prerequisite: scenario-local-commerce (anchors the assembly) and
- * sellers-onboarding (onboards Rosa's Kitchen + Cardinal Couriers) have run
- * against this devnet.
+ * PERSISTED, like mainnet: no chain snapshot/revert. Each run places a NEW
+ * 2-order process, drives it to atomic resolution, and leaves the settled
+ * process as terminal on-chain state.
+ *
+ * Prerequisite: scenario-local-commerce (anchors the assembly) and onboarded
+ * sellers whose profiles bind `local-commerce`, against this devnet.
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server.
  */
-import { test, expect, ANVIL_ACCOUNTS, gotoAsWallet } from './devnet-multi-test';
+import { test, expect, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import { type Hex } from 'viem';
 import {
     CORE_PROCESS_VIEW_ABI,
@@ -31,10 +37,11 @@ import {
     discoverSellers,
     ensureTokenApprovalsByAddress,
     localPublicClient,
-    placeLocalCommerceOrderUI,
+    acceptOrderInInboxUI,
+    placeBilateralOrderUI,
     readLocalDeploymentConfig,
     runDeliveryCoordination,
-    useChainSnapshot,
+    walkClauseAttestations,
 } from './devnet-helpers';
 
 // Buyer = anvil[0] (the connected wallet — "the user"). Sellers are DISCOVERED
@@ -42,8 +49,6 @@ import {
 // roster, no hardcoded addresses/names/keys. Driving wallets + token approvals go
 // through the unlocked RPC by address, so the runtime needs no private keys.
 const BUYER_ADDR = ANVIL_ACCOUNTS[0] as Hex;
-
-useChainSnapshot(test);
 
 test.describe('local-commerce runtime — 2-node delivery commit, coordination, resolve (devnet)', () => {
     // Buyer commit (2 orders) + merchant walk + courier handoffs + resolve —
@@ -70,12 +75,18 @@ test.describe('local-commerce runtime — 2-node delivery commit, coordination, 
         await ensureTokenApprovalsByAddress(coreAddress, tokenAddress, BUYER_ADDR, merchant.address, courier!.address);
 
         // ── 1. Buyer commits the food + courier orders ──────────────────────
-        // No item ids: pick the merchant's + courier's first catalogue items off
-        // the network. The courier is the merchant's on-chain partner, by name.
-        const processId = await placeLocalCommerceOrderUI(page, {
-            merchant: merchant.address,
-            courier: { partnerName: courier!.name },
+        // The buyer places ONE order from the merchant; the profile-bound
+        // 2-node assembly carries the courier order (the merchant's profile
+        // DESIGNATES the courier via counterpartyBindings — no buyer picker).
+        // The buyer relays the root; each seller counter-signs its OWN order in
+        // its inbox — the genuine bilateral relay. Kernel commit order → the
+        // merchant accepts first (root creates the process), then the courier.
+        await placeBilateralOrderUI(page, {
+            seller: merchant.address,
+            fulfilmentMode: 'deliver:seller-assigned',
         });
+        const processId = await acceptOrderInInboxUI(page, merchant.address);
+        await acceptOrderInInboxUI(page, courier!.address);
 
         const committed = await publicClient.readContract({
             address: coreAddress, abi: CORE_PROCESS_VIEW_ABI, functionName: 'processes', args: [processId],
@@ -88,9 +99,13 @@ test.describe('local-commerce runtime — 2-node delivery commit, coordination, 
             processId, merchant: merchant!.address, courier: courier!.address,
         });
 
-        // ── 3. Buyer resolves → atomic settlement of both orders ────────────
-        await gotoAsWallet(page, BUYER_ADDR, `/orders/${processId}?e2e=devnet`);
-        await page.getByTestId('order-timeline-view').waitFor({ state: 'visible', timeout: 30000 });
+        // ── 3. Buyer co-witnesses proximity, then resolves ──────────────────
+        // Each order's hand-off edge is proximity-certified and the proof
+        // clause is bilateral — the buyer witnesses BOTH orders' proofs
+        // through the same clause-agnostic rail (2 attestations).
+        await walkClauseAttestations(page, {
+            wallet: BUYER_ADDR, processId, clicks: 2, who: 'buyer',
+        });
 
         const resolveBtn = page.getByTestId('capability-execute-resolve-process');
         await resolveBtn.waitFor({ state: 'visible', timeout: 30000 });
