@@ -25,6 +25,7 @@ import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
 import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/commerce/assemblySubOrderPlan";
 import { templateParentOrderIds } from "@/lib/designer/assemblyTemplate";
 import { shareCommitmentPayload } from "@/lib/core/commitmentShare";
+import { parseToken } from "@/lib/shared/utils";
 import { CONTRACTS } from "@/lib/core/contracts";
 import type { Commitment } from "@/lib/core/useFigaroActions";
 import type { CommitmentPayloadMeta } from "@/lib/core/useCommitmentFlow";
@@ -72,12 +73,18 @@ export async function executeAssemblyCheckout(
          *  own seller's catalogue). */
         sellerCatalogues: SellerCatalogue[];
         tokenDecimals: number;
+        /** The buyer's checkout-time counterparty choices, keyed by template
+         *  node id — fills sub-orders the adopting seller's profile leaves
+         *  unbound (buyer-assigned coordination). The price is the picker's
+         *  resolved figure (catalogue or buyer-set). Checkout-phase data,
+         *  like the cart — never design-time clause activation. */
+        subOrderSelections?: Record<string, { seller: `0x${string}`; price: string }>;
     },
     deps: AssemblyCheckoutDeps,
 ): Promise<void> {
     const {
         buyer, leadSellerAddress, currency, payment, lineItems,
-        assembly, sellerCatalogues, tokenDecimals,
+        assembly, sellerCatalogues, tokenDecimals, subOrderSelections,
     } = params;
     const {
         chainId, signCommitment, initiateAsParty,
@@ -122,20 +129,26 @@ export async function executeAssemblyCheckout(
     let cumulativeValue = payment;
 
     for (const { node, seller: boundSeller } of planSubOrderSellers(assembly)) {
-        if (!boundSeller) {
-            throw new Error("This assembly has a sub-order with no designated counterparty — the seller must bind one.");
+        // A profile binding designates the counterparty; a node the profile
+        // leaves unbound takes the buyer's checkout-time choice.
+        const selection = boundSeller ? undefined : subOrderSelections?.[node.id];
+        const subSeller = boundSeller ?? selection?.seller ?? null;
+        if (!subSeller) {
+            throw new Error("This assembly has a sub-order with no counterparty — the seller's profile must designate one, or the buyer chooses one at checkout.");
         }
         const parentOrderHashes = templateParentOrderIds(node)
             .map((pid) => realOrderHash.get(pid))
             .filter((h): h is `0x${string}` => !!h);
-        const subPayment = resolveSubOrderPayment({
-            node, seller: boundSeller, leadAddress: leadSellerAddress,
-            sellerCatalogues, tokenDecimals,
-        });
+        const subPayment = selection
+            ? parseToken(selection.price, tokenDecimals)
+            : resolveSubOrderPayment({
+                node, seller: subSeller, leadAddress: leadSellerAddress,
+                sellerCatalogues, tokenDecimals,
+            });
         cumulativeValue += subPayment;
         const subPrepared = await prepareOrderCommitment({
             buyer,
-            seller: boundSeller,
+            seller: subSeller,
             currency,
             payment: subPayment,
             processId,
@@ -160,7 +173,7 @@ export async function executeAssemblyCheckout(
                 agreement: subPrepared.commitmentMeta.agreement,
                 agreementUri: subPrepared.commitmentMeta.agreementUri,
             },
-            recipientAddress: boundSeller,
+            recipientAddress: subSeller,
             senderAddress: buyer,
             walletClient,
             chainId,

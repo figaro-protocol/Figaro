@@ -30,6 +30,7 @@ import { executeAssemblyCheckout } from "@/lib/commerce/assemblyCheckout";
 import { templateParentOrderIds } from "@/lib/designer/assemblyTemplate";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { CommitmentSharePanel } from "@/components/core/CommitmentSharePanel";
+import { SellerCataloguePicker, type SellerSelection } from "@/components/core/SellerCataloguePicker";
 import { useTokenSymbol } from "@/components/sellers/TokenAddressInput";
 import { calculateBonds } from "@figaro/core";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -125,6 +126,10 @@ export function CheckoutView({ sellerAddress }: Props) {
     const isApproving = isApprovePending || isApproveConfirming;
     const pendingCheckout = useRef(false);
     const [checkoutError, setCheckoutError] = useState<string | null>(null);
+    // The buyer's checkout-time counterparty choice for a sub-order the
+    // adopting seller's profile leaves unbound (buyer-assigned coordination).
+    const [sellerSelection, setSellerSelection] = useState<SellerSelection | null>(null);
+    useEffect(() => { setSellerSelection(null); }, [fulfillmentMode]);
 
     // Auto-chain: when approval confirms, proceed to commit signing.
     useEffect(() => {
@@ -169,9 +174,25 @@ export function CheckoutView({ sellerAddress }: Props) {
     const pickedAssembly = boundAssemblies.length === 1
         ? boundAssemblies[0]
         : boundAssemblies.find((a) => a.fulfilmentMethod === fulfillmentMode);
-    // Ready to place when a profile-bound assembly is resolved and its fulfilment
-    // (only if it composes one) is chosen.
-    const orderReady = !!pickedAssembly && (!pickedAssembly.fulfilmentMethod || !!fulfillmentMode);
+    // Sub-orders the adopting seller's profile leaves UNBOUND take the buyer's
+    // checkout-time choice (buyer-assigned coordination); the picker below
+    // surfaces it. Bound sub-orders keep the profile's designation.
+    const unboundSubOrders = (() => {
+        if (!pickedAssembly || pickedAssembly.assemblyDoc.orders.length <= 1) return [];
+        try {
+            return planSubOrderSellers(pickedAssembly).filter((p) => !p.seller);
+        } catch {
+            return [];
+        }
+    })();
+    const buyerChoosesCounterparty =
+        fulfillmentMode === "deliver:buyer-assigned" && unboundSubOrders.length > 0;
+    // Ready to place when a profile-bound assembly is resolved, its fulfilment
+    // (only if it composes one) is chosen, and any buyer-chosen counterparty
+    // selection is complete.
+    const orderReady = !!pickedAssembly
+        && (!pickedAssembly.fulfilmentMethod || !!fulfillmentMode)
+        && (!buyerChoosesCounterparty || !!sellerSelection);
     // The root order carries the design-time clauses the buyer is bonding to.
     // Surfaced inline below so the buyer reviews the terms before signing — the
     // visible terms + the explicit place-order click replace the modal gate.
@@ -206,12 +227,19 @@ export function CheckoutView({ sellerAddress }: Props) {
         }
         const rows = [
             { name: nameOf(lead), payment: cartTotal },
-            ...plan.map(({ node, seller }) => ({
-                name: seller ? nameOf(seller) : "(unbound)",
-                payment: seller
-                    ? resolveSubOrderPayment({ node, seller, leadAddress: lead, sellerCatalogues, tokenDecimals })
-                    : 0n,
-            })),
+            ...plan.map(({ node, seller }) => {
+                if (seller) {
+                    return {
+                        name: nameOf(seller),
+                        payment: resolveSubOrderPayment({ node, seller, leadAddress: lead, sellerCatalogues, tokenDecimals }),
+                    };
+                }
+                // Unbound node: the buyer's checkout-time choice fills it — the
+                // shown figure is the SAME selection the commit will use.
+                return sellerSelection
+                    ? { name: nameOf(sellerSelection.seller), payment: parseToken(sellerSelection.price, tokenDecimals) }
+                    : { name: "(choose below)", payment: 0n };
+            }),
         ];
         return { rows, total: rows.reduce((s, r) => s + r.payment, 0n) };
     })();
@@ -275,6 +303,12 @@ export function CheckoutView({ sellerAddress }: Props) {
                     assembly: pickedAssembly,
                     sellerCatalogues,
                     tokenDecimals,
+                    subOrderSelections: buyerChoosesCounterparty && sellerSelection
+                        ? Object.fromEntries(unboundSubOrders.map(({ node }) => [
+                            node.id,
+                            { seller: sellerSelection.seller, price: sellerSelection.price },
+                        ]))
+                        : undefined,
                 },
                 {
                     chainId,
@@ -472,6 +506,20 @@ export function CheckoutView({ sellerAddress }: Props) {
                                     ))}
                                 </select>
                             </div>
+                        )}
+
+                        {/* Buyer-assigned coordination: the profile leaves the
+                            delivery sub-order unbound — the buyer chooses the
+                            counterparty here, priced from that seller's own
+                            catalogue. Checkout-phase data, like the cart. */}
+                        {buyerChoosesCounterparty && (
+                            <SellerCataloguePicker
+                                mode={fulfillmentMode!}
+                                partnerAddresses={[]}
+                                sellerAddress={sellerCatalogue.address}
+                                tokenSymbol={tokenSymbol}
+                                onSelect={setSellerSelection}
+                            />
                         )}
 
                         <Button

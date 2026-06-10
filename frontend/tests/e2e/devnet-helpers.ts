@@ -1439,7 +1439,15 @@ export async function placeLocalCommerceOrderUI(
  */
 export async function placeBilateralOrderUI(
     page: Page,
-    opts: { seller: string; itemId?: string; fulfilmentMode?: string; geohash?: string },
+    opts: {
+        seller: string;
+        itemId?: string;
+        fulfilmentMode?: string;
+        geohash?: string;
+        /** buyer-assigned coordination: the courier address the buyer enters in
+         *  the SellerCataloguePicker; the first delivery item is selected. */
+        buyerAssignedCourier?: { address: string };
+    },
 ): Promise<void> {
     await page.goto(`/s/${opts.seller}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
     const detailView = page.getByTestId('seller-detail-view');
@@ -1491,6 +1499,19 @@ export async function placeBilateralOrderUI(
             (opts2) => opts2.map((o) => (o as HTMLOptionElement).value).filter((v) => v !== ''),
         );
         if (optionValues.length > 0) await fulfilmentSelect.selectOption(optionValues[0]);
+    }
+
+    // Buyer-assigned coordination: the profile leaves the delivery sub-order
+    // unbound — the buyer enters the courier's address in the picker and
+    // selects a delivery item from THAT seller's own catalogue (the list
+    // renders once the address resolves a discovered catalogue).
+    if (opts.buyerAssignedCourier) {
+        const addressInput = page.getByTestId('input-seller-address');
+        await addressInput.waitFor({ state: 'visible', timeout: 30000 });
+        await addressInput.fill(opts.buyerAssignedCourier.address);
+        const deliveryItem = page.locator('[data-testid^="seller-item-"]').first();
+        await expect(deliveryItem, 'the chosen courier publishes a delivery item').toBeVisible({ timeout: 30000 });
+        await deliveryItem.check();
     }
 
     await page.getByTestId('btn-place-order').click();
