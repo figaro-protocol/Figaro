@@ -75,6 +75,35 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 - **`modules/`** — feature modules (e.g. `SellerBrandingModule`). The prior module registry and the `/i/[slug]` runtime that rendered registered modules were retired in the V4→V5 narrowing; consumer surfaces are now purpose-shaped pages (`/s/[seller]`, `/orders/[processId]`, `/inbox`).
 - **`shared/`** — shell/utility; **`ui/`** — design primitives; **`icons/`** — SVGs; **`sellers/`** — route-specific panels (onboarding shell + edit forms)
 
+## Canonical exemplars — copy these shapes
+
+When building a new surface, anchor on the canonical implementation of its
+surface-type below — extend or mirror it; never generate the shape from
+scratch. (The base-model default shape is a closed-world product app; the
+nearest exemplar in this repo beats it. Commission work as "make X work like
+Y", not as an open-ended build.)
+
+- **Runtime (phase-4) order surface** — `components/core/CapabilityRail.tsx`,
+  driven by `deriveProcessModelFromRuntime` → `executeCapability`. The order
+  page names NO clause (guard: `scripts/lint-no-hardcoded-clauses-in-runtime.sh`).
+- **Clause-composition UI** — `app/(app)/builders/designer/_components/AgreementDrawer.tsx`
+  (reads ClauseRegistry live; grouping word is `block.drawerArticle`).
+- **On-chain write flow** — `lib/seller/usePublishSellerProfile.ts`
+  (`simulateContract` → write → `waitForTransactionReceipt` → verify
+  `status === "success"` before navigating).
+- **IPFS-hydrated reads** — `hooks/core/useProcessAgreements.ts` over
+  `lib/core/agreementStore.ts` (singleton Map; never a synchronous
+  `loadAgreement` in a render path).
+- **Event-driven inventory page + smoke** — the `/clauses` and `/assemblies`
+  marketing pages with `tests/e2e/clauses-inventory.devnet.spec.ts` /
+  `tests/e2e/assemblies-inventory.devnet.spec.ts`.
+- **Scenario e2e pair** — `tests/e2e/scenario-direct-sale.devnet.spec.ts`
+  (pins to IPFS + anchors on-chain, persisted) and
+  `tests/e2e/direct-sale-runtime.devnet.spec.ts` (consumes from chain + IPFS;
+  discovers, never imports a roster).
+- **Network reads** — `lib/core/indexer.ts` (the read side; the sequencer in
+  `prover/sequencer/` is the write/batch/prove side).
+
 ## Wallet-provider scope per route
 
 Every route in `frontend/app/` is classified into one of three tiers

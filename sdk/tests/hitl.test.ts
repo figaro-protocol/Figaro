@@ -47,20 +47,20 @@ describe("ActionQueue", () => {
     it("stores approval context on queued items", () => {
         const queue = new ActionQueue<{
             bindingId: string;
-            roleKind: string;
+            party: string;
         }>();
 
         queue.enqueue(mkAction(), {
             approvalContext: {
                 bindingId: "binding:bobs-pizza-palace:local-anvil",
-                roleKind: "seller",
+                party: "seller",
             },
         });
 
         const item = queue.approve(1);
         expect(item.approvalContext).toEqual({
             bindingId: "binding:bobs-pizza-palace:local-anvil",
-            roleKind: "seller",
+            party: "seller",
         });
     });
 

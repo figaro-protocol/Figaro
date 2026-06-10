@@ -17,10 +17,10 @@
  * const actions = proposeActions(process, myAddress);
  *
  * // 3. HITL flow
- * const queue = new ActionQueue<{ bindingId?: string; roleKind?: string }>();
+ * const queue = new ActionQueue<{ bindingId?: string; party?: string }>();
  * queue.enqueueAll(actions.map((action) => ({
  *   action,
- *   approvalContext: { bindingId: "binding:bobs-pizza-palace:local-anvil", roleKind: "seller" },
+ *   approvalContext: { bindingId: "binding:bobs-pizza-palace:local-anvil", party: "seller" },
  * })));
  * const approved = queue.approve(1);
  *

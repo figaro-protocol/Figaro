@@ -26,6 +26,9 @@
     "**/*.{ts,tsx,sol,md}": [
       "bash scripts/lint-architecture-lexicon.sh"
     ],
+    "**/*.{ts,tsx,sol,rs}": [
+      "bash scripts/lint-no-closed-world-vocab.sh"
+    ],
     "frontend/**/*.{ts,tsx}": [
       "bash -c 'cd frontend && npx tsc --noEmit'",
       "bash scripts/lint-canonical-imports.sh",

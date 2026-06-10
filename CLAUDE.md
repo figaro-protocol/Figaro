@@ -177,6 +177,8 @@ The recurring, weeks-costly failure is modeling a concern as a stored value when
 
 Full treatment + migration blast radius (retiring `figaro-fulfilment-v2` changes every scenario, incl. `direct-sale`/`kiosk-sale`) → memory `feedback_fulfilment_retired_modality_derived`; clause-spec detail → `docs/v5/CLAUSES.md`.
 
+Mechanically enforced: `scripts/lint-no-closed-world-vocab.sh` (pre-commit, lint-staged) fails any commit reintroducing a stored role/archetype/category identifier in code (`roleKind`, `archetypeId`, `clauseCategories`, `documentKind`) and warns on retired `fulfilment` vocabulary until the de-hardcoding migration lands — then the warn list promotes to fail.
+
 ### Dispute Resolution — Three Layers
 
 1. **MAD via asymmetric bonding** — economic self-enforcement
@@ -219,7 +221,7 @@ If yes, adding on-chain state, role checks, or lifecycle flags is a web2 pattern
 
 `frontend/lib/` is runtime infrastructure — the abstraction IS the deliverable; catalogues (`shared/clauseSpecSource.ts`, mechanism packages, `lib/semantic/`) land ahead of their UI consumers **by design**. **YAGNI does not apply**: "no readers today / one implementation / no consumer" are the expected state, not findings — bring UI down to the catalogue, don't shrink the catalogue to today's UI. (Composition model: `RUNTIME.md`; verified layering: `BLUEPRINT.md` off-chain-composition fact 2; doctrine: `feedback_runtime_abstractions_are_deliverable` memory.)
 
-**Check before you build — no new rows of corn.** Before adding ANY frontend artifact (component, hook, helper, type, util, taxonomy, constant, style), `grep`/`glob` for an existing one and **reuse or extend it** — the bar for a net-new symbol is "no equivalent exists, *shown by a search*," never "I didn't happen to see one." Re-implementing what exists is the single most repeated failure here. A new catalogue that duplicates an existing one is still a finding (the no-new-helpers case, not the abstraction-ahead-of-UI case).
+**Check before you build — no new rows of corn.** Before adding ANY frontend artifact (component, hook, helper, type, util, taxonomy, constant, style), `grep`/`glob` for an existing one and **reuse or extend it** — the bar for a net-new symbol is "no equivalent exists, *shown by a search*," never "I didn't happen to see one." Re-implementing what exists is the single most repeated failure here. A new catalogue that duplicates an existing one is still a finding (the no-new-helpers case, not the abstraction-ahead-of-UI case). When a genuinely new surface is warranted, start from the canonical exemplar of its surface-type (`docs/v5/FRONTEND.md` § "Canonical exemplars — copy these shapes") and copy its shape — never generate the shape from scratch.
 
 The frontend is a **protocol surface, not a product app**: every surface renders network state via the indexer; hardcoded/bundled lists are web2 drift. The `(marketing)`/`(app)` split is wallet-scope, not data-freshness.
 
