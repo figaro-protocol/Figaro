@@ -34,6 +34,7 @@ import {
     type Hex,
 } from 'viem';
 import {
+    CORE_PROCESS_VIEW_ABI,
     acceptOrderInInboxUI,
     assertPinnedInIpfs,
     discoverSellerByAssembly,
@@ -55,9 +56,6 @@ const LOCAL_ANVIL = defineChain({
 // IPFS by its on-chain binding — no roster, no keys; approvals via unlocked RPC.
 const BUYER_ADDR = ANVIL_ACCOUNTS[0] as Hex;
 
-const CORE_VIEW_ABI = parseAbi([
-    'function processes(bytes32 processId) view returns (address rootBuyer, address currency, uint256 cumulativeValue, uint32 activeOrderCount)',
-]);
 const ERC20_BAL_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
 test.describe('kiosk-sale runtime — buyer checkout → seller accept → resolve (devnet)', () => {
@@ -123,7 +121,7 @@ test.describe('kiosk-sale runtime — buyer checkout → seller accept → resol
         // as rootBuyer and one active order.
         const committed = await publicClient.readContract({
             address: coreAddress,
-            abi: CORE_VIEW_ABI,
+            abi: CORE_PROCESS_VIEW_ABI,
             functionName: 'processes',
             args: [processId],
         });
@@ -164,7 +162,7 @@ test.describe('kiosk-sale runtime — buyer checkout → seller accept → resol
             async () => {
                 const p = await publicClient.readContract({
                     address: coreAddress,
-                    abi: CORE_VIEW_ABI,
+                    abi: CORE_PROCESS_VIEW_ABI,
                     functionName: 'processes',
                     args: [processId],
                 });

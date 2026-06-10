@@ -33,7 +33,7 @@
  */
 import { test, expect, ANVIL_ACCOUNTS, gotoAsWallet } from './devnet-multi-test';
 import { keccak256, parseAbi, stringToHex, type Hex } from 'viem';
-import { CORE_ABI } from '@figaro/core';
+import { CORE_ABI, ATTESTATION_COORDINATOR_ABI } from '@figaro/core';
 import {
     CORE_PROCESS_VIEW_ABI,
     courierAddressFor,
@@ -161,11 +161,8 @@ test.describe('local-commerce-offset runtime — emissions disclosed, offsets re
         // GHG-measurement attestation per seller against THIS process.
         const ghgClauseId = keccak256(stringToHex('figaro-ghg-measurement-v1'));
         const coordinator = process.env.NEXT_PUBLIC_ATTESTATION_COORDINATOR as Hex;
-        const ATTESTATION_ABI = parseAbi([
-            'event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)',
-        ]);
         const attestations = await publicClient.getContractEvents({
-            address: coordinator, abi: ATTESTATION_ABI, eventName: 'Attestation',
+            address: coordinator, abi: ATTESTATION_COORDINATOR_ABI, eventName: 'Attestation',
             args: { processId }, fromBlock: 0n,
         });
         const ghgFilings = attestations.filter((a) => (a.args.clauseId as string).toLowerCase() === ghgClauseId.toLowerCase());

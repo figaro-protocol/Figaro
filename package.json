@@ -38,7 +38,8 @@
       "bash scripts/lint-no-clause-names.sh",
       "bash scripts/lint-lib-import-direction.sh",
       "bash scripts/lint-no-clause-grouping-synonyms.sh",
-      "bash scripts/lint-type-safety.sh"
+      "bash scripts/lint-type-safety.sh",
+      "bash scripts/lint-no-handwritten-kernel-abis.sh"
     ],
     "src/**/*.sol": [
       "forge fmt"

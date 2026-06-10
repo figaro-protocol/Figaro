@@ -28,6 +28,7 @@
  * Requires Anvil + ./deploy-local.sh + Kubo.
  */
 import { test, expect, seedAgreementForWallet } from './devnet-multi-test';
+import { ATTESTATION_COORDINATOR_ABI } from '@figaro/core';
 import {
     createPublicClient,
     defineChain,
@@ -64,9 +65,6 @@ const COURIER_ADDR = '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC' as const;
 const PROXIMITY_PROOF_CLAUSE_ID = keccak256(stringToHex('figaro-proximity-proof-v1'));
 const COURIER_PROCESS_CLAUSE_ID = keccak256(stringToHex('figaro-courier-process-v1'));
 
-const ATTESTATION_COORDINATOR_EVENT_ABI = parseAbi([
-    'event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)',
-]);
 
 
 test.describe('Courier proximity proof via UI (devnet)', () => {
@@ -142,7 +140,7 @@ test.describe('Courier proximity proof via UI (devnet)', () => {
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const all = await publicClient.getContractEvents({
             address: coordinator,
-            abi: ATTESTATION_COORDINATOR_EVENT_ABI,
+            abi: ATTESTATION_COORDINATOR_ABI,
             eventName: 'Attestation',
             args: { orderHash: deliveryOrderHash, attester: COURIER_ADDR as Hex },
             fromBlock: blockBefore,

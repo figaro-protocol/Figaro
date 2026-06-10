@@ -45,6 +45,7 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
+    CORE_PROCESS_VIEW_ABI,
     ensureTokenApprovals,
     merchantProcessAgreement,
     readLocalDeploymentConfig,
@@ -68,9 +69,6 @@ const SELLER_ADDR = ANVIL_ACCOUNTS[1];
 
 const ZERO_PROCESS_ID = `0x${'0'.repeat(64)}` as Hex;
 
-const CORE_VIEW_ABI = parseAbi([
-    'function processes(bytes32 processId) view returns (address rootBuyer, address currency, uint256 cumulativeValue, uint32 activeOrderCount)',
-]);
 
 
 test.describe('/inbox pending → accept → on-chain commit (devnet)', () => {
@@ -198,7 +196,7 @@ test.describe('/inbox pending → accept → on-chain commit (devnet)', () => {
 
         const processState = await publicClient.readContract({
             address: coreAddress,
-            abi: CORE_VIEW_ABI,
+            abi: CORE_PROCESS_VIEW_ABI,
             functionName: 'processes',
             args: [processId as Hex],
         });
