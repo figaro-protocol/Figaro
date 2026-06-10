@@ -39,7 +39,7 @@ export const ANVIL_KEYS = [
 export const DEFAULT_LOCAL_MOCK_TOKEN = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
 
 /** The default Anvil mnemonic — the source ANVIL_ACCOUNTS/ANVIL_KEYS derive from. */
-export const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
+const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 
 /**
  * Private key for ANY anvil index, derived live from the default mnemonic —
