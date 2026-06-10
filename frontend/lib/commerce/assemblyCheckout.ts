@@ -25,6 +25,7 @@ import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
 import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/commerce/assemblySubOrderPlan";
 import { templateParentOrderIds } from "@/lib/designer/assemblyTemplate";
 import { shareCommitmentPayload } from "@/lib/core/commitmentShare";
+import { sellerAuctionId, stashSellerDraft } from "@/lib/mechanisms/sellerAuction";
 import { parseToken } from "@/lib/shared/utils";
 import { CONTRACTS } from "@/lib/core/contracts";
 import type { Commitment } from "@/lib/core/useFigaroActions";
@@ -58,6 +59,14 @@ export interface AssemblyCheckoutDeps {
     walletClient?: { signMessage(params: { message: string }): Promise<`0x${string}`> } | null;
     coordinationMessaging: CoordinationMessagingService;
     evidenceTransport: Pick<IpfsService, "pinBlob">;
+    /** Opens the descending-price seller auction for a deferred sub-order —
+     *  the surface owns the tx + receipt wait (useDutchAuctionActions). */
+    openSellerAuction?: (args: {
+        auctionId: string;
+        startPrice: bigint;
+        processId: `0x${string}`;
+        currency: `0x${string}`;
+    }) => Promise<void>;
 }
 
 export async function executeAssemblyCheckout(
@@ -79,6 +88,13 @@ export async function executeAssemblyCheckout(
          *  resolved figure (catalogue or buyer-set). Checkout-phase data,
          *  like the cart — never design-time clause activation. */
         subOrderSelections?: Record<string, { seller: `0x${string}`; price: string }>;
+        /** Dutch-auction coordination, keyed by template node id: the unbound
+         *  sub-order is DEFERRED — its build parameters are stashed on this
+         *  device and a descending-price auction opens at the buyer's start
+         *  price; the claiming seller commits the order post-claim (the
+         *  SellerAuctionPanel on the order page), counter-signed by the buyer
+         *  in their inbox. The process commits with the root only. */
+        subOrderAuctions?: Record<string, { startPrice: string }>;
     },
     deps: AssemblyCheckoutDeps,
 ): Promise<void> {
@@ -129,6 +145,33 @@ export async function executeAssemblyCheckout(
     let cumulativeValue = payment;
 
     for (const { node, seller: boundSeller } of planSubOrderSellers(assembly)) {
+        // Dutch-auction coordination: the unbound sub-order is DEFERRED — stash
+        // its build parameters, open the auction, and skip it; it joins the
+        // process when a seller claims (committed post-claim from the draft,
+        // its cumulative-value check read fresh at that point).
+        const auctionEntry = boundSeller ? undefined : params.subOrderAuctions?.[node.id];
+        if (auctionEntry) {
+            if (!deps.openSellerAuction) {
+                throw new Error("This assembly defers a sub-order to an auction, but no auction mechanism is available.");
+            }
+            const parentHashes = templateParentOrderIds(node)
+                .map((pid) => realOrderHash.get(pid))
+                .filter((h): h is `0x${string}` => !!h);
+            stashSellerDraft(processId, {
+                buyer,
+                currency,
+                processId,
+                parentOrderHashes: parentHashes,
+                clauseFields: { ...node.clauses },
+            });
+            await deps.openSellerAuction({
+                auctionId: sellerAuctionId(processId),
+                startPrice: parseToken(auctionEntry.startPrice, tokenDecimals),
+                processId,
+                currency,
+            });
+            continue;
+        }
         // A profile binding designates the counterparty; a node the profile
         // leaves unbound takes the buyer's checkout-time choice.
         const selection = boundSeller ? undefined : subOrderSelections?.[node.id];

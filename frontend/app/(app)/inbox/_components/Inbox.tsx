@@ -180,8 +180,19 @@ export function Inbox() {
                         if (cancelled) return;
                         const payload = deserializePayload(payloadJson);
                         if (!payload.commitment?.buyer || !payload.commitment?.seller) return;
+                        // A pending card is a commitment awaiting THIS wallet's
+                        // counter-sign: the wallet is a party, the OTHER party
+                        // has signed, this wallet has not. Party-neutral — the
+                        // usual direction is the seller counter-signing a
+                        // buyer-initiated order; a seller-initiated order (the
+                        // dutch-auction claim relays the courier's signature)
+                        // reaches the BUYER's inbox the same way.
                         const isSeller = hexEqual(address, payload.commitment.seller);
-                        if (!isSeller) return;
+                        const isBuyer = hexEqual(address, payload.commitment.buyer);
+                        const awaitsMyCounterSign =
+                            (isSeller && !!payload.buyerSig && !payload.sellerSig)
+                            || (isBuyer && !!payload.sellerSig && !payload.buyerSig);
+                        if (!awaitsMyCounterSign) return;
                         receivedOrderIds.current.add(orderId);
                         setPending((prev) => [...prev, payload]);
                     } catch {

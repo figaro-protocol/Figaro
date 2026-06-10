@@ -1532,7 +1532,18 @@ export async function placeBilateralOrderUI(
  * delivered by the live coordination subscription (no seeding); the active row
  * appears only once the seller's `commit` lands on-chain.
  */
-export async function acceptOrderInInboxUI(page: Page, sellerAddress: string): Promise<Hex> {
+export async function acceptOrderInInboxUI(
+    page: Page,
+    inboxOwner: string,
+    opts: {
+        /** The committed order's SELLER, when it differs from the inbox owner —
+         *  e.g. the BUYER counter-signing a seller-initiated dutch-auction
+         *  order relayed by the claiming seller. Defaults to the inbox owner
+         *  (the usual seller-accepts-buyer-order direction). */
+        expectedSeller?: string;
+    } = {},
+): Promise<Hex> {
+    const sellerAddress = opts.expectedSeller ?? inboxOwner;
     // Block watermark BEFORE the accept: the devnet persists across runs, so
     // this seller may already have committed orders. The accept is confirmed
     // by the commit THIS accept lands (out-of-band chain read), then asserted
@@ -1544,7 +1555,7 @@ export async function acceptOrderInInboxUI(page: Page, sellerAddress: string): P
     const coreAddress = (process.env.NEXT_PUBLIC_FIGARO_CORE ?? cfg.figaroCore) as `0x${string}`;
     const fromBlock = (await pub.getBlockNumber()) + 1n;
 
-    await gotoAsWallet(page, sellerAddress, '/inbox?e2e=devnet');
+    await gotoAsWallet(page, inboxOwner, '/inbox?e2e=devnet');
 
     const pendingCard = page.getByTestId('inbox-pending-card');
     await pendingCard.first().waitFor({ state: 'visible', timeout: 60000 });
@@ -1574,7 +1585,12 @@ export async function acceptOrderInInboxUI(page: Page, sellerAddress: string): P
         .not.toBe('');
 
     // UI reaction: the committed process's row reaches the seller's inbox.
-    await page.getByTestId(`inbox-active-row-${processId}`).waitFor({ state: 'visible', timeout: 90000 });
+    // (Skipped for a buyer-side counter-sign — the buyer's active orders live
+    // at /orders, not the inbox; the on-chain poll above already proved the
+    // commit and the caller asserts the process state.)
+    if (!opts.expectedSeller || opts.expectedSeller.toLowerCase() === inboxOwner.toLowerCase()) {
+        await page.getByTestId(`inbox-active-row-${processId}`).waitFor({ state: 'visible', timeout: 90000 });
+    }
     return processId as Hex;
 }
 

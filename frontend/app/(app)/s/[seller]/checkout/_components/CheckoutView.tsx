@@ -19,7 +19,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useChainId, useWalletClient } from "wagmi";
+import { useChainId, usePublicClient, useWalletClient } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { Button } from "@/components/ui/Button";
 import { useCommerce, useCheckout } from "@/lib/commerce";
@@ -31,6 +31,7 @@ import { templateParentOrderIds } from "@/lib/designer/assemblyTemplate";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { CommitmentSharePanel } from "@/components/core/CommitmentSharePanel";
 import { SellerCataloguePicker, type SellerSelection } from "@/components/core/SellerCataloguePicker";
+import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
 import { useTokenSymbol } from "@/components/sellers/TokenAddressInput";
 import { calculateBonds } from "@figaro/core";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -54,6 +55,8 @@ export function CheckoutView({ sellerAddress }: Props) {
 
     const chainId = useChainId();
     const { data: walletClient } = useWalletClient();
+    const publicClient = usePublicClient();
+    const { createAuction } = useDutchAuctionActions();
     const { coordinationMessaging, evidenceTransport } = useRuntimeServices();
     const { catalogues: sellerCatalogues, isLoading: cataloguesLoading } = useRegisteredCatalogues();
 
@@ -85,7 +88,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         order: { step: commitStep, error: commitError, payload },
     } = useCheckout(currency);
 
-    const { items, getTotalPrice, fulfillmentMode, setFulfillmentMode } = useCartStore();
+    const { items, getTotalPrice, fulfillmentMode, setFulfillmentMode, deliveryMaxPrice, setDeliveryMaxPrice } = useCartStore();
     const { openConnectModal } = useConnectModal();
 
     const totalPrice = getTotalPrice();
@@ -187,12 +190,20 @@ export function CheckoutView({ sellerAddress }: Props) {
     })();
     const buyerChoosesCounterparty =
         fulfillmentMode === "deliver:buyer-assigned" && unboundSubOrders.length > 0;
+    // Dutch-auction coordination: the unbound sub-order is deferred — the
+    // buyer names the descending auction's start price instead of a seller.
+    const buyerOpensAuction =
+        fulfillmentMode === "deliver:dutch-auction" && unboundSubOrders.length > 0;
+    const auctionStartPriceValid = (() => {
+        try { return parseToken(deliveryMaxPrice || "0", tokenDecimals) > 0n; } catch { return false; }
+    })();
     // Ready to place when a profile-bound assembly is resolved, its fulfilment
     // (only if it composes one) is chosen, and any buyer-chosen counterparty
-    // selection is complete.
+    // selection (or auction start price) is complete.
     const orderReady = !!pickedAssembly
         && (!pickedAssembly.fulfilmentMethod || !!fulfillmentMode)
-        && (!buyerChoosesCounterparty || !!sellerSelection);
+        && (!buyerChoosesCounterparty || !!sellerSelection)
+        && (!buyerOpensAuction || auctionStartPriceValid);
     // The root order carries the design-time clauses the buyer is bonding to.
     // Surfaced inline below so the buyer reviews the terms before signing — the
     // visible terms + the explicit place-order click replace the modal gate.
@@ -233,6 +244,11 @@ export function CheckoutView({ sellerAddress }: Props) {
                         name: nameOf(seller),
                         payment: resolveSubOrderPayment({ node, seller, leadAddress: lead, sellerCatalogues, tokenDecimals }),
                     };
+                }
+                // Unbound node under dutch coordination: deferred to the
+                // auction — its price is set by the claim, not the commit.
+                if (fulfillmentMode === "deliver:dutch-auction") {
+                    return { name: "(dutch auction)", payment: 0n };
                 }
                 // Unbound node: the buyer's checkout-time choice fills it — the
                 // shown figure is the SAME selection the commit will use.
@@ -309,6 +325,12 @@ export function CheckoutView({ sellerAddress }: Props) {
                             { seller: sellerSelection.seller, price: sellerSelection.price },
                         ]))
                         : undefined,
+                    subOrderAuctions: buyerOpensAuction
+                        ? Object.fromEntries(unboundSubOrders.map(({ node }) => [
+                            node.id,
+                            { startPrice: deliveryMaxPrice },
+                        ]))
+                        : undefined,
                 },
                 {
                     chainId,
@@ -317,6 +339,12 @@ export function CheckoutView({ sellerAddress }: Props) {
                     walletClient,
                     coordinationMessaging,
                     evidenceTransport,
+                    openSellerAuction: async ({ auctionId, startPrice, processId, currency: auctionCurrency }) => {
+                        const hash = await createAuction(auctionId, startPrice, processId, auctionCurrency);
+                        if (publicClient && hash) {
+                            await publicClient.waitForTransactionReceipt({ hash });
+                        }
+                    },
                 },
             );
         } catch (cause: unknown) {
@@ -520,6 +548,30 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 tokenSymbol={tokenSymbol}
                                 onSelect={setSellerSelection}
                             />
+                        )}
+
+                        {/* Dutch-auction coordination: the sub-order defers to a
+                            descending-price auction — the buyer names its start
+                            price; a seller claims it on the order page. */}
+                        {buyerOpensAuction && (
+                            <div>
+                                <label
+                                    htmlFor="delivery-max-price"
+                                    className="text-xs font-semibold text-neutral-500 mb-1 block"
+                                >
+                                    Auction start price{tokenSymbol ? ` (${tokenSymbol})` : ""}
+                                </label>
+                                <input
+                                    id="delivery-max-price"
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={deliveryMaxPrice}
+                                    onChange={(e) => setDeliveryMaxPrice(e.target.value)}
+                                    placeholder="Descending start price"
+                                    data-testid="input-delivery-max-price"
+                                    className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                                />
+                            </div>
                         )}
 
                         <Button
