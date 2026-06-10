@@ -104,9 +104,9 @@ test.describe('kiosk-sale runtime — buyer checkout → seller accept → resol
         ]);
 
         // ── 1. Buyer places the order through the UI and relays it ──────────
-        // The buyer SEES the fulfilment modality the assembly declared —
-        // "Pickup" — in the checkout selector (not an opaque assembly name).
-        await placeBilateralOrderUI(page, { seller: kiosk!.address, expectFulfilmentLabel: 'Pickup' });
+        // The checkout offers the seller's bound assemblies; the spec selects
+        // by the modality value the assembly committed.
+        await placeBilateralOrderUI(page, { seller: kiosk!.address, fulfilmentMode: 'pickup' });
 
         // Out-of-band: the relayed commitment payload is REALLY pinned in IPFS
         // (the same proof the assembly + seller stages run). Read the CID the

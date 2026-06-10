@@ -17,7 +17,8 @@
  *   commit by the projection, not stored here):
  *
  *     order[0]  buyer ↔ seller  parents: []
- *       figaro-fulfilment-v2       { modalities: [consume-onsite], handoff: { points: [face-to-face] } }
+ *       figaro-fulfilment-v2       { modalities: [consume-onsite] }
+ *       figaro-handoff-v1          { handoff: [face-to-face] }
  *       figaro-merchant-process-v1 { }
  *       figaro-proximity-policy-v1 { bands: [zone-wifi] }
  *
@@ -35,34 +36,34 @@
  * re-verifies the persisted artifact (idempotent — like mainnet, you don't
  * republish an existing assembly).
  *
+ * Drawer contract (chain→IPFS): clause checkboxes render only after the spec
+ * cache warms from ClauseRegistry → IPFS, so every checkbox is awaited into
+ * existence before it is checked — same contract as the permissionless specs.
+ *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo.
  */
 import { test, expect } from './devnet-multi-test';
-import {
-    createPublicClient,
-    defineChain,
-    http,
-    keccak256,
-    parseAbi,
-    toHex,
-    type Hex,
-} from 'viem';
+import { createPublicClient, http, keccak256, toHex, type Hex } from 'viem';
 import {
     assertAssemblyOnInventory,
     assertPinnedInIpfs,
+    assemblyAnchored,
     readLocalDeploymentConfig,
+    LOCAL_ANVIL,
+    RPC_URL,
 } from './devnet-helpers';
 import { ASSEMBLY_REGISTRY_ABI } from '@/lib/mechanisms/useAssemblyRegistry';
 
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 const IPFS_GATEWAY = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080';
 
+/** The composed clauses, in drawer order. Nested clauses (proximity under the
+ *  hand-off field) only render once their parent is checked, so order matters. */
+const COMPOSE_STEPS: ReadonlyArray<{ clause: string; field?: string }> = [
+    { clause: 'figaro-fulfilment-v2', field: 'drawer-field-figaro-fulfilment-v2-modalities-consume-onsite' },
+    { clause: 'figaro-handoff-v1', field: 'drawer-field-figaro-handoff-v1-handoff-face-to-face' },
+    { clause: 'figaro-proximity-policy-v1', field: 'drawer-field-figaro-proximity-policy-v1-bands-zone-wifi' },
+    { clause: 'figaro-merchant-process-v1' },
+];
 
 test.describe('Author + publish the direct-sale assembly (devnet)', () => {
     // Multi-route nav + IPFS pin + on-chain tx. NO evmSnapshot/evmRevert — the
@@ -79,22 +80,8 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
         const draftName = 'Direct Sale';
         const slugHash = keccak256(toHex(slug));
 
-        const alreadyAnchored = await publicClient.getContractEvents({
-            address: assemblyRegistry,
-            abi: ASSEMBLY_REGISTRY_ABI,
-            eventName: 'AssemblyRegistered',
-            args: { slugHash },
-            fromBlock: 0n,
-        });
-
-        if (alreadyAnchored.length === 0) {
+        if (!(await assemblyAnchored(slug))) {
             // ── Author via the real designer canvas + publish (pin + anchor) ──
-            await page.addInitScript(() => {
-                try {
-                    window.localStorage.removeItem('figaro:designer:current');
-                    window.localStorage.removeItem('figaro:designer:drafts');
-                } catch { /* noop */ }
-            });
             await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
             await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
             await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
@@ -108,23 +95,26 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
             // ── Compose clauses in the Registry tab ────────────────────────
             // consume-onsite is a physical modality (no courier sub-order — only
             // delivery spawns one); the proximity band on the root is the
-            // buyer↔merchant handoff edge; merchant-process anchors the
-            // consume-onsite lifecycle (prep-started → ready-for-pickup →
-            // handed-off). The graph stays a single node.
+            // buyer↔merchant handoff edge (proximity nests under hand-off);
+            // merchant-process anchors the consume-onsite lifecycle
+            // (prep-started → ready-for-pickup → handed-off). One node throughout.
             await page.getByTestId('drawer-tab-registry').click();
             await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
 
-            await page.getByTestId('drawer-registry-clause-figaro-fulfilment-v2').check();
-            await page.getByTestId('drawer-field-figaro-fulfilment-v2-modalities-consume-onsite').check();
-
-            // Hand-off is its own clause now; proximity nests under its handoff field.
-            await page.getByTestId('drawer-registry-clause-figaro-handoff-v1').check();
-            await page.getByTestId('drawer-field-figaro-handoff-v1-handoff-face-to-face').check();
-            await page.getByTestId('drawer-registry-clause-figaro-proximity-policy-v1').check();
-            await page.getByTestId('drawer-field-figaro-proximity-policy-v1-bands-zone-wifi').check();
-
-            await page.getByTestId('drawer-registry-clause-figaro-merchant-process-v1').check();
-            await expect(orderNodes).toHaveCount(1, { timeout: 10000 });
+            for (const step of COMPOSE_STEPS) {
+                // The checkbox exists only once the clause's spec has loaded
+                // chain→IPFS (and, for nested clauses, once the parent is
+                // checked) — await it into existence before acting.
+                const box = page.getByTestId(`drawer-registry-clause-${step.clause}`);
+                await expect(box, `drawer surfaces ${step.clause}`).toHaveCount(1, { timeout: 20000 });
+                await box.check();
+                if (step.field) {
+                    const field = page.getByTestId(step.field);
+                    await expect(field, `drawer surfaces ${step.field}`).toHaveCount(1, { timeout: 10000 });
+                    await field.check();
+                }
+            }
+            await expect(orderNodes, 'composing clauses never draws nodes').toHaveCount(1, { timeout: 10000 });
 
             // Name + publish (fixed slug → "direct-sale").
             await page.getByTestId('designer-name-input').fill(draftName);
@@ -165,8 +155,8 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
         const cid = metadataURI.slice('ipfs://'.length);
         await assertPinnedInIpfs(cid);
 
-        // ── It is the correct no-hash template — the three composed clauses ─
-        const assemblyDoc = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
+        // ── It is the correct no-hash template — the composed clauses ─────
+        const assemblyTemplate = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
             slug: string;
             name: string;
             orders: Array<{
@@ -174,9 +164,9 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
                 clauses: Record<string, Record<string, unknown>>;
             }>;
         };
-        expect(assemblyDoc.slug).toBe(slug);
-        expect(assemblyDoc.orders).toHaveLength(1);
-        const root = assemblyDoc.orders[0];
+        expect(assemblyTemplate.slug).toBe(slug);
+        expect(assemblyTemplate.orders).toHaveLength(1);
+        const root = assemblyTemplate.orders[0];
         // The DAG is a clause: root's figaro-topology-v1 carries empty parents.
         expect(root.clauses['figaro-topology-v1']).toEqual({ parentOrderIds: [] });
         expect(Object.keys(root.clauses).sort()).toEqual([

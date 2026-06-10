@@ -1414,7 +1414,7 @@ export async function placeLocalCommerceOrderUI(
  */
 export async function placeBilateralOrderUI(
     page: Page,
-    opts: { seller: string; itemId?: string; fulfilmentMode?: string; geohash?: string; expectFulfilmentLabel?: string },
+    opts: { seller: string; itemId?: string; fulfilmentMode?: string; geohash?: string },
 ): Promise<void> {
     await page.goto(`/s/${opts.seller}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
     const detailView = page.getByTestId('seller-detail-view');
@@ -1443,23 +1443,29 @@ export async function placeBilateralOrderUI(
     await page.getByTestId('btn-review-order').click();
     await page.getByTestId('checkout-view').waitFor({ state: 'visible', timeout: 30000 });
 
-    // A fulfilment selector appears ONLY when the seller binds more than one
-    // assembly (the buyer picks which offering). A single-assembly seller shows
-    // none — skip it. The options + labels come from the assemblies themselves.
+    // The buyer's fulfilment options ARE the seller's bound assemblies — one
+    // option per assembly that carries a fulfilment modality, labelled by the
+    // assembly's own name, valued by the modality string the assembly commits.
+    // They render only once the bindings resolve chain→IPFS, and selection is
+    // REQUIRED whenever options exist (explicit unset placeholder, no
+    // auto-default) — so a caller whose scenario composes a modality MUST pass
+    // `fulfilmentMode` (the modality value, e.g. 'consume-onsite') and we WAIT
+    // for the select; an instant visibility probe races the bindings fetch.
     const fulfilmentSelect = page.getByTestId('select-fulfilment-mode');
-    if (await fulfilmentSelect.isVisible().catch(() => false)) {
-        if (opts.expectFulfilmentLabel) {
-            await expect(fulfilmentSelect.locator('option', { hasText: opts.expectFulfilmentLabel }))
-                .toHaveCount(1, { timeout: 20000 });
-        }
-        if (opts.fulfilmentMode) {
-            await fulfilmentSelect.selectOption(opts.fulfilmentMode);
-        } else {
-            const optionValues = await fulfilmentSelect.locator('option').evaluateAll(
-                (opts2) => opts2.map((o) => (o as HTMLOptionElement).value).filter((v) => v !== ''),
-            );
-            if (optionValues.length > 0) await fulfilmentSelect.selectOption(optionValues[0]);
-        }
+    if (opts.fulfilmentMode) {
+        await fulfilmentSelect.waitFor({ state: 'visible', timeout: 30000 });
+        await expect(
+            page.getByTestId(`option-fulfilment-${opts.fulfilmentMode}`),
+            `checkout offers the ${opts.fulfilmentMode} assembly option`,
+        ).toHaveCount(1, { timeout: 20000 });
+        await fulfilmentSelect.selectOption(opts.fulfilmentMode);
+    } else if (await fulfilmentSelect.isVisible().catch(() => false)) {
+        // Caller named no modality (e.g. an assembly with no fulfilment clause
+        // usually shows no selector at all) — best-effort: pick the first option.
+        const optionValues = await fulfilmentSelect.locator('option').evaluateAll(
+            (opts2) => opts2.map((o) => (o as HTMLOptionElement).value).filter((v) => v !== ''),
+        );
+        if (optionValues.length > 0) await fulfilmentSelect.selectOption(optionValues[0]);
     }
 
     await page.getByTestId('btn-place-order').click();
@@ -1526,6 +1532,7 @@ export async function acceptOrderInInboxUI(page: Page, sellerAddress: string): P
     return processId as Hex;
 }
 
+
 /**
  * Merchant side of a tracked handoff: walk figaro-merchant-process-v1
  * (prep-started → ready-for-pickup) then fire the handed-off event +
@@ -1538,8 +1545,11 @@ export async function acceptOrderInInboxUI(page: Page, sellerAddress: string): P
  * Arrival and acceptance are NOT in this walk: the order's existence and the
  * seller's acceptance are core (the bilateral commit / inbox counter-sign),
  * not merchant-process events. The merchant ladder begins at prep-started.
+ *
+ * Module-private: its only caller is `runDeliveryCoordination` below. Drives
+ * pre-generic-rail testids — migrates with the local-commerce pair.
  */
-export async function walkMerchantToHandoff(
+async function walkMerchantToHandoff(
     page: Page,
     opts: { processId: Hex; merchant: string },
 ): Promise<void> {

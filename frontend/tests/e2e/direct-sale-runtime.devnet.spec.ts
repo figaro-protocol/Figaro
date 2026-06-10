@@ -7,22 +7,28 @@
  *
  *   1. Buyer (anvil[0]) browses the onboarded café, places a consume-onsite
  *      order, and relays the signed commitment to the seller's inbox.
- *   2. Café (anvil[6], "Aurora Café") accepts in /inbox → on-chain bilateral
- *      commit. No RPC auto-sign; no seeded payload. The acceptance IS the
- *      commit — arrival and approval are core, not a merchant-process event.
- *   3. The merchant walks figaro-merchant-process-v1 (prep-started →
- *      ready-for-pickup → handed-off) and fires the cross-witness
- *      figaro-proximity-proof-v1 at handoff; the buyer co-witnesses proximity.
- *   4. Buyer resolves the process.
+ *   2. Café accepts in /inbox → on-chain bilateral commit. No RPC auto-sign;
+ *      no seeded payload. The acceptance IS the commit — arrival and approval
+ *      are core, not a merchant-process event.
+ *   3. The café walks figaro-merchant-process-v1 (prep-started →
+ *      ready-for-pickup → handed-off) and witnesses the committed proximity
+ *      band — all through the ONE clause-generic capability rail
+ *      (`capability-execute-submit-clause-attestation`; labels are the
+ *      clause's own event codes, no clause names in the runtime surface).
+ *   4. The buyer co-witnesses proximity (the proof clause is bilateral),
+ *      then resolves the process.
  *
  * Consumes the seller + assembly from chain→IPFS (authored by
- * scenario-direct-sale + sellers-onboarding). Exercises every clause the
- * assembly composes — fulfilment (consume-onsite), merchant-process, and
- * proximity-policy/proof — each via its driving role. The per-test snapshot
- * rolls back only this order; the persisted seller + assembly survive.
+ * scenario-direct-sale; seller onboarded against this devnet). Exercises every
+ * clause the assembly composes — fulfilment (consume-onsite),
+ * merchant-process, and proximity-policy/proof — each via its driving role.
  *
- * Prerequisite: scenario-direct-sale (anchors the assembly) and
- * sellers-onboarding (onboards Aurora Café) have run against this devnet.
+ * PERSISTED, like mainnet: no chain snapshot/revert. Each run places a NEW
+ * order, drives it to atomic resolution, and leaves the settled process as
+ * terminal on-chain state — exactly what a participant leaves behind.
+ *
+ * Prerequisite: scenario-direct-sale (anchors the assembly) and an onboarded
+ * seller whose profile binds `direct-sale`, against this devnet.
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server.
  */
@@ -38,8 +44,6 @@ import {
     localPublicClient,
     placeBilateralOrderUI,
     readLocalDeploymentConfig,
-    useChainSnapshot,
-    walkMerchantToHandoff,
 } from './devnet-helpers';
 import { formatToken } from '../../lib/shared/utils';
 
@@ -48,15 +52,19 @@ import { formatToken } from '../../lib/shared/utils';
 // wallets + approvals go through the unlocked RPC by address.
 const BUYER_ADDR = ANVIL_ACCOUNTS[0] as Hex;
 
-useChainSnapshot(test);
+// The composed clauses' own event codes — read from the agreement at runtime
+// by the engine; the spec drives the rail by these labels, exactly as a human
+// reads the buttons. (The committed proximity band labels both witnesses.)
+const MERCHANT_STAGES = ['prep-started', 'ready-for-pickup', 'handed-off'] as const;
+const PROXIMITY_BAND = 'zone-wifi';
 
 test.describe('direct-sale runtime — on-site commit, handoff certification, resolve (devnet)', () => {
-    // Two UI signatures, an IPFS pin, a commit, a 4-step merchant walk + two
-    // proximity proofs, an indexer poll, and a resolve.
+    // Two UI signatures, an IPFS pin, a commit, a 3-step merchant walk + two
+    // proximity witnesses, an indexer poll, and a resolve.
     test.setTimeout(300_000);
 
     test('a real on-site sale commits, certifies the handoff, and resolves — both parties through the UI', async ({ page }) => {
-        // Accept every native window.confirm — confirm-receipt raises one.
+        // Accept every native window.confirm — resolve raises one.
         page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
 
         const config = readLocalDeploymentConfig();
@@ -79,7 +87,7 @@ test.describe('direct-sale runtime — on-site commit, handoff certification, re
         ]);
 
         // ── 1. Buyer places the consume-onsite order through the UI ─────────
-        await placeBilateralOrderUI(page, { seller: cafe!.address, expectFulfilmentLabel: 'Consume on-site' });
+        await placeBilateralOrderUI(page, { seller: cafe!.address, fulfilmentMode: 'consume-onsite' });
 
         // Out-of-band: the relayed commitment payload is really pinned in IPFS.
         const payloadCid = await page.evaluate(() => {
@@ -92,12 +100,13 @@ test.describe('direct-sale runtime — on-site commit, handoff certification, re
         expect(payloadCid, 'buyer relayed a commitment payload CID').toBeTruthy();
         await assertPinnedInIpfs(payloadCid as string);
 
-        // GEO IS TESTED: direct-sale composes figaro-geo-v2, so the on-site
-        // exchange must be LOCATED on the flow graph. The buyer's Layer-A gate
-        // already blocked place-order if geo were empty (so reaching here proves
-        // it's captured + valid); confirm it out-of-band too — follow the relayed
-        // payload to the committed agreement and assert geo origin = the café's
-        // profile geohash (on-site origin == destination == the venue/cell/process).
+        // THE PROJECTION IS PURE: the committed agreement carries exactly what
+        // the assembly composed — the template's clauses plus the companions
+        // their specs declare (proximity-policy's sisterClauseId emits the
+        // proximity-proof anchor at commit; nothing else is injected). Follow
+        // the relayed payload to the committed agreement and assert the
+        // composed clauses are all materialized — the proof section is also
+        // what the runtime engine derives both witness capabilities from.
         const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080';
         const relayedPayload = await (await fetch(`${gateway}/ipfs/${payloadCid}`)).json() as {
             agreement?: { sections: Array<{ clause: string; data: Record<string, unknown> }> };
@@ -107,10 +116,18 @@ test.describe('direct-sale runtime — on-site commit, handoff certification, re
             ?? await (await fetch(`${gateway}/ipfs/${(relayedPayload.agreementUri ?? '').replace('ipfs://', '')}`)).json() as {
                 sections: Array<{ clause: string; data: Record<string, unknown> }>;
             };
-        const geoSection = committedAgreement.sections.find((s) => s.clause === 'figaro-geo-v2');
-        expect(geoSection, 'on-site agreement carries a figaro-geo-v2 section').toBeTruthy();
-        expect((geoSection!.data as { originGeohash?: string }).originGeohash,
-            'geo origin = the café profile geohash (on-site exchange located)').toBe(cafe!.geohash);
+        const committedClauses = committedAgreement.sections.map((s) => s.clause);
+        for (const composed of [
+            'figaro-commerce-v1',
+            'figaro-topology-v1',
+            'figaro-fulfilment-v2',
+            'figaro-handoff-v1',
+            'figaro-merchant-process-v1',
+            'figaro-proximity-policy-v1',
+            'figaro-proximity-proof-v1',
+        ]) {
+            expect(committedClauses, `committed agreement materializes ${composed}`).toContain(composed);
+        }
 
         // ── 2. Café accepts in the inbox UI → on-chain bilateral commit ─────
         const processId = await acceptOrderInInboxUI(page, cafe!.address);
@@ -134,8 +151,28 @@ test.describe('direct-sale runtime — on-site commit, handoff certification, re
         expect(seller0 - seller1, 'seller bond debited at commit').toBe(sellerBond);
         expect(core1 - core0, 'kernel escrows both bonds').toBe(buyerBond + sellerBond);
 
-        // ── 3. Merchant walks the lifecycle + fires the handoff proximity ───
-        await walkMerchantToHandoff(page, { processId, merchant: cafe!.address });
+        // ── 3. Café walks the lifecycle + witnesses proximity — ONE rail ────
+        // The rail is EVENT-DRIVEN: it re-derives from the indexer, so each
+        // stage's button appears only once the prior attestation has been
+        // indexed. Several generic capabilities can render at once (the
+        // merchant-process ladder AND the seller's proximity witness), so every
+        // click filters by the stage's own event code — as a human reads it.
+        await gotoAsWallet(page, sellerAddr, `/orders/${processId}?e2e=devnet`);
+        await page.getByTestId('order-timeline-view').waitFor({ state: 'visible', timeout: 30000 });
+        const railBtn = page.getByTestId('capability-execute-submit-clause-attestation');
+
+        for (const stage of MERCHANT_STAGES) {
+            const btn = railBtn.filter({ hasText: stage });
+            await expect(btn, `merchant rail surfaces ${stage}`).toBeEnabled({ timeout: 90_000 });
+            await btn.click();
+        }
+        // The proof clause is bilateral — the seller witnesses the committed band.
+        const sellerProof = railBtn.filter({ hasText: PROXIMITY_BAND });
+        await expect(sellerProof, 'seller proximity witness surfaces').toBeEnabled({ timeout: 90_000 });
+        await sellerProof.click();
+        // UI reaction: ladder fully attested + proof witnessed → all of the
+        // seller's generic capabilities retire.
+        await expect(railBtn, 'seller rail retires once the clauses are run').toHaveCount(0, { timeout: 90_000 });
 
         // ── 4. Buyer co-witnesses proximity, then resolves ─────────────────
         await gotoAsWallet(page, BUYER_ADDR, `/orders/${processId}?e2e=devnet`);
@@ -146,16 +183,15 @@ test.describe('direct-sale runtime — on-site commit, handoff certification, re
         await expect(page.getByTestId('order-fulfilment-modality'))
             .toContainText(/consume-onsite/i, { timeout: 30000 });
 
-        // Buyer's symmetric proximity witness — through the capability rail
-        // (the single flow). The capability retires once the proof lands.
-        const buyerProof = page.getByTestId('capability-execute-submit-buyer-proximity-proof');
-        await buyerProof.waitFor({ state: 'visible', timeout: 30000 });
+        // Buyer's symmetric proximity witness — same generic rail, same label.
+        const buyerProof = page.getByTestId('capability-execute-submit-clause-attestation')
+            .filter({ hasText: PROXIMITY_BAND });
+        await expect(buyerProof, 'buyer proximity witness surfaces').toBeEnabled({ timeout: 90_000 });
         await buyerProof.click();
-        await expect(buyerProof).toHaveCount(0, { timeout: 60000 });
+        await expect(buyerProof, 'buyer witness retires once the proof lands').toHaveCount(0, { timeout: 90_000 });
 
-        // Resolve the process — also a capability now (one flow; replaces the
-        // bespoke confirm-receipt button). The executor raises the window.confirm
-        // the persistent dialog handler above accepts.
+        // Resolve the process — also a capability (one flow). The executor
+        // raises the window.confirm the persistent dialog handler accepts.
         const resolveBtn = page.getByTestId('capability-execute-resolve-process');
         await resolveBtn.waitFor({ state: 'visible', timeout: 30000 });
         await resolveBtn.click();
