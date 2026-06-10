@@ -45,6 +45,8 @@ import {
     readLocalDeploymentConfig,
     registerNovelClause,
     assemblyAnchored,
+    nodeIds,
+    addSubOrder,
     RPC_URL,
     LOCAL_ANVIL,
 } from './devnet-helpers';
@@ -149,19 +151,6 @@ async function registerSeller(opts: {
     return account.address as Hex;
 }
 
-
-// ── Designer authoring helpers (the multi-node canvas) ───────────────────────
-async function nodeIds(page: import('@playwright/test').Page): Promise<string[]> {
-    return page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])')
-        .evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')!.replace('order-node-', '')));
-}
-async function addSubOrder(page: import('@playwright/test').Page, parentId: string): Promise<string> {
-    const before = new Set(await nodeIds(page));
-    await page.getByTestId(`btn-add-suborder-${parentId}`).click();
-    await expect.poll(async () => (await nodeIds(page)).length, { timeout: 10000 }).toBeGreaterThan(before.size);
-    const after = await nodeIds(page);
-    return after.find((id) => !before.has(id))!;
-}
 
 test.describe('PERMISSIONLESS MULTI-ORDER — the assembly RUNS at runtime', () => {
     test.setTimeout(420_000);

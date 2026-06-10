@@ -31,34 +31,25 @@
  * re-verifies the persisted artifact (idempotent — like mainnet, you don't
  * republish an existing assembly).
  *
+ * Drawer contract (chain→IPFS): clause checkboxes render only after the spec
+ * cache warms from ClauseRegistry → IPFS, so every checkbox is awaited into
+ * existence before it is checked — same contract as the permissionless specs.
+ *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo.
  */
 import { test, expect } from './devnet-multi-test';
-import {
-    createPublicClient,
-    defineChain,
-    http,
-    keccak256,
-    parseAbi,
-    toHex,
-    type Hex,
-} from 'viem';
+import { createPublicClient, http, keccak256, toHex, type Hex } from 'viem';
 import {
     assertAssemblyOnInventory,
     assertPinnedInIpfs,
+    assemblyAnchored,
     readLocalDeploymentConfig,
+    LOCAL_ANVIL,
+    RPC_URL,
 } from './devnet-helpers';
 import { ASSEMBLY_REGISTRY_ABI } from '@/lib/mechanisms/useAssemblyRegistry';
 
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 const IPFS_GATEWAY = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080';
-
 
 test.describe('Author + publish the kiosk-sale assembly (devnet)', () => {
     // Multi-route nav + IPFS pin + on-chain tx. NO evmSnapshot/evmRevert — the
@@ -75,22 +66,8 @@ test.describe('Author + publish the kiosk-sale assembly (devnet)', () => {
         const draftName = 'Kiosk Sale';
         const slugHash = keccak256(toHex(slug));
 
-        const alreadyAnchored = await publicClient.getContractEvents({
-            address: assemblyRegistry,
-            abi: ASSEMBLY_REGISTRY_ABI,
-            eventName: 'AssemblyRegistered',
-            args: { slugHash },
-            fromBlock: 0n,
-        });
-
-        if (alreadyAnchored.length === 0) {
+        if (!(await assemblyAnchored(slug))) {
             // ── Author via the real designer canvas + publish (pin + anchor) ──
-            await page.addInitScript(() => {
-                try {
-                    window.localStorage.removeItem('figaro:designer:current');
-                    window.localStorage.removeItem('figaro:designer:drafts');
-                } catch { /* noop */ }
-            });
             await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
             await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
             await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
@@ -104,12 +81,17 @@ test.describe('Author + publish the kiosk-sale assembly (devnet)', () => {
             // kiosk-sale's ONLY design-time selection: the pickup modality. No
             // handoff point, no proximity-policy, no merchant-process. pickup is a
             // physical modality that does NOT spawn a courier (only delivery does),
-            // so the graph stays a single node.
+            // so the graph stays a single node. The checkbox exists only once the
+            // clause's spec has loaded chain→IPFS — await it into existence.
             await page.getByTestId('drawer-tab-registry').click();
             await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
-            await page.getByTestId('drawer-registry-clause-figaro-fulfilment-v2').check();
-            await page.getByTestId('drawer-field-figaro-fulfilment-v2-modalities-pickup').check();
-            await expect(orderNodes).toHaveCount(1, { timeout: 10000 });
+            const fulfilmentBox = page.getByTestId('drawer-registry-clause-figaro-fulfilment-v2');
+            await expect(fulfilmentBox, 'drawer surfaces figaro-fulfilment-v2').toHaveCount(1, { timeout: 20000 });
+            await fulfilmentBox.check();
+            const pickupField = page.getByTestId('drawer-field-figaro-fulfilment-v2-modalities-pickup');
+            await expect(pickupField, 'drawer surfaces the pickup modality').toHaveCount(1, { timeout: 10000 });
+            await pickupField.check();
+            await expect(orderNodes, 'composing clauses never draws nodes').toHaveCount(1, { timeout: 10000 });
 
             // Name + publish (fixed slug → "kiosk-sale").
             await page.getByTestId('designer-name-input').fill(draftName);
@@ -151,7 +133,7 @@ test.describe('Author + publish the kiosk-sale assembly (devnet)', () => {
         await assertPinnedInIpfs(cid);
 
         // ── It is the correct no-hash template ─────────────────────────────
-        const assemblyDoc = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
+        const assemblyTemplate = await (await fetch(`${IPFS_GATEWAY}/ipfs/${cid}`)).json() as {
             slug: string;
             name: string;
             orders: Array<{
@@ -159,9 +141,9 @@ test.describe('Author + publish the kiosk-sale assembly (devnet)', () => {
                 clauses: Record<string, Record<string, unknown>>;
             }>;
         };
-        expect(assemblyDoc.slug).toBe(slug);
-        expect(assemblyDoc.orders).toHaveLength(1);
-        const root = assemblyDoc.orders[0];
+        expect(assemblyTemplate.slug).toBe(slug);
+        expect(assemblyTemplate.orders).toHaveLength(1);
+        const root = assemblyTemplate.orders[0];
         // The DAG is a clause: root's figaro-topology-v1 carries empty parents.
         expect(root.clauses['figaro-topology-v1']).toEqual({ parentOrderIds: [] });
         expect(Object.keys(root.clauses).sort()).toEqual(['figaro-fulfilment-v2', 'figaro-topology-v1']);

@@ -38,8 +38,6 @@ import {
     assertPinnedInIpfs,
     discoverSellerByAssembly,
     ensureTokenApprovalsByAddress,
-    evmRevert,
-    evmSnapshot,
     placeBilateralOrderUI,
     readLocalDeploymentConfig,
 } from './devnet-helpers';
@@ -62,15 +60,11 @@ const CORE_VIEW_ABI = parseAbi([
 ]);
 const ERC20_BAL_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
-let outerSnapshot: string;
-test.beforeAll(async () => { outerSnapshot = await evmSnapshot(); });
-test.afterAll(async () => { if (outerSnapshot) await evmRevert(outerSnapshot); });
-
 test.describe('kiosk-sale runtime — buyer checkout → seller accept → resolve (devnet)', () => {
-    let testSnapshot: string;
-    test.beforeEach(async () => { testSnapshot = await evmSnapshot(); });
-    test.afterEach(async () => { if (testSnapshot) await evmRevert(testSnapshot); });
-
+    // PERSISTED, like mainnet: no chain snapshot/revert. Each run places a NEW
+    // order, drives it to atomic resolution, and leaves the settled process as
+    // terminal on-chain state — exactly what a participant leaves behind.
+    //
     // Two UI signatures (buyer + seller), an IPFS pin, an on-chain commit,
     // an indexer poll for the active row, and an on-chain resolve.
     test.setTimeout(240_000);

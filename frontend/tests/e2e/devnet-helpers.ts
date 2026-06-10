@@ -1082,6 +1082,23 @@ export async function assemblyAnchored(slug: string): Promise<boolean> {
 }
 
 /**
+ * Designer authoring helpers (the multi-node canvas): read the drawn node ids,
+ * and DRAW a sub-order under a parent — the designer draws the nodes, 1:1;
+ * nothing draws them for the designer.
+ */
+export async function nodeIds(page: Page): Promise<string[]> {
+    return page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])')
+        .evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')!.replace('order-node-', '')));
+}
+export async function addSubOrder(page: Page, parentId: string): Promise<string> {
+    const before = new Set(await nodeIds(page));
+    await page.getByTestId(`btn-add-suborder-${parentId}`).click();
+    await expect.poll(async () => (await nodeIds(page)).length, { timeout: 10000 }).toBeGreaterThan(before.size);
+    const after = await nodeIds(page);
+    return after.find((id) => !before.has(id))!;
+}
+
+/**
  * Assert a published assembly SURFACES on the marketing `/assemblies` inventory.
  * The page reads `AssemblyRegistry` on-chain and lazy-fetches each assemblyDoc
  * from IPFS; rows are keyed `#assembly-<slug>` (per AssemblyInventory). Navigates
