@@ -1150,6 +1150,7 @@ export async function assertAssemblyOnInventory(page: Page, slug: string): Promi
  *  to discovery; read by `discoverSellers`. */
 const SELLER_REGISTERED_EVENT_ABI = parseAbi([
     'event SellerRegistered(address indexed seller, string metadataURI)',
+    'event SellerWithdrawn(address indexed seller, uint256 deposit)',
 ]);
 
 export interface DiscoveredSeller {
@@ -1163,24 +1164,48 @@ export interface DiscoveredSeller {
     }>;
 }
 
-/** Every registered seller, discovered from chain → IPFS (events + profile docs). */
+/** Every LIVE registered seller, discovered from chain → IPFS (events +
+ *  profile docs). Mainnet-realistic tolerance: a withdrawn wallet is skipped
+ *  (registrations must outnumber withdrawals), and a profile that fails to
+ *  fetch or parse is skipped rather than crashing discovery — anyone can
+ *  register a garbage URI; consumers must tolerate it. */
 export async function discoverSellers(): Promise<DiscoveredSeller[]> {
     const publicClient = localPublicClient();
     const config = readLocalDeploymentConfig();
     const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY ?? config.sellerRegistry) as `0x${string}`;
-    const events = await publicClient.getContractEvents({
-        address: sellerRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'SellerRegistered', fromBlock: 0n,
-    });
+    const [events, withdrawals] = await Promise.all([
+        publicClient.getContractEvents({
+            address: sellerRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'SellerRegistered', fromBlock: 0n,
+        }),
+        publicClient.getContractEvents({
+            address: sellerRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'SellerWithdrawn', fromBlock: 0n,
+        }),
+    ]);
+    const withdrawnCount = new Map<string, number>();
+    for (const w of withdrawals) {
+        const a = ((w.args as { seller?: string }).seller ?? '').toLowerCase();
+        withdrawnCount.set(a, (withdrawnCount.get(a) ?? 0) + 1);
+    }
+    const registeredCount = new Map<string, number>();
     const out: DiscoveredSeller[] = [];
     for (const ev of events) {
+        const address = (ev.args as { seller: `0x${string}` }).seller;
+        const key = address.toLowerCase();
+        registeredCount.set(key, (registeredCount.get(key) ?? 0) + 1);
+        if ((registeredCount.get(key) ?? 0) <= (withdrawnCount.get(key) ?? 0)) continue;
         const uri = (ev.args as { metadataURI?: string }).metadataURI ?? '';
-        const profile = await (await fetch(resolveIpfsURI(uri))).json() as {
+        let profile: {
             name?: string;
             location?: { geohash?: string };
             assemblyBindings?: DiscoveredSeller['assemblyBindings'];
         };
+        try {
+            profile = await (await fetch(resolveIpfsURI(uri))).json();
+        } catch {
+            continue; // unresolvable / non-JSON profile — not discoverable
+        }
         out.push({
-            address: (ev.args as { seller: `0x${string}` }).seller,
+            address,
             name: profile.name ?? '',
             geohash: profile.location?.geohash,
             assemblyBindings: profile.assemblyBindings ?? [],
