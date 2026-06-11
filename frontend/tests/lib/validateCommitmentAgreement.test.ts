@@ -9,7 +9,8 @@ import {
 
 // Tests may name clauses; production code may not.
 const MERCHANT_PROCESS_CLAUSE_KEY = "figaro-merchant-process-v1";
-const FULFILMENT_V2_CLAUSE_KEY = "figaro-fulfilment-v2";
+const MODALITIES_CLAUSE_KEY = "figaro-modalities-v1";
+const COORDINATION_CLAUSE_KEY = "figaro-coordination-v1";
 const HANDOFF_CLAUSE_KEY = "figaro-handoff-v1";
 const GEO_CLAUSE_KEY = "figaro-geo-v2";
 
@@ -34,7 +35,8 @@ function agreement(sections: AgreementSection[]): Agreement {
 describe("validateCommitmentAgreement (Layer A, pre-commit)", () => {
     it("passes a valid agreement when the hash matches the content", () => {
         const a = agreement([
-            { clause: FULFILMENT_V2_CLAUSE_KEY, data: { modalities: ["delivery"], delivery: { coordination: ["seller-assigned"] } } },
+            { clause: MODALITIES_CLAUSE_KEY, data: { modality: "delivery" } },
+            { clause: COORDINATION_CLAUSE_KEY, data: { coordination: "seller-assigned" } },
             { clause: HANDOFF_CLAUSE_KEY, data: { handoff: ["face-to-face"] } },
         ]);
         const result = validateCommitmentAgreement(a, computeAgreementHash(a));
@@ -43,7 +45,7 @@ describe("validateCommitmentAgreement (Layer A, pre-commit)", () => {
     });
 
     it("flags a merkle mismatch — signing a hash that isn't this agreement's root", () => {
-        const a = agreement([{ clause: FULFILMENT_V2_CLAUSE_KEY, data: { modalities: ["pickup"] } }]);
+        const a = agreement([{ clause: MODALITIES_CLAUSE_KEY, data: { modality: "pickup" } }]);
         const result = validateCommitmentAgreement(a, `0x${"00".repeat(32)}`);
         expect(result.ok).toBe(false);
         expect(result.issues.some((i) => i.clause === "(merkle)")).toBe(true);

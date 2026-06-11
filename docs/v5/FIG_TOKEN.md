@@ -148,7 +148,7 @@ score = w_tier1 × processCount^α × pairs^(1 − α)        α = 33/100
 **The tier-1 weight** (`w_tier1`, range 1.0–5.0) adds two dimensions —
 `w = 1 + (w_category − 1) + (w_topology − 1)`:
 
-- `w_category` — `3.0` for tier-1 category clauses (`figaro-fulfilment-v2` and
+- `w_category` — `3.0` for tier-1 category clauses (the coordination family and
   `figaro-geo-v2`, hard-coded at deploy), `1.0` otherwise.
 - `w_topology` — the clause's mean chain position over the window, clamped to
   `[1.0, 3.0]`; clauses used deeper in process chains weigh more.

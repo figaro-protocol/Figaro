@@ -26,14 +26,10 @@ const TOPOLOGY_WEIGHT_MAX: f64 = 3.0;
 /// permissionlessly — any third-party clause registered with
 /// `family = keccak256("geo")` or `keccak256("coordination")` inherits the
 /// Tier-1 weight at the next tranche without touching the kernel.
-/// `keccak256("fulfilment")` stays Tier-1 only while the figaro-fulfilment-v2
-/// clause is mid-retirement (its split successors carry the coordination
-/// family); drop it when v2's registration is deleted.
 fn is_tier1_family(family: &B256) -> bool {
     let coordination = keccak256_str(b"coordination");
-    let fulfilment = keccak256_str(b"fulfilment");
     let geo = keccak256_str(b"geo");
-    *family == coordination || *family == fulfilment || *family == geo
+    *family == coordination || *family == geo
 }
 
 fn keccak256_str(s: &[u8]) -> B256 {

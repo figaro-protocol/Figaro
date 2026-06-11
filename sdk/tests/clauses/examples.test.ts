@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { parseClauseSpec } from "../../src/clauses/spec.js";
+import modalitiesSpecRaw from "../../src/clauses/examples/figaro-modalities-v1.json" with { type: "json" };
+import coordinationSpecRaw from "../../src/clauses/examples/figaro-coordination-v1.json" with { type: "json" };
 import { validateContent } from "../../src/clauses/validate.js";
 import topologySpecRaw from "../../src/clauses/examples/figaro-topology-v1.json" with { type: "json" };
 import commerceSpecRaw from "../../src/clauses/examples/figaro-commerce-v1.json" with { type: "json" };
 import geoSpecRaw from "../../src/clauses/examples/figaro-geo-v2.json" with { type: "json" };
-import fulfilmentV2SpecRaw from "../../src/clauses/examples/figaro-fulfilment-v2.json" with { type: "json" };
 import arbitrationKlerosSpecRaw from "../../src/clauses/examples/figaro-arbitration-kleros-v1.json" with { type: "json" };
 import applicableLawSpecRaw from "../../src/clauses/examples/figaro-applicable-law-v1.json" with { type: "json" };
 import ghgProtocolSpecRaw from "../../src/clauses/examples/figaro-ghg-protocol-v1.json" with { type: "json" };
@@ -171,60 +172,52 @@ describe("example clause specs — parse + validate sample content", () => {
         }, parsed.spec).ok).toBe(false);
     });
 
-    // ── figaro-fulfilment-v2 ──
+    // ── figaro-modalities-v1 ──
 
-    it("figaro-fulfilment-v2 spec parses cleanly", () => {
-        const result = parseClauseSpec(fulfilmentV2SpecRaw);
+    it("figaro-modalities-v1 spec parses cleanly", () => {
+        const result = parseClauseSpec(modalitiesSpecRaw);
         expect(result.ok).toBe(true);
     });
 
-    it("figaro-fulfilment-v2 accepts each single-modality content", () => {
-        const parsed = parseClauseSpec(fulfilmentV2SpecRaw);
+    it("figaro-modalities-v1 accepts each single-select modality", () => {
+        const parsed = parseClauseSpec(modalitiesSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         for (const modality of ["consume-onsite", "pickup", "delivery", "virtual"]) {
-            expect(validateContent({ modalities: [modality] }, parsed.spec).ok).toBe(true);
+            expect(validateContent({ modality }, parsed.spec).ok).toBe(true);
         }
     });
 
-    it("figaro-fulfilment-v2 accepts multi-modality offers", () => {
-        const parsed = parseClauseSpec(fulfilmentV2SpecRaw);
+    it("figaro-modalities-v1 rejects an unknown modality", () => {
+        const parsed = parseClauseSpec(modalitiesSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ modalities: ["pickup", "delivery"], delivery: { coordination: ["seller-assigned"] } }, parsed.spec).ok).toBe(true);
+        expect(validateContent({ modality: "teleport" }, parsed.spec).ok).toBe(false);
     });
 
-    it("figaro-fulfilment-v2 accepts each delivery coordination", () => {
-        const parsed = parseClauseSpec(fulfilmentV2SpecRaw);
+    it("figaro-modalities-v1 rejects a missing modality", () => {
+        const parsed = parseClauseSpec(modalitiesSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        for (const coordination of ["buyer-assigned", "seller-assigned", "dutch-auction"]) {
-            expect(validateContent({ modalities: ["delivery"], delivery: { coordination: [coordination] } }, parsed.spec).ok).toBe(true);
+        expect(validateContent({}, parsed.spec).ok).toBe(false);
+    });
+
+    // ── figaro-coordination-v1 ──
+
+    it("figaro-coordination-v1 spec parses cleanly", () => {
+        const result = parseClauseSpec(coordinationSpecRaw);
+        expect(result.ok).toBe(true);
+    });
+
+    it("figaro-coordination-v1 accepts each single-select coordination", () => {
+        const parsed = parseClauseSpec(coordinationSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        for (const coordination of ["seller-assigned", "buyer-assigned", "dutch-auction"]) {
+            expect(validateContent({ coordination }, parsed.spec).ok).toBe(true);
         }
     });
 
-    it("figaro-fulfilment-v2 accepts multiple coordinations", () => {
-        const parsed = parseClauseSpec(fulfilmentV2SpecRaw);
+    it("figaro-coordination-v1 rejects an unknown coordination", () => {
+        const parsed = parseClauseSpec(coordinationSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({
-            modalities: ["delivery"],
-            delivery: { coordination: ["buyer-assigned", "dutch-auction"] },
-        }, parsed.spec).ok).toBe(true);
-    });
-
-    it("figaro-fulfilment-v2 rejects an unknown modality", () => {
-        const parsed = parseClauseSpec(fulfilmentV2SpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ modalities: ["teleport"] }, parsed.spec).ok).toBe(false);
-    });
-
-    it("figaro-fulfilment-v2 rejects empty modalities array", () => {
-        const parsed = parseClauseSpec(fulfilmentV2SpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ modalities: [] }, parsed.spec).ok).toBe(false);
-    });
-
-    it("figaro-fulfilment-v2 rejects missing modalities", () => {
-        const parsed = parseClauseSpec(fulfilmentV2SpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ coordinations: ["buyer-assigned"] }, parsed.spec).ok).toBe(false);
+        expect(validateContent({ coordination: "telepathy" }, parsed.spec).ok).toBe(false);
     });
 
     // ── figaro-arbitration-kleros-v1 ──

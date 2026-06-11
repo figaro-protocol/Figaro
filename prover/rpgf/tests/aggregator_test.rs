@@ -13,7 +13,7 @@ fn family_for(clause: &[u8]) -> B256 {
     let slug: &[u8] = match clause {
         b"figaro-commerce-v1" => b"commerce",
         b"figaro-geo-v2" => b"geo",
-        b"figaro-fulfilment-v2" => b"fulfilment",
+        b"figaro-modalities-v1" => b"coordination",
         b"figaro-courier-process-v1" => b"seller-process",
         b"figaro-topology-v1" => b"topology",
         _ => b"test-family",

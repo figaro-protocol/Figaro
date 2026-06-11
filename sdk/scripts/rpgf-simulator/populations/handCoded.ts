@@ -12,7 +12,7 @@ const FAMILY_BY_CLAUSE: Readonly<Record<string, string>> = {
   "figaro-commerce-v1": "commerce",
   "figaro-consent-v1": "consent",
   "figaro-geo-v2": "geo",
-  "figaro-fulfilment-v2": "fulfilment",
+  "figaro-modalities-v1": "coordination",
   "figaro-ghg-protocol-v1": "emissions",
   "figaro-ghg-iso-14064-v1": "emissions",
   "figaro-ghg-pas-2050-v1": "emissions",
@@ -98,12 +98,12 @@ const ARCHETYPES: readonly Archetype[] = [
     ],
   },
   {
-    name: "fulfilment-method",
-    description: "Multi-modal fulfilment offering. Cluster A.",
+    name: "modality-choice",
+    description: "Single-select modality choice. Cluster A.",
     snapshotsAtTranches: [
-      snap({ clauseId: "figaro-fulfilment-v2", category: "committed-policy", orderCount: 20_000, attsPerOrder: 1.4, distinctBuyers: 4_000, distinctSellers: 3_000, distinctBuyerSellerPairs: 12_000, meanChainPosition: 1 }),
-      snap({ clauseId: "figaro-fulfilment-v2", category: "committed-policy", orderCount: 100_000, attsPerOrder: 1.4, distinctBuyers: 18_000, distinctSellers: 15_000, distinctBuyerSellerPairs: 60_000, meanChainPosition: 1 }),
-      snap({ clauseId: "figaro-fulfilment-v2", category: "committed-policy", orderCount: 300_000, attsPerOrder: 1.4, distinctBuyers: 45_000, distinctSellers: 40_000, distinctBuyerSellerPairs: 200_000, meanChainPosition: 1 }),
+      snap({ clauseId: "figaro-modalities-v1", category: "committed-policy", orderCount: 20_000, attsPerOrder: 1.4, distinctBuyers: 4_000, distinctSellers: 3_000, distinctBuyerSellerPairs: 12_000, meanChainPosition: 1 }),
+      snap({ clauseId: "figaro-modalities-v1", category: "committed-policy", orderCount: 100_000, attsPerOrder: 1.4, distinctBuyers: 18_000, distinctSellers: 15_000, distinctBuyerSellerPairs: 60_000, meanChainPosition: 1 }),
+      snap({ clauseId: "figaro-modalities-v1", category: "committed-policy", orderCount: 300_000, attsPerOrder: 1.4, distinctBuyers: 45_000, distinctSellers: 40_000, distinctBuyerSellerPairs: 200_000, meanChainPosition: 1 }),
     ],
   },
   {

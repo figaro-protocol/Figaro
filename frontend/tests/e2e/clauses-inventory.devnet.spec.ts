@@ -46,7 +46,8 @@ test.describe('Clauses marketing inventory (devnet)', () => {
         // actual entries from the on-chain set, not just the header line.
         // Row id pattern is `#clause-<clauseId>` per ClauseInventory.
         await expect(page.locator('#clause-figaro-commerce-v1')).toBeVisible();
-        await expect(page.locator('#clause-figaro-fulfilment-v2')).toBeVisible();
+        await expect(page.locator('#clause-figaro-modalities-v1')).toBeVisible();
+        await expect(page.locator('#clause-figaro-coordination-v1')).toBeVisible();
         await expect(page.locator('#clause-figaro-arbitration-kleros-v1')).toBeVisible();
         await expect(page.locator('#clause-figaro-applicable-law-v1')).toBeVisible();
         await expect(page.locator('#clause-figaro-topology-v1')).toBeVisible();

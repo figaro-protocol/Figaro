@@ -65,7 +65,7 @@ Validators are pure / view, no admin, no mutable state.
 **`src/clauseValidators/`** — 17 production validator contracts, one per
 *runtime-attestable* clauseId (local-commerce use case + jurisdiction baseline + consent):
 `FigaroCommerceV1Validator`, `FigaroGeoV2Validator`,
-`FigaroFulfilmentV2Validator`, plus the 5 GHG sister clauses
+`FigaroModalitiesV1Validator`, `FigaroCoordinationV1Validator`, plus the 5 GHG sister clauses
 `FigaroGHGProtocolV1Validator`, `FigaroGHGISO14064V1Validator`,
 `FigaroGHGPAS2050V1Validator`, `FigaroGHGEN16258V1Validator`,
 `FigaroGHGCustomV1Validator` (one per accounting standard),

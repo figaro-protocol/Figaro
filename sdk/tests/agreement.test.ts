@@ -33,9 +33,9 @@ const GHG: AgreementSection = {
     // must be encoder-valid.
     data: { scope: 1 },
 };
-const FULFILMENT: AgreementSection = {
-    clause: "figaro-fulfilment-v2",
-    data: { modalities: ["pickup"], handoffPoints: ["face-to-face"] },
+const MODALITIES: AgreementSection = {
+    clause: "figaro-modalities-v1",
+    data: { modality: "pickup" },
 };
 
 function agreement(sections: AgreementSection[]): Agreement {
@@ -118,7 +118,7 @@ describe("buildSectionInclusionProof + verifyInclusionProof", () => {
     });
 
     it("four sections: every section proves inclusion", () => {
-        const a = agreement([COMMERCE, GEO, GHG, FULFILMENT]);
+        const a = agreement([COMMERCE, GEO, GHG, MODALITIES]);
         const root = computeAgreementHash(a);
         for (const s of a.sections) {
             const { leaf, proof } = buildSectionInclusionProof(a, s.clause);
@@ -137,7 +137,7 @@ describe("buildSectionInclusionProof + verifyInclusionProof", () => {
 
     it("rejects a proof against a different root", () => {
         const a1 = agreement([COMMERCE, GHG]);
-        const a2 = agreement([COMMERCE, FULFILMENT]);
+        const a2 = agreement([COMMERCE, MODALITIES]);
         const { leaf, proof } = buildSectionInclusionProof(a1, "figaro-commerce-v1");
         expect(verifyInclusionProof(computeAgreementHash(a2), leaf, proof)).toBe(false);
     });

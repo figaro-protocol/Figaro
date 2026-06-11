@@ -16,7 +16,7 @@ fn family_for(clause: &[u8]) -> B256 {
     let slug: &[u8] = match clause {
         b"figaro-commerce-v1" => b"commerce",
         b"figaro-geo-v2" => b"geo",
-        b"figaro-fulfilment-v2" => b"fulfilment",
+        b"figaro-modalities-v1" => b"coordination",
         b"hypothetical-wash-v1" => b"test-family",
         _ => b"test-family",
     };
@@ -161,7 +161,7 @@ fn distinct_pairs_counted_correctly() {
     let author = address!("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
     let stream = EventStream {
-        clauses_registered: vec![clause_reg(b"figaro-fulfilment-v2", author)],
+        clauses_registered: vec![clause_reg(b"figaro-modalities-v1", author)],
         orders_created: vec![
             order(1, p, alice, bob, 1),
             order(2, p, alice, carol, 1),
@@ -169,9 +169,9 @@ fn distinct_pairs_counted_correctly() {
         ],
         processes_resolved: vec![ProcessResolvedEvent { process_id: p }],
         attestations: vec![
-            att(1, p, alice, b"figaro-fulfilment-v2", 1),
-            att(2, p, alice, b"figaro-fulfilment-v2", 1),
-            att(3, p, dave, b"figaro-fulfilment-v2", 1),
+            att(1, p, alice, b"figaro-modalities-v1", 1),
+            att(2, p, alice, b"figaro-modalities-v1", 1),
+            att(3, p, dave, b"figaro-modalities-v1", 1),
         ],
     };
 
@@ -287,14 +287,14 @@ fn snapshots_sorted_by_clause_id_for_determinism() {
         clauses_registered: vec![
             clause_reg(b"figaro-commerce-v1", author),
             clause_reg(b"figaro-geo-v2", author),
-            clause_reg(b"figaro-fulfilment-v2", author),
+            clause_reg(b"figaro-modalities-v1", author),
         ],
         orders_created: vec![order(1, p, alice, bob, 1)],
         processes_resolved: vec![ProcessResolvedEvent { process_id: p }],
         attestations: vec![
             att(1, p, alice, b"figaro-geo-v2", 1),
             att(1, p, alice, b"figaro-commerce-v1", 1),
-            att(1, p, alice, b"figaro-fulfilment-v2", 1),
+            att(1, p, alice, b"figaro-modalities-v1", 1),
         ],
     };
 

@@ -18,7 +18,7 @@ import {MockSP1Verifier} from "src/mocks/MockSP1Verifier.sol";
 /// @dev Canonical input:
 ///        4 clauses, clause_ids = bytes32(1), bytes32(2), bytes32(3), bytes32(4)
 ///        (chosen so wCategory = 1.0 — none match the tier-1 set
-///         {figaro-fulfilment-v2, figaro-geo-v2})
+///         {figaro-modalities-v1, figaro-geo-v2})
 ///        Each clause: 100 processes, 50 pairs, chainPos = 1
 ///                     (uniform parameters → equal scores → pre-cap
 ///                      share = 25% each)

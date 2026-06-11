@@ -26,7 +26,7 @@ describe("getMechanismKindsForDesign", () => {
         const session = startSyntheticSession();
         const root = createSyntheticRootOrder(session);
         // The default root carries figaro-commerce-v1 (cart/order clause) and
-        // figaro-fulfilment-v2 (pickup modality). Each spec's `block`
+        // figaro-modalities-v1 (pickup modality). Each spec's `block`
         // binding declares commerce → core and fulfilment → coordinator.
         const kinds = getMechanismKindsForDesign([root.order]);
         expect(kinds).toContain("core");

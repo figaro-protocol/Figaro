@@ -175,7 +175,7 @@ The recurring, weeks-costly failure is modeling a concern as a stored value when
 - **Nodes are co-equal** (kernel star-shape: buyer == rootBuyer on every order). The courier order is not a sub-order *owned* by the merchant; the DAG parent edge is value-topology, not dominance.
 - **Clauses are a nestable hierarchy: article → clause → sub-clause → …** Articles = `block.drawerArticle` in the clause JSON (surfaced by the existing grouping component — do not rebuild it). Sub-clauses are logically placed (e.g. the proximity bands `zone-wifi`/`nearby-ble`/`contact-nfc` nest under `figaro-proximity-policy-v1`; the process clauses have none). **Add sub-clauses to the clause JSON spec, emit the event, and reconstruct the nesting OFF-CHAIN in the drawer (rendered recursively from the spec) — NEVER hardcode the sub-clause tree into the UI.**
 
-Full treatment + migration blast radius (retiring `figaro-fulfilment-v2` changes every scenario, incl. `direct-sale`/`kiosk-sale`) → memory `feedback_fulfilment_retired_modality_derived`; clause-spec detail → `docs/v5/CLAUSES.md`.
+Full treatment (the fulfilment catch-all clause was retired 2026-06-11, split into the single-select modalities + coordination clauses; every scenario recomposed) → memory `feedback_fulfilment_retired_modality_derived`; clause-spec detail → `docs/v5/CLAUSES.md`.
 
 Mechanically enforced: `scripts/lint-no-closed-world-vocab.sh` (pre-commit, lint-staged) fails any commit reintroducing a stored role/archetype/category identifier in code (`roleKind`, `archetypeId`, `clauseCategories`, `documentKind`) and warns on retired `fulfilment` vocabulary until the de-hardcoding migration lands — then the warn list promotes to fail.
 
@@ -282,7 +282,7 @@ All contracts live in `src/` (Solidity 0.8.26, Foundry); V3 in `archive-v3/`. No
 
 A new clause is **not done until all three layers ship in lockstep**: Layer A (TypeScript, `@figaro/core/clauses`), Layer B (Rust SP1 prover, `prover/clause/` — generic, parses any spec at runtime), Layer C (per-clause `IClauseValidator` in `src/clauseValidators/`, bound via `AttestationCoordinator.setValidator` — permissionless, first-write-wins, immutable; no validator → `ValidatorNotSet`). Skip a layer and the gate either rejects all attestations under that clauseId or silently accepts content the spec would reject.
 
-21 protocol clauses total: 20 runtime-attestable (each with a validator) + `figaro-topology-v1` (manifest-only, no validator, DAG reconstructed off-chain by indexers from the signed manifest). Layer detail, the full clause table, the **adding-a-new-clause checklist** (the 9 lockstep steps), and third-party atomic register+bind discipline → `CLAUSES.md`. Count source of truth: `ls sdk/src/clauses/examples/*.json | wc -l` (the canonical Layer-A specs; the frontend loads them from ClauseRegistry → IPFS, no bundled copy). Runtime-attestable = files minus `figaro-topology-v1`.
+20 protocol clauses total: 19 runtime-attestable (each with a validator) + `figaro-topology-v1` (manifest-only, no validator, DAG reconstructed off-chain by indexers from the signed manifest). Layer detail, the full clause table, the **adding-a-new-clause checklist** (the 9 lockstep steps), and third-party atomic register+bind discipline → `CLAUSES.md`. Count source of truth: `ls sdk/src/clauses/examples/*.json | wc -l` (the canonical Layer-A specs; the frontend loads them from ClauseRegistry → IPFS, no bundled copy). Runtime-attestable = files minus `figaro-topology-v1`.
 
 ### Frontend
 

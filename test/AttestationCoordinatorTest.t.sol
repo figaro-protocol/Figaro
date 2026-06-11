@@ -39,13 +39,13 @@ contract AttestationCoordinatorTest is Test {
     string constant GHG_CLAUSE_ID = "figaro-ghg-iso-14064-v1";
     string constant PROXIMITY_CLAUSE_ID = "figaro-proximity-proof-v1";
     string constant COMMERCE_CLAUSE_ID = "figaro-commerce-v1";
-    string constant FULFILMENT_CLAUSE_ID = "figaro-fulfilment-v2";
+    string constant MODALITIES_CLAUSE_ID = "figaro-modalities-v1";
 
     bytes32 constant LIFECYCLE_CLAUSE = keccak256("figaro-courier-process-v1");
     bytes32 constant GHG_CLAUSE = keccak256("figaro-ghg-iso-14064-v1");
     bytes32 constant PROXIMITY_CLAUSE = keccak256("figaro-proximity-proof-v1");
     bytes32 constant COMMERCE_CLAUSE = keccak256("figaro-commerce-v1");
-    bytes32 constant FULFILMENT_CLAUSE = keccak256("figaro-fulfilment-v2");
+    bytes32 constant MODALITIES_CLAUSE = keccak256("figaro-modalities-v1");
 
     function setUp() public {
         core = new FigaroCore();
@@ -72,7 +72,7 @@ contract AttestationCoordinatorTest is Test {
         clauses.registerClause(GHG_CLAUSE_ID, 1, testContentHash, testUri, testFamily);
         clauses.registerClause(PROXIMITY_CLAUSE_ID, 1, testContentHash, testUri, testFamily);
         clauses.registerClause(COMMERCE_CLAUSE_ID, 1, testContentHash, testUri, testFamily);
-        clauses.registerClause(FULFILMENT_CLAUSE_ID, 1, testContentHash, testUri, testFamily);
+        clauses.registerClause(MODALITIES_CLAUSE_ID, 1, testContentHash, testUri, testFamily);
 
         // ── AttestationCoordinator: register a permissive validator for each clause ─
         // Production deployments register the real per-clause validators from
@@ -82,7 +82,7 @@ contract AttestationCoordinatorTest is Test {
         coordinator.setValidator(GHG_CLAUSE,       address(new MockClauseValidator(GHG_CLAUSE)));
         coordinator.setValidator(PROXIMITY_CLAUSE, address(new MockClauseValidator(PROXIMITY_CLAUSE)));
         coordinator.setValidator(COMMERCE_CLAUSE,  address(new MockClauseValidator(COMMERCE_CLAUSE)));
-        coordinator.setValidator(FULFILMENT_CLAUSE, address(new MockClauseValidator(FULFILMENT_CLAUSE)));
+        coordinator.setValidator(MODALITIES_CLAUSE, address(new MockClauseValidator(MODALITIES_CLAUSE)));
 
         // AttestationCoordinator declares which clauses it uses.
         // In production this is called from the deploy script (post-audit amendment);
@@ -614,7 +614,7 @@ contract AttestationCoordinatorTest is Test {
         assertTrue(clauses.registered(PROXIMITY_CLAUSE), "proximity clause registered");
         assertTrue(clauses.registered(GHG_CLAUSE), "ghg clause registered");
         assertTrue(clauses.registered(COMMERCE_CLAUSE), "commerce clause registered");
-        assertTrue(clauses.registered(FULFILMENT_CLAUSE), "fulfilment clause registered");
+        assertTrue(clauses.registered(MODALITIES_CLAUSE), "modalities clause registered");
 
         // ── Multi-section agreement ───────────────────────────────
         // Both root and driver commitments use the same two-clause agreement:

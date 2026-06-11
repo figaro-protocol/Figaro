@@ -7,7 +7,7 @@ import { type Agreement, computeSectionLeaf } from "@/lib/core/agreement";
 // Tests may name clauses; production code may not. These literals mirror the
 // canonical Layer-A example specs.
 const COMMERCE_CLAUSE_KEY = "figaro-commerce-v1";
-const FULFILMENT_V2_CLAUSE_KEY = "figaro-fulfilment-v2";
+const MODALITIES_CLAUSE_KEY = "figaro-modalities-v1";
 const HANDOFF_CLAUSE_KEY = "figaro-handoff-v1";
 const GEO_CLAUSE_KEY = "figaro-geo-v2";
 const GHG_MEASUREMENT_CLAUSE_KEY = "figaro-ghg-measurement-v1";
@@ -97,8 +97,8 @@ describe("extractContract", () => {
     const order = makeOrder();
     const agreement = makeAgreement([
         {
-            clause: FULFILMENT_V2_CLAUSE_KEY,
-            data: { modalities: ["pickup"] },
+            clause: MODALITIES_CLAUSE_KEY,
+            data: { modality: "pickup" },
         },
         {
             clause: GEO_CLAUSE_KEY,
@@ -264,7 +264,7 @@ describe("extractInvoice", () => {
 describe("extractBillOfLading", () => {
     const order = makeOrder();
     const agreement = makeAgreement([
-        { clause: FULFILMENT_V2_CLAUSE_KEY, data: { modalities: ["pickup"] } },
+        { clause: MODALITIES_CLAUSE_KEY, data: { modality: "pickup" } },
         { clause: HANDOFF_CLAUSE_KEY, data: { handoff: ["face-to-face"] } },
         { clause: GEO_CLAUSE_KEY, data: { originGeohash: "u4pruydqqvj", destinationGeohash: "u4pruydqqvk", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
     ]);
@@ -377,7 +377,7 @@ describe("extractBillOfLading", () => {
 describe("buildHashAppendix", () => {
     const order = makeOrder();
     const agreement = makeAgreement([
-        { clause: FULFILMENT_V2_CLAUSE_KEY, data: { modalities: ["pickup"] } },
+        { clause: MODALITIES_CLAUSE_KEY, data: { modality: "pickup" } },
     ]);
     const attestations: AttestationRecord[] = [
         {
@@ -720,7 +720,7 @@ describe("isCarriageOrder", () => {
 
     it("returns false for buyer↔merchant orders (no courier-process clause)", () => {
         const agreement = makeAgreement([
-            { clause: FULFILMENT_V2_CLAUSE_KEY, data: { modalities: ["pickup"] } },
+            { clause: MODALITIES_CLAUSE_KEY, data: { modality: "pickup" } },
             { clause: GEO_CLAUSE_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
         ]);
         expect(isCarriageOrder(agreement)).toBe(false);
@@ -740,7 +740,7 @@ describe("isCarriageOrder", () => {
 describe("buildAuditBundle", () => {
     const order = makeOrder();
     const agreement = makeAgreement([
-        { clause: FULFILMENT_V2_CLAUSE_KEY, data: { modalities: ["pickup"] } },
+        { clause: MODALITIES_CLAUSE_KEY, data: { modality: "pickup" } },
         { clause: GEO_CLAUSE_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
         { clause: COURIER_PROCESS_CLAUSE_KEY, data: {} },
         { clause: TOPOLOGY_CLAUSE_KEY, data: { topologyMode: "explicit", parentOrderHashes: ["0xPARENT"] } },
@@ -774,7 +774,7 @@ describe("buildAuditBundle", () => {
 
     it("omits billOfLading on a non-carriage order (e.g. buyer↔merchant goods sale)", () => {
         const merchantAgreement = makeAgreement([
-            { clause: FULFILMENT_V2_CLAUSE_KEY, data: { modalities: ["pickup"] } },
+            { clause: MODALITIES_CLAUSE_KEY, data: { modality: "pickup" } },
             { clause: GEO_CLAUSE_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
         ]);
         const merchantBundle = buildAuditBundle(order, merchantAgreement, []);
@@ -796,7 +796,7 @@ describe("buildAuditBundle", () => {
 describe("buildAuditBundle with redacted commerce section", () => {
     const order = makeOrder();
     const cleartextAgreement = makeAgreement([
-        { clause: FULFILMENT_V2_CLAUSE_KEY, data: { modalities: ["pickup"] } },
+        { clause: MODALITIES_CLAUSE_KEY, data: { modality: "pickup" } },
         { clause: GEO_CLAUSE_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
     ]);
 
@@ -843,9 +843,9 @@ describe("buildAuditBundle with redacted commerce section", () => {
         const { redactSections } = await import("@/lib/core/agreement");
         const redacted = redactSections(cleartextAgreement, ["figaro-commerce-v1"]);
         const bundle = buildAuditBundle(order, redacted, []);
-        const fulfilmentClause = bundle.contract.clauses.find((c) => c.clauseKey === "figaro-fulfilment-v2")!;
-        expect(fulfilmentClause.sealed).toBeUndefined();
-        expect(fulfilmentClause.body).toEqual({ modalities: ["pickup"] });
+        const modalitiesClause = bundle.contract.clauses.find((c) => c.clauseKey === "figaro-modalities-v1")!;
+        expect(modalitiesClause.sealed).toBeUndefined();
+        expect(modalitiesClause.body).toEqual({ modality: "pickup" });
     });
 
     it("cleartext path is unchanged when no redaction is applied", () => {

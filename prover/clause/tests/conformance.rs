@@ -333,7 +333,7 @@ fn every_embedded_spec_parses_and_matches_its_clause_id() {
         );
         count += 1;
     }
-    assert_eq!(count, 20, "expected 20 embedded protocol clauses");
+    assert_eq!(count, 19, "expected 19 embedded protocol clauses");
 }
 
 #[test]
@@ -345,11 +345,11 @@ fn embedded_spec_json_is_none_for_non_protocol_clauses() {
 }
 
 #[test]
-fn embedded_spec_tiers_partition_cross_checking_16_and_4() {
+fn embedded_spec_tiers_partition_cross_checking_15_and_4() {
     // The kernel's Gate 5 derives `cross_checks` from each spec's block
     // tier (`ClauseSpec::cross_checks`). Every runtime-attestable clause
     // must declare a category-1 or category-2 tier — never manifest-only —
-    // and the split must stay 16 cross-checking (Category-2 declarative
+    // and the split must stay 15 cross-checking (Category-2 declarative
     // clauses) / 4 not (Category-1 runtime-only clauses).
     let mut cross = 0;
     let mut plain = 0;
@@ -370,6 +370,6 @@ fn embedded_spec_tiers_partition_cross_checking_16_and_4() {
             plain += 1;
         }
     }
-    assert_eq!(cross, 16, "16 Category-2 cross-checking clauses");
+    assert_eq!(cross, 15, "15 Category-2 cross-checking clauses");
     assert_eq!(plain, 4, "4 Category-1 runtime-only clauses");
 }

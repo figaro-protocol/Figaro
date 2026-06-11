@@ -3,7 +3,7 @@
 Each scenario is its node **topology** + the **clauses** composed on each order,
 plus the two specs that author it (Phase 1) and consume it (Phase 4).
 `figaro-commerce-v1` and `figaro-topology-v1` are on every order (defaults) and
-are not listed. `figaro-fulfilment-v2` is the **Modalities** clause (the buyer's
+are not listed. `figaro-modalities-v1` is the **Modalities** clause (the buyer's
 request); its `delivery.coordination` field carries the courier-resolution
 mechanism. The clause model itself lives in CLAUDE.md + the clause-model memory,
 not here.
@@ -18,7 +18,7 @@ lifecycle, no proximity proof. The barest sale.
 *Specs:* `scenario-kiosk-sale` · `kiosk-sale-runtime`.
 ```
 order[0]  buyer ↔ seller  parents: []
-  figaro-fulfilment-v2  { modalities: [pickup] }
+  figaro-modalities-v1  { modality: pickup }
 ```
 
 ### `direct-sale` — 1 node, tracked + proximity-verified
@@ -29,7 +29,7 @@ proximity-verified handoff (prep-started → ready → handed-off, buyer present
 *Specs:* `scenario-direct-sale` · `direct-sale-runtime`.
 ```
 order[0]  buyer ↔ seller  parents: []
-  figaro-fulfilment-v2        { modalities: [consume-onsite] }
+  figaro-modalities-v1        { modality: consume-onsite }
   figaro-merchant-process-v1
   figaro-handoff-v1           { handoff: face-to-face }
   figaro-proximity-policy-v1  { bands: [zone-wifi] }
@@ -43,7 +43,8 @@ dispatching its own rider. Two co-equal bonded relationships the buyer commits t
 *Specs:* `scenario-local-commerce` · `local-commerce-runtime`.
 ```
 order[0]  buyer ↔ merchant  parents: []
-  figaro-fulfilment-v2        { modalities: [delivery], delivery.coordination: seller-assigned }
+  figaro-modalities-v1        { modality: delivery }
+  figaro-coordination-v1      { coordination: seller-assigned }
   figaro-merchant-process-v1
 order[1]  buyer ↔ courier   parents: [order[0]]   (value-topology edge; co-equal, not owned)
   figaro-courier-process-v1
@@ -59,7 +60,8 @@ delta from `local-commerce` is the `delivery.coordination` value.
 *Specs:* `scenario-local-commerce-buyer-assigned` · `local-commerce-buyer-assigned-runtime`.
 ```
 order[0]  buyer ↔ merchant  parents: []
-  figaro-fulfilment-v2        { modalities: [delivery], delivery.coordination: buyer-assigned }
+  figaro-modalities-v1        { modality: delivery }
+  figaro-coordination-v1      { coordination: buyer-assigned }
   figaro-merchant-process-v1
 order[1]  buyer ↔ courier   parents: [order[0]]
   figaro-courier-process-v1
@@ -75,7 +77,8 @@ auction; the courier order's clearing price comes from the auction, not a fixed 
 *Specs:* `scenario-local-commerce-dutch` · `local-commerce-dutch-runtime`.
 ```
 order[0]  buyer ↔ merchant  parents: []
-  figaro-fulfilment-v2        { modalities: [delivery], delivery.coordination: dutch-auction }
+  figaro-modalities-v1        { modality: delivery }
+  figaro-coordination-v1      { coordination: dutch-auction }
   figaro-merchant-process-v1
 order[1]  buyer ↔ courier   parents: [order[0]]
   figaro-courier-process-v1
@@ -91,7 +94,8 @@ offset the delivery's emissions — a GHG disclosure on both legs.
 *Specs:* `scenario-local-commerce-offset` · `local-commerce-offset-runtime`.
 ```
 order[0]  buyer ↔ merchant  parents: []
-  figaro-fulfilment-v2        { modalities: [delivery], delivery.coordination: seller-assigned }
+  figaro-modalities-v1        { modality: delivery }
+  figaro-coordination-v1      { coordination: seller-assigned }
   figaro-merchant-process-v1
   figaro-ghg-iso-14064-v1
 order[1]  buyer ↔ courier   parents: [order[0]]
@@ -109,7 +113,8 @@ dispute can be escalated to an external forum (Layer-3 recourse).
 *Specs:* `scenario-local-commerce-dispute` · `local-commerce-dispute-runtime`.
 ```
 order[0]  buyer ↔ merchant  parents: []
-  figaro-fulfilment-v2          { modalities: [delivery], delivery.coordination: seller-assigned }
+  figaro-modalities-v1          { modality: delivery }
+  figaro-coordination-v1      { coordination: seller-assigned }
   figaro-merchant-process-v1
   figaro-arbitration-kleros-v1
 order[1]  buyer ↔ courier   parents: [order[0]]
@@ -128,7 +133,8 @@ to (kernel star-shape). The designer draws all four nodes.
 *Specs:* (to author).
 ```
 order[0]  buyer ↔ hub      parents: []
-  figaro-fulfilment-v2        { modalities: [delivery], delivery.coordination: seller-assigned }
+  figaro-modalities-v1        { modality: delivery }
+  figaro-coordination-v1      { coordination: seller-assigned }
   figaro-merchant-process-v1
 order[1]  buyer ↔ farm     parents: [order[0]]   (bare supply order — collected)
 order[2]  buyer ↔ bakery   parents: [order[0]]   (bare supply order — collected)

@@ -48,13 +48,11 @@ const GEO_SECTION: AgreementSection = {
     },
 };
 
-const FULFILMENT_SECTION: AgreementSection = {
-    clause: "figaro-fulfilment-v2",
-    // Plural arrays per the clause spec — Keystone's strict encoder rejects
-    // singular keys (which the pre-Keystone JSON fallback silently accepted).
+const MODALITIES_SECTION: AgreementSection = {
+    clause: "figaro-modalities-v1",
+    // Single-select scalar per the clause spec.
     data: {
-        modalities: ["delivery"],
-        coordinations: ["dutch-auction"],
+        modality: "delivery",
     },
 };
 
@@ -144,7 +142,7 @@ describe("buildAgreement", () => {
         const a = buildAgreement({
             buyer: BUYER,
             seller: SELLER,
-            sections: [GHG_SECTION, COMMERCE_SECTION, GEO_SECTION, FULFILMENT_SECTION],
+            sections: [GHG_SECTION, COMMERCE_SECTION, GEO_SECTION, MODALITIES_SECTION],
         });
         const keys = a.sections.map((s) => s.clause);
         expect(keys).toEqual([...keys].sort());
@@ -179,11 +177,11 @@ describe("buildAgreement", () => {
         const a = buildAgreement({
             buyer: BUYER,
             seller: SELLER,
-            sections: [COMMERCE_SECTION, GEO_SECTION, FULFILMENT_SECTION, GHG_SECTION],
+            sections: [COMMERCE_SECTION, GEO_SECTION, MODALITIES_SECTION, GHG_SECTION],
         });
         expect(a.sections).toHaveLength(4);
         expect(hasSection(a, "figaro-commerce-v1")).toBe(true);
-        expect(hasSection(a, "figaro-fulfilment-v2")).toBe(true);
+        expect(hasSection(a, "figaro-modalities-v1")).toBe(true);
         expect(hasSection(a, "figaro-ghg-iso-14064-v1")).toBe(true);
         expect(hasSection(a, "figaro-geo-v2")).toBe(true);
     });
@@ -244,7 +242,7 @@ describe("buildSectionInclusionProof + verifyInclusionProof", () => {
 
     it("many-section agreement: each section proves inclusion", () => {
         const a = makeAgreement({
-            sections: [COMMERCE_SECTION, GEO_SECTION, FULFILMENT_SECTION, GHG_SECTION],
+            sections: [COMMERCE_SECTION, GEO_SECTION, MODALITIES_SECTION, GHG_SECTION],
         });
         const root = computeAgreementHash(a);
         for (const section of a.sections) {
@@ -263,7 +261,7 @@ describe("buildSectionInclusionProof + verifyInclusionProof", () => {
 
     it("rejects a proof against a different root", () => {
         const a1 = makeAgreement({ sections: [COMMERCE_SECTION, GHG_SECTION] });
-        const a2 = makeAgreement({ sections: [COMMERCE_SECTION, FULFILMENT_SECTION] });
+        const a2 = makeAgreement({ sections: [COMMERCE_SECTION, MODALITIES_SECTION] });
         const { leaf, proof } = buildSectionInclusionProof(a1, "figaro-commerce-v1");
         expect(verifyInclusionProof(computeAgreementHash(a2), leaf, proof)).toBe(false);
     });
@@ -320,7 +318,7 @@ describe("sellerCatalogueMetadata example", () => {
 describe("redactSections / computeRedactableAgreementHash / verifyRevealedSection", () => {
     it("redacted agreement hashes to the same root as the cleartext", () => {
         const cleartext = makeAgreement({
-            sections: [COMMERCE_SECTION, GEO_SECTION, FULFILMENT_SECTION],
+            sections: [COMMERCE_SECTION, GEO_SECTION, MODALITIES_SECTION],
         });
         const original = computeAgreementHash(cleartext);
         const redacted = redactSections(cleartext, ["figaro-commerce-v1"]);
@@ -350,9 +348,9 @@ describe("redactSections / computeRedactableAgreementHash / verifyRevealedSectio
 
     it("redacting multiple sections is supported", () => {
         const cleartext = makeAgreement({
-            sections: [COMMERCE_SECTION, GEO_SECTION, FULFILMENT_SECTION],
+            sections: [COMMERCE_SECTION, GEO_SECTION, MODALITIES_SECTION],
         });
-        const redacted = redactSections(cleartext, ["figaro-commerce-v1", "figaro-fulfilment-v2"]);
+        const redacted = redactSections(cleartext, ["figaro-commerce-v1", "figaro-modalities-v1"]);
         const sealed = redacted.sections.filter(isRedactedSection);
         expect(sealed).toHaveLength(2);
         expect(computeRedactableAgreementHash(redacted)).toBe(computeAgreementHash(cleartext));

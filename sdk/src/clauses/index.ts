@@ -42,9 +42,6 @@ export { validateContent } from "./validate.js";
 export type {
     GeoContent,
     ClassOfService,
-    FulfilmentModality,
-    FulfilmentCoordination,
-    FulfilmentV2Content,
     HandoffPoint,
     HandoffV1Content,
     KlerosCourt,

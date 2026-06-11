@@ -58,7 +58,7 @@ clause) can be made on solid ground.
 The first thing this document fixes is a vocabulary collapse in our prior
 prose: handoff and BoL are not the same object.
 
-**Handoff is a Figaro primitive.** `figaro-fulfilment-v2` +
+**Handoff is a Figaro primitive.** `figaro-modalities-v1` +
 `figaro-proximity-policy-v1` + `figaro-proximity-proof-v1` +
 `figaro-courier-process-v1` together document the fact-of-custody-change
 and its conditions. Any order in any DAG that has a physical exchange opts
@@ -413,8 +413,8 @@ buyer↔courier order's agreement.
 | Consignee | `order.buyer` | Same address as the contractual shipper in local commerce. In supply-chain DAGs the buyer may designate the consignee via an encrypted destination address in the order manifest and an address inside `figaro-geo-v2.destinationGeohash`. |
 | Origin | `figaro-geo-v2.originGeohash` | Geohash, 1–12 chars precision. |
 | Destination | `figaro-geo-v2.destinationGeohash` | As above. |
-| Mode of carriage | `figaro-fulfilment-v2.handoffPoints` | Four handoff points: face-to-face / dead-drop / parking-area / locker; local-commerce focused. |
-| Service class (modality + organizer) | `figaro-fulfilment-v2.modalities` + `.coordinations` | Modalities: consume-onsite / pickup / delivery / virtual. Coordinations (set when delivery is offered): buyer-assigned / seller-assigned / dutch-auction. |
+| Mode of carriage | `figaro-handoff-v1.handoff` | Four handoff points: face-to-face / dead-drop / parking-area / locker; local-commerce focused. |
+| Service class (modality + organizer) | `figaro-modalities-v1.modality` + `figaro-coordination-v1.coordination` | Modality: consume-onsite / pickup / delivery / virtual (single-select). Coordination (composed on delivery parents): seller-assigned / buyer-assigned / dutch-auction. |
 | Stage progression (loaded / in-transit / delivered) | `figaro-courier-process-v1` | 5 stages: preparationStarted / readyForPickup / courierEnRoute / pickedUp / delivered; per-stage attestations. |
 | Custody-change verification at handoff | `figaro-proximity-policy-v1` (committed band) + `figaro-proximity-proof-v1` (runtime nonce + sig) | Sister-clause split mirrors GHG. Off-chain consumers verify proof.band == policy.band. |
 | Cargo description (line items) | `figaro-commerce-v1.lineItems` | itemId / name / quantity / unitPrice. Cleartext today; encryption is a separate backlog item ("line-item privacy"). |
@@ -429,7 +429,7 @@ buyer↔courier order's agreement.
 These appear on traditional BoLs and in the supply-chain BoL conventions
 TradeTrust documents but have no current clause in Figaro:
 
-- **Cargo-type / class-of-service for hazardous goods.** Hazmat / dangerous-goods declarations (UN numbers, packing groups, transport categories) are not expressible. `figaro-fulfilment-v2.coordinations` carries a courier-coordination enum but it is about *who organizes* the carriage, not about *what kind of cargo* is being carried.
+- **Cargo-type / class-of-service for hazardous goods.** Hazmat / dangerous-goods declarations (UN numbers, packing groups, transport categories) are not expressible. `figaro-coordination-v1.coordination` carries a courier-coordination enum but it is about *who organizes* the carriage, not about *what kind of cargo* is being carried.
 - **Special-handling instructions.** Temperature-controlled / fragile / orientation-sensitive / live-animal — none of these have a clause slot.
 - **Notify party.** A third party who is to be notified at arrival, distinct from the consignee. Figaro's data model does not currently carry a notify address separate from the consignee address.
 - **Cargo-detail beyond SKU.** Weight, volume, marks, numbers, packaging type per shipment. `figaro-commerce-v1.lineItems` carries `quantity` and `name` but not packed-shipment dimensions.

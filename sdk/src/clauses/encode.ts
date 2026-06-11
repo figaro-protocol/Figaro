@@ -62,16 +62,7 @@ export interface GeoContent {
     classOfService: ClassOfService;
 }
 
-export type FulfilmentModality = "consume-onsite" | "pickup" | "delivery" | "virtual";
-export type FulfilmentCoordination = "buyer-assigned" | "seller-assigned" | "dutch-auction";
-
-export interface FulfilmentV2Content {
-    modalities: readonly FulfilmentModality[];
-    coordinations: readonly FulfilmentCoordination[];
-}
-
-/** Hand-off point — its own clause now (figaro-handoff-v1), no longer a
- *  fulfilment field. */
+/** Hand-off point — its own clause (figaro-handoff-v1). */
 export type HandoffPoint = "face-to-face" | "dead-drop" | "parking-area" | "locker";
 
 export interface HandoffV1Content {
