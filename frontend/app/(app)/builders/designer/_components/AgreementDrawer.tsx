@@ -9,7 +9,7 @@
  *   - registry — every clause registered on `ClauseRegistry`, read live from
  *     the chain, grouped by `groupClausesByArticle()` (the single clause
  *     classification, shared with the /clauses inventory — grouping + order come
- *     from the spec's `block.drawerArticle`, never a hardcoded list), a checkbox
+ *     from the spec's `block.article`, never a hardcoded list), a checkbox
  *     per clause. Companion clauses (named as another's `sisterClauseId`) are
  *     surfaced by their sister at commit, not listed here.
  *

@@ -287,7 +287,7 @@ export interface ClauseArticleGroup {
 }
 
 /** THE single clause classification — every loaded clause grouped by its
- *  `block.drawerArticle`, derived entirely from the specs. Articles appear in
+ *  `block.article`, derived entirely from the specs. Articles appear in
  *  the order their first clause was loaded (chain/registration order); there is
  *  NO imposed sequence — no hardcoded article list, no alphabetical sort. Both
  *  the /clauses inventory and the designer drawer read this one function, so the
@@ -297,7 +297,7 @@ export interface ClauseArticleGroup {
 export function groupClausesByArticle(): readonly ClauseArticleGroup[] {
     const byArticle = new Map<string, ClauseArticleEntry[]>();
     for (const spec of SPEC_CACHE.values()) {
-        const article = spec.block?.drawerArticle ?? "(unclassified)";
+        const article = spec.block?.article ?? "(unclassified)";
         const entry = { clauseId: spec.clauseId, title: spec.title, description: spec.description };
         const bucket = byArticle.get(article);
         if (bucket) bucket.push(entry);

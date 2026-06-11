@@ -366,9 +366,6 @@ broken (the rest is tracked in the backlog):
 - **Phase 1 — template flip is DONE** (`4860ab5`): publish serializes the no-hash
   `AssemblyTemplate`; the agreement merkle-root forms at checkout. The residual is
   *naming* (Template vs Document for the pinned artifact), not behavior — see Open churn.
-- **Phase 1 — live bug.** `AgreementDrawer` Registry tab shows only
-  `figaro-consent-v1`; the `useAllRegisteredClauses` / `BUILT_IN_SPECS` read path
-  misbehaves.
 - **Phase 2 — binding disambiguation.** `counterpartyBindings` → seller
   resolution happens at the `/s` page (`sellerListing.ts:154-155`); multi-binding
   disambiguation is unsettled.

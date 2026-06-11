@@ -30,7 +30,7 @@
     ],
     "block": {
         "tier": "category-1",
-        "drawerArticle": "attestations",
+        "article": "attestations",
         "attestation": "seller",
         "handoffStages": ["handed-off"],
         "mechanismKinds": [

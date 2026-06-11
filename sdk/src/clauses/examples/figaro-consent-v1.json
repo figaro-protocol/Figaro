@@ -46,7 +46,7 @@
     ],
     "block": {
         "tier": "category-2",
-        "drawerArticle": "consent",
+        "article": "consent",
         "mechanismKinds": [],
         "moduleIds": [],
         "routes": [

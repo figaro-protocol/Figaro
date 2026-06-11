@@ -61,7 +61,7 @@
     ],
     "block": {
         "tier": "category-2",
-        "drawerArticle": "logistics",
+        "article": "logistics",
         "mechanismKinds": [
             "coordinator"
         ],

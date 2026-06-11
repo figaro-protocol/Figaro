@@ -98,7 +98,7 @@ export type FieldSpec =
 /** Drawer article a clause composes into on the designer canvas. A free-form
  *  string read straight from the spec — the set of articles and their grouping
  *  are whatever the registered clauses declare, never a closed list. */
-export type ClauseDrawerArticle = string;
+export type ClauseArticle = string;
 
 /** Doctrinal tier per the protocol-extension doctrine. Independent of the
  *  designer-palette category (`BlockMetadata.category`); the two used to be
@@ -127,7 +127,7 @@ export interface ClauseBlockBinding {
     /** Drawer article that composes this clause in the canvas designer.
      *  Undefined when the clause is runtime-only (Category-1 sister of a
      *  Category-2 clause) and not user-toggleable. */
-    drawerArticle?: ClauseDrawerArticle;
+    article?: ClauseArticle;
     /** Mechanism kinds an assembly should include when this clause is
      *  anchored in any of its orders. Empty when the clause has no
      *  capability-dispatching mechanism (e.g. consent, jurisdiction). */
@@ -466,9 +466,9 @@ function parseBlockBinding(
         errors.push({ path: `${path}.tier`, message: `tier must be one of: ${[...VALID_CLAUSE_TIERS].join(", ")}` });
         return null;
     }
-    if (raw.drawerArticle !== undefined) {
-        if (typeof raw.drawerArticle !== "string" || raw.drawerArticle.length === 0) {
-            errors.push({ path: `${path}.drawerArticle`, message: "drawerArticle must be a non-empty string when present" });
+    if (raw.article !== undefined) {
+        if (typeof raw.article !== "string" || raw.article.length === 0) {
+            errors.push({ path: `${path}.article`, message: "article must be a non-empty string when present" });
             return null;
         }
     }
@@ -514,7 +514,7 @@ function parseBlockBinding(
     }
     return {
         tier: tier as ClauseTier,
-        ...(raw.drawerArticle !== undefined && { drawerArticle: raw.drawerArticle as ClauseDrawerArticle }),
+        ...(raw.article !== undefined && { article: raw.article as ClauseArticle }),
         mechanismKinds,
         moduleIds,
         ...(routes !== undefined && { routes }),

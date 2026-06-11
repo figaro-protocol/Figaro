@@ -26,7 +26,7 @@
     ],
     "block": {
         "tier": "category-2",
-        "drawerArticle": "emissions",
+        "article": "emissions",
         "mechanismKinds": [
             "disclosure"
         ],

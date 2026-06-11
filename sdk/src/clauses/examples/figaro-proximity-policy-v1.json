@@ -25,7 +25,7 @@
     ],
     "block": {
         "tier": "category-2",
-        "drawerArticle": "fulfilment",
+        "article": "fulfilment",
         "mechanismKinds": [
             "coordinator",
             "attestation"

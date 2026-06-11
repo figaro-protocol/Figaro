@@ -46,7 +46,7 @@ impl ClauseTier {
     }
 }
 
-// NOTE: `drawerArticle` is FREE-FORM, matching Layer A. Articles are an open,
+// NOTE: `article` is FREE-FORM, matching Layer A. Articles are an open,
 // network-defined grouping vocabulary — a registered clause may introduce a
 // new article at any time, so the prover must never enumerate them. (A closed
 // enum here once hard-failed the first non-standard article — a Layer-B
@@ -139,7 +139,7 @@ impl FieldSpec {
 #[derive(Clone, Debug)]
 pub struct ClauseBlockBinding {
     pub tier: ClauseTier,
-    pub drawer_article: Option<String>,
+    pub article: Option<String>,
     pub mechanism_kinds: Vec<String>,
     pub module_ids: Vec<String>,
     pub routes: Option<Vec<String>>,
@@ -559,15 +559,15 @@ fn parse_block_binding(
             return None;
         }
     };
-    let drawer_article = match raw.get("drawerArticle") {
+    let article = match raw.get("article") {
         None => None,
         Some(v) => match v.as_str() {
             Some(s) if !s.is_empty() => Some(s.to_string()),
             _ => {
                 err(
                     errors,
-                    &format!("{path}.drawerArticle"),
-                    "drawerArticle must be a non-empty string when present",
+                    &format!("{path}.article"),
+                    "article must be a non-empty string when present",
                 );
                 return None;
             }
@@ -607,7 +607,7 @@ fn parse_block_binding(
     };
     Some(ClauseBlockBinding {
         tier,
-        drawer_article,
+        article,
         mechanism_kinds,
         module_ids,
         routes,

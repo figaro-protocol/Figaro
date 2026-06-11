@@ -40,7 +40,7 @@
     ],
     "block": {
         "tier": "category-2",
-        "drawerArticle": "order",
+        "article": "order",
         "structural": true,
         "mechanismKinds": ["core"],
         "moduleIds": ["cart", "incoming-orders", "merchant-fulfilment", "settlement-breakdown"]

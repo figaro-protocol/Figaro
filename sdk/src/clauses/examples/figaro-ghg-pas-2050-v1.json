@@ -20,7 +20,7 @@
     "block": {
         "tier": "category-2",
         "sisterClauseId": "figaro-ghg-measurement-v1",
-        "drawerArticle": "emissions",
+        "article": "emissions",
         "mechanismKinds": [
             "disclosure"
         ],

@@ -74,7 +74,7 @@ const ROOT_SPEC = {
     description: 'A brand-new runtime clause on the lead order. No hand-off, no proximity. Registered at test time to prove the runtime engine runs a multi-order assembly from specs alone.',
     categories: ['lifecycle'],
     fields: [{ name: 'eventType', type: 'enum', values: ['opened', 'fulfilled', 'closed'], required: true, description: 'Lead lifecycle event.' }],
-    block: { tier: 'category-1', drawerArticle: 'attestations', attestation: 'seller', mechanismKinds: ['coordinator'], moduleIds: [] },
+    block: { tier: 'category-1', article: 'attestations', attestation: 'seller', mechanismKinds: ['coordinator'], moduleIds: [] },
 };
 const SUB_SPEC = {
     clauseId: SUB_CLAUSE_ID, version: 1,
@@ -82,7 +82,7 @@ const SUB_SPEC = {
     description: 'A brand-new runtime clause on the contributor sub-order. A DIFFERENT ladder from the lead clause, no hand-off — the two run independently through the one generic rail.',
     categories: ['lifecycle'],
     fields: [{ name: 'eventType', type: 'enum', values: ['accepted', 'delivered'], required: true, description: 'Contributor lifecycle event.' }],
-    block: { tier: 'category-1', drawerArticle: 'attestations', attestation: 'seller', mechanismKinds: ['coordinator'], moduleIds: [] },
+    block: { tier: 'category-1', article: 'attestations', attestation: 'seller', mechanismKinds: ['coordinator'], moduleIds: [] },
 };
 
 // Register + bind via the shared third-party path (devnet-helpers

@@ -61,7 +61,7 @@ const NOVEL_SPEC = {
     fields: [
         { name: 'eventType', type: 'enum', values: ['opened', 'verified', 'closed'], required: true, description: 'Probe lifecycle event.' },
     ],
-    block: { tier: 'category-1', drawerArticle: 'attestations', mechanismKinds: ['coordinator'], moduleIds: [] },
+    block: { tier: 'category-1', article: 'attestations', mechanismKinds: ['coordinator'], moduleIds: [] },
 };
 
 // The probe seller registers through the CANONICAL idempotent seeder
