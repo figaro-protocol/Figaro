@@ -67,8 +67,8 @@ export interface DutchAuctionDocument extends ExtractedDocument {
 
 /**
  * @param order            The committed order.
- * @param fulfilmentMethod Canonical fulfilment-method string (from
- *                         `figaro-fulfilment-v2`); if it isn't
+ * @param fulfilmentMethod Canonical fulfilment-method string (from the
+ *                         fulfilment clause's summary); if it isn't
  *                         "deliver:dutch-auction" this extractor reports
  *                         auctionApplicable=false and does no further work.
  * @param createdEvents    `AuctionCreated` events filtered to auctions whose

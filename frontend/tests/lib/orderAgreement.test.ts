@@ -30,11 +30,11 @@ describe("buildOrderAgreement", () => {
             payment: 10n,
             lineItems: [{ itemId: "meal-1", name: "Lunch", quantity: 2, unitPrice: "5" }],
             clauseFields: cf({
-                origin: "dr5reg",
-                destination: "dr5reh",
-                mass: "1 kg",
-                volume: "5 L",
-                class_: "Express",
+                originGeohash: "dr5reg",
+                destinationGeohash: "dr5reh",
+                massGrams: 1000,
+                volumeMl: 5000,
+                classOfService: "E",
             }),
         });
 
@@ -74,8 +74,8 @@ describe("buildOrderAgreement", () => {
             currency: CURRENCY,
             payment: 10n,
             clauseFields: cf({
-                origin: "dr5reg",
-                destination: "dr5reh",
+                originGeohash: "dr5reg",
+                destinationGeohash: "dr5reh",
                 fulfilmentModalities: ["delivery"],
                 fulfilmentCoordinations: ["dutch-auction"],
                 fulfilmentHandoffPoints: ["face-to-face"],
@@ -90,18 +90,29 @@ describe("buildOrderAgreement", () => {
         expect(summary?.fulfilment?.method).toBe("deliver:dutch-auction");
         expect(summary?.ghg).toEqual({
             clauseKeys: ["figaro-ghg-iso-14064-v1"],
-            standard: "ISO-14064",
+            // The spec's registered title — the network-defined SSoT label
+            // (the hardcoded ISO-14064 ↔ clauseId map is gone).
+            standard: "ISO 14064",
             scope: 1,
         });
     });
 
-    it("auto-fills seller-assigned coordination when delivery is offered without one", () => {
+    it("fills seller-assigned coordination from the spec default when delivery carries none", () => {
+        // The spec's delivery.coordination `default` fills an EMPTY selection;
+        // the old encoder's magic materialize-delivery-from-nothing is gone —
+        // an order offering delivery composes the delivery object, and a
+        // template that doesn't is rejected loudly by Layer-A validation at
+        // the sign gates (coordination is required IFF delivery is requested).
         const agreement = buildOrderAgreement({
             buyer: BUYER,
             seller: SELLER,
             currency: CURRENCY,
             payment: 10n,
-            clauseFields: cf({ origin: "dr5reg", fulfilmentModalities: ["delivery"] }),
+            clauseFields: cf({
+                originGeohash: "dr5reg",
+                fulfilmentModalities: ["delivery"],
+                fulfilmentCoordinations: [],
+            }),
         });
         expect(summarizeAgreement(agreement)?.fulfilment?.coordinations).toEqual(["seller-assigned"]);
     });
@@ -113,7 +124,7 @@ describe("buildOrderAgreement", () => {
             currency: CURRENCY,
             payment: 10n,
             clauseFields: cf({
-                origin: "dr5reg",
+                originGeohash: "dr5reg",
                 fulfilmentModalities: ["pickup", "delivery"],
                 fulfilmentCoordinations: ["buyer-assigned", "dutch-auction"],
                 fulfilmentHandoffPoints: ["face-to-face", "locker"],
@@ -132,7 +143,7 @@ describe("buildOrderAgreement", () => {
             currency: CURRENCY,
             payment: 10n,
             clauseFields: cf({
-                origin: "dr5reg",
+                originGeohash: "dr5reg",
                 fulfilmentModalities: ["pickup"],
                 fulfilmentHandoffPoints: ["teleport"],
             }),
@@ -164,8 +175,59 @@ describe("companion (sister) runtime anchors", () => {
     });
 
     it("emits no companion when the parent clause is absent", () => {
-        const agreement = build(cf({ origin: "dr5reg" }));
+        const agreement = build(cf({ originGeohash: "dr5reg" }));
         expect(getSection(agreement, "figaro-proximity-proof-v1")).toBeUndefined();
         expect(getSection(agreement, "figaro-ghg-measurement-v1")).toBeUndefined();
+    });
+});
+
+describe("generic spec-driven encode (defaults, sentinel, drop semantics)", () => {
+    const build = (clauseFields: ReturnType<typeof cf>) =>
+        buildOrderAgreement({ buyer: BUYER, seller: SELLER, currency: CURRENCY, payment: 10n, clauseFields });
+
+    it("fills absent geo fields from the spec's `default`s (minimum-valid 5-tuple)", () => {
+        const agreement = build(cf({ originGeohash: "dr5reg", destinationGeohash: "dr5reh" }));
+        expect(getSection(agreement, "figaro-geo-v2")?.data).toEqual({
+            originGeohash: "dr5reg",
+            destinationGeohash: "dr5reh",
+            massGrams: 1,
+            volumeMl: 1,
+            classOfService: "S",
+        });
+    });
+
+    it("drops a section whose required field is unsatisfiable (no default)", () => {
+        // applicableLaw is required and carries no default — a section arriving
+        // with only the optional forum cannot be satisfied and is dropped.
+        // (geo no longer works as this fixture: every geo field now carries a
+        // spec default, the designer's default-on placeholder fill.)
+        const agreement = build({ "figaro-applicable-law-v1": { forum: "ny-southern-district" } });
+        expect(getSection(agreement, "figaro-applicable-law-v1")).toBeUndefined();
+    });
+
+    it("fills kleros minJurors from the spec default and coerces string input", () => {
+        const withDefault = build(cf({ klerosCourt: "general" }));
+        expect(getSection(withDefault, "figaro-arbitration-kleros-v1")?.data).toEqual({
+            klerosCourt: "general",
+            klerosMinJurors: 3,
+        });
+        const coerced = build(cf({ klerosCourt: "general", klerosMinJurors: "5" }));
+        expect(getSection(coerced, "figaro-arbitration-kleros-v1")?.data.klerosMinJurors).toBe(5);
+    });
+
+    it("rejects the spec's enum sentinel as input and fills from the default (klerosCourt \"none\" → \"general\")", () => {
+        // The sentinel is never a valid selection; with the spec now declaring
+        // a default court, the walk discards the sentinel and default-fills
+        // rather than dropping the section.
+        const agreement = build(cf({ klerosCourt: "none" }));
+        expect(getSection(agreement, "figaro-arbitration-kleros-v1")?.data).toEqual({
+            klerosCourt: "general",
+            klerosMinJurors: 3,
+        });
+    });
+
+    it("fills a ghg disclosure's scope from its spec default", () => {
+        const agreement = build(cf({ ghgStandards: ["figaro-ghg-iso-14064-v1"] }));
+        expect(getSection(agreement, "figaro-ghg-iso-14064-v1")?.data).toEqual({ scope: 1 });
     });
 });

@@ -14,7 +14,7 @@ import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
 import { encodeContentFromSpec } from "@figaro/core/clauses";
 import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
-import { useGhgDisclosureActions } from "@/lib/mechanisms/useGHGDisclosure";
+import { DISCLOSURE_KIND, MEASUREMENT_KIND } from "@/lib/mechanisms/contracts";
 import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
 import { useRegisterSeller, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/mechanisms/useSellerRegistry";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
@@ -86,7 +86,6 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     const updateSellerProfile = useUpdateProfile();
     const withdrawSellerDeposit = useWithdrawDeposit();
     const registrationDeposit = useRegistrationDeposit();
-    const ghgDisclosureActions = useGhgDisclosureActions();
     const {
         supportsPermit,
         needsApproval,
@@ -104,23 +103,20 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         || dutchAuctionActions.isPending
         || registerSeller.isPending
         || updateSellerProfile.isPending
-        || withdrawSellerDeposit.isPending
-        || ghgDisclosureActions.isPending;
+        || withdrawSellerDeposit.isPending;
     const isActionConfirming = isConfirming
         || attestationActions.isConfirming
         || dutchAuctionActions.isConfirming
         || registerSeller.isConfirming
         || updateSellerProfile.isConfirming
-        || withdrawSellerDeposit.isConfirming
-        || ghgDisclosureActions.isConfirming;
+        || withdrawSellerDeposit.isConfirming;
     const isActionSuccess = isSuccess
         || mockIsSuccess
         || attestationActions.isSuccess
         || dutchAuctionActions.isSuccess
         || registerSeller.isSuccess
         || updateSellerProfile.isSuccess
-        || withdrawSellerDeposit.isSuccess
-        || ghgDisclosureActions.isSuccess;
+        || withdrawSellerDeposit.isSuccess;
 
     const selectedSummary = walletProcesses.find((summary) => summary.processId === effectiveProcessId) ?? null;
 
@@ -269,8 +265,26 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                 registerSeller: (metadataURI) => registerSeller.register(metadataURI, (registrationDeposit.data as bigint | undefined) ?? 0n),
                 updateSellerProfile: (metadataURI) => updateSellerProfile.updateProfile(metadataURI),
                 withdrawSellerDeposit: () => withdrawSellerDeposit.withdraw(),
-                submitDisclosureCommitment: ghgDisclosureActions.submitCommitmentForOrder,
-                submitDisclosureInventory: ghgDisclosureActions.submitActualForOrder,
+                // Disclosure commitment / inventory — the generic attestation
+                // actions under the clauseId the DERIVER read off the order's
+                // sections. Commitment omits content (defaults to the committed
+                // sectionData); inventory encodes typed grams from the spec.
+                submitDisclosureCommitment: (orderHash, clauseId) =>
+                    attestationActions.submitSellerAttestation({
+                        orderHash: orderHash as Hex,
+                        clauseId: keccak256(stringToHex(clauseId)) as Hex,
+                        stage: DISCLOSURE_KIND.commitment,
+                    }),
+                submitDisclosureInventory: (orderHash, clauseId, grams) => {
+                    const spec = getClauseSpec(clauseId);
+                    if (!spec) throw new Error(`Clause spec not loaded: ${clauseId}`);
+                    return attestationActions.submitSellerAttestation({
+                        orderHash: orderHash as Hex,
+                        clauseId: keccak256(stringToHex(clauseId)) as Hex,
+                        stage: MEASUREMENT_KIND.measured,
+                        content: encodeContentFromSpec(spec, { grams: grams.toString() }),
+                    });
+                },
                 // ONE generic attestation path — the clause spec drives the on-chain
                 // content (enum ladder, or a proof's band) and who attests (party,
                 // from block.attestation). Names no clause; a permissionless clause

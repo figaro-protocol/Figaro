@@ -7,15 +7,11 @@
  * ## Clauses as standardized terms of sale
  *
  * Each clause is a **standardized term** in the agreement between two parties.
- * The buyer composes their order by selecting terms:
- *
- * - What goods/services? → `figaro-commerce-v1` (basket of line items)
- * - Where from / where to? → `figaro-geo-v2` (origin, destination, mass, volume, class)
- * - How fulfilled, coordinated, and handed off? → `figaro-fulfilment-v2`
- *   (modality + coordination + handoff point in one clause)
- * - What GHG reporting standard? → `figaro-ghg-iso-14064-v1` (scope 1 emissions
- *   of the seller in fulfilling this order — ISO 14064, GHG Protocol, etc.)
- * - Any item-level attestations? → `figaro-allergen-v1`, etc.
+ * The buyer composes their order by selecting terms — what goods/services
+ * (the commerce clause's basket of line items), where from / where to (the
+ * geo clause), how fulfilled and handed off, what GHG reporting standard,
+ * any item-level attestations. The SET of terms is OPEN: it is whatever the
+ * network's ClauseRegistry defines at runtime, never a list in this module.
  *
  * The agreement is the **composition of these terms**. Both parties sign it.
  *
@@ -23,10 +19,10 @@
  * Agreement {
  *   version: "a1",
  *   sections: [
- *     { clause: "figaro-commerce-v1",        data: { lineItems, currency, payment } },
- *     { clause: "figaro-fulfilment-v2",      data: { modality: "delivery", coordination: "dutch-auction", handoffPoint: "face-to-face" } },
- *     { clause: "figaro-geo-v2",             data: { originGeohash, destinationGeohash, massGrams, volumeMl, classOfService } },
- *     { clause: "figaro-ghg-iso-14064-v1",  data: { standard: "iso-14064-1" } },
+ *     { clause: "<commerce clauseId>",   data: { lineItems, currency, payment } },
+ *     { clause: "<fulfilment clauseId>", data: { modalities, delivery: { coordination } } },
+ *     { clause: "<geo clauseId>",        data: { originGeohash, destinationGeohash, massGrams, volumeMl, classOfService } },
+ *     { clause: "<disclosure clauseId>", data: { scope } },
  *   ]
  * }
  * ```
@@ -58,7 +54,6 @@
 
 import { concat, keccak256, stringToHex, toHex } from "viem";
 import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
-import { classOfServiceToShortCode } from "@/lib/shared/sellerCatalogueMetadata";
 
 // ── Core types ───────────────────────────────────────────────────────────────
 
@@ -67,7 +62,7 @@ import { classOfServiceToShortCode } from "@/lib/shared/sellerCatalogueMetadata"
  * whose clause key matches a registered clause in ClauseRegistry.
  */
 export interface AgreementSection {
-    /** Clause key from ClauseRegistry (e.g. "figaro-commerce-v1"). */
+    /** Clause key from ClauseRegistry (the readable registry id). */
     clause: string;
     /** Clause-specific data. Structure is defined by the clause, not by this module. */
     data: Record<string, unknown>;
@@ -85,7 +80,7 @@ export interface AgreementSection {
  * and checks it matches the `leaf` recorded here. See
  * `verifyRevealedSection`.
  *
- * Granularity note: redaction is per-section. Redacting `figaro-commerce-v1`
+ * Granularity note: redaction is per-section. Redacting the commerce section
  * hides currency + payment + lineItems together. Finer granularity (e.g.,
  * hide lineItems but keep totals visible) would require splitting the
  * clause into separate sections — a future clause-design conversation.
@@ -166,85 +161,16 @@ export interface AgreementLineItem {
     unitPrice: string;
 }
 
-export const COMMERCE_CLAUSE_KEY = "figaro-commerce-v1";
-export const GEO_CLAUSE_KEY = "figaro-geo-v2";
-export const TOPOLOGY_CLAUSE_KEY = "figaro-topology-v1";
-/** Fulfilment-composition clause. Two orthogonal fields (modality,
- *  coordination). The hand-off point is its own clause now (HANDOFF_CLAUSE_KEY). */
-export const FULFILMENT_V2_CLAUSE_KEY = "figaro-fulfilment-v2";
-/** Hand-off point — where the physical exchange happens for an order. Its own
- *  clause; the proximity policy nests under its `handoff` field. */
-export const HANDOFF_CLAUSE_KEY = "figaro-handoff-v1";
-/** Decentralized off-chain arbitration via Kleros. Sister clauses would
- *  cover other ODR providers — `figaro-arbitration-<provider>-v1`. */
-export const ARBITRATION_KLEROS_CLAUSE_KEY = "figaro-arbitration-kleros-v1";
-/** State / ADR / traditional-jurisdiction recourse layer. Provider-agnostic
- *  by construction (free-form string fields). */
-export const APPLICABLE_LAW_CLAUSE_KEY = "figaro-applicable-law-v1";
-/** Consent attestation: a wallet binds itself to an off-chain legal document
- *  by its keccak256 hash + version + title. Reusable as a designer-time clause
- *  on any assembly that needs cryptographic consent (beta participation,
- *  ToS acceptance, NDA, governance vote receipts, etc.). */
-export const CONSENT_CLAUSE_KEY = "figaro-consent-v1";
-/** Default GHG disclosure clause used by single-standard agreement flows. */
-export const GHG_CLAUSE_KEY: GHGDisclosureClauseKey = "figaro-ghg-iso-14064-v1";
-export const GHG_CLAUSE_ID = keccak256(stringToHex(GHG_CLAUSE_KEY));
-/** All five GHG disclosure sister clauses (one per accounting standard). */
-export const GHG_DISCLOSURE_CLAUSE_KEYS = [
-    "figaro-ghg-protocol-v1",
-    "figaro-ghg-iso-14064-v1",
-    "figaro-ghg-pas-2050-v1",
-    "figaro-ghg-en-16258-v1",
-    "figaro-ghg-custom-v1",
-] as const;
-export type GHGDisclosureClauseKey = (typeof GHG_DISCLOSURE_CLAUSE_KEYS)[number];
-/** Map a UI standard string to its corresponding GHG sister clauseId. Each
- *  accounting standard is its own clause; standard identity lives in the
- *  clauseId, not in a content field. Unknown values fall through to the
- *  default GHG_CLAUSE_KEY. Canonical source of truth — the drawer's GHG
- *  picker, orderAgreement.ts builder, and any indexer that needs to derive
- *  a clauseId from a label all read this map. */
-export const GHG_STANDARD_TO_CLAUSE: Record<string, typeof GHG_DISCLOSURE_CLAUSE_KEYS[number]> = {
-    "iso-14064-1": "figaro-ghg-iso-14064-v1",
-    "iso-14064-2": "figaro-ghg-iso-14064-v1",
-    "iso-14064-3": "figaro-ghg-iso-14064-v1",
-    "ISO-14064": "figaro-ghg-iso-14064-v1",
-    "ghg-protocol-corporate": "figaro-ghg-protocol-v1",
-    "ghg-protocol-scope3": "figaro-ghg-protocol-v1",
-    "GHG-Protocol": "figaro-ghg-protocol-v1",
-    "pas-2050": "figaro-ghg-pas-2050-v1",
-    "PAS-2050": "figaro-ghg-pas-2050-v1",
-    "en-16258": "figaro-ghg-en-16258-v1",
-    "EN-16258": "figaro-ghg-en-16258-v1",
-    "custom": "figaro-ghg-custom-v1",
-    "Custom": "figaro-ghg-custom-v1",
-};
-/** Reverse lookup: clauseId → human-readable standard label (for summaries
- *  and UI display). */
-export const GHG_CLAUSE_TO_STANDARD: Record<typeof GHG_DISCLOSURE_CLAUSE_KEYS[number], string> = {
-    "figaro-ghg-protocol-v1": "GHG-Protocol",
-    "figaro-ghg-iso-14064-v1": "ISO-14064",
-    "figaro-ghg-pas-2050-v1": "PAS-2050",
-    "figaro-ghg-en-16258-v1": "EN-16258",
-    "figaro-ghg-custom-v1": "Custom",
-};
-export const GHG_MEASUREMENT_CLAUSE_KEY = "figaro-ghg-measurement-v1";
-export const GHG_MEASUREMENT_CLAUSE_ID = keccak256(stringToHex(GHG_MEASUREMENT_CLAUSE_KEY));
-/** Committed proximity policy (Category-2 — band declared at agreement time). */
-export const PROXIMITY_POLICY_CLAUSE_KEY = "figaro-proximity-policy-v1";
-/** Runtime proximity proof (Category-1 — per-handoff nonce + signed witness). */
-export const PROXIMITY_PROOF_CLAUSE_KEY = "figaro-proximity-proof-v1";
-/** Sovereign event log for the merchant role (Category-1). */
-export const MERCHANT_PROCESS_CLAUSE_KEY = "figaro-merchant-process-v1";
-/** Sovereign event log for the courier role (Category-1). */
-export const COURIER_PROCESS_CLAUSE_KEY = "figaro-courier-process-v1";
-
 export type TopologyMode = "root" | "explicit" | "linear-fallback";
 
-// Commerce + topology section data is now assembled by composeOrderClauseFields
-// in buildOrderAgreement (the two structural clauses are folded into the clause
-// set and projected by the generic loop), so no bespoke section builders live
-// here. This file is the agreement model + merkle only.
+// NO clause-id constants live here — or anywhere in generic code. The set of
+// clauses is OPEN, defined by the network's ClauseRegistry at runtime; generic
+// surfaces find sections by their spec-declared FIELDS (`sectionsByField`),
+// families by spec metadata (tier / ladder / sisterClauseId / structural /
+// defaultOn), and labels by spec title. Commerce + topology section data is
+// assembled by composeOrderClauseFields in buildOrderAgreement (structural
+// clauses fold into the clause set and project through the generic loop).
+// This file is the agreement model + merkle only.
 
 // ── Canonical serialization ──────────────────────────────────────────────────
 
@@ -289,7 +215,7 @@ function canonicalizeSectionData(data: Record<string, unknown>): string {
  * `keccak256("figaro-…-v1")` pattern used by registered validators and the
  * ClauseRegistry.
  */
-function clauseIdOf(clauseKey: string): `0x${string}` {
+export function clauseIdOf(clauseKey: string): `0x${string}` {
     return keccak256(toHex(new TextEncoder().encode(clauseKey)));
 }
 
@@ -305,12 +231,9 @@ function clauseIdOf(clauseKey: string): `0x${string}` {
  * bytes.
  *
  * Post-Keystone there is no per-clause dispatch; the embedded spec
- * drives both encoding and tier classification.
- *
- * One field-level adapter: `figaro-geo-v2.classOfService` is normalised
- * to the SDK short code before encoding — a section authored with the
- * catalogue long form (`"fragile"`) would otherwise surface as a cryptic
- * encoder error. The other 16 clauses pass their data through as-is.
+ * drives both encoding and tier classification. Every section's data
+ * passes through as-is — producers capture spec-typed values, so no
+ * field-level adapters live here.
  */
 export function getSectionDataBytes(section: AgreementSection): `0x${string}` {
     // Resolve the embedded spec via dynamic require so this module stays
@@ -320,10 +243,7 @@ export function getSectionDataBytes(section: AgreementSection): `0x${string}` {
         require("@figaro/core/clauses") as typeof import("@figaro/core/clauses");
     const spec = embeddedSpec(section.clause);
     if (spec && spec.block?.tier === "category-2") {
-        const data = section.clause === "figaro-geo-v2"
-            ? { ...section.data, classOfService: classOfServiceToShortCode(section.data.classOfService) }
-            : section.data;
-        return encodeContentFromSpec(spec, data);
+        return encodeContentFromSpec(spec, section.data);
     }
     return toHex(new TextEncoder().encode(canonicalizeSectionData(section.data)));
 }
@@ -564,69 +484,6 @@ export function getSection(agreement: Agreement, clause: string): AgreementSecti
 }
 
 /**
- * Get a section by clause key from a redactable agreement, in either form
- * (cleartext or redacted). The redactable-typed sibling of `getSection`.
- */
-export function findAnySection(
-    agreement: Agreement | RedactableAgreement,
-    clause: string,
-): AnyAgreementSection | undefined {
-    return agreement.sections.find((s) => s.clause === clause);
-}
-
-/**
- * Get a section by clause key, returning only its cleartext form; a redacted
- * or absent section yields undefined.
- */
-export function findCleartextSection(
-    agreement: Agreement | RedactableAgreement,
-    clause: string,
-): AgreementSection | undefined {
-    const s = findAnySection(agreement, clause);
-    if (!s) return undefined;
-    return isRedactedSection(s) ? undefined : s;
-}
-
-/**
- * Find the first section across an assembly assemblyDoc's inlined agreements
- * that matches `clause`. The assemblyDoc-shaped sibling of `getSection`, which
- * scopes to a single agreement: a assemblyDoc inlines one `Agreement` per
- * order, and a clause an assembly authored — jurisdiction, proximity-policy
- * — may live on any of them. Returns `undefined` when no agreement carries
- * the clause.
- */
-function readAssemblyClause(
-    assemblyDoc: { agreements: Record<string, Agreement> },
-    clause: string,
-): AgreementSection | undefined {
-    for (const agreement of Object.values(assemblyDoc.agreements)) {
-        const section = getSection(agreement, clause);
-        if (section) return section;
-    }
-    return undefined;
-}
-
-/**
- * Read the GHG disclosure standards declared by a specific order's agreement
- * in an assembly assemblyDoc. The checkout pipeline reads these and propagates
- * them into the per-order commitment via `clauseFields.ghgStandards`, so
- * the committed agreement carries the same disclosure clauses (and their
- * paired measurement clause) the assembly author declared.
- */
-function readAssemblyOrderGhgStandards(
-    assemblyDoc: { agreements: Record<string, Agreement> },
-    agreementHash: string | undefined,
-): GHGDisclosureClauseKey[] {
-    if (!agreementHash) return [];
-    const agreement = assemblyDoc.agreements[agreementHash];
-    if (!agreement) return [];
-    const allowed = GHG_DISCLOSURE_CLAUSE_KEYS as readonly string[];
-    return agreement.sections
-        .map((s) => s.clause)
-        .filter((s): s is GHGDisclosureClauseKey => allowed.includes(s));
-}
-
-/**
  * Look up a section by its on-chain clauseId bytes32 (matches Solidity
  * `keccak256(clauseKey)`). Convenience for hook code that receives a clauseId
  * from a UI / selector rather than the human-readable clause key.
@@ -678,63 +535,3 @@ export function buildAgreement(params: {
     };
 }
 
-// ── V3 ClauseFields bridge ─────────────────────────────────────────────────
-
-/**
- * Parse a mass string like "5 kg", "500g", "2.5 lbs" into grams.
- * Returns 0 for unparseable or empty input.
- */
-function parseMassToGrams(mass: string | undefined): number {
-    if (!mass?.trim()) return 0;
-    const m = mass.trim().toLowerCase();
-    const num = parseFloat(m);
-    if (isNaN(num)) return 0;
-    if (m.includes("kg")) return Math.round(num * 1000);
-    if (m.includes("lb")) return Math.round(num * 453.592);
-    if (m.includes("oz")) return Math.round(num * 28.3495);
-    return Math.round(num);
-}
-
-/**
- * Parse a volume string like "10 L", "500ml", "2 gal" into millilitres.
- * Returns 0 for unparseable or empty input.
- */
-function parseVolumeToMl(volume: string | undefined): number {
-    if (!volume?.trim()) return 0;
-    const v = volume.trim().toLowerCase();
-    const num = parseFloat(v);
-    if (isNaN(num)) return 0;
-    if (v.includes("l") && !v.includes("ml") && !v.includes("gal")) return Math.round(num * 1000);
-    if (v.includes("gal")) return Math.round(num * 3785.41);
-    return Math.round(num);
-}
-
-/**
- * Convert V3-style ClauseFields into a figaro-geo-v2 section data object.
- *
- * Default values match the v2 validator's minimum-valid 5-tuple so the
- * agreement-hash mechanism is consistent at designer time even when the
- * buyer hasn't supplied real values yet:
- *
- *   - mass / volume default to 1 (the smallest value v2 accepts; 0 reverts).
- *   - classOfService defaults to "S" (Standard).
- *
- * Real buyer-supplied values overwrite these at commit time.
- */
-export function clauseFieldsToGeoSection(
-    fields: { origin?: string; destination?: string; mass?: string; volume?: string; class_?: string },
-): AgreementSection {
-    const massGrams = parseMassToGrams(fields.mass);
-    const volumeMl = parseVolumeToMl(fields.volume);
-    const classOfService = fields.class_?.trim() || "S";
-    return {
-        clause: GEO_CLAUSE_KEY,
-        data: {
-            originGeohash: fields.origin?.trim() ?? "",
-            destinationGeohash: fields.destination?.trim() ?? "",
-            massGrams: massGrams > 0 ? massGrams : 1,
-            volumeMl: volumeMl > 0 ? volumeMl : 1,
-            classOfService,
-        },
-    };
-}

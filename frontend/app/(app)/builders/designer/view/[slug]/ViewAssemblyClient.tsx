@@ -41,6 +41,7 @@ import {
     usePublishAssembly,
 } from "@/lib/mechanisms/useAssemblyRegistry";
 import { templateToOrders } from "@/lib/designer/assemblyDocumentToDraft";
+import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
 import type { AssemblyTemplate } from "@/lib/designer/assemblyTemplate";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
 import type { Order } from "@/lib/core/store";
@@ -83,6 +84,11 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     } | null>(null);
     const [publishError, setPublishError] = useState<string | null>(null);
     const { publish } = usePublishAssembly();
+    // `templateToOrders` builds synthetic agreements through the chain-loaded
+    // clause specs; the on-chain resolution path below waits for the cache
+    // (the `useClauseSpecs` contract). Drafts don't build, so they resolve
+    // immediately regardless.
+    const { loaded: clauseSpecsLoaded } = useClauseSpecs();
 
     useEffect(() => {
         // Local draft first — more current than any on-chain snapshot.
@@ -101,6 +107,10 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
             });
             return;
         }
+        // Spec gate — hold the on-chain resolution (it ends in templateToOrders)
+        // until the clause-spec cache is warm; `resolved` stays "loading".
+        if (!clauseSpecsLoaded) return;
+
         const slugHash = keccak256(toBytes(slug));
         let cancelled = false;
 
@@ -169,7 +179,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         return () => {
             cancelled = true;
         };
-    }, [slug, client, justPublished]);
+    }, [slug, client, justPublished, clauseSpecsLoaded]);
 
     const handleConfirmPublish = useCallback(async () => {
         if (resolved.kind !== "draft") return;

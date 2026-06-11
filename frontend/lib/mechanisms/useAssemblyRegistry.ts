@@ -28,7 +28,7 @@ import { keccak256, parseAbi, BaseError, ContractFunctionRevertedError } from "v
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
 import { publicClient, activeChain } from "@/lib/shared/wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
-import { FULFILMENT_V2_CLAUSE_KEY, TOPOLOGY_CLAUSE_KEY } from "@/lib/core/agreement";
+import { clauseDeclaresField, clauseIsProcessLog } from "@/lib/shared/clauseSpecSource";
 import {
     deriveCanonicalFulfilmentMethod,
     type CanonicalFulfilmentMethod,
@@ -269,22 +269,21 @@ function collectAssemblyClauses(template: AssemblyTemplate): string[] {
  *  runtime) or `buyer-assigned` (the buyer picks freely at checkout),
  *  no roster is needed and no clause is emitted.
  *
- *  Identifies the sub-order's process clause (e.g.
- *  `figaro-courier-process-v1`) directly — clauseId is the structural
- *  marker for which kind of off-chain seller a sub-order needs.
- *  Returns the set of distinct clauseIds, sorted.
+ *  The sub-order's process clause is identified from its SPEC, never by
+ *  name: a category-1 clause with an enum ladder that is not a companion
+ *  (the runtime event-log a sub-order's seller advances). Whatever such
+ *  clause the registry defines marks which kind of off-chain seller the
+ *  sub-order needs. Returns the set of distinct clauseIds, sorted.
  *
  *  Root order is excluded — the rootBuyer is the connected wallet at
  *  checkout, not designated by the seller's profile. */
 export function requiredCounterpartyClauses(template: AssemblyTemplate): string[] {
-    const COUNTERPARTY_PROCESS_CLAUSES: ReadonlySet<string> = new Set([
-        "figaro-courier-process-v1",
-    ]);
-
     const byId = new Map(template.orders.map((o) => [o.id, o]));
 
     function coordinationsOf(order: AssemblyTemplate["orders"][number] | undefined): string[] {
-        const fulfilment = order?.clauses[FULFILMENT_V2_CLAUSE_KEY] as
+        // The fulfilment entry is found by its declared field, never by name.
+        const fulfilment = Object.entries(order?.clauses ?? {})
+            .find(([clauseId]) => clauseDeclaresField(clauseId, "modalities"))?.[1] as
             | { delivery?: { coordination?: unknown } }
             | undefined;
         const coords = fulfilment?.delivery?.coordination;
@@ -301,7 +300,7 @@ export function requiredCounterpartyClauses(template: AssemblyTemplate): string[
         if (!parentAllowsSellerAssigned) continue;
 
         for (const clauseId of Object.keys(order.clauses)) {
-            if (COUNTERPARTY_PROCESS_CLAUSES.has(clauseId)) clauses.add(clauseId);
+            if (clauseIsProcessLog(clauseId)) clauses.add(clauseId);
         }
     }
     return Array.from(clauses).sort();
@@ -451,9 +450,10 @@ export interface BoundAssembly {
      *  fulfilment clause is absent or malformed. */
     fulfilmentMethod: CanonicalFulfilmentMethod | null;
     /** The seller's designated counterparty wallets for this assembly,
-     *  keyed by sub-order process clause (e.g. figaro-courier-process-v1).
-     *  Sourced from the seller profile's AssemblyBindingRecord —
-     *  checkout reads it to fill a delegated order's seller. */
+     *  keyed by sub-order process clause (the category-1 ladder clause the
+     *  sub-order carries). Sourced from the seller profile's
+     *  AssemblyBindingRecord — checkout reads it to fill a delegated
+     *  order's seller. */
     counterpartyBindings: CounterpartyBinding[];
 }
 
@@ -481,7 +481,9 @@ function extractRootFulfilment(
 ): { modalities: string[]; coordinations: string[] } {
     const rootOrder =
         template.orders.find((o) => templateParentOrderIds(o).length === 0) ?? template.orders[0];
-    const data = rootOrder?.clauses[FULFILMENT_V2_CLAUSE_KEY] as
+    // The fulfilment entry is found by its declared field, never by name.
+    const data = Object.entries(rootOrder?.clauses ?? {})
+        .find(([clauseId]) => clauseDeclaresField(clauseId, "modalities"))?.[1] as
         | { modalities?: unknown; delivery?: { coordination?: unknown } }
         | undefined;
     // coordination is a sub-clause under delivery (the clause JSON).

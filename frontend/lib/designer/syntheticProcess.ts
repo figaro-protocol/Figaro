@@ -15,18 +15,10 @@ import type { Hex } from "viem";
 import { Order, OrderState } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ClauseFields } from "@/lib/core/encoding";
-import {
-    buildOrderAgreement,
-    summarizeAgreement,
-} from "@/lib/core/orderAgreement";
-import {
-    computeAgreementHash,
-    COURIER_PROCESS_CLAUSE_KEY,
-    GEO_CLAUSE_KEY,
-    ARBITRATION_KLEROS_CLAUSE_KEY,
-    FULFILMENT_V2_CLAUSE_KEY,
-} from "@/lib/core/agreement";
-import { loadAgreement, saveAgreement } from "@/lib/core/agreementStore";
+import { buildOrderAgreement } from "@/lib/core/orderAgreement";
+import { computeAgreementHash } from "@/lib/core/agreement";
+import { clauseIsDefaultOn, listKnownClauseIds } from "@/lib/shared/clauseSpecSource";
+import { saveAgreement } from "@/lib/core/agreementStore";
 import { buildAgreementsFromCache, deriveOrderTopology } from "@/lib/core/orderTopology";
 
 /** Address space for synthetic actors. Distinct prefix avoids visual confusion with live wallets. */
@@ -65,35 +57,23 @@ export interface CreatedOrder {
 }
 
 /**
- * Manifest field defaults applied to every freshly-spawned synthetic
- * order. The chosen fields make five sections appear in the agreement
- * by default — Geo (placeholder geohashes), Jurisdiction (Kleros layer-2),
- * Fulfilment (pickup), Commerce (always), Topology (always) — matching
- * the designer's "default articles for any node" intent.
- *
- *   - `origin` / `destination` = "0" — single-character base32 geohashes
- *     that satisfy `figaro-geo-v2`'s pattern + minLength constraints. The
- *     v2 validator also requires non-zero mass/volume and a valid class
- *     of service; `clauseFieldsToGeoSection` supplies minimally-valid
- *     defaults (mass=1 g, volume=1 ml, class="S") when this section is
- *     emitted, which the buyer overwrites at commit time.
- *   - `klerosCourt` = "general" + `klerosMinJurors` = "3" — Kleros General
- *     Court with 3 jurors. Layer 1 (kernel mechanisms) is always active
- *     and not encoded; layer 3 (state / ADR / traditional) is opt-in via
- *     the Jurisdiction tab.
- *   - `fulfilmentModalities` = ["consume-onsite", "pickup"] — the two
- *     in-person modalities that don't imply a courier sub-order; matches
- *     the legacy direct-sale reference shape.
+ * Manifest field defaults applied to every freshly-spawned synthetic order:
+ * every registered clause whose spec declares `block.defaultOn`, composed as
+ * an EMPTY object — the generic build walk fills each from the spec's field
+ * `default`s (the minimally-valid placeholder values the buyer overwrites at
+ * commit time). The set is defined by the network's registry at runtime,
+ * never by this code; structural clauses (commerce, topology) are composed
+ * by the build itself and never appear here. A function, not a module
+ * constant: it reads the chain→IPFS spec cache, which the designer surfaces
+ * gate on (`useClauseSpecs().loaded`) before any synthetic order is built.
  */
-const DEFAULT_NODE_MANIFEST_FIELDS: ClauseFields = {
-    // Nested, spec-named (the unified ClauseFields shape). The geo entry
-    // carries sentinel origin/destination; jurisdiction defaults to Kleros
-    // General Court with 3 jurors (Layer 1 is always active and not encoded;
-    // Layer 3 state/ADR is opt-in). No fulfilment entry is pre-seeded — the
-    // designer's modality choice flows through the per-order clause selection.
-    [GEO_CLAUSE_KEY]: { origin: "0", destination: "0" },
-    [ARBITRATION_KLEROS_CLAUSE_KEY]: { klerosCourt: "general", klerosMinJurors: "3" },
-};
+function defaultNodeManifestFields(): ClauseFields {
+    return Object.fromEntries(
+        listKnownClauseIds()
+            .filter((clauseId) => clauseIsDefaultOn(clauseId))
+            .map((clauseId) => [clauseId, {}]),
+    );
+}
 
 /**
  * The single synthetic display-Order choreography: build the agreement from the
@@ -154,7 +134,7 @@ export function buildSyntheticOrder(params: {
 
 export function createSyntheticRootOrder(
     session: SyntheticProcessSession,
-    /** Per-root assemblyDoc overrides. Merged onto DEFAULT_NODE_MANIFEST_FIELDS.
+    /** Per-root assemblyDoc overrides. Merged onto defaultNodeManifestFields().
      *  Used by `assemblyDocumentToDraft` to seed an IPFS-pinned assembly's kleros +
      *  fulfilment fields into the new draft's root. */
     assemblyDocumentOverrides?: ClauseFields,
@@ -172,7 +152,7 @@ export function createSyntheticRootOrder(
         payment,
         cumulativeValue: payment,
         salt: BigInt(orderIndex + 1),
-        clauseFields: { ...DEFAULT_NODE_MANIFEST_FIELDS, ...assemblyDocumentOverrides },
+        clauseFields: { ...defaultNodeManifestFields(), ...assemblyDocumentOverrides },
     });
 }
 
@@ -180,7 +160,7 @@ export function createSyntheticSubOrder(
     session: SyntheticProcessSession,
     parent: Order,
     /** Optional per-sub-order assemblyDoc overrides. Merged onto
-     *  DEFAULT_NODE_MANIFEST_FIELDS — use this to mark role-specific
+     *  defaultNodeManifestFields() — use this to mark role-specific
      *  flags at creation time (e.g., `courierProcessIncluded: true` for
      *  delivery-spawned courier sub-orders). */
     assemblyDocumentOverrides?: ClauseFields,
@@ -199,7 +179,7 @@ export function createSyntheticSubOrder(
         payment,
         cumulativeValue: parent.cumulativeValue + payment,
         salt: BigInt(orderIndex + 1),
-        clauseFields: { ...DEFAULT_NODE_MANIFEST_FIELDS, ...assemblyDocumentOverrides },
+        clauseFields: { ...defaultNodeManifestFields(), ...assemblyDocumentOverrides },
         parentOrderHashes: [parent.id],
     });
 }
@@ -262,7 +242,7 @@ export function mergeSyntheticParent(
         seller: child.seller as `0x${string}`,
         currency: (child.currency ?? ZERO_ADDRESS) as `0x${string}`,
         payment: child.payment,
-        clauseFields: { [GEO_CLAUSE_KEY]: { origin: "—", destination: "—" } },
+        clauseFields: defaultNodeManifestFields(),
         parentOrderHashes: nextParents,
     });
     const newAgreementHash = computeAgreementHash(newAgreement);
@@ -273,71 +253,6 @@ export function mergeSyntheticParent(
         child: { ...child, agreementHash: newAgreementHash, parentOrderIds: nextParents },
     };
 }
-
-// ── Fulfilment method per child order ──────────────────────────────────────
-
-import type { CanonicalFulfilmentMethod } from "@/lib/core/orderAgreement";
-import { canonicalFulfilmentMethodToArrays } from "@/lib/core/orderAgreement";
-import { FULFILMENT_MODE_LABELS } from "@/lib/seller/fulfilmentRouting";
-;
-
-/**
- * Default fulfilment method when an order's agreement carries no fulfilment
- * section. Picked as the most common case for a delivery sub-order — the
- * merchant arranges the courier directly. Edge pill swaps it via
- * `swapSyntheticFulfilmentMethod`.
- */
-const DEFAULT_FULFILMENT_METHOD: CanonicalFulfilmentMethod = "deliver:seller-assigned";
-
-/** Read the child's current fulfilment method from its committed agreement. */
-function deriveFulfilmentMethod(order: Order): CanonicalFulfilmentMethod {
-    const summary = summarizeAgreement(loadAgreement(order.agreementHash));
-    const method = summary?.fulfilment?.method;
-    if (typeof method === "string" && (FULFILMENT_MODE_LABELS as Record<string, string>)[method]) {
-        return method as CanonicalFulfilmentMethod;
-    }
-    return DEFAULT_FULFILMENT_METHOD;
-}
-
-function clauseFieldsForFulfilmentMethod(method: CanonicalFulfilmentMethod): ClauseFields {
-    const { modalities, coordinations } = canonicalFulfilmentMethodToArrays(method);
-    return {
-        [GEO_CLAUSE_KEY]: { origin: "—", destination: "—" },
-        [FULFILMENT_V2_CLAUSE_KEY]: {
-            modalities,
-            // coordination is a sub-clause under delivery (the clause JSON).
-            ...(coordinations.length > 0 ? { delivery: { coordination: coordinations } } : {}),
-        },
-    };
-}
-
-/**
- * Swap the fulfilment method on a child order. Rebuilds its agreement with
- * the fulfilment section reflecting the new method, persists the new
- * agreement, and returns an Order with the updated agreementHash.
- *
- * The order id stays stable in synthetic mode — see mergeSyntheticParent.
- */
-function swapSyntheticFulfilmentMethod(
-    child: Order,
-    method: CanonicalFulfilmentMethod,
-): Order {
-    const existingParents = child.parentOrderIds ?? [];
-
-    const newAgreement = buildOrderAgreement({
-        buyer: child.buyer as `0x${string}`,
-        seller: child.seller as `0x${string}`,
-        currency: (child.currency ?? ZERO_ADDRESS) as `0x${string}`,
-        payment: child.payment,
-        clauseFields: clauseFieldsForFulfilmentMethod(method),
-        parentOrderHashes: existingParents,
-    });
-    const newAgreementHash = computeAgreementHash(newAgreement);
-    saveAgreement(newAgreement);
-
-    return { ...child, agreementHash: newAgreementHash, parentOrderIds: existingParents };
-}
-
 
 /**
  * Returns true when `orderId` has no parents in the current topology —

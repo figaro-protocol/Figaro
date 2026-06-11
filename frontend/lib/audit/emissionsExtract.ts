@@ -6,12 +6,14 @@
  *
  * Two layers:
  *
- *   • Committed disclosure — one of the 5 sister clauses
- *     (figaro-ghg-{protocol,iso-14064,pas-2050,en-16258,custom}-v1) names
- *     the accounting standard via its clauseKey. The data field is
- *     `(uint8 scope)` — 0=unset, 1=Scope 1, 2=Scope 2, 3=Scope 3.
+ *   • Committed disclosure — whatever registered clause declaring a `scope`
+ *     field the parties composed; each accounting standard is its own
+ *     clause, so the standard's identity IS the clauseKey and its label is
+ *     the registered spec's title. The data field is `(uint8 scope)` —
+ *     0=unset, 1=Scope 1, 2=Scope 2, 3=Scope 3.
  *
- *   • Runtime measurement — `figaro-ghg-measurement-v1` attestations carry
+ *   • Runtime measurement — attestations under the disclosure family's
+ *     Category-1 sister clauses (`block.sisterClauseId`) carry
  *     the actual grams CO2e per stage. The on-chain Attestation event
  *     records contentRef = keccak256(content); the original `(uint256 grams)`
  *     value sits in the transaction calldata and is recoverable off-chain.
@@ -22,24 +24,21 @@
 import {
     type Agreement,
     type AgreementSection,
-    GHG_DISCLOSURE_CLAUSE_KEYS,
-    GHG_MEASUREMENT_CLAUSE_KEY,
-    GHG_CLAUSE_TO_STANDARD,
-    isRedactedSection,
     type RedactableAgreement,
 } from "@/lib/core/agreement";
+import { findCleartextSectionByField } from "@/lib/core/orderAgreement";
+import { clauseDeclaresField, getClauseSpec, listKnownClauseIds } from "@/lib/shared/clauseSpecSource";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import type { AttestationReceipt, ExtractedDocument } from "./types";
 
-const GHG_DISCLOSURE_SET = new Set<string>(GHG_DISCLOSURE_CLAUSE_KEYS);
-
+/** The first cleartext GHG DISCLOSURE section — any registered clause
+ *  declaring a `scope` field; the family is the registry's, never a list
+ *  in code. */
 function findGhgDisclosureSection(
     agreement: Agreement | RedactableAgreement,
 ): AgreementSection | undefined {
-    const s = agreement.sections.find((x) => GHG_DISCLOSURE_SET.has(x.clause));
-    if (!s) return undefined;
-    return isRedactedSection(s) ? undefined : s;
+    return findCleartextSectionByField(agreement, "scope");
 }
 
 
@@ -49,10 +48,9 @@ export interface EmissionsDocument extends ExtractedDocument {
      *  disclosure framework — the measurement attestations may still
      *  exist but they're untyped. */
     disclosed: boolean;
-    /** Clause key of the chosen disclosure standard, e.g.
-     *  "figaro-ghg-iso-14064-v1". */
+    /** Readable clauseId of the chosen disclosure standard. */
     standardClauseKey?: string;
-    /** Human-readable label, e.g. "ISO-14064". */
+    /** Human-readable label — the registered spec's title. */
     standardLabel?: string;
     /** Committed scope: 0 (unset) | 1 (Scope 1) | 2 (Scope 2) | 3 (Scope 3). */
     scope?: number;
@@ -61,8 +59,15 @@ export interface EmissionsDocument extends ExtractedDocument {
     measurements: AttestationReceipt[];
 }
 
+/** True when the attestation lands under a MEASUREMENT clause — a Category-1
+ *  sister some registered disclosure clause names via `block.sisterClauseId`.
+ *  The family is spec-derived, never named. */
 function attestationMatchesMeasurementClause(att: AttestationRecord): boolean {
-    return att.clauseId === GHG_MEASUREMENT_CLAUSE_KEY;
+    return listKnownClauseIds().some(
+        (clauseId) =>
+            clauseDeclaresField(clauseId, "scope")
+            && getClauseSpec(clauseId)?.block?.sisterClauseId === att.clauseId,
+    );
 }
 
 export function extractEmissions(
@@ -75,11 +80,9 @@ export function extractEmissions(
     const scope = typeof data?.scope === "number" && data.scope >= 0 && data.scope <= 3
         ? data.scope
         : undefined;
-    const standardClauseKey = disclosure?.clause as
-        | typeof GHG_DISCLOSURE_CLAUSE_KEYS[number]
-        | undefined;
+    const standardClauseKey = disclosure?.clause;
     const standardLabel = standardClauseKey
-        ? GHG_CLAUSE_TO_STANDARD[standardClauseKey]
+        ? getClauseSpec(standardClauseKey)?.title
         : undefined;
 
     const measurements: AttestationReceipt[] = [];

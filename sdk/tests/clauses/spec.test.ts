@@ -197,6 +197,28 @@ describe("parseClauseSpec — meta-clause validation", () => {
         expect(result.ok).toBe(false);
     });
 
+    // Default-on clauses are pre-composed (empty; field `default`s fill them)
+    // on every fresh designer node — removable in the drawer, unlike structural.
+    // Generic surfaces compose the set from this flag — it MUST round-trip.
+    it("preserves block.defaultOn through the parse", () => {
+        const result = parseClauseSpec({
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            fields: [{ name: "x", type: "string", required: true }],
+            block: { tier: "category-2", mechanismKinds: [], moduleIds: [], defaultOn: true },
+        });
+        expect(result.ok).toBe(true);
+        if (result.ok) expect(result.spec.block?.defaultOn).toBe(true);
+    });
+
+    it("rejects a non-boolean block.defaultOn", () => {
+        const result = parseClauseSpec({
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            fields: [{ name: "x", type: "string", required: true }],
+            block: { tier: "category-2", mechanismKinds: [], moduleIds: [], defaultOn: "yes" },
+        });
+        expect(result.ok).toBe(false);
+    });
+
     // The generic runtime engine reads block.attestation to surface a clause's
     // attestation to the right party/parties (seller, or bilateral), no names.
     it("preserves block.attestation through the parse", () => {

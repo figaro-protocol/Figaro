@@ -35,7 +35,11 @@ import {
     type ProximityBand,
 } from '@figaro/core/clauses';
 import { DEFAULT_AGREEMENT_HASH } from '@/lib/core/contracts';
-import { GHG_CLAUSE_KEY, GHG_CLAUSE_ID } from '@/lib/core/agreement';
+import { clauseIdOf } from '@/lib/core/agreement';
+
+// Tests may name clauses; production code may not.
+const GHG_CLAUSE_KEY = 'figaro-ghg-iso-14064-v1';
+const GHG_CLAUSE_ID = clauseIdOf(GHG_CLAUSE_KEY);
 import { ZERO_PROCESS_ID, ZERO_ADDRESS, hexEqual } from '@/lib/shared/evm';
 import { gotoAsWallet } from './devnet-multi-test';
 

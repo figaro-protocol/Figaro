@@ -3,13 +3,15 @@ import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
 import { primeClauseSpecs } from "./primeClauseSpecs";
 import {
     computeAgreementHash,
-    MERCHANT_PROCESS_CLAUSE_KEY,
-    FULFILMENT_V2_CLAUSE_KEY,
-    HANDOFF_CLAUSE_KEY,
-    GEO_CLAUSE_KEY,
     type Agreement,
     type AgreementSection,
 } from "@/lib/core/agreement";
+
+// Tests may name clauses; production code may not.
+const MERCHANT_PROCESS_CLAUSE_KEY = "figaro-merchant-process-v1";
+const FULFILMENT_V2_CLAUSE_KEY = "figaro-fulfilment-v2";
+const HANDOFF_CLAUSE_KEY = "figaro-handoff-v1";
+const GEO_CLAUSE_KEY = "figaro-geo-v2";
 
 // Layer A, run on BOTH sides of the bilateral commit (buyer before initiating,
 // seller before counter-signing). Two checks: merkle integrity (the signed hash

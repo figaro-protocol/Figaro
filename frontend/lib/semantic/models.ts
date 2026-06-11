@@ -75,12 +75,18 @@ interface SubmitDisclosureCommitmentCapabilityAction {
     executionType: "transaction";
     kind: "submit-disclosure-commitment";
     orderHash: string;
+    /** The order's committed DISCLOSURE clause (readable registry id) — put
+     *  there by the deriver from the agreement's sections, never named. */
+    clauseId: string;
 }
 
 interface SubmitDisclosureInventoryCapabilityAction {
     executionType: "transaction";
     kind: "submit-disclosure-inventory";
     orderHash: string;
+    /** The order's committed MEASUREMENT clause (the disclosure's Category-1
+     *  sister; readable registry id) — put there by the deriver. */
+    clauseId: string;
 }
 
 /** Generic runtime attestation — the SELLER of an order advances ANY

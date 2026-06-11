@@ -1,30 +1,25 @@
 /**
  * Sovereign process-log extractor — pure projection of an order's
- * `figaro-merchant-process-v1` and `figaro-courier-process-v1`
- * attestations into a per-role event timeline.
+ * PROCESS-LOG attestations into per-clause event timelines.
  *
- * Per CLAUDE.md "When to add a per-role process clause": these two
- * clauses exist because off-chain sellers (merchants, couriers) need
- * a sovereign event log to make their physical-world state changes
- * tamper-proof evidence. The kernel records the buyer's actions
- * directly (commit / resolveProcess); the off-chain sellers record
- * theirs via these per-role process clauses.
+ * A process-log clause is any registered Category-1 enum-ladder clause
+ * (per its spec — `clauseIsProcessLog`; never named in code). Such clauses
+ * exist because off-chain sellers need a sovereign event log to make their
+ * physical-world state changes tamper-proof evidence. The kernel records
+ * the buyer's actions directly (commit / resolveProcess); the off-chain
+ * sellers record theirs via whatever process clause their order carries —
+ * including clauses this codebase has never seen.
  *
- * Both clauses have the same content shape: `(uint8 eventType,
- * string evidenceUri)`. The eventType is an index into a role-specific
- * enum (merchant: 0-5; courier: 0-7 or whatever the validator
- * declares). The audit document records the receipt; recovering the
- * eventType label and evidenceUri requires decoding the transaction
- * calldata.
+ * The content shape is `(uint8 eventType, string evidenceUri)`; eventType
+ * indexes the clause's spec-declared enum ladder. The audit document
+ * records the receipt; recovering the eventType label and evidenceUri
+ * requires decoding the transaction calldata.
  */
 
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import type { ExtractedDocument } from "./types";
-import {
-    COURIER_PROCESS_CLAUSE_KEY,
-    MERCHANT_PROCESS_CLAUSE_KEY,
-} from "@/lib/core/agreement";
+import { clauseIsProcessLog, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 
 interface ProcessLogEntry {
     clauseKey: string;
@@ -40,42 +35,51 @@ interface ProcessLogEntry {
     transactionHash?: string;
 }
 
-export interface ProcessLogsDocument extends ExtractedDocument {
-    /** Merchant-role events for this order, in input order (typically
+/** One process clause's event timeline — the per-clause group the PDF
+ *  renders as its own section. */
+interface ProcessLogGroup {
+    /** Readable clauseId of the process clause. */
+    clauseId: string;
+    /** Display title — the registered spec's title (the network-defined
+     *  label), falling back to the clauseId when the spec isn't cached. */
+    title: string;
+    /** The clause's events for this order, in input order (typically
      *  block order). */
-    merchantEvents: ProcessLogEntry[];
-    /** Courier-role events for this order, in input order. */
-    courierEvents: ProcessLogEntry[];
+    events: ProcessLogEntry[];
+}
+
+export interface ProcessLogsDocument extends ExtractedDocument {
+    /** Per-clause event timelines, one group per process clause that
+     *  attested on this order, in first-seen order. */
+    logs: ProcessLogGroup[];
 }
 
 export function extractProcessLogs(
     order: Order,
     attestations: readonly AttestationRecord[],
 ): ProcessLogsDocument {
-    const merchantEvents: ProcessLogEntry[] = [];
-    const courierEvents: ProcessLogEntry[] = [];
+    const groups = new Map<string, ProcessLogGroup>();
 
     for (const att of attestations) {
         if (att.orderHash !== order.id) continue;
-        if (att.clauseId === MERCHANT_PROCESS_CLAUSE_KEY) {
-            merchantEvents.push({
-                clauseKey: MERCHANT_PROCESS_CLAUSE_KEY,
-                attester: att.attester,
-                stage: att.stage,
-                contentRef: att.contentRef,
-                blockNumber: att.blockNumber,
-                transactionHash: att.transactionHash ?? undefined,
-            });
-        } else if (att.clauseId === COURIER_PROCESS_CLAUSE_KEY) {
-            courierEvents.push({
-                clauseKey: COURIER_PROCESS_CLAUSE_KEY,
-                attester: att.attester,
-                stage: att.stage,
-                contentRef: att.contentRef,
-                blockNumber: att.blockNumber,
-                transactionHash: att.transactionHash ?? undefined,
-            });
+        if (!clauseIsProcessLog(att.clauseId)) continue;
+        let group = groups.get(att.clauseId);
+        if (!group) {
+            group = {
+                clauseId: att.clauseId,
+                title: getClauseSpec(att.clauseId)?.title ?? att.clauseId,
+                events: [],
+            };
+            groups.set(att.clauseId, group);
         }
+        group.events.push({
+            clauseKey: att.clauseId,
+            attester: att.attester,
+            stage: att.stage,
+            contentRef: att.contentRef,
+            blockNumber: att.blockNumber,
+            transactionHash: att.transactionHash ?? undefined,
+        });
     }
 
     return {
@@ -85,7 +89,6 @@ export function extractProcessLogs(
         agreementHash: order.agreementHash ?? "0x",
         buyer: order.buyer,
         seller: order.seller,
-        merchantEvents,
-        courierEvents,
+        logs: Array.from(groups.values()),
     };
 }

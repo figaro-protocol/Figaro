@@ -187,7 +187,7 @@ function shortAddr(addr: string | undefined): string {
     return shortHex(addr, 6, 4);
 }
 
-/** Expand the figaro-geo-v2 SDK class short code into its full label.
+/** Expand the geo clause's class-of-service short code into its full label.
  *  Falls back to the raw code for unknown values. */
 function bolClassLabel(code: string): string {
     switch (code) {
@@ -739,7 +739,7 @@ function ProximityPage({ doc }: { doc: AuditBundle["proximity"] }) {
 // ── Sovereign process-logs page ─────────────────────────────────────────────
 
 function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
-    const total = doc.merchantEvents.length + doc.courierEvents.length;
+    const total = doc.logs.reduce((n, g) => n + g.events.length, 0);
     return (
         <Page size="A4" style={styles.page}>
             <View style={styles.header}>
@@ -754,22 +754,24 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
                 <View style={styles.metadataRow}>
                     <Text style={styles.metadataKey}>events recorded</Text>
                     <Text style={styles.metadataValue}>
-                        {total} ({doc.merchantEvents.length} merchant + {doc.courierEvents.length} courier)
+                        {total} across {doc.logs.length} process clause{doc.logs.length === 1 ? "" : "s"}
                     </Text>
                 </View>
             </View>
             <Text style={styles.note}>
-                Sovereign event logs from off-chain sellers. Per CLAUDE.md, the
-                buyer&apos;s actions are the kernel events (commit / resolveProcess);
-                merchants and couriers record theirs via these per-role process
-                clauses to make their physical-world state changes tamper-proof.
-                Each contentRef = keccak256(`(uint8 eventType, string evidenceUri)`);
-                eventType is an index into the role-specific event enum.
+                Sovereign event logs from off-chain sellers. The buyer&apos;s
+                actions are the kernel events (commit / resolveProcess);
+                off-chain sellers record theirs via whatever process clause
+                their order carries, making physical-world state changes
+                tamper-proof. One section per clause, titled from its
+                registered spec. Each contentRef =
+                keccak256(`(uint8 eventType, string evidenceUri)`); eventType
+                indexes the clause&apos;s spec-declared event enum.
             </Text>
 
-            {doc.merchantEvents.length > 0 && (
-                <>
-                    <Text style={styles.h2}>Merchant events ({doc.merchantEvents.length})</Text>
+            {doc.logs.map((group) => (
+                <View key={group.clauseId}>
+                    <Text style={styles.h2}>{group.title} ({group.events.length})</Text>
                     <View style={styles.table}>
                         <View style={[styles.tableRow, styles.tableHeader]}>
                             <Text style={[styles.tCell, { flex: 0.8 }]}>Stage</Text>
@@ -777,8 +779,8 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
                             <Text style={[styles.tCellMono, { flex: 4 }]}>contentRef</Text>
                             <Text style={[styles.tCell, { flex: 1 }]}>Block</Text>
                         </View>
-                        {doc.merchantEvents.map((e, i) => (
-                            <View key={`m-${e.contentRef}-${i}`} style={styles.tableRow}>
+                        {group.events.map((e, i) => (
+                            <View key={`${group.clauseId}-${e.contentRef}-${i}`} style={styles.tableRow}>
                                 <Text style={[styles.tCell, { flex: 0.8 }]}>{e.stage}</Text>
                                 <Text style={[styles.tCellMono, { flex: 3 }]}>{shortAddr(e.attester)}</Text>
                                 <Text style={[styles.tCellMono, { flex: 4 }]}>{shortHex(e.contentRef, 14, 8)}</Text>
@@ -786,30 +788,8 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
                             </View>
                         ))}
                     </View>
-                </>
-            )}
-
-            {doc.courierEvents.length > 0 && (
-                <>
-                    <Text style={styles.h2}>Courier events ({doc.courierEvents.length})</Text>
-                    <View style={styles.table}>
-                        <View style={[styles.tableRow, styles.tableHeader]}>
-                            <Text style={[styles.tCell, { flex: 0.8 }]}>Stage</Text>
-                            <Text style={[styles.tCellMono, { flex: 3 }]}>Attester</Text>
-                            <Text style={[styles.tCellMono, { flex: 4 }]}>contentRef</Text>
-                            <Text style={[styles.tCell, { flex: 1 }]}>Block</Text>
-                        </View>
-                        {doc.courierEvents.map((e, i) => (
-                            <View key={`c-${e.contentRef}-${i}`} style={styles.tableRow}>
-                                <Text style={[styles.tCell, { flex: 0.8 }]}>{e.stage}</Text>
-                                <Text style={[styles.tCellMono, { flex: 3 }]}>{shortAddr(e.attester)}</Text>
-                                <Text style={[styles.tCellMono, { flex: 4 }]}>{shortHex(e.contentRef, 14, 8)}</Text>
-                                <Text style={[styles.tCell, { flex: 1 }]}>{e.blockNumber}</Text>
-                            </View>
-                        ))}
-                    </View>
-                </>
-            )}
+                </View>
+            ))}
 
             {total === 0 && (
                 <Text style={styles.sectionBody}>

@@ -1,23 +1,23 @@
 /**
  * GHG module — V5 event-sourced via AttestationCoordinator.
  *
- * Two clauses collaborate to represent a GHG disclosure arc:
+ * Two clause FAMILIES collaborate to represent a GHG disclosure arc, both
+ * resolved from the registry's specs (chain → IPFS), never named in code:
  *
- *   - `figaro-ghg-iso-14064-v1`  (Category-2, committed clause)
- *       Declares the *accounting standard + scope* at contract-signing time.
- *       Runtime attestations must carry content byte-equal to the committed
- *       sectionData (handled automatically by `useAttestationCoordinatorActions`
- *       when callers omit `content`). Used for the commitment / verification
- *       narrative — "seller is reporting under ISO-14064 scope 1".
+ *   - DISCLOSURE clauses (Category-2, committed) — every registered clause
+ *     declaring a `scope` field. Each accounting standard is its own clause;
+ *     the committed `{scope}` sectionData is the contract-signing-time
+ *     declaration ("seller is reporting under this standard, scope 1").
  *
- *   - `figaro-ghg-measurement-v1` (Category-1, runtime grams)
- *       Carries actual grams CO2e values per fulfillment. Content is
- *       `abi.encode(uint256 grams)`; the validator does NOT cross-check
- *       against sectionData because the committed unit-of-account clause and
- *       the per-measurement value are deliberately decoupled.
+ *   - MEASUREMENT clauses (Category-1, runtime grams) — each disclosure
+ *     clause's `block.sisterClauseId`. Content is `abi.encode(uint256 grams)`
+ *     per fulfilment; the validator does NOT cross-check against sectionData
+ *     because the committed unit-of-account clause and the per-measurement
+ *     value are deliberately decoupled.
  *
  * Read hooks reconstruct disclosure state from indexed Attestation events
- * under both clauses — no contract storage reads.
+ * under both families — no contract storage reads. Writes flow through the
+ * generic capability rail (`submit-clause-attestation`), not this module.
  */
 "use client";
 
@@ -29,13 +29,11 @@ import {
     type PublicClient,
 } from "viem";
 import { isEmptyHex, ZERO_BYTES32 } from "@/lib/shared/evm";
-import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
 import { ATTESTATION_COORDINATOR_ABI } from "@/lib/core/contracts";
-import { GHG_MEASUREMENT_CLAUSE_ID, GHG_CLAUSE_ID } from "@/lib/core/agreement";
+import { clauseIdOf } from "@/lib/core/agreement";
 import {
     DISCLOSURE_KIND,
     DISCLOSURE_KIND_LABELS,
-    MEASUREMENT_KIND,
     MEASUREMENT_KIND_LABELS,
 } from "@/lib/mechanisms/contracts";
 import {
@@ -43,7 +41,8 @@ import {
     getAttestationsByOrder,
     type IndexedAttestationLog,
 } from "@/lib/core/indexer";
-import { embeddedSpec, encodeContentFromSpec } from "@figaro/core/clauses";
+import { clauseDeclaresField, getClauseSpec, listKnownClauseIds } from "@/lib/shared/clauseSpecSource";
+import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
 
 export type AttestationRecord = {
     orderHash: string;
@@ -75,19 +74,29 @@ export type ProcessDisclosureSummary = {
     attestations: AttestationRecord[];
 };
 
+// ── Spec-derived clause families ─────────────────────────────────────────────
+
+/** keccak256 event-topic hashes of every registered DISCLOSURE clause —
+ *  the clauses declaring a `scope` field. Empty while the cache is cold. */
+function disclosureClauseIdHashes(): Hex[] {
+    return listKnownClauseIds()
+        .filter((clauseId) => clauseDeclaresField(clauseId, "scope"))
+        .map((clauseId) => clauseIdOf(clauseId));
+}
+
+/** keccak256 event-topic hashes of every registered MEASUREMENT clause —
+ *  the disclosure clauses' Category-1 sisters. Empty while the cache is cold. */
+function measurementClauseIdHashes(): Hex[] {
+    const sisters = new Set<string>();
+    for (const clauseId of listKnownClauseIds()) {
+        if (!clauseDeclaresField(clauseId, "scope")) continue;
+        const sister = getClauseSpec(clauseId)?.block?.sisterClauseId;
+        if (sister) sisters.add(sister);
+    }
+    return Array.from(sisters).map((clauseId) => clauseIdOf(clauseId));
+}
 
 // ── Pure utility functions ───────────────────────────────────────────────────
-
-/**
- * ABI-encode grams for a `figaro-ghg-measurement-v1` attestation.
- * Shape: `abi.encode(uint256 grams)` — 32 bytes, big-endian padded.
- */
-export function encodeMeasurementGramsContent(grams: bigint): Hex {
-    return encodeContentFromSpec(
-        embeddedSpec("figaro-ghg-measurement-v1")!,
-        { grams: grams.toString() },
-    );
-}
 
 /**
  * Fetch the `bytes content` argument the seller/buyer attestation was called
@@ -127,7 +136,7 @@ export async function getAttestationContent(
 }
 
 /**
- * Decode a `figaro-ghg-measurement-v1` content payload back to grams.
+ * Decode a measurement-clause content payload back to grams.
  * Shape: `abi.encode(uint256 grams)` — 32 bytes, big-endian padded, equivalent
  * to a raw hex integer. Returns `null` for empty / zero / unparseable content.
  */
@@ -159,98 +168,10 @@ function parseAttestationLog(log: IndexedAttestationLog): AttestationRecord {
     };
 }
 
-// ── Write-only action hook ───────────────────────────────────────────────────
-
-export function useGhgDisclosureActions() {
-    const {
-        submitSellerAttestation,
-        submitBuyerAttestation,
-        isPending,
-        isConfirming,
-        isSuccess,
-        error,
-        isAvailable,
-    } = useAttestationCoordinatorActions();
-
-    const attestAsSeller = useCallback(async (
-        roleOrderHash: Hex,
-        orderHash: Hex,
-        stage: number,
-        content?: Hex,
-    ) => {
-        return submitSellerAttestation({
-            roleOrderHash,
-            orderHash,
-            clauseId: GHG_CLAUSE_ID as Hex,
-            stage,
-            content,
-        });
-    }, [submitSellerAttestation]);
-
-    const attestAsBuyer = useCallback(async (
-        orderHash: Hex,
-        stage: number,
-        content?: Hex,
-    ) => {
-        return submitBuyerAttestation({
-            orderHash,
-            clauseId: GHG_CLAUSE_ID as Hex,
-            stage,
-            content,
-        });
-    }, [submitBuyerAttestation]);
-
-    /**
-     * Commitment attestation under `figaro-ghg-iso-14064-v1`.
-     * Category-2: content is auto-filled with the committed sectionData
-     * (the signed `{standard, scope}` clause). The stage field alone
-     * distinguishes commitment / restatement / verification attestations.
-     */
-    const submitCommitmentForOrder = useCallback(async (
-        orderHash: string,
-    ) => {
-        return submitSellerAttestation({
-            orderHash: orderHash as Hex,
-            clauseId: GHG_CLAUSE_ID as Hex,
-            stage: DISCLOSURE_KIND.commitment,
-            // content omitted — defaults to committed sectionData
-        });
-    }, [submitSellerAttestation]);
-
-    /**
-     * Runtime grams measurement under `figaro-ghg-measurement-v1`.
-     * The committing agreement must carry a `figaro-ghg-measurement-v1`
-     * section or the inclusion proof will fail.
-     */
-    const submitActualForOrder = useCallback(async (
-        orderHash: string,
-        grams: bigint,
-    ) => {
-        return submitSellerAttestation({
-            orderHash: orderHash as Hex,
-            clauseId: GHG_MEASUREMENT_CLAUSE_ID as Hex,
-            stage: MEASUREMENT_KIND.measured,
-            content: encodeMeasurementGramsContent(grams),
-        });
-    }, [submitSellerAttestation]);
-
-    return {
-        attestAsSeller,
-        attestAsBuyer,
-        submitCommitmentForOrder,
-        submitActualForOrder,
-        isPending,
-        isConfirming,
-        isSuccess,
-        error,
-        isAvailable,
-    };
-}
-
 // ── Read hooks — event-sourced via cached indexer ────────────────────────────
 
-function labelFor(clauseId: string, stage: number): string {
-    if (clauseId === GHG_MEASUREMENT_CLAUSE_ID) {
+function labelFor(clauseIdHash: string, stage: number, measurementHashes: readonly string[]): string {
+    if (measurementHashes.includes(clauseIdHash)) {
         return MEASUREMENT_KIND_LABELS[stage] ?? `Stage(${stage})`;
     }
     return DISCLOSURE_KIND_LABELS[stage] ?? `Stage(${stage})`;
@@ -259,6 +180,8 @@ function labelFor(clauseId: string, stage: number): string {
 export function useOrderDisclosureTasks(orderHash: string | undefined) {
     const publicClient = usePublicClient();
     const chainId = publicClient?.chain?.id ?? 0;
+    // The clause families are spec-derived; re-run when the cache warms.
+    const { version: clauseSpecsVersion } = useClauseSpecs();
     const [tasks, setTasks] = useState<DisclosureTask[]>([]);
     const [loading, setLoading] = useState(false);
     const [tick, setTick] = useState(0);
@@ -269,12 +192,14 @@ export function useOrderDisclosureTasks(orderHash: string | undefined) {
         setLoading(true);
         (async () => {
             try {
+                const disclosureHashes = disclosureClauseIdHashes();
+                const measurementHashes = measurementClauseIdHashes();
+                const ghgHashes = new Set<string>([...disclosureHashes, ...measurementHashes]);
                 const logs = await getAttestationsByOrder(publicClient, chainId, orderHash);
                 if (cancelled) return;
                 const ghgLogs = logs.filter(
                     (log): log is IndexedAttestationLog => (
-                        log.args?.clauseId === GHG_CLAUSE_ID
-                        || log.args?.clauseId === GHG_MEASUREMENT_CLAUSE_ID
+                        typeof log.args?.clauseId === "string" && ghgHashes.has(log.args.clauseId)
                     ),
                 );
                 const result = await Promise.all(ghgLogs.map(async (log) => {
@@ -282,7 +207,7 @@ export function useOrderDisclosureTasks(orderHash: string | undefined) {
                     const contentHex = rec.contentRef !== ZERO_BYTES32
                         ? rec.contentRef as Hex : null;
                     let actualGrams: bigint | null = null;
-                    if (rec.clauseId === GHG_MEASUREMENT_CLAUSE_ID && rec.transactionHash) {
+                    if (measurementHashes.includes(rec.clauseId as Hex) && rec.transactionHash) {
                         const content = await getAttestationContent(
                             publicClient,
                             rec.transactionHash as Hex,
@@ -292,7 +217,7 @@ export function useOrderDisclosureTasks(orderHash: string | undefined) {
                     const task: DisclosureTask = {
                         orderHash: rec.orderHash,
                         stage: rec.stage,
-                        stageLabel: labelFor(rec.clauseId, rec.stage),
+                        stageLabel: labelFor(rec.clauseId, rec.stage, measurementHashes),
                         contentRef: contentHex,
                         attester: rec.attester,
                         actualGrams,
@@ -309,7 +234,7 @@ export function useOrderDisclosureTasks(orderHash: string | undefined) {
             }
         })();
         return () => { cancelled = true; };
-    }, [orderHash, publicClient, chainId, tick]);
+    }, [orderHash, publicClient, chainId, tick, clauseSpecsVersion]);
 
     const refresh = useCallback(async () => { setTick((t) => t + 1); }, []);
     return { tasks, loading, refresh };
@@ -318,6 +243,8 @@ export function useOrderDisclosureTasks(orderHash: string | undefined) {
 export function useProcessDisclosureSummary(processId: Hex | undefined) {
     const publicClient = usePublicClient();
     const chainId = publicClient?.chain?.id ?? 0;
+    // The clause families are spec-derived; re-run when the cache warms.
+    const { version: clauseSpecsVersion } = useClauseSpecs();
     const [summary, setSummary] = useState<ProcessDisclosureSummary | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -327,11 +254,18 @@ export function useProcessDisclosureSummary(processId: Hex | undefined) {
         setLoading(true);
         (async () => {
             try {
-                // Query both clauses in parallel. Disclosure carries commitment /
-                // restatement / verification events; measurement carries grams.
+                // Query every registered clause in each family in parallel.
+                // Disclosures carry commitment / restatement / verification
+                // events; measurements carry grams.
+                const disclosureHashes = disclosureClauseIdHashes();
+                const measurementHashes = measurementClauseIdHashes();
                 const [disclosureLogs, measurementLogs] = await Promise.all([
-                    getAttestationsByProcessAndClause(publicClient, chainId, processId, GHG_CLAUSE_ID),
-                    getAttestationsByProcessAndClause(publicClient, chainId, processId, GHG_MEASUREMENT_CLAUSE_ID),
+                    Promise.all(disclosureHashes.map((h) =>
+                        getAttestationsByProcessAndClause(publicClient, chainId, processId, h),
+                    )).then((r) => r.flat()),
+                    Promise.all(measurementHashes.map((h) =>
+                        getAttestationsByProcessAndClause(publicClient, chainId, processId, h),
+                    )).then((r) => r.flat()),
                 ]);
                 if (cancelled) return;
                 const disclosureAttestations = disclosureLogs.map(
@@ -381,7 +315,7 @@ export function useProcessDisclosureSummary(processId: Hex | undefined) {
             }
         })();
         return () => { cancelled = true; };
-    }, [processId, publicClient, chainId]);
+    }, [processId, publicClient, chainId, clauseSpecsVersion]);
 
     return { summary, loading };
 }

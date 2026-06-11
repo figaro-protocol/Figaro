@@ -12,13 +12,12 @@
  * `lib/semantic/deriveProcessModelFromRuntime.ts:roleCapabilities`.
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import {
-    GHG_MEASUREMENT_CLAUSE_KEY,
-    GHG_CLAUSE_KEY,
-    type Agreement,
-    computeAgreementHash,
-} from "@/lib/core/agreement";
+import { type Agreement, computeAgreementHash } from "@/lib/core/agreement";
 import { primeClauseSpecs } from "./primeClauseSpecs";
+
+// Tests may name clauses; production code may not.
+const GHG_CLAUSE_KEY = "figaro-ghg-iso-14064-v1";
+const GHG_MEASUREMENT_CLAUSE_KEY = "figaro-ghg-measurement-v1";
 
 // The disclosure capabilities derive from each clause's spec (block
 // mechanismKinds + companion links) — prime the chain-fed cache.

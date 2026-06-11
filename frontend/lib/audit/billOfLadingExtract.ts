@@ -6,32 +6,30 @@
  *
  * The BoL combines two layers:
  *
- *   • Committed-at-signing clauses — what the parties bound to:
- *       fulfilment modality + handoffPoint (figaro-fulfilment-v2)
- *       origin / destination geohashes + mass + volume + class (figaro-geo-v2)
+ *   • Committed-at-signing clauses — what the parties bound to: the
+ *     fulfilment section (found by its `modalities` field), the hand-off
+ *     section (`handoff`), and the geo section (`originGeohash` + mass +
+ *     volume + class). Sections are found by their declared FIELDS, never
+ *     by clause name.
  *
- *   • Runtime per-role attestations — what actually happened:
- *       merchant-process events (figaro-merchant-process-v1) — stages 2-3
- *       courier-process events (figaro-courier-process-v1) — stages 2/3/6
+ *   • Runtime process-log attestations — what actually happened: events
+ *     under whatever Category-1 enum-ladder clauses the order carries.
  *
  * The 5-stage progression (PreparationStarted → ReadyForPickup →
  * CourierEnRoute → PickedUp → Delivered) is reconstructed off-chain by
- * mapping per-role events to BoL stages. Each stage is annotated with
- * attester + block + contentRef + transaction hash if attested, or pending
- * if not.
+ * matching each BoL milestone's witnessing stage CODE (spec-defined enum
+ * vocabulary) against the order's process-log ladders, at the ordinal the
+ * registered spec gives the code. Each stage is annotated with attester +
+ * block + contentRef + transaction hash if attested, or pending if not.
  */
 
 import {
     type Agreement,
     type AgreementSection,
     type RedactableAgreement,
-    COURIER_PROCESS_CLAUSE_KEY,
-    FULFILMENT_V2_CLAUSE_KEY,
-    HANDOFF_CLAUSE_KEY,
-    GEO_CLAUSE_KEY,
-    MERCHANT_PROCESS_CLAUSE_KEY,
-    findCleartextSection,
 } from "@/lib/core/agreement";
+import { findCleartextSectionByField } from "@/lib/core/orderAgreement";
+import { clauseIsProcessLog, clauseLadderField, listKnownClauseIds } from "@/lib/shared/clauseSpecSource";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import { DELIVERY_LIFECYCLE_STAGES, type ExtractedDocument } from "./types";
@@ -76,26 +74,28 @@ export interface BillOfLadingDocument extends ExtractedDocument {
 }
 
 /**
- * BoL stage → per-role clause + event uint8 mapping.
+ * BoL milestone → the stage CODE that witnesses it.
  *
- *   stage 0 (PreparationStarted)  ← merchant.prep-started        (event 2)
- *   stage 1 (ReadyForPickup)      ← merchant.ready-for-pickup    (event 3)
- *   stage 2 (CourierEnRoute)      ← courier.en-route-pickup      (event 2)
- *   stage 3 (PickedUp)            ← courier.arrived-pickup       (event 3)
- *   stage 4 (Delivered)           ← courier.completed            (event 6)
+ *   stage 0 (PreparationStarted)  ← "prep-started"
+ *   stage 1 (ReadyForPickup)      ← "ready-for-pickup"
+ *   stage 2 (CourierEnRoute)      ← "en-route-pickup"
+ *   stage 3 (PickedUp)            ← "arrived-pickup"
+ *   stage 4 (Delivered)           ← "completed"
  *
- * The merchant attests stages 0-1 because those events live in the
- * merchant's physical workflow (prep, ready). The courier attests stages
- * 2-4 because those events live in the courier's transport workflow
- * (en route, picked up, delivered). Each seller is the sovereign
- * authority over their own events.
+ * Codes are spec-defined enum vocabulary (field VALUES, never clause ids).
+ * Each is resolved against whatever process-log clause on the order's
+ * agreement declares it in its ladder, at the ordinal the registered spec
+ * gives it — so ANY registry-defined process clause whose ladder carries a
+ * code witnesses that milestone, and each seller stays the sovereign
+ * authority over their own events. (Declaring the milestone set in spec
+ * `block.audit` metadata is the tracked deeper step.)
  */
-const STAGE_SOURCE: Record<number, { clauseKey: string; eventStage: number }> = {
-    0: { clauseKey: MERCHANT_PROCESS_CLAUSE_KEY, eventStage: 2 },
-    1: { clauseKey: MERCHANT_PROCESS_CLAUSE_KEY, eventStage: 3 },
-    2: { clauseKey: COURIER_PROCESS_CLAUSE_KEY, eventStage: 2 },
-    3: { clauseKey: COURIER_PROCESS_CLAUSE_KEY, eventStage: 3 },
-    4: { clauseKey: COURIER_PROCESS_CLAUSE_KEY, eventStage: 6 },
+const STAGE_WITNESS_CODE: Record<number, string> = {
+    0: "prep-started",
+    1: "ready-for-pickup",
+    2: "en-route-pickup",
+    3: "arrived-pickup",
+    4: "completed",
 };
 
 export function extractBillOfLading(
@@ -103,10 +103,10 @@ export function extractBillOfLading(
     agreement: Agreement | RedactableAgreement,
     attestations: readonly AttestationRecord[],
 ): BillOfLadingDocument {
-    const fulfilment = findCleartextSection(agreement, FULFILMENT_V2_CLAUSE_KEY);
-    const geo = findCleartextSection(agreement, GEO_CLAUSE_KEY);
-    // hand-off is its own clause now (where the physical exchange happens).
-    const handoffData = findCleartextSection(agreement, HANDOFF_CLAUSE_KEY)?.data as { handoff?: unknown } | undefined;
+    const fulfilment = findCleartextSectionByField(agreement, "modalities");
+    const geo = findCleartextSectionByField(agreement, "originGeohash");
+    // hand-off is its own clause (where the physical exchange happens).
+    const handoffData = findCleartextSectionByField(agreement, "handoff")?.data as { handoff?: unknown } | undefined;
     const handoffPointsArr = Array.isArray(handoffData?.handoff)
         ? handoffData.handoff
         : [];
@@ -119,16 +119,28 @@ export function extractBillOfLading(
         classOfService?: string;
     } | undefined;
 
-    // Index per-role attestations for THIS order by (clauseKey, stage). The
+    // Resolve each milestone's witnessing (clauseId, ladder ordinal) from the
+    // REGISTRY's process-log clauses — not just this agreement's sections,
+    // because cross-order attestations (e.g. the parent seller's events
+    // witnessed on this carriage leg) arrive under clauses composed on a
+    // sibling order's agreement.
+    const witnessByCode = new Map<string, { clauseId: string; ordinal: number }>();
+    for (const clauseId of listKnownClauseIds()) {
+        if (!clauseIsProcessLog(clauseId)) continue;
+        const ladder = clauseLadderField(clauseId);
+        if (!ladder) continue;
+        ladder.values.forEach((code, ordinal) => {
+            if (!witnessByCode.has(code)) witnessByCode.set(code, { clauseId, ordinal });
+        });
+    }
+
+    // Index process-log attestations for THIS order by (clauseId, stage). The
     // BoL only applies to the current order; cross-order attestations need
     // to be passed in scoped to the right orderHash by the caller.
     const byKey = new Map<string, AttestationRecord>();
     for (const att of attestations) {
         if (att.orderHash !== order.id) continue;
-        if (
-            att.clauseId !== MERCHANT_PROCESS_CLAUSE_KEY
-            && att.clauseId !== COURIER_PROCESS_CLAUSE_KEY
-        ) continue;
+        if (!clauseIsProcessLog(att.clauseId)) continue;
         // Last-write-wins for the same (clause, stage); live kernel typically
         // only sees one attestation per (order, clause, stage) since validators
         // reject re-attestation of the same envelope.
@@ -136,8 +148,8 @@ export function extractBillOfLading(
     }
 
     const stages: BolStageReceipt[] = DELIVERY_LIFECYCLE_STAGES.map(({ id, name }) => {
-        const source = STAGE_SOURCE[id];
-        const att = source ? byKey.get(`${source.clauseKey}:${source.eventStage}`) : undefined;
+        const witness = witnessByCode.get(STAGE_WITNESS_CODE[id] ?? "");
+        const att = witness ? byKey.get(`${witness.clauseId}:${witness.ordinal}`) : undefined;
         if (!att) return { stageId: id, stageName: name, attested: false };
         return {
             stageId: id,

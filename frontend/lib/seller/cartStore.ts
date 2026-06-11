@@ -5,11 +5,11 @@ import type { CanonicalFulfilmentMethod } from "@/lib/core/orderAgreement";
 
 /**
  * Cart's fulfilment mode mirrors the canonical fulfilment-method shape
- * (collapse of `figaro-fulfilment-v2`'s modality + coordination fields) —
+ * (collapse of the fulfilment clause's modality + coordination fields) —
  * five values: consume-onsite, pickup, and three `deliver:*`
  * variants. Replaces the prior 2-value `pickup | delivery` shape so the
  * cart can drive both 1-node (`direct-sale`) and N-node (`local-commerce`)
- * assembly bindings. See `fulfilmentRouting.ts` for the assembly-slug map.
+ * assembly bindings.
  */
 export type FulfillmentMode = CanonicalFulfilmentMethod;
 

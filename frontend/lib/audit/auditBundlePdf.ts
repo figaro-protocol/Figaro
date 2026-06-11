@@ -12,7 +12,8 @@
 
 import type { PublicClient } from "viem";
 import type { Order } from "@/lib/core/store";
-import { COMMERCE_CLAUSE_KEY, redactSections, type Agreement } from "@/lib/core/agreement";
+import { redactSections, type Agreement } from "@/lib/core/agreement";
+import { sectionsByField } from "@/lib/core/orderAgreement";
 import type { IndexedAttestationLog } from "@/lib/core/indexer";
 import {
     getAttestationsByOrder,
@@ -176,8 +177,13 @@ export async function buildAuditBundlePdfBlob(
         if (!cleartextAgreement) {
             continue;
         }
+        // The commerce section is found by its declared `lineItems` field —
+        // redaction targets whatever registered clause carries the basket.
         const agreement = redactLineItems
-            ? redactSections(cleartextAgreement, [COMMERCE_CLAUSE_KEY])
+            ? redactSections(
+                cleartextAgreement,
+                sectionsByField(cleartextAgreement, "lineItems").map((s) => s.clause),
+            )
             : cleartextAgreement;
 
         let attestations: readonly AttestationRecord[] = [];

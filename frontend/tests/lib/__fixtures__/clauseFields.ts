@@ -7,24 +7,29 @@
  * commit path on purpose.
  */
 import type { ClauseFields } from "@/lib/core/encoding";
-import {
-    GEO_CLAUSE_KEY,
-    FULFILMENT_V2_CLAUSE_KEY,
-    HANDOFF_CLAUSE_KEY,
-    PROXIMITY_POLICY_CLAUSE_KEY,
-    MERCHANT_PROCESS_CLAUSE_KEY,
-    COURIER_PROCESS_CLAUSE_KEY,
-    ARBITRATION_KLEROS_CLAUSE_KEY,
-    APPLICABLE_LAW_CLAUSE_KEY,
-    CONSENT_CLAUSE_KEY,
-} from "@/lib/core/agreement";
+
+// Tests may name clauses; production code may not (the registry defines the
+// open set at runtime; lib/ finds sections by spec-declared fields). These
+// literals mirror the canonical Layer-A example specs.
+const GEO_CLAUSE_KEY = "figaro-geo-v2";
+const FULFILMENT_V2_CLAUSE_KEY = "figaro-fulfilment-v2";
+const HANDOFF_CLAUSE_KEY = "figaro-handoff-v1";
+const PROXIMITY_POLICY_CLAUSE_KEY = "figaro-proximity-policy-v1";
+const MERCHANT_PROCESS_CLAUSE_KEY = "figaro-merchant-process-v1";
+const COURIER_PROCESS_CLAUSE_KEY = "figaro-courier-process-v1";
+const ARBITRATION_KLEROS_CLAUSE_KEY = "figaro-arbitration-kleros-v1";
+const APPLICABLE_LAW_CLAUSE_KEY = "figaro-applicable-law-v1";
+const CONSENT_CLAUSE_KEY = "figaro-consent-v1";
 
 export interface FlatClauseFields {
-    origin?: string;
-    destination?: string;
-    mass?: string;
-    volume?: string;
-    class_?: string;
+    /** Spec-named geo fields (figaro-geo-v2). The legacy origin/mass/class_
+     *  vocabulary and its unit-string parsing died with the per-clause
+     *  encoder map — tests compose what production composes. */
+    originGeohash?: string;
+    destinationGeohash?: string;
+    massGrams?: number;
+    volumeMl?: number;
+    classOfService?: string;
     fulfilmentModalities?: string[];
     fulfilmentCoordinations?: string[];
     fulfilmentHandoffPoints?: string[];
@@ -45,11 +50,11 @@ export function cf(flat: FlatClauseFields): ClauseFields {
     const out: ClauseFields = {};
 
     const geo: Record<string, unknown> = {};
-    if (flat.origin !== undefined) geo.origin = flat.origin;
-    if (flat.destination !== undefined) geo.destination = flat.destination;
-    if (flat.mass !== undefined) geo.mass = flat.mass;
-    if (flat.volume !== undefined) geo.volume = flat.volume;
-    if (flat.class_ !== undefined) geo.class_ = flat.class_;
+    if (flat.originGeohash !== undefined) geo.originGeohash = flat.originGeohash;
+    if (flat.destinationGeohash !== undefined) geo.destinationGeohash = flat.destinationGeohash;
+    if (flat.massGrams !== undefined) geo.massGrams = flat.massGrams;
+    if (flat.volumeMl !== undefined) geo.volumeMl = flat.volumeMl;
+    if (flat.classOfService !== undefined) geo.classOfService = flat.classOfService;
     if (Object.keys(geo).length > 0) out[GEO_CLAUSE_KEY] = geo;
 
     const ful: Record<string, unknown> = {};

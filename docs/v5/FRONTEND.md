@@ -57,7 +57,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 - `ClausesList.tsx` — clauses catalogue on the landing.
 - Shared DAG canvas: `components/core/ProcessGraphCanvas.tsx` (drag green handle to spawn sub-orders; drag onto another node to merge fan-in; click edge pill to swap fulfilment method).
 
-**State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `swapSyntheticFulfilmentMethod`, `mergeSyntheticParent`, `editSyntheticAgreement`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage). Bridge: `lib/designer/forkAssembly.ts` + `lib/designer/assemblyDocumentToDraft.ts` (fork a published assembly's document into an editable draft).
+**State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `mergeSyntheticParent`, `editSyntheticAgreement`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage). Bridge: `lib/designer/forkAssembly.ts` + `lib/designer/assemblyDocumentToDraft.ts` (fork a published assembly's document into an editable draft).
 
 ## Clause validation in the frontend
 

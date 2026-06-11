@@ -12,7 +12,6 @@ import {
     formatActualGrams,
 } from "@/lib/mechanisms/useGHGDisclosure";
 import { DISCLOSURE_KIND_LABELS } from "@/lib/mechanisms/contracts";
-import { GHG_CLAUSE_KEY } from "@/lib/core/agreement";
 import { useAllRegisteredClauses } from "@/lib/mechanisms/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
 import { groupClausesByArticle, clauseTier } from "@/lib/shared/clauseSpecSource";
@@ -25,8 +24,8 @@ export function GHGAnchorPanel({ processId }: { processId: string }) {
 
     // Live set of registered GHG disclosure clauses — intersection of the
     // on-chain ClauseRegistry events with the emissions article (designer-time
-    // tier excludes figaro-ghg-measurement-v1, which is runtime). Article +
-    // tier both read from the chain→IPFS spec. Mirrors ClauseInventory.
+    // tier excludes the runtime measurement companions). Article + tier both
+    // read from the chain→IPFS spec. Mirrors ClauseInventory.
     const applicableStandards = useMemo(() => {
         if (registered === null) return [];
         const onChain = new Set(registered.map((e) => e.clauseIdHash.toLowerCase()));
@@ -56,7 +55,6 @@ export function GHGAnchorPanel({ processId }: { processId: string }) {
         <Card className="bg-white text-black border border-gray-200 shadow-sm" data-testid="ghg-anchor-panel">
             <div className="p-6 space-y-4">
                 <h3 className="text-sm font-semibold text-black">GHG Clause Anchors</h3>
-                <p className="text-xs text-gray-500 font-mono">{GHG_CLAUSE_KEY}</p>
 
                 {/* Applicable standards — live from ClauseRegistry */}
                 <div className="flex flex-wrap gap-1">

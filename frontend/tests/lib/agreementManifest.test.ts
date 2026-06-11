@@ -8,7 +8,6 @@ import {
     buildAgreement,
     getSection,
     hasSection,
-    clauseFieldsToGeoSection,
     redactSections,
     computeRedactableAgreementHash,
     verifyRevealedSection,
@@ -296,35 +295,6 @@ describe("section accessors", () => {
         const a = makeAgreement({ sections: [COMMERCE_SECTION, GEO_SECTION] });
         expect(hasSection(a, "figaro-commerce-v1")).toBe(true);
         expect(hasSection(a, "figaro-ghg-iso-14064-v1")).toBe(false);
-    });
-});
-
-// ── clauseFieldsToGeoSection ───────────────────────────────────────────────
-
-describe("clauseFieldsToGeoSection", () => {
-    it("returns a figaro-geo-v2 AgreementSection", () => {
-        const section = clauseFieldsToGeoSection({
-            origin: "dr5reg",
-            destination: "dr5reh",
-            mass: "1 kg",
-            volume: "5 L",
-            class_: "E",
-        });
-        expect(section.clause).toBe("figaro-geo-v2");
-        expect(section.data.originGeohash).toBe("dr5reg");
-        expect(section.data.massGrams).toBe(1000);
-        expect(section.data.volumeMl).toBe(5000);
-        expect(section.data.classOfService).toBe("E");
-    });
-
-    it("defaults missing mass/volume to 1 (v2 validator's minimum-valid value)", () => {
-        const section = clauseFieldsToGeoSection({
-            origin: "dr5reg",
-            destination: "dr5reh",
-        });
-        expect(section.data.massGrams).toBe(1);
-        expect(section.data.volumeMl).toBe(1);
-        expect(section.data.classOfService).toBe("S");
     });
 });
 

@@ -20,7 +20,8 @@
             ],
             "sentinel": "none",
             "required": true,
-            "description": "Kleros subcourt. none = sentinel (index 0; not a valid selection — authors must pick a real court); general = catch-all; blockchain-nontechnical / blockchain-technical = on-chain-agreement disputes; english-language = disputes hinging on English-language interpretation. Position-as-index: the generic encoder maps each value to its 0-based position; the leading `none` preserves the 1-based-sentinel semantics other Layer-C validators historically relied on."
+            "default": "general",
+            "description": "Kleros subcourt. none = sentinel (index 0; not a valid selection — authors must pick a real court); general = catch-all and the default; blockchain-nontechnical / blockchain-technical = on-chain-agreement disputes; english-language = disputes hinging on English-language interpretation. Position-as-index: the generic encoder maps each value to its 0-based position; the leading `none` preserves the 1-based-sentinel semantics other Layer-C validators historically relied on."
         },
         {
             "name": "klerosMinJurors",
@@ -42,6 +43,7 @@
         "routes": [
             "/dispute",
             "/evidence-display"
-        ]
+        ],
+        "defaultOn": true
     }
 }

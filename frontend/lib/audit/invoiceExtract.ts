@@ -2,9 +2,10 @@
  * Invoice extractor — pure projection of a Figaro order's commerce clause
  * into a traditional invoice document.
  *
- * The commerce section (`figaro-commerce-v1`) carries currency + payment +
- * line items in its `data` field. This extractor projects those fields
- * into the structured invoice shape an auditor or tax preparer expects.
+ * The commerce section — found by its declared `lineItems` field, never by
+ * clause name — carries currency + payment + line items in its `data`
+ * field. This extractor projects those fields into the structured invoice
+ * shape an auditor or tax preparer expects.
  *
  * The line items array is the seller's catalogue projection at agreement
  * time — what was ordered, at what unit price, in what quantity. It was
@@ -17,10 +18,9 @@ import {
     type AgreementLineItem,
     type AgreementSection,
     type RedactableAgreement,
-    COMMERCE_CLAUSE_KEY,
     isRedactedSection,
-    findAnySection,
 } from "@/lib/core/agreement";
+import { findAnySectionsByField } from "@/lib/core/orderAgreement";
 import type { Order } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ExtractedDocument } from "./types";
@@ -73,7 +73,7 @@ export function extractInvoice(
     order: Order,
     agreement: Agreement | RedactableAgreement,
 ): InvoiceDocument {
-    const commerce = findAnySection(agreement, COMMERCE_CLAUSE_KEY);
+    const commerce = findAnySectionsByField(agreement, "lineItems")[0];
     const sealed = commerce !== undefined && isRedactedSection(commerce);
     const commerceData = commerce !== undefined && !isRedactedSection(commerce)
         ? (commerce.data as { currency?: string; lineItems?: unknown[] })

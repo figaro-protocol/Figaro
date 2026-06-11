@@ -13,14 +13,17 @@
  * Bill-of-Lading discriminator: the BoL is a document genre that exists
  * only on carriage legs — orders where goods are entrusted to a
  * third-party carrier with intent to deliver to a non-party consignee.
- * In Figaro that maps to orders whose committed agreement carries
- * `figaro-courier-process-v1`. Orders without that section have
+ * In Figaro that maps STRUCTURALLY to sub-orders (topology declares
+ * parents) that carry a runtime process log — derived from topology +
+ * spec tier, never from a clause's name. Orders without that shape have
  * handoff/lifecycle/proximity data surfaced in their own documents
  * (proximity + processLogs) but no BoL page is emitted. See
  * `docs/v5/BOL_RESEARCH.md` for the full rationale.
  */
 
-import { COURIER_PROCESS_CLAUSE_KEY, type Agreement, type RedactableAgreement } from "@/lib/core/agreement";
+import { type Agreement, type RedactableAgreement } from "@/lib/core/agreement";
+import { findCleartextSectionByField } from "@/lib/core/orderAgreement";
+import { clauseIsProcessLog } from "@/lib/shared/clauseSpecSource";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import { extractContract, type ContractDocument } from "./contractExtract";
@@ -42,15 +45,20 @@ import {
 } from "./sellerRegistryExtract";
 import { buildHashAppendix, type HashAppendixDocument } from "./hashAppendix";
 
-/** True when the order's committed agreement carries
- *  `figaro-courier-process-v1` — the canonical signal that the seller is
- *  acting as a carrier on this order. Buyer↔merchant orders, pickup
- *  orders, and consume-onsite orders all return false; only carriage
- *  legs return true. Accepts both cleartext and redacted forms — the
- *  clause key is visible regardless of whether the section's data is
- *  redacted. */
+/** True when the order is a CARRIAGE LEG: a sub-order (its topology section
+ *  declares non-empty parents) carrying a runtime process log (a Category-1
+ *  enum-ladder clause, per its registered spec). Both signals are derived —
+ *  fulfilment modality is topology + clauses, never a stored field — so any
+ *  registry-defined process clause marks the leg. Buyer↔merchant roots,
+ *  pickup orders, and consume-onsite orders have no parents and return
+ *  false. The process-log check reads the spec, so it sees redacted
+ *  sections too; the topology parents read needs the section cleartext
+ *  (audit bundles redact only commerce today). */
 export function isCarriageOrder(agreement: Agreement | RedactableAgreement): boolean {
-    return agreement.sections.some((s) => s.clause === COURIER_PROCESS_CLAUSE_KEY);
+    const topology = findCleartextSectionByField(agreement, "parentOrderHashes");
+    const parents = (topology?.data as { parentOrderHashes?: unknown } | undefined)?.parentOrderHashes;
+    if (!Array.isArray(parents) || parents.length === 0) return false;
+    return agreement.sections.some((s) => clauseIsProcessLog(s.clause));
 }
 
 export interface AuditBundle {

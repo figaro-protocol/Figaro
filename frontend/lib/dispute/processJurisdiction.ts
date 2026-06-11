@@ -4,9 +4,9 @@
  * Layer 3 of the three-layer dispute model (see the on-chain-evidence paper) is the only
  * *configured* layer: Layers 1 (bonding) and 2 (peer coordination) are
  * kernel mechanisms, always on. Layer 3 is the off-chain forum, and the
- * parties' agreement NAMES it — the `figaro-arbitration-kleros-v1` and
- * `figaro-applicable-law-v1` clauses the assembly designer authored into
- * the order(s).
+ * parties' agreement NAMES it — the arbitration and applicable-law clauses
+ * the assembly designer authored into the order(s), found by their declared
+ * FIELDS (`klerosCourt`, `applicableLaw`), never by clause name.
  *
  * This module reads those clauses off a process's committed orders and
  * resolves the recourse option(s) the runtime dispute surface presents.
@@ -17,12 +17,8 @@
  */
 import type { Address } from "viem";
 import type { Order } from "@/lib/core/store";
-import {
-    APPLICABLE_LAW_CLAUSE_KEY,
-    ARBITRATION_KLEROS_CLAUSE_KEY,
-    getSection,
-    type Agreement,
-} from "@/lib/core/agreement";
+import { type Agreement } from "@/lib/core/agreement";
+import { sectionByField } from "@/lib/core/orderAgreement";
 import { getKlerosCourt, encodeArbitratorExtraData, type KlerosCourt } from "./klerosCourts";
 import type { KlerosConfig } from "./klerosProxy";
 
@@ -88,7 +84,7 @@ export function resolveProcessRecourse(
             ? (agreements.get(order.agreementHash) ?? null)
             : null;
         if (!agreement) continue;
-        const klerosSection = getSection(agreement, ARBITRATION_KLEROS_CLAUSE_KEY);
+        const klerosSection = sectionByField(agreement, "klerosCourt");
         if (klerosSection) {
             const recourse = parseArbitrationKlerosSection(klerosSection.data);
             if (recourse) {
@@ -99,7 +95,7 @@ export function resolveProcessRecourse(
                 }
             }
         }
-        const lawSection = getSection(agreement, APPLICABLE_LAW_CLAUSE_KEY);
+        const lawSection = sectionByField(agreement, "applicableLaw");
         if (lawSection) {
             const recourse = parseApplicableLawSection(lawSection.data);
             if (recourse) {

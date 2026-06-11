@@ -14,7 +14,8 @@
             "minLength": 1,
             "maxLength": 12,
             "pattern": "^[0123456789bcdefghjkmnpqrstuvwxyz]+$",
-            "description": "Origin geohash (base32). 1\u201312 characters; longer = higher precision."
+            "default": "0",
+            "description": "Origin geohash (base32). 1–12 characters; longer = higher precision. Default \"0\" is the minimal valid placeholder (whole-region cell) pending a real value at commit time."
         },
         {
             "name": "destinationGeohash",
@@ -23,7 +24,8 @@
             "minLength": 1,
             "maxLength": 12,
             "pattern": "^[0123456789bcdefghjkmnpqrstuvwxyz]+$",
-            "description": "Destination geohash (base32). 1\u201312 characters; longer = higher precision."
+            "default": "0",
+            "description": "Destination geohash (base32). 1–12 characters; longer = higher precision. Default \"0\" is the minimal valid placeholder (whole-region cell) pending a real value at commit time."
         },
         {
             "name": "massGrams",
@@ -31,7 +33,8 @@
             "required": true,
             "min": 1,
             "max": 4294967295,
-            "description": "Shipment mass in whole grams. Must be at least 1 g; capped at uint32 max (\u22484.29 million kg)."
+            "default": 1,
+            "description": "Shipment mass in whole grams. Must be at least 1 g; capped at uint32 max (≈4.29 million kg)."
         },
         {
             "name": "volumeMl",
@@ -39,7 +42,8 @@
             "required": true,
             "min": 1,
             "max": 4294967295,
-            "description": "Shipment volume in whole millilitres. Must be at least 1 ml; capped at uint32 max (\u22484.29 million L)."
+            "default": 1,
+            "description": "Shipment volume in whole millilitres. Must be at least 1 ml; capped at uint32 max (≈4.29 million L)."
         },
         {
             "name": "classOfService",
@@ -51,6 +55,7 @@
                 "F",
                 "C"
             ],
+            "default": "S",
             "description": "Class of service. S = Standard (room temperature, not fragile). E = Express (priority window). F = Fragile (handle with care). C = Cold Chain (refrigerated transport required)."
         }
     ],
@@ -63,6 +68,7 @@
         "moduleIds": [
             "handoff-details",
             "handoff-tracker"
-        ]
+        ],
+        "defaultOn": true
     }
 }

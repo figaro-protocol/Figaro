@@ -15,41 +15,25 @@ import {
     type AgreementSection,
     type AnyAgreementSection,
     type RedactableAgreement,
-    APPLICABLE_LAW_CLAUSE_KEY,
-    COMMERCE_CLAUSE_KEY,
-    FULFILMENT_V2_CLAUSE_KEY,
-    TOPOLOGY_CLAUSE_KEY,
     computeSectionLeaf,
     isRedactedSection,
-    findAnySection,
-    findCleartextSection,
 } from "@/lib/core/agreement";
+import { findCleartextSectionByField } from "@/lib/core/orderAgreement";
+import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import type { Order } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ExtractedDocument } from "./types";
 
-/** Human-readable title for each clause clause (best-effort display label). */
-const CLAUSE_TITLE: Record<string, string> = {
-    "figaro-commerce-v1": "Commerce — line items + payment",
-    "figaro-geo-v2": "Geography — origin + destination + mass + volume + class",
-    "figaro-fulfilment-v2": "Fulfilment — modality + coordination + handoffPoint",
-    "figaro-topology-v1": "Topology — DAG lineage",
-    "figaro-arbitration-kleros-v1": "Arbitration — Kleros decentralized court",
-    "figaro-applicable-law-v1": "Applicable law — state / ADR / forum",
-    "figaro-ghg-protocol-v1": "GHG — Protocol Corporate Standard",
-    "figaro-ghg-iso-14064-v1": "GHG — ISO 14064",
-    "figaro-ghg-pas-2050-v1": "GHG — PAS 2050",
-    "figaro-ghg-en-16258-v1": "GHG — EN 16258",
-    "figaro-ghg-custom-v1": "GHG — Custom methodology",
-    "figaro-ghg-measurement-v1": "GHG — Runtime measurement",
-    "figaro-proximity-policy-v1": "Proximity policy — committed band",
-    "figaro-proximity-proof-v1": "Proximity proof — runtime witness",
-    "figaro-merchant-process-v1": "Merchant process — sovereign event log",
-    "figaro-courier-process-v1": "Courier process — sovereign event log",
-};
+/** Human-readable display label for a clause — the registered spec's title
+ *  (the network-defined SSoT), falling back to the raw clauseId while the
+ *  spec is uncached. The label set is OPEN: any registered clause labels
+ *  itself; no table in code. */
+function clauseTitle(clauseId: string): string {
+    return getClauseSpec(clauseId)?.title ?? clauseId;
+}
 
 interface ContractClause {
-    /** Clause key (e.g. "figaro-commerce-v1"). */
+    /** Readable clauseId from the registry. */
     clauseKey: string;
     /** Human-readable title. */
     title: string;
@@ -117,7 +101,7 @@ function clauseFromSection(section: AnyAgreementSection): ContractClause {
     if (isRedactedSection(section)) {
         return {
             clauseKey: section.clause,
-            title: CLAUSE_TITLE[section.clause] ?? section.clause,
+            title: clauseTitle(section.clause),
             body: {},
             leafHash: section.leaf,
             sealed: true,
@@ -125,14 +109,14 @@ function clauseFromSection(section: AnyAgreementSection): ContractClause {
     }
     return {
         clauseKey: section.clause,
-        title: CLAUSE_TITLE[section.clause] ?? section.clause,
+        title: clauseTitle(section.clause),
         body: section.data,
         leafHash: computeSectionLeaf(section),
     };
 }
 
 function extractJurisdictionSummary(agreement: Agreement | RedactableAgreement) {
-    const applicableLaw = findCleartextSection(agreement, APPLICABLE_LAW_CLAUSE_KEY);
+    const applicableLaw = findCleartextSectionByField(agreement, "applicableLaw");
     if (!applicableLaw) return undefined;
     const data = applicableLaw.data as { applicableLaw?: string; forum?: string; language?: string };
     if (!data.applicableLaw || typeof data.applicableLaw !== "string") return undefined;
@@ -144,7 +128,7 @@ function extractJurisdictionSummary(agreement: Agreement | RedactableAgreement) 
 }
 
 function extractLineage(agreement: Agreement | RedactableAgreement) {
-    const topology = findCleartextSection(agreement, TOPOLOGY_CLAUSE_KEY);
+    const topology = findCleartextSectionByField(agreement, "parentOrderHashes");
     const data = topology?.data as
         | { parentOrderHashes?: unknown; topologyMode?: unknown }
         | undefined;
@@ -156,7 +140,7 @@ function extractLineage(agreement: Agreement | RedactableAgreement) {
 }
 
 function extractFulfilmentSummary(agreement: Agreement | RedactableAgreement) {
-    const fulfilment = findCleartextSection(agreement, FULFILMENT_V2_CLAUSE_KEY);
+    const fulfilment = findCleartextSectionByField(agreement, "modalities");
     const data = fulfilment?.data as
         | { modalities?: unknown; delivery?: { coordination?: unknown } }
         | undefined;
@@ -187,7 +171,7 @@ export function extractContract(
     // identical, but the commerce section is the authoritative party-signed
     // source). When commerce is redacted, fall back to order.currency — the
     // kernel records currency on the commitment regardless of redaction.
-    const commerce = findCleartextSection(agreement, COMMERCE_CLAUSE_KEY);
+    const commerce = findCleartextSectionByField(agreement, "lineItems");
     const commerceCurrency = (commerce?.data as { currency?: string } | undefined)?.currency;
 
     return {

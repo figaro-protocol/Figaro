@@ -36,10 +36,12 @@ import {
     waitForWalletConnected,
 } from './devnet-helpers';
 import {
-    ARBITRATION_KLEROS_CLAUSE_KEY,
     canonicalizeAgreement,
     type Agreement,
 } from '../../lib/core/agreement';
+
+// Tests may name clauses; production code may not.
+const ARBITRATION_KLEROS_CLAUSE_KEY = 'figaro-arbitration-kleros-v1';
 import { ANVIL_KEYS } from '../anvilAccounts';
 
 const RPC_URL = 'http://127.0.0.1:8545';

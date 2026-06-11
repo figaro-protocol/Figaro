@@ -157,6 +157,13 @@ export interface ClauseBlockBinding {
      *  read this to exclude it from selectable lists (the drawer never offers a
      *  structural clause as a checkbox). Omit for elective clauses. */
     structural?: boolean;
+    /** Default-on clause — pre-composed (as an empty object the spec's field
+     *  `default`s fill at build) on every freshly-spawned designer node, a
+     *  deliberate analytics default the author can remove in the drawer (unlike
+     *  `structural`, which is never offered). Generic surfaces compose the set
+     *  by reading this flag; no code names the clauses. Omit for elective
+     *  clauses. */
+    defaultOn?: boolean;
     /** WHO attests this runtime (category-1) clause: "seller" (the order's seller
      *  — the default for lifecycle clauses like merchant/courier process) or
      *  "bilateral" (BOTH buyer and seller witness — e.g. the proximity proof of
@@ -491,6 +498,10 @@ function parseBlockBinding(
         errors.push({ path: `${path}.structural`, message: "structural must be a boolean when present" });
         return null;
     }
+    if (raw.defaultOn !== undefined && typeof raw.defaultOn !== "boolean") {
+        errors.push({ path: `${path}.defaultOn`, message: "defaultOn must be a boolean when present" });
+        return null;
+    }
     if (raw.attestation !== undefined && raw.attestation !== "seller" && raw.attestation !== "bilateral") {
         errors.push({ path: `${path}.attestation`, message: "attestation must be 'seller' or 'bilateral' when present" });
         return null;
@@ -510,6 +521,7 @@ function parseBlockBinding(
         ...(raw.sisterClauseId !== undefined && { sisterClauseId: raw.sisterClauseId as string }),
         ...(raw.nestsUnder !== undefined && { nestsUnder: raw.nestsUnder as string }),
         ...(raw.structural !== undefined && { structural: raw.structural as boolean }),
+        ...(raw.defaultOn !== undefined && { defaultOn: raw.defaultOn as boolean }),
         ...(raw.attestation !== undefined && { attestation: raw.attestation as "seller" | "bilateral" }),
         ...(handoffStages !== undefined && { handoffStages }),
     };

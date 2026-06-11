@@ -40,10 +40,9 @@ import {
     ensureTokenApprovals,
     readLocalDeploymentConfig,
 } from './devnet-helpers';
-import {
-    GHG_CLAUSE_KEY,
-    GHG_MEASUREMENT_CLAUSE_KEY,
-} from '@/lib/core/agreement';
+// Tests may name clauses; production code may not.
+const GHG_CLAUSE_KEY = 'figaro-ghg-iso-14064-v1';
+const GHG_MEASUREMENT_CLAUSE_KEY = 'figaro-ghg-measurement-v1';
 import {
     ATTESTATION_COORDINATOR_ABI,
     buildSectionInclusionProof,

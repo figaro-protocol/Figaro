@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { executeTransactionCapabilityAction } from "@/lib/semantic/executeTransactionCapability";
 
 describe("executeTransactionCapabilityAction", () => {
-    it("dispatches disclosure commitments with descriptor defaults", async () => {
+    it("dispatches disclosure commitments with the descriptor's clauseId", async () => {
         const submitDisclosureCommitment = vi.fn(async () => undefined);
 
         await executeTransactionCapabilityAction(
@@ -10,11 +10,12 @@ describe("executeTransactionCapabilityAction", () => {
                 executionType: "transaction",
                 kind: "submit-disclosure-commitment",
                 orderHash: "root-order",
+                clauseId: "any-registered-disclosure-clause",
             },
             { submitDisclosureCommitment },
         );
 
-        expect(submitDisclosureCommitment).toHaveBeenCalledWith("root-order");
+        expect(submitDisclosureCommitment).toHaveBeenCalledWith("root-order", "any-registered-disclosure-clause");
     });
 
     it("dispatches airdrop claims with amount and proof from action and waits for confirmation", async () => {

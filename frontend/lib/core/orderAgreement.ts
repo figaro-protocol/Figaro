@@ -1,29 +1,17 @@
 import type { ClauseFields } from "@/lib/core/encoding";
 import {
     type AgreementLineItem,
+    type AnyAgreementSection,
     buildAgreement,
-    FULFILMENT_V2_CLAUSE_KEY,
-    HANDOFF_CLAUSE_KEY,
-    GEO_CLAUSE_KEY,
-    GHG_CLAUSE_KEY,
-    GHG_DISCLOSURE_CLAUSE_KEYS,
-    GHG_STANDARD_TO_CLAUSE,
-    GHG_CLAUSE_TO_STANDARD,
-    ARBITRATION_KLEROS_CLAUSE_KEY,
-    APPLICABLE_LAW_CLAUSE_KEY,
-    COMMERCE_CLAUSE_KEY,
-    CONSENT_CLAUSE_KEY,
-    PROXIMITY_POLICY_CLAUSE_KEY,
-    getSection,
-    clauseFieldsToGeoSection,
     computeAgreementHash,
-    TOPOLOGY_CLAUSE_KEY,
+    isRedactedSection,
     type Agreement,
     type AgreementSection,
+    type RedactableAgreement,
     type TopologyMode,
 } from "@/lib/core/agreement";
-import { validateContent } from "@figaro/core/clauses";
-import { getClauseSpec, clauseEnumValues } from "@/lib/shared/clauseSpecSource";
+import { validateContent, type FieldSpec } from "@figaro/core/clauses";
+import { clauseDeclaresField, clauseIsStructural, getClauseSpec, listKnownClauseIds } from "@/lib/shared/clauseSpecSource";
 
 // ── Multi-valued fulfilment + proximity composition ────────────────────────
 //
@@ -71,21 +59,6 @@ export function deriveCanonicalFulfilmentMethod(
     return null;
 }
 
-/** Inverse of `deriveCanonicalFulfilmentMethod` — split a single canonical
- *  method into the (modalities, coordinations) pair the v2 section expects. */
-export function canonicalFulfilmentMethodToArrays(
-    method: CanonicalFulfilmentMethod,
-): { modalities: string[]; coordinations: string[] } {
-    switch (method) {
-        case "consume-onsite": return { modalities: ["consume-onsite"], coordinations: [] };
-        case "pickup": return { modalities: ["pickup"], coordinations: [] };
-        case "virtual": return { modalities: ["virtual"], coordinations: [] };
-        case "deliver:buyer-assigned": return { modalities: ["delivery"], coordinations: ["buyer-assigned"] };
-        case "deliver:seller-assigned": return { modalities: ["delivery"], coordinations: ["seller-assigned"] };
-        case "deliver:dutch-auction": return { modalities: ["delivery"], coordinations: ["dutch-auction"] };
-    }
-}
-
 function dedupeOrderHashes(orderHashes?: string[]): string[] {
     return [...new Set((orderHashes ?? []).map((hash) => hash.trim()).filter(Boolean))];
 }
@@ -129,47 +102,137 @@ export interface AgreementSummary {
         points: readonly string[];
     };
     ghg?: {
-        /** Clause keys of each GHG disclosure clause in the agreement
-         *  (e.g., "figaro-ghg-iso-14064-v1"). Multi-valued. */
+        /** clauseIds of each GHG disclosure section in the agreement — the
+         *  clauses that declare a `scope` field. Multi-valued: one section per
+         *  accounting standard the seller reports under. */
         clauseKeys: readonly string[];
-        /** Human-readable label of the first declared standard (back-compat). */
+        /** Label of the first declared standard — the registered spec's title
+         *  (the network-defined SSoT). */
         standard?: string;
         /** Scope from the first declared standard (back-compat). */
         scope?: number;
     };
-    proximity?: {
-        /** Proximity-policy bands offered. */
-        bands: readonly string[];
-    };
-    /** Applicable-law / state / ADR recourse layer. */
-    jurisdiction?: Record<string, unknown>;
-    /** Decentralized arbitration provider clause (e.g., Kleros). */
-    arbitration?: Record<string, unknown>;
-    consent?: Record<string, unknown>;
 }
 
-/** Fold an order's two STRUCTURAL clauses — commerce + topology — into its
- *  clause set. These are the always-referenced defaults: their data is the
- *  order's structural properties (payment/currency; DAG position), not drawer
- *  composition. Topology mode is derived from the parent set. Every OTHER clause
- *  is already composed in `clauseFields`. This is the single place the two
- *  structural clauses' data is assembled; from there they are projected by the
- *  same generic loop as every other clause — no special-casing in the build. */
+/** Fold the order's STRUCTURAL clauses into its clause set. A structural clause
+ *  (spec `block.structural`) is composed on every order by the build itself —
+ *  its data is the order's structural properties (payment/currency; DAG
+ *  position), never drawer composition. The binding is BY FIELD NAME: each
+ *  structural spec draws exactly the fields it declares from the builder's
+ *  value bag (currency, payment, lineItems, topologyMode, parentOrderHashes),
+ *  so a structural clause this codebase has never seen composes the subset it
+ *  asks for — no clause is named. Topology mode is derived from the parent
+ *  set. Every OTHER clause is already composed in `clauseFields`; from here
+ *  all sections are projected by the same generic loop. */
 function composeOrderClauseFields(params: BuildOrderAgreementParams): ClauseFields {
     const explicit = dedupeOrderHashes(params.parentOrderHashes);
     const fallback = dedupeOrderHashes(params.fallbackParentOrderHashes);
     const parents = explicit.length > 0 ? explicit : fallback;
     const topologyMode: TopologyMode =
         parents.length === 0 ? "root" : explicit.length > 0 ? "explicit" : "linear-fallback";
-    return {
-        ...(params.clauseFields ?? {}),
-        [COMMERCE_CLAUSE_KEY]: {
-            currency: params.currency,
-            payment: params.payment.toString(),
-            lineItems: params.lineItems ?? [],
-        },
-        [TOPOLOGY_CLAUSE_KEY]: { topologyMode, parentOrderHashes: parents },
+
+    const bag: Record<string, unknown> = {
+        currency: params.currency,
+        payment: params.payment.toString(),
+        lineItems: params.lineItems ?? [],
+        topologyMode,
+        parentOrderHashes: parents,
     };
+
+    const structuralIds = listKnownClauseIds().filter((clauseId) => clauseIsStructural(clauseId));
+    if (structuralIds.length === 0) {
+        // Without the chain→IPFS spec cache the structural sections (the
+        // order's payment + DAG position) cannot compose — refuse loudly
+        // rather than build a hollow agreement. Surfaces gate on
+        // `useClauseSpecs().loaded`; tests prime the cache.
+        throw new Error(
+            "clause specs not loaded: no structural clauses in the cache — gate the surface on useClauseSpecs().loaded (or prime the spec cache in tests) before building agreements",
+        );
+    }
+
+    const out: ClauseFields = { ...(params.clauseFields ?? {}) };
+    for (const clauseId of structuralIds) {
+        const fields = getClauseSpec(clauseId)?.fields ?? [];
+        out[clauseId] = Object.fromEntries(
+            fields.filter((f) => f.name in bag).map((f) => [f.name, bag[f.name]]),
+        );
+    }
+    return out;
+}
+
+// ── Generic spec-driven field encode ────────────────────────────────────────
+//
+// ONE walk replaces the retired per-clause encoder map: every rule it applies
+// — enum membership (minus the spec's `sentinel`), `default` fill for absent
+// input, integer range coercion, required-field drop semantics, minItems
+// gates, object recursion — is read from the clause's chain-loaded spec.
+// No clause is named. The build encoder shapes input; full constraint
+// enforcement (lengths, patterns) stays with Layer-A `validateContent` at
+// the sign gates.
+
+/** Encode one input value against its FieldSpec. `undefined` = unsatisfiable
+ *  (absent/invalid with no default): the caller omits optional fields and
+ *  drops the whole section for required ones. */
+function encodeFieldFromSpec(field: FieldSpec, raw: unknown): unknown {
+    switch (field.type) {
+        case "string": {
+            const s = typeof raw === "string" ? raw.trim() : "";
+            return s !== "" ? s : field.default;
+        }
+        case "integer": {
+            const n = typeof raw === "number" ? raw : raw != null && raw !== "" ? Number(raw) : NaN;
+            const valid = Number.isInteger(n)
+                && (field.min === undefined || n >= field.min)
+                && (field.max === undefined || n <= field.max);
+            return valid ? n : field.default;
+        }
+        case "bigint": {
+            if (typeof raw === "string" && raw !== "") {
+                try {
+                    BigInt(raw);
+                    return raw;
+                } catch { /* invalid — fall through to default */ }
+            }
+            return field.default;
+        }
+        case "boolean":
+            return typeof raw === "boolean" ? raw : field.default;
+        case "enum": {
+            const valid = typeof raw === "string" && field.values.includes(raw) && raw !== field.sentinel;
+            return valid ? raw : field.default;
+        }
+        case "array": {
+            const items = (Array.isArray(raw) ? raw : [])
+                .map((v) => encodeFieldFromSpec(field.items, v))
+                .filter((v) => v !== undefined);
+            if (items.length === 0 || items.length < (field.minItems ?? 0)) return field.default;
+            return items;
+        }
+        case "object": {
+            if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return undefined;
+            const nested = encodeClauseDataFromSpec(field.fields, raw as Record<string, unknown>);
+            return nested === null ? undefined : nested;
+        }
+    }
+}
+
+/** Project composed input through a spec's field list. `null` = a required
+ *  field ended unsatisfiable — the clause's section is dropped (matching the
+ *  old per-clause encoders' empty/invalid → no-section behavior). */
+function encodeClauseDataFromSpec(
+    fields: readonly FieldSpec[],
+    input: Record<string, unknown>,
+): Record<string, unknown> | null {
+    const out: Record<string, unknown> = {};
+    for (const field of fields) {
+        const value = encodeFieldFromSpec(field, input[field.name]);
+        if (value === undefined) {
+            if (field.required) return null;
+            continue;
+        }
+        out[field.name] = value;
+    }
+    return out;
 }
 
 export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreement {
@@ -177,139 +240,34 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
     // structural clauses (commerce + topology) are folded in by
     // composeOrderClauseFields; every other clause is whatever the assembly
     // composed, INCLUDING permissionlessly-registered clauses this code has
-    // never heard of — those pass through verbatim. The encoder map below holds
-    // the per-clause field transforms / defaults / companion leaves still living
-    // in code (transitional — they move into each clause's spec). Sections are
-    // sorted by clause key so the pinned JSON is deterministic; the merkle root
-    // sorts its own leaves, so order never affects agreementHash.
+    // never heard of — those pass through verbatim. Sections are sorted by
+    // clause key so the pinned JSON is deterministic; the merkle root sorts
+    // its own leaves, so order never affects agreementHash.
     const cf: ClauseFields = composeOrderClauseFields(params);
-    const arrOf = (v: unknown): string[] =>
-        Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 
-    // clauseId → its field transform. A clause with no entry is permissionless
-    // to this code and projects its fields verbatim. Some entries emit a paired
-    // companion leaf (proximity → proof). Empty/invalid input → null (dropped).
-    type ClauseEncoder = (fields: Record<string, unknown>) => AgreementSection | AgreementSection[] | null;
-    const ENCODERS: Record<string, ClauseEncoder> = {
-        [GEO_CLAUSE_KEY]: (geo) => {
-            if (
-                typeof geo.origin === "string" ||
-                typeof geo.destination === "string" ||
-                typeof geo.mass === "string" ||
-                typeof geo.volume === "string"
-            ) {
-                return clauseFieldsToGeoSection(
-                    geo as { origin?: string; destination?: string; mass?: string; volume?: string; class_?: string },
-                );
-            }
-            return null;
-        },
-        [FULFILMENT_V2_CLAUSE_KEY]: (fulfilment) => {
-            const allowedModalities = clauseEnumValues(FULFILMENT_V2_CLAUSE_KEY, "modalities");
-            const modalities = arrOf(fulfilment.modalities).filter((m) => allowedModalities.includes(m));
-            if (modalities.length === 0) return null;
-            const data: Record<string, unknown> = { modalities };
-            // The validator requires coordination non-empty IFF delivery is the
-            // request; default to "seller-assigned" when unset.
-            if (modalities.includes("delivery")) {
-                const deliveryIn = (fulfilment.delivery ?? {}) as Record<string, unknown>;
-                const allowedCoordinations = clauseEnumValues(FULFILMENT_V2_CLAUSE_KEY, "delivery.coordination");
-                const coords = arrOf(deliveryIn.coordination).filter((c) => allowedCoordinations.includes(c));
-                data.delivery = { coordination: coords.length > 0 ? coords : ["seller-assigned"] };
-            }
-            return { clause: FULFILMENT_V2_CLAUSE_KEY, data };
-        },
-        [HANDOFF_CLAUSE_KEY]: (fields) => {
-            // Hand-off is its own clause now (where the physical exchange
-            // happens); the proximity policy nests under its `handoff` field.
-            const allowedHandoff = clauseEnumValues(HANDOFF_CLAUSE_KEY, "handoff");
-            const handoff = arrOf(fields.handoff).filter((h) => allowedHandoff.includes(h));
-            if (handoff.length === 0) return null;
-            return { clause: HANDOFF_CLAUSE_KEY, data: { handoff } };
-        },
-        [PROXIMITY_POLICY_CLAUSE_KEY]: (fields) => {
-            const allowedBands = clauseEnumValues(PROXIMITY_POLICY_CLAUSE_KEY, "bands");
-            const bands = arrOf(fields.bands).filter((b) => allowedBands.includes(b));
-            if (bands.length === 0) return null;
-            // The runtime proof companion (figaro-proximity-proof-v1) is emitted
-            // generically below as an EMPTY anchor, from this clause's
-            // sisterClauseId — never a per-clause companion baked here. (Its real
-            // band/nonce/deviceSig are attested at runtime, not composed.)
-            return { clause: PROXIMITY_POLICY_CLAUSE_KEY, data: { bands } };
-        },
-        [ARBITRATION_KLEROS_CLAUSE_KEY]: (kleros) => {
-            const klerosCourt = typeof kleros.klerosCourt === "string" ? kleros.klerosCourt : undefined;
-            const ALLOWED_KLEROS_COURTS = ["general", "blockchain-nontechnical", "blockchain-technical", "english-language"];
-            if (!klerosCourt || !ALLOWED_KLEROS_COURTS.includes(klerosCourt)) return null;
-            const rawJurors = (kleros as { klerosMinJurors?: unknown }).klerosMinJurors;
-            const parsed = rawJurors != null && rawJurors !== "" ? Number(rawJurors) : 3;
-            return {
-                clause: ARBITRATION_KLEROS_CLAUSE_KEY,
-                data: { klerosCourt, klerosMinJurors: Number.isFinite(parsed) && parsed >= 1 ? parsed : 3 },
-            };
-        },
-        [APPLICABLE_LAW_CLAUSE_KEY]: (law) => {
-            const applicableLaw = typeof law.applicableLaw === "string" && law.applicableLaw ? law.applicableLaw : undefined;
-            if (!applicableLaw) return null;
-            const data: Record<string, unknown> = { applicableLaw };
-            if (typeof law.forum === "string" && law.forum) data.forum = law.forum;
-            if (typeof law.language === "string" && law.language) data.language = law.language;
-            return { clause: APPLICABLE_LAW_CLAUSE_KEY, data };
-        },
-        [CONSENT_CLAUSE_KEY]: (fields) => {
-            const rawConsentDocuments = fields.documents;
-            const consentDocuments = Array.isArray(rawConsentDocuments)
-                ? rawConsentDocuments.filter((doc): doc is { documentHash: string; documentVersion: string; documentTitle: string } =>
-                    typeof doc === "object" && doc !== null
-                    && typeof (doc as Record<string, unknown>).documentHash === "string"
-                    && typeof (doc as Record<string, unknown>).documentVersion === "string"
-                    && typeof (doc as Record<string, unknown>).documentTitle === "string"
-                    && (doc as Record<string, string>).documentHash.trim() !== ""
-                    && (doc as Record<string, string>).documentVersion.trim() !== ""
-                    && (doc as Record<string, string>).documentTitle.trim() !== "",
-                )
-                : [];
-            return consentDocuments.length > 0
-                ? { clause: CONSENT_CLAUSE_KEY, data: { documents: consentDocuments } }
-                : null;
-        },
-        // Each GHG disclosure clause → its scope section. The paired runtime
-        // measurement leaf is added once below (companion of *any* disclosure).
-        ...Object.fromEntries(
-            (GHG_DISCLOSURE_CLAUSE_KEYS as ReadonlyArray<string>).map((k): [string, ClauseEncoder] => [
-                k,
-                (fields) => {
-                    const rawScope = (fields as { scope?: unknown }).scope;
-                    const parsedScope = typeof rawScope === "number" ? rawScope : Number(rawScope);
-                    return { clause: k, data: { scope: Number.isFinite(parsedScope) && parsedScope ? parsedScope : 1 } };
-                },
-            ]),
-        ),
-    };
-
-    // Project every clause in the set — structural (commerce, topology) and
-    // composed alike — through ONE loop. Known clauses use their encoder;
-    // unknown (permissionless) clauses pass through verbatim. commerce + topology
-    // have no encoder, so they pass through from the data composeOrderClauseFields
-    // folded in.
+    // Project every clause in the set through ONE spec-driven walk:
+    //   - unknown spec (permissionless / not yet loaded) → fields verbatim;
+    //   - Category-1 → EMPTY anchor (an event-log clause's fields are filled
+    //     at runtime via attestation, never composed at build);
+    //   - structural (commerce, topology) → verbatim — their data is assembled
+    //     by this build itself, already canonical;
+    //   - everything else → encodeClauseDataFromSpec (the generic walk).
     const sections: AgreementSection[] = [];
     for (const clauseId of Object.keys(cf)) {
-        const encode = ENCODERS[clauseId];
         const fields = (cf[clauseId] ?? {}) as Record<string, unknown>;
-        const projected = encode
-            ? encode(fields)
-            : {
-                  clause: clauseId,
-                  // Spec-driven default. A Category-1 clause is an event-log ANCHOR:
-                  // its agreement section is empty — its fields (eventType, etc.) are
-                  // filled at runtime via attestation, not composed at build. Read
-                  // from the spec's block.tier. Every other clause (incl. unknown /
-                  // permissionless) projects its fields verbatim.
-                  data: getClauseSpec(clauseId)?.block?.tier === "category-1" ? {} : fields,
-              };
-        if (projected == null) continue;
-        if (Array.isArray(projected)) sections.push(...projected);
-        else sections.push(projected);
+        const spec = getClauseSpec(clauseId);
+        let data: Record<string, unknown> | null;
+        if (!spec) {
+            data = fields;
+        } else if (spec.block?.tier === "category-1") {
+            data = {};
+        } else if (clauseIsStructural(clauseId)) {
+            data = fields;
+        } else {
+            data = encodeClauseDataFromSpec(spec.fields, fields);
+        }
+        if (data === null) continue;
+        sections.push({ clause: clauseId, data });
     }
 
     // Companion (sister) runtime anchors. A composed clause whose spec declares
@@ -344,10 +302,49 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
     });
 }
 
+/** Every agreement section whose registered spec declares a top-level field
+ *  named `fieldName` (falling back to data-key presence for clauses whose spec
+ *  isn't cached). Field names — not clause ids — are the binding vocabulary:
+ *  ANY registered clause that carries the field participates, including
+ *  clauses this codebase has never seen. */
+export function sectionsByField(agreement: Agreement, fieldName: string): AgreementSection[] {
+    return agreement.sections.filter((section) => {
+        if (getClauseSpec(section.clause)) return clauseDeclaresField(section.clause, fieldName);
+        return Object.prototype.hasOwnProperty.call(section.data ?? {}, fieldName);
+    });
+}
+
+export function sectionByField(agreement: Agreement, fieldName: string): AgreementSection | undefined {
+    return sectionsByField(agreement, fieldName)[0];
+}
+
+/** Redactable-aware sibling of `sectionsByField`: every section — cleartext
+ *  OR redacted — whose registered spec declares `fieldName` (data-key
+ *  fallback applies only to cleartext sections, where data is readable). */
+export function findAnySectionsByField(
+    agreement: Agreement | RedactableAgreement,
+    fieldName: string,
+): AnyAgreementSection[] {
+    return agreement.sections.filter((s) => {
+        if (getClauseSpec(s.clause)) return clauseDeclaresField(s.clause, fieldName);
+        return !isRedactedSection(s) && Object.prototype.hasOwnProperty.call(s.data ?? {}, fieldName);
+    });
+}
+
+/** Redactable-aware sibling of `sectionByField`, returning only the cleartext
+ *  form: the first section declaring `fieldName` that is NOT redacted. */
+export function findCleartextSectionByField(
+    agreement: Agreement | RedactableAgreement,
+    fieldName: string,
+): AgreementSection | undefined {
+    const s = findAnySectionsByField(agreement, fieldName).find((x) => !isRedactedSection(x));
+    return s as AgreementSection | undefined;
+}
+
 export function getTopologyParentOrderHashes(agreement: Agreement | null | undefined): string[] | null {
     if (!agreement) return null;
 
-    const section = getSection(agreement, TOPOLOGY_CLAUSE_KEY);
+    const section = sectionByField(agreement, "parentOrderHashes");
     if (!section) return null;
 
     const rawParentOrderHashes = (section.data as Record<string, unknown>).parentOrderHashes;
@@ -361,7 +358,7 @@ export function getTopologyParentOrderHashes(agreement: Agreement | null | undef
 export function getTopologyMode(agreement: Agreement | null | undefined): TopologyMode | null {
     if (!agreement) return null;
 
-    const section = getSection(agreement, TOPOLOGY_CLAUSE_KEY);
+    const section = sectionByField(agreement, "topologyMode");
     if (!section) return null;
 
     const topologyMode = (section.data as Record<string, unknown>).topologyMode;
@@ -375,19 +372,14 @@ export function getTopologyMode(agreement: Agreement | null | undefined): Topolo
 export function summarizeAgreement(agreement: Agreement | null | undefined): AgreementSummary | null {
     if (!agreement) return null;
 
-    const geoSection = getSection(agreement, GEO_CLAUSE_KEY);
-    const topologySection = getSection(agreement, TOPOLOGY_CLAUSE_KEY);
-    const fulfilmentSection = getSection(agreement, FULFILMENT_V2_CLAUSE_KEY);
-    const proximitySection = getSection(agreement, PROXIMITY_POLICY_CLAUSE_KEY);
-    const handoffSection = getSection(agreement, HANDOFF_CLAUSE_KEY);
-    const arbitrationSection = getSection(agreement, ARBITRATION_KLEROS_CLAUSE_KEY);
-    const applicableLawSection = getSection(agreement, APPLICABLE_LAW_CLAUSE_KEY);
-    const consentSection = getSection(agreement, CONSENT_CLAUSE_KEY);
-    // GHG disclosure is multi-valued: agreement may carry one section per
-    // standard the merchant reports under.
-    const ghgDisclosures = GHG_DISCLOSURE_CLAUSE_KEYS
-        .map((key) => ({ key, section: getSection(agreement, key) }))
-        .filter(({ section }) => section);
+    // Field names are the lookup vocabulary — see `sectionsByField`.
+    const geoSection = sectionByField(agreement, "originGeohash");
+    const topologySection = sectionByField(agreement, "parentOrderHashes");
+    const fulfilmentSection = sectionByField(agreement, "modalities");
+    const handoffSection = sectionByField(agreement, "handoff");
+    // GHG disclosure is multi-valued: one section per accounting standard the
+    // seller reports under; each disclosure clause declares a `scope` field.
+    const ghgDisclosures = sectionsByField(agreement, "scope");
 
     return {
         geo: geoSection
@@ -433,19 +425,14 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
             : undefined,
         ghg: ghgDisclosures.length > 0
             ? {
-                clauseKeys: ghgDisclosures.map((d) => d.key),
+                clauseKeys: ghgDisclosures.map((d) => d.clause),
                 // Single-standard back-compat for callers that take one label.
-                standard: GHG_CLAUSE_TO_STANDARD[ghgDisclosures[0].key],
-                scope: typeof ghgDisclosures[0].section!.data.scope === "number"
-                    ? ghgDisclosures[0].section!.data.scope
+                // The registered spec's title IS the standard's label (the
+                // network-defined SSoT, e.g. "ISO 14064").
+                standard: getClauseSpec(ghgDisclosures[0].clause)?.title,
+                scope: typeof ghgDisclosures[0].data.scope === "number"
+                    ? ghgDisclosures[0].data.scope
                     : undefined,
-            }
-            : undefined,
-        proximity: proximitySection
-            ? {
-                bands: Array.isArray(proximitySection.data.bands)
-                    ? proximitySection.data.bands as readonly string[]
-                    : [],
             }
             : undefined,
         handoff: handoffSection
@@ -455,9 +442,6 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
                     : [],
             }
             : undefined,
-        jurisdiction: applicableLawSection?.data,
-        arbitration: arbitrationSection?.data,
-        consent: consentSection?.data,
     };
 }
 

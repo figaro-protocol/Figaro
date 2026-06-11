@@ -27,12 +27,10 @@ const ASSEMBLY_LABELS: Record<string, string> = {
 };
 
 /**
- * Discovery-filter labels for fulfilment modes. Distinct from
- * `FULFILMENT_MODE_LABELS` in `lib/seller/fulfilmentRouting.ts`: the discovery
- * UI rolls all `deliver:*` variants up under a generic `"delivery"` filter
- * AND surfaces the 3 coordination variants individually. The canonical
- * taxonomy in `fulfilmentRouting.ts` has no `"delivery"` rollup, so the two
- * key spaces legitimately differ. Labels here are abbreviated for card chrome.
+ * Discovery-filter labels for fulfilment modes. The discovery UI rolls all
+ * `deliver:*` variants up under a generic `"delivery"` filter AND surfaces
+ * the 3 coordination variants individually. Labels here are abbreviated for
+ * card chrome.
  */
 const FULFILLMENT_LABELS: Record<string, string> = {
     "consume-onsite": "On-site",

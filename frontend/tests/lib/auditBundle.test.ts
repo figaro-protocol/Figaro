@@ -1,19 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { OrderState, type Order } from "@/lib/core/store";
+import { primeClauseSpecs } from "./primeClauseSpecs";
 import { ANVIL_ACCOUNTS, DEFAULT_LOCAL_MOCK_TOKEN } from "../anvilAccounts";
-import {
-    type Agreement,
-    COMMERCE_CLAUSE_KEY,
-    FULFILMENT_V2_CLAUSE_KEY,
-    HANDOFF_CLAUSE_KEY,
-    GEO_CLAUSE_KEY,
-    GHG_MEASUREMENT_CLAUSE_KEY,
-    APPLICABLE_LAW_CLAUSE_KEY,
-    PROXIMITY_POLICY_CLAUSE_KEY,
-    PROXIMITY_PROOF_CLAUSE_KEY,
-    TOPOLOGY_CLAUSE_KEY,
-    computeSectionLeaf,
-} from "@/lib/core/agreement";
+import { type Agreement, computeSectionLeaf } from "@/lib/core/agreement";
+
+// Tests may name clauses; production code may not. These literals mirror the
+// canonical Layer-A example specs.
+const COMMERCE_CLAUSE_KEY = "figaro-commerce-v1";
+const FULFILMENT_V2_CLAUSE_KEY = "figaro-fulfilment-v2";
+const HANDOFF_CLAUSE_KEY = "figaro-handoff-v1";
+const GEO_CLAUSE_KEY = "figaro-geo-v2";
+const GHG_MEASUREMENT_CLAUSE_KEY = "figaro-ghg-measurement-v1";
+const APPLICABLE_LAW_CLAUSE_KEY = "figaro-applicable-law-v1";
+const PROXIMITY_POLICY_CLAUSE_KEY = "figaro-proximity-policy-v1";
+const PROXIMITY_PROOF_CLAUSE_KEY = "figaro-proximity-proof-v1";
+const TOPOLOGY_CLAUSE_KEY = "figaro-topology-v1";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import { extractContract } from "@/lib/audit/contractExtract";
 import { extractInvoice } from "@/lib/audit/invoiceExtract";
@@ -35,6 +36,12 @@ import { buildAuditBundle, isCarriageOrder } from "@/lib/audit/auditBundle";
 
 const COURIER_PROCESS_CLAUSE_KEY = "figaro-courier-process-v1";
 import { DELIVERY_LIFECYCLE_STAGES } from "@/lib/audit/types";
+
+// The extractors resolve clause families (process logs, sister proofs,
+// disclosure standards) from the chain-fed spec cache — prime it with the
+// canonical Layer-A specs. Top-level await (not beforeAll): several
+// describe blocks build bundles at collection time, which runs earlier.
+await primeClauseSpecs();
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -298,10 +305,11 @@ describe("extractBillOfLading", () => {
     });
 
     it("attaches attester + contentRef + tx hash for stages that have on-chain receipts", () => {
-        // BoL stage 3 (PickedUp) ← courier-process event uint8 3 (arrived-pickup).
+        // BoL stage 3 (PickedUp) ← "arrived-pickup", at the ordinal the
+        // courier ladder gives it (1).
         const att = makeAttestation({
             clauseId: "figaro-courier-process-v1",
-            stage: 3,
+            stage: 1,
             contentRef: "0xPICKED",
             transactionHash: "0xTX_PICKED",
         });
@@ -313,10 +321,10 @@ describe("extractBillOfLading", () => {
         expect(picked.transactionHash).toBe("0xTX_PICKED");
     });
 
-    it("derives BoL stage 0 from merchant.prep-started (event uint8 2)", () => {
+    it("derives BoL stage 0 from merchant \"prep-started\" (ladder ordinal 0)", () => {
         const att = makeAttestation({
             clauseId: "figaro-merchant-process-v1",
-            stage: 2,
+            stage: 0,
             contentRef: "0xPREP",
         });
         const bol = extractBillOfLading(order, agreement, [att]);
@@ -325,10 +333,10 @@ describe("extractBillOfLading", () => {
         expect(prep.contentRef).toBe("0xPREP");
     });
 
-    it("derives BoL stage 4 from courier.completed (event uint8 6)", () => {
+    it("derives BoL stage 4 from courier \"completed\" (ladder ordinal 4)", () => {
         const att = makeAttestation({
             clauseId: "figaro-courier-process-v1",
-            stage: 6,
+            stage: 4,
             contentRef: "0xDELIVERED",
         });
         const bol = extractBillOfLading(order, agreement, [att]);
@@ -441,7 +449,8 @@ describe("extractEmissions", () => {
         const doc = extractEmissions(order, ag, []);
         expect(doc.disclosed).toBe(true);
         expect(doc.standardClauseKey).toBe("figaro-ghg-iso-14064-v1");
-        expect(doc.standardLabel).toBe("ISO-14064");
+        // The registered spec's title — the network-defined SSoT label.
+        expect(doc.standardLabel).toBe("ISO 14064");
         expect(doc.scope).toBe(2);
     });
 
@@ -519,18 +528,24 @@ describe("extractProcessLogs", () => {
         };
     }
 
-    it("partitions events by clauseId", () => {
+    it("groups events per process clause, titled from the spec", () => {
         const merchantEv = logAtt("figaro-merchant-process-v1", 1, "0xM1");
         const courierEv1 = logAtt("figaro-courier-process-v1", 2, "0xC1");
         const courierEv2 = logAtt("figaro-courier-process-v1", 4, "0xC2");
         const doc = extractProcessLogs(order, [merchantEv, courierEv1, courierEv2]);
-        expect(doc.merchantEvents).toHaveLength(1);
-        expect(doc.courierEvents).toHaveLength(2);
-        expect(doc.merchantEvents[0].clauseKey).toBe("figaro-merchant-process-v1");
-        expect(doc.courierEvents[0].clauseKey).toBe("figaro-courier-process-v1");
+        expect(doc.logs).toHaveLength(2);
+        const merchant = doc.logs.find((g) => g.clauseId === "figaro-merchant-process-v1");
+        const courier = doc.logs.find((g) => g.clauseId === "figaro-courier-process-v1");
+        expect(merchant?.events).toHaveLength(1);
+        expect(courier?.events).toHaveLength(2);
+        expect(merchant?.events[0].clauseKey).toBe("figaro-merchant-process-v1");
+        expect(courier?.events[0].clauseKey).toBe("figaro-courier-process-v1");
+        // Titles come from the registered specs (the network-defined labels).
+        expect(merchant?.title).toBeTruthy();
+        expect(merchant?.title).not.toBe(merchant?.clauseId);
     });
 
-    it("ignores attestations from other clauses + other orders", () => {
+    it("ignores attestations from non-process clauses + other orders", () => {
         const ghgAtt = logAtt(GHG_MEASUREMENT_CLAUSE_KEY, 3, "0xGHG");
         const otherOrderMerchant: AttestationRecord = {
             orderHash: "0xOTHER", processId: order.processId, attester: SELLER,
@@ -538,14 +553,12 @@ describe("extractProcessLogs", () => {
             transactionHash: "0xTX", blockNumber: 1,
         };
         const doc = extractProcessLogs(order, [ghgAtt, otherOrderMerchant]);
-        expect(doc.merchantEvents).toHaveLength(0);
-        expect(doc.courierEvents).toHaveLength(0);
+        expect(doc.logs).toEqual([]);
     });
 
-    it("returns empty arrays when no process-log attestations exist", () => {
+    it("returns no groups when no process-log attestations exist", () => {
         const doc = extractProcessLogs(order, []);
-        expect(doc.merchantEvents).toEqual([]);
-        expect(doc.courierEvents).toEqual([]);
+        expect(doc.logs).toEqual([]);
     });
 });
 
@@ -655,12 +668,14 @@ describe("extractSellerRegistry", () => {
 
 describe("AuditBundle — every document carries buyer + seller addresses", () => {
     const order = makeOrder();
-    // Include figaro-courier-process-v1 so the BoL is emitted for this
-    // cross-cutting test; without it the carriage-leg discriminator
+    // Shape the agreement as a CARRIAGE LEG (a sub-order — topology with
+    // parents — carrying a process clause) so the BoL is emitted for this
+    // cross-cutting test; without that shape the carriage-leg discriminator
     // suppresses the BoL document and the buyer+seller cross-check has
     // nothing to assert against on that field.
     const agreement = makeAgreement([
         { clause: COURIER_PROCESS_CLAUSE_KEY, data: {} },
+        { clause: TOPOLOGY_CLAUSE_KEY, data: { topologyMode: "explicit", parentOrderHashes: ["0xPARENT"] } },
     ]);
     const bundle = buildAuditBundle(order, agreement, []);
 
@@ -686,11 +701,23 @@ describe("AuditBundle — every document carries buyer + seller addresses", () =
 // ── Carriage-leg discriminator ───────────────────────────────────────────────
 
 describe("isCarriageOrder", () => {
-    it("returns true when the agreement carries figaro-courier-process-v1", () => {
+    it("returns true for a sub-order carrying a process clause", () => {
         const agreement = makeAgreement([
             { clause: COURIER_PROCESS_CLAUSE_KEY, data: {} },
+            { clause: TOPOLOGY_CLAUSE_KEY, data: { topologyMode: "explicit", parentOrderHashes: ["0xPARENT"] } },
         ]);
         expect(isCarriageOrder(agreement)).toBe(true);
+    });
+
+    it("returns false for a ROOT order even when it carries a process clause", () => {
+        // The carriage shape is structural: parents + process log. A root
+        // order's own lifecycle (e.g. the parent seller's process clause)
+        // does not make it a carriage leg.
+        const agreement = makeAgreement([
+            { clause: "figaro-merchant-process-v1", data: {} },
+            { clause: TOPOLOGY_CLAUSE_KEY, data: { topologyMode: "root", parentOrderHashes: [] } },
+        ]);
+        expect(isCarriageOrder(agreement)).toBe(false);
     });
 
     it("returns false for buyer↔merchant orders (no courier-process clause)", () => {
@@ -718,6 +745,7 @@ describe("buildAuditBundle", () => {
         { clause: FULFILMENT_V2_CLAUSE_KEY, data: { modalities: ["pickup"] } },
         { clause: GEO_CLAUSE_KEY, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
         { clause: COURIER_PROCESS_CLAUSE_KEY, data: {} },
+        { clause: TOPOLOGY_CLAUSE_KEY, data: { topologyMode: "explicit", parentOrderHashes: ["0xPARENT"] } },
     ]);
     const bundle = buildAuditBundle(order, agreement, []);
 

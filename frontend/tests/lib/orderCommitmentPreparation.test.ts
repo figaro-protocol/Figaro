@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const agreementStoreMocks = vi.hoisted(() => ({
     saveAgreement: vi.fn(),
@@ -17,6 +17,13 @@ import {
 } from '@/lib/core/orderCommitmentPreparation';
 import { ZERO_PROCESS_ID } from '@/lib/shared/evm';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
+import { primeClauseSpecs } from './primeClauseSpecs';
+
+// The agreement build composes structural sections from the chain-fed spec
+// cache — prime it with the canonical Layer-A specs.
+beforeAll(async () => {
+    await primeClauseSpecs();
+});
 
 const BUYER = ANVIL_ACCOUNTS[0];
 const SELLER = ANVIL_ACCOUNTS[1];

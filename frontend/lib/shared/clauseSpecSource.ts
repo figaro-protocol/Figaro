@@ -138,6 +138,43 @@ export function clauseIsStructural(clauseId: string): boolean {
     return getClauseSpec(clauseId)?.block?.structural === true;
 }
 
+/** Default-on clause — pre-composed (as an empty object; the spec's field
+ *  `default`s fill it through the generic build walk) on every freshly-spawned
+ *  designer node, removable in the drawer. From `block.defaultOn`. */
+export function clauseIsDefaultOn(clauseId: string): boolean {
+    return getClauseSpec(clauseId)?.block?.defaultOn === true;
+}
+
+/** A PROCESS-LOG clause — the Category-1 enum-ladder runtime event log (not a
+ *  companion proof) an order's seller advances. The generic marker for "this
+ *  order runs a lifecycle"; resolved from the spec, never by name. */
+export function clauseIsProcessLog(clauseId: string): boolean {
+    return (
+        getClauseSpec(clauseId)?.block?.tier === "category-1"
+        && clauseLadderField(clauseId) !== null
+        && !isCompanionClause(clauseId)
+    );
+}
+
+/** Whether a clause's spec declares a top-level field named `fieldName`.
+ *  Field names — not clause ids — are the binding vocabulary generic surfaces
+ *  look things up by: ANY registered clause carrying the field participates,
+ *  including clauses this codebase has never seen. False while uncached. */
+export function clauseDeclaresField(clauseId: string, fieldName: string): boolean {
+    return getClauseSpec(clauseId)?.fields.some((f) => f.name === fieldName) === true;
+}
+
+/** The manifest-only structural clause — the topology manifest whose data
+ *  carries the order's DAG edges, reconstructed off-chain by indexers.
+ *  Resolved from the registry by TIER (manifest-only is the topology tier by
+ *  construction), never by name. undefined while the cache is cold. */
+export function manifestTopologyClauseId(): string | undefined {
+    return listKnownClauseIds().find(
+        (clauseId) =>
+            getClauseSpec(clauseId)?.block?.tier === "manifest-only" && clauseIsStructural(clauseId),
+    );
+}
+
 /** WHO attests a runtime clause — "seller" (the order's seller, default) or
  *  "bilateral" (both buyer and seller witness, e.g. proximity proof). Read from
  *  `block.attestation`; the generic runtime engine surfaces the attestation to
@@ -201,10 +238,11 @@ export function describeAttestation(
 
 /** The FieldSpec at a dot-delimited path inside a clause's spec — the SSoT for
  *  a field's type, constraints, enum values, `default`, and `sentinel`. The
- *  generic build encoder and form surfaces read everything off this; undefined
- *  when the clause or path is unknown.
- *  @public consumed by the generic build encoder (next rung of the
- *  de-hardcode thread); remove the tag when it lands. */
+ *  generic build encoder walks `getClauseSpec(id).fields` directly; this
+ *  path-lookup form serves form surfaces; undefined when the clause or path
+ *  is unknown.
+ *  @public pending consumer: the Layer-6 spec-driven drawer controls (render
+ *  per-field inputs from the spec); remove the tag when that lands. */
 export function clauseFieldSpec(clauseId: string, fieldPath: string): FieldSpec | undefined {
     let fields: readonly FieldSpec[] | undefined = getClauseSpec(clauseId)?.fields;
     const segments = fieldPath.split(".");
@@ -220,7 +258,10 @@ export function clauseFieldSpec(clauseId: string, fieldPath: string): FieldSpec 
 
 /** The enum values a clause field admits, read STRAIGHT from the spec — the SSoT
  *  for which strings are valid. `fieldPath` is dot-delimited for nested object
- *  fields; the leaf may be an enum or an array-of-enum. Empty when absent. */
+ *  fields; the leaf may be an enum or an array-of-enum. Empty when absent.
+ *  @public pending consumer: the Layer-6 spec-driven drawer controls (its
+ *  prior consumers, the ALLOWED_* filters, were absorbed by the generic build
+ *  walk); remove the tag when that lands. */
 export function clauseEnumValues(clauseId: string, fieldPath: string): readonly string[] {
     const field = clauseFieldSpec(clauseId, fieldPath);
     if (field?.type === "enum") return field.values;

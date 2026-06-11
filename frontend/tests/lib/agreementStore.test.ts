@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildOrderAgreement } from "@/lib/core/orderAgreement";
 import {
     deleteAgreement,
@@ -13,6 +13,13 @@ import {
 import { computeAgreementHash } from "@/lib/core/agreement";
 import { ANVIL_ACCOUNTS } from "../anvilAccounts";
 import { cf } from "./__fixtures__/clauseFields";
+import { primeClauseSpecs } from "./primeClauseSpecs";
+
+// The generic build encoder reads field shapes/defaults from the chain-fed
+// spec cache (warmed app-wide by ClauseSpecsLoader in production).
+beforeAll(async () => {
+    await primeClauseSpecs();
+});
 
 const BUYER = ANVIL_ACCOUNTS[0];
 const SELLER = ANVIL_ACCOUNTS[1];
@@ -35,8 +42,8 @@ function makeAgreement() {
             },
         ],
         clauseFields: cf({
-            origin: "dr5reg",
-            destination: "dr5reh",
+            originGeohash: "dr5reg",
+            destinationGeohash: "dr5reh",
             fulfilmentModalities: ["delivery"],
             fulfilmentHandoffPoints: ["face-to-face"],
         }),

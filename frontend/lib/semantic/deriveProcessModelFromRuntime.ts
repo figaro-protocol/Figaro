@@ -1,10 +1,10 @@
 import { Order, OrderState } from "@/lib/core/store";
 import {
-    FULFILMENT_V2_CLAUSE_KEY,
     getSection,
     type Agreement,
     type TopologyMode,
 } from "@/lib/core/agreement";
+import { sectionByField } from "@/lib/core/orderAgreement";
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
 import { ProcessSummary } from "@/hooks/core/useWalletProcessIds";
 import type { RuntimeAttestation } from "@/lib/core/indexer";
@@ -100,15 +100,15 @@ function roleCapabilities(
             // capability; its runtime COMPANION (the measurement clause some
             // disclosure spec names as `sisterClauseId`) surfaces the inventory
             // capability. Each kind pushes at most once per order.
-            let hasDisclosure = false;
-            let hasMeasurement = false;
+            let disclosureClauseId: string | null = null;
+            let measurementClauseId: string | null = null;
             for (const section of agreement.sections) {
                 const block = getClauseSpec(section.clause)?.block;
                 if (!block?.mechanismKinds?.includes("disclosure")) continue;
-                if (isCompanionClause(section.clause)) hasMeasurement = true;
-                else hasDisclosure = true;
+                if (isCompanionClause(section.clause)) measurementClauseId = section.clause;
+                else disclosureClauseId = section.clause;
             }
-            if (hasDisclosure) {
+            if (disclosureClauseId) {
                 out.push({
                     id: `${order.processId}:${order.id.toString()}:submit-disclosure-commitment`,
                     label: "Record Disclosure Commitment",
@@ -117,6 +117,7 @@ function roleCapabilities(
                         executionType: "transaction",
                         kind: "submit-disclosure-commitment",
                         orderHash: order.id.toString(),
+                        clauseId: disclosureClauseId,
                     },
                     mechanismId: "attestation-coordinator",
                     scopeType: "order",
@@ -130,7 +131,7 @@ function roleCapabilities(
                     ),
                 });
             }
-            if (hasMeasurement) {
+            if (measurementClauseId) {
                 out.push({
                     id: `${order.processId}:${order.id.toString()}:submit-disclosure-inventory`,
                     label: "Submit Emissions Inventory",
@@ -139,6 +140,7 @@ function roleCapabilities(
                         executionType: "transaction",
                         kind: "submit-disclosure-inventory",
                         orderHash: order.id.toString(),
+                        clauseId: measurementClauseId,
                     },
                     mechanismId: "attestation-coordinator",
                     scopeType: "order",
@@ -711,8 +713,9 @@ export function deriveProcessModelFromRuntime(
     const rootOrderId = semanticOrders.find((order) => order.parentOrderIds.length === 0)?.orderId ?? semanticOrders[0]?.orderId ?? "";
     const rootOrder = processOrders.find((order) => order.id.toString() === rootOrderId);
     const rootAgreement = rootOrder?.agreementHash ? agreements.get(rootOrder.agreementHash) : undefined;
+    // The fulfilment section is found by its declared field, never by name.
     const rootFulfilmentModality = rootAgreement
-        ? ((getSection(rootAgreement, FULFILMENT_V2_CLAUSE_KEY)?.data as { modalities?: string[] } | undefined)?.modalities?.[0] ?? null)
+        ? ((sectionByField(rootAgreement, "modalities")?.data as { modalities?: string[] } | undefined)?.modalities?.[0] ?? null)
         : null;
     const stateCounts = {
         active: processOrders.filter((order) => order.state === OrderState.Active).length,

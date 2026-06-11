@@ -50,12 +50,11 @@ import {
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "./AgreementDrawer";
+import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
 import { buildAssemblyTemplate } from "@/lib/designer/assemblyTemplate";
 import { maxCommitsLandableInOneBlock, maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { getCommonTokens } from "@/lib/shared/commonTokens";
 import { useChainId, usePublicClient } from "wagmi";
-import { summarizeAgreement } from "@/lib/core/orderAgreement";
-import { loadAgreement } from "@/lib/core/agreementStore";
 
 export type DesignerSeed =
     | { kind: "fresh" }
@@ -108,7 +107,31 @@ function snapshotToInitial(snap: DesignSnapshot): InitialState {
     };
 }
 
+/**
+ * Spec gate. `buildBlankInitial` — and every subsequent canvas edit — builds
+ * synthetic agreements whose sections are projected and hashed through the
+ * chain-loaded clause specs (default fill, sentinel filtering, range checks
+ * all live in the spec, never in code). Built against a half-warm cache the
+ * sections come out unprojected and the hash path rejects them — so the
+ * canvas honors the `useClauseSpecs` contract and gates its render on
+ * `loaded`. Latched: a clause registered mid-session flips `loaded` false on
+ * the registry append, which must never unmount a live canvas.
+ */
 export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
+    const { loaded } = useClauseSpecs();
+    const everLoadedRef = useRef(false);
+    if (loaded) everLoadedRef.current = true;
+    if (!everLoadedRef.current) {
+        return (
+            <p className="text-sm text-ink-muted" data-testid="designer-specs-loading">
+                Loading registered clauses…
+            </p>
+        );
+    }
+    return <DesignerCanvasInner seed={seed} />;
+}
+
+function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -499,6 +522,22 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
 
     const resetLabel = "Reset";
 
+    // The live no-hash assembly template emitted from the design — per order:
+    // who's bound, its DAG parents, and the selected clauses. Hoisted above the
+    // seed-error return: a hook below a conditional return is a hook-order
+    // crash the first time the condition flips (react-hooks/rules-of-hooks).
+    const assemblyTemplate = useMemo(
+        () =>
+            buildAssemblyTemplate({
+                slug: slug ?? "",
+                name,
+                privilegedToken: privilegedToken || undefined,
+                orders,
+                clausesByOrderId,
+            }),
+        [slug, name, privilegedToken, orders, clausesByOrderId],
+    );
+
     if (seedError) {
         return (
             <div
@@ -527,20 +566,6 @@ export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
             </div>
         );
     }
-
-    // The live no-hash assembly template emitted from the design — per order:
-    // who's bound, its DAG parents, and the selected clauses.
-    const assemblyTemplate = useMemo(
-        () =>
-            buildAssemblyTemplate({
-                slug: slug ?? "",
-                name,
-                privilegedToken: privilegedToken || undefined,
-                orders,
-                clausesByOrderId,
-            }),
-        [slug, name, privilegedToken, orders, clausesByOrderId],
-    );
 
     return (
         <div style={{ top: headerHeight }} className="fixed left-0 right-0 bottom-0 z-20 bg-canvas flex flex-col overflow-hidden">

@@ -37,11 +37,12 @@ const CLASS_TO_SHORT_CODE: Record<CatalogueClassOfService, "S" | "E" | "F" | "C"
  * layer (and a number of upstream surfaces) stores the long form
  * ("standard"/"express"/"fragile"/"cold-chain"); this helper accepts
  * either and throws a typed error on anything else. Centralising the
- * normalisation here keeps callers — `agreement module`, test helpers,
- * future clause bridges — from each re-implementing the catalogue
+ * normalisation here keeps callers from re-implementing the catalogue
  * convention, and replaces the previous failure mode (a cryptic
  * `numberToHex(undefined)` from viem) with a clear message.
- */
+ * @public — pending consumer: the rewritten checkout's class-of-service
+ * collapse (same family as CLASS_PRIORITY above; the build path now takes
+ * spec-typed short codes, so the collapse normalises at the source). */
 export function classOfServiceToShortCode(input: unknown): "S" | "E" | "F" | "C" {
     if (typeof input !== "string") {
         throw new TypeError(

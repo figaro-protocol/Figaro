@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { computeAgreementHash } from "@/lib/core/agreement";
 import { saveAgreement } from "@/lib/core/agreementStore";
 import { buildOrderAgreement } from "@/lib/core/orderAgreement";
@@ -6,6 +6,13 @@ import { buildAgreementsFromCache, deriveOrderDepths, deriveOrderTopology } from
 import { OrderState, type Order } from "@/lib/core/store";
 import { ZERO_BYTES32 } from "@/lib/shared/evm";
 import { ANVIL_ACCOUNTS } from "../anvilAccounts";
+import { primeClauseSpecs } from "./primeClauseSpecs";
+
+// The agreement build composes structural sections from the chain-fed spec
+// cache — prime it with the canonical Layer-A specs.
+beforeAll(async () => {
+    await primeClauseSpecs();
+});
 
 const BUYER = ANVIL_ACCOUNTS[0];
 const SELLER = ANVIL_ACCOUNTS[1];
