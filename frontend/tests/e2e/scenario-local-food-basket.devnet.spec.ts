@@ -13,8 +13,8 @@
  *   commit by the projection, not stored here):
  *
  *     order[0]  buyer ↔ hub      parents: []
- *       figaro-fulfilment-v2        { modalities: [delivery],
- *                                     delivery: { coordination: [seller-assigned] } }
+ *       figaro-modalities-v1        { modality: delivery }
+ *       figaro-coordination-v1     { coordination: seller-assigned }
  *       figaro-merchant-process-v1
  *     order[1]  buyer ↔ farm     parents: [order-0]   (bare supply order — collected)
  *     order[2]  buyer ↔ bakery   parents: [order-0]   (bare supply order — collected)
@@ -106,9 +106,11 @@ test.describe('Author + publish the local-food-basket assembly (devnet)', () => 
             await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
             await page.getByTestId('drawer-tab-registry').click();
             await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
-            await composeClause(page, 'figaro-fulfilment-v2', [
-                'drawer-field-figaro-fulfilment-v2-modalities-delivery',
-                'drawer-field-figaro-fulfilment-v2-delivery-coordination-seller-assigned',
+            await composeClause(page, 'figaro-modalities-v1', [
+                'drawer-field-figaro-modalities-v1-modality-delivery',
+            ]);
+            await composeClause(page, 'figaro-coordination-v1', [
+                'drawer-field-figaro-coordination-v1-coordination-seller-assigned',
             ]);
             await composeClause(page, 'figaro-merchant-process-v1');
 
@@ -177,12 +179,13 @@ test.describe('Author + publish the local-food-basket assembly (devnet)', () => 
         // order[0] — the hub: delivery (seller-assigned) + merchant-process.
         expect(root.clauses['figaro-topology-v1']).toEqual({ parentOrderIds: [] });
         expect(Object.keys(root.clauses).sort()).toEqual([
-            'figaro-fulfilment-v2',
+            'figaro-coordination-v1',
             'figaro-merchant-process-v1',
+            'figaro-modalities-v1',
             'figaro-topology-v1',
         ]);
-        expect(root.clauses['figaro-fulfilment-v2'].modalities).toEqual(['delivery']);
-        expect(root.clauses['figaro-fulfilment-v2'].delivery).toEqual({ coordination: ['seller-assigned'] });
+        expect(root.clauses['figaro-modalities-v1'].modality).toBe('delivery');
+        expect(root.clauses['figaro-coordination-v1'].coordination).toBe('seller-assigned');
 
         // order[1] + order[2] — the producers: BARE bonded relationships
         // (topology only; commerce joins at commit via the projection).

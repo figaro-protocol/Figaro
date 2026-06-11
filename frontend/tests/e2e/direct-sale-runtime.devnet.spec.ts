@@ -120,7 +120,7 @@ test.describe('direct-sale runtime — on-site commit, handoff certification, re
         for (const composed of [
             'figaro-commerce-v1',
             'figaro-topology-v1',
-            'figaro-fulfilment-v2',
+            'figaro-modalities-v1',
             'figaro-handoff-v1',
             'figaro-merchant-process-v1',
             'figaro-proximity-policy-v1',

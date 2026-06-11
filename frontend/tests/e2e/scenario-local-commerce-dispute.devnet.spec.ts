@@ -13,8 +13,8 @@
  *   by the projection, not stored here):
  *
  *     order[0]  buyer ↔ merchant  parents: []
- *       figaro-fulfilment-v2       { modalities: [delivery],
- *                                    delivery: { coordination: [seller-assigned] } }
+ *       figaro-modalities-v1       { modality: delivery }
+ *       figaro-coordination-v1     { coordination: seller-assigned }
  *       figaro-handoff-v1          { handoff: [face-to-face] }
  *       figaro-merchant-process-v1 { }
  *       figaro-proximity-policy-v1 { bands: [zone-wifi] }
@@ -25,7 +25,7 @@
  *
  *   Delivery is expressed by the TOPOLOGY (a second courier order carrying
  *   courier-process), NOT by a side-effect spawn — the designer DRAWS the courier
- *   node. The merchant's fulfilment-v2 records the delivery modality + the
+ *   node. The merchant's modalities clause records the delivery modality; its
  *   seller-assigned coordination; the courier order IS the delivery.
  *
  * PHASE 1 of the 2× e2e convention — the design-canvas test. Drives the real
@@ -110,9 +110,11 @@ test.describe('Author + publish the local-commerce-dispute assembly (devnet)', (
 
             // The delivery sub-clause (coordination) surfaces once delivery is
             // the chosen modality — gated by the spec, never hardcoded.
-            await composeClause(page, 'figaro-fulfilment-v2', [
-                'drawer-field-figaro-fulfilment-v2-modalities-delivery',
-                'drawer-field-figaro-fulfilment-v2-delivery-coordination-seller-assigned',
+            await composeClause(page, 'figaro-modalities-v1', [
+                'drawer-field-figaro-modalities-v1-modality-delivery',
+            ]);
+            await composeClause(page, 'figaro-coordination-v1', [
+                'drawer-field-figaro-coordination-v1-coordination-seller-assigned',
             ]);
             // The merchant→courier hand-off + its proximity certification
             // (proximity nests under the hand-off clause's field).
@@ -189,16 +191,16 @@ test.describe('Author + publish the local-commerce-dispute assembly (devnet)', (
         expect(root.clauses['figaro-topology-v1']).toEqual({ parentOrderIds: [] });
         expect(Object.keys(root.clauses).sort()).toEqual([
             'figaro-arbitration-kleros-v1',
-            'figaro-fulfilment-v2',
+            'figaro-coordination-v1',
             'figaro-handoff-v1',
             'figaro-merchant-process-v1',
+            'figaro-modalities-v1',
             'figaro-proximity-policy-v1',
             'figaro-topology-v1',
         ]);
-        expect(root.clauses['figaro-fulfilment-v2'].modalities).toEqual(['delivery']);
-        expect(root.clauses['figaro-fulfilment-v2'].delivery).toEqual({ coordination: ['seller-assigned'] });
-        expect(root.clauses['figaro-fulfilment-v2'].handoff).toBeUndefined();
-        expect(root.clauses['figaro-handoff-v1'].handoff).toEqual(['face-to-face']);
+        expect(root.clauses['figaro-modalities-v1'].modality).toBe('delivery');
+        expect(root.clauses['figaro-coordination-v1'].coordination).toBe('seller-assigned');
+                expect(root.clauses['figaro-handoff-v1'].handoff).toEqual(['face-to-face']);
         expect(root.clauses['figaro-arbitration-kleros-v1'].klerosCourt).toBe('general');
         expect(root.clauses['figaro-proximity-policy-v1'].bands).toEqual(['zone-wifi']);
 

@@ -15,7 +15,7 @@
  *   by the projection, not stored here):
  *
  *     order[0]  buyer ↔ seller  parents: []
- *       figaro-fulfilment-v2  { modalities: [pickup] }
+ *       figaro-modalities-v1  { modality: pickup }
  *
  * PHASE 1 of the 2× e2e convention — the design-canvas test. It drives the real
  * designer UI ALL THE WAY THROUGH to the IPFS pin AND the on-chain anchor
@@ -85,10 +85,10 @@ test.describe('Author + publish the kiosk-sale assembly (devnet)', () => {
             // clause's spec has loaded chain→IPFS — await it into existence.
             await page.getByTestId('drawer-tab-registry').click();
             await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
-            const fulfilmentBox = page.getByTestId('drawer-registry-clause-figaro-fulfilment-v2');
-            await expect(fulfilmentBox, 'drawer surfaces figaro-fulfilment-v2').toHaveCount(1, { timeout: 20000 });
+            const fulfilmentBox = page.getByTestId('drawer-registry-clause-figaro-modalities-v1');
+            await expect(fulfilmentBox, 'drawer surfaces figaro-modalities-v1').toHaveCount(1, { timeout: 20000 });
             await fulfilmentBox.check();
-            const pickupField = page.getByTestId('drawer-field-figaro-fulfilment-v2-modalities-pickup');
+            const pickupField = page.getByTestId('drawer-field-figaro-modalities-v1-modality-pickup');
             await expect(pickupField, 'drawer surfaces the pickup modality').toHaveCount(1, { timeout: 10000 });
             await pickupField.check();
             await expect(orderNodes, 'composing clauses never draws nodes').toHaveCount(1, { timeout: 10000 });
@@ -146,10 +146,8 @@ test.describe('Author + publish the kiosk-sale assembly (devnet)', () => {
         const root = assemblyTemplate.orders[0];
         // The DAG is a clause: root's figaro-topology-v1 carries empty parents.
         expect(root.clauses['figaro-topology-v1']).toEqual({ parentOrderIds: [] });
-        expect(Object.keys(root.clauses).sort()).toEqual(['figaro-fulfilment-v2', 'figaro-topology-v1']);
-        expect(root.clauses['figaro-fulfilment-v2'].modalities).toEqual(['pickup']);
-        expect(root.clauses['figaro-fulfilment-v2'].delivery).toBeUndefined();
-        expect(root.clauses['figaro-fulfilment-v2'].handoff).toBeUndefined();
+        expect(Object.keys(root.clauses).sort()).toEqual(['figaro-modalities-v1', 'figaro-topology-v1']);
+        expect(root.clauses['figaro-modalities-v1'].modality).toBe('pickup');
 
         // ── It SURFACES on the marketing /assemblies inventory — the reader
         //    that was empty when publishes got reverted. (Navigates the page.) ─

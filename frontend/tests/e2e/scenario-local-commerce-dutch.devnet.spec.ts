@@ -11,8 +11,8 @@
  *   by the projection, not stored here):
  *
  *     order[0]  buyer ↔ merchant  parents: []
- *       figaro-fulfilment-v2       { modalities: [delivery],
- *                                    delivery: { coordination: [dutch-auction] } }
+ *       figaro-modalities-v1       { modality: delivery }
+ *       figaro-coordination-v1     { coordination: dutch-auction }
  *       figaro-handoff-v1          { handoff: [face-to-face] }
  *       figaro-merchant-process-v1 { }
  *       figaro-proximity-policy-v1 { bands: [zone-wifi] }
@@ -102,9 +102,11 @@ test.describe('Author + publish the local-commerce-dutch assembly (devnet)', () 
             await page.getByTestId('drawer-tab-registry').click();
             await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
 
-            await composeClause(page, 'figaro-fulfilment-v2', [
-                'drawer-field-figaro-fulfilment-v2-modalities-delivery',
-                'drawer-field-figaro-fulfilment-v2-delivery-coordination-dutch-auction',
+            await composeClause(page, 'figaro-modalities-v1', [
+                'drawer-field-figaro-modalities-v1-modality-delivery',
+            ]);
+            await composeClause(page, 'figaro-coordination-v1', [
+                'drawer-field-figaro-coordination-v1-coordination-dutch-auction',
             ]);
             await composeClause(page, 'figaro-handoff-v1', ['drawer-field-figaro-handoff-v1-handoff-face-to-face']);
             await composeClause(page, 'figaro-proximity-policy-v1', ['drawer-field-figaro-proximity-policy-v1-bands-zone-wifi']);
@@ -173,14 +175,15 @@ test.describe('Author + publish the local-commerce-dutch assembly (devnet)', () 
 
         expect(root.clauses['figaro-topology-v1']).toEqual({ parentOrderIds: [] });
         expect(Object.keys(root.clauses).sort()).toEqual([
-            'figaro-fulfilment-v2',
+            'figaro-coordination-v1',
             'figaro-handoff-v1',
             'figaro-merchant-process-v1',
+            'figaro-modalities-v1',
             'figaro-proximity-policy-v1',
             'figaro-topology-v1',
         ]);
-        expect(root.clauses['figaro-fulfilment-v2'].modalities).toEqual(['delivery']);
-        expect(root.clauses['figaro-fulfilment-v2'].delivery).toEqual({ coordination: ['dutch-auction'] });
+        expect(root.clauses['figaro-modalities-v1'].modality).toBe('delivery');
+        expect(root.clauses['figaro-coordination-v1'].coordination).toBe('dutch-auction');
         expect(root.clauses['figaro-handoff-v1'].handoff).toEqual(['face-to-face']);
         expect(root.clauses['figaro-proximity-policy-v1'].bands).toEqual(['zone-wifi']);
 

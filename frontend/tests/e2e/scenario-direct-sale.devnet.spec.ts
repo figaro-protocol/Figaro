@@ -17,7 +17,7 @@
  *   commit by the projection, not stored here):
  *
  *     order[0]  buyer ↔ seller  parents: []
- *       figaro-fulfilment-v2       { modalities: [consume-onsite] }
+ *       figaro-modalities-v1       { modality: consume-onsite }
  *       figaro-handoff-v1          { handoff: [face-to-face] }
  *       figaro-merchant-process-v1 { }
  *       figaro-proximity-policy-v1 { bands: [zone-wifi] }
@@ -59,7 +59,7 @@ const IPFS_GATEWAY = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0
 /** The composed clauses, in drawer order. Nested clauses (proximity under the
  *  hand-off field) only render once their parent is checked, so order matters. */
 const COMPOSE_STEPS: ReadonlyArray<{ clause: string; field?: string }> = [
-    { clause: 'figaro-fulfilment-v2', field: 'drawer-field-figaro-fulfilment-v2-modalities-consume-onsite' },
+    { clause: 'figaro-modalities-v1', field: 'drawer-field-figaro-modalities-v1-modality-consume-onsite' },
     { clause: 'figaro-handoff-v1', field: 'drawer-field-figaro-handoff-v1-handoff-face-to-face' },
     { clause: 'figaro-proximity-policy-v1', field: 'drawer-field-figaro-proximity-policy-v1-bands-zone-wifi' },
     { clause: 'figaro-merchant-process-v1' },
@@ -170,15 +170,13 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
         // The DAG is a clause: root's figaro-topology-v1 carries empty parents.
         expect(root.clauses['figaro-topology-v1']).toEqual({ parentOrderIds: [] });
         expect(Object.keys(root.clauses).sort()).toEqual([
-            'figaro-fulfilment-v2',
             'figaro-handoff-v1',
             'figaro-merchant-process-v1',
+            'figaro-modalities-v1',
             'figaro-proximity-policy-v1',
             'figaro-topology-v1',
         ]);
-        expect(root.clauses['figaro-fulfilment-v2'].modalities).toEqual(['consume-onsite']);
-        expect(root.clauses['figaro-fulfilment-v2'].delivery).toBeUndefined();
-        expect(root.clauses['figaro-fulfilment-v2'].handoff).toBeUndefined();
+        expect(root.clauses['figaro-modalities-v1'].modality).toBe('consume-onsite');
         expect(root.clauses['figaro-handoff-v1'].handoff).toEqual(['face-to-face']);
         expect(root.clauses['figaro-proximity-policy-v1'].bands).toEqual(['zone-wifi']);
 
