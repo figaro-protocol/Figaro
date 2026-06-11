@@ -75,8 +75,8 @@ for file in "$@"; do
         "'order-received' is not a clause event — the kernel commit IS arrival + acceptance (core-owned)."
     check "$file" FAIL "process tree" '(^|/)(CLAUDE\.md|docs/v5/BLUEPRINT\.md)$' "" \
         "retired: use 'process chain' (kernel, linear) or 'DAG' (off-chain topology)."
-    check "$file" WARN "progressive[ -]collateral" '(^|/)(CLAUDE\.md|docs/v5/BLUEPRINT\.md)$' "" \
-        "retired precursor: use 'asymmetric bonding'. Promote to FAIL after the retire-sweep + CLAUDE.md reword."
+    check "$file" FAIL "progressive[ -]collateral" '(^|/)(docs/v5/BLUEPRINT\.md)$' "" \
+        "retired: 'asymmetric bonding' is the mechanism; its N-party scaling face is 'cumulative upstream bonding' (each seller bonds against cumulative upstream value)."
 
     # ── clause vocabulary (cross-tier) ─────────────────────────────
     # Canonical: the protocol artifact family is the 'clause' (`ClauseRegistry`,

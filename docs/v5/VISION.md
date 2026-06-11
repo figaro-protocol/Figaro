@@ -75,7 +75,7 @@ Everything in Figaro derives from six protocol properties (see THEORY.md):
 | # | Property | What It Replaces |
 |---|---|---|
 | 1 | **Asymmetric bonding** | Trust, reputation, credit history |
-| 2 | **Progressive collateralization** | Hierarchical authority, management chains |
+| 2 | **Cumulative upstream bonding** | Hierarchical authority, management chains |
 | 3 | **Buyer dominance** | Arbitrators, dispute resolution, governance |
 | 4 | **Atomic resolution** | Partial payments, individual accountability |
 | 5 | **Immutable evidence** | Courts, discovery, forensic audits |
@@ -167,7 +167,7 @@ value-adders:
 - **Procurement**: buyer + N value-adders at every stage, template-guided
   cascades, GHG disclosure at each node
 - **Cross-border trade**: buyer + producer + shipper + customs broker +
-  logistics chain, progressive collateralization with geographic bridging.
+  logistics chain, cumulative upstream bonding with geographic bridging.
   In trade finance, a **Letter of Credit** (LC) is the closest legacy
   instrument: a bank-issued guarantee that payment will arrive on time and
   for the correct amount. The bank is the trusted third party; its fee is
@@ -211,7 +211,7 @@ This handles the vast majority of bilateral interactions. The enforcement is
 ex-ante (capital locked before work begins), not ex-post (courts invoked
 after breach). Asymmetric bonding replaces trust, reputation, credit history,
 and most forms of contractual enforcement at the bilateral level — and scales
-the bilateral primitive to N-party DAGs via progressive collateralization
+the bilateral primitive to N-party DAGs
 (each seller bonds against cumulative upstream value, creating a mesh of
 independently secured edges).
 
@@ -433,7 +433,7 @@ Figaro's bonding mechanism descends from Vitalik Buterin's **Safe Remote
 Purchase** contract — a minimal escrow where buyer and seller each lock 2×
 payment, creating mutual assured destruction that makes cooperation dominant.
 Figaro generalizes this insight from a 2-party escrow into an N-party
-coordination protocol: progressive collateralization scales the equilibrium
+coordination protocol: cumulative upstream bonding scales the equilibrium
 across processes, atomic resolution binds the DAG into a single game, and
 the augmentation layers (auctions, lifecycle coordinators, disclosure modules)
 turn the bare mechanism into composable institutions.

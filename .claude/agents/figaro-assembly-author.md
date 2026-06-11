@@ -19,7 +19,7 @@ The two example walkthroughs in `agents/examples/tradelens-replacement/assembly.
 
 - `src/FigaroCore.sol` — the kernel's actual code. Two external functions, three mappings, no admin. Cite line numbers for any compositional claim about how processes settle.
 - `src/CommitmentTypes.sol` — kernel structs and EIP-712 hashing.
-- `formal/FigaroCore.tla` — the invariants in their TLA+ form. The six properties (asymmetric bonding, progressive collateralization, buyer dominance, atomic resolution, immutable evidence, no escape hatches) are formally specified here.
+- `formal/FigaroCore.tla` — the invariants in their TLA+ form. The six properties (asymmetric bonding, cumulative upstream bonding, buyer dominance, atomic resolution, immutable evidence, no escape hatches) are formally specified here.
 
 Then read the doctrine:
 

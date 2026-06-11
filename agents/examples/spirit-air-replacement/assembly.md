@@ -51,7 +51,7 @@ The defining feature of this assembly is the airline as a *fan-out seller-of-rec
 
 ## Cascading-delay mechanics
 
-Per Paper A's progressive collateralization: when fuel slips by 30 minutes, the fuel sub-process's seller-bond is at risk. The airline's seller-bond to the passenger is also at risk because the parent commitment's scheduled-departure-v1 will be violated. *Both* bonds reflect the slip, proportionally.
+Per Paper A's cumulative upstream bonding: when fuel slips by 30 minutes, the fuel sub-process's seller-bond is at risk. The airline's seller-bond to the passenger is also at risk because the parent commitment's scheduled-departure-v1 will be violated. *Both* bonds reflect the slip, proportionally.
 
 The settlement rule:
 

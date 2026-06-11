@@ -12,7 +12,7 @@ A multi-party container shipping assembly: shipper → forwarder → ocean carri
 
 ### `spirit-air-replacement/`
 
-A passenger-airline assembly with the airline as seller-of-record buying from gate-ops, fuel, crew, catering, and maintenance as sub-sellers. Cascading delays repriced as a weakest-link bonded coordination problem (asymmetric bonding scales to N parties via progressive collateralization, per Paper A).
+A passenger-airline assembly with the airline as seller-of-record buying from gate-ops, fuel, crew, catering, and maintenance as sub-sellers. Cascading delays repriced as a weakest-link bonded coordination problem (asymmetric bonding scales to N parties — each seller bonds against cumulative upstream value — per Paper A).
 
 Each scenario has four files:
 

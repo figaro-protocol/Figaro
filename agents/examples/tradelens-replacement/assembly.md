@@ -83,7 +83,7 @@ Order nodes carry clauses — clause-typed obligations that must be discharged f
 
 ## Bond posture
 
-Each leg's bond is computed from the leg's value. Asymmetric bonding scales naturally — when the carrier sub-contracts to a port operator, the carrier is the *buyer* of port services and posts buyer bonds at that sub-process. Progressive collateralization composes the legs without compounding the bond requirement explosion.
+Each leg's bond is computed from the leg's value. Asymmetric bonding scales naturally — when the carrier sub-contracts to a port operator, the carrier is the *buyer* of port services and posts buyer bonds at that sub-process. Cumulative upstream bonding composes the legs without compounding the bond requirement explosion.
 
 For a $20K shipment with $5K terminal handling at each port and $1K customs clearance:
 

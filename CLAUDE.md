@@ -93,7 +93,7 @@ When in doubt, ask. Cheap question, expensive cleanup.
 
 The kernel runs **two mechanisms that compose, not substitute**, plus one security constraint:
 
-- **Mechanism 1 — Asymmetric bonding.** Buyer locks 2× payment, seller locks 2× cumulative value. Produces the bilateral Nash equilibrium (cooperation weakly dominates defection for both parties; the unique profile surviving iterated elimination of weakly dominated strategies) AND scales the primitive from 2-party to N-party via **progressive collateralization** — each seller bonds against cumulative upstream value, forming a mesh of independently secured edges, each carrying its own equilibrium at every depth. 2× is the minimum viable multiplier.
+- **Mechanism 1 — Asymmetric bonding.** Buyer locks 2× payment, seller locks 2× cumulative value. Produces the bilateral Nash equilibrium (cooperation weakly dominates defection for both parties; the unique profile surviving iterated elimination of weakly dominated strategies) AND scales the primitive from 2-party to N-party — each seller bonds against cumulative upstream value, forming a mesh of independently secured edges, each carrying its own equilibrium at every depth. 2× is the minimum viable multiplier.
 - **Mechanism 2 — Buyer dominance.** Only the buyer can trigger `resolveProcess`; resolution is **atomic** — all orders in the process settle together or not at all. Operates on the already-scaled mesh to enforce inter-seller coordination: a weakest-link subgame reproducing Grameen joint-liability peer enforcement under strictly weaker assumptions (no repeated interaction, no shared community, no exogenous punishment technology).
 - **Security constraint — No escape hatches.** Any unilateral exit path weakens the equilibrium (α≥½ breaks weak dominance directly; an unbonded third party J ∉ {B,S} reintroduces discretion). Not a third mechanism — a constraint protecting the two. External legal forums adjudicating under duress / frustration / impossibility are NOT escape hatches: they're constrained by their own institutional bond structures and operate on the commitment as evidentiary input.
 
@@ -103,7 +103,7 @@ The kernel sees only **linear process chains** — `commit` calls extending a mo
 
 **Three mistakes to avoid:**
 1. Do not collapse the two mechanisms to "one mechanism plus rules." Atomic resolution does mechanism-style work — it enforces inter-seller coordination via the weakest-link subgame, not just convenience-of-resolution.
-2. Do not credit buyer dominance with scaling. Scaling is asymmetric bonding's work via progressive collateralization; buyer dominance enforces coordination on the *already-scaled* mesh.
+2. Do not credit buyer dominance with scaling. Scaling is asymmetric bonding's work — each seller bonding against cumulative upstream value; buyer dominance enforces coordination on the *already-scaled* mesh.
 3. Do not treat no-escape-hatches as a third mechanism. It's a security constraint protecting the equilibrium the two mechanisms induce.
 
 Full game-theoretic derivation → `THEORY.md`. Post-firm economy, Coasean collapse, token denomination → `VISION.md`. The RWA-as-wallet / social-mechanism apparatus → `/papers/self-closing-ledger-periods` §7 (and memory `reference_rwa_as_wallet.md`, `reference_social_mechanism.md`). Immutable evidence is produced by the on-chain composition layer, not the kernel.
@@ -137,7 +137,7 @@ When an agent surfaces naming questions or writes user-facing copy: apply these 
 
 ### Framing Discipline
 
-Reason from the core property downward: self-enforcing agreements between strangers. The six properties (asymmetric bonding, progressive collateralization, buyer dominance, atomic resolution, immutable evidence, no escape hatches) describe how the mechanism works. Contracts implement properties; UI renders contracts.
+Reason from the core property downward: self-enforcing agreements between strangers. The six properties (asymmetric bonding, cumulative upstream bonding, buyer dominance, atomic resolution, immutable evidence, no escape hatches) describe how the mechanism works. Contracts implement properties; UI renders contracts.
 
 Never frame Figaro as "removing the middleman." Figaro is sovereign P2P commerce infrastructure. The platform companies are not being replaced; the architecture makes them structurally unnecessary.
 

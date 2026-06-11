@@ -211,7 +211,7 @@ CommitRoot(buyer, seller, payment) ==
 \*
 \* Bond deposits:
 \*   buyer:  payment × 2
-\*   seller: newCumulativeValue × 2   (progressive collateralization)
+\*   seller: newCumulativeValue × 2   (cumulative upstream bonding)
 \*
 \* The sub-order seller bonds 2× the TOTAL cumulative value (not just
 \* their payment). Later sellers have more skin in the game.

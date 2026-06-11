@@ -209,7 +209,7 @@ Enforced by `scripts/lint-architecture-lexicon.sh`.
 | `commit` is arrival+acceptance | `order-received` / `accepted` as clause events | **FAIL** (quoted form) |
 | `clause` (the artifact family) | `schema` (carve-outs: JSON Schema, commitment schema, schema version) | **FAIL** |
 | `process chain` (kernel) / `DAG` (off-chain) | `process tree` | **FAIL** (swept 2026-06-11) |
-| `asymmetric bonding` | `progressive collateralization` | **WARN** (retire-sweep + doctrine reword pending) |
+| `asymmetric bonding` (mechanism) / `cumulative upstream bonding` (its N-party face) | `progressive collateralization` | **FAIL** (swept 2026-06-11, user-ratified collapse) |
 
 Party vocabulary (`buyer` / `seller` vs `merchant` / `courier` / `operator`) is
 enforced separately by `scripts/lint-no-product-party-terms.sh`. `manifest`

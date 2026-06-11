@@ -44,7 +44,7 @@ place where state-based enforcement is justified: the bond-locking and
 cumulative-value invariants tie the process together as a single
 institution, and that institution's lifetime is finite. Reopening would
 require the cumulative-value accumulator to reset, which would break the
-progressive-collateralization property for any new orders.
+cumulative-upstream-bonding property for any new orders.
 
 ---
 
@@ -105,7 +105,7 @@ response.
 **Why it is correct**: The protocol's core property is self-enforcement between
 strangers. An admin escape hatch is a trusted third party by another name. The
 absence of admin controls is not an omission — it is the mechanism. The six
-properties (asymmetric bonding, progressive collateralization, buyer dominance,
+properties (asymmetric bonding, cumulative upstream bonding, buyer dominance,
 atomic resolution, immutable evidence, no escape hatches) are mutually
 reinforcing. Removing any one of them degrades the Nash equilibrium.
 

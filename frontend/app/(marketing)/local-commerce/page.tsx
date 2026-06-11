@@ -36,7 +36,7 @@ export default function LocalCommercePage() {
                     </div>
                     <div>
                         <dt className="text-base font-semibold text-ink-heading">Courier</dt>
-                        <dd className="text-ink-body leading-relaxed mt-1">Counter-signs the buyer&apos;s delivery sub-order at an auction-determined fee. Bonds 2× cumulative process value (goods + delivery) &mdash; progressive collateralization in operation. Maps to a driver, cyclist, walker, drone, or any other delivery modality.</dd>
+                        <dd className="text-ink-body leading-relaxed mt-1">Counter-signs the buyer&apos;s delivery sub-order at an auction-determined fee. Bonds 2× cumulative process value (goods + delivery) &mdash; cumulative upstream bonding in operation. Maps to a driver, cyclist, walker, drone, or any other delivery modality.</dd>
                     </div>
                 </dl>
             </section>

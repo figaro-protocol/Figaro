@@ -84,7 +84,7 @@ export default function Composability() {
                         <p className="text-sm font-semibold text-ink-heading mb-2">Enforced by the kernel</p>
                         <ul className="space-y-2 text-sm text-ink-body leading-relaxed list-disc pl-5">
                             <li>Asymmetric bonding (2&times; payment / 2&times; cumulative value)</li>
-                            <li>Progressive collateralization across sub-orders</li>
+                            <li>Cumulative upstream bonding across sub-orders</li>
                             <li>Buyer-dominant atomic resolution</li>
                             <li>Merkle-bound attestation receipts against the signed agreement</li>
                             <li>Validator-gated attestation dispatch</li>

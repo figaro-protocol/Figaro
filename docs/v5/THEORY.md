@@ -10,8 +10,8 @@ Figaro is a coordination protocol that enables sovereign economic coordination
 through two composing mechanisms: asymmetric bonding and buyer dominance.
 Asymmetric bonding (each party locks 2× their respective stake) produces a
 Nash equilibrium where cooperation is strictly dominant for both parties, and
-scales the bilateral primitive from 2-party to N-party service chains via
-progressive collateralization (downstream sellers bond against cumulative
+scales the bilateral primitive from 2-party to N-party service chains
+(downstream sellers bond against cumulative
 upstream value, creating a mesh of independently secured edges). Buyer
 dominance — only the buyer can trigger resolution, and resolution is atomic
 across all orders in the process — operates on the already-scaled mesh to
@@ -61,7 +61,7 @@ Figaro achieves multi-party coordination through two composing mechanisms:
 
 1. **Both parties lock collateral on-chain** (buyer 2P, seller 2G)
 2. **The 2× ratio creates the Nash equilibrium** — cooperation strictly dominates defection for both, at the minimum viable multiplier
-3. **Each seller bonds against cumulative upstream value** (progressive collateralization), creating a mesh of independently secured edges that scales from 2-party to N-party DAGs
+3. **Each seller bonds against cumulative upstream value**, creating a mesh of independently secured edges that scales from 2-party to N-party DAGs
 
 **Mechanism 2 — Buyer dominance (inter-seller coordination on the mesh):**
 
@@ -108,7 +108,7 @@ invariants.
 
 | Law | Properties it projects | One-sentence statement |
 |---|---|---|
-| **Skin in the Game** | Asymmetric bonding + Progressive collateralization | Both parties prove they have more to lose than to gain by defecting. The bond is the proof. |
+| **Skin in the Game** | Asymmetric bonding (bilateral 2× + cumulative upstream bonding) | Both parties prove they have more to lose than to gain by defecting. The bond is the proof. |
 | **One-Way Progress** | Monotonic cumulative-value accumulator + Atomic resolution | The deal only moves forward. Value accumulates; it never reverses. Settlement is all-or-nothing. |
 | **Sovereign Settlement** | Buyer dominance + No escape hatches | No boss, no bank, no platform sits in the middle. Resolution is between the parties, enforced by code. |
 
@@ -173,7 +173,7 @@ Where:
 
 **Dominant Strategy**: Cooperation is strictly dominant for both parties.
 
-### Progressive Collateralization
+### Cumulative Upstream Bonding
 
 In multi-party chains, seller bonds grow geometrically:
 
@@ -404,7 +404,7 @@ Problem:
 - Charlie may defect (low value-add, equal penalty)
 ```
 
-**Figaro Solution: Progressive Collateralization**
+**Figaro Solution: Cumulative Upstream Bonding**
 
 ```
 Chain: Alice ← Bob (food: $10) ← Charlie (delivery: $2)
@@ -914,12 +914,12 @@ Figaro represents a paradigm shift in multi-party coordination:
 
 **Defense-in-Depth**:
 1. **Layer 1 - Primary Nash Equilibrium**: 2-party game theory with symmetric bonding ensures cooperation
-2. **Layer 1.5 - Asymmetric Bonding**: Progressive collateralization maintains Nash equilibrium at scale (2→N parties)
+2. **Layer 1.5 - Asymmetric Bonding**: cumulative upstream bonding maintains Nash equilibrium at scale (2→N parties)
 3. **Layer 2 - Seller Coordination**: Atomic resolution creates micro-lending circle effect (social pressure)
 4. **Layer 3 - Legal + Transparency**: Blockchain SSoT + court precedents deter edge case abuse
 
 **Key Innovations**:
-1. **Asymmetric bonding**: Progressive collateralization ensures deep-chain coordination while preserving Nash equilibrium at every position
+1. **Asymmetric bonding**: cumulative upstream bonding ensures deep-chain coordination while preserving Nash equilibrium at every position
 2. **No escape hatches**: Capital lockup is the enforcement mechanism (no timeouts, no partial payments)
 3. **Buyer as sole resolver**: Accountability through reputation + locked capital
 4. **Atomic resolution**: All-or-nothing payment creates seller coordination pressure (like micro-lending groups)
@@ -948,7 +948,7 @@ Figaro represents a paradigm shift in multi-party coordination:
 
 - [x] Nash equilibrium: Mutual cooperation payoffs correct
 - [x] Collateral sufficiency: Bonds = 2× values
-- [x] Multi-party chain: Progressive collateralization verified
+- [x] Multi-party chain: cumulative upstream bonding verified
 - [x] Token accounting: Zero contract balance after resolution
 - [x] Access control: Only buyer can resolve
 - [x] No escape hatches: No reclaim, no timeout, no challenges

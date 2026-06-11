@@ -1,6 +1,6 @@
 ---
 name: figaro-kernel-discipline
-description: Use when proposing, reviewing, or critiquing any change to FigaroCore.sol, CommitmentTypes.sol, bonding math, kernel storage mappings, or the six protocol invariants (asymmetric bonding, progressive collateralization, buyer dominance, atomic resolution, immutable evidence, no escape hatches). TRIGGER when the user asks to add a feature to the kernel, when review surfaces a potential vulnerability in kernel patterns, when the model is about to propose timeout / admin / recovery / yield / governance / lifecycle-flag additions, or when the conversation mentions 'web2 pattern', 'stuck funds', 'escape hatch', 'MAD equilibrium', or any of the 14 false-positive patterns in DESIGN_DECISIONS.md. Invoke BEFORE proposing, not after.
+description: Use when proposing, reviewing, or critiquing any change to FigaroCore.sol, CommitmentTypes.sol, bonding math, kernel storage mappings, or the six protocol invariants (asymmetric bonding, cumulative upstream bonding, buyer dominance, atomic resolution, immutable evidence, no escape hatches). TRIGGER when the user asks to add a feature to the kernel, when review surfaces a potential vulnerability in kernel patterns, when the model is about to propose timeout / admin / recovery / yield / governance / lifecycle-flag additions, or when the conversation mentions 'web2 pattern', 'stuck funds', 'escape hatch', 'MAD equilibrium', or any of the 14 false-positive patterns in DESIGN_DECISIONS.md. Invoke BEFORE proposing, not after.
 ---
 
 # Figaro Kernel Discipline
@@ -93,8 +93,8 @@ Match proposals to the correct tier:
 The MAD equilibrium is fragile. Any single escape hatch degrades it. Before
 proposing, check the change against:
 
-1. **The six protocol properties** (asymmetric bonding, progressive
-   collateralization, buyer dominance, atomic resolution, immutable evidence,
+1. **The six protocol properties** (asymmetric bonding, cumulative
+   upstream bonding, buyer dominance, atomic resolution, immutable evidence,
    no escape hatches). Does the change preserve all six?
 2. **The game-theoretic theorems** on the `/papers/asymmetric-bonding`
    page (Theorems: Two-Party Nash Equilibrium, Minimal Viable Bond
