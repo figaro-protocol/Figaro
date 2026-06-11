@@ -6,10 +6,10 @@
  *   1. **Device co-signature** (proximity clause attestation)
  *      Radio-range proof between fulfiller device and verifier device.
  *      Bands: WiFi (~30m), BLE (~10m), NFC (~4cm).
- *      Submitted as a standard attestation under figaro-proximity-proof-v1
+ *      Submitted as a standard attestation under the proximity-proof
  *      clause (Category-1 runtime witness), with proof data (band, nonce,
  *      deviceSig) in the off-chain contentRef. Off-chain consumers verify
- *      proof.band == policy.band against the committed figaro-proximity-policy-v1
+ *      proof.band == policy.band against the committed proximity-policy
  *      section in the agreement.
  *
  *   2. **Photo + GPS** (IPFS-pinned evidence)
@@ -99,7 +99,7 @@ export interface GeohashMatchAttestation {
     processId: string;
     /** Fulfiller's GPS-derived geohash (precision 6–8). */
     fulfillerGeohash: string;
-    /** Order's dropoff geohash from the assemblyDoc. */
+    /** Order's dropoff geohash from the agreement's geo section. */
     orderDropoffGeohash: string;
     /** Geohash precision used for comparison. */
     precision: number;

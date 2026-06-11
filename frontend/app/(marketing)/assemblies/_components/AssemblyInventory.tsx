@@ -12,7 +12,7 @@ function truncateAddress(addr: `0x${string}`): string {
  *
  * Reuses `useAssemblyChoices` — the same composition the seller profile
  * and the designer's published-list consume. Each row's identity (slug,
- * author, content hash) is on-chain; the assembly document (name, order count,
+ * author, content hash) is on-chain; the assembly template (name, order count,
  * clauses) fetches lazily from IPFS per row.
  *
  * Client component because the marketing tier mounts no wallet provider.
@@ -46,7 +46,7 @@ export function AssemblyInventory() {
                 <code>AssemblyRegistry</code>, read live from{" "}
                 <code>AssemblyRegistered</code> events &mdash; the on-chain set, sorted
                 most-recent first. Each slug is permanent and first-write-wins;
-                assembly-document content fetches lazily from IPFS.
+                assembly-template content fetches lazily from IPFS.
             </p>
             <ul className="space-y-5">
                 {data.map((choice) => (

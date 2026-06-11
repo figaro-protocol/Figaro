@@ -365,7 +365,7 @@ export async function createRootOrder(opts: {
     tokenAddress: `0x${string}`;
     payment: bigint;
     agreementHash?: `0x${string}`;
-    /** Optional signed agreement assemblyDoc. When supplied, its merkle root is
+    /** Optional signed agreement assemblyTemplate. When supplied, its merkle root is
      *  used as the order's `agreementHash` and is cached so later attestation
      *  helpers can produce inclusion proofs. */
     agreement?: Agreement;
@@ -1131,7 +1131,7 @@ export async function addSubOrder(page: Page, parentId: string): Promise<string>
 
 /**
  * Assert a published assembly SURFACES on the marketing `/assemblies` inventory.
- * The page reads `AssemblyRegistry` on-chain and lazy-fetches each assemblyDoc
+ * The page reads `AssemblyRegistry` on-chain and lazy-fetches each assemblyTemplate
  * from IPFS; rows are keyed `#assembly-<slug>` (per AssemblyInventory). Navigates
  * the page, so call it after the on-chain / IPFS assertions.
  */
@@ -1300,75 +1300,6 @@ function resolveIpfsURI(uri: string): string {
     return uri.startsWith('ipfs://')
         ? `${gateway}/ipfs/${uri.slice('ipfs://'.length)}`
         : uri;
-}
-
-/**
- * Capture-or-guard a wizard-published seller catalogue as a seed fixture.
- *
- * Reads `sellerAddress`'s on-chain profile (SellerRegistered event ->
- * metadataURI), follows the profile's `catalogueURI` to the pinned
- * SellerCatalogueMetadata. With `FIGARO_CAPTURE_FIXTURES` set, writes it to
- * `scripts/fixtures/seller-catalogue.json` — the data `seed-devnet.mjs`
- * replays. Without it, drift-guards the live catalogue's `menu` against the
- * committed fixture and throws on mismatch.
- *
- * Same capture-or-guard pattern as `captureOrGuardAssemblyDocument`: the
- * canonical authoring UI (here the seller-registration wizard) produces
- * the artifact; the seed replays it; the spec guards the two stay in sync.
- */
-async function captureOrGuardSellerCatalogue(sellerAddress: string): Promise<void> {
-    const config = readLocalDeploymentConfig();
-    const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY
-        ?? config.sellerRegistry) as `0x${string}` | undefined;
-    if (!sellerRegistry) {
-        throw new Error('NEXT_PUBLIC_SELLER_REGISTRY not set — run ./deploy-local.sh');
-    }
-
-    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const events = await publicClient.getContractEvents({
-        address: sellerRegistry,
-        abi: SELLER_REGISTERED_EVENT_ABI,
-        eventName: 'SellerRegistered',
-        args: { seller: sellerAddress as `0x${string}` },
-        fromBlock: 0n,
-    });
-    if (events.length === 0) {
-        throw new Error(`No SellerRegistered event for ${sellerAddress}`);
-    }
-    const profileURI = events[events.length - 1].args.metadataURI as string;
-    const profile = await (await fetch(resolveIpfsURI(profileURI))).json() as {
-        catalogueURI?: string;
-    };
-    if (!profile.catalogueURI) {
-        throw new Error(`Seller ${sellerAddress} profile carries no catalogueURI`);
-    }
-    const catalogue = await (await fetch(resolveIpfsURI(profile.catalogueURI))).json() as {
-        menu: unknown[];
-    };
-
-    const fixturePath = path.resolve(__dirname, '../../scripts/fixtures/seller-catalogue.json');
-    if (process.env.FIGARO_CAPTURE_FIXTURES) {
-        fs.mkdirSync(path.dirname(fixturePath), { recursive: true });
-        fs.writeFileSync(fixturePath, `${JSON.stringify(catalogue, null, 2)}\n`, 'utf8');
-        return;
-    }
-    const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8')) as { menu: unknown[] };
-    // Each menu item's `id` is generated fresh per wizard run, so comparing
-    // it would drift the guard every run. Strip it — the guarded surface is
-    // the structural shape (name, price, category, available, item count).
-    const withoutIds = (menu: unknown[]) =>
-        menu.map((item) => {
-            const rest = { ...(item as Record<string, unknown>) };
-            delete rest.id;
-            return rest;
-        });
-    if (JSON.stringify(withoutIds(catalogue.menu)) !== JSON.stringify(withoutIds(fixture.menu))) {
-        throw new Error(
-            'scripts/fixtures/seller-catalogue.json drift — the wizard-published ' +
-            'catalogue no longer matches the committed fixture; re-capture with ' +
-            'FIGARO_CAPTURE_FIXTURES=1.',
-        );
-    }
 }
 
 /**

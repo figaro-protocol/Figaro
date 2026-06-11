@@ -2,18 +2,10 @@
 import { ZERO_BYTES32, bytesToHex } from "@/lib/shared/evm";
 
 /**
- * Structural type for per-order assemblyDoc content carried in the agreement.
- * The on-chain `bytes assemblyDoc` codec was retired (no consumer); this type
- * survives as the contract between `buildOrderAgreement` and its callers,
- * who project it into the agreement object directly.
- */
-/**
  * Per-order clause content — the SINGLE shape shared by the assembly template,
  * the designer, and the commit path. Keyed by clauseId; each value is that
  * clause's spec-named field values. An agreement section is a near-identity
- * projection of an entry: `{ clause: clauseId, data: values }`. Geo is the one
- * exception — its raw checkout strings (`origin`, `"5 kg"`) are encoded into the
- * section by `clauseFieldsToGeoSection`.
+ * projection of an entry: `{ clause: clauseId, data: values }`.
  *
  * Structurally identical to `@figaro/core`'s template `ClauseValues`, so a
  * template order's `clauses` feeds checkout with zero translation.

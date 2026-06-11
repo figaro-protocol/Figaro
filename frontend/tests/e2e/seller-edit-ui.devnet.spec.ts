@@ -249,20 +249,20 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         const tokenAddress = requireEnv('NEXT_PUBLIC_TOKEN_ADDRESS');
 
         // 1. Register a minimal assembly. `useAssemblyChoices` reads
-        //    AssemblyRegistered events + fetches the assemblyDoc JSON, so
+        //    AssemblyRegistered events + fetches the assemblyTemplate JSON, so
         //    both must exist on-chain + IPFS for the row to render.
-        //    AssemblyDocument needs `name` + `orders[]`; orderless or
-        //    fully empty assemblyDocs still render as a choice — what
+        //    AssemblyTemplate needs `name` + `orders[]`; orderless or
+        //    fully empty templates still render as a choice — what
         //    matters for this test is that the slug is selectable.
-        const assemblyDocument = {
+        const assemblyTemplate = {
             slug: `phase4-c4d-${Date.now()}`,
             name: 'Phase 4 Assembly',
             orders: [],
             agreements: {},
             version: '1.0.0',
         };
-        const { uri: assemblyDocumentURI } = await pinJSONToIPFS(assemblyDocument);
-        const contentHash = keccak256(toHex(JSON.stringify(assemblyDocument)));
+        const { uri: assemblyTemplateURI } = await pinJSONToIPFS(assemblyTemplate);
+        const contentHash = keccak256(toHex(JSON.stringify(assemblyTemplate)));
 
         const assemblyRegistry = getAssemblyRegistry();
         const author = privateKeyToAccount(SELLER_KEY);
@@ -274,7 +274,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
             address: assemblyRegistry,
             abi: ASSEMBLY_REGISTRY_ABI,
             functionName: 'registerAssembly',
-            args: [assemblyDocument.slug, contentHash, assemblyDocumentURI],
+            args: [assemblyTemplate.slug, contentHash, assemblyTemplateURI],
             value: ASSEMBLY_REGISTRATION_DEPOSIT,
         });
         await publicClient.waitForTransactionReceipt({ hash: await authorClient.writeContract(registerReq) });
@@ -293,7 +293,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         await page.goto('/sellers/edit/assemblies?e2e=devnet', { waitUntil: 'domcontentloaded' });
 
         // The assembly row carries `seller-assembly-row-<slug>` testid.
-        const assemblyRow = page.getByTestId(`seller-assembly-row-${assemblyDocument.slug}`);
+        const assemblyRow = page.getByTestId(`seller-assembly-row-${assemblyTemplate.slug}`);
         await expect(assemblyRow).toBeVisible({ timeout: 30000 });
         await assemblyRow.locator('input[type="checkbox"]').first().check();
 

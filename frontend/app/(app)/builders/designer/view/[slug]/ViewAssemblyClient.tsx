@@ -7,7 +7,7 @@
  *   1. localStorage draft (loadNamedDraft) — work-in-progress in this
  *      browser.
  *   2. On-chain published assembly — AssemblyRegistered event filtered
- *      by slugHash, then the assemblyDoc fetched from IPFS via metadataURI.
+ *      by slugHash, then the assemblyTemplate fetched from IPFS via metadataURI.
  *
  * If the slug exists in both places, the draft wins (it's more current
  * by definition; the on-chain one is the prior snapshot). If neither,
@@ -36,11 +36,11 @@ import {
 } from "@/lib/designer/syntheticDesignStore";
 import {
     ASSEMBLY_REGISTRY_ABI,
-    fetchAssemblyDocument,
+    fetchAssemblyTemplate,
     getAssemblyRegistry,
     usePublishAssembly,
 } from "@/lib/mechanisms/useAssemblyRegistry";
-import { templateToOrders } from "@/lib/designer/assemblyDocumentToDraft";
+import { templateToOrders } from "@/lib/designer/assemblyTemplateToDraft";
 import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
 import type { AssemblyTemplate } from "@/lib/designer/assemblyTemplate";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
@@ -54,7 +54,7 @@ type ResolvedSource =
         kind: "published";
         name: string;
         orders: Order[];
-        assemblyDoc: AssemblyTemplate;
+        assemblyTemplate: AssemblyTemplate;
     }
     | { kind: "error"; message: string };
 
@@ -150,9 +150,9 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     }
                     const log = logs[0];
                     const metadataURI = (log.args.metadataURI ?? "") as string;
-                    const assemblyDoc = await fetchAssemblyDocument(metadataURI);
+                    const assemblyTemplate = await fetchAssemblyTemplate(metadataURI);
                     if (cancelled) return;
-                    if (!assemblyDoc) {
+                    if (!assemblyTemplate) {
                         setResolved({
                             kind: "error",
                             message:
@@ -160,8 +160,8 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         });
                         return;
                     }
-                    const orders = templateToOrders(assemblyDoc);
-                    setResolved({ kind: "published", name: assemblyDoc.name, orders, assemblyDoc });
+                    const orders = templateToOrders(assemblyTemplate);
+                    setResolved({ kind: "published", name: assemblyTemplate.name, orders, assemblyTemplate });
                     return;
                 } catch (err) {
                     if (cancelled) return;
@@ -219,7 +219,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         if (resolved.kind !== "published") return;
         setForking(true);
         try {
-            const outcome = forkPublishedAssembly(slug, resolved.assemblyDoc);
+            const outcome = forkPublishedAssembly(slug, resolved.assemblyTemplate);
             if (!outcome) return;
             router.push(`/builders/designer/edit/${encodeURIComponent(outcome.finalSlug)}`);
         } catch (err) {
@@ -268,7 +268,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 <h1 className="text-heading-h2 text-ink-heading">Published.</h1>
                 <p className="text-sm text-ink-body">
                     The slug <code>{receipt.slug}</code> is now anchored on
-                    the AssemblyRegistry. The assemblyDoc is pinned to IPFS;
+                    the AssemblyRegistry. The assemblyTemplate is pinned to IPFS;
                     the slug binding is irreversible.
                 </p>
                 <dl className="text-xs text-ink-body space-y-2 pt-2 border-t border-default w-full">
@@ -327,7 +327,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 disabled={confirming}
                 className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
                 data-testid="review-confirm-publish"
-                title="Pin the assembly document to IPFS, lock the registration deposit, anchor the slug on-chain. Irreversible."
+                title="Pin the assembly template to IPFS, lock the registration deposit, anchor the slug on-chain. Irreversible."
             >
                 {confirming ? "Publishing…" : "Confirm publish — irreversible"}
             </button>
@@ -368,7 +368,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         Review before publish — this action is irreversible.
                     </p>
                     <p className="text-xs text-amber-800 mt-1 max-w-3xl leading-relaxed">
-                        Confirming will pin the assembly assemblyDoc to IPFS, lock the
+                        Confirming will pin the assembly assemblyTemplate to IPFS, lock the
                         registration deposit, and anchor the slug{" "}
                         <code className="font-mono">/{slug}</code> on-chain. The slug
                         binding is permanent — once registered it cannot be reassigned,

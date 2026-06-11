@@ -1,8 +1,8 @@
 /**
  * Figaro handoff geohash + logistics utilities.
  *
- * Self-contained geohash encode / bounds / distance, class-of-service
- * labels, and the well-known manifest clause-id constants. Used by the
+ * Self-contained geohash encode / bounds / distance and class-of-service
+ * labels. Used by the
  * physical-handoff surfaces (delivery-location capture, courier proximity,
  * seller service areas).
  *
@@ -123,7 +123,3 @@ type CoS = "S" | "E" | "F" | "C";
 function cosLabel(cos: string): string {
     return COS_OPTIONS.find((o) => o.value === cos)?.label ?? cos;
 }
-
-// ---------------------------------------------------------------------------
-// Manifest clause IDs
-// ---------------------------------------------------------------------------

@@ -10,7 +10,7 @@
  * price, which lives in the contributor's OWN catalogue (a public rate, plus
  * an optional rate negotiated with a counterparty). Nothing is copied into the
  * lead's assembly. The lead's own orders are priced from the assembly the lead
- * authored (the assemblyDoc figure).
+ * authored (the assemblyTemplate figure).
  */
 
 import type { BoundAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
@@ -20,7 +20,7 @@ import { resolveCatalogueItemPrice } from "@/lib/shared/sellerCatalogueMetadata"
 import { hexEqual } from "@/lib/shared/evm";
 import { parseToken } from "@/lib/shared/utils";
 
-export type AssemblyDocumentOrder = BoundAssembly["assemblyDoc"]["orders"][number];
+export type AssemblyTemplateOrder = BoundAssembly["assemblyTemplate"]["orders"][number];
 
 /**
  * Topologically order an assembly's non-root orders and resolve each one's
@@ -34,14 +34,14 @@ export type AssemblyDocumentOrder = BoundAssembly["assemblyDoc"]["orders"][numbe
  */
 export function planSubOrderSellers(
     assembly: BoundAssembly,
-): Array<{ node: AssemblyDocumentOrder; seller: `0x${string}` | null }> {
-    const { assemblyDoc } = assembly;
+): Array<{ node: AssemblyTemplateOrder; seller: `0x${string}` | null }> {
+    const { assemblyTemplate } = assembly;
     const rootId =
-        assemblyDoc.orders.find((o) => templateParentOrderIds(o).length === 0)?.id ??
-        assemblyDoc.orders[0]?.id;
+        assemblyTemplate.orders.find((o) => templateParentOrderIds(o).length === 0)?.id ??
+        assemblyTemplate.orders[0]?.id;
     const settled = new Set<string>(rootId ? [rootId] : []);
-    const pending = assemblyDoc.orders.filter((o) => o.id !== rootId);
-    const ordered: AssemblyDocumentOrder[] = [];
+    const pending = assemblyTemplate.orders.filter((o) => o.id !== rootId);
+    const ordered: AssemblyTemplateOrder[] = [];
     while (pending.length > 0) {
         const idx = pending.findIndex((o) => templateParentOrderIds(o).every((p) => settled.has(p)));
         if (idx === -1) {
@@ -78,7 +78,7 @@ export function planSubOrderSellers(
  * (itemId on the binding) is the remaining decision.
  */
 export function resolveSubOrderPayment(args: {
-    node: AssemblyDocumentOrder;
+    node: AssemblyTemplateOrder;
     seller: `0x${string}`;
     leadAddress: `0x${string}`;
     sellerCatalogues: SellerCatalogue[];

@@ -8,6 +8,7 @@ import { isAddress } from "viem";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { hexEqual } from "@/lib/shared/evm";
+import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
 import type { AssemblyBindingRecord, CounterpartyBinding } from "@/lib/shared/sellerProfileMetadata";
@@ -23,10 +24,10 @@ import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
  * assemblies they participate in. Each selected assembly becomes an
  * `AssemblyBindingRecord` on `state.assemblies`.
  *
- * Per-binding counterparty editing: assemblies whose assemblyDoc contains
+ * Per-binding counterparty editing: assemblies whose assemblyTemplate contains
  * a non-root order with a per-role process clause (e.g. a courier
- * sub-order with `figaro-courier-process-v1`) require the seller to
- * designate at least one wallet for that role. The picker surfaces an
+ * sub-order carrying a counterparty-process clause) require the seller
+ * to designate at least one wallet for that role. The picker surfaces an
  * inline editor when those rows are checked. Without these addresses
  * the cart has nowhere to read the counterparty's seller field from at
  * checkout time.
@@ -193,8 +194,8 @@ export function OnboardingAssembliesForm({
                 {choices.map((choice) => {
                     const isSelected = selected.has(choice.slug);
                     const requiredClauses =
-                        choice.state === "loaded" && choice.assemblyDoc
-                            ? requiredCounterpartyClauses(choice.assemblyDoc)
+                        choice.state === "loaded" && choice.assemblyTemplate
+                            ? requiredCounterpartyClauses(choice.assemblyTemplate)
                             : [];
                     const counterparties = counterpartiesBySlug.get(choice.slug) ?? [];
                     return (
@@ -299,7 +300,7 @@ function CounterpartyClauseEditor({
     addresses: `0x${string}`[];
     onChange: (next: `0x${string}`[]) => void;
 }) {
-    const heading = COUNTERPARTY_CLAUSE_HEADINGS[clauseId] ?? clauseId;
+    const heading = getClauseSpec(clauseId)?.title ?? clauseId;
     // Local rows include in-progress (typed but not yet valid) entries.
     // Always pad with one trailing empty row so the user has somewhere
     // to add a new address.
@@ -403,9 +404,3 @@ function CounterpartyClauseEditor({
     );
 }
 
-/** Display headings for the per-clause editor. Maps each
- *  counterparty-process clauseId to a human-readable label. Clauses
- *  not in the map fall back to rendering the raw clauseId. */
-const COUNTERPARTY_CLAUSE_HEADINGS: Record<string, string> = {
-    "figaro-courier-process-v1": "Trusted couriers",
-};

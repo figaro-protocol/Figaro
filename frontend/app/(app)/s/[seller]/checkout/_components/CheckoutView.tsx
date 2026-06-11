@@ -182,7 +182,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // checkout-time choice (buyer-assigned coordination); the picker below
     // surfaces it. Bound sub-orders keep the profile's designation.
     const unboundSubOrders = (() => {
-        if (!pickedAssembly || pickedAssembly.assemblyDoc.orders.length <= 1) return [];
+        if (!pickedAssembly || pickedAssembly.assemblyTemplate.orders.length <= 1) return [];
         try {
             return planSubOrderSellers(pickedAssembly).filter((p) => !p.seller);
         } catch {
@@ -209,8 +209,8 @@ export function CheckoutView({ sellerAddress }: Props) {
     // Surfaced inline below so the buyer reviews the terms before signing — the
     // visible terms + the explicit place-order click replace the modal gate.
     const pickedRoot = pickedAssembly
-        ? (pickedAssembly.assemblyDoc.orders.find((o) => templateParentOrderIds(o).length === 0)
-            ?? pickedAssembly.assemblyDoc.orders[0])
+        ? (pickedAssembly.assemblyTemplate.orders.find((o) => templateParentOrderIds(o).length === 0)
+            ?? pickedAssembly.assemblyTemplate.orders[0])
         : undefined;
     const orderClauseIds = pickedRoot ? Object.keys(pickedRoot.clauses) : [];
     const cartTotal = cartItems.reduce(
@@ -227,7 +227,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // walks, so the shown total equals what commits.
     const kitBreakdown = ((): { rows: Array<{ name: string; payment: bigint }>; total: bigint } | null => {
         const assembly = pickedAssembly;
-        if (!assembly || assembly.assemblyDoc.orders.length <= 1) return null;
+        if (!assembly || assembly.assemblyTemplate.orders.length <= 1) return null;
         const lead = sellerCatalogue.address as `0x${string}`;
         const nameOf = (addr: `0x${string}`) =>
             sellerCatalogues.find((c) => hexEqual(c.address, addr))?.name ?? truncateHex(addr);

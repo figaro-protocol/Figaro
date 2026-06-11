@@ -5,8 +5,8 @@
  * No devnet spec touched its two row actions before.
  *
  * The spec publishes a real assembly through the canvas (the only way
- * to get a genuinely valid assemblyDoc — `buildAssemblyDocument` derives
- * it from a live design snapshot, so hand-rolling the assemblyDoc JSON
+ * to get a genuinely valid assemblyTemplate — publish derives it from a
+ * live design snapshot, so hand-rolling the assemblyTemplate JSON
  * would test fork/inspect against a shape the designer never emits),
  * then exercises both `PublishedList` controls:
  *
@@ -32,7 +32,7 @@ test.describe('PublishedList fork + inspect (devnet)', () => {
     test('publish an assembly, then Inspect and Fork it from PublishedList', async ({ page }) => {
         // ── Publish an assembly via the canvas ───────────────────────
         // Mirrors designer-publish.devnet.spec.ts: the canvas authors a
-        // valid assemblyDoc and pins it; PublishedList then reads the
+        // valid assemblyTemplate and pins it; PublishedList then reads the
         // AssemblyRegistered event for the connected wallet.
         const draftName = `a8-${Date.now()}`;
         const slug = draftName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -70,9 +70,9 @@ test.describe('PublishedList fork + inspect (devnet)', () => {
         await page.goto('/builders/designer?e2e=devnet', { waitUntil: 'domcontentloaded' });
         await page.getByTestId(`published-row-${slug}`).waitFor({ timeout: 30000 });
 
-        // Fork is disabled until the assemblyDoc fetch resolves
+        // Fork is disabled until the assemblyTemplate fetch resolves
         // (`choice.state === "loaded"`). Waiting for it enabled proves
-        // the IPFS-pinned assemblyDoc was fetched and parsed.
+        // the IPFS-pinned assemblyTemplate was fetched and parsed.
         await expect(page.getByTestId(`published-fork-${slug}`)).toBeEnabled({ timeout: 30000 });
 
         // ── Inspect → /builders/designer/view/<slug> ─────────────────

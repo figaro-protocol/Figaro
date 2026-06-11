@@ -4,12 +4,12 @@
  * PublishedList — renders the connected wallet's published assemblies.
  *
  * Reads from `useAssemblyChoices(address)` which combines the
- * `AssemblyRegistered` event log with lazy assemblyDoc enrichment (name,
+ * `AssemblyRegistered` event log with lazy assemblyTemplate enrichment (name,
  * order count, clause set). The same hook backs the seller-profile
  * assembly picker, so the two surfaces can't drift on what they show
  * about an assembly.
  *
- * Each row has a Fork button (re-uses the assemblyDoc the hook already
+ * Each row has a Fork button (re-uses the assemblyTemplate the hook already
  * fetched) and an Inspect link to /view/[slug]. No-wallet, empty, and
  * loading states each render their own message.
  */
@@ -36,7 +36,7 @@ export function PublishedList() {
 
     const handleFork = useCallback(
         async (choice: AssemblyChoice) => {
-            if (choice.state !== "loaded" || !choice.assemblyDoc) {
+            if (choice.state !== "loaded" || !choice.assemblyTemplate) {
                 window.alert(
                     `Manifest for "${choice.slug}" is not yet available. Wait for it to load (or check the IPFS gateway) before forking.`,
                 );
@@ -44,7 +44,7 @@ export function PublishedList() {
             }
             setForking(choice.slug);
             try {
-                const outcome = forkPublishedAssembly(choice.slug, choice.assemblyDoc);
+                const outcome = forkPublishedAssembly(choice.slug, choice.assemblyTemplate);
                 if (!outcome) return;
                 router.push(`/builders/designer/edit/${encodeURIComponent(outcome.finalSlug)}`);
             } catch (err) {

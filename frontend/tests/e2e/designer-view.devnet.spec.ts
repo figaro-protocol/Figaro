@@ -6,7 +6,7 @@
  * covered the on-chain read-only resolution path before.
  *
  * `ViewAssemblyClient` resolves a slug from a localStorage draft first,
- * else from the chain (`AssemblyRegistered` event → IPFS assemblyDoc), else
+ * else from the chain (`AssemblyRegistered` event → IPFS assemblyTemplate), else
  * an error. This spec covers the on-chain branch and the not-found branch:
  *
  *   1. Publish an assembly via the canvas, then open /view/<slug> — it
@@ -67,9 +67,9 @@ test.describe('Assembly read-only inspector — /view/[slug] (devnet)', () => {
         );
 
         await expect(page.getByTestId('assembly-view-page')).toBeVisible({ timeout: 30000 });
-        // Resolved from chain (AssemblyRegistered → IPFS assemblyDoc), not a draft.
+        // Resolved from chain (AssemblyRegistered → IPFS assemblyTemplate), not a draft.
         await expect(page.getByTestId('view-source-badge')).toContainText('on-chain', { timeout: 15000 });
-        // The on-chain assemblyDoc's name rendered in the toolbar.
+        // The on-chain assemblyTemplate's name rendered in the toolbar.
         await expect(page.getByTestId('view-toolbar')).toContainText(draftName);
         // Published assemblies offer Fork; drafts offer Edit.
         await expect(page.getByTestId('view-fork-button')).toBeVisible();

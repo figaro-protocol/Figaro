@@ -23,25 +23,25 @@
  * only — no on-chain tx — so the spec is snapshot-clean.
  *
  * Requires Anvil + ./deploy-local.sh + Kubo + a seeded devnet
- * (frontend/scripts/seed-devnet.mjs registers `direct-sale`).
+ * (scenario-direct-sale.devnet.spec.ts anchors `direct-sale`).
  */
 import { test, expect } from './devnet-multi-test';
 import { evmRevert, evmSnapshot } from './devnet-helpers';
 
-// The seed registers this slug from scripts/fixtures/direct-sale.assembly-document.json.
+// scenario-direct-sale.devnet.spec.ts anchors this slug (pin + register, persisted).
 const SEEDED_SLUG = 'direct-sale';
 const SEEDED_NAME = 'Direct Sale';
 
 
 test.describe('Fork a seeded assembly from /view/[slug] (devnet)', () => {
 
-    // On-chain resolve + IPFS assemblyDoc fetch + fork hydration + nav.
+    // On-chain resolve + IPFS assemblyTemplate fetch + fork hydration + nav.
     test.setTimeout(180_000);
 
     test('views the seeded direct-sale assembly and forks it into an editable draft', async ({ page }) => {
         // ── View the seeded assembly read-only ───────────────────────
         // /view resolves `direct-sale` from the chain: AssemblyRegistered
-        // by slugHash (no author filter) -> IPFS assemblyDoc. A fresh browser
+        // by slugHash (no author filter) -> IPFS assemblyTemplate. A fresh browser
         // context carries no `direct-sale` localStorage draft, so the
         // on-chain branch is taken.
         await page.goto(
@@ -72,8 +72,8 @@ test.describe('Fork a seeded assembly from /view/[slug] (devnet)', () => {
         await page.waitForURL(new RegExp(`/builders/designer/edit/${forkSlug}`), { timeout: 15000 });
 
         // The fork hydrated into an editable canvas — not just a URL change.
-        // direct-sale is the one-node scenario, so assemblyDocumentToDraft carried
-        // the assemblyDoc's single root order through.
+        // direct-sale is the one-node scenario, so assemblyTemplateToDraft carried
+        // the assemblyTemplate's single root order through.
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
         const orderNodes = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])');
         await expect(orderNodes).toHaveCount(1, { timeout: 10000 });

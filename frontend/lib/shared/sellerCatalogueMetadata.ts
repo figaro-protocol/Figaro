@@ -2,7 +2,7 @@
  * Shipping/handling class — feeds the geo clause's `classOfService` field
  * at commit time. String literals are the canonical storage shape; the
  * geo validator's uint8 encoding (1=standard, 2=express, 3=fragile,
- * 4=cold-chain) is a assemblyDoc-encoder concern, not a storage concern.
+ * 4=cold-chain) is a assemblyTemplate-encoder concern, not a storage concern.
  */
 export type CatalogueClassOfService =
     | "standard"

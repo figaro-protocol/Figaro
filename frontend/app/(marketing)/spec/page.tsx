@@ -86,7 +86,7 @@ export default function Specifications() {
 
             <MarketingSection title="Clause validators in force">
                 <p className="text-base text-ink-body leading-relaxed">
-                    Every runtime-attestable clause binds to a deployed <code>IClauseValidator</code> contract; <code>figaro-topology-v1</code> is assemblyDoc-only &mdash; committed at agreement signing, with no on-chain validator. The full inventory &mdash; every clauseId, what it carries, and the three-layer validation architecture &mdash; is on <Link href="/clauses" className="underline">Clauses</Link>.
+                    Every runtime-attestable clause binds to a deployed <code>IClauseValidator</code> contract; <code>figaro-topology-v1</code> is manifest-only &mdash; committed at agreement signing, with no on-chain validator. The full inventory &mdash; every clauseId, what it carries, and the three-layer validation architecture &mdash; is on <Link href="/clauses" className="underline">Clauses</Link>.
                 </p>
             </MarketingSection>
 

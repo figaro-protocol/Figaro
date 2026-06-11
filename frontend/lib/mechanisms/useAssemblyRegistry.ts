@@ -5,10 +5,10 @@
  * separation-of-concerns doctrine.
  *
  * Publish flow:
- *   1. Build a full off-chain assemblyDoc from the snapshot — topology
+ *   1. Build a full off-chain assemblyTemplate from the snapshot — topology
  *      (orders array), per-order agreement bodies (inlined), and prose.
  *   2. Compute the canonical content hash (keccak256 of stable JSON).
- *   3. Pin the assemblyDoc to IPFS via DEFAULT_IPFS_SERVICE.
+ *   3. Pin the assemblyTemplate to IPFS via DEFAULT_IPFS_SERVICE.
  *   4. Call AssemblyRegistry.registerAssembly(slug, contentHash,
  *      metadataURI). Before the call, a CLIENT-SIDE publish guard checks
  *      that the node count (orders.length) fits the per-process gas
@@ -127,7 +127,7 @@ function translatePublishRevert(err: unknown, attemptedSlug: string): Error {
         }
         if (name === "EmptySlug") return new Error("Cannot publish with an empty slug.");
         if (name === "EmptyMetadataURI") return new Error("The IPFS pin returned an empty URI.");
-        if (name === "EmptyContentHash") return new Error("Computed an empty content hash — likely a assemblyDoc-builder bug.");
+        if (name === "EmptyContentHash") return new Error("Computed an empty content hash — likely a assemblyTemplate-builder bug.");
     }
     return err instanceof Error ? err : new Error(String(err));
 }
@@ -211,13 +211,13 @@ function useAllPublishedAssemblies() {
 }
 
 /**
- * Fetch the IPFS-pinned assemblyDoc at `metadataURI`. Returns the parsed
+ * Fetch the IPFS-pinned assemblyTemplate at `metadataURI`. Returns the parsed
  * JSON or null on failure (gateway unreachable, malformed JSON, etc.).
  * The on-chain binding's `contentHash` should match
- * `keccak256(canonicalize(assemblyDoc))` — callers that need integrity
+ * `keccak256(canonicalize(assemblyTemplate))` — callers that need integrity
  * can verify after fetch.
  */
-export async function fetchAssemblyDocument(
+export async function fetchAssemblyTemplate(
     metadataURI: string,
 ): Promise<AssemblyTemplate | null> {
     const url = DEFAULT_IPFS_SERVICE.resolveFetchUrl(metadataURI);
@@ -249,7 +249,7 @@ function chainIdToNetworkTarget(chainId: number): string {
     }
 }
 
-/** Walk the assemblyDoc's inlined agreements and collect the unique set of
+/** Walk the assemblyTemplate's inlined agreements and collect the unique set of
  *  clauses anchored across all orders. Sorted alphabetically for stable
  *  display order. */
 function collectAssemblyClauses(template: AssemblyTemplate): string[] {
@@ -317,16 +317,16 @@ export function formatAssemblyClauseList(clauses: readonly string[]): string {
 }
 
 /**
- * A published assembly enriched with assemblyDoc-derived fields, suitable
+ * A published assembly enriched with assemblyTemplate-derived fields, suitable
  * for surfacing to a user as a selectable / inspectable choice.
  *
- * Manifest fetch is lazy per-row; `state` tracks the lifecycle. While
+ * Template fetch is lazy per-row; `state` tracks the lifecycle. While
  * `state === "loading"`, `name` falls back to `slug` so the UI can
  * render the row immediately. When `state === "loaded"`, all
- * assemblyDoc-derived fields are populated.
+ * assemblyTemplate-derived fields are populated.
  */
-/** Per-assembly assemblyDoc fetch state: requested, succeeded, or failed. */
-type AssemblyDocumentFetchState = "loading" | "loaded" | "error";
+/** Per-assembly assemblyTemplate fetch state: requested, succeeded, or failed. */
+type AssemblyTemplateFetchState = "loading" | "loaded" | "error";
 
 export interface AssemblyChoice {
     slug: string;
@@ -335,8 +335,8 @@ export interface AssemblyChoice {
     metadataURI: string;
     blockNumber: bigint;
     networkTargets: readonly string[];
-    state: AssemblyDocumentFetchState;
-    /** Display name from the assemblyDoc; falls back to `slug` until loaded. */
+    state: AssemblyTemplateFetchState;
+    /** Display name from the assemblyTemplate; falls back to `slug` until loaded. */
     name: string;
     /** Available when state === "loaded". */
     orderCount: number | null;
@@ -344,15 +344,15 @@ export interface AssemblyChoice {
     clauses: readonly string[] | null;
     /** The full assembly template when state === "loaded". Avoids re-fetching
      *  from consumers that need it (e.g. fork). */
-    assemblyDoc: AssemblyTemplate | null;
+    assemblyTemplate: AssemblyTemplate | null;
 }
 
 /**
  * Lists every published assembly (optionally filtered to one author)
- * enriched with assemblyDoc data — name, order count, clause set.
+ * enriched with assemblyTemplate data — name, order count, clause set.
  *
  * Composes `usePublishedAssemblies` (event log) with a lazy per-row
- * assemblyDoc fetch. Both `PublishedList` (designer index) and the
+ * assemblyTemplate fetch. Both `PublishedList` (designer index) and the
  * seller-profile assembly picker consume this — keeping one fetch
  * strategy and one enriched shape means they can't drift apart.
  */
@@ -365,8 +365,8 @@ export function useAssemblyChoices(
     // wallet's chain, which is irrelevant for a read against a fixed chain
     // — and undefined on the marketing tier where no provider is mounted.
     const chainId = activeChain.id;
-    const [assemblyDocumentState, setAssemblyDocumentState] = useState<
-        Map<string, { state: AssemblyDocumentFetchState; assemblyDoc: AssemblyTemplate | null }>
+    const [assemblyTemplateState, setAssemblyTemplateState] = useState<
+        Map<string, { state: AssemblyTemplateFetchState; assemblyTemplate: AssemblyTemplate | null }>
     >(new Map());
     /** Hashes whose fetch has already been kicked off. A ref (not state)
      *  because we want to guard against double-fetch without retriggering
@@ -378,28 +378,28 @@ export function useAssemblyChoices(
         for (const event of events) {
             if (inFlightRef.current.has(event.contentHash)) continue;
             inFlightRef.current.add(event.contentHash);
-            setAssemblyDocumentState((prev) => {
+            setAssemblyTemplateState((prev) => {
                 const next = new Map(prev);
-                next.set(event.contentHash, { state: "loading", assemblyDoc: null });
+                next.set(event.contentHash, { state: "loading", assemblyTemplate: null });
                 return next;
             });
-            fetchAssemblyDocument(event.metadataURI).then(
-                (assemblyDoc) => {
-                    setAssemblyDocumentState((prev) => {
+            fetchAssemblyTemplate(event.metadataURI).then(
+                (assemblyTemplate) => {
+                    setAssemblyTemplateState((prev) => {
                         const next = new Map(prev);
                         next.set(
                             event.contentHash,
-                            assemblyDoc
-                                ? { state: "loaded", assemblyDoc }
-                                : { state: "error", assemblyDoc: null },
+                            assemblyTemplate
+                                ? { state: "loaded", assemblyTemplate }
+                                : { state: "error", assemblyTemplate: null },
                         );
                         return next;
                     });
                 },
                 () => {
-                    setAssemblyDocumentState((prev) => {
+                    setAssemblyTemplateState((prev) => {
                         const next = new Map(prev);
-                        next.set(event.contentHash, { state: "error", assemblyDoc: null });
+                        next.set(event.contentHash, { state: "error", assemblyTemplate: null });
                         return next;
                     });
                 },
@@ -408,7 +408,7 @@ export function useAssemblyChoices(
     }, [events]);
 
     // Memoize the derived array so its reference is stable across renders
-    // when none of its inputs (events, assemblyDocumentState, chainId) have changed.
+    // when none of its inputs (events, assemblyTemplateState, chainId) have changed.
     // Without this, the .map allocates a fresh array on every render, which
     // breaks every downstream useEffect that depends on `choices` — most
     // notably the OnboardingAssembliesForm's autosave effect, which would
@@ -418,9 +418,9 @@ export function useAssemblyChoices(
         if (!events) return null;
         const networkTarget = chainIdToNetworkTarget(chainId);
         return events.map((event) => {
-            const entry = assemblyDocumentState.get(event.contentHash);
+            const entry = assemblyTemplateState.get(event.contentHash);
             const state = entry?.state ?? "loading";
-            const assemblyDoc = entry?.assemblyDoc ?? null;
+            const assemblyTemplate = entry?.assemblyTemplate ?? null;
             return {
                 slug: event.slug,
                 author: event.author,
@@ -429,22 +429,22 @@ export function useAssemblyChoices(
                 blockNumber: event.blockNumber,
                 networkTargets: [networkTarget],
                 state,
-                name: assemblyDoc?.name ?? event.slug,
-                orderCount: assemblyDoc ? assemblyDoc.orders.length : null,
-                clauses: assemblyDoc ? collectAssemblyClauses(assemblyDoc) : null,
-                assemblyDoc,
+                name: assemblyTemplate?.name ?? event.slug,
+                orderCount: assemblyTemplate ? assemblyTemplate.orders.length : null,
+                clauses: assemblyTemplate ? collectAssemblyClauses(assemblyTemplate) : null,
+                assemblyTemplate,
             };
         });
-    }, [events, assemblyDocumentState, chainId]);
+    }, [events, assemblyTemplateState, chainId]);
     return { data, isLoading, refetch };
 }
 
-/** A seller's on-chain bound assembly, assemblyDoc resolved. */
+/** A seller's on-chain bound assembly, assemblyTemplate resolved. */
 export interface BoundAssembly {
     slug: string;
     /** Display name from the assembly template; falls back to the slug. */
     name: string;
-    assemblyDoc: AssemblyTemplate;
+    assemblyTemplate: AssemblyTemplate;
     /** Canonical canonical method of the root order — the buyer's
      *  selection when this assembly is picked. `null` when the root
      *  modality clause is absent or malformed. */
@@ -466,14 +466,14 @@ export interface SellerBoundAssemblies {
      *  assemblies. Derived from `assemblies` — kept for callers that
      *  only need the flat modality set. */
     modalities: string[];
-    /** True while either the seller-profile or the assemblyDoc fetches are in flight. */
+    /** True while either the seller-profile or the assemblyTemplate fetches are in flight. */
     isLoading: boolean;
     /** True when at least one of the seller's bindings matched a published assembly. */
     hasOnChainBinding: boolean;
 }
 
 /** Extract the single-select modality + coordination values from a
- *  assemblyDoc's root order agreement. The root order is the first order in
+ *  assemblyTemplate's root order agreement. The root order is the first order in
  *  the topology — if a consumer needs a sub-order's modality, they walk the
  *  orders array themselves. */
 function extractRootModality(
@@ -504,7 +504,7 @@ function extractRootModality(
  * Resolves a seller's on-chain bound assemblies into the buyer-facing
  * choice set. Reads the seller's profile (SellerRegistry →
  * IPFS), intersects the profile's `assemblyBindings[].assemblySlug` with
- * the published assembly events, and fetches each matched assemblyDoc.
+ * the published assembly events, and fetches each matched assemblyTemplate.
  *
  * When `hasOnChainBinding` is true, `assemblies` is the authoritative
  * buyer-facing choice set — the buyer picks one assembly at checkout —
@@ -567,13 +567,13 @@ export function useSellerBoundAssemblies(
                 }
 
                 const assemblyDocs = await Promise.all(
-                    matchedEvents.map((e) => fetchAssemblyDocument(e.metadataURI)),
+                    matchedEvents.map((e) => fetchAssemblyTemplate(e.metadataURI)),
                 );
                 if (cancelled) return;
 
                 // matchedEvents and assemblyDocs are index-aligned (Promise.all
                 // over a .map preserves order). Pair them into BoundAssembly,
-                // dropping any assemblyDoc that failed to fetch.
+                // dropping any assemblyTemplate that failed to fetch.
                 const assemblies: BoundAssembly[] = [];
                 const modalitySet = new Set<string>();
                 assemblyDocs.forEach((m, i) => {
@@ -586,7 +586,7 @@ export function useSellerBoundAssemblies(
                     assemblies.push({
                         slug,
                         name: m.name || slug,
-                        assemblyDoc: m,
+                        assemblyTemplate: m,
                         canonicalMethod: deriveCanonicalMethod(modality, coordination),
                         counterpartyBindings: binding?.counterpartyBindings ?? [],
                     });
@@ -623,7 +623,7 @@ export function usePublishAssembly() {
         useWriteContract();
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-    /** Build a assemblyDoc from the snapshot, pin to IPFS, fetch the
+    /** Build a assemblyTemplate from the snapshot, pin to IPFS, fetch the
      *  registry's deposit amount, simulate to catch reverts (slug
      *  collision, wrong deposit) BEFORE opening the wallet, send the
      *  transaction, then wait for the receipt and verify status is

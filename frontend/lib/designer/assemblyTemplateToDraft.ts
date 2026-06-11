@@ -1,5 +1,5 @@
 /**
- * assemblyDocumentToDraft — hydrates a `DesignSnapshot` from a published
+ * assemblyTemplateToDraft — hydrates a `DesignSnapshot` from a published
  * assembly TEMPLATE (the no-hash JSON pinned on AssemblyRegistry). Powers the
  * "Fork" button: a published template is fetched, this helper turns it into a
  * localStorage draft under a new slug, and the canvas opens at
@@ -52,7 +52,7 @@ export function templateToOrders(template: AssemblyTemplate): Order[] {
     );
 }
 
-export function assemblyDocumentToDraft(
+export function assemblyTemplateToDraft(
     template: AssemblyTemplate,
     options: { slug: string; name?: string },
 ): DesignSnapshot {

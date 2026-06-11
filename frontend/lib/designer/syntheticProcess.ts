@@ -57,7 +57,7 @@ export interface CreatedOrder {
 }
 
 /**
- * Manifest field defaults applied to every freshly-spawned synthetic order:
+ * Clause-field defaults applied to every freshly-spawned synthetic order:
  * every registered clause whose spec declares `block.defaultOn`, composed as
  * an EMPTY object — the generic build walk fills each from the spec's field
  * `default`s (the minimally-valid placeholder values the buyer overwrites at
@@ -67,7 +67,7 @@ export interface CreatedOrder {
  * constant: it reads the chain→IPFS spec cache, which the designer surfaces
  * gate on (`useClauseSpecs().loaded`) before any synthetic order is built.
  */
-function defaultNodeManifestFields(): ClauseFields {
+function defaultNodeClauseFields(): ClauseFields {
     return Object.fromEntries(
         listKnownClauseIds()
             .filter((clauseId) => clauseIsDefaultOn(clauseId))
@@ -81,7 +81,7 @@ function defaultNodeManifestFields(): ClauseFields {
  * the canvas + topology derivation resolve it by hash), and assemble the display
  * `Order` with the standard 2× bond derivations. Every synthetic-Order producer
  * — the canvas node-spawn paths here and the template fork/`/view`
- * reconstruction in `assemblyDocumentToDraft` — routes through this one builder.
+ * reconstruction in `assemblyTemplateToDraft` — routes through this one builder.
  *
  * Deliberately NOT the real checkout path: `prepareOrderCommitment` produces a
  * signed-able `Commitment` + IPFS pin from real parties and constructs no
@@ -134,10 +134,10 @@ export function buildSyntheticOrder(params: {
 
 export function createSyntheticRootOrder(
     session: SyntheticProcessSession,
-    /** Per-root assemblyDoc overrides. Merged onto defaultNodeManifestFields().
-     *  Used by `assemblyDocumentToDraft` to seed an IPFS-pinned assembly's kleros +
+    /** Per-root clause-field overrides. Merged onto defaultNodeClauseFields().
+     *  Used by `assemblyTemplateToDraft` to seed an IPFS-pinned assembly's kleros +
      *  modality fields into the new draft's root. */
-    assemblyDocumentOverrides?: ClauseFields,
+    clauseFieldOverrides?: ClauseFields,
 ): CreatedOrder {
     const orderIndex = session.nextOrderIndex++;
     const sellerIndex = session.nextSellerIndex++;
@@ -152,18 +152,18 @@ export function createSyntheticRootOrder(
         payment,
         cumulativeValue: payment,
         salt: BigInt(orderIndex + 1),
-        clauseFields: { ...defaultNodeManifestFields(), ...assemblyDocumentOverrides },
+        clauseFields: { ...defaultNodeClauseFields(), ...clauseFieldOverrides },
     });
 }
 
 export function createSyntheticSubOrder(
     session: SyntheticProcessSession,
     parent: Order,
-    /** Optional per-sub-order assemblyDoc overrides. Merged onto
-     *  defaultNodeManifestFields() — use this to mark role-specific
+    /** Optional per-sub-order assemblyTemplate overrides. Merged onto
+     *  defaultNodeClauseFields() — use this to mark role-specific
      *  flags at creation time (e.g., `courierProcessIncluded: true` for
      *  delivery-spawned courier sub-orders). */
-    assemblyDocumentOverrides?: ClauseFields,
+    clauseFieldOverrides?: ClauseFields,
 ): CreatedOrder {
     const orderIndex = session.nextOrderIndex++;
     const sellerIndex = session.nextSellerIndex++;
@@ -179,7 +179,7 @@ export function createSyntheticSubOrder(
         payment,
         cumulativeValue: parent.cumulativeValue + payment,
         salt: BigInt(orderIndex + 1),
-        clauseFields: { ...defaultNodeManifestFields(), ...assemblyDocumentOverrides },
+        clauseFields: { ...defaultNodeClauseFields(), ...clauseFieldOverrides },
         parentOrderHashes: [parent.id],
     });
 }
@@ -242,7 +242,7 @@ export function mergeSyntheticParent(
         seller: child.seller as `0x${string}`,
         currency: (child.currency ?? ZERO_ADDRESS) as `0x${string}`,
         payment: child.payment,
-        clauseFields: defaultNodeManifestFields(),
+        clauseFields: defaultNodeClauseFields(),
         parentOrderHashes: nextParents,
     });
     const newAgreementHash = computeAgreementHash(newAgreement);

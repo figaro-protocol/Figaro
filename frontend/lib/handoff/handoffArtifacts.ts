@@ -3,13 +3,13 @@ import {
     type HandoffPersistenceService,
     type PersistHandoffArtifactsParams,
     type PersistedHandoffArtifacts,
-    type OrderWithManifest,
+    type OrderRef,
 } from "@/lib/handoff/handoffPersistenceService";
 
 export type {
     PersistHandoffArtifactsParams,
     PersistedHandoffArtifacts,
-    OrderWithManifest,
+    OrderRef,
 };
 
 function resolveHandoffPersistenceService(options?: { service?: HandoffPersistenceService }) {
@@ -44,7 +44,7 @@ export async function persistHandoffArtifactsForOrder(
 export async function recoverHandoffKeys(
     walletClient: unknown,
     address: `0x${string}`,
-    orders: OrderWithManifest[],
+    orders: OrderRef[],
     options?: { service?: HandoffPersistenceService },
 ): Promise<number> {
     return resolveHandoffPersistenceService(options).recoverHandoffKeys(walletClient, address, orders);

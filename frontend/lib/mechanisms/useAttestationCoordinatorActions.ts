@@ -87,13 +87,13 @@ export function useAttestationCoordinatorActions() {
     /**
      * Build the `sectionData` + inclusion `proof` arguments for an attestation
      * against a target order's `agreementHash`. Hydrates the signed agreement
-     * assemblyDoc (from localStorage or IPFS), finds the clause for `clauseId`,
+     * assemblyTemplate (from localStorage or IPFS), finds the clause for `clauseId`,
      * and produces the merkle inclusion proof the coordinator verifies.
      */
     const buildReceipt = useCallback(async (targetAgreementHash: Hex, clauseId: Hex) => {
         const agreement = await hydrateAgreement(targetAgreementHash);
         if (!agreement) {
-            const message = `Agreement assemblyDoc unavailable for ${targetAgreementHash.slice(0, 10)}… — `
+            const message = `Agreement assemblyTemplate unavailable for ${targetAgreementHash.slice(0, 10)}… — `
                 + `cannot generate inclusion proof`;
             setError(message);
             throw new Error(message);

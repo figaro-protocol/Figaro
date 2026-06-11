@@ -378,7 +378,7 @@ describe("runtime service hook injection", () => {
             maxFulfillerPrice: "1",
             createdAt: 1,
         };
-        const orders = [{ processId: "process-1", orderId: "order-1", assemblyDoc: "ipfs://assemblyDoc" }];
+        const orders = [{ processId: "process-1", orderId: "order-1", assemblyTemplate: "ipfs://assemblyTemplate" }];
 
         await expect(persistHandoffArtifactsForOrder(persistParams, { service })).resolves.toEqual({
             processId: "process-1",

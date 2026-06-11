@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
     planSubOrderSellers,
     resolveSubOrderPayment,
-    type AssemblyDocumentOrder,
+    type AssemblyTemplateOrder,
 } from "@/lib/commerce/assemblySubOrderPlan";
 import type { BoundAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
 import type { SellerCatalogue } from "@/lib/seller/types";
@@ -27,7 +27,7 @@ const assembly = {
         { clauseId: PROX, addresses: [SWIFT, MERCATO] },
         { clauseId: GHG, addresses: [ROSSO] },
     ],
-    assemblyDoc: {
+    assemblyTemplate: {
         slug: "kit-assembly",
         name: "Kit",
         orders: [
@@ -70,9 +70,9 @@ const catalogues = [
     },
 ] as unknown as SellerCatalogue[];
 
-const orderById = (id: string): AssemblyDocumentOrder =>
-    assembly.assemblyDoc.orders.find((o) => o.id === id)!;
-const payArgs = (node: AssemblyDocumentOrder, seller: `0x${string}`) => ({
+const orderById = (id: string): AssemblyTemplateOrder =>
+    assembly.assemblyTemplate.orders.find((o) => o.id === id)!;
+const payArgs = (node: AssemblyTemplateOrder, seller: `0x${string}`) => ({
     node, seller, leadAddress: MERCATO, sellerCatalogues: catalogues, tokenDecimals: 18,
 });
 

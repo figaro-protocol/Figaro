@@ -220,23 +220,23 @@ kernel's NatSpec still uses the word, so a blanket ban is unsafe.
 
 - **`manifest` is mid-retirement** (decided 2026-05-29, mostly done — backlog
   "manifest naming rename"). "manifest" is being disambiguated to GONE per sense:
-  - **pinned assembly JSON:** `AssemblyManifest` → `AssemblyDocument` / `assemblyDoc`
-    — DONE. **`AssemblyDocument` is the canonical name** (not "manifest").
+  - **pinned assembly JSON:** `AssemblyManifest` → `AssemblyDocument` →
+    `AssemblyTemplate` / `assemblyTemplate` — DONE (the 2026-06-11 sweep).
+    **`AssemblyTemplate` is the canonical name** (not "manifest", not "document").
   - `manifestFields` → `clauseFields`; `agreementManifest.ts` → `agreement.ts` — DONE.
   - **sense D** (handoff `lib/handoff/manifest.ts`, vestigial) — OPEN.
   - **separate KEPT sense:** `manifest-only` = a clause committed at signing with
     no runtime validator (`figaro-topology-v1`). NOT the assembly-JSON sense — do
     not conflate.
   - **Contract NatSpec — DONE** (`0e4fb90`): `AssemblyRegistry` /
-    `AttestationCoordinator` now say "assembly document" / "agreement". Only the
+    `AttestationCoordinator` now say "assembly template" / "agreement". Only the
     **frozen `FigaroCore`** keeps "manifest" (never-edit-kernel). So **sense D
     (`lib/handoff/manifest.ts`) is the sole remaining open item.**
-- **`AssemblyTemplate` vs `AssemblyDocument` — naming inconsistency; the no-hash
-  flip is DONE** (`4860ab5`, `project_assembly_template_phase2`). Publish serializes
-  the no-hash `AssemblyTemplate` (`buildAssemblyTemplate`/`serializeAssemblyTemplate`);
-  `AssemblyDocument` is the read-side type (`fetchAssemblyDocument`); the
-  `buildAssemblyDocument`/`serializeAssemblyDocument` pair appears legacy.
-  Consolidate the names — not a pending behavioral migration.
+- **`AssemblyTemplate` vs `AssemblyDocument` — RESOLVED.** One representation,
+  one name: `AssemblyTemplate` (the legacy `buildAssemblyDocument`/
+  `serializeAssemblyDocument` pair was deleted in `810f7b4`; the
+  `AssemblyDocument*`/`assemblyDoc` naming residue was swept to
+  `AssemblyTemplate*`/`assemblyTemplate` 2026-06-11, incl. `fetchAssemblyTemplate`).
 - **`assembly` = design-time TEMPLATE; `process` = runtime INSTANCE** — settled
   (assembly→process rename declined by design). Not synonyms.
 - **`schema` → `clause`** — shipped in code, residual in ~10 memory files;
@@ -308,11 +308,9 @@ process hooks) · `commerce` (cart, checkout, pricing) · `semantic` (models,
    merkle-root fingerprint forms later, at **checkout**.
 
 `AssemblyTemplate` (`lib/designer/assemblyTemplate.ts`) is what the canvas edits
-**and** what publish serializes + content-addresses (the no-hash template).
-`AssemblyDocument` is the **read-side** type — `fetchAssemblyDocument` parses the
-pinned JSON back for `ViewAssemblyClient` + the published-list. (See Open churn:
-the `buildAssemblyDocument`/`serializeAssemblyDocument` pair is *not* on the
-publish or read path — likely legacy.)
+**and** what publish serializes + content-addresses (the no-hash template) **and**
+the read-side shape — `fetchAssemblyTemplate` parses the pinned JSON back for
+`ViewAssemblyClient` + the published-list. One representation, one name.
 
 **Node-count gas cap (live, per-chain).** The assembly's node count is gated by
 ceilings derived from the active chain's block gas limit

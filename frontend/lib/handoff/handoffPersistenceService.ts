@@ -45,10 +45,9 @@ export interface PersistedHandoffArtifacts {
     txHash: string;
 }
 
-export interface OrderWithManifest {
+export interface OrderRef {
     processId: string;
     orderId: string;
-    assemblyDoc: string;
     txHash?: string;
 }
 
@@ -71,7 +70,7 @@ export interface HandoffPersistenceService {
     recoverHandoffKeys(
         walletClient: unknown,
         address: `0x${string}`,
-        orders: OrderWithManifest[],
+        orders: OrderRef[],
     ): Promise<number>;
     purgeHandoffArtifacts(address: string, processId: string, orderId: string): void;
     schedulePurge(address: string, processId: string, orderId: string, gracePeriodMs: number): void;
@@ -228,7 +227,7 @@ class DefaultHandoffPersistenceService implements HandoffPersistenceService {
     async recoverHandoffKeys(
         _walletClient: unknown,
         address: `0x${string}`,
-        orders: OrderWithManifest[],
+        orders: OrderRef[],
     ): Promise<number> {
         let present = 0;
         for (const order of orders) {

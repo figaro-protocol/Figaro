@@ -119,10 +119,10 @@ export async function executeAssemblyCheckout(
     // then the cart's PHYSICAL attributes collapse into the geo entry (found
     // by its declared fields, never by clause name): mass/volume sum across
     // items × quantity; class of service takes the highest-priority class.
-    const root = assembly.assemblyDoc.orders.find((o) => templateParentOrderIds(o).length === 0)
-        ?? assembly.assemblyDoc.orders[0];
+    const root = assembly.assemblyTemplate.orders.find((o) => templateParentOrderIds(o).length === 0)
+        ?? assembly.assemblyTemplate.orders[0];
     if (!root) throw new Error("This assembly has no root order.");
-    const isMultiOrder = assembly.assemblyDoc.orders.length > 1;
+    const isMultiOrder = assembly.assemblyTemplate.orders.length > 1;
 
     const clauseFields = { ...root.clauses };
     const geoClauseId = Object.keys(clauseFields).find(

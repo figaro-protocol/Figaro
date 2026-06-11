@@ -226,8 +226,8 @@ describe("handoffPersistenceService", () => {
             null,
             "0xabc" as `0x${string}`,
             [
-                { processId: "process-5", orderId: "order-present", assemblyDoc: "m1" },
-                { processId: "process-5", orderId: "order-missing", assemblyDoc: "m2" },
+                { processId: "process-5", orderId: "order-present" },
+                { processId: "process-5", orderId: "order-missing" },
             ],
         );
 

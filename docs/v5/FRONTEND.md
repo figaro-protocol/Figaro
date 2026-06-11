@@ -30,7 +30,7 @@ The `/builders/designer` tool is a DAG editor (`ProcessGraphCanvas` + `Agreement
 - **`core/`** — FigaroCore hooks, commitment/agreement utilities
 - **`audit/`** — Audit-bundle assembly + verification (read path for `/audit/[processId]`)
 - **`commerce/`** — Checkout / cart provider (`CommerceProvider`, `useCheckout`), the assembly commit algorithm + sub-order planner (`assemblyCheckout.ts`, `assemblySubOrderPlan.ts`)
-- **`designer/`** — Synthetic DAG session + autosave + fork (`syntheticProcess.ts`, `syntheticDesignStore.ts`, `forkAssembly.ts`, `assemblyDocumentToDraft.ts`, `deriveDesignSurface.ts`, `agreementHints.ts`)
+- **`designer/`** — Synthetic DAG session + autosave + fork (`syntheticProcess.ts`, `syntheticDesignStore.ts`, `forkAssembly.ts`, `assemblyTemplateToDraft.ts`, `deriveDesignSurface.ts`, `agreementHints.ts`)
 - **`dispute/`** — Kleros evidence, delivery attestation 4 modes
 - **`handoff/`** — ECDH key exchange, per-order encryption, the coordination-messaging + handoff-persistence service implementations (`coordinationMessagingService.ts`, `handoffPersistenceService.ts`)
 - **`mechanisms/`** — Mechanism hooks (Dutch auction, courier process, DID:web, attestation coordinator, FIG token, …)
@@ -57,7 +57,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 - `ClausesList.tsx` — clauses catalogue on the landing.
 - Shared DAG canvas: `components/core/ProcessGraphCanvas.tsx` (drag green handle to spawn sub-orders; drag onto another node to merge fan-in; click edge pill to swap fulfilment method).
 
-**State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `mergeSyntheticParent`, `editSyntheticAgreement`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage). Bridge: `lib/designer/forkAssembly.ts` + `lib/designer/assemblyDocumentToDraft.ts` (fork a published assembly's document into an editable draft).
+**State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `mergeSyntheticParent`, `editSyntheticAgreement`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage). Bridge: `lib/designer/forkAssembly.ts` + `lib/designer/assemblyTemplateToDraft.ts` (fork a published assembly's template into an editable draft).
 
 ## Clause validation in the frontend
 
