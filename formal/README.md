@@ -107,6 +107,6 @@ This holds for every order, which implies per-process and global conservation.
 ### Progressive Collateralization
 
 Sub-order sellers bond against the *total* cumulative value, not just their
-payment. This means later sellers in a process tree have more skin in the
+payment. This means later sellers in a process chain have more skin in the
 game — they incentivize the entire upstream chain to cooperate, not just
 their immediate counterparty.

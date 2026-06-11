@@ -208,7 +208,7 @@ Enforced by `scripts/lint-architecture-lexicon.sh`.
 |---|---|---|
 | `commit` is arrival+acceptance | `order-received` / `accepted` as clause events | **FAIL** (quoted form) |
 | `clause` (the artifact family) | `schema` (carve-outs: JSON Schema, commitment schema, schema version) | **FAIL** |
-| `process chain` (kernel) / `DAG` (off-chain) | `process tree` | **WARN** (retire-sweep pending) |
+| `process chain` (kernel) / `DAG` (off-chain) | `process tree` | **FAIL** (swept 2026-06-11) |
 | `asymmetric bonding` | `progressive collateralization` | **WARN** (retire-sweep + doctrine reword pending) |
 
 Party vocabulary (`buyer` / `seller` vs `merchant` / `courier` / `operator`) is

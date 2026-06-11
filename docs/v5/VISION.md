@@ -34,11 +34,11 @@ capital), not ex-post (courts and police), making it jurisdiction-independent.
 
 What makes this more than a clever escrow:
 
-1. **Process trees** turn pairwise bonds into N-party value-added processes.
+1. **Process DAGs** turn pairwise bonds into N-party value-added processes.
    There is no "restaurant" — there is a cook, a kitchen seller, an
-   ingredient sourcer, a courier, each an independent node in a tree. Every
+   ingredient sourcer, a courier, each an independent node in the DAG. Every
    node adds value, bonds capital, and is compensated directly via settlement.
-   The entire tree resolves atomically — all or nothing.
+   The entire process resolves atomically — all or nothing.
 
 2. **Token-agnostic denomination** means any ERC-20 can serve as the unit of
    coordination. A stablecoin for legal convenience. A DAO governance token to
@@ -92,7 +92,7 @@ reach without weakening its guarantees:
 **`parentOrderId` + processs** — Public value-added process provenance.
 Every value chain is visible as a DAG. A buyer's cart can settle as a single
 root process that distributes tokens downstream to every contributor, or each
-item can decompose into direct token flows to every value-adder in the tree.
+item can decompose into direct token flows to every value-adder in the DAG.
 Cumulative bonding at each node creates geometric coordination pressure — later
 sellers have exponentially more at stake. This replaces management hierarchies
 with economic self-organization.
@@ -126,7 +126,7 @@ propagate resolution across linked processes. These are not auxiliary
 infrastructure — they are the primary mechanism by which value distributes
 through processs. A template defines how a buyer's payment decomposes into
 flows reaching every contributor; a cascade ensures that when a root process
-resolves, every sub-process in the tree settles accordingly. These form the
+resolves, every sub-process in the DAG settles accordingly. These form the
 bones of an inter-institution economy where provenance is verifiable across
 process boundaries.
 
@@ -161,7 +161,7 @@ value-adders:
 - **Ride-hail**: buyer + driver (+ vehicle owner, + maintenance provider…),
   geohash routing, auction allocation
 - **Prepared food**: buyer + cook + ingredient sourcer + kitchen seller +
-  courier, value flowing through the tree to every contributor
+  courier, value flowing through the DAG to every contributor
 - **Repair dispatch**: buyer + diagnostician + parts sourcer + technician,
   lifecycle signals, sealed address
 - **Procurement**: buyer + N value-adders at every stage, template-guided
@@ -211,7 +211,7 @@ This handles the vast majority of bilateral interactions. The enforcement is
 ex-ante (capital locked before work begins), not ex-post (courts invoked
 after breach). Asymmetric bonding replaces trust, reputation, credit history,
 and most forms of contractual enforcement at the bilateral level — and scales
-the bilateral primitive to N-party trees via progressive collateralization
+the bilateral primitive to N-party DAGs via progressive collateralization
 (each seller bonds against cumulative upstream value, creating a mesh of
 independently secured edges).
 
@@ -220,7 +220,7 @@ circle effect)** — Layer 1 produces the mesh; Layer 2 enforces coordination
 across it. Only the buyer can trigger resolution, and resolution is atomic —
 all orders in the process settle together or not at all. This means every
 seller sinks or swims with every other seller: if one node defects, the
-entire tree fails and all bonds are lost. The atomic-resolution rule is
+entire process fails and all bonds are lost. The atomic-resolution rule is
 buyer dominance's forcing function, inducing a weakest-link subgame among
 sellers with endogenous peer pressure of magnitude P_i + 2G_i on every
 co-seller. The empirical parallel is Grameen Bank's group lending model,
@@ -276,13 +276,13 @@ Two settlement topologies emerge naturally from this:
 
 - **Indirect**: the buyer settles a root process; the root coordinator
   distributes tokens downstream to every contributor via sub-orders and
-  cascades. The buyer sees one price; the tree handles decomposition.
+  cascades. The buyer sees one price; the DAG handles decomposition.
 - **Direct**: each item in the buyer's cart decomposes into token flows that
   reach every value-adder explicitly. The process *is* the payment
   routing.
 
 Token denomination compounds this. Paying in a local co-op token means every
-node in the tree receives value denominated in that alignment. A swap at any
+node in the DAG receives value denominated in that alignment. A swap at any
 node lets a participant convert to their preferred denomination, but the
 incoming coordination signal is preserved as public graph data. Value is
 transmitted not just to specific people, but to specific **value systems**.
@@ -434,7 +434,7 @@ Purchase** contract — a minimal escrow where buyer and seller each lock 2×
 payment, creating mutual assured destruction that makes cooperation dominant.
 Figaro generalizes this insight from a 2-party escrow into an N-party
 coordination protocol: progressive collateralization scales the equilibrium
-across processs, atomic resolution binds the tree into a single game, and
+across processes, atomic resolution binds the DAG into a single game, and
 the augmentation layers (auctions, lifecycle coordinators, disclosure modules)
 turn the bare mechanism into composable institutions.
 
@@ -493,7 +493,7 @@ making the burger, an ingredient sourcer, a kitchen seller, a driver,
 and a platform like DoorDash sitting on top taking a cut.
 
 In Figaro, "Joe's Burger Joint" doesn't exist as one thing. There's a
-**tree** of individual people, each doing their part:
+**process** of individual people, each doing their part:
 
 ```
 You (buyer)
@@ -504,9 +504,9 @@ You (buyer)
 ```
 
 Each person locks their own money. Each person gets paid directly for
-the value they added. And if any one person in the tree screws up,
-**the whole tree fails and everyone loses their deposits**. So every
-person in the tree is motivated to make sure every other person does
+the value they added. And if any one person in the process screws up,
+**the whole process fails and everyone loses their deposits**. So every
+person in the process is motivated to make sure every other person does
 their job — group-project peer pressure with real money on the line.
 
 This same pattern works for rides, repairs, international shipments,
@@ -531,7 +531,7 @@ master database to steal.
 Nobody. There's no company running Figaro, no CEO, no customer
 support, no one who can freeze your account. Three things protect you,
 in order: the money (cheating costs more than cooperating, handles
-~99% of cases), peer pressure with teeth (everyone in the tree loses
+~99% of cases), peer pressure with teeth (everyone in the process loses
 if one cheats, so everyone watches everyone else), and receipts
 (everything is permanently recorded on chain, ready to be evidence in
 any forum).

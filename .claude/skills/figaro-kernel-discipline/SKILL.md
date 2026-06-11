@@ -66,7 +66,7 @@ Each of these breaks a specific protocol property:
 - Not upgradeable. Not pausable. Not owned. Not patched.
 
 Do not reify role labels into entities. "Restaurant", "merchant", "supplier"
-are roles within a process tree assembly, not firms.
+are roles within an assembly's process DAG, not firms.
 
 ## The Three-Layer Enforcement Architecture
 

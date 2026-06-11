@@ -10,7 +10,7 @@ This file walks through which clauses the assembly needs, which already exist, a
 | `figaro-geo-v2` | Pickup / drop-off geohash on every leg + cargo mass + volume + class; vessel position updates |
 | `figaro-handoff-v1` | Container handoff at every transfer point (terminal gate, vessel deck, port) |
 | `figaro-jurisdiction-v1` | Customs clearance attestation by national authority |
-| `figaro-courier-process-v1` | Multi-stop carrier process (the ocean carrier's internal sub-process tree) |
+| `figaro-courier-process-v1` | Multi-stop carrier process (the ocean carrier's internal sub-process chain) |
 | `figaro-fulfilment-v1` | Final delivery to consignee |
 | `figaro-ghg-protocol-v1` (or PAS-2050, ISO-14064) | Per-leg emissions disclosure on every transport edge |
 | `figaro-proximity-policy-v1` + `figaro-proximity-proof-v1` | Geofence enforcement at port handoffs |

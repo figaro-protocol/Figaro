@@ -61,7 +61,7 @@ Figaro achieves multi-party coordination through two composing mechanisms:
 
 1. **Both parties lock collateral on-chain** (buyer 2P, seller 2G)
 2. **The 2× ratio creates the Nash equilibrium** — cooperation strictly dominates defection for both, at the minimum viable multiplier
-3. **Each seller bonds against cumulative upstream value** (progressive collateralization), creating a mesh of independently secured edges that scales from 2-party to N-party trees
+3. **Each seller bonds against cumulative upstream value** (progressive collateralization), creating a mesh of independently secured edges that scales from 2-party to N-party DAGs
 
 **Mechanism 2 — Buyer dominance (inter-seller coordination on the mesh):**
 
@@ -779,16 +779,16 @@ fully expressible. It simply does not live in the kernel.
    `expectedCumulativeValue` is checked for exact equality against the live
    accumulator plus its own `payment`; a mismatched commitment reverts
    (`CumulativeValueMismatch`). The kernel stores no parent-child links —
-   there is no on-chain order tree.
+   there is no on-chain order DAG.
 
 2. **The topology layer** carries the DAG. It lives off-chain in the signed
    agreement manifest (the `figaro-topology-v1` clause) and is reconstructed
    by indexers and UI. Parents, children, and merges are expressed there, not
    in kernel state.
 
-**Structures larger than one linear process** — wider trees, or trees beyond
+**Structures larger than one linear process** — wider DAGs, or DAGs beyond
 the ~2,145-order gas ceiling — compose by nesting: a sub-order in process A is
-also the root commitment of a child process B. The overall tree then spans
+also the root commitment of a child process B. The overall DAG then spans
 multiple processes and multiple settlements, while each individual process
 stays linear and within the ceiling.
 

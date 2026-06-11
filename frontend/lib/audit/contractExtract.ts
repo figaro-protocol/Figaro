@@ -74,7 +74,7 @@ export interface ContractDocument extends ExtractedDocument {
         language?: string;
     };
     /**
-     * Process-tree lineage for this order. Surfaces the topology-clause
+     * Process-DAG lineage for this order. Surfaces the topology-clause
      * data so the auditor can locate this order in its process DAG without
      * having to dig into the generic clauses array.
      *

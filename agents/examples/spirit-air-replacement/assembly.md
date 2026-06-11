@@ -4,7 +4,7 @@ The DAG of bonded commitments. Like the TradeLens example, **this is the human w
 
 ## DAG
 
-The defining feature of this assembly is the airline as a *fan-out seller-of-record*: one parent process (ticket), N child processes (sub-procurements). Cascading delays aggregate up the tree because each sub-process's slip propagates to the parent's bond.
+The defining feature of this assembly is the airline as a *fan-out seller-of-record*: one parent process (ticket), N child processes (sub-procurements). Cascading delays aggregate up the DAG because each sub-process's slip propagates to the parent's bond.
 
 ```
                  passenger (root buyer)
@@ -58,7 +58,7 @@ The settlement rule:
 1. Passenger arrives within tolerance → all bonds release, payouts settle in the standard pattern.
 2. Passenger arrives outside tolerance → buyer dominance: the passenger holds the resolution key. `resolveProcess` produces a non-trivial settlement: airline forfeits proportional bond to passenger; airline's sub-procurement commitments unwind with proportional forfeiture from whichever sub-seller caused the slip; uncaused sub-sellers are made whole.
 
-The kernel doesn't compute "who caused the slip" — that's an off-chain dispute the bonded evidence (handoff-v1 timestamps, attestations) can adjudicate. The kernel just enforces atomic resolution: the whole tree settles or none of it does.
+The kernel doesn't compute "who caused the slip" — that's an off-chain dispute the bonded evidence (handoff-v1 timestamps, attestations) can adjudicate. The kernel just enforces atomic resolution: the whole process settles or none of it does.
 
 ## What this fixes vs. status quo
 

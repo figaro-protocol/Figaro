@@ -84,7 +84,7 @@ interface CashFlowEntry {
  * Per-order line item — the invoice-style row for the consolidated view.
  *
  * A Figaro process is structurally an invoice: one buyer paying multiple
- * sellers across a tree, with each sub-order = one line. Aggregated totals
+ * sellers across a DAG, with each sub-order = one line. Aggregated totals
  * hide which seller got how much; line items expose it. Auditors and
  * reviewers want both registers visible.
  *
@@ -100,7 +100,7 @@ export interface OrderLineItem {
     currency: CurrencyKey;
     /** Payment P (the trade value). */
     payment: bigint;
-    /** Cumulative value G at commit (Σ payments from this order rolling up the tree). */
+    /** Cumulative value G at commit (Σ payments from this order rolling up the DAG). */
     cumulativeValue: bigint;
     state: OrderState;
     /** agreementHash — anchors the line item to its off-chain contract document.

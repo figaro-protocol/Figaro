@@ -23,7 +23,7 @@ and whether the commitment was fulfilled. It is the only graph directly
 secured by asymmetric bonding.
 
 **Contents:** Order nodes, buyer/seller roles, payment/bond amounts, process
-tree topology, and commitment/resolution state.
+DAG topology, and commitment/resolution state.
 
 **Truth boundary:** Protocol-enforced. Every node is economically backed.
 Defection is costly; the graph is tamper-proof by design.
@@ -59,7 +59,7 @@ off-chain disclosure artifacts.
 The GHG graph overlays environmental disclosure onto the process graph.
 Reporting entities open boundaries, buyers create per-order requirements,
 and sellers submit disclosure references — all anchored to the same process
-tree that enforces economic coordination.
+DAG that enforces economic coordination.
 
 **Contents:** Clause registrations, reporting boundaries, order-level
 requirements, seller disclosure submissions.

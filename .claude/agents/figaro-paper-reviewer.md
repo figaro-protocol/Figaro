@@ -65,7 +65,7 @@ Where the claim is a theorem reference, check both that the theorem exists on th
 
 ## Step 4 — Process semantics and asymmetric bonding (multi-edge claims)
 
-When a paper presents bond-posture for a multi-edge assembly (a process tree, a worked example, a stylized chain or fan-out), apply these checks **before** declaring any per-edge bond formula "verified":
+When a paper presents bond-posture for a multi-edge assembly (a process DAG, a worked example, a stylized chain or fan-out), apply these checks **before** declaring any per-edge bond formula "verified":
 
 **ONE process, ONE rootBuyer, ONE monotonic G accumulator, BUYER = rootBuyer in every order.** A process in `src/FigaroCore.sol` has a single `rootBuyer` set on the first commit (line 182). Every subsequent commit in the same process is checked at line 188:
 
@@ -96,7 +96,7 @@ Process-internal G accumulation is monotonic: `G_new = G_prev + P_sub` (kernel l
 
 If the paper exhibits this anti-pattern, mark the multi-edge claim as ⚠ DRIFT regardless of whether each per-edge formula is locally correct. Cite the N-Party Nash Equilibrium theorem on the `/papers/asymmetric-bonding` page and the asymmetric-bonding rule in `src/FigaroCore.sol` commit logic. Recommend the paper restructure the bond-posture presentation to show G monotonically growing across sequential commits.
 
-**The "many root orders" anti-pattern.** Closely related: the paper treats the assembly as N independent commitments that happen to share the same buyer, rather than as one process tree under one rootBuyer. Symptoms:
+**The "many root orders" anti-pattern.** Closely related: the paper treats the assembly as N independent commitments that happen to share the same buyer, rather than as one process DAG under one rootBuyer. Symptoms:
 - "Passenger commits separately to each resource provider" without a single rootBuyer→rootSeller commitment binding them.
 - Each commitment presented as having its own G_root = its own P (instead of one G shared across the process).
 - No coordinator party at the root, but atomic resolution still claimed across the parties.

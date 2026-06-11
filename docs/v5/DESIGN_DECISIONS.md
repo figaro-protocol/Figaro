@@ -254,7 +254,7 @@ trust-minimization.
 
 **The composition patterns** (no kernel change required):
 
-1. **Process-tree composition.** A "single transaction with N vendors in N
+1. **Process-DAG composition.** A "single transaction with N vendors in N
    currencies" is N independent monotoken processes, one per vendor relationship,
    each in the vendor's preferred token. The kernel sees N bonded handshakes; the
    UI or wallet correlates them. Closer in spirit to "every participant is an
@@ -369,10 +369,10 @@ equivalent mechanism appears to be a missing feature.
 separately rule transferability out:
 
 1. **Single-buyer invariant**. A Figaro process has one buyer at
-   the root, and every order in the tree carries that same buyer on its
+   the root, and every order in the DAG carries that same buyer on its
    buyer side. There is no kernel mechanism to fork the buyer (creating
    two buyer-roots) or substitute the buyer (changing the orderHash). A
-   "transfer of buyer-side title" mid-tree has no representation in the
+   "transfer of buyer-side title" mid-process has no representation in the
    `processes` mapping.
 
 2. **Parties fixed at `commit`**. Both buyer and seller addresses are

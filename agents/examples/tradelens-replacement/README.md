@@ -20,7 +20,7 @@ Three failure modes, each structural:
 
 Figaro is *ownerless*: no IBM, no Maersk, no foundation. The kernel has no admin function (per `CLAUDE.md`'s six invariants — "no escape hatches"). Joining is permissionless: any wallet can hold any role. Public clauses are content-addressable specs anyone can integrate against without an API key.
 
-The replacement isn't a "shared ledger" framing — it's a *bonded coordination protocol*. Each leg of a shipment is a bilateral commitment with asymmetric bonds. Progressive collateralization scales the bilateral primitive across the multi-party process tree (Paper A). Cooperation is the dominant strategy at every leg because cheating costs more than cooperating.
+The replacement isn't a "shared ledger" framing — it's a *bonded coordination protocol*. Each leg of a shipment is a bilateral commitment with asymmetric bonds. Progressive collateralization scales the bilateral primitive across the multi-party process DAG (Paper A). Cooperation is the dominant strategy at every leg because cheating costs more than cooperating.
 
 The clauses largely already exist. The assembly DAG (this scenario's main artifact) is what makes it a shipping protocol rather than a generic Figaro deployment. See `assembly.md`.
 

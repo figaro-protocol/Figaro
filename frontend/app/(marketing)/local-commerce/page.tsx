@@ -48,7 +48,7 @@ export default function LocalCommercePage() {
                 <ul className="space-y-4">
                     <li className="border-b border-default pb-3">
                         <div className="text-ink-heading font-medium"><code>FigaroCore</code></div>
-                        <p className="text-sm text-ink-muted mt-0.5">Kernel. Holds bonds. <code>commit</code> establishes root + sub-orders; <code>resolveProcess</code> atomically settles the whole tree.</p>
+                        <p className="text-sm text-ink-muted mt-0.5">Kernel. Holds bonds. <code>commit</code> establishes root + sub-orders; <code>resolveProcess</code> atomically settles the whole process.</p>
                     </li>
                     <li className="border-b border-default pb-3">
                         <div className="text-ink-heading font-medium"><code>DutchAuction</code></div>

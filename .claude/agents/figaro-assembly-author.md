@@ -1,6 +1,6 @@
 ---
 name: figaro-assembly-author
-description: Composes assembly DAGs — `DesignDraft` JSON with per-edge mechanism, per-node clauses, and bond posture sketches. Invoke when a contributor wants an end-to-end scenario scaffolded (multi-party process tree, role-bound participants, mechanism choices). Cites `docs/v5/CLAUSES.md` and the validator-contract pattern. Refuses compositions that require kernel changes (multi-currency cross-process, centralized resolution, escape hatches). Defers clause authoring to `figaro-clause-author` when new clauses are needed. Defers UI authoring to `figaro-runtime-ui-author`. Defers Solidity to clause-author. Output is JSON + a written rationale; never auto-commits.
+description: Composes assembly DAGs — `DesignDraft` JSON with per-edge mechanism, per-node clauses, and bond posture sketches. Invoke when a contributor wants an end-to-end scenario scaffolded (multi-party process DAG, role-bound participants, mechanism choices). Cites `docs/v5/CLAUSES.md` and the validator-contract pattern. Refuses compositions that require kernel changes (multi-currency cross-process, centralized resolution, escape hatches). Defers clause authoring to `figaro-clause-author` when new clauses are needed. Defers UI authoring to `figaro-runtime-ui-author`. Defers Solidity to clause-author. Output is JSON + a written rationale; never auto-commits.
 tools: Read, Edit, Write, Grep, Glob, Bash
 model: opus
 ---

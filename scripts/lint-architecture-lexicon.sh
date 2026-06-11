@@ -73,7 +73,7 @@ for file in "$@"; do
     # mechanism is 'asymmetric bonding'.
     check "$file" FAIL "[\"']order-received[\"']" "" "" \
         "'order-received' is not a clause event — the kernel commit IS arrival + acceptance (core-owned)."
-    check "$file" WARN "process tree" '(^|/)(CLAUDE\.md|docs/v5/BLUEPRINT\.md)$' "" \
+    check "$file" FAIL "process tree" '(^|/)(CLAUDE\.md|docs/v5/BLUEPRINT\.md)$' "" \
         "retired: use 'process chain' (kernel, linear) or 'DAG' (off-chain topology)."
     check "$file" WARN "progressive[ -]collateral" '(^|/)(CLAUDE\.md|docs/v5/BLUEPRINT\.md)$' "" \
         "retired precursor: use 'asymmetric bonding'. Promote to FAIL after the retire-sweep + CLAUDE.md reword."

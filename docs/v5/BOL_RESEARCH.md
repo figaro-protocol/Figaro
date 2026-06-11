@@ -93,7 +93,7 @@ Three Figaro invariants frame the entire analysis below; they must be on
 the page so the rest of the doc reads correctly.
 
 **Single-buyer invariant.** A Figaro process has one buyer at the
-root. Every order in the tree has that same buyer on its buyer side. There
+root. Every order in the DAG has that same buyer on its buyer side. There
 is no direct edge between two sellers. In the local-commerce reference
 assembly, both the buyer↔merchant order (goods sale) and the buyer↔courier
 order (carriage) carry the same buyer; the merchant and courier are
@@ -285,8 +285,8 @@ addresses after the document has been issued.
 kernel properties each separately rule it out:
 
 1. **Single-buyer invariant.** A process has one buyer at the root,
-   and every order in the tree has that same buyer. A "transfer of the
-   buyer-side title" mid-tree would either fork the tree (creating a
+   and every order in the DAG has that same buyer. A "transfer of the
+   buyer-side title" mid-process would either fork the DAG (creating a
    second buyer, which the kernel doesn't represent) or substitute the
    buyer (which the kernel doesn't permit — see point 2).
 
@@ -347,7 +347,7 @@ the contractual principal of the carriage from the start. The merchant
 participates in the pickup-handoff event but is not a party to the
 carriage contract.
 
-**Multi-leg carriage as a tree of bonded orders.** A supply chain
+**Multi-leg carriage as a DAG of bonded orders.** A supply chain
 shipper → ocean carrier → port → trucker → consignee can be expressed as
 a process where each carriage leg is its own bonded
 buyer↔seller_i order, all under the same root buyer. Each leg resolves
@@ -409,7 +409,7 @@ buyer↔courier order's agreement.
 | BoL number | `orderHash` | The order's identity is the BoL identity. |
 | Carrier | `order.seller` | The committed courier address. |
 | Shipper / consignor (party of contract) | `order.buyer` | The buyer hires the carrier; the buyer is the consignor on the carriage contract. |
-| Tenderer of goods at pickup | merchant (a co-seller in the same process) | Not a party to the carriage contract; a participant in the pickup handoff event. Surfaceable from the topology + the merchant↔buyer order on the same tree. |
+| Tenderer of goods at pickup | merchant (a co-seller in the same process) | Not a party to the carriage contract; a participant in the pickup handoff event. Surfaceable from the topology + the merchant↔buyer order in the same process. |
 | Consignee | `order.buyer` | Same address as the contractual shipper in local commerce. In supply-chain DAGs the buyer may designate the consignee via an encrypted destination address in the order manifest and an address inside `figaro-geo-v2.destinationGeohash`. |
 | Origin | `figaro-geo-v2.originGeohash` | Geohash, 1–12 chars precision. |
 | Destination | `figaro-geo-v2.destinationGeohash` | As above. |
@@ -502,7 +502,7 @@ commercially-conflicted leader.
 
 **Negotiability is out of scope.** The supply-chain assembly should not
 attempt to implement negotiable BoLs. It should target the
-non-negotiable carriage chain: importer commits the full multi-leg tree
+non-negotiable carriage chain: importer commits the full multi-leg DAG
 upfront with one-or-more carriers, attestations land along the way, the
 buyer triggers `resolveProcess` at completion. This excludes specific
 trade-finance use cases that depend on bank-as-temporary-holder; those
