@@ -1,0 +1,31 @@
+{
+    "clauseId": "figaro-coordination-v1",
+    "version": 1,
+    "title": "Coordination",
+    "description": "How the courier edge of a delivery is arranged across the process DAG. Composes on the delivery (parent) order; the courier order itself is just another buyer↔seller order. Single-select — an assembly composes exactly one coordination variant; variants are separate assemblies, never options inside one.",
+    "categories": [
+        "coordination"
+    ],
+    "fields": [
+        {
+            "name": "coordination",
+            "type": "enum",
+            "required": true,
+            "values": [
+                "seller-assigned",
+                "buyer-assigned",
+                "dutch-auction"
+            ],
+            "default": "seller-assigned",
+            "description": "seller-assigned = the seller's regular courier (the seller's profile designates the counterparty). buyer-assigned = the buyer picks the courier at checkout. dutch-auction = an open auction with no prior relationship; the courier claiming the auction is the coordination trigger."
+        }
+    ],
+    "block": {
+        "tier": "category-2",
+        "drawerArticle": "coordination",
+        "mechanismKinds": [
+            "coordinator"
+        ],
+        "moduleIds": []
+    }
+}

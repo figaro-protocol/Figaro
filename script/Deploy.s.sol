@@ -19,6 +19,8 @@ import "../src/ClauseRegistrationHelper.sol";
 import "../src/clauseValidators/FigaroCommerceV1Validator.sol";
 import "../src/clauseValidators/FigaroGeoV2Validator.sol";
 import "../src/clauseValidators/FigaroFulfilmentV2Validator.sol";
+import "../src/clauseValidators/FigaroModalitiesV1Validator.sol";
+import "../src/clauseValidators/FigaroCoordinationV1Validator.sol";
 import "../src/clauseValidators/FigaroHandoffV1Validator.sol";
 import "../src/clauseValidators/FigaroGHGProtocolV1Validator.sol";
 import "../src/clauseValidators/FigaroGHGISO14064V1Validator.sol";
@@ -318,6 +320,12 @@ contract Deploy is Script {
             keccak256("figaro-fulfilment-v2"), address(new FigaroFulfilmentV2Validator())
         );
         attestation.setValidator(
+            keccak256("figaro-modalities-v1"), address(new FigaroModalitiesV1Validator())
+        );
+        attestation.setValidator(
+            keccak256("figaro-coordination-v1"), address(new FigaroCoordinationV1Validator())
+        );
+        attestation.setValidator(
             keccak256("figaro-handoff-v1"), address(new FigaroHandoffV1Validator())
         );
         attestation.setValidator(
@@ -362,6 +370,6 @@ contract Deploy is Script {
         attestation.setValidator(
             keccak256("figaro-offset-policy-v1"), address(new FigaroOffsetPolicyV1Validator())
         );
-        console.log("Registered 18 clause validators with AttestationCoordinator");
+        console.log("Registered 20 clause validators with AttestationCoordinator");
     }
 }

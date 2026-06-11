@@ -24,7 +24,7 @@ CLAUDE.md keeps the lockstep principle; this file owns the full table, the archi
   plus a generic `encodeContentFromSpec` — bridge between TS objects and
   the ABI bytes expected by the on-chain validator. Each clause's encoder
   is the canonical TS-side declaration of its field-to-position mapping.
-  13 distinct encoder shapes across the 18 runtime-attestable clauses
+  13 distinct encoder shapes across the 20 runtime-attestable clauses
   (the 5 GHG sister clauses share one shape). Topology has no encoder —
   it's a manifest-only clause with no runtime attestation.
 
@@ -92,7 +92,7 @@ Conformance is locked across the prover test crates:
 - `prover/clause/tests/encode_conformance.rs` — per-clause
   canonical-encoder output is byte-for-byte equal to viem's
   `encodeAbiParameters` output for the same input (covers all 13 distinct
-  encoder shapes across the 18 runtime-attestable clauses). Test vectors
+  encoder shapes across the 20 runtime-attestable clauses). Test vectors
   were captured from the TypeScript encoders.
 - `prover/lib/tests/parity.rs` — kernel-integration tests
   (`attest_as_seller_with_valid_content_proof_passes`,
@@ -136,9 +136,9 @@ Lives off-chain as JSON at the `metadataURI` emitted by `ClauseRegistry`
 ship in `sdk/src/clauses/examples/`; the frontend no longer bundles a copy — it
 loads each spec from `ClauseRegistry` → IPFS at runtime.
 
-## The 19 protocol clauses
+## The 21 protocol clauses
 
-18 runtime-attestable clauses (each with a Layer C validator) plus the
+20 runtime-attestable clauses (each with a Layer C validator) plus the
 manifest-only `figaro-topology-v1`.
 
 | clauseId | What it carries | Attestation surface |
@@ -146,7 +146,9 @@ manifest-only `figaro-topology-v1`.
 | `figaro-topology-v1` | DAG lineage (parent order hashes) | **Manifest-only** (no runtime validator) |
 | `figaro-commerce-v1` | Currency, payment, line items | Layer A + C |
 | `figaro-geo-v2` | Origin / destination geohash + mass + volume + class of service | Layer A + C |
-| `figaro-fulfilment-v2` | Fulfilment method — modality + coordination | Layer A + C |
+| `figaro-fulfilment-v2` | Modality + coordination in one clause — MID-RETIREMENT, split into the two clauses below; delete when the migration lands | Layer A + C |
+| `figaro-modalities-v1` | The buyer's request — consume-onsite / pickup / delivery / virtual (single-select) | Layer A + C |
+| `figaro-coordination-v1` | How a delivery's courier edge is arranged — seller-assigned / buyer-assigned / dutch-auction (single-select, composes on the delivery parent order) | Layer A + C |
 | `figaro-handoff-v1` | Hand-off point — where the physical exchange happens (proximity-policy nests under it) | Layer A + C |
 | `figaro-ghg-protocol-v1` | GHG Protocol Corporate Standard + scope (Category-2) | Layer A + C |
 | `figaro-ghg-iso-14064-v1` | ISO 14064 family + scope (Category-2) | Layer A + C |
@@ -281,8 +283,8 @@ to undo once `clauseId` is bound on chain.
    its JSON. Adding a per-clause content-encoder helper to Layer B is only
    needed when a downstream Rust consumer wants strongly-typed content
    (the SP1 prover guest, for instance, can pass through serde_json::Value).
-8. Register the clause in `frontend/lib/shared/clauseCategories.ts` — add its spec JSON to `ALL_SPECS` and assign its `CLAUSE_TIER_MAP` and `CLAUSE_FAMILY_MAP` entries; `assertTaxonomyComplete()` fails the build if the tier or family assignment is missing. This supplies the clause's title and family for the designer drawer and the `/clauses` inventory — the inventory reads its *set* live from on-chain `ClauseRegistry` events, so the clause also needs the step-9 on-chain registration to appear there.
-9. `registerClause(clauseId, version, uriHash, family)` + `setValidator(clauseId, validator)` calls added to `script/Deploy.s.sol` and `script/DeployMainnet.s.sol`; regression covered by `test/DeployScriptTest.t.sol`. The `family` is `keccak256(primaryCategory)` from the spec's `categories[0]` (Tier-1 boost goes to `keccak256("geo")` and `keccak256("fulfilment")`); the same `family` keys the RPGF Tier-1 weighting in `prover/rpgf/src/formula.rs` — Tier-1 families are deploy-frozen, but a new clause joining an existing family inherits the weight permissionlessly. (Bootstrap-time atomicity: the deploy scripts inline clause registration + validator binding within a single broadcast transaction. Post-deploy third-party clauses should use `ClauseRegistrationHelper.registerClauseAndValidator(...)` instead — see "Third-party clause deployment" below.)
+8. No frontend registration step remains — the drawer, `/clauses` inventory, and every other surface read the clause set live from on-chain `ClauseRegistry` events and the spec from IPFS (`clauseSpecSource`); titles, articles, tiers, and families all come from the spec itself. (The former `clauseCategories.ts` registry was deleted in the open-world de-hardcode.) The clause appears everywhere once step 9's on-chain registration lands.
+9. `registerClause(clauseId, version, uriHash, family)` + `setValidator(clauseId, validator)` calls added to `script/Deploy.s.sol` and `script/DeployMainnet.s.sol`; regression covered by `test/DeployScriptTest.t.sol`. The `family` is `keccak256(primaryCategory)` from the spec's `categories[0]` (Tier-1 boost goes to `keccak256("geo")` and `keccak256("coordination")`; `keccak256("fulfilment")` stays Tier-1 only while `figaro-fulfilment-v2` is mid-retirement); the same `family` keys the RPGF Tier-1 weighting in `prover/rpgf/src/formula.rs` — Tier-1 families are deploy-frozen, but a new clause joining an existing family inherits the weight permissionlessly. (Bootstrap-time atomicity: the deploy scripts inline clause registration + validator binding within a single broadcast transaction. Post-deploy third-party clauses should use `ClauseRegistrationHelper.registerClauseAndValidator(...)` instead — see "Third-party clause deployment" below.)
 
 If any step is skipped the validator gate either rejects all attestations under that clauseId
 (missing on-chain validator) or silently accepts content the spec would have rejected (Layer A

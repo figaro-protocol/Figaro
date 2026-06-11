@@ -17,6 +17,8 @@ import "../src/ProcessOffsetReceipt.sol";
 import "../src/clauseValidators/FigaroCommerceV1Validator.sol";
 import "../src/clauseValidators/FigaroGeoV2Validator.sol";
 import "../src/clauseValidators/FigaroFulfilmentV2Validator.sol";
+import "../src/clauseValidators/FigaroModalitiesV1Validator.sol";
+import "../src/clauseValidators/FigaroCoordinationV1Validator.sol";
 import "../src/clauseValidators/FigaroHandoffV1Validator.sol";
 import "../src/clauseValidators/FigaroGHGProtocolV1Validator.sol";
 import "../src/clauseValidators/FigaroGHGISO14064V1Validator.sol";
@@ -215,6 +217,10 @@ contract DeployMainnet is Script {
             keccak256("figaro-geo-v2"), address(new FigaroGeoV2Validator()));
         _wireValidator(attestation, "FulfilmentV2Validator:       ",
             keccak256("figaro-fulfilment-v2"), address(new FigaroFulfilmentV2Validator()));
+        _wireValidator(attestation, "ModalitiesV1Validator:       ",
+            keccak256("figaro-modalities-v1"), address(new FigaroModalitiesV1Validator()));
+        _wireValidator(attestation, "CoordinationV1Validator:     ",
+            keccak256("figaro-coordination-v1"), address(new FigaroCoordinationV1Validator()));
         _wireValidator(attestation, "HandoffV1Validator:          ",
             keccak256("figaro-handoff-v1"), address(new FigaroHandoffV1Validator()));
         _wireValidator(attestation, "GHGProtocolV1Validator:      ",
@@ -246,7 +252,7 @@ contract DeployMainnet is Script {
         _wireValidator(attestation, "OffsetPolicyV1Validator:       ",
             keccak256("figaro-offset-policy-v1"), address(new FigaroOffsetPolicyV1Validator()));
 
-        console.log("AttestationCoordinator: 18 validators wired");
+        console.log("AttestationCoordinator: 20 validators wired");
     }
 
     function _wireValidator(

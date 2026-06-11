@@ -2,7 +2,7 @@
  * Embedded protocol clause specs — TypeScript mirror of
  * `prover/clause/src/embedded.rs`.
  *
- * Bundles the 19 Figaro protocol spec JSONs from `./examples/` so SDK
+ * Bundles the 21 Figaro protocol spec JSONs from `./examples/` so SDK
  * consumers (agreement encoder, validator wrappers, etc.) can look up
  * a canonical spec by its human-readable clauseId without an
  * out-of-band fetch. Specs are parsed lazily on first lookup and
@@ -20,8 +20,10 @@ import applicableLawSpec from "./examples/figaro-applicable-law-v1.json" with { 
 import arbitrationKlerosSpec from "./examples/figaro-arbitration-kleros-v1.json" with { type: "json" };
 import commerceSpec from "./examples/figaro-commerce-v1.json" with { type: "json" };
 import consentSpec from "./examples/figaro-consent-v1.json" with { type: "json" };
+import coordinationSpec from "./examples/figaro-coordination-v1.json" with { type: "json" };
 import courierProcessSpec from "./examples/figaro-courier-process-v1.json" with { type: "json" };
 import fulfilmentSpec from "./examples/figaro-fulfilment-v2.json" with { type: "json" };
+import modalitiesSpec from "./examples/figaro-modalities-v1.json" with { type: "json" };
 import handoffSpec from "./examples/figaro-handoff-v1.json" with { type: "json" };
 import geoSpec from "./examples/figaro-geo-v2.json" with { type: "json" };
 import ghgCustomSpec from "./examples/figaro-ghg-custom-v1.json" with { type: "json" };
@@ -41,8 +43,10 @@ const RAW_SPECS: Readonly<Record<string, unknown>> = {
     "figaro-arbitration-kleros-v1": arbitrationKlerosSpec,
     "figaro-commerce-v1": commerceSpec,
     "figaro-consent-v1": consentSpec,
+    "figaro-coordination-v1": coordinationSpec,
     "figaro-courier-process-v1": courierProcessSpec,
     "figaro-fulfilment-v2": fulfilmentSpec,
+    "figaro-modalities-v1": modalitiesSpec,
     "figaro-handoff-v1": handoffSpec,
     "figaro-geo-v2": geoSpec,
     "figaro-ghg-custom-v1": ghgCustomSpec,

@@ -63,10 +63,11 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 
 - `useClauseValidator(clauseId)` hook (`hooks/core/`) — binds `validateContent`
   to a form value. `{ isReady, validate, loadError }`.
-- `clauseSpecSource.ts` — preloads built-in specs at module load (19 clauses in
-  `lib/shared/clauses/` — 17 runtime-attestable + the manifest-only
-  `figaro-topology-v1`); supports async `loadClauseSpec(id, uri)` for
-  IPFS-resolved specs.
+- `clauseSpecSource.ts` — the module spec cache. No bundled copy and no
+  preload: `useClauseSpecs` warms it chain→IPFS via `loadClauseSpec(id, uri)`
+  from `ClauseRegistered` events (21 protocol clauses on the devnet — 20
+  runtime-attestable + the manifest-only `figaro-topology-v1` — plus any
+  third-party registrations); spec-consuming surfaces gate on its `loaded`.
 
 ## Components (`components/`)
 
