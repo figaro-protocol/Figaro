@@ -12,7 +12,8 @@ import type { ClauseFields } from "@/lib/core/encoding";
 // open set at runtime; lib/ finds sections by spec-declared fields). These
 // literals mirror the canonical Layer-A example specs.
 const GEO_CLAUSE_KEY = "figaro-geo-v2";
-const FULFILMENT_V2_CLAUSE_KEY = "figaro-fulfilment-v2";
+const MODALITIES_CLAUSE_KEY = "figaro-modalities-v1";
+const COORDINATION_CLAUSE_KEY = "figaro-coordination-v1";
 const HANDOFF_CLAUSE_KEY = "figaro-handoff-v1";
 const PROXIMITY_POLICY_CLAUSE_KEY = "figaro-proximity-policy-v1";
 const MERCHANT_PROCESS_CLAUSE_KEY = "figaro-merchant-process-v1";
@@ -30,8 +31,10 @@ export interface FlatClauseFields {
     massGrams?: number;
     volumeMl?: number;
     classOfService?: string;
-    fulfilmentModalities?: string[];
-    fulfilmentCoordinations?: string[];
+    /** Single-select modality (figaro-modalities-v1). */
+    modality?: string;
+    /** Single-select coordination (figaro-coordination-v1). */
+    coordination?: string;
     fulfilmentHandoffPoints?: string[];
     proximityBands?: string[];
     /** clauseIds of the selected GHG disclosure clauses. */
@@ -57,11 +60,8 @@ export function cf(flat: FlatClauseFields): ClauseFields {
     if (flat.classOfService !== undefined) geo.classOfService = flat.classOfService;
     if (Object.keys(geo).length > 0) out[GEO_CLAUSE_KEY] = geo;
 
-    const ful: Record<string, unknown> = {};
-    if (flat.fulfilmentModalities) ful.modalities = flat.fulfilmentModalities;
-    // coordination is a sub-clause under delivery — the clause JSON.
-    if (flat.fulfilmentCoordinations) ful.delivery = { coordination: flat.fulfilmentCoordinations };
-    if (Object.keys(ful).length > 0) out[FULFILMENT_V2_CLAUSE_KEY] = ful;
+    if (flat.modality) out[MODALITIES_CLAUSE_KEY] = { modality: flat.modality };
+    if (flat.coordination) out[COORDINATION_CLAUSE_KEY] = { coordination: flat.coordination };
 
     // hand-off is its own clause now (figaro-handoff-v1).
     if (flat.fulfilmentHandoffPoints) out[HANDOFF_CLAUSE_KEY] = { handoff: flat.fulfilmentHandoffPoints };

@@ -713,9 +713,10 @@ export function deriveProcessModelFromRuntime(
     const rootOrderId = semanticOrders.find((order) => order.parentOrderIds.length === 0)?.orderId ?? semanticOrders[0]?.orderId ?? "";
     const rootOrder = processOrders.find((order) => order.id.toString() === rootOrderId);
     const rootAgreement = rootOrder?.agreementHash ? agreements.get(rootOrder.agreementHash) : undefined;
-    // The fulfilment section is found by its declared field, never by name.
+    // The modality section is found by its declared field, never by name.
+    // Single-select: one scalar value per order.
     const rootFulfilmentModality = rootAgreement
-        ? ((sectionByField(rootAgreement, "modalities")?.data as { modalities?: string[] } | undefined)?.modalities?.[0] ?? null)
+        ? ((sectionByField(rootAgreement, "modality")?.data as { modality?: string } | undefined)?.modality ?? null)
         : null;
     const stateCounts = {
         active: processOrders.filter((order) => order.state === OrderState.Active).length,

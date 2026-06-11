@@ -67,7 +67,7 @@ describe("buildOrderAgreement", () => {
         ]);
     });
 
-    it("adds a fulfilment-v2 section and a ghg disclosure from the clause set", () => {
+    it("adds the modality + coordination sections and a ghg disclosure from the clause set", () => {
         const agreement = buildOrderAgreement({
             buyer: BUYER,
             seller: SELLER,
@@ -76,16 +76,16 @@ describe("buildOrderAgreement", () => {
             clauseFields: cf({
                 originGeohash: "dr5reg",
                 destinationGeohash: "dr5reh",
-                fulfilmentModalities: ["delivery"],
-                fulfilmentCoordinations: ["dutch-auction"],
+                modality: "delivery",
+                coordination: "dutch-auction",
                 fulfilmentHandoffPoints: ["face-to-face"],
                 ghgStandards: ["figaro-ghg-iso-14064-v1"],
             }),
         });
 
         const summary = summarizeAgreement(agreement);
-        expect(summary?.fulfilment?.modalities).toEqual(["delivery"]);
-        expect(summary?.fulfilment?.coordinations).toEqual(["dutch-auction"]);
+        expect(summary?.fulfilment?.modality).toBe("delivery");
+        expect(summary?.fulfilment?.coordination).toBe("dutch-auction");
         expect(summary?.handoff?.points).toEqual(["face-to-face"]);
         expect(summary?.fulfilment?.method).toBe("deliver:dutch-auction");
         expect(summary?.ghg).toEqual({
@@ -97,27 +97,25 @@ describe("buildOrderAgreement", () => {
         });
     });
 
-    it("fills seller-assigned coordination from the spec default when delivery carries none", () => {
-        // The spec's delivery.coordination `default` fills an EMPTY selection;
-        // the old encoder's magic materialize-delivery-from-nothing is gone —
-        // an order offering delivery composes the delivery object, and a
-        // template that doesn't is rejected loudly by Layer-A validation at
-        // the sign gates (coordination is required IFF delivery is requested).
+    it("fills seller-assigned coordination from the spec default when composed empty", () => {
+        // The coordination clause is its own single-select clause; composing
+        // it with no selection default-fills the spec's "seller-assigned".
         const agreement = buildOrderAgreement({
             buyer: BUYER,
             seller: SELLER,
             currency: CURRENCY,
             payment: 10n,
-            clauseFields: cf({
-                originGeohash: "dr5reg",
-                fulfilmentModalities: ["delivery"],
-                fulfilmentCoordinations: [],
-            }),
+            clauseFields: {
+                ...cf({ originGeohash: "dr5reg", modality: "delivery" }),
+                "figaro-coordination-v1": {},
+            },
         });
-        expect(summarizeAgreement(agreement)?.fulfilment?.coordinations).toEqual(["seller-assigned"]);
+        const summary = summarizeAgreement(agreement);
+        expect(summary?.fulfilment?.coordination).toBe("seller-assigned");
+        expect(summary?.fulfilment?.method).toBe("deliver:seller-assigned");
     });
 
-    it("supports multi-valued modalities and coordinations", () => {
+    it("supports multiple hand-off points alongside a single-select modality", () => {
         const agreement = buildOrderAgreement({
             buyer: BUYER,
             seller: SELLER,
@@ -125,14 +123,13 @@ describe("buildOrderAgreement", () => {
             payment: 10n,
             clauseFields: cf({
                 originGeohash: "dr5reg",
-                fulfilmentModalities: ["pickup", "delivery"],
-                fulfilmentCoordinations: ["buyer-assigned", "dutch-auction"],
+                modality: "pickup",
                 fulfilmentHandoffPoints: ["face-to-face", "locker"],
             }),
         });
         const summary = summarizeAgreement(agreement);
-        expect(summary?.fulfilment?.modalities).toEqual(["pickup", "delivery"]);
-        expect(summary?.fulfilment?.coordinations).toEqual(["buyer-assigned", "dutch-auction"]);
+        expect(summary?.fulfilment?.modality).toBe("pickup");
+        expect(summary?.fulfilment?.method).toBe("pickup");
         expect(summary?.handoff?.points).toEqual(["face-to-face", "locker"]);
     });
 
@@ -144,7 +141,7 @@ describe("buildOrderAgreement", () => {
             payment: 10n,
             clauseFields: cf({
                 originGeohash: "dr5reg",
-                fulfilmentModalities: ["pickup"],
+                modality: "pickup",
                 fulfilmentHandoffPoints: ["teleport"],
             }),
         });

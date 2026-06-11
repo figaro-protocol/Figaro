@@ -34,26 +34,25 @@ const CANONICAL_FULFILMENT_METHODS_LIST = [
 
 export type CanonicalFulfilmentMethod = typeof CANONICAL_FULFILMENT_METHODS_LIST[number];
 
-/** Pull a canonical fulfilment method out of the v2 section's first
- *  (modality, coordination) pair. Returns null when the section's modalities
- *  array is empty or contains only unrecognized values. Used by downstream
- *  single-selection consumers (canvas pill, cart). */
+/** Collapse the SINGLE-SELECT modality + coordination clause values into the
+ *  canonical compound method string downstream consumers key on (cart,
+ *  discovery filters, assembly bindings). The clauses are single-select by
+ *  design — variety is the seller's array of assemblies — so the inputs are
+ *  scalars: the modality clause's `modality` value and (for delivery) the
+ *  coordination clause's `coordination` value. Returns null when modality is
+ *  absent/unrecognized, or delivery arrives without a coordination. */
 export function deriveCanonicalFulfilmentMethod(
-    modalities: readonly string[],
-    coordinations: readonly string[],
+    modality: string | undefined,
+    coordination: string | undefined,
 ): CanonicalFulfilmentMethod | null {
-    const m = modalities[0];
-    if (!m) return null;
-    if (m === "consume-onsite") return "consume-onsite";
-    if (m === "pickup") return "pickup";
-    if (m === "virtual") return "virtual";
-    if (m === "delivery") {
-        const c = coordinations[0];
-        if (c === "buyer-assigned") return "deliver:buyer-assigned";
-        if (c === "seller-assigned") return "deliver:seller-assigned";
-        if (c === "dutch-auction") return "deliver:dutch-auction";
-        // Delivery without coordination is invalid at the clause level; the
-        // encoder will throw. Surface as null here so the caller knows.
+    if (!modality) return null;
+    if (modality === "consume-onsite") return "consume-onsite";
+    if (modality === "pickup") return "pickup";
+    if (modality === "virtual") return "virtual";
+    if (modality === "delivery") {
+        if (coordination === "buyer-assigned") return "deliver:buyer-assigned";
+        if (coordination === "seller-assigned") return "deliver:seller-assigned";
+        if (coordination === "dutch-auction") return "deliver:dutch-auction";
         return null;
     }
     return null;
@@ -88,12 +87,14 @@ export interface AgreementSummary {
         parentOrderHashes: string[];
     };
     fulfilment?: {
-        /** Modalities offered for this order. */
-        modalities: readonly string[];
-        /** Courier coordinations offered. Non-empty IFF delivery is in modalities. */
-        coordinations: readonly string[];
-        /** Single canonical method derived from `modalities[0]` + `coordinations[0]`.
-         *  null when modalities is empty, or delivery is offered without coordination. */
+        /** The order's single-select modality (the modality clause's value). */
+        modality?: string;
+        /** The single-select coordination (its own clause; present on
+         *  delivery parent orders). */
+        coordination?: string;
+        /** Canonical compound method — modality, refined by coordination for
+         *  delivery. null when modality is absent/unrecognized or delivery
+         *  arrives without coordination. */
         method: CanonicalFulfilmentMethod | null;
     };
     /** Hand-off points (its own clause now — present on any order with a physical
@@ -375,7 +376,8 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
     // Field names are the lookup vocabulary — see `sectionsByField`.
     const geoSection = sectionByField(agreement, "originGeohash");
     const topologySection = sectionByField(agreement, "parentOrderHashes");
-    const fulfilmentSection = sectionByField(agreement, "modalities");
+    const modalitySection = sectionByField(agreement, "modality");
+    const coordinationSection = sectionByField(agreement, "coordination");
     const handoffSection = sectionByField(agreement, "handoff");
     // GHG disclosure is multi-valued: one section per accounting standard the
     // seller reports under; each disclosure clause declares a `scope` field.
@@ -403,23 +405,18 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
                 parentOrderHashes: getTopologyParentOrderHashes(agreement) ?? [],
             }
             : undefined,
-        fulfilment: fulfilmentSection
+        fulfilment: modalitySection
             ? (() => {
-                const data = fulfilmentSection.data as Record<string, unknown>;
-                const modalities = Array.isArray(data.modalities)
-                    ? data.modalities as readonly string[]
-                    : [];
-                // coordination is a sub-clause under delivery (hand-off is its
-                // own clause now — see `handoff` below).
-                const delivery = (data.delivery ?? {}) as Record<string, unknown>;
-                const coordinations = Array.isArray(delivery.coordination)
-                    ? delivery.coordination as readonly string[]
-                    : [];
-                const method = deriveCanonicalFulfilmentMethod(modalities, coordinations);
+                const modality = typeof modalitySection.data.modality === "string"
+                    ? modalitySection.data.modality
+                    : undefined;
+                const coordination = typeof coordinationSection?.data.coordination === "string"
+                    ? coordinationSection.data.coordination
+                    : undefined;
                 return {
-                    modalities,
-                    coordinations,
-                    method,
+                    modality,
+                    coordination,
+                    method: deriveCanonicalFulfilmentMethod(modality, coordination),
                 };
             })()
             : undefined,

@@ -7,10 +7,9 @@
  * The BoL combines two layers:
  *
  *   • Committed-at-signing clauses — what the parties bound to: the
- *     fulfilment section (found by its `modalities` field), the hand-off
- *     section (`handoff`), and the geo section (`originGeohash` + mass +
- *     volume + class). Sections are found by their declared FIELDS, never
- *     by clause name.
+ *     hand-off section (found by its `handoff` field) and the geo section
+ *     (`originGeohash` + mass + volume + class). Sections are found by
+ *     their declared FIELDS, never by clause name.
  *
  *   • Runtime process-log attestations — what actually happened: events
  *     under whatever Category-1 enum-ladder clauses the order carries.
@@ -103,7 +102,6 @@ export function extractBillOfLading(
     agreement: Agreement | RedactableAgreement,
     attestations: readonly AttestationRecord[],
 ): BillOfLadingDocument {
-    const fulfilment = findCleartextSectionByField(agreement, "modalities");
     const geo = findCleartextSectionByField(agreement, "originGeohash");
     // hand-off is its own clause (where the physical exchange happens).
     const handoffData = findCleartextSectionByField(agreement, "handoff")?.data as { handoff?: unknown } | undefined;

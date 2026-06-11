@@ -280,14 +280,14 @@ function collectAssemblyClauses(template: AssemblyTemplate): string[] {
 export function requiredCounterpartyClauses(template: AssemblyTemplate): string[] {
     const byId = new Map(template.orders.map((o) => [o.id, o]));
 
-    function coordinationsOf(order: AssemblyTemplate["orders"][number] | undefined): string[] {
-        // The fulfilment entry is found by its declared field, never by name.
-        const fulfilment = Object.entries(order?.clauses ?? {})
-            .find(([clauseId]) => clauseDeclaresField(clauseId, "modalities"))?.[1] as
-            | { delivery?: { coordination?: unknown } }
+    function coordinationOf(order: AssemblyTemplate["orders"][number] | undefined): string | undefined {
+        // The coordination entry is found by its declared field, never by
+        // name. Single-select: one scalar value per order.
+        const data = Object.entries(order?.clauses ?? {})
+            .find(([clauseId]) => clauseDeclaresField(clauseId, "coordination"))?.[1] as
+            | { coordination?: unknown }
             | undefined;
-        const coords = fulfilment?.delivery?.coordination;
-        return Array.isArray(coords) ? coords.filter((c): c is string => typeof c === "string") : [];
+        return typeof data?.coordination === "string" ? data.coordination : undefined;
     }
 
     const clauses = new Set<string>();
@@ -295,7 +295,7 @@ export function requiredCounterpartyClauses(template: AssemblyTemplate): string[
         if (templateParentOrderIds(order).length === 0) continue;
 
         const parentAllowsSellerAssigned = templateParentOrderIds(order).some((parentId) =>
-            coordinationsOf(byId.get(parentId)).includes("seller-assigned"),
+            coordinationOf(byId.get(parentId)) === "seller-assigned",
         );
         if (!parentAllowsSellerAssigned) continue;
 
@@ -472,25 +472,31 @@ export interface SellerBoundAssemblies {
     hasOnChainBinding: boolean;
 }
 
-/** Extract the fulfilment shape (modalities + coordinations) from a
+/** Extract the single-select modality + coordination values from a
  *  assemblyDoc's root order agreement. The root order is the first order in
  *  the topology — if a consumer needs sub-order fulfilment, they walk the
  *  orders array themselves. */
 function extractRootFulfilment(
     template: AssemblyTemplate,
-): { modalities: string[]; coordinations: string[] } {
+): { modality?: string; coordination?: string } {
     const rootOrder =
         template.orders.find((o) => templateParentOrderIds(o).length === 0) ?? template.orders[0];
-    // The fulfilment entry is found by its declared field, never by name.
-    const data = Object.entries(rootOrder?.clauses ?? {})
-        .find(([clauseId]) => clauseDeclaresField(clauseId, "modalities"))?.[1] as
-        | { modalities?: unknown; delivery?: { coordination?: unknown } }
+    // The modality + coordination entries are found by their declared FIELDS,
+    // never by clause name. Both clauses are single-select scalars.
+    const clauses = Object.entries(rootOrder?.clauses ?? {});
+    const modalityData = clauses
+        .find(([clauseId]) => clauseDeclaresField(clauseId, "modality"))?.[1] as
+        | { modality?: unknown }
         | undefined;
-    // coordination is a sub-clause under delivery (the clause JSON).
-    const coordination = data?.delivery?.coordination;
+    const coordinationData = clauses
+        .find(([clauseId]) => clauseDeclaresField(clauseId, "coordination"))?.[1] as
+        | { coordination?: unknown }
+        | undefined;
     return {
-        modalities: Array.isArray(data?.modalities) ? (data!.modalities as string[]) : [],
-        coordinations: Array.isArray(coordination) ? (coordination as string[]) : [],
+        modality: typeof modalityData?.modality === "string" ? modalityData.modality : undefined,
+        coordination: typeof coordinationData?.coordination === "string"
+            ? coordinationData.coordination
+            : undefined,
     };
 }
 
@@ -573,7 +579,7 @@ export function useSellerBoundAssemblies(
                 assemblyDocs.forEach((m, i) => {
                     if (!m) return;
                     const slug = matchedEvents[i].slug;
-                    const { modalities, coordinations } = extractRootFulfilment(m);
+                    const { modality, coordination } = extractRootFulfilment(m);
                     const binding = (profile.assemblyBindings ?? []).find(
                         (b) => b.assemblySlug === slug,
                     );
@@ -581,10 +587,10 @@ export function useSellerBoundAssemblies(
                         slug,
                         name: m.name || slug,
                         assemblyDoc: m,
-                        fulfilmentMethod: deriveCanonicalFulfilmentMethod(modalities, coordinations),
+                        fulfilmentMethod: deriveCanonicalFulfilmentMethod(modality, coordination),
                         counterpartyBindings: binding?.counterpartyBindings ?? [],
                     });
-                    for (const mode of modalities) modalitySet.add(mode);
+                    if (modality) modalitySet.add(modality);
                 });
 
                 setResult({

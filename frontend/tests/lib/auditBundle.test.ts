@@ -198,12 +198,10 @@ describe("extractContract — lineage (DAG / parentOrderHashes)", () => {
 });
 
 describe("extractContract — fulfilment summary", () => {
-    it("surfaces the canonical fulfilment method derived from v2 modality + coordination", () => {
+    it("surfaces the canonical method from the single-select modality + coordination clauses", () => {
         const ag = makeAgreement([
-            {
-                clause: FULFILMENT_V2_CLAUSE_KEY,
-                data: { modalities: ["delivery"], delivery: { coordination: ["dutch-auction"] } },
-            },
+            { clause: "figaro-modalities-v1", data: { modality: "delivery" } },
+            { clause: "figaro-coordination-v1", data: { coordination: "dutch-auction" } },
         ]);
         const c = extractContract(makeOrder(), ag);
         expect(c.fulfilment).toEqual({ method: "deliver:dutch-auction" });

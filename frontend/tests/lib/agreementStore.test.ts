@@ -44,7 +44,8 @@ function makeAgreement() {
         clauseFields: cf({
             originGeohash: "dr5reg",
             destinationGeohash: "dr5reh",
-            fulfilmentModalities: ["delivery"],
+            modality: "delivery",
+            coordination: "seller-assigned",
             fulfilmentHandoffPoints: ["face-to-face"],
         }),
     });

@@ -140,25 +140,26 @@ function extractLineage(agreement: Agreement | RedactableAgreement) {
 }
 
 function extractFulfilmentSummary(agreement: Agreement | RedactableAgreement) {
-    const fulfilment = findCleartextSectionByField(agreement, "modalities");
-    const data = fulfilment?.data as
-        | { modalities?: unknown; delivery?: { coordination?: unknown } }
+    // The modality + coordination sections are found by their declared
+    // FIELDS, never by clause name. Both are single-select scalars; the
+    // canonical method compounds them for delivery.
+    const modalityData = findCleartextSectionByField(agreement, "modality")?.data as
+        | { modality?: unknown }
         | undefined;
-    // modalities is the buyer's request; coordination is a sub-clause under
-    // delivery (the clause JSON). The canonical method collapses the first of each.
-    const modalitiesArr = Array.isArray(data?.modalities) ? data.modalities : [];
-    const modality = typeof modalitiesArr[0] === "string" ? modalitiesArr[0] : undefined;
+    const modality = typeof modalityData?.modality === "string" ? modalityData.modality : undefined;
     if (!modality) return undefined;
-    const coordinationsArr = Array.isArray(data?.delivery?.coordination) ? data.delivery!.coordination : [];
-    const coordination = typeof coordinationsArr[0] === "string" ? coordinationsArr[0] : undefined;
-    // Reconstruct the legacy canonical method string for backward-compat
-    // consumers. v2 stores modalities + coordinations as independent
-    // arrays; the canonical method collapses the first of each.
+    const coordinationData = findCleartextSectionByField(agreement, "coordination")?.data as
+        | { coordination?: unknown }
+        | undefined;
+    const coordination = typeof coordinationData?.coordination === "string"
+        ? coordinationData.coordination
+        : undefined;
     if (modality === "delivery" && coordination) {
         return { method: `deliver:${coordination}` };
     }
     if (modality === "consume-onsite") return { method: "consume-onsite" };
     if (modality === "pickup") return { method: "pickup" };
+    if (modality === "virtual") return { method: "virtual" };
     return undefined;
 }
 
