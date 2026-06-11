@@ -329,15 +329,15 @@ function ContractPage({ contract }: { contract: AuditBundle["contract"] }) {
                 )}
             </View>
 
-            {/* Fulfilment + jurisdiction summaries */}
-            {(contract.fulfilment || contract.jurisdiction) && (
+            {/* Method + jurisdiction summaries */}
+            {(contract.method || contract.jurisdiction) && (
                 <>
                     <Text style={styles.h2}>Terms</Text>
                     <View style={styles.section}>
-                        {contract.fulfilment && (
+                        {contract.method && (
                             <View style={styles.metadataRow}>
-                                <Text style={styles.metadataKey}>fulfilment</Text>
-                                <Text style={[styles.metadataValue, styles.mono]}>{contract.fulfilment.method}</Text>
+                                <Text style={styles.metadataKey}>method</Text>
+                                <Text style={[styles.metadataValue, styles.mono]}>{contract.method}</Text>
                             </View>
                         )}
                         {contract.jurisdiction && (
@@ -827,12 +827,12 @@ function DutchAuctionPage({ doc }: { doc: AuditBundle["dutchAuction"] }) {
 
             {!doc.auctionApplicable ? (
                 <Text style={styles.sectionBody}>
-                    This order&apos;s fulfilment method is not Dutch auction —
+                    This order&apos;s canonical method is not Dutch auction —
                     no auction trail applies.
                 </Text>
             ) : !doc.auctionId ? (
                 <Text style={[styles.sectionBody, styles.badgeBad]}>
-                    Fulfilment method indicates Dutch-auction pricing, but the
+                    Canonical method indicates Dutch-auction pricing, but the
                     matching AuctionClaimed event was not located. Investigate
                     — the price-discovery trail is missing from the bundle.
                 </Text>

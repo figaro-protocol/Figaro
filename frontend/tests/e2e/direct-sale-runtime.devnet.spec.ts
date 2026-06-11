@@ -20,7 +20,7 @@
  *
  * Consumes the seller + assembly from chain→IPFS (authored by
  * scenario-direct-sale; seller onboarded against this devnet). Exercises every
- * clause the assembly composes — fulfilment (consume-onsite),
+ * clause the assembly composes — modality (consume-onsite),
  * merchant-process, and proximity-policy/proof — each via its driving role.
  *
  * PERSISTED, like mainnet: no chain snapshot/revert. Each run places a NEW
@@ -87,7 +87,7 @@ test.describe('direct-sale runtime — on-site commit, handoff certification, re
         ]);
 
         // ── 1. Buyer places the consume-onsite order through the UI ─────────
-        await placeBilateralOrderUI(page, { seller: cafe!.address, fulfilmentMode: 'consume-onsite' });
+        await placeBilateralOrderUI(page, { seller: cafe!.address, method: 'consume-onsite' });
 
         // Out-of-band: the relayed commitment payload is really pinned in IPFS.
         const payloadCid = await page.evaluate(() => {
@@ -178,9 +178,9 @@ test.describe('direct-sale runtime — on-site commit, handoff certification, re
         await gotoAsWallet(page, BUYER_ADDR, `/orders/${processId}?e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ state: 'visible', timeout: 30000 });
 
-        // The committed fulfilment modality is surfaced at runtime as the
+        // The committed modality is surfaced at runtime as the
         // clause's own code (one source — the agreement; no frontend label map).
-        await expect(page.getByTestId('order-fulfilment-modality'))
+        await expect(page.getByTestId('order-modality'))
             .toContainText(/consume-onsite/i, { timeout: 30000 });
 
         // Buyer's symmetric proximity witness — same generic rail, same label.

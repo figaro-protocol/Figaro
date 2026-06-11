@@ -78,16 +78,16 @@ describe("buildOrderAgreement", () => {
                 destinationGeohash: "dr5reh",
                 modality: "delivery",
                 coordination: "dutch-auction",
-                fulfilmentHandoffPoints: ["face-to-face"],
+                handoffPoints: ["face-to-face"],
                 ghgStandards: ["figaro-ghg-iso-14064-v1"],
             }),
         });
 
         const summary = summarizeAgreement(agreement);
-        expect(summary?.fulfilment?.modality).toBe("delivery");
-        expect(summary?.fulfilment?.coordination).toBe("dutch-auction");
+        expect(summary?.modality).toBe("delivery");
+        expect(summary?.coordination).toBe("dutch-auction");
         expect(summary?.handoff?.points).toEqual(["face-to-face"]);
-        expect(summary?.fulfilment?.method).toBe("deliver:dutch-auction");
+        expect(summary?.method).toBe("deliver:dutch-auction");
         expect(summary?.ghg).toEqual({
             clauseKeys: ["figaro-ghg-iso-14064-v1"],
             // The spec's registered title — the network-defined SSoT label
@@ -111,8 +111,8 @@ describe("buildOrderAgreement", () => {
             },
         });
         const summary = summarizeAgreement(agreement);
-        expect(summary?.fulfilment?.coordination).toBe("seller-assigned");
-        expect(summary?.fulfilment?.method).toBe("deliver:seller-assigned");
+        expect(summary?.coordination).toBe("seller-assigned");
+        expect(summary?.method).toBe("deliver:seller-assigned");
     });
 
     it("supports multiple hand-off points alongside a single-select modality", () => {
@@ -124,12 +124,12 @@ describe("buildOrderAgreement", () => {
             clauseFields: cf({
                 originGeohash: "dr5reg",
                 modality: "pickup",
-                fulfilmentHandoffPoints: ["face-to-face", "locker"],
+                handoffPoints: ["face-to-face", "locker"],
             }),
         });
         const summary = summarizeAgreement(agreement);
-        expect(summary?.fulfilment?.modality).toBe("pickup");
-        expect(summary?.fulfilment?.method).toBe("pickup");
+        expect(summary?.modality).toBe("pickup");
+        expect(summary?.method).toBe("pickup");
         expect(summary?.handoff?.points).toEqual(["face-to-face", "locker"]);
     });
 
@@ -142,7 +142,7 @@ describe("buildOrderAgreement", () => {
             clauseFields: cf({
                 originGeohash: "dr5reg",
                 modality: "pickup",
-                fulfilmentHandoffPoints: ["teleport"],
+                handoffPoints: ["teleport"],
             }),
         });
         expect(summarizeAgreement(agreement)?.handoff).toBeUndefined();

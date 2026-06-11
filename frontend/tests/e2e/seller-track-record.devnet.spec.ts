@@ -66,7 +66,7 @@ test.describe('Seller track record reflects on-chain history (devnet)', () => {
         // ── Run a full local-commerce scenario to completion ──────────
         await placeBilateralOrderUI(page, {
             seller: merchant.address,
-            fulfilmentMode: 'deliver:seller-assigned',
+            method: 'deliver:seller-assigned',
         });
         const processId = await acceptOrderInInboxUI(page, merchant.address);
         await acceptOrderInInboxUI(page, courier!.address);

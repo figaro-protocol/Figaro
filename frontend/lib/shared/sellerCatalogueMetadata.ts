@@ -111,7 +111,7 @@ export interface CatalogueItemMetadata {
      * Optional assembly this product is realised through. When set, selecting
      * this item drives the checkout to compose the named multi-party assembly
      * (e.g. a kit assembled by several sellers) rather than resolving an
-     * assembly by fulfilment modality. Product-driven selection: the buyer
+     * assembly by modality. Product-driven selection: the buyer
      * picks the product; the product names the process it composes.
      */
     assemblySlug?: string;

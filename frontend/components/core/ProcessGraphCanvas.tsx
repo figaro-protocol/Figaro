@@ -155,14 +155,13 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
     const isLens = (group: GraphLens) => data.activeLens === group;
     const isDefault = data.activeLens === "default";
     const geo = data.agreementSummary?.geo;
-    const fulfilment = data.agreementSummary?.fulfilment;
     const ghg = data.agreementSummary?.ghg;
     const massLabel = typeof geo?.mass === "number" ? `${geo.mass} g` : geo?.mass;
     const volumeLabel = typeof geo?.volume === "number" ? `${geo.volume} mL` : geo?.volume;
     // Single canonical method enum derived from the first offered modality +
     // coordination. When the node offers multiple, downstream surfaces (cart,
     // edge pill) collapse to the first.
-    const fulfilmentMethod = fulfilment?.method ?? undefined;
+    const canonicalMethod = data.agreementSummary?.method ?? undefined;
     const handoffMode = data.agreementSummary?.handoff?.points?.[0];
     const ghgStandard = typeof ghg?.standard === "string" ? ghg.standard : undefined;
     const ghgScope = typeof ghg?.scope === "number" || typeof ghg?.scope === "string" ? ghg.scope : undefined;
@@ -304,7 +303,7 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
 
                 {/* Geo lens — agreement-derived clauses */}
                 {isLens("geo") && !isEmptyHex(data.agreementHash) && (() => {
-                    const hasStructured = geo?.origin || geo?.destination || massLabel || volumeLabel || geo?.classOfService || fulfilmentMethod || handoffMode;
+                    const hasStructured = geo?.origin || geo?.destination || massLabel || volumeLabel || geo?.classOfService || canonicalMethod || handoffMode;
                     return (
                         <div className={`pt-1 border-t border-neutral-100 ${LENS_HIGHLIGHT.geo} px-1 py-0.5`}>
                             {hasStructured ? (
@@ -320,7 +319,7 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
                                     {massLabel && <div className="flex justify-between"><span>Mass</span><span className="font-mono">{massLabel}</span></div>}
                                     {volumeLabel && <div className="flex justify-between"><span>Vol</span><span className="font-mono">{volumeLabel}</span></div>}
                                     {geo?.classOfService && <div className="flex justify-between"><span>Class</span><span className="font-mono">{geo.classOfService}</span></div>}
-                                    {fulfilmentMethod && <div className="flex justify-between"><span>Fulfil</span><span className="font-mono">{fulfilmentMethod}</span></div>}
+                                    {canonicalMethod && <div className="flex justify-between"><span>Fulfil</span><span className="font-mono">{canonicalMethod}</span></div>}
                                     {handoffMode && <div className="flex justify-between"><span>Handoff</span><span className="font-mono">{handoffMode}</span></div>}
                                 </>
                             ) : (
@@ -418,7 +417,7 @@ const nodeTypes: NodeTypes = {
     order: OrderNode,
 };
 
-// Fulfilment is edited in the drawer, not on edges. Edges render as plain
+// Modality is edited in the drawer, not on edges. Edges render as plain
 // React Flow defaults — no per-edge pill or popover.
 
 /** Hard limit enforced by FigaroCore (default 500). */

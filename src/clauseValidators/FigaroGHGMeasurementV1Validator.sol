@@ -5,7 +5,7 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 
 /// @title FigaroGHGMeasurementV1Validator
 /// @notice Validates `figaro-ghg-measurement-v1` content — a runtime grams
-///         CO2e measurement attached to an order fulfillment.
+///         CO2e measurement attached to an order's delivery.
 ///
 /// @dev Runtime-only (Category-1) clause. The committed agreement section
 ///      declares "this process measures in grams CO2e" (unit of account);
@@ -23,8 +23,8 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 ///      sanity.
 ///
 /// @dev Stage envelope (uint8):
-///        0 = Estimate       — pre-fulfillment forecast
-///        1 = Measured       — post-fulfillment actual measurement
+///        0 = Estimate       — forecast ahead of the work
+///        1 = Measured       — actual measurement after the work
 ///        2 = Restatement    — correction to a prior measurement
 ///        3 = Verification   — third-party validated measurement
 contract FigaroGHGMeasurementV1Validator is IClauseValidator {

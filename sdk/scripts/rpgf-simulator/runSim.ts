@@ -168,7 +168,7 @@ function main() {
   console.log(`Default α: ${ALPHA_DEFAULT}`);
   console.log(`Per-author cap: ${(CAP_SHARE * 100).toFixed(0)}%`);
   console.log(`Default combo: ${comboLabel(...DEFAULT_COMBO)} (audit's recommendation)`);
-  console.log(`Tier-1 weight applied: category(fulfilment, geo) + topology(chainPosition). Value/bond removed — coordination protocol is value-agnostic.`);
+  console.log(`Tier-1 weight applied: category(coordination, geo) + topology(chainPosition). Value/bond removed — coordination protocol is value-agnostic.`);
 
   const [dCount, dDiv] = DEFAULT_COMBO;
 

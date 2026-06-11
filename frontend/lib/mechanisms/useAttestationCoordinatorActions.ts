@@ -22,7 +22,7 @@ type SellerAttestationInput = {
     /**
      * ABI-encoded content per the clause's encoding. Omit to default to the
      * committed `sectionData` — correct for Category-2 clauses (handoff, geo,
-     * fulfilment, ghg-disclosure, commerce) whose validators enforce
+     * modality, ghg-disclosure, commerce) whose validators enforce
      * `keccak256(content) == keccak256(sectionData)`. Supply an explicit value
      * for Category-1 clauses (merchant-process, courier-process, proximity,
      * measurement) whose content shape differs from the committed clause.

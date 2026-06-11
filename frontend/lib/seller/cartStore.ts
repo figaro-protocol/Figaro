@@ -1,30 +1,24 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { CartItem } from "./types";
-import type { CanonicalFulfilmentMethod } from "@/lib/core/orderAgreement";
+import type { CanonicalMethod } from "@/lib/core/orderAgreement";
 
-/**
- * Cart's fulfilment mode mirrors the canonical fulfilment-method shape
- * (collapse of the fulfilment clause's modality + coordination fields) —
- * five values: consume-onsite, pickup, and three `deliver:*`
- * variants. Replaces the prior 2-value `pickup | delivery` shape so the
- * cart can drive both 1-node (`direct-sale`) and N-node (`local-commerce`)
- * assembly bindings.
- */
-export type FulfillmentMode = CanonicalFulfilmentMethod;
+// The cart's selected method IS the canonical method (the modality value,
+// refined by coordination for delivery) — one name, one concept; the type
+// lives with its deriver in lib/core/orderAgreement.
 
 interface CartStore {
     items: CartItem[];
     deliveryMaxPrice: string;
     /**
-     * Buyer-selected fulfilment mode. `undefined` is the explicit
+     * Buyer-selected method. `undefined` is the explicit
      * unset state — the buyer hasn't picked yet. The picker UIs render
      * a "Select one" placeholder option until the buyer chooses, and
      * checkout is disabled while undefined. Replaces the prior
      * preselect-default-mode behavior so the buyer is required to make
      * a deliberate choice.
      */
-    fulfillmentMode: FulfillmentMode | undefined;
+    method: CanonicalMethod | undefined;
     addItem: (item: CartItem) => void;
     /**
      * Decrement an item's quantity by 1, removing the line entirely if the
@@ -44,7 +38,7 @@ interface CartStore {
     getTotalPrice: () => string;
     getItemCount: () => number;
     setDeliveryMaxPrice: (price: string) => void;
-    setFulfillmentMode: (mode: FulfillmentMode | undefined) => void;
+    setMethod: (mode: CanonicalMethod | undefined) => void;
 }
 
 export const useCartStore = create<CartStore>()(
@@ -52,7 +46,7 @@ export const useCartStore = create<CartStore>()(
         (set, get) => ({
             items: [],
             deliveryMaxPrice: "0.002",
-            fulfillmentMode: undefined,
+            method: undefined,
 
             addItem: (newItem) =>
                 set((state) => {
@@ -109,11 +103,11 @@ export const useCartStore = create<CartStore>()(
                     ),
                 })),
 
-            clearCart: () => set({ items: [], deliveryMaxPrice: "0.002", fulfillmentMode: undefined }),
+            clearCart: () => set({ items: [], deliveryMaxPrice: "0.002", method: undefined }),
 
             setDeliveryMaxPrice: (price) => set({ deliveryMaxPrice: price }),
 
-            setFulfillmentMode: (mode) => set({ fulfillmentMode: mode }),
+            setMethod: (mode) => set({ method: mode }),
 
             getTotalPrice: () => {
                 const items = get().items;

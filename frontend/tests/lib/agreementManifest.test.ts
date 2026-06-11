@@ -22,7 +22,7 @@ const SELLER = ANVIL_ACCOUNTS[1];
 const BUYER = ANVIL_ACCOUNTS[0];
 const CURRENCY = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
 
-// Category-2 clauses (commerce, geo, fulfilment, ghg, handoff) use ABI-encoded
+// Category-2 clauses (commerce, geo, modalities, ghg, handoff) use ABI-encoded
 // sectionData, so clause values must be encoder-valid enum strings / integers.
 // Using the canonical SDK encoder types here.
 const LINE_ITEMS: AgreementLineItem[] = [
@@ -138,7 +138,7 @@ describe("computeAgreementHash", () => {
 
 describe("buildAgreement", () => {
     it("sorts sections by clause key", () => {
-        // Pass in reverse order: geo before commerce alphabetically, but fulfilment/ghg too
+        // Pass in reverse order: geo before commerce alphabetically, but modalities/ghg too
         const a = buildAgreement({
             buyer: BUYER,
             seller: SELLER,

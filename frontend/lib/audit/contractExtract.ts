@@ -86,13 +86,10 @@ export interface ContractDocument extends ExtractedDocument {
         parentOrderHashes: string[];
         topologyMode?: string;
     };
-    /** Optional fulfilment summary if a fulfilment clause is present. */
-    fulfilment?: {
-        /** Canonical 5-value enum: consume-onsite | pickup |
-         *  deliver:buyer-assigned | deliver:seller-assigned |
-         *  deliver:dutch-auction. */
-        method: string;
-    };
+    /** Canonical method when a modality clause is present: consume-onsite |
+     *  pickup | virtual | deliver:buyer-assigned | deliver:seller-assigned |
+     *  deliver:dutch-auction. */
+    method?: string;
     /** Block number when OrderCommitted was mined, if known. */
     committedAtBlock?: number;
 }
@@ -139,7 +136,7 @@ function extractLineage(agreement: Agreement | RedactableAgreement) {
     return { parentOrderHashes, topologyMode };
 }
 
-function extractFulfilmentSummary(agreement: Agreement | RedactableAgreement) {
+function extractMethodSummary(agreement: Agreement | RedactableAgreement) {
     // The modality + coordination sections are found by their declared
     // FIELDS, never by clause name. Both are single-select scalars; the
     // canonical method compounds them for delivery.
@@ -155,11 +152,11 @@ function extractFulfilmentSummary(agreement: Agreement | RedactableAgreement) {
         ? coordinationData.coordination
         : undefined;
     if (modality === "delivery" && coordination) {
-        return { method: `deliver:${coordination}` };
+        return `deliver:${coordination}`;
     }
-    if (modality === "consume-onsite") return { method: "consume-onsite" };
-    if (modality === "pickup") return { method: "pickup" };
-    if (modality === "virtual") return { method: "virtual" };
+    if (modality === "consume-onsite") return "consume-onsite";
+    if (modality === "pickup") return "pickup";
+    if (modality === "virtual") return "virtual";
     return undefined;
 }
 
@@ -191,7 +188,7 @@ export function extractContract(
         clauses: agreement.sections.map(clauseFromSection),
         jurisdiction: extractJurisdictionSummary(agreement),
         lineage: extractLineage(agreement),
-        fulfilment: extractFulfilmentSummary(agreement),
+        method: extractMethodSummary(agreement),
         committedAtBlock: order.blockNumber,
     };
 }

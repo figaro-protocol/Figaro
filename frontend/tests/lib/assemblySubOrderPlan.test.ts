@@ -22,7 +22,7 @@ const GHG = "figaro-ghg-measurement-v1";
 const assembly = {
     slug: "kit-assembly",
     name: "Kit",
-    fulfilmentMethod: null,
+    canonicalMethod: null,
     counterpartyBindings: [
         { clauseId: PROX, addresses: [SWIFT, MERCATO] },
         { clauseId: GHG, addresses: [ROSSO] },

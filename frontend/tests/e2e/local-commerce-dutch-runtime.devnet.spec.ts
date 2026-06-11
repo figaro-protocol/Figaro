@@ -77,7 +77,7 @@ test.describe('local-commerce-dutch runtime — auction-deferred courier, coordi
         // then relays the ROOT order only.
         await placeBilateralOrderUI(page, {
             seller: merchant.address,
-            fulfilmentMode: 'deliver:dutch-auction',
+            method: 'deliver:dutch-auction',
         });
         const processId = await acceptOrderInInboxUI(page, merchant.address);
 

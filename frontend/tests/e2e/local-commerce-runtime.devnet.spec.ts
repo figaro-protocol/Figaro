@@ -83,7 +83,7 @@ test.describe('local-commerce runtime — 2-node delivery commit, coordination, 
         // merchant accepts first (root creates the process), then the courier.
         await placeBilateralOrderUI(page, {
             seller: merchant.address,
-            fulfilmentMode: 'deliver:seller-assigned',
+            method: 'deliver:seller-assigned',
         });
         const processId = await acceptOrderInInboxUI(page, merchant.address);
         await acceptOrderInInboxUI(page, courier!.address);

@@ -5,7 +5,7 @@ import { SellerCard } from "./SellerCard";
 import { useDeviceLocation } from "@/hooks/core/useDeviceLocation";
 import {
     assemblyLabel,
-    fulfilmentLabel,
+    methodLabel,
 } from "@/lib/shared/assemblyLabels";
 import {
     listingMatchesGeohash,
@@ -22,7 +22,7 @@ export function SellerDiscovery() {
 
     const [searchQuery, setSearchQuery] = useState("");
     const [assemblyFilter, setAssemblyFilter] = useState<string | null>(null);
-    const [fulfilmentFilter, setFulfilmentFilter] = useState<string | null>(null);
+    const [methodFilter, setMethodFilter] = useState<string | null>(null);
     const location = useDeviceLocation(5);
 
     const knownAssemblies = useMemo(() => {
@@ -33,10 +33,10 @@ export function SellerDiscovery() {
         return Array.from(set).sort();
     }, [allListings]);
 
-    const knownFulfilmentModes = useMemo(() => {
+    const knownMethods = useMemo(() => {
         const set = new Set<string>();
         for (const l of allListings) {
-            for (const mode of l.fulfillmentModes) set.add(mode);
+            for (const mode of l.methods) set.add(mode);
         }
         return Array.from(set).sort();
     }, [allListings]);
@@ -59,8 +59,8 @@ export function SellerDiscovery() {
             list = list.filter((l) => listingAssemblies(l).includes(assemblyFilter));
         }
 
-        if (fulfilmentFilter) {
-            list = list.filter((l) => l.fulfillmentModes.includes(fulfilmentFilter as Listing["fulfillmentModes"][number]));
+        if (methodFilter) {
+            list = list.filter((l) => l.methods.includes(methodFilter as Listing["methods"][number]));
         }
 
         if (location.geohash) {
@@ -68,14 +68,14 @@ export function SellerDiscovery() {
         }
 
         return list;
-    }, [allListings, searchQuery, assemblyFilter, fulfilmentFilter, location.geohash]);
+    }, [allListings, searchQuery, assemblyFilter, methodFilter, location.geohash]);
 
     const handleAssemblyPillClick = (slug: string) => {
         setAssemblyFilter((current) => (current === slug ? null : slug));
     };
 
-    const handleFulfilmentPillClick = (mode: string) => {
-        setFulfilmentFilter((current) => (current === mode ? null : mode));
+    const handleMethodPillClick = (mode: string) => {
+        setMethodFilter((current) => (current === mode ? null : mode));
     };
 
     return (
@@ -164,36 +164,36 @@ export function SellerDiscovery() {
                 ))}
             </section>
 
-            {/* Fulfilment filter row */}
+            {/* Method filter row */}
             <section className="flex flex-wrap gap-2 items-center">
                 <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mr-1">
-                    Fulfilment
+                    Method
                 </span>
                 <button
                     type="button"
-                    onClick={() => setFulfilmentFilter(null)}
+                    onClick={() => setMethodFilter(null)}
                     className={
                         "text-xs px-2.5 py-1 rounded border transition-colors " +
-                        (fulfilmentFilter === null
+                        (methodFilter === null
                             ? "bg-blue-700 text-white border-blue-700"
                             : "bg-white text-blue-700 border-blue-200 hover:border-blue-500")
                     }
                 >
                     All
                 </button>
-                {knownFulfilmentModes.map((mode) => (
+                {knownMethods.map((mode) => (
                     <button
                         key={mode}
                         type="button"
-                        onClick={() => setFulfilmentFilter(mode === fulfilmentFilter ? null : mode)}
+                        onClick={() => setMethodFilter(mode === methodFilter ? null : mode)}
                         className={
                             "text-xs px-2.5 py-1 rounded border transition-colors " +
-                            (fulfilmentFilter === mode
+                            (methodFilter === mode
                                 ? "bg-blue-700 text-white border-blue-700"
                                 : "bg-white text-blue-700 border-blue-200 hover:border-blue-500")
                         }
                     >
-                        {fulfilmentLabel(mode)}
+                        {methodLabel(mode)}
                     </button>
                 ))}
             </section>
@@ -211,7 +211,7 @@ export function SellerDiscovery() {
                         key={l.address}
                         listing={l}
                         onAssemblyClick={handleAssemblyPillClick}
-                        onFulfilmentClick={handleFulfilmentPillClick}
+                        onMethodClick={handleMethodPillClick}
                     />
                 ))}
             </section>

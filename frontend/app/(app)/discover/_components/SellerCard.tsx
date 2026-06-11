@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ContentImage } from "@/components/shared/ContentImage";
 import {
     assemblyLabel,
-    fulfilmentLabel,
+    methodLabel,
 } from "@/lib/shared/assemblyLabels";
 import {
     type Listing,
@@ -36,15 +36,15 @@ interface SellerCardProps {
      */
     onAssemblyClick?: (slug: string) => void;
     /**
-     * Called when the user clicks a fulfilment pill on the card.
+     * Called when the user clicks a method pill on the card.
      */
-    onFulfilmentClick?: (mode: string) => void;
+    onMethodClick?: (mode: string) => void;
 }
 
 export function SellerCard({
     listing,
     onAssemblyClick,
-    onFulfilmentClick,
+    onMethodClick,
 }: SellerCardProps) {
     const href = listingClickThroughHref(listing);
     const assemblies = distinctAssemblySlugs(listing);
@@ -144,26 +144,26 @@ export function SellerCard({
                 )}
             </div>
 
-            {/* Fulfilment pills — clickable filter triggers. */}
-            {listing.fulfillmentModes.length > 0 && (
+            {/* Method pills — clickable filter triggers. */}
+            {listing.methods.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-3">
-                    {listing.fulfillmentModes.map((mode) =>
-                        onFulfilmentClick ? (
+                    {listing.methods.map((mode) =>
+                        onMethodClick ? (
                             <button
                                 key={mode}
                                 type="button"
-                                onClick={() => onFulfilmentClick(mode)}
+                                onClick={() => onMethodClick(mode)}
                                 className="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 hover:border-blue-500 hover:bg-blue-100 transition-colors cursor-pointer"
-                                aria-label={`Filter by ${fulfilmentLabel(mode)}`}
+                                aria-label={`Filter by ${methodLabel(mode)}`}
                             >
-                                {fulfilmentLabel(mode)}
+                                {methodLabel(mode)}
                             </button>
                         ) : (
                             <span
                                 key={mode}
                                 className="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200"
                             >
-                                {fulfilmentLabel(mode)}
+                                {methodLabel(mode)}
                             </span>
                         ),
                     )}

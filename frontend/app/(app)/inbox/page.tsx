@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
     title: "Inbox — Figaro",
-    description: "Incoming orders awaiting acceptance and active orders in fulfilment.",
+    description: "Incoming orders awaiting acceptance and active orders in progress.",
 };
 
 export default function InboxPage() {

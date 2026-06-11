@@ -98,7 +98,7 @@ test.describe('kiosk-sale runtime — buyer checkout → seller accept → resol
         // ── 1. Buyer places the order through the UI and relays it ──────────
         // The checkout offers the seller's bound assemblies; the spec selects
         // by the modality value the assembly committed.
-        await placeBilateralOrderUI(page, { seller: kiosk!.address, fulfilmentMode: 'pickup' });
+        await placeBilateralOrderUI(page, { seller: kiosk!.address, method: 'pickup' });
 
         // Out-of-band: the relayed commitment payload is REALLY pinned in IPFS
         // (the same proof the assembly + seller stages run). Read the CID the
@@ -145,9 +145,9 @@ test.describe('kiosk-sale runtime — buyer checkout → seller accept → resol
         await gotoAsWallet(page, BUYER_ADDR, `/orders/${processId}?e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ state: 'visible', timeout: 30000 });
 
-        // The committed fulfilment modality is surfaced at runtime, too — the
+        // The committed modality is surfaced at runtime, too — the
         // buyer's order page shows it's a pickup.
-        await expect(page.getByTestId('order-fulfilment-modality'))
+        await expect(page.getByTestId('order-modality'))
             .toContainText(/Pickup/i, { timeout: 30000 });
 
         // Resolve the process — a capability now (one flow; replaces the bespoke

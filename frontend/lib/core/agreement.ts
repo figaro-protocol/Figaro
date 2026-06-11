@@ -20,7 +20,7 @@
  *   version: "a1",
  *   sections: [
  *     { clause: "<commerce clauseId>",   data: { lineItems, currency, payment } },
- *     { clause: "<fulfilment clauseId>", data: { modalities, delivery: { coordination } } },
+ *     { clause: "<modality clauseId>", data: { modalities, delivery: { coordination } } },
  *     { clause: "<geo clauseId>",        data: { originGeohash, destinationGeohash, massGrams, volumeMl, classOfService } },
  *     { clause: "<disclosure clauseId>", data: { scope } },
  *   ]

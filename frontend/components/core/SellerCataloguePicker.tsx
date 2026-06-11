@@ -41,7 +41,7 @@ export interface SellerSelection {
 }
 
 interface Props {
-    /** Canonical fulfilment method — `deliver:seller-assigned` or
+    /** Canonical canonical method — `deliver:seller-assigned` or
      *  `deliver:buyer-assigned`. Decides how the address is acquired. */
     mode: string;
     /** Seller addresses the lead seller designated — seller-assigned only. */

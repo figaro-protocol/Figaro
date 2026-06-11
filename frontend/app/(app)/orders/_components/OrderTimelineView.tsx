@@ -122,12 +122,12 @@ export function OrderTimelineView({ processId }: Props) {
                     </span>
                 </div>
                 <p className="text-sm text-neutral-700">{subhead}</p>
-                {processModel.rootFulfilmentModality && (
-                    // The committed fulfilment modality, shown as the clause's own
+                {processModel.rootModality && (
+                    // The committed modality, shown as the clause's own
                     // code (the agreement is the source) — read off the builder's
                     // model, never a clause section or a frontend label map.
-                    <p className="text-xs text-neutral-600" data-testid="order-fulfilment-modality">
-                        Fulfilment: <span className="font-medium text-black">{processModel.rootFulfilmentModality}</span>
+                    <p className="text-xs text-neutral-600" data-testid="order-modality">
+                        Modality: <span className="font-medium text-black">{processModel.rootModality}</span>
                     </p>
                 )}
                 <p className="text-xs text-neutral-500 font-mono">

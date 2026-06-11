@@ -82,7 +82,7 @@ test.describe('local-commerce-offset runtime — emissions disclosed, offsets re
         // ── 1. Buyer commits the food + courier orders (each GHG-bearing) ───
         await placeBilateralOrderUI(page, {
             seller: merchant.address,
-            fulfilmentMode: 'deliver:seller-assigned',
+            method: 'deliver:seller-assigned',
         });
         const processId = await acceptOrderInInboxUI(page, merchant.address);
         await acceptOrderInInboxUI(page, courier!.address);

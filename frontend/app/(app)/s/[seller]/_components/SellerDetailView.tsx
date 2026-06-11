@@ -5,7 +5,7 @@
  *
  * Browse only: the seller's branding/hero, public-graph track record, and
  * catalogue grid. The buyer selects items into the merchant-scoped cart and
- * follows the "Review order" CTA to `/s/[seller]/checkout`, where fulfilment is
+ * follows the "Review order" CTA to `/s/[seller]/checkout`, where the method is
  * chosen and the bonded order is committed. This page composes NO order and
  * holds NO checkout state — that concern lives entirely on the checkout surface.
  *
@@ -133,7 +133,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
     };
 
     // The merchant-scoped cart — the basis for the "Review order" summary. The
-    // bond math, fulfilment, and commit all live on the checkout surface.
+    // bond math, method choice, and commit all live on the checkout surface.
     const cartItems = items.filter((it) => it.sellerId === sellerCatalogue.id);
     const cartCount = cartItems.reduce((sum, it) => sum + it.quantity, 0);
     const cartSubtotal = cartItems.reduce((sum, it) => sum + parseFloat(it.price || "0") * it.quantity, 0);

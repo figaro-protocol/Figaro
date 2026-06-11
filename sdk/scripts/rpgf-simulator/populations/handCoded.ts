@@ -211,7 +211,7 @@ const ARCHETYPES: readonly Archetype[] = [
   // ─── Cluster C — runtime-measurement (2 of 17 real clauses) ────────
   {
     name: "ghg-measurement",
-    description: "Runtime grams CO2e per fulfillment. Cluster C, multi-stage.",
+    description: "Runtime grams CO2e per delivery. Cluster C, multi-stage.",
     snapshotsAtTranches: [
       snap({ clauseId: "figaro-ghg-measurement-v1", category: "runtime-measurement", orderCount: 300, attsPerOrder: 2.5, distinctBuyers: 150, distinctSellers: 200, distinctBuyerSellerPairs: 280, distinctAttestationStages: 4, meanChainPosition: 2 }),
       snap({ clauseId: "figaro-ghg-measurement-v1", category: "runtime-measurement", orderCount: 2_000, attsPerOrder: 2.5, distinctBuyers: 1_000, distinctSellers: 1_500, distinctBuyerSellerPairs: 1_800, distinctAttestationStages: 4, meanChainPosition: 2 }),

@@ -13,17 +13,17 @@ import {
 import { validateContent, type FieldSpec } from "@figaro/core/clauses";
 import { clauseDeclaresField, clauseIsStructural, getClauseSpec, listKnownClauseIds } from "@/lib/shared/clauseSpecSource";
 
-// ── Multi-valued fulfilment + proximity composition ────────────────────────
+// ── Clause-field composition (drawer → build) ───────────────────────────────
 //
 // The drawer composes a per-node agreement by toggling sets of options into
-// the clauseFields object. Two array fields drive fulfilment (modalities,
+// the clauseFields object. Two array fields drive composition (modalities,
 // coordinations, handoffPoints) and one drives proximity (bands). Empty
 // (or absent) array = clause not in the agreement.
 
 /** Canonical method strings used by single-selection consumers (canvas edge
  *  pill, cart, swap-mechanism flow). Each value collapses a v2 (modality,
  *  coordination) pair to a single string. */
-const CANONICAL_FULFILMENT_METHODS_LIST = [
+const CANONICAL_METHODS_LIST = [
     "consume-onsite",
     "pickup",
     "virtual",
@@ -32,7 +32,7 @@ const CANONICAL_FULFILMENT_METHODS_LIST = [
     "deliver:dutch-auction",
 ] as const;
 
-export type CanonicalFulfilmentMethod = typeof CANONICAL_FULFILMENT_METHODS_LIST[number];
+export type CanonicalMethod = typeof CANONICAL_METHODS_LIST[number];
 
 /** Collapse the SINGLE-SELECT modality + coordination clause values into the
  *  canonical compound method string downstream consumers key on (cart,
@@ -41,10 +41,10 @@ export type CanonicalFulfilmentMethod = typeof CANONICAL_FULFILMENT_METHODS_LIST
  *  scalars: the modality clause's `modality` value and (for delivery) the
  *  coordination clause's `coordination` value. Returns null when modality is
  *  absent/unrecognized, or delivery arrives without a coordination. */
-export function deriveCanonicalFulfilmentMethod(
+export function deriveCanonicalMethod(
     modality: string | undefined,
     coordination: string | undefined,
-): CanonicalFulfilmentMethod | null {
+): CanonicalMethod | null {
     if (!modality) return null;
     if (modality === "consume-onsite") return "consume-onsite";
     if (modality === "pickup") return "pickup";
@@ -86,19 +86,17 @@ export interface AgreementSummary {
         topologyMode: TopologyMode;
         parentOrderHashes: string[];
     };
-    fulfilment?: {
-        /** The order's single-select modality (the modality clause's value). */
-        modality?: string;
-        /** The single-select coordination (its own clause; present on
-         *  delivery parent orders). */
-        coordination?: string;
-        /** Canonical compound method — modality, refined by coordination for
-         *  delivery. null when modality is absent/unrecognized or delivery
-         *  arrives without coordination. */
-        method: CanonicalFulfilmentMethod | null;
-    };
+    /** The order's single-select modality (the modality clause's value). */
+    modality?: string;
+    /** The single-select coordination (its own clause; present on delivery
+     *  parent orders). */
+    coordination?: string;
+    /** Canonical compound method — modality, refined by coordination for
+     *  delivery. null/absent when modality is absent/unrecognized or
+     *  delivery arrives without coordination. */
+    method?: CanonicalMethod | null;
     /** Hand-off points (its own clause now — present on any order with a physical
-     *  exchange, including a bare courier order that carries no fulfilment). */
+     *  exchange, including a bare courier order that carries no modality clause). */
     handoff?: {
         points: readonly string[];
     };
@@ -405,7 +403,7 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
                 parentOrderHashes: getTopologyParentOrderHashes(agreement) ?? [],
             }
             : undefined,
-        fulfilment: modalitySection
+        ...(modalitySection
             ? (() => {
                 const modality = typeof modalitySection.data.modality === "string"
                     ? modalitySection.data.modality
@@ -416,10 +414,10 @@ export function summarizeAgreement(agreement: Agreement | null | undefined): Agr
                 return {
                     modality,
                     coordination,
-                    method: deriveCanonicalFulfilmentMethod(modality, coordination),
+                    method: deriveCanonicalMethod(modality, coordination),
                 };
             })()
-            : undefined,
+            : {}),
         ghg: ghgDisclosures.length > 0
             ? {
                 clauseKeys: ghgDisclosures.map((d) => d.clause),

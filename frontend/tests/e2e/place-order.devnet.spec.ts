@@ -125,7 +125,7 @@ test.describe('/s/[seller] full place-order flow (devnet)', () => {
         await placeBilateralOrderUI(page, {
             seller: seeded.address,
             itemId: seeded.itemId,
-            fulfilmentMode: 'consume-onsite',
+            method: 'consume-onsite',
         });
         const processId = await acceptOrderInInboxUI(page, seeded.address);
         expect(processId).toMatch(/^0x[0-9a-fA-F]{64}$/);

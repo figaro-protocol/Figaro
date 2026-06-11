@@ -136,7 +136,7 @@ export function createSyntheticRootOrder(
     session: SyntheticProcessSession,
     /** Per-root assemblyDoc overrides. Merged onto defaultNodeManifestFields().
      *  Used by `assemblyDocumentToDraft` to seed an IPFS-pinned assembly's kleros +
-     *  fulfilment fields into the new draft's root. */
+     *  modality fields into the new draft's root. */
     assemblyDocumentOverrides?: ClauseFields,
 ): CreatedOrder {
     const orderIndex = session.nextOrderIndex++;

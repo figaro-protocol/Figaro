@@ -7,7 +7,7 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 /// @notice Validates `figaro-merchant-process-v1` content — event-stream clause
 ///         for a merchant seller's role in an order lifecycle. Generic across
 ///         local-commerce verticals (restaurants, retail, service merchants);
-///         the event vocabulary maps to the merchant's order-fulfillment flow.
+///         the event vocabulary maps to the merchant's order-preparation flow.
 ///
 /// @dev Sovereignty primitive: the merchant attests their own internal events
 ///      under this clause as the SSoT for "what the merchant has done." The

@@ -56,7 +56,7 @@ function profileToCatalogue(
         acceptedTokens: profile.acceptedTokens,
         defaultTokenAddress: profile.defaultTokenAddress,
         agentServices: profile.services,
-        fulfillmentModes: [],
+        methods: [],
         unitSystem: catalogue?.unitSystem,
     };
 }

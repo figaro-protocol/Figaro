@@ -22,7 +22,7 @@ pragma solidity 0.8.26;
 ///         it uses. Frontends read these events to determine encoding.
 ///
 ///         Family tag: each clause declares a `family` (bytes32, typically
-///         keccak256 of a category slug such as "geo" or "fulfilment").
+///         keccak256 of a category slug such as "geo" or "coordination").
 ///         The family is the unit the RPGF substrate-broadening formula
 ///         weights — Tier-1 family hashes are deploy-frozen in the SP1
 ///         program (see `prover/rpgf/src/formula.rs`), so registering a
@@ -50,7 +50,7 @@ contract ClauseRegistry {
     /// @param metadataURI Off-chain spec locator (IPFS, etc.). The pointer that lets
     ///                    any reader FETCH the spec from chain state alone — the same
     ///                    role `metadataURI` plays in SellerRegistry / AssemblyRegistry.
-    /// @param family      keccak256 of the family slug (e.g. "geo", "fulfilment").
+    /// @param family      keccak256 of the family slug (e.g. "geo", "coordination").
     ///                    Indexers + the RPGF SP1 program key Tier-1 weighting off
     ///                    this; new clauses joining an existing Tier-1 family
     ///                    inherit the weight without redeployment.

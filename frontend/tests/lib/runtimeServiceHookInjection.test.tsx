@@ -142,7 +142,7 @@ const fallbackRestaurant: SellerCatalogue = {
     address: "0x0000000000000000000000000000000000000001",
     menu: [],
     acceptedTokens: [],
-    fulfillmentModes: ["deliver:seller-assigned"],
+    methods: ["deliver:seller-assigned"],
 };
 
 const injectedRestaurant: SellerCatalogue = {
@@ -154,7 +154,7 @@ const injectedRestaurant: SellerCatalogue = {
     address: "0x0000000000000000000000000000000000000011",
     menu: [],
     acceptedTokens: [],
-    fulfillmentModes: ["deliver:seller-assigned"],
+    methods: ["deliver:seller-assigned"],
 };
 
 function createRuntimeServices(overrides: Partial<RuntimeServices> = {}): RuntimeServices {

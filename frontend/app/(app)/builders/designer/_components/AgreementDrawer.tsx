@@ -336,7 +336,7 @@ export function AgreementDrawer({
  * order, plus its design-time fields when selected (category-1 process clauses
  * toggle whole — no fields). Under any field, renders the clauses that declare
  * `block.nestsUnder === <that field's name>` (read from the spec, never
- * hardcoded) — e.g. proximity-policy nested under the fulfilment clause's
+ * hardcoded) — e.g. proximity-policy nested under the modality clause's
  * `handoff` field. Recurses, so a nested clause can host deeper nesting.
  */
 interface ClauseRegistryPanelProps {

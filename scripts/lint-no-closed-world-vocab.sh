@@ -13,14 +13,14 @@
 # FAIL — verified at zero in live code; any reappearance is the old model
 # coming back:
 #   roleKind, archetypeId, clauseCategories, documentKind
-#
-# WARN — legacy still standing, mid-migration (de-hardcoding pass; see
-# tests/e2e/SCENARIOS.md). Promote to FAIL when the migration lands and the
-# repo greps clean:
-#   fulfilment / fulfillment (any casing)
+#   fulfilment / fulfillment (any casing) — promoted WARN→FAIL 2026-06-11
+#   when the figaro-fulfilment-v2 retirement landed (split into the
+#   single-select modalities + coordination clauses) and the word swept to
+#   zero. The replacement vocabulary is modality / coordination / method.
 #
 # Scope: code files only (.ts/.tsx/.sol/.rs). Docs and CLAUDE.md narrate the
-# history of these words and are exempt.
+# history of these words and are exempt, as are the /papers pages
+# (frontend/app/(marketing)/papers/ — historical prose rendered as .tsx).
 #
 # Wired into the root package.json lint-staged block under
 # `**/*.{ts,tsx,sol,rs}`. Run manually over the whole repo:
@@ -31,16 +31,19 @@
 set -euo pipefail
 
 FAIL_TERMS='roleKind|archetypeId|clauseCategories|documentKind'
-WARN_TERMS='[Ff]ulfil+ment'
+FAIL_WORD='[Ff]ulfil+ment'
 
 violations=0
-warnings=0
 
 for file in "$@"; do
     [[ -f "$file" ]] || continue
     case "$file" in
         *.ts | *.tsx | *.sol | *.rs) ;;
         *) continue ;;
+    esac
+    # Papers narrate the project's history (incl. retired vocabulary) — exempt.
+    case "$file" in
+        *"(marketing)/papers/"*) continue ;;
     esac
 
     hits=$(grep -nE "\b($FAIL_TERMS)\b" "$file" || true)
@@ -50,11 +53,11 @@ for file in "$@"; do
         violations=$((violations + 1))
     fi
 
-    hits=$(grep -nE "$WARN_TERMS" "$file" || true)
+    hits=$(grep -nE "$FAIL_WORD" "$file" || true)
     if [[ -n "$hits" ]]; then
-        echo "[closed-world] WARN $file — 'fulfilment' is retired vocabulary pending de-hardcoding migration; do not extend it"
+        echo "[closed-world] $file — 'fulfilment' is RETIRED vocabulary (the v2 clause split into modalities + coordination; say modality / coordination / method)"
         echo "$hits" | head -3 | sed 's/^/    /'
-        warnings=$((warnings + 1))
+        violations=$((violations + 1))
     fi
 done
 

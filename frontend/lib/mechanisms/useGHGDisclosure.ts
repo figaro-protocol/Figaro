@@ -11,7 +11,7 @@
  *
  *   - MEASUREMENT clauses (Category-1, runtime grams) — each disclosure
  *     clause's `block.sisterClauseId`. Content is `abi.encode(uint256 grams)`
- *     per fulfilment; the validator does NOT cross-check against sectionData
+ *     per delivery; the validator does NOT cross-check against sectionData
  *     because the committed unit-of-account clause and the per-measurement
  *     value are deliberately decoupled.
  *

@@ -9,9 +9,9 @@
  *  - `ASSEMBLY_LABELS` — assembly-slug → label (e.g. "local-commerce" →
  *    "Local Commerce"). Drives the top-level assembly filter row and
  *    the assembly pills on each card.
- *  - `FULFILLMENT_LABELS` — fulfilment-mode → label (e.g.
+ *  - `METHOD_LABELS` — canonical-method → label (e.g.
  *    "deliver:dutch-auction" → "Delivery (auction)"). Drives the
- *    fulfilment filter row and the fulfilment pills on each card.
+ *    method filter row and the method pills on each card.
  *
  * Adding a new assembly: extend `ASSEMBLY_LABELS` here. The Discover
  * surface picks it up automatically — no second edit.
@@ -27,12 +27,12 @@ const ASSEMBLY_LABELS: Record<string, string> = {
 };
 
 /**
- * Discovery-filter labels for fulfilment modes. The discovery UI rolls all
+ * Discovery-filter labels for methods. The discovery UI rolls all
  * `deliver:*` variants up under a generic `"delivery"` filter AND surfaces
  * the 3 coordination variants individually. Labels here are abbreviated for
  * card chrome.
  */
-const FULFILLMENT_LABELS: Record<string, string> = {
+const METHOD_LABELS: Record<string, string> = {
     "consume-onsite": "On-site",
     "pickup": "Pickup",
     "virtual": "Virtual",
@@ -46,6 +46,6 @@ export function assemblyLabel(slug: string): string {
     return ASSEMBLY_LABELS[slug] ?? slug;
 }
 
-export function fulfilmentLabel(mode: string): string {
-    return FULFILLMENT_LABELS[mode] ?? mode;
+export function methodLabel(mode: string): string {
+    return METHOD_LABELS[mode] ?? mode;
 }

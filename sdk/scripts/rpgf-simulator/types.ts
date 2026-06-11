@@ -24,7 +24,7 @@ export type DiversityVariant =
 
 export interface ClauseSnapshot {
   clauseId: string;
-  /** Family slug — keys Tier-1 boost. e.g. "geo", "fulfilment", "commerce". */
+  /** Family slug — keys Tier-1 boost. e.g. "geo", "coordination", "commerce". */
   family: string;
   category: ClauseCategory;
 

@@ -94,7 +94,7 @@ test.describe('local-commerce-dispute runtime — Layer-3 clause-driven Kleros r
         // ── 1. Buyer commits the local-commerce-dispute process ─────────────
         await placeBilateralOrderUI(page, {
             seller: merchant.address,
-            fulfilmentMode: 'deliver:seller-assigned',
+            method: 'deliver:seller-assigned',
         });
         const processId = await acceptOrderInInboxUI(page, merchant.address);
         await acceptOrderInInboxUI(page, courier!.address);

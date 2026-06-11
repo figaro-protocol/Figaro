@@ -2,7 +2,7 @@
  * Test-only ergonomics: build the nested, spec-named `ClauseFields` shape
  * (clauseId → field values) from a concise flat input. Production builds the
  * nested shape directly — this adapter exists ONLY so test data stays readable
- * (`cf({ origin, fulfilmentModalities })`) instead of spelling out the nesting
+ * (`cf({ origin, modality })`) instead of spelling out the nesting
  * by hand. Do NOT use it in app code; the flat vocabulary is gone from the
  * commit path on purpose.
  */
@@ -35,7 +35,7 @@ export interface FlatClauseFields {
     modality?: string;
     /** Single-select coordination (figaro-coordination-v1). */
     coordination?: string;
-    fulfilmentHandoffPoints?: string[];
+    handoffPoints?: string[];
     proximityBands?: string[];
     /** clauseIds of the selected GHG disclosure clauses. */
     ghgStandards?: string[];
@@ -64,7 +64,7 @@ export function cf(flat: FlatClauseFields): ClauseFields {
     if (flat.coordination) out[COORDINATION_CLAUSE_KEY] = { coordination: flat.coordination };
 
     // hand-off is its own clause now (figaro-handoff-v1).
-    if (flat.fulfilmentHandoffPoints) out[HANDOFF_CLAUSE_KEY] = { handoff: flat.fulfilmentHandoffPoints };
+    if (flat.handoffPoints) out[HANDOFF_CLAUSE_KEY] = { handoff: flat.handoffPoints };
     if (flat.proximityBands) out[PROXIMITY_POLICY_CLAUSE_KEY] = { bands: flat.proximityBands };
     for (const clauseId of flat.ghgStandards ?? []) out[clauseId] = {};
     if (flat.merchantProcessIncluded) out[MERCHANT_PROCESS_CLAUSE_KEY] = {};

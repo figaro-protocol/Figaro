@@ -12,7 +12,7 @@ import { TRANCHE_BUDGETS_FIG } from "./types.js";
 // ─── Tier-1 graph weighting ──────────────────────────────────────────
 // Deploy-frozen weights expressing the protocol's prior about which
 // public graphs are load-bearing for the substrate. Two dimensions:
-//   1. Family — clauses whose family is in {fulfilment, geo} carry the
+//   1. Family — clauses whose family is in {coordination, geo} carry the
 //      tier-1 category boost. The *set of Tier-1 families* is deploy-
 //      frozen; the *set of clauses inside each family* grows
 //      permissionlessly via ClauseRegistry.registerClause(..., family).
@@ -31,7 +31,7 @@ import { TRANCHE_BUDGETS_FIG } from "./types.js";
 // metric and create Goodhart pressure to inflate transaction values.
 
 const TIER1_FAMILIES: ReadonlySet<string> = new Set([
-  "fulfilment",
+  "coordination",
   "geo",
 ]);
 

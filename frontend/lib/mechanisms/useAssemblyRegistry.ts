@@ -30,8 +30,8 @@ import { publicClient, activeChain } from "@/lib/shared/wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { clauseDeclaresField, clauseIsProcessLog } from "@/lib/shared/clauseSpecSource";
 import {
-    deriveCanonicalFulfilmentMethod,
-    type CanonicalFulfilmentMethod,
+    deriveCanonicalMethod,
+    type CanonicalMethod,
 } from "@/lib/core/orderAgreement";
 import type { Order } from "@/lib/core/store";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
@@ -262,7 +262,7 @@ function collectAssemblyClauses(template: AssemblyTemplate): string[] {
 
 /** Process clauses the seller must populate with counterparty wallets
  *  when they bind to this assembly. Emitted only for non-root orders
- *  whose parent's fulfilment coordination includes `seller-assigned` —
+ *  whose parent's coordination clause is `seller-assigned` —
  *  the case where the buyer may pick a fulfiller from the seller's
  *  roster at checkout. When the parent's coordination is exclusively
  *  `dutch-auction` (the auction contract assigns the fulfiller at
@@ -445,10 +445,10 @@ export interface BoundAssembly {
     /** Display name from the assembly template; falls back to the slug. */
     name: string;
     assemblyDoc: AssemblyTemplate;
-    /** Canonical fulfilment method of the root order — the buyer's
+    /** Canonical canonical method of the root order — the buyer's
      *  selection when this assembly is picked. `null` when the root
-     *  fulfilment clause is absent or malformed. */
-    fulfilmentMethod: CanonicalFulfilmentMethod | null;
+     *  modality clause is absent or malformed. */
+    canonicalMethod: CanonicalMethod | null;
     /** The seller's designated counterparty wallets for this assembly,
      *  keyed by sub-order process clause (the category-1 ladder clause the
      *  sub-order carries). Sourced from the seller profile's
@@ -462,7 +462,7 @@ export interface SellerBoundAssemblies {
      *  the buyer-facing choice set at checkout. Each bound assembly is
      *  one option the seller offers; the buyer picks one. */
     assemblies: BoundAssembly[];
-    /** Union of root-order fulfilment modalities across the bound
+    /** Union of root-order modalities across the bound
      *  assemblies. Derived from `assemblies` — kept for callers that
      *  only need the flat modality set. */
     modalities: string[];
@@ -474,9 +474,9 @@ export interface SellerBoundAssemblies {
 
 /** Extract the single-select modality + coordination values from a
  *  assemblyDoc's root order agreement. The root order is the first order in
- *  the topology — if a consumer needs sub-order fulfilment, they walk the
+ *  the topology — if a consumer needs a sub-order's modality, they walk the
  *  orders array themselves. */
-function extractRootFulfilment(
+function extractRootModality(
     template: AssemblyTemplate,
 ): { modality?: string; coordination?: string } {
     const rootOrder =
@@ -508,7 +508,7 @@ function extractRootFulfilment(
  *
  * When `hasOnChainBinding` is true, `assemblies` is the authoritative
  * buyer-facing choice set — the buyer picks one assembly at checkout —
- * and `modalities` is the flat union of their root-order fulfilment
+ * and `modalities` is the flat union of their root-order
  * modalities. When false, the caller falls back to the catalogue.
  */
 export function useSellerBoundAssemblies(
@@ -579,7 +579,7 @@ export function useSellerBoundAssemblies(
                 assemblyDocs.forEach((m, i) => {
                     if (!m) return;
                     const slug = matchedEvents[i].slug;
-                    const { modality, coordination } = extractRootFulfilment(m);
+                    const { modality, coordination } = extractRootModality(m);
                     const binding = (profile.assemblyBindings ?? []).find(
                         (b) => b.assemblySlug === slug,
                     );
@@ -587,7 +587,7 @@ export function useSellerBoundAssemblies(
                         slug,
                         name: m.name || slug,
                         assemblyDoc: m,
-                        fulfilmentMethod: deriveCanonicalFulfilmentMethod(modality, coordination),
+                        canonicalMethod: deriveCanonicalMethod(modality, coordination),
                         counterpartyBindings: binding?.counterpartyBindings ?? [],
                     });
                     if (modality) modalitySet.add(modality);

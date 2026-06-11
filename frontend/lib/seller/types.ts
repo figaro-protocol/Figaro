@@ -30,7 +30,7 @@ export interface CatalogueItem {
     negotiatedPrices?: NegotiatedPriceEntry[];
     /** Optional assembly this product composes — see `CatalogueItemMetadata`.
      *  When set, selecting this item drives the named multi-party assembly
-     *  (product-driven selection) instead of a fulfilment-modality choice. */
+     *  (product-driven selection) instead of a modality choice. */
     assemblySlug?: string;
 }
 
@@ -68,7 +68,7 @@ export interface SellerCatalogue {
     defaultTokenAddress?: `0x${string}`;
     /** ERC-8004-compatible service endpoints (optional, for agent-driven sellers). */
     agentServices?: SellerAgentServices;
-    fulfillmentModes?: Array<
+    methods?: Array<
         | "consume-onsite"
         | "pickup"
         | "virtual"

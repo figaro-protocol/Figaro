@@ -45,7 +45,7 @@ export interface DutchAuctionClaimedEvent {
 }
 
 export interface DutchAuctionDocument extends ExtractedDocument {
-    /** True when the order's fulfilment method indicates Dutch-auction
+    /** True when the order's canonical method indicates Dutch-auction
      *  pricing AND the matching auction events were located. */
     auctionApplicable: boolean;
     /** The auctionId that priced this order, if known. */
@@ -67,8 +67,8 @@ export interface DutchAuctionDocument extends ExtractedDocument {
 
 /**
  * @param order            The committed order.
- * @param fulfilmentMethod Canonical fulfilment-method string (from the
- *                         fulfilment clause's summary); if it isn't
+ * @param canonicalMethod Canonical canonical-method string (from the
+ *                         modality clause's summary); if it isn't
  *                         "deliver:dutch-auction" this extractor reports
  *                         auctionApplicable=false and does no further work.
  * @param createdEvents    `AuctionCreated` events filtered to auctions whose
@@ -80,7 +80,7 @@ export interface DutchAuctionDocument extends ExtractedDocument {
  */
 export function extractDutchAuction(
     order: Order,
-    fulfilmentMethod: string | undefined,
+    canonicalMethod: string | undefined,
     createdEvents: readonly DutchAuctionCreatedEvent[],
     claimedEvents: readonly DutchAuctionClaimedEvent[],
 ): DutchAuctionDocument {
@@ -93,7 +93,7 @@ export function extractDutchAuction(
         seller: order.seller,
     };
 
-    if (fulfilmentMethod !== "deliver:dutch-auction") {
+    if (canonicalMethod !== "deliver:dutch-auction") {
         return { ...base, auctionApplicable: false };
     }
 
@@ -105,7 +105,7 @@ export function extractDutchAuction(
     );
 
     if (!matchingClaim) {
-        // The fulfilment method says auction, but we can't locate the
+        // The canonical method says auction, but we can't locate the
         // matching claim event. Still flag auctionApplicable=true so the
         // PDF page renders a "claim event not located — investigate" notice
         // rather than silently omitting.

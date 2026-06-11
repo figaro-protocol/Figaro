@@ -5,7 +5,7 @@
  *
  *   Models: a street vendor / kiosk / newsstand — you collect the item and go.
  *   No tracked lifecycle, no proximity proof. The bare, no-merchant-process
- *   pickup; the only design-time selection is the fulfilment modality. The
+ *   pickup; the only design-time selection is the modality. The
  *   deliberate counterpart of `direct-sale` (the tracked, proximity-verified
  *   consume-onsite case).
  *
@@ -85,9 +85,9 @@ test.describe('Author + publish the kiosk-sale assembly (devnet)', () => {
             // clause's spec has loaded chain→IPFS — await it into existence.
             await page.getByTestId('drawer-tab-registry').click();
             await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
-            const fulfilmentBox = page.getByTestId('drawer-registry-clause-figaro-modalities-v1');
-            await expect(fulfilmentBox, 'drawer surfaces figaro-modalities-v1').toHaveCount(1, { timeout: 20000 });
-            await fulfilmentBox.check();
+            const modalitiesBox = page.getByTestId('drawer-registry-clause-figaro-modalities-v1');
+            await expect(modalitiesBox, 'drawer surfaces figaro-modalities-v1').toHaveCount(1, { timeout: 20000 });
+            await modalitiesBox.check();
             const pickupField = page.getByTestId('drawer-field-figaro-modalities-v1-modality-pickup');
             await expect(pickupField, 'drawer surfaces the pickup modality').toHaveCount(1, { timeout: 10000 });
             await pickupField.check();

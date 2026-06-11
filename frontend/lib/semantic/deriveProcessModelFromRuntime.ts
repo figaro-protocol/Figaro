@@ -715,7 +715,7 @@ export function deriveProcessModelFromRuntime(
     const rootAgreement = rootOrder?.agreementHash ? agreements.get(rootOrder.agreementHash) : undefined;
     // The modality section is found by its declared field, never by name.
     // Single-select: one scalar value per order.
-    const rootFulfilmentModality = rootAgreement
+    const rootModality = rootAgreement
         ? ((sectionByField(rootAgreement, "modality")?.data as { modality?: string } | undefined)?.modality ?? null)
         : null;
     const stateCounts = {
@@ -729,7 +729,7 @@ export function deriveProcessModelFromRuntime(
         processId: summary.processId,
         rootOrderId,
         currency: processOrders[0]?.currency as `0x${string}` | undefined,
-        rootFulfilmentModality,
+        rootModality,
         orders: semanticOrders,
         relations,
         stateSummary: stateCounts.active > 0

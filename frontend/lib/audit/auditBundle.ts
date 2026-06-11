@@ -48,7 +48,7 @@ import { buildHashAppendix, type HashAppendixDocument } from "./hashAppendix";
 /** True when the order is a CARRIAGE LEG: a sub-order (its topology section
  *  declares non-empty parents) carrying a runtime process log (a Category-1
  *  enum-ladder clause, per its registered spec). Both signals are derived —
- *  fulfilment modality is topology + clauses, never a stored field — so any
+ *  modality is topology + clauses, never a stored field — so any
  *  registry-defined process clause marks the leg. Buyer↔merchant roots,
  *  pickup orders, and consume-onsite orders have no parents and return
  *  false. The process-log check reads the spec, so it sees redacted
@@ -106,7 +106,7 @@ export function buildAuditBundle(
         processLogs: extractProcessLogs(order, attestations),
         dutchAuction: extractDutchAuction(
             order,
-            contract.fulfilment?.method,
+            contract.method,
             inputs.auctionCreatedEvents ?? [],
             inputs.auctionClaimedEvents ?? [],
         ),

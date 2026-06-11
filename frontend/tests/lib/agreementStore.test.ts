@@ -46,7 +46,7 @@ function makeAgreement() {
             destinationGeohash: "dr5reh",
             modality: "delivery",
             coordination: "seller-assigned",
-            fulfilmentHandoffPoints: ["face-to-face"],
+            handoffPoints: ["face-to-face"],
         }),
     });
 }

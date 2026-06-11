@@ -14,7 +14,7 @@ import { hexEqual } from "@/lib/shared/evm";
  * so the card can display assembly badges and the click-through can pick
  * the primary.
  */
-type FulfillmentMode =
+type CanonicalMethod =
     | "consume-onsite"
     | "pickup"
     | "virtual"
@@ -59,8 +59,8 @@ export interface Listing {
     addressText?: string;
     /** Service-area geohash prefixes (seller may serve a wider area than its home). */
     serviceAreas: ListingServiceArea[];
-    /** Fulfillment modes offered. May be empty for purely-remote work (review, freelance). */
-    fulfillmentModes: FulfillmentMode[];
+    /** Methods offered. May be empty for purely-remote work (review, freelance). */
+    methods: CanonicalMethod[];
     /** Tokens the seller accepts for settlement. */
     acceptedTokens: AcceptedTokenMetadata[];
     /** All assembly bindings this seller has. May be empty (kernel-direct), one (single assembly), or many. */
@@ -102,7 +102,7 @@ export function profileToListing(
         geohash: profile.location?.geohash,
         addressText: profile.location?.addressText,
         serviceAreas: [],
-        fulfillmentModes: [],
+        methods: [],
         acceptedTokens: profile.acceptedTokens ?? [],
         bindings,
     };
@@ -154,7 +154,7 @@ export function listingMatchesGeohash(listing: Listing, viewerGeohash: string): 
  * The destination URL for a listing card click: the per-seller detail
  * page. The /s page reads the seller's catalogue and bindings; assembly
  * disambiguation happens inside that page. An seller with no bindings
- * still has a /m page — it surfaces the catalogue without a fulfilment path.
+ * still has a /m page — it surfaces the catalogue without a modality path.
  */
 export function listingClickThroughHref(listing: Listing): string {
     return `/s/${listing.address}`;

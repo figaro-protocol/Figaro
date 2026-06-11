@@ -9,7 +9,7 @@
  * validates Layer A, runs the bilateral / multi-order commit, and redirects to
  * `/orders/<processId>`. Every order's clauses come straight from the assembly
  * template; every sub-order's seller is resolved generically from the assembly's
- * `counterpartyBindings`. No dutch-auction, no courier picker, no fulfilment
+ * `counterpartyBindings`. No dutch-auction, no courier picker, no modality
  * taxonomy, no buyer-set pricing — those are the assembly's concerns, not the
  * checkout's.
  *
@@ -23,7 +23,8 @@ import { useChainId, usePublicClient, useWalletClient } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { Button } from "@/components/ui/Button";
 import { useCommerce, useCheckout } from "@/lib/commerce";
-import { useCartStore, type FulfillmentMode } from "@/lib/seller/cartStore";
+import { useCartStore } from "@/lib/seller/cartStore";
+import type { CanonicalMethod } from "@/lib/core/orderAgreement";
 import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
 import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/commerce/assemblySubOrderPlan";
 import { executeAssemblyCheckout } from "@/lib/commerce/assemblyCheckout";
@@ -88,7 +89,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         order: { step: commitStep, error: commitError, payload },
     } = useCheckout(currency);
 
-    const { items, getTotalPrice, fulfillmentMode, setFulfillmentMode, deliveryMaxPrice, setDeliveryMaxPrice } = useCartStore();
+    const { items, getTotalPrice, method, setMethod, deliveryMaxPrice, setDeliveryMaxPrice } = useCartStore();
     const { openConnectModal } = useConnectModal();
 
     const totalPrice = getTotalPrice();
@@ -99,14 +100,14 @@ export function CheckoutView({ sellerAddress }: Props) {
 
     const { assemblies: boundAssemblies } = useSellerBoundAssemblies(sellerAddressTyped);
 
-    // The buyer's fulfilment options ARE the seller's bound assemblies — each
-    // assembly that carries a fulfilment modality is one option, labelled by the
+    // The buyer's method options ARE the seller's bound assemblies — each
+    // assembly that carries a modality is one option, labelled by the
     // assembly's own name. The modality string comes from the assembly; the
     // checkout hardcodes no taxonomy.
-    const fulfilmentOptions: { method: FulfillmentMode; name: string }[] = useMemo(
+    const methodOptions: { method: CanonicalMethod; name: string }[] = useMemo(
         () => boundAssemblies.flatMap((a) =>
-            a.fulfilmentMethod
-                ? [{ method: a.fulfilmentMethod as FulfillmentMode, name: a.name }]
+            a.canonicalMethod
+                ? [{ method: a.canonicalMethod as CanonicalMethod, name: a.name }]
                 : [],
         ),
         [boundAssemblies],
@@ -115,14 +116,14 @@ export function CheckoutView({ sellerAddress }: Props) {
     // If the cart's persisted choice isn't offered by this seller, clear it.
     useEffect(() => {
         if (
-            fulfillmentMode
-            && fulfilmentOptions.length > 0
-            && !fulfilmentOptions.some((o) => o.method === fulfillmentMode)
+            method
+            && methodOptions.length > 0
+            && !methodOptions.some((o) => o.method === method)
         ) {
-            setFulfillmentMode(undefined);
+            setMethod(undefined);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [fulfilmentOptions]);
+    }, [methodOptions]);
 
     const balance = tokenBalance ?? 0n;
     const hasInsufficientBalance = !!buyer && tokenBalance !== undefined && balance < buyerBondAmount;
@@ -132,7 +133,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // The buyer's checkout-time counterparty choice for a sub-order the
     // adopting seller's profile leaves unbound (buyer-assigned coordination).
     const [sellerSelection, setSellerSelection] = useState<SellerSelection | null>(null);
-    useEffect(() => { setSellerSelection(null); }, [fulfillmentMode]);
+    useEffect(() => { setSellerSelection(null); }, [method]);
 
     // Auto-chain: when approval confirms, proceed to commit signing.
     useEffect(() => {
@@ -176,7 +177,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // Every order commits against a published assembly — there is no fallback.
     const pickedAssembly = boundAssemblies.length === 1
         ? boundAssemblies[0]
-        : boundAssemblies.find((a) => a.fulfilmentMethod === fulfillmentMode);
+        : boundAssemblies.find((a) => a.canonicalMethod === method);
     // Sub-orders the adopting seller's profile leaves UNBOUND take the buyer's
     // checkout-time choice (buyer-assigned coordination); the picker below
     // surfaces it. Bound sub-orders keep the profile's designation.
@@ -189,19 +190,19 @@ export function CheckoutView({ sellerAddress }: Props) {
         }
     })();
     const buyerChoosesCounterparty =
-        fulfillmentMode === "deliver:buyer-assigned" && unboundSubOrders.length > 0;
+        method === "deliver:buyer-assigned" && unboundSubOrders.length > 0;
     // Dutch-auction coordination: the unbound sub-order is deferred — the
     // buyer names the descending auction's start price instead of a seller.
     const buyerOpensAuction =
-        fulfillmentMode === "deliver:dutch-auction" && unboundSubOrders.length > 0;
+        method === "deliver:dutch-auction" && unboundSubOrders.length > 0;
     const auctionStartPriceValid = (() => {
         try { return parseToken(deliveryMaxPrice || "0", tokenDecimals) > 0n; } catch { return false; }
     })();
-    // Ready to place when a profile-bound assembly is resolved, its fulfilment
+    // Ready to place when a profile-bound assembly is resolved, its method
     // (only if it composes one) is chosen, and any buyer-chosen counterparty
     // selection (or auction start price) is complete.
     const orderReady = !!pickedAssembly
-        && (!pickedAssembly.fulfilmentMethod || !!fulfillmentMode)
+        && (!pickedAssembly.canonicalMethod || !!method)
         && (!buyerChoosesCounterparty || !!sellerSelection)
         && (!buyerOpensAuction || auctionStartPriceValid);
     // The root order carries the design-time clauses the buyer is bonding to.
@@ -247,7 +248,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                 }
                 // Unbound node under dutch coordination: deferred to the
                 // auction — its price is set by the claim, not the commit.
-                if (fulfillmentMode === "deliver:dutch-auction") {
+                if (method === "deliver:dutch-auction") {
                     return { name: "(dutch auction)", payment: 0n };
                 }
                 // Unbound node: the buyer's checkout-time choice fills it — the
@@ -503,32 +504,32 @@ export function CheckoutView({ sellerAddress }: Props) {
                             seller offers more than one. The options + labels come
                             from the assemblies themselves; the checkout hardcodes
                             no modality. */}
-                        {fulfilmentOptions.length > 0 && (
+                        {methodOptions.length > 0 && (
                             <div>
                                 <label
-                                    htmlFor="fulfilment-mode-select"
+                                    htmlFor="method-select"
                                     className="text-xs font-semibold text-neutral-500 mb-1 block"
                                 >
-                                    Fulfilment
+                                    Method
                                 </label>
                                 <select
-                                    id="fulfilment-mode-select"
-                                    value={fulfillmentMode ?? ""}
+                                    id="method-select"
+                                    value={method ?? ""}
                                     onChange={(e) =>
-                                        setFulfillmentMode(
+                                        setMethod(
                                             e.target.value === ""
                                                 ? undefined
-                                                : (e.target.value as FulfillmentMode),
+                                                : (e.target.value as CanonicalMethod),
                                         )
                                     }
                                     className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
-                                    data-testid="select-fulfilment-mode"
+                                    data-testid="select-method"
                                 >
-                                    <option value="" data-testid="option-fulfilment-unset">
+                                    <option value="" data-testid="option-method-unset">
                                         Select one
                                     </option>
-                                    {fulfilmentOptions.map((opt) => (
-                                        <option key={opt.method} value={opt.method} data-testid={`option-fulfilment-${opt.method}`}>
+                                    {methodOptions.map((opt) => (
+                                        <option key={opt.method} value={opt.method} data-testid={`option-method-${opt.method}`}>
                                             {opt.name}
                                         </option>
                                     ))}
@@ -542,7 +543,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                             catalogue. Checkout-phase data, like the cart. */}
                         {buyerChoosesCounterparty && (
                             <SellerCataloguePicker
-                                mode={fulfillmentMode!}
+                                mode={method!}
                                 partnerAddresses={[]}
                                 sellerAddress={sellerCatalogue.address}
                                 tokenSymbol={tokenSymbol}

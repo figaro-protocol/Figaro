@@ -1410,7 +1410,7 @@ export async function placeBilateralOrderUI(
     opts: {
         seller: string;
         itemId?: string;
-        fulfilmentMode?: string;
+        method?: string;
         geohash?: string;
         /** buyer-assigned coordination: the courier address the buyer enters in
          *  the SellerCataloguePicker; the first delivery item is selected. For
@@ -1442,33 +1442,33 @@ export async function placeBilateralOrderUI(
     await expect(page.locator('[data-testid^="cart-line-"]').first()).toBeVisible({ timeout: 10000 });
 
     // Browse → checkout: the seller page is browse-only; review-order navigates
-    // to /s/<seller>/checkout where fulfilment is chosen and the order commits.
+    // to /s/<seller>/checkout where the method is chosen and the order commits.
     await page.getByTestId('btn-review-order').click();
     await page.getByTestId('checkout-view').waitFor({ state: 'visible', timeout: 30000 });
 
-    // The buyer's fulfilment options ARE the seller's bound assemblies — one
-    // option per assembly that carries a fulfilment modality, labelled by the
+    // The buyer's method options ARE the seller's bound assemblies — one
+    // option per assembly that carries a modality, labelled by the
     // assembly's own name, valued by the modality string the assembly commits.
     // They render only once the bindings resolve chain→IPFS, and selection is
     // REQUIRED whenever options exist (explicit unset placeholder, no
     // auto-default) — so a caller whose scenario composes a modality MUST pass
-    // `fulfilmentMode` (the modality value, e.g. 'consume-onsite') and we WAIT
+    // `method` (the modality value, e.g. 'consume-onsite') and we WAIT
     // for the select; an instant visibility probe races the bindings fetch.
-    const fulfilmentSelect = page.getByTestId('select-fulfilment-mode');
-    if (opts.fulfilmentMode) {
-        await fulfilmentSelect.waitFor({ state: 'visible', timeout: 30000 });
+    const methodSelect = page.getByTestId('select-method');
+    if (opts.method) {
+        await methodSelect.waitFor({ state: 'visible', timeout: 30000 });
         await expect(
-            page.getByTestId(`option-fulfilment-${opts.fulfilmentMode}`),
-            `checkout offers the ${opts.fulfilmentMode} assembly option`,
+            page.getByTestId(`option-method-${opts.method}`),
+            `checkout offers the ${opts.method} assembly option`,
         ).toHaveCount(1, { timeout: 20000 });
-        await fulfilmentSelect.selectOption(opts.fulfilmentMode);
-    } else if (await fulfilmentSelect.isVisible().catch(() => false)) {
-        // Caller named no modality (e.g. an assembly with no fulfilment clause
+        await methodSelect.selectOption(opts.method);
+    } else if (await methodSelect.isVisible().catch(() => false)) {
+        // Caller named no modality (e.g. an assembly with no modality clause
         // usually shows no selector at all) — best-effort: pick the first option.
-        const optionValues = await fulfilmentSelect.locator('option').evaluateAll(
+        const optionValues = await methodSelect.locator('option').evaluateAll(
             (opts2) => opts2.map((o) => (o as HTMLOptionElement).value).filter((v) => v !== ''),
         );
-        if (optionValues.length > 0) await fulfilmentSelect.selectOption(optionValues[0]);
+        if (optionValues.length > 0) await methodSelect.selectOption(optionValues[0]);
     }
 
     // Buyer-assigned coordination: the profile leaves the delivery sub-order

@@ -303,10 +303,10 @@ export interface ProcessModel {
     processId: string;
     rootOrderId: string;
     currency?: `0x${string}`;
-    /** The root order's committed fulfilment modality code (the fulfilment
+    /** The root order's committed modality code (the modality
      *  clause's `modalities[0]`), surfaced by the builder so the order page can show it
      *  without reading a clause section itself. Null when uncommitted. */
-    rootFulfilmentModality?: string | null;
+    rootModality?: string | null;
     orders: OrderNodeModel[];
     relations: ProcessRelationModel[];
     stateSummary: string;

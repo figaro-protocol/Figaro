@@ -197,19 +197,19 @@ describe("extractContract — lineage (DAG / parentOrderHashes)", () => {
     });
 });
 
-describe("extractContract — fulfilment summary", () => {
+describe("extractContract — method summary", () => {
     it("surfaces the canonical method from the single-select modality + coordination clauses", () => {
         const ag = makeAgreement([
             { clause: "figaro-modalities-v1", data: { modality: "delivery" } },
             { clause: "figaro-coordination-v1", data: { coordination: "dutch-auction" } },
         ]);
         const c = extractContract(makeOrder(), ag);
-        expect(c.fulfilment).toEqual({ method: "deliver:dutch-auction" });
+        expect(c.method).toBe("deliver:dutch-auction");
     });
 
-    it("omits the fulfilment summary when no fulfilment clause is signed", () => {
+    it("omits the method summary when no modality clause is signed", () => {
         const c = extractContract(makeOrder(), makeAgreement());
-        expect(c.fulfilment).toBeUndefined();
+        expect(c.method).toBeUndefined();
     });
 });
 
@@ -579,7 +579,7 @@ describe("extractDutchAuction", () => {
         };
     }
 
-    it("reports auctionApplicable=false when fulfilment isn't Dutch auction", () => {
+    it("reports auctionApplicable=false when the method isn't Dutch auction", () => {
         const doc = extractDutchAuction(order, "deliver:seller-assigned", [], []);
         expect(doc.auctionApplicable).toBe(false);
     });
@@ -597,7 +597,7 @@ describe("extractDutchAuction", () => {
         expect(doc.blocksToClaim).toBe(10);
     });
 
-    it("reports auctionApplicable=true but no auctionId when fulfilment indicates auction but the matching claim isn't located", () => {
+    it("reports auctionApplicable=true but no auctionId when the method indicates auction but the matching claim isn't located", () => {
         const cl = claimed("0xAUC1", "0xOTHER_PROVIDER", 75n, 110);
         const doc = extractDutchAuction(order, "deliver:dutch-auction", [], [cl]);
         expect(doc.auctionApplicable).toBe(true);

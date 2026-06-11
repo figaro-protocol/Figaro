@@ -52,8 +52,8 @@ export const DISCLOSURE_KIND = {
 // byte-equality, which is incompatible with freely-varying grams values.
 //
 // Stage envelope:
-//   0 = Estimate       — pre-fulfillment forecast
-//   1 = Measured       — post-fulfillment actual
+//   0 = Estimate       — forecast ahead of the work
+//   1 = Measured       — actual after the work
 //   2 = Restatement    — correction to prior measurement
 //   3 = Verification   — third-party validated measurement
 

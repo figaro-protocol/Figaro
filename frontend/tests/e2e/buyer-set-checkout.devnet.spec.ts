@@ -101,7 +101,7 @@ test.describe('Buyer-set delivery pricing (devnet)', () => {
         // ── 1. Buyer picks the buyer-set delivery item + names the fee ──
         await placeBilateralOrderUI(page, {
             seller: merchant.address,
-            fulfilmentMode: 'deliver:buyer-assigned',
+            method: 'deliver:buyer-assigned',
             buyerAssignedCourier: {
                 address: COURIER_ADDR,
                 buyerSetPrice: BUYER_SET_DELIVERY_FEE,
