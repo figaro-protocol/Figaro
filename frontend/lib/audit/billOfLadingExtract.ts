@@ -86,8 +86,11 @@ export interface BillOfLadingDocument extends ExtractedDocument {
  * agreement declares it in its ladder, at the ordinal the registered spec
  * gives it — so ANY registry-defined process clause whose ladder carries a
  * code witnesses that milestone, and each seller stays the sovereign
- * authority over their own events. (Declaring the milestone set in spec
- * `block.audit` metadata is the tracked deeper step.)
+ * authority over their own events. This map is the BoL GENRE's own
+ * definition and lives in the genre's home — the audit layer composes
+ * clause vocabulary into documents; clauses never know document genres
+ * exist (SoC audit 2026-06-11: a spec-level `block.audit` would invert
+ * the layering arrow and is rejected).
  */
 const STAGE_WITNESS_CODE: Record<number, string> = {
     0: "prep-started",

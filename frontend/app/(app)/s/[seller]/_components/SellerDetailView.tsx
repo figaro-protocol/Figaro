@@ -118,6 +118,9 @@ export function SellerDetailView({ sellerAddress }: Props) {
             price: menuItem.price,
             quantity: 1,
             imageURI: menuItem.image || undefined,
+            massGrams: menuItem.massGrams,
+            volumeMl: menuItem.volumeMl,
+            classOfService: menuItem.classOfService,
         });
     };
 

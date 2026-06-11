@@ -11,10 +11,9 @@ export type CatalogueClassOfService =
     | "cold-chain";
 
 /** Higher number = higher handling priority when a multi-item shipment
- *  must collapse to a single class-of-service annotation.
- *  @public — pending consumer: the rewritten checkout's class-of-service
- *  collapse (scenario migrations re-wire it). */
-export const CLASS_PRIORITY: Record<CatalogueClassOfService, number> = {
+ *  must collapse to a single class-of-service annotation (consumed by
+ *  `collapseClassOfService`, which checkout drives). */
+const CLASS_PRIORITY: Record<CatalogueClassOfService, number> = {
     "standard": 1,
     "express": 2,
     "fragile": 3,
@@ -39,11 +38,8 @@ const CLASS_TO_SHORT_CODE: Record<CatalogueClassOfService, "S" | "E" | "F" | "C"
  * either and throws a typed error on anything else. Centralising the
  * normalisation here keeps callers from re-implementing the catalogue
  * convention, and replaces the previous failure mode (a cryptic
- * `numberToHex(undefined)` from viem) with a clear message.
- * @public — pending consumer: the rewritten checkout's class-of-service
- * collapse (same family as CLASS_PRIORITY above; the build path now takes
- * spec-typed short codes, so the collapse normalises at the source). */
-export function classOfServiceToShortCode(input: unknown): "S" | "E" | "F" | "C" {
+ * `numberToHex(undefined)` from viem) with a clear message. */
+function classOfServiceToShortCode(input: unknown): "S" | "E" | "F" | "C" {
     if (typeof input !== "string") {
         throw new TypeError(
             `classOfService: expected string, got ${typeof input}`,
@@ -60,6 +56,27 @@ export function classOfServiceToShortCode(input: unknown): "S" | "E" | "F" | "C"
     throw new TypeError(
         `classOfService: expected one of "S"/"E"/"F"/"C" or "standard"/"express"/"fragile"/"cold-chain", got ${JSON.stringify(input)}`,
     );
+}
+
+/**
+ * Collapse a multi-item shipment's class-of-service annotations to the
+ * single class the geo section carries: the HIGHEST-priority class among
+ * the items (cold-chain > fragile > express > standard), normalised to the
+ * encoder's short code at the source. Items without a class don't vote;
+ * returns undefined when no item declares one (the spec default applies).
+ */
+export function collapseClassOfService(
+    classes: ReadonlyArray<string | undefined>,
+): "S" | "E" | "F" | "C" | undefined {
+    let best: CatalogueClassOfService | undefined;
+    for (const c of classes) {
+        if (typeof c !== "string" || c.trim() === "") continue;
+        const code = classOfServiceToShortCode(c);
+        const long = (Object.keys(CLASS_TO_SHORT_CODE) as CatalogueClassOfService[])
+            .find((k) => CLASS_TO_SHORT_CODE[k] === code)!;
+        if (!best || CLASS_PRIORITY[long] > CLASS_PRIORITY[best]) best = long;
+    }
+    return best ? CLASS_TO_SHORT_CODE[best] : undefined;
 }
 
 /**

@@ -90,4 +90,11 @@ export interface CartItem {
     price: string;
     quantity: number;
     imageURI?: string;
+    /** Physical attributes copied from the catalogue item at add-to-cart —
+     *  checkout collapses them into the order's geo section (mass/volume
+     *  sums; highest-priority class of service). Optional: virtual or
+     *  un-annotated items omit them. */
+    massGrams?: number;
+    volumeMl?: number;
+    classOfService?: CatalogueClassOfService;
 }

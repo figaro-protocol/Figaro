@@ -24,6 +24,8 @@ import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
 import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
 import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/commerce/assemblySubOrderPlan";
 import { templateParentOrderIds } from "@/lib/designer/assemblyTemplate";
+import { clauseDeclaresField } from "@/lib/shared/clauseSpecSource";
+import { collapseClassOfService } from "@/lib/shared/sellerCatalogueMetadata";
 import { shareCommitmentPayload } from "@/lib/core/commitmentShare";
 import { sellerAuctionId, stashSellerDraft } from "@/lib/mechanisms/sellerAuction";
 import { parseToken } from "@/lib/shared/utils";
@@ -40,6 +42,12 @@ export interface AssemblyCheckoutLineItem {
     name: string;
     quantity: number;
     unitPrice: string;
+    /** Physical attributes from the cart — collapsed into the root order's
+     *  geo section at checkout (mass/volume sums × quantity; the
+     *  highest-priority class of service). */
+    massGrams?: number;
+    volumeMl?: number;
+    classOfService?: string;
 }
 
 /** The signing + transport capabilities the algorithm drives — provided by
@@ -107,19 +115,45 @@ export async function executeAssemblyCheckout(
         walletClient, coordinationMessaging, evidenceTransport,
     } = deps;
 
-    // The root node carries the design-time clause choices, spread verbatim.
+    // The root node carries the design-time clause choices, spread verbatim —
+    // then the cart's PHYSICAL attributes collapse into the geo entry (found
+    // by its declared fields, never by clause name): mass/volume sum across
+    // items × quantity; class of service takes the highest-priority class.
     const root = assembly.assemblyDoc.orders.find((o) => templateParentOrderIds(o).length === 0)
         ?? assembly.assemblyDoc.orders[0];
     if (!root) throw new Error("This assembly has no root order.");
     const isMultiOrder = assembly.assemblyDoc.orders.length > 1;
+
+    const clauseFields = { ...root.clauses };
+    const geoClauseId = Object.keys(clauseFields).find(
+        (clauseId) => clauseDeclaresField(clauseId, "classOfService"),
+    );
+    if (geoClauseId) {
+        const massGrams = lineItems.reduce(
+            (sum, li) => sum + (li.massGrams ?? 0) * li.quantity, 0);
+        const volumeMl = lineItems.reduce(
+            (sum, li) => sum + (li.volumeMl ?? 0) * li.quantity, 0);
+        const classOfService = collapseClassOfService(lineItems.map((li) => li.classOfService));
+        clauseFields[geoClauseId] = {
+            ...clauseFields[geoClauseId],
+            ...(massGrams > 0 ? { massGrams } : {}),
+            ...(volumeMl > 0 ? { volumeMl } : {}),
+            ...(classOfService ? { classOfService } : {}),
+        };
+    }
 
     const prepared = await prepareOrderCommitment({
         buyer,
         seller: leadSellerAddress,
         currency,
         payment,
-        lineItems,
-        clauseFields: { ...root.clauses },
+        // The commerce clause's lineItems are CLOSED objects — the physical
+        // attributes exist on AssemblyCheckoutLineItem solely for the geo
+        // collapse above and must not reach the commerce section (Layer-A
+        // rejects undeclared fields).
+        lineItems: lineItems.map(({ itemId, name, quantity, unitPrice }) =>
+            ({ itemId, name, quantity, unitPrice })),
+        clauseFields,
     });
     // Layer A — the buyer does not sign an invalid agreement.
     const buyerCheck = validateCommitmentAgreement(prepared.agreement, prepared.agreementHash);
