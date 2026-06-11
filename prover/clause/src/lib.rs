@@ -26,7 +26,7 @@ pub use encode::{encode_content_from_spec, EncodeError};
 pub use spec::{
     parse_clause_spec, ArrayFieldSpec, BaseFieldSpec, BigintFieldSpec, BooleanFieldSpec,
     EnumFieldSpec, FieldSpec, IntegerFieldSpec, ObjectFieldSpec, ParseClauseSpecResult,
-    ClauseBlockBinding, ClauseDrawerArticle, ClauseSpec, ClauseTier, SpecParseError,
+    ClauseBlockBinding, ClauseSpec, ClauseTier, SpecParseError,
     StringFieldSpec, StringFormat,
 };
 pub use validate::{validate_content, ValidateOptions, ValidationError, ValidationResult};

@@ -46,33 +46,12 @@ impl ClauseTier {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ClauseDrawerArticle {
-    Identity,
-    Order,
-    Fulfilment,
-    Logistics,
-    Attestations,
-    Emissions,
-    DisputeResolution,
-    Consent,
-}
-
-impl ClauseDrawerArticle {
-    fn from_str(s: &str) -> Option<Self> {
-        match s {
-            "identity" => Some(Self::Identity),
-            "order" => Some(Self::Order),
-            "fulfilment" => Some(Self::Fulfilment),
-            "logistics" => Some(Self::Logistics),
-            "attestations" => Some(Self::Attestations),
-            "emissions" => Some(Self::Emissions),
-            "dispute-resolution" => Some(Self::DisputeResolution),
-            "consent" => Some(Self::Consent),
-            _ => None,
-        }
-    }
-}
+// NOTE: `drawerArticle` is FREE-FORM, matching Layer A. Articles are an open,
+// network-defined grouping vocabulary — a registered clause may introduce a
+// new article at any time, so the prover must never enumerate them. (A closed
+// enum here once hard-failed the first non-standard article — a Layer-B
+// permissionlessness hole.) The prover only carries the value; no logic
+// branches on it.
 
 // ── Field specs ──────────────────────────────────────────────────────
 
@@ -160,7 +139,7 @@ impl FieldSpec {
 #[derive(Clone, Debug)]
 pub struct ClauseBlockBinding {
     pub tier: ClauseTier,
-    pub drawer_article: Option<ClauseDrawerArticle>,
+    pub drawer_article: Option<String>,
     pub mechanism_kinds: Vec<String>,
     pub module_ids: Vec<String>,
     pub routes: Option<Vec<String>>,
@@ -582,13 +561,13 @@ fn parse_block_binding(
     };
     let drawer_article = match raw.get("drawerArticle") {
         None => None,
-        Some(v) => match v.as_str().and_then(ClauseDrawerArticle::from_str) {
-            Some(d) => Some(d),
-            None => {
+        Some(v) => match v.as_str() {
+            Some(s) if !s.is_empty() => Some(s.to_string()),
+            _ => {
                 err(
                     errors,
                     &format!("{path}.drawerArticle"),
-                    "drawerArticle must be one of: identity, order, fulfilment, logistics, attestations, emissions, dispute-resolution, consent",
+                    "drawerArticle must be a non-empty string when present",
                 );
                 return None;
             }
