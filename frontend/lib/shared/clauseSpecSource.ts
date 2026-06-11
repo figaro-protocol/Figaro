@@ -199,23 +199,32 @@ export function describeAttestation(
     return { clauseTitle: spec.title, eventLabel: firstEnumValues(spec)?.[stage] ?? `stage ${stage}` };
 }
 
-/** The enum values a clause field admits, read STRAIGHT from the spec — the SSoT
- *  for which strings are valid. `fieldPath` is dot-delimited for nested object
- *  fields; the leaf may be an enum or an array-of-enum. Empty when absent. */
-export function clauseEnumValues(clauseId: string, fieldPath: string): readonly string[] {
+/** The FieldSpec at a dot-delimited path inside a clause's spec — the SSoT for
+ *  a field's type, constraints, enum values, `default`, and `sentinel`. The
+ *  generic build encoder and form surfaces read everything off this; undefined
+ *  when the clause or path is unknown.
+ *  @public consumed by the generic build encoder (next rung of the
+ *  de-hardcode thread); remove the tag when it lands. */
+export function clauseFieldSpec(clauseId: string, fieldPath: string): FieldSpec | undefined {
     let fields: readonly FieldSpec[] | undefined = getClauseSpec(clauseId)?.fields;
     const segments = fieldPath.split(".");
     for (let i = 0; i < segments.length; i++) {
         const field = fields?.find((f) => f.name === segments[i]);
-        if (!field) return [];
-        if (i === segments.length - 1) {
-            if (field.type === "enum") return field.values;
-            if (field.type === "array" && field.items.type === "enum") return field.items.values;
-            return [];
-        }
-        if (field.type !== "object") return [];
+        if (!field) return undefined;
+        if (i === segments.length - 1) return field;
+        if (field.type !== "object") return undefined;
         fields = field.fields;
     }
+    return undefined;
+}
+
+/** The enum values a clause field admits, read STRAIGHT from the spec — the SSoT
+ *  for which strings are valid. `fieldPath` is dot-delimited for nested object
+ *  fields; the leaf may be an enum or an array-of-enum. Empty when absent. */
+export function clauseEnumValues(clauseId: string, fieldPath: string): readonly string[] {
+    const field = clauseFieldSpec(clauseId, fieldPath);
+    if (field?.type === "enum") return field.values;
+    if (field?.type === "array" && field.items.type === "enum") return field.items.values;
     return [];
 }
 

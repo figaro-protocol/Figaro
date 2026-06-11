@@ -32,6 +32,11 @@ export interface BaseFieldSpec {
     name: string;
     required: boolean;
     description?: string;
+    /** Build/UI default applied when the composing input omits this field.
+     *  Purely composition metadata — the ABI encoder ignores it (an absent
+     *  optional still encodes as the ABI zero-value), so Layers B/C are
+     *  unaffected. Shape must match the field type (validated at parse). */
+    default?: string | number | boolean | readonly string[];
 }
 
 export interface StringFieldSpec extends BaseFieldSpec {
@@ -62,6 +67,11 @@ export interface BooleanFieldSpec extends BaseFieldSpec {
 export interface EnumFieldSpec extends BaseFieldSpec {
     type: "enum";
     values: readonly string[];
+    /** An enum value reserved as the ABI position-as-index placeholder
+     *  (conventionally index 0, e.g. klerosCourt "none"). It exists so the
+     *  wire encoding keeps its historical 1-based semantics; it is never a
+     *  valid composition input, and generic input surfaces exclude it. */
+    sentinel?: string;
 }
 
 export interface ArrayFieldSpec extends BaseFieldSpec {
@@ -213,7 +223,47 @@ function isObject(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+/** Validate a `default` against its parsed field spec. Object fields can't
+ *  carry defaults; enum/array-enum defaults must be member values (and not
+ *  the sentinel); numeric defaults respect min/max. */
+function defaultMatchesField(spec: FieldSpec, value: unknown): boolean {
+    switch (spec.type) {
+        case "string":
+            return typeof value === "string";
+        case "integer":
+            return typeof value === "number" && Number.isInteger(value)
+                && (spec.min === undefined || value >= spec.min)
+                && (spec.max === undefined || value <= spec.max);
+        case "bigint":
+            if (typeof value !== "string") return false;
+            try { BigInt(value); } catch { return false; }
+            return true;
+        case "boolean":
+            return typeof value === "boolean";
+        case "enum":
+            return typeof value === "string" && spec.values.includes(value) && value !== spec.sentinel;
+        case "array":
+            return Array.isArray(value) && value.every((v) => defaultMatchesField(spec.items, v));
+        case "object":
+            return false;
+    }
+}
+
 function parseFieldSpec(raw: unknown, path: string, errors: SpecParseError[]): FieldSpec | null {
+    const spec = parseFieldSpecCore(raw, path, errors);
+    if (spec === null) return null;
+    const rawDefault = (raw as Record<string, unknown>).default;
+    if (rawDefault !== undefined) {
+        if (!defaultMatchesField(spec, rawDefault)) {
+            errors.push({ path: `${path}.default`, message: "default must match the field's type/constraints (objects can't carry defaults; enum defaults can't be the sentinel)" });
+            return null;
+        }
+        spec.default = rawDefault as BaseFieldSpec["default"];
+    }
+    return spec;
+}
+
+function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]): FieldSpec | null {
     if (!isObject(raw)) {
         errors.push({ path, message: "field spec must be an object" });
         return null;
@@ -327,7 +377,15 @@ function parseFieldSpec(raw: unknown, path: string, errors: SpecParseError[]): F
                     return null;
                 }
             }
-            return { ...base, type: "enum", values: raw.values as readonly string[] };
+            const spec: EnumFieldSpec = { ...base, type: "enum", values: raw.values as readonly string[] };
+            if (raw.sentinel !== undefined) {
+                if (typeof raw.sentinel !== "string" || !(raw.values as string[]).includes(raw.sentinel)) {
+                    errors.push({ path: `${path}.sentinel`, message: "sentinel must be one of the enum values" });
+                    return null;
+                }
+                spec.sentinel = raw.sentinel;
+            }
+            return spec;
         }
         case "array": {
             if (!isObject(raw.items)) {

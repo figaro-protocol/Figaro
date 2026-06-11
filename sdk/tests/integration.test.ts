@@ -184,6 +184,11 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
         const domain = buildDomain(31337, coreAddress);
         const agreementHash = "0x0000000000000000000000000000000000000000000000000000000000000001" as Hex;
 
+        // Deadline derives from CHAIN time — block.timestamp is the kernel's
+        // clock, and a persisted devnet (or a skewed device clock) can sit
+        // far from wall time; the wall-clock default reverts DeadlineExpired.
+        const chainNow = (await publicClient.getBlock({ blockTag: "latest" })).timestamp;
+
         const { commitment, typedData } = buildCommitment(
             {
                 processId: "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex,
@@ -193,6 +198,7 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
                 payment: PAYMENT,
                 expectedCumulativeValue: PAYMENT,
                 agreementHash,
+                deadline: chainNow + 3600n,
             },
             domain,
         );

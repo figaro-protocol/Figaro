@@ -18,6 +18,7 @@
                 "blockchain-technical",
                 "english-language"
             ],
+            "sentinel": "none",
             "required": true,
             "description": "Kleros subcourt. none = sentinel (index 0; not a valid selection — authors must pick a real court); general = catch-all; blockchain-nontechnical / blockchain-technical = on-chain-agreement disputes; english-language = disputes hinging on English-language interpretation. Position-as-index: the generic encoder maps each value to its 0-based position; the leading `none` preserves the 1-based-sentinel semantics other Layer-C validators historically relied on."
         },
@@ -26,6 +27,7 @@
             "type": "integer",
             "min": 1,
             "max": 99,
+            "default": 3,
             "required": false,
             "description": "Minimum jurors for the Kleros subcourt. Kleros default is 3."
         }
