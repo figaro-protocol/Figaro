@@ -1,11 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { Page, expect } from '@playwright/test';
-export {
-    
-    
-    waitForWalletConnected,
-} from './test-helpers';
+export { waitForWalletConnected } from './test-helpers';
 import {
     createPublicClient,
     createWalletClient,
@@ -24,22 +20,11 @@ import {
     CORE_ABI,
     ATTESTATION_COORDINATOR_ABI,
     CLAUSE_REGISTRY_ABI,
-    buildSectionInclusionProof,
     computeAgreementHash,
-    getSectionDataBytes,
     type Agreement,
 } from '@figaro/core';
-import {
-    embeddedSpec,
-    encodeContentFromSpec,
-    type ProximityBand,
-} from '@figaro/core/clauses';
+import { type ProximityBand } from '@figaro/core/clauses';
 import { DEFAULT_AGREEMENT_HASH } from '@/lib/core/contracts';
-import { clauseIdOf } from '@/lib/core/agreement';
-
-// Tests may name clauses; production code may not.
-const GHG_CLAUSE_KEY = 'figaro-ghg-iso-14064-v1';
-const GHG_CLAUSE_ID = clauseIdOf(GHG_CLAUSE_KEY);
 import { ZERO_PROCESS_ID, ZERO_ADDRESS, hexEqual } from '@/lib/shared/evm';
 import { gotoAsWallet } from './devnet-multi-test';
 
@@ -76,51 +61,17 @@ export const ERC20_BALANCE_ABI = parseAbi([
     'function balanceOf(address) view returns (uint256)',
 ]);
 
-const BUYER_PRIVATE_KEY = ANVIL_KEYS[0];
-const RESTAURANT_PRIVATE_KEY = ANVIL_KEYS[1];
-const SUPPLIER_PRIVATE_KEY = ANVIL_KEYS[2];
 
 const ERC20_TEST_ABI = parseAbi([
     'function approve(address spender, uint256 amount) external returns (bool)',
 ]);
 
-const DISCLOSURE_KIND = { commitment: 0, inventory: 1, restatement: 2, verification: 3 } as const;
-
+// Tests may name clauses; production code may not.
 const MERCHANT_PROCESS_CLAUSE_KEY = 'figaro-merchant-process-v1';
-const MERCHANT_PROCESS_CLAUSE_ID = keccak256(stringToHex(MERCHANT_PROCESS_CLAUSE_KEY));
 const COURIER_PROCESS_CLAUSE_KEY = 'figaro-courier-process-v1';
 const PROXIMITY_POLICY_CLAUSE_KEY = 'figaro-proximity-policy-v1';
 const PROXIMITY_PROOF_CLAUSE_KEY = 'figaro-proximity-proof-v1';
-const PROXIMITY_PROOF_CLAUSE_ID = keccak256(stringToHex(PROXIMITY_PROOF_CLAUSE_KEY));
 
-/** uint8 band indices the on-chain validator accepts (matches
- *  PROXIMITY_BAND_INDEX in sdk/src/clauses/encode.ts and the validator's
- *  band guard at FigaroProximityProofV1Validator.sol). */
-const PROXIMITY_BAND_INDEX: Record<ProximityBand, number> = {
-    'zone-wifi': 1,
-    'nearby-ble': 2,
-    'contact-nfc': 3,
-};
-
-/** Merchant event types — uint8 stage per the validator's enum. order-received +
- *  accepted are core-owned (commit + bilateral signature), so the ladder begins
- *  at prep-started. */
-const MERCHANT_EVENT = {
-    prepStarted: 0,
-    readyForPickup: 1,
-    handedOff: 2,
-} as const;
-
-/** Courier event types — uint8 stage per the validator's enum. available +
- *  accepted are core-owned (commit + bilateral signature), so the ladder begins
- *  at en-route-pickup. */
-const COURIER_EVENT = {
-    enRoutePickup: 0,
-    arrivedPickup: 1,
-    inTransit: 2,
-    arrivedDropoff: 3,
-    completed: 4,
-} as const;
 
 // ── EIP-712 Types (imported from @figaro/core) ──────────────────────────────
 
@@ -139,23 +90,12 @@ type CoreCommitment = {
 const seededCommitments = new Map<`0x${string}`, CoreCommitment>();
 const agreementsByHash = new Map<`0x${string}`, Agreement>();
 
-// ── Reference agreement assemblyDocs ────────────────────────────────────────
+// ── Reference agreements ────────────────────────────────────────
 // Phase-4a requires every attestation to carry an inclusion proof against the
 // order's signed `agreementHash`. We commit a minimal agreement containing the
 // clause the seed's attestation will fire under, so the coordinator accepts
 // the proof and the Category-2 byte-equality check (sectionData == content)
 // passes.
-
-function ghgDisclosureAgreement(buyer: `0x${string}`, seller: `0x${string}`): Agreement {
-    return {
-        version: 'a1',
-        buyer,
-        seller,
-        sections: [
-            { clause: GHG_CLAUSE_KEY, data: { scope: 1 } },
-        ],
-    };
-}
 
 export function merchantProcessAgreement(buyer: `0x${string}`, seller: `0x${string}`): Agreement {
     return {
@@ -164,17 +104,6 @@ export function merchantProcessAgreement(buyer: `0x${string}`, seller: `0x${stri
         seller,
         sections: [
             { clause: MERCHANT_PROCESS_CLAUSE_KEY, data: {} },
-        ],
-    };
-}
-
-function courierProcessAgreement(buyer: `0x${string}`, seller: `0x${string}`): Agreement {
-    return {
-        version: 'a1',
-        buyer,
-        seller,
-        sections: [
-            { clause: COURIER_PROCESS_CLAUSE_KEY, data: {} },
         ],
     };
 }
@@ -221,49 +150,6 @@ function proximityHandoffAgreement(
         ],
     };
 }
-
-function agreementReceipt(commitment: CoreCommitment, clauseKey: string) {
-    const agreement = agreementsByHash.get(commitment.agreementHash);
-    if (!agreement) {
-        throw new Error(`No agreement cached for ${commitment.agreementHash}`);
-    }
-    const section = agreement.sections.find((s) => s.clause === clauseKey);
-    if (!section) {
-        throw new Error(`Agreement has no section for ${clauseKey}`);
-    }
-    const sectionData = getSectionDataBytes(section);
-    const { proof } = buildSectionInclusionProof(agreement, clauseKey);
-    return { sectionData, proof };
-}
-
-// ── Exported types ──────────────────────────────────────────────────────────
-// Grams and contentRef are not derivable from `figaro-ghg-iso-14064-v1` under
-// Phase-4a — that clause's content is `(uint8 scope)` and the validator
-// enforces content == sectionData. The grams channel lives in
-// `figaro-ghg-measurement-v1` (Category-1, runtime-only); specs assert on
-// attestation existence and associated order hash.
-
-type SeededGhgScenario = {
-    clauseId: `0x${string}`;
-    processId: `0x${string}`;
-    rootOrderHash: `0x${string}`;
-    supplierOrderHash: `0x${string}`;
-};
-
-type SeededSupersededGhgScenario = SeededGhgScenario;
-
-type SeededClosedCompleteGhgScenario = SeededGhgScenario;
-
-type SeededUnreportedProcessScenario = SeededGhgScenario;
-
-type SeededDeliveryScenario = {
-    processId: `0x${string}`;
-    foodOrderHash: `0x${string}`;
-    deliveryOrderHash: `0x${string}`;
-    buyer: `0x${string}`;
-    restaurant: `0x${string}`;
-    driver: `0x${string}`;
-};
 
 type DeploymentConfig = {
     figaroCore?: `0x${string}`;
@@ -531,115 +417,6 @@ export async function ensureTokenApprovals(coreAddress: `0x${string}`, tokenAddr
     }
 }
 
-// ── Delivery lifecycle seed ─────────────────────────────────────────────────
-
-const DUTCH_AUCTION_TEST_ABI = parseAbi([
-    'function createAuction(bytes32 auctionId, uint256 maxPrice, bytes32 processId, address currency) external',
-    'function claim(bytes32 auctionId) external',
-    'function cancel(bytes32 auctionId) external',
-    'function expire(bytes32 auctionId) external',
-    'function auctions(bytes32) view returns (address creator, uint64 startTime, uint256 maxPrice, address driver, uint256 clearingPrice)',
-    'function getCurrentPrice(bytes32 auctionId) view returns (uint256)',
-    'event AuctionCreated(bytes32 indexed auctionId, address indexed creator, uint256 maxPrice, bytes32 processId, address currency)',
-    'event AuctionClaimed(bytes32 indexed auctionId, address indexed driver, uint256 clearingPrice)',
-]);
-
-async function seedDeliveryScenario(): Promise<SeededDeliveryScenario> {
-    const localConfig = readLocalDeploymentConfig();
-    const coreAddress = resolve('NEXT_PUBLIC_FIGARO_CORE', localConfig.figaroCore)!;
-    const tokenAddress = resolve('NEXT_PUBLIC_TOKEN_ADDRESS', localConfig.tokenAddress)!;
-    const auctionAddress = resolve('NEXT_PUBLIC_DUTCH_AUCTION', localConfig.dutchAuction)!;
-    if (!coreAddress || !tokenAddress || !auctionAddress) throw new Error('Missing deployment addresses for delivery seed (need FIGARO_CORE, TOKEN, DUTCH_AUCTION)');
-
-    const buyer = privateKeyToAccount(BUYER_PRIVATE_KEY);
-    const restaurant = privateKeyToAccount(RESTAURANT_PRIVATE_KEY);
-    const driver = privateKeyToAccount(SUPPLIER_PRIVATE_KEY);
-    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const buyerClient = createWalletClient({ account: buyer, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-
-    await ensureTokenApprovals(coreAddress, tokenAddress, BUYER_PRIVATE_KEY, RESTAURANT_PRIVATE_KEY, SUPPLIER_PRIVATE_KEY);
-
-    // Both orders Active immediately (dual-signed). The merchant order carries a
-    // figaro-merchant-process-v1 clause and the courier sub-order carries a
-    // figaro-courier-process-v1 clause, so each role's seller can fire its own
-    // sovereign event log attestations.
-    const { processId, orderHash: foodOrderHash } = await createRootOrder({
-        buyerKey: BUYER_PRIVATE_KEY, sellerKey: RESTAURANT_PRIVATE_KEY, coreAddress, tokenAddress, payment: 1_000000000000000000n,
-        agreement: merchantProcessAgreement(buyer.address as `0x${string}`, restaurant.address as `0x${string}`),
-    });
-    const { orderHash: deliveryOrderHash } = await createSubOrder({
-        processId, buyerKey: BUYER_PRIVATE_KEY, sellerKey: SUPPLIER_PRIVATE_KEY, coreAddress, tokenAddress,
-        payment: 500000000000000000n, parentOrderHashes: [foodOrderHash],
-        agreement: courierProcessAgreement(buyer.address as `0x${string}`, driver.address as `0x${string}`),
-    });
-
-    // Create auction for the delivery job (pure coordination — no token handling)
-    const { request: auctionReq } = await publicClient.simulateContract({
-        account: buyer.address,
-        address: auctionAddress,
-        abi: DUTCH_AUCTION_TEST_ABI,
-        functionName: 'createAuction',
-        args: [deliveryOrderHash, 500000000000000000n, processId, tokenAddress],
-    });
-    await publicClient.waitForTransactionReceipt({ hash: await buyerClient.writeContract(auctionReq) });
-
-    return {
-        processId, foodOrderHash, deliveryOrderHash,
-        buyer: buyer.address as `0x${string}`,
-        restaurant: restaurant.address as `0x${string}`,
-        driver: driver.address as `0x${string}`,
-    };
-}
-
-
-/** Courier-side lifecycle signals — fires `figaro-courier-process-v1`
- *  attestations on the delivery sub-order. Each signal maps to the
- *  validator's uint8 event index. */
-const COURIER_SIGNAL_TO_EVENT: Record<string, { stage: number; eventType: 'en-route-pickup' | 'arrived-pickup' | 'completed' }> = {
-    declareEnRoute: { stage: COURIER_EVENT.enRoutePickup, eventType: 'en-route-pickup' },
-    declarePickedUp: { stage: COURIER_EVENT.arrivedPickup, eventType: 'arrived-pickup' },
-    declareDelivered: { stage: COURIER_EVENT.completed, eventType: 'completed' },
-};
-
-
-async function restaurantPrepSignals(foodOrderHash: `0x${string}`, _deliveryOrderHash: `0x${string}`): Promise<void> {
-    const localConfig = readLocalDeploymentConfig();
-    const coordinatorAddress = resolve('NEXT_PUBLIC_ATTESTATION_COORDINATOR', localConfig.attestationCoordinator)!;
-    if (!coordinatorAddress) throw new Error('Missing NEXT_PUBLIC_ATTESTATION_COORDINATOR');
-
-    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const restaurant = privateKeyToAccount(RESTAURANT_PRIVATE_KEY);
-    const restaurantClient = createWalletClient({ account: restaurant, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const foodCommitment = seededCommitments.get(foodOrderHash);
-    if (!foodCommitment) throw new Error(`Missing seeded commitment for ${foodOrderHash}`);
-
-    const { sectionData, proof } = agreementReceipt(foodCommitment, MERCHANT_PROCESS_CLAUSE_KEY);
-
-    // Preparing: restaurant attests prep-started on the food order
-    const prepContent = encodeContentFromSpec(
-        embeddedSpec('figaro-merchant-process-v1')!,
-        { eventType: 'prep-started', evidenceUri: '' },
-    );
-    const { request: prepReq } = await publicClient.simulateContract({
-        account: restaurant.address, address: coordinatorAddress, abi: ATTESTATION_COORDINATOR_ABI,
-        functionName: 'attestAsSeller',
-        args: [foodCommitment, foodCommitment, MERCHANT_PROCESS_CLAUSE_ID, MERCHANT_EVENT.prepStarted, sectionData, proof, prepContent],
-    });
-    await publicClient.waitForTransactionReceipt({ hash: await restaurantClient.writeContract(prepReq) });
-
-    // PickupReady: restaurant attests ready-for-pickup on the food order
-    const readyContent = encodeContentFromSpec(
-        embeddedSpec('figaro-merchant-process-v1')!,
-        { eventType: 'ready-for-pickup', evidenceUri: '' },
-    );
-    const { request: readyReq } = await publicClient.simulateContract({
-        account: restaurant.address, address: coordinatorAddress, abi: ATTESTATION_COORDINATOR_ABI,
-        functionName: 'attestAsSeller',
-        args: [foodCommitment, foodCommitment, MERCHANT_PROCESS_CLAUSE_ID, MERCHANT_EVENT.readyForPickup, sectionData, proof, readyContent],
-    });
-    await publicClient.waitForTransactionReceipt({ hash: await restaurantClient.writeContract(readyReq) });
-}
-
 // ── Anvil EVM snapshot / revert ──────────────────────────────────────────────
 
 const snapshotClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
@@ -652,134 +429,10 @@ export async function evmRevert(snapshotId: string): Promise<void> {
     await snapshotClient.request({ method: 'evm_revert' as any, params: [snapshotId] } as any);
 }
 
-/**
- * AttestationCoordinator ABI extended with the proximity-proof
- * validator's custom errors. Without these, viem decodes a revert
- * from FigaroProximityProofV1Validator.sol as a raw 4-byte selector
- * (e.g. `0x150b14ee` for `ZeroNonce()`) instead of a typed name, and
- * test assertions matching on the error name fail.
- */
-const PROXIMITY_VALIDATOR_ERROR_FRAGMENTS = parseAbi([
-    'error InvalidBand(uint8 band)',
-    'error ZeroNonce()',
-    'error DeviceSigTooShort(uint256 length)',
-    'error DeviceSigTooLong(uint256 length)',
-    'error ClauseIdMismatch(bytes32 expected, bytes32 actual)',
-]);
-
-const COORDINATOR_ABI_WITH_PROXIMITY_ERRORS = [
-    ...ATTESTATION_COORDINATOR_ABI,
-    ...PROXIMITY_VALIDATOR_ERROR_FRAGMENTS,
-] as const;
-
-/**
- * Submit a `figaro-proximity-proof-v1` attestation as the seller of
- * the given order. The order's committed agreement must carry a
- * `figaro-proximity-proof-v1` section — use `proximityHandoffAgreement`
- * when constructing the sub-order.
- *
- * On-chain validator (FigaroProximityProofV1Validator.sol) checks
- * structural validity only: `band ∈ {1, 2, 3}`, nonce non-zero,
- * deviceSig length ∈ [65, 512]. No ecrecover.
- *
- * Returns the AttestationCoordinator tx hash.
- */
-async function attestProximityProofAsSeller(opts: {
-    orderHash: `0x${string}`;
-    sellerKey: `0x${string}`;
-    band: ProximityBand;
-    nonce: `0x${string}`;
-    deviceSig: `0x${string}`;
-}): Promise<`0x${string}`> {
-    const localConfig = readLocalDeploymentConfig();
-    const coordinatorAddress = resolve('NEXT_PUBLIC_ATTESTATION_COORDINATOR', localConfig.attestationCoordinator);
-    if (!coordinatorAddress) throw new Error('Missing NEXT_PUBLIC_ATTESTATION_COORDINATOR');
-
-    const commitment = seededCommitments.get(opts.orderHash);
-    if (!commitment) throw new Error(`Missing seeded commitment for ${opts.orderHash}`);
-
-    const { sectionData, proof } = agreementReceipt(commitment, PROXIMITY_PROOF_CLAUSE_KEY);
-    const content = encodeContentFromSpec(
-        embeddedSpec('figaro-proximity-proof-v1')!,
-        { band: opts.band, nonce: opts.nonce, deviceSig: opts.deviceSig },
-    );
-
-    const seller = privateKeyToAccount(opts.sellerKey);
-    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const sellerClient = createWalletClient({ account: seller, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-
-    const { request } = await publicClient.simulateContract({
-        account: seller.address,
-        address: coordinatorAddress,
-        abi: COORDINATOR_ABI_WITH_PROXIMITY_ERRORS,
-        functionName: 'attestAsSeller',
-        // role == target (same-order attestation), stage = band index.
-        args: [
-            commitment,
-            commitment,
-            PROXIMITY_PROOF_CLAUSE_ID,
-            PROXIMITY_BAND_INDEX[opts.band],
-            sectionData,
-            proof,
-            content,
-        ],
-    });
-    // Wait for the receipt before returning — callers query the
-    // Attestation event right after, and an unmined tx makes that
-    // getContractEvents race come back empty. Matches every sibling
-    // write helper in this file.
-    const hash = await sellerClient.writeContract(request);
-    await publicClient.waitForTransactionReceipt({ hash });
-    return hash;
-}
-
 /** Build the proximity-handoff agreement so callers can seed sub-orders
  *  carrying both the policy and the proof sections. Re-export so the
  *  test spec can compose its own scenario without forking the helper. */
 export { proximityHandoffAgreement };
-
-/**
- * Submit a buyer-side GHG attestation on an order seeded by one of the
- * seedGhg*Scenario helpers. Pairs with the existing seller-side
- * inventory attestation that those seeds fire, exercising the
- * AttestationCoordinator.attestAsBuyer write path (only Vitest-tested
- * pre-2026-05-19).
- *
- * The order's committed agreement must contain a `figaro-ghg-iso-14064-v1`
- * section — true for every order seeded via `ghgDisclosureAgreement(...)`.
- */
-async function attestGhgAsBuyer(
-    orderHash: `0x${string}`,
-    stage: 0 | 1 | 2 | 3 = DISCLOSURE_KIND.verification,
-): Promise<`0x${string}`> {
-    const localConfig = readLocalDeploymentConfig();
-    const coordinatorAddress = resolve('NEXT_PUBLIC_ATTESTATION_COORDINATOR', localConfig.attestationCoordinator);
-    if (!coordinatorAddress) throw new Error('Missing NEXT_PUBLIC_ATTESTATION_COORDINATOR');
-
-    const commitment = seededCommitments.get(orderHash);
-    if (!commitment) throw new Error(`Missing seeded commitment for ${orderHash} — call seedGhg*Scenario first`);
-
-    const { sectionData, proof } = agreementReceipt(commitment, GHG_CLAUSE_KEY);
-
-    const buyer = privateKeyToAccount(BUYER_PRIVATE_KEY);
-    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const buyerClient = createWalletClient({ account: buyer, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-
-    const { request } = await publicClient.simulateContract({
-        account: buyer.address,
-        address: coordinatorAddress,
-        abi: ATTESTATION_COORDINATOR_ABI,
-        functionName: 'attestAsBuyer',
-        args: [commitment, GHG_CLAUSE_ID, stage, sectionData, proof, sectionData],
-    });
-    // Wait for the receipt before returning — callers query the
-    // Attestation event right after, and an unmined tx makes that
-    // getContractEvents race come back empty. Matches every sibling
-    // write helper in this file.
-    const hash = await buyerClient.writeContract(request);
-    await publicClient.waitForTransactionReceipt({ hash });
-    return hash;
-}
 
 /** SellerRegistry ABI fragment for seedRegisteredSeller. Local copy keeps
  *  the seed helper independent of the frontend's full ABI export. */
@@ -998,7 +651,7 @@ export async function registerNovelClause(
         ?? cfg.attestationCoordinator) as `0x${string}`;
     const pub = localPublicClient();
     const idHash = keccak256(stringToHex(spec.clauseId));
-    const registrar = privateKeyToAccount(BUYER_PRIVATE_KEY);
+    const registrar = privateKeyToAccount(ANVIL_KEYS[0]);
     const wallet = createWalletClient({ account: registrar, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
     // The third party's own Layer-C validator, one per clauseId (binding checks

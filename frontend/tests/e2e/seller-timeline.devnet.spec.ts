@@ -1,29 +1,23 @@
 /**
  * seller-timeline.devnet.spec.ts
  *
- * Phase 1a of the e2e remediation plan (backlog 2026-05-19): adds
  * UI-tier coverage for the seller side of `/orders/[processId]`.
- * `delivery-lifecycle.devnet` fires merchant-process signals via the
- * AttestationCoordinator with viem (`restaurantPrepSignals` in
- * devnet-helpers) — that's contract-tier; the click→hook→contract
- * wiring through the four `btn-merchant-next-*` buttons had no
- * devnet test.
  *
  * What this exercises:
  *   - Seller wallet (anvil[1]) navigates to /orders/<processId>.
  *   - Header renders "You are the seller" (role-discriminator
- *     branch in OrderTimelineView.tsx:437).
+ *     branch in OrderTimelineView).
  *   - Click through the post-commit merchant-process sequence:
- *     prep-started → ready-for-pickup → handed-off. Each click →
- *     `handleMerchantNext` → `useMerchantProcessActions.signal` →
- *     AttestationCoordinator.attestAsSeller. After each, assert the
+ *     prep-started → ready-for-pickup → handed-off. Each click goes
+ *     through the generic capability rail
+ *     (`capability-execute-submit-clause-attestation` →
+ *     AttestationCoordinator.attestAsSeller). After each, assert the
  *     on-chain Attestation event for that stage exists. Arrival and
  *     acceptance are core (the commit), not merchant-process events, so
  *     the seeded committed order opens directly on the "Accepted" status.
  *
- * Doesn't try to fire from the buyer's wallet (different role
- * branch — covered by delivery-lifecycle / lifecycle.devnet) or
- * exercise spectator view (Phase 1b).
+ * Doesn't try to fire from the buyer's wallet (different role branch)
+ * or exercise spectator view.
  *
  * Requires Anvil + ./deploy-local.sh + Kubo for the merchant agreement
  * pin path.
@@ -80,7 +74,7 @@ test.describe('OrderTimelineView seller side (devnet)', () => {
     // Three sequential signs + tx confirms; 60s isn't enough.
     test.setTimeout(180_000);
 
-    test('seller walks the post-commit merchant-process path through the btn-merchant-next-* buttons', async ({ page }) => {
+    test('seller walks the post-commit merchant-process path through the capability rail', async ({ page }) => {
         const config = readLocalDeploymentConfig();
         const coreAddress = (process.env.NEXT_PUBLIC_FIGARO_CORE ?? config.figaroCore) as Hex;
         const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? config.tokenAddress) as Hex;

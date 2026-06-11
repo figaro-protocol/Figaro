@@ -458,7 +458,7 @@ export interface BoundAssembly {
 }
 
 export interface SellerBoundAssemblies {
-    /** The seller's on-chain bound assemblies, assemblyDocs resolved —
+    /** The seller's on-chain bound assemblies, assemblyTemplates resolved —
      *  the buyer-facing choice set at checkout. Each bound assembly is
      *  one option the seller offers; the buyer picks one. */
     assemblies: BoundAssembly[];
@@ -566,17 +566,17 @@ export function useSellerBoundAssemblies(
                     return;
                 }
 
-                const assemblyDocs = await Promise.all(
+                const assemblyTemplates = await Promise.all(
                     matchedEvents.map((e) => fetchAssemblyTemplate(e.metadataURI)),
                 );
                 if (cancelled) return;
 
-                // matchedEvents and assemblyDocs are index-aligned (Promise.all
+                // matchedEvents and assemblyTemplates are index-aligned (Promise.all
                 // over a .map preserves order). Pair them into BoundAssembly,
                 // dropping any assemblyTemplate that failed to fetch.
                 const assemblies: BoundAssembly[] = [];
                 const modalitySet = new Set<string>();
-                assemblyDocs.forEach((m, i) => {
+                assemblyTemplates.forEach((m, i) => {
                     if (!m) return;
                     const slug = matchedEvents[i].slug;
                     const { modality, coordination } = extractRootModality(m);

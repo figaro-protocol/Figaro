@@ -15,7 +15,7 @@
  */
 import path from 'path';
 import { test as base, expect, Browser, BrowserContext, Page } from '@playwright/test';
-import { ensureWalletHasMockTokens, waitForWalletConnected, ANVIL_ACCOUNTS } from './test-helpers';
+import { ANVIL_ACCOUNTS } from './test-helpers';
 import {
     canonicalizeAgreement,
     computeAgreementHash,
