@@ -48,6 +48,23 @@ interface Props {
     sellerAddress: string;
 }
 
+/** Compact, spec-agnostic value summary of a clause's composed fields — the
+ *  leaf scalar/enum values the buyer actually chose ("delivery",
+ *  "zone-wifi"), joined for inline display. Empty objects (runtime anchors
+ *  like a proof clause) and booleans summarize to "" — title-only rows. */
+function clauseValueSummary(fields: unknown): string {
+    const leaves: string[] = [];
+    const walk = (value: unknown): void => {
+        if (value === null || value === undefined || value === "") return;
+        if (Array.isArray(value)) { value.forEach(walk); return; }
+        if (typeof value === "object") { Object.values(value as Record<string, unknown>).forEach(walk); return; }
+        if (typeof value === "boolean") return;
+        leaves.push(String(value));
+    };
+    walk(fields);
+    return leaves.join(" · ");
+}
+
 export function CheckoutView({ sellerAddress }: Props) {
     const sellerAddressLower = sellerAddress.toLowerCase();
     const sellerAddressTyped = sellerAddressLower.startsWith("0x")
@@ -89,14 +106,8 @@ export function CheckoutView({ sellerAddress }: Props) {
         order: { step: commitStep, error: commitError, payload },
     } = useCheckout(currency);
 
-    const { items, getTotalPrice, method, setMethod, deliveryMaxPrice, setDeliveryMaxPrice } = useCartStore();
+    const { items, method, setMethod, deliveryMaxPrice, setDeliveryMaxPrice } = useCartStore();
     const { openConnectModal } = useConnectModal();
-
-    const totalPrice = getTotalPrice();
-    const totalPriceAmount = items.length > 0 && totalPrice ? parseToken(totalPrice, tokenDecimals) : 0n;
-    const buyerBondAmount = totalPriceAmount > 0n
-        ? calculateBonds(totalPriceAmount, totalPriceAmount).buyerBond
-        : 0n;
 
     const { assemblies: boundAssemblies } = useSellerBoundAssemblies(sellerAddressTyped);
 
@@ -126,7 +137,6 @@ export function CheckoutView({ sellerAddress }: Props) {
     }, [methodOptions]);
 
     const balance = tokenBalance ?? 0n;
-    const hasInsufficientBalance = !!buyer && tokenBalance !== undefined && balance < buyerBondAmount;
     const isApproving = isApprovePending || isApproveConfirming;
     const pendingCheckout = useRef(false);
     const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -212,14 +222,10 @@ export function CheckoutView({ sellerAddress }: Props) {
         ? (pickedAssembly.assemblyTemplate.orders.find((o) => templateParentOrderIds(o).length === 0)
             ?? pickedAssembly.assemblyTemplate.orders[0])
         : undefined;
-    const orderClauseIds = pickedRoot ? Object.keys(pickedRoot.clauses) : [];
     const cartTotal = cartItems.reduce(
         (sum, item) => sum + parseToken(item.price || "0", tokenDecimals) * BigInt(item.quantity),
         0n,
     );
-    const buyerBond = cartTotal > 0n
-        ? calculateBonds(cartTotal, cartTotal).buyerBond
-        : 0n;
 
     // Multi-order price transparency: the buyer pays the lead's cut plus every
     // contributor's cut, each priced LIVE from that contributor's own catalogue.
@@ -259,6 +265,43 @@ export function CheckoutView({ sellerAddress }: Props) {
             }),
         ];
         return { rows, total: rows.reduce((s, r) => s + r.payment, 0n) };
+    })();
+
+    // The buyer commits EVERY order in the plan (buyer == rootBuyer on each
+    // — the kernel star shape): 2× payment locked per order, payment to that
+    // order's seller + an equal refundable bond. Aggregate over the WHOLE
+    // plan — a root-only figure under-reports every multi-order checkout.
+    const planTotal = kitBreakdown ? kitBreakdown.total : cartTotal;
+    const lockedTotal = planTotal > 0n ? calculateBonds(planTotal, planTotal).buyerBond : 0n;
+    const hasInsufficientBalance = !!buyer && tokenBalance !== undefined && balance < lockedTotal;
+
+    // Every order in the assembly — root + sub-orders — surfaced for review:
+    // the buyer signs and bonds ALL of them. Each clause renders its COMPOSED
+    // values (the terms the buyer is agreeing to), spec-driven. Structural
+    // clauses (`block.structural`, e.g. the topology manifest) are
+    // protocol-composed, not buyer-chosen terms; they stay out of the review.
+    const agreementGroups = ((): Array<{ key: string; label: string; clauses: Array<{ clauseId: string; values: string }> }> => {
+        if (!pickedAssembly) return [];
+        const orders = pickedAssembly.assemblyTemplate.orders;
+        const lead = sellerCatalogue.address as `0x${string}`;
+        const nameOf = (addr: `0x${string}`) =>
+            sellerCatalogues.find((c) => hexEqual(c.address, addr))?.name ?? truncateHex(addr);
+        let plan: ReturnType<typeof planSubOrderSellers> = [];
+        if (orders.length > 1) {
+            try { plan = planSubOrderSellers(pickedAssembly); } catch { plan = []; }
+        }
+        const sellerOf = new Map(plan.map(({ node, seller }) => [node.id, seller]));
+        return orders.map((order, i) => {
+            const isRoot = templateParentOrderIds(order).length === 0;
+            const assigned = isRoot ? lead : sellerOf.get(order.id);
+            return {
+                key: String(order.id ?? i),
+                label: assigned ? nameOf(assigned) : "(to be assigned)",
+                clauses: Object.entries(order.clauses)
+                    .filter(([clauseId]) => !getClauseSpec(clauseId)?.block?.structural)
+                    .map(([clauseId, fields]) => ({ clauseId, values: clauseValueSummary(fields) })),
+            };
+        });
     })();
 
     const cartUnitSystem = sellerCatalogue.unitSystem ?? "metric";
@@ -365,15 +408,15 @@ export function CheckoutView({ sellerAddress }: Props) {
         if (cartItems.length === 0) return;
         if (hasInsufficientBalance) {
             setCheckoutError(
-                `Insufficient funds. Required: ${formatToken(buyerBond, tokenDecimals)}, available: ${formatToken(balance, tokenDecimals)}`,
+                `Insufficient funds. Required: ${formatToken(lockedTotal, tokenDecimals)}, available: ${formatToken(balance, tokenDecimals)}`,
             );
             return;
         }
         setCheckoutError(null);
-        if (needsApproval(buyerBond)) {
+        if (needsApproval(lockedTotal)) {
             try {
                 pendingCheckout.current = true;
-                approve(buyerBond * 10n);
+                approve(lockedTotal * 10n);
             } catch {
                 pendingCheckout.current = false;
                 setCheckoutError("Payment authorization failed. Please try again.");
@@ -458,14 +501,14 @@ export function CheckoutView({ sellerAddress }: Props) {
                             )}
                             <div className="flex justify-between">
                                 <span className="text-neutral-600">Your bond (refundable on resolve)</span>
-                                <span className="text-neutral-900 tabular-nums">
-                                    {formatToken(cartTotal, tokenDecimals)}
+                                <span className="text-neutral-900 tabular-nums" data-testid="checkout-bond-refundable">
+                                    {formatToken(planTotal, tokenDecimals)}
                                 </span>
                             </div>
                             <div className="flex justify-between border-t border-neutral-200 pt-1.5 font-semibold">
                                 <span className="text-black">Locked at commit</span>
-                                <span className="text-black tabular-nums">
-                                    {formatToken(buyerBond, tokenDecimals)}
+                                <span className="text-black tabular-nums" data-testid="checkout-locked-total">
+                                    {formatToken(lockedTotal, tokenDecimals)}
                                 </span>
                             </div>
                             {(cartMassGrams > 0 || cartVolumeMl > 0) && (
@@ -487,18 +530,26 @@ export function CheckoutView({ sellerAddress }: Props) {
                             bonding to, read straight from the assembly. This is
                             the pre-sign review (replaces the modal gate): the
                             buyer sees the terms, then place-order signs them. */}
-                        {orderClauseIds.length > 0 && (
-                            <div className="space-y-1 border-t border-neutral-200 pt-3" data-testid="checkout-agreement-terms">
+                        {agreementGroups.length > 0 && (
+                            <div className="space-y-2 border-t border-neutral-200 pt-3" data-testid="checkout-agreement-terms">
                                 <p className="text-xs font-semibold text-neutral-500">Agreement</p>
-                                <ul className="text-xs text-neutral-600 space-y-0.5">
-                                    {orderClauseIds.map((clauseId) => (
-                                        <li key={clauseId} data-testid={`agreement-clause-${clauseId}`}>
-                                            {getClauseSpec(clauseId)?.title ?? clauseId}
-                                        </li>
-                                    ))}
-                                </ul>
+                                {agreementGroups.map((group) => (
+                                    <div key={group.key} className="space-y-0.5" data-testid={`agreement-order-${group.key}`}>
+                                        {agreementGroups.length > 1 && (
+                                            <p className="text-[11px] font-medium text-neutral-500">{group.label}</p>
+                                        )}
+                                        <ul className="text-xs text-neutral-600 space-y-0.5">
+                                            {group.clauses.map(({ clauseId, values }) => (
+                                                <li key={clauseId} data-testid={`agreement-clause-${clauseId}`}>
+                                                    {getClauseSpec(clauseId)?.title ?? clauseId}
+                                                    {values && <span className="text-neutral-900"> — {values}</span>}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ))}
                                 <p className="text-[11px] text-neutral-400">
-                                    Placing the order signs this agreement and locks your bond.
+                                    Placing the order signs {agreementGroups.length > 1 ? "these agreements" : "this agreement"} and locks your bond.
                                 </p>
                             </div>
                         )}

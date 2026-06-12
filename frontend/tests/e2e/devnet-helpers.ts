@@ -1014,6 +1014,25 @@ export async function placeBilateralOrderUI(
         }
     }
 
+    // UI-response checks before placing (the checkout summary is a UI
+    // response too — manual review 2026-06-12 caught it un-asserted):
+    // the economics rows aggregate the WHOLE plan, so locked-at-commit is
+    // always exactly 2× the refundable bond; and the agreement review
+    // renders the clauses' composed VALUES, not bare titles.
+    const bondText = await page.getByTestId('checkout-bond-refundable').innerText();
+    const lockedText = await page.getByTestId('checkout-locked-total').innerText();
+    expect(parseFloat(lockedText), 'locked at commit = 2× the refundable bond')
+        .toBeCloseTo(parseFloat(bondText) * 2, 6);
+    // Multi-order plan: the bond must equal the ALL-sellers total — the
+    // root-only regression (bond = lead's cut while the breakdown shows
+    // every contributor) satisfies the 2× check above but fails this one.
+    const kitTotal = page.getByTestId('cart-kit-total');
+    if (await kitTotal.isVisible().catch(() => false)) {
+        expect(parseFloat(bondText), 'refundable bond = the full multi-order plan total')
+            .toBeCloseTo(parseFloat(await kitTotal.innerText()), 6);
+    }
+    await expect(page.getByTestId('checkout-agreement-terms')).toContainText('—');
+
     await page.getByTestId('btn-place-order').click();
 
     // No pre-sign modal at checkout — the inline agreement terms ARE the review;
