@@ -41,7 +41,10 @@ const ERC20_VIEW_ABI = parseAbi([
 // couriers this merchant designates (addresses derived below — never hardcoded).
 const SELLERS = [
     { addressIndex: 5, name: 'Kiosk Corner', specialty: 'kiosk', geohash: '9q8yyk8yu', bind: ['kiosk-sale'], products: [{ name: 'Newspaper', price: '1' }] },
-    { addressIndex: 6, name: 'Aurora Café', specialty: 'café', geohash: '9q8yyk8yt', bind: ['direct-sale'], products: [{ name: 'Espresso', price: '1' }] },
+    // Aurora binds TWO assemblies — the multi-option checkout seller: the
+    // buyer chooses between consume-onsite and delivery at the method select
+    // (single-binding sellers auto-commit and render no dropdown).
+    { addressIndex: 6, name: 'Aurora Café', specialty: 'café', geohash: '9q8yyk8yt', bind: ['direct-sale', 'local-commerce'], courierIndices: { 'local-commerce': [8] }, products: [{ name: 'Espresso', price: '1' }] },
     { addressIndex: 7, name: "Rosa's Kitchen", specialty: 'prepared food, own delivery', geohash: '9q8yyk8yv', bind: ['local-commerce'], courierIndices: { 'local-commerce': [8] }, products: [{ name: 'Margherita pizza', price: '1' }] },
     { addressIndex: 8, name: 'Cardinal Couriers', specialty: 'last-mile delivery', geohash: '9q8yyk8yw', bind: ['local-commerce'], products: [{ name: 'Standard delivery', price: '1', category: 'delivery' }] },
     { addressIndex: 9, name: 'Saffron Table', specialty: 'prepared food, buyer-arranged delivery', geohash: '9q8yyk8yx', bind: ['local-commerce-buyer-assigned'], products: [{ name: 'Margherita pizza', price: '1' }] },

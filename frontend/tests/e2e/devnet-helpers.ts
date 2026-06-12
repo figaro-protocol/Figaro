@@ -841,9 +841,14 @@ export async function discoverSellers(): Promise<DiscoveredSeller[]> {
     return out;
 }
 
-/** The registered seller bound to `slug`. `withCourier` disambiguates a
- *  seller-assigned merchant (has courier `counterpartyBindings`) from a courier
- *  (none). Throws unless exactly one matches — discovery, not assumption. */
+/** A registered seller bound to `slug`. `withCourier` disambiguates a
+ *  seller-assigned merchant (has courier `counterpartyBindings`) from a
+ *  courier (none). The network is OPEN — any number of sellers may bind the
+ *  same assembly (the multi-binding seller, a worn devnet's spec-seeded
+ *  profiles), so plurality is normal: the pick is deterministic, the
+ *  EARLIEST-registered match (`discoverSellers` walks SellerRegistered in
+ *  block order — the populate exemplar on devnet). Throws only when NONE
+ *  matches — that is a real missing-anchor failure. */
 export async function discoverSellerByAssembly(
     slug: string,
     opts: { withCourier?: boolean } = {},
@@ -857,8 +862,8 @@ export async function discoverSellerByAssembly(
         const hasCourier = (b.counterpartyBindings ?? []).some((c) => (c.addresses ?? []).length > 0);
         return opts.withCourier ? hasCourier : !hasCourier;
     });
-    if (matches.length !== 1) {
-        throw new Error(`discoverSellerByAssembly(${slug}, withCourier=${String(opts.withCourier)}): expected exactly 1 seller, found ${matches.length} — onboard first / check on-chain bindings`);
+    if (matches.length === 0) {
+        throw new Error(`discoverSellerByAssembly(${slug}, withCourier=${String(opts.withCourier)}): no registered seller binds this assembly — onboard first / check on-chain bindings`);
     }
     return matches[0];
 }
@@ -942,6 +947,12 @@ export async function placeBilateralOrderUI(
          *  a buyer-set item (no fixed price) pass `buyerSetPrice` — the buyer
          *  names the delivery fee and the courier order commits at it. */
         buyerAssignedCourier?: { address: string; buyerSetPrice?: string };
+        /** Runs at the reviewed checkout — after method selection and any
+         *  courier picking, BEFORE the response checks and the place click.
+         *  The seam for spec-level assertions on the checkout surface (e.g.
+         *  the multi-option dropdown). Must leave the page ready to place
+         *  under `method`. */
+        beforePlace?: (page: Page) => Promise<void>;
     },
 ): Promise<void> {
     await page.goto(`/s/${opts.seller}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
@@ -974,19 +985,29 @@ export async function placeBilateralOrderUI(
     // The buyer's method options ARE the seller's bound assemblies — one
     // option per assembly that carries a modality, labelled by the
     // assembly's own name, valued by the modality string the assembly commits.
-    // They render only once the bindings resolve chain→IPFS, and selection is
-    // REQUIRED whenever options exist (explicit unset placeholder, no
-    // auto-default) — so a caller whose scenario composes a modality MUST pass
-    // `method` (the modality value, e.g. 'consume-onsite') and we WAIT
-    // for the select; an instant visibility probe races the bindings fetch.
+    // They render only once the bindings resolve chain→IPFS. A MULTI-option
+    // seller renders the selector (selection required, explicit unset
+    // placeholder); a SINGLE-option seller auto-commits and renders the
+    // method statically — no one-option dropdown. A caller whose scenario
+    // composes a modality MUST pass `method` (the modality value, e.g.
+    // 'consume-onsite'); we WAIT for either surface — an instant visibility
+    // probe races the bindings fetch.
     const methodSelect = page.getByTestId('select-method');
+    const methodStatic = page.getByTestId('method-static');
     if (opts.method) {
-        await methodSelect.waitFor({ state: 'visible', timeout: 30000 });
-        await expect(
-            page.getByTestId(`option-method-${opts.method}`),
-            `checkout offers the ${opts.method} assembly option`,
-        ).toHaveCount(1, { timeout: 20000 });
-        await methodSelect.selectOption(opts.method);
+        await expect(methodSelect.or(methodStatic).first()).toBeVisible({ timeout: 30000 });
+        if (await methodSelect.isVisible().catch(() => false)) {
+            await expect(
+                page.getByTestId(`option-method-${opts.method}`),
+                `checkout offers the ${opts.method} assembly option`,
+            ).toHaveCount(1, { timeout: 20000 });
+            await methodSelect.selectOption(opts.method);
+        } else {
+            await expect(
+                methodStatic,
+                `checkout auto-committed to the seller's single ${opts.method} assembly`,
+            ).toHaveAttribute('data-method', opts.method);
+        }
     } else if (await methodSelect.isVisible().catch(() => false)) {
         // Caller named no modality (e.g. an assembly with no modality clause
         // usually shows no selector at all) — best-effort: pick the first option.
@@ -1014,24 +1035,33 @@ export async function placeBilateralOrderUI(
         }
     }
 
+    if (opts.beforePlace) await opts.beforePlace(page);
+
     // UI-response checks before placing (the checkout summary is a UI
     // response too — manual review 2026-06-12 caught it un-asserted):
     // the economics rows aggregate the WHOLE plan, so locked-at-commit is
     // always exactly 2× the refundable bond; and the agreement review
     // renders the clauses' composed VALUES, not bare titles.
-    const bondText = await page.getByTestId('checkout-bond-refundable').innerText();
-    const lockedText = await page.getByTestId('checkout-locked-total').innerText();
-    expect(parseFloat(lockedText), 'locked at commit = 2× the refundable bond')
-        .toBeCloseTo(parseFloat(bondText) * 2, 6);
-    // Multi-order plan: the bond must equal the ALL-sellers total — the
-    // root-only regression (bond = lead's cut while the breakdown shows
-    // every contributor) satisfies the 2× check above but fails this one.
-    const kitTotal = page.getByTestId('cart-kit-total');
-    if (await kitTotal.isVisible().catch(() => false)) {
-        expect(parseFloat(bondText), 'refundable bond = the full multi-order plan total')
-            .toBeCloseTo(parseFloat(await kitTotal.innerText()), 6);
-    }
-    await expect(page.getByTestId('checkout-agreement-terms')).toContainText('—');
+    // Retried as ONE consistent read: the rows re-render when a courier
+    // selection lands, so single-shot reads can straddle a render pass.
+    await expect(async () => {
+        const bond = parseFloat(await page.getByTestId('checkout-bond-refundable').innerText());
+        const locked = parseFloat(await page.getByTestId('checkout-locked-total').innerText());
+        expect(locked, 'locked at commit = 2× the refundable bond').toBeCloseTo(bond * 2, 6);
+        // Multi-order plan: the bond must equal the ALL-sellers total — the
+        // root-only regression (bond = lead's cut while the breakdown shows
+        // every contributor) satisfies the 2× check above but fails this one.
+        const kitTotal = page.getByTestId('cart-kit-total');
+        if (await kitTotal.isVisible().catch(() => false)) {
+            expect(bond, 'refundable bond = the full multi-order plan total')
+                .toBeCloseTo(parseFloat(await kitTotal.innerText()), 6);
+        }
+    }).toPass({ timeout: 15_000 });
+    // The agreement review must render — but asserting a composed VALUE here
+    // would be closed-world: a permissionless assembly may carry only
+    // value-less clauses (title-only rows). Specs whose assemblies compose
+    // values assert them explicitly (e.g. multi-option-checkout).
+    await expect(page.getByTestId('checkout-agreement-terms')).toBeVisible();
 
     await page.getByTestId('btn-place-order').click();
 

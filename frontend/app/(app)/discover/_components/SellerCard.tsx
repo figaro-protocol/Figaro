@@ -137,11 +137,8 @@ export function SellerCard({
                         </span>
                     ),
                 )}
-                {assemblies.length === 0 && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 border border-gray-200">
-                        Kernel-direct
-                    </span>
-                )}
+                {/* No bindings → no pills. NO FALLBACKS: the surface renders
+                    what the network says, never a synthesized stand-in. */}
             </div>
 
             {/* Method pills — clickable filter triggers. */}

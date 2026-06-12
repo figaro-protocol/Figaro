@@ -8,17 +8,21 @@
  *
  * Scope: ONE seller, the wizard, the on-chain registration. Nothing else. It uses
  * a dedicated wallet (anvil[13]) that no other test registers, so the wizard
- * genuinely runs, and it adopts NO assembly — which keeps it standalone (no
- * scenario/assembly prerequisite). This test has nothing to do with how other
- * tests get sellers on-chain: runtime specs DISCOVER sellers from SellerRegistry
- * → IPFS, never from here.
+ * genuinely runs. Assembly binding is MANDATORY (user rule 2026-06-12 — a
+ * profile without bindings cannot be ordered from), so the spec asserts the
+ * refusal first, then binds the first anchored assembly from the live list
+ * (the scenario specs run earlier in this Playwright project and anchor
+ * them). This test has nothing to do with how other tests get sellers
+ * on-chain: runtime specs DISCOVER sellers from SellerRegistry → IPFS,
+ * never from here.
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server.
  */
 import { expect } from "@playwright/test";
 import { test, gotoAsWallet } from "./devnet-multi-test";
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from "viem";
-import { assertPinnedInIpfs, readLocalDeploymentConfig } from "./devnet-helpers";
+import { assertPinnedInIpfs, discoverSellers, readLocalDeploymentConfig } from "./devnet-helpers";
+import { ASSEMBLY_REGISTRY_ABI } from "@/lib/mechanisms/useAssemblyRegistry";
 
 const RPC_URL = "http://127.0.0.1:8545";
 const LOCAL_ANVIL = defineChain({
@@ -30,6 +34,7 @@ const LOCAL_ANVIL = defineChain({
 
 const SELLER_REGISTRY_ABI = parseAbi([
     "event SellerRegistered(address indexed seller, string metadataURI)",
+    "event SellerProfileUpdated(address indexed seller, string metadataURI)",
 ]);
 
 // The wizard-test seller — this test's own input data. anvil[13]: an unlocked
@@ -78,7 +83,20 @@ async function onboardViaWizard(page: import("@playwright/test").Page) {
     await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/sellers\/assemblies/);
 
-    // Step 4 — Assemblies: adopt none (standalone wizard test — no scenario dep)
+    // Step 4 — Assemblies: MANDATORY (user rule 2026-06-12 — a profile
+    // without bindings cannot be ordered from). First assert the control:
+    // Next with nothing selected is refused with the validation message.
+    await page.getByRole("button", { name: /^Next/ }).click();
+    // Scoped filter — the step indicator is its own live-region alert.
+    await expect(
+        page.getByRole("alert").filter({ hasText: /bind at least one published assembly/i }),
+    ).toBeVisible();
+    await expect(page).toHaveURL(/\/sellers\/assemblies/);
+    // Then bind the first anchored assembly, discovered from the live list
+    // (the scenario specs run earlier in this project and anchor them).
+    const firstAssemblyRow = page.locator('[data-testid^="seller-assembly-row-"]').first();
+    await firstAssemblyRow.waitFor({ state: 'visible', timeout: 30_000 });
+    await firstAssemblyRow.locator('input[type="checkbox"]').first().check();
     await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/sellers\/agents/);
 
@@ -105,27 +123,42 @@ test.describe("seller registration wizard (devnet)", () => {
         const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY ?? config.sellerRegistry) as Hex;
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
-        // Mainnet semantics: a seller registers ONCE and persists. Walk the wizard
-        // only if this wallet isn't already registered (re-runnable on a persisted devnet).
-        const already = await publicClient.getContractEvents({
-            address: sellerRegistry, abi: SELLER_REGISTRY_ABI, eventName: "SellerRegistered",
-            args: { seller: SELLER.address }, fromBlock: 0n,
-        });
-        if (already.length === 0) {
+        // Mainnet semantics: a seller registers ONCE and persists. Walk the
+        // wizard when this wallet isn't registered yet — or when its CURRENT
+        // profile predates the mandatory-assembly rule (no bindings): the
+        // wizard runs in update mode and the profile gains its binding.
+        const latestProfileURI = async (): Promise<string | undefined> => {
+            const [registrations, updates] = await Promise.all([
+                publicClient.getContractEvents({
+                    address: sellerRegistry, abi: SELLER_REGISTRY_ABI, eventName: "SellerRegistered",
+                    args: { seller: SELLER.address }, fromBlock: 0n,
+                }),
+                publicClient.getContractEvents({
+                    address: sellerRegistry, abi: SELLER_REGISTRY_ABI, eventName: "SellerProfileUpdated",
+                    args: { seller: SELLER.address }, fromBlock: 0n,
+                }),
+            ]);
+            return [...registrations, ...updates]
+                .sort((a, b) => Number(a.blockNumber - b.blockNumber))
+                .at(-1)?.args.metadataURI as string | undefined;
+        };
+        const uriBefore = await latestProfileURI();
+        let conformant = false;
+        if (uriBefore) {
+            const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? "http://127.0.0.1:8080";
+            const doc = await (await fetch(`${gateway}/ipfs/${uriBefore.slice("ipfs://".length)}`)).json();
+            conformant = ((doc.assemblyBindings ?? []) as unknown[]).length > 0;
+        }
+        if (!uriBefore || !conformant) {
             await onboardViaWizard(page);
         }
 
         // ── Anchored on SellerRegistry, profile URI on IPFS ─────────────────
-        const events = await publicClient.getContractEvents({
-            address: sellerRegistry, abi: SELLER_REGISTRY_ABI, eventName: "SellerRegistered",
-            args: { seller: SELLER.address }, fromBlock: 0n,
-        });
-        expect(events.length).toBeGreaterThanOrEqual(1);
-        const profileURI = events[events.length - 1].args.metadataURI as string;
+        const profileURI = await latestProfileURI();
         expect(profileURI).toMatch(/^ipfs:\/\//);
 
         // ── Pinned in IPFS — proof of persistence ───────────────────────────
-        await assertPinnedInIpfs(profileURI.slice("ipfs://".length));
+        await assertPinnedInIpfs(profileURI!.slice("ipfs://".length));
 
         // ── Surfaces where a buyer finds it: its page + /discover ───────────
         await page.goto(`/s/${SELLER.address}?e2e=devnet`, { waitUntil: "domcontentloaded" });
@@ -146,5 +179,31 @@ test.describe("seller registration wizard (devnet)", () => {
             cards.filter({ hasText: SELLER.name }).first(),
             `seller "${SELLER.name}" should surface on /discover`,
         ).toBeVisible({ timeout: 15000 });
+
+        // ── The cross-check filter: discover surfaces ONLY sellers whose
+        // profile binds an ANCHORED assembly (the AssemblyRegistry is the
+        // authority). Computed from chain — never a name roster: every
+        // registered seller WITHOUT an anchored binding must be absent.
+        const [published, allSellers] = await Promise.all([
+            publicClient.getContractEvents({
+                address: (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? config.assemblyRegistry ?? "") as Hex,
+                // The REAL ABI — a hand-written event signature silently
+                // matches zero logs and judges every seller non-conformant.
+                abi: ASSEMBLY_REGISTRY_ABI,
+                eventName: "AssemblyRegistered",
+                fromBlock: 0n,
+            }),
+            discoverSellers(),
+        ]);
+        const anchoredSlugs = new Set(published.map((e) => e.args.slug as string));
+        const nonConformant = allSellers.filter(
+            (s) => !s.assemblyBindings.some((b) => anchoredSlugs.has(b.assemblySlug)),
+        );
+        for (const seller of nonConformant.slice(0, 5)) {
+            await expect(
+                cards.filter({ hasText: seller.name }),
+                `non-conformant seller "${seller.name}" (no anchored binding) must NOT surface on /discover`,
+            ).toHaveCount(0);
+        }
     });
 });

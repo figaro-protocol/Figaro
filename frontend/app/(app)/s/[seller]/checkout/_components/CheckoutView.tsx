@@ -125,6 +125,8 @@ export function CheckoutView({ sellerAddress }: Props) {
     );
 
     // If the cart's persisted choice isn't offered by this seller, clear it.
+    // A SINGLE bound option auto-commits — there is nothing to choose, and a
+    // one-option dropdown is noise; the static method line shows it instead.
     useEffect(() => {
         if (
             method
@@ -132,6 +134,9 @@ export function CheckoutView({ sellerAddress }: Props) {
             && !methodOptions.some((o) => o.method === method)
         ) {
             setMethod(undefined);
+        }
+        if (methodOptions.length === 1 && method !== methodOptions[0].method) {
+            setMethod(methodOptions[0].method);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [methodOptions]);
@@ -558,7 +563,19 @@ export function CheckoutView({ sellerAddress }: Props) {
                             seller offers more than one. The options + labels come
                             from the assemblies themselves; the checkout hardcodes
                             no modality. */}
-                        {methodOptions.length > 0 && (
+                        {methodOptions.length === 1 && (
+                            <div>
+                                <p className="text-xs font-semibold text-neutral-500 mb-1">Method</p>
+                                <p
+                                    className="text-sm text-black"
+                                    data-testid="method-static"
+                                    data-method={methodOptions[0].method}
+                                >
+                                    {methodOptions[0].name}
+                                </p>
+                            </div>
+                        )}
+                        {methodOptions.length > 1 && (
                             <div>
                                 <label
                                     htmlFor="method-select"

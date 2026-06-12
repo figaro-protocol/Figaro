@@ -142,7 +142,7 @@ function translatePublishRevert(err: unknown, attemptedSlug: string): Error {
  * No caching, no auto-refresh. To pick up a newly published assembly
  * after mount, call `refetch`.
  */
-function usePublishedAssemblies(author: `0x${string}` | undefined) {
+export function usePublishedAssemblies(author: `0x${string}` | undefined) {
     const [data, setData] = useState<PublishedAssembly[] | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [generation, setGeneration] = useState(0);

@@ -62,8 +62,13 @@ function formatLockPeriod(seconds: bigint): string {
 
 function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], wallet: `0x${string}`): DraftSummary | { error: string } {
     if (!state.profile?.name) return { error: "Step 2 (Identity) is incomplete: name is required." };
+    if (!state.profile.defaultTokenAddress) return { error: "Step 2 (Identity) is incomplete: pick the accepted token your catalogue is priced in." };
     const items = state.catalogue?.items ?? [];
     if (items.length === 0) return { error: "Step 3 (Catalogue) is incomplete: add at least one item before publishing." };
+    // A profile without assembly bindings cannot be ordered from — the
+    // register is refused, not just the step navigation (deep links and
+    // stale drafts land here too). User rule 2026-06-12.
+    if ((state.assemblies ?? []).length === 0) return { error: "Step 4 (Assemblies) is incomplete: bind at least one published assembly — a seller profile without one cannot be ordered from." };
 
     const profileTemplate: Omit<SellerProfileMetadata, "catalogueURI"> = {
         subjectAddress: wallet,

@@ -98,6 +98,7 @@ export function OnboardingAssembliesForm({
         Map<string, CounterpartyBinding[]>
     >(new Map());
     const [hydrated, setHydrated] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
 
     useEffect(() => {
         if (hydrated || !loaded) return;
@@ -145,6 +146,14 @@ export function OnboardingAssembliesForm({
 
     function handleNext(e: React.FormEvent) {
         e.preventDefault();
+        // MANDATORY: a profile without assembly bindings cannot be ordered
+        // from (checkout enables only for a bound profile) — neither the
+        // wizard nor the edit surface may produce one (user rule 2026-06-12).
+        if (selected.size === 0) {
+            setSubmitError("Bind at least one published assembly — a seller profile without one cannot be ordered from.");
+            return;
+        }
+        setSubmitError(null);
         if (onSave) {
             if (!address) return;
             onSave(buildBindings(address, selected, choices, counterpartiesBySlug)).catch(() => {
@@ -267,8 +276,8 @@ export function OnboardingAssembliesForm({
                 })}
             </div>
 
-            {externalError && (
-                <p className="text-sm text-red-600" role="alert">{externalError}</p>
+            {(submitError ?? externalError) && (
+                <p className="text-sm text-red-600" role="alert">{submitError ?? externalError}</p>
             )}
 
             <div className="flex items-center justify-between pt-4 border-t border-default">

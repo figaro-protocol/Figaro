@@ -63,7 +63,8 @@ export interface Listing {
     methods: CanonicalMethod[];
     /** Tokens the seller accepts for settlement. */
     acceptedTokens: AcceptedTokenMetadata[];
-    /** All assembly bindings this seller has. May be empty (kernel-direct), one (single assembly), or many. */
+    /** All assembly bindings this seller has. May be empty (browse-only —
+     *  checkout enables only for a bound profile), one, or many. */
     bindings: ListingBinding[];
 }
 
