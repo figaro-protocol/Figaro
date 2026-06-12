@@ -1068,6 +1068,13 @@ export async function placeBilateralOrderUI(
     // No pre-sign modal at checkout — the inline agreement terms ARE the review;
     // place-order signs directly. Relay the buyer-signed payload to the seller.
     await page.getByTestId('buyer-share-panel').waitFor({ state: 'visible', timeout: 45000 });
+    // UI response: once the commitment is signed, place-order must stay
+    // disabled (awaiting-counter through done) — an active button would
+    // sign a second commitment for the same cart (manual review 2026-06-12).
+    await expect(
+        page.getByTestId('btn-place-order'),
+        'place-order disables once the commitment is signed',
+    ).toBeDisabled();
     await page.getByTestId('send-commitment-xmtp').click();
     await expect(page.getByTestId('commitment-xmtp-status')).toContainText(/sent over XMTP/i, { timeout: 45000 });
 }

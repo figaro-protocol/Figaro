@@ -431,7 +431,13 @@ export function CheckoutView({ sellerAddress }: Props) {
         }
     };
 
-    const placingOrder = commitStep === "signing" || commitStep === "broadcasting" || commitStep === "ready";
+    // Place-order accepts a NEW order only from a clean slate. Every
+    // in-flight state (signing → awaiting-counter → ready → broadcasting)
+    // AND the completed one (done) keep the button disabled — re-clicking
+    // would sign a SECOND commitment for the same cart. A fresh order
+    // starts from the browse page (new cart, fresh mount); `error`
+    // re-enables for retry.
+    const placingOrder = commitStep !== "idle" && commitStep !== "error";
 
     return (
         <div data-testid="checkout-view" data-seller-address={sellerAddressLower} className="container mx-auto px-6 py-10 max-w-2xl space-y-6">
