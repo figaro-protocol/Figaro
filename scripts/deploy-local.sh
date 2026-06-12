@@ -21,7 +21,26 @@ DEPLOY_DIR="$REPO_ROOT/.deployments"
 CORE_MANIFEST="$DEPLOY_DIR/local.json"
 
 RPC_URL="${RPC_URL:-http://127.0.0.1:8545}"
-export PRIVATE_KEY="${PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}"
+
+# Randomized throwaway deployer (devnet default). The universal Anvil
+# default-deployer addresses (FigaroCore at 0xCf7Ed3…, MockToken at
+# 0x5FbDB…, etc. — identical on every dev machine on Earth) collide with
+# wallet-security threat lists: MetaMask/Blockaid flags the EIP-712 commit
+# signature as "This is a deceptive request" because those exact addresses
+# host flagged contracts on public chains. A fresh deployer per deploy
+# yields per-machine-unique addresses — which is also what a real network
+# deployment looks like. An explicit PRIVATE_KEY env still wins (the
+# testnet/mainnet path). Deploy.s.sol mints to anvil[0..19] explicitly,
+# so no fixture depends on the deployer identity.
+if [ -z "${PRIVATE_KEY:-}" ]; then
+    PRIVATE_KEY="0x$(openssl rand -hex 32)"
+    DEPLOYER_ADDR=$(cast wallet address --private-key "$PRIVATE_KEY")
+    echo "🎲 Throwaway deployer $DEPLOYER_ADDR — funding 10 ETH from anvil[0]"
+    cast send "$DEPLOYER_ADDR" --value 10ether \
+        --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+        --rpc-url "$RPC_URL" >/dev/null
+fi
+export PRIVATE_KEY
 
 # Optional: --verify flag for Etherscan contract verification
 VERIFY_FLAG=""

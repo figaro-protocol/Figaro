@@ -56,7 +56,7 @@ Full harness inventory (file lists, property names, rule counts) → `TESTING.md
 
 ## Deployment scripts (`script/`)
 
-- `script/Deploy.s.sol` — devnet (Anvil); uses mock verifier and mock tokens.
+- `script/Deploy.s.sol` — devnet (Anvil); uses mock verifier and mock tokens. The wrapper deploys from a RANDOMIZED throwaway deployer (funded from anvil[0]) so contract addresses are per-machine unique — the universal Anvil-default addresses trip MetaMask/Blockaid threat lists ("deceptive request" on the commit signature). Explicit `PRIVATE_KEY` env overrides (testnet/mainnet path). Mints MOCK/permit tokens to anvil[0..19] explicitly.
 - `script/DeployMainnet.s.sol` — mainnet; no mocks; reads all sensitive params from env. Wires `FigaroBatchVerifier` + `RpgfMinter` to a real SP1 verifier — the proof path is in the mainnet launch, not a later phase.
 - `script/DeployMockKleros.s.sol` — devnet only; deploys `MockKlerosArbitrator` + `MockKlerosArbitrableProxy`. Run via `./scripts/deploy-mock-kleros.sh` after `./scripts/deploy-local.sh`.
 - `script/MintTokens.s.sol` — utility: mint test tokens to existing devnet accounts.

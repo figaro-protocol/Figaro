@@ -15,7 +15,20 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ENV_FILE="$REPO_ROOT/frontend/.env.local"
 
 RPC_URL="${RPC_URL:-http://127.0.0.1:8545}"
-export DEPLOYER_PRIVATE_KEY="${DEPLOYER_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}"
+
+# Randomized throwaway deployer — same rationale as deploy-local.sh: the
+# universal Anvil default-deployer addresses trip MetaMask/Blockaid threat
+# lists. Nothing depends on the mock-Kleros deployer identity (no ownership
+# gating in the mocks); an explicit DEPLOYER_PRIVATE_KEY env still wins.
+if [ -z "${DEPLOYER_PRIVATE_KEY:-}" ]; then
+    DEPLOYER_PRIVATE_KEY="0x$(openssl rand -hex 32)"
+    KLEROS_DEPLOYER=$(cast wallet address --private-key "$DEPLOYER_PRIVATE_KEY")
+    echo "🎲 Throwaway Kleros deployer $KLEROS_DEPLOYER — funding 5 ETH from anvil[0]"
+    cast send "$KLEROS_DEPLOYER" --value 5ether \
+        --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+        --rpc-url "$RPC_URL" >/dev/null
+fi
+export DEPLOYER_PRIVATE_KEY
 
 echo "🏛️  Deploying mock Kleros stack..."
 echo "   rpc=$RPC_URL"

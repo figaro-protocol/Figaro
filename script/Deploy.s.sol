@@ -200,12 +200,15 @@ contract Deploy is Script {
         fig.registerMinter(address(airdrop), 600_000_000 ether);
         console.log("RpgfMinter deployed at:", address(airdrop));
 
-        // Submit a stage-0 root for the deployer (single-leaf tree:
-        // leaf == root, empty proof verifies). Mock verifier accepts
-        // any proof bytes. Lets /fig/claim work end-to-end on devnet
+        // Submit a stage-0 root for anvil[0] (single-leaf tree: leaf ==
+        // root, empty proof verifies; the mock verifier accepts any proof
+        // bytes). The devnet claimant is pinned to anvil[0] — NOT the
+        // deployer, which deploy-local.sh randomizes to a throwaway key —
+        // so /fig/claim works end-to-end for the standard test wallet
         // without spinning up an external sequencer.
+        address devnetClaimant = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266; // anvil[0]
         uint256 airdropClaimAmount = 1 ether;
-        bytes32 airdropLeaf = keccak256(abi.encodePacked(deployer, airdropClaimAmount));
+        bytes32 airdropLeaf = keccak256(abi.encodePacked(devnetClaimant, airdropClaimAmount));
         bytes memory rpgfPublicValues = abi.encode(uint8(0), airdropLeaf, airdropClaimAmount, uint32(1));
         airdrop.submitRoot(rpgfPublicValues, hex"");
         console.log("RpgfMinter: stage-0 root submitted (devnet fixture)");
@@ -243,11 +246,14 @@ contract Deploy is Script {
         console.log("FigaroBatchVerifier deployed at:", address(batchVerifier));
 
         // ── Mint test tokens to Anvil accounts ──────────────────────
-        // anvil[1..19] (anvil[0] is the deployer, already minted MOCK above) —
-        // 20 funded accounts total. anvil must launch with `--accounts 20` so
-        // these indices also hold ETH for gas (see scripts/devup.sh). Headroom
+        // anvil[0..19] — all 20 accounts minted EXPLICITLY. The deployer is
+        // a randomized throwaway key (deploy-local.sh), so no anvil account
+        // inherits the constructor mint; anvil[0] is funded here like every
+        // other index. anvil must launch with `--accounts 20` so these
+        // indices also hold ETH for gas (see scripts/devup.sh). Headroom
         // for per-scenario dedicated sellers beyond the original anvil[5..9].
-        address[19] memory testAccounts = [
+        address[20] memory testAccounts = [
+            0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,
             0x70997970C51812dc3A010C7d01b50e0d17dc79C8,
             0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC,
             0x90F79bf6EB2c4f870365E785982E1f101E93b906,
@@ -272,7 +278,7 @@ contract Deploy is Script {
             token.mint(testAccounts[i], 100_000 ether);
             permitToken.mint(testAccounts[i], 100_000 ether);
         }
-        console.log("Minted test tokens to Anvil accounts [1]-[9]");
+        console.log("Minted test tokens to Anvil accounts [0]-[19]");
 
         vm.stopBroadcast();
 
