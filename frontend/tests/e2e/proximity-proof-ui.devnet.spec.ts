@@ -19,11 +19,13 @@
  *   4. Click the proximity-proof button — handoff 1 (arrived-pickup).
  *   5. Click it again — the button reads the courier-process event log
  *      and certifies handoff 2 (arrived-dropoff) instead.
- *   6. Assert the proximity-proof + courier-process Attestation events
- *      across both handoff edges.
+ *   6. Assert the timeline renders the attested ladder + witnessed proof
+ *      (positive UI reaction), then certify the Attestation events
+ *      out-of-band.
  *
- * Additive UI-tier coverage — the contract path is covered by
- * proximity-proof.devnet.spec.ts (viem-tier).
+ * Additive UI-tier coverage — the contract path lives in Foundry
+ * (FigaroProximityProofV1ValidatorTest; the viem-tier Playwright spec was
+ * retired as a misfiled contract test).
  *
  * Requires Anvil + ./deploy-local.sh + Kubo.
  */
@@ -133,6 +135,12 @@ test.describe('Courier proximity proof via UI (devnet)', () => {
         await walkClauseAttestations(page, {
             wallet: COURIER_ADDR, processId, clicks: 6, who: 'courier',
         });
+
+        // Closing UI reaction (positive): the timeline renders the attested
+        // ladder's final stage and the witnessed proof as events — the
+        // retired rail alone would also be true of a broken derivation.
+        await expect(page.getByTestId('timeline-event-arrived-dropoff')).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByTestId('timeline-event-zone-wifi')).toBeVisible();
 
         // Out-of-band: the courier-process ladder is fully attested (enum
         // ordinals 0..4 — arrived-pickup is 1, arrived-dropoff is 3) and the

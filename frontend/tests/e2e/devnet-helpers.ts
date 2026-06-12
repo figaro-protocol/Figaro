@@ -18,7 +18,6 @@ import { ANVIL_KEYS } from '../anvilAccounts';
 import {
     COMMITMENT_TYPES,
     CORE_ABI,
-    ATTESTATION_COORDINATOR_ABI,
     CLAUSE_REGISTRY_ABI,
     computeAgreementHash,
     type Agreement,
@@ -200,10 +199,6 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
     }
 
     return config;
-}
-
-function resolve(envKey: string, fallback?: `0x${string}`): `0x${string}` | undefined {
-    return (process.env[envKey] as `0x${string}` | undefined) ?? fallback;
 }
 
 // ── V5 EIP-712 signing ──────────────────────────────────────────────────────

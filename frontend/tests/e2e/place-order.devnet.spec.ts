@@ -112,9 +112,10 @@ test.describe('/s/[seller] full place-order flow (devnet)', () => {
 
         // Pre-approve so the place-order flow doesn't have to walk a
         // separate token-approval step in the UI — keeps the spec
-        // focused on the commit path (permit.devnet covers the
-        // approval-via-permit branch). Both parties: the seller's bond is
-        // pulled when it counter-signs in the inbox.
+        // focused on the commit path. The approval-UX branch itself has
+        // NO e2e coverage (a permit.devnet spec never existed; backlog
+        // item). Both parties: the seller's bond is pulled when it
+        // counter-signs in the inbox.
         await ensureTokenApprovals(coreAddress, tokenAddress, BUYER_KEY, SELLER_KEY);
 
         const seeded = await seedRegisteredSellerWithCatalogue();

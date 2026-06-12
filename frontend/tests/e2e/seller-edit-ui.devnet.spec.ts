@@ -2,10 +2,10 @@
  * seller-edit-ui.devnet.spec.ts
  *
  * Phase 4 C4a-d of the e2e remediation plan: UI coverage of the four
- * `/sellers/edit/<route>` surfaces. The companion contract-tier spec
- * `seller-update-profile.devnet.spec.ts` exercises the
- * `SellerRegistry.updateProfile` path directly via viem; this spec
- * drives the same path through the UI forms so the round-trip
+ * `/sellers/edit/<route>` surfaces. The `SellerRegistry.updateProfile`
+ * contract path lives in Foundry (SellerRegistryTest — the viem-tier
+ * Playwright spec was retired as a misfiled contract test); this spec
+ * drives the path through the UI forms so the round-trip
  * (fetch → hydrate → edit → re-pin → tx → redirect) is covered as a
  * single live system.
  *
@@ -27,13 +27,9 @@ import {
     createPublicClient,
     defineChain,
     http,
-    keccak256,
     parseAbi,
-    parseEther,
-    toHex,
     type Hex,
 } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
 import {
     pinJSONToIPFS,
     readLocalDeploymentConfig,
@@ -55,9 +51,6 @@ const SELLER_KEY = ANVIL_KEYS[0];
 const SELLER_REGISTRY_ABI = parseAbi([
     'event SellerProfileUpdated(address indexed seller, string metadataURI)',
 ]);
-
-
-const ASSEMBLY_REGISTRATION_DEPOSIT = parseEther('0.001');
 
 function requireEnv(name: string): Hex {
     const v = process.env[name] as Hex | undefined;
@@ -248,36 +241,22 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         const seller = ANVIL_ACCOUNTS[0] as Hex;
         const tokenAddress = requireEnv('NEXT_PUBLIC_TOKEN_ADDRESS');
 
-        // 1. Register a minimal assembly. `useAssemblyChoices` reads
-        //    AssemblyRegistered events + fetches the assemblyTemplate JSON, so
-        //    both must exist on-chain + IPFS for the row to render.
-        //    AssemblyTemplate needs `name` + `orders[]`; orderless or
-        //    fully empty templates still render as a choice — what
-        //    matters for this test is that the slug is selectable.
-        const assemblyTemplate = {
-            slug: `phase4-c4d-${Date.now()}`,
-            name: 'Phase 4 Assembly',
-            orders: [],
-            agreements: {},
-            version: '1.0.0',
-        };
-        const { uri: assemblyTemplateURI } = await pinJSONToIPFS(assemblyTemplate);
-        const contentHash = keccak256(toHex(JSON.stringify(assemblyTemplate)));
-
-        const assemblyRegistry = getAssemblyRegistry();
-        const author = privateKeyToAccount(SELLER_KEY);
+        // 1. Discover a published assembly from chain — never register junk:
+        //    a fresh slug per run burns a deposit and squats a permanent
+        //    slug on the persisted devnet (mainnet rehearsal). The
+        //    devnet-authoring project anchored the scenario assemblies
+        //    (template pinned to IPFS, AssemblyRegistered on-chain) before
+        //    this project runs — exactly what `useAssemblyChoices` needs
+        //    to render the row.
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-        const { createWalletClient } = await import('viem');
-        const authorClient = createWalletClient({ account: author, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-        const { request: registerReq } = await publicClient.simulateContract({
-            account: author.address,
-            address: assemblyRegistry,
+        const registered = await publicClient.getContractEvents({
+            address: getAssemblyRegistry(),
             abi: ASSEMBLY_REGISTRY_ABI,
-            functionName: 'registerAssembly',
-            args: [assemblyTemplate.slug, contentHash, assemblyTemplateURI],
-            value: ASSEMBLY_REGISTRATION_DEPOSIT,
+            eventName: 'AssemblyRegistered',
+            fromBlock: 0n,
         });
-        await publicClient.waitForTransactionReceipt({ hash: await authorClient.writeContract(registerReq) });
+        expect(registered.length, 'no anchored assemblies on this devnet — run the devnet-authoring project first').toBeGreaterThan(0);
+        const assemblySlug = registered[registered.length - 1].args.slug as string;
 
         // 2. Register the seller (separate from the assembly author —
         //    same key here, fine). Seller starts with no bindings.
@@ -293,7 +272,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         await page.goto('/sellers/edit/assemblies?e2e=devnet', { waitUntil: 'domcontentloaded' });
 
         // The assembly row carries `seller-assembly-row-<slug>` testid.
-        const assemblyRow = page.getByTestId(`seller-assembly-row-${assemblyTemplate.slug}`);
+        const assemblyRow = page.getByTestId(`seller-assembly-row-${assemblySlug}`);
         await expect(assemblyRow).toBeVisible({ timeout: 30000 });
         await assemblyRow.locator('input[type="checkbox"]').first().check();
 

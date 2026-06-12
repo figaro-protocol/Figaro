@@ -2,10 +2,10 @@
  * inbox.devnet.spec.ts
  *
  * /inbox is the merchant entry point — surfaces every active root
- * order where the connected wallet is the seller-of-record.
- * `incoming-orders.spec.ts` covers the mock-mode shell + wallet gate;
- * this spec adds devnet coverage with a real on-chain order that the
- * inbox must surface.
+ * order where the connected wallet is the seller-of-record. This spec
+ * is the inbox's e2e coverage: a real on-chain order the inbox must
+ * surface. (The mock-mode shell spec it once deferred to was retired
+ * with the mock project, 2026-05-20.)
  *
  * Also doubles as a regression test for `useWalletProcessRows`'s
  * root-order filter — pre-this-session the filter compared

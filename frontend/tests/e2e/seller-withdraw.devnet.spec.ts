@@ -19,17 +19,16 @@
 import { test, expect, gotoAsWallet, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import {
     createPublicClient,
-    createWalletClient,
     defineChain,
     http,
     parseAbi,
-    parseEther,
     type Hex,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
     evmIncreaseTime,
     readLocalDeploymentConfig,
+    seedRegisteredSeller,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 
@@ -49,7 +48,6 @@ const LOCAL_ANVIL = defineChain({
 const SELLER_KEY = ANVIL_KEYS[3];
 const SELLER_ADDR = ANVIL_ACCOUNTS[3];
 
-const REGISTRATION_DEPOSIT = parseEther('0.001');
 const LOCK_PERIOD_SECONDS = 365 * 24 * 60 * 60; // matches Deploy.s.sol
 
 const SELLER_REGISTRY_ABI = parseAbi([
@@ -79,23 +77,6 @@ function getRegistryAddress(): Hex {
         throw new Error('NEXT_PUBLIC_SELLER_REGISTRY not set — run ./deploy-local.sh');
     }
     return addr;
-}
-
-async function registerSeller(metadataURI: string): Promise<void> {
-    const registry = getRegistryAddress();
-    const seller = privateKeyToAccount(SELLER_KEY);
-    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const sellerClient = createWalletClient({ account: seller, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-
-    const { request } = await publicClient.simulateContract({
-        account: seller.address,
-        address: registry,
-        abi: SELLER_REGISTRY_ABI,
-        functionName: 'register',
-        args: [metadataURI],
-        value: REGISTRATION_DEPOSIT,
-    });
-    await publicClient.waitForTransactionReceipt({ hash: await sellerClient.writeContract(request) });
 }
 
 async function isRegistered(): Promise<boolean> {
@@ -129,18 +110,19 @@ test.describe('SellerRegistry.withdraw (devnet)', () => {
     // e2e (no UI action, no UI reaction), so it does not live here.
 
     test('withdraw after lock elapses — UI clicks through, receipt renders, registration cleared', async ({ page }) => {
-        // Idempotent on the persisted devnet: the wallet ends each run
-        // withdrawn, so re-runs re-register; a crashed run may leave it
-        // registered — skip the register then.
-        if (!(await isRegistered())) {
-            await registerSeller('ipfs://test-G9-withdraw');
-        }
+        // Canonical idempotent seeder: this wallet ends each run withdrawn,
+        // so the helper's event-diff check (registrations vs withdrawals)
+        // routes re-runs through `register`; a crashed run that left it
+        // registered routes through `updateProfile` instead.
+        await seedRegisteredSeller({
+            walletKey: SELLER_KEY,
+            profile: { name: 'Withdraw Spec Seller' },
+        });
         await evmIncreaseTime(LOCK_PERIOD_SECONDS + 60);
 
-        // Hit /sellers — RegisteredCard renders when profileOf().registeredAt > 0.
-        // The metadataURI ("ipfs://test-G9-withdraw") won't resolve to a real
-        // profile JSON, so the dashboard will surface "Couldn't fetch profile
-        // from IPFS" — that's fine; the WithdrawRow renders regardless.
+        // Hit /sellers — RegisteredCard renders when profileOf().registeredAt > 0,
+        // showing the seeded (IPFS-pinned) profile; the WithdrawRow renders
+        // alongside it.
         await gotoAsWallet(page, SELLER_ADDR, '/sellers?e2e=devnet');
 
         // Wait for the WithdrawRow's idle text — proves the dashboard
