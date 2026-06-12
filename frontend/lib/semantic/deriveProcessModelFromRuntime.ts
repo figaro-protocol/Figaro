@@ -8,7 +8,7 @@ import { sectionByField } from "@/lib/core/orderAgreement";
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
 import { ProcessSummary } from "@/hooks/core/useWalletProcessIds";
 import type { RuntimeAttestation } from "@/lib/core/indexer";
-import { clauseTier, clauseLadderField, clauseAttestation, isCompanionClause, getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { clauseTier, clauseLadderField, clauseAttestation, clauseHandoffStages, isCompanionClause, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
 import {
     AttachmentModel,
@@ -42,11 +42,134 @@ function ledgerSource(sourceLabel: string, referenceId?: string) {
     };
 }
 
-function roleCapabilities(
-    _order: Order,
-    allOrders: Order[],
+/** The runtime proof clause an order's agreement carries (a companion enum,
+ *  e.g. a proximity proof) at the band committed in its sister policy section
+ *  on the same order — the order's hand-off pairing carrier. */
+interface ProofCarrier {
+    clauseId: string;
+    clauseIdHash: string;
+    stage: number;
+    eventCode: string;
+    ladderField: string;
+}
+
+/** Pre-indexed runtime state, built ONCE per process derivation so the
+ *  per-order capability loop stays O(orders + attestations). The kernel's
+ *  resolve ceiling (~2,145 orders / 30M gas) must flow through this deriver
+ *  without quadratic blowup — per-order scans of the full attestation array
+ *  are the O(N²) shape this bundle exists to prevent. */
+interface RuntimeIndexes {
+    /** Attestations grouped by the order they target. */
+    attestationsByOrder: Map<string, RuntimeAttestation[]>;
+    /** Per order id: its proof carrier (see ProofCarrier). */
+    proofCarrierByOrder: Map<string, ProofCarrier>;
+    /** Off-chain topology edges, both directions, keyed by order id. */
+    childrenByOrder: Map<string, string[]>;
+    parentsByOrder: Map<string, string[]>;
+}
+
+function buildRuntimeIndexes(
+    processOrders: Order[],
+    topology: Map<string, { parentOrderIds: string[] }>,
     agreements: Map<string, Agreement>,
     attestations: RuntimeAttestation[],
+): RuntimeIndexes {
+    const attestationsByOrder = new Map<string, RuntimeAttestation[]>();
+    for (const attestation of attestations) {
+        const list = attestationsByOrder.get(attestation.orderHash);
+        if (list) list.push(attestation);
+        else attestationsByOrder.set(attestation.orderHash, [attestation]);
+    }
+
+    const proofCarrierByOrder = new Map<string, ProofCarrier>();
+    for (const order of processOrders) {
+        const agreement = order.agreementHash ? agreements.get(order.agreementHash) : undefined;
+        if (!agreement) continue;
+        for (const section of agreement.sections) {
+            const clauseId = section.clause;
+            if (clauseTier(clauseId) !== "runtime" || !isCompanionClause(clauseId)) continue;
+            const ladder = clauseLadderField(clauseId);
+            if (!ladder) continue;
+            // Band committed in the sister policy section on this order.
+            const policyId = getClauseSpec(clauseId)?.block?.sisterClauseId;
+            const bands = policyId
+                ? ((getSection(agreement, policyId)?.data as { bands?: string[] } | undefined)?.bands ?? [])
+                : [];
+            const eventCode = bands[0] ?? ladder.values[0];
+            proofCarrierByOrder.set(order.id.toString(), {
+                clauseId,
+                clauseIdHash: keccak256(stringToHex(clauseId)).toLowerCase(),
+                stage: Math.max(0, ladder.values.indexOf(eventCode)),
+                eventCode,
+                ladderField: ladder.name,
+            });
+            break; // the first runtime proof is the order's hand-off carrier
+        }
+    }
+
+    const childrenByOrder = new Map<string, string[]>();
+    const parentsByOrder = new Map<string, string[]>();
+    for (const order of processOrders) {
+        const id = order.id.toString();
+        const parents = topology.get(order.id)?.parentOrderIds ?? [];
+        parentsByOrder.set(id, parents);
+        for (const parent of parents) {
+            const children = childrenByOrder.get(parent);
+            if (children) children.push(id);
+            else childrenByOrder.set(parent, [id]);
+        }
+    }
+
+    return { attestationsByOrder, proofCarrierByOrder, childrenByOrder, parentsByOrder };
+}
+
+/** The order whose agreement carries the proximity proof for a hand-off on
+ *  `orderId`: the order itself, else a topology-adjacent order (child first,
+ *  then parent) — the cross-order witness case. */
+function findProofCarrierOrder(orderId: string, indexes: RuntimeIndexes): string | null {
+    if (indexes.proofCarrierByOrder.has(orderId)) return orderId;
+    for (const child of indexes.childrenByOrder.get(orderId) ?? []) {
+        if (indexes.proofCarrierByOrder.has(child)) return child;
+    }
+    for (const parent of indexes.parentsByOrder.get(orderId) ?? []) {
+        if (indexes.proofCarrierByOrder.has(parent)) return parent;
+    }
+    return null;
+}
+
+/** True when this order's agreement still has a hand-off lifecycle stage the
+ *  seller has not attested — the seller's proof witness will arrive PAIRED
+ *  with that stage, so the standalone proof button stays suppressed. */
+function sellerHasPendingHandoffStage(
+    agreement: Agreement,
+    orderAttestations: RuntimeAttestation[],
+    sellerAddr: string,
+): boolean {
+    for (const section of agreement.sections) {
+        const clauseId = section.clause;
+        if (clauseTier(clauseId) !== "runtime" || isCompanionClause(clauseId)) continue;
+        const handoffStages = clauseHandoffStages(clauseId);
+        if (handoffStages.length === 0) continue;
+        const ladder = clauseLadderField(clauseId);
+        if (!ladder) continue;
+        const clauseIdHash = keccak256(stringToHex(clauseId)).toLowerCase();
+        const seen = new Set(
+            orderAttestations
+                .filter((a) => a.clauseId.toLowerCase() === clauseIdHash && hexEqual(a.attester, sellerAddr))
+                .map((a) => a.stage),
+        );
+        for (const stage of handoffStages) {
+            const ordinal = ladder.values.indexOf(stage);
+            if (ordinal >= 0 && !seen.has(ordinal)) return true;
+        }
+    }
+    return false;
+}
+
+function roleCapabilities(
+    _order: Order,
+    agreements: Map<string, Agreement>,
+    indexes: RuntimeIndexes,
     _address?: string,
     _isE2EMock = false,
 ): CapabilityModel[] {
@@ -168,9 +291,15 @@ function roleCapabilities(
     // bilateral). Lifecycle clauses (non-companion enum: merchant/courier/…)
     // advance their enum ladder; proof clauses (companion enum: proximity-proof)
     // are a single attestation at the band committed in the sister policy. Both
-    // parties of a bilateral clause get their own capability. No clause names —
-    // a permissionlessly-registered clause flows through this loop unchanged.
+    // parties of a bilateral clause get their own capability. A lifecycle stage
+    // listed in the clause's `block.handoffStages` is a physical hand-off: the
+    // seller's capability PAIRS the proximity proof from the carrying order
+    // (own order, else the topology-adjacent carrier — the cross-order witness),
+    // and the seller's standalone proof button stays suppressed while a pairing
+    // stage is pending. No clause names — a permissionlessly-registered clause
+    // flows through this loop unchanged.
     if (agreement) {
+        const orderAttestations = indexes.attestationsByOrder.get(orderIdStr) ?? [];
         for (const section of agreement.sections) {
             const clauseId = section.clause;
             if (clauseTier(clauseId) !== "runtime") continue;          // category-1 only
@@ -184,15 +313,20 @@ function roleCapabilities(
             for (const party of parties) {
                 if (party === "seller" ? !isSeller : !isBuyer) continue;
                 const partyAddr = party === "seller" ? order.seller : order.buyer;
-                const mine = attestations.filter(
+                const mine = orderAttestations.filter(
                     (a) => a.clauseId.toLowerCase() === clauseIdHash
-                        && a.orderHash === orderIdStr
                         && hexEqual(a.attester, partyAddr),
                 );
                 let stage: number;
                 let eventCode: string;
+                let pairedProof: { clauseId: string; orderHash: string; stage: number; eventCode: string; ladderField: string } | undefined;
                 if (isProof) {
                     if (mine.length > 0) continue;                     // this party already witnessed
+                    // The seller's witness arrives paired with a pending
+                    // hand-off stage when this clause is the order's carrier.
+                    if (party === "seller"
+                        && indexes.proofCarrierByOrder.get(orderIdStr)?.clauseId === clauseId
+                        && sellerHasPendingHandoffStage(agreement, orderAttestations, partyAddr)) continue;
                     // band committed in the sister policy section on this order.
                     const policyId = getClauseSpec(clauseId)?.block?.sisterClauseId;
                     const bands = policyId
@@ -205,6 +339,25 @@ function roleCapabilities(
                     stage = ladder.values.findIndex((_v, i) => !seen.has(i));
                     if (stage < 0) continue;                           // ladder fully attested
                     eventCode = ladder.values[stage];
+                    if (party === "seller" && clauseHandoffStages(clauseId).includes(eventCode)) {
+                        const carrierOrderId = findProofCarrierOrder(orderIdStr, indexes);
+                        const carrier = carrierOrderId ? indexes.proofCarrierByOrder.get(carrierOrderId) : undefined;
+                        if (carrierOrderId && carrier) {
+                            const witnessed = (indexes.attestationsByOrder.get(carrierOrderId) ?? []).some(
+                                (a) => a.clauseId.toLowerCase() === carrier.clauseIdHash
+                                    && hexEqual(a.attester, partyAddr),
+                            );
+                            if (!witnessed) {
+                                pairedProof = {
+                                    clauseId: carrier.clauseId,
+                                    orderHash: carrierOrderId,
+                                    stage: carrier.stage,
+                                    eventCode: carrier.eventCode,
+                                    ladderField: carrier.ladderField,
+                                };
+                            }
+                        }
+                    }
                 }
                 const capId = `${order.processId}:${orderIdStr}:${clauseId}-${party}-${eventCode}`;
                 out.push({
@@ -221,6 +374,7 @@ function roleCapabilities(
                         ladderField: ladder.name,
                         party,
                         ...(isProof ? { isProof: true } : {}),
+                        ...(pairedProof ? { pairedProof } : {}),
                     },
                     mechanismId: "attestation-coordinator",
                     scopeType: "order",
@@ -228,7 +382,12 @@ function roleCapabilities(
                     preconditions: [party === "seller" ? "seller-of-active-order" : "buyer-of-active-order"],
                     riskLabel: "standard",
                     uiPriority: party === "buyer" ? 76 : 75,
-                    source: runtimeSource(`${party} attests ${clauseId} ${eventCode}`, capId),
+                    source: runtimeSource(
+                        pairedProof
+                            ? `${party} attests ${clauseId} ${eventCode}, pairing the ${pairedProof.clauseId} witness on order ${pairedProof.orderHash}`
+                            : `${party} attests ${clauseId} ${eventCode}`,
+                        capId,
+                    ),
                 });
             }
         }
@@ -622,10 +781,9 @@ function deriveProcessAttachments(
 
 function deriveOrderNodeModelFromOrder(
     order: Order,
-    allOrders: Order[],
     topology: Map<string, { parentOrderIds: string[] }>,
     agreements: Map<string, Agreement>,
-    attestations: RuntimeAttestation[],
+    indexes: RuntimeIndexes,
     address?: string,
     isE2EMock = false,
 ): OrderNodeModel {
@@ -643,7 +801,7 @@ function deriveOrderNodeModelFromOrder(
         parentOrderIds,
         agreementHash: (order.agreementHash ?? ZERO_BYTES32) as `0x${string}`,
         attachments,
-        capabilities: roleCapabilities(order, allOrders, agreements, attestations, address, isE2EMock),
+        capabilities: roleCapabilities(order, agreements, indexes, address, isE2EMock),
         settlementBreakdown: deriveSettlementBreakdown(order, address),
     };
 }
@@ -708,7 +866,10 @@ export function deriveProcessModelFromRuntime(
         .filter((order) => order.processId === summary.processId)
         .sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0));
     const topology = deriveOrderTopology(processOrders, agreements);
-    const semanticOrders = processOrders.map((order) => deriveOrderNodeModelFromOrder(order, processOrders, topology, agreements, attestations, address, isE2EMock));
+    // Built ONCE per derivation — the per-order loop reads these maps so the
+    // whole model stays O(orders + attestations) at the resolve ceiling.
+    const indexes = buildRuntimeIndexes(processOrders, topology, agreements, attestations);
+    const semanticOrders = processOrders.map((order) => deriveOrderNodeModelFromOrder(order, topology, agreements, indexes, address, isE2EMock));
     const relations = deriveProcessRelations(summary.processId, processOrders, topology);
     const rootOrderId = semanticOrders.find((order) => order.parentOrderIds.length === 0)?.orderId ?? semanticOrders[0]?.orderId ?? "";
     const rootOrder = processOrders.find((order) => order.id.toString() === rootOrderId);

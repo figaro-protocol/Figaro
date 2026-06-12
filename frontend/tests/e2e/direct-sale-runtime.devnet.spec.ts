@@ -166,10 +166,9 @@ test.describe('direct-sale runtime — on-site commit, handoff certification, re
             await expect(btn, `merchant rail surfaces ${stage}`).toBeEnabled({ timeout: 90_000 });
             await btn.click();
         }
-        // The proof clause is bilateral — the seller witnesses the committed band.
-        const sellerProof = railBtn.filter({ hasText: PROXIMITY_BAND });
-        await expect(sellerProof, 'seller proximity witness surfaces').toBeEnabled({ timeout: 90_000 });
-        await sellerProof.click();
+        // handed-off is a hand-off stage (`block.handoffStages`): its click
+        // PAIRED the seller's proximity witness at the committed band — one
+        // action, two attestations. No standalone seller witness button.
         // UI reaction: ladder fully attested + proof witnessed → all of the
         // seller's generic capabilities retire.
         await expect(railBtn, 'seller rail retires once the clauses are run').toHaveCount(0, { timeout: 90_000 });

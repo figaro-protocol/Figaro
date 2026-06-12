@@ -289,7 +289,11 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                 // content (enum ladder, or a proof's band) and who attests (party,
                 // from block.attestation). Names no clause; a permissionless clause
                 // attests through here unchanged. Proof clauses get the device witness.
-                submitClauseAttestation: (action) => {
+                // A hand-off stage carries `pairedProof`: one user action, two
+                // attestations — the stage, then the proximity proof on the order
+                // that carries it (roleOrderHash = own order when the carrier is a
+                // sibling: the coordinator's same-process cross-order witness).
+                submitClauseAttestation: async (action) => {
                     const spec = getClauseSpec(action.clauseId);
                     if (!spec) throw new Error(`Clause spec not loaded: ${action.clauseId}`);
                     const fields: Record<string, unknown> = { [action.ladderField]: action.eventCode };
@@ -301,9 +305,28 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                         content: encodeContentFromSpec(spec, fields),
                         failureMessage: `${action.clauseId} ${action.eventCode} attestation failed`,
                     };
-                    return action.party === "buyer"
+                    const stageTx = await (action.party === "buyer"
                         ? attestationActions.submitBuyerAttestation(args)
-                        : attestationActions.submitSellerAttestation({ ...args, roleOrderHash: action.roleOrderHash as Hex | undefined });
+                        : attestationActions.submitSellerAttestation({ ...args, roleOrderHash: action.roleOrderHash as Hex | undefined }));
+                    if (!action.pairedProof || action.party !== "seller") return stageTx;
+                    // Confirm the stage tx before the paired proof so the two
+                    // writes never race a shared wallet nonce.
+                    await waitForTransactionConfirmation(stageTx as Hex | undefined);
+                    const proofSpec = getClauseSpec(action.pairedProof.clauseId);
+                    if (!proofSpec) throw new Error(`Clause spec not loaded: ${action.pairedProof.clauseId}`);
+                    return attestationActions.submitSellerAttestation({
+                        orderHash: action.pairedProof.orderHash as Hex,
+                        clauseId: keccak256(stringToHex(action.pairedProof.clauseId)) as Hex,
+                        stage: action.pairedProof.stage,
+                        content: encodeContentFromSpec(proofSpec, {
+                            [action.pairedProof.ladderField]: action.pairedProof.eventCode,
+                            ...deviceWitness(),
+                        }),
+                        roleOrderHash: action.pairedProof.orderHash !== action.orderHash
+                            ? (action.orderHash as Hex)
+                            : undefined,
+                        failureMessage: `${action.pairedProof.clauseId} ${action.pairedProof.eventCode} paired witness failed`,
+                    });
                 },
                 claimAuction: dutchAuctionActions.claim,
             }, input);

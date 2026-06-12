@@ -16,10 +16,10 @@
  *   2. Seed that agreement into the courier's localStorage so the
  *      seller-attestation path can open the inclusion proof.
  *   3. Open /orders/<processId> as the courier wallet.
- *   4. Click the proximity-proof button — handoff 1 (arrived-pickup).
- *   5. Click it again — the button reads the courier-process event log
- *      and certifies handoff 2 (arrived-dropoff) instead.
- *   6. Assert the timeline renders the attested ladder + witnessed proof
+ *   4. Walk the courier-process ladder through the generic rail (5 clicks);
+ *      arrived-pickup is a hand-off stage (`block.handoffStages`) so its
+ *      click PAIRS the proximity witness — one action, two attestations.
+ *   5. Assert the timeline renders the attested ladder + witnessed proof
  *      (positive UI reaction), then certify the Attestation events
  *      out-of-band.
  *
@@ -128,12 +128,12 @@ test.describe('Courier proximity proof via UI (devnet)', () => {
         await seedAgreementForWallet(page, courierAgreement);
 
         // The courier walks its order's attestations through the ONE
-        // clause-agnostic rail: the 5-stage courier-process ladder + the
-        // bilateral proximity witness at the committed band (6 clicks).
-        // (Per-handoff-edge proof PAIRING is the deferred engine-spec work —
-        // at HEAD each party witnesses its order's proof once.)
+        // clause-agnostic rail: the 5-stage courier-process ladder. The
+        // arrived-pickup click PAIRS the proximity witness at the committed
+        // band (the engine reads `block.handoffStages`); arrived-dropoff
+        // finds the proof already witnessed — once-per-party semantics.
         await walkClauseAttestations(page, {
-            wallet: COURIER_ADDR, processId, clicks: 6, who: 'courier',
+            wallet: COURIER_ADDR, processId, clicks: 5, who: 'courier',
         });
 
         // Closing UI reaction (positive): the timeline renders the attested

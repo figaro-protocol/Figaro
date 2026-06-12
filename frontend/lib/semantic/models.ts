@@ -114,6 +114,22 @@ export interface SubmitClauseAttestationCapabilityAction {
      *  witness (nonce + signature) on top of the spec fields. */
     isProof?: boolean;
     roleOrderHash?: string;
+    /** Present when this lifecycle stage is a physical hand-off (the stage is
+     *  listed in the clause spec's `block.handoffStages`) and the attesting
+     *  seller has not yet witnessed the proximity proof. The executor submits
+     *  the proof PAIRED with the stage attestation: proof clause on the order
+     *  whose agreement carries it (own order, else the topology-adjacent
+     *  carrier), with roleOrderHash = the attester's own order when the
+     *  carrier is a sibling (the cross-order witness seam). One user action,
+     *  two attestations — both edge-sellers end up witnessing the same proof. */
+    pairedProof?: {
+        clauseId: string;
+        /** The order whose agreement carries the proof clause. */
+        orderHash: string;
+        stage: number;
+        eventCode: string;
+        ladderField: string;
+    };
 }
 
 interface ClaimAuctionCapabilityAction {

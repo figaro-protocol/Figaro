@@ -1138,13 +1138,17 @@ export async function walkClauseAttestations(
  * order is created differs.
  *
  * Each order carries its own proximity-certified hand-off edge, and the proof
- * clause is bilateral — BOTH parties of that order witness it:
+ * clause is bilateral — BOTH parties of that order witness it. The SELLER's
+ * witness arrives PAIRED with the hand-off lifecycle stage (the engine reads
+ * `block.handoffStages`; one click, two attestations), so the seller never
+ * clicks a standalone proof button:
  *
  *   - Merchant: its merchant-process ladder (3 stages: prep-started →
- *     ready-for-pickup → handed-off; arrival/acceptance are core, not here)
- *     + the zone witness on its own order (merchant→courier edge) = 4.
- *   - Courier: its courier-process ladder (5 stages) + the zone witness on
- *     its own order (courier→buyer edge) = 6.
+ *     ready-for-pickup → handed-off; arrival/acceptance are core, not here);
+ *     handed-off pairs the zone witness on its own order = 3 clicks.
+ *   - Courier: its courier-process ladder (5 stages); arrived-pickup pairs
+ *     the zone witness (arrived-dropoff finds it already witnessed —
+ *     once-per-party) = 5 clicks.
  *
  * Everything goes through the ONE clause-agnostic rail. The caller adds the
  * buyer's co-witness on EACH order (2) and resolves.
@@ -1184,9 +1188,9 @@ export async function runDeliveryCoordination(
         await detail.getByTestId('ghg-current-actual').waitFor({ state: 'visible', timeout: 90_000 });
     };
 
-    // ── Merchant: 3 ladder stages + its own-order zone witness ─────────────
+    // ── Merchant: 3 ladder stages (handed-off pairs the zone witness) ──────
     await walkClauseAttestations(page, {
-        wallet: opts.merchant, processId: opts.processId, clicks: 4, who: 'merchant',
+        wallet: opts.merchant, processId: opts.processId, clicks: 3, who: 'merchant',
     });
     if (opts.emissions?.merchant) {
         await submitEmissionsAsCurrentSeller(
@@ -1195,9 +1199,9 @@ export async function runDeliveryCoordination(
         );
     }
 
-    // ── Courier: 5 ladder stages + its own-order zone witness ──────────────
+    // ── Courier: 5 ladder stages (arrived-pickup pairs the zone witness) ───
     await walkClauseAttestations(page, {
-        wallet: opts.courier, processId: opts.processId, clicks: 6, who: 'courier',
+        wallet: opts.courier, processId: opts.processId, clicks: 5, who: 'courier',
     });
     if (opts.emissions?.courier) {
         await submitEmissionsAsCurrentSeller(

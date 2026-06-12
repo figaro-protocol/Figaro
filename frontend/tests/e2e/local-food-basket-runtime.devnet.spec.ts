@@ -205,14 +205,15 @@ test.describe('local-food-basket runtime — 4-order multi-contributor commit, c
         // ── 2. Hub + courier coordinate — the ONE clause-agnostic rail. The
         //    BARE producer orders compose no runtime clauses: nothing to walk,
         //    by design (a supply order is just a bonded relationship). The hub
-        //    composes NO proximity (unlike the local-commerce merchants), so
-        //    it owes only its 3-stage ladder; the courier owes its 5-stage
-        //    ladder + the zone witness on its own order. ────────────────────
+        //    composes NO proximity of its own, so its handed-off click
+        //    CROSS-WITNESSES the proof on the courier order (the topology-
+        //    adjacent carrier — both edge-sellers witness the same proof);
+        //    the courier's arrived-pickup pairs its own-order witness. ───────
         await walkClauseAttestations(page, {
             wallet: HUB_ADDR, processId, clicks: 3, who: 'hub',
         });
         await walkClauseAttestations(page, {
-            wallet: courierAddr, processId, clicks: 6, who: 'courier',
+            wallet: courierAddr, processId, clicks: 5, who: 'courier',
         });
 
         // ── 3. Buyer co-witnesses the courier order's proof, then resolves ──
