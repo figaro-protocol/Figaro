@@ -136,6 +136,11 @@ test.describe('/s/[seller] full place-order flow (devnet)', () => {
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
         await expect(page.getByTestId('order-timeline-view')).toContainText(/You are the buyer/);
 
+        // The buyer's order LIST surfaces the commit (manual review
+        // 2026-06-12: /orders had zero e2e coverage).
+        await gotoAsWallet(page, ANVIL_ACCOUNTS[0], '/orders?e2e=devnet');
+        await expect(page.getByTestId(`buyer-order-row-${processId}`)).toBeVisible({ timeout: 30000 });
+
         // Cross-check the on-chain process state — payment landed,
         // activeOrderCount=1.
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });

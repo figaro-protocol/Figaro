@@ -28,7 +28,7 @@
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server.
  */
-import { test, expect, ANVIL_ACCOUNTS } from './devnet-multi-test';
+import { test, expect, ANVIL_ACCOUNTS, gotoAsWallet } from './devnet-multi-test';
 import { parseEther, type Hex } from 'viem';
 import { CORE_ABI } from '@figaro/core';
 import {
@@ -143,5 +143,10 @@ test.describe('Buyer-set delivery pricing (devnet)', () => {
             address: coreAddress, abi: CORE_PROCESS_VIEW_ABI, functionName: 'processes', args: [processId],
         });
         expect(Number(resolved[3])).toBe(0);
+
+        // The buyer's order LIST surfaces the (multi-order, now resolved)
+        // process (manual review 2026-06-12: /orders had zero e2e coverage).
+        await gotoAsWallet(page, BUYER_ADDR, '/orders?e2e=devnet');
+        await expect(page.getByTestId(`buyer-order-row-${processId}`)).toBeVisible({ timeout: 30000 });
     });
 });
