@@ -162,6 +162,21 @@ function RegisteredCard({
                 registeredBlock={registeredBlock}
                 onWithdrawn={onWithdrawn}
             />
+
+            {/* Both calls stay visible (user rule 2026-06-12): the profile
+                view/edit above, AND the onboarding wizard — for a registered
+                wallet the wizard re-walks the steps and publishing updates
+                this profile in place. */}
+            <p className="text-sm text-ink-faint">
+                <Link
+                    href="/sellers/identity"
+                    className="underline hover:text-ink-heading"
+                    data-testid="link-onboarding-wizard"
+                >
+                    Seller onboarding wizard →
+                </Link>{" "}
+                Re-walk the registration steps; publishing updates this profile in place.
+            </p>
         </div>
     );
 }

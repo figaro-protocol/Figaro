@@ -112,6 +112,9 @@ async function onboardViaWizard(page: import("@playwright/test").Page) {
     await page.getByRole("button", { name: /Continue to dashboard/ }).click();
     await page.waitForURL(/\/sellers$/, { timeout: 15_000 });
     await expect(page.getByRole("heading", { level: 1, name: SELLER.name })).toBeVisible({ timeout: 15_000 });
+    // BOTH calls visible on the dashboard (user rule 2026-06-12): the
+    // profile view/edit above, and the onboarding wizard entry.
+    await expect(page.getByTestId("link-onboarding-wizard")).toBeVisible();
 }
 
 // Wizard + IPFS pin + register tx + multi-page reads.
@@ -205,5 +208,12 @@ test.describe("seller registration wizard (devnet)", () => {
                 `non-conformant seller "${seller.name}" (no anchored binding) must NOT surface on /discover`,
             ).toHaveCount(0);
         }
+
+        // ── /sellers dashboard carries BOTH calls (user rule 2026-06-12):
+        // the profile view/edit, and the onboarding-wizard entry. Runs on
+        // every pass, including the conformant-skip path.
+        await gotoAsWallet(page, SELLER.address, "/sellers?e2e=devnet");
+        await expect(page.getByRole("heading", { level: 1, name: SELLER.name })).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByTestId("link-onboarding-wizard")).toBeVisible();
     });
 });
