@@ -21,7 +21,10 @@
 
     let ACCOUNT = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
     const CHAIN_ID_HEX = '0x7a69'; // 31337 decimal
-    const RPC_URL = '/rpc';
+    // Direct Anvil URL — NOT the dev server's '/rpc' proxy: the e2e webServer
+    // is a production build (no rewrites), and the prod CSP already allows
+    // connect-src http://127.0.0.1:*. Anvil answers CORS with allow-origin *.
+    const RPC_URL = 'http://127.0.0.1:8545';
 
     let _reqId = 1;
 

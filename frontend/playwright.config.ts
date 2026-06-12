@@ -27,6 +27,17 @@ try {
 const PLAYWRIGHT_PORT = Number(process.env.PLAYWRIGHT_PORT ?? '3100');
 const PLAYWRIGHT_BASE_URL = `http://127.0.0.1:${PLAYWRIGHT_PORT}`;
 
+// Web-server mode. Default = production (`next build` + `next start`):
+// the dev server degrades after ~25 min of compile-on-demand (the
+// seller-track-record tail-position pattern, 2026-06-11), and devnet is a
+// mainnet rehearsal — participants hit a production build, not a dev
+// server. The build (~90 s) inlines frontend/.env.local (contract
+// addresses, NEXT_PUBLIC_ENABLE_TEST_HELPERS), so after a FORCE_REDEPLOY
+// or an app-code edit, kill :3100 — a reused server keeps serving the
+// build it started with. PLAYWRIGHT_WEB_MODE=dev restores the dev-server
+// webServer for HMR-speed iteration on app code.
+const WEB_MODE = process.env.PLAYWRIGHT_WEB_MODE === 'dev' ? 'dev' : 'prod';
+
 export default defineConfig({
     testDir: './tests/e2e',
     timeout: 60_000,
@@ -46,10 +57,14 @@ export default defineConfig({
     webServer: {
         // NEXT_DISTDIR isolates the e2e build (`.next-e2e`) from the developer's
         // interactive :3000 build (`.next`) so neither clobbers the other's cache.
-        command: `NEXT_DISTDIR=.next-e2e PORT=${PLAYWRIGHT_PORT} npm run dev`,
+        command:
+            WEB_MODE === 'prod'
+                ? `NEXT_DISTDIR=.next-e2e npm run build && NEXT_DISTDIR=.next-e2e PORT=${PLAYWRIGHT_PORT} npm run start`
+                : `NEXT_DISTDIR=.next-e2e PORT=${PLAYWRIGHT_PORT} npm run dev`,
         url: PLAYWRIGHT_BASE_URL,
         reuseExistingServer: !process.env.CI,
-        timeout: 120_000,
+        // prod mode runs a full `next build` (~90 s) before the server answers.
+        timeout: WEB_MODE === 'prod' ? 300_000 : 120_000,
     },
 
     // Three projects, two concerns. The e2e suite is split along the

@@ -8,9 +8,11 @@
  * the panel, click Claim FIG, await the receipt.
  *
  * UI is gated on a static `frontend/public/fig-claims-y{2,5,9}.json`
- * file that's a mainnet-generation artifact in production. The
- * Phase 0 helpers `writeFigClaimsFixture` / `clearFigClaimsFixture`
- * inject a transient fixture for the duration of a single test.
+ * file that's a mainnet-generation BUILD artifact in production — and the
+ * prod-build e2e webServer serves only build-time public/ assets (a file
+ * written to public/ after `next build` 404s by design). The spec
+ * simulates the build-time artifact with a `page.route` handler; the
+ * claim reaction still flows through the real chain and the real UI.
  *
  * Devnet fixture (mirrors Deploy.s.sol):
  *   - claimant = anvil[0] (multi-wallet default).
@@ -32,11 +34,6 @@ import {
     parseEther,
     type Hex,
 } from 'viem';
-import {
-    clearFigClaimsFixture,
-    writeFigClaimsFixture,
-} from './devnet-helpers';
-
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
     id: 31337,
@@ -59,10 +56,6 @@ const FIG_TOKEN_ABI = parseAbi([
 
 test.describe('/fig/claim UI (devnet)', () => {
 
-    test.afterEach(async () => {
-        await clearFigClaimsFixture(0);
-    });
-
     // Auto-connect + IPFS + on-chain tx pushes this past 60s.
     test.setTimeout(120_000);
 
@@ -77,16 +70,20 @@ test.describe('/fig/claim UI (devnet)', () => {
             throw new Error('NEXT_PUBLIC_FIG_TOKEN_ADDRESS not set');
         }
 
-        // Seed the static allocation file ClaimPanel.tsx reads at mount.
-        // Single-leaf tree → empty proof; leaf is keccak(addr || amount)
-        // and the deploy script wrote root := leaf, so MerkleProof.verify
-        // ([], root, leaf) == true.
-        await writeFigClaimsFixture(0, {
-            [claimant.toLowerCase()]: {
-                amount: CLAIM_AMOUNT.toString(),
-                proof: [],
-            },
-        });
+        // Simulate the build-time allocation artifact ClaimPanel.tsx fetches
+        // at mount. Single-leaf tree → empty proof; leaf is keccak(addr ||
+        // amount) and the deploy script wrote root := leaf, so
+        // MerkleProof.verify([], root, leaf) == true.
+        await page.route('**/fig-claims-y2.json', (route) =>
+            route.fulfill({
+                json: {
+                    [claimant.toLowerCase()]: {
+                        amount: CLAIM_AMOUNT.toString(),
+                        proof: [],
+                    },
+                },
+            }),
+        );
 
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const balanceBefore = await publicClient.readContract({
@@ -163,7 +160,7 @@ test.describe('/fig/claim UI (devnet)', () => {
     });
 
     test('no allocation file → panel renders "No FIG allocation found" and no Claim button', async ({ page }) => {
-        // No writeFigClaimsFixture call — fetch returns null.
+        // No route handler — /fig-claims-y2.json 404s and fetch returns null.
         await page.goto('/fig/claim?e2e=devnet', { waitUntil: 'domcontentloaded' });
 
         await page.waitForFunction(

@@ -62,6 +62,6 @@ export const config = createConfig({
 // Browser-only dev/test shims — call as side effects on module load.
 // These are no-ops outside the browser and when env vars are absent.
 // ---------------------------------------------------------------------------
-attachDebugClient();
+attachDebugClient(rpcUrl);
 attachDevProvider();
 attachTestSigner();

@@ -8,8 +8,9 @@ import { Watermark } from "@/components/shared/Watermark";
 // require Suspense boundaries around every transitive useSearchParams /
 // useAccount call site in the dependency tree (RainbowKit + wagmi).
 // Marking the layout `force-dynamic` opts the entire (app) tier out of
-// static export — pages render at request time on the server. Marketing
-// routes in `(marketing)/` stay statically exportable.
+// static export — pages render at request time on the server. The
+// (marketing) tier is force-dynamic too: the per-request CSP nonce is
+// incompatible with static prerender (see (marketing)/layout.tsx).
 export const dynamic = "force-dynamic";
 
 /**

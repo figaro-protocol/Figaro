@@ -20,12 +20,19 @@ export function getE2EModeFromSearchParams(search: string | URLSearchParams): E2
  * Next.js `<Link>` does not propagate query params by default, and the
  * mock event-store module is shared across all routes anyway.
  *
- * Production builds always return null regardless of URL or storage —
- * the e2e harness is dev-only.
+ * Production builds return null unless the build carried the explicit
+ * NEXT_PUBLIC_ENABLE_TEST_HELPERS opt-in — the e2e rehearsal build does
+ * (Playwright webServer prod mode); a real deployment never does, so its
+ * build inlines the hard-off.
  */
 export function getE2EModeSession(): E2EMode {
     if (typeof window === "undefined") return null;
-    if (process.env.NODE_ENV === "production") return null;
+    // Same build-time opt-in as TEST_HELPERS_ENABLED (lib/core/testHelpers.ts)
+    // — parsed inline because lib/shared must not import lib/core.
+    if (process.env.NODE_ENV === "production") {
+        const v = String(process.env.NEXT_PUBLIC_ENABLE_TEST_HELPERS ?? "").toLowerCase();
+        if (v !== "1" && v !== "true") return null;
+    }
 
     const urlMode = getE2EModeFromSearchParams(window.location.search);
     if (urlMode) {

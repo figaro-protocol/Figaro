@@ -562,64 +562,10 @@ export async function seedRegisteredSeller(opts: {
     };
 }
 
-/** Per-stage allocation file shape consumed by `ClaimPanel` (mirrors the
- *  `AllocationEntry` type in `components/core/ClaimPanel.tsx:18-21`).
- *  Amounts are decimal-string wei; proofs are bytes32 hex arrays. */
-export interface FigClaimAllocations {
-    [lowercaseAddress: string]: { amount: string; proof: `0x${string}`[] };
-}
-
-/** Paths to the three per-stage allocation files. Mirrors `STAGE_FILES`
- *  in `ClaimPanel.tsx:24-28`. Public-asset paths — Next.js serves them
- *  verbatim from `frontend/public/`. */
-const FIG_CLAIMS_FIXTURE_PATHS: readonly [string, string, string] = [
-    'fig-claims-y2.json',
-    'fig-claims-y5.json',
-    'fig-claims-y9.json',
-];
-
-function getFigClaimsFixturePath(stageIndex: 0 | 1 | 2): string {
-    return path.resolve(__dirname, '../../public', FIG_CLAIMS_FIXTURE_PATHS[stageIndex]);
-}
-
-/**
- * Write a per-stage allocation file under `frontend/public/` so the
- * /fig/claim UI's `fetchAllocation()` returns a real entry for the
- * connected wallet. The static file is a mainnet-generation artifact
- * by design; this helper lets devnet tests inject a transient fixture
- * for the duration of a single test (paired with
- * `clearFigClaimsFixture` in afterEach).
- *
- * Single-leaf merkle tree note: when the deploy script seeds the
- * airdrop with `leaf == root`, the inclusion proof for that single
- * claimant is the empty array. Pass `{[addr.toLowerCase()]: {amount,
- * proof: []}}` to match the on-chain root.
- *
- * Returns the absolute path of the written file so callers can verify
- * existence if needed.
- */
-export async function writeFigClaimsFixture(
-    stageIndex: 0 | 1 | 2,
-    allocations: FigClaimAllocations,
-): Promise<string> {
-    const filePath = getFigClaimsFixturePath(stageIndex);
-    await fs.promises.writeFile(filePath, JSON.stringify(allocations, null, 2), 'utf8');
-    return filePath;
-}
-
-/**
- * Remove a fig-claims fixture file. Idempotent — succeeds whether or
- * not the file exists, so afterEach can call it unconditionally even
- * if the test failed before writing the fixture.
- */
-export async function clearFigClaimsFixture(stageIndex: 0 | 1 | 2): Promise<void> {
-    const filePath = getFigClaimsFixturePath(stageIndex);
-    try {
-        await fs.promises.unlink(filePath);
-    } catch (err) {
-        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
-    }
-}
+// The fig-claims disk-fixture helpers (write/clearFigClaimsFixture) were
+// buried 2026-06-12: the prod-build e2e webServer serves only build-time
+// public/ assets (a post-build write 404s), so fig-claim-ui.devnet.spec.ts
+// simulates the build-time allocation artifact via page.route instead.
 
 const CLAUSE_REGISTRATION_HELPER_ABI = parseAbi([
     'function registerClauseAndValidator(string clauseId, uint64 version, bytes32 contentHash, string metadataURI, bytes32 family, address validator) external',

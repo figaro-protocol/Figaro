@@ -31,6 +31,8 @@ cd frontend && npm run type-check
 cd frontend && npx vitest run            # UI logic — component + unit tier
 cd frontend && npm run test:e2e:mobile   # responsive/viewport chrome
 cd frontend && npm run test:e2e:devnet   # e2e — real UI against Anvil + contracts
+                                         #   webServer = prod build on :3100 (~90 s). Kill :3100 after FORCE_REDEPLOY
+                                         #   or app-code edits (stale baked build); PLAYWRIGHT_WEB_MODE=dev for HMR iteration.
 
 # --- SDK ---
 cd sdk && npm test

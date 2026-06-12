@@ -1,6 +1,15 @@
 import { MarketingHeader } from "@/components/marketing/MarketingHeader";
 import { Footer } from "@/components/shared/Footer";
 
+// Render per request, never at build time. middleware.ts issues a
+// per-request CSP nonce under `'strict-dynamic'`; statically prerendered
+// HTML cannot carry it, so on a production server the browser blocks every
+// script on a static page — zero client JS, dead inventories (surfaced by
+// the prod-build e2e webServer, 2026-06-12). Per-request rendering also
+// keeps the event-driven inventories (/assemblies, /clauses, /sellers)
+// reading live network state instead of a build-time snapshot.
+export const dynamic = "force-dynamic";
+
 /**
  * Layout for marketing-tier routes. Canonical inventory is the directory
  * listing of `app/(marketing)/`.

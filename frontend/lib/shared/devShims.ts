@@ -46,12 +46,12 @@ function asDebugClientLike(client: DebugClient): DebugClientLike {
 // ---------------------------------------------------------------------------
 // 1. Debug public client attached to window
 // ---------------------------------------------------------------------------
-export function attachDebugClient(): void {
+export function attachDebugClient(rpcUrl: string): void {
     if (typeof window === "undefined") return;
     try {
         const client = createPublicClient({
             chain: localAnvil,
-            transport: http("/rpc"),
+            transport: http(rpcUrl),
         });
 
         // Wrap readContract so Playwright traces capture call/response/error

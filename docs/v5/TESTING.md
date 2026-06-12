@@ -84,6 +84,18 @@ RpgfMinter (`RpgfMinter.tla` + `MC_RpgfMinter.tla` + `MC_RpgfMinter.cfg`):
 Config: `playwright.config.ts`. The retired `mock` project is gone — Playwright
 is e2e-only.
 
+The webServer is a **production build** by default (`next build` + `next start`
+on :3100, ~90 s build): the dev server degrades after ~25 min of
+compile-on-demand (the seller-track-record tail-position flake, 2026-06-11),
+and devnet is a mainnet rehearsal — participants hit a production build. The
+build inlines `frontend/.env.local`, so kill :3100 after a `FORCE_REDEPLOY` or
+an app-code edit — a reused server keeps serving the build it started with.
+`PLAYWRIGHT_WEB_MODE=dev` restores the dev-server webServer for HMR-speed
+iteration. In production builds, test-helper gating honors only the explicit
+`NEXT_PUBLIC_ENABLE_TEST_HELPERS` build-time opt-in (`lib/core/testHelpers.ts`,
+`lib/shared/e2e.ts`); real deployments never set it, so their builds inline the
+hard-off (RA-5 intent preserved).
+
 **devnet (`*.devnet.spec.ts`, 44 specs)** — every spec drives the real UI
 against Anvil + deployed contracts (action in the UI, reaction in the UI). By area:
 

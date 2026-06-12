@@ -47,10 +47,15 @@ function buildCsp(nonce: string, frameAncestors: string): string {
     // don't carry the per-request nonce). The 'nonce-{value}' +
     // 'strict-dynamic' pair stays unchanged in prod, which doesn't need
     // either of those relaxations because RSC streaming injects nonced
-    // <script> tags directly.
+    // <script> tags directly. 'wasm-unsafe-eval' permits ONLY
+    // WebAssembly compilation (not JS eval): @react-pdf/renderer's
+    // fontkit compiles its Harfbuzz WASM module for the /consent receipt
+    // and the dispute-evidence PDF; dev got this for free from
+    // 'unsafe-eval', prod blocked it (surfaced by the prod-build e2e,
+    // 2026-06-12 — consent receipt stuck at "(not pinned)").
     const scriptSrc = isDev
         ? `script-src 'self' 'nonce-${nonce}' 'unsafe-eval' 'unsafe-inline'`
-        : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`;
+        : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'`;
 
     return [
         "default-src 'self'",
