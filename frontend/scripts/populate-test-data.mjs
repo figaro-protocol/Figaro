@@ -44,9 +44,9 @@ const SELLERS = [
     // Aurora binds TWO assemblies — the multi-option checkout seller: the
     // buyer chooses between consume-onsite and delivery at the method select
     // (single-binding sellers auto-commit and render no dropdown).
-    { addressIndex: 6, name: 'Aurora Café', specialty: 'café', geohash: '9q8yyk8yt', bind: ['direct-sale', 'local-commerce'], courierIndices: { 'local-commerce': [8] }, products: [{ name: 'Espresso', price: '1' }] },
-    { addressIndex: 7, name: "Rosa's Kitchen", specialty: 'prepared food, own delivery', geohash: '9q8yyk8yv', bind: ['local-commerce'], courierIndices: { 'local-commerce': [8] }, products: [{ name: 'Margherita pizza', price: '1' }] },
-    { addressIndex: 8, name: 'Cardinal Couriers', specialty: 'last-mile delivery', geohash: '9q8yyk8yw', bind: ['local-commerce'], products: [{ name: 'Standard delivery', price: '1', category: 'delivery' }] },
+    { addressIndex: 6, name: 'Aurora Café', specialty: 'café', geohash: '9q8yyk8yt', bind: ['direct-sale', 'local-commerce-seller-assigned'], courierIndices: { 'local-commerce-seller-assigned': [8] }, products: [{ name: 'Espresso', price: '1' }] },
+    { addressIndex: 7, name: "Rosa's Kitchen", specialty: 'prepared food, own delivery', geohash: '9q8yyk8yv', bind: ['local-commerce-seller-assigned'], courierIndices: { 'local-commerce-seller-assigned': [8] }, products: [{ name: 'Margherita pizza', price: '1' }] },
+    { addressIndex: 8, name: 'Cardinal Couriers', specialty: 'last-mile delivery', geohash: '9q8yyk8yw', bind: ['local-commerce-seller-assigned'], products: [{ name: 'Standard delivery', price: '1', category: 'delivery' }] },
     { addressIndex: 9, name: 'Saffron Table', specialty: 'prepared food, buyer-arranged delivery', geohash: '9q8yyk8yx', bind: ['local-commerce-buyer-assigned'], products: [{ name: 'Margherita pizza', price: '1' }] },
     { addressIndex: 10, name: 'Pomodoro Kitchen', specialty: 'prepared food, auction-arranged delivery', geohash: '9q8yyk8yy', bind: ['local-commerce-dutch'], products: [{ name: 'Margherita pizza', price: '1' }] },
     { addressIndex: 11, name: 'Harbor Provisions', specialty: 'grocery, emissions-disclosed delivery', geohash: '9q8yyk8yz', bind: ['local-commerce-offset'], courierIndices: { 'local-commerce-offset': [8] }, products: [{ name: 'Grocery box', price: '1' }] },

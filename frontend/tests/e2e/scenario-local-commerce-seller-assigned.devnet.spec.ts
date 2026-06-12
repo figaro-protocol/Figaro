@@ -1,7 +1,7 @@
 /**
- * scenario-local-commerce.devnet.spec.ts
+ * scenario-local-commerce-seller-assigned.devnet.spec.ts
  *
- * SCENARIO — `local-commerce` (2 nodes, seller-assigned delivery)
+ * SCENARIO — `local-commerce-seller-assigned` (2 nodes, seller-assigned delivery)
  *
  *   Models: a merchant sells for delivery and arranges its OWN courier — a
  *   restaurant dispatching its own rider (seller-assigned). Two co-equal bonded
@@ -71,19 +71,19 @@ async function composeClause(page: Page, clause: string, fields: readonly string
     }
 }
 
-test.describe('Author + publish the local-commerce assembly (devnet)', () => {
+test.describe('Author + publish the local-commerce-seller-assigned assembly (devnet)', () => {
     // Multi-node draw + multi-route nav + IPFS pin + on-chain tx. NO snapshot —
     // the publish must PERSIST for the runtime test (and /assemblies) to consume.
     test.setTimeout(180_000);
 
-    test('designer canvas authors + publishes local-commerce; it persists, anchored on-chain + pinned in IPFS', async ({ page }) => {
+    test('designer canvas authors + publishes local-commerce-seller-assigned; it persists, anchored on-chain + pinned in IPFS', async ({ page }) => {
         const config = readLocalDeploymentConfig();
         const assemblyRegistry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY
             ?? config.assemblyRegistry) as Hex;
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
-        const slug = 'local-commerce';
-        const draftName = 'Local Commerce';
+        const slug = 'local-commerce-seller-assigned';
+        const draftName = 'Local Commerce Seller Assigned';
         const slugHash = keccak256(toHex(slug));
 
         if (!(await assemblyAnchored(slug))) {
@@ -132,7 +132,7 @@ test.describe('Author + publish the local-commerce assembly (devnet)', () => {
             await composeClause(page, 'figaro-proximity-policy-v1', ['drawer-field-figaro-proximity-policy-v1-bands-zone-wifi']);
             await expect(orderNodes, 'composing clauses never draws nodes').toHaveCount(2, { timeout: 10000 });
 
-            // Name + publish (fixed slug → "local-commerce").
+            // Name + publish (fixed slug → "local-commerce-seller-assigned").
             await page.getByTestId('designer-name-input').fill(draftName);
             await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
             await page.getByTestId('designer-review').click();

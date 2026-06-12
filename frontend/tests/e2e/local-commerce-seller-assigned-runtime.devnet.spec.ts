@@ -1,7 +1,7 @@
 /**
  * local-commerce-runtime.devnet.spec.ts
  *
- * RUNTIME (lifecycle Phase 4) for the seller-assigned `local-commerce` scenario
+ * RUNTIME (lifecycle Phase 4) for the seller-assigned `local-commerce-seller-assigned` scenario
  * — a 2-node delivery sale, every role through its own UI, the mainnet way:
  *
  *   1. Buyer (anvil[0]) browses the onboarded merchant, picks delivery
@@ -16,15 +16,15 @@
  *      resolves the process — atomic settlement of both orders.
  *
  * Consumes the sellers + assembly from chain→IPFS (authored by
- * scenario-local-commerce; sellers onboarded against this devnet). No seed,
+ * scenario-local-commerce-seller-assigned; sellers onboarded against this devnet). No seed,
  * no fixtures, no hardcoded addresses.
  *
  * PERSISTED, like mainnet: no chain snapshot/revert. Each run places a NEW
  * 2-order process, drives it to atomic resolution, and leaves the settled
  * process as terminal on-chain state.
  *
- * Prerequisite: scenario-local-commerce (anchors the assembly) and onboarded
- * sellers whose profiles bind `local-commerce`, against this devnet.
+ * Prerequisite: scenario-local-commerce-seller-assigned (anchors the assembly) and onboarded
+ * sellers whose profiles bind `local-commerce-seller-assigned`, against this devnet.
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server.
  */
@@ -50,7 +50,7 @@ import {
 // through the unlocked RPC by address, so the runtime needs no private keys.
 const BUYER_ADDR = ANVIL_ACCOUNTS[0] as Hex;
 
-test.describe('local-commerce runtime — 2-node delivery commit, coordination, resolve (devnet)', () => {
+test.describe('local-commerce-seller-assigned runtime — 2-node delivery commit, coordination, resolve (devnet)', () => {
     // Buyer commit (2 orders) + merchant walk + courier handoffs + resolve —
     // every role through its UI.
     test.setTimeout(420_000);
@@ -64,11 +64,11 @@ test.describe('local-commerce runtime — 2-node delivery commit, coordination, 
         const publicClient = localPublicClient();
 
         // Discover the sellers the mainnet way (events → IPFS → on-chain bindings):
-        // the merchant is the local-commerce seller that designates a courier; the
+        // the merchant is the local-commerce-seller-assigned seller that designates a courier; the
         // courier is the one it designated on-chain.
         const sellers = await discoverSellers();
-        const merchant = await discoverSellerByAssembly('local-commerce', { withCourier: true }, sellers);
-        const courierAddr = courierAddressFor(merchant, 'local-commerce');
+        const merchant = await discoverSellerByAssembly('local-commerce-seller-assigned', { withCourier: true }, sellers);
+        const courierAddr = courierAddressFor(merchant, 'local-commerce-seller-assigned');
         const courier = sellers.find((s) => s.address.toLowerCase() === courierAddr.toLowerCase());
         expect(courier, `courier ${courierAddr} (designated by ${merchant.name}) must be a registered seller`).toBeTruthy();
 

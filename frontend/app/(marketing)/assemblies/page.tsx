@@ -56,7 +56,7 @@ export default function Assemblies() {
             <MarketingSection title="Where to publish">
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
                     <li><strong>Designer:</strong> compose an assembly on the canvas at <Link href="/builders/designer" className="underline">/builders/designer</Link>, then publish to <code>AssemblyRegistry</code> in one transaction. The publish flow pins the assembly template to IPFS, simulates the registration, and confirms the receipt before declaring success.</li>
-                    <li><strong>Worked reference:</strong> the local-commerce assembly at <Link href="/local-commerce" className="underline">/local-commerce</Link> &mdash; merchant root order, courier sub-order, handoff certifications, GHG disclosures, jurisdiction anchoring.</li>
+                    <li><strong>Worked reference:</strong> the local-commerce reference at <Link href="/local-commerce" className="underline">/local-commerce</Link> &mdash; merchant root order, courier sub-order, handoff certifications, GHG disclosures, jurisdiction anchoring.</li>
                     <li><strong>Clause set:</strong> the clauses an assembly may compose are listed at <Link href="/clauses" className="underline">/clauses</Link>.</li>
                     <li><strong>Contract:</strong> <code>src/AssemblyRegistry.sol</code> &mdash; permissionless, first-write-wins, immutable. See <Link href="/spec" className="underline">/spec</Link>.</li>
                 </ul>

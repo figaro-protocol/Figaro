@@ -25,7 +25,7 @@
  * PERSISTED, like mainnet: no chain snapshot/revert.
  *
  * Prerequisite: scenario-local-food-basket (anchors the assembly) on this
- * devnet; the courier is chain-discovered (the local-commerce designee).
+ * devnet; the courier is chain-discovered (the local-commerce-seller-assigned designee).
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server.
  */
@@ -110,10 +110,10 @@ test.describe('local-food-basket runtime — 4-order multi-contributor commit, c
         const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? config.tokenAddress) as Hex;
         const publicClient = localPublicClient();
 
-        // The courier is chain-discovered (the local-commerce designee).
+        // The courier is chain-discovered (the local-commerce-seller-assigned designee).
         const sellers = await discoverSellers();
-        const lcMerchant = await discoverSellerByAssembly('local-commerce', { withCourier: true }, sellers);
-        const courierAddr = courierAddressFor(lcMerchant, 'local-commerce');
+        const lcMerchant = await discoverSellerByAssembly('local-commerce-seller-assigned', { withCourier: true }, sellers);
+        const courierAddr = courierAddressFor(lcMerchant, 'local-commerce-seller-assigned');
 
         // ── Seed the hub + the two producers (idempotent re-registration) ──
         await seedContributor({

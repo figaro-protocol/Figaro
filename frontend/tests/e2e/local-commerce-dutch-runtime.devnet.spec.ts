@@ -61,11 +61,11 @@ test.describe('local-commerce-dutch runtime — auction-deferred courier, coordi
 
         // Discover the sellers the mainnet way. The merchant binds the dutch
         // assembly with NO counterparty (the auction fills it); the claiming
-        // courier is chain-discovered (the local-commerce designee).
+        // courier is chain-discovered (the local-commerce-seller-assigned designee).
         const sellers = await discoverSellers();
         const merchant = await discoverSellerByAssembly('local-commerce-dutch', undefined, sellers);
-        const lcMerchant = await discoverSellerByAssembly('local-commerce', { withCourier: true }, sellers);
-        const courierAddr = courierAddressFor(lcMerchant, 'local-commerce');
+        const lcMerchant = await discoverSellerByAssembly('local-commerce-seller-assigned', { withCourier: true }, sellers);
+        const courierAddr = courierAddressFor(lcMerchant, 'local-commerce-seller-assigned');
         const courier = sellers.find((s) => s.address.toLowerCase() === courierAddr.toLowerCase());
         expect(courier, `courier ${courierAddr} must be a registered seller`).toBeTruthy();
 

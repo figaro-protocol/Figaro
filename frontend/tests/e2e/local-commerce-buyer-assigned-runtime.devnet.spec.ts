@@ -20,7 +20,7 @@
  *      settlement of both orders.
  *
  * Consumes the sellers + assembly from chain→IPFS. The courier the buyer
- * enters is itself DISCOVERED from chain (the courier the local-commerce
+ * enters is itself DISCOVERED from chain (the courier the local-commerce-seller-assigned
  * merchant designates) — no hardcoded addresses.
  *
  * PERSISTED, like mainnet: no chain snapshot/revert.
@@ -68,11 +68,11 @@ test.describe('local-commerce-buyer-assigned runtime — buyer picks the courier
         // Discover the sellers the mainnet way. The merchant binds the
         // buyer-assigned assembly with NO counterparty (the buyer chooses).
         // The courier the buyer will enter is itself chain-discovered: the
-        // courier the local-commerce merchant designates on-chain.
+        // courier the local-commerce-seller-assigned merchant designates on-chain.
         const sellers = await discoverSellers();
         const merchant = await discoverSellerByAssembly('local-commerce-buyer-assigned', undefined, sellers);
-        const lcMerchant = await discoverSellerByAssembly('local-commerce', { withCourier: true }, sellers);
-        const courierAddr = courierAddressFor(lcMerchant, 'local-commerce');
+        const lcMerchant = await discoverSellerByAssembly('local-commerce-seller-assigned', { withCourier: true }, sellers);
+        const courierAddr = courierAddressFor(lcMerchant, 'local-commerce-seller-assigned');
         const courier = sellers.find((s) => s.address.toLowerCase() === courierAddr.toLowerCase());
         expect(courier, `courier ${courierAddr} must be a registered seller`).toBeTruthy();
 

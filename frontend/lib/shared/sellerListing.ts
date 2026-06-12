@@ -23,7 +23,7 @@ type CanonicalMethod =
     | "deliver:dutch-auction";
 
 interface ListingBinding {
-    /** Slug of the assembly this binding targets (e.g. "local-commerce"). */
+    /** Slug of the assembly this binding targets (e.g. "local-commerce-seller-assigned"). */
     assemblySlug: string;
 }
 

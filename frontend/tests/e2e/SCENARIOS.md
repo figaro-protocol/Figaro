@@ -35,12 +35,12 @@ order[0]  buyer ↔ seller  parents: []
   figaro-proximity-policy-v1  { bands: [zone-wifi] }
 ```
 
-### `local-commerce` — 2 nodes, seller-assigned delivery
+### `local-commerce-seller-assigned` — 2 nodes, seller-assigned delivery
 
 *Models:* a merchant sells for delivery and arranges its own courier — a restaurant
 dispatching its own rider. Two co-equal bonded relationships the buyer commits to.
 *Catalogues:* merchant (goods) + courier (delivery) — 2.
-*Specs:* `scenario-local-commerce` · `local-commerce-runtime`.
+*Specs:* `scenario-local-commerce-seller-assigned` · `local-commerce-seller-assigned-runtime`.
 ```
 order[0]  buyer ↔ merchant  parents: []
   figaro-modalities-v1        { modality: delivery }
@@ -55,7 +55,7 @@ order[1]  buyer ↔ courier   parents: [order[0]]   (value-topology edge; co-equ
 ### `local-commerce-buyer-assigned` — 2 nodes, buyer-assigned delivery
 
 *Models:* same delivery sale, but the buyer chooses the courier at checkout. Only
-delta from `local-commerce` is the `delivery.coordination` value.
+delta from `local-commerce-seller-assigned` is the `delivery.coordination` value.
 *Catalogues:* merchant + courier (2).
 *Specs:* `scenario-local-commerce-buyer-assigned` · `local-commerce-buyer-assigned-runtime`.
 ```

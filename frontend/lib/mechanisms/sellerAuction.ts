@@ -1,5 +1,5 @@
 /**
- * seller-auction glue — the deferred seller edge of a local-commerce
+ * seller-auction glue — the deferred seller edge of a local-commerce-dutch
  * process is filled by a Dutch auction. The buyer opens the auction at
  * checkout; the delivery order joins the process only when a seller claims
  * it. This is incremental process assembly: a process is opened by the root

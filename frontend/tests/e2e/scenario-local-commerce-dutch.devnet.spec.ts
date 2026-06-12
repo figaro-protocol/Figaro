@@ -4,7 +4,7 @@
  * SCENARIO — `local-commerce-dutch` (2 nodes, dutch-auction delivery)
  *
  *   Models: a merchant sells for delivery and the courier order is DEFERRED to a
- *   descending-price auction — same two co-equal bonded relationships as `local-commerce`; the
+ *   descending-price auction — same two co-equal bonded relationships as `local-commerce-seller-assigned`; the
  *   only delta is the courier-resolution mechanism (`delivery.coordination`).
  *
  *   Template (what the designer publishes; commerce/topology are added at commit

@@ -2,7 +2,7 @@
  * seller-track-record.devnet.spec.ts
  *
  * The seller track record reflects real on-chain history. Runs a full
- * local-commerce scenario (buyer commits → merchant + courier coordinate →
+ * local-commerce-seller-assigned scenario (buyer commits → merchant + courier coordinate →
  * buyer resolves), then asserts the track record reflects it — on each
  * seller's /s/[seller] page and on the /discover card-level summary.
  * Every figure is recomputed live from events, not a stored score.
@@ -10,7 +10,7 @@
  * Consumes the sellers + assembly from chain→IPFS. PERSISTED, like mainnet:
  * no chain snapshot/revert — the ≥1 stat assertions hold on any history.
  *
- * Prerequisite: scenario-local-commerce anchored + its merchant onboarded
+ * Prerequisite: scenario-local-commerce-seller-assigned anchored + its merchant onboarded
  * (designating a courier), on this devnet.
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server.
@@ -46,24 +46,24 @@ test.describe('Seller track record reflects on-chain history (devnet)', () => {
     // Full scenario (commit + coordinate + resolve) + two seller-page reads.
     test.setTimeout(420_000);
 
-    test('a resolved local-commerce process surfaces on each seller track record', async ({ page }) => {
+    test('a resolved local-commerce-seller-assigned process surfaces on each seller track record', async ({ page }) => {
         page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
 
         const config = readLocalDeploymentConfig();
         const coreAddress = (process.env.NEXT_PUBLIC_FIGARO_CORE ?? config.figaroCore) as Hex;
         const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? config.tokenAddress) as Hex;
 
-        // Discover the sellers the mainnet way: the local-commerce merchant
+        // Discover the sellers the mainnet way: the local-commerce-seller-assigned merchant
         // designates its courier on-chain.
         const sellers = await discoverSellers();
-        const merchant = await discoverSellerByAssembly('local-commerce', { withCourier: true }, sellers);
-        const courierAddr = courierAddressFor(merchant, 'local-commerce');
+        const merchant = await discoverSellerByAssembly('local-commerce-seller-assigned', { withCourier: true }, sellers);
+        const courierAddr = courierAddressFor(merchant, 'local-commerce-seller-assigned');
         const courier = sellers.find((s) => s.address.toLowerCase() === courierAddr.toLowerCase());
         expect(courier, `courier ${courierAddr} (designated by ${merchant.name}) must be a registered seller`).toBeTruthy();
 
         await ensureTokenApprovalsByAddress(coreAddress, tokenAddress, BUYER_ADDR, merchant.address, courier!.address);
 
-        // ── Run a full local-commerce scenario to completion ──────────
+        // ── Run a full local-commerce-seller-assigned scenario to completion ──────────
         await placeBilateralOrderUI(page, {
             seller: merchant.address,
             method: 'deliver:seller-assigned',

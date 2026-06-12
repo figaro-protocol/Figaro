@@ -3,7 +3,7 @@
  *
  * View + fork a SEEDED assembly through /builders/designer/view/[slug].
  *
- * The seeded assemblies (`direct-sale`, `local-commerce`) are authored by
+ * The seeded assemblies (`direct-sale`, `local-commerce-seller-assigned`) are authored by
  * anvil[0], the seed script's author wallet. `PublishedList` on
  * /builders/designer is author-scoped — `usePublishedAssemblies(address)`
  * filters `AssemblyRegistered` by the indexed `author` topic — so it

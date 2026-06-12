@@ -4,7 +4,7 @@
  * SCENARIO — `local-commerce-buyer-assigned` (2 nodes, buyer-assigned delivery)
  *
  *   Models: a merchant sells for delivery and the BUYER picks the courier at
- *   checkout — same two co-equal bonded relationships as `local-commerce`; the
+ *   checkout — same two co-equal bonded relationships as `local-commerce-seller-assigned`; the
  *   only delta is the courier-resolution mechanism (`delivery.coordination`).
  *
  *   Template (what the designer publishes; commerce/topology are added at commit

@@ -6,8 +6,8 @@
  * and any future surface that surfaces protocol-tier slugs to readers.
  *
  * Two axes:
- *  - `ASSEMBLY_LABELS` — assembly-slug → label (e.g. "local-commerce" →
- *    "Local Commerce"). Drives the top-level assembly filter row and
+ *  - `ASSEMBLY_LABELS` — assembly-slug → label (e.g. "local-commerce-seller-assigned" →
+ *    "Local Commerce Seller Assigned"). Drives the top-level assembly filter row and
  *    the assembly pills on each card.
  *  - `METHOD_LABELS` — canonical-method → label (e.g.
  *    "deliver:dutch-auction" → "Delivery (auction)"). Drives the
@@ -18,7 +18,7 @@
  */
 
 const ASSEMBLY_LABELS: Record<string, string> = {
-    "local-commerce": "Local Commerce",
+    "local-commerce-seller-assigned": "Local Commerce Seller Assigned",
     "direct-sale": "Direct Sale",
     "figaro-procurement": "Procurement",
     "figaro-disclosure-review": "Disclosure Review",
