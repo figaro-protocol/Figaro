@@ -35,13 +35,30 @@ async function withRetry<T>(
     throw lastError;
 }
 
+/** Hex string (with or without 0x) → Uint8Array. */
+function hexToBytes(hexInput: string): Uint8Array {
+    const hex = hexInput.startsWith("0x") ? hexInput.slice(2) : hexInput;
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < bytes.length; i++) {
+        bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+    }
+    return bytes;
+}
+
+/** The XMTP network refuses new installations past 10 per inbox. */
+function isInstallationCapError(err: unknown): boolean {
+    return /already registered .*installations|revoke existing installations/i.test(
+        err instanceof Error ? err.message : String(err),
+    );
+}
+
 /** Create a real XMTP-backed coordination channel. */
 export async function createXmtpChannel(
     address: string,
     signMessage: (message: string) => Promise<`0x${string}`>,
 ): Promise<CoordinationChannel> {
     // Dynamic import — keeps WASM out of the server bundle.
-    const { Client, IdentifierKind } = await import("@xmtp/browser-sdk");
+    const { Client, IdentifierKind, generateInboxId } = await import("@xmtp/browser-sdk");
 
     const signer = {
         type: "EOA" as const,
@@ -49,26 +66,56 @@ export async function createXmtpChannel(
             identifier: address.toLowerCase(),
             identifierKind: IdentifierKind.Ethereum,
         }),
-        signMessage: async (message: string) => {
-            const sig = await signMessage(message);
-            // Convert hex signature to Uint8Array
-            const hex = sig.startsWith("0x") ? sig.slice(2) : sig;
-            const bytes = new Uint8Array(hex.length / 2);
-            for (let i = 0; i < bytes.length; i++) {
-                bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-            }
-            return bytes;
-        },
+        signMessage: async (message: string) => hexToBytes(await signMessage(message)),
     };
 
-    const client = await withRetry(
-        () => Client.create(signer, {
-            env: "dev",
-            dbPath: null,               // ephemeral — no OPFS persistence
-            disableAutoRegister: false,
-        } as Parameters<typeof Client.create>[1]),
-        { maxAttempts: 3, baseDelayMs: 1000, maxDelayMs: 10000 },
-    );
+    // OPFS persistence (the SDK default dbPath): ONE installation per
+    // browser+origin, reused across sessions. The prior `dbPath: null`
+    // (ephemeral) minted a NEW installation keypair on every page session
+    // and exhausted the inbox's 10-installation network cap within a day
+    // of dev use.
+    const createClient = () => Client.create(signer, {
+        env: "dev",
+        disableAutoRegister: false,
+    } as Parameters<typeof Client.create>[1]);
+
+    let client: Awaited<ReturnType<typeof createClient>>;
+    try {
+        client = await withRetry(createClient, { maxAttempts: 3, baseDelayMs: 1000, maxDelayMs: 10000 });
+    } catch (err) {
+        if (!isInstallationCapError(err)) throw err;
+        // Self-heal the installation cap: revoke EVERY existing installation
+        // through the client-less static path (one extra wallet signature —
+        // a fresh installation is created right after, and ephemeral-era
+        // installations have no surviving local state worth keeping).
+        const inboxId = await generateInboxId(signer.getIdentifier());
+        const [state] = await Client.fetchInboxStates([inboxId], "dev");
+        const installationIds = (state?.installations ?? []).map((inst) => inst.bytes);
+        if (installationIds.length === 0) throw err;
+        console.warn(`[xmtp] installation cap hit — revoking ${installationIds.length} stale installations for inbox ${inboxId}`);
+        await Client.revokeInstallations(signer, inboxId, installationIds, "dev");
+        client = await withRetry(createClient, { maxAttempts: 3, baseDelayMs: 1000, maxDelayMs: 10000 });
+    }
+
+    // DEV-network housekeeping: collapse this inbox to THE current
+    // installation. Stale dev installations carry expired key packages that
+    // later fail COUNTERPARTY validation when a DM opens ("[ClientError::
+    // Group] Failed to verify all installations") — and only the owning
+    // wallet can revoke its own. One wallet, one browser, one installation
+    // is the dev model; a production policy must never silently revoke a
+    // user's other devices, which is why this runs only against env "dev".
+    try {
+        const ownState = await client.preferences.inboxState();
+        const stale = (ownState?.installations ?? []).filter((inst) => inst.id !== client.installationId);
+        if (stale.length > 0) {
+            console.warn(`[xmtp] revoking ${stale.length} stale installations (dev housekeeping)`);
+            await client.revokeInstallations(stale.map((inst) => inst.bytes));
+        }
+    } catch (housekeepingErr) {
+        // Housekeeping is best-effort — the channel still works for inboxes
+        // that were already clean.
+        console.warn("[xmtp] stale-installation housekeeping failed (continuing)", housekeepingErr);
+    }
 
     // Track active stream cleanups.
     const streamCleanups: Array<() => void> = [];

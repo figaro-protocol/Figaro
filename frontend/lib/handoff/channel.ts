@@ -220,7 +220,14 @@ export async function getCoordinationChannel(
         throw new Error("signMessage callback required for XMTP channel outside test mode");
     }
 
-    const { createXmtpChannel } = await import(/* webpackIgnore: true */ "./xmtpChannel");
+    // A normal lazy import — webpack emits ./xmtpChannel as its own chunk.
+    // (It carried `webpackIgnore: true` from the V5 baseline, which told
+    // webpack to emit NO chunk and left the browser resolving a raw
+    // relative URL against /_next/static/chunks/… — a guaranteed 404, so
+    // the real XMTP path never worked in any bundled build. The module
+    // itself already lazy-imports @xmtp/browser-sdk to keep WASM out of
+    // the server bundle; no pragma is needed for that.)
+    const { createXmtpChannel } = await import("./xmtpChannel");
     const ch = await createXmtpChannel(address, signMessage);
     channelCache.set(key, ch);
     return ch;

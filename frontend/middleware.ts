@@ -77,7 +77,14 @@ function buildCsp(nonce: string, frameAncestors: string): string {
         // by CSP. Widening connect-src to `data:` does not let pages exfil
         // data cross-origin (browsers still block that), so the practical
         // attack surface is narrow.
-        "connect-src 'self' data: ws: wss: http://127.0.0.1:* https://*.walletconnect.com https://*.walletconnect.org https://*.infura.io",
+        // XMTP (the coordination channel): the browser SDK talks gRPC-web to
+        // api.{dev,production}.xmtp.network on PORT 5558 — a CSP host wildcard
+        // without a port matches only the default port, so :5558 must be
+        // listed explicitly (both https and wss for streams). ephemera.network
+        // is the SDK's message-history sync service. Surfaced 2026-06-12: the
+        // real XMTP path ran for the first time and connect-src refused it
+        // ("Failed to fetch" at IdentityApi/GetIdentityUpdates).
+        "connect-src 'self' data: ws: wss: http://127.0.0.1:* https://*.walletconnect.com https://*.walletconnect.org https://*.infura.io https://*.xmtp.network https://*.xmtp.network:5558 wss://*.xmtp.network wss://*.xmtp.network:5558 https://*.ephemera.network",
         // @react-pdf/renderer also creates a Web Worker from a `blob:` URL
         // for layout. Without an explicit worker-src the fallback to
         // script-src disallows blob:, blocking the worker.
