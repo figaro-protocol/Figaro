@@ -29,31 +29,11 @@ import {
     shareCommitmentPayload,
 } from "@/lib/core/commitmentShare";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
-import { strippingReviver } from "@/lib/shared/safeJson";
 import { truncateHex } from "@/lib/shared/formatHex";
 
-// ── Serialization helpers ──────────────────────────────────────
-// serialize / transport helpers live in @/lib/core/commitmentShare (shared with
-// the multi-order checkout); this file keeps only the inbound deserializer.
-
-/** Deserialize a JSON payload back to typed commitment (hex strings → bigints). */
-export function deserializePayload(json: string): CommitmentPayload {
-    // Strip __proto__ / constructor / prototype at parse time so a malicious
-    // ?payload= parameter or XMTP-delivered envelope can't pollute the
-    // prototype chain when downstream code spreads / Object.assigns the
-    // parsed commitment.
-    const raw = JSON.parse(json, strippingReviver);
-    const c = raw.commitment;
-
-    // Convert hex string fields back to bigint
-    const bigintFields = ["payment", "salt", "deadline", "expectedCumulativeValue"];
-    for (const f of bigintFields) {
-        if (typeof c[f] === "string" && c[f].startsWith("0x")) {
-            c[f] = BigInt(c[f]);
-        }
-    }
-    return raw as CommitmentPayload;
-}
+// serialize / transport / deserialize helpers all live in
+// @/lib/core/commitmentShare (shared with the multi-order checkout, the inbox,
+// and the buyer's /orders pending view).
 
 /** Share-panel has no waiting state — exclude from the canonical send union. */
 type TransportStatus = Exclude<MessageSendStatus, "waiting">;

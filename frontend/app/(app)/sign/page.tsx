@@ -18,7 +18,7 @@ import { useCommitmentFlow, type CommitmentPayload } from "@/lib/core/useCommitm
 import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { calculateBonds } from "@figaro/core";
-import { deserializePayload } from "@/components/core/CommitmentSharePanel";
+import { deserializePayload } from "@/lib/core/commitmentShare";
 import { TokenApprovalFlow } from "@/components/core/TokenApprovalFlow";
 import { primeAgreementArtifact } from "@/lib/core/agreementStore";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";

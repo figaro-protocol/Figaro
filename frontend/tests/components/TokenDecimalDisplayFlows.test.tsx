@@ -76,7 +76,7 @@ vi.mock("@/components/core/TokenApprovalFlow", () => ({
     TokenApprovalFlow: () => <div>token approval</div>,
 }));
 
-vi.mock("@/components/core/CommitmentSharePanel", () => ({
+vi.mock("@/lib/core/commitmentShare", () => ({
     deserializePayload: vi.fn(() => payload),
 }));
 

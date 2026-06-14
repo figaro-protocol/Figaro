@@ -13,12 +13,32 @@ import type { CommitmentPayload } from "@/lib/core/useCommitmentFlow";
 import type { IpfsService } from "@/lib/shared/ipfsService";
 import { computeOrderHash } from "@/lib/core/commitmentStore";
 import { CONTRACTS } from "@/lib/core/contracts";
+import { strippingReviver } from "@/lib/shared/safeJson";
 
 /** Serialize a commitment payload to compact JSON (bigints → hex strings). */
 export function serializeCommitmentPayload(p: CommitmentPayload): string {
     return JSON.stringify(p, (_key, value) =>
         typeof value === "bigint" ? `0x${value.toString(16)}` : value,
     );
+}
+
+/** Deserialize a JSON payload back to a typed commitment (hex strings → bigints). */
+export function deserializePayload(json: string): CommitmentPayload {
+    // Strip __proto__ / constructor / prototype at parse time so a malicious
+    // ?payload= parameter or XMTP-delivered envelope can't pollute the
+    // prototype chain when downstream code spreads / Object.assigns the
+    // parsed commitment.
+    const raw = JSON.parse(json, strippingReviver);
+    const c = raw.commitment;
+
+    // Convert hex string fields back to bigint
+    const bigintFields = ["payment", "salt", "deadline", "expectedCumulativeValue"];
+    for (const f of bigintFields) {
+        if (typeof c[f] === "string" && c[f].startsWith("0x")) {
+            c[f] = BigInt(c[f]);
+        }
+    }
+    return raw as CommitmentPayload;
 }
 
 /**

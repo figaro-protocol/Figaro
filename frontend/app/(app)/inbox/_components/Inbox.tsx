@@ -23,21 +23,20 @@
  */
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useAccount, useWalletClient } from "wagmi";
+import { useCallback, useState } from "react";
+import { useAccount, useChainId } from "wagmi";
 import { formatToken } from "@/lib/shared/utils";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { calculateBonds } from "@figaro/core";
 import { Button } from "@/components/ui/Button";
 import { WalletGate } from "@/components/core/WalletGate";
-import { deserializePayload } from "@/components/core/CommitmentSharePanel";
 import { useCommitmentFlow, type CommitmentPayload } from "@/lib/core/useCommitmentFlow";
 import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { hexEqual } from "@/lib/shared/evm";
 import { useWalletProcessRows, type ProcessRow } from "@/lib/core/walletProcessQueries";
-import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
-import { fetchCommitmentPayloadJsonByCid } from "@/lib/handoff/coordinationMessagingService";
+import { computeOrderHash } from "@/lib/core/commitmentStore";
+import { CONTRACTS } from "@/lib/core/contracts";
+import { usePendingCommitments, awaitsMyCounterSign } from "@/hooks/core/usePendingCommitments";
 import { useSellerListings } from "@/lib/mechanisms/useSellerListings";
 import { displayNameForAddress } from "@/lib/shared/sellerListing";
 import type { Listing } from "@/lib/shared/sellerListing";
@@ -143,81 +142,20 @@ function ActiveOrderRow({ row, listings }: { row: ProcessRow; listings: Readonly
 // ── Main inbox ──────────────────────────────────────────────────────
 
 export function Inbox() {
-    const { address, isConnected } = useAccount();
-    const { data: walletClient } = useWalletClient();
-    const services = useRuntimeServices();
+    const { isConnected } = useAccount();
+    const chainId = useChainId();
     const { rows, isLoading } = useWalletProcessRows("seller");
     const { listings } = useSellerListings();
 
     const { counterSign, broadcast, error: flowError, reset, step: flowStep } = useCommitmentFlow();
 
-    const [pending, setPending] = useState<CommitmentPayload[]>([]);
+    // Pending cards = commitments awaiting THIS wallet's counter-sign,
+    // read off the coordination channel (shared with the buyer surface).
+    const { pending, dismiss } = usePendingCommitments(awaitsMyCounterSign);
     const [acceptingIndex, setAcceptingIndex] = useState<number | null>(null);
     const [acceptError, setAcceptError] = useState<string | null>(null);
 
-    const receivedOrderIds = useRef<Set<string>>(new Set());
-    const subscribed = useRef(false);
     const isMock = isE2EMockSession();
-
-    // Subscribe to incoming commitment payloads via XMTP / coordination layer.
-    useEffect(() => {
-        if (isMock || !address || subscribed.current) return;
-        subscribed.current = true;
-        let cleanup: (() => void) | null = null;
-        let cancelled = false;
-
-        void services.coordinationMessaging
-            .subscribeAnyCommitmentPayload({
-                address,
-                walletClient: walletClient ?? null,
-                callback: async (payloadCid, orderId) => {
-                    if (cancelled || receivedOrderIds.current.has(orderId)) return;
-                    try {
-                        const payloadJson = await fetchCommitmentPayloadJsonByCid(
-                            services.evidenceTransport,
-                            payloadCid,
-                        );
-                        if (cancelled) return;
-                        const payload = deserializePayload(payloadJson);
-                        if (!payload.commitment?.buyer || !payload.commitment?.seller) return;
-                        // A pending card is a commitment awaiting THIS wallet's
-                        // counter-sign: the wallet is a party, the OTHER party
-                        // has signed, this wallet has not. Party-neutral — the
-                        // usual direction is the seller counter-signing a
-                        // buyer-initiated order; a seller-initiated order (the
-                        // dutch-auction claim relays the courier's signature)
-                        // reaches the BUYER's inbox the same way.
-                        const isSeller = hexEqual(address, payload.commitment.seller);
-                        const isBuyer = hexEqual(address, payload.commitment.buyer);
-                        const awaitsMyCounterSign =
-                            (isSeller && !!payload.buyerSig && !payload.sellerSig)
-                            || (isBuyer && !!payload.sellerSig && !payload.buyerSig);
-                        if (!awaitsMyCounterSign) return;
-                        receivedOrderIds.current.add(orderId);
-                        setPending((prev) => [...prev, payload]);
-                    } catch {
-                        // Malformed payload or IPFS fetch failure — ignore.
-                    }
-                },
-            })
-            .then((unsubscribe) => {
-                if (cancelled) {
-                    unsubscribe();
-                    return;
-                }
-                cleanup = unsubscribe;
-            })
-            .catch(() => {
-                // Coordination messaging unavailable — silent.
-            });
-
-        return () => {
-            cancelled = true;
-            cleanup?.();
-            subscribed.current = false;
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [address]);
 
     const handleAccept = useCallback(async (index: number) => {
         const payload = pending[index];
@@ -245,18 +183,31 @@ export function Inbox() {
         try {
             const signed = await counterSign(payload);
             await broadcast(signed);
-            setPending((prev) => prev.filter((_, i) => i !== index));
+            dismiss(index);
             reset();
         } catch (cause: unknown) {
             setAcceptError(extractErrorMessage(cause, "Signing failed"));
         } finally {
             setAcceptingIndex(null);
         }
-    }, [pending, counterSign, broadcast, reset]);
+    }, [pending, counterSign, broadcast, reset, dismiss]);
 
-    const handleDismiss = useCallback((index: number) => {
-        setPending((prev) => prev.filter((_, i) => i !== index));
-    }, []);
+    // Hide pending cards whose order already committed on-chain: a relayed
+    // payload reads buyerSig-only even after commit, so without this dedup an
+    // accepted order would reappear as a phantom "Accept" card on reload.
+    // Keep the original `pending` index so accept/dismiss act on the right one.
+    const core = CONTRACTS.core as `0x${string}` | undefined;
+    const committedHashes = new Set(rows.map((r) => r.rootOrderHash.toLowerCase()));
+    const visiblePending = pending
+        .map((payload, index) => ({ payload, index }))
+        .filter(({ payload }) => {
+            if (!chainId || !core) return true;
+            try {
+                return !committedHashes.has(computeOrderHash(payload.commitment, chainId, core).toLowerCase());
+            } catch {
+                return true;
+            }
+        });
 
     const activeRows = rows.filter((row) => !row.isResolved);
     const completedRows = rows.filter((row) => row.isResolved);
@@ -289,7 +240,7 @@ export function Inbox() {
                                 <p className="font-medium text-neutral-700 mb-1">Mock mode active</p>
                                 <p>Mock orders commit on-chain immediately and bypass the inbox.</p>
                             </div>
-                        ) : pending.length === 0 ? (
+                        ) : visiblePending.length === 0 ? (
                             <div
                                 className="rounded-lg border border-neutral-200 bg-white p-5 text-sm text-neutral-500"
                                 data-testid="inbox-pending-empty"
@@ -299,12 +250,12 @@ export function Inbox() {
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {pending.map((payload, index) => (
+                                {visiblePending.map(({ payload, index }) => (
                                     <PendingOrderCard
                                         key={index}
                                         payload={payload}
                                         onAccept={() => void handleAccept(index)}
-                                        onDismiss={() => handleDismiss(index)}
+                                        onDismiss={() => dismiss(index)}
                                         isAccepting={acceptingIndex === index || flowStep === "signing" || flowStep === "broadcasting"}
                                         listings={listings}
                                     />
