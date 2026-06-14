@@ -46,6 +46,7 @@ import {
     runDeliveryCoordination,
     walkClauseAttestations,
 } from './devnet-helpers';
+import { SCENARIO_SLUG } from './scenarioSlugs.mjs';
 
 // Buyer = anvil[0] (the connected wallet). Sellers are DISCOVERED from
 // SellerRegistry events + IPFS by their on-chain assemblyBindings — no roster,
@@ -70,9 +71,9 @@ test.describe('local-commerce-buyer-assigned runtime — buyer picks the courier
         // The courier the buyer will enter is itself chain-discovered: the
         // courier the local-commerce-seller-assigned merchant designates on-chain.
         const sellers = await discoverSellers();
-        const merchant = await discoverSellerByAssembly('local-commerce-buyer-assigned', undefined, sellers);
-        const lcMerchant = await discoverSellerByAssembly('local-commerce-seller-assigned', { withCourier: true }, sellers);
-        const courierAddr = courierAddressFor(lcMerchant, 'local-commerce-seller-assigned');
+        const merchant = await discoverSellerByAssembly(SCENARIO_SLUG['local-commerce-buyer-assigned'], undefined, sellers);
+        const lcMerchant = await discoverSellerByAssembly(SCENARIO_SLUG['local-commerce-seller-assigned'], { withCourier: true }, sellers);
+        const courierAddr = courierAddressFor(lcMerchant, SCENARIO_SLUG['local-commerce-seller-assigned']);
         const courier = sellers.find((s) => s.address.toLowerCase() === courierAddr.toLowerCase());
         expect(courier, `courier ${courierAddr} must be a registered seller`).toBeTruthy();
 

@@ -41,7 +41,6 @@ test.describe('PublishedList fork + inspect (devnet)', () => {
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
         await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
 
-        await page.getByTestId('designer-name-input').fill(draftName);
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
 

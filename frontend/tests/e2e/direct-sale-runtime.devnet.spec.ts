@@ -45,6 +45,7 @@ import {
     placeBilateralOrderUI,
     readLocalDeploymentConfig,
 } from './devnet-helpers';
+import { SCENARIO_SLUG } from './scenarioSlugs.mjs';
 import { formatToken } from '../../lib/shared/utils';
 
 // Buyer = anvil[0] (the connected wallet). The seller is DISCOVERED from
@@ -73,7 +74,7 @@ test.describe('direct-sale runtime — on-site commit, handoff certification, re
         const publicClient = localPublicClient();
 
         // Discover the seller from chain → IPFS by its on-chain binding.
-        const cafe = await discoverSellerByAssembly('direct-sale');
+        const cafe = await discoverSellerByAssembly(SCENARIO_SLUG['direct-sale']);
 
         await ensureTokenApprovalsByAddress(coreAddress, tokenAddress, BUYER_ADDR, cafe.address);
 

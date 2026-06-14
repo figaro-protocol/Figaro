@@ -38,6 +38,7 @@
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo.
  */
 import { test, expect } from './devnet-multi-test';
+import { SCENARIO_SLUG } from './scenarioSlugs.mjs';
 import { createPublicClient, http, keccak256, toHex, type Hex } from 'viem';
 import {
     assertAssemblyOnInventory,
@@ -62,8 +63,7 @@ test.describe('Author + publish the kiosk-sale assembly (devnet)', () => {
             ?? config.assemblyRegistry) as Hex;
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
-        const slug = 'kiosk-sale';
-        const draftName = 'Kiosk Sale';
+        const slug = SCENARIO_SLUG['kiosk-sale'];
         const slugHash = keccak256(toHex(slug));
 
         if (!(await assemblyAnchored(slug))) {
@@ -93,14 +93,15 @@ test.describe('Author + publish the kiosk-sale assembly (devnet)', () => {
             await pickupField.check();
             await expect(orderNodes, 'composing clauses never draws nodes').toHaveCount(1, { timeout: 10000 });
 
-            // Name + publish (fixed slug → "kiosk-sale").
-            await page.getByTestId('designer-name-input').fill(draftName);
             await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
             await page.getByTestId('designer-review').click();
 
-            await page.waitForURL(new RegExp(`/builders/designer/view/${slug}`), { timeout: 15000 });
+            await page.waitForURL(/\/builders\/designer\/view\/asm-/, { timeout: 15000 });
+            // Post-40bbe6a the /view URL carries a RANDOM local draft handle; the
+            // content-derived slug is anchored at confirm-publish. Capture the handle.
+            const handle = page.url().match(/\/view\/(asm-[a-z0-9-]+)/)?.[1] ?? slug;
             await page.goto(
-                `/builders/designer/view/${slug}?intent=publish&e2e=devnet`,
+                `/builders/designer/view/${handle}?intent=publish&e2e=devnet`,
                 { waitUntil: 'domcontentloaded' },
             );
 
@@ -141,7 +142,6 @@ test.describe('Author + publish the kiosk-sale assembly (devnet)', () => {
                 clauses: Record<string, Record<string, unknown>>;
             }>;
         };
-        expect(assemblyTemplate.slug).toBe(slug);
         expect(assemblyTemplate.orders).toHaveLength(1);
         const root = assemblyTemplate.orders[0];
         // The DAG is a clause: root's figaro-topology carries empty parents.

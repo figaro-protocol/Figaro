@@ -126,7 +126,6 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green', () => {
         await novelCheckbox.check();
 
         // Publish the 1-node assembly (slug "permissionless-probe").
-        await page.getByTestId('designer-name-input').fill('Permissionless Probe');
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
         await page.waitForURL(new RegExp(`/builders/designer/view/${NOVEL_SLUG}`), { timeout: 15000 });

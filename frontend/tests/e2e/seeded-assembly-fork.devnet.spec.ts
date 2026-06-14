@@ -27,9 +27,10 @@
  */
 import { test, expect } from './devnet-multi-test';
 import { evmRevert, evmSnapshot } from './devnet-helpers';
+import { SCENARIO_SLUG } from './scenarioSlugs.mjs';
 
 // scenario-direct-sale.devnet.spec.ts anchors this slug (pin + register, persisted).
-const SEEDED_SLUG = 'direct-sale';
+const SEEDED_SLUG = SCENARIO_SLUG['direct-sale'];
 const SEEDED_NAME = 'Direct Sale';
 
 

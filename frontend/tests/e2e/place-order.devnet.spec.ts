@@ -40,6 +40,7 @@ import {
     LOCAL_ANVIL,
     RPC_URL,
 } from './devnet-helpers';
+import { SCENARIO_SLUG } from './scenarioSlugs.mjs';
 import { ANVIL_KEYS } from '../anvilAccounts';
 
 const BUYER_KEY = ANVIL_KEYS[0];
@@ -92,7 +93,7 @@ async function seedRegisteredSellerWithCatalogue(): Promise<SeededSeller> {
             assemblyBindings: [{
                 bindingId: `direct-sale:${SELLER_ADDR.toLowerCase()}`,
                 subjectAddress: SELLER_ADDR as `0x${string}`,
-                assemblySlug: 'direct-sale',
+                assemblySlug: SCENARIO_SLUG['direct-sale'],
                 counterpartyBindings: [],
             }],
         },

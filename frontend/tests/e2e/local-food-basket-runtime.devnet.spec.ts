@@ -48,6 +48,7 @@ import {
     seedRegisteredSeller,
     walkClauseAttestations,
 } from './devnet-helpers';
+import { SCENARIO_SLUG } from './scenarioSlugs.mjs';
 import { anvilKeyAt } from '../anvilAccounts';
 
 const BUYER_ADDR = ANVIL_ACCOUNTS[0] as Hex;
@@ -112,8 +113,8 @@ test.describe('local-food-basket runtime — 4-order multi-contributor commit, c
 
         // The courier is chain-discovered (the local-commerce-seller-assigned designee).
         const sellers = await discoverSellers();
-        const lcMerchant = await discoverSellerByAssembly('local-commerce-seller-assigned', { withCourier: true }, sellers);
-        const courierAddr = courierAddressFor(lcMerchant, 'local-commerce-seller-assigned');
+        const lcMerchant = await discoverSellerByAssembly(SCENARIO_SLUG['local-commerce-seller-assigned'], { withCourier: true }, sellers);
+        const courierAddr = courierAddressFor(lcMerchant, SCENARIO_SLUG['local-commerce-seller-assigned']);
 
         // ── Seed the hub + the two producers (idempotent re-registration) ──
         await seedContributor({
@@ -154,9 +155,9 @@ test.describe('local-food-basket runtime — 4-order multi-contributor commit, c
                 acceptedTokens: [{ address: tokenAddress, symbol: 'MOCK', chainId: 31337 }],
                 defaultTokenAddress: tokenAddress,
                 assemblyBindings: [{
-                    bindingId: `local-food-basket:${HUB_ADDR.toLowerCase()}`,
+                    bindingId: `${SCENARIO_SLUG['local-food-basket']}:${HUB_ADDR.toLowerCase()}`,
                     subjectAddress: HUB_ADDR as `0x${string}`,
-                    assemblySlug: 'local-food-basket',
+                    assemblySlug: SCENARIO_SLUG['local-food-basket'],
                     counterpartyBindings: [
                         { clauseId: 'figaro-courier-process', addresses: [courierAddr] },
                         { clauseId: 'figaro-topology', addresses: [FARM_ADDR, BAKERY_ADDR] },

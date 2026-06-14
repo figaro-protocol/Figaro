@@ -48,6 +48,7 @@ import {
     runDeliveryCoordination,
     walkClauseAttestations,
 } from './devnet-helpers';
+import { SCENARIO_SLUG } from './scenarioSlugs.mjs';
 
 const BUYER_ADDR = ANVIL_ACCOUNTS[0] as Hex;
 
@@ -73,8 +74,8 @@ test.describe('local-commerce-offset runtime — emissions disclosed, offsets re
         // Discover the sellers the mainnet way: the offset merchant designates
         // its courier on-chain (seller-assigned base).
         const sellers = await discoverSellers();
-        const merchant = await discoverSellerByAssembly('local-commerce-offset', { withCourier: true }, sellers);
-        const courierAddr = courierAddressFor(merchant, 'local-commerce-offset');
+        const merchant = await discoverSellerByAssembly(SCENARIO_SLUG['local-commerce-offset'], { withCourier: true }, sellers);
+        const courierAddr = courierAddressFor(merchant, SCENARIO_SLUG['local-commerce-offset']);
         const courier = sellers.find((s) => s.address.toLowerCase() === courierAddr.toLowerCase());
         expect(courier, `courier ${courierAddr} (designated by ${merchant.name}) must be a registered seller`).toBeTruthy();
 

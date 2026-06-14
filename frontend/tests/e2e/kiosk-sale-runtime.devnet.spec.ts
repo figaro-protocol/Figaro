@@ -42,6 +42,7 @@ import {
     placeBilateralOrderUI,
     readLocalDeploymentConfig,
 } from './devnet-helpers';
+import { SCENARIO_SLUG } from './scenarioSlugs.mjs';
 import { formatToken } from '../../lib/shared/utils';
 
 const RPC_URL = 'http://127.0.0.1:8545';
@@ -80,7 +81,7 @@ test.describe('kiosk-sale runtime — buyer checkout → seller accept → resol
         // Discover the seller from chain → IPFS by its on-chain binding (throws if
         // not onboarded). Both wallets approve the payment token by address via the
         // unlocked RPC — no keys.
-        const kiosk = await discoverSellerByAssembly('kiosk-sale');
+        const kiosk = await discoverSellerByAssembly(SCENARIO_SLUG['kiosk-sale']);
         await ensureTokenApprovalsByAddress(coreAddress, tokenAddress, BUYER_ADDR, kiosk.address);
 
         // Real token balances are the ground truth for the whole point of the

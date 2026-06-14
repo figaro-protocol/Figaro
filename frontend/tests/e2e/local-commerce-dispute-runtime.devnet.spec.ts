@@ -40,6 +40,7 @@ import {
     readLocalDeploymentConfig,
     waitForWalletConnected,
 } from './devnet-helpers';
+import { SCENARIO_SLUG } from './scenarioSlugs.mjs';
 
 const BUYER_ADDR = ANVIL_ACCOUNTS[0] as Hex;
 
@@ -83,8 +84,8 @@ test.describe('local-commerce-dispute runtime — Layer-3 clause-driven Kleros r
         // Discover the sellers the mainnet way: the dispute merchant designates
         // its courier on-chain (seller-assigned base).
         const sellers = await discoverSellers();
-        const merchant = await discoverSellerByAssembly('local-commerce-dispute', { withCourier: true }, sellers);
-        const courierAddr = courierAddressFor(merchant, 'local-commerce-dispute');
+        const merchant = await discoverSellerByAssembly(SCENARIO_SLUG['local-commerce-dispute'], { withCourier: true }, sellers);
+        const courierAddr = courierAddressFor(merchant, SCENARIO_SLUG['local-commerce-dispute']);
         const courier = sellers.find((s) => s.address.toLowerCase() === courierAddr.toLowerCase());
         expect(courier, `courier ${courierAddr} (designated by ${merchant.name}) must be a registered seller`).toBeTruthy();
 

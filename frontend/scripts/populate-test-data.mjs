@@ -21,6 +21,7 @@ import { mnemonicToAccount } from 'viem/accounts';
 import {
     LOCAL_ANVIL, pinJSON, populateClauses, readEnvLocal, registrarAccount,
 } from './populate-clauses.mjs';
+import { SCENARIO_SLUG } from '../tests/e2e/scenarioSlugs.mjs';
 
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545';
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
@@ -111,14 +112,18 @@ async function main() {
             location: { geohash: s.geohash },
             acceptedTokens: [{ address: mockToken, symbol: tokenSymbol, name: tokenName }],
             defaultTokenAddress: mockToken,
-            assemblyBindings: s.bind.map((assemblySlug) => {
-                const courierIdx = s.courierIndices?.[assemblySlug];
+            assemblyBindings: s.bind.map((scenarioName) => {
+                // `s.bind` holds the human scenario name; the on-chain binding key
+                // is the content-derived slug (asm-<hash>) the assembly publishes under.
+                const slug = SCENARIO_SLUG[scenarioName];
+                if (!slug) throw new Error(`populate-test-data: unknown scenario "${scenarioName}" — not in scenarioSlugs.mjs`);
+                const courierIdx = s.courierIndices?.[scenarioName];
                 return {
-                    bindingId: `${assemblySlug}:${account.address.toLowerCase()}`,
+                    bindingId: `${slug}:${account.address.toLowerCase()}`,
                     subjectAddress: account.address,
-                    assemblySlug,
+                    assemblySlug: slug,
                     counterpartyBindings: courierIdx
-                        ? [{ clauseId: 'figaro-courier-process-v1', addresses: courierIdx.map(addressForIndex) }]
+                        ? [{ clauseId: 'figaro-courier-process', addresses: courierIdx.map(addressForIndex) }]
                         : [],
                 };
             }),

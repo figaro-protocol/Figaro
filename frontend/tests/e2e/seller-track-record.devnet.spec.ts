@@ -29,6 +29,7 @@ import {
     runDeliveryCoordination,
     walkClauseAttestations,
 } from './devnet-helpers';
+import { SCENARIO_SLUG } from './scenarioSlugs.mjs';
 
 // Buyer — anvil[0], the default ?e2e=devnet account.
 const BUYER_ADDR = ANVIL_ACCOUNTS[0] as Hex;
@@ -56,8 +57,8 @@ test.describe('Seller track record reflects on-chain history (devnet)', () => {
         // Discover the sellers the mainnet way: the local-commerce-seller-assigned merchant
         // designates its courier on-chain.
         const sellers = await discoverSellers();
-        const merchant = await discoverSellerByAssembly('local-commerce-seller-assigned', { withCourier: true }, sellers);
-        const courierAddr = courierAddressFor(merchant, 'local-commerce-seller-assigned');
+        const merchant = await discoverSellerByAssembly(SCENARIO_SLUG['local-commerce-seller-assigned'], { withCourier: true }, sellers);
+        const courierAddr = courierAddressFor(merchant, SCENARIO_SLUG['local-commerce-seller-assigned']);
         const courier = sellers.find((s) => s.address.toLowerCase() === courierAddr.toLowerCase());
         expect(courier, `courier ${courierAddr} (designated by ${merchant.name}) must be a registered seller`).toBeTruthy();
 

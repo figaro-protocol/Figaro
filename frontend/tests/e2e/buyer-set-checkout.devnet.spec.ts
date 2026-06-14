@@ -43,6 +43,7 @@ import {
     seedRegisteredSeller,
     walkClauseAttestations,
 } from './devnet-helpers';
+import { SCENARIO_SLUG } from './scenarioSlugs.mjs';
 import { ANVIL_KEYS } from '../anvilAccounts';
 
 const BUYER_ADDR = ANVIL_ACCOUNTS[0] as Hex;
@@ -94,7 +95,7 @@ test.describe('Buyer-set delivery pricing (devnet)', () => {
 
         // The buyer-assigned merchant (profile binds NO counterparty — the
         // buyer's choice fills the courier order), discovered from chain.
-        const merchant = await discoverSellerByAssembly('local-commerce-buyer-assigned');
+        const merchant = await discoverSellerByAssembly(SCENARIO_SLUG['local-commerce-buyer-assigned']);
         await seedBuyerSetCourier(tokenAddress);
         await ensureTokenApprovalsByAddress(coreAddress, tokenAddress, BUYER_ADDR, merchant.address, COURIER_ADDR);
 

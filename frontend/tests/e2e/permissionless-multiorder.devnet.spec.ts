@@ -185,7 +185,6 @@ test.describe('PERMISSIONLESS MULTI-ORDER — the assembly RUNS at runtime', () 
             await expect(subBox, 'DRAWER surfaces the never-seen contributor clause').toHaveCount(1, { timeout: 20000 });
             await subBox.check();
 
-            await page.getByTestId('designer-name-input').fill('Permissionless Multiorder');
             await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
             await page.getByTestId('designer-review').click();
             await page.waitForURL(new RegExp(`/builders/designer/view/${MULTI_SLUG}`), { timeout: 15000 });

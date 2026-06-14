@@ -41,7 +41,6 @@ async function openGeoToggle(page: Page) {
 
 /** Name + Save the draft, landing back on the designer hub. */
 async function saveDraft(page: Page) {
-    await page.getByTestId('designer-name-input').fill(DRAFT_NAME);
     await expect(page.getByTestId('designer-save')).toBeEnabled({ timeout: 5000 });
     await page.getByTestId('designer-save').click();
     // Save lands on the hub, preserving ?e2e=devnet in the query.

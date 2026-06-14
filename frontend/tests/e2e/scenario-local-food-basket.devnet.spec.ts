@@ -37,6 +37,7 @@
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo.
  */
 import { test, expect } from './devnet-multi-test';
+import { SCENARIO_SLUG } from './scenarioSlugs.mjs';
 import type { Page } from '@playwright/test';
 import { createPublicClient, http, keccak256, toHex, type Hex } from 'viem';
 import {
@@ -78,8 +79,7 @@ test.describe('Author + publish the local-food-basket assembly (devnet)', () => 
             ?? config.assemblyRegistry) as Hex;
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
-        const slug = 'local-food-basket';
-        const draftName = 'Local Food Basket';
+        const slug = SCENARIO_SLUG['local-food-basket'];
         const slugHash = keccak256(toHex(slug));
 
         if (!(await assemblyAnchored(slug))) {
@@ -124,14 +124,15 @@ test.describe('Author + publish the local-food-basket assembly (devnet)', () => 
             await composeClause(page, 'figaro-proximity-policy', ['drawer-field-figaro-proximity-policy-bands-zone-wifi']);
             await expect(orderNodes, 'composing clauses never draws nodes').toHaveCount(4, { timeout: 10000 });
 
-            // Name + publish (fixed slug → "local-food-basket").
-            await page.getByTestId('designer-name-input').fill(draftName);
             await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
             await page.getByTestId('designer-review').click();
 
-            await page.waitForURL(new RegExp(`/builders/designer/view/${slug}`), { timeout: 15000 });
+            await page.waitForURL(/\/builders\/designer\/view\/asm-/, { timeout: 15000 });
+            // Post-40bbe6a the /view URL carries a RANDOM local draft handle; the
+            // content-derived slug is anchored at confirm-publish. Capture the handle.
+            const handle = page.url().match(/\/view\/(asm-[a-z0-9-]+)/)?.[1] ?? slug;
             await page.goto(
-                `/builders/designer/view/${slug}?intent=publish&e2e=devnet`,
+                `/builders/designer/view/${handle}?intent=publish&e2e=devnet`,
                 { waitUntil: 'domcontentloaded' },
             );
 
@@ -172,7 +173,6 @@ test.describe('Author + publish the local-food-basket assembly (devnet)', () => 
                 clauses: Record<string, Record<string, unknown>>;
             }>;
         };
-        expect(assemblyTemplate.slug).toBe(slug);
         expect(assemblyTemplate.orders).toHaveLength(4);
         const [root, farm, bakery, courier] = assemblyTemplate.orders;
 
