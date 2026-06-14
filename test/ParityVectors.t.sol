@@ -359,7 +359,7 @@ contract ParityVectors is Test {
 
         FigaroBatchVerifier.ClauseData[] memory clauses = new FigaroBatchVerifier.ClauseData[](1);
         clauses[0] = FigaroBatchVerifier.ClauseData({
-            clauseId: keccak256("figaro-test-v1"),
+            clauseId: keccak256(abi.encode("figaro-test", uint64(1))),
             version: 1,
             uriHash: keccak256("ipfs://test"),
             family: keccak256("test-family"),
@@ -368,7 +368,7 @@ contract ParityVectors is Test {
 
         FigaroBatchVerifier.MechanismClauseData[] memory mechs = new FigaroBatchVerifier.MechanismClauseData[](1);
         mechs[0] = FigaroBatchVerifier.MechanismClauseData({
-            mechanism: address(0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB), clauseId: keccak256("figaro-test-v1")
+            mechanism: address(0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB), clauseId: keccak256(abi.encode("figaro-test", uint64(1)))
         });
 
         bytes32 computed = _hashClausesHelper(clauses, mechs);
@@ -376,13 +376,13 @@ contract ParityVectors is Test {
 
         // Manual cross-check: clause(32+8+32+32+20=124) + mechanism(20+32=52)
         bytes memory packed = abi.encodePacked(
-            keccak256("figaro-test-v1"),
+            keccak256(abi.encode("figaro-test", uint64(1))),
             uint64(1),
             keccak256("ipfs://test"),
             keccak256("test-family"),
             address(0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa),
             address(0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB),
-            keccak256("figaro-test-v1")
+            keccak256(abi.encode("figaro-test", uint64(1)))
         );
         assertEq(computed, keccak256(packed), "clause hash manual cross-check");
     }

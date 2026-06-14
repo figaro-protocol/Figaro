@@ -6,7 +6,7 @@ import {FigaroCommerceV1Validator} from "../../src/clauseValidators/FigaroCommer
 
 contract FigaroCommerceV1ValidatorTest is Test {
     FigaroCommerceV1Validator validator;
-    bytes32 constant ID = keccak256("figaro-commerce-v1");
+    bytes32 constant ID = keccak256(abi.encode("figaro-commerce", uint64(1)));
     address constant CURRENCY = address(0x5FbDB2315678afecb367f032d93F642f64180aa3);
 
     function setUp() public {

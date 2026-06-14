@@ -6,7 +6,7 @@ import {FigaroProximityProofV1Validator} from "../../src/clauseValidators/Figaro
 
 contract FigaroProximityProofV1ValidatorTest is Test {
     FigaroProximityProofV1Validator validator;
-    bytes32 constant ID = keccak256("figaro-proximity-proof-v1");
+    bytes32 constant ID = keccak256(abi.encode("figaro-proximity-proof", uint64(1)));
     bytes32 constant NONCE = keccak256("handoff-nonce-1");
 
     function setUp() public {

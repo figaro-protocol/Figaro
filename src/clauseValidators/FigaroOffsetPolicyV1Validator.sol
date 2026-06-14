@@ -22,7 +22,9 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 ///      An order without offset-policy has no offset path; an INCLUDED
 ///      clause must carry at least one provider.
 contract FigaroOffsetPolicyV1Validator is IClauseValidator {
-    bytes32 public constant override clauseId = keccak256("figaro-offset-policy-v1");
+    function clauseId() public pure override returns (bytes32) {
+        return keccak256(abi.encode("figaro-offset-policy", uint64(1)));
+    }
 
     uint8 internal constant MAX_PROVIDER = 3;
 
@@ -43,7 +45,7 @@ contract FigaroOffsetPolicyV1Validator is IClauseValidator {
         pure
         override
     {
-        if (id != clauseId) revert ClauseIdMismatch(id, clauseId);
+        if (id != clauseId()) revert ClauseIdMismatch(id, clauseId());
         if (keccak256(sectionData) != keccak256(content)) revert SectionDataMismatch();
         uint8[] memory providers = abi.decode(content, (uint8[]));
         if (providers.length == 0) revert ProvidersEmpty();

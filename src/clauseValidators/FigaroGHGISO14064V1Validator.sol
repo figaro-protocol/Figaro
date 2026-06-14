@@ -19,7 +19,9 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 ///      organization-level, 14064-2 project-level, 14064-3 verification)
 ///      can be added in future v2 clauses without affecting v1 callers.
 contract FigaroGHGISO14064V1Validator is IClauseValidator {
-    bytes32 public constant override clauseId = keccak256("figaro-ghg-iso-14064-v1");
+    function clauseId() public pure override returns (bytes32) {
+        return keccak256(abi.encode("figaro-ghg-iso-14064", uint64(1)));
+    }
 
     uint256 internal constant MAX_SCOPE = 3;
 
@@ -39,7 +41,7 @@ contract FigaroGHGISO14064V1Validator is IClauseValidator {
         pure
         override
     {
-        if (id != clauseId) revert ClauseIdMismatch(id, clauseId);
+        if (id != clauseId()) revert ClauseIdMismatch(id, clauseId());
         if (keccak256(sectionData) != keccak256(content)) revert SectionDataMismatch();
         uint256 scope = abi.decode(content, (uint256));
         if (scope > MAX_SCOPE) revert InvalidScope(scope);

@@ -20,7 +20,9 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 ///      An order with no physical hand-off has no figaro-handoff-v1 clause in
 ///      its agreement; an INCLUDED clause must carry at least one point.
 contract FigaroHandoffV1Validator is IClauseValidator {
-    bytes32 public constant override clauseId = keccak256("figaro-handoff-v1");
+    function clauseId() public pure override returns (bytes32) {
+        return keccak256(abi.encode("figaro-handoff", uint64(1)));
+    }
 
     uint8 internal constant MAX_HANDOFF_POINT = 3;
 
@@ -41,7 +43,7 @@ contract FigaroHandoffV1Validator is IClauseValidator {
         pure
         override
     {
-        if (id != clauseId) revert ClauseIdMismatch(id, clauseId);
+        if (id != clauseId()) revert ClauseIdMismatch(id, clauseId());
         if (keccak256(sectionData) != keccak256(content)) revert SectionDataMismatch();
         uint8[] memory points = abi.decode(content, (uint8[]));
         if (points.length == 0) revert HandoffEmpty();

@@ -6,7 +6,7 @@ import {FigaroGeoV2Validator} from "../../src/clauseValidators/FigaroGeoV2Valida
 
 contract FigaroGeoV2ValidatorTest is Test {
     FigaroGeoV2Validator validator;
-    bytes32 constant ID = keccak256("figaro-geo-v2");
+    bytes32 constant ID = keccak256(abi.encode("figaro-geo", uint64(2)));
 
     function setUp() public {
         validator = new FigaroGeoV2Validator();

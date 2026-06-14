@@ -6,7 +6,7 @@ import {FigaroApplicableLawV1Validator} from "../../src/clauseValidators/FigaroA
 
 contract FigaroApplicableLawV1ValidatorTest is Test {
     FigaroApplicableLawV1Validator validator;
-    bytes32 constant ID = keccak256("figaro-applicable-law-v1");
+    bytes32 constant ID = keccak256(abi.encode("figaro-applicable-law", uint64(1)));
 
     function setUp() public {
         validator = new FigaroApplicableLawV1Validator();

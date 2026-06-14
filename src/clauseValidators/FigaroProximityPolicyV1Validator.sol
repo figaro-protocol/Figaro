@@ -20,7 +20,9 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 ///      An order without proximity verification has no proximity-policy clause
 ///      in its agreement; an INCLUDED clause must carry at least one band.
 contract FigaroProximityPolicyV1Validator is IClauseValidator {
-    bytes32 public constant override clauseId = keccak256("figaro-proximity-policy-v1");
+    function clauseId() public pure override returns (bytes32) {
+        return keccak256(abi.encode("figaro-proximity-policy", uint64(1)));
+    }
 
     uint8 internal constant MAX_BAND = 2;
 
@@ -41,7 +43,7 @@ contract FigaroProximityPolicyV1Validator is IClauseValidator {
         pure
         override
     {
-        if (id != clauseId) revert ClauseIdMismatch(id, clauseId);
+        if (id != clauseId()) revert ClauseIdMismatch(id, clauseId());
         if (keccak256(sectionData) != keccak256(content)) revert SectionDataMismatch();
         uint8[] memory bands = abi.decode(content, (uint8[]));
         if (bands.length == 0) revert BandsEmpty();

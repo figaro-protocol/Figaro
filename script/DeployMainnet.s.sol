@@ -211,43 +211,43 @@ contract DeployMainnet is Script {
         // to avoid holding more than one address on the Yul stack at a time.
         // Prevents stack-too-deep under `solc_via_ir` with many local vars.
         _wireValidator(attestation, "CommerceV1Validator:         ",
-            keccak256("figaro-commerce-v1"), address(new FigaroCommerceV1Validator()));
+            keccak256(abi.encode("figaro-commerce", uint64(1))), address(new FigaroCommerceV1Validator()));
         _wireValidator(attestation, "GeoV2Validator:              ",
-            keccak256("figaro-geo-v2"), address(new FigaroGeoV2Validator()));
+            keccak256(abi.encode("figaro-geo", uint64(2))), address(new FigaroGeoV2Validator()));
         _wireValidator(attestation, "ModalitiesV1Validator:       ",
-            keccak256("figaro-modalities-v1"), address(new FigaroModalitiesV1Validator()));
+            keccak256(abi.encode("figaro-modalities", uint64(1))), address(new FigaroModalitiesV1Validator()));
         _wireValidator(attestation, "CoordinationV1Validator:     ",
-            keccak256("figaro-coordination-v1"), address(new FigaroCoordinationV1Validator()));
+            keccak256(abi.encode("figaro-coordination", uint64(1))), address(new FigaroCoordinationV1Validator()));
         _wireValidator(attestation, "HandoffV1Validator:          ",
-            keccak256("figaro-handoff-v1"), address(new FigaroHandoffV1Validator()));
+            keccak256(abi.encode("figaro-handoff", uint64(1))), address(new FigaroHandoffV1Validator()));
         _wireValidator(attestation, "GHGProtocolV1Validator:      ",
-            keccak256("figaro-ghg-protocol-v1"), address(new FigaroGHGProtocolV1Validator()));
+            keccak256(abi.encode("figaro-ghg-protocol", uint64(1))), address(new FigaroGHGProtocolV1Validator()));
         _wireValidator(attestation, "GHGISO14064V1Validator:      ",
-            keccak256("figaro-ghg-iso-14064-v1"), address(new FigaroGHGISO14064V1Validator()));
+            keccak256(abi.encode("figaro-ghg-iso-14064", uint64(1))), address(new FigaroGHGISO14064V1Validator()));
         _wireValidator(attestation, "GHGPAS2050V1Validator:       ",
-            keccak256("figaro-ghg-pas-2050-v1"), address(new FigaroGHGPAS2050V1Validator()));
+            keccak256(abi.encode("figaro-ghg-pas-2050", uint64(1))), address(new FigaroGHGPAS2050V1Validator()));
         _wireValidator(attestation, "GHGEN16258V1Validator:       ",
-            keccak256("figaro-ghg-en-16258-v1"), address(new FigaroGHGEN16258V1Validator()));
+            keccak256(abi.encode("figaro-ghg-en-16258", uint64(1))), address(new FigaroGHGEN16258V1Validator()));
         _wireValidator(attestation, "GHGCustomV1Validator:        ",
-            keccak256("figaro-ghg-custom-v1"), address(new FigaroGHGCustomV1Validator()));
+            keccak256(abi.encode("figaro-ghg-custom", uint64(1))), address(new FigaroGHGCustomV1Validator()));
         _wireValidator(attestation, "GHGMeasurementV1Validator:   ",
-            keccak256("figaro-ghg-measurement-v1"), address(new FigaroGHGMeasurementV1Validator()));
+            keccak256(abi.encode("figaro-ghg-measurement", uint64(1))), address(new FigaroGHGMeasurementV1Validator()));
         _wireValidator(attestation, "ProximityPolicyV1Validator:  ",
-            keccak256("figaro-proximity-policy-v1"), address(new FigaroProximityPolicyV1Validator()));
+            keccak256(abi.encode("figaro-proximity-policy", uint64(1))), address(new FigaroProximityPolicyV1Validator()));
         _wireValidator(attestation, "ProximityProofV1Validator:   ",
-            keccak256("figaro-proximity-proof-v1"), address(new FigaroProximityProofV1Validator()));
+            keccak256(abi.encode("figaro-proximity-proof", uint64(1))), address(new FigaroProximityProofV1Validator()));
         _wireValidator(attestation, "MerchantProcessV1Validator: ",
-            keccak256("figaro-merchant-process-v1"), address(new FigaroMerchantProcessV1Validator()));
+            keccak256(abi.encode("figaro-merchant-process", uint64(1))), address(new FigaroMerchantProcessV1Validator()));
         _wireValidator(attestation, "CourierProcessV1Validator:     ",
-            keccak256("figaro-courier-process-v1"), address(new FigaroCourierProcessV1Validator()));
+            keccak256(abi.encode("figaro-courier-process", uint64(1))), address(new FigaroCourierProcessV1Validator()));
         _wireValidator(attestation, "ArbitrationKlerosV1Validator:  ",
-            keccak256("figaro-arbitration-kleros-v1"), address(new FigaroArbitrationKlerosV1Validator()));
+            keccak256(abi.encode("figaro-arbitration-kleros", uint64(1))), address(new FigaroArbitrationKlerosV1Validator()));
         _wireValidator(attestation, "ApplicableLawV1Validator:      ",
-            keccak256("figaro-applicable-law-v1"), address(new FigaroApplicableLawV1Validator()));
+            keccak256(abi.encode("figaro-applicable-law", uint64(1))), address(new FigaroApplicableLawV1Validator()));
         _wireValidator(attestation, "ConsentV1Validator:            ",
-            keccak256("figaro-consent-v1"), address(new FigaroConsentV1Validator()));
+            keccak256(abi.encode("figaro-consent", uint64(1))), address(new FigaroConsentV1Validator()));
         _wireValidator(attestation, "OffsetPolicyV1Validator:       ",
-            keccak256("figaro-offset-policy-v1"), address(new FigaroOffsetPolicyV1Validator()));
+            keccak256(abi.encode("figaro-offset-policy", uint64(1))), address(new FigaroOffsetPolicyV1Validator()));
 
         console.log("AttestationCoordinator: 19 validators wired");
     }

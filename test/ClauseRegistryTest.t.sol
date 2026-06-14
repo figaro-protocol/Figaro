@@ -11,20 +11,20 @@ contract ClauseRegistryTest is Test {
     // its keccak256 hash (the on-chain dedup key + the arg to registered() /
     // setMechanismClause). metadataURI is the IPFS locator; contentHash the spec
     // integrity digest.
-    string constant MODALITIES_ID = "figaro-modalities-v1";
-    bytes32 constant MODALITIES_HASH = keccak256("figaro-modalities-v1");
+    string constant MODALITIES_ID = "figaro-modalities";
+    bytes32 constant MODALITIES_HASH = keccak256(abi.encode("figaro-modalities", uint64(1)));
     string constant MODALITIES_URI = "ipfs://figaro-modalities/v1";
     bytes32 constant MODALITIES_CONTENT = keccak256("figaro-modalities-v1-spec");
     bytes32 constant MODALITIES_FAMILY = keccak256("coordination");
 
-    string constant GHG_ID = "figaro-ghg-iso-14064-v1";
-    bytes32 constant GHG_HASH = keccak256("figaro-ghg-iso-14064-v1");
+    string constant GHG_ID = "figaro-ghg-iso-14064";
+    bytes32 constant GHG_HASH = keccak256(abi.encode("figaro-ghg-iso-14064", uint64(1)));
     string constant GHG_URI = "ipfs://figaro-ghg/v1";
     bytes32 constant GHG_CONTENT = keccak256("figaro-ghg-iso-14064-v1-spec");
     bytes32 constant GHG_FAMILY = keccak256("emissions");
 
-    string constant LIFECYCLE_ID = "figaro-courier-process-v1";
-    bytes32 constant LIFECYCLE_HASH = keccak256("figaro-courier-process-v1");
+    string constant LIFECYCLE_ID = "figaro-courier-process";
+    bytes32 constant LIFECYCLE_HASH = keccak256(abi.encode("figaro-courier-process", uint64(1)));
     string constant LIFECYCLE_URI = "ipfs://figaro-courier-process/v1";
     bytes32 constant LIFECYCLE_CONTENT = keccak256("figaro-courier-process-v1-spec");
     bytes32 constant LIFECYCLE_FAMILY = keccak256("seller-process");
@@ -62,7 +62,7 @@ contract ClauseRegistryTest is Test {
         registry.registerClause(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, MODALITIES_FAMILY);
 
         vm.expectRevert(abi.encodeWithSelector(ClauseRegistry.AlreadyRegistered.selector, MODALITIES_HASH));
-        registry.registerClause(MODALITIES_ID, 2, MODALITIES_CONTENT, MODALITIES_URI, MODALITIES_FAMILY);
+        registry.registerClause(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, MODALITIES_FAMILY);
     }
 
     function test_unregisteredClause_returnsFalse() public view {
@@ -83,13 +83,13 @@ contract ClauseRegistryTest is Test {
         // inherits the Tier-1 boost without redeploying the FIG system.
         bytes32 geoFamily = keccak256("geo");
 
-        registry.registerClause("figaro-geo-v2", 2, keccak256("geo-v2-spec"), "ipfs://geo/v2", geoFamily);
+        registry.registerClause("figaro-geo", 2, keccak256("geo-v2-spec"), "ipfs://geo/v2", geoFamily);
         registry.registerClause(
-            "figaro-geo-v3-hypothetical", 3, keccak256("geo-v3-spec"), "ipfs://geo/v3", geoFamily
+            "figaro-geo", 3, keccak256("geo-v3-spec"), "ipfs://geo/v3", geoFamily
         );
 
-        assertTrue(registry.registered(keccak256("figaro-geo-v2")));
-        assertTrue(registry.registered(keccak256("figaro-geo-v3-hypothetical")));
+        assertTrue(registry.registered(keccak256(abi.encode("figaro-geo", uint64(2)))));
+        assertTrue(registry.registered(keccak256(abi.encode("figaro-geo", uint64(3)))));
     }
 
     // ── Events ───────────────────────────────────────────────────────

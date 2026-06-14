@@ -21,7 +21,9 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 ///      (keccak256 of the canonical document text). version and title are
 ///      length-bounded to prevent griefing via unbounded calldata.
 contract FigaroConsentV1Validator is IClauseValidator {
-    bytes32 public constant override clauseId = keccak256("figaro-consent-v1");
+    function clauseId() public pure override returns (bytes32) {
+        return keccak256(abi.encode("figaro-consent", uint64(1)));
+    }
 
     uint256 internal constant MIN_VERSION_LEN = 1;
     uint256 internal constant MAX_VERSION_LEN = 32;
@@ -55,7 +57,7 @@ contract FigaroConsentV1Validator is IClauseValidator {
         pure
         override
     {
-        if (id != clauseId) revert ClauseIdMismatch(id, clauseId);
+        if (id != clauseId()) revert ClauseIdMismatch(id, clauseId());
         if (keccak256(sectionData) != keccak256(content)) revert SectionDataMismatch();
 
         ConsentDocument[] memory documents = abi.decode(content, (ConsentDocument[]));

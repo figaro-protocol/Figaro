@@ -17,7 +17,9 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 ///      Coordination (how a delivery's courier edge is arranged) is its own
 ///      clause — `figaro-coordination-v1` — composed on the delivery order.
 contract FigaroModalitiesV1Validator is IClauseValidator {
-    bytes32 public constant override clauseId = keccak256("figaro-modalities-v1");
+    function clauseId() public pure override returns (bytes32) {
+        return keccak256(abi.encode("figaro-modalities", uint64(1)));
+    }
 
     uint8 internal constant MODALITY_MAX = 3;
 
@@ -37,7 +39,7 @@ contract FigaroModalitiesV1Validator is IClauseValidator {
         pure
         override
     {
-        if (id != clauseId) revert ClauseIdMismatch(id, clauseId);
+        if (id != clauseId()) revert ClauseIdMismatch(id, clauseId());
         if (keccak256(sectionData) != keccak256(content)) revert SectionDataMismatch();
 
         uint8 modality = abi.decode(content, (uint8));

@@ -30,7 +30,9 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 ///                 Length range 65–512 bytes (raw 65 = ECDSA r,s,v;
 ///                 longer = EIP-1271 contract sig or EIP-2098 compact + ext)
 contract FigaroProximityProofV1Validator is IClauseValidator {
-    bytes32 public constant override clauseId = keccak256("figaro-proximity-proof-v1");
+    function clauseId() public pure override returns (bytes32) {
+        return keccak256(abi.encode("figaro-proximity-proof", uint64(1)));
+    }
 
     uint8 internal constant MAX_BAND = 2;
     uint256 internal constant MIN_SIG_LEN = 65;
@@ -54,7 +56,7 @@ contract FigaroProximityProofV1Validator is IClauseValidator {
         pure
         override
     {
-        if (id != clauseId) revert ClauseIdMismatch(id, clauseId);
+        if (id != clauseId()) revert ClauseIdMismatch(id, clauseId());
         (uint8 band, bytes32 nonce, bytes memory deviceSig) = abi.decode(content, (uint8, bytes32, bytes));
         if (band > MAX_BAND) revert InvalidBand(band);
         if (nonce == bytes32(0)) revert ZeroNonce();

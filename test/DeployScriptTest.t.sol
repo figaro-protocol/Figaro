@@ -55,7 +55,7 @@ contract DeployScriptTest is Test {
 
         // Topology is manifest-only — no on-chain validator should be wired.
         assertEq(
-            ac.clauseValidator(keccak256("figaro-topology-v1")),
+            ac.clauseValidator(keccak256(abi.encode("figaro-topology", uint64(1)))),
             address(0),
             "figaro-topology-v1 must have no runtime validator (manifest-only clause)"
         );

@@ -19,7 +19,9 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 ///        - unitPrice may be 0 (e.g. promotional / bonus items)
 ///        - lineItems may be empty (non-itemized order)
 contract FigaroCommerceV1Validator is IClauseValidator {
-    bytes32 public constant override clauseId = keccak256("figaro-commerce-v1");
+    function clauseId() public pure override returns (bytes32) {
+        return keccak256(abi.encode("figaro-commerce", uint64(1)));
+    }
 
     struct LineItem {
         string itemId;
@@ -50,7 +52,7 @@ contract FigaroCommerceV1Validator is IClauseValidator {
         pure
         override
     {
-        if (id != clauseId) revert ClauseIdMismatch(id, clauseId);
+        if (id != clauseId()) revert ClauseIdMismatch(id, clauseId());
         if (keccak256(sectionData) != keccak256(content)) revert SectionDataMismatch();
         (address currency, uint256 payment, LineItem[] memory items) =
             abi.decode(content, (address, uint256, LineItem[]));

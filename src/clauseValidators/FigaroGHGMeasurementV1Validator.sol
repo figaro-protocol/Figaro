@@ -28,7 +28,9 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 ///        2 = Restatement    — correction to a prior measurement
 ///        3 = Verification   — third-party validated measurement
 contract FigaroGHGMeasurementV1Validator is IClauseValidator {
-    bytes32 public constant override clauseId = keccak256("figaro-ghg-measurement-v1");
+    function clauseId() public pure override returns (bytes32) {
+        return keccak256(abi.encode("figaro-ghg-measurement", uint64(1)));
+    }
 
     uint8 internal constant MAX_STAGE = 3;
 
@@ -46,7 +48,7 @@ contract FigaroGHGMeasurementV1Validator is IClauseValidator {
         pure
         override
     {
-        if (id != clauseId) revert ClauseIdMismatch(id, clauseId);
+        if (id != clauseId()) revert ClauseIdMismatch(id, clauseId());
         if (stage > MAX_STAGE) revert InvalidStage(stage);
         abi.decode(content, (uint256)); // reverts on malformed content
     }

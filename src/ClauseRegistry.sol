@@ -100,7 +100,7 @@ contract ClauseRegistry {
         if (bytes(metadataURI).length == 0) revert EmptyMetadataURI();
         if (contentHash == bytes32(0)) revert ZeroContentHash();
         if (family == bytes32(0)) revert ZeroFamily();
-        bytes32 idHash = keccak256(bytes(clauseId));
+        bytes32 idHash = keccak256(abi.encode(clauseId, version));
         if (registered[idHash]) revert AlreadyRegistered(idHash);
         registered[idHash] = true;
         emit ClauseRegistered(clauseId, version, contentHash, metadataURI, family, msg.sender);

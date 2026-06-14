@@ -7,6 +7,6 @@ import {FigaroGHGScopeValidatorTestBase} from "./FigaroGHGScopeValidatorTestBase
 contract FigaroGHGProtocolV1ValidatorTest is FigaroGHGScopeValidatorTestBase {
     function setUp() public {
         validator = new FigaroGHGProtocolV1Validator();
-        ID = keccak256("figaro-ghg-protocol-v1");
+        ID = keccak256(abi.encode("figaro-ghg-protocol", uint64(1)));
     }
 }

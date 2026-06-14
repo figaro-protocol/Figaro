@@ -6,7 +6,7 @@ import {FigaroArbitrationKlerosV1Validator} from "../../src/clauseValidators/Fig
 
 contract FigaroArbitrationKlerosV1ValidatorTest is Test {
     FigaroArbitrationKlerosV1Validator validator;
-    bytes32 constant ID = keccak256("figaro-arbitration-kleros-v1");
+    bytes32 constant ID = keccak256(abi.encode("figaro-arbitration-kleros", uint64(1)));
 
     function setUp() public {
         validator = new FigaroArbitrationKlerosV1Validator();

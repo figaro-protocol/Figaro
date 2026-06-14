@@ -83,6 +83,6 @@ contract ClauseRegistrationHelper {
         address validator
     ) external {
         clauseRegistry.registerClause(clauseId, version, contentHash, metadataURI, family);
-        attestationCoordinator.setValidator(keccak256(bytes(clauseId)), validator);
+        attestationCoordinator.setValidator(keccak256(abi.encode(clauseId, version)), validator);
     }
 }

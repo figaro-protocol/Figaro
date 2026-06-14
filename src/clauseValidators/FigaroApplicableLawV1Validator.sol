@@ -24,7 +24,9 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 ///      language — 0-16 chars. ISO 639-1 / 639-2 code. Empty means: official
 ///                 language of the forum.
 contract FigaroApplicableLawV1Validator is IClauseValidator {
-    bytes32 public constant override clauseId = keccak256("figaro-applicable-law-v1");
+    function clauseId() public pure override returns (bytes32) {
+        return keccak256(abi.encode("figaro-applicable-law", uint64(1)));
+    }
 
     uint256 internal constant MIN_APPLICABLE_LAW_LEN = 2;
     uint256 internal constant MAX_APPLICABLE_LAW_LEN = 16;
@@ -50,7 +52,7 @@ contract FigaroApplicableLawV1Validator is IClauseValidator {
         pure
         override
     {
-        if (id != clauseId) revert ClauseIdMismatch(id, clauseId);
+        if (id != clauseId()) revert ClauseIdMismatch(id, clauseId());
         if (keccak256(sectionData) != keccak256(content)) revert SectionDataMismatch();
 
         (string memory applicableLaw, string memory forum, string memory language) =

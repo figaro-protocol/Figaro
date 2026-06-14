@@ -6,8 +6,8 @@ import {FigaroCoordinationV1Validator} from "../../src/clauseValidators/FigaroCo
 
 contract FigaroCoordinationV1ValidatorTest is Test {
     FigaroCoordinationV1Validator validator;
-    bytes32 constant ID = keccak256("figaro-coordination-v1");
-    bytes32 constant OTHER_ID = keccak256("figaro-other-v1");
+    bytes32 constant ID = keccak256(abi.encode("figaro-coordination", uint64(1)));
+    bytes32 constant OTHER_ID = keccak256(abi.encode("figaro-other", uint64(1)));
 
     // Canonical 0-based enum positions (the spec's value order):
     //   0=seller-assigned, 1=buyer-assigned, 2=dutch-auction

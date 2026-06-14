@@ -6,8 +6,8 @@ import {FigaroModalitiesV1Validator} from "../../src/clauseValidators/FigaroModa
 
 contract FigaroModalitiesV1ValidatorTest is Test {
     FigaroModalitiesV1Validator validator;
-    bytes32 constant ID = keccak256("figaro-modalities-v1");
-    bytes32 constant OTHER_ID = keccak256("figaro-other-v1");
+    bytes32 constant ID = keccak256(abi.encode("figaro-modalities", uint64(1)));
+    bytes32 constant OTHER_ID = keccak256(abi.encode("figaro-other", uint64(1)));
 
     // Canonical 0-based enum positions (the spec's value order):
     //   0=consume-onsite, 1=pickup, 2=delivery, 3=virtual

@@ -6,7 +6,7 @@ import {FigaroOffsetPolicyV1Validator} from "../../src/clauseValidators/FigaroOf
 
 contract FigaroOffsetPolicyV1ValidatorTest is Test {
     FigaroOffsetPolicyV1Validator validator;
-    bytes32 constant ID = keccak256("figaro-offset-policy-v1");
+    bytes32 constant ID = keccak256(abi.encode("figaro-offset-policy", uint64(1)));
 
     function setUp() public {
         validator = new FigaroOffsetPolicyV1Validator();

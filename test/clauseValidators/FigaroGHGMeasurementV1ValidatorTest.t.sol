@@ -6,7 +6,7 @@ import {FigaroGHGMeasurementV1Validator} from "../../src/clauseValidators/Figaro
 
 contract FigaroGHGMeasurementV1ValidatorTest is Test {
     FigaroGHGMeasurementV1Validator validator;
-    bytes32 constant ID = keccak256("figaro-ghg-measurement-v1");
+    bytes32 constant ID = keccak256(abi.encode("figaro-ghg-measurement", uint64(1)));
 
     function setUp() public {
         validator = new FigaroGHGMeasurementV1Validator();

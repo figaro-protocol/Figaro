@@ -17,7 +17,9 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 ///
 ///      All positions are valid choices; an out-of-range index is rejected.
 contract FigaroCoordinationV1Validator is IClauseValidator {
-    bytes32 public constant override clauseId = keccak256("figaro-coordination-v1");
+    function clauseId() public pure override returns (bytes32) {
+        return keccak256(abi.encode("figaro-coordination", uint64(1)));
+    }
 
     uint8 internal constant COORDINATION_MAX = 2;
 
@@ -37,7 +39,7 @@ contract FigaroCoordinationV1Validator is IClauseValidator {
         pure
         override
     {
-        if (id != clauseId) revert ClauseIdMismatch(id, clauseId);
+        if (id != clauseId()) revert ClauseIdMismatch(id, clauseId());
         if (keccak256(sectionData) != keccak256(content)) revert SectionDataMismatch();
 
         uint8 coordination = abi.decode(content, (uint8));

@@ -6,7 +6,7 @@ import {FigaroMerchantProcessV1Validator} from "../../src/clauseValidators/Figar
 
 contract FigaroMerchantProcessV1ValidatorTest is Test {
     FigaroMerchantProcessV1Validator validator;
-    bytes32 constant ID = keccak256("figaro-merchant-process-v1");
+    bytes32 constant ID = keccak256(abi.encode("figaro-merchant-process", uint64(1)));
 
     function setUp() public {
         validator = new FigaroMerchantProcessV1Validator();

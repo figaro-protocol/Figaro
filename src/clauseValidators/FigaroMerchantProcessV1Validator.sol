@@ -33,7 +33,9 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 ///
 ///      evidenceUri is optional (max 512 bytes when present).
 contract FigaroMerchantProcessV1Validator is IClauseValidator {
-    bytes32 public constant override clauseId = keccak256("figaro-merchant-process-v1");
+    function clauseId() public pure override returns (bytes32) {
+        return keccak256(abi.encode("figaro-merchant-process", uint64(1)));
+    }
 
     uint8 internal constant MAX_EVENT_INDEX = 2;
     uint256 internal constant MAX_URI_LEN = 512;
@@ -54,7 +56,7 @@ contract FigaroMerchantProcessV1Validator is IClauseValidator {
         pure
         override
     {
-        if (id != clauseId) revert ClauseIdMismatch(id, clauseId);
+        if (id != clauseId()) revert ClauseIdMismatch(id, clauseId());
         (uint8 eventType, string memory evidenceUri) = abi.decode(content, (uint8, string));
         if (eventType > MAX_EVENT_INDEX) revert InvalidEventType(eventType);
         uint256 len = bytes(evidenceUri).length;

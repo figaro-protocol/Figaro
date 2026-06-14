@@ -6,7 +6,7 @@ import {FigaroCourierProcessV1Validator} from "../../src/clauseValidators/Figaro
 
 contract FigaroCourierProcessV1ValidatorTest is Test {
     FigaroCourierProcessV1Validator validator;
-    bytes32 constant ID = keccak256("figaro-courier-process-v1");
+    bytes32 constant ID = keccak256(abi.encode("figaro-courier-process", uint64(1)));
 
     function setUp() public {
         validator = new FigaroCourierProcessV1Validator();

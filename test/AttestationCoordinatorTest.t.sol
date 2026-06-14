@@ -35,17 +35,17 @@ contract AttestationCoordinatorTest is Test {
 
     uint256 constant INITIAL_BALANCE = 10_000 ether;
 
-    string constant LIFECYCLE_CLAUSE_ID = "figaro-courier-process-v1";
-    string constant GHG_CLAUSE_ID = "figaro-ghg-iso-14064-v1";
-    string constant PROXIMITY_CLAUSE_ID = "figaro-proximity-proof-v1";
-    string constant COMMERCE_CLAUSE_ID = "figaro-commerce-v1";
-    string constant MODALITIES_CLAUSE_ID = "figaro-modalities-v1";
+    string constant LIFECYCLE_CLAUSE_ID = "figaro-courier-process";
+    string constant GHG_CLAUSE_ID = "figaro-ghg-iso-14064";
+    string constant PROXIMITY_CLAUSE_ID = "figaro-proximity-proof";
+    string constant COMMERCE_CLAUSE_ID = "figaro-commerce";
+    string constant MODALITIES_CLAUSE_ID = "figaro-modalities";
 
-    bytes32 constant LIFECYCLE_CLAUSE = keccak256("figaro-courier-process-v1");
-    bytes32 constant GHG_CLAUSE = keccak256("figaro-ghg-iso-14064-v1");
-    bytes32 constant PROXIMITY_CLAUSE = keccak256("figaro-proximity-proof-v1");
-    bytes32 constant COMMERCE_CLAUSE = keccak256("figaro-commerce-v1");
-    bytes32 constant MODALITIES_CLAUSE = keccak256("figaro-modalities-v1");
+    bytes32 constant LIFECYCLE_CLAUSE = keccak256(abi.encode("figaro-courier-process", uint64(1)));
+    bytes32 constant GHG_CLAUSE = keccak256(abi.encode("figaro-ghg-iso-14064", uint64(1)));
+    bytes32 constant PROXIMITY_CLAUSE = keccak256(abi.encode("figaro-proximity-proof", uint64(1)));
+    bytes32 constant COMMERCE_CLAUSE = keccak256(abi.encode("figaro-commerce", uint64(1)));
+    bytes32 constant MODALITIES_CLAUSE = keccak256(abi.encode("figaro-modalities", uint64(1)));
 
     function setUp() public {
         core = new FigaroCore();
@@ -691,7 +691,7 @@ contract AttestationCoordinatorTest is Test {
     // Validator-gate tests (Layer C on-chain validation)
     // ═══════════════════════════════════════════════════════════════
 
-    bytes32 constant UNUSED_CLAUSE = keccak256("figaro-never-registered-v1");
+    bytes32 constant UNUSED_CLAUSE = keccak256(abi.encode("figaro-never-registered", uint64(1)));
 
     function test_setValidator_rejectsZeroAddress() public {
         vm.expectRevert(AttestationCoordinator.ZeroValidator.selector);
@@ -710,7 +710,7 @@ contract AttestationCoordinatorTest is Test {
     function test_setValidator_rejectsMismatchedBinding() public {
         // Validator claims it handles UNUSED_CLAUSE, but we try to register under a different ID.
         MockClauseValidator v = new MockClauseValidator(UNUSED_CLAUSE);
-        bytes32 differentId = keccak256("figaro-yet-another-v1");
+        bytes32 differentId = keccak256(abi.encode("figaro-yet-another", uint64(1)));
         vm.expectRevert(abi.encodeWithSelector(
             AttestationCoordinator.InvalidValidatorBinding.selector, differentId, UNUSED_CLAUSE
         ));

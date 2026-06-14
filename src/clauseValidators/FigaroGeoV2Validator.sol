@@ -24,7 +24,9 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 ///                      Post-Keystone the encoder is 0-based; all four values
 ///                      are valid choices, and >3 is rejected.
 contract FigaroGeoV2Validator is IClauseValidator {
-    bytes32 public constant override clauseId = keccak256("figaro-geo-v2");
+    function clauseId() public pure override returns (bytes32) {
+        return keccak256(abi.encode("figaro-geo", uint64(2)));
+    }
 
     uint256 internal constant MIN_GEOHASH_LEN = 1;
     uint256 internal constant MAX_GEOHASH_LEN = 12;
@@ -55,7 +57,7 @@ contract FigaroGeoV2Validator is IClauseValidator {
         pure
         override
     {
-        if (id != clauseId) revert ClauseIdMismatch(id, clauseId);
+        if (id != clauseId()) revert ClauseIdMismatch(id, clauseId());
         if (keccak256(sectionData) != keccak256(content)) revert SectionDataMismatch();
 
         (string memory origin, string memory destination, uint256 massGrams, uint256 volumeMl, uint8 classOfService) =

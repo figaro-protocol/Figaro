@@ -6,7 +6,7 @@ import {FigaroConsentV1Validator} from "../../src/clauseValidators/FigaroConsent
 
 contract FigaroConsentV1ValidatorTest is Test {
     FigaroConsentV1Validator validator;
-    bytes32 constant ID = keccak256("figaro-consent-v1");
+    bytes32 constant ID = keccak256(abi.encode("figaro-consent", uint64(1)));
     bytes32 constant SAMPLE_HASH = keccak256("sample-document-text-v1");
     bytes32 constant ALT_HASH = keccak256("alt-document-text");
 

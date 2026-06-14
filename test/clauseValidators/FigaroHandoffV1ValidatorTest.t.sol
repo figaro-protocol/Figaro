@@ -6,7 +6,7 @@ import {FigaroHandoffV1Validator} from "../../src/clauseValidators/FigaroHandoff
 
 contract FigaroHandoffV1ValidatorTest is Test {
     FigaroHandoffV1Validator validator;
-    bytes32 constant ID = keccak256("figaro-handoff-v1");
+    bytes32 constant ID = keccak256(abi.encode("figaro-handoff", uint64(1)));
 
     function setUp() public {
         validator = new FigaroHandoffV1Validator();

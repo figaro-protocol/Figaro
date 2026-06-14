@@ -24,7 +24,9 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 ///                    at dispute time); otherwise 1-99. Values above 99 are
 ///                    rejected.
 contract FigaroArbitrationKlerosV1Validator is IClauseValidator {
-    bytes32 public constant override clauseId = keccak256("figaro-arbitration-kleros-v1");
+    function clauseId() public pure override returns (bytes32) {
+        return keccak256(abi.encode("figaro-arbitration-kleros", uint64(1)));
+    }
 
     uint8 internal constant KLEROS_COURT_MIN = 1;
     uint8 internal constant KLEROS_COURT_MAX = 4;
@@ -47,7 +49,7 @@ contract FigaroArbitrationKlerosV1Validator is IClauseValidator {
         pure
         override
     {
-        if (id != clauseId) revert ClauseIdMismatch(id, clauseId);
+        if (id != clauseId()) revert ClauseIdMismatch(id, clauseId());
         if (keccak256(sectionData) != keccak256(content)) revert SectionDataMismatch();
 
         (uint8 klerosCourt, uint256 klerosMinJurors) = abi.decode(content, (uint8, uint256));
