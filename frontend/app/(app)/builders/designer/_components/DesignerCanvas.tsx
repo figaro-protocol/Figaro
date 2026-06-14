@@ -29,7 +29,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ProcessGraphCanvas } from "@/components/core/ProcessGraphCanvas";
 import type { Order } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
-import { slugify } from "@/lib/shared/slug";
 import {
     collectDescendants,
     createSyntheticRootOrder,
@@ -46,7 +45,6 @@ import {
     loadNamedDraft,
     saveCurrentSession,
     saveNamedDraft,
-    uniqueDraftSlug,
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "./AgreementDrawer";
@@ -60,13 +58,6 @@ export type DesignerSeed =
     | { kind: "fresh" }
     | { kind: "blank" }
     | { kind: "draft"; slug: string };
-
-/** Minimum length for an assembly name (and the derived slug). Three
- *  characters is a deliberate floor — short enough not to be paternalistic,
- *  long enough that a single keystroke can't slip through and leave the
- *  AssemblyRegistry full of `a`-, `b`-, `x`-named entries. The on-chain
- *  registry's only check is non-empty; this is the publish-side guard. */
-const MIN_NAME_LENGTH = 3;
 
 interface InitialState {
     session: SyntheticProcessSession;
@@ -403,28 +394,20 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
      *  the wallet. */
     type SnapshotResult =
         | { ok: true; snapshot: DesignSnapshot }
-        | { ok: false; reason: "empty" | "too-short" | "no-slug" };
+        | { ok: false; reason: "empty-composition" };
 
     const buildSnapshot = useCallback((): SnapshotResult => {
-        const trimmed = name.trim();
-        if (trimmed.length === 0) return { ok: false, reason: "empty" };
-        if (trimmed.length < MIN_NAME_LENGTH) return { ok: false, reason: "too-short" };
-        // Always re-derive the slug from the current name so renaming a draft
-        // updates its slug. The previous "sticky slug" behavior caused
-        // renamed drafts to silently retain their old slug, which led to
-        // unfixable on-chain collisions at publish time. Pass the
-        // currently-loaded slug as excludeSlug so renames to the same name
-        // are not treated as self-collisions.
-        const baseSlug = slugify(trimmed).slice(0, 64);
-        if (!baseSlug || baseSlug.length < MIN_NAME_LENGTH) {
-            return { ok: false, reason: "no-slug" };
-        }
-        const proposedSlug = uniqueDraftSlug(baseSlug, slug);
+        if (orders.length === 0) return { ok: false, reason: "empty-composition" };
+        // No user-chosen name: the draft gets a stable local handle, assigned
+        // once and reused on every save. The PUBLISHED slug is derived from the
+        // composition's content at publish time (deriveAssemblySlug); this
+        // handle only keys the local draft + its /edit and /view routes.
+        const handle = slug ?? `asm-draft-${crypto.randomUUID().slice(0, 8)}`;
         return {
             ok: true,
             snapshot: {
-                slug: proposedSlug,
-                name: trimmed,
+                slug: handle,
+                name: handle,
                 privilegedToken: privilegedToken || undefined,
                 processId: session.processId,
                 nextOrderIndex: session.nextOrderIndex,
@@ -435,16 +418,10 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 updatedAt: Date.now(),
             },
         };
-    }, [name, slug, privilegedToken, orders, clausesByOrderId, session]);
+    }, [slug, privilegedToken, orders, clausesByOrderId, session]);
 
-    function explainSnapshotReason(reason: "empty" | "too-short" | "no-slug"): string {
-        if (reason === "empty") {
-            return "Name the assembly before publishing.";
-        }
-        if (reason === "too-short") {
-            return `Assembly name must be at least ${MIN_NAME_LENGTH} characters.`;
-        }
-        return `Couldn't derive a URL-safe slug from that name (at least ${MIN_NAME_LENGTH} alphanumeric characters needed).`;
+    function explainSnapshotReason(_reason: "empty-composition"): string {
+        return "Add at least one order before publishing.";
     }
 
     const handleSaveDraft = useCallback(() => {
@@ -496,23 +473,9 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         router.push(e2e ? `${reviewPath}&e2e=${encodeURIComponent(e2e)}` : reviewPath);
     }, [buildSnapshot, router, searchParams, slug]);
 
-    // Name validity drives the disabled state on Save / Publish so the user
-    // gets immediate visual feedback that the name is the gate, not a
-    // generic "publish failed" surfaced after the click.
-    const trimmedName = name.trim();
-    const nameEmpty = trimmedName.length === 0;
-    const nameTooShort = !nameEmpty && trimmedName.length < MIN_NAME_LENGTH;
-    const nameValid = trimmedName.length >= MIN_NAME_LENGTH;
-    const nameValidationHint = nameEmpty
-        ? "Required."
-        : nameTooShort
-            ? `At least ${MIN_NAME_LENGTH} characters.`
-            : null;
-    const nameDisabledTitle = nameEmpty
-        ? "Name the assembly first."
-        : nameTooShort
-            ? `Assembly name must be at least ${MIN_NAME_LENGTH} characters.`
-            : null;
+    // Save / Publish gate on the composition having at least one order — there
+    // is no name to validate; the slug is content-derived at publish.
+    const canPublish = orders.length > 0;
 
     const savedHint = useMemo(() => {
         if (!savedAt) return null;
@@ -529,13 +492,11 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     const assemblyTemplate = useMemo(
         () =>
             buildAssemblyTemplate({
-                slug: slug ?? "",
-                name,
                 privilegedToken: privilegedToken || undefined,
                 orders,
                 clausesByOrderId,
             }),
-        [slug, name, privilegedToken, orders, clausesByOrderId],
+        [privilegedToken, orders, clausesByOrderId],
     );
 
     if (seedError) {
@@ -579,30 +540,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 >
                     ← Assemblies
                 </Link>
-                <div className="flex items-center gap-1.5 min-w-0">
-                    <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Name this assembly…"
-                        aria-label="Assembly name"
-                        aria-required="true"
-                        aria-invalid={nameTooShort || undefined}
-                        required
-                        data-testid="designer-name-input"
-                        className={`text-sm font-semibold text-ink-heading bg-paper border rounded px-2 py-1 focus:border-ink-heading focus:outline-none placeholder:font-normal placeholder:text-ink-muted min-w-[200px] max-w-[280px] ${nameTooShort ? "border-red-400 hover:border-red-500" : "border-default hover:border-default-strong"}`}
-                    />
-                    <span className="text-red-600 text-sm font-semibold" aria-hidden="true">*</span>
-                    {nameValidationHint && (
-                        <span
-                            className={`text-[11px] italic shrink-0 ${nameTooShort ? "text-red-600" : "text-ink-muted"}`}
-                            data-testid="designer-name-validation"
-                            role={nameTooShort ? "alert" : undefined}
-                        >
-                            {nameValidationHint}
-                        </span>
-                    )}
-                </div>
                 {maxOrders !== null && (
                     <span
                         data-testid="designer-node-capacity"
@@ -620,20 +557,20 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 <button
                     type="button"
                     onClick={handleSaveDraft}
-                    disabled={!nameValid}
+                    disabled={!canPublish}
                     data-testid="designer-save"
                     className={`text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-heading font-semibold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${savedHint ? "" : "ml-auto"}`}
-                    title={nameDisabledTitle ?? (slug ? "Update the saved draft" : "Save this canvas as a named draft")}
+                    title={slug ? "Update the saved draft" : "Save this canvas as a draft"}
                 >
                     {slug ? "Update" : "Save"}
                 </button>
                 <button
                     type="button"
                     onClick={handleReview}
-                    disabled={!nameValid}
+                    disabled={!canPublish}
                     data-testid="designer-review"
                     className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary font-semibold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                    title={nameDisabledTitle ?? "Review the assembly, then publish from the review page (where the deposit is locked and the slug is anchored on-chain)."}
+                    title="Review the assembly, then publish from the review page (where the deposit is locked and the slug is anchored on-chain)."
                 >
                     Review
                 </button>

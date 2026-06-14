@@ -59,7 +59,7 @@ export function assemblyTemplateToDraft(
     const orders = templateToOrders(template);
     return {
         slug: options.slug,
-        name: options.name ?? `Fork of ${template.name}`,
+        name: options.name ?? "Forked assembly",
         processId: SYNTHETIC_PROCESS_ID,
         nextOrderIndex: orders.length,
         nextSellerIndex: orders.length + 1,

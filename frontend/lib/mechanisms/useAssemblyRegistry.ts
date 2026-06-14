@@ -35,7 +35,7 @@ import {
 } from "@/lib/core/orderAgreement";
 import type { Order } from "@/lib/core/store";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
-import { buildAssemblyTemplate, serializeAssemblyTemplate, templateParentOrderIds, type AssemblyTemplate } from "@/lib/designer/assemblyTemplate";
+import { buildAssemblyTemplate, serializeAssemblyTemplate, deriveAssemblySlug, templateParentOrderIds, type AssemblyTemplate } from "@/lib/designer/assemblyTemplate";
 import { useSellerProfile } from "./useSellerRegistry";
 import { resolveContentUri } from "@/lib/shared/ipfsService";
 import {
@@ -82,6 +82,8 @@ export function getAssemblyRegistry(): `0x${string}` | null {
 export interface PublishOutcome {
     hash: `0x${string}`;
     ipfsURI: string;
+    /** The content-derived slug the assembly was registered under. */
+    slug: string;
 }
 
 // ── Read hooks (event-derived) ────────────────────────────────────────────────
@@ -114,7 +116,7 @@ function translatePublishRevert(err: unknown, attemptedSlug: string): Error {
         const name = revert?.data?.errorName;
         if (name === "SlugAlreadyRegistered") {
             return new Error(
-                `The slug "${attemptedSlug}" is already registered on-chain. Pick a different slug — slug bindings are first-write-wins and permanent.`,
+                `This assembly is already published — an identical composition is registered on-chain as "${attemptedSlug}". The slug is content-derived, so the same composition always maps to it; adopt the existing one rather than re-publishing.`,
             );
         }
         if (name === "WrongDeposit") {
@@ -429,7 +431,7 @@ export function useAssemblyChoices(
                 blockNumber: event.blockNumber,
                 networkTargets: [networkTarget],
                 state,
-                name: assemblyTemplate?.name ?? event.slug,
+                name: event.slug,
                 orderCount: assemblyTemplate ? assemblyTemplate.orders.length : null,
                 clauses: assemblyTemplate ? collectAssemblyClauses(assemblyTemplate) : null,
                 assemblyTemplate,
@@ -585,7 +587,7 @@ export function useSellerBoundAssemblies(
                     );
                     assemblies.push({
                         slug,
-                        name: m.name || slug,
+                        name: slug,
                         assemblyTemplate: m,
                         canonicalMethod: deriveCanonicalMethod(modality, coordination),
                         counterpartyBindings: binding?.counterpartyBindings ?? [],
@@ -663,12 +665,14 @@ export function usePublishAssembly() {
         // DAG parents, and the selected clauses. The fingerprint forms later
         // at checkout when the parties fill the clause fields.
         const template = buildAssemblyTemplate({
-            slug: snapshot.slug,
-            name: snapshot.name,
             orders: snapshot.orders,
             clausesByOrderId: snapshot.clausesByOrderId ?? {},
         });
         const { json, contentHash } = serializeAssemblyTemplate(template);
+        // The slug is content-derived: identical compositions collapse to one
+        // slug (the registry's first-write-wins dedups them); the user never
+        // names it.
+        const slug = deriveAssemblySlug(contentHash);
         const ipfs = await DEFAULT_IPFS_SERVICE.publishJSON(JSON.parse(json));
 
         // Simulate before opening the wallet — catches slug collision /
@@ -679,19 +683,19 @@ export function usePublishAssembly() {
                 address: registry,
                 abi: ASSEMBLY_REGISTRY_ABI,
                 functionName: "registerAssembly",
-                args: [template.slug, contentHash, ipfs.uri],
+                args: [slug, contentHash, ipfs.uri],
                 value: deposit,
                 account: address,
             });
         } catch (err) {
-            throw translatePublishRevert(err, template.slug);
+            throw translatePublishRevert(err, slug);
         }
 
         const txHash = await writeContractAsync({
             address: registry,
             abi: ASSEMBLY_REGISTRY_ABI,
             functionName: "registerAssembly",
-            args: [template.slug, contentHash, ipfs.uri],
+            args: [slug, contentHash, ipfs.uri],
             value: deposit,
         });
 
@@ -706,7 +710,7 @@ export function usePublishAssembly() {
             );
         }
 
-        return { hash: txHash, ipfsURI: ipfs.uri };
+        return { hash: txHash, ipfsURI: ipfs.uri, slug };
     }
 
     return {

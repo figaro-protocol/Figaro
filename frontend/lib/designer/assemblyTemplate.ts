@@ -31,8 +31,6 @@ interface AssemblyTemplateOrder {
 }
 
 export interface AssemblyTemplate {
-    slug: string;
-    name: string;
     /** ERC-20 the assembly privileges (its denomination / value-capture
      *  token). Absent = ERC-20-agnostic (any token, per the process at
      *  checkout). One token per assembly; offering several = several
@@ -58,13 +56,11 @@ export function templateParentOrderIds(order: AssemblyTemplateOrder): string[] {
  *  clause selection. The DAG is folded in as the manifest-only topology clause
  *  — not a separate field. */
 export function buildAssemblyTemplate(args: {
-    slug: string;
-    name: string;
     privilegedToken?: string;
     orders: readonly Order[];
     clausesByOrderId: Readonly<Record<string, ClauseValues>>;
 }): AssemblyTemplate {
-    const { slug, name, privilegedToken, orders, clausesByOrderId } = args;
+    const { privilegedToken, orders, clausesByOrderId } = args;
     const topologyClauseId = manifestTopologyClauseId();
     if (!topologyClauseId) {
         // Without the chain→IPFS spec cache the topology clause cannot be
@@ -79,8 +75,6 @@ export function buildAssemblyTemplate(args: {
     // clauses (topology among them), keyed by these local labels.
     const idToLocal = new Map(orders.map((o, i) => [o.id, `order-${i}`]));
     return {
-        slug,
-        name,
         ...(privilegedToken ? { privilegedToken } : {}),
         orders: orders.map((order, i) => ({
             id: `order-${i}`,
@@ -111,4 +105,14 @@ export function serializeAssemblyTemplate(template: AssemblyTemplate): {
 } {
     const json = canonicalize(template);
     return { json, contentHash: keccak256(toHex(json)) };
+}
+
+/** The published slug — a deterministic id derived from the composition's
+ *  content hash (the clauses + their values + the DAG). Identical compositions
+ *  → identical slug (the registry's first-write-wins then dedups them); distinct
+ *  compositions → distinct slug. There is no user-chosen name and no
+ *  circularity: the slug is derived FROM the hash, never part of the hashed
+ *  template. */
+export function deriveAssemblySlug(contentHash: `0x${string}`): string {
+    return `asm-${contentHash.slice(2, 18)}`;
 }

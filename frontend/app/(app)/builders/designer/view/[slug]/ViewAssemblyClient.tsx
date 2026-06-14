@@ -161,7 +161,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         return;
                     }
                     const orders = templateToOrders(assemblyTemplate);
-                    setResolved({ kind: "published", name: assemblyTemplate.name, orders, assemblyTemplate });
+                    setResolved({ kind: "published", name: slug, orders, assemblyTemplate });
                     return;
                 } catch (err) {
                     if (cancelled) return;
@@ -195,7 +195,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
             setReceipt({
                 hash: outcome.hash,
                 ipfsURI: outcome.ipfsURI,
-                slug: resolved.snapshot.slug,
+                slug: outcome.slug,
             });
         } catch (err) {
             setPublishError(err instanceof Error ? err.message : String(err));

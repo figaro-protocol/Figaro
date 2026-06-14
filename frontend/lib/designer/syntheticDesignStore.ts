@@ -230,8 +230,6 @@ export function deleteNamedDraft(slug: string): void {
  *
  * Callers:
  *  - PublishedList / ViewAssembly fork — pass `${slug}-fork` as base.
- *  - DesignerCanvas save/publish — pass `slugify(name)` as base, and
- *    pass the currently-loaded slug as `excludeSlug`.
  */
 export function uniqueDraftSlug(base: string, excludeSlug?: string | null): string {
     const taken = new Set(
