@@ -10,12 +10,16 @@ import { isE2EMockSession } from "@/lib/shared/e2e";
 
 export interface Notification {
     id: string;
-    type: "order_committed" | "process_resolved" | "driver_assigned" | "delivery_started" | "settlement_proceeds";
+    type: "order_committed" | "process_resolved" | "commitment_pending";
     title: string;
     message: string;
     timestamp: number;
     orderId?: string;
     processId?: string;
+    /** Explicit deep-link target. When set, the bell navigates here on click
+     *  instead of deriving a target from processId/orderId — used for pending
+     *  commitments, which have no on-chain process yet (→ /inbox to sign). */
+    href?: string;
     read: boolean;
 }
 

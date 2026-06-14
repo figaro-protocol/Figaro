@@ -2,24 +2,64 @@
 
 import { useNotifications, requestNotificationPermission } from "@/lib/core/useNotifications";
 import { useOrderStore } from "@/lib/core/store";
+import { usePendingCommitments, awaitsMyCounterSign } from "@/hooks/core/usePendingCommitments";
 import Bell from "@/components/icons/Bell";
 import CheckCircle from "@/components/icons/CheckCircle";
-import Coins from "@/components/icons/Coins";
 import Package from "@/components/icons/Package";
-import Truck from "@/components/icons/Truck";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface NotificationBellProps {
     theme?: "light" | "dark";
 }
 
 export function NotificationBell({ theme = "dark" }: NotificationBellProps) {
-    const { notifications, unreadCount, markAsRead, markAllAsRead, clearAll } = useNotifications();
+    const { notifications, unreadCount, markAsRead, markAllAsRead, clearAll, addNotification } = useNotifications();
     const setViewedProcessId = useOrderStore((state) => state.setViewedProcessId);
     const router = useRouter();
     const pathname = usePathname();
     const [isOpen, setIsOpen] = useState(false);
+
+    // Bridge: raise a bell notification when a commitment awaiting THIS
+    // wallet's counter-sign arrives over the coordination channel. The kernel
+    // has no pending state, so this is the only signal that an order needs
+    // signing; the notification deep-links to /inbox where it's accepted (the
+    // /inbox page renders the same arrivals as cards).
+    const { pending } = usePendingCommitments(awaitsMyCounterSign);
+    // Persist which pendings have already raised a notification, keyed by the
+    // immutable commitment identity, so a reload (the channel replays historical
+    // arrivals, and a relayed payload reads buyerSig-only even after commit)
+    // doesn't re-notify the same order — each pending notifies once, ever.
+    const notifiedKeys = useRef<Set<string>>(new Set());
+    const notifiedHydrated = useRef(false);
+    useEffect(() => {
+        if (!notifiedHydrated.current) {
+            notifiedHydrated.current = true;
+            try {
+                const stored = localStorage.getItem("figaro_notified_pending");
+                if (stored) notifiedKeys.current = new Set(JSON.parse(stored) as string[]);
+            } catch { /* ignore */ }
+        }
+        let changed = false;
+        for (const p of pending) {
+            const key = `${p.commitment.buyer}:${p.commitment.seller}:${p.commitment.salt}`;
+            if (notifiedKeys.current.has(key)) continue;
+            notifiedKeys.current.add(key);
+            changed = true;
+            addNotification({
+                type: "commitment_pending",
+                title: "New order to sign",
+                message: "An order is awaiting your signature.",
+                href: "/inbox",
+            });
+        }
+        if (changed) {
+            try {
+                localStorage.setItem("figaro_notified_pending", JSON.stringify([...notifiedKeys.current]));
+            } catch { /* ignore */ }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pending]);
 
     const buttonCls = theme === "dark"
         ? "relative rounded-lg p-2 text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
@@ -49,12 +89,6 @@ export function NotificationBell({ theme = "dark" }: NotificationBellProps) {
                 return <Package className="h-5 w-5" aria-hidden="true" />;
             case "process_resolved":
                 return <CheckCircle className="h-5 w-5" aria-hidden="true" />;
-            case "driver_assigned":
-                return <Truck className="h-5 w-5" aria-hidden="true" />;
-            case "delivery_started":
-                return <Package className="h-5 w-5" aria-hidden="true" />;
-            case "settlement_proceeds":
-                return <Coins className="h-5 w-5" aria-hidden="true" />;
             default:
                 return <Bell className="h-5 w-5" aria-hidden="true" />;
         }
@@ -65,11 +99,13 @@ export function NotificationBell({ theme = "dark" }: NotificationBellProps) {
         if (notification.processId) {
             setViewedProcessId(notification.processId);
         }
-        // The process viewer is /orders/[processId]; an order-only
-        // notification falls back to the orders list.
-        const target = notification.processId
-            ? `/orders/${notification.processId}`
-            : notification.orderId ? "/orders" : null;
+        // Prefer an explicit deep-link (e.g. a pending commitment → /inbox);
+        // otherwise the process viewer is /orders/[processId], and an
+        // order-only notification falls back to the orders list.
+        const target = notification.href
+            ?? (notification.processId
+                ? `/orders/${notification.processId}`
+                : notification.orderId ? "/orders" : null);
         setIsOpen(false);
         if (target && pathname !== target) {
             router.push(target);

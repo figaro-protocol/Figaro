@@ -4,10 +4,13 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const mocks = vi.hoisted(() => {
-    const baseNotifications = [
+    const baseNotifications: Array<{
+        id: string; type: string; title: string; message: string;
+        timestamp: number; orderId?: string; processId?: string; href?: string;
+    }> = [
         {
             id: "notif-1",
-            type: "order_committed" as const,
+            type: "order_committed",
             title: "New Order Committed",
             message: "Order 0x1234 committed",
             timestamp: Date.now(),
@@ -44,12 +47,19 @@ vi.mock("@/lib/core/useNotifications", () => ({
         markAsRead: mocks.markAsReadMock,
         markAllAsRead: mocks.markAllAsReadMock,
         clearAll: mocks.clearAllMock,
+        addNotification: vi.fn(),
     }),
     requestNotificationPermission: mocks.requestNotificationPermissionMock,
 }));
 vi.mock("@/lib/core/store", () => ({
     useOrderStore: (selector: (state: { setViewedProcessId: typeof mocks.setViewedProcessIdMock }) => unknown) =>
         selector({ setViewedProcessId: mocks.setViewedProcessIdMock }),
+}));
+// The bell subscribes to the coordination channel for pending arrivals; that
+// path (wagmi + runtime services) is exercised by the devnet e2e, not here.
+vi.mock("@/hooks/core/usePendingCommitments", () => ({
+    usePendingCommitments: () => ({ pending: [], dismiss: vi.fn() }),
+    awaitsMyCounterSign: () => false,
 }));
 
 import { NotificationBell } from "@/components/shared/NotificationBell";
@@ -98,6 +108,26 @@ describe("NotificationBell", () => {
         expect(mocks.markAsReadMock).toHaveBeenCalledWith("notif-1");
         expect(mocks.setViewedProcessIdMock).toHaveBeenCalledWith("0xprocess");
         expect(mocks.pushMock).not.toHaveBeenCalled();
+    });
+
+    it("routes to an explicit href when set (pending commitment → /inbox)", async () => {
+        mocks.notificationsState = {
+            notifications: [{
+                id: "notif-pending",
+                type: "commitment_pending" as const,
+                title: "New order to sign",
+                message: "An order is awaiting your signature.",
+                href: "/inbox",
+                timestamp: Date.now(),
+            }],
+            unreadCount: 1,
+        };
+        const user = userEvent.setup();
+        render(<NotificationBell />);
+        await user.click(screen.getByRole("button", { name: /notifications: 1 unread/i }));
+        await user.click(screen.getByLabelText(/unread notification: new order to sign/i));
+        expect(mocks.markAsReadMock).toHaveBeenCalledWith("notif-pending");
+        expect(mocks.pushMock).toHaveBeenCalledWith("/inbox");
     });
 
     it("shows empty state controls correctly", async () => {
