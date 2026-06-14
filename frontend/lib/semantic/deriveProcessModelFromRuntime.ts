@@ -9,7 +9,7 @@ import { deriveOrderTopology } from "@/lib/core/orderTopology";
 import { ProcessSummary } from "@/hooks/core/useWalletProcessIds";
 import type { RuntimeAttestation } from "@/lib/core/indexer";
 import { clauseTier, clauseLadderField, clauseAttestation, clauseHandoffStages, isCompanionClause, getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
+import { ZERO_BYTES32, hexEqual, clauseIdHash as clauseIdHashOf } from "@/lib/shared/evm";
 import {
     AttachmentModel,
     CapabilityModel,
@@ -98,7 +98,7 @@ function buildRuntimeIndexes(
             const eventCode = bands[0] ?? ladder.values[0];
             proofCarrierByOrder.set(order.id.toString(), {
                 clauseId,
-                clauseIdHash: keccak256(stringToHex(clauseId)).toLowerCase(),
+                clauseIdHash: clauseIdHashOf(clauseId, section.version).toLowerCase(),
                 stage: Math.max(0, ladder.values.indexOf(eventCode)),
                 eventCode,
                 ladderField: ladder.name,
@@ -152,7 +152,7 @@ function sellerHasPendingHandoffStage(
         if (handoffStages.length === 0) continue;
         const ladder = clauseLadderField(clauseId);
         if (!ladder) continue;
-        const clauseIdHash = keccak256(stringToHex(clauseId)).toLowerCase();
+        const clauseIdHash = clauseIdHashOf(clauseId, section.version).toLowerCase();
         const seen = new Set(
             orderAttestations
                 .filter((a) => a.clauseId.toLowerCase() === clauseIdHash && hexEqual(a.attester, sellerAddr))
@@ -305,7 +305,7 @@ function roleCapabilities(
             if (clauseTier(clauseId) !== "runtime") continue;          // category-1 only
             const ladder = clauseLadderField(clauseId);
             if (!ladder) continue;                                     // non-enum (e.g. ghg grams) → its own surface
-            const clauseIdHash = keccak256(stringToHex(clauseId)).toLowerCase();
+            const clauseIdHash = clauseIdHashOf(clauseId, section.version).toLowerCase();
             const isProof = isCompanionClause(clauseId);               // a proof of a committed clause
             const parties: Array<"seller" | "buyer"> =
                 clauseAttestation(clauseId) === "bilateral" ? ["seller", "buyer"] : ["seller"];

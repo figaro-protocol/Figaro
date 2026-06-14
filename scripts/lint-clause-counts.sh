@@ -6,7 +6,7 @@
 #
 # Source of truth (single):
 #   total   = `ls sdk/src/clauses/examples/*.json | wc -l`
-#   runtime = total - 1   (subtract figaro-topology-v1, manifest-only)
+#   runtime = total - 1   (subtract figaro-topology, manifest-only)
 #
 # Rationale: every clause add/remove silently desyncs ~10 downstream
 # references — deploy-script console.logs, Foundry assertions, Rust
@@ -33,7 +33,7 @@
 # Exit codes:
 #   0 — no stale reference (warnings, if any, are non-fatal)
 #   1 — at least one tracked reference is present but stale
-#   2 — tooling error (clauses dir missing, topology-v1 missing)
+#   2 — tooling error (clauses dir missing, topology missing)
 
 set -u
 
@@ -50,8 +50,8 @@ if [ "$total" -eq 0 ]; then
     exit 2
 fi
 
-if [ ! -f "$CLAUSES_DIR/figaro-topology-v1.json" ]; then
-    echo "[clause-counts] figaro-topology-v1.json missing — runtime-attestable count assumes it exists" >&2
+if [ ! -f "$CLAUSES_DIR/figaro-topology.json" ]; then
+    echo "[clause-counts] figaro-topology.json missing — runtime-attestable count assumes it exists" >&2
     exit 2
 fi
 
@@ -85,7 +85,7 @@ check() {
     fi
 }
 
-# ── total count: every clause including manifest-only topology-v1 ────────────
+# ── total count: every clause including manifest-only topology ────────────
 # NB: the deploy scripts no longer register clause CONTENT (that moved to
 # populate-clauses.mjs), so they carry no clause-count console.log to track here.
 # They still wire validators — see the runtime-attestable section below.
@@ -99,7 +99,7 @@ check "docs/v5/CLAUSES.md" \
     '[0-9]+ protocol clauses' \
     "$total" "CLAUSES.md heading"
 
-# ── runtime-attestable count: total minus topology-v1 ────────────────────────
+# ── runtime-attestable count: total minus topology ────────────────────────
 check "script/Deploy.s.sol" \
     'Registered [0-9]+ clause validators' \
     "$runtime" "Deploy.s.sol validators console.log"

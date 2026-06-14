@@ -41,7 +41,7 @@ import {
 } from '../../lib/core/agreement';
 
 // Tests may name clauses; production code may not.
-const ARBITRATION_KLEROS_CLAUSE_KEY = 'figaro-arbitration-kleros-v1';
+const ARBITRATION_KLEROS_CLAUSE_KEY = 'figaro-arbitration-kleros';
 import { ANVIL_KEYS } from '../anvilAccounts';
 
 const RPC_URL = 'http://127.0.0.1:8545';
@@ -88,7 +88,7 @@ test.describe('Dispute create + evidence via the audit page (devnet)', () => {
         await ensureTokenApprovals(coreAddress, tokenAddress, BUYER_KEY, SELLER_KEY);
 
         // Layer-3 recourse is clause-driven — the audit page's klerosConfig
-        // requires a `figaro-arbitration-kleros-v1` section that names a
+        // requires a `figaro-arbitration-kleros` section that names a
         // Kleros court AND the env-resolved proxy. Commit an agreement that
         // authors the General Court so the panel surfaces the Raise Dispute
         // affordance.
@@ -98,7 +98,7 @@ test.describe('Dispute create + evidence via the audit page (devnet)', () => {
             seller: ANVIL_ACCOUNTS[1] as `0x${string}`,
             sections: [
                 {
-                    clause: ARBITRATION_KLEROS_CLAUSE_KEY,
+                    clause: ARBITRATION_KLEROS_CLAUSE_KEY, version: 1,
                     data: { klerosCourt: 'general', klerosMinJurors: 3 },
                 },
             ],

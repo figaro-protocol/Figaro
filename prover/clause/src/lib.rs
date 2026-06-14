@@ -21,7 +21,9 @@ pub mod encode;
 pub mod spec;
 pub mod validate;
 
-pub use embedded::{all_embedded_specs, embedded_spec_json, embedded_spec_json_by_key};
+pub use embedded::{
+    all_embedded_specs, embedded_clause_id, embedded_spec_json, embedded_spec_json_by_key,
+};
 pub use encode::{encode_content_from_spec, EncodeError};
 pub use spec::{
     parse_clause_spec, ArrayFieldSpec, BaseFieldSpec, BigintFieldSpec, BooleanFieldSpec,

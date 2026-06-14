@@ -27,7 +27,7 @@ const AGREEMENT: Agreement = {
     buyer: COMMITMENT.buyer,
     seller: COMMITMENT.seller,
     sections: [
-        { clause: "figaro-commerce-v1", data: { currency: COMMITMENT.currency, payment: "1000000000000000000", lineItems: [] } },
+        { clause: "figaro-commerce", version: 1, data: { currency: COMMITMENT.currency, payment: "1000000000000000000", lineItems: [] } },
     ],
 };
 

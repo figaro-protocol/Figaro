@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { encodeFunctionData, type PublicClient } from "viem";
-import { clauseIdOf } from "@/lib/core/agreement";
+import { clauseIdHash } from "@/lib/shared/evm";
 import { DISCLOSURE_KIND } from "@/lib/mechanisms/contracts";
 import {
     decodeMeasurementGramsContent,
@@ -14,12 +14,12 @@ import { embeddedSpec, encodeContentFromSpec } from "@figaro/core/clauses";
 // produces in production. Tests may name a clause; production code may not.
 function gramsContent(grams: bigint): `0x${string}` {
     return encodeContentFromSpec(
-        embeddedSpec("figaro-ghg-measurement-v1")!,
+        embeddedSpec("figaro-ghg-measurement")!,
         { grams: grams.toString() },
     );
 }
 
-const DISCLOSURE_CLAUSE_ID_HASH = clauseIdOf("figaro-ghg-iso-14064-v1");
+const DISCLOSURE_CLAUSE_ID_HASH = clauseIdHash("figaro-ghg-iso-14064", 1);
 
 describe("decodeMeasurementGramsContent", () => {
     it("decodes a 32-byte abi.encode(uint256) back to bigint", () => {

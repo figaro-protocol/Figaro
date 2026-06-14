@@ -16,13 +16,13 @@ afterEach(() => {
 describe("clauseSpecSource — chain-only cache", () => {
     it("starts empty — no bundled specs, nothing resolves before a load", () => {
         expect(listKnownClauseIds()).toEqual([]);
-        expect(getClauseSpec("figaro-topology-v1")).toBeUndefined();
+        expect(getClauseSpec("figaro-topology")).toBeUndefined();
     });
 
     it("resolves a canonical Layer-A spec synchronously after an explicit load", async () => {
-        await primeClauseSpecs(["figaro-topology-v1"]);
-        expect(listKnownClauseIds()).toContain("figaro-topology-v1");
-        expect(getClauseSpec("figaro-topology-v1")?.clauseId).toBe("figaro-topology-v1");
+        await primeClauseSpecs(["figaro-topology"]);
+        expect(listKnownClauseIds()).toContain("figaro-topology");
+        expect(getClauseSpec("figaro-topology")?.clauseId).toBe("figaro-topology");
     });
 
     it("returns undefined for an unknown clauseId without throwing", () => {

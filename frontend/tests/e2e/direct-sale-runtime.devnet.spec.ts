@@ -10,7 +10,7 @@
  *   2. Café accepts in /inbox → on-chain bilateral commit. No RPC auto-sign;
  *      no seeded payload. The acceptance IS the commit — arrival and approval
  *      are core, not a merchant-process event.
- *   3. The café walks figaro-merchant-process-v1 (prep-started →
+ *   3. The café walks figaro-merchant-process (prep-started →
  *      ready-for-pickup → handed-off) and witnesses the committed proximity
  *      band — all through the ONE clause-generic capability rail
  *      (`capability-execute-submit-clause-attestation`; labels are the
@@ -118,13 +118,13 @@ test.describe('direct-sale runtime — on-site commit, handoff certification, re
             };
         const committedClauses = committedAgreement.sections.map((s) => s.clause);
         for (const composed of [
-            'figaro-commerce-v1',
-            'figaro-topology-v1',
-            'figaro-modalities-v1',
-            'figaro-handoff-v1',
-            'figaro-merchant-process-v1',
-            'figaro-proximity-policy-v1',
-            'figaro-proximity-proof-v1',
+            'figaro-commerce',
+            'figaro-topology',
+            'figaro-modalities',
+            'figaro-handoff',
+            'figaro-merchant-process',
+            'figaro-proximity-policy',
+            'figaro-proximity-proof',
         ]) {
             expect(committedClauses, `committed agreement materializes ${composed}`).toContain(composed);
         }

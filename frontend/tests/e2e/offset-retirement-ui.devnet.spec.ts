@@ -1,3 +1,4 @@
+import { clauseIdHash } from "@/lib/shared/evm";
 /**
  * offset-retirement-ui.devnet.spec.ts
  *
@@ -10,7 +11,7 @@
  *   2. Retire `tonsToRetire` at the aggregator.
  *   3. Anchor the receipt on-chain via ProcessOffsetReceipt.record.
  *
- * Setup: a process with at least one `figaro-ghg-measurement-v1`
+ * Setup: a process with at least one `figaro-ghg-measurement`
  * attestation so `totalActualGrams > 0`. The committed agreement
  * must carry the measurement-v1 section so the inclusion proof
  * opens at attest time (Cat-1 means the validator doesn't enforce
@@ -41,8 +42,8 @@ import {
     readLocalDeploymentConfig,
 } from './devnet-helpers';
 // Tests may name clauses; production code may not.
-const GHG_CLAUSE_KEY = 'figaro-ghg-iso-14064-v1';
-const GHG_MEASUREMENT_CLAUSE_KEY = 'figaro-ghg-measurement-v1';
+const GHG_CLAUSE_KEY = 'figaro-ghg-iso-14064';
+const GHG_MEASUREMENT_CLAUSE_KEY = 'figaro-ghg-measurement';
 import {
     ATTESTATION_COORDINATOR_ABI,
     buildSectionInclusionProof,
@@ -62,7 +63,7 @@ const LOCAL_ANVIL = defineChain({
 const BUYER_KEY = ANVIL_KEYS[0];
 const RESTAURANT_KEY = ANVIL_KEYS[1];
 
-const GHG_MEASUREMENT_CLAUSE_ID = keccak256(stringToHex(GHG_MEASUREMENT_CLAUSE_KEY));
+const GHG_MEASUREMENT_CLAUSE_ID = clauseIdHash(GHG_MEASUREMENT_CLAUSE_KEY, 1);
 
 const MEASUREMENT_STAGE_MEASURED = 0;
 
@@ -103,16 +104,16 @@ test.describe('Offset retirement UI (devnet)', () => {
         await ensureTokenApprovals(coreAddress, tokenAddress, BUYER_KEY, RESTAURANT_KEY);
 
         // Agreement carrying both the protocol-level commitment clause
-        // (Cat-2, `figaro-ghg-iso-14064-v1`) and the runtime measurement
-        // clause (Cat-1, `figaro-ghg-measurement-v1`). Measurement-v1's
+        // (Cat-2, `figaro-ghg-iso-14064`) and the runtime measurement
+        // clause (Cat-1, `figaro-ghg-measurement`). Measurement-v1's
         // inclusion proof opens against this agreement.
         const agreement: Agreement = {
             version: 'a1',
             buyer: buyer.address as Hex,
             seller: restaurant.address as Hex,
             sections: [
-                { clause: GHG_CLAUSE_KEY, data: { standard: 'iso-14064-1', scope: 1 } },
-                { clause: GHG_MEASUREMENT_CLAUSE_KEY, data: {} },
+                { clause: GHG_CLAUSE_KEY, version: 1, data: { standard: 'iso-14064-1', scope: 1 } },
+                { clause: GHG_MEASUREMENT_CLAUSE_KEY, version: 1, data: {} },
             ],
         };
 

@@ -1,4 +1,4 @@
-import type { Address, Hex } from "viem";
+import { keccak256, encodeAbiParameters, type Address, type Hex } from "viem";
 
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
 export const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex;
@@ -48,6 +48,18 @@ export function bytesToHex(bytes: Uint8Array): string {
     return Array.from(bytes)
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("");
+}
+
+/**
+ * Canonical clause identity: keccak256(abi.encode(name, version)) — the on-chain
+ * bytes32 key shared by ClauseRegistry, every IClauseValidator, the SDK, and the
+ * Rust prover. The clause name carries no version suffix; the version is a
+ * distinct field, so a new version is a distinct key under the same name.
+ */
+export function clauseIdHash(name: string, version: number): Hex {
+    return keccak256(
+        encodeAbiParameters([{ type: "string" }, { type: "uint64" }], [name, BigInt(version)]),
+    );
 }
 
 /**

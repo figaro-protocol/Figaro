@@ -58,7 +58,7 @@ describe("executeTransactionCapabilityAction", () => {
             executionType: "transaction" as const,
             kind: "submit-clause-attestation" as const,
             orderHash: "merchant-order",
-            clauseId: "figaro-merchant-process-v1",
+            clauseId: "figaro-merchant-process",
             stage: 2,
             eventCode: "handed-off",
             ladderField: "eventType",

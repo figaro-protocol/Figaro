@@ -6,9 +6,9 @@
  *   Models: an on-premise sale — a café counter, a bar, a market stall where
  *   you consume on site. The buyer↔merchant handoff IS the certification edge:
  *   the merchant runs the prep-started → ready-for-pickup → handed-off
- *   lifecycle (figaro-merchant-process-v1; arrival/acceptance are core, not
+ *   lifecycle (figaro-merchant-process; arrival/acceptance are core, not
  *   merchant-process events) and both parties attest proximity at handoff
- *   (figaro-proximity-policy-v1, face-to-face). The tracked, proximity-verified
+ *   (figaro-proximity-policy, face-to-face). The tracked, proximity-verified
  *   counterpart of `kiosk-sale` (the bare, no-process pickup).
  *
  *   Catalogues: the on-site seller (1).
@@ -17,10 +17,10 @@
  *   commit by the projection, not stored here):
  *
  *     order[0]  buyer ↔ seller  parents: []
- *       figaro-modalities-v1       { modality: consume-onsite }
- *       figaro-handoff-v1          { handoff: [face-to-face] }
- *       figaro-merchant-process-v1 { }
- *       figaro-proximity-policy-v1 { bands: [zone-wifi] }
+ *       figaro-modalities       { modality: consume-onsite }
+ *       figaro-handoff          { handoff: [face-to-face] }
+ *       figaro-merchant-process { }
+ *       figaro-proximity-policy { bands: [zone-wifi] }
  *
  * PHASE 1 of the 2× e2e convention — the design-canvas test. It drives the real
  * designer UI ALL THE WAY THROUGH to the IPFS pin AND the on-chain anchor
@@ -59,10 +59,10 @@ const IPFS_GATEWAY = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0
 /** The composed clauses, in drawer order. Nested clauses (proximity under the
  *  hand-off field) only render once their parent is checked, so order matters. */
 const COMPOSE_STEPS: ReadonlyArray<{ clause: string; field?: string }> = [
-    { clause: 'figaro-modalities-v1', field: 'drawer-field-figaro-modalities-v1-modality-consume-onsite' },
-    { clause: 'figaro-handoff-v1', field: 'drawer-field-figaro-handoff-v1-handoff-face-to-face' },
-    { clause: 'figaro-proximity-policy-v1', field: 'drawer-field-figaro-proximity-policy-v1-bands-zone-wifi' },
-    { clause: 'figaro-merchant-process-v1' },
+    { clause: 'figaro-modalities', field: 'drawer-field-figaro-modalities-modality-consume-onsite' },
+    { clause: 'figaro-handoff', field: 'drawer-field-figaro-handoff-handoff-face-to-face' },
+    { clause: 'figaro-proximity-policy', field: 'drawer-field-figaro-proximity-policy-bands-zone-wifi' },
+    { clause: 'figaro-merchant-process' },
 ];
 
 test.describe('Author + publish the direct-sale assembly (devnet)', () => {
@@ -167,18 +167,18 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
         expect(assemblyTemplate.slug).toBe(slug);
         expect(assemblyTemplate.orders).toHaveLength(1);
         const root = assemblyTemplate.orders[0];
-        // The DAG is a clause: root's figaro-topology-v1 carries empty parents.
-        expect(root.clauses['figaro-topology-v1']).toEqual({ parentOrderIds: [] });
+        // The DAG is a clause: root's figaro-topology carries empty parents.
+        expect(root.clauses['figaro-topology']).toEqual({ parentOrderIds: [] });
         expect(Object.keys(root.clauses).sort()).toEqual([
-            'figaro-handoff-v1',
-            'figaro-merchant-process-v1',
-            'figaro-modalities-v1',
-            'figaro-proximity-policy-v1',
-            'figaro-topology-v1',
+            'figaro-handoff',
+            'figaro-merchant-process',
+            'figaro-modalities',
+            'figaro-proximity-policy',
+            'figaro-topology',
         ]);
-        expect(root.clauses['figaro-modalities-v1'].modality).toBe('consume-onsite');
-        expect(root.clauses['figaro-handoff-v1'].handoff).toEqual(['face-to-face']);
-        expect(root.clauses['figaro-proximity-policy-v1'].bands).toEqual(['zone-wifi']);
+        expect(root.clauses['figaro-modalities'].modality).toBe('consume-onsite');
+        expect(root.clauses['figaro-handoff'].handoff).toEqual(['face-to-face']);
+        expect(root.clauses['figaro-proximity-policy'].bands).toEqual(['zone-wifi']);
 
         // ── It SURFACES on the marketing /assemblies inventory ─────────────
         await assertAssemblyOnInventory(page, slug);

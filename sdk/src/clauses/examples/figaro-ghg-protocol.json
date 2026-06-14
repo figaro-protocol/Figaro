@@ -1,8 +1,8 @@
 {
-    "clauseId": "figaro-ghg-custom-v1",
+    "clauseId": "figaro-ghg-protocol",
     "version": 1,
-    "title": "Custom methodology",
-    "description": "Disclosure that the seller will report scope 1 emissions under a custom or non-standard GHG accounting methodology. The methodology details are described in the off-chain agreement document; this clause only commits to the scope dimension.",
+    "title": "GHG Protocol Corporate Standard",
+    "description": "Disclosure that the seller will report scope 1 emissions for fulfilling this order under the GHG Protocol Corporate Standard (and related WRI/WBCSD GHG Protocol guidance documents).",
     "categories": [
         "emissions"
     ],
@@ -19,7 +19,7 @@
     ],
     "block": {
         "tier": "category-2",
-        "sisterClauseId": "figaro-ghg-measurement-v1",
+        "sisterClauseId": "figaro-ghg-measurement",
         "article": "emissions",
         "mechanismKinds": [
             "disclosure"

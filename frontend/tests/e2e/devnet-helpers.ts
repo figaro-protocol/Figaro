@@ -24,7 +24,7 @@ import {
 } from '@figaro/core';
 import { type ProximityBand } from '@figaro/core/clauses';
 import { DEFAULT_AGREEMENT_HASH } from '@/lib/core/contracts';
-import { ZERO_PROCESS_ID, ZERO_ADDRESS, hexEqual } from '@/lib/shared/evm';
+import { ZERO_PROCESS_ID, ZERO_ADDRESS, hexEqual, clauseIdHash } from '@/lib/shared/evm';
 import { gotoAsWallet } from './devnet-multi-test';
 
 export const RPC_URL = 'http://127.0.0.1:8545';
@@ -66,10 +66,10 @@ const ERC20_TEST_ABI = parseAbi([
 ]);
 
 // Tests may name clauses; production code may not.
-const MERCHANT_PROCESS_CLAUSE_KEY = 'figaro-merchant-process-v1';
-const COURIER_PROCESS_CLAUSE_KEY = 'figaro-courier-process-v1';
-const PROXIMITY_POLICY_CLAUSE_KEY = 'figaro-proximity-policy-v1';
-const PROXIMITY_PROOF_CLAUSE_KEY = 'figaro-proximity-proof-v1';
+const MERCHANT_PROCESS_CLAUSE_KEY = 'figaro-merchant-process';
+const COURIER_PROCESS_CLAUSE_KEY = 'figaro-courier-process';
+const PROXIMITY_POLICY_CLAUSE_KEY = 'figaro-proximity-policy';
+const PROXIMITY_PROOF_CLAUSE_KEY = 'figaro-proximity-proof';
 
 
 // ── EIP-712 Types (imported from @figaro/core) ──────────────────────────────
@@ -102,7 +102,7 @@ export function merchantProcessAgreement(buyer: `0x${string}`, seller: `0x${stri
         buyer,
         seller,
         sections: [
-            { clause: MERCHANT_PROCESS_CLAUSE_KEY, data: {} },
+            { clause: MERCHANT_PROCESS_CLAUSE_KEY, version: 1, data: {} },
         ],
     };
 }
@@ -110,9 +110,9 @@ export function merchantProcessAgreement(buyer: `0x${string}`, seller: `0x${stri
 /**
  * Courier handoff agreement carrying both halves of the proximity
  * sister-clause split:
- *   - figaro-proximity-policy-v1 (Cat-2, committed): which bands the
+ *   - figaro-proximity-policy (Cat-2, committed): which bands the
  *     parties agree to verify against at handoff.
- *   - figaro-proximity-proof-v1 (Cat-1, runtime): placeholder for the
+ *   - figaro-proximity-proof (Cat-1, runtime): placeholder for the
  *     per-handoff witness payload. Cat-1 clauses don't enforce
  *     byte-equality against the committed sectionData, but the section
  *     must EXIST in the agreement for the merkle inclusion proof to
@@ -132,14 +132,14 @@ function proximityHandoffAgreement(
         buyer,
         seller,
         sections: [
-            { clause: COURIER_PROCESS_CLAUSE_KEY, data: { eventType: 'arrived-pickup', evidenceUri: '' } },
-            { clause: PROXIMITY_POLICY_CLAUSE_KEY, data: { bands: [band] } },
+            { clause: COURIER_PROCESS_CLAUSE_KEY, version: 1, data: { eventType: 'arrived-pickup', evidenceUri: '' } },
+            { clause: PROXIMITY_POLICY_CLAUSE_KEY, version: 1, data: { bands: [band] } },
             // Cat-1 placeholder: any valid shape. The runtime attestation
             // supplies the real (band, nonce, deviceSig) content; the
             // committed sectionData here is just the placeholder that
             // anchors the section's leaf in the agreement's merkle root.
             {
-                clause: PROXIMITY_PROOF_CLAUSE_KEY,
+                clause: PROXIMITY_PROOF_CLAUSE_KEY, version: 1,
                 data: {
                     band,
                     nonce: '0x' + '00'.repeat(32),
@@ -591,7 +591,7 @@ export async function registerNovelClause(
     const coordinator = (process.env.NEXT_PUBLIC_ATTESTATION_COORDINATOR
         ?? cfg.attestationCoordinator) as `0x${string}`;
     const pub = localPublicClient();
-    const idHash = keccak256(stringToHex(spec.clauseId));
+    const idHash = clauseIdHash(spec.clauseId, Number(spec.version ?? 1));
     const registrar = privateKeyToAccount(ANVIL_KEYS[0]);
     const wallet = createWalletClient({ account: registrar, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
@@ -871,7 +871,7 @@ export async function discoverSellerByAssembly(
 /** The courier address the merchant designated ON-CHAIN for `slug` (seller-assigned). */
 export function courierAddressFor(merchant: DiscoveredSeller, slug: string): `0x${string}` {
     const b = merchant.assemblyBindings.find((x) => x.assemblySlug === slug);
-    const addr = b?.counterpartyBindings?.find((c) => c.clauseId === 'figaro-courier-process-v1')?.addresses?.[0];
+    const addr = b?.counterpartyBindings?.find((c) => c.clauseId === 'figaro-courier-process')?.addresses?.[0];
     if (!addr) throw new Error(`merchant ${merchant.address} designates no courier for ${slug} on-chain`);
     return addr as `0x${string}`;
 }
@@ -1221,7 +1221,7 @@ export async function runDeliveryCoordination(
         };
     },
 ): Promise<void> {
-    // Inline emissions submit — file a figaro-ghg-measurement-v1 grams
+    // Inline emissions submit — file a figaro-ghg-measurement grams
     // measurement for the currently-active seller wallet on the order page.
     // Folded into the seller's continuous session (rather than a separate
     // gotoAsWallet) so every agreement-dependent piece of state is hot. The

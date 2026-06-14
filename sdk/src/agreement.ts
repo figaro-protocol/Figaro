@@ -16,7 +16,7 @@
  * `MerkleProof.verify`.
  */
 
-import { keccak256, toHex, concat, type Hex } from "viem";
+import { keccak256, toHex, concat, encodeAbiParameters, type Hex } from "viem";
 import { encodeContentFromSpec } from "./clauses/encode.js";
 import { embeddedSpec } from "./clauses/embedded.js";
 
@@ -28,6 +28,9 @@ import { embeddedSpec } from "./clauses/embedded.js";
  */
 export interface AgreementSection {
     clause: string;
+    /** Clause version — paired with `clause` to form the on-chain id
+     *  keccak256(abi.encode(clause, version)). Sourced from the clause spec. */
+    version: number;
     data: Record<string, unknown>;
 }
 
@@ -68,8 +71,8 @@ export function canonicalizeSectionData(data: Record<string, unknown>): string {
 
 const ZERO_HASH = `0x${"0".repeat(64)}` as Hex;
 
-function clauseIdOf(clauseKey: string): Hex {
-    return keccak256(toHex(new TextEncoder().encode(clauseKey)));
+function clauseIdOf(clauseKey: string, version: number): Hex {
+    return keccak256(encodeAbiParameters([{ type: "string" }, { type: "uint64" }], [clauseKey, BigInt(version)]));
 }
 
 /**
@@ -100,7 +103,7 @@ export function getSectionDataBytes(section: AgreementSection): Hex {
  */
 export function computeSectionLeaf(section: AgreementSection): Hex {
     return keccak256(
-        concat([clauseIdOf(section.clause), keccak256(getSectionDataBytes(section))]),
+        concat([clauseIdOf(section.clause, section.version), keccak256(getSectionDataBytes(section))]),
     );
 }
 

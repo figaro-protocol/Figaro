@@ -7,7 +7,7 @@
  * forum, and the parties' agreement NAMES it. The point of this spec is that
  * the dispute is CLAUSE-DRIVEN: the recourse forum offered — and the Kleros
  * court the dispute is raised on — come from the assembly's
- * figaro-arbitration-kleros-v1 clause, not a global default.
+ * figaro-arbitration-kleros clause, not a global default.
  *
  *   1. Buyer (anvil[0]) commits the local-commerce-dispute process (food +
  *      courier orders) from the onboarded merchant.

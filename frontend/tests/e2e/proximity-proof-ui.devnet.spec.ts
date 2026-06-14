@@ -1,3 +1,4 @@
+import { clauseIdHash } from "@/lib/shared/evm";
 /**
  * proximity-proof-ui.devnet.spec.ts
  *
@@ -64,8 +65,8 @@ const RESTAURANT_KEY = ANVIL_KEYS[1];
 const COURIER_KEY = ANVIL_KEYS[2];
 const COURIER_ADDR = '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC' as const;
 
-const PROXIMITY_PROOF_CLAUSE_ID = keccak256(stringToHex('figaro-proximity-proof-v1'));
-const COURIER_PROCESS_CLAUSE_ID = keccak256(stringToHex('figaro-courier-process-v1'));
+const PROXIMITY_PROOF_CLAUSE_ID = clauseIdHash('figaro-proximity-proof', 1);
+const COURIER_PROCESS_CLAUSE_ID = clauseIdHash('figaro-courier-process', 1);
 
 
 

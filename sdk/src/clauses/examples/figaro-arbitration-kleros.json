@@ -1,5 +1,5 @@
 {
-    "clauseId": "figaro-arbitration-kleros-v1",
+    "clauseId": "figaro-arbitration-kleros",
     "version": 1,
     "title": "Kleros decentralized arbitration",
     "description": "Off-chain dispute resolution via Kleros, the decentralized juror court. Selects a Kleros subcourt and a minimum juror count for any dispute escalated from this order. This clause covers one specific arbitration provider; sister `figaro-arbitration-<provider>-v1` clauses would cover other decentralized ODR providers as they integrate with Figaro. Compose with `figaro-applicable-law-v1` to add a state-law / ADR recourse layer.",

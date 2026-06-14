@@ -22,12 +22,13 @@ import { type Order, OrderState } from "@/lib/core/store";
 import type { RuntimeAttestation } from "@/lib/core/indexer";
 import type { SubmitClauseAttestationCapabilityAction, CapabilityModel } from "@/lib/semantic/models";
 import { ANVIL_ACCOUNTS } from "../anvilAccounts";
+import { clauseIdHash } from "@/lib/shared/evm";
 
 // Tests may name clauses; production code may not.
-const MERCHANT_PROCESS = "figaro-merchant-process-v1"; // handoffStages: ["handed-off"]
-const COURIER_PROCESS = "figaro-courier-process-v1";   // handoffStages: ["arrived-pickup", "arrived-dropoff"]
-const PROXIMITY_POLICY = "figaro-proximity-policy-v1";
-const PROXIMITY_PROOF = "figaro-proximity-proof-v1";   // bilateral companion of the policy
+const MERCHANT_PROCESS = "figaro-merchant-process"; // handoffStages: ["handed-off"]
+const COURIER_PROCESS = "figaro-courier-process";   // handoffStages: ["arrived-pickup", "arrived-dropoff"]
+const PROXIMITY_POLICY = "figaro-proximity-policy";
+const PROXIMITY_PROOF = "figaro-proximity-proof";   // bilateral companion of the policy
 
 beforeAll(async () => {
     await primeClauseSpecs();
@@ -42,7 +43,7 @@ const MERCHANT_ORDER = ("0x" + "cd".repeat(32)) as Hex;
 const COURIER_ORDER = ("0x" + "ef".repeat(32)) as Hex;
 
 function clauseHash(clauseKey: string): string {
-    return keccak256(stringToHex(clauseKey)).toLowerCase();
+    return clauseIdHash(clauseKey, 1).toLowerCase();
 }
 
 function buildAgreement(buyer: string, seller: string, sections: Agreement["sections"]): Agreement {
@@ -108,9 +109,9 @@ function attestationCaps(
 /** Merchant order carrying its own hand-off proof (nearby-ble band). */
 function merchantFixture() {
     const agreement = buildAgreement(BUYER, MERCHANT, [
-        { clause: MERCHANT_PROCESS, data: {} },
-        { clause: PROXIMITY_POLICY, data: { bands: ["nearby-ble"] } },
-        { clause: PROXIMITY_PROOF, data: {} },
+        { clause: MERCHANT_PROCESS, version: 1, data: {} },
+        { clause: PROXIMITY_POLICY, version: 1, data: { bands: ["nearby-ble"] } },
+        { clause: PROXIMITY_PROOF, version: 1, data: {} },
     ]);
     const agreementHash = computeAgreementHash(agreement);
     const order = buildOrder({ id: MERCHANT_ORDER, seller: MERCHANT, agreementHash, parentOrderIds: [] });
@@ -185,13 +186,13 @@ describe("hand-off pairing — cross-order carrier", () => {
     it("pairs the topology-adjacent order's proof when the ladder order carries none (cross-order witness)", () => {
         // Merchant order: ladder only, no proof. Courier child: carries the proof.
         const merchantAgreement = buildAgreement(BUYER, MERCHANT, [
-            { clause: MERCHANT_PROCESS, data: {} },
+            { clause: MERCHANT_PROCESS, version: 1, data: {} },
         ]);
         const merchantHash = computeAgreementHash(merchantAgreement);
         const courierAgreement = buildAgreement(BUYER, COURIER, [
-            { clause: COURIER_PROCESS, data: {} },
-            { clause: PROXIMITY_POLICY, data: { bands: ["zone-wifi"] } },
-            { clause: PROXIMITY_PROOF, data: {} },
+            { clause: COURIER_PROCESS, version: 1, data: {} },
+            { clause: PROXIMITY_POLICY, version: 1, data: { bands: ["zone-wifi"] } },
+            { clause: PROXIMITY_PROOF, version: 1, data: {} },
         ]);
         const courierHash = computeAgreementHash(courierAgreement);
         const orders = [
@@ -221,9 +222,9 @@ describe("hand-off pairing — cross-order carrier", () => {
 
     it("pairs once per party across multiple hand-off stages (courier: arrived-pickup pairs, arrived-dropoff does not)", () => {
         const courierAgreement = buildAgreement(BUYER, COURIER, [
-            { clause: COURIER_PROCESS, data: {} },
-            { clause: PROXIMITY_POLICY, data: { bands: ["zone-wifi"] } },
-            { clause: PROXIMITY_PROOF, data: {} },
+            { clause: COURIER_PROCESS, version: 1, data: {} },
+            { clause: PROXIMITY_POLICY, version: 1, data: { bands: ["zone-wifi"] } },
+            { clause: PROXIMITY_PROOF, version: 1, data: {} },
         ]);
         const courierHash = computeAgreementHash(courierAgreement);
         const order = buildOrder({ id: COURIER_ORDER, seller: COURIER, agreementHash: courierHash, parentOrderIds: [] });
@@ -254,9 +255,9 @@ describe("scale — the resolve ceiling flows through the deriver", () => {
     it("derives a 2,145-order process with attestations in linear-ish time", () => {
         const N = 2145;
         const agreement = buildAgreement(BUYER, MERCHANT, [
-            { clause: MERCHANT_PROCESS, data: {} },
-            { clause: PROXIMITY_POLICY, data: { bands: ["zone-wifi"] } },
-            { clause: PROXIMITY_PROOF, data: {} },
+            { clause: MERCHANT_PROCESS, version: 1, data: {} },
+            { clause: PROXIMITY_POLICY, version: 1, data: { bands: ["zone-wifi"] } },
+            { clause: PROXIMITY_PROOF, version: 1, data: {} },
         ]);
         const agreementHash = computeAgreementHash(agreement);
         const agreements = new Map([[agreementHash, agreement]]);

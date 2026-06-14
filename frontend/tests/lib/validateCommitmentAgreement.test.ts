@@ -8,11 +8,11 @@ import {
 } from "@/lib/core/agreement";
 
 // Tests may name clauses; production code may not.
-const MERCHANT_PROCESS_CLAUSE_KEY = "figaro-merchant-process-v1";
-const MODALITIES_CLAUSE_KEY = "figaro-modalities-v1";
-const COORDINATION_CLAUSE_KEY = "figaro-coordination-v1";
-const HANDOFF_CLAUSE_KEY = "figaro-handoff-v1";
-const GEO_CLAUSE_KEY = "figaro-geo-v2";
+const MERCHANT_PROCESS_CLAUSE_KEY = "figaro-merchant-process";
+const MODALITIES_CLAUSE_KEY = "figaro-modalities";
+const COORDINATION_CLAUSE_KEY = "figaro-coordination";
+const HANDOFF_CLAUSE_KEY = "figaro-handoff";
+const GEO_CLAUSE_KEY = "figaro-geo";
 
 // Layer A, run on BOTH sides of the bilateral commit (buyer before initiating,
 // seller before counter-signing). Two checks: merkle integrity (the signed hash
@@ -35,9 +35,9 @@ function agreement(sections: AgreementSection[]): Agreement {
 describe("validateCommitmentAgreement (Layer A, pre-commit)", () => {
     it("passes a valid agreement when the hash matches the content", () => {
         const a = agreement([
-            { clause: MODALITIES_CLAUSE_KEY, data: { modality: "delivery" } },
-            { clause: COORDINATION_CLAUSE_KEY, data: { coordination: "seller-assigned" } },
-            { clause: HANDOFF_CLAUSE_KEY, data: { handoff: ["face-to-face"] } },
+            { clause: MODALITIES_CLAUSE_KEY, version: 1, data: { modality: "delivery" } },
+            { clause: COORDINATION_CLAUSE_KEY, version: 1, data: { coordination: "seller-assigned" } },
+            { clause: HANDOFF_CLAUSE_KEY, version: 1, data: { handoff: ["face-to-face"] } },
         ]);
         const result = validateCommitmentAgreement(a, computeAgreementHash(a));
         expect(result.ok).toBe(true);
@@ -45,7 +45,7 @@ describe("validateCommitmentAgreement (Layer A, pre-commit)", () => {
     });
 
     it("flags a merkle mismatch — signing a hash that isn't this agreement's root", () => {
-        const a = agreement([{ clause: MODALITIES_CLAUSE_KEY, data: { modality: "pickup" } }]);
+        const a = agreement([{ clause: MODALITIES_CLAUSE_KEY, version: 1, data: { modality: "pickup" } }]);
         const result = validateCommitmentAgreement(a, `0x${"00".repeat(32)}`);
         expect(result.ok).toBe(false);
         expect(result.issues.some((i) => i.clause === "(merkle)")).toBe(true);
@@ -56,7 +56,7 @@ describe("validateCommitmentAgreement (Layer A, pre-commit)", () => {
         // section with empty geohashes. Geo is in the agreement, so its content
         // must be valid — not skipped. (Content is checked before the merkle
         // hash, so the unencodable content is reported, not thrown.)
-        const a = agreement([{ clause: GEO_CLAUSE_KEY, data: { originGeohash: "", destinationGeohash: "" } }]);
+        const a = agreement([{ clause: GEO_CLAUSE_KEY, version: 2, data: { originGeohash: "", destinationGeohash: "" } }]);
         const result = validateCommitmentAgreement(a, `0x${"00".repeat(32)}`);
         expect(result.ok).toBe(false);
         expect(result.issues.some((i) => i.clause === GEO_CLAUSE_KEY)).toBe(true);
@@ -65,7 +65,7 @@ describe("validateCommitmentAgreement (Layer A, pre-commit)", () => {
     it("skips category-1 runtime presence-markers (merchant-process {} is attested later)", () => {
         // merchant-process {} would fail its spec (eventType required) IF validated.
         // It must be SKIPPED at commit — content is attested + validated on-chain later.
-        const a = agreement([{ clause: MERCHANT_PROCESS_CLAUSE_KEY, data: {} }]);
+        const a = agreement([{ clause: MERCHANT_PROCESS_CLAUSE_KEY, version: 1, data: {} }]);
         const result = validateCommitmentAgreement(a, computeAgreementHash(a));
         expect(result.issues.some((i) => i.clause === MERCHANT_PROCESS_CLAUSE_KEY)).toBe(false);
         expect(result.ok).toBe(true);

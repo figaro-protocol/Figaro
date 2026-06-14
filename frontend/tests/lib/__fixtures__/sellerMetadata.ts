@@ -23,7 +23,7 @@ export const SELLER_CATALOGUE_METADATA_EXAMPLE: SellerCatalogueMetadata = {
             image: "ipfs://example/margherita.png",
             available: true,
             clauseAttestations: {
-                "figaro-allergen-v1": {
+                "figaro-allergen": {
                     allergenFree: ["gluten-free-crust-option"],
                     contains: ["dairy", "gluten"],
                 },

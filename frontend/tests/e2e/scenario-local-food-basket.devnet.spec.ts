@@ -13,15 +13,15 @@
  *   commit by the projection, not stored here):
  *
  *     order[0]  buyer ↔ hub      parents: []
- *       figaro-modalities-v1        { modality: delivery }
- *       figaro-coordination-v1     { coordination: seller-assigned }
- *       figaro-merchant-process-v1
+ *       figaro-modalities        { modality: delivery }
+ *       figaro-coordination     { coordination: seller-assigned }
+ *       figaro-merchant-process
  *     order[1]  buyer ↔ farm     parents: [order-0]   (bare supply order — collected)
  *     order[2]  buyer ↔ bakery   parents: [order-0]   (bare supply order — collected)
  *     order[3]  buyer ↔ courier  parents: [order-0]
- *       figaro-courier-process-v1
- *       figaro-handoff-v1           { handoff: [face-to-face] }
- *       figaro-proximity-policy-v1  { bands: [zone-wifi] }
+ *       figaro-courier-process
+ *       figaro-handoff           { handoff: [face-to-face] }
+ *       figaro-proximity-policy  { bands: [zone-wifi] }
  *
  *   The bare producer orders compose NO registry clauses — a supply order is
  *   just a bonded relationship (commerce + topology, both added at commit).
@@ -106,22 +106,22 @@ test.describe('Author + publish the local-food-basket assembly (devnet)', () => 
             await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
             await page.getByTestId('drawer-tab-registry').click();
             await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
-            await composeClause(page, 'figaro-modalities-v1', [
-                'drawer-field-figaro-modalities-v1-modality-delivery',
+            await composeClause(page, 'figaro-modalities', [
+                'drawer-field-figaro-modalities-modality-delivery',
             ]);
-            await composeClause(page, 'figaro-coordination-v1', [
-                'drawer-field-figaro-coordination-v1-coordination-seller-assigned',
+            await composeClause(page, 'figaro-coordination', [
+                'drawer-field-figaro-coordination-coordination-seller-assigned',
             ]);
-            await composeClause(page, 'figaro-merchant-process-v1');
+            await composeClause(page, 'figaro-merchant-process');
 
             // ── Compose the COURIER order: courier-process + the courier→buyer
             //    hand-off + its proximity certification ────────────────────────
             await page.getByTestId(`drawer-node-tab-${courierId}`).click();
             await page.getByTestId('drawer-tab-registry').click();
             await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
-            await composeClause(page, 'figaro-courier-process-v1');
-            await composeClause(page, 'figaro-handoff-v1', ['drawer-field-figaro-handoff-v1-handoff-face-to-face']);
-            await composeClause(page, 'figaro-proximity-policy-v1', ['drawer-field-figaro-proximity-policy-v1-bands-zone-wifi']);
+            await composeClause(page, 'figaro-courier-process');
+            await composeClause(page, 'figaro-handoff', ['drawer-field-figaro-handoff-handoff-face-to-face']);
+            await composeClause(page, 'figaro-proximity-policy', ['drawer-field-figaro-proximity-policy-bands-zone-wifi']);
             await expect(orderNodes, 'composing clauses never draws nodes').toHaveCount(4, { timeout: 10000 });
 
             // Name + publish (fixed slug → "local-food-basket").
@@ -177,34 +177,34 @@ test.describe('Author + publish the local-food-basket assembly (devnet)', () => 
         const [root, farm, bakery, courier] = assemblyTemplate.orders;
 
         // order[0] — the hub: delivery (seller-assigned) + merchant-process.
-        expect(root.clauses['figaro-topology-v1']).toEqual({ parentOrderIds: [] });
+        expect(root.clauses['figaro-topology']).toEqual({ parentOrderIds: [] });
         expect(Object.keys(root.clauses).sort()).toEqual([
-            'figaro-coordination-v1',
-            'figaro-merchant-process-v1',
-            'figaro-modalities-v1',
-            'figaro-topology-v1',
+            'figaro-coordination',
+            'figaro-merchant-process',
+            'figaro-modalities',
+            'figaro-topology',
         ]);
-        expect(root.clauses['figaro-modalities-v1'].modality).toBe('delivery');
-        expect(root.clauses['figaro-coordination-v1'].coordination).toBe('seller-assigned');
+        expect(root.clauses['figaro-modalities'].modality).toBe('delivery');
+        expect(root.clauses['figaro-coordination'].coordination).toBe('seller-assigned');
 
         // order[1] + order[2] — the producers: BARE bonded relationships
         // (topology only; commerce joins at commit via the projection).
         for (const producer of [farm, bakery]) {
-            expect(producer.clauses['figaro-topology-v1']).toEqual({ parentOrderIds: ['order-0'] });
-            expect(Object.keys(producer.clauses).sort()).toEqual(['figaro-topology-v1']);
+            expect(producer.clauses['figaro-topology']).toEqual({ parentOrderIds: ['order-0'] });
+            expect(Object.keys(producer.clauses).sort()).toEqual(['figaro-topology']);
         }
 
         // order[3] — the courier: courier-process + the courier→buyer hand-off,
         // proximity-certified.
-        expect(courier.clauses['figaro-topology-v1']).toEqual({ parentOrderIds: ['order-0'] });
+        expect(courier.clauses['figaro-topology']).toEqual({ parentOrderIds: ['order-0'] });
         expect(Object.keys(courier.clauses).sort()).toEqual([
-            'figaro-courier-process-v1',
-            'figaro-handoff-v1',
-            'figaro-proximity-policy-v1',
-            'figaro-topology-v1',
+            'figaro-courier-process',
+            'figaro-handoff',
+            'figaro-proximity-policy',
+            'figaro-topology',
         ]);
-        expect(courier.clauses['figaro-handoff-v1'].handoff).toEqual(['face-to-face']);
-        expect(courier.clauses['figaro-proximity-policy-v1'].bands).toEqual(['zone-wifi']);
+        expect(courier.clauses['figaro-handoff'].handoff).toEqual(['face-to-face']);
+        expect(courier.clauses['figaro-proximity-policy'].bands).toEqual(['zone-wifi']);
 
         // ── It SURFACES on the marketing /assemblies inventory ─────────────
         await assertAssemblyOnInventory(page, slug);

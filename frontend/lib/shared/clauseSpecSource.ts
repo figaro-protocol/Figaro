@@ -15,7 +15,7 @@
  */
 
 import { parseClauseSpec, type ClauseSpec, type FieldSpec } from "@figaro/core/clauses";
-import { keccak256, stringToHex } from "viem";
+import { clauseIdHash } from "@/lib/shared/evm";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 
@@ -65,7 +65,7 @@ export function setClauseSpecFetcher(fetcher: ClauseSpecFetcher): void {
 /** Register a loaded spec into the cache + the derived maps. */
 function cacheSpec(spec: ClauseSpec): void {
     SPEC_CACHE.set(spec.clauseId, spec);
-    HASH_TO_ID.set(keccak256(stringToHex(spec.clauseId)).toLowerCase(), spec.clauseId);
+    HASH_TO_ID.set(clauseIdHash(spec.clauseId, spec.version).toLowerCase(), spec.clauseId);
     const nestsUnder = (spec as { block?: { nestsUnder?: unknown } }).block?.nestsUnder;
     if (typeof nestsUnder === "string" && nestsUnder.length > 0) NESTS_UNDER.set(spec.clauseId, nestsUnder);
     const sister = spec.block?.sisterClauseId;

@@ -1,3 +1,4 @@
+import { clauseIdHash } from "@/lib/shared/evm";
 /**
  * seller-timeline.devnet.spec.ts
  *
@@ -53,7 +54,7 @@ const BUYER_KEY = ANVIL_KEYS[0];
 const SELLER_KEY = ANVIL_KEYS[1];
 const SELLER_ADDR = ANVIL_ACCOUNTS[1];
 
-const MERCHANT_PROCESS_CLAUSE_ID = keccak256(stringToHex('figaro-merchant-process-v1'));
+const MERCHANT_PROCESS_CLAUSE_ID = clauseIdHash('figaro-merchant-process', 1);
 
 /** Post-commit merchant-process events the UI walks in order. Stage indices
  *  match the validator's uint8 enum, which begins at prep-started=0 — arrival +
@@ -62,7 +63,7 @@ const MERCHANT_PROCESS_CLAUSE_ID = keccak256(stringToHex('figaro-merchant-proces
  *  HAPPY_PATH_EVENTS). */
 const HAPPY_PATH: Array<{ event: string; stage: number }> = [
     // Stage = the clause spec's enum ordinal (the generic engine submits the
-    // next un-attested index of figaro-merchant-process-v1's 3-value ladder).
+    // next un-attested index of figaro-merchant-process's 3-value ladder).
     { event: 'prep-started', stage: 0 },
     { event: 'ready-for-pickup', stage: 1 },
     { event: 'handed-off', stage: 2 },

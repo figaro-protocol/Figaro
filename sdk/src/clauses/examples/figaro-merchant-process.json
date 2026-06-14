@@ -1,5 +1,5 @@
 {
-    "clauseId": "figaro-merchant-process-v1",
+    "clauseId": "figaro-merchant-process",
     "version": 1,
     "title": "Merchant internal process events",
     "description": "Event stream emitted by a merchant seller (restaurant, retail, service merchant, etc.) to coordinate with buyer and courier. The event log is the SSoT for the merchant's role in the order lifecycle. Generic across local-commerce verticals; the event vocabulary maps to the merchant's order-fulfillment flow.",

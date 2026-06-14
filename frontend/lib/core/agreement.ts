@@ -53,7 +53,7 @@
  */
 
 import { concat, keccak256, stringToHex, toHex } from "viem";
-import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
+import { ZERO_BYTES32, hexEqual, clauseIdHash } from "@/lib/shared/evm";
 
 // ── Core types ───────────────────────────────────────────────────────────────
 
@@ -62,8 +62,11 @@ import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
  * whose clause key matches a registered clause in ClauseRegistry.
  */
 export interface AgreementSection {
-    /** Clause key from ClauseRegistry (the readable registry id). */
+    /** Clause key from ClauseRegistry (the readable registry id — no version suffix). */
     clause: string;
+    /** Clause version — paired with `clause` to form the on-chain id
+     *  keccak256(abi.encode(clause, version)). Sourced from the clause spec. */
+    version: number;
     /** Clause-specific data. Structure is defined by the clause, not by this module. */
     data: Record<string, unknown>;
 }
@@ -210,14 +213,8 @@ function canonicalizeSectionData(data: Record<string, unknown>): string {
     return JSON.stringify(data, sortedReplacer);
 }
 
-/**
- * Canonical bytes32 clauseId for a clause key — matches Solidity's
- * `keccak256("figaro-…-v1")` pattern used by registered validators and the
- * ClauseRegistry.
- */
-export function clauseIdOf(clauseKey: string): `0x${string}` {
-    return keccak256(toHex(new TextEncoder().encode(clauseKey)));
-}
+// The canonical bytes32 clauseId (`keccak256(abi.encode(name, version))`) lives in
+// `@/lib/shared/evm` as `clauseIdHash` — one home shared with the SDK + Rust prover.
 
 /**
  * Return the on-chain sectionData bytes for an agreement section.
@@ -254,7 +251,7 @@ export function getSectionDataBytes(section: AgreementSection): `0x${string}` {
  * reconstruction during inclusion-proof verification.
  */
 export function computeSectionLeaf(section: AgreementSection): `0x${string}` {
-    return keccak256(concat([clauseIdOf(section.clause), keccak256(getSectionDataBytes(section))]));
+    return keccak256(concat([clauseIdHash(section.clause, section.version), keccak256(getSectionDataBytes(section))]));
 }
 
 /**
@@ -493,7 +490,7 @@ export function getSectionById(
     clauseId: `0x${string}`,
 ): AgreementSection | undefined {
     if (!agreement) return undefined;
-    return agreement.sections.find((s) => hexEqual(clauseIdOf(s.clause), clauseId));
+    return agreement.sections.find((s) => hexEqual(clauseIdHash(s.clause, s.version), clauseId));
 }
 
 /**

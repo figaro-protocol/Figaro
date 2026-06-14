@@ -62,7 +62,7 @@ interface SellerLocation {
  * this assembly's sub-orders, keyed by the sub-order's process clause.
  *
  * Example: a seller bound to `local-commerce-merchant-delivery` has
- * a `counterpartyBindings[{ clauseId: "figaro-courier-process-v1",
+ * a `counterpartyBindings[{ clauseId: "figaro-courier-process",
  * addresses: [0xA, 0xB] }]` entry. At checkout, the cart fills the
  * courier sub-order's seller field from this list. Without this field
  * the cart has nowhere to read the counterparty's wallet from — the
@@ -71,7 +71,7 @@ interface SellerLocation {
  */
 export interface CounterpartyBinding {
     /** Process clause anchored on the sub-order this binding targets
-     *  (e.g. `figaro-courier-process-v1`). The clauseId is the
+     *  (e.g. a courier-process clause). The clauseId is the
      *  structural marker for what kind of off-chain seller the
      *  sub-order needs. */
     clauseId: string;

@@ -13,15 +13,15 @@
  *   by the projection, not stored here):
  *
  *     order[0]  buyer ↔ merchant  parents: []
- *       figaro-modalities-v1       { modality: delivery }
- *       figaro-coordination-v1     { coordination: seller-assigned }
- *       figaro-handoff-v1          { handoff: [face-to-face] }
- *       figaro-merchant-process-v1 { }
- *       figaro-proximity-policy-v1 { bands: [zone-wifi] }
+ *       figaro-modalities       { modality: delivery }
+ *       figaro-coordination     { coordination: seller-assigned }
+ *       figaro-handoff          { handoff: [face-to-face] }
+ *       figaro-merchant-process { }
+ *       figaro-proximity-policy { bands: [zone-wifi] }
  *     order[1]  buyer ↔ courier   parents: [order-0]   (value-topology edge; co-equal)
- *       figaro-courier-process-v1  { }
- *       figaro-handoff-v1          { handoff: [face-to-face] }
- *       figaro-proximity-policy-v1 { bands: [zone-wifi] }
+ *       figaro-courier-process  { }
+ *       figaro-handoff          { handoff: [face-to-face] }
+ *       figaro-proximity-policy { bands: [zone-wifi] }
  *
  *   Delivery is expressed by the TOPOLOGY (a second courier order carrying
  *   courier-process), NOT by a side-effect spawn — the designer DRAWS the courier
@@ -110,28 +110,28 @@ test.describe('Author + publish the local-commerce-dispute assembly (devnet)', (
 
             // The delivery sub-clause (coordination) surfaces once delivery is
             // the chosen modality — gated by the spec, never hardcoded.
-            await composeClause(page, 'figaro-modalities-v1', [
-                'drawer-field-figaro-modalities-v1-modality-delivery',
+            await composeClause(page, 'figaro-modalities', [
+                'drawer-field-figaro-modalities-modality-delivery',
             ]);
-            await composeClause(page, 'figaro-coordination-v1', [
-                'drawer-field-figaro-coordination-v1-coordination-seller-assigned',
+            await composeClause(page, 'figaro-coordination', [
+                'drawer-field-figaro-coordination-coordination-seller-assigned',
             ]);
             // The merchant→courier hand-off + its proximity certification
             // (proximity nests under the hand-off clause's field).
-            await composeClause(page, 'figaro-handoff-v1', ['drawer-field-figaro-handoff-v1-handoff-face-to-face']);
-            await composeClause(page, 'figaro-proximity-policy-v1', ['drawer-field-figaro-proximity-policy-v1-bands-zone-wifi']);
-            await composeClause(page, 'figaro-merchant-process-v1');
+            await composeClause(page, 'figaro-handoff', ['drawer-field-figaro-handoff-handoff-face-to-face']);
+            await composeClause(page, 'figaro-proximity-policy', ['drawer-field-figaro-proximity-policy-bands-zone-wifi']);
+            await composeClause(page, 'figaro-merchant-process');
             // The recourse delta: the agreement NAMES its Layer-3 forum.
-            await composeClause(page, 'figaro-arbitration-kleros-v1', ['drawer-field-figaro-arbitration-kleros-v1-klerosCourt-general']);
+            await composeClause(page, 'figaro-arbitration-kleros', ['drawer-field-figaro-arbitration-kleros-klerosCourt-general']);
 
             // ── Compose the COURIER order: courier-process + the courier→buyer
             //    hand-off + its proximity certification ────────────────────────
             await page.getByTestId(`drawer-node-tab-${courierId}`).click();
             await page.getByTestId('drawer-tab-registry').click();
             await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
-            await composeClause(page, 'figaro-courier-process-v1');
-            await composeClause(page, 'figaro-handoff-v1', ['drawer-field-figaro-handoff-v1-handoff-face-to-face']);
-            await composeClause(page, 'figaro-proximity-policy-v1', ['drawer-field-figaro-proximity-policy-v1-bands-zone-wifi']);
+            await composeClause(page, 'figaro-courier-process');
+            await composeClause(page, 'figaro-handoff', ['drawer-field-figaro-handoff-handoff-face-to-face']);
+            await composeClause(page, 'figaro-proximity-policy', ['drawer-field-figaro-proximity-policy-bands-zone-wifi']);
             await expect(orderNodes, 'composing clauses never draws nodes').toHaveCount(2, { timeout: 10000 });
 
             // Name + publish (fixed slug → "local-commerce-dispute").
@@ -188,33 +188,33 @@ test.describe('Author + publish the local-commerce-dispute assembly (devnet)', (
 
         // order[0] — the merchant: delivery (seller-assigned) + merchant-process +
         // the merchant→courier hand-off, proximity-certified.
-        expect(root.clauses['figaro-topology-v1']).toEqual({ parentOrderIds: [] });
+        expect(root.clauses['figaro-topology']).toEqual({ parentOrderIds: [] });
         expect(Object.keys(root.clauses).sort()).toEqual([
-            'figaro-arbitration-kleros-v1',
-            'figaro-coordination-v1',
-            'figaro-handoff-v1',
-            'figaro-merchant-process-v1',
-            'figaro-modalities-v1',
-            'figaro-proximity-policy-v1',
-            'figaro-topology-v1',
+            'figaro-arbitration-kleros',
+            'figaro-coordination',
+            'figaro-handoff',
+            'figaro-merchant-process',
+            'figaro-modalities',
+            'figaro-proximity-policy',
+            'figaro-topology',
         ]);
-        expect(root.clauses['figaro-modalities-v1'].modality).toBe('delivery');
-        expect(root.clauses['figaro-coordination-v1'].coordination).toBe('seller-assigned');
-                expect(root.clauses['figaro-handoff-v1'].handoff).toEqual(['face-to-face']);
-        expect(root.clauses['figaro-arbitration-kleros-v1'].klerosCourt).toBe('general');
-        expect(root.clauses['figaro-proximity-policy-v1'].bands).toEqual(['zone-wifi']);
+        expect(root.clauses['figaro-modalities'].modality).toBe('delivery');
+        expect(root.clauses['figaro-coordination'].coordination).toBe('seller-assigned');
+                expect(root.clauses['figaro-handoff'].handoff).toEqual(['face-to-face']);
+        expect(root.clauses['figaro-arbitration-kleros'].klerosCourt).toBe('general');
+        expect(root.clauses['figaro-proximity-policy'].bands).toEqual(['zone-wifi']);
 
         // order[1] — the courier: courier-process + the courier→buyer hand-off,
         // proximity-certified, parent = order-0.
-        expect(courier.clauses['figaro-topology-v1']).toEqual({ parentOrderIds: ['order-0'] });
+        expect(courier.clauses['figaro-topology']).toEqual({ parentOrderIds: ['order-0'] });
         expect(Object.keys(courier.clauses).sort()).toEqual([
-            'figaro-courier-process-v1',
-            'figaro-handoff-v1',
-            'figaro-proximity-policy-v1',
-            'figaro-topology-v1',
+            'figaro-courier-process',
+            'figaro-handoff',
+            'figaro-proximity-policy',
+            'figaro-topology',
         ]);
-        expect(courier.clauses['figaro-handoff-v1'].handoff).toEqual(['face-to-face']);
-        expect(courier.clauses['figaro-proximity-policy-v1'].bands).toEqual(['zone-wifi']);
+        expect(courier.clauses['figaro-handoff'].handoff).toEqual(['face-to-face']);
+        expect(courier.clauses['figaro-proximity-policy'].bands).toEqual(['zone-wifi']);
 
         // ── It SURFACES on the marketing /assemblies inventory ─────────────
         await assertAssemblyOnInventory(page, slug);

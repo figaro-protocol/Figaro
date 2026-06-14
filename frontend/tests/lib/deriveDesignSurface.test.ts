@@ -22,11 +22,11 @@ describe("getMechanismKindsForDesign", () => {
         expect(getMechanismKindsForDesign([])).toEqual([]);
     });
 
-    it("returns 'core' for a default root order (figaro-commerce-v1 → core)", () => {
+    it("returns 'core' for a default root order (figaro-commerce → core)", () => {
         const session = startSyntheticSession();
         const root = createSyntheticRootOrder(session);
-        // The default root carries figaro-commerce-v1 (cart/order clause) and
-        // figaro-modalities-v1 (pickup modality). Each spec's `block`
+        // The default root carries figaro-commerce (cart/order clause) and
+        // figaro-modalities (pickup modality). Each spec's `block`
         // binding declares commerce → core and modality → coordinator.
         const kinds = getMechanismKindsForDesign([root.order]);
         expect(kinds).toContain("core");
@@ -38,7 +38,7 @@ describe("getMechanismKindsForDesign", () => {
         const root = createSyntheticRootOrder(session);
         const sub = createSyntheticSubOrder(session, root.order);
         const kinds = getMechanismKindsForDesign([root.order, sub.order]);
-        // Both root and sub-order carry figaro-commerce-v1; "core" should
+        // Both root and sub-order carry figaro-commerce; "core" should
         // appear once, not twice.
         const coreCount = kinds.filter((k) => k === "core").length;
         expect(coreCount).toBe(1);

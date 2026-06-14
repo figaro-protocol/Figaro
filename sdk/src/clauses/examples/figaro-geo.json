@@ -1,5 +1,5 @@
 {
-    "clauseId": "figaro-geo-v2",
+    "clauseId": "figaro-geo",
     "version": 2,
     "title": "Logistics",
     "description": "Origin and destination geohashes plus shipment mass, volume, and class of service. Required when fulfilment includes delivery.",

@@ -18,7 +18,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { keccak256, toBytes } from "viem";
+import { clauseIdHash } from "@/lib/shared/evm";
 import { usePublicClient } from "wagmi";
 import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/core/contracts";
 import { publicClient } from "@/lib/shared/wagmi";
@@ -28,7 +28,7 @@ export interface RegisteredClauseEvent {
      *  Attestation log and the validator binding use. */
     clauseIdHash: `0x${string}`;
     /** The human-readable clauseId, read straight from the event (e.g.
-     *  "figaro-merchant-process-v1"). */
+     *  "figaro-merchant-process"). */
     clauseName: string;
     version: number;
     /** keccak256 of the canonical spec JSON — integrity digest. */
@@ -63,7 +63,7 @@ function mapClauseRegisteredLog(log: ClauseRegisteredLog): RegisteredClauseEvent
     }>;
     const clauseName = args.clauseId ?? "";
     return {
-        clauseIdHash: keccak256(toBytes(clauseName)),
+        clauseIdHash: clauseIdHash(clauseName, Number(args.version ?? 0)),
         clauseName,
         version: Number(args.version ?? 0),
         contentHash: (args.contentHash ?? "0x") as `0x${string}`,

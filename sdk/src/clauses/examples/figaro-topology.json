@@ -1,5 +1,5 @@
 {
-    "clauseId": "figaro-topology-v1",
+    "clauseId": "figaro-topology",
     "version": 1,
     "title": "Order topology (DAG lineage)",
     "description": "Records the DAG lineage of an order within a process. The on-chain kernel stores only per-process accumulator state; parent-order edges are carried here and committed via agreementHash.",

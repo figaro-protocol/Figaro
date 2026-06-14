@@ -15,7 +15,7 @@
  *   by the projection, not stored here):
  *
  *     order[0]  buyer ↔ seller  parents: []
- *       figaro-modalities-v1  { modality: pickup }
+ *       figaro-modalities  { modality: pickup }
  *
  * PHASE 1 of the 2× e2e convention — the design-canvas test. It drives the real
  * designer UI ALL THE WAY THROUGH to the IPFS pin AND the on-chain anchor
@@ -85,10 +85,10 @@ test.describe('Author + publish the kiosk-sale assembly (devnet)', () => {
             // clause's spec has loaded chain→IPFS — await it into existence.
             await page.getByTestId('drawer-tab-registry').click();
             await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
-            const modalitiesBox = page.getByTestId('drawer-registry-clause-figaro-modalities-v1');
-            await expect(modalitiesBox, 'drawer surfaces figaro-modalities-v1').toHaveCount(1, { timeout: 20000 });
+            const modalitiesBox = page.getByTestId('drawer-registry-clause-figaro-modalities');
+            await expect(modalitiesBox, 'drawer surfaces figaro-modalities').toHaveCount(1, { timeout: 20000 });
             await modalitiesBox.check();
-            const pickupField = page.getByTestId('drawer-field-figaro-modalities-v1-modality-pickup');
+            const pickupField = page.getByTestId('drawer-field-figaro-modalities-modality-pickup');
             await expect(pickupField, 'drawer surfaces the pickup modality').toHaveCount(1, { timeout: 10000 });
             await pickupField.check();
             await expect(orderNodes, 'composing clauses never draws nodes').toHaveCount(1, { timeout: 10000 });
@@ -144,10 +144,10 @@ test.describe('Author + publish the kiosk-sale assembly (devnet)', () => {
         expect(assemblyTemplate.slug).toBe(slug);
         expect(assemblyTemplate.orders).toHaveLength(1);
         const root = assemblyTemplate.orders[0];
-        // The DAG is a clause: root's figaro-topology-v1 carries empty parents.
-        expect(root.clauses['figaro-topology-v1']).toEqual({ parentOrderIds: [] });
-        expect(Object.keys(root.clauses).sort()).toEqual(['figaro-modalities-v1', 'figaro-topology-v1']);
-        expect(root.clauses['figaro-modalities-v1'].modality).toBe('pickup');
+        // The DAG is a clause: root's figaro-topology carries empty parents.
+        expect(root.clauses['figaro-topology']).toEqual({ parentOrderIds: [] });
+        expect(Object.keys(root.clauses).sort()).toEqual(['figaro-modalities', 'figaro-topology']);
+        expect(root.clauses['figaro-modalities'].modality).toBe('pickup');
 
         // ── It SURFACES on the marketing /assemblies inventory — the reader
         //    that was empty when publishes got reverted. (Navigates the page.) ─

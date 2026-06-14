@@ -1,5 +1,5 @@
 {
-    "clauseId": "figaro-ghg-measurement-v1",
+    "clauseId": "figaro-ghg-measurement",
     "version": 1,
     "title": "GHG (greenhouse gas) emissions measurement",
     "description": "Runtime grams CO2e measurement attached to an order fulfillment. Category-1: content is a free-form uint256 grams value, not cross-checked against the agreement. Pair with any figaro-ghg-<standard>-v1 sister clause (figaro-ghg-protocol-v1, figaro-ghg-iso-14064-v1, figaro-ghg-pas-2050-v1, figaro-ghg-en-16258-v1, figaro-ghg-custom-v1) when the standard and scope of accounting need to be committed at contract time.",

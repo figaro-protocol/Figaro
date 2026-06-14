@@ -127,7 +127,7 @@ test.describe('local-food-basket runtime — 4-order multi-contributor commit, c
             category: 'bread', tokenAddress,
         });
         // The hub binds the assembly and DESIGNATES the contributors. Binding
-        // ORDER is load-bearing: every node carries figaro-topology-v1, so the
+        // ORDER is load-bearing: every node carries figaro-topology, so the
         // courier-process binding must come FIRST or the courier order would
         // consume a producer address; the topology binding's array then fills
         // the two bare producer orders in commit order.
@@ -158,8 +158,8 @@ test.describe('local-food-basket runtime — 4-order multi-contributor commit, c
                     subjectAddress: HUB_ADDR as `0x${string}`,
                     assemblySlug: 'local-food-basket',
                     counterpartyBindings: [
-                        { clauseId: 'figaro-courier-process-v1', addresses: [courierAddr] },
-                        { clauseId: 'figaro-topology-v1', addresses: [FARM_ADDR, BAKERY_ADDR] },
+                        { clauseId: 'figaro-courier-process', addresses: [courierAddr] },
+                        { clauseId: 'figaro-topology', addresses: [FARM_ADDR, BAKERY_ADDR] },
                     ],
                 }],
             },

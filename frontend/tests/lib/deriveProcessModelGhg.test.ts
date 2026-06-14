@@ -16,8 +16,8 @@ import { type Agreement, computeAgreementHash } from "@/lib/core/agreement";
 import { primeClauseSpecs } from "./primeClauseSpecs";
 
 // Tests may name clauses; production code may not.
-const GHG_CLAUSE_KEY = "figaro-ghg-iso-14064-v1";
-const GHG_MEASUREMENT_CLAUSE_KEY = "figaro-ghg-measurement-v1";
+const GHG_CLAUSE_KEY = "figaro-ghg-iso-14064";
+const GHG_MEASUREMENT_CLAUSE_KEY = "figaro-ghg-measurement";
 
 // The disclosure capabilities derive from each clause's spec (block
 // mechanismKinds + companion links) — prime the chain-fed cache.
@@ -41,13 +41,13 @@ function buildAgreement(clauses: string[]): Agreement {
         buyer: BUYER as Hex,
         seller: SELLER as Hex,
         sections: clauses.map((clause) => {
-            // GHG_CLAUSE_KEY (figaro-ghg-iso-14064-v1) is Cat-2 and needs a
+            // GHG_CLAUSE_KEY (figaro-ghg-iso-14064) is Cat-2 and needs a
             // typed payload that the SDK encoder accepts; measurement-v1 is
             // Cat-1 and accepts plain JSON.
             if (clause === GHG_CLAUSE_KEY) {
-                return { clause, data: { standard: "iso-14064-1", scope: 1 } };
+                return { clause, version: 1, data: { standard: "iso-14064-1", scope: 1 } };
             }
-            return { clause, data: {} };
+            return { clause, version: 1, data: {} };
         }),
     };
 }
@@ -81,7 +81,7 @@ function buildSummary() {
 }
 
 describe("deriveProcessModelFromRuntime — GHG disclosure capabilities", () => {
-    it("emits submit-disclosure-commitment when agreement carries figaro-ghg-iso-14064-v1, for the seller only", () => {
+    it("emits submit-disclosure-commitment when agreement carries figaro-ghg-iso-14064, for the seller only", () => {
         const agreement = buildAgreement([GHG_CLAUSE_KEY]);
         const agreementHash = computeAgreementHash(agreement);
         const agreements = new Map<string, Agreement>([[agreementHash, agreement]]);
@@ -100,7 +100,7 @@ describe("deriveProcessModelFromRuntime — GHG disclosure capabilities", () => 
         expect(buyerCaps.find((c) => c.actionKind === "open-sub-order-composer")).toBeTruthy();
     });
 
-    it("emits submit-disclosure-inventory when agreement carries figaro-ghg-measurement-v1, for the seller only", () => {
+    it("emits submit-disclosure-inventory when agreement carries figaro-ghg-measurement, for the seller only", () => {
         const agreement = buildAgreement([GHG_MEASUREMENT_CLAUSE_KEY]);
         const agreementHash = computeAgreementHash(agreement);
         const agreements = new Map<string, Agreement>([[agreementHash, agreement]]);

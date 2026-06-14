@@ -16,7 +16,7 @@ import {
     buildProcessDisclosureSummary,
 } from "../src/extensions/attestation.js";
 import type { Hex, Address, AttestationEvent } from "../src/types.js";
-import { keccak256, stringToHex } from "viem";
+import { keccak256, stringToHex, encodeAbiParameters } from "viem";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -26,8 +26,8 @@ const hex32 = (n: number): Hex =>
     `0x${n.toString(16).padStart(64, "0")}` as Hex;
 
 // Use the ISO-14064 sister clause as the canonical GHG clause for tests.
-const GHG_CLAUSE_KEY = "figaro-ghg-iso-14064-v1";
-const GHG_CLAUSE_ID = keccak256(stringToHex(GHG_CLAUSE_KEY));
+const GHG_CLAUSE_KEY = "figaro-ghg-iso-14064";
+const GHG_CLAUSE_ID = keccak256(encodeAbiParameters([{ type: "string" }, { type: "uint64" }], [GHG_CLAUSE_KEY, 1n]));
 const OTHER_CLAUSE_ID = keccak256(stringToHex("other-clause"));
 
 function makeAttestation(overrides: Partial<AttestationEvent> = {}): AttestationEvent {
@@ -46,19 +46,19 @@ function makeAttestation(overrides: Partial<AttestationEvent> = {}): Attestation
 // ── computeClauseId ─────────────────────────────────────────────────────────
 
 describe("computeClauseId", () => {
-    it("matches keccak256(stringToHex(key))", () => {
-        const id = computeClauseId("figaro-ghg-iso-14064-v1");
-        expect(id).toBe(keccak256(stringToHex("figaro-ghg-iso-14064-v1")));
+    it("matches keccak256(abi.encode(name, version))", () => {
+        const id = computeClauseId("figaro-ghg-iso-14064", 1);
+        expect(id).toBe(keccak256(encodeAbiParameters([{ type: "string" }, { type: "uint64" }], ["figaro-ghg-iso-14064", 1n])));
     });
 
     it("different keys produce different IDs", () => {
-        const a = computeClauseId("key-a");
-        const b = computeClauseId("key-b");
+        const a = computeClauseId("key-a", 1);
+        const b = computeClauseId("key-b", 1);
         expect(a).not.toBe(b);
     });
 
     it("GHG_CLAUSE_KEY produces known hash", () => {
-        expect(computeClauseId(GHG_CLAUSE_KEY)).toBe(GHG_CLAUSE_ID);
+        expect(computeClauseId(GHG_CLAUSE_KEY, 1)).toBe(GHG_CLAUSE_ID);
     });
 });
 
@@ -67,11 +67,11 @@ describe("computeClauseId", () => {
 describe("GHG constants", () => {
     it("GHG_DISCLOSURE_CLAUSE_KEYS contains 5 sister clauses", () => {
         expect(GHG_DISCLOSURE_CLAUSE_KEYS).toHaveLength(5);
-        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toContain("figaro-ghg-protocol-v1");
-        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toContain("figaro-ghg-iso-14064-v1");
-        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toContain("figaro-ghg-pas-2050-v1");
-        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toContain("figaro-ghg-en-16258-v1");
-        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toContain("figaro-ghg-custom-v1");
+        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toContain("figaro-ghg-protocol");
+        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toContain("figaro-ghg-iso-14064");
+        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toContain("figaro-ghg-pas-2050");
+        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toContain("figaro-ghg-en-16258");
+        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toContain("figaro-ghg-custom");
     });
 
     it("DisclosureKind has 4 values", () => {

@@ -4,12 +4,12 @@ import { embeddedSpec } from "../../src/clauses/embedded.js";
 import { encodeContentFromSpec, type ConsentContent } from "../../src/clauses/encode.js";
 import { parseClauseSpec } from "../../src/clauses/spec.js";
 import { validateContent } from "../../src/clauses/validate.js";
-import consentSpecRaw from "../../src/clauses/examples/figaro-consent-v1.json" with { type: "json" };
+import consentSpecRaw from "../../src/clauses/examples/figaro-consent.json" with { type: "json" };
 
 const SAMPLE_HASH: Hex = `0x${"ab".repeat(32)}`;
 const ALT_HASH: Hex = `0x${"cd".repeat(32)}`;
 
-const CONSENT_SPEC = embeddedSpec("figaro-consent-v1")!;
+const CONSENT_SPEC = embeddedSpec("figaro-consent")!;
 function encodeConsent(content: ConsentContent): Hex {
     return encodeContentFromSpec(CONSENT_SPEC, content as unknown as Record<string, unknown>);
 }

@@ -8,13 +8,13 @@
  * module since they're tightly coupled through clauseId.
  */
 
-import { keccak256, stringToHex, toHex } from "viem";
+import { keccak256, stringToHex, toHex, encodeAbiParameters } from "viem";
 import type { Hex, Address, AttestationEvent } from "../types.js";
-import ghgProtocolSpec from "../clauses/examples/figaro-ghg-protocol-v1.json" with { type: "json" };
-import ghgISO14064Spec from "../clauses/examples/figaro-ghg-iso-14064-v1.json" with { type: "json" };
-import ghgPAS2050Spec from "../clauses/examples/figaro-ghg-pas-2050-v1.json" with { type: "json" };
-import ghgEN16258Spec from "../clauses/examples/figaro-ghg-en-16258-v1.json" with { type: "json" };
-import ghgCustomSpec from "../clauses/examples/figaro-ghg-custom-v1.json" with { type: "json" };
+import ghgProtocolSpec from "../clauses/examples/figaro-ghg-protocol.json" with { type: "json" };
+import ghgISO14064Spec from "../clauses/examples/figaro-ghg-iso-14064.json" with { type: "json" };
+import ghgPAS2050Spec from "../clauses/examples/figaro-ghg-pas-2050.json" with { type: "json" };
+import ghgEN16258Spec from "../clauses/examples/figaro-ghg-en-16258.json" with { type: "json" };
+import ghgCustomSpec from "../clauses/examples/figaro-ghg-custom.json" with { type: "json" };
 
 // ── Clause ID derivation ────────────────────────────────────────────────────
 
@@ -23,13 +23,17 @@ import ghgCustomSpec from "../clauses/examples/figaro-ghg-custom-v1.json" with {
  * This is the canonical way to derive clause IDs.
  * Matches how clauses are registered on-chain: keccak256(stringToHex(name)).
  *
+ * Identity is the (name, version) pair: keccak256(abi.encode(name, version)),
+ * matching ClauseRegistry + every IClauseValidator on-chain. The name carries
+ * no version suffix; the version is a distinct argument.
+ *
  * @example
  * ```ts
- * const clauseId = computeClauseId("figaro-ghg-iso-14064-v1");
+ * const clauseId = computeClauseId("figaro-ghg-iso-14064", 1);
  * ```
  */
-export function computeClauseId(key: string): Hex {
-    return keccak256(stringToHex(key));
+export function computeClauseId(name: string, version: number): Hex {
+    return keccak256(encodeAbiParameters([{ type: "string" }, { type: "uint64" }], [name, BigInt(version)]));
 }
 
 // ── Well-known clause keys ──────────────────────────────────────────────────
@@ -39,11 +43,11 @@ export function computeClauseId(key: string): Hex {
  * identity lives in the clauseId; the content shape is shared across all five.
  */
 export const GHG_DISCLOSURE_CLAUSE_KEYS = [
-    "figaro-ghg-protocol-v1",
-    "figaro-ghg-iso-14064-v1",
-    "figaro-ghg-pas-2050-v1",
-    "figaro-ghg-en-16258-v1",
-    "figaro-ghg-custom-v1",
+    "figaro-ghg-protocol",
+    "figaro-ghg-iso-14064",
+    "figaro-ghg-pas-2050",
+    "figaro-ghg-en-16258",
+    "figaro-ghg-custom",
 ] as const;
 
 export type GHGDisclosureClauseKey = (typeof GHG_DISCLOSURE_CLAUSE_KEYS)[number];
@@ -74,22 +78,22 @@ export const DISCLOSURE_KIND_LABELS: Record<DisclosureKind, string> = {
  *  so non-React consumers don't need to load the spec JSON to render chips.
  *  Not in the spec JSON itself; the spec's `description` is the full prose. */
 const GHG_SCOPES: Record<GHGDisclosureClauseKey, string> = {
-    "figaro-ghg-protocol-v1": "Scope 1/2/3 corporate accounting",
-    "figaro-ghg-iso-14064-v1": "Quantification, reporting & verification",
-    "figaro-ghg-pas-2050-v1": "Product carbon footprint",
-    "figaro-ghg-en-16258-v1": "Transport energy & GHG",
-    "figaro-ghg-custom-v1": "Self-declared accounting basis",
+    "figaro-ghg-protocol": "Scope 1/2/3 corporate accounting",
+    "figaro-ghg-iso-14064": "Quantification, reporting & verification",
+    "figaro-ghg-pas-2050": "Product carbon footprint",
+    "figaro-ghg-en-16258": "Transport energy & GHG",
+    "figaro-ghg-custom": "Self-declared accounting basis",
 };
 
 /** Labels derived from each spec JSON's `title` — single source of truth.
  *  Adding a sister clause means importing its spec above and adding it here;
  *  the TypeScript `Record<GHGDisclosureClauseKey, ...>` enforces completeness. */
 const GHG_LABELS: Record<GHGDisclosureClauseKey, string> = {
-    "figaro-ghg-protocol-v1": ghgProtocolSpec.title,
-    "figaro-ghg-iso-14064-v1": ghgISO14064Spec.title,
-    "figaro-ghg-pas-2050-v1": ghgPAS2050Spec.title,
-    "figaro-ghg-en-16258-v1": ghgEN16258Spec.title,
-    "figaro-ghg-custom-v1": ghgCustomSpec.title,
+    "figaro-ghg-protocol": ghgProtocolSpec.title,
+    "figaro-ghg-iso-14064": ghgISO14064Spec.title,
+    "figaro-ghg-pas-2050": ghgPAS2050Spec.title,
+    "figaro-ghg-en-16258": ghgEN16258Spec.title,
+    "figaro-ghg-custom": ghgCustomSpec.title,
 };
 
 /** Normative-standard reference for each disclosure clause. 1:1 with

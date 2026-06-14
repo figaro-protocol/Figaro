@@ -11,19 +11,19 @@ import type { ClauseFields } from "@/lib/core/encoding";
 // Tests may name clauses; production code may not (the registry defines the
 // open set at runtime; lib/ finds sections by spec-declared fields). These
 // literals mirror the canonical Layer-A example specs.
-const GEO_CLAUSE_KEY = "figaro-geo-v2";
-const MODALITIES_CLAUSE_KEY = "figaro-modalities-v1";
-const COORDINATION_CLAUSE_KEY = "figaro-coordination-v1";
-const HANDOFF_CLAUSE_KEY = "figaro-handoff-v1";
-const PROXIMITY_POLICY_CLAUSE_KEY = "figaro-proximity-policy-v1";
-const MERCHANT_PROCESS_CLAUSE_KEY = "figaro-merchant-process-v1";
-const COURIER_PROCESS_CLAUSE_KEY = "figaro-courier-process-v1";
-const ARBITRATION_KLEROS_CLAUSE_KEY = "figaro-arbitration-kleros-v1";
-const APPLICABLE_LAW_CLAUSE_KEY = "figaro-applicable-law-v1";
-const CONSENT_CLAUSE_KEY = "figaro-consent-v1";
+const GEO_CLAUSE_KEY = "figaro-geo";
+const MODALITIES_CLAUSE_KEY = "figaro-modalities";
+const COORDINATION_CLAUSE_KEY = "figaro-coordination";
+const HANDOFF_CLAUSE_KEY = "figaro-handoff";
+const PROXIMITY_POLICY_CLAUSE_KEY = "figaro-proximity-policy";
+const MERCHANT_PROCESS_CLAUSE_KEY = "figaro-merchant-process";
+const COURIER_PROCESS_CLAUSE_KEY = "figaro-courier-process";
+const ARBITRATION_KLEROS_CLAUSE_KEY = "figaro-arbitration-kleros";
+const APPLICABLE_LAW_CLAUSE_KEY = "figaro-applicable-law";
+const CONSENT_CLAUSE_KEY = "figaro-consent";
 
 export interface FlatClauseFields {
-    /** Spec-named geo fields (figaro-geo-v2). The legacy origin/mass/class_
+    /** Spec-named geo fields (figaro-geo). The legacy origin/mass/class_
      *  vocabulary and its unit-string parsing died with the per-clause
      *  encoder map — tests compose what production composes. */
     originGeohash?: string;
@@ -31,9 +31,9 @@ export interface FlatClauseFields {
     massGrams?: number;
     volumeMl?: number;
     classOfService?: string;
-    /** Single-select modality (figaro-modalities-v1). */
+    /** Single-select modality (figaro-modalities). */
     modality?: string;
-    /** Single-select coordination (figaro-coordination-v1). */
+    /** Single-select coordination (figaro-coordination). */
     coordination?: string;
     handoffPoints?: string[];
     proximityBands?: string[];
@@ -63,7 +63,7 @@ export function cf(flat: FlatClauseFields): ClauseFields {
     if (flat.modality) out[MODALITIES_CLAUSE_KEY] = { modality: flat.modality };
     if (flat.coordination) out[COORDINATION_CLAUSE_KEY] = { coordination: flat.coordination };
 
-    // hand-off is its own clause now (figaro-handoff-v1).
+    // hand-off is its own clause now (figaro-handoff).
     if (flat.handoffPoints) out[HANDOFF_CLAUSE_KEY] = { handoff: flat.handoffPoints };
     if (flat.proximityBands) out[PROXIMITY_POLICY_CLAUSE_KEY] = { bands: flat.proximityBands };
     for (const clauseId of flat.ghgStandards ?? []) out[clauseId] = {};

@@ -28,9 +28,8 @@ import {
     type Hex,
     type PublicClient,
 } from "viem";
-import { isEmptyHex, ZERO_BYTES32 } from "@/lib/shared/evm";
+import { isEmptyHex, ZERO_BYTES32, clauseIdHash } from "@/lib/shared/evm";
 import { ATTESTATION_COORDINATOR_ABI } from "@/lib/core/contracts";
-import { clauseIdOf } from "@/lib/core/agreement";
 import {
     DISCLOSURE_KIND,
     DISCLOSURE_KIND_LABELS,
@@ -81,7 +80,7 @@ export type ProcessDisclosureSummary = {
 function disclosureClauseIdHashes(): Hex[] {
     return listKnownClauseIds()
         .filter((clauseId) => clauseDeclaresField(clauseId, "scope"))
-        .map((clauseId) => clauseIdOf(clauseId));
+        .map((clauseId) => clauseIdHash(clauseId, getClauseSpec(clauseId)?.version ?? 1));
 }
 
 /** keccak256 event-topic hashes of every registered MEASUREMENT clause —
@@ -93,7 +92,7 @@ function measurementClauseIdHashes(): Hex[] {
         const sister = getClauseSpec(clauseId)?.block?.sisterClauseId;
         if (sister) sisters.add(sister);
     }
-    return Array.from(sisters).map((clauseId) => clauseIdOf(clauseId));
+    return Array.from(sisters).map((clauseId) => clauseIdHash(clauseId, getClauseSpec(clauseId)?.version ?? 1));
 }
 
 // ── Pure utility functions ───────────────────────────────────────────────────

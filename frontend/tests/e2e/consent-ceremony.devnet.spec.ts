@@ -2,13 +2,13 @@
  * consent-ceremony.devnet.spec.ts
  *
  * E2E coverage of /consent — the Figaro Beta informed-consent ceremony.
- * The page exercises figaro-consent-v1's EIP-712 typed-data shape via
+ * The page exercises figaro-consent's EIP-712 typed-data shape via
  * `useSignTypedData`, pins the canonical document text + a PDF receipt
  * to IPFS, then redirects to /discover. No on-chain mutation — the
  * signature itself is the artifact.
  *
  * Closes the "every shipped clause has at least one e2e" gap for
- * figaro-consent-v1 at the beta-ceremony surface. A separate e2e
+ * figaro-consent at the beta-ceremony surface. A separate e2e
  * exercises consent-v1 as a commit-time clause inside an assembly.
  */
 import { test, expect, ANVIL_ACCOUNTS, gotoAsWallet } from './devnet-multi-test';

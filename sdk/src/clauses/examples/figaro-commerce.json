@@ -1,5 +1,5 @@
 {
-    "clauseId": "figaro-commerce-v1",
+    "clauseId": "figaro-commerce",
     "version": 1,
     "title": "Commerce terms",
     "description": "Currency, payment amount, and itemized line items for the commercial half of an order.",

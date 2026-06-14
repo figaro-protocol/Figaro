@@ -13,11 +13,13 @@ const SELLER = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as `0x${string}`;
 const CURRENCY = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
 
 const COMMERCE: AgreementSection = {
-    clause: "figaro-commerce-v1",
+    clause: "figaro-commerce",
+    version: 1,
     data: { currency: CURRENCY, payment: "1000000000000000000", lineItems: [] },
 };
 const GEO: AgreementSection = {
-    clause: "figaro-geo-v2",
+    clause: "figaro-geo",
+    version: 2,
     data: {
         originGeohash: "dr5reg",
         destinationGeohash: "dr5reh",
@@ -27,14 +29,16 @@ const GEO: AgreementSection = {
     },
 };
 const GHG: AgreementSection = {
-    clause: "figaro-ghg-iso-14064-v1",
+    clause: "figaro-ghg-iso-14064",
+    version: 1,
     // Standard identity lives in the clauseId; data carries only scope.
     // Category-2 clauses use ABI encoding for sectionData — the clause values
     // must be encoder-valid.
     data: { scope: 1 },
 };
 const MODALITIES: AgreementSection = {
-    clause: "figaro-modalities-v1",
+    clause: "figaro-modalities",
+    version: 1,
     data: { modality: "pickup" },
 };
 
@@ -62,8 +66,8 @@ describe("computeSectionLeaf", () => {
     });
 
     it("changes when clause key changes with identical data", () => {
-        const leafA = computeSectionLeaf({ clause: "a", data: { x: 1 } });
-        const leafB = computeSectionLeaf({ clause: "b", data: { x: 1 } });
+        const leafA = computeSectionLeaf({ clause: "a", version: 1, data: { x: 1 } });
+        const leafB = computeSectionLeaf({ clause: "b", version: 1, data: { x: 1 } });
         expect(leafA).not.toBe(leafB);
     });
 });
@@ -94,7 +98,7 @@ describe("computeAgreementHash", () => {
     it("rejects agreements with duplicate clause keys", () => {
         const dup = { ...GHG, data: { ...GHG.data, scope: 2 } };
         expect(() => computeAgreementHash(agreement([GHG, dup])))
-            .toThrow(/Duplicate clause keys.*figaro-ghg-iso-14064-v1/);
+            .toThrow(/Duplicate clause keys.*figaro-ghg-iso-14064/);
     });
 });
 
@@ -102,7 +106,7 @@ describe("buildSectionInclusionProof + verifyInclusionProof", () => {
     it("single section: empty proof verifies", () => {
         const a = agreement([COMMERCE]);
         const root = computeAgreementHash(a);
-        const { leaf, proof } = buildSectionInclusionProof(a, "figaro-commerce-v1");
+        const { leaf, proof } = buildSectionInclusionProof(a, "figaro-commerce");
         expect(proof).toHaveLength(0);
         expect(verifyInclusionProof(root, leaf, proof)).toBe(true);
     });
@@ -138,13 +142,13 @@ describe("buildSectionInclusionProof + verifyInclusionProof", () => {
     it("rejects a proof against a different root", () => {
         const a1 = agreement([COMMERCE, GHG]);
         const a2 = agreement([COMMERCE, MODALITIES]);
-        const { leaf, proof } = buildSectionInclusionProof(a1, "figaro-commerce-v1");
+        const { leaf, proof } = buildSectionInclusionProof(a1, "figaro-commerce");
         expect(verifyInclusionProof(computeAgreementHash(a2), leaf, proof)).toBe(false);
     });
 
     it("throws when the section is absent", () => {
         const a = agreement([COMMERCE]);
-        expect(() => buildSectionInclusionProof(a, "figaro-ghg-iso-14064-v1"))
+        expect(() => buildSectionInclusionProof(a, "figaro-ghg-iso-14064"))
             .toThrow(/Section not found/);
     });
 });

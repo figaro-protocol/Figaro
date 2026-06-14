@@ -261,7 +261,7 @@ function SectionMode() {
         <div className="space-y-4" data-testid="verify-section-mode">
             <p className="text-xs text-neutral-600">
                 Paste a single `AgreementSection` JSON (one clause from an
-                agreement, e.g. the figaro-commerce-v1 section). The recomputed
+                agreement, e.g. a commerce section). The recomputed
                 leaf hash is shown below — compare to the section&apos;s leaf in
                 the audit-bundle hash appendix.
             </p>
@@ -271,7 +271,7 @@ function SectionMode() {
                     value={json}
                     onChange={(e) => setJson(e.target.value)}
                     rows={8}
-                    placeholder='{"clause":"figaro-commerce-v1","data":{"currency":"0x...","payment":"100","lineItems":[...]}}'
+                    placeholder='{"clause":"figaro-commerce","data":{"currency":"0x...","payment":"100","lineItems":[...]}}'
                     data-testid="verify-section-input"
                     className="mt-1 w-full font-mono text-xs px-3 py-2 border border-neutral-300 rounded"
                 />

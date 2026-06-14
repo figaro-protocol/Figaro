@@ -64,8 +64,8 @@ const TOKEN_MINT_ABI = [
 //    its own enum ladder; nothing in the repo names either. The root carries
 //    one, the sub-order the other — proving the generic rail runs two unrelated
 //    clauses side by side in one process. ──────────────────────────────────────
-const ROOT_CLAUSE_ID = 'figaro-probe-root-v1';
-const SUB_CLAUSE_ID = 'figaro-probe-sub-v1';
+const ROOT_CLAUSE_ID = 'figaro-probe-root';
+const SUB_CLAUSE_ID = 'figaro-probe-sub';
 const MULTI_SLUG = 'permissionless-multiorder';
 
 const ROOT_SPEC = {

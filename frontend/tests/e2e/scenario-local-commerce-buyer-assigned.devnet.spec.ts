@@ -11,15 +11,15 @@
  *   by the projection, not stored here):
  *
  *     order[0]  buyer ↔ merchant  parents: []
- *       figaro-modalities-v1       { modality: delivery }
- *       figaro-coordination-v1     { coordination: buyer-assigned }
- *       figaro-handoff-v1          { handoff: [face-to-face] }
- *       figaro-merchant-process-v1 { }
- *       figaro-proximity-policy-v1 { bands: [zone-wifi] }
+ *       figaro-modalities       { modality: delivery }
+ *       figaro-coordination     { coordination: buyer-assigned }
+ *       figaro-handoff          { handoff: [face-to-face] }
+ *       figaro-merchant-process { }
+ *       figaro-proximity-policy { bands: [zone-wifi] }
  *     order[1]  buyer ↔ courier   parents: [order-0]   (value-topology edge; co-equal)
- *       figaro-courier-process-v1  { }
- *       figaro-handoff-v1          { handoff: [face-to-face] }
- *       figaro-proximity-policy-v1 { bands: [zone-wifi] }
+ *       figaro-courier-process  { }
+ *       figaro-handoff          { handoff: [face-to-face] }
+ *       figaro-proximity-policy { bands: [zone-wifi] }
  *
  *   The adopting merchant's profile binds NO counterparty for the courier
  *   node — that is what "buyer-assigned" means at adoption: the choice is the
@@ -102,23 +102,23 @@ test.describe('Author + publish the local-commerce-buyer-assigned assembly (devn
             await page.getByTestId('drawer-tab-registry').click();
             await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
 
-            await composeClause(page, 'figaro-modalities-v1', [
-                'drawer-field-figaro-modalities-v1-modality-delivery',
+            await composeClause(page, 'figaro-modalities', [
+                'drawer-field-figaro-modalities-modality-delivery',
             ]);
-            await composeClause(page, 'figaro-coordination-v1', [
-                'drawer-field-figaro-coordination-v1-coordination-buyer-assigned',
+            await composeClause(page, 'figaro-coordination', [
+                'drawer-field-figaro-coordination-coordination-buyer-assigned',
             ]);
-            await composeClause(page, 'figaro-handoff-v1', ['drawer-field-figaro-handoff-v1-handoff-face-to-face']);
-            await composeClause(page, 'figaro-proximity-policy-v1', ['drawer-field-figaro-proximity-policy-v1-bands-zone-wifi']);
-            await composeClause(page, 'figaro-merchant-process-v1');
+            await composeClause(page, 'figaro-handoff', ['drawer-field-figaro-handoff-handoff-face-to-face']);
+            await composeClause(page, 'figaro-proximity-policy', ['drawer-field-figaro-proximity-policy-bands-zone-wifi']);
+            await composeClause(page, 'figaro-merchant-process');
 
             // ── Compose the COURIER order ────────────────────────────────────
             await page.getByTestId(`drawer-node-tab-${courierId}`).click();
             await page.getByTestId('drawer-tab-registry').click();
             await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
-            await composeClause(page, 'figaro-courier-process-v1');
-            await composeClause(page, 'figaro-handoff-v1', ['drawer-field-figaro-handoff-v1-handoff-face-to-face']);
-            await composeClause(page, 'figaro-proximity-policy-v1', ['drawer-field-figaro-proximity-policy-v1-bands-zone-wifi']);
+            await composeClause(page, 'figaro-courier-process');
+            await composeClause(page, 'figaro-handoff', ['drawer-field-figaro-handoff-handoff-face-to-face']);
+            await composeClause(page, 'figaro-proximity-policy', ['drawer-field-figaro-proximity-policy-bands-zone-wifi']);
             await expect(orderNodes, 'composing clauses never draws nodes').toHaveCount(2, { timeout: 10000 });
 
             // Name + publish (fixed slug → "local-commerce-buyer-assigned").
@@ -173,26 +173,26 @@ test.describe('Author + publish the local-commerce-buyer-assigned assembly (devn
         expect(assemblyTemplate.orders).toHaveLength(2);
         const [root, courier] = assemblyTemplate.orders;
 
-        expect(root.clauses['figaro-topology-v1']).toEqual({ parentOrderIds: [] });
+        expect(root.clauses['figaro-topology']).toEqual({ parentOrderIds: [] });
         expect(Object.keys(root.clauses).sort()).toEqual([
-            'figaro-coordination-v1',
-            'figaro-handoff-v1',
-            'figaro-merchant-process-v1',
-            'figaro-modalities-v1',
-            'figaro-proximity-policy-v1',
-            'figaro-topology-v1',
+            'figaro-coordination',
+            'figaro-handoff',
+            'figaro-merchant-process',
+            'figaro-modalities',
+            'figaro-proximity-policy',
+            'figaro-topology',
         ]);
-        expect(root.clauses['figaro-modalities-v1'].modality).toBe('delivery');
-        expect(root.clauses['figaro-coordination-v1'].coordination).toBe('buyer-assigned');
-        expect(root.clauses['figaro-handoff-v1'].handoff).toEqual(['face-to-face']);
-        expect(root.clauses['figaro-proximity-policy-v1'].bands).toEqual(['zone-wifi']);
+        expect(root.clauses['figaro-modalities'].modality).toBe('delivery');
+        expect(root.clauses['figaro-coordination'].coordination).toBe('buyer-assigned');
+        expect(root.clauses['figaro-handoff'].handoff).toEqual(['face-to-face']);
+        expect(root.clauses['figaro-proximity-policy'].bands).toEqual(['zone-wifi']);
 
-        expect(courier.clauses['figaro-topology-v1']).toEqual({ parentOrderIds: ['order-0'] });
+        expect(courier.clauses['figaro-topology']).toEqual({ parentOrderIds: ['order-0'] });
         expect(Object.keys(courier.clauses).sort()).toEqual([
-            'figaro-courier-process-v1',
-            'figaro-handoff-v1',
-            'figaro-proximity-policy-v1',
-            'figaro-topology-v1',
+            'figaro-courier-process',
+            'figaro-handoff',
+            'figaro-proximity-policy',
+            'figaro-topology',
         ]);
 
         // ── It SURFACES on the marketing /assemblies inventory ─────────────

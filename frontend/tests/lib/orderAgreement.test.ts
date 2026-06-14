@@ -38,10 +38,10 @@ describe("buildOrderAgreement", () => {
             }),
         });
 
-        expect(getSection(agreement, "figaro-commerce-v1")).toBeDefined();
-        expect(getSection(agreement, "figaro-geo-v2")).toBeDefined();
-        expect(getSection(agreement, "figaro-topology-v1")).toBeDefined();
-        expect(getSection(agreement, "figaro-commerce-v1")?.data.lineItems).toEqual([
+        expect(getSection(agreement, "figaro-commerce")).toBeDefined();
+        expect(getSection(agreement, "figaro-geo")).toBeDefined();
+        expect(getSection(agreement, "figaro-topology")).toBeDefined();
+        expect(getSection(agreement, "figaro-commerce")?.data.lineItems).toEqual([
             { itemId: "meal-1", name: "Lunch", quantity: 2, unitPrice: "5" },
         ]);
         expect(getTopologyMode(agreement)).toBe("root");
@@ -79,7 +79,7 @@ describe("buildOrderAgreement", () => {
                 modality: "delivery",
                 coordination: "dutch-auction",
                 handoffPoints: ["face-to-face"],
-                ghgStandards: ["figaro-ghg-iso-14064-v1"],
+                ghgStandards: ["figaro-ghg-iso-14064"],
             }),
         });
 
@@ -89,7 +89,7 @@ describe("buildOrderAgreement", () => {
         expect(summary?.handoff?.points).toEqual(["face-to-face"]);
         expect(summary?.method).toBe("deliver:dutch-auction");
         expect(summary?.ghg).toEqual({
-            clauseKeys: ["figaro-ghg-iso-14064-v1"],
+            clauseKeys: ["figaro-ghg-iso-14064"],
             // The spec's registered title — the network-defined SSoT label
             // (the hardcoded ISO-14064 ↔ clauseId map is gone).
             standard: "ISO 14064",
@@ -107,7 +107,7 @@ describe("buildOrderAgreement", () => {
             payment: 10n,
             clauseFields: {
                 ...cf({ originGeohash: "dr5reg", modality: "delivery" }),
-                "figaro-coordination-v1": {},
+                "figaro-coordination": {},
             },
         });
         const summary = summarizeAgreement(agreement);
@@ -157,24 +157,24 @@ describe("companion (sister) runtime anchors", () => {
         const agreement = build(cf({ proximityBands: ["nearby-ble"] }));
         // Policy keeps its composed bands; proof is an EMPTY runtime anchor —
         // its band/nonce/deviceSig are attested at runtime, never composed.
-        expect(getSection(agreement, "figaro-proximity-policy-v1")?.data.bands).toEqual(["nearby-ble"]);
-        expect(getSection(agreement, "figaro-proximity-proof-v1")?.data).toEqual({});
+        expect(getSection(agreement, "figaro-proximity-policy")?.data.bands).toEqual(["nearby-ble"]);
+        expect(getSection(agreement, "figaro-proximity-proof")?.data).toEqual({});
     });
 
     it("emits the ghg-measurement anchor (empty) from a disclosure's sisterClauseId", () => {
-        const agreement = build(cf({ ghgStandards: ["figaro-ghg-iso-14064-v1"] }));
-        expect(getSection(agreement, "figaro-ghg-measurement-v1")?.data).toEqual({});
+        const agreement = build(cf({ ghgStandards: ["figaro-ghg-iso-14064"] }));
+        expect(getSection(agreement, "figaro-ghg-measurement")?.data).toEqual({});
     });
 
     it("emits the shared ghg-measurement anchor exactly once across N disclosures (dedup)", () => {
-        const agreement = build(cf({ ghgStandards: ["figaro-ghg-iso-14064-v1", "figaro-ghg-en-16258-v1"] }));
-        expect(agreement.sections.filter((s) => s.clause === "figaro-ghg-measurement-v1")).toHaveLength(1);
+        const agreement = build(cf({ ghgStandards: ["figaro-ghg-iso-14064", "figaro-ghg-en-16258"] }));
+        expect(agreement.sections.filter((s) => s.clause === "figaro-ghg-measurement")).toHaveLength(1);
     });
 
     it("emits no companion when the parent clause is absent", () => {
         const agreement = build(cf({ originGeohash: "dr5reg" }));
-        expect(getSection(agreement, "figaro-proximity-proof-v1")).toBeUndefined();
-        expect(getSection(agreement, "figaro-ghg-measurement-v1")).toBeUndefined();
+        expect(getSection(agreement, "figaro-proximity-proof")).toBeUndefined();
+        expect(getSection(agreement, "figaro-ghg-measurement")).toBeUndefined();
     });
 });
 
@@ -184,7 +184,7 @@ describe("generic spec-driven encode (defaults, sentinel, drop semantics)", () =
 
     it("fills absent geo fields from the spec's `default`s (minimum-valid 5-tuple)", () => {
         const agreement = build(cf({ originGeohash: "dr5reg", destinationGeohash: "dr5reh" }));
-        expect(getSection(agreement, "figaro-geo-v2")?.data).toEqual({
+        expect(getSection(agreement, "figaro-geo")?.data).toEqual({
             originGeohash: "dr5reg",
             destinationGeohash: "dr5reh",
             massGrams: 1,
@@ -198,18 +198,18 @@ describe("generic spec-driven encode (defaults, sentinel, drop semantics)", () =
         // with only the optional forum cannot be satisfied and is dropped.
         // (geo no longer works as this fixture: every geo field now carries a
         // spec default, the designer's default-on placeholder fill.)
-        const agreement = build({ "figaro-applicable-law-v1": { forum: "ny-southern-district" } });
-        expect(getSection(agreement, "figaro-applicable-law-v1")).toBeUndefined();
+        const agreement = build({ "figaro-applicable-law": { forum: "ny-southern-district" } });
+        expect(getSection(agreement, "figaro-applicable-law")).toBeUndefined();
     });
 
     it("fills kleros minJurors from the spec default and coerces string input", () => {
         const withDefault = build(cf({ klerosCourt: "general" }));
-        expect(getSection(withDefault, "figaro-arbitration-kleros-v1")?.data).toEqual({
+        expect(getSection(withDefault, "figaro-arbitration-kleros")?.data).toEqual({
             klerosCourt: "general",
             klerosMinJurors: 3,
         });
         const coerced = build(cf({ klerosCourt: "general", klerosMinJurors: "5" }));
-        expect(getSection(coerced, "figaro-arbitration-kleros-v1")?.data.klerosMinJurors).toBe(5);
+        expect(getSection(coerced, "figaro-arbitration-kleros")?.data.klerosMinJurors).toBe(5);
     });
 
     it("rejects the spec's enum sentinel as input and fills from the default (klerosCourt \"none\" → \"general\")", () => {
@@ -217,14 +217,14 @@ describe("generic spec-driven encode (defaults, sentinel, drop semantics)", () =
         // a default court, the walk discards the sentinel and default-fills
         // rather than dropping the section.
         const agreement = build(cf({ klerosCourt: "none" }));
-        expect(getSection(agreement, "figaro-arbitration-kleros-v1")?.data).toEqual({
+        expect(getSection(agreement, "figaro-arbitration-kleros")?.data).toEqual({
             klerosCourt: "general",
             klerosMinJurors: 3,
         });
     });
 
     it("fills a ghg disclosure's scope from its spec default", () => {
-        const agreement = build(cf({ ghgStandards: ["figaro-ghg-iso-14064-v1"] }));
-        expect(getSection(agreement, "figaro-ghg-iso-14064-v1")?.data).toEqual({ scope: 1 });
+        const agreement = build(cf({ ghgStandards: ["figaro-ghg-iso-14064"] }));
+        expect(getSection(agreement, "figaro-ghg-iso-14064")?.data).toEqual({ scope: 1 });
     });
 });

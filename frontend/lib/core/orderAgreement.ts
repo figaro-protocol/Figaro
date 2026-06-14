@@ -266,7 +266,7 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
             data = encodeClauseDataFromSpec(spec.fields, fields);
         }
         if (data === null) continue;
-        sections.push({ clause: clauseId, data });
+        sections.push({ clause: clauseId, version: spec?.version ?? 1, data });
     }
 
     // Companion (sister) runtime anchors. A composed clause whose spec declares
@@ -282,7 +282,7 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         const sister = getClauseSpec(clauseId)?.block?.sisterClauseId;
         if (!sister || emittedClauses.has(sister)) continue;
         if (getClauseSpec(sister)?.block?.tier !== "category-1") continue;
-        sections.push({ clause: sister, data: {} });
+        sections.push({ clause: sister, version: getClauseSpec(sister)?.version ?? 1, data: {} });
         emittedClauses.add(sister);
     }
 

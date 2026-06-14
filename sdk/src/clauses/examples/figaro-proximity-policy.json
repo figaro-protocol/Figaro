@@ -1,5 +1,5 @@
 {
-    "clauseId": "figaro-proximity-policy-v1",
+    "clauseId": "figaro-proximity-policy",
     "version": 1,
     "title": "Proximity-verification policy",
     "description": "Committed proximity-verification options for this assembly: the set of detection bands a merchant offers (zone-wifi, nearby-ble, contact-nfc). Multi-valued \u2014 at template time the merchant declares which bands are acceptable; at runtime a buyer's commitment carries the bands required. An order without a proximity-policy clause has no proximity verification. Per-handoff nonce + signed witness payload travel in the sister clause figaro-proximity-proof-v1 at runtime.",
@@ -34,7 +34,7 @@
             "coordinator-actions",
             "delivery-attestation"
         ],
-        "sisterClauseId": "figaro-proximity-proof-v1",
+        "sisterClauseId": "figaro-proximity-proof",
         "nestsUnder": "handoff"
     }
 }

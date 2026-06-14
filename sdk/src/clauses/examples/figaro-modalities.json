@@ -1,5 +1,5 @@
 {
-    "clauseId": "figaro-modalities-v1",
+    "clauseId": "figaro-modalities",
     "version": 1,
     "title": "Modalities",
     "description": "The buyer's request to the seller: consume-onsite, pickup, delivery, or virtual. Single-select — an assembly composes exactly one modality; a seller offers variety by holding an array of assemblies, one per configuration. Coordination (how the courier edge is arranged) and Hand-off (where a physical exchange happens) are their own composable clauses; proximity verification nests under Hand-off.",

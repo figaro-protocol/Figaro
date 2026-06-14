@@ -1,3 +1,4 @@
+import { clauseIdHash } from "@/lib/shared/evm";
 /**
  * local-commerce-offset-runtime.devnet.spec.ts
  *
@@ -159,7 +160,7 @@ test.describe('local-commerce-offset runtime — emissions disclosed, offsets re
 
         // Both sellers' measurements really landed (out-of-band): a
         // GHG-measurement attestation per seller against THIS process.
-        const ghgClauseId = keccak256(stringToHex('figaro-ghg-measurement-v1'));
+        const ghgClauseId = clauseIdHash('figaro-ghg-measurement', 1);
         const coordinator = process.env.NEXT_PUBLIC_ATTESTATION_COORDINATOR as Hex;
         const attestations = await publicClient.getContractEvents({
             address: coordinator, abi: ATTESTATION_COORDINATOR_ABI, eventName: 'Attestation',

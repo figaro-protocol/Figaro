@@ -1,8 +1,8 @@
 {
-    "clauseId": "figaro-ghg-iso-14064-v1",
+    "clauseId": "figaro-ghg-en-16258",
     "version": 1,
-    "title": "ISO 14064",
-    "description": "Disclosure that the seller will report scope 1 emissions for fulfilling this order under the ISO 14064 family (parts 1, 2, and 3).",
+    "title": "EN 16258",
+    "description": "Disclosure that the seller will report scope 1 emissions for fulfilling this order under EN 16258 (European methodology for the calculation and declaration of energy consumption and GHG emissions of transport services).",
     "categories": [
         "emissions"
     ],
@@ -19,7 +19,7 @@
     ],
     "block": {
         "tier": "category-2",
-        "sisterClauseId": "figaro-ghg-measurement-v1",
+        "sisterClauseId": "figaro-ghg-measurement",
         "article": "emissions",
         "mechanismKinds": [
             "disclosure"

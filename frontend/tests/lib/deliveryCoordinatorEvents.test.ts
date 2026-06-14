@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeAll, beforeEach } from "vitest";
 import { keccak256, stringToHex } from "viem";
+import { clauseIdHash } from "@/lib/shared/evm";
 import { createDeliveryCoordinatorSource } from "@/lib/mechanisms/deliveryCoordinatorEvents";
 import { primeClauseSpecs } from "./primeClauseSpecs";
 
@@ -7,9 +8,9 @@ import { primeClauseSpecs } from "./primeClauseSpecs";
 // cache with the canonical Layer-A specs the chain would point at.
 beforeAll(async () => {
     await primeClauseSpecs([
-        "figaro-merchant-process-v1",
-        "figaro-courier-process-v1",
-        "figaro-proximity-proof-v1",
+        "figaro-merchant-process",
+        "figaro-courier-process",
+        "figaro-proximity-proof",
     ]);
 });
 
@@ -41,9 +42,9 @@ vi.mock("@/lib/core/contracts", () => ({
 // Test helpers
 // ---------------------------------------------------------------------------
 
-const MERCHANT_CLAUSE_ID = keccak256(stringToHex("figaro-merchant-process-v1"));
-const COURIER_CLAUSE_ID = keccak256(stringToHex("figaro-courier-process-v1"));
-const PROXIMITY_CLAUSE_ID = keccak256(stringToHex("figaro-proximity-proof-v1"));
+const MERCHANT_CLAUSE_ID = clauseIdHash("figaro-merchant-process", 1);
+const COURIER_CLAUSE_ID = clauseIdHash("figaro-courier-process", 1);
+const PROXIMITY_CLAUSE_ID = clauseIdHash("figaro-proximity-proof", 1);
 
 function makeMockLog(
     eventName: string,

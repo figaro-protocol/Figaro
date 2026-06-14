@@ -33,12 +33,12 @@ const LINE_ITEMS: AgreementLineItem[] = [
 // ── Clause sections as standardized terms of sale ────────────────────────────
 
 const COMMERCE_SECTION: AgreementSection = {
-    clause: "figaro-commerce-v1",
+    clause: "figaro-commerce", version: 1,
     data: { currency: CURRENCY, payment: "22000000000000000", lineItems: LINE_ITEMS },
 };
 
 const GEO_SECTION: AgreementSection = {
-    clause: "figaro-geo-v2",
+    clause: "figaro-geo", version: 2,
     data: {
         originGeohash: "dr5reg",
         destinationGeohash: "dr5reh",
@@ -49,7 +49,7 @@ const GEO_SECTION: AgreementSection = {
 };
 
 const MODALITIES_SECTION: AgreementSection = {
-    clause: "figaro-modalities-v1",
+    clause: "figaro-modalities", version: 1,
     // Single-select scalar per the clause spec.
     data: {
         modality: "delivery",
@@ -57,12 +57,12 @@ const MODALITIES_SECTION: AgreementSection = {
 };
 
 const GHG_SECTION: AgreementSection = {
-    clause: "figaro-ghg-iso-14064-v1",
+    clause: "figaro-ghg-iso-14064", version: 1,
     data: { scope: 1 },
 };
 
 const ALLERGEN_SECTION: AgreementSection = {
-    clause: "figaro-allergen-v1",
+    clause: "figaro-allergen", version: 1,
     data: { itemAttestations: { pizza1: { allergenFree: ["gluten"], contains: ["dairy"] } } },
 };
 
@@ -91,7 +91,7 @@ describe("canonicalizeAgreement", () => {
 
     it("sorts nested object keys within section data", () => {
         const agreement = makeAgreement({
-            sections: [{ clause: "test-v1", data: { z_field: 2, a_field: 1 } }],
+            sections: [{ clause: "test-v1", version: 1, data: { z_field: 2, a_field: 1 } }],
         });
         const json = canonicalizeAgreement(agreement);
         const aIdx = json.indexOf('"a_field"');
@@ -122,7 +122,7 @@ describe("computeAgreementHash", () => {
     it("different section data produces different hashes", () => {
         const h1 = computeAgreementHash(makeAgreement({ sections: [GEO_SECTION] }));
         const h2 = computeAgreementHash(makeAgreement({
-            sections: [{ clause: "figaro-geo-v2", data: { ...GEO_SECTION.data, originGeohash: "u33dc0" } }],
+            sections: [{ clause: "figaro-geo", version: 2, data: { ...GEO_SECTION.data, originGeohash: "u33dc0" } }],
         }));
         expect(h1).not.toBe(h2);
     });
@@ -180,10 +180,10 @@ describe("buildAgreement", () => {
             sections: [COMMERCE_SECTION, GEO_SECTION, MODALITIES_SECTION, GHG_SECTION],
         });
         expect(a.sections).toHaveLength(4);
-        expect(hasSection(a, "figaro-commerce-v1")).toBe(true);
-        expect(hasSection(a, "figaro-modalities-v1")).toBe(true);
-        expect(hasSection(a, "figaro-ghg-iso-14064-v1")).toBe(true);
-        expect(hasSection(a, "figaro-geo-v2")).toBe(true);
+        expect(hasSection(a, "figaro-commerce")).toBe(true);
+        expect(hasSection(a, "figaro-modalities")).toBe(true);
+        expect(hasSection(a, "figaro-ghg-iso-14064")).toBe(true);
+        expect(hasSection(a, "figaro-geo")).toBe(true);
     });
 });
 
@@ -201,7 +201,7 @@ describe("computeSectionLeaf", () => {
     it("changes when section data changes", () => {
         const leafA = computeSectionLeaf(COMMERCE_SECTION);
         const leafB = computeSectionLeaf({
-            clause: "figaro-commerce-v1",
+            clause: "figaro-commerce", version: 1,
             data: { ...COMMERCE_SECTION.data, payment: "33000000000000000" },
         });
         expect(leafA).not.toBe(leafB);
@@ -211,8 +211,8 @@ describe("computeSectionLeaf", () => {
         // Use a clause-agnostic placeholder (no spec means JSON fallback)
         // so the assertion is purely about clause-key salting the leaf.
         const placeholder = { irrelevant: true };
-        const leafA = computeSectionLeaf({ clause: "third-party-foo-v1", data: placeholder });
-        const leafB = computeSectionLeaf({ clause: "third-party-bar-v1", data: placeholder });
+        const leafA = computeSectionLeaf({ clause: "third-party-foo-v1", version: 1, data: placeholder });
+        const leafB = computeSectionLeaf({ clause: "third-party-bar-v1", version: 1, data: placeholder });
         expect(leafA).not.toBe(leafB);
     });
 });
@@ -221,7 +221,7 @@ describe("buildSectionInclusionProof + verifyInclusionProof", () => {
     it("single-section agreement: empty proof verifies", () => {
         const a = makeAgreement({ sections: [COMMERCE_SECTION] });
         const root = computeAgreementHash(a);
-        const { leaf, proof } = buildSectionInclusionProof(a, "figaro-commerce-v1");
+        const { leaf, proof } = buildSectionInclusionProof(a, "figaro-commerce");
         expect(proof).toHaveLength(0);
         expect(leaf).toBe(computeSectionLeaf(COMMERCE_SECTION));
         expect(verifyInclusionProof(root, leaf, proof)).toBe(true);
@@ -231,11 +231,11 @@ describe("buildSectionInclusionProof + verifyInclusionProof", () => {
         const a = makeAgreement({ sections: [COMMERCE_SECTION, GHG_SECTION] });
         const root = computeAgreementHash(a);
 
-        const commerce = buildSectionInclusionProof(a, "figaro-commerce-v1");
+        const commerce = buildSectionInclusionProof(a, "figaro-commerce");
         expect(commerce.proof).toHaveLength(1);
         expect(verifyInclusionProof(root, commerce.leaf, commerce.proof)).toBe(true);
 
-        const ghg = buildSectionInclusionProof(a, "figaro-ghg-iso-14064-v1");
+        const ghg = buildSectionInclusionProof(a, "figaro-ghg-iso-14064");
         expect(ghg.proof).toHaveLength(1);
         expect(verifyInclusionProof(root, ghg.leaf, ghg.proof)).toBe(true);
     });
@@ -254,7 +254,7 @@ describe("buildSectionInclusionProof + verifyInclusionProof", () => {
     it("rejects a tampered leaf", () => {
         const a = makeAgreement({ sections: [COMMERCE_SECTION, GHG_SECTION] });
         const root = computeAgreementHash(a);
-        const { proof } = buildSectionInclusionProof(a, "figaro-commerce-v1");
+        const { proof } = buildSectionInclusionProof(a, "figaro-commerce");
         const tampered = ("0x" + "f".repeat(64)) as `0x${string}`;
         expect(verifyInclusionProof(root, tampered, proof)).toBe(false);
     });
@@ -262,13 +262,13 @@ describe("buildSectionInclusionProof + verifyInclusionProof", () => {
     it("rejects a proof against a different root", () => {
         const a1 = makeAgreement({ sections: [COMMERCE_SECTION, GHG_SECTION] });
         const a2 = makeAgreement({ sections: [COMMERCE_SECTION, MODALITIES_SECTION] });
-        const { leaf, proof } = buildSectionInclusionProof(a1, "figaro-commerce-v1");
+        const { leaf, proof } = buildSectionInclusionProof(a1, "figaro-commerce");
         expect(verifyInclusionProof(computeAgreementHash(a2), leaf, proof)).toBe(false);
     });
 
     it("throws when the requested section is not in the agreement", () => {
         const a = makeAgreement({ sections: [COMMERCE_SECTION] });
-        expect(() => buildSectionInclusionProof(a, "figaro-ghg-iso-14064-v1"))
+        expect(() => buildSectionInclusionProof(a, "figaro-ghg-iso-14064"))
             .toThrow(/Section not found/);
     });
 });
@@ -278,21 +278,21 @@ describe("buildSectionInclusionProof + verifyInclusionProof", () => {
 describe("section accessors", () => {
     it("getSection returns the matching section", () => {
         const a = makeAgreement({ sections: [COMMERCE_SECTION, GEO_SECTION, GHG_SECTION] });
-        const ghg = getSection(a, "figaro-ghg-iso-14064-v1");
+        const ghg = getSection(a, "figaro-ghg-iso-14064");
         expect(ghg).toBeDefined();
-        expect(ghg!.clause).toBe("figaro-ghg-iso-14064-v1");
+        expect(ghg!.clause).toBe("figaro-ghg-iso-14064");
         expect(ghg!.data.scope).toBe(1);
     });
 
     it("getSection returns undefined for missing clause", () => {
         const a = makeAgreement({ sections: [COMMERCE_SECTION] });
-        expect(getSection(a, "figaro-ghg-iso-14064-v1")).toBeUndefined();
+        expect(getSection(a, "figaro-ghg-iso-14064")).toBeUndefined();
     });
 
     it("hasSection returns correct boolean", () => {
         const a = makeAgreement({ sections: [COMMERCE_SECTION, GEO_SECTION] });
-        expect(hasSection(a, "figaro-commerce-v1")).toBe(true);
-        expect(hasSection(a, "figaro-ghg-iso-14064-v1")).toBe(false);
+        expect(hasSection(a, "figaro-commerce")).toBe(true);
+        expect(hasSection(a, "figaro-ghg-iso-14064")).toBe(false);
     });
 });
 
@@ -309,7 +309,7 @@ describe("sellerCatalogueMetadata example", () => {
         );
         const pizza = SELLER_CATALOGUE_METADATA_EXAMPLE.menu.find((i) => i.id === "pizza1");
         expect(pizza?.clauseAttestations).toBeDefined();
-        expect(pizza?.clauseAttestations?.["figaro-allergen-v1"]).toBeDefined();
+        expect(pizza?.clauseAttestations?.["figaro-allergen"]).toBeDefined();
     });
 });
 
@@ -321,7 +321,7 @@ describe("redactSections / computeRedactableAgreementHash / verifyRevealedSectio
             sections: [COMMERCE_SECTION, GEO_SECTION, MODALITIES_SECTION],
         });
         const original = computeAgreementHash(cleartext);
-        const redacted = redactSections(cleartext, ["figaro-commerce-v1"]);
+        const redacted = redactSections(cleartext, ["figaro-commerce"]);
         const redactedRoot = computeRedactableAgreementHash(redacted);
         expect(redactedRoot).toBe(original);
     });
@@ -329,8 +329,8 @@ describe("redactSections / computeRedactableAgreementHash / verifyRevealedSectio
     it("redacted section carries the same leaf the cleartext computes to", () => {
         const cleartext = makeAgreement({ sections: [COMMERCE_SECTION, GEO_SECTION] });
         const expected = computeSectionLeaf(COMMERCE_SECTION);
-        const redacted = redactSections(cleartext, ["figaro-commerce-v1"]);
-        const commerceEntry = redacted.sections.find((s) => s.clause === "figaro-commerce-v1")!;
+        const redacted = redactSections(cleartext, ["figaro-commerce"]);
+        const commerceEntry = redacted.sections.find((s) => s.clause === "figaro-commerce")!;
         expect(isRedactedSection(commerceEntry)).toBe(true);
         if (isRedactedSection(commerceEntry)) {
             expect(commerceEntry.leaf).toBe(expected);
@@ -339,8 +339,8 @@ describe("redactSections / computeRedactableAgreementHash / verifyRevealedSectio
 
     it("non-targeted sections are passed through unchanged", () => {
         const cleartext = makeAgreement({ sections: [COMMERCE_SECTION, GEO_SECTION] });
-        const redacted = redactSections(cleartext, ["figaro-commerce-v1"]);
-        const geoEntry = redacted.sections.find((s) => s.clause === "figaro-geo-v2")!;
+        const redacted = redactSections(cleartext, ["figaro-commerce"]);
+        const geoEntry = redacted.sections.find((s) => s.clause === "figaro-geo")!;
         expect(isRedactedSection(geoEntry)).toBe(false);
         // Cleartext section: same data field as before redaction.
         expect((geoEntry as AgreementSection).data).toEqual(GEO_SECTION.data);
@@ -350,7 +350,7 @@ describe("redactSections / computeRedactableAgreementHash / verifyRevealedSectio
         const cleartext = makeAgreement({
             sections: [COMMERCE_SECTION, GEO_SECTION, MODALITIES_SECTION],
         });
-        const redacted = redactSections(cleartext, ["figaro-commerce-v1", "figaro-modalities-v1"]);
+        const redacted = redactSections(cleartext, ["figaro-commerce", "figaro-modalities"]);
         const sealed = redacted.sections.filter(isRedactedSection);
         expect(sealed).toHaveLength(2);
         expect(computeRedactableAgreementHash(redacted)).toBe(computeAgreementHash(cleartext));
@@ -358,7 +358,7 @@ describe("redactSections / computeRedactableAgreementHash / verifyRevealedSectio
 
     it("redacting an absent clause key is a no-op (no error)", () => {
         const cleartext = makeAgreement({ sections: [COMMERCE_SECTION, GEO_SECTION] });
-        const redacted = redactSections(cleartext, ["figaro-nonexistent-v1"]);
+        const redacted = redactSections(cleartext, ["figaro-nonexistent"]);
         const sealed = redacted.sections.filter(isRedactedSection);
         expect(sealed).toHaveLength(0);
         expect(computeRedactableAgreementHash(redacted)).toBe(computeAgreementHash(cleartext));
@@ -366,15 +366,15 @@ describe("redactSections / computeRedactableAgreementHash / verifyRevealedSectio
 
     it("verifyRevealedSection accepts the cleartext that was originally redacted", () => {
         const cleartext = makeAgreement({ sections: [COMMERCE_SECTION, GEO_SECTION] });
-        const redacted = redactSections(cleartext, ["figaro-commerce-v1"]);
+        const redacted = redactSections(cleartext, ["figaro-commerce"]);
         expect(verifyRevealedSection(redacted, COMMERCE_SECTION)).toBe(true);
     });
 
     it("verifyRevealedSection rejects a tampered cleartext", () => {
         const cleartext = makeAgreement({ sections: [COMMERCE_SECTION, GEO_SECTION] });
-        const redacted = redactSections(cleartext, ["figaro-commerce-v1"]);
+        const redacted = redactSections(cleartext, ["figaro-commerce"]);
         const tampered: AgreementSection = {
-            clause: "figaro-commerce-v1",
+            clause: "figaro-commerce", version: 1,
             data: {
                 ...COMMERCE_SECTION.data,
                 lineItems: [
@@ -394,9 +394,9 @@ describe("redactSections / computeRedactableAgreementHash / verifyRevealedSectio
 
     it("verifyRevealedSection returns false when the clause isn't in the agreement", () => {
         const cleartext = makeAgreement({ sections: [COMMERCE_SECTION, GEO_SECTION] });
-        const redacted = redactSections(cleartext, ["figaro-commerce-v1"]);
+        const redacted = redactSections(cleartext, ["figaro-commerce"]);
         const orphan: AgreementSection = {
-            clause: "figaro-not-in-agreement-v1",
+            clause: "figaro-not-in-agreement", version: 1,
             data: { whatever: 1 },
         };
         expect(verifyRevealedSection(redacted, orphan)).toBe(false);
@@ -404,7 +404,7 @@ describe("redactSections / computeRedactableAgreementHash / verifyRevealedSectio
 
     it("buyer + seller fields are preserved across redaction", () => {
         const cleartext = makeAgreement({ sections: [COMMERCE_SECTION] });
-        const redacted = redactSections(cleartext, ["figaro-commerce-v1"]);
+        const redacted = redactSections(cleartext, ["figaro-commerce"]);
         expect(redacted.buyer).toBe(cleartext.buyer);
         expect(redacted.seller).toBe(cleartext.seller);
         expect(redacted.version).toBe("a1");

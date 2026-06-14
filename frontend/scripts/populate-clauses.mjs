@@ -28,7 +28,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-    createPublicClient, createWalletClient, defineChain, http, keccak256, parseAbi, toHex,
+    createPublicClient, createWalletClient, defineChain, http, keccak256, parseAbi, toHex, encodeAbiParameters,
 } from 'viem';
 import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
 
@@ -99,7 +99,10 @@ export async function populateClauses({ publicClient, walletClient, account, reg
         const spec = JSON.parse(fs.readFileSync(path.join(CLAUSES_DIR, file), 'utf8'));
         const clauseIdStr = spec.clauseId;
         if (!clauseIdStr) throw new Error(`${file} has no clauseId`);
-        const clauseId = keccak256(toHex(clauseIdStr));
+        const version = BigInt(spec.version ?? 1);
+        // On-chain identity is keccak256(abi.encode(name, version)) — matches
+        // ClauseRegistry, the validators, the SDK, and the Rust prover.
+        const clauseId = keccak256(encodeAbiParameters([{ type: 'string' }, { type: 'uint64' }], [clauseIdStr, version]));
 
         if (await publicClient.readContract({
             address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registered', args: [clauseId],
@@ -113,7 +116,6 @@ export async function populateClauses({ publicClient, walletClient, account, reg
         const canonical = JSON.stringify(spec);
         const metadataURI = await pinJSON(ipfsApiUrl, canonical);
         const contentHash = keccak256(toHex(canonical));
-        const version = BigInt(spec.version ?? 1);
         const familySlug = (spec.categories ?? ['general'])[0];
         const family = keccak256(toHex(familySlug));
 

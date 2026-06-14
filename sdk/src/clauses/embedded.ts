@@ -16,48 +16,48 @@
 
 import { parseClauseSpec, type ClauseSpec } from "./spec.js";
 
-import applicableLawSpec from "./examples/figaro-applicable-law-v1.json" with { type: "json" };
-import arbitrationKlerosSpec from "./examples/figaro-arbitration-kleros-v1.json" with { type: "json" };
-import commerceSpec from "./examples/figaro-commerce-v1.json" with { type: "json" };
-import consentSpec from "./examples/figaro-consent-v1.json" with { type: "json" };
-import coordinationSpec from "./examples/figaro-coordination-v1.json" with { type: "json" };
-import courierProcessSpec from "./examples/figaro-courier-process-v1.json" with { type: "json" };
-import modalitiesSpec from "./examples/figaro-modalities-v1.json" with { type: "json" };
-import handoffSpec from "./examples/figaro-handoff-v1.json" with { type: "json" };
-import geoSpec from "./examples/figaro-geo-v2.json" with { type: "json" };
-import ghgCustomSpec from "./examples/figaro-ghg-custom-v1.json" with { type: "json" };
-import ghgEN16258Spec from "./examples/figaro-ghg-en-16258-v1.json" with { type: "json" };
-import ghgISO14064Spec from "./examples/figaro-ghg-iso-14064-v1.json" with { type: "json" };
-import ghgMeasurementSpec from "./examples/figaro-ghg-measurement-v1.json" with { type: "json" };
-import ghgPAS2050Spec from "./examples/figaro-ghg-pas-2050-v1.json" with { type: "json" };
-import ghgProtocolSpec from "./examples/figaro-ghg-protocol-v1.json" with { type: "json" };
-import merchantProcessSpec from "./examples/figaro-merchant-process-v1.json" with { type: "json" };
-import offsetPolicySpec from "./examples/figaro-offset-policy-v1.json" with { type: "json" };
-import proximityPolicySpec from "./examples/figaro-proximity-policy-v1.json" with { type: "json" };
-import proximityProofSpec from "./examples/figaro-proximity-proof-v1.json" with { type: "json" };
-import topologySpec from "./examples/figaro-topology-v1.json" with { type: "json" };
+import applicableLawSpec from "./examples/figaro-applicable-law.json" with { type: "json" };
+import arbitrationKlerosSpec from "./examples/figaro-arbitration-kleros.json" with { type: "json" };
+import commerceSpec from "./examples/figaro-commerce.json" with { type: "json" };
+import consentSpec from "./examples/figaro-consent.json" with { type: "json" };
+import coordinationSpec from "./examples/figaro-coordination.json" with { type: "json" };
+import courierProcessSpec from "./examples/figaro-courier-process.json" with { type: "json" };
+import modalitiesSpec from "./examples/figaro-modalities.json" with { type: "json" };
+import handoffSpec from "./examples/figaro-handoff.json" with { type: "json" };
+import geoSpec from "./examples/figaro-geo.json" with { type: "json" };
+import ghgCustomSpec from "./examples/figaro-ghg-custom.json" with { type: "json" };
+import ghgEN16258Spec from "./examples/figaro-ghg-en-16258.json" with { type: "json" };
+import ghgISO14064Spec from "./examples/figaro-ghg-iso-14064.json" with { type: "json" };
+import ghgMeasurementSpec from "./examples/figaro-ghg-measurement.json" with { type: "json" };
+import ghgPAS2050Spec from "./examples/figaro-ghg-pas-2050.json" with { type: "json" };
+import ghgProtocolSpec from "./examples/figaro-ghg-protocol.json" with { type: "json" };
+import merchantProcessSpec from "./examples/figaro-merchant-process.json" with { type: "json" };
+import offsetPolicySpec from "./examples/figaro-offset-policy.json" with { type: "json" };
+import proximityPolicySpec from "./examples/figaro-proximity-policy.json" with { type: "json" };
+import proximityProofSpec from "./examples/figaro-proximity-proof.json" with { type: "json" };
+import topologySpec from "./examples/figaro-topology.json" with { type: "json" };
 
 const RAW_SPECS: Readonly<Record<string, unknown>> = {
-    "figaro-applicable-law-v1": applicableLawSpec,
-    "figaro-arbitration-kleros-v1": arbitrationKlerosSpec,
-    "figaro-commerce-v1": commerceSpec,
-    "figaro-consent-v1": consentSpec,
-    "figaro-coordination-v1": coordinationSpec,
-    "figaro-courier-process-v1": courierProcessSpec,
-    "figaro-modalities-v1": modalitiesSpec,
-    "figaro-handoff-v1": handoffSpec,
-    "figaro-geo-v2": geoSpec,
-    "figaro-ghg-custom-v1": ghgCustomSpec,
-    "figaro-ghg-en-16258-v1": ghgEN16258Spec,
-    "figaro-ghg-iso-14064-v1": ghgISO14064Spec,
-    "figaro-ghg-measurement-v1": ghgMeasurementSpec,
-    "figaro-ghg-pas-2050-v1": ghgPAS2050Spec,
-    "figaro-ghg-protocol-v1": ghgProtocolSpec,
-    "figaro-merchant-process-v1": merchantProcessSpec,
-    "figaro-offset-policy-v1": offsetPolicySpec,
-    "figaro-proximity-policy-v1": proximityPolicySpec,
-    "figaro-proximity-proof-v1": proximityProofSpec,
-    "figaro-topology-v1": topologySpec,
+    "figaro-applicable-law": applicableLawSpec,
+    "figaro-arbitration-kleros": arbitrationKlerosSpec,
+    "figaro-commerce": commerceSpec,
+    "figaro-consent": consentSpec,
+    "figaro-coordination": coordinationSpec,
+    "figaro-courier-process": courierProcessSpec,
+    "figaro-modalities": modalitiesSpec,
+    "figaro-handoff": handoffSpec,
+    "figaro-geo": geoSpec,
+    "figaro-ghg-custom": ghgCustomSpec,
+    "figaro-ghg-en-16258": ghgEN16258Spec,
+    "figaro-ghg-iso-14064": ghgISO14064Spec,
+    "figaro-ghg-measurement": ghgMeasurementSpec,
+    "figaro-ghg-pas-2050": ghgPAS2050Spec,
+    "figaro-ghg-protocol": ghgProtocolSpec,
+    "figaro-merchant-process": merchantProcessSpec,
+    "figaro-offset-policy": offsetPolicySpec,
+    "figaro-proximity-policy": proximityPolicySpec,
+    "figaro-proximity-proof": proximityProofSpec,
+    "figaro-topology": topologySpec,
 };
 
 let PARSED_CACHE: Map<string, ClauseSpec> | null = null;

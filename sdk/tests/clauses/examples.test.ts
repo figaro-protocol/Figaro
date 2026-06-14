@@ -1,24 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { parseClauseSpec } from "../../src/clauses/spec.js";
-import modalitiesSpecRaw from "../../src/clauses/examples/figaro-modalities-v1.json" with { type: "json" };
-import coordinationSpecRaw from "../../src/clauses/examples/figaro-coordination-v1.json" with { type: "json" };
+import modalitiesSpecRaw from "../../src/clauses/examples/figaro-modalities.json" with { type: "json" };
+import coordinationSpecRaw from "../../src/clauses/examples/figaro-coordination.json" with { type: "json" };
 import { validateContent } from "../../src/clauses/validate.js";
-import topologySpecRaw from "../../src/clauses/examples/figaro-topology-v1.json" with { type: "json" };
-import commerceSpecRaw from "../../src/clauses/examples/figaro-commerce-v1.json" with { type: "json" };
-import geoSpecRaw from "../../src/clauses/examples/figaro-geo-v2.json" with { type: "json" };
-import arbitrationKlerosSpecRaw from "../../src/clauses/examples/figaro-arbitration-kleros-v1.json" with { type: "json" };
-import applicableLawSpecRaw from "../../src/clauses/examples/figaro-applicable-law-v1.json" with { type: "json" };
-import ghgProtocolSpecRaw from "../../src/clauses/examples/figaro-ghg-protocol-v1.json" with { type: "json" };
-import ghgIso14064SpecRaw from "../../src/clauses/examples/figaro-ghg-iso-14064-v1.json" with { type: "json" };
-import ghgPas2050SpecRaw from "../../src/clauses/examples/figaro-ghg-pas-2050-v1.json" with { type: "json" };
-import ghgEn16258SpecRaw from "../../src/clauses/examples/figaro-ghg-en-16258-v1.json" with { type: "json" };
-import ghgCustomSpecRaw from "../../src/clauses/examples/figaro-ghg-custom-v1.json" with { type: "json" };
-import ghgMeasurementSpecRaw from "../../src/clauses/examples/figaro-ghg-measurement-v1.json" with { type: "json" };
-import proximityPolicySpecRaw from "../../src/clauses/examples/figaro-proximity-policy-v1.json" with { type: "json" };
-import proximityProofSpecRaw from "../../src/clauses/examples/figaro-proximity-proof-v1.json" with { type: "json" };
-import offsetPolicySpecRaw from "../../src/clauses/examples/figaro-offset-policy-v1.json" with { type: "json" };
-import merchantSpecRaw from "../../src/clauses/examples/figaro-merchant-process-v1.json" with { type: "json" };
-import courierSpecRaw from "../../src/clauses/examples/figaro-courier-process-v1.json" with { type: "json" };
+import topologySpecRaw from "../../src/clauses/examples/figaro-topology.json" with { type: "json" };
+import commerceSpecRaw from "../../src/clauses/examples/figaro-commerce.json" with { type: "json" };
+import geoSpecRaw from "../../src/clauses/examples/figaro-geo.json" with { type: "json" };
+import arbitrationKlerosSpecRaw from "../../src/clauses/examples/figaro-arbitration-kleros.json" with { type: "json" };
+import applicableLawSpecRaw from "../../src/clauses/examples/figaro-applicable-law.json" with { type: "json" };
+import ghgProtocolSpecRaw from "../../src/clauses/examples/figaro-ghg-protocol.json" with { type: "json" };
+import ghgIso14064SpecRaw from "../../src/clauses/examples/figaro-ghg-iso-14064.json" with { type: "json" };
+import ghgPas2050SpecRaw from "../../src/clauses/examples/figaro-ghg-pas-2050.json" with { type: "json" };
+import ghgEn16258SpecRaw from "../../src/clauses/examples/figaro-ghg-en-16258.json" with { type: "json" };
+import ghgCustomSpecRaw from "../../src/clauses/examples/figaro-ghg-custom.json" with { type: "json" };
+import ghgMeasurementSpecRaw from "../../src/clauses/examples/figaro-ghg-measurement.json" with { type: "json" };
+import proximityPolicySpecRaw from "../../src/clauses/examples/figaro-proximity-policy.json" with { type: "json" };
+import proximityProofSpecRaw from "../../src/clauses/examples/figaro-proximity-proof.json" with { type: "json" };
+import offsetPolicySpecRaw from "../../src/clauses/examples/figaro-offset-policy.json" with { type: "json" };
+import merchantSpecRaw from "../../src/clauses/examples/figaro-merchant-process.json" with { type: "json" };
+import courierSpecRaw from "../../src/clauses/examples/figaro-courier-process.json" with { type: "json" };
 
 describe("example clause specs — parse + validate sample content", () => {
     it("figaro-topology-v1 spec parses cleanly", () => {

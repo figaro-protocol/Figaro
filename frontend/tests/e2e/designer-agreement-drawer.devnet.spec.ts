@@ -7,7 +7,7 @@
  * survive the save + reload round-trip — through the UI on both ends:
  *
  *   1. /builders/designer/new?fresh=1 — blank canvas, one root order.
- *   2. Open the drawer → registry tab → compose figaro-geo-v2 (awaited into
+ *   2. Open the drawer → registry tab → compose figaro-geo (awaited into
  *      existence: checkboxes render once the spec cache warms chain→IPFS).
  *   3. Name + Save; reload via /builders/designer/edit/<slug> — the geo
  *      checkbox is STILL CHECKED.
@@ -22,7 +22,7 @@
 import { test, expect } from './devnet-multi-test';
 import type { Page } from '@playwright/test';
 
-const GEO_CLAUSE_KEY = 'figaro-geo-v2';
+const GEO_CLAUSE_KEY = 'figaro-geo';
 const DRAFT_NAME = 'devnet-drawer-geo';
 
 /** Open the (sole) root order's drawer on its registry tab and return the

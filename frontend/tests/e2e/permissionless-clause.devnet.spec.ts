@@ -2,7 +2,7 @@
  * permissionless-clause.devnet.spec.ts — THE acceptance test. The single
  * definition of "green" for the whole de-hardcoding migration.
  *
- * It registers a BRAND-NEW clause at test time — `figaro-probe-attest-v1`, a
+ * It registers a BRAND-NEW clause at test time — `figaro-probe-attest`, a
  * category-1 runtime-attestable clause that NO code in this repo has ever heard
  * of — composes it into an assembly through the real designer, sets up a seller
  * bound to that assembly, drives a real bilateral commit, and then asserts the
@@ -49,8 +49,8 @@ const BUYER_ADDR = privateKeyToAccount(REGISTRAR_KEY).address;
 
 
 // The novel clause — a runtime-attestable lifecycle with one enum ladder. Modeled
-// on figaro-merchant-process-v1's shape, but a name nothing in the repo knows.
-const NOVEL_CLAUSE_ID = 'figaro-probe-attest-v1';
+// on figaro-merchant-process's shape, but a name nothing in the repo knows.
+const NOVEL_CLAUSE_ID = 'figaro-probe-attest';
 const NOVEL_SLUG = 'permissionless-probe';
 const NOVEL_SPEC = {
     clauseId: NOVEL_CLAUSE_ID,

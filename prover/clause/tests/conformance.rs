@@ -260,11 +260,11 @@ fn falls_back_to_default_when_stage_has_no_override() {
 
 // ── Per-shipped-clause content checks ────────────────────────────────
 
-/// `figaro-ghg-protocol-v1` carries a single optional integer field
+/// `figaro-ghg-protocol` carries a single optional integer field
 /// `scope` constrained to 1..=3.
 #[test]
 fn ghg_protocol_v1_accepts_valid_scope_and_rejects_out_of_range() {
-    let bytes = std::fs::read(shared_clauses_dir().join("figaro-ghg-protocol-v1.json"))
+    let bytes = std::fs::read(shared_clauses_dir().join("figaro-ghg-protocol.json"))
         .expect("read ghg protocol json");
     let value: Value = serde_json::from_slice(&bytes).unwrap();
     let spec = parse_or_panic(&value);
@@ -277,10 +277,10 @@ fn ghg_protocol_v1_accepts_valid_scope_and_rejects_out_of_range() {
     assert!(validate_content(&json!({ "scope": 4 }), &spec, ValidateOptions::default()).is_err());
 }
 
-/// `figaro-geo-v2` exercises the regex `pattern` field on geohash strings.
+/// `figaro-geo` exercises the regex `pattern` field on geohash strings.
 #[test]
 fn geo_v2_accepts_valid_geohash_and_rejects_garbage() {
-    let bytes = std::fs::read(shared_clauses_dir().join("figaro-geo-v2.json"))
+    let bytes = std::fs::read(shared_clauses_dir().join("figaro-geo.json"))
         .expect("read geo v2 json");
     let value: Value = serde_json::from_slice(&bytes).unwrap();
     let spec = parse_or_panic(&value);
@@ -315,9 +315,8 @@ fn geo_v2_accepts_valid_geohash_and_rejects_garbage() {
 
 #[test]
 fn every_embedded_spec_parses_and_matches_its_clause_id() {
-    use alloy_primitives::keccak256;
     let mut count = 0;
-    for (key, json) in figaro_clause::all_embedded_specs() {
+    for (key, version, json) in figaro_clause::all_embedded_specs() {
         let value: Value = serde_json::from_str(json)
             .unwrap_or_else(|e| panic!("embedded spec {key} is not valid JSON: {e}"));
         let spec = parse_or_panic(&value);
@@ -325,9 +324,9 @@ fn every_embedded_spec_parses_and_matches_its_clause_id() {
             spec.clause_id, key,
             "embedded spec for {key} declares a different clauseId",
         );
-        // Lookup by keccak hash returns the same JSON back.
+        // Lookup by the (name, version) on-chain identity returns the same JSON.
         assert_eq!(
-            figaro_clause::embedded_spec_json(&keccak256(key.as_bytes())),
+            figaro_clause::embedded_spec_json(&figaro_clause::embedded_clause_id(key, version)),
             Some(json),
             "embedded_spec_json lookup mismatch for {key}",
         );
@@ -339,9 +338,9 @@ fn every_embedded_spec_parses_and_matches_its_clause_id() {
 #[test]
 fn embedded_spec_json_is_none_for_non_protocol_clauses() {
     use alloy_primitives::keccak256;
-    // figaro-topology-v1 is manifest-only; figaro-bogus-v99 is unknown.
-    assert!(figaro_clause::embedded_spec_json(&keccak256(b"figaro-topology-v1")).is_none());
-    assert!(figaro_clause::embedded_spec_json(&keccak256(b"figaro-bogus-v99")).is_none());
+    // figaro-topology is manifest-only; figaro-bogus is unknown.
+    assert!(figaro_clause::embedded_spec_json(&keccak256(b"figaro-topology")).is_none());
+    assert!(figaro_clause::embedded_spec_json(&keccak256(b"figaro-bogus")).is_none());
 }
 
 #[test]
@@ -353,7 +352,7 @@ fn embedded_spec_tiers_partition_cross_checking_15_and_4() {
     // clauses) / 4 not (Category-1 runtime-only clauses).
     let mut cross = 0;
     let mut plain = 0;
-    for (key, json) in figaro_clause::all_embedded_specs() {
+    for (key, _version, json) in figaro_clause::all_embedded_specs() {
         let value: Value = serde_json::from_str(json).unwrap();
         let spec = parse_or_panic(&value);
         let block = spec
