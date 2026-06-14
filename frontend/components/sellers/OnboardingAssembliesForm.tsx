@@ -32,9 +32,10 @@ import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
  * the cart has nowhere to read the counterparty's seller field from at
  * checkout time.
  *
- * It's valid to ship without picking any assemblies — an unbound
- * seller is still on-chain registered and reachable; their bindings
- * just don't surface to assembly-scoped discovery.
+ * MANDATORY: at least one assembly binding is required — a seller
+ * profile with no binding cannot be ordered from (it surfaces to no
+ * assembly-scoped discovery). Both the Next button and the publish
+ * step block until one is bound.
  */
 
 function buildBinding(
@@ -187,9 +188,9 @@ export function OnboardingAssembliesForm({
                 <p>
                     Pick the assemblies you participate in. Each binding publishes
                     onto your profile as part of the document pinned at publish.
-                    You can leave this empty and add assemblies later through the
-                    seller-edit surface; an unbound seller is still on-chain
-                    registered.
+                    At least one binding is required — a profile with no assembly
+                    binding cannot be ordered from. You can add more later through
+                    the seller-edit surface.
                 </p>
                 <p>
                     Assemblies that include sub-orders you organize (e.g. a
