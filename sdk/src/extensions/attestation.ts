@@ -21,7 +21,6 @@ import ghgCustomSpec from "../clauses/examples/figaro-ghg-custom.json" with { ty
 /**
  * Compute a clause ID from a string key.
  * This is the canonical way to derive clause IDs.
- * Matches how clauses are registered on-chain: keccak256(stringToHex(name)).
  *
  * Identity is the (name, version) pair: keccak256(abi.encode(name, version)),
  * matching ClauseRegistry + every IClauseValidator on-chain. The name carries

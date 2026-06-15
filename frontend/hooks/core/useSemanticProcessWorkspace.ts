@@ -23,7 +23,8 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { CapabilityActionDescriptor, CapabilityExecutionInput, CapabilityModel, OrderNodeModel } from "@/lib/semantic/models";
 import { buildResolutionCommitments } from "@/lib/core/commitmentStore";
 import { executeTransactionCapabilityAction } from "@/lib/semantic/executeTransactionCapability";
-import { keccak256, stringToHex, toHex, type Hex } from "viem";
+import { toHex, type Hex } from "viem";
+import { clauseIdHash } from "@/lib/shared/evm";
 
 /** Per-attestation device witness for runtime PROOF clauses (e.g. proximity).
  *  The validator checks only nonce ≠ 0 and deviceSig length ∈ [65,512]; the real
@@ -272,7 +273,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                 submitDisclosureCommitment: (orderHash, clauseId) =>
                     attestationActions.submitSellerAttestation({
                         orderHash: orderHash as Hex,
-                        clauseId: keccak256(stringToHex(clauseId)) as Hex,
+                        clauseId: clauseIdHash(clauseId, getClauseSpec(clauseId)?.version ?? 1),
                         stage: DISCLOSURE_KIND.commitment,
                     }),
                 submitDisclosureInventory: (orderHash, clauseId, grams) => {
@@ -280,7 +281,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                     if (!spec) throw new Error(`Clause spec not loaded: ${clauseId}`);
                     return attestationActions.submitSellerAttestation({
                         orderHash: orderHash as Hex,
-                        clauseId: keccak256(stringToHex(clauseId)) as Hex,
+                        clauseId: clauseIdHash(clauseId, spec.version),
                         stage: MEASUREMENT_KIND.measured,
                         content: encodeContentFromSpec(spec, { grams: grams.toString() }),
                     });
@@ -300,7 +301,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                     if (action.isProof) Object.assign(fields, deviceWitness());
                     const args = {
                         orderHash: action.orderHash as Hex,
-                        clauseId: keccak256(stringToHex(action.clauseId)) as Hex,
+                        clauseId: clauseIdHash(action.clauseId, spec.version),
                         stage: action.stage,
                         content: encodeContentFromSpec(spec, fields),
                         failureMessage: `${action.clauseId} ${action.eventCode} attestation failed`,
@@ -316,7 +317,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                     if (!proofSpec) throw new Error(`Clause spec not loaded: ${action.pairedProof.clauseId}`);
                     return attestationActions.submitSellerAttestation({
                         orderHash: action.pairedProof.orderHash as Hex,
-                        clauseId: keccak256(stringToHex(action.pairedProof.clauseId)) as Hex,
+                        clauseId: clauseIdHash(action.pairedProof.clauseId, proofSpec.version),
                         stage: action.pairedProof.stage,
                         content: encodeContentFromSpec(proofSpec, {
                             [action.pairedProof.ladderField]: action.pairedProof.eventCode,
