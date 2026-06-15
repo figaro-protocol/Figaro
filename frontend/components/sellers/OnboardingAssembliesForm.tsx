@@ -11,7 +11,7 @@ import { hexEqual } from "@/lib/shared/evm";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
-import type { AssemblyBindingRecord, CounterpartyBinding } from "@/lib/shared/sellerProfileMetadata";
+import type { AssemblyBindingRecord, CounterpartyBinding } from "@/lib/seller/sellerProfileMetadata";
 import {
     type AssemblyChoice,
     requiredCounterpartyClauses,

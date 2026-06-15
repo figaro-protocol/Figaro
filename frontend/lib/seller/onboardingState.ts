@@ -27,13 +27,13 @@ import type {
     AssemblyBindingRecord,
     SellerAgentServices,
     SellerAssetReferences,
-} from "@/lib/shared/sellerProfileMetadata";
+} from "@/lib/seller/sellerProfileMetadata";
 import type {
-    AcceptedTokenMetadata,
     CatalogueItemMetadata,
-    SellerBrandingMetadata,
     UnitSystem,
-} from "@/lib/shared/sellerCatalogueMetadata";
+} from "@/lib/seller/sellerCatalogueMetadata";
+import type { AcceptedTokenMetadata } from "@/lib/seller/acceptedTokenMetadata";
+import type { SellerBrandingMetadata } from "@/lib/seller/sellerBrandingMetadata";
 
 // ── Shape ────────────────────────────────────────────────────────────────────
 

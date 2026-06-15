@@ -12,10 +12,8 @@
  * frontends can render the seller's identity.
  */
 
-import type {
-    SellerBrandingMetadata,
-} from "@/lib/shared/sellerCatalogueMetadata";
-import type { SellerProfileMetadata } from "@/lib/shared/sellerProfileMetadata";
+import type { SellerBrandingMetadata } from "@/lib/seller/sellerBrandingMetadata";
+import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
 import { resolveContentUri } from "@/lib/shared/ipfsService";
 import { createUriFetcher } from "@/lib/shared/uriFetcher";
 

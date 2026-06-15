@@ -1,24 +1,25 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { CartItem } from "./types";
-import type { CanonicalMethod } from "@/lib/core/orderAgreement";
 
-// The cart's selected method IS the canonical method (the modality value,
-// refined by coordination for delivery) — one name, one concept; the type
-// lives with its deriver in lib/core/orderAgreement.
+/** A line in the buyer's cart — items selected from a seller's catalogue. */
+export interface CartItem {
+    menuItemId: string;
+    sellerId: string;
+    sellerAddress: string;
+    sellerName: string;
+    name: string;
+    price: string;
+    quantity: number;
+    imageURI?: string;
+    /** Physical attributes copied from the catalogue item at add-to-cart —
+     *  checkout collapses them into the order's geo section (mass/volume
+     *  sums). Optional: virtual or un-annotated items omit them. */
+    massGrams?: number;
+    volumeMl?: number;
+}
 
 interface CartStore {
     items: CartItem[];
-    deliveryMaxPrice: string;
-    /**
-     * Buyer-selected method. `undefined` is the explicit
-     * unset state — the buyer hasn't picked yet. The picker UIs render
-     * a "Select one" placeholder option until the buyer chooses, and
-     * checkout is disabled while undefined. Replaces the prior
-     * preselect-default-mode behavior so the buyer is required to make
-     * a deliberate choice.
-     */
-    method: CanonicalMethod | undefined;
     addItem: (item: CartItem) => void;
     /**
      * Decrement an item's quantity by 1, removing the line entirely if the
@@ -31,22 +32,15 @@ interface CartStore {
      * rather than tapping the decrement button N times.
      */
     removeLine: (menuItemId: string, sellerId: string) => void;
-    /** Set a cart line's unit price — buyer-set pricing, where the buyer
-     *  names the price at checkout rather than the catalogue fixing it. */
-    updateItemPrice: (menuItemId: string, sellerId: string, price: string) => void;
     clearCart: () => void;
     getTotalPrice: () => string;
     getItemCount: () => number;
-    setDeliveryMaxPrice: (price: string) => void;
-    setMethod: (mode: CanonicalMethod | undefined) => void;
 }
 
 export const useCartStore = create<CartStore>()(
     persist(
         (set, get) => ({
             items: [],
-            deliveryMaxPrice: "0.002",
-            method: undefined,
 
             addItem: (newItem) =>
                 set((state) => {
@@ -94,20 +88,7 @@ export const useCartStore = create<CartStore>()(
                     ),
                 })),
 
-            updateItemPrice: (menuItemId, sellerId, price) =>
-                set((state) => ({
-                    items: state.items.map((item) =>
-                        item.menuItemId === menuItemId && item.sellerId === sellerId
-                            ? { ...item, price }
-                            : item,
-                    ),
-                })),
-
-            clearCart: () => set({ items: [], deliveryMaxPrice: "0.002", method: undefined }),
-
-            setDeliveryMaxPrice: (price) => set({ deliveryMaxPrice: price }),
-
-            setMethod: (mode) => set({ method: mode }),
+            clearCart: () => set({ items: [] }),
 
             getTotalPrice: () => {
                 const items = get().items;

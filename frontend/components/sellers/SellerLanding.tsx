@@ -28,12 +28,12 @@ import {
     useSellerProfile,
     useRegistrationDeposit,
     useWithdrawDeposit,
-} from "@/lib/mechanisms/useSellerRegistry";
+} from "@/lib/seller/useSellerRegistry";
 import { getSellerRegistry, SELLER_REGISTRY_ABI } from "@/lib/mechanisms/contracts";
 import { resolveContentUri } from "@/lib/shared/ipfsService";
-import { tryParseSellerProfileDocument } from "@/lib/shared/sellerProfileMetadata";
+import { tryParseSellerProfileDocument } from "@/lib/seller/sellerProfileMetadata";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import type { SellerProfileMetadata } from "@/lib/shared/sellerProfileMetadata";
+import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
 import { formatEther } from "viem";
 import { OnboardingWelcome } from "@/components/sellers/OnboardingWelcome";
 import { OnboardingShell } from "@/components/sellers/OnboardingShell";

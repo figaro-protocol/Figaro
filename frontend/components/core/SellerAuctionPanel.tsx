@@ -27,7 +27,7 @@ import { useAccount, useChainId, useReadContract, useWalletClient } from "wagmi"
 import { Card } from "@/components/ui/Card";
 import { useDutchAuction } from "@/lib/mechanisms/useDutchAuction";
 import { useCommitmentFlow } from "@/lib/core/useCommitmentFlow";
-import { sellerAuctionId, loadSellerDraft } from "@/lib/mechanisms/sellerAuction";
+import { sellerAuctionId, loadSellerDraft } from "@/lib/seller/sellerAuction";
 import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
 import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
 import { shareCommitmentPayload } from "@/lib/core/commitmentShare";

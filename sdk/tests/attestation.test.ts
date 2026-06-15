@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
     computeClauseId,
-    GHG_DISCLOSURE_CLAUSE_KEYS,
     DisclosureKind,
     DISCLOSURE_KIND_LABELS,
     encodeCommitmentRef,
@@ -26,7 +25,7 @@ const hex32 = (n: number): Hex =>
     `0x${n.toString(16).padStart(64, "0")}` as Hex;
 
 // Use the ISO-14064 sister clause as the canonical GHG clause for tests.
-const GHG_CLAUSE_KEY = "figaro-ghg-iso-14064";
+const GHG_CLAUSE_KEY = "figaro-ghg";
 const GHG_CLAUSE_ID = keccak256(encodeAbiParameters([{ type: "string" }, { type: "uint64" }], [GHG_CLAUSE_KEY, 1n]));
 const OTHER_CLAUSE_ID = keccak256(stringToHex("other-clause"));
 
@@ -65,15 +64,6 @@ describe("computeClauseId", () => {
 // ── GHG constants ───────────────────────────────────────────────────────────
 
 describe("GHG constants", () => {
-    it("GHG_DISCLOSURE_CLAUSE_KEYS contains 5 sister clauses", () => {
-        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toHaveLength(5);
-        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toContain("figaro-ghg-protocol");
-        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toContain("figaro-ghg-iso-14064");
-        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toContain("figaro-ghg-pas-2050");
-        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toContain("figaro-ghg-en-16258");
-        expect(GHG_DISCLOSURE_CLAUSE_KEYS).toContain("figaro-ghg-custom");
-    });
-
     it("DisclosureKind has 4 values", () => {
         expect(DisclosureKind.Commitment).toBe(0);
         expect(DisclosureKind.Inventory).toBe(1);

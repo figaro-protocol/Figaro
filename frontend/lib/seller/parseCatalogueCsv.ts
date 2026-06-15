@@ -31,7 +31,7 @@
 import type {
     CatalogueClassOfService,
     CatalogueItemMetadata,
-} from "@/lib/shared/sellerCatalogueMetadata";
+} from "@/lib/seller/sellerCatalogueMetadata";
 
 export interface CatalogueCsvParseResult {
     items: CatalogueItemMetadata[];

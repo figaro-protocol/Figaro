@@ -19,10 +19,10 @@ import { usePublicClient, useChainId } from "wagmi";
 import {
     profileToListing,
     type Listing,
-} from "@/lib/shared/sellerListing";
+} from "@/lib/seller/sellerListing";
 import { getActiveSellers } from "@/lib/core/indexer";
 import { createUriFetcher } from "@/lib/shared/uriFetcher";
-import { tryParseSellerProfileDocument } from "@/lib/shared/sellerProfileMetadata";
+import { tryParseSellerProfileDocument } from "@/lib/seller/sellerProfileMetadata";
 import type { PublicClient } from "viem";
 import { MECHANISM_CONTRACTS } from "@/lib/mechanisms/contracts";
 import { usePublishedAssemblies } from "@/lib/mechanisms/useAssemblyRegistry";

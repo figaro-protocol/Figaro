@@ -28,6 +28,7 @@
 
 import { parseAbi, type Address, type Hex, type PublicClient } from "viem";
 import { CONTRACTS } from "@/lib/core/contracts";
+import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 
 // ── Public types ─────────────────────────────────────────────────────────────
 
@@ -229,7 +230,7 @@ export function getOffsetAggregators(chainId: number | undefined): ChainAggregat
             },
         };
     }
-    if (chainId === 31337) {
+    if (chainId === DEVNET_CHAIN_ID) {
         const mock = buildMockAdapter();
         if (!mock) return EMPTY_AGGREGATORS;
         // Devnet: expose the single mock under both klima and toucan keys

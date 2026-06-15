@@ -12,11 +12,11 @@
  * the caller orchestrates the on-chain call.
  */
 
-import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
-import { parseSellerCatalogueDocument } from "@/lib/shared/sellerCatalogueMetadataParser";
+import type { SellerCatalogueMetadata } from "@/lib/seller/sellerCatalogueMetadata";
+import { parseSellerCatalogueDocument } from "@/lib/seller/sellerCatalogueMetadataParser";
 import { DEFAULT_IPFS_SERVICE, type IpfsService } from "@/lib/shared/ipfsService";
-import { invalidateCatalogueCache } from "@/lib/shared/catalogueFetcher";
-import { clearBrandingCache } from "@/lib/shared/sellerBranding";
+import { invalidateCatalogueCache } from "@/lib/seller/catalogueFetcher";
+import { clearBrandingCache } from "@/lib/seller/sellerBranding";
 
 export interface PublishResult {
     /** The IPFS CID of the pinned document */

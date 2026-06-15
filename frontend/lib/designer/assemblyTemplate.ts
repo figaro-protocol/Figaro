@@ -18,7 +18,7 @@ import { manifestTopologyClauseId } from "@/lib/shared/clauseSpecSource";
  *  rest is filled downstream — seller at first-use, buyer at checkout). */
 export type ClauseValues = Record<string, Record<string, unknown>>;
 
-interface AssemblyTemplateOrder {
+export interface AssemblyTemplateOrder {
     /** Local order label — `order-<index>`, stable within the template; the
      *  reference target the topology clause points at. NOT a chain id, and NOT
      *  a party — the template is party-agnostic. */

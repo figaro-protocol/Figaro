@@ -4,7 +4,7 @@ import {
     parseSellerProfileDocument,
     projectAgentServices,
     tryParseSellerProfileDocument,
-} from '@/lib/shared/sellerProfileMetadata';
+} from '@/lib/seller/sellerProfileMetadata';
 
 describe('seller profile metadata parser', () => {
     const VALID_DOC = {

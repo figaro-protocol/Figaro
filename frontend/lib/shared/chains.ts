@@ -2,6 +2,9 @@ import { defineChain } from "viem";
 import { hardhat as _hardhat } from "wagmi/chains";
 import { baseSepolia } from "viem/chains";
 
+/** Anvil's default chainId — the single source for the devnet chain id. */
+export const DEVNET_CHAIN_ID = 31337;
+
 /**
  * Local Anvil chain — uses chainId 31337 to exactly match Anvil's default
  * and MetaMask's built-in "Hardhat" entry.  This prevents MetaMask v11+
@@ -12,7 +15,7 @@ import { baseSepolia } from "viem/chains";
  * the MetaMask preset — no custom chain add required.
  */
 export const localAnvil = defineChain({
-    id: 31337,
+    id: DEVNET_CHAIN_ID,
     name: "Localhost",
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
     rpcUrls: {

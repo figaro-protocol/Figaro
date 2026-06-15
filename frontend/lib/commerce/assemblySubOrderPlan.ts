@@ -14,13 +14,11 @@
  */
 
 import type { BoundAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
-import { templateParentOrderIds } from "@/lib/designer/assemblyTemplate";
+import { templateParentOrderIds, type AssemblyTemplateOrder } from "@/lib/designer/assemblyTemplate";
 import type { SellerCatalogue } from "@/lib/seller/types";
-import { resolveCatalogueItemPrice } from "@/lib/shared/sellerCatalogueMetadata";
+import { resolveCatalogueItemPrice } from "@/lib/seller/sellerCatalogueMetadata";
 import { hexEqual } from "@/lib/shared/evm";
 import { parseToken } from "@/lib/shared/utils";
-
-export type AssemblyTemplateOrder = BoundAssembly["assemblyTemplate"]["orders"][number];
 
 /**
  * Topologically order an assembly's non-root orders and resolve each one's

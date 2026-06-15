@@ -21,10 +21,8 @@
  * indexer (see `feedback_state_from_events.md`).
  */
 
-import type {
-    AcceptedTokenMetadata,
-    SellerBrandingMetadata,
-} from "@/lib/shared/sellerCatalogueMetadata";
+import type { AcceptedTokenMetadata } from "@/lib/seller/acceptedTokenMetadata";
+import type { SellerBrandingMetadata } from "@/lib/seller/sellerBrandingMetadata";
 import {
     asAddress,
     asEnum,

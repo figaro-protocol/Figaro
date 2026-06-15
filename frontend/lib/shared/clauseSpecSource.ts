@@ -14,7 +14,7 @@
  * nesting) live here so there is one source and no parallel taxonomy module.
  */
 
-import { parseClauseSpec, type ClauseSpec, type FieldSpec } from "@figaro/core/clauses";
+import { parseClauseSpec, type ClauseSpec, type FieldSpec, type EnumFieldSpec } from "@figaro/core/clauses";
 import { clauseIdHash } from "@/lib/shared/evm";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
@@ -211,21 +211,35 @@ export function clauseLadderField(clauseId: string): { name: string; values: rea
  *  (attested during/after the process), everything else ⇒ designer-time. */
 export type ClauseTier = "designer-time" | "runtime";
 
-/** The first enum vocabulary on a spec — the eventType ladder (merchant /
- *  courier) or the band set (proximity). Looks through enum and enum-typed
- *  array fields. */
-function firstEnumValues(spec: ClauseSpec | undefined): readonly string[] | undefined {
+/** The first enum field on a spec — the eventType ladder (merchant / courier)
+ *  or the band set (proximity). Looks through enum and enum-typed array fields. */
+function firstEnumField(spec: ClauseSpec | undefined): EnumFieldSpec | undefined {
     for (const field of spec?.fields ?? []) {
-        if (field.type === "enum") return field.values;
-        if (field.type === "array" && field.items.type === "enum") return field.items.values;
+        if (field.type === "enum") return field;
+        if (field.type === "array" && field.items.type === "enum") return field.items;
     }
     return undefined;
 }
 
+/** The enum field carrying `value` as a member — for labelling a raw value
+ *  through its spec. Returns the enum (or array-of-enum item) field, or undefined. */
+function enumFieldOf(field: FieldSpec): EnumFieldSpec | undefined {
+    if (field.type === "enum") return field;
+    if (field.type === "array" && field.items.type === "enum") return field.items;
+    return undefined;
+}
+
+/** Label a raw enum value through its field's `valueLabels` — the spec is the
+ *  SSoT for human-readable value display; falls back to the raw token when the
+ *  spec declares no label (a never-labelled clause still renders). */
+function labelEnumValue(field: EnumFieldSpec | undefined, value: string): string {
+    return field?.valueLabels?.[value] ?? value;
+}
+
 /** Display text for a runtime attestation, read STRAIGHT from the clause spec:
- *  the title and the enum value at `stage`. Callers pass DATA (the event's
- *  clauseId hash + uint8 stage) — no surface names a clause. Falls back to the
- *  short hash + stage when the clause is unknown (not yet loaded). */
+ *  the title and the (labelled) enum value at `stage`. Callers pass DATA (the
+ *  event's clauseId hash + uint8 stage) — no surface names a clause. Falls back
+ *  to the short hash + stage when the clause is unknown (not yet loaded). */
 export function describeAttestation(
     clauseIdHash: string,
     stage: number,
@@ -233,7 +247,60 @@ export function describeAttestation(
     const id = HASH_TO_ID.get(clauseIdHash.toLowerCase());
     const spec = id ? getClauseSpec(id) : undefined;
     if (!spec) return { clauseTitle: `${clauseIdHash.slice(0, 10)}…`, eventLabel: `stage ${stage}` };
-    return { clauseTitle: spec.title, eventLabel: firstEnumValues(spec)?.[stage] ?? `stage ${stage}` };
+    const ladder = firstEnumField(spec);
+    const value = ladder?.values[stage];
+    return { clauseTitle: spec.title, eventLabel: value ? labelEnumValue(ladder, value) : `stage ${stage}` };
+}
+
+/** A field's rendered contribution to a clause description: the field's display
+ *  label (spec `label` → field name) and its selected value(s) rendered through
+ *  the spec's `valueLabels` (raw token when no label is declared). */
+export interface ClauseFieldDescription {
+    name: string;
+    label: string;
+    values: string[];
+}
+
+/** A human description of a composed clause, derived ENTIRELY from its spec +
+ *  data — the SSoT reader for display (drawer / canvas / checkout) and future
+ *  analysis surfaces. Names no clause; an unknown (unloaded / permissionless)
+ *  clause degrades to its short hash + raw data. Only fields actually present in
+ *  `data` are described. */
+export interface ClauseDescription {
+    clauseId: string;
+    title: string;
+    fields: ClauseFieldDescription[];
+}
+
+function renderFieldValues(field: FieldSpec, raw: unknown): string[] {
+    const enumField = enumFieldOf(field);
+    const label = (v: unknown) => labelEnumValue(enumField, String(v));
+    if (Array.isArray(raw)) return raw.filter((v) => v != null && v !== "").map(label);
+    if (raw == null || raw === "") return [];
+    return [label(raw)];
+}
+
+/** Describe a composed clause from its spec + data — the one generic, identity-
+ *  blind reader every display/analysis surface shares. */
+export function describeClause(clauseId: string, data: Record<string, unknown> | undefined): ClauseDescription {
+    const spec = getClauseSpec(clauseId);
+    const d = data ?? {};
+    if (!spec) {
+        return {
+            clauseId,
+            title: `${clauseId.slice(0, 10)}…`,
+            fields: Object.entries(d)
+                .map(([name, v]) => ({ name, label: name, values: Array.isArray(v) ? v.map(String) : v == null || v === "" ? [] : [String(v)] }))
+                .filter((f) => f.values.length > 0),
+        };
+    }
+    const fields: ClauseFieldDescription[] = [];
+    for (const field of spec.fields) {
+        const values = renderFieldValues(field, d[field.name]);
+        if (values.length === 0) continue;
+        fields.push({ name: field.name, label: field.label ?? field.name, values });
+    }
+    return { clauseId, title: spec.title, fields };
 }
 
 /** The FieldSpec at a dot-delimited path inside a clause's spec — the SSoT for

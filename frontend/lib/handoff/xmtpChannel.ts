@@ -13,6 +13,9 @@ function parseChannelMessage(content: unknown): ChannelMessage | null {
     return safeJsonParse<ChannelMessage>(content);
 }
 
+/** Messages fetched per conversation poll. */
+const XMTP_MESSAGE_FETCH_LIMIT = 50n;
+
 /** Retry an async operation with exponential backoff. */
 async function withRetry<T>(
     fn: () => Promise<T>,
@@ -81,7 +84,7 @@ export async function createXmtpChannel(
 
     let client: Awaited<ReturnType<typeof createClient>>;
     try {
-        client = await withRetry(createClient, { maxAttempts: 3, baseDelayMs: 1000, maxDelayMs: 10000 });
+        client = await withRetry(createClient);
     } catch (err) {
         if (!isInstallationCapError(err)) throw err;
         // Self-heal the installation cap: revoke EVERY existing installation
@@ -94,7 +97,7 @@ export async function createXmtpChannel(
         if (installationIds.length === 0) throw err;
         console.warn(`[xmtp] installation cap hit — revoking ${installationIds.length} stale installations for inbox ${inboxId}`);
         await Client.revokeInstallations(signer, inboxId, installationIds, "dev");
-        client = await withRetry(createClient, { maxAttempts: 3, baseDelayMs: 1000, maxDelayMs: 10000 });
+        client = await withRetry(createClient);
     }
 
     // DEV-network housekeeping: collapse this inbox to THE current
@@ -133,7 +136,7 @@ export async function createXmtpChannel(
                 await client.conversations.sync();
                 const convos = await client.conversations.list();
                 for (const convo of convos) {
-                    const msgs = await convo.messages({ limit: 50n });
+                    const msgs = await convo.messages({ limit: XMTP_MESSAGE_FETCH_LIMIT });
                     for (const msg of msgs) {
                         if (cancelled) return;
                         const parsed = parseChannelMessage(msg.content);
@@ -268,7 +271,7 @@ export async function createXmtpChannel(
                     await client.conversations.sync();
                     const convos = await client.conversations.list();
                     for (const convo of convos) {
-                        const msgs = await convo.messages({ limit: 50n });
+                        const msgs = await convo.messages({ limit: XMTP_MESSAGE_FETCH_LIMIT });
                         for (const msg of msgs) {
                             if (cancelled) return;
                             const parsed = parseChannelMessage(msg.content);

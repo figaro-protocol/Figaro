@@ -8,6 +8,7 @@ import {
     type Transport,
 } from "viem";
 import { ZERO_ADDRESS, ZERO_BYTES32 } from "./evm";
+import { DEVNET_CHAIN_ID } from "./chains";
 import { isE2EMockSession } from "./e2e";
 
 class MockRpcBlockedError extends Error {
@@ -160,7 +161,7 @@ export function mockAwareHttp(
     const live = http(url, config);
     return (opts) => {
         const liveInstance = live(opts);
-        const chainId = opts.chain?.id ?? 31337;
+        const chainId = opts.chain?.id ?? DEVNET_CHAIN_ID;
         return {
             ...liveInstance,
             request: async (args) => {

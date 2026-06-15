@@ -30,13 +30,13 @@ import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import {
     parseSellerProfileDocument,
     type SellerProfileMetadata,
-} from "@/lib/shared/sellerProfileMetadata";
-import { publishSellerCatalogue } from "@/lib/shared/cataloguePublisher";
+} from "@/lib/seller/sellerProfileMetadata";
+import { publishSellerCatalogue } from "@/lib/seller/cataloguePublisher";
 import type {
     CatalogueItemMetadata,
     SellerCatalogueMetadata,
     UnitSystem,
-} from "@/lib/shared/sellerCatalogueMetadata";
+} from "@/lib/seller/sellerCatalogueMetadata";
 import { getSellerRegistry, SELLER_REGISTRY_ABI } from "@/lib/mechanisms/contracts";
 
 export interface PublishSellerInput {

@@ -6,27 +6,16 @@
  * in `sellerProfileMetadata.ts`.
  */
 
-import type { CataloguePricingPolicy, NegotiatedPriceEntry } from "@/lib/shared/sellerCatalogueMetadata";
-
-export interface SellerCatalogueItem {
-    id: string;
-    name: string;
-    description?: string;
-    price?: string;
-    category?: string;
-    available?: boolean;
-    pricingPolicy?: CataloguePricingPolicy;
-    negotiatedPrices?: NegotiatedPriceEntry[];
-    assemblySlug?: string;
-}
+import type { CatalogueItemMetadata } from "@/lib/seller/sellerCatalogueMetadata";
 
 /**
  * Parse catalogue items from a legacy seller-profile document. Returns null if
  * absent. Accepts items under either `items` (new shape) or `menu`
  * (legacy fat-profile shape) for backward compatibility while consumers
- * are migrating.
+ * are migrating. Yields the canonical `CatalogueItemMetadata` directly —
+ * there is no separate adapter item type.
  */
-export function tryParseCatalogueItems(doc: unknown): SellerCatalogueItem[] | null {
+export function tryParseCatalogueItems(doc: unknown): CatalogueItemMetadata[] | null {
     if (!doc || typeof doc !== 'object' || Array.isArray(doc)) return null;
     const r = doc as Record<string, unknown>;
     const raw = Array.isArray(r.items) ? r.items : Array.isArray(r.menu) ? r.menu : null;
@@ -37,16 +26,11 @@ export function tryParseCatalogueItems(doc: unknown): SellerCatalogueItem[] | nu
             id: typeof item.id === 'string' ? item.id : `item-${Math.random().toString(36).slice(2, 8)}`,
             name: typeof item.name === 'string' ? item.name : '',
             description: typeof item.description === 'string' ? item.description : undefined,
-            price: typeof item.price === 'string' ? item.price : undefined,
-            category: typeof item.category === 'string' ? item.category : undefined,
+            price: typeof item.price === 'string' ? item.price : '0',
+            category: typeof item.category === 'string' ? item.category : 'General',
             available: typeof item.available === 'boolean' ? item.available : true,
-            pricingPolicy: typeof item.pricingPolicy === 'string'
-                ? (item.pricingPolicy as CataloguePricingPolicy)
-                : undefined,
-            negotiatedPrices: Array.isArray(item.negotiatedPrices)
-                ? (item.negotiatedPrices as NegotiatedPriceEntry[])
-                : undefined,
-            assemblySlug: typeof item.assemblySlug === 'string' ? item.assemblySlug : undefined,
+            massGrams: typeof item.massGrams === 'number' ? item.massGrams : undefined,
+            volumeMl: typeof item.volumeMl === 'number' ? item.volumeMl : undefined,
         }))
         .filter((item) => item.name.trim().length > 0);
 }

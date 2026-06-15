@@ -11,9 +11,9 @@ import { useMemo } from "react";
 import {
     DEFAULT_CATALOGUE_SERVICE,
     type CatalogueService,
-} from "@/lib/shared/catalogueService";
-import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
-import { useAsyncSellerResource } from "@/lib/mechanisms/useAsyncSellerResource";
+} from "@/lib/seller/catalogueService";
+import type { SellerCatalogueMetadata } from "@/lib/seller/sellerCatalogueMetadata";
+import { useAsyncSellerResource } from "@/lib/seller/useAsyncSellerResource";
 
 export interface UseSellerCatalogueResult {
     catalogue: SellerCatalogueMetadata | null;

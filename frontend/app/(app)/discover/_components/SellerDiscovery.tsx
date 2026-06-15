@@ -4,14 +4,10 @@ import { useMemo, useState } from "react";
 import { SellerCard } from "./SellerCard";
 import { useDeviceLocation } from "@/hooks/core/useDeviceLocation";
 import {
-    assemblyLabel,
-    methodLabel,
-} from "@/lib/shared/assemblyLabels";
-import {
     listingMatchesGeohash,
     type Listing,
-} from "@/lib/shared/sellerListing";
-import { useSellerListings } from "@/lib/mechanisms/useSellerListings";
+} from "@/lib/seller/sellerListing";
+import { useSellerListings } from "@/lib/seller/useSellerListings";
 
 function listingAssemblies(listing: Listing): string[] {
     return Array.from(new Set(listing.bindings.map((b) => b.assemblySlug)));
@@ -22,21 +18,12 @@ export function SellerDiscovery() {
 
     const [searchQuery, setSearchQuery] = useState("");
     const [assemblyFilter, setAssemblyFilter] = useState<string | null>(null);
-    const [methodFilter, setMethodFilter] = useState<string | null>(null);
     const location = useDeviceLocation(5);
 
     const knownAssemblies = useMemo(() => {
         const set = new Set<string>();
         for (const l of allListings) {
             for (const slug of listingAssemblies(l)) set.add(slug);
-        }
-        return Array.from(set).sort();
-    }, [allListings]);
-
-    const knownMethods = useMemo(() => {
-        const set = new Set<string>();
-        for (const l of allListings) {
-            for (const mode of l.methods) set.add(mode);
         }
         return Array.from(set).sort();
     }, [allListings]);
@@ -59,23 +46,15 @@ export function SellerDiscovery() {
             list = list.filter((l) => listingAssemblies(l).includes(assemblyFilter));
         }
 
-        if (methodFilter) {
-            list = list.filter((l) => l.methods.includes(methodFilter as Listing["methods"][number]));
-        }
-
         if (location.geohash) {
             list = list.filter((l) => listingMatchesGeohash(l, location.geohash!));
         }
 
         return list;
-    }, [allListings, searchQuery, assemblyFilter, methodFilter, location.geohash]);
+    }, [allListings, searchQuery, assemblyFilter, location.geohash]);
 
     const handleAssemblyPillClick = (slug: string) => {
         setAssemblyFilter((current) => (current === slug ? null : slug));
-    };
-
-    const handleMethodPillClick = (mode: string) => {
-        setMethodFilter((current) => (current === mode ? null : mode));
     };
 
     return (
@@ -159,41 +138,7 @@ export function SellerDiscovery() {
                                 : "bg-white text-gray-700 border-gray-300 hover:border-black")
                         }
                     >
-                        {assemblyLabel(slug)}
-                    </button>
-                ))}
-            </section>
-
-            {/* Method filter row */}
-            <section className="flex flex-wrap gap-2 items-center">
-                <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mr-1">
-                    Method
-                </span>
-                <button
-                    type="button"
-                    onClick={() => setMethodFilter(null)}
-                    className={
-                        "text-xs px-2.5 py-1 rounded border transition-colors " +
-                        (methodFilter === null
-                            ? "bg-blue-700 text-white border-blue-700"
-                            : "bg-white text-blue-700 border-blue-200 hover:border-blue-500")
-                    }
-                >
-                    All
-                </button>
-                {knownMethods.map((mode) => (
-                    <button
-                        key={mode}
-                        type="button"
-                        onClick={() => setMethodFilter(mode === methodFilter ? null : mode)}
-                        className={
-                            "text-xs px-2.5 py-1 rounded border transition-colors " +
-                            (methodFilter === mode
-                                ? "bg-blue-700 text-white border-blue-700"
-                                : "bg-white text-blue-700 border-blue-200 hover:border-blue-500")
-                        }
-                    >
-                        {methodLabel(mode)}
+                        {slug}
                     </button>
                 ))}
             </section>
@@ -211,7 +156,6 @@ export function SellerDiscovery() {
                         key={l.address}
                         listing={l}
                         onAssemblyClick={handleAssemblyPillClick}
-                        onMethodClick={handleMethodPillClick}
                     />
                 ))}
             </section>

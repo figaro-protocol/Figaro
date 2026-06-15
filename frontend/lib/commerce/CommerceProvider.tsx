@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { useAccount, useChainId } from "wagmi";
+import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import type { CommerceIdentity } from "./types";
 
 const CommerceContext = createContext<CommerceIdentity>({
@@ -52,7 +53,7 @@ interface MockCommerceProps {
 function MockCommerceProvider({
     address = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as `0x${string}`,
     isConnected = true,
-    chainId = 31337,
+    chainId = DEVNET_CHAIN_ID,
     children,
 }: MockCommerceProps) {
     const value = useMemo<CommerceIdentity>(

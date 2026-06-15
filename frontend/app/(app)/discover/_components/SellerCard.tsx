@@ -3,14 +3,10 @@
 import Link from "next/link";
 import { ContentImage } from "@/components/shared/ContentImage";
 import {
-    assemblyLabel,
-    methodLabel,
-} from "@/lib/shared/assemblyLabels";
-import {
     type Listing,
     listingClickThroughHref,
-} from "@/lib/shared/sellerListing";
-import { useSellerTrackRecord } from "@/lib/mechanisms/useSellerTrackRecord";
+} from "@/lib/seller/sellerListing";
+import { useSellerTrackRecord } from "@/lib/seller/useSellerTrackRecord";
 
 function distinctAssemblySlugs(listing: Listing): string[] {
     return Array.from(new Set(listing.bindings.map((b) => b.assemblySlug)));
@@ -35,16 +31,11 @@ interface SellerCardProps {
      * render as non-interactive labels.
      */
     onAssemblyClick?: (slug: string) => void;
-    /**
-     * Called when the user clicks a method pill on the card.
-     */
-    onMethodClick?: (mode: string) => void;
 }
 
 export function SellerCard({
     listing,
     onAssemblyClick,
-    onMethodClick,
 }: SellerCardProps) {
     const href = listingClickThroughHref(listing);
     const assemblies = distinctAssemblySlugs(listing);
@@ -124,48 +115,22 @@ export function SellerCard({
                             type="button"
                             onClick={() => onAssemblyClick(slug)}
                             className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200 hover:border-black hover:bg-gray-200 transition-colors cursor-pointer"
-                            aria-label={`Filter by ${assemblyLabel(slug)}`}
+                            aria-label={`Filter by ${slug}`}
                         >
-                            {assemblyLabel(slug)}
+                            {slug}
                         </button>
                     ) : (
                         <span
                             key={slug}
                             className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200"
                         >
-                            {assemblyLabel(slug)}
+                            {slug}
                         </span>
                     ),
                 )}
                 {/* No bindings → no pills. NO FALLBACKS: the surface renders
                     what the network says, never a synthesized stand-in. */}
             </div>
-
-            {/* Method pills — clickable filter triggers. */}
-            {listing.methods.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                    {listing.methods.map((mode) =>
-                        onMethodClick ? (
-                            <button
-                                key={mode}
-                                type="button"
-                                onClick={() => onMethodClick(mode)}
-                                className="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 hover:border-blue-500 hover:bg-blue-100 transition-colors cursor-pointer"
-                                aria-label={`Filter by ${methodLabel(mode)}`}
-                            >
-                                {methodLabel(mode)}
-                            </button>
-                        ) : (
-                            <span
-                                key={mode}
-                                className="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200"
-                            >
-                                {methodLabel(mode)}
-                            </span>
-                        ),
-                    )}
-                </div>
-            )}
 
             {/* Accepted tokens — plain text, not pills. Descriptive, not filterable. */}
             {listing.acceptedTokens.length > 0 && (

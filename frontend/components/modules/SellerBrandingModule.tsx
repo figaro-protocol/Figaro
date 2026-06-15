@@ -15,8 +15,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useSellerBranding } from "@/lib/mechanisms/useSellerBranding";
-import type { ResolvedSellerBranding } from "@/lib/shared/sellerBranding";
+import { useSellerBranding } from "@/lib/seller/useSellerBranding";
+import type { ResolvedSellerBranding } from "@/lib/seller/sellerBranding";
 
 interface SellerBrandingModuleProps {
     sellerAddress: `0x${string}` | undefined;

@@ -20,7 +20,7 @@ import type {
     CataloguePricingPolicy,
     NegotiatedPriceEntry,
     UnitSystem,
-} from "@/lib/shared/sellerCatalogueMetadata";
+} from "@/lib/seller/sellerCatalogueMetadata";
 import {
     gramsToInput,
     massUnitLabel,

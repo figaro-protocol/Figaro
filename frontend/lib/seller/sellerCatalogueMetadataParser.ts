@@ -11,11 +11,10 @@
 import {
     CatalogueClassOfService,
     CatalogueItemMetadata,
-    CataloguePricingPolicy,
     NegotiatedPriceEntry,
     SellerCatalogueMetadata,
     UnitSystem,
-} from "@/lib/shared/sellerCatalogueMetadata";
+} from "@/lib/seller/sellerCatalogueMetadata";
 import {
     asAddress,
     asBoolean,
@@ -52,32 +51,6 @@ function parseOptionalUnitSystem(value: unknown, path: string): UnitSystem | und
     return asEnum(value, ALLOWED_UNIT_SYSTEMS, path);
 }
 
-function parseClauseAttestations(value: unknown, path: string): Record<string, Record<string, unknown>> | undefined {
-    if (value === undefined) return undefined;
-    const record = asRecord(value, path);
-    const out: Record<string, Record<string, unknown>> = {};
-    for (const [key, raw] of Object.entries(record)) {
-        if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-            throw new Error(`${path}.${key} must be an object.`);
-        }
-        out[key] = raw as Record<string, unknown>;
-    }
-    return out;
-}
-
-const ALLOWED_PRICING_POLICY = new Set<CataloguePricingPolicy>([
-    "fixed",
-    "buyer-set",
-    "dutch-auction",
-]);
-
-function parseOptionalPricingPolicy(
-    value: unknown,
-    path: string,
-): CataloguePricingPolicy | undefined {
-    if (value === undefined) return undefined;
-    return asEnum(value, ALLOWED_PRICING_POLICY, path);
-}
 
 function parseOptionalNegotiatedPrices(
     value: unknown,
@@ -108,9 +81,7 @@ function parseMenuItem(value: unknown, path: string): CatalogueItemMetadata {
         massGrams: parseOptionalNumber(record.massGrams, `${path}.massGrams`),
         volumeMl: parseOptionalNumber(record.volumeMl, `${path}.volumeMl`),
         classOfService: parseOptionalClassOfService(record.classOfService, `${path}.classOfService`),
-        pricingPolicy: parseOptionalPricingPolicy(record.pricingPolicy, `${path}.pricingPolicy`),
         negotiatedPrices: parseOptionalNegotiatedPrices(record.negotiatedPrices, `${path}.negotiatedPrices`),
-        clauseAttestations: parseClauseAttestations(record.clauseAttestations, `${path}.clauseAttestations`),
     };
 }
 

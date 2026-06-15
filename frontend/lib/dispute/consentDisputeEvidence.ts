@@ -34,6 +34,7 @@ import { recoverTypedDataAddress } from "viem";
 import type { Address, Hex } from "viem";
 import type { KlerosMetaEvidence, KlerosEvidence } from "./klerosEvidence";
 import { truncateHex } from "@/lib/shared/formatHex";
+import { bytesToHex } from "@/lib/shared/evm";
 import { isValidAddress } from "@/components/sellers/TokenAddressInput";
 
 // ---------------------------------------------------------------------------
@@ -379,7 +380,7 @@ async function computeConsentClaimDigest(
     const payload = JSON.stringify({ citedSection, claimText });
     const bytes = new TextEncoder().encode(payload);
     const hash = await crypto.subtle.digest("SHA-256", bytes);
-    return `0x${Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, "0")).join("")}` as Hex;
+    return `0x${bytesToHex(new Uint8Array(hash))}` as Hex;
 }
 
 interface TypedDataSigner {

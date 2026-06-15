@@ -37,6 +37,12 @@ export interface BaseFieldSpec {
      *  optional still encodes as the ABI zero-value), so Layers B/C are
      *  unaffected. Shape must match the field type (validated at parse). */
     default?: string | number | boolean | readonly string[];
+    /** Human display label for this field. Purely cosmetic UI metadata — the
+     *  on-chain validator + Rust prover ignore it (like `block`), so it is a
+     *  Layer-A-only field. Lets every render surface (drawer, canvas, checkout,
+     *  analysis) name the field from the spec; absent → callers fall back to
+     *  the field `name`. */
+    label?: string;
 }
 
 export interface StringFieldSpec extends BaseFieldSpec {
@@ -72,6 +78,12 @@ export interface EnumFieldSpec extends BaseFieldSpec {
      *  wire encoding keeps its historical 1-based semantics; it is never a
      *  valid composition input, and generic input surfaces exclude it. */
     sentinel?: string;
+    /** Per-value human display labels (value → label), e.g.
+     *  `{ "zone-wifi": "Same Wi-Fi network" }`. Purely cosmetic Layer-A
+     *  metadata the validator/prover ignore; a render surface labels the
+     *  selected value from here, falling back to the raw value when absent.
+     *  Need not cover every value — unlisted values render raw. */
+    valueLabels?: Readonly<Record<string, string>>;
 }
 
 export interface ArrayFieldSpec extends BaseFieldSpec {
@@ -290,12 +302,22 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
         errors.push({ path: `${path}.description`, message: "description must be a string when present" });
         return null;
     }
+    const label = raw.label;
+    if (label !== undefined && typeof label !== "string") {
+        errors.push({ path: `${path}.label`, message: "label must be a string when present" });
+        return null;
+    }
     const type = raw.type;
     if (typeof type !== "string" || !VALID_FIELD_TYPES.has(type)) {
         errors.push({ path: `${path}.type`, message: `type must be one of: ${[...VALID_FIELD_TYPES].join(", ")}` });
         return null;
     }
-    const base: BaseFieldSpec = { name, required, ...(description !== undefined && { description }) };
+    const base: BaseFieldSpec = {
+        name,
+        required,
+        ...(description !== undefined && { description }),
+        ...(label !== undefined && { label }),
+    };
 
     switch (type) {
         case "string": {
@@ -391,6 +413,25 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
                     return null;
                 }
                 spec.sentinel = raw.sentinel;
+            }
+            if (raw.valueLabels !== undefined) {
+                if (!isObject(raw.valueLabels)) {
+                    errors.push({ path: `${path}.valueLabels`, message: "valueLabels must be an object (value → label) when present" });
+                    return null;
+                }
+                const labels: Record<string, string> = {};
+                for (const [k, v] of Object.entries(raw.valueLabels)) {
+                    if (typeof v !== "string") {
+                        errors.push({ path: `${path}.valueLabels.${k}`, message: "valueLabels entries must be strings" });
+                        return null;
+                    }
+                    if (!(raw.values as string[]).includes(k)) {
+                        errors.push({ path: `${path}.valueLabels.${k}`, message: "valueLabels key must be one of the enum values" });
+                        return null;
+                    }
+                    labels[k] = v;
+                }
+                spec.valueLabels = labels;
             }
             return spec;
         }

@@ -25,16 +25,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { isAddress } from "viem";
-import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
-import { resolveCatalogueItemPrice } from "@/lib/shared/sellerCatalogueMetadata";
-import type { CatalogueItem } from "@/lib/seller/types";
+import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
+import { resolveCatalogueItemPrice } from "@/lib/seller/sellerCatalogueMetadata";
+import type { CatalogueItemMetadata } from "@/lib/seller/sellerCatalogueMetadata";
 import { hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 export interface SellerSelection {
     seller: `0x${string}`;
     /** The chosen delivery item from the seller's catalogue. */
-    item: CatalogueItem;
+    item: CatalogueItemMetadata;
     /** The effective price — the resolved catalogue figure, or the
      *  buyer-entered amount for a `buyer-set` item. */
     price: string;

@@ -29,20 +29,20 @@ import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/lib/shared/useMounted";
-import { useSellerProfile } from "@/lib/mechanisms/useSellerRegistry";
+import { useSellerProfile } from "@/lib/seller/useSellerRegistry";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
 import { useUpdateSellerProfile } from "@/lib/seller/useUpdateSellerProfile";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { resolveContentUri } from "@/lib/shared/ipfsService";
-import { tryParseSellerProfileDocument } from "@/lib/shared/sellerProfileMetadata";
+import { tryParseSellerProfileDocument } from "@/lib/seller/sellerProfileMetadata";
 import type {
     SellerCatalogueMetadata,
     UnitSystem,
     CatalogueItemMetadata,
-} from "@/lib/shared/sellerCatalogueMetadata";
-import { parseSellerCatalogueDocument } from "@/lib/shared/sellerCatalogueMetadataParser";
-import type { SellerProfileMetadata } from "@/lib/shared/sellerProfileMetadata";
-import { publishSellerCatalogue } from "@/lib/shared/cataloguePublisher";
+} from "@/lib/seller/sellerCatalogueMetadata";
+import { parseSellerCatalogueDocument } from "@/lib/seller/sellerCatalogueMetadataParser";
+import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
+import { publishSellerCatalogue } from "@/lib/seller/cataloguePublisher";
 import { OnboardingCatalogueForm } from "@/components/sellers/OnboardingCatalogueForm";
 
 export function SellerEditCatalogue() {

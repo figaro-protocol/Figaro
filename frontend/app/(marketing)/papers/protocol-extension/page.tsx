@@ -52,11 +52,7 @@ const CATALOGUE: [string, string][] = [
     ["figaro-arbitration-kleros", "off-chain arbitration-forum selection"],
     ["figaro-applicable-law", "governing-law clause"],
     ["figaro-offset-policy", "carbon-offset retirement policy"],
-    ["figaro-ghg-protocol", "GHG Protocol Corporate Standard disclosure (Category-2)"],
-    ["figaro-ghg-iso-14064", "ISO 14064 family disclosure (Category-2)"],
-    ["figaro-ghg-pas-2050", "PAS 2050 product carbon footprint (Category-2)"],
-    ["figaro-ghg-en-16258", "EN 16258 transport-emissions methodology (Category-2)"],
-    ["figaro-ghg-custom", "custom / non-standard GHG methodology (Category-2)"],
+    ["figaro-ghg", "GHG emissions disclosure — free-form accounting methodology + scope (Category-2)"],
     ["figaro-ghg-measurement", "runtime grams CO2e (Category-1)"],
 ];
 
@@ -344,7 +340,7 @@ export default function ProtocolExtensionPaper() {
                         An institution assembly is a JSON document declaring the institutional shape: roles, mechanism packages, view definitions, module placements, narrative defaults. The assembly is the runtime&rsquo;s structural primary; the rest of the pipeline is derived from it. The assembly registry pattern handles four operations: <em>discovery</em> (which assemblies exist for a given role, region, or institutional pattern); <em>parsing</em> (validating the assembly&rsquo;s JSON against the runtime&rsquo;s clause for institutional shape); <em>validation</em> (cross-checking that referenced mechanism packages exist, that view definitions reference valid modules, and that role mappings are coherent); and <em>publication</em> (making a new assembly available, content-addressed for interoperability).
                     </p>
                     <p>
-                        The pattern is implemented in <code>frontend/lib/mechanisms/useAssemblyRegistry.ts</code>, which consolidates discovery and indexing (event-derived from <code>AssemblyRegistered</code> logs), manifest building and canonicalization, and IPFS-pinned publication through the <code>AssemblyRegistry</code> contract; fork-and-draft helpers live in <code>frontend/lib/designer/</code>. The runtime carries six labelled assembly slugs (the slug-to-label taxonomy in <code>frontend/lib/shared/assemblyLabels.ts</code>): <code>local-commerce-seller-assigned</code>, <code>direct-sale</code> (a buyer-to-merchant single-leg arrangement), <code>figaro-equipment-rental</code>, <code>figaro-freelance</code>, <code>figaro-procurement</code>, and <code>figaro-disclosure-review</code>. Published assemblies are otherwise event-derived on chain rather than bundled; the on-disk manifest fixtures are a scenario-keyed subset (local-commerce and its fulfilment variants, direct-sale, kit-assembly) used to exercise the format end-to-end.
+                        The pattern is implemented in <code>frontend/lib/mechanisms/useAssemblyRegistry.ts</code>, which consolidates discovery and indexing (event-derived from <code>AssemblyRegistered</code> logs), manifest building and canonicalization, and IPFS-pinned publication through the <code>AssemblyRegistry</code> contract; fork-and-draft helpers live in <code>frontend/lib/designer/</code>. An assembly&rsquo;s slug is content-derived &mdash; <code>asm-&lt;hash&gt;</code> over its composition (the clauses it carries, their values, and the DAG) &mdash; so identical compositions map to one slug and the registry&rsquo;s first-write-wins binding dedups them. Published assemblies are event-derived on chain rather than bundled: there is no slug-to-label taxonomy and no on-disk manifest list, and an assembly&rsquo;s human label is derived from the clauses it composes.
                     </p>
                 </PaperSubsection>
                 <PaperSubsection title="6.3 Module system">

@@ -1,38 +1,6 @@
-import type {
-    AcceptedTokenMetadata,
-    CatalogueClassOfService,
-    CataloguePricingPolicy,
-    NegotiatedPriceEntry,
-    UnitSystem,
-} from "@/lib/shared/sellerCatalogueMetadata";
-import type { SellerAgentServices } from "@/lib/shared/sellerProfileMetadata";
-
-export interface CatalogueItem {
-    id: string;
-    name: string;
-    description: string;
-    price: string;
-    image: string;
-    category: string;
-    available: boolean;
-    /** Item mass in grams (always metric). The display layer formats to
-     *  the catalogue's `unitSystem` at render time. Optional — virtual
-     *  items or pre-annotation items omit it. */
-    massGrams?: number;
-    /** Item volume in millilitres. Same convention as `massGrams`. */
-    volumeMl?: number;
-    /** Shipping/handling class. Defaults to "standard" at commit if
-     *  the item-level value is absent. */
-    classOfService?: CatalogueClassOfService;
-    /** Pricing policy for the public price. Absent → "fixed". */
-    pricingPolicy?: CataloguePricingPolicy;
-    /** Per-counterparty negotiated prices — see `CatalogueItemMetadata`. */
-    negotiatedPrices?: NegotiatedPriceEntry[];
-    /** Optional assembly this product composes — see `CatalogueItemMetadata`.
-     *  When set, selecting this item drives the named multi-party assembly
-     *  (product-driven selection) instead of a modality choice. */
-    assemblySlug?: string;
-}
+import type { CatalogueItemMetadata, UnitSystem } from "@/lib/seller/sellerCatalogueMetadata";
+import type { AcceptedTokenMetadata } from "@/lib/seller/acceptedTokenMetadata";
+import type { SellerAgentServices } from "@/lib/seller/sellerProfileMetadata";
 
 /**
  * Buyer-side projection of an seller's profile + catalogue.
@@ -61,40 +29,15 @@ export interface SellerCatalogue {
     geohash?: string;
     /** Free-form public street address (optional). */
     addressText?: string;
-    menu: CatalogueItem[];
+    menu: CatalogueItemMetadata[];
     /** Tokens the seller accepts at settlement. */
     acceptedTokens?: AcceptedTokenMetadata[];
     /** The token catalogue prices are denominated in (one of `acceptedTokens`). */
     defaultTokenAddress?: `0x${string}`;
     /** ERC-8004-compatible service endpoints (optional, for agent-driven sellers). */
     agentServices?: SellerAgentServices;
-    methods?: Array<
-        | "consume-onsite"
-        | "pickup"
-        | "virtual"
-        | "deliver:buyer-assigned"
-        | "deliver:seller-assigned"
-        | "deliver:dutch-auction"
-    >;
     /** Seller's preferred display unit system for mass / volume. Storage
      *  is always metric; this field only governs UI formatting. */
     unitSystem?: UnitSystem;
 }
 
-export interface CartItem {
-    menuItemId: string;
-    sellerId: string;
-    sellerAddress: string;
-    sellerName: string;
-    name: string;
-    price: string;
-    quantity: number;
-    imageURI?: string;
-    /** Physical attributes copied from the catalogue item at add-to-cart —
-     *  checkout collapses them into the order's geo section (mass/volume
-     *  sums; highest-priority class of service). Optional: virtual or
-     *  un-annotated items omit them. */
-    massGrams?: number;
-    volumeMl?: number;
-    classOfService?: CatalogueClassOfService;
-}

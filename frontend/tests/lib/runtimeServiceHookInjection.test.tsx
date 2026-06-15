@@ -16,15 +16,15 @@ import {
     removePendingHandoffIntent,
     savePendingHandoffIntent,
 } from "@/lib/handoff/handoffIntent";
-import { useSellerCatalogue } from "@/lib/mechanisms/useSellerCatalogue";
-import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
+import { useSellerCatalogue } from "@/lib/seller/useSellerCatalogue";
+import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
 import {
     RuntimeServicesProvider,
     useRuntimeServices,
 } from "@/lib/shared/runtimeServicesContext";
 import type { SellerCatalogue } from "@/lib/seller/types";
-import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
-import type { CatalogueService } from "@/lib/shared/catalogueService";
+import type { SellerCatalogueMetadata } from "@/lib/seller/sellerCatalogueMetadata";
+import type { CatalogueService } from "@/lib/seller/catalogueService";
 import type { DiscoveryService } from "@/lib/seller/discoveryService";
 import type { IpfsService } from "@/lib/shared/ipfsService";
 import type { RuntimeServices } from "@/lib/shared/runtimeServices";
@@ -71,7 +71,7 @@ vi.mock("@/lib/core/indexer", () => ({
     getSellerMetadataURI: (...args: unknown[]) => getSellerMetadataURIMock(...args),
 }));
 
-vi.mock("@/lib/shared/catalogueService", () => ({
+vi.mock("@/lib/seller/catalogueService", () => ({
     DEFAULT_CATALOGUE_SERVICE: {
         fetchSellerCatalogue: (...args: unknown[]) => defaultFetchSellerCatalogueMock(...args),
     },

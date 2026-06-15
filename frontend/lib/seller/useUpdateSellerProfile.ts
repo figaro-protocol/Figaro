@@ -29,8 +29,8 @@ import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import {
     parseSellerProfileDocument,
     type SellerProfileMetadata,
-} from "@/lib/shared/sellerProfileMetadata";
-import { useUpdateProfile } from "@/lib/mechanisms/useSellerRegistry";
+} from "@/lib/seller/sellerProfileMetadata";
+import { useUpdateProfile } from "@/lib/seller/useSellerRegistry";
 
 type SellerProfilePatch = Partial<SellerProfileMetadata>;
 

@@ -3,12 +3,12 @@ import { getActiveSellers } from '@/lib/core/indexer';
 import type { SellerCatalogue } from '@/lib/seller/types';
 import { MECHANISM_CONTRACTS } from '@/lib/mechanisms/contracts';
 import { resolveContentUri } from "@/lib/shared/ipfsService";
-import type { SellerCatalogueMetadata } from '@/lib/shared/sellerCatalogueMetadata';
+import type { SellerCatalogueMetadata } from '@/lib/seller/sellerCatalogueMetadata';
 import {
     SellerProfileMetadata,
     tryParseSellerProfileDocument,
-} from '@/lib/shared/sellerProfileMetadata';
-import { tryParseCatalogueItems } from '@/lib/shared/sellerProfileAdapter';
+} from '@/lib/seller/sellerProfileMetadata';
+import { tryParseCatalogueItems } from '@/lib/seller/sellerProfileAdapter';
 import { safeJsonFromResponse } from '@/lib/shared/safeJson';
 
 /** Only allow safe URI schemes for seller-declared image URLs. */
@@ -38,25 +38,10 @@ function profileToCatalogue(
             : '🍽️',
         geohash: profile.location?.geohash,
         addressText: profile.location?.addressText,
-        menu: (catalogue?.menu ?? []).map((item) => ({
-            id: item.id,
-            name: item.name,
-            description: item.description ?? '',
-            price: item.price,
-            image: item.image ?? '🍽️',
-            category: item.category,
-            available: item.available,
-            massGrams: item.massGrams,
-            volumeMl: item.volumeMl,
-            classOfService: item.classOfService,
-            pricingPolicy: item.pricingPolicy,
-            negotiatedPrices: item.negotiatedPrices,
-            assemblySlug: item.assemblySlug,
-        })),
+        menu: catalogue?.menu ?? [],
         acceptedTokens: profile.acceptedTokens,
         defaultTokenAddress: profile.defaultTokenAddress,
         agentServices: profile.services,
-        methods: [],
         unitSystem: catalogue?.unitSystem,
     };
 }
@@ -114,17 +99,7 @@ async function fetchSellerAsCatalogue(
     const catalogue: SellerCatalogueMetadata | undefined = items && items.length > 0
         ? {
             subjectAddress: stamped.subjectAddress!,
-            menu: items.map((i) => ({
-                id: i.id,
-                name: i.name,
-                description: i.description,
-                price: i.price ?? '0',
-                category: i.category ?? 'General',
-                available: i.available ?? true,
-                pricingPolicy: i.pricingPolicy,
-                negotiatedPrices: i.negotiatedPrices,
-                assemblySlug: i.assemblySlug,
-            })),
+            menu: items,
             version: '1.0.0',
         }
         : undefined;

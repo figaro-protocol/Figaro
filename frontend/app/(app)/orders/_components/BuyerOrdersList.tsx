@@ -30,9 +30,9 @@ import { computeOrderHash } from "@/lib/core/commitmentStore";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { usePendingCommitments, awaitsCounterpartySignature } from "@/hooks/core/usePendingCommitments";
 import type { CommitmentPayload } from "@/lib/core/useCommitmentFlow";
-import { useSellerListings } from "@/lib/mechanisms/useSellerListings";
-import { displayNameForAddress } from "@/lib/shared/sellerListing";
-import type { Listing } from "@/lib/shared/sellerListing";
+import { useSellerListings } from "@/lib/seller/useSellerListings";
+import { displayNameForAddress } from "@/lib/seller/sellerListing";
+import type { Listing } from "@/lib/seller/sellerListing";
 
 // ── Outbound pending row ────────────────────────────────────────────
 // An order this wallet signed and relayed, awaiting the seller's

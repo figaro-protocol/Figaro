@@ -16,7 +16,7 @@ import { encodeContentFromSpec } from "@figaro/core/clauses";
 import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
 import { DISCLOSURE_KIND, MEASUREMENT_KIND } from "@/lib/mechanisms/contracts";
 import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
-import { useRegisterSeller, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/mechanisms/useSellerRegistry";
+import { useRegisterSeller, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/seller/useSellerRegistry";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
 import { getAttestationsByProcess, type RuntimeAttestation } from "@/lib/core/indexer";
 import { extractErrorMessage } from "@/lib/shared/errors";

@@ -11,6 +11,7 @@
  */
 
 import { ZERO_ADDRESS } from "./evm";
+import { DEVNET_CHAIN_ID } from "./chains";
 import { isValidAddress } from "@/components/sellers/TokenAddressInput";
 
 export interface CommonToken {
@@ -52,7 +53,7 @@ const localTokens: () => CommonToken[] = () => {
  */
 const CHAIN_TOKENS: Record<number, () => CommonToken[]> = {
     // Local Anvil — env-driven mocks.
-    31337: localTokens,
+    [DEVNET_CHAIN_ID]: localTokens,
 
     // Sepolia (testnet) — Circle's official testnet USDC.
     11155111: () => [

@@ -10,8 +10,8 @@
 import {
     fetchSellerBranding,
     type ResolvedSellerBranding,
-} from "@/lib/shared/sellerBranding";
-import { useAsyncSellerResource } from "@/lib/mechanisms/useAsyncSellerResource";
+} from "@/lib/seller/sellerBranding";
+import { useAsyncSellerResource } from "@/lib/seller/useAsyncSellerResource";
 
 export interface UseSellerBrandingResult {
     branding: ResolvedSellerBranding | null;

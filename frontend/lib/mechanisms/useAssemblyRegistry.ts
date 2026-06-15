@@ -29,20 +29,17 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicCl
 import { publicClient, activeChain } from "@/lib/shared/wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { clauseDeclaresField, clauseIsProcessLog } from "@/lib/shared/clauseSpecSource";
-import {
-    deriveCanonicalMethod,
-    type CanonicalMethod,
-} from "@/lib/core/orderAgreement";
 import type { Order } from "@/lib/core/store";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { buildAssemblyTemplate, serializeAssemblyTemplate, deriveAssemblySlug, templateParentOrderIds, type AssemblyTemplate } from "@/lib/designer/assemblyTemplate";
-import { useSellerProfile } from "./useSellerRegistry";
+import { useSellerProfile } from "@/lib/seller/useSellerRegistry";
 import { resolveContentUri } from "@/lib/shared/ipfsService";
 import {
     tryParseSellerProfileDocument,
     type CounterpartyBinding,
-} from "@/lib/shared/sellerProfileMetadata";
+} from "@/lib/seller/sellerProfileMetadata";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
+import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 
 export const ASSEMBLY_REGISTRY_ABI = parseAbi([
     "function registerAssembly(string slug, bytes32 contentHash, string metadataURI) external payable",
@@ -240,7 +237,7 @@ export async function fetchAssemblyTemplate(
  */
 function chainIdToNetworkTarget(chainId: number): string {
     switch (chainId) {
-        case 31337:
+        case DEVNET_CHAIN_ID:
             return "local-anvil";
         case 11155111:
             return "sepolia";
@@ -447,10 +444,6 @@ export interface BoundAssembly {
     /** Display name from the assembly template; falls back to the slug. */
     name: string;
     assemblyTemplate: AssemblyTemplate;
-    /** Canonical canonical method of the root order — the buyer's
-     *  selection when this assembly is picked. `null` when the root
-     *  modality clause is absent or malformed. */
-    canonicalMethod: CanonicalMethod | null;
     /** The seller's designated counterparty wallets for this assembly,
      *  keyed by sub-order process clause (the category-1 ladder clause the
      *  sub-order carries). Sourced from the seller profile's
@@ -581,7 +574,7 @@ export function useSellerBoundAssemblies(
                 assemblyTemplates.forEach((m, i) => {
                     if (!m) return;
                     const slug = matchedEvents[i].slug;
-                    const { modality, coordination } = extractRootModality(m);
+                    const { modality } = extractRootModality(m);
                     const binding = (profile.assemblyBindings ?? []).find(
                         (b) => b.assemblySlug === slug,
                     );
@@ -589,7 +582,6 @@ export function useSellerBoundAssemblies(
                         slug,
                         name: slug,
                         assemblyTemplate: m,
-                        canonicalMethod: deriveCanonicalMethod(modality, coordination),
                         counterpartyBindings: binding?.counterpartyBindings ?? [],
                     });
                     if (modality) modalitySet.add(modality);

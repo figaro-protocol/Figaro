@@ -25,7 +25,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Order } from "@/lib/core/store";
 import { loadAgreement } from "@/lib/core/agreementStore";
-import { summarizeAgreement } from "@/lib/core/orderAgreement";
+import { getTopologyParentOrderHashes } from "@/lib/core/orderAgreement";
 import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/mechanisms/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
 import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, isCompanionClause, clauseIsStructural } from "@/lib/shared/clauseSpecSource";
@@ -118,7 +118,7 @@ export function AgreementDrawer({
 
     const orderIndex = orders ? orders.findIndex((o) => o.id === order.id) : -1;
     const orderNumber = orderIndex >= 0 ? orderIndex + 1 : 1;
-    const topology = summarizeAgreement(loadAgreement(order.agreementHash))?.topology;
+    const parentOrderHashes = getTopologyParentOrderHashes(loadAgreement(order.agreementHash));
 
     const presentArticles: readonly string[] = ["identity", "registry"];
 
@@ -290,12 +290,12 @@ export function AgreementDrawer({
                                 </div>
                                 <div>
                                     <span className="text-[11px] text-neutral-500">Position</span>
-                                    {topology?.parentOrderHashes && topology.parentOrderHashes.length > 0 ? (
+                                    {parentOrderHashes && parentOrderHashes.length > 0 ? (
                                         <ul
                                             className="font-mono text-[10px] text-neutral-600 space-y-1 break-all mt-0.5"
                                             data-testid="drawer-identity-parents"
                                         >
-                                            {topology.parentOrderHashes.map((p) => (
+                                            {parentOrderHashes.map((p) => (
                                                 <li key={p}>{p}</li>
                                             ))}
                                         </ul>

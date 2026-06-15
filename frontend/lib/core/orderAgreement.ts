@@ -1,3 +1,25 @@
+/**
+ * orderAgreement.ts — order-agreement construction + validation.
+ *
+ * ONE job: turn a composed order into its canonical Agreement, and validate
+ * that Agreement before it is signed.
+ *
+ *   • BUILD    — buildOrderAgreement(): an order (buyer, seller, currency,
+ *                payment, the composed clause fields, topology) → a generic,
+ *                spec-driven encode → a canonical Agreement. Names no clause;
+ *                permissionlessly-registered clauses pass through untouched.
+ *   • VALIDATE — validateCommitmentAgreement(): an Agreement + the hash about
+ *                to be signed → content conforms to its clause specs AND the
+ *                merkle root matches. Layer A of the verification stack, run on
+ *                both sides of the bilateral commit.
+ *
+ * Reads are by FIELD NAME, never clause id (sectionsByField & friends), so the
+ * layer stays open-world.
+ *
+ * NOT this file's job — these concerns live elsewhere, never here:
+ *   • describing/summarizing an agreement for DISPLAY — a read/UI concern.
+ *   • the buyer's commerce/checkout "method" — a commerce concern.
+ */
 import type { ClauseFields } from "@/lib/core/encoding";
 import {
     type AgreementLineItem,
@@ -12,51 +34,7 @@ import {
 } from "@/lib/core/agreement";
 import { validateContent, type FieldSpec } from "@figaro/core/clauses";
 import { clauseDeclaresField, clauseIsStructural, getClauseSpec, listKnownClauseIds } from "@/lib/shared/clauseSpecSource";
-
-// ── Clause-field composition (drawer → build) ───────────────────────────────
-//
-// The drawer composes a per-node agreement by toggling sets of options into
-// the clauseFields object. Two array fields drive composition (modalities,
-// coordinations, handoffPoints) and one drives proximity (bands). Empty
-// (or absent) array = clause not in the agreement.
-
-/** Canonical method strings used by single-selection consumers (canvas edge
- *  pill, cart, swap-mechanism flow). Each value collapses a v2 (modality,
- *  coordination) pair to a single string. */
-const CANONICAL_METHODS_LIST = [
-    "consume-onsite",
-    "pickup",
-    "virtual",
-    "deliver:buyer-assigned",
-    "deliver:seller-assigned",
-    "deliver:dutch-auction",
-] as const;
-
-export type CanonicalMethod = typeof CANONICAL_METHODS_LIST[number];
-
-/** Collapse the SINGLE-SELECT modality + coordination clause values into the
- *  canonical compound method string downstream consumers key on (cart,
- *  discovery filters, assembly bindings). The clauses are single-select by
- *  design — variety is the seller's array of assemblies — so the inputs are
- *  scalars: the modality clause's `modality` value and (for delivery) the
- *  coordination clause's `coordination` value. Returns null when modality is
- *  absent/unrecognized, or delivery arrives without a coordination. */
-export function deriveCanonicalMethod(
-    modality: string | undefined,
-    coordination: string | undefined,
-): CanonicalMethod | null {
-    if (!modality) return null;
-    if (modality === "consume-onsite") return "consume-onsite";
-    if (modality === "pickup") return "pickup";
-    if (modality === "virtual") return "virtual";
-    if (modality === "delivery") {
-        if (coordination === "buyer-assigned") return "deliver:buyer-assigned";
-        if (coordination === "seller-assigned") return "deliver:seller-assigned";
-        if (coordination === "dutch-auction") return "deliver:dutch-auction";
-        return null;
-    }
-    return null;
-}
+import { hexEqual } from "@/lib/shared/evm";
 
 function dedupeOrderHashes(orderHashes?: string[]): string[] {
     return [...new Set((orderHashes ?? []).map((hash) => hash.trim()).filter(Boolean))];
@@ -72,45 +50,6 @@ export interface BuildOrderAgreementParams {
     parentOrderHashes?: string[];
     fallbackParentOrderHashes?: string[];
     extraSections?: AgreementSection[];
-}
-
-export interface AgreementSummary {
-    geo?: {
-        origin?: string;
-        destination?: string;
-        mass?: string | number;
-        volume?: string | number;
-        classOfService?: string;
-    };
-    topology?: {
-        topologyMode: TopologyMode;
-        parentOrderHashes: string[];
-    };
-    /** The order's single-select modality (the modality clause's value). */
-    modality?: string;
-    /** The single-select coordination (its own clause; present on delivery
-     *  parent orders). */
-    coordination?: string;
-    /** Canonical compound method — modality, refined by coordination for
-     *  delivery. null/absent when modality is absent/unrecognized or
-     *  delivery arrives without coordination. */
-    method?: CanonicalMethod | null;
-    /** Hand-off points (its own clause now — present on any order with a physical
-     *  exchange, including a bare courier order that carries no modality clause). */
-    handoff?: {
-        points: readonly string[];
-    };
-    ghg?: {
-        /** clauseIds of each GHG disclosure section in the agreement — the
-         *  clauses that declare a `scope` field. Multi-valued: one section per
-         *  accounting standard the seller reports under. */
-        clauseKeys: readonly string[];
-        /** Label of the first declared standard — the registered spec's title
-         *  (the network-defined SSoT). */
-        standard?: string;
-        /** Scope from the first declared standard (back-compat). */
-        scope?: number;
-    };
 }
 
 /** Fold the order's STRUCTURAL clauses into its clause set. A structural clause
@@ -368,78 +307,6 @@ export function getTopologyMode(agreement: Agreement | null | undefined): Topolo
     return null;
 }
 
-export function summarizeAgreement(agreement: Agreement | null | undefined): AgreementSummary | null {
-    if (!agreement) return null;
-
-    // Field names are the lookup vocabulary — see `sectionsByField`.
-    const geoSection = sectionByField(agreement, "originGeohash");
-    const topologySection = sectionByField(agreement, "parentOrderHashes");
-    const modalitySection = sectionByField(agreement, "modality");
-    const coordinationSection = sectionByField(agreement, "coordination");
-    const handoffSection = sectionByField(agreement, "handoff");
-    // GHG disclosure is multi-valued: one section per accounting standard the
-    // seller reports under; each disclosure clause declares a `scope` field.
-    const ghgDisclosures = sectionsByField(agreement, "scope");
-
-    return {
-        geo: geoSection
-            ? {
-                origin: typeof geoSection.data.originGeohash === "string" ? geoSection.data.originGeohash : undefined,
-                destination: typeof geoSection.data.destinationGeohash === "string" ? geoSection.data.destinationGeohash : undefined,
-                mass: typeof geoSection.data.massGrams === "number" || typeof geoSection.data.massGrams === "string"
-                    ? geoSection.data.massGrams
-                    : undefined,
-                volume: typeof geoSection.data.volumeMl === "number" || typeof geoSection.data.volumeMl === "string"
-                    ? geoSection.data.volumeMl
-                    : undefined,
-                classOfService: typeof geoSection.data.classOfService === "string"
-                    ? geoSection.data.classOfService
-                    : undefined,
-            }
-            : undefined,
-        topology: topologySection
-            ? {
-                topologyMode: getTopologyMode(agreement) ?? "root",
-                parentOrderHashes: getTopologyParentOrderHashes(agreement) ?? [],
-            }
-            : undefined,
-        ...(modalitySection
-            ? (() => {
-                const modality = typeof modalitySection.data.modality === "string"
-                    ? modalitySection.data.modality
-                    : undefined;
-                const coordination = typeof coordinationSection?.data.coordination === "string"
-                    ? coordinationSection.data.coordination
-                    : undefined;
-                return {
-                    modality,
-                    coordination,
-                    method: deriveCanonicalMethod(modality, coordination),
-                };
-            })()
-            : {}),
-        ghg: ghgDisclosures.length > 0
-            ? {
-                clauseKeys: ghgDisclosures.map((d) => d.clause),
-                // Single-standard back-compat for callers that take one label.
-                // The registered spec's title IS the standard's label (the
-                // network-defined SSoT, e.g. "ISO 14064").
-                standard: getClauseSpec(ghgDisclosures[0].clause)?.title,
-                scope: typeof ghgDisclosures[0].data.scope === "number"
-                    ? ghgDisclosures[0].data.scope
-                    : undefined,
-            }
-            : undefined,
-        handoff: handoffSection
-            ? {
-                points: Array.isArray(handoffSection.data.handoff)
-                    ? handoffSection.data.handoff as readonly string[]
-                    : [],
-            }
-            : undefined,
-    };
-}
-
 /** A single Layer-A issue found before signing: which clause, which field path
  *  (or "(merkle)"), and what's wrong. */
 export interface CommitmentAgreementIssue {
@@ -504,7 +371,7 @@ export function validateCommitmentAgreement(
                 message: `agreement content failed to encode: ${cause instanceof Error ? cause.message : String(cause)}`,
             });
         }
-        if (computed && computed.toLowerCase() !== expectedHash.toLowerCase()) {
+        if (computed && !hexEqual(computed, expectedHash)) {
             issues.push({
                 clause: "(merkle)",
                 path: "agreementHash",

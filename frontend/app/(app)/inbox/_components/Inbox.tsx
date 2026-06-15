@@ -37,9 +37,9 @@ import { useWalletProcessRows, type ProcessRow } from "@/lib/core/walletProcessQ
 import { computeOrderHash } from "@/lib/core/commitmentStore";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { usePendingCommitments, awaitsMyCounterSign } from "@/hooks/core/usePendingCommitments";
-import { useSellerListings } from "@/lib/mechanisms/useSellerListings";
-import { displayNameForAddress } from "@/lib/shared/sellerListing";
-import type { Listing } from "@/lib/shared/sellerListing";
+import { useSellerListings } from "@/lib/seller/useSellerListings";
+import { displayNameForAddress } from "@/lib/seller/sellerListing";
+import type { Listing } from "@/lib/seller/sellerListing";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 

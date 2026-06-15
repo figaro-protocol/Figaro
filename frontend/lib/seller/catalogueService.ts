@@ -1,13 +1,13 @@
 import {
     fetchSellerCatalogue,
     invalidateCatalogueCache,
-} from '@/lib/shared/catalogueFetcher';
+} from '@/lib/seller/catalogueFetcher';
 import { DEFAULT_IPFS_SERVICE, type IpfsService } from '@/lib/shared/ipfsService';
 import {
     publishSellerCatalogue,
     type PublishResult,
-} from '@/lib/shared/cataloguePublisher';
-import type { SellerCatalogueMetadata } from '@/lib/shared/sellerCatalogueMetadata';
+} from '@/lib/seller/cataloguePublisher';
+import type { SellerCatalogueMetadata } from '@/lib/seller/sellerCatalogueMetadata';
 
 export interface CatalogueService {
     fetchSellerCatalogue(metadataURI: string): Promise<SellerCatalogueMetadata | null>;

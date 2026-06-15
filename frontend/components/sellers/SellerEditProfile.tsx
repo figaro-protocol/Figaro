@@ -26,12 +26,12 @@ import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/lib/shared/useMounted";
-import { useSellerProfile } from "@/lib/mechanisms/useSellerRegistry";
+import { useSellerProfile } from "@/lib/seller/useSellerRegistry";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
 import { useUpdateSellerProfile } from "@/lib/seller/useUpdateSellerProfile";
 import { resolveContentUri } from "@/lib/shared/ipfsService";
-import { tryParseSellerProfileDocument } from "@/lib/shared/sellerProfileMetadata";
-import type { SellerProfileMetadata } from "@/lib/shared/sellerProfileMetadata";
+import { tryParseSellerProfileDocument } from "@/lib/seller/sellerProfileMetadata";
+import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
 import { OnboardingProfileForm } from "@/components/sellers/OnboardingProfileForm";
 import type { OnboardingProfileDraft } from "@/lib/seller/onboardingState";
 

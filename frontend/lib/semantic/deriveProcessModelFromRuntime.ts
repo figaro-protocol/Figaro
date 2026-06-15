@@ -314,7 +314,7 @@ function roleCapabilities(
                 if (party === "seller" ? !isSeller : !isBuyer) continue;
                 const partyAddr = party === "seller" ? order.seller : order.buyer;
                 const mine = orderAttestations.filter(
-                    (a) => a.clauseId.toLowerCase() === clauseIdHash
+                    (a) => hexEqual(a.clauseId, clauseIdHash)
                         && hexEqual(a.attester, partyAddr),
                 );
                 let stage: number;
@@ -344,7 +344,7 @@ function roleCapabilities(
                         const carrier = carrierOrderId ? indexes.proofCarrierByOrder.get(carrierOrderId) : undefined;
                         if (carrierOrderId && carrier) {
                             const witnessed = (indexes.attestationsByOrder.get(carrierOrderId) ?? []).some(
-                                (a) => a.clauseId.toLowerCase() === carrier.clauseIdHash
+                                (a) => hexEqual(a.clauseId, carrier.clauseIdHash)
                                     && hexEqual(a.attester, partyAddr),
                             );
                             if (!witnessed) {

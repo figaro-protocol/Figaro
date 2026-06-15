@@ -17,15 +17,12 @@ import "../src/mocks/MockOffsetAggregator.sol";
 import "../src/FigaroBatchVerifier.sol";
 import "../src/ClauseRegistrationHelper.sol";
 import "../src/clauseValidators/FigaroCommerceV1Validator.sol";
-import "../src/clauseValidators/FigaroGeoV2Validator.sol";
+import "../src/clauseValidators/FigaroGeoV1Validator.sol";
+import "../src/clauseValidators/FigaroClassOfServiceValidator.sol";
 import "../src/clauseValidators/FigaroModalitiesV1Validator.sol";
 import "../src/clauseValidators/FigaroCoordinationV1Validator.sol";
 import "../src/clauseValidators/FigaroHandoffV1Validator.sol";
-import "../src/clauseValidators/FigaroGHGProtocolV1Validator.sol";
-import "../src/clauseValidators/FigaroGHGISO14064V1Validator.sol";
-import "../src/clauseValidators/FigaroGHGPAS2050V1Validator.sol";
-import "../src/clauseValidators/FigaroGHGEN16258V1Validator.sol";
-import "../src/clauseValidators/FigaroGHGCustomV1Validator.sol";
+import "../src/clauseValidators/FigaroGHGV1Validator.sol";
 import "../src/clauseValidators/FigaroGHGMeasurementV1Validator.sol";
 import "../src/clauseValidators/FigaroProximityPolicyV1Validator.sol";
 import "../src/clauseValidators/FigaroOffsetPolicyV1Validator.sol";
@@ -319,7 +316,10 @@ contract Deploy is Script {
             keccak256(abi.encode("figaro-commerce", uint64(1))), address(new FigaroCommerceV1Validator())
         );
         attestation.setValidator(
-            keccak256(abi.encode("figaro-geo", uint64(2))), address(new FigaroGeoV2Validator())
+            keccak256(abi.encode("figaro-geo", uint64(1))), address(new FigaroGeoV1Validator())
+        );
+        attestation.setValidator(
+            keccak256(abi.encode("figaro-class-of-service", uint64(1))), address(new FigaroClassOfServiceValidator())
         );
         attestation.setValidator(
             keccak256(abi.encode("figaro-modalities", uint64(1))), address(new FigaroModalitiesV1Validator())
@@ -331,19 +331,7 @@ contract Deploy is Script {
             keccak256(abi.encode("figaro-handoff", uint64(1))), address(new FigaroHandoffV1Validator())
         );
         attestation.setValidator(
-            keccak256(abi.encode("figaro-ghg-protocol", uint64(1))), address(new FigaroGHGProtocolV1Validator())
-        );
-        attestation.setValidator(
-            keccak256(abi.encode("figaro-ghg-iso-14064", uint64(1))), address(new FigaroGHGISO14064V1Validator())
-        );
-        attestation.setValidator(
-            keccak256(abi.encode("figaro-ghg-pas-2050", uint64(1))), address(new FigaroGHGPAS2050V1Validator())
-        );
-        attestation.setValidator(
-            keccak256(abi.encode("figaro-ghg-en-16258", uint64(1))), address(new FigaroGHGEN16258V1Validator())
-        );
-        attestation.setValidator(
-            keccak256(abi.encode("figaro-ghg-custom", uint64(1))), address(new FigaroGHGCustomV1Validator())
+            keccak256(abi.encode("figaro-ghg", uint64(1))), address(new FigaroGHGV1Validator())
         );
         attestation.setValidator(
             keccak256(abi.encode("figaro-ghg-measurement", uint64(1))), address(new FigaroGHGMeasurementV1Validator())

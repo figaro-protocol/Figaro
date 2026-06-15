@@ -21,17 +21,17 @@ import { Button } from "@/components/ui/Button";
 import { ContentImage } from "@/components/shared/ContentImage";
 import { SellerBrandingModule, SellerLogo } from "@/components/modules/SellerBrandingModule";
 import { useCommerce } from "@/lib/commerce";
-import { useCartStore } from "@/lib/seller/cartStore";
-import { useRegisteredCatalogues } from "@/lib/mechanisms/useRegisteredCatalogues";
+import { useCartStore } from "@/lib/commerce/cartStore";
+import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { SellerTrackRecord } from "@/components/core/SellerTrackRecord";
-import { useSellerTrackRecord } from "@/lib/mechanisms/useSellerTrackRecord";
+import { useSellerTrackRecord } from "@/lib/seller/useSellerTrackRecord";
 import { useTokenSymbol } from "@/components/sellers/TokenAddressInput";
 import { hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
 
-import type { CatalogueItem } from "@/lib/seller/types";
+import type { CatalogueItemMetadata } from "@/lib/seller/sellerCatalogueMetadata";
 
 interface Props {
     sellerAddress: string;
@@ -108,7 +108,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
         );
     }
 
-    const handleAddItem = (menuItem: CatalogueItem) => {
+    const handleAddItem = (menuItem: CatalogueItemMetadata) => {
         addItem({
             menuItemId: menuItem.id,
             sellerId: sellerCatalogue.id,
@@ -120,7 +120,6 @@ export function SellerDetailView({ sellerAddress }: Props) {
             imageURI: menuItem.image || undefined,
             massGrams: menuItem.massGrams,
             volumeMl: menuItem.volumeMl,
-            classOfService: menuItem.classOfService,
         });
     };
 
@@ -211,7 +210,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                                 >
                                                     <div className="flex items-start gap-3">
                                                         <ContentImage
-                                                            src={menuItem.image}
+                                                            src={menuItem.image ?? ""}
                                                             alt={menuItem.name}
                                                             className="w-12 h-12 rounded object-cover text-3xl flex items-center justify-center"
                                                             fallback={
@@ -223,14 +222,13 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                                         <div className="flex-1">
                                                             <h3 className="font-semibold text-black mb-1">{menuItem.name}</h3>
                                                             <p className="text-sm text-neutral-500 mb-2">{menuItem.description}</p>
-                                                            {(menuItem.massGrams || menuItem.volumeMl || menuItem.classOfService) && (
+                                                            {(menuItem.massGrams || menuItem.volumeMl) && (
                                                                 <p
                                                                     className="text-[11px] text-neutral-500 mb-2 flex flex-wrap gap-x-2"
                                                                     data-testid={`menu-item-logistics-${menuItem.id}`}
                                                                 >
                                                                     {menuItem.massGrams ? <span>{formatMass(menuItem.massGrams, cartUnitSystem)}</span> : null}
                                                                     {menuItem.volumeMl ? <span>· {formatVolume(menuItem.volumeMl, cartUnitSystem)}</span> : null}
-                                                                    {menuItem.classOfService ? <span>· {menuItem.classOfService}</span> : null}
                                                                 </p>
                                                             )}
                                                             <div className="flex items-center justify-between">

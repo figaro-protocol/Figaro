@@ -55,6 +55,9 @@
 import { concat, keccak256, stringToHex, toHex } from "viem";
 import { ZERO_BYTES32, hexEqual, clauseIdHash } from "@/lib/shared/evm";
 
+/** Deterministic, case-insensitive ordering for merkle leaves (0x-hex). */
+const sortHexLeaves = (a: string, b: string) => a.toLowerCase().localeCompare(b.toLowerCase());
+
 // ── Core types ───────────────────────────────────────────────────────────────
 
 /**
@@ -315,7 +318,7 @@ export function computeAgreementHash(agreement: Agreement): `0x${string}` {
     // Sort leaves lexicographically so the root is order-insensitive; this
     // complements the `sortSections` clause-key ordering used during agreement
     // composition and guarantees the same root regardless of insertion order.
-    leaves.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    leaves.sort(sortHexLeaves);
     return buildMerkleRoot(leaves);
 }
 
@@ -329,7 +332,7 @@ export function computeAgreementHash(agreement: Agreement): `0x${string}` {
  */
 export function computeRedactableAgreementHash(agreement: RedactableAgreement): `0x${string}` {
     const leaves = agreement.sections.map(leafOfAnySection);
-    leaves.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    leaves.sort(sortHexLeaves);
     return buildMerkleRoot(leaves);
 }
 
@@ -412,7 +415,7 @@ export function buildSectionInclusionProof(
 
     const targetLeaf = computeSectionLeaf(section);
     const leaves = agreement.sections.map(computeSectionLeaf);
-    leaves.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    leaves.sort(sortHexLeaves);
 
     let idx = leaves.findIndex((l) => hexEqual(l, targetLeaf));
     if (idx < 0) {

@@ -15,8 +15,8 @@ import {
     useDepositLockPeriod,
     useSellerProfile,
     useRegistrationDeposit,
-} from "@/lib/mechanisms/useSellerRegistry";
-import { type SellerProfileMetadata } from "@/lib/shared/sellerProfileMetadata";
+} from "@/lib/seller/useSellerRegistry";
+import { type SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
 import { usePublishSellerProfile } from "@/lib/seller/usePublishSellerProfile";
 
 /**

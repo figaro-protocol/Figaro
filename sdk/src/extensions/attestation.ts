@@ -10,11 +10,6 @@
 
 import { keccak256, stringToHex, toHex, encodeAbiParameters } from "viem";
 import type { Hex, Address, AttestationEvent } from "../types.js";
-import ghgProtocolSpec from "../clauses/examples/figaro-ghg-protocol.json" with { type: "json" };
-import ghgISO14064Spec from "../clauses/examples/figaro-ghg-iso-14064.json" with { type: "json" };
-import ghgPAS2050Spec from "../clauses/examples/figaro-ghg-pas-2050.json" with { type: "json" };
-import ghgEN16258Spec from "../clauses/examples/figaro-ghg-en-16258.json" with { type: "json" };
-import ghgCustomSpec from "../clauses/examples/figaro-ghg-custom.json" with { type: "json" };
 
 // ── Clause ID derivation ────────────────────────────────────────────────────
 
@@ -37,20 +32,6 @@ export function computeClauseId(name: string, version: number): Hex {
 
 // ── Well-known clause keys ──────────────────────────────────────────────────
 
-/**
- * GHG disclosure sister clauses — one per accounting standard. The standard
- * identity lives in the clauseId; the content shape is shared across all five.
- */
-export const GHG_DISCLOSURE_CLAUSE_KEYS = [
-    "figaro-ghg-protocol",
-    "figaro-ghg-iso-14064",
-    "figaro-ghg-pas-2050",
-    "figaro-ghg-en-16258",
-    "figaro-ghg-custom",
-] as const;
-
-export type GHGDisclosureClauseKey = (typeof GHG_DISCLOSURE_CLAUSE_KEYS)[number];
-
 // ── GHG disclosure kinds (stage values in AttestationCoordinator) ────────────
 
 export enum DisclosureKind {
@@ -71,42 +52,10 @@ export const DISCLOSURE_KIND_LABELS: Record<DisclosureKind, string> = {
     [DisclosureKind.Verification]: "Verification",
 };
 
-// ── GHG norm references ─────────────────────────────────────────────────────
-
-/** Concise editorial scope tag per disclosure clause — published with the SDK
- *  so non-React consumers don't need to load the spec JSON to render chips.
- *  Not in the spec JSON itself; the spec's `description` is the full prose. */
-const GHG_SCOPES: Record<GHGDisclosureClauseKey, string> = {
-    "figaro-ghg-protocol": "Scope 1/2/3 corporate accounting",
-    "figaro-ghg-iso-14064": "Quantification, reporting & verification",
-    "figaro-ghg-pas-2050": "Product carbon footprint",
-    "figaro-ghg-en-16258": "Transport energy & GHG",
-    "figaro-ghg-custom": "Self-declared accounting basis",
-};
-
-/** Labels derived from each spec JSON's `title` — single source of truth.
- *  Adding a sister clause means importing its spec above and adding it here;
- *  the TypeScript `Record<GHGDisclosureClauseKey, ...>` enforces completeness. */
-const GHG_LABELS: Record<GHGDisclosureClauseKey, string> = {
-    "figaro-ghg-protocol": ghgProtocolSpec.title,
-    "figaro-ghg-iso-14064": ghgISO14064Spec.title,
-    "figaro-ghg-pas-2050": ghgPAS2050Spec.title,
-    "figaro-ghg-en-16258": ghgEN16258Spec.title,
-    "figaro-ghg-custom": ghgCustomSpec.title,
-};
-
-/** Normative-standard reference for each disclosure clause. 1:1 with
- *  `GHG_DISCLOSURE_CLAUSE_KEYS`; each `id` IS the clauseId. `label` derives
- *  from the clause's spec JSON `title`; `scope` is SDK-published editorial. */
-export const GHG_NORM_REFERENCES: ReadonlyArray<{
-    id: GHGDisclosureClauseKey;
-    label: string;
-    scope: string;
-}> = GHG_DISCLOSURE_CLAUSE_KEYS.map((id) => ({
-    id,
-    label: GHG_LABELS[id],
-    scope: GHG_SCOPES[id],
-}));
+// The GHG accounting standard is no longer a closed taxonomy of clauses: it is
+// the free-form `standard` field on the single `figaro-ghg` clause. There is no
+// SDK-side per-standard label/scope table — consumers read the standard value
+// (and the clause spec's `title`/`label`) directly.
 
 // ── GHG content ref encoding/decoding ───────────────────────────────────────
 

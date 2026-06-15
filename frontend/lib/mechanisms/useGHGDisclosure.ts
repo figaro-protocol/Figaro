@@ -5,9 +5,10 @@
  * resolved from the registry's specs (chain → IPFS), never named in code:
  *
  *   - DISCLOSURE clauses (Category-2, committed) — every registered clause
- *     declaring a `scope` field. Each accounting standard is its own clause;
- *     the committed `{scope}` sectionData is the contract-signing-time
- *     declaration ("seller is reporting under this standard, scope 1").
+ *     declaring a `scope` field. The accounting methodology is a free-form
+ *     `standard` value on the clause (not a per-standard clause id); the
+ *     committed `{standard, scope}` sectionData is the contract-signing-time
+ *     declaration ("seller reports under this methodology, scope 1").
  *
  *   - MEASUREMENT clauses (Category-1, runtime grams) — each disclosure
  *     clause's `block.sisterClauseId`. Content is `abi.encode(uint256 grams)`

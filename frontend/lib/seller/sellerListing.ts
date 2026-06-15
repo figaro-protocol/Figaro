@@ -1,5 +1,5 @@
-import type { AcceptedTokenMetadata } from "@/lib/shared/sellerCatalogueMetadata";
-import type { SellerProfileMetadata } from "@/lib/shared/sellerProfileMetadata";
+import type { AcceptedTokenMetadata } from "@/lib/seller/acceptedTokenMetadata";
+import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
 import { hexEqual } from "@/lib/shared/evm";
 
 /**
@@ -14,14 +14,6 @@ import { hexEqual } from "@/lib/shared/evm";
  * so the card can display assembly badges and the click-through can pick
  * the primary.
  */
-type CanonicalMethod =
-    | "consume-onsite"
-    | "pickup"
-    | "virtual"
-    | "deliver:buyer-assigned"
-    | "deliver:seller-assigned"
-    | "deliver:dutch-auction";
-
 interface ListingBinding {
     /** Slug of the assembly this binding targets (e.g. "local-commerce-seller-assigned"). */
     assemblySlug: string;
@@ -59,8 +51,6 @@ export interface Listing {
     addressText?: string;
     /** Service-area geohash prefixes (seller may serve a wider area than its home). */
     serviceAreas: ListingServiceArea[];
-    /** Methods offered. May be empty for purely-remote work (review, freelance). */
-    methods: CanonicalMethod[];
     /** Tokens the seller accepts for settlement. */
     acceptedTokens: AcceptedTokenMetadata[];
     /** All assembly bindings this seller has. May be empty (browse-only —
@@ -103,7 +93,6 @@ export function profileToListing(
         geohash: profile.location?.geohash,
         addressText: profile.location?.addressText,
         serviceAreas: [],
-        methods: [],
         acceptedTokens: profile.acceptedTokens ?? [],
         bindings,
     };

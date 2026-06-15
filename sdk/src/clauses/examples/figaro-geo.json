@@ -1,8 +1,8 @@
 {
     "clauseId": "figaro-geo",
-    "version": 2,
+    "version": 1,
     "title": "Logistics",
-    "description": "Origin and destination geohashes plus shipment mass, volume, and class of service. Required when fulfilment includes delivery.",
+    "description": "Origin and destination geohashes plus shipment mass and volume. Composed when an order moves physical goods between locations. Handling class is its own elective clause (figaro-class-of-service).",
     "categories": [
         "geo"
     ],
@@ -44,19 +44,6 @@
             "max": 4294967295,
             "default": 1,
             "description": "Shipment volume in whole millilitres. Must be at least 1 ml; capped at uint32 max (≈4.29 million L)."
-        },
-        {
-            "name": "classOfService",
-            "type": "enum",
-            "required": true,
-            "values": [
-                "S",
-                "E",
-                "F",
-                "C"
-            ],
-            "default": "S",
-            "description": "Class of service. S = Standard (room temperature, not fragile). E = Express (priority window). F = Fragile (handle with care). C = Cold Chain (refrigerated transport required)."
         }
     ],
     "block": {

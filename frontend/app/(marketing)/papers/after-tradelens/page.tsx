@@ -189,7 +189,7 @@ export default function AfterTradeLensPaper() {
                     Each kernel commit pairs the standard <code>figaro-commerce-v1</code> payment clause with the clause clauses appropriate to the seller&rsquo;s role:
                 </PaperRun>
                 <ul className="space-y-2 list-disc pl-6 text-sm">
-                    <li><em>Shipper-of-record</em>: <code>figaro-proximity-proof-v1</code> on goods presented for shipment, optional <code>figaro-ghg-protocol-v1</code> disclosure for manufacturing emissions.</li>
+                    <li><em>Shipper-of-record</em>: <code>figaro-proximity-proof</code> on goods presented for shipment, optional <code>figaro-ghg</code> disclosure for manufacturing emissions.</li>
                     <li><em>Freight forwarder</em>: <code>figaro-proximity-proof-v1</code> on cargo receipt at consolidation; <code>figaro-container-seal-v1</code> applied at the consolidation point.</li>
                     <li><em>NVOCC</em>: house bill-of-lading reference (the BoL itself is treated as a protocol-layer composition pattern in Section 7).</li>
                     <li><em>Origin and destination inland carriers</em>: <code>figaro-proximity-proof-v1</code> at pickup and dropoff; <code>figaro-geo-v2</code> pickup and dropoff geohashes.</li>
@@ -286,7 +286,7 @@ export default function AfterTradeLensPaper() {
                     <li><code>figaro-fulfilment-v2</code> &mdash; declares the delivery modality and the handoff points where physical exchange occurs (final delivery to the consignee).</li>
                     <li><code>figaro-proximity-policy-v1</code> with <code>figaro-proximity-proof-v1</code> &mdash; geofence enforcement and the attestation that a given handoff occurred at the agreed place and time, at each container transfer point.</li>
                     <li><code>figaro-courier-process-v1</code> &mdash; the carrier&rsquo;s per-role event log over the multi-stop carrier process.</li>
-                    <li><code>figaro-ghg-protocol-v1</code> (with sister clauses for ISO 14064, PAS 2050, EN 16258) &mdash; per-leg emissions disclosure on every transport edge.</li>
+                    <li><code>figaro-ghg</code> (free-form accounting methodology — GHG Protocol, ISO 14064, PAS 2050, EN 16258, or any other) &mdash; per-leg emissions disclosure on every transport edge.</li>
                 </ul>
                 <p>
                     These clauses are already on chain and bound to validators; no further protocol-extension work is needed for them. The customs-clearance determination is recorded by the customs-authority wallet as a clause-typed attestation, but no dedicated customs clause exists in the current set &mdash; it is a candidate seller-process extension, authored under the same extension-doctrine as the two new clauses below.

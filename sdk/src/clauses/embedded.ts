@@ -25,12 +25,9 @@ import courierProcessSpec from "./examples/figaro-courier-process.json" with { t
 import modalitiesSpec from "./examples/figaro-modalities.json" with { type: "json" };
 import handoffSpec from "./examples/figaro-handoff.json" with { type: "json" };
 import geoSpec from "./examples/figaro-geo.json" with { type: "json" };
-import ghgCustomSpec from "./examples/figaro-ghg-custom.json" with { type: "json" };
-import ghgEN16258Spec from "./examples/figaro-ghg-en-16258.json" with { type: "json" };
-import ghgISO14064Spec from "./examples/figaro-ghg-iso-14064.json" with { type: "json" };
+import classOfServiceSpec from "./examples/figaro-class-of-service.json" with { type: "json" };
+import ghgSpec from "./examples/figaro-ghg.json" with { type: "json" };
 import ghgMeasurementSpec from "./examples/figaro-ghg-measurement.json" with { type: "json" };
-import ghgPAS2050Spec from "./examples/figaro-ghg-pas-2050.json" with { type: "json" };
-import ghgProtocolSpec from "./examples/figaro-ghg-protocol.json" with { type: "json" };
 import merchantProcessSpec from "./examples/figaro-merchant-process.json" with { type: "json" };
 import offsetPolicySpec from "./examples/figaro-offset-policy.json" with { type: "json" };
 import proximityPolicySpec from "./examples/figaro-proximity-policy.json" with { type: "json" };
@@ -47,12 +44,9 @@ const RAW_SPECS: Readonly<Record<string, unknown>> = {
     "figaro-modalities": modalitiesSpec,
     "figaro-handoff": handoffSpec,
     "figaro-geo": geoSpec,
-    "figaro-ghg-custom": ghgCustomSpec,
-    "figaro-ghg-en-16258": ghgEN16258Spec,
-    "figaro-ghg-iso-14064": ghgISO14064Spec,
+    "figaro-class-of-service": classOfServiceSpec,
+    "figaro-ghg": ghgSpec,
     "figaro-ghg-measurement": ghgMeasurementSpec,
-    "figaro-ghg-pas-2050": ghgPAS2050Spec,
-    "figaro-ghg-protocol": ghgProtocolSpec,
     "figaro-merchant-process": merchantProcessSpec,
     "figaro-offset-policy": offsetPolicySpec,
     "figaro-proximity-policy": proximityPolicySpec,

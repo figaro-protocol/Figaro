@@ -6,13 +6,10 @@ import { validateContent } from "../../src/clauses/validate.js";
 import topologySpecRaw from "../../src/clauses/examples/figaro-topology.json" with { type: "json" };
 import commerceSpecRaw from "../../src/clauses/examples/figaro-commerce.json" with { type: "json" };
 import geoSpecRaw from "../../src/clauses/examples/figaro-geo.json" with { type: "json" };
+import classOfServiceSpecRaw from "../../src/clauses/examples/figaro-class-of-service.json" with { type: "json" };
 import arbitrationKlerosSpecRaw from "../../src/clauses/examples/figaro-arbitration-kleros.json" with { type: "json" };
 import applicableLawSpecRaw from "../../src/clauses/examples/figaro-applicable-law.json" with { type: "json" };
-import ghgProtocolSpecRaw from "../../src/clauses/examples/figaro-ghg-protocol.json" with { type: "json" };
-import ghgIso14064SpecRaw from "../../src/clauses/examples/figaro-ghg-iso-14064.json" with { type: "json" };
-import ghgPas2050SpecRaw from "../../src/clauses/examples/figaro-ghg-pas-2050.json" with { type: "json" };
-import ghgEn16258SpecRaw from "../../src/clauses/examples/figaro-ghg-en-16258.json" with { type: "json" };
-import ghgCustomSpecRaw from "../../src/clauses/examples/figaro-ghg-custom.json" with { type: "json" };
+import ghgSpecRaw from "../../src/clauses/examples/figaro-ghg.json" with { type: "json" };
 import ghgMeasurementSpecRaw from "../../src/clauses/examples/figaro-ghg-measurement.json" with { type: "json" };
 import proximityPolicySpecRaw from "../../src/clauses/examples/figaro-proximity-policy.json" with { type: "json" };
 import proximityProofSpecRaw from "../../src/clauses/examples/figaro-proximity-proof.json" with { type: "json" };
@@ -85,9 +82,9 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(result.ok).toBe(false);
     });
 
-    // ── figaro-geo-v2 ──
+    // ── figaro-geo (class-of-service split out) ──
 
-    it("figaro-geo-v2 accepts valid 5-tuple", () => {
+    it("figaro-geo accepts a valid 4-tuple", () => {
         const parsed = parseClauseSpec(geoSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
@@ -95,25 +92,10 @@ describe("example clause specs — parse + validate sample content", () => {
             destinationGeohash: "9q8yyk8yvr",
             massGrams: 500,
             volumeMl: 1000,
-            classOfService: "S",
         }, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-geo-v2 accepts every class-of-service value", () => {
-        const parsed = parseClauseSpec(geoSpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        for (const cls of ["S", "E", "F", "C"]) {
-            expect(validateContent({
-                originGeohash: "d",
-                destinationGeohash: "z",
-                massGrams: 1,
-                volumeMl: 1,
-                classOfService: cls,
-            }, parsed.spec).ok).toBe(true);
-        }
-    });
-
-    it("figaro-geo-v2 rejects geohash with disallowed characters", () => {
+    it("figaro-geo rejects geohash with disallowed characters", () => {
         const parsed = parseClauseSpec(geoSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         // 'a' is not in the geohash base32 alphabet
@@ -122,11 +104,10 @@ describe("example clause specs — parse + validate sample content", () => {
             destinationGeohash: "abc",
             massGrams: 1,
             volumeMl: 1,
-            classOfService: "S",
         }, parsed.spec).ok).toBe(false);
     });
 
-    it("figaro-geo-v2 rejects zero mass", () => {
+    it("figaro-geo rejects zero mass", () => {
         const parsed = parseClauseSpec(geoSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
@@ -134,11 +115,10 @@ describe("example clause specs — parse + validate sample content", () => {
             destinationGeohash: "v",
             massGrams: 0,
             volumeMl: 1,
-            classOfService: "S",
         }, parsed.spec).ok).toBe(false);
     });
 
-    it("figaro-geo-v2 rejects zero volume", () => {
+    it("figaro-geo rejects zero volume", () => {
         const parsed = parseClauseSpec(geoSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
@@ -146,30 +126,31 @@ describe("example clause specs — parse + validate sample content", () => {
             destinationGeohash: "v",
             massGrams: 1,
             volumeMl: 0,
-            classOfService: "S",
         }, parsed.spec).ok).toBe(false);
     });
 
-    it("figaro-geo-v2 rejects unknown class-of-service", () => {
+    it("figaro-geo rejects missing required fields", () => {
         const parsed = parseClauseSpec(geoSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
             originGeohash: "u",
-            destinationGeohash: "v",
-            massGrams: 1,
-            volumeMl: 1,
-            classOfService: "X",
         }, parsed.spec).ok).toBe(false);
     });
 
-    it("figaro-geo-v2 rejects missing required fields", () => {
-        const parsed = parseClauseSpec(geoSpecRaw);
+    // ── figaro-class-of-service (split out of geo) ──
+
+    it("figaro-class-of-service accepts every class value", () => {
+        const parsed = parseClauseSpec(classOfServiceSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        // mass/volume/class are now required
-        expect(validateContent({
-            originGeohash: "u",
-            destinationGeohash: "v",
-        }, parsed.spec).ok).toBe(false);
+        for (const cls of ["S", "E", "F", "C"]) {
+            expect(validateContent({ classOfService: cls }, parsed.spec).ok).toBe(true);
+        }
+    });
+
+    it("figaro-class-of-service rejects an unknown class", () => {
+        const parsed = parseClauseSpec(classOfServiceSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ classOfService: "X" }, parsed.spec).ok).toBe(false);
     });
 
     // ── figaro-modalities-v1 ──
@@ -278,37 +259,37 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(validateContent({ applicableLaw: "U" }, parsed.spec).ok).toBe(false);
     });
 
-    // ── figaro-ghg-<standard>-v1 sister clauses ──
+    // ── figaro-ghg (consolidated disclosure: free-form standard + scope) ──
 
-    const ghgSisterSpecs: Array<[string, unknown]> = [
-        ["figaro-ghg-protocol-v1", ghgProtocolSpecRaw],
-        ["figaro-ghg-iso-14064-v1", ghgIso14064SpecRaw],
-        ["figaro-ghg-pas-2050-v1", ghgPas2050SpecRaw],
-        ["figaro-ghg-en-16258-v1", ghgEn16258SpecRaw],
-        ["figaro-ghg-custom-v1", ghgCustomSpecRaw],
-    ];
+    it("figaro-ghg spec parses cleanly", () => {
+        expect(parseClauseSpec(ghgSpecRaw).ok).toBe(true);
+    });
 
-    for (const [name, specRaw] of ghgSisterSpecs) {
-        it(`${name} accepts each scope (1, 2, 3)`, () => {
-            const parsed = parseClauseSpec(specRaw);
-            if (!parsed.ok) throw new Error("spec failed to parse");
-            for (const scope of [1, 2, 3]) {
-                expect(validateContent({ scope }, parsed.spec).ok).toBe(true);
-            }
-        });
+    it("figaro-ghg accepts each scope (1, 2, 3) under a named standard", () => {
+        const parsed = parseClauseSpec(ghgSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        for (const scope of [1, 2, 3]) {
+            expect(validateContent({ standard: "ISO 14064", scope }, parsed.spec).ok).toBe(true);
+        }
+    });
 
-        it(`${name} rejects scope 4`, () => {
-            const parsed = parseClauseSpec(specRaw);
-            if (!parsed.ok) throw new Error("spec failed to parse");
-            expect(validateContent({ scope: 4 }, parsed.spec).ok).toBe(false);
-        });
+    it("figaro-ghg accepts ANY free-form standard (no closed taxonomy)", () => {
+        const parsed = parseClauseSpec(ghgSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ standard: "My bespoke methodology v9", scope: 1 }, parsed.spec).ok).toBe(true);
+    });
 
-        it(`${name} rejects unknown fields (closed clause)`, () => {
-            const parsed = parseClauseSpec(specRaw);
-            if (!parsed.ok) throw new Error("spec failed to parse");
-            expect(validateContent({ scope: 1, standard: "GHG-Protocol" }, parsed.spec).ok).toBe(false);
-        });
-    }
+    it("figaro-ghg rejects scope 4", () => {
+        const parsed = parseClauseSpec(ghgSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ standard: "ISO 14064", scope: 4 }, parsed.spec).ok).toBe(false);
+    });
+
+    it("figaro-ghg rejects an empty standard", () => {
+        const parsed = parseClauseSpec(ghgSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ standard: "", scope: 1 }, parsed.spec).ok).toBe(false);
+    });
 
     // ── figaro-ghg-measurement-v1 ──
 

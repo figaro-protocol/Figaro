@@ -9,8 +9,8 @@
  * pipeline in `lib/shared/uriFetcher.ts`.
  */
 
-import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
-import { parseSellerCatalogueDocument } from "@/lib/shared/sellerCatalogueMetadataParser";
+import type { SellerCatalogueMetadata } from "@/lib/seller/sellerCatalogueMetadata";
+import { parseSellerCatalogueDocument } from "@/lib/seller/sellerCatalogueMetadataParser";
 import { createUriFetcher } from "@/lib/shared/uriFetcher";
 
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes

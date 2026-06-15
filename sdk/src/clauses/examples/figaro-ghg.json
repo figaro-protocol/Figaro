@@ -1,0 +1,40 @@
+{
+    "clauseId": "figaro-ghg",
+    "version": 1,
+    "title": "GHG emissions disclosure",
+    "description": "Disclosure that the seller will report greenhouse-gas emissions for fulfilling this order under a named accounting methodology and scope. The methodology is FREE-FORM — any standard, existing or future (e.g. \"GHG Protocol Corporate Standard\", \"ISO 14064\", \"PAS 2050\", \"EN 16258\", or a custom methodology). The protocol takes no closed list of standards. Pairs with the figaro-ghg-measurement runtime clause that carries the measured grams CO2e.",
+    "categories": [
+        "emissions"
+    ],
+    "fields": [
+        {
+            "name": "standard",
+            "type": "string",
+            "required": true,
+            "minLength": 1,
+            "label": "Accounting methodology",
+            "description": "The GHG accounting methodology the seller reports under. Free-form — any methodology name, existing or future (e.g. \"ISO 14064\")."
+        },
+        {
+            "name": "scope",
+            "type": "integer",
+            "min": 1,
+            "max": 3,
+            "default": 1,
+            "required": false,
+            "label": "Scope",
+            "description": "GHG scope: 1 (direct), 2 (purchased energy), 3 (value chain)."
+        }
+    ],
+    "block": {
+        "tier": "category-2",
+        "sisterClauseId": "figaro-ghg-measurement",
+        "article": "emissions",
+        "mechanismKinds": [
+            "disclosure"
+        ],
+        "moduleIds": [
+            "disclosure-actions"
+        ]
+    }
+}

@@ -6,7 +6,7 @@ import {
     fetchSellerBranding,
     clearBrandingCache,
     resolveSellerBrandingFromSellerProfile,
-} from '@/lib/shared/sellerBranding';
+} from '@/lib/seller/sellerBranding';
 import { SELLER_PROFILE_METADATA_EXAMPLE } from './__fixtures__/sellerMetadata';
 
 describe('sellerBranding', () => {

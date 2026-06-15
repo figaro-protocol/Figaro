@@ -34,10 +34,8 @@ export type {
 
 export {
     computeClauseId,
-    GHG_DISCLOSURE_CLAUSE_KEYS,
     DisclosureKind,
     DISCLOSURE_KIND_LABELS,
-    GHG_NORM_REFERENCES,
     encodeCommitmentRef,
     encodeGramsRef,
     decodeGramsRef,

@@ -3,10 +3,10 @@ import {
     fetchSellerCatalogue,
     invalidateCatalogueCache,
     clearCatalogueCache,
-} from "@/lib/shared/catalogueFetcher";
-import { publishSellerCatalogue } from "@/lib/shared/cataloguePublisher";
-import { createCatalogueService } from "@/lib/shared/catalogueService";
-import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
+} from "@/lib/seller/catalogueFetcher";
+import { publishSellerCatalogue } from "@/lib/seller/cataloguePublisher";
+import { createCatalogueService } from "@/lib/seller/catalogueService";
+import type { SellerCatalogueMetadata } from "@/lib/seller/sellerCatalogueMetadata";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -230,7 +230,7 @@ describe("SellerCatalogueMetadata shape", () => {
 
 // ── Class-of-service collapse (multi-item shipment → one geo annotation) ─────
 
-import { collapseClassOfService } from "@/lib/shared/sellerCatalogueMetadata";
+import { collapseClassOfService } from "@/lib/seller/sellerCatalogueMetadata";
 
 describe("collapseClassOfService", () => {
     it("returns undefined when no item declares a class (the spec default applies)", () => {

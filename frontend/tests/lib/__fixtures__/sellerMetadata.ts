@@ -8,8 +8,8 @@
  * Anvil account so it can't collide with a developer's test wallet.
  */
 
-import type { SellerCatalogueMetadata } from "@/lib/shared/sellerCatalogueMetadata";
-import type { SellerProfileMetadata } from "@/lib/shared/sellerProfileMetadata";
+import type { SellerCatalogueMetadata } from "@/lib/seller/sellerCatalogueMetadata";
+import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
 
 export const SELLER_CATALOGUE_METADATA_EXAMPLE: SellerCatalogueMetadata = {
     subjectAddress: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",

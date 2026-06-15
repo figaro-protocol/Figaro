@@ -13,7 +13,7 @@
  */
 import { useCallback, useState, useEffect } from "react";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId, useReadContract } from "wagmi";
-import { getSellerRegistry, SELLER_REGISTRY_ABI } from "./contracts";
+import { getSellerRegistry, SELLER_REGISTRY_ABI } from "@/lib/mechanisms/contracts";
 import { getSellerState, getSellerMetadataURI } from "@/lib/core/indexer";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { resolveContentUri } from "@/lib/shared/ipfsService";
@@ -21,7 +21,7 @@ import {
     AgentServiceInfo,
     SellerAgentServices,
     projectAgentServices,
-} from "@/lib/shared/sellerProfileMetadata";
+} from "@/lib/seller/sellerProfileMetadata";
 
 const registry = getSellerRegistry();
 
