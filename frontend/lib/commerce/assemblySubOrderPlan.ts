@@ -16,7 +16,6 @@
 import type { BoundAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
 import { templateParentOrderIds, type AssemblyTemplateOrder } from "@/lib/designer/assemblyTemplate";
 import type { SellerCatalogue } from "@/lib/seller/types";
-import { resolveCatalogueItemPrice } from "@/lib/seller/sellerCatalogueMetadata";
 import { hexEqual } from "@/lib/shared/evm";
 import { parseToken } from "@/lib/shared/utils";
 
@@ -65,8 +64,7 @@ export function planSubOrderSellers(
  *
  * Every seller prices from its OWN catalogue — the lead included. The template
  * carries no payment (it's a runtime value), so the figure is resolved LIVE
- * from the pricing seller's catalogue via `resolveCatalogueItemPrice` (the rate
- * negotiated with the lead if one exists, else the public price) — the same
+ * from the pricing seller's catalogue (the published item price) — the same
  * path the delivery leg uses, minus the picker. Returns 0n when the seller
  * publishes no matching item.
  *
@@ -78,13 +76,12 @@ export function planSubOrderSellers(
 export function resolveSubOrderPayment(args: {
     node: AssemblyTemplateOrder;
     seller: `0x${string}`;
-    leadAddress: `0x${string}`;
     sellerCatalogues: SellerCatalogue[];
     tokenDecimals: number;
 }): bigint {
-    const { seller, leadAddress, sellerCatalogues, tokenDecimals } = args;
+    const { seller, sellerCatalogues, tokenDecimals } = args;
     const catalogue = sellerCatalogues.find((c) => hexEqual(c.address, seller));
     const item = catalogue?.menu.find((i) => i.available !== false);
     if (!item) return 0n;
-    return parseToken(resolveCatalogueItemPrice(item, leadAddress).price, tokenDecimals);
+    return parseToken(item.price, tokenDecimals);
 }

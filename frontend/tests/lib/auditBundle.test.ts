@@ -101,13 +101,12 @@ describe("extractContract", () => {
             data: { modality: "pickup" },
         },
         {
-            clause: GEO_CLAUSE_KEY, version: 2,
+            clause: GEO_CLAUSE_KEY, version: 1,
             data: {
                 originGeohash: "u4pruydqqvj",
                 destinationGeohash: "u4pruydqqvk",
                 massGrams: 500,
                 volumeMl: 1000,
-                classOfService: "S",
             },
         },
         {
@@ -266,7 +265,7 @@ describe("extractBillOfLading", () => {
     const agreement = makeAgreement([
         { clause: MODALITIES_CLAUSE_KEY, version: 1, data: { modality: "pickup" } },
         { clause: HANDOFF_CLAUSE_KEY, version: 1, data: { handoff: ["face-to-face"] } },
-        { clause: GEO_CLAUSE_KEY, version: 2, data: { originGeohash: "u4pruydqqvj", destinationGeohash: "u4pruydqqvk", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
+        { clause: GEO_CLAUSE_KEY, version: 1, data: { originGeohash: "u4pruydqqvj", destinationGeohash: "u4pruydqqvk", massGrams: 500, volumeMl: 1000 } },
     ]);
 
     function makeAttestation(overrides: Partial<AttestationRecord> = {}): AttestationRecord {
@@ -440,14 +439,14 @@ describe("extractEmissions", () => {
         expect(doc.scope).toBeUndefined();
     });
 
-    it("surfaces the chosen sister-clause standard + scope when committed", () => {
+    it("surfaces the committed standard + scope from the disclosure clause", () => {
         const ag = makeAgreement([
-            { clause: "figaro-ghg-iso-14064", version: 1, data: { scope: 2 } },
+            { clause: "figaro-ghg", version: 1, data: { standard: "ISO 14064", scope: 2 } },
         ]);
         const doc = extractEmissions(order, ag, []);
         expect(doc.disclosed).toBe(true);
-        expect(doc.standardClauseKey).toBe("figaro-ghg-iso-14064");
-        // The registered spec's title — the network-defined SSoT label.
+        expect(doc.standardClauseKey).toBe("figaro-ghg");
+        // The free-form accounting methodology the seller committed.
         expect(doc.standardLabel).toBe("ISO 14064");
         expect(doc.scope).toBe(2);
     });
@@ -721,7 +720,7 @@ describe("isCarriageOrder", () => {
     it("returns false for buyer↔merchant orders (no courier-process clause)", () => {
         const agreement = makeAgreement([
             { clause: MODALITIES_CLAUSE_KEY, version: 1, data: { modality: "pickup" } },
-            { clause: GEO_CLAUSE_KEY, version: 2, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
+            { clause: GEO_CLAUSE_KEY, version: 1, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000 } },
         ]);
         expect(isCarriageOrder(agreement)).toBe(false);
     });
@@ -741,7 +740,7 @@ describe("buildAuditBundle", () => {
     const order = makeOrder();
     const agreement = makeAgreement([
         { clause: MODALITIES_CLAUSE_KEY, version: 1, data: { modality: "pickup" } },
-        { clause: GEO_CLAUSE_KEY, version: 2, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
+        { clause: GEO_CLAUSE_KEY, version: 1, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000 } },
         { clause: COURIER_PROCESS_CLAUSE_KEY, version: 1, data: {} },
         { clause: TOPOLOGY_CLAUSE_KEY, version: 1, data: { topologyMode: "explicit", parentOrderHashes: ["0xPARENT"] } },
     ]);
@@ -775,7 +774,7 @@ describe("buildAuditBundle", () => {
     it("omits billOfLading on a non-carriage order (e.g. buyer↔merchant goods sale)", () => {
         const merchantAgreement = makeAgreement([
             { clause: MODALITIES_CLAUSE_KEY, version: 1, data: { modality: "pickup" } },
-            { clause: GEO_CLAUSE_KEY, version: 2, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
+            { clause: GEO_CLAUSE_KEY, version: 1, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000 } },
         ]);
         const merchantBundle = buildAuditBundle(order, merchantAgreement, []);
         expect(merchantBundle.billOfLading).toBeUndefined();
@@ -797,7 +796,7 @@ describe("buildAuditBundle with redacted commerce section", () => {
     const order = makeOrder();
     const cleartextAgreement = makeAgreement([
         { clause: MODALITIES_CLAUSE_KEY, version: 1, data: { modality: "pickup" } },
-        { clause: GEO_CLAUSE_KEY, version: 2, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000, classOfService: "S" } },
+        { clause: GEO_CLAUSE_KEY, version: 1, data: { originGeohash: "u4pru", destinationGeohash: "u4pry", massGrams: 500, volumeMl: 1000 } },
     ]);
 
     it("invoice surfaces lineItemsSealed when commerce is redacted", async () => {

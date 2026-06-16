@@ -4,7 +4,6 @@ import {
     buildOrderAgreement,
     getTopologyMode,
     getTopologyParentOrderHashes,
-    summarizeAgreement,
 } from "@/lib/core/orderAgreement";
 import { ANVIL_ACCOUNTS } from "../anvilAccounts";
 import { cf } from "./__fixtures__/clauseFields";
@@ -67,7 +66,7 @@ describe("buildOrderAgreement", () => {
         ]);
     });
 
-    it("adds the modality + coordination sections and a ghg disclosure from the clause set", () => {
+    it("adds the modality + coordination + hand-off sections from the clause set", () => {
         const agreement = buildOrderAgreement({
             buyer: BUYER,
             seller: SELLER,
@@ -79,22 +78,14 @@ describe("buildOrderAgreement", () => {
                 modality: "delivery",
                 coordination: "dutch-auction",
                 handoffPoints: ["face-to-face"],
-                ghgStandards: ["figaro-ghg-iso-14064"],
             }),
         });
 
-        const summary = summarizeAgreement(agreement);
-        expect(summary?.modality).toBe("delivery");
-        expect(summary?.coordination).toBe("dutch-auction");
-        expect(summary?.handoff?.points).toEqual(["face-to-face"]);
-        expect(summary?.method).toBe("deliver:dutch-auction");
-        expect(summary?.ghg).toEqual({
-            clauseKeys: ["figaro-ghg-iso-14064"],
-            // The spec's registered title — the network-defined SSoT label
-            // (the hardcoded ISO-14064 ↔ clauseId map is gone).
-            standard: "ISO 14064",
-            scope: 1,
-        });
+        // The composed sections are read BY FIELD, the way every surface reads
+        // them; modality / coordination / hand-off are each their own clause.
+        expect(getSection(agreement, "figaro-modalities")?.data.modality).toBe("delivery");
+        expect(getSection(agreement, "figaro-coordination")?.data.coordination).toBe("dutch-auction");
+        expect(getSection(agreement, "figaro-handoff")?.data.handoff).toEqual(["face-to-face"]);
     });
 
     it("fills seller-assigned coordination from the spec default when composed empty", () => {
@@ -110,9 +101,7 @@ describe("buildOrderAgreement", () => {
                 "figaro-coordination": {},
             },
         });
-        const summary = summarizeAgreement(agreement);
-        expect(summary?.coordination).toBe("seller-assigned");
-        expect(summary?.method).toBe("deliver:seller-assigned");
+        expect(getSection(agreement, "figaro-coordination")?.data.coordination).toBe("seller-assigned");
     });
 
     it("supports multiple hand-off points alongside a single-select modality", () => {
@@ -127,10 +116,8 @@ describe("buildOrderAgreement", () => {
                 handoffPoints: ["face-to-face", "locker"],
             }),
         });
-        const summary = summarizeAgreement(agreement);
-        expect(summary?.modality).toBe("pickup");
-        expect(summary?.method).toBe("pickup");
-        expect(summary?.handoff?.points).toEqual(["face-to-face", "locker"]);
+        expect(getSection(agreement, "figaro-modalities")?.data.modality).toBe("pickup");
+        expect(getSection(agreement, "figaro-handoff")?.data.handoff).toEqual(["face-to-face", "locker"]);
     });
 
     it("drops the handoff clause when all values are unknown (the enum is closed)", () => {
@@ -145,7 +132,7 @@ describe("buildOrderAgreement", () => {
                 handoffPoints: ["teleport"],
             }),
         });
-        expect(summarizeAgreement(agreement)?.handoff).toBeUndefined();
+        expect(getSection(agreement, "figaro-handoff")).toBeUndefined();
     });
 });
 
@@ -161,14 +148,9 @@ describe("companion (sister) runtime anchors", () => {
         expect(getSection(agreement, "figaro-proximity-proof")?.data).toEqual({});
     });
 
-    it("emits the ghg-measurement anchor (empty) from a disclosure's sisterClauseId", () => {
-        const agreement = build(cf({ ghgStandards: ["figaro-ghg-iso-14064"] }));
+    it("emits the ghg-measurement anchor (empty) from the disclosure's sisterClauseId", () => {
+        const agreement = build(cf({ ghgStandard: "ISO 14064" }));
         expect(getSection(agreement, "figaro-ghg-measurement")?.data).toEqual({});
-    });
-
-    it("emits the shared ghg-measurement anchor exactly once across N disclosures (dedup)", () => {
-        const agreement = build(cf({ ghgStandards: ["figaro-ghg-iso-14064", "figaro-ghg-en-16258"] }));
-        expect(agreement.sections.filter((s) => s.clause === "figaro-ghg-measurement")).toHaveLength(1);
     });
 
     it("emits no companion when the parent clause is absent", () => {
@@ -182,14 +164,13 @@ describe("generic spec-driven encode (defaults, sentinel, drop semantics)", () =
     const build = (clauseFields: ReturnType<typeof cf>) =>
         buildOrderAgreement({ buyer: BUYER, seller: SELLER, currency: CURRENCY, payment: 10n, clauseFields });
 
-    it("fills absent geo fields from the spec's `default`s (minimum-valid 5-tuple)", () => {
+    it("fills absent geo fields from the spec's `default`s (minimum-valid tuple)", () => {
         const agreement = build(cf({ originGeohash: "dr5reg", destinationGeohash: "dr5reh" }));
         expect(getSection(agreement, "figaro-geo")?.data).toEqual({
             originGeohash: "dr5reg",
             destinationGeohash: "dr5reh",
             massGrams: 1,
             volumeMl: 1,
-            classOfService: "S",
         });
     });
 
@@ -224,7 +205,7 @@ describe("generic spec-driven encode (defaults, sentinel, drop semantics)", () =
     });
 
     it("fills a ghg disclosure's scope from its spec default", () => {
-        const agreement = build(cf({ ghgStandards: ["figaro-ghg-iso-14064"] }));
-        expect(getSection(agreement, "figaro-ghg-iso-14064")?.data).toEqual({ scope: 1 });
+        const agreement = build(cf({ ghgStandard: "ISO 14064" }));
+        expect(getSection(agreement, "figaro-ghg")?.data).toEqual({ standard: "ISO 14064", scope: 1 });
     });
 });

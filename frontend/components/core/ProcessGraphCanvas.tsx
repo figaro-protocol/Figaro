@@ -40,7 +40,9 @@ import { formatToken } from "@/lib/shared/utils";
 import { Card } from "@/components/ui/Card";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
 import { deriveOrderDepths, deriveOrderTopology } from "@/lib/core/orderTopology";
-import { summarizeAgreement, type AgreementSummary } from "@/lib/core/orderAgreement";
+import { sectionByField, sectionsByField } from "@/lib/core/orderAgreement";
+import type { Agreement } from "@/lib/core/agreement";
+import { describeClause, type ClauseDescription } from "@/lib/shared/clauseSpecSource";
 import {
     useOrderDisclosureTasks,
     formatActualGrams,
@@ -94,7 +96,10 @@ type OrderNodeData = Order & {
     isBuyer: boolean;
     isSeller: boolean;
     activeLens: GraphLens;
-    agreementSummary: AgreementSummary | null;
+    /** The order's signed agreement, hydrated from cache. Lens overlays read
+     *  clause sections off it BY FIELD NAME and render them via `describeClause`
+     *  — no clause id is ever named here. */
+    agreement: Agreement | null;
     /** 1-based position in the design's order list — the single human-facing
      *  order number, shown in designer mode and matched by the drawer's
      *  header, node tabs, and add-parent picker. */
@@ -154,17 +159,24 @@ function OrderDisclosureSection({ orderId, activeLens }: { orderId: string; acti
 const OrderNode = ({ data }: { data: OrderNodeData }) => {
     const isLens = (group: GraphLens) => data.activeLens === group;
     const isDefault = data.activeLens === "default";
-    const geo = data.agreementSummary?.geo;
-    const ghg = data.agreementSummary?.ghg;
-    const massLabel = typeof geo?.mass === "number" ? `${geo.mass} g` : geo?.mass;
-    const volumeLabel = typeof geo?.volume === "number" ? `${geo.volume} mL` : geo?.volume;
-    // Single canonical method enum derived from the first offered modality +
-    // coordination. When the node offers multiple, downstream surfaces (cart,
-    // edge pill) collapse to the first.
-    const canonicalMethod = data.agreementSummary?.method ?? undefined;
-    const handoffMode = data.agreementSummary?.handoff?.points?.[0];
-    const ghgStandard = typeof ghg?.standard === "string" ? ghg.standard : undefined;
-    const ghgScope = typeof ghg?.scope === "number" || typeof ghg?.scope === "string" ? ghg.scope : undefined;
+    const agreement = data.agreement;
+    // Geo lens — the physical/logistics clauses, each found BY FIELD NAME and
+    // labelled by its own spec via `describeClause` (no clause id named here).
+    // The geo-coordinate clause, the class-of-service clause, and the hand-off
+    // clause are independent now; whichever the order actually carries renders.
+    const geoSection = agreement
+        ? (sectionByField(agreement, "originGeohash") ?? sectionByField(agreement, "massGrams"))
+        : undefined;
+    const classSection = agreement ? sectionByField(agreement, "classOfService") : undefined;
+    const handoffSection = agreement ? sectionByField(agreement, "handoff") : undefined;
+    const geoDescriptions: ClauseDescription[] = [geoSection, classSection, handoffSection]
+        .filter((s): s is NonNullable<typeof s> => Boolean(s))
+        .map((s) => describeClause(s.clause, s.data));
+    const geoRows = geoDescriptions.flatMap((d) => d.fields);
+    // GHG lens — one disclosure section per accounting standard (each declares
+    // a `scope` field); render every section's fields via `describeClause`.
+    const ghgRows = (agreement ? sectionsByField(agreement, "scope") : [])
+        .flatMap((s) => describeClause(s.clause, s.data).fields);
 
     const buyerShort = data.buyer ? truncateHex(data.buyer) : "—";
     const sellerShort = data.seller ? truncateHex(data.seller) : "—";
@@ -301,46 +313,35 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
                     </div>
                 )}
 
-                {/* Geo lens — agreement-derived clauses */}
-                {isLens("geo") && !isEmptyHex(data.agreementHash) && (() => {
-                    const hasStructured = geo?.origin || geo?.destination || massLabel || volumeLabel || geo?.classOfService || canonicalMethod || handoffMode;
-                    return (
-                        <div className={`pt-1 border-t border-neutral-100 ${LENS_HIGHLIGHT.geo} px-1 py-0.5`}>
-                            {hasStructured ? (
-                                <>
-                                    {geo?.origin && (
-                                        <div className="flex justify-between" data-testid={`order-location-${data.id}`}>
-                                            <span>Origin</span><span className="font-mono">{geo.origin}</span>
-                                        </div>
-                                    )}
-                                    {geo?.destination && (
-                                        <div className="flex justify-between"><span>Dest</span><span className="font-mono">{geo.destination}</span></div>
-                                    )}
-                                    {massLabel && <div className="flex justify-between"><span>Mass</span><span className="font-mono">{massLabel}</span></div>}
-                                    {volumeLabel && <div className="flex justify-between"><span>Vol</span><span className="font-mono">{volumeLabel}</span></div>}
-                                    {geo?.classOfService && <div className="flex justify-between"><span>Class</span><span className="font-mono">{geo.classOfService}</span></div>}
-                                    {canonicalMethod && <div className="flex justify-between"><span>Fulfil</span><span className="font-mono">{canonicalMethod}</span></div>}
-                                    {handoffMode && <div className="flex justify-between"><span>Handoff</span><span className="font-mono">{handoffMode}</span></div>}
-                                </>
-                            ) : (
-                                <div className="flex justify-between" data-testid={`order-location-${data.id}`}>
-                                    <span>Agreement</span>
-                                    <span className="font-mono">{truncateHex(data.agreementHash, { head: 8 })}</span>
+                {/* Geo lens — every physical/logistics clause the order carries,
+                    rendered generically from each clause's own spec labels. */}
+                {isLens("geo") && !isEmptyHex(data.agreementHash) && (
+                    <div className={`pt-1 border-t border-neutral-100 ${LENS_HIGHLIGHT.geo} px-1 py-0.5`}>
+                        {geoRows.length > 0 ? (
+                            geoRows.map((f) => (
+                                <div key={f.name} className="flex justify-between">
+                                    <span>{f.label}</span>
+                                    <span className="font-mono">{f.values.join(", ")}</span>
                                 </div>
-                            )}
-                        </div>
-                    );
-                })()}
+                            ))
+                        ) : (
+                            <div className="flex justify-between" data-testid={`order-location-${data.id}`}>
+                                <span>Agreement</span>
+                                <span className="font-mono">{truncateHex(data.agreementHash, { head: 8 })}</span>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* GHG lens — disclosure detail (process-level + per-order) */}
                 {isLens("ghg") && (
                     <div className={`pt-1 border-t border-neutral-100 ${LENS_HIGHLIGHT.ghg} px-1 py-0.5`}>
-                        {ghgStandard && (
-                            <div className="flex justify-between"><span className="text-teal-700">Standard</span><span className="text-gray-500">{ghgStandard}</span></div>
-                        )}
-                        {ghgScope !== undefined && (
-                            <div className="flex justify-between"><span className="text-teal-700">Scope</span><span className="text-gray-500">{String(ghgScope)}</span></div>
-                        )}
+                        {ghgRows.map((f) => (
+                            <div key={f.name} className="flex justify-between">
+                                <span className="text-teal-700">{f.label}</span>
+                                <span className="text-gray-500">{f.values.join(", ")}</span>
+                            </div>
+                        ))}
                         <OrderDisclosureSection orderId={data.id} activeLens={data.activeLens} />
                     </div>
                 )}
@@ -536,9 +537,8 @@ export function ProcessGraphCanvas({
             const isBuyer = walletAddress ? hexEqual(walletAddress, order.buyer) : false;
             const isSeller = walletAddress ? hexEqual(walletAddress, order.seller) : false;
 
-            const agreementSummary = summarizeAgreement(
-                (order.agreementHash ? agreements.get(order.agreementHash) : undefined) ?? null,
-            );
+            const agreement =
+                (order.agreementHash ? agreements.get(order.agreementHash) : undefined) ?? null;
             const knownParents = (topology.get(order.id)?.parentOrderIds ?? []).filter(
                 (pid) => pid !== order.id && knownOrderIds.has(pid),
             );
@@ -555,7 +555,7 @@ export function ProcessGraphCanvas({
                 id: order.id,
                 type: "order",
                 position: posMap.get(order.id) ?? { x: 0, y: 0 },
-                data: { ...order, decimals, isBuyer, isSeller, activeLens, agreementSummary, orderNumber: orderIndex + 1, onDelete: onDeleteNode, isRoot, designerMode, onAddSubOrderClick: onAddSubOrder, onAddParentClick: onAddParent, candidateParents } satisfies OrderNodeData,
+                data: { ...order, decimals, isBuyer, isSeller, activeLens, agreement, orderNumber: orderIndex + 1, onDelete: onDeleteNode, isRoot, designerMode, onAddSubOrderClick: onAddSubOrder, onAddParentClick: onAddParent, candidateParents } satisfies OrderNodeData,
             };
         });
 

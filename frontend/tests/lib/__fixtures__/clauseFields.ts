@@ -12,6 +12,8 @@ import type { ClauseFields } from "@/lib/core/encoding";
 // open set at runtime; lib/ finds sections by spec-declared fields). These
 // literals mirror the canonical Layer-A example specs.
 const GEO_CLAUSE_KEY = "figaro-geo";
+const CLASS_OF_SERVICE_CLAUSE_KEY = "figaro-class-of-service";
+const GHG_CLAUSE_KEY = "figaro-ghg";
 const MODALITIES_CLAUSE_KEY = "figaro-modalities";
 const COORDINATION_CLAUSE_KEY = "figaro-coordination";
 const HANDOFF_CLAUSE_KEY = "figaro-handoff";
@@ -30,6 +32,8 @@ export interface FlatClauseFields {
     destinationGeohash?: string;
     massGrams?: number;
     volumeMl?: number;
+    /** Class of service — its own clause now (figaro-class-of-service), no
+     *  longer a geo field. Enum S/E/F/C. */
     classOfService?: string;
     /** Single-select modality (figaro-modalities). */
     modality?: string;
@@ -37,8 +41,11 @@ export interface FlatClauseFields {
     coordination?: string;
     handoffPoints?: string[];
     proximityBands?: string[];
-    /** clauseIds of the selected GHG disclosure clauses. */
-    ghgStandards?: string[];
+    /** GHG accounting methodology — free-form (figaro-ghg.standard). The five
+     *  standard-named GHG clauses consolidated into this one clause. */
+    ghgStandard?: string;
+    /** GHG scope 1–3 (figaro-ghg.scope). Omit to take the spec default (1). */
+    ghgScope?: number;
     merchantProcessIncluded?: boolean;
     courierProcessIncluded?: boolean;
     klerosCourt?: string;
@@ -57,8 +64,12 @@ export function cf(flat: FlatClauseFields): ClauseFields {
     if (flat.destinationGeohash !== undefined) geo.destinationGeohash = flat.destinationGeohash;
     if (flat.massGrams !== undefined) geo.massGrams = flat.massGrams;
     if (flat.volumeMl !== undefined) geo.volumeMl = flat.volumeMl;
-    if (flat.classOfService !== undefined) geo.classOfService = flat.classOfService;
     if (Object.keys(geo).length > 0) out[GEO_CLAUSE_KEY] = geo;
+
+    // Class of service is its own clause now (split out of geo).
+    if (flat.classOfService !== undefined) {
+        out[CLASS_OF_SERVICE_CLAUSE_KEY] = { classOfService: flat.classOfService };
+    }
 
     if (flat.modality) out[MODALITIES_CLAUSE_KEY] = { modality: flat.modality };
     if (flat.coordination) out[COORDINATION_CLAUSE_KEY] = { coordination: flat.coordination };
@@ -66,7 +77,12 @@ export function cf(flat: FlatClauseFields): ClauseFields {
     // hand-off is its own clause now (figaro-handoff).
     if (flat.handoffPoints) out[HANDOFF_CLAUSE_KEY] = { handoff: flat.handoffPoints };
     if (flat.proximityBands) out[PROXIMITY_POLICY_CLAUSE_KEY] = { bands: flat.proximityBands };
-    for (const clauseId of flat.ghgStandards ?? []) out[clauseId] = {};
+    if (flat.ghgStandard !== undefined) {
+        out[GHG_CLAUSE_KEY] = {
+            standard: flat.ghgStandard,
+            ...(flat.ghgScope !== undefined ? { scope: flat.ghgScope } : {}),
+        };
+    }
     if (flat.merchantProcessIncluded) out[MERCHANT_PROCESS_CLAUSE_KEY] = {};
     if (flat.courierProcessIncluded) out[COURIER_PROCESS_CLAUSE_KEY] = {};
 

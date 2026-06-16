@@ -40,19 +40,17 @@ describe("parseCatalogueCsv", () => {
         expect(items[0].name).toBe('He said "hi"');
     });
 
-    it("parses optional numeric + boolean + class fields", () => {
-        const csv = "name,price,massGrams,volumeMl,available,classOfService\nA,1,250,500,true,fragile\nB,2,,,false,";
+    it("parses optional numeric + boolean fields", () => {
+        const csv = "name,price,massGrams,volumeMl,available\nA,1,250,500,true\nB,2,,,false";
         const { items, errors } = parseCatalogueCsv(csv);
         expect(errors).toEqual([]);
         expect(items[0]).toMatchObject({
             massGrams: 250,
             volumeMl: 500,
             available: true,
-            classOfService: "fragile",
         });
         expect(items[1].available).toBe(false);
         expect(items[1].massGrams).toBeUndefined();
-        expect(items[1].classOfService).toBeUndefined();
     });
 
     it("flags rows missing required fields and skips them", () => {

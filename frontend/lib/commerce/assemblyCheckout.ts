@@ -218,8 +218,7 @@ export async function executeAssemblyCheckout(
         const subPayment = selection
             ? parseToken(selection.price, tokenDecimals)
             : resolveSubOrderPayment({
-                node, seller: subSeller, leadAddress: leadSellerAddress,
-                sellerCatalogues, tokenDecimals,
+                node, seller: subSeller, sellerCatalogues, tokenDecimals,
             });
         cumulativeValue += subPayment;
         const subPrepared = await prepareOrderCommitment({

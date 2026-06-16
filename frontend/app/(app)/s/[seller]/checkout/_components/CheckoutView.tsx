@@ -24,7 +24,6 @@ import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { Button } from "@/components/ui/Button";
 import { useCommerce, useCheckout } from "@/lib/commerce";
 import { useCartStore } from "@/lib/commerce/cartStore";
-import type { CanonicalMethod } from "@/lib/core/orderAgreement";
 import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
 import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/commerce/assemblySubOrderPlan";
 import { executeAssemblyCheckout } from "@/lib/commerce/assemblyCheckout";
@@ -40,7 +39,7 @@ import { hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatToken, parseToken } from "@/lib/shared/utils";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
-import { useSellerBoundAssemblies } from "@/lib/mechanisms/useAssemblyRegistry";
+import { useSellerBoundAssemblies, extractRootModality } from "@/lib/mechanisms/useAssemblyRegistry";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 
@@ -106,40 +105,37 @@ export function CheckoutView({ sellerAddress }: Props) {
         order: { step: commitStep, error: commitError, payload },
     } = useCheckout(currency);
 
-    const { items, method, setMethod, deliveryMaxPrice, setDeliveryMaxPrice } = useCartStore();
+    const { items } = useCartStore();
     const { openConnectModal } = useConnectModal();
 
     const { assemblies: boundAssemblies } = useSellerBoundAssemblies(sellerAddressTyped);
 
-    // The buyer's method options ARE the seller's bound assemblies — each
-    // assembly that carries a modality is one option, labelled by the
-    // assembly's own name. The modality string comes from the assembly; the
-    // checkout hardcodes no taxonomy.
-    const methodOptions: { method: CanonicalMethod; name: string }[] = useMemo(
-        () => boundAssemblies.flatMap((a) =>
-            a.canonicalMethod
-                ? [{ method: a.canonicalMethod as CanonicalMethod, name: a.name }]
-                : [],
-        ),
+    // The buyer's options ARE the seller's bound assemblies — each is one
+    // option, labelled by the assembly's own name and keyed by its slug.
+    // Coordination variants (seller-assigned / buyer-assigned / dutch-auction)
+    // are DISTINCT assemblies, so picking the assembly picks the coordination;
+    // the checkout hardcodes no taxonomy.
+    const assemblyOptions: { slug: string; name: string }[] = useMemo(
+        () => boundAssemblies.map((a) => ({ slug: a.slug, name: a.name })),
         [boundAssemblies],
     );
+    // The buyer's chosen assembly slug, when the seller offers more than one.
+    const [selectedSlug, setSelectedSlug] = useState<string | undefined>(undefined);
+    // Auction start price for dutch-auction coordination — checkout-phase
+    // input, like the cart line items.
+    const [auctionStartPrice, setAuctionStartPrice] = useState("");
 
-    // If the cart's persisted choice isn't offered by this seller, clear it.
-    // A SINGLE bound option auto-commits — there is nothing to choose, and a
-    // one-option dropdown is noise; the static method line shows it instead.
+    // Clear a stale choice the seller no longer offers; auto-select the sole
+    // option (a one-option dropdown is noise — the static line shows it).
     useEffect(() => {
-        if (
-            method
-            && methodOptions.length > 0
-            && !methodOptions.some((o) => o.method === method)
-        ) {
-            setMethod(undefined);
+        if (selectedSlug && !assemblyOptions.some((o) => o.slug === selectedSlug)) {
+            setSelectedSlug(undefined);
         }
-        if (methodOptions.length === 1 && method !== methodOptions[0].method) {
-            setMethod(methodOptions[0].method);
+        if (assemblyOptions.length === 1 && selectedSlug !== assemblyOptions[0].slug) {
+            setSelectedSlug(assemblyOptions[0].slug);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [methodOptions]);
+    }, [assemblyOptions]);
 
     const balance = tokenBalance ?? 0n;
     const isApproving = isApprovePending || isApproveConfirming;
@@ -148,7 +144,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // The buyer's checkout-time counterparty choice for a sub-order the
     // adopting seller's profile leaves unbound (buyer-assigned coordination).
     const [sellerSelection, setSellerSelection] = useState<SellerSelection | null>(null);
-    useEffect(() => { setSellerSelection(null); }, [method]);
+    useEffect(() => { setSellerSelection(null); }, [selectedSlug]);
 
     // Auto-chain: when approval confirms, proceed to commit signing.
     useEffect(() => {
@@ -192,7 +188,13 @@ export function CheckoutView({ sellerAddress }: Props) {
     // Every order commits against a published assembly — there is no fallback.
     const pickedAssembly = boundAssemblies.length === 1
         ? boundAssemblies[0]
-        : boundAssemblies.find((a) => a.canonicalMethod === method);
+        : boundAssemblies.find((a) => a.slug === selectedSlug);
+    // The picked assembly's coordination posture, read from its root order BY
+    // FIELD NAME (never a clause id). buyer-assigned / dutch-auction / undefined
+    // (seller-assigned or no delivery) decide which checkout-phase input shows.
+    const coordination = pickedAssembly
+        ? extractRootModality(pickedAssembly.assemblyTemplate).coordination
+        : undefined;
     // Sub-orders the adopting seller's profile leaves UNBOUND take the buyer's
     // checkout-time choice (buyer-assigned coordination); the picker below
     // surfaces it. Bound sub-orders keep the profile's designation.
@@ -205,19 +207,18 @@ export function CheckoutView({ sellerAddress }: Props) {
         }
     })();
     const buyerChoosesCounterparty =
-        method === "deliver:buyer-assigned" && unboundSubOrders.length > 0;
+        coordination === "buyer-assigned" && unboundSubOrders.length > 0;
     // Dutch-auction coordination: the unbound sub-order is deferred — the
     // buyer names the descending auction's start price instead of a seller.
     const buyerOpensAuction =
-        method === "deliver:dutch-auction" && unboundSubOrders.length > 0;
+        coordination === "dutch-auction" && unboundSubOrders.length > 0;
     const auctionStartPriceValid = (() => {
-        try { return parseToken(deliveryMaxPrice || "0", tokenDecimals) > 0n; } catch { return false; }
+        try { return parseToken(auctionStartPrice || "0", tokenDecimals) > 0n; } catch { return false; }
     })();
-    // Ready to place when a profile-bound assembly is resolved, its method
-    // (only if it composes one) is chosen, and any buyer-chosen counterparty
-    // selection (or auction start price) is complete.
+    // Ready to place when a profile-bound assembly is resolved (chosen, when the
+    // seller offers more than one) and any buyer-chosen counterparty selection
+    // (or auction start price) is complete.
     const orderReady = !!pickedAssembly
-        && (!pickedAssembly.canonicalMethod || !!method)
         && (!buyerChoosesCounterparty || !!sellerSelection)
         && (!buyerOpensAuction || auctionStartPriceValid);
     // The root order carries the design-time clauses the buyer is bonding to.
@@ -254,12 +255,12 @@ export function CheckoutView({ sellerAddress }: Props) {
                 if (seller) {
                     return {
                         name: nameOf(seller),
-                        payment: resolveSubOrderPayment({ node, seller, leadAddress: lead, sellerCatalogues, tokenDecimals }),
+                        payment: resolveSubOrderPayment({ node, seller, sellerCatalogues, tokenDecimals }),
                     };
                 }
                 // Unbound node under dutch coordination: deferred to the
                 // auction — its price is set by the claim, not the commit.
-                if (method === "deliver:dutch-auction") {
+                if (buyerOpensAuction) {
                     return { name: "(dutch auction)", payment: 0n };
                 }
                 // Unbound node: the buyer's checkout-time choice fills it — the
@@ -366,7 +367,6 @@ export function CheckoutView({ sellerAddress }: Props) {
                         unitPrice: parseToken(item.price, tokenDecimals).toString(),
                         massGrams: item.massGrams,
                         volumeMl: item.volumeMl,
-                        classOfService: item.classOfService,
                     })),
                     assembly: pickedAssembly,
                     sellerCatalogues,
@@ -380,7 +380,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                     subOrderAuctions: buyerOpensAuction
                         ? Object.fromEntries(unboundSubOrders.map(({ node }) => [
                             node.id,
-                            { startPrice: deliveryMaxPrice },
+                            { startPrice: auctionStartPrice },
                         ]))
                         : undefined,
                 },
@@ -569,19 +569,19 @@ export function CheckoutView({ sellerAddress }: Props) {
                             seller offers more than one. The options + labels come
                             from the assemblies themselves; the checkout hardcodes
                             no modality. */}
-                        {methodOptions.length === 1 && (
+                        {assemblyOptions.length === 1 && (
                             <div>
                                 <p className="text-xs font-semibold text-neutral-500 mb-1">Method</p>
                                 <p
                                     className="text-sm text-black"
                                     data-testid="method-static"
-                                    data-method={methodOptions[0].method}
+                                    data-method={assemblyOptions[0].slug}
                                 >
-                                    {methodOptions[0].name}
+                                    {assemblyOptions[0].name}
                                 </p>
                             </div>
                         )}
-                        {methodOptions.length > 1 && (
+                        {assemblyOptions.length > 1 && (
                             <div>
                                 <label
                                     htmlFor="method-select"
@@ -591,13 +591,9 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 </label>
                                 <select
                                     id="method-select"
-                                    value={method ?? ""}
+                                    value={selectedSlug ?? ""}
                                     onChange={(e) =>
-                                        setMethod(
-                                            e.target.value === ""
-                                                ? undefined
-                                                : (e.target.value as CanonicalMethod),
-                                        )
+                                        setSelectedSlug(e.target.value === "" ? undefined : e.target.value)
                                     }
                                     className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
                                     data-testid="select-method"
@@ -605,8 +601,8 @@ export function CheckoutView({ sellerAddress }: Props) {
                                     <option value="" data-testid="option-method-unset">
                                         Select one
                                     </option>
-                                    {methodOptions.map((opt) => (
-                                        <option key={opt.method} value={opt.method} data-testid={`option-method-${opt.method}`}>
+                                    {assemblyOptions.map((opt) => (
+                                        <option key={opt.slug} value={opt.slug} data-testid={`option-method-${opt.slug}`}>
                                             {opt.name}
                                         </option>
                                     ))}
@@ -620,9 +616,8 @@ export function CheckoutView({ sellerAddress }: Props) {
                             catalogue. Checkout-phase data, like the cart. */}
                         {buyerChoosesCounterparty && (
                             <SellerCataloguePicker
-                                mode={method!}
+                                mode="buyer-assigned"
                                 partnerAddresses={[]}
-                                sellerAddress={sellerCatalogue.address}
                                 tokenSymbol={tokenSymbol}
                                 onSelect={setSellerSelection}
                             />
@@ -643,8 +638,8 @@ export function CheckoutView({ sellerAddress }: Props) {
                                     id="delivery-max-price"
                                     type="text"
                                     inputMode="decimal"
-                                    value={deliveryMaxPrice}
-                                    onChange={(e) => setDeliveryMaxPrice(e.target.value)}
+                                    value={auctionStartPrice}
+                                    onChange={(e) => setAuctionStartPrice(e.target.value)}
                                     placeholder="Descending start price"
                                     data-testid="input-delivery-max-price"
                                     className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"

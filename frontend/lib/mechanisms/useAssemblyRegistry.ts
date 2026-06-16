@@ -471,7 +471,7 @@ export interface SellerBoundAssemblies {
  *  assemblyTemplate's root order agreement. The root order is the first order in
  *  the topology — if a consumer needs a sub-order's modality, they walk the
  *  orders array themselves. */
-function extractRootModality(
+export function extractRootModality(
     template: AssemblyTemplate,
 ): { modality?: string; coordination?: string } {
     const rootOrder =

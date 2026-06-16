@@ -48,9 +48,10 @@ export interface EmissionsDocument extends ExtractedDocument {
      *  disclosure framework — the measurement attestations may still
      *  exist but they're untyped. */
     disclosed: boolean;
-    /** Readable clauseId of the chosen disclosure standard. */
+    /** Readable clauseId of the disclosure clause (figaro-ghg). */
     standardClauseKey?: string;
-    /** Human-readable label — the registered spec's title. */
+    /** The committed accounting methodology — the disclosure's free-form
+     *  `standard` field (e.g. "ISO 14064"). */
     standardLabel?: string;
     /** Committed scope: 0 (unset) | 1 (Scope 1) | 2 (Scope 2) | 3 (Scope 3). */
     scope?: number;
@@ -76,14 +77,15 @@ export function extractEmissions(
     attestations: readonly AttestationRecord[],
 ): EmissionsDocument {
     const disclosure = findGhgDisclosureSection(agreement);
-    const data = disclosure?.data as { scope?: unknown } | undefined;
+    const data = disclosure?.data as { scope?: unknown; standard?: unknown } | undefined;
     const scope = typeof data?.scope === "number" && data.scope >= 0 && data.scope <= 3
         ? data.scope
         : undefined;
     const standardClauseKey = disclosure?.clause;
-    const standardLabel = standardClauseKey
-        ? getClauseSpec(standardClauseKey)?.title
-        : undefined;
+    // The accounting methodology is the disclosure's free-form `standard` field
+    // (the GHG clauses consolidated into one figaro-ghg with a methodology
+    // field) — not the clause's spec title, which is the generic clause name.
+    const standardLabel = typeof data?.standard === "string" ? data.standard : undefined;
 
     const measurements: AttestationReceipt[] = [];
     for (const att of attestations) {

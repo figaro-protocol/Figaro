@@ -8,17 +8,13 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { IpfsImageUpload } from "@/components/sellers/IpfsImageUpload";
 import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
 import { parseCatalogueCsv } from "@/lib/seller/parseCatalogueCsv";
 import type {
-    CatalogueClassOfService,
     CatalogueItemMetadata,
-    CataloguePricingPolicy,
-    NegotiatedPriceEntry,
     UnitSystem,
 } from "@/lib/seller/sellerCatalogueMetadata";
 import {
@@ -30,19 +26,6 @@ import {
     volumeUnitLabel,
 } from "@/lib/seller/unitConversion";
 import { hexEqual } from "@/lib/shared/evm";
-
-const CLASS_OF_SERVICE_OPTIONS: { value: CatalogueClassOfService; label: string }[] = [
-    { value: "standard", label: "Standard" },
-    { value: "express", label: "Express" },
-    { value: "fragile", label: "Fragile" },
-    { value: "cold-chain", label: "Cold chain" },
-];
-
-const PRICING_POLICY_OPTIONS: { value: CataloguePricingPolicy; label: string }[] = [
-    { value: "fixed", label: "Fixed price" },
-    { value: "buyer-set", label: "Buyer sets the price" },
-    { value: "dutch-auction", label: "Dutch auction" },
-];
 
 /**
  * Step 3 of the onboarding wizard. Collects the catalogue items —
@@ -73,19 +56,6 @@ interface FormItem {
     mass: string;
     /** Editor input — in the catalogue's `unitSystem`. Parsed to metric at save. */
     volume: string;
-    /** Empty string = "no class set" (defaults to "standard" at commit). */
-    classOfService: CatalogueClassOfService | "";
-    /** How the public `price` is exercised at checkout. */
-    pricingPolicy: CataloguePricingPolicy;
-    /** Per-counterparty rate card. `uid` is editor-only — `toItem` strips it. */
-    negotiatedPrices: FormNegotiatedPrice[];
-}
-
-/** A negotiated-price row in the editor — a transient `uid` keys the row. */
-interface FormNegotiatedPrice {
-    uid: string;
-    counterparty: string;
-    price: string;
 }
 
 function uid(): string {
@@ -103,9 +73,6 @@ function emptyItem(): FormItem {
         available: true,
         mass: "",
         volume: "",
-        classOfService: "",
-        pricingPolicy: "fixed",
-        negotiatedPrices: [],
     };
 }
 
@@ -120,20 +87,10 @@ function fromItem(item: CatalogueItemMetadata, unitSystem: UnitSystem): FormItem
         available: item.available,
         mass: gramsToInput(item.massGrams, unitSystem),
         volume: mlToInput(item.volumeMl, unitSystem),
-        classOfService: item.classOfService ?? "",
-        pricingPolicy: item.pricingPolicy ?? "fixed",
-        negotiatedPrices: (item.negotiatedPrices ?? []).map((n) => ({
-            uid: uid(),
-            counterparty: n.counterparty,
-            price: n.price,
-        })),
     };
 }
 
 function toItem(form: FormItem, unitSystem: UnitSystem): CatalogueItemMetadata {
-    const negotiatedPrices: NegotiatedPriceEntry[] = form.negotiatedPrices
-        .filter((n) => n.counterparty.trim() && n.price.trim())
-        .map((n) => ({ counterparty: n.counterparty.trim() as `0x${string}`, price: n.price.trim() }));
     return {
         id: form.id,
         name: form.name.trim(),
@@ -144,9 +101,6 @@ function toItem(form: FormItem, unitSystem: UnitSystem): CatalogueItemMetadata {
         available: form.available,
         massGrams: parseInputToGrams(form.mass, unitSystem),
         volumeMl: parseInputToMl(form.volume, unitSystem),
-        classOfService: form.classOfService || undefined,
-        pricingPolicy: form.pricingPolicy,
-        negotiatedPrices: negotiatedPrices.length > 0 ? negotiatedPrices : undefined,
     };
 }
 
@@ -411,7 +365,7 @@ export function OnboardingCatalogueForm({
                             {importErrors.map((e) => (<li key={e}>{e}</li>))}
                         </ul>
                         <p className="text-ink-faint">
-                            Expected header columns: <code>name, price, description, category, image, available, massGrams, volumeMl, classOfService</code> (case-insensitive, any order; <code>name</code> + <code>price</code> required).
+                            Expected header columns: <code>name, price, description, category, image, available, massGrams, volumeMl</code> (case-insensitive, any order; <code>name</code> + <code>price</code> required).
                         </p>
                     </div>
                 )}
@@ -507,33 +461,6 @@ function ItemRow({ item, index, priceSymbol, unitSystem, onChange, onRemove }: I
                 </FormField>
             </div>
 
-            <FormField label="Pricing" inputId={`${idPrefix}-pricing-policy`}>
-                <Select
-                    id={`${idPrefix}-pricing-policy`}
-                    value={item.pricingPolicy}
-                    onChange={(e) => onChange("pricingPolicy", e.target.value as CataloguePricingPolicy)}
-                    data-testid={`${idPrefix}-pricing-policy`}
-                >
-                    {PRICING_POLICY_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                </Select>
-            </FormField>
-            {item.pricingPolicy !== "fixed" && (
-                <p className="text-xs text-ink-faint">
-                    {item.pricingPolicy === "buyer-set"
-                        ? "The price above is a reference — the buyer enters their own at checkout."
-                        : "The price above is the Dutch auction's starting price."}
-                </p>
-            )}
-
-            <NegotiatedPriceEditor
-                entries={item.negotiatedPrices}
-                priceSymbol={priceSymbol}
-                idPrefix={idPrefix}
-                onChange={(next) => onChange("negotiatedPrices", next)}
-            />
-
             <FormField label="Image">
                 <IpfsImageUpload
                     value={item.image}
@@ -542,7 +469,7 @@ function ItemRow({ item, index, priceSymbol, unitSystem, onChange, onRemove }: I
                 />
             </FormField>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
                 <FormField label={`Mass (${massUnitLabel(unitSystem)})`} inputId={`${idPrefix}-mass`}>
                     <Input
                         id={`${idPrefix}-mass`}
@@ -565,19 +492,6 @@ function ItemRow({ item, index, priceSymbol, unitSystem, onChange, onRemove }: I
                         data-testid={`${idPrefix}-volume`}
                     />
                 </FormField>
-                <FormField label="Class" inputId={`${idPrefix}-class`}>
-                    <Select
-                        id={`${idPrefix}-class`}
-                        value={item.classOfService}
-                        onChange={(e) => onChange("classOfService", e.target.value as FormItem["classOfService"])}
-                        data-testid={`${idPrefix}-class`}
-                    >
-                        <option value="">Default (standard)</option>
-                        {CLASS_OF_SERVICE_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                    </Select>
-                </FormField>
             </div>
 
             <label className="flex items-center gap-2 text-sm text-ink-body cursor-pointer">
@@ -589,78 +503,5 @@ function ItemRow({ item, index, priceSymbol, unitSystem, onChange, onRemove }: I
                 Available now
             </label>
         </Card>
-    );
-}
-
-interface NegotiatedPriceEditorProps {
-    entries: FormNegotiatedPrice[];
-    priceSymbol: string;
-    idPrefix: string;
-    onChange: (next: FormNegotiatedPrice[]) => void;
-}
-
-/**
- * Per-counterparty rate-card editor — rows of {counterparty address, price}.
- * A negotiated entry overrides the item's public price + policy for one
- * address (e.g. a courier's rate for a specific merchant it serves).
- */
-function NegotiatedPriceEditor({ entries, priceSymbol, idPrefix, onChange }: NegotiatedPriceEditorProps) {
-    function updateEntry(rowUid: string, patch: Partial<FormNegotiatedPrice>) {
-        onChange(entries.map((e) => (e.uid === rowUid ? { ...e, ...patch } : e)));
-    }
-    function addEntry() {
-        onChange([...entries, { uid: uid(), counterparty: "", price: "" }]);
-    }
-    function removeEntry(rowUid: string) {
-        onChange(entries.filter((e) => e.uid !== rowUid));
-    }
-    return (
-        <FormField label="Negotiated prices — per-counterparty rate card">
-            <div className="space-y-2">
-                <p className="text-xs text-ink-faint">
-                    Optional. A negotiated price overrides the public price and policy
-                    for one counterparty address — e.g. a courier&apos;s rate for a
-                    specific merchant it serves.
-                </p>
-                {entries.map((entry, i) => (
-                    <div key={entry.uid} className="flex items-center gap-2">
-                        <div className="flex-1">
-                            <Input
-                                type="text"
-                                placeholder="Counterparty address (0x…)"
-                                value={entry.counterparty}
-                                onChange={(e) => updateEntry(entry.uid, { counterparty: e.target.value })}
-                                data-testid={`${idPrefix}-negotiated-${i}-address`}
-                            />
-                        </div>
-                        <div className="w-32">
-                            <Input
-                                type="text"
-                                inputMode="decimal"
-                                placeholder={`Price${priceSymbol ? ` (${priceSymbol})` : ""}`}
-                                value={entry.price}
-                                onChange={(e) => updateEntry(entry.uid, { price: e.target.value })}
-                                data-testid={`${idPrefix}-negotiated-${i}-price`}
-                            />
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => removeEntry(entry.uid)}
-                            className="text-xs text-ink-faint hover:text-red-600 transition-colors"
-                        >
-                            Remove
-                        </button>
-                    </div>
-                ))}
-                <button
-                    type="button"
-                    onClick={addEntry}
-                    className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
-                    data-testid={`${idPrefix}-negotiated-add`}
-                >
-                    + Add negotiated price
-                </button>
-            </div>
-        </FormField>
     );
 }

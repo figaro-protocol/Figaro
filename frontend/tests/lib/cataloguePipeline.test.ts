@@ -227,34 +227,3 @@ describe("SellerCatalogueMetadata shape", () => {
         expect(typeof item.available).toBe("boolean");
     });
 });
-
-// ── Class-of-service collapse (multi-item shipment → one geo annotation) ─────
-
-import { collapseClassOfService } from "@/lib/seller/sellerCatalogueMetadata";
-
-describe("collapseClassOfService", () => {
-    it("returns undefined when no item declares a class (the spec default applies)", () => {
-        expect(collapseClassOfService([])).toBeUndefined();
-        expect(collapseClassOfService([undefined, undefined])).toBeUndefined();
-    });
-
-    it("picks the highest-priority class across items", () => {
-        // cold-chain > fragile > express > standard
-        expect(collapseClassOfService(["standard", "express"])).toBe("E");
-        expect(collapseClassOfService(["express", "fragile", "standard"])).toBe("F");
-        expect(collapseClassOfService(["standard", "cold-chain", "fragile"])).toBe("C");
-    });
-
-    it("accepts short codes and long forms interchangeably", () => {
-        expect(collapseClassOfService(["S", "fragile"])).toBe("F");
-        expect(collapseClassOfService(["C", "standard"])).toBe("C");
-    });
-
-    it("ignores undefined items but keeps the declared ones voting", () => {
-        expect(collapseClassOfService([undefined, "express", undefined])).toBe("E");
-    });
-
-    it("throws on an unrecognized class (typed error, not a silent default)", () => {
-        expect(() => collapseClassOfService(["overnight-drone"])).toThrow(TypeError);
-    });
-});

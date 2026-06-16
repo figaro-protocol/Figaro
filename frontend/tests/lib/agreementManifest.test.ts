@@ -38,13 +38,12 @@ const COMMERCE_SECTION: AgreementSection = {
 };
 
 const GEO_SECTION: AgreementSection = {
-    clause: "figaro-geo", version: 2,
+    clause: "figaro-geo", version: 1,
     data: {
         originGeohash: "dr5reg",
         destinationGeohash: "dr5reh",
         massGrams: 1000,
         volumeMl: 5000,
-        classOfService: "S",
     },
 };
 
@@ -122,7 +121,7 @@ describe("computeAgreementHash", () => {
     it("different section data produces different hashes", () => {
         const h1 = computeAgreementHash(makeAgreement({ sections: [GEO_SECTION] }));
         const h2 = computeAgreementHash(makeAgreement({
-            sections: [{ clause: "figaro-geo", version: 2, data: { ...GEO_SECTION.data, originGeohash: "u33dc0" } }],
+            sections: [{ clause: "figaro-geo", version: 1, data: { ...GEO_SECTION.data, originGeohash: "u33dc0" } }],
         }));
         expect(h1).not.toBe(h2);
     });
@@ -293,23 +292,6 @@ describe("section accessors", () => {
         const a = makeAgreement({ sections: [COMMERCE_SECTION, GEO_SECTION] });
         expect(hasSection(a, "figaro-commerce")).toBe(true);
         expect(hasSection(a, "figaro-ghg-iso-14064")).toBe(false);
-    });
-});
-
-// ── sellerCatalogueMetadata utilities (cross-module) ─────────────────────────
-// Clause-support / clause-config helpers were removed when supportedClauses
-// moved off the catalogue (capability declarations live in per-assembly
-// bindings now). The only catalogue-level assertion that still applies is
-// that example items round-trip clauseAttestations.
-
-describe("sellerCatalogueMetadata example", () => {
-    it("example item carries clauseAttestations", async () => {
-        const { SELLER_CATALOGUE_METADATA_EXAMPLE } = await import(
-            "./__fixtures__/sellerMetadata"
-        );
-        const pizza = SELLER_CATALOGUE_METADATA_EXAMPLE.menu.find((i) => i.id === "pizza1");
-        expect(pizza?.clauseAttestations).toBeDefined();
-        expect(pizza?.clauseAttestations?.["figaro-allergen"]).toBeDefined();
     });
 });
 

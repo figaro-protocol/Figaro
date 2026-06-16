@@ -193,9 +193,13 @@ describe('sellerBranding', () => {
 
             const wrapper = screen.getByText('Branded child').parentElement as HTMLDivElement;
 
+            // The module is a plain scoped wrapper now — accentColor/themeClass
+            // theming was retired (branding is logoURI-only). The override path
+            // still renders children without fetching seller metadata; there is
+            // no theme class or accent custom property to assert.
             await waitFor(() => {
-                expect(wrapper.className).toContain('seller-example');
-                expect(wrapper.style.getPropertyValue('--seller-accent')).toBe('#1f6feb');
+                expect(wrapper).not.toBeNull();
+                expect(wrapper.style.getPropertyValue('--seller-accent')).toBe('');
             });
         });
     });

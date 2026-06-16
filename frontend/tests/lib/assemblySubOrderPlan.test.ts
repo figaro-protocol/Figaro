@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
     planSubOrderSellers,
     resolveSubOrderPayment,
-    type AssemblyTemplateOrder,
 } from "@/lib/commerce/assemblySubOrderPlan";
+import type { AssemblyTemplateOrder } from "@/lib/designer/assemblyTemplate";
 import type { BoundAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
 import type { SellerCatalogue } from "@/lib/seller/types";
 
@@ -40,15 +40,14 @@ const assembly = {
 } as unknown as BoundAssembly;
 
 // Every seller — the lead included — prices from its OWN catalogue's component
-// item; contributors carry a rate negotiated for Mercato below their public one.
+// item at the item's published price.
 const catalogues = [
     {
         address: SWIFT,
         name: "Swift Courier",
         menu: [{
             id: "kit-fastening", name: "Fastening", category: "component",
-            price: "0.6", pricingPolicy: "fixed",
-            negotiatedPrices: [{ counterparty: MERCATO, price: "0.5" }], available: true,
+            price: "0.6", available: true,
         }],
     },
     {
@@ -56,8 +55,7 @@ const catalogues = [
         name: "Rosso Kitchen",
         menu: [{
             id: "kit-housing", name: "Housing", category: "component",
-            price: "0.55", pricingPolicy: "fixed",
-            negotiatedPrices: [{ counterparty: MERCATO, price: "0.5" }], available: true,
+            price: "0.55", available: true,
         }],
     },
     {
@@ -65,7 +63,7 @@ const catalogues = [
         name: "Mercato",
         menu: [{
             id: "kit-assemble", name: "Assemble", category: "component",
-            price: "0.25", pricingPolicy: "fixed", available: true,
+            price: "0.25", available: true,
         }],
     },
 ] as unknown as SellerCatalogue[];
@@ -73,7 +71,7 @@ const catalogues = [
 const orderById = (id: string): AssemblyTemplateOrder =>
     assembly.assemblyTemplate.orders.find((o) => o.id === id)!;
 const payArgs = (node: AssemblyTemplateOrder, seller: `0x${string}`) => ({
-    node, seller, leadAddress: MERCATO, sellerCatalogues: catalogues, tokenDecimals: 18,
+    node, seller, sellerCatalogues: catalogues, tokenDecimals: 18,
 });
 
 describe("planSubOrderSellers", () => {
@@ -95,8 +93,8 @@ describe("planSubOrderSellers", () => {
 });
 
 describe("resolveSubOrderPayment", () => {
-    it("prices a contributor node live from its negotiated rate", () => {
-        expect(resolveSubOrderPayment(payArgs(orderById("B"), SWIFT))).toBe(500000000000000000n);
+    it("prices a contributor node live from its published catalogue price", () => {
+        expect(resolveSubOrderPayment(payArgs(orderById("B"), SWIFT))).toBe(600000000000000000n);
     });
 
     it("prices the lead's own node from the lead's own catalogue", () => {
@@ -115,8 +113,8 @@ describe("resolveSubOrderPayment", () => {
             (sum, { node, seller }) => sum + resolveSubOrderPayment(payArgs(node, seller!)),
             rootPayment,
         );
-        // 1 + 0.5 (B/Swift) + 0.5 (C/Rosso) + 0.25 (D/Mercato) = 2.25. A
+        // 1 + 0.6 (B/Swift) + 0.55 (C/Rosso) + 0.25 (D/Mercato) = 2.40. A
         // `bigint + string` regression would concatenate, not sum to this.
-        expect(total).toBe(2250000000000000000n);
+        expect(total).toBe(2400000000000000000n);
     });
 });
