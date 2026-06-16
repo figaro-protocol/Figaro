@@ -54,6 +54,13 @@ COMPUTED_BANNED=(
 DECL_BANNED=(
     'truncateHex~frontend/lib/shared/formatHex.ts~re-declares truncateHex — import from frontend/lib/shared/formatHex.ts'
     'ANVIL_ACCOUNTS~frontend/tests/anvilAccounts.ts~re-declares ANVIL_ACCOUNTS — import from frontend/tests/anvilAccounts.ts'
+    # Consolidated by the lib/ open-world audit (2026-06-16) — re-declaring any
+    # of these is the duplication the audit removed; import the canonical instead.
+    'hexToBytes~frontend/lib/shared/evm.ts~re-declares hexToBytes — import from frontend/lib/shared/evm.ts'
+    'isValidAddress~frontend/lib/shared/evm.ts~re-declares isValidAddress — import from frontend/lib/shared/evm.ts'
+    'addressIntegrity~frontend/lib/shared/evm.ts~re-declares addressIntegrity — import from frontend/lib/shared/evm.ts'
+    'toError~frontend/lib/shared/errors.ts~re-declares toError — import from frontend/lib/shared/errors.ts'
+    'asOptionalNumber~frontend/lib/shared/parseHelpers.ts~re-declares asOptionalNumber — import from frontend/lib/shared/parseHelpers.ts'
 )
 
 violations=0
