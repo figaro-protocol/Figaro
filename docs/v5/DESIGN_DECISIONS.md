@@ -306,7 +306,7 @@ discipline layer, not the protocol layer.
 **The discipline**: A clause author deploys their validator and binds it to
 their clauseId **in a single transaction**. The pattern is established by
 `script/Deploy.s.sol:_deployAndRegisterValidators`, which deploys each of the
-19 reference figaro-* validators inline with its `setValidator` call so no
+16 reference figaro-* validators inline with its `setValidator` call so no
 front-running window exists between deploy and bind. Third-party clause
 authors must follow the same pattern via one of:
 

@@ -51,15 +51,14 @@ fn clause_id_hash(name: &str, version: u64) -> B256 {
     )
 }
 
-/// The 19 runtime-attestable protocol clauses.
+/// The 16 runtime-attestable protocol clauses. The GHG accounting clauses
+/// consolidated into one free-form `figaro-ghg`, class-of-service split out of
+/// geo into its own clause, and geo reset to v1 — see the v1-baseline pass.
 const EMBEDDED_SPECS: &[EmbeddedSpec] = &[
-    embed!("figaro-ghg-protocol", 1),
-    embed!("figaro-ghg-iso-14064", 1),
-    embed!("figaro-ghg-pas-2050", 1),
-    embed!("figaro-ghg-en-16258", 1),
-    embed!("figaro-ghg-custom", 1),
+    embed!("figaro-ghg", 1),
     embed!("figaro-ghg-measurement", 1),
-    embed!("figaro-geo", 2),
+    embed!("figaro-class-of-service", 1),
+    embed!("figaro-geo", 1),
     embed!("figaro-modalities", 1),
     embed!("figaro-coordination", 1),
     embed!("figaro-handoff", 1),
@@ -75,7 +74,7 @@ const EMBEDDED_SPECS: &[EmbeddedSpec] = &[
 ];
 
 /// The canonical spec JSON for a clauseId hash, or `None` if the clauseId
-/// is not one of the 19 runtime-attestable protocol clauses (third-party
+/// is not one of the 16 runtime-attestable protocol clauses (third-party
 /// clauses, `figaro-topology`, etc.).
 pub fn embedded_spec_json(clause_id: &B256) -> Option<&'static str> {
     EMBEDDED_SPECS

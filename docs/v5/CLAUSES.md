@@ -24,9 +24,9 @@ CLAUDE.md keeps the lockstep principle; this file owns the full table, the archi
   plus a generic `encodeContentFromSpec` — bridge between TS objects and
   the ABI bytes expected by the on-chain validator. Each clause's encoder
   is the canonical TS-side declaration of its field-to-position mapping.
-  13 distinct encoder shapes across the 19 runtime-attestable clauses
-  (the 5 GHG sister clauses share one shape). Topology has no encoder —
-  it's a manifest-only clause with no runtime attestation.
+  distinct encoder shapes across the 16 runtime-attestable clauses.
+  Topology has no encoder — it's a manifest-only clause with no runtime
+  attestation.
 
 Frontend wiring: `useClauseValidator(clauseId)` hook + `clauseSpecSource.ts`
 preloads built-in specs and lazy-fetches remote ones.
@@ -87,12 +87,12 @@ Conformance is locked across the prover test crates:
 
 - `prover/clause/tests/conformance.rs` — spec-parse + content-validation
   conformance against `sdk/tests/clauses/validate.test.ts`, every shipped
-  protocol clause's parse, and a check that all 19 embedded canonical
+  protocol clause's parse, and a check that all 16 embedded canonical
   specs parse and resolve by clauseId.
 - `prover/clause/tests/encode_conformance.rs` — per-clause
   canonical-encoder output is byte-for-byte equal to viem's
-  `encodeAbiParameters` output for the same input (covers all 13 distinct
-  encoder shapes across the 19 runtime-attestable clauses). Test vectors
+  `encodeAbiParameters` output for the same input (covers the distinct
+  encoder shapes across the 16 runtime-attestable clauses). Test vectors
   were captured from the TypeScript encoders.
 - `prover/lib/tests/parity.rs` — kernel-integration tests
   (`attest_as_seller_with_valid_content_proof_passes`,
@@ -136,24 +136,21 @@ Lives off-chain as JSON at the `metadataURI` emitted by `ClauseRegistry`
 ship in `sdk/src/clauses/examples/`; the frontend no longer bundles a copy — it
 loads each spec from `ClauseRegistry` → IPFS at runtime.
 
-## The 20 protocol clauses
+## The 17 protocol clauses
 
-19 runtime-attestable clauses (each with a Layer C validator) plus the
+16 runtime-attestable clauses (each with a Layer C validator) plus the
 manifest-only `figaro-topology-v1`.
 
 | clauseId | What it carries | Attestation surface |
 |---|---|---|
 | `figaro-topology-v1` | DAG lineage (parent order hashes) | **Manifest-only** (no runtime validator) |
 | `figaro-commerce-v1` | Currency, payment, line items | Layer A + C |
-| `figaro-geo-v2` | Origin / destination geohash + mass + volume + class of service | Layer A + C |
+| `figaro-geo-v1` | Origin / destination geohash + mass + volume | Layer A + C |
+| `figaro-class-of-service-v1` | Class of service — standard / express / fragile / cold-chain (single-select) | Layer A + C |
 | `figaro-modalities-v1` | The buyer's request — consume-onsite / pickup / delivery / virtual (single-select) | Layer A + C |
 | `figaro-coordination-v1` | How a delivery's courier edge is arranged — seller-assigned / buyer-assigned / dutch-auction (single-select, composes on the delivery parent order) | Layer A + C |
 | `figaro-handoff-v1` | Hand-off point — where the physical exchange happens (proximity-policy nests under it) | Layer A + C |
-| `figaro-ghg-protocol-v1` | GHG Protocol Corporate Standard + scope (Category-2) | Layer A + C |
-| `figaro-ghg-iso-14064-v1` | ISO 14064 family + scope (Category-2) | Layer A + C |
-| `figaro-ghg-pas-2050-v1` | PAS 2050 product carbon footprint + scope (Category-2) | Layer A + C |
-| `figaro-ghg-en-16258-v1` | EN 16258 transport-emissions methodology + scope (Category-2) | Layer A + C |
-| `figaro-ghg-custom-v1` | Custom / non-standard GHG methodology + scope (Category-2) | Layer A + C |
+| `figaro-ghg-v1` | GHG accounting methodology (free-form `standard` string) + scope (Category-2) | Layer A + C |
 | `figaro-ghg-measurement-v1` | Runtime grams CO2e (Category-1) | Layer A + C |
 | `figaro-proximity-policy-v1` | Required detection band committed at agreement signing (Category-2) | Layer A + C |
 | `figaro-proximity-proof-v1` | Per-handoff nonce + signed witness payload at runtime (Category-1) | Layer A + C |
@@ -164,11 +161,12 @@ manifest-only `figaro-topology-v1`.
 | `figaro-applicable-law-v1` | State / ADR / traditional-jurisdiction recourse layer (applicable law + forum + language). Provider-agnostic. Composes with arbitration clauses | Layer A + C |
 | `figaro-consent-v1` | Cryptographic acceptance of an off-chain document (hash + version + title) — supports beta consent, ToS acceptance, governance vote receipts, etc. (`consent` family) | Layer A + C |
 
-The five `figaro-ghg-<standard>-v1` entries are sister clauses — one per
-accounting standard. Standard identity lives in the clauseId; the content
-shape is `(uint8 scope)` for all five and the encoder (`encodeGHGScopeContent`)
-is shared. Per-standard extensions (reporting boundaries, period, etc.) can
-be added to a single sister clause's validator without affecting siblings.
+`figaro-ghg-v1` is a single disclosure clause whose accounting methodology is
+a **free-form `standard` string** — any methodology, existing or future ("GHG
+Protocol Corporate Standard", "ISO 14064", "PAS 2050", "EN 16258", or a custom
+one); the protocol takes no closed list. Content shape is `(string standard,
+uint256 scope)`. It pairs with the `figaro-ghg-measurement-v1` runtime clause
+(grams CO2e) via `sisterClauseId`.
 
 `figaro-proximity-policy-v1` + `figaro-proximity-proof-v1` are sister
 clauses that split the committed-vs-runtime concerns the way

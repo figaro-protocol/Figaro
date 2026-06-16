@@ -137,8 +137,8 @@ can't render: `navigation.mobile.spec.ts` (Pixel 5 / Chromium).
 - `figaro-sequencer` (`prover/sequencer/`): batch mempool, state mirror, assembler, submitter, API.
 - `figaro-clause` (`prover/clause/`): Layer B clause validator. Conformance tests against the
   TypeScript Layer A reference (`sdk/tests/clauses/validate.test.ts`) — every shipped protocol
-  clause's parse, per-clause content checks for `figaro-ghg-protocol-v1` and `figaro-geo-v2`, and
-  a check that all 19 embedded canonical specs the content gate uses parse and resolve by clauseId.
+  clause's parse, per-clause content checks for `figaro-ghg-v1` and `figaro-geo-v1`, and
+  a check that all 16 embedded canonical specs the content gate uses parse and resolve by clauseId.
 - `figaro-rpgf` (`prover/rpgf/`): substrate-broadening aggregator + conformance to TypeScript simulator.
 
 ## Opportunistic — Mythril

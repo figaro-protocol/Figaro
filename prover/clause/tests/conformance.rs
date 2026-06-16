@@ -260,28 +260,32 @@ fn falls_back_to_default_when_stage_has_no_override() {
 
 // ── Per-shipped-clause content checks ────────────────────────────────
 
-/// `figaro-ghg-protocol` carries a single optional integer field
-/// `scope` constrained to 1..=3.
+/// `figaro-ghg` carries a required free-form `standard` string plus an
+/// optional `scope` integer constrained to 1..=3.
 #[test]
-fn ghg_protocol_v1_accepts_valid_scope_and_rejects_out_of_range() {
-    let bytes = std::fs::read(shared_clauses_dir().join("figaro-ghg-protocol.json"))
-        .expect("read ghg protocol json");
+fn ghg_v1_accepts_valid_standard_and_scope_and_rejects_out_of_range() {
+    let bytes = std::fs::read(shared_clauses_dir().join("figaro-ghg.json"))
+        .expect("read ghg json");
     let value: Value = serde_json::from_slice(&bytes).unwrap();
     let spec = parse_or_panic(&value);
 
-    assert!(validate_content(&json!({ "scope": 1 }), &spec, ValidateOptions::default()).is_ok());
-    assert!(validate_content(&json!({ "scope": 3 }), &spec, ValidateOptions::default()).is_ok());
-    // scope is optional — empty object is valid.
-    assert!(validate_content(&json!({}), &spec, ValidateOptions::default()).is_ok());
-    assert!(validate_content(&json!({ "scope": 0 }), &spec, ValidateOptions::default()).is_err());
-    assert!(validate_content(&json!({ "scope": 4 }), &spec, ValidateOptions::default()).is_err());
+    let chk = |body: Value| validate_content(&body, &spec, ValidateOptions::default());
+    assert!(chk(json!({ "standard": "ISO 14064", "scope": 1 })).is_ok());
+    assert!(chk(json!({ "standard": "ISO 14064", "scope": 3 })).is_ok());
+    // scope is optional — the standard alone is valid.
+    assert!(chk(json!({ "standard": "ISO 14064" })).is_ok());
+    assert!(chk(json!({ "standard": "ISO 14064", "scope": 0 })).is_err());
+    assert!(chk(json!({ "standard": "ISO 14064", "scope": 4 })).is_err());
+    // standard is required (minLength 1) — absent or empty is rejected.
+    assert!(chk(json!({ "scope": 1 })).is_err());
+    assert!(chk(json!({ "standard": "" })).is_err());
 }
 
 /// `figaro-geo` exercises the regex `pattern` field on geohash strings.
 #[test]
-fn geo_v2_accepts_valid_geohash_and_rejects_garbage() {
+fn geo_v1_accepts_valid_geohash_and_rejects_garbage() {
     let bytes = std::fs::read(shared_clauses_dir().join("figaro-geo.json"))
-        .expect("read geo v2 json");
+        .expect("read geo json");
     let value: Value = serde_json::from_slice(&bytes).unwrap();
     let spec = parse_or_panic(&value);
 
@@ -293,7 +297,6 @@ fn geo_v2_accepts_valid_geohash_and_rejects_garbage() {
             "destinationGeohash": destination,
             "massGrams": 1000,
             "volumeMl": 500,
-            "classOfService": "S",
         })
     };
 
@@ -301,7 +304,7 @@ fn geo_v2_accepts_valid_geohash_and_rejects_garbage() {
     let result = validate_content(&good, &spec, ValidateOptions::default());
     assert!(
         result.is_ok(),
-        "expected geo-v2 happy path to validate, got: {:#?}",
+        "expected geo happy path to validate, got: {:#?}",
         result.errors(),
     );
 
@@ -332,7 +335,7 @@ fn every_embedded_spec_parses_and_matches_its_clause_id() {
         );
         count += 1;
     }
-    assert_eq!(count, 19, "expected 19 embedded protocol clauses");
+    assert_eq!(count, 16, "expected 16 embedded protocol clauses");
 }
 
 #[test]
@@ -344,11 +347,11 @@ fn embedded_spec_json_is_none_for_non_protocol_clauses() {
 }
 
 #[test]
-fn embedded_spec_tiers_partition_cross_checking_15_and_4() {
+fn embedded_spec_tiers_partition_cross_checking_12_and_4() {
     // The kernel's Gate 5 derives `cross_checks` from each spec's block
     // tier (`ClauseSpec::cross_checks`). Every runtime-attestable clause
     // must declare a category-1 or category-2 tier — never manifest-only —
-    // and the split must stay 15 cross-checking (Category-2 declarative
+    // and the split must stay 12 cross-checking (Category-2 declarative
     // clauses) / 4 not (Category-1 runtime-only clauses).
     let mut cross = 0;
     let mut plain = 0;
@@ -369,6 +372,6 @@ fn embedded_spec_tiers_partition_cross_checking_15_and_4() {
             plain += 1;
         }
     }
-    assert_eq!(cross, 15, "15 Category-2 cross-checking clauses");
+    assert_eq!(cross, 12, "12 Category-2 cross-checking clauses");
     assert_eq!(plain, 4, "4 Category-1 runtime-only clauses");
 }

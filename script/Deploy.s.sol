@@ -360,6 +360,6 @@ contract Deploy is Script {
         attestation.setValidator(
             keccak256(abi.encode("figaro-offset-policy", uint64(1))), address(new FigaroOffsetPolicyV1Validator())
         );
-        console.log("Registered 19 clause validators with AttestationCoordinator");
+        console.log("Registered 16 clause validators with AttestationCoordinator");
     }
 }

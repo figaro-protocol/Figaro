@@ -434,7 +434,7 @@ are *derived*; "add a clause → its capability surfaces here" (guard
      (`useFigaroActions`) *(on-chain, buyer-only atomic settlement)*
 
 **Emissions reporting** (worked example of a derived self-gating panel): a
-designer-time GHG-standard clause (`figaro-ghg-iso-14064-v1` etc. →
+designer-time GHG disclosure clause (`figaro-ghg-v1`, free-form standard →
 `submit-disclosure-commitment`) paired with a runtime grams clause
 (`figaro-ghg-measurement-v1` → `submit-disclosure-inventory`) surface as
 capabilities; `GHGWorkflowPanel` (mounted in `OrderTimelineView`) drives

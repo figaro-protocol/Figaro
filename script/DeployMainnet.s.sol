@@ -240,7 +240,7 @@ contract DeployMainnet is Script {
         _wireValidator(attestation, "OffsetPolicyV1Validator:       ",
             keccak256(abi.encode("figaro-offset-policy", uint64(1))), address(new FigaroOffsetPolicyV1Validator()));
 
-        console.log("AttestationCoordinator: 19 validators wired");
+        console.log("AttestationCoordinator: 16 validators wired");
     }
 
     function _wireValidator(
