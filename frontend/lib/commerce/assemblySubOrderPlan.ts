@@ -15,6 +15,7 @@
 
 import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
 import { templateParentOrderIds, type AssemblyTemplateOrder } from "@/lib/designer/assemblyTemplate";
+import { topologicalOrder } from "@/lib/core/orderTopology";
 import type { SellerCatalogue } from "@/lib/seller/types";
 import { hexEqual } from "@/lib/shared/evm";
 import { parseToken } from "@/lib/shared/utils";
@@ -33,21 +34,19 @@ export function planSubOrderSellers(
     assembly: BoundAssembly,
 ): Array<{ node: AssemblyTemplateOrder; seller: `0x${string}` | null }> {
     const { assemblyTemplate } = assembly;
+    const byId = new Map(assemblyTemplate.orders.map((o) => [o.id, o]));
     const rootId =
         assemblyTemplate.orders.find((o) => templateParentOrderIds(o).length === 0)?.id ??
         assemblyTemplate.orders[0]?.id;
-    const settled = new Set<string>(rootId ? [rootId] : []);
-    const pending = assemblyTemplate.orders.filter((o) => o.id !== rootId);
-    const ordered: AssemblyTemplateOrder[] = [];
-    while (pending.length > 0) {
-        const idx = pending.findIndex((o) => templateParentOrderIds(o).every((p) => settled.has(p)));
-        if (idx === -1) {
-            throw new Error("Assembly topology is not a DAG — a sub-order's parents are unresolvable.");
-        }
-        const [next] = pending.splice(idx, 1);
-        settled.add(next.id);
-        ordered.push(next);
-    }
+    // Topological order (throws on a non-DAG — the guard the checkout relies on),
+    // then the sub-orders are everything but the root, in commit order.
+    const ordered: AssemblyTemplateOrder[] = topologicalOrder(
+        assemblyTemplate.orders.map((o) => o.id),
+        (id) => templateParentOrderIds(byId.get(id)!),
+        "throw",
+    )
+        .filter((id) => id !== rootId)
+        .map((id) => byId.get(id)!);
     const cursor = new Map<string, number>();
     return ordered.map((node) => {
         const nodeClauses = Object.keys(node.clauses);

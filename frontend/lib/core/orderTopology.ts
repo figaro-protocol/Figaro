@@ -83,7 +83,7 @@ export function deriveOrderTopology(
             topology.set(order.id, {
                 parentOrderIds: order.parentOrderIds,
                 topologyMode: order.parentOrderIds.length === 0 ? "root" : "explicit",
-                sourceLabel: "first-class design-time topology (figaro-topology-v1 clause)",
+                sourceLabel: "first-class design-time topology (the topology clause)",
             });
             continue;
         }
@@ -116,36 +116,59 @@ export function deriveOrderTopology(
     return topology;
 }
 
-export function deriveOrderDepths(orders: Order[], topology: Map<string, OrderTopologyInfo>): Map<string, number> {
-    const knownOrderIds = new Set(orders.map((order) => order.id));
-    const depthMap = new Map<string, number>();
-    const visiting = new Set<string>();
-
-    const visit = (orderId: string): number => {
-        const cached = depthMap.get(orderId);
-        if (cached !== undefined) return cached;
-        if (visiting.has(orderId)) {
-            depthMap.set(orderId, 0);
-            return 0;
+/**
+ * Topological order of `ids` — every node appears after all its in-set parents.
+ * `parentIdsOf(id)` returns a node's parent ids; parents outside `ids` and
+ * self-parents are ignored. Stable: ready nodes are emitted in input order
+ * (so a per-clause commit cursor stays deterministic).
+ *
+ * `onCycle` is the one policy the two call sites genuinely differ on:
+ *   - "throw" — reject a non-DAG (the commit path's load-bearing guard; the
+ *     caller catches it and degrades the UI).
+ *   - "break" — emit the still-unsettled nodes in input order, treating the
+ *     cycle edge as absent, so a display metric degrades instead of crashing.
+ */
+export function topologicalOrder(
+    ids: string[],
+    parentIdsOf: (id: string) => string[],
+    onCycle: "throw" | "break",
+): string[] {
+    const idSet = new Set(ids);
+    const parentsOf = (id: string) =>
+        parentIdsOf(id).filter((parentId) => parentId !== id && idSet.has(parentId));
+    const settled = new Set<string>();
+    const ordered: string[] = [];
+    const pending = [...ids];
+    while (pending.length > 0) {
+        const idx = pending.findIndex((id) => parentsOf(id).every((p) => settled.has(p)));
+        if (idx === -1) {
+            if (onCycle === "throw") {
+                throw new Error("Topology is not a DAG — a node's parents are unresolvable.");
+            }
+            for (const id of pending) { settled.add(id); ordered.push(id); }
+            break;
         }
+        const [next] = pending.splice(idx, 1);
+        settled.add(next);
+        ordered.push(next);
+    }
+    return ordered;
+}
 
-        visiting.add(orderId);
-        const parentOrderIds = (topology.get(orderId)?.parentOrderIds ?? []).filter(
-            (parentOrderId) => parentOrderId !== orderId && knownOrderIds.has(parentOrderId),
-        );
-
-        const depth = parentOrderIds.length === 0
-            ? 0
-            : Math.max(...parentOrderIds.map((parentOrderId) => visit(parentOrderId))) + 1;
-
-        visiting.delete(orderId);
-        depthMap.set(orderId, depth);
-        return depth;
-    };
-
-    orders.forEach((order) => {
-        visit(order.id);
-    });
-
+export function deriveOrderDepths(orders: Order[], topology: Map<string, OrderTopologyInfo>): Map<string, number> {
+    const order = topologicalOrder(
+        orders.map((o) => o.id),
+        (id) => topology.get(id)?.parentOrderIds ?? [],
+        "break",
+    );
+    const depthMap = new Map<string, number>();
+    for (const orderId of order) {
+        // Parents already placed (topo order guarantees it for a DAG; a cycle
+        // back-edge is simply not yet in the map and so contributes nothing).
+        const parentDepths = (topology.get(orderId)?.parentOrderIds ?? [])
+            .filter((parentId) => parentId !== orderId && depthMap.has(parentId))
+            .map((parentId) => depthMap.get(parentId)!);
+        depthMap.set(orderId, parentDepths.length === 0 ? 0 : Math.max(...parentDepths) + 1);
+    }
     return depthMap;
 }
