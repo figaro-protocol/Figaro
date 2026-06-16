@@ -9,9 +9,7 @@
  */
 
 import {
-    CatalogueClassOfService,
     CatalogueItemMetadata,
-    NegotiatedPriceEntry,
     SellerCatalogueMetadata,
     UnitSystem,
 } from "@/lib/seller/sellerCatalogueMetadata";
@@ -25,12 +23,6 @@ import {
     asString,
 } from "@/lib/shared/parseHelpers";
 
-const ALLOWED_CLASS_OF_SERVICE = new Set<CatalogueClassOfService>([
-    "standard",
-    "express",
-    "fragile",
-    "cold-chain",
-]);
 const ALLOWED_UNIT_SYSTEMS = new Set<UnitSystem>(["metric", "imperial"]);
 
 function parseOptionalNumber(value: unknown, path: string): number | undefined {
@@ -38,34 +30,11 @@ function parseOptionalNumber(value: unknown, path: string): number | undefined {
     return asNumber(value, path);
 }
 
-function parseOptionalClassOfService(
-    value: unknown,
-    path: string,
-): CatalogueClassOfService | undefined {
-    if (value === undefined) return undefined;
-    return asEnum(value, ALLOWED_CLASS_OF_SERVICE, path);
-}
-
 function parseOptionalUnitSystem(value: unknown, path: string): UnitSystem | undefined {
     if (value === undefined) return undefined;
     return asEnum(value, ALLOWED_UNIT_SYSTEMS, path);
 }
 
-
-function parseOptionalNegotiatedPrices(
-    value: unknown,
-    path: string,
-): NegotiatedPriceEntry[] | undefined {
-    if (value === undefined) return undefined;
-    if (!Array.isArray(value)) throw new Error(`${path} must be an array.`);
-    return value.map((entry, index) => {
-        const rec = asRecord(entry, `${path}[${index}]`);
-        return {
-            counterparty: asAddress(rec.counterparty, `${path}[${index}].counterparty`),
-            price: asString(rec.price, `${path}[${index}].price`),
-        };
-    });
-}
 
 function parseMenuItem(value: unknown, path: string): CatalogueItemMetadata {
     const record = asRecord(value, path);
@@ -77,11 +46,8 @@ function parseMenuItem(value: unknown, path: string): CatalogueItemMetadata {
         category: asString(record.category, `${path}.category`),
         image: asOptionalString(record.image, `${path}.image`),
         available: asBoolean(record.available, `${path}.available`),
-        assemblySlug: asOptionalString(record.assemblySlug, `${path}.assemblySlug`),
         massGrams: parseOptionalNumber(record.massGrams, `${path}.massGrams`),
         volumeMl: parseOptionalNumber(record.volumeMl, `${path}.volumeMl`),
-        classOfService: parseOptionalClassOfService(record.classOfService, `${path}.classOfService`),
-        negotiatedPrices: parseOptionalNegotiatedPrices(record.negotiatedPrices, `${path}.negotiatedPrices`),
     };
 }
 

@@ -16,7 +16,7 @@ function InitialsAvatar({ listing }: { listing: Listing }) {
     return (
         <div
             className="w-10 h-10 rounded shrink-0 flex items-center justify-center text-xs font-semibold text-white"
-            style={{ backgroundColor: listing.accentColor ?? "#6b7280" }}
+            style={{ backgroundColor: "#6b7280" }}
         >
             {listing.name.slice(0, 2).toUpperCase()}
         </div>

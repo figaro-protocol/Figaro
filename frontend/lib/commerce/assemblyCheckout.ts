@@ -25,7 +25,6 @@ import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
 import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/commerce/assemblySubOrderPlan";
 import { templateParentOrderIds } from "@/lib/designer/assemblyTemplate";
 import { clauseDeclaresField } from "@/lib/shared/clauseSpecSource";
-import { collapseClassOfService } from "@/lib/seller/sellerCatalogueMetadata";
 import { shareCommitmentPayload } from "@/lib/core/commitmentShare";
 import { sellerAuctionId, stashSellerDraft } from "@/lib/seller/sellerAuction";
 import { parseToken } from "@/lib/shared/utils";
@@ -47,7 +46,6 @@ export interface AssemblyCheckoutLineItem {
      *  highest-priority class of service). */
     massGrams?: number;
     volumeMl?: number;
-    classOfService?: string;
 }
 
 /** The signing + transport capabilities the algorithm drives — provided by
@@ -125,20 +123,21 @@ export async function executeAssemblyCheckout(
     const isMultiOrder = assembly.assemblyTemplate.orders.length > 1;
 
     const clauseFields = { ...root.clauses };
+    // Aggregate cart mass/volume into the geo clause (found by FIELD name, never
+    // clause id). Class of service is its own elective clause now — composed at
+    // design time, never derived from cart items.
     const geoClauseId = Object.keys(clauseFields).find(
-        (clauseId) => clauseDeclaresField(clauseId, "classOfService"),
+        (clauseId) => clauseDeclaresField(clauseId, "massGrams"),
     );
     if (geoClauseId) {
         const massGrams = lineItems.reduce(
             (sum, li) => sum + (li.massGrams ?? 0) * li.quantity, 0);
         const volumeMl = lineItems.reduce(
             (sum, li) => sum + (li.volumeMl ?? 0) * li.quantity, 0);
-        const classOfService = collapseClassOfService(lineItems.map((li) => li.classOfService));
         clauseFields[geoClauseId] = {
             ...clauseFields[geoClauseId],
             ...(massGrams > 0 ? { massGrams } : {}),
             ...(volumeMl > 0 ? { volumeMl } : {}),
-            ...(classOfService ? { classOfService } : {}),
         };
     }
 

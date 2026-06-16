@@ -14,7 +14,7 @@
  */
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useSellerBranding } from "@/lib/seller/useSellerBranding";
 import type { ResolvedSellerBranding } from "@/lib/seller/sellerBranding";
 
@@ -32,27 +32,15 @@ export function SellerBrandingModule({
     className,
     brandingOverride,
 }: SellerBrandingModuleProps) {
-    const { branding: resolvedBranding } = useSellerBranding(brandingOverride ? undefined : sellerAddress);
-    const branding = brandingOverride ?? resolvedBranding;
-    const containerRef = useRef<HTMLDivElement>(null);
-
-    // Set CSS custom properties from accentColor
-    useEffect(() => {
-        const el = containerRef.current;
-        if (!el) return;
-
-        if (branding?.branding.accentColor) {
-            el.style.setProperty("--seller-accent", branding.branding.accentColor);
-        } else {
-            el.style.removeProperty("--seller-accent");
-        }
-    }, [branding?.branding.accentColor]);
-
-    const themeClass = branding?.branding.themeClass ?? "";
-    const classes = [className, themeClass].filter(Boolean).join(" ");
+    // Accent/theme branding was driven by spec fields that no producer ever
+    // wrote (accentColor/themeClass); with those gone this is a plain scoped
+    // wrapper. `sellerAddress`/`brandingOverride` are retained on the props for
+    // call-site compatibility and the still-live SellerLogo path below.
+    void sellerAddress;
+    void brandingOverride;
 
     return (
-        <div ref={containerRef} className={classes || undefined}>
+        <div className={className || undefined}>
             {children}
         </div>
     );
@@ -131,7 +119,7 @@ export function SellerLogo({
     // discover-card InitialsAvatar pattern.
     if (fallbackName) {
         const initials = fallbackName.slice(0, 2).toUpperCase();
-        const accent = branding?.branding.accentColor ?? "#6b7280";
+        const accent = "#6b7280";
         return (
             <span
                 className={className}

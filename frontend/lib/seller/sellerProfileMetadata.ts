@@ -239,11 +239,7 @@ function parseBrandingField(value: unknown, path: string): SellerBrandingMetadat
     if (value === undefined) return undefined;
     const record = asRecord(value, path);
     return {
-        displayName: asOptionalString(record.displayName, `${path}.displayName`),
         logoURI: asOptionalString(record.logoURI, `${path}.logoURI`),
-        heroImageURI: asOptionalString(record.heroImageURI, `${path}.heroImageURI`),
-        accentColor: asOptionalString(record.accentColor, `${path}.accentColor`),
-        themeClass: asOptionalString(record.themeClass, `${path}.themeClass`),
     };
 }
 

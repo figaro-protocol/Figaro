@@ -29,7 +29,6 @@
  */
 
 import type {
-    CatalogueClassOfService,
     CatalogueItemMetadata,
 } from "@/lib/seller/sellerCatalogueMetadata";
 
@@ -37,13 +36,6 @@ export interface CatalogueCsvParseResult {
     items: CatalogueItemMetadata[];
     errors: string[];
 }
-
-const CLASS_VALUES: readonly CatalogueClassOfService[] = [
-    "standard",
-    "express",
-    "fragile",
-    "cold-chain",
-];
 
 function uid(): string {
     return Math.random().toString(36).slice(2, 10);
@@ -119,13 +111,6 @@ function parseBoolean(value: string): boolean {
     return true;
 }
 
-function parseClassOfService(value: string): CatalogueClassOfService | undefined {
-    const v = value.trim().toLowerCase();
-    if (!v) return undefined;
-    return (CLASS_VALUES as readonly string[]).includes(v)
-        ? (v as CatalogueClassOfService)
-        : undefined;
-}
 
 function parseNumber(value: string): number | undefined {
     const v = value.trim();
@@ -160,7 +145,6 @@ export function parseCatalogueCsv(text: string): CatalogueCsvParseResult {
     const availCol = idx("available");
     const massCol = idx("massgrams");
     const volCol = idx("volumeml");
-    const classCol = idx("classofservice");
 
     const items: CatalogueItemMetadata[] = [];
     const errors: string[] = [];
@@ -189,8 +173,6 @@ export function parseCatalogueCsv(text: string): CatalogueCsvParseResult {
         if (mass !== undefined) item.massGrams = mass;
         const volume = parseNumber(get(volCol));
         if (volume !== undefined) item.volumeMl = volume;
-        const cls = parseClassOfService(get(classCol));
-        if (cls) item.classOfService = cls;
         items.push(item);
     }
 

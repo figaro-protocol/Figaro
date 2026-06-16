@@ -43,8 +43,6 @@ export interface Listing {
     specialty?: string;
     /** Seller logo URI (ipfs:// or https://). */
     logoURI?: string;
-    /** Accent color for branding. */
-    accentColor?: string;
     /** Seller's home geohash. */
     geohash?: string;
     /** Human-readable location text (e.g. "Lower Manhattan, NY"). */
@@ -89,7 +87,6 @@ export function profileToListing(
         description: profile.description ?? "",
         specialty: profile.specialty,
         logoURI: safeURI(profile.branding?.logoURI),
-        accentColor: profile.branding?.accentColor,
         geohash: profile.location?.geohash,
         addressText: profile.location?.addressText,
         serviceAreas: [],

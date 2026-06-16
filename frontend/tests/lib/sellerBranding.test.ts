@@ -49,19 +49,16 @@ describe('sellerBranding', () => {
             const result = await fetchSellerBranding('ipfs://QmMetadata');
 
             expect(result).not.toBeNull();
-            expect(result!.branding.displayName).toBe("Bob's Pizza");
-            expect(result!.branding.accentColor).toBe('#c2410c');
-            expect(result!.branding.themeClass).toBe('seller-pizza');
+            expect(result!.branding.logoURI).toBe('ipfs://QmLogo123');
             expect(result!.logoURL).toBe('http://127.0.0.1:8080/ipfs/QmLogo123');
-            expect(result!.heroImageURL).toBe('http://127.0.0.1:8080/ipfs/QmHero456');
             expect(result!.name).toBe("Bob's Pizza Palace");
         });
 
-        it('returns partial branding when only some fields exist', async () => {
+        it('returns branding when only the asset base URI exists (no logo)', async () => {
             const mockDoc = {
                 name: 'Minimal Seller',
-                branding: {
-                    accentColor: '#333',
+                assets: {
+                    imageBaseURI: 'ipfs://QmBase',
                 },
             };
 
@@ -74,7 +71,7 @@ describe('sellerBranding', () => {
             const result = await fetchSellerBranding('http://example.com/metadata.json');
 
             expect(result).not.toBeNull();
-            expect(result!.branding.accentColor).toBe('#333');
+            expect(result!.assets.imageBaseURI).toBe('ipfs://QmBase');
             expect(result!.branding.logoURI).toBeUndefined();
             expect(result!.logoURL).toBeUndefined();
         });
@@ -178,9 +175,7 @@ describe('sellerBranding', () => {
             const result = resolveSellerBrandingFromSellerProfile(SELLER_PROFILE_METADATA_EXAMPLE);
 
             expect(result).not.toBeNull();
-            expect(result!.branding.displayName).toBe("Example Seller");
             expect(result!.logoURL).toBe('http://127.0.0.1:8080/ipfs/example/logo.png');
-            expect(result!.heroImageURL).toBe('http://127.0.0.1:8080/ipfs/example/hero.png');
         });
 
         it('applies a branding override without fetching seller metadata', async () => {

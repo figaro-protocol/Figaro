@@ -28,9 +28,7 @@ export interface ResolvedSellerBranding {
     assets: SellerAssets;
     /** Gateway-resolved logo URL (ready for <img src>) */
     logoURL?: string;
-    /** Gateway-resolved hero image URL */
-    heroImageURL?: string;
-    /** Raw seller name (top-level, not branding.displayName) */
+    /** Raw seller name (top-level). */
     name?: string;
 }
 
@@ -45,11 +43,7 @@ function resolveSellerBrandingDocument(input: {
     const assets = input.assets ?? {};
 
     const b: SellerBrandingMetadata = {
-        displayName: typeof branding.displayName === "string" ? branding.displayName : undefined,
         logoURI: typeof branding.logoURI === "string" ? branding.logoURI : undefined,
-        heroImageURI: typeof branding.heroImageURI === "string" ? branding.heroImageURI : undefined,
-        accentColor: typeof branding.accentColor === "string" ? branding.accentColor : undefined,
-        themeClass: typeof branding.themeClass === "string" ? branding.themeClass : undefined,
     };
 
     const a: SellerAssets = {
@@ -60,7 +54,6 @@ function resolveSellerBrandingDocument(input: {
         branding: b,
         assets: a,
         logoURL: b.logoURI ? (resolveContentUri(b.logoURI) ?? undefined) : undefined,
-        heroImageURL: b.heroImageURI ? (resolveContentUri(b.heroImageURI) ?? undefined) : undefined,
         name: typeof input.name === "string" ? input.name : undefined,
     };
 }
@@ -73,11 +66,7 @@ export function resolveSellerBrandingFromSellerProfile(
     }
 
     const hasBranding = Boolean(
-        metadata.branding?.displayName
-        || metadata.branding?.logoURI
-        || metadata.branding?.heroImageURI
-        || metadata.branding?.accentColor
-        || metadata.branding?.themeClass
+        metadata.branding?.logoURI
         || metadata.assets?.imageBaseURI
     );
 

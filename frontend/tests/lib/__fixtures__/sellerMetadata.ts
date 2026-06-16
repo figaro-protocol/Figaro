@@ -22,12 +22,6 @@ export const SELLER_CATALOGUE_METADATA_EXAMPLE: SellerCatalogueMetadata = {
             category: "Pizza",
             image: "ipfs://example/margherita.png",
             available: true,
-            clauseAttestations: {
-                "figaro-allergen": {
-                    allergenFree: ["gluten-free-crust-option"],
-                    contains: ["dairy", "gluten"],
-                },
-            },
         },
         {
             id: "drink1",
@@ -52,11 +46,7 @@ export const SELLER_PROFILE_METADATA_EXAMPLE: SellerProfileMetadata = {
         addressText: "Example City, Example State",
     },
     branding: {
-        displayName: "Example Seller",
         logoURI: "ipfs://example/logo.png",
-        heroImageURI: "ipfs://example/hero.png",
-        accentColor: "#1f6feb",
-        themeClass: "seller-example",
     },
     assets: {
         imageBaseURI: "ipfs://example/assets/",
