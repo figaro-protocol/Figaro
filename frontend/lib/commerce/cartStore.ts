@@ -1,8 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-/** A line in the buyer's cart — items selected from a seller's catalogue. */
-export interface CartItem {
+/** A line in the buyer's cart — items selected from a seller's catalogue.
+ *  Internal to the store; consumers receive it structurally via `useCartStore`
+ *  (they pass object literals to `addItem`, never the named type). */
+interface CartItem {
     menuItemId: string;
     sellerId: string;
     sellerAddress: string;

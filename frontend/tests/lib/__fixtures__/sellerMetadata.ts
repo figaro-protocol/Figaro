@@ -8,33 +8,7 @@
  * Anvil account so it can't collide with a developer's test wallet.
  */
 
-import type { SellerCatalogueMetadata } from "@/lib/seller/sellerCatalogueMetadata";
 import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
-
-export const SELLER_CATALOGUE_METADATA_EXAMPLE: SellerCatalogueMetadata = {
-    subjectAddress: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-    menu: [
-        {
-            id: "pizza1",
-            name: "Margherita Pizza",
-            description: "Classic tomato, mozzarella, and basil",
-            price: "0.01",
-            category: "Pizza",
-            image: "ipfs://example/margherita.png",
-            available: true,
-        },
-        {
-            id: "drink1",
-            name: "Soft Drink",
-            description: "Cola, Sprite, or Fanta",
-            price: "0.002",
-            category: "Drinks",
-            image: "ipfs://example/drink.png",
-            available: true,
-        },
-    ],
-    version: "1.0.0",
-};
 
 export const SELLER_PROFILE_METADATA_EXAMPLE: SellerProfileMetadata = {
     subjectAddress: "0xeXAMPLeeXAMPLeeXAMPLeeXAMPLeeXAMPLe0001" as `0x${string}`,

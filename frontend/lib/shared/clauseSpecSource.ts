@@ -254,8 +254,9 @@ export function describeAttestation(
 
 /** A field's rendered contribution to a clause description: the field's display
  *  label (spec `label` → field name) and its selected value(s) rendered through
- *  the spec's `valueLabels` (raw token when no label is declared). */
-export interface ClauseFieldDescription {
+ *  the spec's `valueLabels` (raw token when no label is declared). Internal —
+ *  consumers receive it structurally as `ClauseDescription.fields[]`. */
+interface ClauseFieldDescription {
     name: string;
     label: string;
     values: string[];
