@@ -140,7 +140,7 @@ const fallbackRestaurant: SellerCatalogue = {
     specialty: "Test",
     image: "🍽️",
     address: "0x0000000000000000000000000000000000000001",
-    menu: [],
+    items: [],
     acceptedTokens: [],
 };
 
@@ -151,7 +151,7 @@ const injectedRestaurant: SellerCatalogue = {
     specialty: "Italian",
     image: "🍕",
     address: "0x0000000000000000000000000000000000000011",
-    menu: [],
+    items: [],
     acceptedTokens: [],
 };
 
@@ -231,7 +231,7 @@ describe("runtime service hook injection", () => {
 
         const catalogue: SellerCatalogueMetadata = {
             subjectAddress: "0x0000000000000000000000000000000000000011",
-            menu: [],
+            items: [],
             version: "1.0.0",
         };
         const fetchSellerCatalogue = vi.fn().mockResolvedValue(catalogue);

@@ -27,7 +27,7 @@ export function tryParseCatalogueItems(doc: unknown): CatalogueItemMetadata[] | 
             name: typeof item.name === 'string' ? item.name : '',
             description: typeof item.description === 'string' ? item.description : undefined,
             price: typeof item.price === 'string' ? item.price : '0',
-            category: typeof item.category === 'string' ? item.category : 'General',
+            category: typeof item.category === 'string' ? item.category : undefined,
             available: typeof item.available === 'boolean' ? item.available : true,
             massGrams: typeof item.massGrams === 'number' ? item.massGrams : undefined,
             volumeMl: typeof item.volumeMl === 'number' ? item.volumeMl : undefined,

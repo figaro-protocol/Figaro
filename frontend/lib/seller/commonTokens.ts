@@ -1,5 +1,5 @@
 /**
- * lib/shared/commonTokens.ts
+ * lib/seller/commonTokens.ts
  *
  * Per-chain registry of well-known ERC-20 tokens to surface as quick-add
  * suggestions in seller-side forms (e.g. the onboarding wizard's
@@ -10,15 +10,14 @@
  * env vars; production chains carry hardcoded canonical addresses.
  */
 
-import { ZERO_ADDRESS } from "./evm";
-import { DEVNET_CHAIN_ID } from "./chains";
+import { ZERO_ADDRESS } from "@/lib/shared/evm";
+import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import { isValidAddress } from "@/lib/shared/evm";
+import type { AcceptedTokenMetadata } from "@/lib/seller/acceptedTokenMetadata";
 
-export interface CommonToken {
-    address: `0x${string}`;
-    symbol: string;
-    name: string;
-}
+/** A quick-add token suggestion — the identity subset of the seller's
+ *  accepted-token descriptor (one type for the concept, not two). */
+export type CommonToken = Pick<AcceptedTokenMetadata, "address" | "symbol" | "name">;
 
 /**
  * Validates a literal env-var string and narrows it to a 0x address.

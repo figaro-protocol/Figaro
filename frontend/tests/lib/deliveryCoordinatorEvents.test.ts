@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeAll, beforeEach } from "vitest";
 import { keccak256, stringToHex } from "viem";
 import { clauseIdHash } from "@/lib/shared/evm";
-import { createDeliveryCoordinatorSource } from "@/lib/mechanisms/deliveryCoordinatorEvents";
+import { createDeliveryCoordinatorSource } from "@/lib/dispute/deliveryCoordinatorEvents";
 import { primeClauseSpecs } from "./primeClauseSpecs";
 
 // The source labels every attestation from its clause's OWN spec — prime the

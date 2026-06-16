@@ -26,7 +26,7 @@ import type {
 import type { AcceptedTokenMetadata } from "@/lib/seller/acceptedTokenMetadata";
 import { encodeGeohash } from "@/lib/handoff/manifest";
 import { geocodeAddress, getDeviceLocation, type GeocodeFailureReason } from "@/lib/shared/geocode";
-import { getCommonTokens, type CommonToken } from "@/lib/shared/commonTokens";
+import { getCommonTokens, type CommonToken } from "@/lib/seller/commonTokens";
 import { hexEqual } from "@/lib/shared/evm";
 
 /**

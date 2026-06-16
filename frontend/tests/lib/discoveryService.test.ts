@@ -57,7 +57,7 @@ describe('discoveryService', () => {
             description: 'Test merchant',
             specialty: 'Italian',
             location: { geohash: 'dr5reg' },
-            menu: [
+            items: [
                 {
                     id: 'pizza',
                     name: 'Pizza',
@@ -114,8 +114,8 @@ describe('discoveryService', () => {
         expect(result.catalogues[0]).toEqual(expect.objectContaining({
             name: 'Street Tacos',
         }));
-        expect(result.catalogues[0].menu).toHaveLength(1);
-        expect(result.catalogues[0].menu[0].name).toBe('Al Pastor');
+        expect(result.catalogues[0].items).toHaveLength(1);
+        expect(result.catalogues[0].items[0].name).toBe('Al Pastor');
     });
 
     it('maps an seller profile without a catalogueURI into a restaurant with an empty menu', async () => {
@@ -134,7 +134,7 @@ describe('discoveryService', () => {
 
         expect(result.source.ipfs).toBe(1);
         expect(result.catalogues[0].name).toBe('Ghost Kitchen');
-        expect(result.catalogues[0].menu).toHaveLength(0);
+        expect(result.catalogues[0].items).toHaveLength(0);
         expect(fetchDocumentMock).toHaveBeenCalledTimes(1);
     });
 

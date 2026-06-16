@@ -10,9 +10,10 @@ describe("parseCatalogueCsv", () => {
         expect(items[0]).toMatchObject({
             name: "Pizza",
             price: "12.00",
-            category: "General",
             available: true,
         });
+        // No category column ⇒ no coined "General" default; the field is absent.
+        expect(items[0].category).toBeUndefined();
         expect(items[1]).toMatchObject({ name: "Salad", price: "8.50" });
     });
 

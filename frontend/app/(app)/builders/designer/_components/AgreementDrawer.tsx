@@ -57,7 +57,7 @@ interface Props {
     privilegedToken?: string;
     onPrivilegedTokenChange?: (value: string) => void;
     /** Per-chain common-token list that populates the privileged-token choice. */
-    commonTokens?: ReadonlyArray<{ address: string; symbol: string; name: string }>;
+    commonTokens?: ReadonlyArray<{ address: string; symbol: string; name?: string }>;
 }
 
 export function AgreementDrawer({
@@ -345,7 +345,7 @@ interface ClauseRegistryPanelProps {
     onSetClauseField?: (clauseId: string, field: string, value: unknown) => void;
     privilegedToken?: string;
     onPrivilegedTokenChange?: (value: string) => void;
-    commonTokens?: ReadonlyArray<{ address: string; symbol: string; name: string }>;
+    commonTokens?: ReadonlyArray<{ address: string; symbol: string; name?: string }>;
 }
 
 /**

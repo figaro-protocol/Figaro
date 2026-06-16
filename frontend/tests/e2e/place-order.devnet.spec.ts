@@ -66,7 +66,7 @@ async function seedRegisteredSellerWithCatalogue(): Promise<SeededSeller> {
         subjectAddress: SELLER_ADDR,
         version: '1.0.0',
         unitSystem: 'metric' as const,
-        menu: [
+        items: [
             {
                 id: itemId,
                 name: itemName,

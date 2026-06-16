@@ -45,7 +45,7 @@ const catalogues = [
     {
         address: SWIFT,
         name: "Swift Courier",
-        menu: [{
+        items: [{
             id: "kit-fastening", name: "Fastening", category: "component",
             price: "0.6", available: true,
         }],
@@ -53,7 +53,7 @@ const catalogues = [
     {
         address: ROSSO,
         name: "Rosso Kitchen",
-        menu: [{
+        items: [{
             id: "kit-housing", name: "Housing", category: "component",
             price: "0.55", available: true,
         }],
@@ -61,7 +61,7 @@ const catalogues = [
     {
         address: MERCATO,
         name: "Mercato",
-        menu: [{
+        items: [{
             id: "kit-assemble", name: "Assemble", category: "component",
             price: "0.25", available: true,
         }],

@@ -12,7 +12,7 @@ import type { SellerCatalogueMetadata } from "@/lib/seller/sellerCatalogueMetada
 
 const VALID_MERCHANT_DOC: SellerCatalogueMetadata = {
     subjectAddress: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-    menu: [
+    items: [
         {
             id: "item1",
             name: "Margherita",
@@ -50,8 +50,8 @@ describe("catalogueFetcher", () => {
         const result = await fetchSellerCatalogue("ipfs://QmTest");
         expect(result).not.toBeNull();
         expect(result!.subjectAddress).toBe("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
-        expect(result!.menu).toHaveLength(1);
-        expect(result!.menu[0].name).toBe("Margherita");
+        expect(result!.items).toHaveLength(1);
+        expect(result!.items[0].name).toBe("Margherita");
     });
 
     it("returns null for HTTP errors", async () => {
@@ -170,13 +170,13 @@ describe("cataloguePublisher", () => {
         });
 
         it("rejects invalid merchant documents before pinning", async () => {
-            const bad = { ...VALID_MERCHANT_DOC, menu: undefined } as unknown as SellerCatalogueMetadata;
+            const bad = { ...VALID_MERCHANT_DOC, items: undefined } as unknown as SellerCatalogueMetadata;
 
             await expect(publishSellerCatalogue(bad)).rejects.toThrow();
         });
 
         it("accepts documents with empty menu (parser allows it)", async () => {
-            const emptyMenu = { ...VALID_MERCHANT_DOC, menu: [] };
+            const emptyMenu = { ...VALID_MERCHANT_DOC, items: [] };
             const result = await publishSellerCatalogue(emptyMenu);
 
             expect(result.cid).toBe("QmPublished123");
@@ -213,12 +213,12 @@ describe("SellerCatalogueMetadata shape", () => {
         const cat = VALID_MERCHANT_DOC;
 
         expect(cat.subjectAddress).toBeDefined();
-        expect(cat.menu.length).toBeGreaterThan(0);
+        expect(cat.items.length).toBeGreaterThan(0);
         expect(cat.version).toBeDefined();
     });
 
     it("each catalogue item carries id, name, price, category, available", () => {
-        const item = VALID_MERCHANT_DOC.menu[0];
+        const item = VALID_MERCHANT_DOC.items[0];
 
         expect(item.id).toBeDefined();
         expect(item.name).toBeDefined();

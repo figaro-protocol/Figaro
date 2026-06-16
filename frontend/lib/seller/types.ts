@@ -32,7 +32,7 @@ export interface SellerCatalogue {
     geohash?: string;
     /** Free-form public street address (optional). */
     addressText?: string;
-    menu: CatalogueItemMetadata[];
+    items: CatalogueItemMetadata[];
     /** Tokens the seller accepts at settlement. */
     acceptedTokens?: AcceptedTokenMetadata[];
     /** The token catalogue prices are denominated in (one of `acceptedTokens`). */

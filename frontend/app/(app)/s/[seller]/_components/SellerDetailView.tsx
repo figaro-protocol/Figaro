@@ -141,7 +141,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
     const cartSubtotal = cartItems.reduce((sum, it) => sum + parseFloat(it.price || "0") * it.quantity, 0);
     const cartUnitSystem = sellerCatalogue.unitSystem ?? "metric";
 
-    const categories = Array.from(new Set(sellerCatalogue.menu.map((item) => item.category)));
+    const categories = Array.from(new Set(sellerCatalogue.items.map((item) => item.category)));
 
     return (
         <SellerBrandingModule sellerAddress={sellerAddressTyped}>
@@ -198,7 +198,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                             <div key={category}>
                                 <h2 className="text-lg font-semibold text-black mb-3">{category}</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {sellerCatalogue.menu
+                                    {sellerCatalogue.items
                                         .filter((item) => item.category === category)
                                         .map((menuItem) => {
                                             const quantity = getItemQuantity(menuItem.id);

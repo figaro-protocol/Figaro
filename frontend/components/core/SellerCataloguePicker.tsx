@@ -63,7 +63,7 @@ export function SellerCataloguePicker({ mode, partnerAddresses, tokenSymbol, onS
         [validSeller, sellerCatalogues],
     );
     const deliveryItems = useMemo(
-        () => (sellerCatalogue?.menu ?? []).filter((i) => i.category === "delivery"),
+        () => (sellerCatalogue?.items ?? []).filter((i) => i.category === "delivery"),
         [sellerCatalogue],
     );
     const selectedItem = deliveryItems.find((i) => i.id === selectedItemId);

@@ -111,7 +111,7 @@ export function usePublishSellerProfile() {
         if (!catalogueURI) {
             const catalogue: SellerCatalogueMetadata = {
                 subjectAddress: input.wallet,
-                menu: input.items,
+                items: input.items,
                 version: "1.0.0",
                 unitSystem: input.unitSystem,
             };

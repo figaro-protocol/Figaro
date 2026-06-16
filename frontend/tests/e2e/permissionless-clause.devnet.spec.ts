@@ -76,7 +76,7 @@ async function registerNovelSeller(): Promise<Hex> {
     const address = privateKeyToAccount(key).address;
     const { uri: catalogueURI } = await pinJSONToIPFS({
         subjectAddress: address, version: '0.1.0', unitSystem: 'metric',
-        menu: [{ id: 'probe-item', name: 'Probe Item', description: 'probe', price: '1', pricingPolicy: 'fixed', category: 'General', available: true }],
+        items: [{ id: 'probe-item', name: 'Probe Item', description: 'probe', price: '1', pricingPolicy: 'fixed', category: 'General', available: true }],
     });
     await seedRegisteredSeller({
         walletKey: key,

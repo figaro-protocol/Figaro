@@ -59,7 +59,7 @@ async function seedBuyerSetCourier(tokenAddress: Hex): Promise<void> {
         subjectAddress: COURIER_ADDR,
         version: '1.0.0',
         unitSystem: 'metric' as const,
-        menu: [{
+        items: [{
             id: 'delivery-quote',
             name: 'Name-your-price delivery',
             description: 'Buyer names the fee',

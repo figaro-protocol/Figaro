@@ -162,7 +162,7 @@ export function parseCatalogueCsv(text: string): CatalogueCsvParseResult {
             id: uid(),
             name,
             price,
-            category: get(catCol).trim() || "General",
+            category: get(catCol).trim() || undefined,
             available: availCol >= 0 ? parseBoolean(get(availCol)) : true,
         };
         const description = get(descCol).trim();

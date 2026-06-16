@@ -51,7 +51,7 @@ import { AgreementDrawer } from "./AgreementDrawer";
 import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
 import { buildAssemblyTemplate } from "@/lib/designer/assemblyTemplate";
 import { maxCommitsLandableInOneBlock, maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
-import { getCommonTokens } from "@/lib/shared/commonTokens";
+import { getCommonTokens } from "@/lib/seller/commonTokens";
 import { useChainId, usePublicClient } from "wagmi";
 
 export type DesignerSeed =

@@ -281,13 +281,7 @@ export function requiredCounterpartyClauses(template: AssemblyTemplate): string[
     const byId = new Map(template.orders.map((o) => [o.id, o]));
 
     function coordinationOf(order: AssemblyTemplate["orders"][number] | undefined): string | undefined {
-        // The coordination entry is found by its declared field, never by
-        // name. Single-select: one scalar value per order.
-        const data = Object.entries(order?.clauses ?? {})
-            .find(([clauseId]) => clauseDeclaresField(clauseId, "coordination"))?.[1] as
-            | { coordination?: unknown }
-            | undefined;
-        return typeof data?.coordination === "string" ? data.coordination : undefined;
+        return readSingleSelectClauseField(order?.clauses, "coordination");
     }
 
     const clauses = new Set<string>();
@@ -472,27 +466,29 @@ export interface SellerBoundAssemblies {
  *  assemblyTemplate's root order agreement. The root order is the first order in
  *  the topology — if a consumer needs a sub-order's modality, they walk the
  *  orders array themselves. */
+/** Read a single-select clause scalar from an order's clause set BY DECLARED
+ *  FIELD, never by clause name (open-world). One reader for the
+ *  modality/coordination-style scalars. */
+function readSingleSelectClauseField(
+    clauses: Record<string, unknown> | undefined,
+    fieldName: string,
+): string | undefined {
+    const data = Object.entries(clauses ?? {})
+        .find(([clauseId]) => clauseDeclaresField(clauseId, fieldName))?.[1] as
+        | Record<string, unknown>
+        | undefined;
+    const value = data?.[fieldName];
+    return typeof value === "string" ? value : undefined;
+}
+
 export function extractRootModality(
     template: AssemblyTemplate,
 ): { modality?: string; coordination?: string } {
     const rootOrder =
         template.orders.find((o) => templateParentOrderIds(o).length === 0) ?? template.orders[0];
-    // The modality + coordination entries are found by their declared FIELDS,
-    // never by clause name. Both clauses are single-select scalars.
-    const clauses = Object.entries(rootOrder?.clauses ?? {});
-    const modalityData = clauses
-        .find(([clauseId]) => clauseDeclaresField(clauseId, "modality"))?.[1] as
-        | { modality?: unknown }
-        | undefined;
-    const coordinationData = clauses
-        .find(([clauseId]) => clauseDeclaresField(clauseId, "coordination"))?.[1] as
-        | { coordination?: unknown }
-        | undefined;
     return {
-        modality: typeof modalityData?.modality === "string" ? modalityData.modality : undefined,
-        coordination: typeof coordinationData?.coordination === "string"
-            ? coordinationData.coordination
-            : undefined,
+        modality: readSingleSelectClauseField(rootOrder?.clauses, "modality"),
+        coordination: readSingleSelectClauseField(rootOrder?.clauses, "coordination"),
     };
 }
 

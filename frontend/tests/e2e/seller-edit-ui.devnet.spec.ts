@@ -165,7 +165,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         // every menu item requires `id`, `name`, `price`, `category`, `available`.
         const { uri: catalogueURI } = await pinJSONToIPFS({
             subjectAddress: seller,
-            menu: [{
+            items: [{
                 id: 'item-1',
                 name: 'Test item',
                 price: '1.00',

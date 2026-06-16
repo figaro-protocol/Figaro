@@ -125,7 +125,7 @@ async function registerSeller(opts: {
     const address = privateKeyToAccount(key).address;
     const { uri: catalogueURI } = await pinJSONToIPFS({
         subjectAddress: address, version: '0.1.0', unitSystem: 'metric',
-        menu: [{ id: `probe-item-${opts.addressIndex}`, name: `Probe Item ${opts.addressIndex}`, description: 'probe', price: '1', pricingPolicy: 'fixed', category: opts.itemCategory, available: true }],
+        items: [{ id: `probe-item-${opts.addressIndex}`, name: `Probe Item ${opts.addressIndex}`, description: 'probe', price: '1', pricingPolicy: 'fixed', category: opts.itemCategory, available: true }],
     });
     await seedRegisteredSeller({
         walletKey: key,

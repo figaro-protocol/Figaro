@@ -32,14 +32,14 @@ function parseOptionalUnitSystem(value: unknown, path: string): UnitSystem | und
 }
 
 
-function parseMenuItem(value: unknown, path: string): CatalogueItemMetadata {
+function parseItem(value: unknown, path: string): CatalogueItemMetadata {
     const record = asRecord(value, path);
     return {
         id: asString(record.id, `${path}.id`),
         name: asString(record.name, `${path}.name`),
         description: asOptionalString(record.description, `${path}.description`),
         price: asString(record.price, `${path}.price`),
-        category: asString(record.category, `${path}.category`),
+        category: asOptionalString(record.category, `${path}.category`),
         image: asOptionalString(record.image, `${path}.image`),
         available: asBoolean(record.available, `${path}.available`),
         massGrams: asOptionalNumber(record.massGrams, `${path}.massGrams`),
@@ -47,11 +47,11 @@ function parseMenuItem(value: unknown, path: string): CatalogueItemMetadata {
     };
 }
 
-function parseMenu(value: unknown, path: string): CatalogueItemMetadata[] {
+function parseItems(value: unknown, path: string): CatalogueItemMetadata[] {
     if (!Array.isArray(value)) {
         throw new Error(`${path} must be an array.`);
     }
-    return value.map((entry, index) => parseMenuItem(entry, `${path}[${index}]`));
+    return value.map((entry, index) => parseItem(entry, `${path}[${index}]`));
 }
 
 export function parseSellerCatalogueDocument(value: unknown, sourceLabel = "seller catalogue metadata"): SellerCatalogueMetadata {
@@ -59,7 +59,7 @@ export function parseSellerCatalogueDocument(value: unknown, sourceLabel = "sell
 
     return {
         subjectAddress: asAddress(record.subjectAddress, `${sourceLabel}.subjectAddress`),
-        menu: parseMenu(record.menu, `${sourceLabel}.menu`),
+        items: parseItems(record.items, `${sourceLabel}.items`),
         version: asString(record.version, `${sourceLabel}.version`),
         unitSystem: parseOptionalUnitSystem(record.unitSystem, `${sourceLabel}.unitSystem`),
     };

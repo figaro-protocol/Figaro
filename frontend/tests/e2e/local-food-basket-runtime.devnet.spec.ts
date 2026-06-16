@@ -76,7 +76,7 @@ async function seedContributor(opts: {
         subjectAddress: opts.address,
         version: '1.0.0',
         unitSystem: 'metric' as const,
-        menu: [{
+        items: [{
             id: opts.itemId,
             name: opts.itemName,
             description: `Seeded by local-food-basket-runtime`,
@@ -136,7 +136,7 @@ test.describe('local-food-basket runtime — 4-order multi-contributor commit, c
             subjectAddress: HUB_ADDR,
             version: '1.0.0',
             unitSystem: 'metric' as const,
-            menu: [{
+            items: [{
                 id: 'basket-weekly',
                 name: 'Weekly basket',
                 description: 'The hub-assembled local-food basket',

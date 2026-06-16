@@ -39,7 +39,7 @@ function profileToCatalogue(
             : undefined,
         geohash: profile.location?.geohash,
         addressText: profile.location?.addressText,
-        menu: catalogue?.menu ?? [],
+        items: catalogue?.items ?? [],
         acceptedTokens: profile.acceptedTokens,
         defaultTokenAddress: profile.defaultTokenAddress,
         agentServices: profile.services,
@@ -99,7 +99,7 @@ async function fetchSellerAsCatalogue(
     const catalogue: SellerCatalogueMetadata | undefined = items && items.length > 0
         ? {
             subjectAddress: stamped.subjectAddress!,
-            menu: items,
+            items: items,
             version: '1.0.0',
         }
         : undefined;

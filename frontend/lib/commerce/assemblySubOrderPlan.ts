@@ -81,7 +81,7 @@ export function resolveSubOrderPayment(args: {
 }): bigint {
     const { seller, sellerCatalogues, tokenDecimals } = args;
     const catalogue = sellerCatalogues.find((c) => hexEqual(c.address, seller));
-    const item = catalogue?.menu.find((i) => i.available !== false);
+    const item = catalogue?.items.find((i) => i.available !== false);
     if (!item) return 0n;
     return parseToken(item.price, tokenDecimals);
 }

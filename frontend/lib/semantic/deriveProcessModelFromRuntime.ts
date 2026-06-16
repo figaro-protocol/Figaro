@@ -152,10 +152,10 @@ function sellerHasPendingHandoffStage(
         if (handoffStages.length === 0) continue;
         const ladder = clauseLadderField(clauseId);
         if (!ladder) continue;
-        const clauseIdHash = clauseIdHashOf(clauseId, section.version).toLowerCase();
+        const clauseIdHash = clauseIdHashOf(clauseId, section.version);
         const seen = new Set(
             orderAttestations
-                .filter((a) => a.clauseId.toLowerCase() === clauseIdHash && hexEqual(a.attester, sellerAddr))
+                .filter((a) => hexEqual(a.clauseId, clauseIdHash) && hexEqual(a.attester, sellerAddr))
                 .map((a) => a.stage),
         );
         for (const stage of handoffStages) {

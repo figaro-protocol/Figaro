@@ -101,7 +101,7 @@ export function SellerEditCatalogue() {
                     // an empty starting point for editing.
                     setExistingCatalogue({
                         subjectAddress: profile.subjectAddress ?? (address as `0x${string}`),
-                        menu: [],
+                        items: [],
                         version: "1.0.0",
                     });
                     return;
@@ -154,7 +154,7 @@ export function SellerEditCatalogue() {
                 acceptedTokens: existingProfile.acceptedTokens,
                 defaultTokenAddress: existingProfile.defaultTokenAddress,
             },
-            catalogue: { items: existingCatalogue.menu, unitSystem: existingCatalogue.unitSystem },
+            catalogue: { items: existingCatalogue.items, unitSystem: existingCatalogue.unitSystem },
         });
         setSeeded(true);
     }, [seeded, loaded, existingProfile, existingCatalogue, update]);
@@ -214,7 +214,7 @@ export function SellerEditCatalogue() {
             const subjectAddress = (existingProfile?.subjectAddress ?? address) as `0x${string}`;
             const newCatalogue: SellerCatalogueMetadata = {
                 subjectAddress,
-                menu: items,
+                items: items,
                 version: existingCatalogue?.version ?? "1.0.0",
                 unitSystem,
             };

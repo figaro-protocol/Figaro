@@ -312,12 +312,12 @@ export function CheckoutView({ sellerAddress }: Props) {
 
     const cartUnitSystem = sellerCatalogue.unitSystem ?? "metric";
     const cartMassGrams = cartItems.reduce((sum, cartItem) => {
-        const menuItem = sellerCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
+        const menuItem = sellerCatalogue.items.find((m) => m.id === cartItem.menuItemId);
         if (!menuItem?.massGrams) return sum;
         return sum + menuItem.massGrams * cartItem.quantity;
     }, 0);
     const cartVolumeMl = cartItems.reduce((sum, cartItem) => {
-        const menuItem = sellerCatalogue.menu.find((m) => m.id === cartItem.menuItemId);
+        const menuItem = sellerCatalogue.items.find((m) => m.id === cartItem.menuItemId);
         if (!menuItem?.volumeMl) return sum;
         return sum + menuItem.volumeMl * cartItem.quantity;
     }, 0);

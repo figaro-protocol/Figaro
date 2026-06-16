@@ -11,7 +11,9 @@ export interface CatalogueItemMetadata {
     name: string;
     description?: string;
     price: string;
-    category: string;
+    /** Free-form seller-authored grouping. Optional — absent when the seller
+     *  didn't author one; never coerced to a coined "General". */
+    category?: string;
     image?: string;
     available: boolean;
     /**
@@ -42,7 +44,7 @@ export interface CatalogueItemMetadata {
  */
 export interface SellerCatalogueMetadata {
     subjectAddress: `0x${string}`;
-    menu: CatalogueItemMetadata[];
+    items: CatalogueItemMetadata[];
     version: string;
     /**
      * Seller's preferred unit system for editor + display. Storage of
