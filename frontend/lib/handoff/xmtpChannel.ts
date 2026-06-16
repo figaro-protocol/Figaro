@@ -8,6 +8,7 @@
 
 import type { CoordinationChannel, HandoffKeyMessage, EcdhPubkeyMessage, EcdhWrappedKeyMessage, CommitmentSignatureMessage, HandoffAddressMessage, ChannelMessage } from "./channel";
 import { safeJsonParse } from "@/lib/shared/safeJson";
+import { hexToBytes } from "@/lib/shared/evm";
 
 function parseChannelMessage(content: unknown): ChannelMessage | null {
     return safeJsonParse<ChannelMessage>(content);
@@ -36,16 +37,6 @@ async function withRetry<T>(
         }
     }
     throw lastError;
-}
-
-/** Hex string (with or without 0x) → Uint8Array. */
-function hexToBytes(hexInput: string): Uint8Array {
-    const hex = hexInput.startsWith("0x") ? hexInput.slice(2) : hexInput;
-    const bytes = new Uint8Array(hex.length / 2);
-    for (let i = 0; i < bytes.length; i++) {
-        bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-    }
-    return bytes;
 }
 
 /** The XMTP network refuses new installations past 10 per inbox. */

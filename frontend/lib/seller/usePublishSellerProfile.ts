@@ -26,6 +26,7 @@
  */
 
 import { useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
+import { toError } from "@/lib/shared/errors";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import {
     parseSellerProfileDocument,
@@ -82,7 +83,7 @@ function translatePublishRevert(err: unknown): Error {
     if (/insufficient funds/i.test(message)) {
         return new Error("Insufficient ETH balance to cover the deposit + gas.");
     }
-    return err instanceof Error ? err : new Error(String(err));
+    return toError(err);
 }
 
 export function usePublishSellerProfile() {

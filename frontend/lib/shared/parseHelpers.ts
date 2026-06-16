@@ -14,7 +14,7 @@
  * so error messages localise the failure for the user.
  */
 
-import { isValidAddress } from "@/components/sellers/TokenAddressInput";
+import { isValidAddress } from "@/lib/shared/evm";
 
 export type UnknownRecord = Record<string, unknown>;
 
@@ -44,11 +44,18 @@ export function asBoolean(value: unknown, path: string): boolean {
     return value;
 }
 
-export function asNumber(value: unknown, path: string): number {
+function asNumber(value: unknown, path: string): number {
     if (typeof value !== "number" || Number.isNaN(value)) {
         throw new Error(`${path} must be a number.`);
     }
     return value;
+}
+
+/** `asNumber`, but `undefined` passes through — the shared optional-number
+ *  parser (replaces the per-module `parseOptionalNumber` re-declarations). */
+export function asOptionalNumber(value: unknown, path: string): number | undefined {
+    if (value === undefined) return undefined;
+    return asNumber(value, path);
 }
 
 function asArray(value: unknown, path: string): unknown[] {

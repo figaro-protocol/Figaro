@@ -28,7 +28,7 @@ import {
     type RedactableAgreement,
 } from "@/lib/core/agreement";
 import { findCleartextSectionByField } from "@/lib/core/orderAgreement";
-import { clauseIsProcessLog, clauseLadderField, listKnownClauseIds } from "@/lib/shared/clauseSpecSource";
+import { clauseIsProcessLog, clauseLadderField, listKnownClauseIds, describeClause } from "@/lib/shared/clauseSpecSource";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import { DELIVERY_LIFECYCLE_STAGES, type ExtractedDocument } from "./types";
@@ -117,8 +117,14 @@ export function extractBillOfLading(
         destinationGeohash?: string;
         massGrams?: number;
         volumeMl?: number;
-        classOfService?: string;
     } | undefined;
+    // Class of service is its own clause now — found by its declared field and
+    // labelled through the clause spec's valueLabels (never a hardcoded switch).
+    const cosSection = findCleartextSectionByField(agreement, "classOfService");
+    const classOfService = cosSection
+        ? describeClause(cosSection.clause, cosSection.data).fields
+            .find((f) => f.name === "classOfService")?.values[0]
+        : undefined;
 
     // Resolve each milestone's witnessing (clauseId, ladder ordinal) from the
     // REGISTRY's process-log clauses — not just this agreement's sections,
@@ -178,7 +184,7 @@ export function extractBillOfLading(
         destinationGeohash: geoData?.destinationGeohash,
         massGrams: geoData?.massGrams,
         volumeMl: geoData?.volumeMl,
-        classOfService: geoData?.classOfService,
+        classOfService,
         stages,
     };
 }

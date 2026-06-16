@@ -1,10 +1,8 @@
 /**
- * Figaro handoff geohash + logistics utilities.
+ * Figaro handoff geohash utility.
  *
- * Self-contained geohash encode / bounds / distance and class-of-service
- * labels. Used by the
- * physical-handoff surfaces (delivery-location capture, courier proximity,
- * seller service areas).
+ * Self-contained geohash encode. Used by the physical-handoff surfaces
+ * (delivery-location capture, courier proximity, seller service areas).
  *
  * The legacy on-chain manifest codec — encode/decode/seal of a v1–v7
  * pipe-separated manifest blob — was removed. The kernel Commitment carries
@@ -57,69 +55,4 @@ export function encodeGeohash(lat: number, lon: number, precision = 6): string {
         }
     }
     return hash;
-}
-
-/** Returns [minLat, maxLat, minLon, maxLon] bounding box for a geohash. */
-function geohashBounds(hash: string): [number, number, number, number] {
-    let evenBit = true;
-    let minLat = -90,
-        maxLat = 90,
-        minLon = -180,
-        maxLon = 180;
-    for (const c of hash) {
-        const chr = BASE32.indexOf(c);
-        if (chr < 0) break;
-        for (let i = 4; i >= 0; i--) {
-            const bit = (chr >> i) & 1;
-            if (evenBit) {
-                const midLon = (minLon + maxLon) / 2;
-                if (bit) minLon = midLon;
-                else maxLon = midLon;
-            } else {
-                const midLat = (minLat + maxLat) / 2;
-                if (bit) minLat = midLat;
-                else maxLat = midLat;
-            }
-            evenBit = !evenBit;
-        }
-    }
-    return [minLat, maxLat, minLon, maxLon];
-}
-
-/** Centre point of a geohash cell. */
-function geohashCenter(hash: string): { lat: number; lon: number } {
-    const [minLat, maxLat, minLon, maxLon] = geohashBounds(hash);
-    return { lat: (minLat + maxLat) / 2, lon: (minLon + maxLon) / 2 };
-}
-
-// ---------------------------------------------------------------------------
-// Approximate distance (km) between two geohash centres (Haversine)
-// ---------------------------------------------------------------------------
-function geohashDistance(a: string, b: string): number {
-    const ca = geohashCenter(a);
-    const cb = geohashCenter(b);
-    const R = 6371;
-    const φ1 = (ca.lat * Math.PI) / 180;
-    const φ2 = (cb.lat * Math.PI) / 180;
-    const dφ = ((cb.lat - ca.lat) * Math.PI) / 180;
-    const dλ = ((cb.lon - ca.lon) * Math.PI) / 180;
-    const x =
-        Math.sin(dφ / 2) * Math.sin(dφ / 2) +
-        Math.cos(φ1) * Math.cos(φ2) * Math.sin(dλ / 2) * Math.sin(dλ / 2);
-    return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
-}
-
-// ---------------------------------------------------------------------------
-// Class of service
-// ---------------------------------------------------------------------------
-const COS_OPTIONS = [
-    { value: "S", label: "Standard", description: "Room temperature, not fragile" },
-    { value: "E", label: "Express", description: "Priority – 30 min window" },
-    { value: "F", label: "Fragile", description: "Handle with care" },
-    { value: "C", label: "Cold Chain", description: "Refrigerated transport required" },
-] as const;
-type CoS = "S" | "E" | "F" | "C";
-
-function cosLabel(cos: string): string {
-    return COS_OPTIONS.find((o) => o.value === cos)?.label ?? cos;
 }

@@ -65,7 +65,7 @@ import { Button } from "@/components/ui/Button";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
-import { isValidAddress } from "@/components/sellers/TokenAddressInput";
+import { isValidAddress } from "@/lib/shared/evm";
 import {
     buildConsentDisputeEvidence,
     buildConsentDisputeMetaEvidence,

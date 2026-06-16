@@ -58,6 +58,15 @@ function normalize(value: unknown, maxLength: number | undefined): string | null
  *     classifies.
  *  4. Fallback string.
  */
+/**
+ * Coerce an unknown caught value to an `Error`. Replaces the
+ * `err instanceof Error ? err : new Error(String(err))` pattern reinvented
+ * across the seller + assembly hooks.
+ */
+export function toError(value: unknown): Error {
+    return value instanceof Error ? value : new Error(String(value));
+}
+
 export function extractErrorMessage(
     cause: unknown,
     fallback: string,

@@ -17,7 +17,7 @@ import {
     asAddress,
     asBoolean,
     asEnum,
-    asNumber,
+    asOptionalNumber,
     asOptionalString,
     asRecord,
     asString,
@@ -25,10 +25,6 @@ import {
 
 const ALLOWED_UNIT_SYSTEMS = new Set<UnitSystem>(["metric", "imperial"]);
 
-function parseOptionalNumber(value: unknown, path: string): number | undefined {
-    if (value === undefined) return undefined;
-    return asNumber(value, path);
-}
 
 function parseOptionalUnitSystem(value: unknown, path: string): UnitSystem | undefined {
     if (value === undefined) return undefined;
@@ -46,8 +42,8 @@ function parseMenuItem(value: unknown, path: string): CatalogueItemMetadata {
         category: asString(record.category, `${path}.category`),
         image: asOptionalString(record.image, `${path}.image`),
         available: asBoolean(record.available, `${path}.available`),
-        massGrams: parseOptionalNumber(record.massGrams, `${path}.massGrams`),
-        volumeMl: parseOptionalNumber(record.volumeMl, `${path}.volumeMl`),
+        massGrams: asOptionalNumber(record.massGrams, `${path}.massGrams`),
+        volumeMl: asOptionalNumber(record.volumeMl, `${path}.volumeMl`),
     };
 }
 

@@ -1,5 +1,5 @@
 // Encoding helpers for frontend -> bytes32 conversions
-import { ZERO_BYTES32, bytesToHex } from "@/lib/shared/evm";
+import { ZERO_BYTES32, bytesToHex, hexToBytes } from "@/lib/shared/evm";
 
 /**
  * Per-order clause content — the SINGLE shape shared by the assembly template,
@@ -32,8 +32,7 @@ function encodeToBytes32(s: string): `0x${string}` {
 export function decodeLocationBytes32(hex: string): string {
     if (!hex || hex === ZERO_BYTES32) return "";
     try {
-        const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
-        const bytes = new Uint8Array((clean.match(/.{2}/g) ?? []).map(b => parseInt(b, 16)));
+        const bytes = hexToBytes(hex);
         let end = bytes.indexOf(0);
         if (end === -1) end = bytes.length;
         return new TextDecoder().decode(bytes.slice(0, end));

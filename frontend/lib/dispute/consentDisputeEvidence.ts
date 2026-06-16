@@ -35,7 +35,7 @@ import type { Address, Hex } from "viem";
 import type { KlerosMetaEvidence, KlerosEvidence } from "./klerosEvidence";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { bytesToHex } from "@/lib/shared/evm";
-import { isValidAddress } from "@/components/sellers/TokenAddressInput";
+import { isValidAddress } from "@/lib/shared/evm";
 
 // ---------------------------------------------------------------------------
 // MetaEvidence

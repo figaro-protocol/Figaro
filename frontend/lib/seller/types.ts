@@ -25,7 +25,10 @@ export interface SellerCatalogue {
     description: string;
     /** Free-form self-description (e.g. "Italian", "Mobile espresso", etc.). Authored by the seller; no closed taxonomy. */
     specialty: string;
-    image: string;
+    /** Seller logo URI (ipfs:// or https://), when the seller declared a
+     *  resolvable one. Absent ⇒ the UI renders a neutral placeholder; never a
+     *  coined emoji stand-in. */
+    image?: string;
     geohash?: string;
     /** Free-form public street address (optional). */
     addressText?: string;

@@ -197,13 +197,13 @@ describe("extractContract — lineage (DAG / parentOrderHashes)", () => {
 });
 
 describe("extractContract — method summary", () => {
-    it("surfaces the canonical method from the single-select modality + coordination clauses", () => {
+    it("surfaces the raw modality + coordination from the single-select clauses (open-world: no canonical-method enum)", () => {
         const ag = makeAgreement([
             { clause: "figaro-modalities", version: 1, data: { modality: "delivery" } },
             { clause: "figaro-coordination", version: 1, data: { coordination: "dutch-auction" } },
         ]);
         const c = extractContract(makeOrder(), ag);
-        expect(c.method).toBe("deliver:dutch-auction");
+        expect(c.method).toBe("delivery:dutch-auction");
     });
 
     it("omits the method summary when no modality clause is signed", () => {

@@ -69,9 +69,10 @@ export function extractProximity(
 ): ProximityDocument {
     const policy = findPolicySection(agreement);
     const data = policy?.data as { band?: unknown } | undefined;
-    const committedBand = typeof data?.band === "number" && data.band >= 0 && data.band <= 3
-        ? data.band
-        : undefined;
+    // The band is already spec-validated at attest time (its range is the
+    // clause enum cardinality, owned by the spec); the extractor trusts the
+    // committed value rather than re-hardcoding 0..N here.
+    const committedBand = typeof data?.band === "number" ? data.band : undefined;
 
     const proofs: AttestationReceipt[] = [];
     for (const att of attestations) {

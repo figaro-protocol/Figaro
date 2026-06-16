@@ -13,11 +13,10 @@ import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import {
     TokenAddressInput,
-    addressIntegrity,
     classifyTokenError,
-    isValidAddress,
     useTokenSymbol,
 } from "@/components/sellers/TokenAddressInput";
+import { addressIntegrity, isValidAddress } from "@/lib/shared/evm";
 import { IpfsImageUpload } from "@/components/sellers/IpfsImageUpload";
 import { useMounted } from "@/lib/shared/useMounted";
 import { useOnboardingState } from "@/lib/seller/onboardingState";

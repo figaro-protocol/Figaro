@@ -24,6 +24,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toError } from "@/lib/shared/errors";
 import { keccak256, parseAbi, BaseError, ContractFunctionRevertedError } from "viem";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
 import { publicClient, activeChain } from "@/lib/shared/wagmi";
@@ -128,7 +129,7 @@ function translatePublishRevert(err: unknown, attemptedSlug: string): Error {
         if (name === "EmptyMetadataURI") return new Error("The IPFS pin returned an empty URI.");
         if (name === "EmptyContentHash") return new Error("Computed an empty content hash — likely a assemblyTemplate-builder bug.");
     }
-    return err instanceof Error ? err : new Error(String(err));
+    return toError(err);
 }
 
 /**

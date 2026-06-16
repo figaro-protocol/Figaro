@@ -1,5 +1,6 @@
 import { toast } from "sonner";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { truncateHex } from "@/lib/shared/formatHex";
 
 /**
  * Show a success toast with optional transaction hash.
@@ -7,7 +8,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 function showSuccess(message: string, txHash?: string) {
     if (txHash) {
         toast.success(message, {
-            description: `Transaction: ${txHash.slice(0, 10)}...${txHash.slice(-8)}`,
+            description: `Transaction: ${truncateHex(txHash, { head: 10, tail: 8 })}`,
             duration: 5000,
         });
     } else {

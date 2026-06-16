@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { useAccount, useChainId, usePublicClient, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { activeChain } from "@/lib/shared/chains";
-import { CONTRACTS, DUTCH_AUCTION_ABI } from "@/lib/core/contracts";
+import { DUTCH_AUCTION_ABI } from "@/lib/core/contracts";
 import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { getDutchAuction } from "@/lib/mechanisms/contracts";
 
 /**
  * Minimal order shape needed by the auction hook.
@@ -15,11 +16,6 @@ export interface AuctionOrder {
     id: string;
     currency: string;
     payment: bigint;
-}
-
-function getDutchAuction(): `0x${string}` | null {
-    const addr = CONTRACTS.dutchAuction;
-    return addr && addr.length === 42 ? addr : null;
 }
 
 export function useDutchAuctionActions() {

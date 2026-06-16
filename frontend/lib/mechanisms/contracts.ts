@@ -13,6 +13,7 @@ export {
     RPGF_MINTER_ABI,
 } from "@figaro/core";
 import { CONTRACTS } from "@/lib/core/contracts";
+import { isValidAddress } from "@/lib/shared/evm";
 
 // ── GHG Disclosure — aligned to real reporting standards ──────────────────────
 //
@@ -88,10 +89,10 @@ export const MECHANISM_CONTRACTS = {
 };
 
 function resolveAddress(addr: `0x${string}`): `0x${string}` | null {
-    return addr && addr.length === 42 ? addr : null;
+    return isValidAddress(addr) ? addr : null;
 }
 
-function getDutchAuction(): `0x${string}` | null {
+export function getDutchAuction(): `0x${string}` | null {
     return resolveAddress(MECHANISM_CONTRACTS.dutchAuction);
 }
 

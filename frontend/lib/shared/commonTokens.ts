@@ -12,7 +12,7 @@
 
 import { ZERO_ADDRESS } from "./evm";
 import { DEVNET_CHAIN_ID } from "./chains";
-import { isValidAddress } from "@/components/sellers/TokenAddressInput";
+import { isValidAddress } from "@/lib/shared/evm";
 
 export interface CommonToken {
     address: `0x${string}`;

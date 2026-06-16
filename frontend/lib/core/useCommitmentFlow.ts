@@ -22,7 +22,7 @@ import { CONTRACTS } from "@/lib/core/contracts";
 import { useFigaroActions, Commitment } from "@/lib/core/useFigaroActions";
 import { ZERO_ADDRESS, ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import type { PartyRole } from "@/lib/core/walletProcessQueries";
-import { isValidAddress } from "@/components/sellers/TokenAddressInput";
+import { isValidAddress } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { saveCommitment, computeOrderHash } from "@/lib/core/commitmentStore";
 import type { Agreement } from "@/lib/core/agreement";

@@ -25,6 +25,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toError } from "@/lib/shared/errors";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import {
     parseSellerProfileDocument,
@@ -103,7 +104,7 @@ export function useUpdateSellerProfile(
             // Round-trip validation — throws if the document doesn't parse.
             parseSellerProfileDocument(merged, "edit-profile");
         } catch (err) {
-            const e = err instanceof Error ? err : new Error(String(err));
+            const e = toError(err);
             setPinError(e);
             setPinning(false);
             throw e;
@@ -118,7 +119,7 @@ export function useUpdateSellerProfile(
             setPublishedURI(uri);
             setPinning(false);
         } catch (err) {
-            const e = err instanceof Error ? err : new Error(String(err));
+            const e = toError(err);
             setPinError(e);
             setPinning(false);
             throw e;
@@ -127,7 +128,7 @@ export function useUpdateSellerProfile(
         try {
             await updateProfile(uri);
         } catch (err) {
-            const e = err instanceof Error ? err : new Error(String(err));
+            const e = toError(err);
             setPinError(e);
             throw e;
         }

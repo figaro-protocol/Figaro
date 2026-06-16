@@ -138,8 +138,9 @@ function extractLineage(agreement: Agreement | RedactableAgreement) {
 
 function extractMethodSummary(agreement: Agreement | RedactableAgreement) {
     // The modality + coordination sections are found by their declared
-    // FIELDS, never by clause name. Both are single-select scalars; the
-    // canonical method compounds them for delivery.
+    // FIELDS, never by clause name. Both are single-select scalars; the raw
+    // values flow through verbatim — an unseen modality the registry defines
+    // must NOT fall into an undefined hole (open-world).
     const modalityData = findCleartextSectionByField(agreement, "modality")?.data as
         | { modality?: unknown }
         | undefined;
@@ -151,13 +152,7 @@ function extractMethodSummary(agreement: Agreement | RedactableAgreement) {
     const coordination = typeof coordinationData?.coordination === "string"
         ? coordinationData.coordination
         : undefined;
-    if (modality === "delivery" && coordination) {
-        return `deliver:${coordination}`;
-    }
-    if (modality === "consume-onsite") return "consume-onsite";
-    if (modality === "pickup") return "pickup";
-    if (modality === "virtual") return "virtual";
-    return undefined;
+    return coordination ? `${modality}:${coordination}` : modality;
 }
 
 export function extractContract(

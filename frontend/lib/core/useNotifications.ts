@@ -102,7 +102,7 @@ export function useNotifications() {
                         const { args } = log;
                         addNotification({
                             type: "order_committed",
-                            title: "🍕 New Order Placed",
+                            title: "New order placed",
                             message: `Order ${(args.orderHash as string)?.slice(2, 8).toUpperCase()}… placed`,
                             orderId: args.orderHash as string,
                             processId: args.processId as string,

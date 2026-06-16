@@ -19,20 +19,12 @@
 import { PrivateKey, PublicKey } from "eciesjs";
 import { generateOrderKeypair, type EphemeralKeypair } from "./ephemeralKeys";
 import { readSessionStorage, writeSessionStorage } from "@/lib/shared/storage";
-import { bytesToHex } from "@/lib/shared/evm";
+import { bytesToHex, hexToBytes } from "@/lib/shared/evm";
 
 // ---------------------------------------------------------------------------
 // ECDH shared secret derivation
 // ---------------------------------------------------------------------------
 
-function hexToBytes(hex: string): Uint8Array {
-    const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
-    const bytes = new Uint8Array(clean.length / 2);
-    for (let i = 0; i < bytes.length; i++) {
-        bytes[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
-    }
-    return bytes;
-}
 
 /**
  * Derive a 32-byte shared secret via secp256k1 ECDH.

@@ -7,10 +7,10 @@
  * Two layers:
  *
  *   • Committed disclosure — whatever registered clause declaring a `scope`
- *     field the parties composed; each accounting standard is its own
- *     clause, so the standard's identity IS the clauseKey and its label is
- *     the registered spec's title. The data field is `(uint8 scope)` —
- *     0=unset, 1=Scope 1, 2=Scope 2, 3=Scope 3.
+ *     field the parties composed. The accounting methodology is the
+ *     disclosure's free-form `standard` field (the GHG clauses consolidated
+ *     into one figaro-ghg with a methodology field). `scope` is 1=Scope 1,
+ *     2=Scope 2, 3=Scope 3.
  *
  *   • Runtime measurement — attestations under the disclosure family's
  *     Category-1 sister clauses (`block.sisterClauseId`) carry
@@ -78,9 +78,10 @@ export function extractEmissions(
 ): EmissionsDocument {
     const disclosure = findGhgDisclosureSection(agreement);
     const data = disclosure?.data as { scope?: unknown; standard?: unknown } | undefined;
-    const scope = typeof data?.scope === "number" && data.scope >= 0 && data.scope <= 3
-        ? data.scope
-        : undefined;
+    // scope is already spec-validated at attest time (figaro-ghg declares
+    // min 1 max 3); the extractor trusts the committed value rather than
+    // re-hardcoding the range (the old 0..3 even wrongly admitted 0).
+    const scope = typeof data?.scope === "number" ? data.scope : undefined;
     const standardClauseKey = disclosure?.clause;
     // The accounting methodology is the disclosure's free-form `standard` field
     // (the GHG clauses consolidated into one figaro-ghg with a methodology

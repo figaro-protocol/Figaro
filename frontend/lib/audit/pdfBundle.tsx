@@ -187,17 +187,6 @@ function shortAddr(addr: string | undefined): string {
     return shortHex(addr, 6, 4);
 }
 
-/** Expand the geo clause's class-of-service short code into its full label.
- *  Falls back to the raw code for unknown values. */
-function bolClassLabel(code: string): string {
-    switch (code) {
-        case "S": return "Standard (S)";
-        case "E": return "Express (E)";
-        case "F": return "Fragile (F)";
-        case "C": return "Cold chain (C)";
-        default: return code;
-    }
-}
 
 // ── Footer ──────────────────────────────────────────────────────────────────
 
@@ -554,7 +543,7 @@ function BillOfLadingPage({ bol }: { bol: BillOfLadingDocument }) {
                 {bol.classOfService && (
                     <View style={styles.metadataRow}>
                         <Text style={styles.metadataKey}>class of service</Text>
-                        <Text style={[styles.metadataValue, styles.mono]}>{bolClassLabel(bol.classOfService)}</Text>
+                        <Text style={[styles.metadataValue, styles.mono]}>{bol.classOfService}</Text>
                     </View>
                 )}
             </View>
