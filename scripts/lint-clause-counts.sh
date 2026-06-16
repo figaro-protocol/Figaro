@@ -90,7 +90,7 @@ check() {
 # populate-clauses.mjs), so they carry no clause-count console.log to track here.
 # They still wire validators — see the runtime-attestable section below.
 check "docs/v5/FRONTEND.md" \
-    '[0-9]+ clauses in$' \
+    '[0-9]+ protocol clauses on the devnet' \
     "$total" "FRONTEND.md clauses-dir count"
 check "CLAUDE.md" \
     '[0-9]+ protocol clauses' \
