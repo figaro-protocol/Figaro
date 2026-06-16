@@ -38,8 +38,8 @@ import {
     ASSEMBLY_REGISTRY_ABI,
     fetchAssemblyTemplate,
     getAssemblyRegistry,
-    usePublishAssembly,
 } from "@/lib/mechanisms/useAssemblyRegistry";
+import { usePublishAssembly } from "@/lib/designer/assemblyDiscovery";
 import { templateToOrders } from "@/lib/designer/assemblyTemplateToDraft";
 import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
 import type { AssemblyTemplate } from "@/lib/designer/assemblyTemplate";

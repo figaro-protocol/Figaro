@@ -31,7 +31,7 @@ import { parseToken } from "@/lib/shared/utils";
 import { CONTRACTS } from "@/lib/core/contracts";
 import type { Commitment } from "@/lib/core/useFigaroActions";
 import type { CommitmentPayloadMeta } from "@/lib/core/useCommitmentFlow";
-import type { BoundAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
+import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
 import type { SellerCatalogue } from "@/lib/seller/types";
 import type { CoordinationMessagingService } from "@/lib/handoff/coordinationMessagingService";
 import type { IpfsService } from "@/lib/shared/ipfsService";

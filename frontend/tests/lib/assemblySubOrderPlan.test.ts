@@ -4,7 +4,7 @@ import {
     resolveSubOrderPayment,
 } from "@/lib/commerce/assemblySubOrderPlan";
 import type { AssemblyTemplateOrder } from "@/lib/designer/assemblyTemplate";
-import type { BoundAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
+import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
 import type { SellerCatalogue } from "@/lib/seller/types";
 
 // The kit-assembly diamond: A (lead, root) → B, A → C, B → D, C → D.

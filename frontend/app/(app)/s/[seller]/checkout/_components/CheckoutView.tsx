@@ -39,7 +39,8 @@ import { hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatToken, parseToken } from "@/lib/shared/utils";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
-import { useSellerBoundAssemblies, extractRootModality } from "@/lib/mechanisms/useAssemblyRegistry";
+import { useSellerBoundAssemblies } from "@/lib/seller/useSellerBoundAssemblies";
+import { extractRootModality } from "@/lib/designer/assemblyDiscovery";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 

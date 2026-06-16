@@ -3,7 +3,7 @@
 import {
     type AssemblyChoice,
     formatAssemblyClauseList,
-} from "@/lib/mechanisms/useAssemblyRegistry";
+} from "@/lib/designer/assemblyDiscovery";
 
 /**
  * AssemblyShapeLine — the one-line summary of an assembly's shape, shared by

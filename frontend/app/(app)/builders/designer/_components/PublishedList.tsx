@@ -21,7 +21,7 @@ import { useAccount } from "wagmi";
 import {
     type AssemblyChoice,
     useAssemblyChoices,
-} from "@/lib/mechanisms/useAssemblyRegistry";
+} from "@/lib/designer/assemblyDiscovery";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
 import { truncateHex } from "@/lib/shared/formatHex";

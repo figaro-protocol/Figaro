@@ -16,7 +16,7 @@ import {
     type AssemblyChoice,
     requiredCounterpartyClauses,
     useAssemblyChoices,
-} from "@/lib/mechanisms/useAssemblyRegistry";
+} from "@/lib/designer/assemblyDiscovery";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 
 /**

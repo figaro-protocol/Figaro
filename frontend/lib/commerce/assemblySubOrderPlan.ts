@@ -13,7 +13,7 @@
  * authored (the assemblyTemplate figure).
  */
 
-import type { BoundAssembly } from "@/lib/mechanisms/useAssemblyRegistry";
+import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
 import { templateParentOrderIds, type AssemblyTemplateOrder } from "@/lib/designer/assemblyTemplate";
 import type { SellerCatalogue } from "@/lib/seller/types";
 import { hexEqual } from "@/lib/shared/evm";

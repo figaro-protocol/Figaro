@@ -1,6 +1,6 @@
 "use client";
 
-import { useAssemblyChoices } from "@/lib/mechanisms/useAssemblyRegistry";
+import { useAssemblyChoices } from "@/lib/designer/assemblyDiscovery";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 
 function truncateAddress(addr: `0x${string}`): string {
