@@ -18,6 +18,27 @@ export function OnboardingWelcome() {
     return (
         <div className="space-y-8">
             <Card className="p-6 space-y-4">
+                <h2 className="text-heading-h2 text-ink-heading">What you are joining</h2>
+                <div className="space-y-3 text-sm text-ink-body">
+                    <p>
+                        Figaro is a coordination protocol — it lets two parties who have never met transact
+                        with the math, not a platform, standing behind the deal. As a seller, that math is
+                        your bond: when a buyer commits to an order, you lock twice its cumulative value
+                        on-chain for the duration. The bond is what lets a stranger deal with you without a
+                        platform vouching for either of you — cooperation is worth more to you than
+                        defection, so the buyer doesn&apos;t have to trust you, only the numbers.
+                    </p>
+                    <p>
+                        No admin, arbitrator, or timeout can seize or release that bond. Only the buyer
+                        resolves the order, and when they do, your bond returns along with your payment.{" "}
+                        <Link href="/protocol" className="underline underline-offset-2 hover:text-ink-heading transition-colors">
+                            How the bond works →
+                        </Link>
+                    </p>
+                </div>
+            </Card>
+
+            <Card className="p-6 space-y-4">
                 <h2 className="text-heading-h2 text-ink-heading">Prerequisites</h2>
                 <ul className="space-y-2 text-sm text-ink-body list-disc pl-5">
                     <li>You need a connected wallet on the active network. Connect it on the next screen.</li>

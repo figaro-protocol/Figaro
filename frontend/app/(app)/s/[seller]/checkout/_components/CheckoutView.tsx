@@ -523,6 +523,11 @@ export function CheckoutView({ sellerAddress }: Props) {
                                     {formatToken(lockedTotal, tokenDecimals)}
                                 </span>
                             </div>
+                            <p className="text-[11px] text-neutral-500 pt-1.5 leading-relaxed" data-testid="checkout-bond-rationale">
+                                Both you and the seller lock a bond against this deal, so cooperation is the
+                                seller&apos;s only profitable move — no arbitrator, no timeout, no admin. You
+                                alone resolve it; your bond returns when you do, and you pay only the price above.
+                            </p>
                             {(cartMassGrams > 0 || cartVolumeMl > 0) && (
                                 <div
                                     className="flex justify-between text-[11px] text-neutral-500 pt-1.5 border-t border-neutral-200"
