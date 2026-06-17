@@ -113,9 +113,9 @@ const COMPOSITIONS = {
                 'figaro-handoff': { handoff: ['face-to-face'] },
                 'figaro-proximity-policy': { bands: ['zone-wifi'] },
                 'figaro-merchant-process': {},
-                'figaro-ghg': {},
+                'figaro-ghg': { standard: 'ISO 14064' },
             }),
-            child('order-1', { 'figaro-courier-process': {}, 'figaro-ghg': {}, ...COURIER_EDGE }),
+            child('order-1', { 'figaro-courier-process': {}, 'figaro-ghg': { standard: 'ISO 14064' }, ...COURIER_EDGE }),
         ],
     },
     'local-food-basket': {

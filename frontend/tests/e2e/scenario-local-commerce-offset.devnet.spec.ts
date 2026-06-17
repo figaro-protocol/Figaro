@@ -61,6 +61,18 @@ const IPFS_GATEWAY = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0
 /** Compose one clause (and its field selections) in the open drawer — each
  *  control awaited into existence first (chain→IPFS spec warm; field controls
  *  are spec-gated and may render only after the parent selection). */
+// The GHG disclosure methodology — `figaro-ghg`'s required, free-form `standard`
+// field. A design-time commitment (the seller reports under this methodology),
+// so it's captured in the drawer and lives in the published template + slug.
+const GHG_STANDARD = 'ISO 14064';
+
+/** Fill `figaro-ghg`'s required `standard` after composing the clause — the
+ *  drawer renders a typed text input for a required-no-default scalar. */
+async function composeGhgDisclosure(page: Page) {
+    await composeClause(page, 'figaro-ghg');
+    await page.getByTestId('drawer-field-figaro-ghg-standard').fill(GHG_STANDARD);
+}
+
 async function composeClause(page: Page, clause: string, fields: readonly string[] = []) {
     const box = page.getByTestId(`drawer-registry-clause-${clause}`);
     await expect(box, `drawer surfaces ${clause}`).toHaveCount(1, { timeout: 20000 });
@@ -121,7 +133,7 @@ test.describe('Author + publish the local-commerce-offset assembly (devnet)', ()
             await composeClause(page, 'figaro-handoff', ['drawer-field-figaro-handoff-handoff-face-to-face']);
             await composeClause(page, 'figaro-proximity-policy', ['drawer-field-figaro-proximity-policy-bands-zone-wifi']);
             await composeClause(page, 'figaro-merchant-process');
-            await composeClause(page, 'figaro-ghg');
+            await composeGhgDisclosure(page);
 
             // ── Compose the COURIER order: courier-process + the courier→buyer
             //    hand-off + its proximity certification ────────────────────────
@@ -129,7 +141,7 @@ test.describe('Author + publish the local-commerce-offset assembly (devnet)', ()
             await page.getByTestId('drawer-tab-registry').click();
             await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
             await composeClause(page, 'figaro-courier-process');
-            await composeClause(page, 'figaro-ghg');
+            await composeGhgDisclosure(page);
             await composeClause(page, 'figaro-handoff', ['drawer-field-figaro-handoff-handoff-face-to-face']);
             await composeClause(page, 'figaro-proximity-policy', ['drawer-field-figaro-proximity-policy-bands-zone-wifi']);
             await expect(orderNodes, 'composing clauses never draws nodes').toHaveCount(2, { timeout: 10000 });
@@ -202,6 +214,9 @@ test.describe('Author + publish the local-commerce-offset assembly (devnet)', ()
         expect(root.clauses['figaro-coordination'].coordination).toBe('seller-assigned');
                 expect(root.clauses['figaro-handoff'].handoff).toEqual(['face-to-face']);
         expect(root.clauses['figaro-proximity-policy'].bands).toEqual(['zone-wifi']);
+        // The GHG disclosure carries its design-time methodology — captured in
+        // the drawer (a required-no-default scalar), not deferred to checkout.
+        expect(root.clauses['figaro-ghg'].standard).toBe('ISO 14064');
 
         // order[1] — the courier: courier-process + the courier→buyer hand-off,
         // proximity-certified, parent = order-0.
@@ -215,6 +230,7 @@ test.describe('Author + publish the local-commerce-offset assembly (devnet)', ()
         ]);
         expect(courier.clauses['figaro-handoff'].handoff).toEqual(['face-to-face']);
         expect(courier.clauses['figaro-proximity-policy'].bands).toEqual(['zone-wifi']);
+        expect(courier.clauses['figaro-ghg'].standard).toBe('ISO 14064');
 
         // ── It SURFACES on the marketing /assemblies inventory ─────────────
         await assertAssemblyOnInventory(page, slug);
