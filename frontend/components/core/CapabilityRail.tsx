@@ -36,9 +36,6 @@ export function CapabilityRail({
                         <div className="flex items-center justify-between gap-3">
                             <p className="font-semibold text-black text-sm">{capability.label}</p>
                         </div>
-                        {capability.preconditions.length > 0 && (
-                            <p className="text-xs text-neutral-500 mt-1">{capability.preconditions.join(", ")}</p>
-                        )}
                         <div className="mt-3 flex items-center justify-end gap-3">
                             {onExecute && (
                                 <Button

@@ -415,7 +415,7 @@ function deriveProcessCapabilities(
     if (canResolve) {
         capabilities.push({
             id: `${processId}-resolve`,
-            label: "Resolve Process",
+            label: "Resolve & release funds",
             actionKind: "resolve-process",
             action: {
                 executionType: "transaction",
