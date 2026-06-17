@@ -31,6 +31,15 @@ export interface AssemblyTemplateOrder {
 }
 
 export interface AssemblyTemplate {
+    /** EDITORIAL — the designer's own words, for legibility (the content-derived
+     *  slug is opaque at scale). `name` is a short handle, `summary` a one-line
+     *  gloss, `description` the long form. Free-form prose, NOT a taxonomy
+     *  (open-world: like a seller's name/specialty/description). These are pinned
+     *  in the document but EXCLUDED from the content hash — identity stays
+     *  composition-derived, so renaming never forks the slug. All optional. */
+    name?: string;
+    summary?: string;
+    description?: string;
     /** ERC-20 the assembly privileges (its denomination / value-capture
      *  token). Absent = ERC-20-agnostic (any token, per the process at
      *  checkout). One token per assembly; offering several = several
@@ -56,11 +65,14 @@ export function templateParentOrderIds(order: AssemblyTemplateOrder): string[] {
  *  clause selection. The DAG is folded in as the manifest-only topology clause
  *  — not a separate field. */
 export function buildAssemblyTemplate(args: {
+    name?: string;
+    summary?: string;
+    description?: string;
     privilegedToken?: string;
     orders: readonly Order[];
     clausesByOrderId: Readonly<Record<string, ClauseValues>>;
 }): AssemblyTemplate {
-    const { privilegedToken, orders, clausesByOrderId } = args;
+    const { name, summary, description, privilegedToken, orders, clausesByOrderId } = args;
     const topologyClauseId = manifestTopologyClauseId();
     if (!topologyClauseId) {
         // Without the chain→IPFS spec cache the topology clause cannot be
@@ -75,6 +87,9 @@ export function buildAssemblyTemplate(args: {
     // clauses (topology among them), keyed by these local labels.
     const idToLocal = new Map(orders.map((o, i) => [o.id, `order-${i}`]));
     return {
+        ...(name ? { name } : {}),
+        ...(summary ? { summary } : {}),
+        ...(description ? { description } : {}),
         ...(privilegedToken ? { privilegedToken } : {}),
         orders: orders.map((order, i) => ({
             id: `order-${i}`,
@@ -103,8 +118,19 @@ export function serializeAssemblyTemplate(template: AssemblyTemplate): {
     json: string;
     contentHash: `0x${string}`;
 } {
+    // The pinned document carries everything — INCLUDING the editorial
+    // name/summary/description. But the content hash (→ slug + on-chain anchor)
+    // derives from the COMPOSITION ONLY (privilegedToken + orders), so editorial
+    // edits never fork identity: identical compositions collapse to one slug
+    // regardless of their prose. This also keeps the hash byte-identical to what
+    // scenarioSlugs.mjs computes (it has never carried editorial fields).
     const json = canonicalize(template);
-    return { json, contentHash: keccak256(toHex(json)) };
+    const composition = {
+        ...(template.privilegedToken ? { privilegedToken: template.privilegedToken } : {}),
+        orders: template.orders,
+    };
+    const contentHash = keccak256(toHex(canonicalize(composition)));
+    return { json, contentHash };
 }
 
 /** The published slug — a deterministic id derived from the composition's
