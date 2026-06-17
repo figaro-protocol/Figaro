@@ -42,6 +42,9 @@
       "bash scripts/lint-no-handwritten-kernel-abis.sh",
       "bash scripts/lint-composition-is-designer-only.sh"
     ],
+    "sdk/src/clauses/examples/*.json": [
+      "bash scripts/lint-clause-choices-are-bounded.sh"
+    ],
     "src/**/*.sol": [
       "forge fmt"
     ]
