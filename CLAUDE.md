@@ -25,6 +25,34 @@ Compose from the `lib/` catalogues; do not build an app shell. Fuller treatment 
 product code" below. This is grievance #0 applied to the single premise that costs
 the most.
 
+### What open-world looks like — the positive target
+
+Every "do not" in this file has a positive form; **lead with it.** A prohibition
+alone leaves a vacuum, and the base model fills a vacuum with its closed-world
+default — the exact failure this file fights. Open-world means:
+
+1. **Name the role + surface.** Designer composes (`/builders/designer`), seller
+   binds (profile array), buyer selects + fills (checkout), the order's seller
+   attests (runtime), spectator reads — never "the buyer/user does X."
+2. **The set is the live registry.** Clauses/sellers/assemblies are an unbounded
+   set read chain→IPFS via the indexer; any list is an as-of-today snapshot. *Test:
+   would it still hold if a never-seen clause dropped into the registry now?*
+3. **The frontend is a surface.** It composes `lib/` catalogues and renders indexer
+   state — not an app/feature/funnel.
+4. **Meaning is derived; storage is event-driven + IPFS.** The chain holds a
+   fingerprint, content is pinned to IPFS, the indexer reconstructs; what a
+   node/role/modality/category IS is derived at render from clauses + topology +
+   state, never a stored field.
+5. **A clause encodes ANY relationship.** The same kernel serves a market-liberal,
+   cooperative, mutual-aid, or Islamic-finance graph; logistics is one projection,
+   never the default.
+6. **Generic code routes by spec, not name.** Read fields / `block` / `mechanismKinds`
+   / tier; no `if (clause === geo)`.
+7. **Surfaces read at the edge.** The indexer is the read path, registries + IPFS the
+   source; resolved-empty = absence, never a coined default.
+
+Full rubric → `reference_open_world_lens` memory.
+
 ---
 
 This file is the authoritative reference for AI-assisted work in this repo. It
@@ -143,7 +171,7 @@ Never frame Figaro as "removing the middleman." Figaro is sovereign P2P commerce
 
 Do not reify topology labels into entities. "Restaurant", "merchant", "supplier" are descriptive labels for participants within an assembly, not firms.
 
-The kernel is ideologically agnostic; the graph is the politics. FigaroCore takes no position on currency, jurisdiction, identity, arbitration, role structure, price-discovery, or contribution metric. A market-liberal graph, a cooperative graph, an Islamic-finance graph, and a mutual-aid graph all use the same kernel. Never take positions on ideology at the kernel layer; never describe Figaro as aligned with any political or economic tradition. Ideology lives at the assembly tier where participants express it in the graph they compose.
+The kernel is ideologically agnostic; the graph is the politics. FigaroCore takes no position on currency, jurisdiction, identity, arbitration, role structure, price-discovery, or contribution metric. A market-liberal graph, a cooperative graph, an Islamic-finance graph, and a mutual-aid graph all use the same kernel. Never take positions on ideology at the kernel layer; never describe Figaro as aligned with any political or economic tradition. Ideology lives at the assembly tier — expressed in the graph composed there. Composition is the **designer's** act; sellers bind that graph and buyers select it — neither composes (open-world lens #1).
 
 ### Three-Tier Naming
 
