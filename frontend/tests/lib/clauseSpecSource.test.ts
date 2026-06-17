@@ -5,6 +5,8 @@ import {
     listKnownClauseIds,
     loadClauseSpec,
     setClauseSpecFetcher,
+    clauseLadderField,
+    labelEnumValue,
     _resetClauseSpecCache_TESTING_ONLY,
 } from "@/lib/shared/clauseSpecSource";
 import { primeClauseSpecs } from "./primeClauseSpecs";
@@ -62,5 +64,24 @@ describe("clauseSpecSource — async loadClauseSpec via fetcher", () => {
     it("rejects when the spec fails to parse", async () => {
         setClauseSpecFetcher(async () => ({ not: "a spec" }));
         await expect(loadClauseSpec("malformed-v1", "ipfs://fake")).rejects.toThrow(/failed to parse/);
+    });
+});
+
+describe("clauseSpecSource — valueLabels humanize runtime enum codes (audit workstream B)", () => {
+    it("clauseLadderField carries the spec's valueLabels (so the capability deriver can humanize)", async () => {
+        await primeClauseSpecs(["figaro-merchant-process"]);
+        const ladder = clauseLadderField("figaro-merchant-process");
+        expect(ladder?.name).toBe("eventType");
+        expect(ladder?.valueLabels?.["prep-started"]).toBe("Preparation started");
+        expect(ladder?.valueLabels?.["handed-off"]).toBe("Handed off");
+    });
+
+    it("labelEnumValue humanizes a raw code via valueLabels, and falls back to the raw token when unlabelled", async () => {
+        await primeClauseSpecs(["figaro-modalities"]);
+        const ladder = clauseLadderField("figaro-modalities");
+        expect(labelEnumValue(ladder, "consume-onsite")).toBe("Consume on-site");
+        expect(labelEnumValue(ladder, "virtual")).toBe("Virtual");
+        // Fallback: an unlabelled value renders as its raw token (never blank).
+        expect(labelEnumValue(ladder, "unlabelled-code")).toBe("unlabelled-code");
     });
 });

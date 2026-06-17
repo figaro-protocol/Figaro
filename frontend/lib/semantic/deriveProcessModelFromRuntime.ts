@@ -363,6 +363,7 @@ function roleCapabilities(
                 out.push({
                     id: capId,
                     label: labelEnumValue(ladder, eventCode),
+                    eventCode,
                     actionKind: "submit-clause-attestation",
                     action: {
                         executionType: "transaction",

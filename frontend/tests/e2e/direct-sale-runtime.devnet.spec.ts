@@ -157,13 +157,14 @@ test.describe('direct-sale runtime — on-site commit, handoff certification, re
         // stage's button appears only once the prior attestation has been
         // indexed. Several generic capabilities can render at once (the
         // merchant-process ladder AND the seller's proximity witness), so every
-        // click filters by the stage's own event code — as a human reads it.
+        // click targets the stage by its STABLE event code (`data-event-code`),
+        // not the humanized button label (which the clause spec's valueLabels now set).
         await gotoAsWallet(page, sellerAddr, `/orders/${processId}?e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ state: 'visible', timeout: 30000 });
         const railBtn = page.getByTestId('capability-execute-submit-clause-attestation');
 
         for (const stage of MERCHANT_STAGES) {
-            const btn = railBtn.filter({ hasText: stage });
+            const btn = page.locator(`[data-testid="capability-execute-submit-clause-attestation"][data-event-code="${stage}"]`);
             await expect(btn, `merchant rail surfaces ${stage}`).toBeEnabled({ timeout: 90_000 });
             await btn.click();
         }
@@ -183,9 +184,9 @@ test.describe('direct-sale runtime — on-site commit, handoff certification, re
         await expect(page.getByTestId('order-modality'))
             .toContainText(/consume-onsite/i, { timeout: 30000 });
 
-        // Buyer's symmetric proximity witness — same generic rail, same label.
-        const buyerProof = page.getByTestId('capability-execute-submit-clause-attestation')
-            .filter({ hasText: PROXIMITY_BAND });
+        // Buyer's symmetric proximity witness — same generic rail, targeted by the
+        // stable band event code (not the humanized label).
+        const buyerProof = page.locator(`[data-testid="capability-execute-submit-clause-attestation"][data-event-code="${PROXIMITY_BAND}"]`);
         await expect(buyerProof, 'buyer proximity witness surfaces').toBeEnabled({ timeout: 90_000 });
         await buyerProof.click();
         await expect(buyerProof, 'buyer witness retires once the proof lands').toHaveCount(0, { timeout: 90_000 });

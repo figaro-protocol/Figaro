@@ -43,6 +43,7 @@ export function CapabilityRail({
                                     size="sm"
                                     variant="outline"
                                     data-testid={`capability-execute-${capability.actionKind}`}
+                                    data-event-code={capability.eventCode}
                                     disabled={!executableCapabilityIds?.has(capability.id) || !!executingCapabilityId}
                                     onClick={() => onExecute(capability)}
                                 >

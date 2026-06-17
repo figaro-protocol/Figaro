@@ -234,7 +234,7 @@ function enumFieldOf(field: FieldSpec): EnumFieldSpec | undefined {
  *  spec declares no label (a never-labelled clause still renders). Internal —
  *  shared by the spec-derived readers below (`describeAttestation`,
  *  `renderFieldValues`) and by the capability deriver (the runtime action label). */
-export function labelEnumValue(field: { valueLabels?: Readonly<Record<string, string>> } | undefined, value: string): string {
+export function labelEnumValue(field: { valueLabels?: Readonly<Record<string, string>> } | null | undefined, value: string): string {
     return field?.valueLabels?.[value] ?? value;
 }
 

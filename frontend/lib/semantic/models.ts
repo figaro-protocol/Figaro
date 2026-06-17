@@ -231,6 +231,11 @@ export type CapabilityExecutionInput =
 export interface CapabilityModel {
     id: string;
     label: string;
+    /** The raw enum stage/band CODE for a clause-attestation capability (e.g.
+     *  "prep-started", "zone-wifi"). Stable across label changes — surfaced as a
+     *  `data-event-code` attribute so a test (or any consumer) can target a
+     *  specific stage's button without depending on the humanized `label`. */
+    eventCode?: string;
     actionKind: string;
     action: CapabilityActionDescriptor;
     mechanismId: string;
