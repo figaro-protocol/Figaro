@@ -1,22 +1,24 @@
 "use client";
 
 /**
- * SellerCataloguePicker — the delivery-seller selection step at checkout.
+ * SellerCataloguePicker — the counterparty-seller selection step at checkout.
  *
- * A local-commerce delivery is its own buyer↔seller order, priced from the
- * delivery seller's own catalogue. Two coordination modes, one mechanism —
- * they differ only in how the delivery seller's address is obtained:
+ * When an order names a second seller (the order's coordination clause is what
+ * makes it a coordination sub-order, never this picker), that seller is its own
+ * buyer↔seller order, priced from the seller's own catalogue. Two coordination
+ * modes, one mechanism — they differ only in how the seller's address is
+ * obtained:
  *
  *   - seller-assigned — the buyer picks from the lead seller's partner list
- *     (`counterpartyBindings`).
+ *     (`partnerAddresses`).
  *   - buyer-assigned  — the buyer enters any seller's address.
  *
  * Either way: the address resolves the seller's catalogue, and the buyer
- * selects a delivery item from its published price list.
+ * selects an item from its published price list.
  *
  * Catalogues come from `useRegisteredCatalogues` — the discovered seller
- * set. Any seller that publishes a delivery service is a registered
- * seller, so an address outside that set has no catalogue to show.
+ * set. Any seller that publishes a catalogue is a registered seller, so an
+ * address outside that set has no catalogue to show.
  *
  * Reports the completed selection up via `onSelect`; reports `null` while
  * the selection is incomplete.
@@ -31,7 +33,7 @@ import { truncateHex } from "@/lib/shared/formatHex";
 
 export interface SellerSelection {
     seller: `0x${string}`;
-    /** The chosen delivery item from the seller's catalogue. */
+    /** The chosen item from the seller's catalogue. */
     item: CatalogueItemMetadata;
     /** The effective price — the item's published catalogue figure. */
     price: string;
@@ -62,11 +64,15 @@ export function SellerCataloguePicker({ mode, partnerAddresses, tokenSymbol, onS
         () => (validSeller ? sellerCatalogues.find((c) => hexEqual(c.address, validSeller)) : undefined),
         [validSeller, sellerCatalogues],
     );
-    const deliveryItems = useMemo(
-        () => (sellerCatalogue?.items ?? []).filter((i) => i.category === "delivery"),
+    // The seller's published catalogue is the selectable set — `category` is a
+    // free-form seller label, never a closed tag the picker may branch on (the
+    // coordination context comes from the order's coordination clause, not from
+    // an item's category string).
+    const catalogueItems = useMemo(
+        () => sellerCatalogue?.items ?? [],
         [sellerCatalogue],
     );
-    const selectedItem = deliveryItems.find((i) => i.id === selectedItemId);
+    const selectedItem = catalogueItems.find((i) => i.id === selectedItemId);
 
     // Report the completed selection up. `onSelect` is expected to be a
     // stable setter; the deps are primitives + a stable item ref.
@@ -113,22 +119,22 @@ export function SellerCataloguePicker({ mode, partnerAddresses, tokenSymbol, onS
                 />
             )}
 
-            {/* Catalogue step — the seller's delivery price list. */}
-            {validSeller && isLoading && deliveryItems.length === 0 && (
+            {/* Catalogue step — the seller's published price list. */}
+            {validSeller && isLoading && catalogueItems.length === 0 && (
                 <p className="text-xs text-neutral-500">Loading the seller&apos;s catalogue…</p>
             )}
-            {validSeller && !isLoading && deliveryItems.length === 0 && (
-                <p className="text-xs text-neutral-500" data-testid="seller-no-delivery">
-                    This seller publishes no delivery service.
+            {validSeller && !isLoading && catalogueItems.length === 0 && (
+                <p className="text-xs text-neutral-500" data-testid="seller-no-items">
+                    This seller publishes no catalogue items.
                 </p>
             )}
-            {deliveryItems.length > 0 && (
-                <div className="space-y-1 rounded border border-neutral-200 p-2" data-testid="seller-delivery-list">
-                    {deliveryItems.map((item) => (
+            {catalogueItems.length > 0 && (
+                <div className="space-y-1 rounded border border-neutral-200 p-2" data-testid="seller-catalogue-list">
+                    {catalogueItems.map((item) => (
                         <label key={item.id} className="flex items-center gap-2 text-sm cursor-pointer">
                             <input
                                 type="radio"
-                                name="seller-delivery-item"
+                                name="seller-catalogue-item"
                                 value={item.id}
                                 checked={selectedItemId === item.id}
                                 onChange={() => setSelectedItemId(item.id)}

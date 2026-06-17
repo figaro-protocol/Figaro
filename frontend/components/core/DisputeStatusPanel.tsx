@@ -319,7 +319,7 @@ export function DisputeStatusPanel({
                                 className="text-xs text-neutral-700"
                                 data-testid="dispute-recourse-traditional"
                             >
-                                {r.forum ?? "Courts of competent jurisdiction"} · {r.applicableLaw}
+                                {r.applicableLaw}{r.forum ? ` · ${r.forum}` : ""}
                                 {r.language ? ` · ${r.language}` : ""}
                             </p>
                         ),

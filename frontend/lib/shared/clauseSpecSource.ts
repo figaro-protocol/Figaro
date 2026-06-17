@@ -231,7 +231,9 @@ function enumFieldOf(field: FieldSpec): EnumFieldSpec | undefined {
 
 /** Label a raw enum value through its field's `valueLabels` — the spec is the
  *  SSoT for human-readable value display; falls back to the raw token when the
- *  spec declares no label (a never-labelled clause still renders). */
+ *  spec declares no label (a never-labelled clause still renders). Internal —
+ *  shared by the spec-derived readers below (`describeAttestation`,
+ *  `renderFieldValues`). */
 function labelEnumValue(field: EnumFieldSpec | undefined, value: string): string {
     return field?.valueLabels?.[value] ?? value;
 }
