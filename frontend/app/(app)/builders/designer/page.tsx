@@ -6,7 +6,7 @@ import { ClausesList } from "./_components/ClausesList";
 
 export const metadata: Metadata = {
     title: "Designer — Figaro Protocol",
-    description: "Compose a Figaro assembly on the DAG canvas. Drafts persist locally; publish to the on-chain AssemblyRegistry when ready.",
+    description: "Compose a Figaro assembly on the composition canvas. Drafts persist locally; publish to the on-chain AssemblyRegistry when ready.",
 };
 
 export default function DesignerLanding() {
@@ -20,7 +20,7 @@ export default function DesignerLanding() {
                     An assembly is a composition of roles, coordination mechanisms, and display views that use the Figaro kernel to coordinate a multi-party process.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Every assembly inherits the seven baseline graphs — capital flow (committed at buy time), geolocation, GHG, handoff, proximity, jurisdiction, and DAG topology — automatically. On top of the baseline, you extend the assembly DAG by spawning sub-orders from any node and choosing a canonical method per edge. Today the supported methods are consume-onsite, pickup, and three delivery variants — including Dutch-auction dispatch.
+                    Every assembly automatically carries the structural and default-on clauses — capital flow (committed at buy time), geolocation, and topology. You compose the rest by spawning sub-orders from any node and attaching the clauses that define each edge — modality, coordination, hand-off, proximity, emissions, recourse, and more. Those clauses are read live from the ClauseRegistry, never a fixed menu: a clause registered tomorrow shows up here with no code change.
                 </p>
                 <div className="mt-8">
                     <Link
@@ -37,7 +37,7 @@ export default function DesignerLanding() {
                     Your drafts
                 </h2>
                 <p className="text-sm text-ink-muted mb-6 max-w-2xl">
-                    Designs you&apos;ve saved from the DAG editor. Drafts are kept in this browser&apos;s local storage; they don&apos;t leave your machine.
+                    Designs you&apos;ve saved from the composition canvas. Drafts are kept in this browser&apos;s local storage; they don&apos;t leave your machine.
                 </p>
                 <DraftsList />
             </section>

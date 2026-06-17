@@ -1,13 +1,14 @@
 "use client";
 
 /**
- * DesignerCanvas — the shared DAG editor used by /builders/designer/new
+ * DesignerCanvas — the shared composition canvas (the ProcessGraphCanvas DAG of
+ * orders + the per-order AgreementDrawer) used by /builders/designer/new
  * and /builders/designer/edit/[slug]. Both pages render this component
  * with different `seed` props; everything else (state, handlers,
  * autosave, drawer, toolbar) is identical.
  *
  * Toolbar surface (left → right):
- *   ← Assemblies | name input | saved hint | Save | Publish | Reset
+ *   ← Assemblies | saved hint | Save | Review | Reset
  *
  * Buttons are weighted by the action we want to incentivize:
  *   - Publish:  filled primary    — irreversible, costs the registration deposit
