@@ -88,7 +88,7 @@ test.describe('direct-sale runtime — on-site commit, handoff certification, re
         ]);
 
         // ── 1. Buyer places the consume-onsite order through the UI ─────────
-        await placeBilateralOrderUI(page, { seller: cafe!.address, method: 'consume-onsite' });
+        await placeBilateralOrderUI(page, { seller: cafe!.address, method: SCENARIO_SLUG['direct-sale'] });
 
         // Out-of-band: the relayed commitment payload is really pinned in IPFS.
         const payloadCid = await page.evaluate(() => {

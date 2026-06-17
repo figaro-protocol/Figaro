@@ -28,9 +28,14 @@ import {
     LOCAL_ANVIL,
     RPC_URL,
 } from './devnet-helpers';
+import { SCENARIO_SLUG } from './scenarioSlugs.mjs';
 
 const BUYER_ADDR = ANVIL_ACCOUNTS[0];
-const ONSITE = 'consume-onsite';
+// The on-site option's selection VALUE is the assembly slug (options are valued
+// by slug since the checkout selects an assembly, not a modality); its review
+// TEXT is still the derived modality string.
+const ONSITE_SLUG = SCENARIO_SLUG['direct-sale'];
+const ONSITE_MODALITY = 'consume-onsite';
 
 test.describe('multi-option checkout (devnet)', () => {
     // Discovery + IPFS + two agreement re-compositions + sign + commit.
@@ -51,7 +56,7 @@ test.describe('multi-option checkout (devnet)', () => {
 
         await placeBilateralOrderUI(page, {
             seller: multi!.address,
-            method: ONSITE,
+            method: ONSITE_SLUG,
             beforePlace: async () => {
                 // The dropdown renders ONLY when there is a real choice.
                 const select = page.getByTestId('select-method');
@@ -59,7 +64,7 @@ test.describe('multi-option checkout (devnet)', () => {
                     (options) => options.map((o) => (o as HTMLOptionElement).value).filter((v) => v !== ''),
                 );
                 expect(values.length, 'a dropdown means more than one option').toBeGreaterThanOrEqual(2);
-                const deliverValue = values.find((v) => v !== ONSITE)!;
+                const deliverValue = values.find((v) => v !== ONSITE_SLUG)!;
 
                 // Switch to the delivery assembly: the courier order's
                 // agreement group + the coordination value appear.
@@ -69,9 +74,9 @@ test.describe('multi-option checkout (devnet)', () => {
 
                 // Back to on-site: a single agreement group, the modality
                 // value visible in the review.
-                await select.selectOption(ONSITE);
+                await select.selectOption(ONSITE_SLUG);
                 await expect(page.locator('[data-testid^="agreement-order-"]')).toHaveCount(1, { timeout: 20000 });
-                await expect(page.getByTestId('checkout-agreement-terms')).toContainText(ONSITE);
+                await expect(page.getByTestId('checkout-agreement-terms')).toContainText(ONSITE_MODALITY);
             },
         });
         const processId = await acceptOrderInInboxUI(page, multi!.address);

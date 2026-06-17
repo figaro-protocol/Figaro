@@ -121,7 +121,7 @@ test.describe('Author + publish the local-commerce-offset assembly (devnet)', ()
             await composeClause(page, 'figaro-handoff', ['drawer-field-figaro-handoff-handoff-face-to-face']);
             await composeClause(page, 'figaro-proximity-policy', ['drawer-field-figaro-proximity-policy-bands-zone-wifi']);
             await composeClause(page, 'figaro-merchant-process');
-            await composeClause(page, 'figaro-ghg-iso-14064');
+            await composeClause(page, 'figaro-ghg');
 
             // ── Compose the COURIER order: courier-process + the courier→buyer
             //    hand-off + its proximity certification ────────────────────────
@@ -129,7 +129,7 @@ test.describe('Author + publish the local-commerce-offset assembly (devnet)', ()
             await page.getByTestId('drawer-tab-registry').click();
             await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
             await composeClause(page, 'figaro-courier-process');
-            await composeClause(page, 'figaro-ghg-iso-14064');
+            await composeClause(page, 'figaro-ghg');
             await composeClause(page, 'figaro-handoff', ['drawer-field-figaro-handoff-handoff-face-to-face']);
             await composeClause(page, 'figaro-proximity-policy', ['drawer-field-figaro-proximity-policy-bands-zone-wifi']);
             await expect(orderNodes, 'composing clauses never draws nodes').toHaveCount(2, { timeout: 10000 });
@@ -191,7 +191,7 @@ test.describe('Author + publish the local-commerce-offset assembly (devnet)', ()
         expect(root.clauses['figaro-topology']).toEqual({ parentOrderIds: [] });
         expect(Object.keys(root.clauses).sort()).toEqual([
             'figaro-coordination',
-            'figaro-ghg-iso-14064',
+            'figaro-ghg',
             'figaro-handoff',
             'figaro-merchant-process',
             'figaro-modalities',
@@ -208,7 +208,7 @@ test.describe('Author + publish the local-commerce-offset assembly (devnet)', ()
         expect(courier.clauses['figaro-topology']).toEqual({ parentOrderIds: ['order-0'] });
         expect(Object.keys(courier.clauses).sort()).toEqual([
             'figaro-courier-process',
-            'figaro-ghg-iso-14064',
+            'figaro-ghg',
             'figaro-handoff',
             'figaro-proximity-policy',
             'figaro-topology',

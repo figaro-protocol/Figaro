@@ -127,7 +127,7 @@ test.describe('/s/[seller] full place-order flow (devnet)', () => {
         await placeBilateralOrderUI(page, {
             seller: seeded.address,
             itemId: seeded.itemId,
-            method: 'consume-onsite',
+            method: SCENARIO_SLUG['direct-sale'],
         });
         const processId = await acceptOrderInInboxUI(page, seeded.address);
         expect(processId).toMatch(/^0x[0-9a-fA-F]{64}$/);

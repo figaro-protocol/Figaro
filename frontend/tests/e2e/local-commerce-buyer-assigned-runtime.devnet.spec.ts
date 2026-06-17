@@ -85,7 +85,7 @@ test.describe('local-commerce-buyer-assigned runtime — buyer picks the courier
         // counter-signs its OWN order in its inbox — merchant (root) first.
         await placeBilateralOrderUI(page, {
             seller: merchant.address,
-            method: 'deliver:buyer-assigned',
+            method: SCENARIO_SLUG['local-commerce-buyer-assigned'],
             buyerAssignedCourier: { address: courier!.address },
         });
         const processId = await acceptOrderInInboxUI(page, merchant.address);

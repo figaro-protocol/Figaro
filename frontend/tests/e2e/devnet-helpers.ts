@@ -983,15 +983,15 @@ export async function placeBilateralOrderUI(
     await page.getByTestId('checkout-view').waitFor({ state: 'visible', timeout: 30000 });
 
     // The buyer's method options ARE the seller's bound assemblies — one
-    // option per assembly that carries a modality, labelled by the
-    // assembly's own name, valued by the modality string the assembly commits.
-    // They render only once the bindings resolve chain→IPFS. A MULTI-option
-    // seller renders the selector (selection required, explicit unset
-    // placeholder); a SINGLE-option seller auto-commits and renders the
-    // method statically — no one-option dropdown. A caller whose scenario
-    // composes a modality MUST pass `method` (the modality value, e.g.
-    // 'consume-onsite'); we WAIT for either surface — an instant visibility
-    // probe races the bindings fetch.
+    // option per bound assembly, labelled by the assembly's own name and
+    // VALUED BY ITS CONTENT-DERIVED SLUG (the checkout selects an assembly,
+    // not a modality; the modality is derived downstream). They render only
+    // once the bindings resolve chain→IPFS. A MULTI-option seller renders the
+    // selector (selection required, explicit unset placeholder); a SINGLE-
+    // option seller auto-commits and renders the method statically — no
+    // one-option dropdown. A caller MUST pass `method` = the assembly slug
+    // (e.g. `SCENARIO_SLUG['direct-sale']`); we WAIT for either surface — an
+    // instant visibility probe races the bindings fetch.
     const methodSelect = page.getByTestId('select-method');
     const methodStatic = page.getByTestId('method-static');
     if (opts.method) {

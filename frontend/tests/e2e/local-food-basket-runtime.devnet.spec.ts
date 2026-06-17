@@ -174,7 +174,7 @@ test.describe('local-food-basket runtime — 4-order multi-contributor commit, c
         // ── 1. Buyer commits the basket: ONE order placed, FOUR relayed ─────
         await placeBilateralOrderUI(page, {
             seller: HUB_ADDR,
-            method: 'deliver:seller-assigned',
+            method: SCENARIO_SLUG['local-food-basket'],
         });
         // Counter-signs in PLAN order — the kernel's cumulative-value chain
         // makes commit order load-bearing: root first, then farm, bakery,

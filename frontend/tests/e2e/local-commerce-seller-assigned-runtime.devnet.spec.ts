@@ -84,7 +84,7 @@ test.describe('local-commerce-seller-assigned runtime — 2-node delivery commit
         // merchant accepts first (root creates the process), then the courier.
         await placeBilateralOrderUI(page, {
             seller: merchant.address,
-            method: 'deliver:seller-assigned',
+            method: SCENARIO_SLUG['local-commerce-seller-assigned'],
         });
         const processId = await acceptOrderInInboxUI(page, merchant.address);
         await acceptOrderInInboxUI(page, courier!.address);

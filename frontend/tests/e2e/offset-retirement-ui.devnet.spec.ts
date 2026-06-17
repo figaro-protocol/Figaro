@@ -42,7 +42,7 @@ import {
     readLocalDeploymentConfig,
 } from './devnet-helpers';
 // Tests may name clauses; production code may not.
-const GHG_CLAUSE_KEY = 'figaro-ghg-iso-14064';
+const GHG_CLAUSE_KEY = 'figaro-ghg';
 const GHG_MEASUREMENT_CLAUSE_KEY = 'figaro-ghg-measurement';
 import {
     ATTESTATION_COORDINATOR_ABI,
@@ -104,7 +104,7 @@ test.describe('Offset retirement UI (devnet)', () => {
         await ensureTokenApprovals(coreAddress, tokenAddress, BUYER_KEY, RESTAURANT_KEY);
 
         // Agreement carrying both the protocol-level commitment clause
-        // (Cat-2, `figaro-ghg-iso-14064`) and the runtime measurement
+        // (Cat-2, `figaro-ghg`) and the runtime measurement
         // clause (Cat-1, `figaro-ghg-measurement`). Measurement-v1's
         // inclusion proof opens against this agreement.
         const agreement: Agreement = {

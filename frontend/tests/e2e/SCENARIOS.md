@@ -97,12 +97,12 @@ order[0]  buyer ↔ merchant  parents: []
   figaro-modalities-v1        { modality: delivery }
   figaro-coordination-v1      { coordination: seller-assigned }
   figaro-merchant-process-v1
-  figaro-ghg-iso-14064-v1
+  figaro-ghg
 order[1]  buyer ↔ courier   parents: [order[0]]
   figaro-courier-process-v1
   figaro-handoff-v1           { handoff: face-to-face }
   figaro-proximity-policy-v1  { bands: [zone-wifi] }
-  figaro-ghg-iso-14064-v1
+  figaro-ghg
 ```
 
 ### `local-commerce-dispute` — 2 nodes, seller-assigned delivery + Kleros recourse
