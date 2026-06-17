@@ -198,9 +198,9 @@ export function clauseHandoffStages(clauseId: string): readonly string[] {
  *  Returns the field name + its ordered values, or null when the clause has no
  *  enum field (e.g. ghg-measurement's grams). The generic runtime engine reads
  *  this to advance ANY runtime-attestable clause without naming it. */
-export function clauseLadderField(clauseId: string): { name: string; values: readonly string[] } | null {
+export function clauseLadderField(clauseId: string): { name: string; values: readonly string[]; valueLabels?: Readonly<Record<string, string>> } | null {
     for (const field of getClauseSpec(clauseId)?.fields ?? []) {
-        if (field.type === "enum") return { name: field.name, values: field.values };
+        if (field.type === "enum") return { name: field.name, values: field.values, valueLabels: field.valueLabels };
     }
     return null;
 }
@@ -233,8 +233,8 @@ function enumFieldOf(field: FieldSpec): EnumFieldSpec | undefined {
  *  SSoT for human-readable value display; falls back to the raw token when the
  *  spec declares no label (a never-labelled clause still renders). Internal —
  *  shared by the spec-derived readers below (`describeAttestation`,
- *  `renderFieldValues`). */
-function labelEnumValue(field: EnumFieldSpec | undefined, value: string): string {
+ *  `renderFieldValues`) and by the capability deriver (the runtime action label). */
+export function labelEnumValue(field: { valueLabels?: Readonly<Record<string, string>> } | undefined, value: string): string {
     return field?.valueLabels?.[value] ?? value;
 }
 

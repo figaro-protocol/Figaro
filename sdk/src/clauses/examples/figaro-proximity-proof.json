@@ -2,7 +2,7 @@
     "clauseId": "figaro-proximity-proof",
     "version": 1,
     "title": "Proximity proof (runtime)",
-    "description": "Runtime cryptographic proof of physical proximity between two parties at a handoff. Sister to figaro-proximity-policy-v1 (which commits the band at agreement signing). Category-1: content is fresh per attestation, no byte-equality cross-check against committed sectionData. Off-chain consumers should verify proof.band == policy.band when needed.",
+    "description": "Runtime cryptographic proof of physical proximity between two parties at a handoff. Sister to figaro-proximity-policy (which commits the band at agreement signing). Category-1: content is fresh per attestation, no byte-equality cross-check against committed sectionData. Off-chain consumers should verify proof.band == policy.band when needed.",
     "categories": [
         "proximity"
     ],
@@ -15,6 +15,11 @@
                 "nearby-ble",
                 "contact-nfc"
             ],
+            "valueLabels": {
+                "zone-wifi": "Zone (Wi-Fi)",
+                "nearby-ble": "Nearby (Bluetooth)",
+                "contact-nfc": "Contact (NFC)"
+            },
             "required": true,
             "description": "Detection modality used for this proof. Off-chain consumers should cross-check this matches the committed policy band."
         },

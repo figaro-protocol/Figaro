@@ -8,7 +8,7 @@ import { sectionByField } from "@/lib/core/orderAgreement";
 import { deriveOrderTopology } from "@/lib/core/orderTopology";
 import { ProcessSummary } from "@/hooks/core/useWalletProcessIds";
 import type { RuntimeAttestation } from "@/lib/core/indexer";
-import { clauseTier, clauseLadderField, clauseAttestation, clauseHandoffStages, isCompanionClause, getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { clauseTier, clauseLadderField, clauseAttestation, clauseHandoffStages, isCompanionClause, getClauseSpec, labelEnumValue } from "@/lib/shared/clauseSpecSource";
 import { ZERO_BYTES32, hexEqual, clauseIdHash as clauseIdHashOf } from "@/lib/shared/evm";
 import {
     AttachmentModel,
@@ -362,7 +362,7 @@ function roleCapabilities(
                 const capId = `${order.processId}:${orderIdStr}:${clauseId}-${party}-${eventCode}`;
                 out.push({
                     id: capId,
-                    label: eventCode,
+                    label: labelEnumValue(ladder, eventCode),
                     actionKind: "submit-clause-attestation",
                     action: {
                         executionType: "transaction",

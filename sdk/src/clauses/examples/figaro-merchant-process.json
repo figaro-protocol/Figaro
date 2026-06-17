@@ -16,6 +16,11 @@
                 "ready-for-pickup",
                 "handed-off"
             ],
+            "valueLabels": {
+                "prep-started": "Preparation started",
+                "ready-for-pickup": "Ready for pickup",
+                "handed-off": "Handed off"
+            },
             "required": true,
             "description": "Merchant lifecycle event."
         },

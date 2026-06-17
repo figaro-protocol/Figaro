@@ -17,6 +17,12 @@
                 "delivery",
                 "virtual"
             ],
+            "valueLabels": {
+                "consume-onsite": "Consume on-site",
+                "pickup": "Pickup",
+                "delivery": "Delivery",
+                "virtual": "Virtual"
+            },
             "description": "The buyer's request. consume-onsite = consumed at the seller's premises. pickup = the buyer collects. delivery = a courier order carries it to the buyer (composed as a second, co-equal buyer↔courier order). virtual = digital, no physical hand-off."
         }
     ],

@@ -18,6 +18,13 @@
                 "arrived-dropoff",
                 "completed"
             ],
+            "valueLabels": {
+                "en-route-pickup": "En route to pickup",
+                "arrived-pickup": "Arrived at pickup",
+                "in-transit": "In transit",
+                "arrived-dropoff": "Arrived at drop-off",
+                "completed": "Completed"
+            },
             "required": true,
             "description": "Courier lifecycle event."
         },
