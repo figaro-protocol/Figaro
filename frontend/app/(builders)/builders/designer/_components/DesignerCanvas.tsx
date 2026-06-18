@@ -587,10 +587,19 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                     data-testid="designer-inspector"
                     className="w-[300px] shrink-0 overflow-y-auto border-r border-default bg-paper px-5 py-4"
                 >
+                    {/* Guidance leads the form — ink-primary (dark warm) so it
+                        stands apart from the amber ink-heading field labels.
+                        No background; the emphasis is colour + size + weight. */}
+                    <p className="mb-4 text-sm font-medium text-ink-primary leading-relaxed">
+                        Compose an assembly — a group of bonded orders representing one scenario.
+                        Each order is a buyer↔seller relationship; draw the orders and their
+                        connections, then click one to compose its terms. Keep each assembly
+                        specific — offer variety with more assemblies, not more options.
+                    </p>
                     <div data-testid="designer-editorial" className="space-y-2">
                     <label className="block">
                         <div className="flex items-baseline justify-between">
-                            <span className="text-xs font-semibold text-ink-heading">Name this assembly</span>
+                            <span className="text-xs font-semibold text-ink-heading">Assembly Name</span>
                             <span className="text-[10px] text-ink-faint tabular-nums">{name.length}/{NAME_MAX}</span>
                         </div>
                         <input
@@ -638,9 +647,9 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                     </label>
                     </div>
 
-                    {/* Canvas guidance + the single order counter — consolidated
-                        from the old toolbar pill and the canvas subtitle. */}
-                    <div className="mt-5 pt-4 border-t border-default space-y-2">
+                    {/* The single order counter — consolidated from the old
+                        toolbar pill and the canvas subtitle. */}
+                    <div className="mt-5 pt-4 border-t border-default">
                         {maxOrders !== null && (
                             <p
                                 data-testid="designer-node-capacity"
@@ -650,12 +659,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                                 {orders.length} / {maxOrders} orders{commitBlocks && commitBlocks > 1 ? ` · ~${commitBlocks} blocks to commit` : ""}
                             </p>
                         )}
-                        <p className="text-[11px] text-ink-muted leading-relaxed">
-                            Compose an assembly — a group of bonded orders representing one scenario.
-                            Each order is a buyer↔seller relationship; draw the orders and their
-                            connections, then click one to compose its terms. Keep each assembly
-                            specific — offer variety with more assemblies, not more options.
-                        </p>
                     </div>
                 </aside>
                 <div className="flex-1 overflow-hidden">

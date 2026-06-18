@@ -123,7 +123,10 @@ export function AgreementDrawer({
     const presentArticles: readonly string[] = ["identity", "registry"];
 
     function selectSection(section: string) {
-        setOpenSection((prev) => (prev === section ? null : section));
+        // Always open the clicked tab — never toggle it closed. Clicking an
+        // already-open tab keeps its content visible (hiding it on a second
+        // click is the bad UX we removed).
+        setOpenSection(section);
     }
 
     return (

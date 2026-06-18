@@ -75,7 +75,7 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
         : [];
 
     const nodeClassName = data.designerMode
-        ? `px-2 py-1.5 rounded min-w-[148px] border border-neutral-300 bg-white cursor-pointer hover:border-neutral-700`
+        ? `px-1.5 py-1 rounded min-w-[112px] border border-neutral-300 bg-white cursor-pointer hover:border-neutral-700`
         : `px-3 py-2 rounded-lg border-2 shadow-md transition-shadow ${STATE_COLORS[data.state]} min-w-[180px] ${
             data.isBuyer
                 ? "ring-2 ring-offset-1 ring-blue-500"
@@ -103,7 +103,7 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
             />
             <div className="flex items-center justify-between mb-1.5">
                 <span className="flex items-center gap-1.5">
-                    <span className={`${data.designerMode ? "text-[11px]" : "text-xs"} font-semibold text-black`} title={data.id}>
+                    <span className={`${data.designerMode ? "text-[10px]" : "text-xs"} font-semibold text-black`} title={data.id}>
                         {data.designerMode
                             ? `Order ${data.orderNumber}`
                             : `Order #${data.id.toString().slice(0, 8)}`}
@@ -135,7 +135,7 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                             data-testid={`btn-add-suborder-${data.id}`}
                             aria-label={`Add a sub-order under order ${data.id.slice(0, 8)}`}
                             title="Add a sub-order (child) of this order"
-                            className="nodrag w-4 h-4 rounded-full border border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 hover:border-neutral-500 text-[11px] leading-none flex items-center justify-center"
+                            className="nodrag w-3.5 h-3.5 rounded-full border border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 hover:border-neutral-500 text-[10px] leading-none flex items-center justify-center"
                         >
                             +
                         </button>
@@ -150,7 +150,7 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                             data-testid={`order-node-${data.id}-delete`}
                             aria-label={`Delete order ${data.id.slice(0, 8)}`}
                             title="Delete this order (and any descendants)"
-                            className="nodrag w-4 h-4 rounded-full border border-red-300 bg-white text-red-600 hover:bg-red-50 hover:border-red-500 text-[11px] leading-none flex items-center justify-center"
+                            className="nodrag w-3.5 h-3.5 rounded-full border border-red-300 bg-white text-red-600 hover:bg-red-50 hover:border-red-500 text-[10px] leading-none flex items-center justify-center"
                         >
                             ×
                         </button>
@@ -158,23 +158,28 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                 </span>
             </div>
 
-            <div className="space-y-1 text-[11px]">
-                {/* Compact summary — always shown */}
-                <div className="flex justify-between font-semibold">
-                    <span className="text-neutral-600">Pay</span>
-                    <span className="text-black">{formatToken(data.payment ?? 0n, data.decimals)}</span>
-                </div>
-                <div className="flex justify-between">
-                    <span className="text-neutral-600">Cum</span>
-                    <span className="text-black">{formatToken(data.cumulativeValue ?? 0n, data.decimals)}</span>
-                </div>
-
-                {/* Parties on one truncated line */}
-                <div className="flex justify-between font-mono text-[10px] text-neutral-500 pt-1 border-t border-neutral-100">
-                    <span title={data.buyer}>{buyerShort}</span>
-                    <span className="opacity-50">→</span>
-                    <span title={data.seller}>{sellerShort}</span>
-                </div>
+            <div className="space-y-1 text-[10px]">
+                {/* Payment, cumulative value, and parties exist only on a LIVE
+                    order. At design time the template carries none of them, so the
+                    authoring node shows only its composed terms (chips below) —
+                    never a placeholder amount or a fake address. */}
+                {!data.designerMode && (
+                    <>
+                        <div className="flex justify-between font-semibold">
+                            <span className="text-neutral-600">Pay</span>
+                            <span className="text-black">{formatToken(data.payment ?? 0n, data.decimals)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-neutral-600">Total</span>
+                            <span className="text-black">{formatToken(data.cumulativeValue ?? 0n, data.decimals)}</span>
+                        </div>
+                        <div className="flex justify-between font-mono text-[10px] text-neutral-500 pt-1 border-t border-neutral-100">
+                            <span title={data.buyer}>{buyerShort}</span>
+                            <span className="opacity-50">→</span>
+                            <span title={data.seller}>{sellerShort}</span>
+                        </div>
+                    </>
+                )}
 
                 {/* Designer mode: the node's composed terms, derived per clause —
                     so "what this order does" is legible without opening the drawer. */}

@@ -36,8 +36,8 @@ import { OrderNode, type OrderNodeData } from "./processGraph/OrderNode";
 
 // ── Layout constants ────────────────────────────────────────────────────────
 
-const NODE_W = 200;
-const NODE_H = 130;
+const NODE_W = 156;
+const NODE_H = 96;
 const H_GAP = 40;
 const V_GAP = 70;
 
