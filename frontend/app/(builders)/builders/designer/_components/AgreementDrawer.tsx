@@ -52,12 +52,6 @@ interface Props {
     onToggleClause?: (clauseId: string, next: boolean) => void;
     /** Set one design-time field on a selected clause for the current order. */
     onSetClauseField?: (clauseId: string, field: string, value: unknown) => void;
-    /** Assembly-level privileged ERC-20 ("" = agnostic). Surfaced in the
-     *  Registry tab as an assembly-wide choice. */
-    privilegedToken?: string;
-    onPrivilegedTokenChange?: (value: string) => void;
-    /** Per-chain common-token list that populates the privileged-token choice. */
-    commonTokens?: ReadonlyArray<{ address: string; symbol: string; name?: string }>;
 }
 
 export function AgreementDrawer({
@@ -70,9 +64,6 @@ export function AgreementDrawer({
     selectedClauseValues,
     onToggleClause,
     onSetClauseField,
-    privilegedToken,
-    onPrivilegedTokenChange,
-    commonTokens,
 }: Props) {
     const [openSection, setOpenSection] = useState<string | null>(null);
     const [minimized, setMinimized] = useState(false);
@@ -320,9 +311,6 @@ export function AgreementDrawer({
                             selectedClauseValues={selectedClauseValues}
                             onToggleClause={onToggleClause}
                             onSetClauseField={onSetClauseField}
-                            privilegedToken={privilegedToken}
-                            onPrivilegedTokenChange={onPrivilegedTokenChange}
-                            commonTokens={commonTokens}
                         />
                     )}
 
@@ -346,32 +334,24 @@ interface ClauseRegistryPanelProps {
     selectedClauseValues?: Record<string, Record<string, unknown>>;
     onToggleClause?: (clauseId: string, next: boolean) => void;
     onSetClauseField?: (clauseId: string, field: string, value: unknown) => void;
-    privilegedToken?: string;
-    onPrivilegedTokenChange?: (value: string) => void;
-    commonTokens?: ReadonlyArray<{ address: string; symbol: string; name?: string }>;
 }
 
 /**
  * The clause-registry content of the drawer — the single composition surface.
  * Reads the on-chain clause set (chain → IPFS), groups it via the one shared
  * `groupClausesByArticle()` classification, and renders a checkbox per clause. Owns its
- * own loading state; the drawer shell knows nothing about clauses. The
- * assembly-level privileged-token choice is hosted in the consent group (not a clause).
+ * own loading state; the drawer shell knows nothing about clauses.
  */
 function ClauseRegistryPanel({
     selectedClauseValues,
     onToggleClause,
     onSetClauseField,
-    privilegedToken,
-    onPrivilegedTokenChange,
-    commonTokens,
 }: ClauseRegistryPanelProps) {
     // The clause set is network state — read live from `ClauseRegistry.ClauseRegistered`,
     // each spec fetched from its on-chain `metadataURI` (chain → IPFS). `clauseSpecsVersion`
     // bumps as specs resolve so the grouping recomputes against the warm cache.
     const { data: registeredClauses } = useAllRegisteredClauses();
     const { version: clauseSpecsVersion } = useClauseSpecs();
-    const [tokenChecked, setTokenChecked] = useState(false);
 
     // THE single clause classification, shared with the /clauses inventory.
     const registryGroups = useMemo<{ article: string; entries: RegisteredClauseEvent[] }[] | null>(() => {
@@ -388,15 +368,8 @@ function ClauseRegistryPanel({
                     .filter((e): e is RegisteredClauseEvent => e !== undefined),
             }))
             .filter((g) => g.entries.length > 0);
-
-        // The privileged-token choice lives in the consent section but is NOT a clause —
-        // host it even if no consent clause exists.
-        if (onPrivilegedTokenChange && !groups.some((g) => g.article === "consent")) {
-            groups.push({ article: "consent", entries: [] });
-        }
         return groups;
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [registeredClauses, onPrivilegedTokenChange, clauseSpecsVersion]);
+    }, [registeredClauses, clauseSpecsVersion]);
 
     return (
                         <section data-testid="drawer-section-registry">
@@ -445,46 +418,6 @@ function ClauseRegistryPanel({
                                             />
                                         </li>
                                     )}
-                                    renderSectionFooter={(article) =>
-                                        article === "consent" && onPrivilegedTokenChange && (commonTokens?.length ?? 0) > 0 ? (
-                                            <li>
-                                                <label className="flex items-center gap-2 text-xs text-neutral-700">
-                                                    <input
-                                                        type="checkbox"
-                                                        className="h-3.5 w-3.5"
-                                                        checked={tokenChecked || !!privilegedToken}
-                                                        onChange={(e) => {
-                                                            if (e.target.checked) {
-                                                                setTokenChecked(true);
-                                                            } else {
-                                                                setTokenChecked(false);
-                                                                onPrivilegedTokenChange("");
-                                                            }
-                                                        }}
-                                                        data-testid="drawer-registry-clause-privileged-token"
-                                                    />
-                                                    <span className="font-mono text-[11px]">privileged-token</span>
-                                                </label>
-                                                {(tokenChecked || !!privilegedToken) && (
-                                                    <div className="ml-6 mt-2" data-testid="drawer-privileged-token-group">
-                                                        <select
-                                                            value={privilegedToken ?? ""}
-                                                            onChange={(e) => onPrivilegedTokenChange(e.target.value)}
-                                                            data-testid="drawer-privileged-token"
-                                                            className="text-xs bg-white border border-neutral-300 rounded px-2 py-1.5 min-h-11 w-full hover:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        >
-                                                            <option value="" disabled>Select a token…</option>
-                                                            {(commonTokens ?? []).map((t) => (
-                                                                <option key={t.address} value={t.address}>
-                                                                    {t.symbol}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-                                                )}
-                                            </li>
-                                        ) : null
-                                    }
                                 />
                             )}
                         </section>

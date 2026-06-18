@@ -28,6 +28,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ProcessGraphCanvas } from "@/components/core/ProcessGraphCanvas";
+import { TokenAddressInput } from "@/components/sellers/TokenAddressInput";
 import type { Order } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import {
@@ -51,7 +52,6 @@ import {
 import { AgreementDrawer } from "./AgreementDrawer";
 import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
 import { maxCommitsLandableInOneBlock, maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
-import { getCommonTokens } from "@/lib/seller/commonTokens";
 import { useChainId, usePublicClient } from "wagmi";
 
 export type DesignerSeed =
@@ -165,7 +165,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     const [privilegedToken, setPrivilegedToken] = useState<string>(() => initial.privilegedToken);
     const chainId = useChainId();
     const publicClient = usePublicClient();
-    const commonTokens = getCommonTokens(chainId);
     // Chain-aware cap on assembly node count. The hard cap is the RESOLVE
     // ceiling — every order must settle in one atomic resolveProcess within a
     // block (~2,145 on a 30M-gas chain), the same ceiling the publish-time guard
@@ -660,6 +659,19 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                             </p>
                         )}
                     </div>
+
+                    {/* Assembly-wide terms — carried on the root order, applying to
+                        the whole process (not a single order). The privileged token
+                        is the value-capture token the assembly is priced in. */}
+                    <div className="mt-5 pt-4 border-t border-default space-y-2">
+                        <p className="text-xs font-semibold text-ink-heading">Assembly-wide terms</p>
+                        <div data-testid="inspector-privileged-token">
+                            <p className="text-xs text-ink-body mb-1">
+                                Specify the ERC-20 token that token-gates this process.
+                            </p>
+                            <TokenAddressInput value={privilegedToken} onChange={setPrivilegedToken} />
+                        </div>
+                    </div>
                 </aside>
                 <div className="flex-1 overflow-hidden">
                     <div className="h-full px-6 py-4 flex flex-col">
@@ -696,9 +708,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                         // a second order the designer draws, not a modality side-effect.
                         if (selectedOrderId) setClauseField(selectedOrderId, clauseId, field, value);
                     }}
-                    privilegedToken={privilegedToken}
-                    onPrivilegedTokenChange={setPrivilegedToken}
-                    commonTokens={commonTokens}
                     embedded
                 />
             </div>
