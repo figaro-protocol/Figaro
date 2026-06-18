@@ -187,12 +187,15 @@ export function OrderTimelineView({ processId }: Props) {
                         </div>
                     </li>
                     {workspace.processAttestations.map((att) => {
-                        const { clauseTitle, eventLabel } = describeAttestation(att.clauseId, att.stage);
+                        const { clauseTitle, eventLabel, eventCode } = describeAttestation(att.clauseId, att.stage);
                         return (
                             <li
                                 key={`${att.clauseId}-${att.orderHash}-${att.stage}-${att.blockNumber}`}
                                 className="flex items-start gap-3 rounded border border-neutral-200 bg-white p-3"
-                                data-testid={`timeline-event-${eventLabel}`}
+                                // Stable raw event code for targeting (the humanized
+                                // eventLabel is the visible text below).
+                                data-testid={`timeline-event-${eventCode}`}
+                                data-event-code={eventCode}
                             >
                                 <span className="mt-1 inline-block h-3 w-3 rounded-full border bg-green-500 border-green-500" />
                                 <div className="flex-1">

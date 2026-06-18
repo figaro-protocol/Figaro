@@ -245,13 +245,21 @@ export function labelEnumValue(field: { valueLabels?: Readonly<Record<string, st
 export function describeAttestation(
     clauseIdHash: string,
     stage: number,
-): { clauseTitle: string; eventLabel: string } {
+): { clauseTitle: string; eventLabel: string; eventCode: string } {
     const id = HASH_TO_ID.get(clauseIdHash.toLowerCase());
     const spec = id ? getClauseSpec(id) : undefined;
-    if (!spec) return { clauseTitle: `${clauseIdHash.slice(0, 10)}…`, eventLabel: `stage ${stage}` };
+    if (!spec) return { clauseTitle: `${clauseIdHash.slice(0, 10)}…`, eventLabel: `stage ${stage}`, eventCode: `stage-${stage}` };
     const ladder = firstEnumField(spec);
     const value = ladder?.values[stage];
-    return { clauseTitle: spec.title, eventLabel: value ? labelEnumValue(ladder, value) : `stage ${stage}` };
+    // eventLabel is the HUMANIZED display text (valueLabels); eventCode is the
+    // STABLE raw enum value for targeting (data-testid / data-event-code), the
+    // same split the capability rail uses (73d0e22) — the label can evolve
+    // without breaking e2e.
+    return {
+        clauseTitle: spec.title,
+        eventLabel: value ? labelEnumValue(ladder, value) : `stage ${stage}`,
+        eventCode: value ?? `stage-${stage}`,
+    };
 }
 
 /** A field's rendered contribution to a clause description: the field's display
