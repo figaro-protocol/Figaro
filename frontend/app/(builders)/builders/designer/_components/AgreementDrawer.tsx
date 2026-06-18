@@ -181,7 +181,7 @@ export function AgreementDrawer({
             {!minimized && (<>
             <div className="px-5 py-3 border-b border-neutral-200 flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                    <p className="text-[11px] text-neutral-500">Agreement</p>
+                    <p className="text-xs text-ink-muted">Agreement</p>
                     <p
                         className="text-sm font-semibold text-black mt-0.5 truncate"
                         data-testid="drawer-selected-order-id"
@@ -277,19 +277,19 @@ export function AgreementDrawer({
                         <section data-testid="drawer-section-identity">
                             <div className="space-y-5">
                                 <div>
-                                    <span className="text-[11px] text-neutral-500">Buyer</span>
+                                    <span className="text-xs text-ink-muted">Buyer</span>
                                     <p className="font-mono text-xs text-neutral-700 break-all mt-0.5" data-testid="drawer-identity-buyer">
                                         {order.buyer}
                                     </p>
                                 </div>
                                 <div>
-                                    <span className="text-[11px] text-neutral-500">Seller</span>
+                                    <span className="text-xs text-ink-muted">Seller</span>
                                     <p className="font-mono text-xs text-neutral-700 break-all mt-0.5" data-testid="drawer-identity-seller">
                                         {order.seller}
                                     </p>
                                 </div>
                                 <div>
-                                    <span className="text-[11px] text-neutral-500">Position</span>
+                                    <span className="text-xs text-ink-muted">Position</span>
                                     {parentOrderHashes && parentOrderHashes.length > 0 ? (
                                         <ul
                                             className="font-mono text-[10px] text-neutral-600 space-y-1 break-all mt-0.5"
@@ -397,7 +397,7 @@ function ClauseRegistryPanel({
 
     return (
                         <section data-testid="drawer-section-registry">
-                            <p className="text-[11px] text-neutral-500 mb-3">
+                            <p className="text-xs text-ink-muted mb-3">
                                 Compose this order&rsquo;s terms. Check a clause to add it &mdash;
                                 the list is read live from the on-chain{" "}
                                 <code className="font-mono">ClauseRegistry</code>. Process clauses
@@ -429,7 +429,7 @@ function ClauseRegistryPanel({
                                     rootTestId="drawer-registry-list"
                                     rootClassName="space-y-5"
                                     listClassName="space-y-2"
-                                    headingClassName="text-[11px] font-semibold text-neutral-700 mb-2"
+                                    headingClassName="text-sm font-medium text-ink-heading mb-2"
                                     sectionTestId={(article) => `drawer-registry-group-${article}`}
                                     renderClause={(clause, i) => (
                                         <li key={`${clause.clauseIdHash}-${i}`}>
@@ -601,7 +601,7 @@ function ClauseFieldControl({
 }) {
     const label = hideLabel ? null : (
         <span
-            className={`text-[11px] text-neutral-500${field.description ? " cursor-help" : ""}`}
+            className={`text-xs text-ink-muted${field.description ? " cursor-help" : ""}`}
             title={field.description}
         >
             {field.name}
@@ -743,7 +743,7 @@ function ClauseFieldControl({
     // checkout hash. It's captured downstream by a mounted component at
     // checkout/runtime. Surface it as deferred, not fillable.
     return (
-        <div className="text-[11px] text-neutral-400 italic" data-testid={`${testId}-deferred`}>
+        <div className="text-xs text-ink-faint italic" data-testid={`${testId}-deferred`}>
             {field.name} — provided at checkout
         </div>
     );

@@ -21,7 +21,7 @@
 # stops the next agent at commit if a NON-designer surface starts composing.
 #
 # Allowed composition homes (substring match on the staged path):
-#   - app/(app)/builders/designer/   (the designer surface — canvas + drawer)
+#   - app/(builders)/builders/designer/   (the designer surface — canvas + drawer)
 #   - lib/designer/                  (the composition library it drives)
 #
 # Composition signatures (a non-designer surface that composes cannot avoid one):
@@ -42,7 +42,7 @@ set -euo pipefail
 # shared components) must not compose. Tests are exempt too — they legitimately
 # exercise the composition lib (e.g. assemblySlug.test.ts asserts the derivation)
 # and drive the designer UI; the guard targets PRODUCTION surfaces.
-ALLOWED_1='app/(app)/builders/designer/'
+ALLOWED_1='app/(builders)/builders/designer/'
 ALLOWED_2='lib/designer/'
 
 violations=0
@@ -77,7 +77,7 @@ if (( violations > 0 )); then
     echo ""
     echo "[composition-designer-only] $violations violation(s): composition leaked out of the designer."
     echo "Composition (attaching clauses, building a template, the editable AgreementDrawer)"
-    echo "belongs ONLY in app/(app)/builders/designer/. Sellers BIND published assemblies;"
+    echo "belongs ONLY in app/(builders)/builders/designer/. Sellers BIND published assemblies;"
     echo "buyers SELECT + fill at checkout — neither composes. See"
     echo "feedback_composition_is_designer_only / reference_lifecycle_phases."
     exit 1

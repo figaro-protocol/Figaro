@@ -49,7 +49,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 - `/builders/designer/edit/[slug]` — fork an existing published assembly into the editor.
 - `/builders/designer/view/[slug]` — read-only view of a published assembly.
 
-**Components (`app/(app)/builders/designer/_components/`):**
+**Components (`app/(builders)/builders/designer/_components/`):**
 - `DesignerCanvas.tsx` — the shared editor surface used by `/new` and `/edit/[slug]`. Hosts the toolbar (← Assemblies | name | saved hint | Save | Publish | Reset), the DAG canvas, the agreement drawer, and the autosave loop.
 - `AgreementDrawer.tsx` — per-node clause composer. Two tabs: Parties (buyer / seller / DAG position) and a network-driven **Registry** tab listing every clause registered on `ClauseRegistry` (grouped by `block.article`), each a checkbox that expands to single-select design-time field choices. Checked clauses + their values are captured into the no-hash assembly template (`clausesByOrderId` → `buildAssemblyTemplate`); the assembly-level privileged-token choice lives in the consent group. No hardcoded clause roster.
 - `DraftsList.tsx` — saved-drafts list on the landing.
@@ -87,7 +87,7 @@ Y", not as an open-ended build.)
 - **Runtime (phase-4) order surface** — `components/core/CapabilityRail.tsx`,
   driven by `deriveProcessModelFromRuntime` → `executeCapability`. The order
   page names NO clause (guard: `scripts/lint-no-hardcoded-clauses-in-runtime.sh`).
-- **Clause-composition UI** — `app/(app)/builders/designer/_components/AgreementDrawer.tsx`
+- **Clause-composition UI** — `app/(builders)/builders/designer/_components/AgreementDrawer.tsx`
   (reads ClauseRegistry live; grouping word is `block.article`).
 - **On-chain write flow** — `lib/seller/usePublishSellerProfile.ts`
   (`simulateContract` → write → `waitForTransactionReceipt` → verify

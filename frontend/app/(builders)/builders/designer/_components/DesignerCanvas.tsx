@@ -155,6 +155,11 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     const [name, setName] = useState<string>(initial.name);
     const [summary, setSummary] = useState<string>(() => initial.summary);
     const [description, setDescription] = useState<string>(() => initial.description);
+
+    // Character limits on the editorial identity — enforced (maxLength) and shown.
+    const NAME_MAX = 80;
+    const SUMMARY_MAX = 140;
+    const DESCRIPTION_MAX = 600;
     // ERC-20 the assembly privileges ("" = agnostic). Chosen from the per-chain
     // common-token list; carried into the template + persisted in the draft.
     const [privilegedToken, setPrivilegedToken] = useState<string>(() => initial.privilegedToken);
@@ -177,7 +182,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
 
     const [mergeNotice, setMergeNotice] = useState<string | null>(null);
     const [savedAt, setSavedAt] = useState<number | null>(null);
-    const [headerHeight, setHeaderHeight] = useState(108);
     const [seedError, setSeedError] = useState<string | null>(null);
     /** Belt-and-suspenders against double-publish: flips true the moment a
      *  publish succeeds and stays true for the rest of this canvas
@@ -185,28 +189,9 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
      *  the canvas anyway, but if the redirect is interrupted the flag
      *  keeps the Publish button disabled. */
 
-    // Lock body scroll: the canvas is an app-route, not a document route.
-    useEffect(() => {
-        const prevBody = document.body.style.overflow;
-        const prevHtml = document.documentElement.style.overflow;
-        document.body.style.overflow = "hidden";
-        document.documentElement.style.overflow = "hidden";
-        return () => {
-            document.body.style.overflow = prevBody;
-            document.documentElement.style.overflow = prevHtml;
-        };
-    }, []);
-
-    // Anchor below the (app) Header, re-measure on header height changes.
-    useEffect(() => {
-        const header = document.querySelector("header");
-        if (!header) return;
-        const measure = () => setHeaderHeight(header.getBoundingClientRect().height);
-        measure();
-        const ro = new ResizeObserver(measure);
-        ro.observe(header);
-        return () => ro.disconnect();
-    }, []);
+    // The designer is an in-flow page now (header + canvas + footer), not a
+    // fixed full-screen overlay — so no body-scroll lock and no header-height
+    // measuring. It fills its layout's <main> via flex.
 
     // Apply the seed on mount. localStorage is client-only, so this can't run
     // during render. `hydrated` gates autosave to avoid clobbering stored state
@@ -495,9 +480,19 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         router.push(e2e ? `${reviewPath}&e2e=${encodeURIComponent(e2e)}` : reviewPath);
     }, [buildSnapshot, router, searchParams, slug]);
 
-    // Save / Publish gate on the composition having at least one order — there
-    // is no name to validate; the slug is content-derived at publish.
-    const canPublish = orders.length > 0;
+    // A draft saves as soon as there's a node to save. Publishing, though, puts
+    // the assembly on the network for others to discover — so it REQUIRES the
+    // editorial identity: name + short + long description. None are optional.
+    // The slug stays content-derived; these are pinned alongside it and excluded
+    // from the hash, so editing them never re-slugs.
+    const canSaveDraft = orders.length > 0;
+    const publishBlockedReason = orders.length === 0
+        ? "Add at least one order to the canvas."
+        : name.trim() === "" ? "Name your assembly."
+        : summary.trim() === "" ? "Add a short description."
+        : description.trim() === "" ? "Add a full description."
+        : null;
+    const canPublish = publishBlockedReason === null;
 
     const savedHint = useMemo(() => {
         if (!savedAt) return null;
@@ -510,8 +505,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     if (seedError) {
         return (
             <div
-                style={{ top: headerHeight }}
-                className="fixed left-0 right-0 bottom-0 z-20 bg-canvas flex flex-col items-center justify-center px-6"
+                className="flex-1 min-h-0 bg-canvas flex flex-col items-center justify-center px-6"
                 data-testid="designer-seed-error"
             >
                 <div className="max-w-md text-center">
@@ -537,7 +531,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     }
 
     return (
-        <div style={{ top: headerHeight }} className="fixed left-0 right-0 bottom-0 z-20 bg-canvas flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 bg-canvas flex flex-col overflow-hidden">
             <div
                 data-testid="designer-canvas-toolbar"
                 className="h-[48px] shrink-0 px-6 border-b border-default bg-paper flex items-center gap-3 overflow-hidden"
@@ -548,18 +542,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 >
                     ← Assemblies
                 </Link>
-                {/* The assembly's editorial name — the designer's own words.
-                    Optional: blank publishes an unnamed assembly that displays
-                    by its content-derived slug. Never part of the slug. */}
-                <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Name this assembly (optional)"
-                    aria-label="Assembly name"
-                    data-testid="designer-name-input"
-                    className="text-xs px-2 py-1.5 rounded border border-default bg-paper text-ink-heading placeholder:text-ink-muted min-w-0 flex-1 max-w-[18rem] focus:outline-none focus:ring-2 focus:ring-focus"
-                />
                 {maxOrders !== null && (
                     <span
                         data-testid="designer-node-capacity"
@@ -577,7 +559,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 <button
                     type="button"
                     onClick={handleSaveDraft}
-                    disabled={!canPublish}
+                    disabled={!canSaveDraft}
                     data-testid="designer-save"
                     className={`text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-heading font-semibold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${savedHint ? "" : "ml-auto"}`}
                     title={slug ? "Update the saved draft" : "Save this canvas as a draft"}
@@ -590,7 +572,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                     disabled={!canPublish}
                     data-testid="designer-review"
                     className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary font-semibold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                    title="Review the assembly, then publish from the review page (where the deposit is locked and the slug is anchored on-chain)."
+                    title={publishBlockedReason ?? "Review the assembly, then publish from the review page (where the deposit is locked and the slug is anchored on-chain)."}
                 >
                     Review
                 </button>
@@ -604,37 +586,67 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                     {resetLabel}
                 </button>
             </div>
-            {/* Longer-form editorial — a one-line summary and a description, both
-                optional and free-form (open-world, like a seller's specialty).
-                Pinned in the published document but EXCLUDED from the content
-                hash, so editing them never forks the slug. A disclosure row (not
-                a popover) because the toolbar above is overflow-hidden. */}
-            <details data-testid="designer-editorial" className="shrink-0 border-b border-default bg-paper px-6 py-2">
-                <summary className="text-[11px] text-ink-muted cursor-pointer select-none">
-                    Summary &amp; description {summary || description ? "· added" : "· optional"}
-                </summary>
-                <div className="mt-2 space-y-2 max-w-2xl">
-                    <input
-                        type="text"
-                        value={summary}
-                        onChange={(e) => setSummary(e.target.value)}
-                        placeholder="One-line summary — what this assembly is for"
-                        aria-label="Assembly summary"
-                        data-testid="designer-summary-input"
-                        className="w-full text-xs px-2 py-1.5 rounded border border-default bg-paper text-ink-heading placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus"
-                    />
-                    <textarea
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="Longer description (optional)"
-                        aria-label="Assembly description"
-                        rows={3}
-                        data-testid="designer-description-input"
-                        className="w-full text-xs px-2 py-1.5 rounded border border-default bg-paper text-ink-heading placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus resize-y"
-                    />
-                </div>
-            </details>
             <div className="flex-1 overflow-hidden flex flex-row">
+                {/* LEFT — assembly inspector: the REQUIRED editorial identity
+                    (name + short + long description). Assembly-scoped and
+                    whole-session, so it lives beside the canvas — not as a band
+                    above it — and the graph keeps its full height. Required to
+                    publish; pinned to IPFS but excluded from the slug hash. */}
+                <aside
+                    data-testid="designer-inspector"
+                    className="w-[300px] shrink-0 overflow-y-auto border-r border-default bg-paper px-5 py-4"
+                >
+                    <div data-testid="designer-editorial" className="space-y-2">
+                    <label className="block">
+                        <div className="flex items-baseline justify-between">
+                            <span className="text-xs font-semibold text-ink-heading">Name this assembly</span>
+                            <span className="text-[10px] text-ink-faint tabular-nums">{name.length}/{NAME_MAX}</span>
+                        </div>
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            maxLength={NAME_MAX}
+                            placeholder="A short, memorable name for this assembly"
+                            aria-label="Assembly name"
+                            data-testid="designer-name-input"
+                            className="mt-1 w-full text-xs px-2 py-1.5 rounded border border-default bg-paper text-ink-heading placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus"
+                        />
+                    </label>
+                    <label className="block">
+                        <div className="flex items-baseline justify-between">
+                            <span className="text-xs font-semibold text-ink-heading">Short description</span>
+                            <span className="text-[10px] text-ink-faint tabular-nums">{summary.length}/{SUMMARY_MAX}</span>
+                        </div>
+                        <input
+                            type="text"
+                            value={summary}
+                            onChange={(e) => setSummary(e.target.value)}
+                            maxLength={SUMMARY_MAX}
+                            placeholder="One line on what this assembly is for"
+                            aria-label="Assembly summary"
+                            data-testid="designer-summary-input"
+                            className="mt-1 w-full text-xs px-2 py-1.5 rounded border border-default bg-paper text-ink-heading placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus"
+                        />
+                    </label>
+                    <label className="block">
+                        <div className="flex items-baseline justify-between">
+                            <span className="text-xs font-semibold text-ink-heading">Full description</span>
+                            <span className="text-[10px] text-ink-faint tabular-nums">{description.length}/{DESCRIPTION_MAX}</span>
+                        </div>
+                        <textarea
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            maxLength={DESCRIPTION_MAX}
+                            placeholder="What the buyer receives, and how the parties coordinate"
+                            aria-label="Assembly description"
+                            rows={3}
+                            data-testid="designer-description-input"
+                            className="mt-1 w-full text-xs px-2 py-1.5 rounded border border-default bg-paper text-ink-heading placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus resize-y"
+                        />
+                    </label>
+                    </div>
+                </aside>
                 <div className="flex-1 overflow-hidden">
                     <div className="h-full px-6 py-4 flex flex-col">
                         <ProcessGraphCanvas
