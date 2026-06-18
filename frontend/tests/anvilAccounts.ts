@@ -1,6 +1,3 @@
-import { toHex } from 'viem';
-import { mnemonicToAccount } from 'viem/accounts';
-
 /**
  * Standard Anvil test accounts (derived from the default Anvil mnemonic).
  *
@@ -37,16 +34,3 @@ export const ANVIL_KEYS = [
 
 /** Anvil's default mock-token deployment (matches `script/Deploy.s.sol`). */
 export const DEFAULT_LOCAL_MOCK_TOKEN = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
-
-/** The default Anvil mnemonic — the source ANVIL_ACCOUNTS/ANVIL_KEYS derive from. */
-const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
-
-/**
- * Private key for ANY anvil index, derived live from the default mnemonic —
- * for indices beyond the memoized `ANVIL_KEYS` table (e.g. the basket
- * scenario's producer wallets at 14/15). Never paste key literals.
- */
-export function anvilKeyAt(index: number): `0x${string}` {
-    const hd = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: index }).getHdKey();
-    return toHex(hd.privateKey!) as `0x${string}`;
-}

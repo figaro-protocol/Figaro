@@ -122,8 +122,7 @@ export function serializeAssemblyTemplate(template: AssemblyTemplate): {
     // name/summary/description. But the content hash (→ slug + on-chain anchor)
     // derives from the COMPOSITION ONLY (privilegedToken + orders), so editorial
     // edits never fork identity: identical compositions collapse to one slug
-    // regardless of their prose. This also keeps the hash byte-identical to what
-    // scenarioSlugs.mjs computes (it has never carried editorial fields).
+    // regardless of their prose.
     const json = canonicalize(template);
     const composition = {
         ...(template.privilegedToken ? { privilegedToken: template.privilegedToken } : {}),
