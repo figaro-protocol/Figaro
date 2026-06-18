@@ -69,9 +69,8 @@ export interface HandoffV1Content {
     handoff: readonly HandoffPoint[];
 }
 
-/** Kleros subcourt. `none` is a sentinel (index 0; not a valid selection). */
+/** Kleros subcourt, encoded position-as-index (general = 0). */
 export type KlerosCourt =
-    | "none"
     | "general"
     | "blockchain-nontechnical"
     | "blockchain-technical"

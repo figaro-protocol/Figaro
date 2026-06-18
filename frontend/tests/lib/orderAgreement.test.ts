@@ -193,10 +193,10 @@ describe("generic spec-driven encode (defaults, sentinel, drop semantics)", () =
         expect(getSection(coerced, "figaro-arbitration-kleros")?.data.klerosMinJurors).toBe(5);
     });
 
-    it("rejects the spec's enum sentinel as input and fills from the default (klerosCourt \"none\" → \"general\")", () => {
-        // The sentinel is never a valid selection; with the spec now declaring
-        // a default court, the walk discards the sentinel and default-fills
-        // rather than dropping the section.
+    it("discards an invalid enum value and fills from the default (klerosCourt \"none\" → \"general\")", () => {
+        // "none" is no longer a member of the enum (the sentinel was removed),
+        // so the walk discards it as an invalid selection and default-fills the
+        // required field rather than dropping the section.
         const agreement = build(cf({ klerosCourt: "none" }));
         expect(getSection(agreement, "figaro-arbitration-kleros")?.data).toEqual({
             klerosCourt: "general",

@@ -12,13 +12,12 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 /// @dev Content ABI encoding (post-Keystone canonical):
 ///        `abi.encode(uint8 klerosCourt, uint256 klerosMinJurors)`.
 ///
-///      klerosCourt — position in `["none", "general", "blockchain-nontechnical",
+///      klerosCourt — position in `["general", "blockchain-nontechnical",
 ///                    "blockchain-technical", "english-language"]`.
-///                    0 = "none" (sentinel; rejected — the clause is meaningless
-///                    without a real court, omit the whole clause instead).
-///                    1 = general, 2 = blockchain-nontechnical,
-///                    3 = blockchain-technical, 4 = english-language.
-///                    Must be in [1, 4]; 0 and >4 are rejected.
+///                    0 = general, 1 = blockchain-nontechnical,
+///                    2 = blockchain-technical, 3 = english-language.
+///                    Must be in [0, 3]; >3 is rejected. No sentinel — to
+///                    pre-agree no forum, omit the whole clause instead.
 ///      klerosMinJurors — `integer` field; encodes as uint256 per the canonical
 ///                    rule. 0 = unset (defaults to Kleros's own default of 3
 ///                    at dispute time); otherwise 1-99. Values above 99 are
@@ -28,8 +27,8 @@ contract FigaroArbitrationKlerosV1Validator is IClauseValidator {
         return keccak256(abi.encode("figaro-arbitration-kleros", uint64(1)));
     }
 
-    uint8 internal constant KLEROS_COURT_MIN = 1;
-    uint8 internal constant KLEROS_COURT_MAX = 4;
+    uint8 internal constant KLEROS_COURT_MIN = 0;
+    uint8 internal constant KLEROS_COURT_MAX = 3;
     uint256 internal constant KLEROS_MIN_JURORS_MAX = 99;
 
     error ClauseIdMismatch(bytes32 got, bytes32 expected);

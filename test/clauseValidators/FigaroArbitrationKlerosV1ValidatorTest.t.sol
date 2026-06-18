@@ -23,7 +23,7 @@ contract FigaroArbitrationKlerosV1ValidatorTest is Test {
     }
 
     function test_acceptsAllFourKlerosCourts() public view {
-        for (uint8 court = 1; court <= 4; court++) {
+        for (uint8 court = 0; court <= 3; court++) {
             bytes memory c = _call(court, 3);
             validator.validate(ID, 0, c, c);
         }
@@ -41,18 +41,10 @@ contract FigaroArbitrationKlerosV1ValidatorTest is Test {
 
     // ── Court bounds ────────────────────────────────────────────────────────
 
-    function test_rejectsKlerosCourtZero() public {
-        bytes memory c = _call(0, 3);
-        vm.expectRevert(
-            abi.encodeWithSelector(FigaroArbitrationKlerosV1Validator.InvalidKlerosCourt.selector, uint8(0))
-        );
-        validator.validate(ID, 0, c, c);
-    }
-
     function test_rejectsKlerosCourtAboveMax() public {
-        bytes memory c = _call(5, 3);
+        bytes memory c = _call(4, 3);
         vm.expectRevert(
-            abi.encodeWithSelector(FigaroArbitrationKlerosV1Validator.InvalidKlerosCourt.selector, uint8(5))
+            abi.encodeWithSelector(FigaroArbitrationKlerosV1Validator.InvalidKlerosCourt.selector, uint8(4))
         );
         validator.validate(ID, 0, c, c);
     }

@@ -144,31 +144,29 @@ fn courier_in_transit_no_evidence() {
 
 #[test]
 fn arbitration_kleros_general_5() {
-    // klerosCourt = "general" → position 1 in [none, general, ...].
-    // The "none" insertion at position 0 preserves the legacy index for
-    // every real subcourt — only the (never-emitted) sentinel slot moved.
+    // klerosCourt = "general" → position 0 in [general, ...] (sentinel removed).
     assert_encode(
         "figaro-arbitration-kleros",
         json!({
             "klerosCourt": "general",
             "klerosMinJurors": 5,
         }),
-        "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000005",
+        "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005",
     );
 }
 
 #[test]
 fn arbitration_kleros_blockchain_technical_no_jurors() {
-    // klerosCourt = "blockchain-technical" → position 3. klerosMinJurors
-    // absent + optional → ABI zero (0x...000), not the legacy 1-arg
-    // default of 3. Court-routing UI applies its own default at dispute
+    // klerosCourt = "blockchain-technical" → position 2 (sentinel removed).
+    // klerosMinJurors absent + optional → ABI zero (0x...000), not the legacy
+    // 1-arg default of 3. Court-routing UI applies its own default at dispute
     // time; the encoder does not.
     assert_encode(
         "figaro-arbitration-kleros",
         json!({
             "klerosCourt": "blockchain-technical",
         }),
-        "0x00000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000000",
+        "0x00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000",
     );
 }
 
