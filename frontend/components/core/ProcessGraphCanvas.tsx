@@ -3,17 +3,10 @@
 /**
  * ProcessGraphCanvas — presentational DAG renderer for a Figaro process.
  *
- * Renders the four baseline graphs of a bonded process (Value, Geo,
- * Capital, GHG) over a react-flow canvas. Pure presentation: takes orders
- * as props, owns no live-state hooks. Consumers:
- *
- *   - live process-graph consumers read orders from useOrderStore +
- *     useProcessOrders and render via this canvas.
- *   - DesignerProcessCanvas (planned): feeds synthetic orders for the
- *     /builders/designer/new flow.
- *
- * The canvas owns: lens state, double-click zoom, auto-fit, depth layout,
- * node renderer, GHG-disclosure-per-order rendering, edge construction.
+ * Lays out a bonded-process order graph over a react-flow canvas: depth
+ * layout, edge construction, double-click zoom, auto-fit. The node itself
+ * lives in `./processGraph/OrderNode`. Consumed by the assembly designer
+ * (`designerMode`); a future live process view would render it read-only.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -21,8 +14,6 @@ import {
     ReactFlow,
     Node,
     Edge,
-    Handle,
-    Position,
     MarkerType,
     useNodesState,
     useEdgesState,
@@ -33,386 +24,15 @@ import {
     NodeTypes,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import type { Address, Hex } from "viem";
+import type { Address } from "viem";
 import { Order, OrderState } from "@/lib/core/store";
-import { hexEqual, isEmptyHex } from "@/lib/shared/evm";
-import { formatToken } from "@/lib/shared/utils";
+import { hexEqual } from "@/lib/shared/evm";
 import { Card } from "@/components/ui/Card";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
 import { deriveOrderDepths, deriveOrderTopology } from "@/lib/core/orderTopology";
-import { sectionByField, sectionsByField } from "@/lib/core/orderAgreement";
-import type { Agreement } from "@/lib/core/agreement";
-import { describeClause, type ClauseDescription } from "@/lib/shared/clauseSpecSource";
-import {
-    useOrderDisclosureTasks,
-    formatActualGrams,
-} from "@/lib/mechanisms/useGHGDisclosure";
-import { DISCLOSURE_KIND_LABELS } from "@/lib/mechanisms/contracts";
 import { truncateHex } from "@/lib/shared/formatHex";
+import { OrderNode, type OrderNodeData } from "./processGraph/OrderNode";
 
-// ── Public types ────────────────────────────────────────────────────────────
-
-/** The canvas overlay identifiers. Owned here — the lens is a canvas concept,
- *  not a clause grouping (the clause grouping is the article, in the spec). */
-type LensId = "value" | "geo" | "capital" | "ghg";
-
-/** `GraphLens` adds the `"default"` "no overlay" state on top of `LensId`. */
-export type GraphLens = LensId | "default";
-
-// ── Visual maps ─────────────────────────────────────────────────────────────
-
-const STATE_COLORS: Record<OrderState, string> = {
-    [OrderState.Active]: "bg-white border-green-500",
-    [OrderState.Resolved]: "bg-white border-gray-300 opacity-60",
-};
-
-const STATE_LABELS: Record<OrderState, string> = {
-    [OrderState.Active]: "Active",
-    [OrderState.Resolved]: "Resolved",
-};
-
-const STATE_DOT: Record<OrderState, string> = {
-    [OrderState.Active]: "bg-green-500",
-    [OrderState.Resolved]: "bg-gray-400",
-};
-
-const LENS_BUTTONS: { id: GraphLens; label: string; activeClass: string }[] = [
-    { id: "value", label: "Value", activeClass: "bg-indigo-600 text-white" },
-    { id: "geo", label: "Geo", activeClass: "bg-emerald-600 text-white" },
-    { id: "capital", label: "Capital", activeClass: "bg-amber-500 text-white" },
-    { id: "ghg", label: "GHG", activeClass: "bg-teal-600 text-white" },
-];
-
-const LENS_HIGHLIGHT: Record<GraphLens, string> = {
-    default: "",
-    value: "bg-indigo-50 rounded ring-1 ring-inset ring-indigo-200",
-    geo: "bg-emerald-50 rounded ring-1 ring-inset ring-emerald-200",
-    capital: "bg-amber-50 rounded ring-1 ring-inset ring-amber-200",
-    ghg: "bg-teal-50 rounded ring-1 ring-inset ring-teal-200",
-};
-
-type OrderNodeData = Order & {
-    decimals: number;
-    isBuyer: boolean;
-    isSeller: boolean;
-    activeLens: GraphLens;
-    /** The order's signed agreement, hydrated from cache. Lens overlays read
-     *  clause sections off it BY FIELD NAME and render them via `describeClause`
-     *  — no clause id is ever named here. */
-    agreement: Agreement | null;
-    /** 1-based position in the design's order list — the single human-facing
-     *  order number, shown in designer mode and matched by the drawer's
-     *  header, node tabs, and add-parent picker. */
-    orderNumber: number;
-    /** Designer mode: when set, the node renders an × delete affordance. */
-    onDelete?: (orderId: string) => void;
-    /** True when the node has no parents in the topology — root orders are
-     *  not deletable from the canvas (use Reset to clear the whole design). */
-    isRoot: boolean;
-    /** Designer-mode flag. When true the node renders the click-to-edit
-     *  affordance (cursor:pointer + tooltip). */
-    designerMode: boolean;
-    /** Designer mode: the per-order composed clause values (clauseId → field
-     *  values), so the node can render a derived summary of WHAT IT DOES
-     *  without opening the drawer. Each clause is described generically via
-     *  `describeClause` — no clause id is named here. */
-    designerClauseValues?: Record<string, Record<string, unknown>>;
-    /** Designer click-authoring: spawn a sub-order child of this node — the
-     *  single add affordance (the card "+" button). */
-    onAddSubOrderClick?: (parentOrderId: string) => void;
-    /** Designer click-authoring: add an existing order as an additional
-     *  parent of this node (the many-to-one merge / join). */
-    onAddParentClick?: (childOrderId: string, parentOrderId: string) => void;
-    /** Orders the add-parent picker offers — every other order not already a
-     *  parent of this node. The merge handler still rejects self/duplicate/
-     *  cycle with a notice. Empty/omitted for single-node designs. */
-    candidateParents?: Array<{ id: string; label: string }>;
-};
-
-// ── Per-order GHG disclosure section ────────────────────────────────────────
-
-function OrderDisclosureSection({ orderId, activeLens }: { orderId: string; activeLens: GraphLens }) {
-    const { tasks } = useOrderDisclosureTasks(activeLens === "ghg" ? orderId : undefined);
-    if (activeLens !== "ghg") return null;
-
-    if (tasks.length === 0) {
-        return (
-            <div className="border-t border-teal-100 pt-1 mt-2 text-[11px] text-gray-500 italic">
-                No disclosures for this order
-            </div>
-        );
-    }
-
-    return (
-        <div className="border-t border-teal-100 pt-1 mt-2 space-y-1">
-            {tasks.map((t, i) => (
-                <div key={`${t.orderHash}-${t.stage}-${t.blockNumber}-${i}`} className="flex items-center justify-between text-[11px]">
-                    <span className="font-medium text-teal-700">
-                        {DISCLOSURE_KIND_LABELS[t.stage] ?? `Stage ${t.stage}`}
-                    </span>
-                    <span className="text-gray-500">
-                        {t.actualGrams != null ? formatActualGrams(t.actualGrams) : `blk ${t.blockNumber}`}
-                    </span>
-                </div>
-            ))}
-        </div>
-    );
-}
-
-// ── Node renderer ───────────────────────────────────────────────────────────
-
-const OrderNode = ({ data }: { data: OrderNodeData }) => {
-    const isLens = (group: GraphLens) => data.activeLens === group;
-    const isDefault = data.activeLens === "default";
-    const agreement = data.agreement;
-    // Geo lens — the physical/logistics clauses, each found BY FIELD NAME and
-    // labelled by its own spec via `describeClause` (no clause id named here).
-    // The geo-coordinate clause, the class-of-service clause, and the hand-off
-    // clause are independent now; whichever the order actually carries renders.
-    const geoSection = agreement
-        ? (sectionByField(agreement, "originGeohash") ?? sectionByField(agreement, "massGrams"))
-        : undefined;
-    const classSection = agreement ? sectionByField(agreement, "classOfService") : undefined;
-    const handoffSection = agreement ? sectionByField(agreement, "handoff") : undefined;
-    const geoDescriptions: ClauseDescription[] = [geoSection, classSection, handoffSection]
-        .filter((s): s is NonNullable<typeof s> => Boolean(s))
-        .map((s) => describeClause(s.clause, s.data));
-    const geoRows = geoDescriptions.flatMap((d) => d.fields);
-    // GHG lens — one disclosure section per accounting standard (each declares
-    // a `scope` field); render every section's fields via `describeClause`.
-    const ghgRows = (agreement ? sectionsByField(agreement, "scope") : [])
-        .flatMap((s) => describeClause(s.clause, s.data).fields);
-
-    const buyerShort = data.buyer ? truncateHex(data.buyer) : "—";
-    const sellerShort = data.seller ? truncateHex(data.seller) : "—";
-    const tokenShort = data.currency ? truncateHex(data.currency) : null;
-
-    // Designer mode: a derived "what this order does" summary — one chip per
-    // composed clause, labelled by its own spec (the salient value, else the
-    // clause title). Generic via `describeClause`; no clause id is named. Makes
-    // a node self-describing without opening the drawer.
-    const designerChips = data.designerMode && data.designerClauseValues
-        ? Object.entries(data.designerClauseValues).map(([clauseId, vals]) => {
-            const desc = describeClause(clauseId, vals as Record<string, unknown>);
-            const salient = desc.fields[0]?.values;
-            return { clauseId, label: salient && salient.length > 0 ? salient.join(" / ") : desc.title };
-        })
-        : [];
-
-    const nodeClassName = data.designerMode
-        ? `px-3 py-2 rounded min-w-[180px] border border-neutral-300 bg-white cursor-pointer hover:border-neutral-700`
-        : `px-3 py-2 rounded-lg border-2 shadow-md transition-shadow ${STATE_COLORS[data.state]} min-w-[180px] ${
-            data.isBuyer
-                ? "ring-2 ring-offset-1 ring-blue-500"
-                : data.isSeller
-                    ? "ring-2 ring-offset-1 ring-emerald-500"
-                    : ""
-        }`;
-
-    return (
-        <div
-            data-testid={`order-node-${data.id}`}
-            data-order-id={data.id.toString()}
-            data-order-state={STATE_LABELS[data.state].toLowerCase()}
-            title={
-                data.designerMode
-                    ? "Click to edit this order's clauses"
-                    : (data.timestamp ? new Date((data.timestamp > 1e12 ? data.timestamp : data.timestamp * 1000)).toLocaleString() : undefined)
-            }
-            className={nodeClassName}
-        >
-            <Handle
-                type="target"
-                position={Position.Top}
-                style={{ opacity: 0, pointerEvents: "none" }}
-            />
-            <div className="flex items-center justify-between mb-1.5">
-                <span className="flex items-center gap-1.5">
-                    <span className="text-xs font-semibold text-black" title={data.id}>
-                        {data.designerMode
-                            ? `Order ${data.orderNumber}`
-                            : `Order #${data.id.toString().slice(0, 8)}`}
-                    </span>
-                    {!data.designerMode && (data.isBuyer || data.isSeller) && (
-                        <span
-                            className={`w-2 h-2 rounded-full ${data.isBuyer ? "bg-blue-500" : "bg-emerald-500"
-                                }`}
-                            role="img"
-                            aria-label={data.isBuyer ? "You are the buyer" : "You are the seller"}
-                        />
-                    )}
-                </span>
-                <span className="flex items-center gap-1.5">
-                    {!data.designerMode && (
-                        <span
-                            className={`w-2.5 h-2.5 rounded-full ${STATE_DOT[data.state]}`}
-                            role="img"
-                            aria-label={STATE_LABELS[data.state]}
-                        />
-                    )}
-                    {data.designerMode && data.onAddSubOrderClick && (
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                data.onAddSubOrderClick?.(data.id);
-                            }}
-                            data-testid={`btn-add-suborder-${data.id}`}
-                            aria-label={`Add a sub-order under order ${data.id.slice(0, 8)}`}
-                            title="Add a sub-order (child) of this order"
-                            className="nodrag w-4 h-4 rounded-full border border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 hover:border-neutral-500 text-[11px] leading-none flex items-center justify-center"
-                        >
-                            +
-                        </button>
-                    )}
-                    {data.onDelete && !data.isRoot && (
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                data.onDelete?.(data.id);
-                            }}
-                            data-testid={`order-node-${data.id}-delete`}
-                            aria-label={`Delete order ${data.id.slice(0, 8)}`}
-                            title="Delete this order (and any descendants)"
-                            className="nodrag w-4 h-4 rounded-full border border-red-300 bg-white text-red-600 hover:bg-red-50 hover:border-red-500 text-[11px] leading-none flex items-center justify-center"
-                        >
-                            ×
-                        </button>
-                    )}
-                </span>
-            </div>
-
-            <div className="space-y-1 text-[11px]">
-                {/* Compact summary — always shown */}
-                <div className="flex justify-between font-semibold">
-                    <span className="text-neutral-600">Pay</span>
-                    <span className="text-black">{formatToken(data.payment ?? 0n, data.decimals)}</span>
-                </div>
-                <div className="flex justify-between">
-                    <span className="text-neutral-600">Cum</span>
-                    <span className="text-black">{formatToken(data.cumulativeValue ?? 0n, data.decimals)}</span>
-                </div>
-
-                {/* Default view: parties on one truncated line */}
-                {isDefault && (
-                    <div className="flex justify-between font-mono text-[10px] text-neutral-500 pt-1 border-t border-neutral-100">
-                        <span title={data.buyer}>{buyerShort}</span>
-                        <span className="opacity-50">→</span>
-                        <span title={data.seller}>{sellerShort}</span>
-                    </div>
-                )}
-
-                {/* Designer mode: the node's composed terms, derived per clause —
-                    so "what this order does" is legible without opening the drawer. */}
-                {data.designerMode && (designerChips.length > 0 ? (
-                    <div className="flex flex-wrap gap-1 pt-1 border-t border-neutral-100" data-testid={`node-clauses-${data.id}`}>
-                        {designerChips.map((c) => (
-                            <span
-                                key={c.clauseId}
-                                title={c.clauseId}
-                                className="px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-700 text-[10px] leading-tight"
-                            >
-                                {c.label}
-                            </span>
-                        ))}
-                    </div>
-                ) : (
-                    <p className="pt-1 text-[10px] italic text-neutral-400" data-testid={`node-clauses-empty-${data.id}`}>
-                        No terms yet — click to compose
-                    </p>
-                ))}
-
-                {/* Value lens — full party + token detail */}
-                {isLens("value") && (
-                    <div className={`pt-1 border-t border-neutral-100 ${LENS_HIGHLIGHT.value} px-1 py-0.5`}>
-                        <div className="flex justify-between"><span>Buyer</span><span className="font-mono">{buyerShort}</span></div>
-                        <div className="flex justify-between"><span>Seller</span><span className="font-mono">{sellerShort}</span></div>
-                        {tokenShort && (
-                            <div className="flex justify-between" data-testid={`order-currency-${data.id}`}>
-                                <span>Token</span><span className="font-mono">{tokenShort}</span>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* Capital lens — bond detail */}
-                {isLens("capital") && data.state === OrderState.Active && (
-                    <div className={`pt-1 border-t border-neutral-100 ${LENS_HIGHLIGHT.capital} px-1 py-0.5`}>
-                        <div className="flex justify-between">
-                            <span>Seller bond</span>
-                            <span data-testid={`bond-seller-${data.id}`} className="font-mono">{formatToken(data.sellerBond ?? 0n, data.decimals)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span>Buyer bond</span>
-                            <span data-testid={`bond-buyer-${data.id}`} className="font-mono">{formatToken(data.buyerBond ?? 0n, data.decimals)}</span>
-                        </div>
-                    </div>
-                )}
-
-                {/* Geo lens — every physical/logistics clause the order carries,
-                    rendered generically from each clause's own spec labels. */}
-                {isLens("geo") && !isEmptyHex(data.agreementHash) && (
-                    <div className={`pt-1 border-t border-neutral-100 ${LENS_HIGHLIGHT.geo} px-1 py-0.5`}>
-                        {geoRows.length > 0 ? (
-                            geoRows.map((f) => (
-                                <div key={f.name} className="flex justify-between">
-                                    <span>{f.label}</span>
-                                    <span className="font-mono">{f.values.join(", ")}</span>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="flex justify-between" data-testid={`order-location-${data.id}`}>
-                                <span>Agreement</span>
-                                <span className="font-mono">{truncateHex(data.agreementHash, { head: 8 })}</span>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* GHG lens — disclosure detail (process-level + per-order) */}
-                {isLens("ghg") && (
-                    <div className={`pt-1 border-t border-neutral-100 ${LENS_HIGHLIGHT.ghg} px-1 py-0.5`}>
-                        {ghgRows.map((f) => (
-                            <div key={f.name} className="flex justify-between">
-                                <span className="text-teal-700">{f.label}</span>
-                                <span className="text-gray-500">{f.values.join(", ")}</span>
-                            </div>
-                        ))}
-                        <OrderDisclosureSection orderId={data.id} activeLens={data.activeLens} />
-                    </div>
-                )}
-            </div>
-            {data.designerMode && data.onAddParentClick && data.candidateParents && data.candidateParents.length > 0 && (
-                <div className="nodrag mt-1.5 pt-1.5 border-t border-neutral-100">
-                    <select
-                        data-testid={`select-add-parent-${data.id}`}
-                        aria-label={`Add a parent to order ${data.id.slice(0, 8)}`}
-                        title="Add an existing order as a parent (creates a join)"
-                        defaultValue=""
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => {
-                            const parentId = e.target.value;
-                            e.currentTarget.value = "";
-                            if (parentId) data.onAddParentClick?.(data.id, parentId);
-                        }}
-                        className="nodrag w-full rounded border border-neutral-300 bg-white text-[10px] text-neutral-600 px-1 py-0.5"
-                    >
-                        <option value="" disabled>+ add parent…</option>
-                        {data.candidateParents.map((p) => (
-                            <option key={p.id} value={p.id}>{p.label}</option>
-                        ))}
-                    </select>
-                </div>
-            )}
-            <Handle
-                type="source"
-                position={Position.Bottom}
-                style={{ background: "transparent", border: "1px solid #ccc", width: 8, height: 8 }}
-            />
-        </div>
-    );
-};
 
 // ── Layout constants ────────────────────────────────────────────────────────
 
@@ -458,10 +78,10 @@ const nodeTypes: NodeTypes = {
 // Modality is edited in the drawer, not on edges. Edges render as plain
 // React Flow defaults — no per-edge pill or popover.
 
-/** Hard limit enforced by FigaroCore (default 500). */
-const MAX_ORDERS_HARD = 500;
-/** Soft-warn threshold — show a caution banner when approaching the limit. */
-const MAX_ORDERS_WARN = 200;
+// The per-process order cap is CHAIN-ADAPTIVE — `maxOrdersResolvablePerProcess`
+// (read from the chain's gas ceiling, e.g. ~2032 on the dev chain), enforced and
+// surfaced by the designer (`maxOrders` + `atOrderCapacity`). No hardcoded limit
+// lives here.
 
 // ── Public component ────────────────────────────────────────────────────────
 
@@ -474,9 +94,6 @@ export interface ProcessGraphCanvasProps {
     walletAddress?: Address | string;
     /** Token decimals for value formatting. Defaults to 18. */
     decimals?: number;
-    /** Slot above the lens buttons. Receives the active lens so consumers
-     *  can render lens-aware content (e.g. process-level GHG summary). */
-    headerExtras?: (activeLens: GraphLens) => React.ReactNode;
     /** Title text in the header. Defaults to "Process Graph". */
     title?: React.ReactNode;
     /** Subtitle when no orders are loaded. Defaults to a generic line. */
@@ -501,25 +118,20 @@ export interface ProcessGraphCanvasProps {
     onSelectNode?: (orderId: string) => void;
     /**
      * When set, each node renders an × delete affordance and the callback
-     * fires on click. Designer uses cascade-delete semantics; live workspace
-     * leaves this unset (orders can't be deleted on chain).
+     * fires on click. The designer uses cascade-delete semantics; a read-only
+     * view leaves this unset (orders can't be deleted on chain).
      */
     onDeleteNode?: (orderId: string) => void;
     /**
-     * Designer-mode toggle. When true:
-     *   - Lens-button row is hidden (the designer's AgreementDrawer is the
-     *     canonical inspection surface; lenses add a second taxonomy).
-     *   - Each node renders a compact strip of category status dots
-     *     (empty / partial / complete per drawer category).
-     *   - Node `cursor:pointer` + a tooltip signal that nodes are
-     *     click-to-edit.
-     * Live workspaces omit this prop and keep the lens UI.
+     * Authoring-mode toggle. When true each node becomes click-to-edit
+     * (`cursor:pointer` + tooltip), renders its + / × authoring affordances
+     * (add sub-order, add parent, delete), and shows a derived chip per
+     * composed clause so "what this order does" is legible without opening
+     * the drawer. Omitted, the node is read-only presentation.
      */
     designerMode?: boolean;
-    /** Designer mode: per-order composed clause values (clauseId → field
-     *  values), used to render each node's derived "what it does" summary.
-     *  Live workspaces omit it (the node summarises from the signed agreement
-     *  via the lens system instead). */
+    /** Authoring mode: per-order composed clause values (clauseId → field
+     *  values), used to render each node's derived "what it does" chips. */
     clauseValuesByOrderId?: Record<string, Record<string, Record<string, unknown>>>;
 }
 
@@ -528,7 +140,6 @@ export function ProcessGraphCanvas({
     viewedProcessId,
     walletAddress,
     decimals = 18,
-    headerExtras,
     title = "Process Graph",
     emptySubtitle = "Visual representation of the value-added process",
     onAddSubOrder,
@@ -550,7 +161,6 @@ export function ProcessGraphCanvas({
 
     const [dblClick, setDblClick] = useState<DblClickTrigger>(null);
     const dblClickSeq = useRef(0);
-    const [activeLens, setActiveLens] = useState<GraphLens>("default");
 
     useEffect(() => {
         const topology = deriveOrderTopology(orders, agreements);
@@ -580,8 +190,6 @@ export function ProcessGraphCanvas({
             const isBuyer = walletAddress ? hexEqual(walletAddress, order.buyer) : false;
             const isSeller = walletAddress ? hexEqual(walletAddress, order.seller) : false;
 
-            const agreement =
-                (order.agreementHash ? agreements.get(order.agreementHash) : undefined) ?? null;
             const knownParents = (topology.get(order.id)?.parentOrderIds ?? []).filter(
                 (pid) => pid !== order.id && knownOrderIds.has(pid),
             );
@@ -598,7 +206,7 @@ export function ProcessGraphCanvas({
                 id: order.id,
                 type: "order",
                 position: posMap.get(order.id) ?? { x: 0, y: 0 },
-                data: { ...order, decimals, isBuyer, isSeller, activeLens, agreement, orderNumber: orderIndex + 1, onDelete: onDeleteNode, isRoot, designerMode, designerClauseValues: clauseValuesByOrderId?.[order.id], onAddSubOrderClick: onAddSubOrder, onAddParentClick: onAddParent, candidateParents } satisfies OrderNodeData,
+                data: { ...order, decimals, isBuyer, isSeller, orderNumber: orderIndex + 1, onDelete: onDeleteNode, isRoot, designerMode, designerClauseValues: clauseValuesByOrderId?.[order.id], onAddSubOrderClick: onAddSubOrder, onAddParentClick: onAddParent, candidateParents } satisfies OrderNodeData,
             };
         });
 
@@ -609,18 +217,15 @@ export function ProcessGraphCanvas({
             );
 
             parentOrderIds.forEach((parentOrderId) => {
-                const valueLens = activeLens === "value";
-                const edgeDimmed = activeLens !== "default" && activeLens !== "value";
                 newEdges.push({
                     id: `${parentOrderId}-${order.id}`,
                     source: parentOrderId,
                     target: order.id,
-                    animated: order.state === OrderState.Active && !edgeDimmed,
-                    markerEnd: { type: MarkerType.ArrowClosed, color: valueLens ? "#4f46e5" : "#555" },
+                    animated: order.state === OrderState.Active,
+                    markerEnd: { type: MarkerType.ArrowClosed, color: "#555" },
                     style: {
-                        stroke: valueLens ? "#4f46e5" : (order.state === OrderState.Active ? "#16a34a" : "#555"),
-                        strokeWidth: valueLens ? 3 : 2,
-                        opacity: edgeDimmed ? 0.15 : 1,
+                        stroke: order.state === OrderState.Active ? "#16a34a" : "#555",
+                        strokeWidth: 2,
                     },
                 });
             });
@@ -628,12 +233,13 @@ export function ProcessGraphCanvas({
 
         setNodes(newNodes);
         setEdges(newEdges);
-    }, [orders, agreements, walletAddress, decimals, activeLens, designerMode, clauseValuesByOrderId, setNodes, setEdges, onDeleteNode]);
+    }, [orders, agreements, walletAddress, decimals, designerMode, clauseValuesByOrderId, setNodes, setEdges, onDeleteNode]);
 
     return (
         <div>
             <Card data-testid="order-graph-card" className="h-[400px] sm:h-[600px] overflow-hidden">
                 <style>{`.react-flow__node { visibility: visible !important; }`}</style>
+                {!designerMode && (
                 <div className="p-4 border-b border-gray-200 bg-white">
                     <div className="flex items-start justify-between gap-2">
                         <div>
@@ -644,45 +250,11 @@ export function ProcessGraphCanvas({
                                     : `${orders.length} order${orders.length === 1 ? "" : "s"}${viewedProcessId ? ` · ${truncateHex(viewedProcessId, { head: 10, tail: 0 })}` : ""}`
                                 }
                             </p>
-                            {headerExtras?.(activeLens)}
                         </div>
-                        {!designerMode && (
-                            <div className="flex gap-1 flex-shrink-0">
-                                <button
-                                    key="all"
-                                    data-testid="lens-btn-all"
-                                    onClick={() => setActiveLens("default")}
-                                    className={`text-xs px-2.5 py-1 rounded-full font-semibold transition-colors ${activeLens === "default" ? "bg-gray-700 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                                        }`}
-                                >
-                                    All
-                                </button>
-                                {LENS_BUTTONS.map(({ id, label, activeClass }) => (
-                                    <button
-                                        key={id}
-                                        data-testid={`lens-btn-${id}`}
-                                        onClick={() => setActiveLens(prev => prev === id ? "default" : id)}
-                                        className={`text-xs px-2.5 py-1 rounded-full font-semibold transition-colors ${activeLens === id ? activeClass : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                                            }`}
-                                    >
-                                        {label}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
                     </div>
-                    {orders.length >= MAX_ORDERS_WARN && orders.length < MAX_ORDERS_HARD && (
-                        <p data-testid="process-size-warning" className="text-xs text-amber-600 mt-0.5">
-                            ⚠ Large process ({orders.length}/{MAX_ORDERS_HARD} orders) — approaching contract limit
-                        </p>
-                    )}
-                    {orders.length >= MAX_ORDERS_HARD && (
-                        <p data-testid="process-size-limit" className="text-xs text-red-600 mt-0.5">
-                            ✕ Process limit reached ({MAX_ORDERS_HARD} orders max) — no new sub-orders allowed
-                        </p>
-                    )}
                 </div>
-                <div className="h-[calc(100%-80px)]">
+                )}
+                <div className={designerMode ? "h-full" : "h-[calc(100%-80px)]"}>
                     {orders.length === 0 ? (
                         <div className="flex items-center justify-center h-full text-gray-500">
                             <div data-testid="no-orders" className="text-center">

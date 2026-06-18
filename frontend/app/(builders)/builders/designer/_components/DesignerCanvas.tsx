@@ -542,15 +542,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 >
                     ← Assemblies
                 </Link>
-                {maxOrders !== null && (
-                    <span
-                        data-testid="designer-node-capacity"
-                        className={`text-[11px] shrink-0 ${atOrderCapacity ? "text-red-600 font-semibold" : "text-ink-muted"}`}
-                        title={orderCaps ? `Hard cap ${maxOrders} orders — the most one atomic resolveProcess settles in a block on this chain. Committing them lands ~${orderCaps.commit}/block ≈ ${commitBlocks} block(s) at checkout.` : undefined}
-                    >
-                        {orders.length} / {maxOrders} nodes{commitBlocks && commitBlocks > 1 ? ` · ~${commitBlocks} blocks to commit` : ""}
-                    </span>
-                )}
                 {savedHint && (
                     <span className="ml-auto text-[11px] text-ink-muted truncate" data-testid="designer-saved-hint">
                         {savedHint}
@@ -646,19 +637,32 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                         />
                     </label>
                     </div>
+
+                    {/* Canvas guidance + the single order counter — consolidated
+                        from the old toolbar pill and the canvas subtitle. */}
+                    <div className="mt-5 pt-4 border-t border-default space-y-2">
+                        {maxOrders !== null && (
+                            <p
+                                data-testid="designer-node-capacity"
+                                className={`text-[11px] tabular-nums ${atOrderCapacity ? "text-red-600 font-semibold" : "text-ink-muted"}`}
+                                title={orderCaps ? `Hard cap ${maxOrders} orders — the most one atomic resolveProcess settles in a block on this chain. Committing them lands ~${orderCaps.commit}/block ≈ ${commitBlocks} block(s) at checkout.` : undefined}
+                            >
+                                {orders.length} / {maxOrders} orders{commitBlocks && commitBlocks > 1 ? ` · ~${commitBlocks} blocks to commit` : ""}
+                            </p>
+                        )}
+                        <p className="text-[11px] text-ink-muted leading-relaxed">
+                            Compose an assembly — a group of bonded orders representing one scenario.
+                            Each order is a buyer↔seller relationship; draw the orders and their
+                            connections, then click one to compose its terms. Keep each assembly
+                            specific — offer variety with more assemblies, not more options.
+                        </p>
+                    </div>
                 </aside>
                 <div className="flex-1 overflow-hidden">
                     <div className="h-full px-6 py-4 flex flex-col">
                         <ProcessGraphCanvas
                             orders={orders}
                             clauseValuesByOrderId={clausesByOrderId}
-                            title={
-                                <span className="font-normal">
-                                    Compose an assembly — a group of bonded orders that represents one scenario.
-                                    <br />
-                                    Each order is a buyer↔seller relationship; draw the orders and their connections, then click one to compose its terms. Keep each assembly specific — offer variety with more assemblies, not more options.
-                                </span>
-                            }
                             designerMode
                             onAddSubOrder={handleAddSubOrder}
                             onAddParent={handleAddParent}
