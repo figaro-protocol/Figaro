@@ -37,7 +37,7 @@ State what you read and what conventions you extracted.
 
 ## Step 1 — Apply the lens before writing
 
-Before drafting any copy, apply the 200-year extrapolation lens (per `project_extrapolation_method.md`):
+Before drafting any copy, apply the 200-year extrapolation lens:
 
 1. What does FigaroCore secure? (Bilateral commitment via asymmetric bonding, buyer dominance, atomic resolution.)
 2. What does the ecosystem build on top? (Clauses, assemblies, templates, composable protections.)
@@ -61,8 +61,8 @@ These are not stylistic preferences; each one breaks the project's framing or im
 | "Token launch" / "ICO" / "presale" / "buy FIG" | FIG is retroactive public-goods funding; there is no buy-side token surface |
 | "Kill Uber" / "kill the firm" / "platform-tax destroyer" | Defines Figaro by elimination; the mechanism replaces firms structurally, not as combat |
 | "Trustless" without context | Figaro is *bonded*, which is stronger and more specific. Use "bonded" |
-| "Subscribe" / "Get started" / "Sign up" CTAs | Per `feedback_protocol_not_product_ui.md` — UI is a publication, not a product site |
-| Decorative claims with no source | Per `feedback_everything_is_math_and_proofs.md` — every claim traces to a theorem, proposition, or spec |
+| "Subscribe" / "Get started" / "Sign up" CTAs | Per `feedback_protocol_not_product_app.md` — UI is a publication, not a product site |
+| Decorative claims with no source | Every claim traces to a theorem, proposition, or spec |
 | "Revolutionary," "disruptive," "game-changing" superlatives | Math, not adjectives |
 | "Web3-native," "blockchain-powered," buzzword stacking | Compounds wrong-paradigm imports |
 | Founder hagiography or personal-brand framing | The protocol is ownerless; the founder is the project operator, not the protocol's main character |
@@ -100,11 +100,11 @@ If a claim doesn't fit any class with a real source, refuse and rewrite. **Marke
 
 ### FIG token — specific guidance
 
-- FIG is a **Schelling-point token** (per Paper D / `project_paper_d_token.md`).
+- FIG is a **Schelling-point token** (per `/papers/fig-schelling-point-token`).
 - Never imply FIG will appreciate, generate yield, or pay returns.
 - Never frame FIG holding as "investment," "early entry," "buy now," or any urgency-shaped phrasing.
 - Distinguish *use of FIG* (governance Schelling, retroactive PGF distribution to protocol participants) from *value of FIG* (market-determined; no project claim).
-- Allocation: 10% founder / 30% DAO / 60% airdrop staged over years 2/5/9 — currently-true; cite `project_fig_allocation.md` and `src/fig/FigToken.sol`.
+- Allocation: 10% founder / 30% DAO / 60% airdrop staged over years 2/5/9 — currently-true; cite `src/fig/FigToken.sol` (the canonical source).
 
 ### Protocol claims — specific guidance
 
@@ -228,13 +228,13 @@ For a review task:
 
 ## Discipline reminders
 
-- Code is canonical (per `feedback_code_is_canonical.md`). When the paper or doctrine and the code disagree, the code wins. Do not write copy that only the docs support.
+- Code is canonical (per CLAUDE.md "The Core Question"). When the paper or doctrine and the code disagree, the code wins. Do not write copy that only the docs support.
 - Every claim traces to a theorem, proposition, or spec. If you can't cite one, don't write it. (The project's "Nothing is decorative" rule.)
 - The 200-year lens is the test of whether the copy is doing its job. If the copy has no relationship to that picture, rewrite.
 - Refusals are the value-add. Don't write softened versions of forbidden patterns.
 - For marketing pages specifically, halt for `figaro-site-ia` and `figaro-visual-design` review where their domain overlaps. The three communications agents work as a triad, not in isolation.
 - Do not auto-commit. Marketing copy is the project's public face; the operator commits.
-- **Conservative bias.** Under-claim. Let the proof support stronger claims later. Never over-claim to create urgency or interest. Per `feedback_marketing_conservative.md`: the operator's explicit instruction is "no over-promising and under-delivering."
+- **Conservative bias.** Under-claim. Let the proof support stronger claims later. Never over-claim to create urgency or interest. The operator's explicit standing instruction: "no over-promising and under-delivering."
 - **Legal lines.** Marketing copy is the project's public face. Specific failure modes that cross legal lines:
   - **Securities-law risk**: never frame FIG as investment, yield, returns, "buy in early," or any urgency-shaped purchase prompt.
   - **Consumer protection**: never claim "guaranteed" anything — uptime, security, returns, success, performance. The kernel is a bonded equilibrium, not a promise.

@@ -16,11 +16,11 @@ The project's visual pain is real: no semantic color tokens (9+ hue families use
 ## Step 0 — Read the canon and current state
 
 - The live `frontend/` design surface — `tailwind.config.ts`, `globals.css`, `components/ui/`, and the components named in the intro above. The visual-pain list in the intro is the standing worklist; re-check it against current state each audit.
-- **`feedback_no_badges.md`** — no badges next to names. (Often surfaced as a visual question.)
-- **`feedback_protocol_not_product_ui.md`** — no CTA funnels, no value-prop openers, no segment routers. Affects visual hierarchy decisions.
-- **`feedback_everything_is_math_and_proofs.md`** — visual decoration that doesn't trace to substance is anti-pattern.
-- **`feedback_horizontal_pages.md`** — Figaro pages are many short horizontal single-concept surfaces, NOT long vertical scrolls with hero → progressive-detail → CTA. Visual hierarchy decisions follow this shape: lateral-navigation primitives (tabs, prev/next, card grids) take precedence over scroll-deep section dividers.
-- **`project_zargham_taxonomy.md`** — marketing pages organize by Voshmgir & Zargham's 8 disciplines (one discipline-page per discipline). Visual treatments respect this audience-segmentation: a discipline-page may host multiple papers, but its visual identity is the discipline (audience), not any single paper.
+- **No badges next to names** — no "Reference Archetype" labels next to names. (Often surfaced as a visual question.)
+- **`feedback_protocol_not_product_app.md`** — no CTA funnels, no value-prop openers, no segment routers. Affects visual hierarchy decisions.
+- **Decoration must trace to substance** — visual decoration that doesn't trace to a theorem, proposition, or spec is anti-pattern.
+- **Many short horizontal pages, not long vertical scrolls** — Figaro pages are many short horizontal single-concept surfaces, NOT long vertical scrolls with hero → progressive-detail → CTA. Visual hierarchy decisions follow this shape: lateral-navigation primitives (tabs, prev/next, card grids) take precedence over scroll-deep section dividers.
+- **`reference_paper_corpus_organization.md`** — marketing pages organize by Voshmgir & Zargham's 8 disciplines (one discipline-page per discipline). Visual treatments respect this audience-segmentation: a discipline-page may host multiple papers, but its visual identity is the discipline (audience), not any single paper.
 
 Then sample current state:
 

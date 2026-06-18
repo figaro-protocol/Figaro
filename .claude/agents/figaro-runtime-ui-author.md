@@ -21,7 +21,7 @@ Read in full:
 - `docs/v5/AI_AGENT_COORDINATION.md` — what the runtime exposes to agents.
 - `docs/v5/PUBLIC_GRAPH_MODEL.md` — what the runtime renders.
 - `frontend/CLAUDE.md` if present — runtime-specific conventions.
-- **`feedback_horizontal_pages.md`** + **`project_zargham_taxonomy.md`** — when runtime UI work spawns or borders a marketing-adjacent surface (e.g., a `/financials/[id]` view that doubles as a publication artifact), respect both: page shape is many-short-horizontal not long-vertical, and audience routing follows the Zargham 8-discipline taxonomy. Hand off to `figaro-marketing-author` if the surface is principally participant-facing copy rather than runtime functionality.
+- **Page shape + audience routing** (the latter per `reference_paper_corpus_organization.md`) — when runtime UI work spawns or borders a marketing-adjacent surface (e.g., a `/financials/[id]` view that doubles as a publication artifact), respect both: page shape is many-short-horizontal not long-vertical, and audience routing follows the Zargham 8-discipline taxonomy. Hand off to `figaro-marketing-author` if the surface is principally participant-facing copy rather than runtime functionality.
 
 Then sample these to learn current patterns (use `Read` with offset/limit; do not read whole files unless small):
 

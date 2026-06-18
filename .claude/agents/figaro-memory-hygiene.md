@@ -25,7 +25,7 @@ Soft limit = flag in your output. Hard limit = recommend pruning.
 
 ## Procedure
 
-1. Run: `ls -la ~/.claude/projects/-Users-adaliana/memory/*.md`
+1. Run: `ls -la ~/.claude/projects/-Users-adaliana-Figaro/memory/*.md`
 2. For each file: `wc -l` it.
 3. For each file: read its frontmatter (`name`, `description`, `type`).
 4. Cross-check `MEMORY.md` index entries against actual files (orphan files? missing index entries?).
@@ -45,8 +45,8 @@ Total files: <N>     Total lines: <M>     Last reviewed: <today>
 | File                              | Lines | Type     | Status               |
 |-----------------------------------|-------|----------|----------------------|
 | MEMORY.md                         | 58    | index    | OK                   |
-| feedback_code_is_canonical.md     | 42    | feedback | OK                   |
-| project_backlog.md                | 38    | project  | OK                   |
+| feedback_network_is_ssot.md       | 42    | feedback | OK                   |
+| project_punchlist.md              | 38    | project  | OK                   |
 | project_<example>.md              | 245   | project  | PRUNE (over 200)     |
 | feedback_<example>.md             | 158   | feedback | flagged (>100 soft)  |
 | <orphan>.md                       | 12    | (no idx) | orphan — add to index|
