@@ -41,6 +41,7 @@ import {
     LOCAL_ANVIL,
 } from './devnet-helpers';
 import { ANVIL_KEYS, anvilKeyAt } from '../anvilAccounts';
+import { deriveSlug, root } from './scenarioSlugs.mjs';
 
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 const REGISTRAR_KEY = ANVIL_KEYS[0] as Hex; // anvil[0] — the buyer
@@ -51,7 +52,10 @@ const BUYER_ADDR = privateKeyToAccount(REGISTRAR_KEY).address;
 // The novel clause — a runtime-attestable lifecycle with one enum ladder. Modeled
 // on figaro-merchant-process's shape, but a name nothing in the repo knows.
 const NOVEL_CLAUSE_ID = 'figaro-probe-attest';
-const NOVEL_SLUG = 'permissionless-probe';
+// The published slug is CONTENT-derived, not a name: a 1-node assembly carrying
+// the novel clause (checked, no design-time value → {}). Derive it the canonical
+// way so the seller binding, the publish, and discovery all agree.
+const NOVEL_SLUG = deriveSlug({ orders: [root({ [NOVEL_CLAUSE_ID]: {} })] });
 const NOVEL_SPEC = {
     clauseId: NOVEL_CLAUSE_ID,
     version: 1,
@@ -125,11 +129,13 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green', () => {
         await expect(novelCheckbox, 'DRAWER: the event-driven drawer surfaces a never-before-seen clause').toHaveCount(1, { timeout: 20000 });
         await novelCheckbox.check();
 
-        // Publish the 1-node assembly (slug "permissionless-probe").
+        // Publish the 1-node assembly. Review navigates to a RANDOM draft handle;
+        // the content-derived slug (NOVEL_SLUG) is anchored at confirm-publish.
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
-        await page.waitForURL(new RegExp(`/builders/designer/view/${NOVEL_SLUG}`), { timeout: 15000 });
-        await page.goto(`/builders/designer/view/${NOVEL_SLUG}?intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.waitForURL(/\/builders\/designer\/view\/asm-/, { timeout: 15000 });
+        const handle = page.url().match(/\/view\/(asm-[a-z0-9-]+)/)?.[1];
+        await page.goto(`/builders/designer/view/${handle}?intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         const confirmBtn = page.getByTestId('review-confirm-publish');
         await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
         await page.waitForFunction(

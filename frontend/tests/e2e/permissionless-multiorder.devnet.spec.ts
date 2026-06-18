@@ -52,6 +52,7 @@ import {
     LOCAL_ANVIL,
 } from './devnet-helpers';
 import { ANVIL_KEYS, anvilKeyAt } from '../anvilAccounts';
+import { deriveSlug, root as rootComposition, child as childComposition } from './scenarioSlugs.mjs';
 
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 const REGISTRAR_KEY = ANVIL_KEYS[0] as Hex; // anvil[0] — the buyer
@@ -66,7 +67,16 @@ const TOKEN_MINT_ABI = [
 //    clauses side by side in one process. ──────────────────────────────────────
 const ROOT_CLAUSE_ID = 'figaro-probe-root';
 const SUB_CLAUSE_ID = 'figaro-probe-sub';
-const MULTI_SLUG = 'permissionless-multiorder';
+// The published slug is CONTENT-derived: a 2-node assembly — the lead (order-0)
+// carries the root clause, the contributor sub-order (order-1, parent order-0)
+// the sub clause (both checked, no design-time value → {}). Derive it the
+// canonical way so the seller binding, the publish, and discovery agree.
+const MULTI_SLUG = deriveSlug({
+    orders: [
+        rootComposition({ [ROOT_CLAUSE_ID]: {} }),
+        childComposition('order-1', { [SUB_CLAUSE_ID]: {} }),
+    ],
+});
 
 const ROOT_SPEC = {
     clauseId: ROOT_CLAUSE_ID, version: 1,
@@ -187,8 +197,11 @@ test.describe('PERMISSIONLESS MULTI-ORDER — the assembly RUNS at runtime', () 
 
             await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
             await page.getByTestId('designer-review').click();
-            await page.waitForURL(new RegExp(`/builders/designer/view/${MULTI_SLUG}`), { timeout: 15000 });
-            await page.goto(`/builders/designer/view/${MULTI_SLUG}?intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+            // Review navigates to a RANDOM draft handle; the content-derived slug
+            // (MULTI_SLUG) is anchored at confirm-publish.
+            await page.waitForURL(/\/builders\/designer\/view\/asm-/, { timeout: 15000 });
+            const handle = page.url().match(/\/view\/(asm-[a-z0-9-]+)/)?.[1];
+            await page.goto(`/builders/designer/view/${handle}?intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
             const confirmBtn = page.getByTestId('review-confirm-publish');
             await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
             await page.waitForFunction(

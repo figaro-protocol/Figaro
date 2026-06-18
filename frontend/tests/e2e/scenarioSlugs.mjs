@@ -28,13 +28,16 @@ function canonicalize(value) {
     });
 }
 
-/** `asm-<contentHash[2..18]>` — matches deriveAssemblySlug(serialize(...)). */
-function deriveSlug(template) {
+/** `asm-<contentHash[2..18]>` — matches deriveAssemblySlug(serialize(...)).
+ *  Exported so any spec that authors an ad-hoc composition (e.g. the
+ *  permissionless probes) derives its slug the ONE canonical way, instead of
+ *  hardcoding a name the content-derived publish would never anchor under. */
+export function deriveSlug(template) {
     return `asm-${keccak256(toHex(canonicalize(template))).slice(2, 18)}`;
 }
 
-const root = (clauses) => ({ id: 'order-0', clauses: { ...clauses, 'figaro-topology': { parentOrderIds: [] } } });
-const child = (id, clauses) => ({ id, clauses: { ...clauses, 'figaro-topology': { parentOrderIds: ['order-0'] } } });
+export const root = (clauses) => ({ id: 'order-0', clauses: { ...clauses, 'figaro-topology': { parentOrderIds: [] } } });
+export const child = (id, clauses) => ({ id, clauses: { ...clauses, 'figaro-topology': { parentOrderIds: ['order-0'] } } });
 
 const COURIER_EDGE = {
     'figaro-handoff': { handoff: ['face-to-face'] },
