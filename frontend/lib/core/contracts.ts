@@ -32,11 +32,6 @@ export const PROCESS_OFFSET_RECEIPT_ABI = parseAbi([
     "error ZeroInputAmount()",
 ] as const);
 
-// agreementHash (bytes32) is the opaque off-chain agreement reference.
-// For the prototype, we use a deterministic non-zero default.
-export const DEFAULT_AGREEMENT_HASH =
-    "0x0000000000000000000000000000000000000000000000000000000000000001" as const;
-
 // MockERC20 mint — devnet only, not part of the protocol ABI.
 export const MOCK_MINT_ABI = parseAbi([
     "function mint(address to, uint256 amount) external",

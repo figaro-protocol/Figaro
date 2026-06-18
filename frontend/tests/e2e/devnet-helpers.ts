@@ -1,34 +1,17 @@
 import fs from 'fs';
 import path from 'path';
-import { Page, expect } from '@playwright/test';
-export { waitForWalletConnected } from './test-helpers';
+import { expect } from '@playwright/test';
 import {
     createPublicClient,
     createWalletClient,
     defineChain,
     http,
-    keccak256,
     parseAbi,
     parseEther,
-    stringToHex,
-    type Hex,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { ANVIL_KEYS } from '../anvilAccounts';
-import {
-    COMMITMENT_TYPES,
-    CORE_ABI,
-    CLAUSE_REGISTRY_ABI,
-    computeAgreementHash,
-    type Agreement,
-} from '@figaro/core';
-import { type ProximityBand } from '@figaro/core/clauses';
-import { DEFAULT_AGREEMENT_HASH } from '@/lib/core/contracts';
-import { ZERO_PROCESS_ID, ZERO_ADDRESS, hexEqual, clauseIdHash } from '@/lib/shared/evm';
-import { gotoAsWallet } from './devnet-multi-test';
 
 const RPC_URL = 'http://127.0.0.1:8545';
-const MAX_UINT256 = (2n ** 256n) - 1n;
 const LOCAL_ANVIL = defineChain({
     id: 31337,
     name: 'Localhost',
@@ -49,102 +32,6 @@ export function localPublicClient() {
     return createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 }
 
-/** FigaroCore `processes(processId)` view — rootBuyer / currency / cumulativeValue
- *  / activeOrderCount. The canonical post-commit / post-resolve assertion source. */
-export const CORE_PROCESS_VIEW_ABI = parseAbi([
-    'function processes(bytes32 processId) view returns (address rootBuyer, address currency, uint256 cumulativeValue, uint32 activeOrderCount)',
-]);
-
-
-
-const ERC20_TEST_ABI = parseAbi([
-    'function approve(address spender, uint256 amount) external returns (bool)',
-]);
-
-// Tests may name clauses; production code may not.
-const MERCHANT_PROCESS_CLAUSE_KEY = 'figaro-merchant-process';
-const COURIER_PROCESS_CLAUSE_KEY = 'figaro-courier-process';
-const PROXIMITY_POLICY_CLAUSE_KEY = 'figaro-proximity-policy';
-const PROXIMITY_PROOF_CLAUSE_KEY = 'figaro-proximity-proof';
-
-
-// ── EIP-712 Types (imported from @figaro/core) ──────────────────────────────
-
-type CoreCommitment = {
-    processId: `0x${string}`;
-    buyer: `0x${string}`;
-    seller: `0x${string}`;
-    currency: `0x${string}`;
-    payment: bigint;
-    expectedCumulativeValue: bigint;
-    agreementHash: `0x${string}`;
-    salt: bigint;
-    deadline: bigint;
-};
-
-const seededCommitments = new Map<`0x${string}`, CoreCommitment>();
-const agreementsByHash = new Map<`0x${string}`, Agreement>();
-
-// ── Reference agreements ────────────────────────────────────────
-// Phase-4a requires every attestation to carry an inclusion proof against the
-// order's signed `agreementHash`. We commit a minimal agreement containing the
-// clause the seed's attestation will fire under, so the coordinator accepts
-// the proof and the Category-2 byte-equality check (sectionData == content)
-// passes.
-
-export function merchantProcessAgreement(buyer: `0x${string}`, seller: `0x${string}`): Agreement {
-    return {
-        version: 'a1',
-        buyer,
-        seller,
-        sections: [
-            { clause: MERCHANT_PROCESS_CLAUSE_KEY, version: 1, data: {} },
-        ],
-    };
-}
-
-/**
- * Courier handoff agreement carrying both halves of the proximity
- * sister-clause split:
- *   - figaro-proximity-policy (Cat-2, committed): which bands the
- *     parties agree to verify against at handoff.
- *   - figaro-proximity-proof (Cat-1, runtime): placeholder for the
- *     per-handoff witness payload. Cat-1 clauses don't enforce
- *     byte-equality against the committed sectionData, but the section
- *     must EXIST in the agreement for the merkle inclusion proof to
- *     open at attest time.
- *
- * The courier-process section is also included so the same agreement
- * can support both the role-event log AND the proximity attestation
- * — mirrors how the production handoff flow composes them.
- */
-function proximityHandoffAgreement(
-    buyer: `0x${string}`,
-    seller: `0x${string}`,
-    band: ProximityBand = 'zone-wifi',
-): Agreement {
-    return {
-        version: 'a1',
-        buyer,
-        seller,
-        sections: [
-            { clause: COURIER_PROCESS_CLAUSE_KEY, version: 1, data: { eventType: 'arrived-pickup', evidenceUri: '' } },
-            { clause: PROXIMITY_POLICY_CLAUSE_KEY, version: 1, data: { bands: [band] } },
-            // Cat-1 placeholder: any valid shape. The runtime attestation
-            // supplies the real (band, nonce, deviceSig) content; the
-            // committed sectionData here is just the placeholder that
-            // anchors the section's leaf in the agreement's merkle root.
-            {
-                clause: PROXIMITY_PROOF_CLAUSE_KEY, version: 1,
-                data: {
-                    band,
-                    nonce: '0x' + '00'.repeat(32),
-                    deviceSig: '0x' + '00'.repeat(65),
-                },
-            },
-        ],
-    };
-}
 
 type DeploymentConfig = {
     figaroCore?: `0x${string}`;
@@ -197,216 +84,6 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
     return config;
 }
 
-// ── V5 EIP-712 signing ──────────────────────────────────────────────────────
-
-function getEIP712Domain(coreAddress: `0x${string}`) {
-    return {
-        name: 'FigaroCore',
-        version: '3',
-        chainId: 31337,
-        verifyingContract: coreAddress,
-    };
-}
-
-export async function signCommitment(
-    commitment: {
-        processId: `0x${string}`;
-        buyer: `0x${string}`;
-        seller: `0x${string}`;
-        currency: `0x${string}`;
-        payment: bigint;
-        expectedCumulativeValue: bigint;
-        agreementHash: `0x${string}`;
-        salt: bigint;
-        deadline: bigint;
-    },
-    signerKey: `0x${string}`,
-    coreAddress: `0x${string}`,
-): Promise<`0x${string}`> {
-    const account = privateKeyToAccount(signerKey);
-    const client = createWalletClient({ account, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    return client.signTypedData({
-        domain: getEIP712Domain(coreAddress),
-        types: COMMITMENT_TYPES,
-        primaryType: 'Commitment',
-        message: commitment,
-    });
-}
-
-// ── V5 on-chain helpers ─────────────────────────────────────────────────────
-
-export async function createRootOrder(opts: {
-    buyerKey: `0x${string}`;
-    sellerKey: `0x${string}`;
-    coreAddress: `0x${string}`;
-    tokenAddress: `0x${string}`;
-    payment: bigint;
-    agreementHash?: `0x${string}`;
-    /** Optional signed agreement assemblyTemplate. When supplied, its merkle root is
-     *  used as the order's `agreementHash` and is cached so later attestation
-     *  helpers can produce inclusion proofs. */
-    agreement?: Agreement;
-}): Promise<{ processId: `0x${string}`; orderHash: `0x${string}`; commitment: CoreCommitment }> {
-    const buyer = privateKeyToAccount(opts.buyerKey);
-    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const buyerClient = createWalletClient({ account: buyer, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const seller = privateKeyToAccount(opts.sellerKey);
-
-    const salt = BigInt(Date.now()) * 1000n + BigInt(Math.floor(Math.random() * 1000));
-    // Deadline from CHAIN time — block.timestamp is the clock the kernel
-    // checks; the persisted devnet's clock may be far ahead of wall time
-    // (the withdraw spec's lock-elapse time travel persists).
-    const deadline = (await localPublicClient().getBlock({ blockTag: 'latest' })).timestamp + 3600n;
-
-    const agreementHash = opts.agreement
-        ? computeAgreementHash(opts.agreement)
-        : (opts.agreementHash ?? DEFAULT_AGREEMENT_HASH);
-    if (opts.agreement) agreementsByHash.set(agreementHash, opts.agreement);
-
-    const commitment = {
-        processId: ZERO_PROCESS_ID,
-        buyer: buyer.address as `0x${string}`,
-        seller: seller.address as `0x${string}`,
-        currency: opts.tokenAddress,
-        payment: opts.payment,
-        expectedCumulativeValue: opts.payment,
-        agreementHash,
-        salt,
-        deadline,
-    };
-
-    const buyerSig = await signCommitment(commitment, opts.buyerKey, opts.coreAddress);
-    const sellerSig = await signCommitment(commitment, opts.sellerKey, opts.coreAddress);
-
-    const { result, request } = await publicClient.simulateContract({
-        account: buyer.address,
-        address: opts.coreAddress,
-        abi: CORE_ABI,
-        functionName: 'commit',
-        args: [commitment, buyerSig, sellerSig],
-    });
-    const txHash = await buyerClient.writeContract(request);
-    await publicClient.waitForTransactionReceipt({ hash: txHash });
-
-    seededCommitments.set(result[1] as `0x${string}`, commitment);
-
-    return {
-        processId: result[0] as `0x${string}`,
-        orderHash: result[1] as `0x${string}`,
-        commitment,
-    };
-}
-
-export async function createSubOrder(opts: {
-    processId: `0x${string}`;
-    buyerKey: `0x${string}`;
-    sellerKey: `0x${string}`;
-    coreAddress: `0x${string}`;
-    tokenAddress: `0x${string}`;
-    payment: bigint;
-    parentOrderHashes: `0x${string}`[];
-    agreementHash?: `0x${string}`;
-    agreement?: Agreement;
-}): Promise<{ orderHash: `0x${string}`; commitment: CoreCommitment }> {
-    const buyer = privateKeyToAccount(opts.buyerKey);
-    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const buyerClient = createWalletClient({ account: buyer, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const seller = privateKeyToAccount(opts.sellerKey);
-
-    const processState = await publicClient.readContract({
-        address: opts.coreAddress,
-        abi: CORE_ABI,
-        functionName: 'processes',
-        args: [opts.processId],
-    });
-    const currentCumulativeValue = processState[2];
-    const expectedCumulativeValue = currentCumulativeValue + opts.payment;
-
-    const salt = BigInt(Date.now()) * 1000n + BigInt(Math.floor(Math.random() * 1000));
-    // Deadline from CHAIN time — block.timestamp is the clock the kernel
-    // checks; the persisted devnet's clock may be far ahead of wall time
-    // (the withdraw spec's lock-elapse time travel persists).
-    const deadline = (await localPublicClient().getBlock({ blockTag: 'latest' })).timestamp + 3600n;
-
-    const agreementHash = opts.agreement
-        ? computeAgreementHash(opts.agreement)
-        : (opts.agreementHash ?? DEFAULT_AGREEMENT_HASH);
-    if (opts.agreement) agreementsByHash.set(agreementHash, opts.agreement);
-
-    const commitment = {
-        processId: opts.processId,
-        buyer: buyer.address as `0x${string}`,
-        seller: seller.address as `0x${string}`,
-        currency: opts.tokenAddress,
-        payment: opts.payment,
-        expectedCumulativeValue,
-        agreementHash,
-        salt,
-        deadline,
-    };
-
-    const buyerSig = await signCommitment(commitment, opts.buyerKey, opts.coreAddress);
-    const sellerSig = await signCommitment(commitment, opts.sellerKey, opts.coreAddress);
-
-    const { result, request } = await publicClient.simulateContract({
-        account: buyer.address,
-        address: opts.coreAddress,
-        abi: CORE_ABI,
-        functionName: 'commit',
-        args: [commitment, buyerSig, sellerSig],
-    });
-    const txHash = await buyerClient.writeContract(request);
-    await publicClient.waitForTransactionReceipt({ hash: txHash });
-
-    seededCommitments.set(result[1] as `0x${string}`, commitment);
-
-    return { orderHash: result[1] as `0x${string}`, commitment };
-}
-
-export async function resolveProcessOnChain(opts: {
-    processId: `0x${string}`;
-    orderHashes: `0x${string}`[];
-    buyerKey: `0x${string}`;
-    coreAddress: `0x${string}`;
-}): Promise<void> {
-    const buyer = privateKeyToAccount(opts.buyerKey);
-    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const buyerClient = createWalletClient({ account: buyer, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-
-    const commitments = opts.orderHashes.map((orderHash) => {
-        const commitment = seededCommitments.get(orderHash);
-        if (!commitment) throw new Error(`Missing seeded commitment for ${orderHash}`);
-        return commitment;
-    });
-
-    const { request } = await publicClient.simulateContract({
-        account: buyer.address,
-        address: opts.coreAddress,
-        abi: CORE_ABI,
-        functionName: 'resolveProcess',
-        args: [opts.processId, commitments],
-    });
-    const txHash = await buyerClient.writeContract(request);
-    await publicClient.waitForTransactionReceipt({ hash: txHash });
-}
-
-// ── GHG seed scenarios ──────────────────────────────────────────────────────
-
-export async function ensureTokenApprovals(coreAddress: `0x${string}`, tokenAddress: `0x${string}`, ...keys: `0x${string}`[]) {
-    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    for (const key of keys) {
-        const acct = privateKeyToAccount(key);
-        const client = createWalletClient({ account: acct, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-        const { request } = await publicClient.simulateContract({
-            account: acct.address,
-            address: tokenAddress,
-            abi: ERC20_TEST_ABI,
-            functionName: 'approve',
-            args: [coreAddress, MAX_UINT256],
-        });
-        await publicClient.waitForTransactionReceipt({ hash: await client.writeContract(request) });
-    }
-}
 
 // ── Anvil EVM snapshot / revert ──────────────────────────────────────────────
 
@@ -420,10 +97,6 @@ export async function evmRevert(snapshotId: string): Promise<void> {
     await snapshotClient.request({ method: 'evm_revert' as any, params: [snapshotId] } as any);
 }
 
-/** Build the proximity-handoff agreement so callers can seed sub-orders
- *  carrying both the policy and the proof sections. Re-export so the
- *  test spec can compose its own scenario without forking the helper. */
-export { proximityHandoffAgreement };
 
 /** SellerRegistry ABI fragment for seedRegisteredSeller. Local copy keeps
  *  the seed helper independent of the frontend's full ABI export. */
@@ -742,37 +415,4 @@ export async function evmIncreaseTime(seconds: number): Promise<void> {
 
 
 
-/**
- * Walk a wallet's clause attestations through the ONE generic rail
- * (`capability-execute-submit-clause-attestation`) — clause-agnostic: the
- * engine derives one capability per un-attested stage of every category-1
- * clause the wallet's orders carry (labels are the clause's own event codes),
- * so the walk never names a clause. `clicks` is scenario knowledge: how many
- * attestations this party owes (ladder stages + proof witnesses).
- *
- * The rail is EVENT-DRIVEN: it re-derives from the indexer, so the next
- * button (re)appears only once the prior attestation has been indexed —
- * `toBeEnabled` rides out that gap; sequencing is purely the UI reaction,
- * never a chain read. After the final click, the wallet's generic rail
- * retires to zero.
- *
- * Arrival and acceptance are NOT attestations: the order's existence and the
- * seller's acceptance are core (the bilateral commit / inbox counter-sign).
- */
-export async function walkClauseAttestations(
-    page: Page,
-    opts: { wallet: string; processId: Hex; clicks: number; who?: string },
-): Promise<void> {
-    const who = opts.who ?? opts.wallet.slice(0, 8);
-    await gotoAsWallet(page, opts.wallet, `/orders/${opts.processId}?e2e=devnet`);
-    await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
-    const railBtn = page.getByTestId('capability-execute-submit-clause-attestation');
-    for (let i = 0; i < opts.clicks; i++) {
-        const btn = railBtn.first();
-        await expect(btn, `${who}: generic rail surfaces attestation ${i + 1}/${opts.clicks}`)
-            .toBeEnabled({ timeout: 90_000 });
-        await btn.click();
-    }
-    await expect(railBtn, `${who}: rail retires once every clause is run`).toHaveCount(0, { timeout: 90_000 });
-}
 
