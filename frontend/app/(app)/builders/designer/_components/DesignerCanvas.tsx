@@ -50,7 +50,6 @@ import {
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "./AgreementDrawer";
 import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
-import { buildAssemblyTemplate } from "@/lib/designer/assemblyTemplate";
 import { maxCommitsLandableInOneBlock, maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { getCommonTokens } from "@/lib/seller/commonTokens";
 import { useChainId, usePublicClient } from "wagmi";
@@ -64,6 +63,8 @@ interface InitialState {
     session: SyntheticProcessSession;
     orders: Order[];
     name: string;
+    summary: string;
+    description: string;
     slug: string | null;
     privilegedToken: string;
     clausesByOrderId: Record<string, Record<string, Record<string, unknown>>>;
@@ -75,8 +76,11 @@ function buildBlankInitial(): InitialState {
     return {
         session: fresh,
         orders: [root.order],
-        // Empty so the placeholder shows; user must name before save/publish.
+        // Empty editorial — the placeholder shows; naming is optional (display
+        // falls back to the content-derived slug when these are blank).
         name: "",
+        summary: "",
+        description: "",
         slug: null,
         privilegedToken: "",
         clausesByOrderId: {},
@@ -93,6 +97,8 @@ function snapshotToInitial(snap: DesignSnapshot): InitialState {
         },
         orders: snap.orders,
         name: snap.name,
+        summary: snap.summary ?? "",
+        description: snap.description ?? "",
         slug: snap.slug || null,
         privilegedToken: snap.privilegedToken ?? "",
         clausesByOrderId: snap.clausesByOrderId ?? {},
@@ -143,7 +149,12 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     const [clausesByOrderId, setClausesByOrderId] = useState<
         Record<string, Record<string, Record<string, unknown>>>
     >(() => initial.clausesByOrderId);
+    // Editorial metadata — the designer's own words (free-form, NOT a taxonomy).
+    // Carried into the assembly template but EXCLUDED from the content hash, so
+    // renaming never forks the slug. Blank = unnamed; display falls back to slug.
     const [name, setName] = useState<string>(initial.name);
+    const [summary, setSummary] = useState<string>(() => initial.summary);
+    const [description, setDescription] = useState<string>(() => initial.description);
     // ERC-20 the assembly privileges ("" = agnostic). Chosen from the per-chain
     // common-token list; carried into the template + persisted in the draft.
     const [privilegedToken, setPrivilegedToken] = useState<string>(() => initial.privilegedToken);
@@ -218,6 +229,8 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             Object.assign(session, restored.session);
             setOrders(restored.orders);
             setName(restored.name);
+            setSummary(restored.summary);
+            setDescription(restored.description);
             setSlug(restored.slug);
             setPrivilegedToken(restored.privilegedToken);
             setClausesByOrderId(restored.clausesByOrderId);
@@ -231,6 +244,8 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             Object.assign(session, init.session);
             setOrders(init.orders);
             setName(init.name);
+            setSummary(init.summary);
+            setDescription(init.description);
             setSlug(init.slug);
             setPrivilegedToken(init.privilegedToken);
             setClausesByOrderId(init.clausesByOrderId);
@@ -247,6 +262,8 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         const snap: DesignSnapshot = {
             slug: slug ?? "",
             name,
+            summary: summary || undefined,
+            description: description || undefined,
             privilegedToken: privilegedToken || undefined,
             processId: session.processId,
             nextOrderIndex: session.nextOrderIndex,
@@ -258,7 +275,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         };
         saveCurrentSession(snap);
         setSavedAt(Date.now());
-    }, [hydrated, seedError, orders, clausesByOrderId, name, slug, privilegedToken, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
+    }, [hydrated, seedError, orders, clausesByOrderId, name, summary, description, slug, privilegedToken, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
 
     // Read both chain gas ceilings (each depends on the live block gas limit, so
     // it's a runtime read; recompute when the chain changes).
@@ -383,9 +400,10 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         const root = createSyntheticRootOrder(fresh);
         Object.assign(session, fresh);
         setOrders([root.order]);
-        // Empty so the placeholder shows; same as buildBlankInitial — user
-        // must name the assembly before save/publish succeeds.
+        // Empty editorial — same as buildBlankInitial; naming is optional.
         setName("");
+        setSummary("");
+        setDescription("");
         setSlug(null);
         clearCurrentSession();
     }, [session]);
@@ -399,16 +417,19 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
 
     const buildSnapshot = useCallback((): SnapshotResult => {
         if (orders.length === 0) return { ok: false, reason: "empty-composition" };
-        // No user-chosen name: the draft gets a stable local handle, assigned
-        // once and reused on every save. The PUBLISHED slug is derived from the
-        // composition's content at publish time (deriveAssemblySlug); this
-        // handle only keys the local draft + its /edit and /view routes.
+        // The draft gets a stable local handle (assigned once, reused on every
+        // save) that keys the local draft + its /edit and /view routes. The
+        // PUBLISHED slug is derived from the composition's content at publish
+        // time (deriveAssemblySlug) — independent of the editorial `name`, which
+        // is the designer's own words and may be blank.
         const handle = slug ?? `asm-draft-${crypto.randomUUID().slice(0, 8)}`;
         return {
             ok: true,
             snapshot: {
                 slug: handle,
-                name: handle,
+                name,
+                summary: summary || undefined,
+                description: description || undefined,
                 privilegedToken: privilegedToken || undefined,
                 processId: session.processId,
                 nextOrderIndex: session.nextOrderIndex,
@@ -419,7 +440,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 updatedAt: Date.now(),
             },
         };
-    }, [slug, privilegedToken, orders, clausesByOrderId, session]);
+    }, [slug, name, summary, description, privilegedToken, orders, clausesByOrderId, session]);
 
     function explainSnapshotReason(_reason: "empty-composition"): string {
         return "Add at least one order before publishing.";
@@ -480,25 +501,11 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
 
     const savedHint = useMemo(() => {
         if (!savedAt) return null;
-        if (slug) return `Saved "${name}" · ${formatRelative(savedAt)}`;
+        if (slug) return `Saved "${name || slug}" · ${formatRelative(savedAt)}`;
         return `Autosaved ${formatRelative(savedAt)} · not yet named`;
     }, [savedAt, slug, name]);
 
     const resetLabel = "Reset";
-
-    // The live no-hash assembly template emitted from the design — per order:
-    // who's bound, its DAG parents, and the selected clauses. Hoisted above the
-    // seed-error return: a hook below a conditional return is a hook-order
-    // crash the first time the condition flips (react-hooks/rules-of-hooks).
-    const assemblyTemplate = useMemo(
-        () =>
-            buildAssemblyTemplate({
-                privilegedToken: privilegedToken || undefined,
-                orders,
-                clausesByOrderId,
-            }),
-        [privilegedToken, orders, clausesByOrderId],
-    );
 
     if (seedError) {
         return (
@@ -541,6 +548,18 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 >
                     ← Assemblies
                 </Link>
+                {/* The assembly's editorial name — the designer's own words.
+                    Optional: blank publishes an unnamed assembly that displays
+                    by its content-derived slug. Never part of the slug. */}
+                <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Name this assembly (optional)"
+                    aria-label="Assembly name"
+                    data-testid="designer-name-input"
+                    className="text-xs px-2 py-1.5 rounded border border-default bg-paper text-ink-heading placeholder:text-ink-muted min-w-0 flex-1 max-w-[18rem] focus:outline-none focus:ring-2 focus:ring-focus"
+                />
                 {maxOrders !== null && (
                     <span
                         data-testid="designer-node-capacity"
@@ -585,6 +604,36 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                     {resetLabel}
                 </button>
             </div>
+            {/* Longer-form editorial — a one-line summary and a description, both
+                optional and free-form (open-world, like a seller's specialty).
+                Pinned in the published document but EXCLUDED from the content
+                hash, so editing them never forks the slug. A disclosure row (not
+                a popover) because the toolbar above is overflow-hidden. */}
+            <details data-testid="designer-editorial" className="shrink-0 border-b border-default bg-paper px-6 py-2">
+                <summary className="text-[11px] text-ink-muted cursor-pointer select-none">
+                    Summary &amp; description {summary || description ? "· added" : "· optional"}
+                </summary>
+                <div className="mt-2 space-y-2 max-w-2xl">
+                    <input
+                        type="text"
+                        value={summary}
+                        onChange={(e) => setSummary(e.target.value)}
+                        placeholder="One-line summary — what this assembly is for"
+                        aria-label="Assembly summary"
+                        data-testid="designer-summary-input"
+                        className="w-full text-xs px-2 py-1.5 rounded border border-default bg-paper text-ink-heading placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus"
+                    />
+                    <textarea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="Longer description (optional)"
+                        aria-label="Assembly description"
+                        rows={3}
+                        data-testid="designer-description-input"
+                        className="w-full text-xs px-2 py-1.5 rounded border border-default bg-paper text-ink-heading placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus resize-y"
+                    />
+                </div>
+            </details>
             <div className="flex-1 overflow-hidden flex flex-row">
                 <div className="flex-1 overflow-hidden">
                     <div className="h-full px-6 py-4 flex flex-col">

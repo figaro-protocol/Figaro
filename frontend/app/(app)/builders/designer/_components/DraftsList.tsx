@@ -53,7 +53,9 @@ export function DraftsList() {
                     data-testid={`draft-row-${d.slug}`}
                 >
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-black truncate">{d.name}</p>
+                        <p className="text-sm font-semibold text-black truncate">
+                            {d.name || <span className="font-normal italic text-neutral-400">Untitled</span>}
+                        </p>
                         <p className="font-mono text-[11px] text-neutral-500 mt-0.5">/{d.slug}</p>
                         <p className="text-xs text-neutral-500 mt-1">
                             {d.orderCount} order{d.orderCount === 1 ? "" : "s"} · last edited {formatRelative(d.updatedAt)}

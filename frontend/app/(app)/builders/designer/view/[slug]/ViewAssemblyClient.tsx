@@ -161,7 +161,14 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         return;
                     }
                     const orders = templateToOrders(assemblyTemplate);
-                    setResolved({ kind: "published", name: slug, orders, assemblyTemplate });
+                    // The editorial name the designer published; the
+                    // content-derived slug is the fallback (and the identity).
+                    setResolved({
+                        kind: "published",
+                        name: assemblyTemplate.name ?? slug,
+                        orders,
+                        assemblyTemplate,
+                    });
                     return;
                 } catch (err) {
                     if (cancelled) return;
@@ -267,7 +274,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
             >
                 <h1 className="text-heading-h2 text-ink-heading">Published.</h1>
                 <p className="text-sm text-ink-body">
-                    The slug <code>{receipt.slug}</code> is now anchored on
+                    The slug <code data-testid="receipt-slug">{receipt.slug}</code> is now anchored on
                     the AssemblyRegistry. The assemblyTemplate is pinned to IPFS;
                     the slug binding is irreversible.
                 </p>
@@ -303,6 +310,14 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     }
 
     const orders = resolved.orders;
+    // Editorial prose the designer attached — read from the pinned template
+    // (published) or the local snapshot (draft). Both optional.
+    const editorial =
+        resolved.kind === "published"
+            ? resolved.assemblyTemplate
+            : resolved.kind === "draft"
+                ? resolved.snapshot
+                : undefined;
     // `intent=publish` is only meaningful for drafts (publishing an
     // on-chain assembly is a no-op — slug bindings are immutable). For
     // any other resolved.kind, fall back to plain inspect.
@@ -398,6 +413,23 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 </span>
                 {actionButton}
             </div>
+            {(editorial?.summary || editorial?.description) && (
+                <div
+                    data-testid="view-editorial"
+                    className="px-8 py-3 border-b border-default bg-paper space-y-1 shrink-0"
+                >
+                    {editorial.summary && (
+                        <p className="text-sm text-ink-heading" data-testid="view-summary">
+                            {editorial.summary}
+                        </p>
+                    )}
+                    {editorial.description && (
+                        <p className="text-xs text-ink-muted whitespace-pre-line" data-testid="view-description">
+                            {editorial.description}
+                        </p>
+                    )}
+                </div>
+            )}
             {publishError && (
                 <div className="px-6 py-3 border-b border-default bg-subtle">
                     <p className="text-sm text-red-600" role="alert" data-testid="publish-error">

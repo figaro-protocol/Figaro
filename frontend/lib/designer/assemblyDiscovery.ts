@@ -236,7 +236,9 @@ export function useAssemblyChoices(
                 blockNumber: event.blockNumber,
                 networkTargets: [networkTarget],
                 state,
-                name: event.slug,
+                // The editorial name from the pinned template once it loads;
+                // the content-derived slug is the fallback (and the identity).
+                name: assemblyTemplate?.name ?? event.slug,
                 orderCount: assemblyTemplate ? assemblyTemplate.orders.length : null,
                 clauses: assemblyTemplate ? collectAssemblyClauses(assemblyTemplate) : null,
                 assemblyTemplate,
@@ -325,6 +327,10 @@ export function usePublishAssembly() {
         // DAG parents, and the selected clauses. The fingerprint forms later
         // at checkout when the parties fill the clause fields.
         const template = buildAssemblyTemplate({
+            name: snapshot.name.trim() || undefined,
+            summary: snapshot.summary?.trim() || undefined,
+            description: snapshot.description?.trim() || undefined,
+            privilegedToken: snapshot.privilegedToken,
             orders: snapshot.orders,
             clausesByOrderId: snapshot.clausesByOrderId ?? {},
         });

@@ -90,8 +90,15 @@ function deserializeOrder(s: SerializedOrder): Order {
 export interface DesignSnapshot {
     /** URL-safe identifier; the user picks this when saving a named draft. */
     slug: string;
-    /** Human-readable name. */
+    /** Editorial name — the designer's own words (free-form prose, NOT a
+     *  taxonomy). Carried into the assembly template but EXCLUDED from the
+     *  content hash, so the slug stays composition-derived. Empty = unnamed
+     *  (display falls back to the slug). */
     name: string;
+    /** Editorial one-line gloss; optional. Hash-excluded, like `name`. */
+    summary?: string;
+    /** Editorial long-form description; optional. Hash-excluded, like `name`. */
+    description?: string;
     /** ERC-20 the assembly privileges (absent = ERC-20-agnostic). Chosen from
      *  the per-chain common-token list; carried into the assembly template. */
     privilegedToken?: string;
