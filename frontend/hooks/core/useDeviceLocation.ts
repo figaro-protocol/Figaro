@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { encodeGeohash } from "@/lib/handoff/manifest";
+import { encodeGeohash } from "@/lib/handoff/geohash";
 
 type DeviceLocationStatus = "idle" | "requesting" | "granted" | "denied" | "unsupported" | "error";
 

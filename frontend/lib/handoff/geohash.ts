@@ -3,13 +3,6 @@
  *
  * Self-contained geohash encode. Used by the physical-handoff surfaces
  * (delivery-location capture, courier proximity, seller service areas).
- *
- * The legacy on-chain manifest codec — encode/decode/seal of a v1–v7
- * pipe-separated manifest blob — was removed. The kernel Commitment carries
- * no manifest field; an order's content is its agreementHash (the merkle
- * root over agreement sections), and order logistics travel as the
- * geo agreement section. The codec targeted an on-chain `bytes
- * manifest` parameter that the V5 kernel does not have.
  */
 
 // ---------------------------------------------------------------------------
