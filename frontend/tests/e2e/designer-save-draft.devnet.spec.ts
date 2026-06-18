@@ -42,10 +42,18 @@ test.describe('Designer save-draft (devnet)', () => {
 
         // The canvas autosaves once hydrated; `designer-saved-hint` renders only
         // after that first autosave fires, so it is the canonical "ready"
-        // signal. There is no name input post-40bbe6a — Save is gated by
-        // composition alone (`canPublish`), and the blank seed already carries
+        // signal. Save is gated by composition alone (`canPublish`) — the
+        // editorial name (R2) is optional — and the blank seed already carries
         // one root order, so the button is enabled as soon as the canvas mounts.
         await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+
+        // Finding 9: a blank node shows the "no terms yet" prompt — the per-node
+        // derived-summary surface renders (its composed-clause branch is asserted
+        // in scenario-direct-sale, which composes four clauses on its node).
+        await expect(
+            page.locator('[data-testid^="node-clauses-empty-"]').first(),
+            'a blank node prompts the designer to compose its terms',
+        ).toBeVisible({ timeout: 10000 });
 
         // The editorial name (R2) — free-form, optional, persisted with the draft
         // but never folded into the handle or the content slug.

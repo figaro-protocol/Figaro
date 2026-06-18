@@ -121,6 +121,13 @@ test.describe('Author + publish the direct-sale assembly (devnet)', () => {
             }
             await expect(orderNodes, 'composing clauses never draws nodes').toHaveCount(1, { timeout: 10000 });
 
+            // Finding 9: the node summarizes its composed terms (a chip per clause)
+            // so "what this order does" is legible without opening the drawer.
+            await expect(
+                page.locator('[data-testid^="node-clauses-"]').first(),
+                'the node renders a derived per-clause summary',
+            ).toBeVisible({ timeout: 5000 });
+
             await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
             await page.getByTestId('designer-review').click();
 

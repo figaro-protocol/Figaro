@@ -639,6 +639,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                     <div className="h-full px-6 py-4 flex flex-col">
                         <ProcessGraphCanvas
                             orders={orders}
+                            clauseValuesByOrderId={clausesByOrderId}
                             title={
                                 <span className="font-normal">
                                     Compose an assembly — a group of bonded orders that represents one scenario.

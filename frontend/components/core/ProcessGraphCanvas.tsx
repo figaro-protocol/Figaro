@@ -112,6 +112,11 @@ type OrderNodeData = Order & {
     /** Designer-mode flag. When true the node renders the click-to-edit
      *  affordance (cursor:pointer + tooltip). */
     designerMode: boolean;
+    /** Designer mode: the per-order composed clause values (clauseId → field
+     *  values), so the node can render a derived summary of WHAT IT DOES
+     *  without opening the drawer. Each clause is described generically via
+     *  `describeClause` — no clause id is named here. */
+    designerClauseValues?: Record<string, Record<string, unknown>>;
     /** Designer click-authoring: spawn a sub-order child of this node — the
      *  single add affordance (the card "+" button). */
     onAddSubOrderClick?: (parentOrderId: string) => void;
@@ -181,6 +186,18 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
     const buyerShort = data.buyer ? truncateHex(data.buyer) : "—";
     const sellerShort = data.seller ? truncateHex(data.seller) : "—";
     const tokenShort = data.currency ? truncateHex(data.currency) : null;
+
+    // Designer mode: a derived "what this order does" summary — one chip per
+    // composed clause, labelled by its own spec (the salient value, else the
+    // clause title). Generic via `describeClause`; no clause id is named. Makes
+    // a node self-describing without opening the drawer.
+    const designerChips = data.designerMode && data.designerClauseValues
+        ? Object.entries(data.designerClauseValues).map(([clauseId, vals]) => {
+            const desc = describeClause(clauseId, vals as Record<string, unknown>);
+            const salient = desc.fields[0]?.values;
+            return { clauseId, label: salient && salient.length > 0 ? salient.join(" / ") : desc.title };
+        })
+        : [];
 
     const nodeClassName = data.designerMode
         ? `px-3 py-2 rounded min-w-[180px] border border-neutral-300 bg-white cursor-pointer hover:border-neutral-700`
@@ -285,6 +302,26 @@ const OrderNode = ({ data }: { data: OrderNodeData }) => {
                         <span title={data.seller}>{sellerShort}</span>
                     </div>
                 )}
+
+                {/* Designer mode: the node's composed terms, derived per clause —
+                    so "what this order does" is legible without opening the drawer. */}
+                {data.designerMode && (designerChips.length > 0 ? (
+                    <div className="flex flex-wrap gap-1 pt-1 border-t border-neutral-100" data-testid={`node-clauses-${data.id}`}>
+                        {designerChips.map((c) => (
+                            <span
+                                key={c.clauseId}
+                                title={c.clauseId}
+                                className="px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-700 text-[10px] leading-tight"
+                            >
+                                {c.label}
+                            </span>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="pt-1 text-[10px] italic text-neutral-400" data-testid={`node-clauses-empty-${data.id}`}>
+                        No terms yet — click to compose
+                    </p>
+                ))}
 
                 {/* Value lens — full party + token detail */}
                 {isLens("value") && (
@@ -479,6 +516,11 @@ export interface ProcessGraphCanvasProps {
      * Live workspaces omit this prop and keep the lens UI.
      */
     designerMode?: boolean;
+    /** Designer mode: per-order composed clause values (clauseId → field
+     *  values), used to render each node's derived "what it does" summary.
+     *  Live workspaces omit it (the node summarises from the signed agreement
+     *  via the lens system instead). */
+    clauseValuesByOrderId?: Record<string, Record<string, Record<string, unknown>>>;
 }
 
 export function ProcessGraphCanvas({
@@ -494,6 +536,7 @@ export function ProcessGraphCanvas({
     onSelectNode,
     onDeleteNode,
     designerMode = false,
+    clauseValuesByOrderId,
 }: ProcessGraphCanvasProps) {
     // IPFS-first agreement hydration (the shared singleton) — the canvas never
     // reads localStorage synchronously; nodes rebuild as hydration completes.
@@ -555,7 +598,7 @@ export function ProcessGraphCanvas({
                 id: order.id,
                 type: "order",
                 position: posMap.get(order.id) ?? { x: 0, y: 0 },
-                data: { ...order, decimals, isBuyer, isSeller, activeLens, agreement, orderNumber: orderIndex + 1, onDelete: onDeleteNode, isRoot, designerMode, onAddSubOrderClick: onAddSubOrder, onAddParentClick: onAddParent, candidateParents } satisfies OrderNodeData,
+                data: { ...order, decimals, isBuyer, isSeller, activeLens, agreement, orderNumber: orderIndex + 1, onDelete: onDeleteNode, isRoot, designerMode, designerClauseValues: clauseValuesByOrderId?.[order.id], onAddSubOrderClick: onAddSubOrder, onAddParentClick: onAddParent, candidateParents } satisfies OrderNodeData,
             };
         });
 
@@ -585,7 +628,7 @@ export function ProcessGraphCanvas({
 
         setNodes(newNodes);
         setEdges(newEdges);
-    }, [orders, agreements, walletAddress, decimals, activeLens, designerMode, setNodes, setEdges, onDeleteNode]);
+    }, [orders, agreements, walletAddress, decimals, activeLens, designerMode, clauseValuesByOrderId, setNodes, setEdges, onDeleteNode]);
 
     return (
         <div>
