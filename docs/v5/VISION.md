@@ -287,6 +287,42 @@ node lets a participant convert to their preferred denomination, but the
 incoming coordination signal is preserved as public graph data. Value is
 transmitted not just to specific people, but to specific **value systems**.
 
+### Value Capture After the Firm — the Privileged Token
+
+If the firm dissolves, what happens to the value it captured? The answer is the
+**privileged token**, and it is distinct from denomination (above).
+
+**The process is an itemized P&L, surfaced three ways.** A Figaro process is a
+self-closing ledger period (`/papers/self-closing-ledger-periods`). The service
+the buyer purchases decomposes into *every cost required to produce it* — each a
+real-world asset (RWA), **tangible or intangible**: the aircraft, the fuel, the
+crew, the **landing slot**, the **brand**, the maintenance, the ground handling,
+the public-authority service. Each RWA is a wallet that bonds and is paid its
+line. This single decomposition is surfaced identically as **the buyer's
+checkout line items**, **the audit trail**, and **the financial presentation**
+(the EN-16931 e-invoice projection) — checkout, audit, and invoice are three
+views of one itemized P&L, not three separate constructions.
+
+**The moat is a subset of the RWAs.** A firm's stock value was its *moat* —
+exclusive control of a scarce, hard-to-replicate resource competitors cannot
+access. The moat is the scarce/exclusive *subset* of the cost-lines: for an
+airline, the airport slots and the brand — **not** the aircraft (leased,
+fungible, commodity; airlines have no moat around aircraft). The bonded
+primitive competes the commodity cost-lines toward their cost of capital; the
+moat retains pricing power.
+
+**The privileged token tokenizes the moat — a use-priced share certificate.**
+Value capture survives the firm's dissolution through the assembly's privileged
+token. To access the moat asset — or the moat *process* (the assembly itself) —
+counterparties must **use** its privileged token; its price is discovered
+on-chain through use (demand for access), not on a stock market. It is the
+share-certificate-equivalent of the dissolved legal entity, **use-priced rather
+than market-priced**. This is the assembly-author's value-capture instrument —
+distinct from the seller's denomination/accepted tokens, which are a community
+*alignment* signal, not a claim on a moat. TradeLens (`/papers/after-tradelens`)
+is the moat as competitor-controlled gatekeeping — the anti-pattern the
+ownerless, use-priced token replaces.
+
 ### The Singleton Thesis
 
 Figaro's shared-kernel design (one deployment, no owner, no fee) is not a
