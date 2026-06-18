@@ -183,7 +183,7 @@ Use the correct tier. "Add yield to locked bonds" → kernel concern. "Add a new
 
 ### Separation of Concerns — Artifact Families
 
-Each protocol artifact family (clauses → `ClauseRegistry` + `IClauseValidator`; sellers → `SellerRegistry`; assemblies → `AssemblyRegistry`) has its own anchor — **parallel, not nested.** (Verified in Solidity: `BLUEPRINT.md` on-chain-composition fact 2 — the registries have zero on-chain edges among themselves; assembly→clause and seller→assembly are off-chain.)
+Each protocol artifact family (clauses → `ClauseRegistry` + `IClauseValidator`; sellers → `SellerRegistry`; assemblies → `AssemblyRegistry`) has its own anchor — **parallel, not nested.** (Verified in Solidity: the registries have zero on-chain edges among themselves; assembly→clause and seller→assembly are off-chain.)
 
 **The rule.** Each family gets its own registry/anchor, identity scheme, evolution path, indexer event stream. Do not nest one inside another, even when an existing primitive could host it.
 
@@ -247,7 +247,7 @@ If yes, adding on-chain state, role checks, or lifecycle flags is a web2 pattern
 
 ### Frontend = runtime infrastructure, not product code
 
-`frontend/lib/` is runtime infrastructure — the abstraction IS the deliverable; catalogues (`shared/clauseSpecSource.ts`, mechanism packages, `lib/semantic/`) land ahead of their UI consumers **by design**. **YAGNI does not apply**: "no readers today / one implementation / no consumer" are the expected state, not findings — bring UI down to the catalogue, don't shrink the catalogue to today's UI. (Composition model: `RUNTIME.md`; verified layering: `BLUEPRINT.md` off-chain-composition fact 2; doctrine: `feedback_runtime_abstractions_are_deliverable` memory.)
+`frontend/lib/` is runtime infrastructure — the abstraction IS the deliverable; catalogues (`shared/clauseSpecSource.ts`, mechanism packages, `lib/semantic/`) land ahead of their UI consumers **by design**. **YAGNI does not apply**: "no readers today / one implementation / no consumer" are the expected state, not findings — bring UI down to the catalogue, don't shrink the catalogue to today's UI. (Composition model: `RUNTIME.md`; doctrine: `feedback_runtime_abstractions_are_deliverable` memory.)
 
 **Check before you build — no new rows of corn.** Before adding ANY frontend artifact (component, hook, helper, type, util, taxonomy, constant, style), `grep`/`glob` for an existing one and **reuse or extend it** — the bar for a net-new symbol is "no equivalent exists, *shown by a search*," never "I didn't happen to see one." Re-implementing what exists is the single most repeated failure here. A new catalogue that duplicates an existing one is still a finding (the no-new-helpers case, not the abstraction-ahead-of-UI case). When a genuinely new surface is warranted, start from the canonical exemplar of its surface-type (`docs/v5/FRONTEND.md` § "Canonical exemplars — copy these shapes") and copy its shape — never generate the shape from scratch.
 
@@ -338,7 +338,7 @@ This is the exhaustive whitelist. Files not listed are deletion candidates at ev
 
 **Security & verification:** `DESIGN_DECISIONS.md` (14 intentional patterns that look like vulnerabilities — **read before auditing**), `VERIFICATION_MAP.md` (invariant → code → test → formal layer), `RELEASE_READINESS.md` (gate criteria, frozen Solidity surface for external audit), `SCALING_STRATEGY.md` (proof-based scaling, batch sequencer architecture, sequencer trust model).
 
-**Architecture:** `BLUEPRINT.md` (the canonical tier/node/edge map — on-chain vs off-chain edges — built tier by tier, every edge verified against source; its lexicon is enforced by `scripts/lint-architecture-lexicon.sh`), `RUNTIME.md` (runtime thesis, frontend composition model, semantic-derivation layer), `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md`.
+**Architecture:** `RUNTIME.md` (runtime thesis, frontend composition model, semantic-derivation layer), `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md`. (The architecture lexicon — one canonical name per concept — is still enforced by `scripts/lint-architecture-lexicon.sh`.)
 
 **Protocol-specific:** `FIG_TOKEN.md`, `GHG_PROTOCOL_SPEC.md`.
 
