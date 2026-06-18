@@ -88,6 +88,10 @@ test.describe('Author + publish the local-food-basket assembly (devnet)', () => 
             await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
             await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
 
+            // R2: name the published assembly — editorial, EXCLUDED from the content
+            // hash, so the slug (SCENARIO_SLUG) is unchanged.
+            await page.getByTestId('designer-name-input').fill('Local Food Basket');
+
             // Blank seed = one root order (the hub). DRAW the three sub-orders
             // under it: farm, bakery, courier — the designer draws every node.
             const orderNodes = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])');
@@ -174,6 +178,8 @@ test.describe('Author + publish the local-food-basket assembly (devnet)', () => 
             }>;
         };
         expect(assemblyTemplate.orders).toHaveLength(4);
+        // The editorial name is pinned in the document (but never in the hash).
+        expect(assemblyTemplate.name).toBe('Local Food Basket');
         const [root, farm, bakery, courier] = assemblyTemplate.orders;
 
         // order[0] — the hub: delivery (seller-assigned) + merchant-process.

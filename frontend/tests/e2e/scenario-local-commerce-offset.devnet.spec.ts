@@ -104,6 +104,10 @@ test.describe('Author + publish the local-commerce-offset assembly (devnet)', ()
             await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
             await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
 
+            // R2: name the published assembly — editorial, EXCLUDED from the content
+            // hash, so the slug (SCENARIO_SLUG) is unchanged.
+            await page.getByTestId('designer-name-input').fill('Local Commerce — Carbon Offset');
+
             // Blank seed = one root order (the merchant). DRAW the courier
             // sub-order under it (the delivery leg — a co-equal order, not a
             // side-effect spawn).
@@ -196,6 +200,8 @@ test.describe('Author + publish the local-commerce-offset assembly (devnet)', ()
             }>;
         };
         expect(assemblyTemplate.orders).toHaveLength(2);
+        // The editorial name is pinned in the document (but never in the hash).
+        expect(assemblyTemplate.name).toBe('Local Commerce — Carbon Offset');
         const [root, courier] = assemblyTemplate.orders;
 
         // order[0] — the merchant: delivery (seller-assigned) + merchant-process +

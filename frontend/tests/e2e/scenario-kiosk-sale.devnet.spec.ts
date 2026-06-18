@@ -72,6 +72,10 @@ test.describe('Author + publish the kiosk-sale assembly (devnet)', () => {
             await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
             await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
 
+            // R2: name the published assembly — editorial, EXCLUDED from the content
+            // hash, so the slug (SCENARIO_SLUG) is unchanged.
+            await page.getByTestId('designer-name-input').fill('Kiosk Sale');
+
             // Blank seed = one root order. Open its agreement drawer.
             const orderNodes = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])');
             await expect(orderNodes).toHaveCount(1, { timeout: 10000 });
@@ -143,6 +147,8 @@ test.describe('Author + publish the kiosk-sale assembly (devnet)', () => {
             }>;
         };
         expect(assemblyTemplate.orders).toHaveLength(1);
+        // The editorial name is pinned in the document (but never in the hash).
+        expect(assemblyTemplate.name).toBe('Kiosk Sale');
         const root = assemblyTemplate.orders[0];
         // The DAG is a clause: root's figaro-topology carries empty parents.
         expect(root.clauses['figaro-topology']).toEqual({ parentOrderIds: [] });

@@ -87,6 +87,10 @@ test.describe('Author + publish the local-commerce-buyer-assigned assembly (devn
             await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
             await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
 
+            // R2: name the published assembly — editorial, EXCLUDED from the content
+            // hash, so the slug (SCENARIO_SLUG) is unchanged.
+            await page.getByTestId('designer-name-input').fill('Local Commerce — Buyer-Assigned');
+
             // Blank seed = one root order (the merchant). DRAW the courier
             // sub-order under it.
             const orderNodes = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])');
@@ -171,6 +175,8 @@ test.describe('Author + publish the local-commerce-buyer-assigned assembly (devn
             }>;
         };
         expect(assemblyTemplate.orders).toHaveLength(2);
+        // The editorial name is pinned in the document (but never in the hash).
+        expect(assemblyTemplate.name).toBe('Local Commerce — Buyer-Assigned');
         const [root, courier] = assemblyTemplate.orders;
 
         expect(root.clauses['figaro-topology']).toEqual({ parentOrderIds: [] });
