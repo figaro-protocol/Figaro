@@ -632,11 +632,12 @@ function ClauseFieldControl({
         );
     }
 
-    // array-of-enum → single-select (one choice per article), stored as a
-    // 1-element array to match the clause's array field shape.
+    // array-of-enum → MULTI-select. The spec models a SET (the values a merchant
+    // OFFERS — proximity bands, hand-off locations, accepted offset providers),
+    // narrowed to one at checkout by the party that fills it. Design-time
+    // composition declares the whole set; stored as the array the field expects.
     if (field.type === "array" && field.items.type === "enum") {
         const arr = Array.isArray(value) ? (value as string[]) : [];
-        const selected = arr[0];
         const options = field.items.values;
         return (
             <div data-testid={`${testId}-group`}>
@@ -645,10 +646,11 @@ function ClauseFieldControl({
                     {options.map((opt) => (
                         <label key={opt} className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer">
                             <input
-                                type="radio"
-                                name={testId}
-                                checked={selected === opt}
-                                onChange={() => onChange([opt])}
+                                type="checkbox"
+                                checked={arr.includes(opt)}
+                                onChange={() =>
+                                    onChange(arr.includes(opt) ? arr.filter((x) => x !== opt) : [...arr, opt])
+                                }
                                 data-testid={`${testId}-${opt}`}
                                 className="accent-accent"
                             />
