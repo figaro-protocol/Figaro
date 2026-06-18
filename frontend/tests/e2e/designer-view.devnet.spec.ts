@@ -26,53 +26,71 @@ test.describe('Assembly read-only inspector — /view/[slug] (devnet)', () => {
     test.setTimeout(180_000);
 
     test('publishes an assembly, then inspects it read-only at /view/[slug]', async ({ page }) => {
+        // The editorial name the designer types; the published SLUG is
+        // content-derived (asm-<hash>) and unrelated to the name. This blank
+        // composition hashes the same every run, so isolate the publish in an
+        // evm snapshot — revert at the end frees the slug for the sibling
+        // publish specs (designer-publish, published-list-ui).
         const draftName = `a9-${Date.now()}`;
-        const slug = draftName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        const snapshotId = await evmSnapshot();
+        try {
+            // ── Publish via the canvas (the designer-publish flow) ───────
+            await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
+            await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
+            await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
 
-        // ── Publish via the canvas (the designer-publish flow) ───────
-        await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
-        await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
-        await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+            // Name the assembly — the editorial field /view reads back into the toolbar.
+            await page.getByTestId('designer-name-input').fill(draftName);
 
-        await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
-        await page.getByTestId('designer-review').click();
+            await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
+            await page.getByTestId('designer-review').click();
 
-        await page.waitForURL(new RegExp(`/builders/designer/view/${slug}`), { timeout: 15000 });
-        await page.goto(
-            `/builders/designer/view/${slug}?intent=publish&e2e=devnet`,
-            { waitUntil: 'domcontentloaded' },
-        );
+            // Post-40bbe6a the /view URL carries a RANDOM local draft handle;
+            // the content-derived slug is anchored at confirm-publish. Capture it.
+            await page.waitForURL(/\/builders\/designer\/view\/asm-/, { timeout: 15000 });
+            const handle = page.url().match(/\/view\/(asm-[a-z0-9-]+)/)?.[1];
+            expect(handle, 'review navigated to a draft handle').toBeTruthy();
+            await page.goto(
+                `/builders/designer/view/${handle}?intent=publish&e2e=devnet`,
+                { waitUntil: 'domcontentloaded' },
+            );
 
-        const confirmBtn = page.getByTestId('review-confirm-publish');
-        // The review route cold-compiles on first hit — 30s headroom so a
-        // loaded machine doesn't race the compile.
-        await confirmBtn.waitFor({ state: 'visible', timeout: 30000 });
-        await page.waitForFunction(
-            () => !Array.from(document.querySelectorAll('button'))
-                .some((b) => b.textContent?.trim() === 'Connect Wallet'),
-            null,
-            { timeout: 30000 },
-        );
-        await confirmBtn.click();
-        await page.getByTestId('assembly-publish-receipt').waitFor({ timeout: 60000 });
+            const confirmBtn = page.getByTestId('review-confirm-publish');
+            // The review route cold-compiles on first hit — 30s headroom so a
+            // loaded machine doesn't race the compile.
+            await confirmBtn.waitFor({ state: 'visible', timeout: 30000 });
+            await page.waitForFunction(
+                () => !Array.from(document.querySelectorAll('button'))
+                    .some((b) => b.textContent?.trim() === 'Connect Wallet'),
+                null,
+                { timeout: 30000 },
+            );
+            await confirmBtn.click();
+            await page.getByTestId('assembly-publish-receipt').waitFor({ timeout: 60000 });
+            // The content-derived slug the assembly anchored under.
+            const publishedSlug = (await page.getByTestId('receipt-slug').textContent())?.trim();
+            expect(publishedSlug, 'receipt shows the content slug').toMatch(/^asm-/);
 
-        // ── Inspect the published assembly read-only ─────────────────
-        // The publish flow deleted the local draft, so /view/<slug>
-        // resolves from chain. `just-published=1` rides out the
-        // AssemblyRegistered indexer race.
-        await page.goto(
-            `/builders/designer/view/${slug}?just-published=1&e2e=devnet`,
-            { waitUntil: 'domcontentloaded' },
-        );
+            // ── Inspect the published assembly read-only ─────────────────
+            // The publish flow deleted the local draft, so /view/<slug>
+            // resolves from chain. `just-published=1` rides out the
+            // AssemblyRegistered indexer race.
+            await page.goto(
+                `/builders/designer/view/${publishedSlug}?just-published=1&e2e=devnet`,
+                { waitUntil: 'domcontentloaded' },
+            );
 
-        await expect(page.getByTestId('assembly-view-page')).toBeVisible({ timeout: 30000 });
-        // Resolved from chain (AssemblyRegistered → IPFS assemblyTemplate), not a draft.
-        await expect(page.getByTestId('view-source-badge')).toContainText('on-chain', { timeout: 15000 });
-        // The on-chain assemblyTemplate's name rendered in the toolbar.
-        await expect(page.getByTestId('view-toolbar')).toContainText(draftName);
-        // Published assemblies offer Fork; drafts offer Edit.
-        await expect(page.getByTestId('view-fork-button')).toBeVisible();
-        await expect(page.getByTestId('view-edit-button')).toHaveCount(0);
+            await expect(page.getByTestId('assembly-view-page')).toBeVisible({ timeout: 30000 });
+            // Resolved from chain (AssemblyRegistered → IPFS assemblyTemplate), not a draft.
+            await expect(page.getByTestId('view-source-badge')).toContainText('on-chain', { timeout: 15000 });
+            // The on-chain assemblyTemplate's editorial name rendered in the toolbar.
+            await expect(page.getByTestId('view-toolbar')).toContainText(draftName);
+            // Published assemblies offer Fork; drafts offer Edit.
+            await expect(page.getByTestId('view-fork-button')).toBeVisible();
+            await expect(page.getByTestId('view-edit-button')).toHaveCount(0);
+        } finally {
+            await evmRevert(snapshotId);
+        }
     });
 
     test('a slug that is neither a draft nor on-chain shows the not-found error', async ({ page }) => {

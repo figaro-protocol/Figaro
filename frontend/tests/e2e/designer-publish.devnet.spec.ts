@@ -55,71 +55,82 @@ test.describe('Designer publish (devnet)', () => {
         const assemblyRegistry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY
             ?? config.assemblyRegistry) as Hex;
 
-        // Unique slug per run so retries / parallel-run-residue don't
-        // collide on the first-write-wins SlugAlreadyRegistered guard.
+        // The editorial name (free-form, hash-excluded). The published SLUG is
+        // content-derived from the composition, NOT the name. This blank
+        // composition hashes identically every run, so isolate the publish in
+        // an evm snapshot — revert frees the slug for the sibling publish specs.
         const draftName = `pub-${Date.now()}`;
-        const expectedSlug = draftName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        const snapshotId = await evmSnapshot();
+        try {
+            await page.addInitScript(() => {
+                try {
+                    window.localStorage.removeItem('figaro:designer:current');
+                    window.localStorage.removeItem('figaro:designer:drafts');
+                } catch { /* noop */ }
+            });
+            await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
+            await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
+            await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
 
-        await page.addInitScript(() => {
-            try {
-                window.localStorage.removeItem('figaro:designer:current');
-                window.localStorage.removeItem('figaro:designer:drafts');
-            } catch { /* noop */ }
-        });
-        await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
-        await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
-        await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+            await page.getByTestId('designer-name-input').fill(draftName);
 
-        await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
-        await page.getByTestId('designer-review').click();
+            await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
+            await page.getByTestId('designer-review').click();
 
-        // Canvas navigates to /view/<slug>?intent=publish. Re-goto with
-        // ?e2e=devnet appended — the canvas drops the query param.
-        await page.waitForURL(new RegExp(`/builders/designer/view/${expectedSlug}`), { timeout: 15000 });
-        await page.goto(
-            `/builders/designer/view/${expectedSlug}?intent=publish&e2e=devnet`,
-            { waitUntil: 'domcontentloaded' },
-        );
+            // Review navigates to /view/<random-handle>?intent=publish (and drops
+            // the ?e2e= param). Capture the handle, re-goto with ?e2e=devnet.
+            await page.waitForURL(/\/builders\/designer\/view\/asm-/, { timeout: 15000 });
+            const handle = page.url().match(/\/view\/(asm-[a-z0-9-]+)/)?.[1];
+            expect(handle, 'review navigated to a draft handle').toBeTruthy();
+            await page.goto(
+                `/builders/designer/view/${handle}?intent=publish&e2e=devnet`,
+                { waitUntil: 'domcontentloaded' },
+            );
 
-        const confirmBtn = page.getByTestId('review-confirm-publish');
-        await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
-        // Wait for ClientInit's devnet auto-connect — the Connect
-        // Wallet header button disappears once isConnected flips true.
-        await page.waitForFunction(
-            () => {
-                const buttons = Array.from(document.querySelectorAll('button'));
-                return !buttons.some((b) => b.textContent?.trim() === 'Connect Wallet');
-            },
-            null,
-            { timeout: 30000 },
-        );
-        await confirmBtn.click();
+            const confirmBtn = page.getByTestId('review-confirm-publish');
+            await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
+            // Wait for ClientInit's devnet auto-connect — the Connect
+            // Wallet header button disappears once isConnected flips true.
+            await page.waitForFunction(
+                () => {
+                    const buttons = Array.from(document.querySelectorAll('button'));
+                    return !buttons.some((b) => b.textContent?.trim() === 'Connect Wallet');
+                },
+                null,
+                { timeout: 30000 },
+            );
+            await confirmBtn.click();
 
-        // Receipt appears once publish() resolves (IPFS pin +
-        // registerAssembly tx receipt).
-        await expect(page.getByText(/Published\b/i).first()).toBeVisible({ timeout: 60000 });
+            // Receipt appears once publish() resolves (IPFS pin +
+            // registerAssembly tx receipt) — it carries the content-derived slug.
+            await page.getByTestId('assembly-publish-receipt').waitFor({ timeout: 60000 });
+            const publishedSlug = (await page.getByTestId('receipt-slug').textContent())?.trim();
+            expect(publishedSlug, 'receipt shows the content slug').toMatch(/^asm-/);
 
-        // On-chain assertion — AssemblyRegistered for the canvas-authored slug.
-        const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-        const slugHash = keccak256(toHex(expectedSlug));
-        const events = await publicClient.getContractEvents({
-            address: assemblyRegistry,
-            abi: ASSEMBLY_REGISTRY_ABI,
-            eventName: 'AssemblyRegistered',
-            args: { slugHash },
-            fromBlock: 0n,
-        });
-        expect(events.length).toBe(1);
-        expect(events[0].args.slug).toBe(expectedSlug);
-        // metadataURI is whatever the canvas pinned to IPFS — non-empty.
-        expect(events[0].args.metadataURI).toMatch(/^ipfs:\/\/[A-Za-z0-9]+/);
+            // On-chain assertion — AssemblyRegistered for the content-derived slug.
+            const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+            const slugHash = keccak256(toHex(publishedSlug as string));
+            const events = await publicClient.getContractEvents({
+                address: assemblyRegistry,
+                abi: ASSEMBLY_REGISTRY_ABI,
+                eventName: 'AssemblyRegistered',
+                args: { slugHash },
+                fromBlock: 0n,
+            });
+            expect(events.length).toBe(1);
+            expect(events[0].args.slug).toBe(publishedSlug);
+            // metadataURI is whatever the canvas pinned to IPFS — non-empty.
+            expect(events[0].args.metadataURI).toMatch(/^ipfs:\/\/[A-Za-z0-9]+/);
 
-        // ── Read-back: the freshly-published assembly is visible on the public
-        //    /assemblies inventory (on-chain event → standalone indexer → render),
-        //    i.e. discoverable + adoptable by any reader exactly as on mainnet.
-        //    This closes the round-trip the authoring flow exists to produce:
-        //    author → IPFS pin → AssemblyRegistered on chain → visible on /assemblies.
-        await page.goto('/assemblies?e2e=devnet', { waitUntil: 'domcontentloaded' });
-        await expect(page.locator(`#assembly-${expectedSlug}`)).toBeVisible({ timeout: 30000 });
+            // ── Read-back: the freshly-published assembly is visible on the public
+            //    /assemblies inventory (on-chain event → standalone indexer → render),
+            //    i.e. discoverable + adoptable by any reader exactly as on mainnet.
+            //    This closes the round-trip the authoring flow exists to produce:
+            //    author → IPFS pin → AssemblyRegistered on chain → visible on /assemblies.
+            await page.goto('/assemblies?e2e=devnet', { waitUntil: 'domcontentloaded' });
+            await expect(page.locator(`#assembly-${publishedSlug}`)).toBeVisible({ timeout: 30000 });
+        } finally {
+            await evmRevert(snapshotId);
+        }
     });
 });
