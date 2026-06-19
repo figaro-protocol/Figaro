@@ -14,7 +14,7 @@
  */
 
 import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
-import { templateParentOrderIds, type AssemblyTemplateOrder } from "@/lib/designer/assemblyTemplate";
+import { templateParentOrderHashes, type AssemblyTemplateOrder } from "@/lib/designer/assemblyTemplate";
 import { topologicalOrder } from "@/lib/core/orderTopology";
 import type { SellerCatalogue } from "@/lib/seller/types";
 import { hexEqual } from "@/lib/shared/evm";
@@ -36,13 +36,13 @@ export function planSubOrderSellers(
     const { assemblyTemplate } = assembly;
     const byId = new Map(assemblyTemplate.orders.map((o) => [o.id, o]));
     const rootId =
-        assemblyTemplate.orders.find((o) => templateParentOrderIds(o).length === 0)?.id ??
+        assemblyTemplate.orders.find((o) => templateParentOrderHashes(o).length === 0)?.id ??
         assemblyTemplate.orders[0]?.id;
     // Topological order (throws on a cyclic topology — the guard the checkout relies on),
     // then the sub-orders are everything but the root, in commit order.
     const ordered: AssemblyTemplateOrder[] = topologicalOrder(
         assemblyTemplate.orders.map((o) => o.id),
-        (id) => templateParentOrderIds(byId.get(id)!),
+        (id) => templateParentOrderHashes(byId.get(id)!),
         "throw",
     )
         .filter((id) => id !== rootId)

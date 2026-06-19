@@ -31,10 +31,10 @@ const assembly = {
         slug: "kit-assembly",
         name: "Kit",
         orders: [
-            { id: "A", buyer: MERCATO, seller: MERCATO, parentOrderIds: [], clauses: {} },
-            { id: "B", buyer: MERCATO, seller: SWIFT, parentOrderIds: ["A"], clauses: { [PROX]: {} } },
-            { id: "C", buyer: MERCATO, seller: ROSSO, parentOrderIds: ["A"], clauses: { [GHG]: {} } },
-            { id: "D", buyer: MERCATO, seller: MERCATO, parentOrderIds: ["B", "C"], clauses: { [PROX]: {} } },
+            { id: "A", buyer: MERCATO, seller: MERCATO, parentOrderHashes: [], clauses: {} },
+            { id: "B", buyer: MERCATO, seller: SWIFT, parentOrderHashes: ["A"], clauses: { [PROX]: {} } },
+            { id: "C", buyer: MERCATO, seller: ROSSO, parentOrderHashes: ["A"], clauses: { [GHG]: {} } },
+            { id: "D", buyer: MERCATO, seller: MERCATO, parentOrderHashes: ["B", "C"], clauses: { [PROX]: {} } },
         ],
     },
 } as unknown as BoundAssembly;

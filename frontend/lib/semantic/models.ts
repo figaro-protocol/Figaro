@@ -52,7 +52,7 @@ interface ResolveProcessCapabilityAction {
 interface OpenSubOrderComposerCapabilityAction {
     executionType: "runtime";
     kind: "open-sub-order-composer";
-    parentOrderIds: string[];
+    parentOrderHashes: string[];
     currency?: `0x${string}`;
 }
 
@@ -298,7 +298,7 @@ export interface OrderNodeModel {
     currency?: `0x${string}`;
     payment: bigint;
     state: string;
-    parentOrderIds: string[]; // bytes32 order hashes
+    parentOrderHashes: string[]; // bytes32 order hashes
     /** The order's committed agreement hash — lets consumers load the
      *  agreement and read its clauses (e.g. a courier handoff's
      *  proximity-policy band). */

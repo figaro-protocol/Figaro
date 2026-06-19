@@ -26,7 +26,7 @@ vi.mock("@/hooks/core/useSemanticProcessWorkspace", () => ({
                     currency: "0x2222222222222222222222222222222222222222",
                     payment: 1n,
                     state: "Active",
-                    parentOrderIds: [],
+                    parentOrderHashes: [],
                     attachments: [],
                     capabilities: [
                         {

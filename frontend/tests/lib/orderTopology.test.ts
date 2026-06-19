@@ -57,9 +57,9 @@ describe("deriveOrderTopology", () => {
         ];
 
         const topology = deriveOrderTopology(orders, buildAgreementsFromCache(orders));
-        expect(topology.get("0x01")?.parentOrderIds).toEqual([]);
-        expect(topology.get("0x02")?.parentOrderIds).toEqual(["0x01"]);
-        expect(topology.get("0x03")?.parentOrderIds).toEqual(["0x02"]);
+        expect(topology.get("0x01")?.parentOrderHashes).toEqual([]);
+        expect(topology.get("0x02")?.parentOrderHashes).toEqual(["0x01"]);
+        expect(topology.get("0x03")?.parentOrderHashes).toEqual(["0x02"]);
         expect(topology.get("0x03")?.topologyMode).toBe("linear-fallback");
     });
 
@@ -88,7 +88,7 @@ describe("deriveOrderTopology", () => {
         ];
 
         const topology = deriveOrderTopology(orders, buildAgreementsFromCache(orders));
-        expect(topology.get("0x03")?.parentOrderIds).toEqual(["0x01", "0x02"]);
+        expect(topology.get("0x03")?.parentOrderHashes).toEqual(["0x01", "0x02"]);
         expect(topology.get("0x03")?.topologyMode).toBe("explicit");
     });
 

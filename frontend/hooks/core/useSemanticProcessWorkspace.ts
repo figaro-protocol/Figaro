@@ -247,8 +247,8 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
 
         try {
             if (action.executionType === "runtime" && action.kind === "open-sub-order-composer") {
-                if (action.parentOrderIds.length === 0) throw new Error("No parent orders selected.");
-                setSubOrderParent({ orderIds: action.parentOrderIds, currency: action.currency });
+                if (action.parentOrderHashes.length === 0) throw new Error("No parent orders selected.");
+                setSubOrderParent({ orderIds: action.parentOrderHashes, currency: action.currency });
                 return;
             }
 
@@ -356,7 +356,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         void executeCapabilityAction({
             executionType: "runtime",
             kind: "open-sub-order-composer",
-            parentOrderIds: [order.orderId],
+            parentOrderHashes: [order.orderId],
             currency: order.currency,
         });
     };
@@ -365,7 +365,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         void executeCapabilityAction({
             executionType: "runtime",
             kind: "open-sub-order-composer",
-            parentOrderIds: [orderId],
+            parentOrderHashes: [orderId],
             currency,
         });
     };
@@ -384,7 +384,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         void executeCapabilityAction({
             executionType: "runtime",
             kind: "open-sub-order-composer",
-            parentOrderIds: orderIds,
+            parentOrderHashes: orderIds,
             currency,
         });
     };

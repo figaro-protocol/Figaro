@@ -7,7 +7,7 @@ import {
 import type { Order } from "@/lib/core/store";
 
 export interface OrderTopologyInfo {
-    parentOrderIds: string[];
+    parentOrderHashes: string[];
     topologyMode: TopologyMode;
     sourceLabel: string;
 }
@@ -59,7 +59,7 @@ export function deriveOrderTopology(
 
     sortedOrders.forEach((order, index) => {
         fallbackTopology.set(order.id, {
-            parentOrderIds: index === 0 ? [] : [sortedOrders[index - 1].id],
+            parentOrderHashes: index === 0 ? [] : [sortedOrders[index - 1].id],
             topologyMode: index === 0 ? "root" : "linear-fallback",
             sourceLabel: index === 0
                 ? "first order in cumulative process progression"
@@ -70,19 +70,19 @@ export function deriveOrderTopology(
     const topology = new Map<string, OrderTopologyInfo>();
     for (const order of orders) {
         const fallback = fallbackTopology.get(order.id) ?? {
-            parentOrderIds: [],
+            parentOrderHashes: [],
             topologyMode: "root" as const,
             sourceLabel: "default root fallback",
         };
 
         // First-class design-time topology: when the order carries its topology edges
         // directly (the designer set them), use them — never round-trip through
-        // the agreement. Runtime/chain orders have no parentOrderIds; their
+        // the agreement. Runtime/chain orders have no parentOrderHashes; their
         // topology is recovered from the committed agreement section below.
-        if (order.parentOrderIds !== undefined) {
+        if (order.parentOrderHashes !== undefined) {
             topology.set(order.id, {
-                parentOrderIds: order.parentOrderIds,
-                topologyMode: order.parentOrderIds.length === 0 ? "root" : "explicit",
+                parentOrderHashes: order.parentOrderHashes,
+                topologyMode: order.parentOrderHashes.length === 0 ? "root" : "explicit",
                 sourceLabel: "first-class design-time topology (the topology clause)",
             });
             continue;
@@ -95,15 +95,15 @@ export function deriveOrderTopology(
         const explicitMode = getTopologyMode(agreement);
 
         if (explicitParents !== null || explicitMode !== null) {
-            const parentOrderIds = explicitParents ?? [];
-            const topologyMode = parentOrderIds.length === 0
+            const parentOrderHashes = explicitParents ?? [];
+            const topologyMode = parentOrderHashes.length === 0
                 ? "root"
                 : explicitMode === "linear-fallback"
                     ? "linear-fallback"
                     : "explicit";
 
             topology.set(order.id, {
-                parentOrderIds,
+                parentOrderHashes,
                 topologyMode,
                 sourceLabel: "agreement topology section committed through agreementHash",
             });
@@ -158,14 +158,14 @@ export function topologicalOrder(
 export function deriveOrderDepths(orders: Order[], topology: Map<string, OrderTopologyInfo>): Map<string, number> {
     const order = topologicalOrder(
         orders.map((o) => o.id),
-        (id) => topology.get(id)?.parentOrderIds ?? [],
+        (id) => topology.get(id)?.parentOrderHashes ?? [],
         "break",
     );
     const depthMap = new Map<string, number>();
     for (const orderId of order) {
         // Parents already placed (topo order guarantees it for an acyclic topology; a cycle
         // back-edge is simply not yet in the map and so contributes nothing).
-        const parentDepths = (topology.get(orderId)?.parentOrderIds ?? [])
+        const parentDepths = (topology.get(orderId)?.parentOrderHashes ?? [])
             .filter((parentId) => parentId !== orderId && depthMap.has(parentId))
             .map((parentId) => depthMap.get(parentId)!);
         depthMap.set(orderId, parentDepths.length === 0 ? 0 : Math.max(...parentDepths) + 1);

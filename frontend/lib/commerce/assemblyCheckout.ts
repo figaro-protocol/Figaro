@@ -23,7 +23,7 @@ import { computeCommitmentProcessId, computeOrderHash } from "@/lib/core/commitm
 import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
 import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
 import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/commerce/assemblySubOrderPlan";
-import { templateParentOrderIds } from "@/lib/designer/assemblyTemplate";
+import { templateParentOrderHashes } from "@/lib/designer/assemblyTemplate";
 import { clauseDeclaresField } from "@/lib/shared/clauseSpecSource";
 import { shareCommitmentPayload } from "@/lib/core/commitmentShare";
 import { sellerAuctionId, stashSellerDraft } from "@/lib/seller/sellerAuction";
@@ -117,7 +117,7 @@ export async function executeAssemblyCheckout(
     // then the cart's PHYSICAL attributes collapse into the geo entry (found
     // by its declared fields, never by clause name): mass/volume sum across
     // items × quantity; class of service takes the highest-priority class.
-    const root = assembly.assemblyTemplate.orders.find((o) => templateParentOrderIds(o).length === 0)
+    const root = assembly.assemblyTemplate.orders.find((o) => templateParentOrderHashes(o).length === 0)
         ?? assembly.assemblyTemplate.orders[0];
     if (!root) throw new Error("This assembly has no root order.");
     const isMultiOrder = assembly.assemblyTemplate.orders.length > 1;
@@ -187,7 +187,7 @@ export async function executeAssemblyCheckout(
             if (!deps.openSellerAuction) {
                 throw new Error("This assembly defers a sub-order to an auction, but no auction mechanism is available.");
             }
-            const parentHashes = templateParentOrderIds(node)
+            const parentHashes = templateParentOrderHashes(node)
                 .map((pid) => realOrderHash.get(pid))
                 .filter((h): h is `0x${string}` => !!h);
             stashSellerDraft(processId, {
@@ -212,7 +212,7 @@ export async function executeAssemblyCheckout(
         if (!subSeller) {
             throw new Error("This assembly has a sub-order with no counterparty — the seller's profile must designate one, or the buyer chooses one at checkout.");
         }
-        const parentOrderHashes = templateParentOrderIds(node)
+        const parentOrderHashes = templateParentOrderHashes(node)
             .map((pid) => realOrderHash.get(pid))
             .filter((h): h is `0x${string}` => !!h);
         const subPayment = selection

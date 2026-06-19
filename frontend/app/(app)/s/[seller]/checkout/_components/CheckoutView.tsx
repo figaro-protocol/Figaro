@@ -27,7 +27,7 @@ import { useCartStore } from "@/lib/commerce/cartStore";
 import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
 import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/commerce/assemblySubOrderPlan";
 import { executeAssemblyCheckout } from "@/lib/commerce/assemblyCheckout";
-import { templateParentOrderIds } from "@/lib/designer/assemblyTemplate";
+import { templateParentOrderHashes } from "@/lib/designer/assemblyTemplate";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { CommitmentSharePanel } from "@/components/core/CommitmentSharePanel";
 import { SellerCataloguePicker, type SellerSelection } from "@/components/core/SellerCataloguePicker";
@@ -226,7 +226,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // Surfaced inline below so the buyer reviews the terms before signing — the
     // visible terms + the explicit place-order click replace the modal gate.
     const pickedRoot = pickedAssembly
-        ? (pickedAssembly.assemblyTemplate.orders.find((o) => templateParentOrderIds(o).length === 0)
+        ? (pickedAssembly.assemblyTemplate.orders.find((o) => templateParentOrderHashes(o).length === 0)
             ?? pickedAssembly.assemblyTemplate.orders[0])
         : undefined;
     const cartTotal = cartItems.reduce(
@@ -299,7 +299,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         }
         const sellerOf = new Map(plan.map(({ node, seller }) => [node.id, seller]));
         return orders.map((order, i) => {
-            const isRoot = templateParentOrderIds(order).length === 0;
+            const isRoot = templateParentOrderHashes(order).length === 0;
             const assigned = isRoot ? lead : sellerOf.get(order.id);
             return {
                 key: String(order.id ?? i),

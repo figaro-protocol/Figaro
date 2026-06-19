@@ -25,7 +25,7 @@ export interface AssemblyTemplateOrder {
     id: string;
     /** clauseId → the design-time field values the designer composed. The topology
      *  is a clause here too: the manifest-only topology clause carries
-     *  `{ parentOrderIds }` (root = []). Whatever's absent is filled
+     *  `{ parentOrderHashes }` (root = []). Whatever's absent is filled
      *  downstream. */
     clauses: ClauseValues;
 }
@@ -51,13 +51,13 @@ export interface AssemblyTemplate {
 
 /** Read a template order's parent ids — the data of its topology clause. The
  *  topology is a clause like any other; this is the one accessor for it. The entry
- *  is found by its DATA KEY (`parentOrderIds`), so reading needs no spec
+ *  is found by its DATA KEY (`parentOrderHashes`), so reading needs no spec
  *  cache and tolerates any registry-defined topology clause. */
-export function templateParentOrderIds(order: AssemblyTemplateOrder): string[] {
+export function templateParentOrderHashes(order: AssemblyTemplateOrder): string[] {
     const entry = Object.values(order.clauses).find(
-        (fields) => Array.isArray((fields as { parentOrderIds?: unknown } | undefined)?.parentOrderIds),
+        (fields) => Array.isArray((fields as { parentOrderHashes?: unknown } | undefined)?.parentOrderHashes),
     );
-    const ids = (entry as { parentOrderIds?: unknown } | undefined)?.parentOrderIds;
+    const ids = (entry as { parentOrderHashes?: unknown } | undefined)?.parentOrderHashes;
     return Array.isArray(ids) ? ids.filter((p): p is string => typeof p === "string") : [];
 }
 
@@ -96,7 +96,7 @@ export function buildAssemblyTemplate(args: {
             clauses: {
                 ...(clausesByOrderId[order.id] ?? {}),
                 [topologyClauseId]: {
-                    parentOrderIds: (order.parentOrderIds ?? []).map((p) => idToLocal.get(p) ?? p),
+                    parentOrderHashes: (order.parentOrderHashes ?? []).map((p) => idToLocal.get(p) ?? p),
                 },
             },
         })),

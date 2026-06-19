@@ -14,7 +14,7 @@
  */
 
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
-import { templateParentOrderIds, type AssemblyTemplate } from "./assemblyTemplate";
+import { templateParentOrderHashes, type AssemblyTemplate } from "./assemblyTemplate";
 import type { ClauseFields } from "@/lib/core/encoding";
 import type { DesignSnapshot } from "./syntheticDesignStore";
 import { Order } from "@/lib/core/store";
@@ -47,7 +47,7 @@ export function templateToOrders(template: AssemblyTemplate): Order[] {
             cumulativeValue: DISPLAY_PAYMENT * BigInt(i + 1),
             salt: BigInt(i + 1),
             clauseFields: to.clauses as ClauseFields,
-            parentOrderHashes: templateParentOrderIds(to),
+            parentOrderHashes: templateParentOrderHashes(to),
         }).order,
     );
 }

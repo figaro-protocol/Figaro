@@ -70,7 +70,7 @@ interface RuntimeIndexes {
 
 function buildRuntimeIndexes(
     processOrders: Order[],
-    topology: Map<string, { parentOrderIds: string[] }>,
+    topology: Map<string, { parentOrderHashes: string[] }>,
     agreements: Map<string, Agreement>,
     attestations: RuntimeAttestation[],
 ): RuntimeIndexes {
@@ -111,7 +111,7 @@ function buildRuntimeIndexes(
     const parentsByOrder = new Map<string, string[]>();
     for (const order of processOrders) {
         const id = order.id.toString();
-        const parents = topology.get(order.id)?.parentOrderIds ?? [];
+        const parents = topology.get(order.id)?.parentOrderHashes ?? [];
         parentsByOrder.set(id, parents);
         for (const parent of parents) {
             const children = childrenByOrder.get(parent);
@@ -190,7 +190,7 @@ function roleCapabilities(
             action: {
                 executionType: "runtime",
                 kind: "open-sub-order-composer",
-                parentOrderIds: [order.id.toString()],
+                parentOrderHashes: [order.id.toString()],
                 currency: order.currency as `0x${string}`,
             },
             mechanismId: "core-orders",
@@ -782,14 +782,14 @@ function deriveProcessAttachments(
 
 function deriveOrderNodeModelFromOrder(
     order: Order,
-    topology: Map<string, { parentOrderIds: string[] }>,
+    topology: Map<string, { parentOrderHashes: string[] }>,
     agreements: Map<string, Agreement>,
     indexes: RuntimeIndexes,
     address?: string,
     isE2EMock = false,
 ): OrderNodeModel {
     const attachments = deriveOrderAttachments(order, address);
-    const parentOrderIds = topology.get(order.id)?.parentOrderIds ?? [];
+    const parentOrderHashes = topology.get(order.id)?.parentOrderHashes ?? [];
 
     return {
         orderId: order.id.toString(),
@@ -799,7 +799,7 @@ function deriveOrderNodeModelFromOrder(
         currency: order.currency as `0x${string}` | undefined,
         payment: order.payment,
         state: OrderState[order.state],
-        parentOrderIds,
+        parentOrderHashes,
         agreementHash: (order.agreementHash ?? ZERO_BYTES32) as `0x${string}`,
         attachments,
         capabilities: roleCapabilities(order, agreements, indexes, address, isE2EMock),
@@ -810,18 +810,18 @@ function deriveOrderNodeModelFromOrder(
 function deriveProcessRelations(
     processId: string,
     orders: Order[],
-    topology: Map<string, { parentOrderIds: string[]; topologyMode: TopologyMode; sourceLabel: string }>,
+    topology: Map<string, { parentOrderHashes: string[]; topologyMode: TopologyMode; sourceLabel: string }>,
 ): ProcessRelationModel[] {
     const relationModels: ProcessRelationModel[] = [];
     const knownOrderIds = new Set(orders.map((order) => order.id.toString()));
 
     orders.forEach((order) => {
         const orderTopology = topology.get(order.id);
-        const parentOrderIds = (orderTopology?.parentOrderIds ?? []).filter(
+        const parentOrderHashes = (orderTopology?.parentOrderHashes ?? []).filter(
             (parentOrderId) => parentOrderId !== order.id.toString() && knownOrderIds.has(parentOrderId),
         );
 
-        parentOrderIds.forEach((parentOrderId) => {
+        parentOrderHashes.forEach((parentOrderId) => {
             relationModels.push({
                 id: `${processId}-${parentOrderId}-${order.id.toString()}`,
                 processId,
@@ -872,7 +872,7 @@ export function deriveProcessModelFromRuntime(
     const indexes = buildRuntimeIndexes(processOrders, topology, agreements, attestations);
     const semanticOrders = processOrders.map((order) => deriveOrderNodeModelFromOrder(order, topology, agreements, indexes, address, isE2EMock));
     const relations = deriveProcessRelations(summary.processId, processOrders, topology);
-    const rootOrderId = semanticOrders.find((order) => order.parentOrderIds.length === 0)?.orderId ?? semanticOrders[0]?.orderId ?? "";
+    const rootOrderId = semanticOrders.find((order) => order.parentOrderHashes.length === 0)?.orderId ?? semanticOrders[0]?.orderId ?? "";
     const rootOrder = processOrders.find((order) => order.id.toString() === rootOrderId);
     const rootAgreement = rootOrder?.agreementHash ? agreements.get(rootOrder.agreementHash) : undefined;
     // The modality section is found by its declared field, never by name.

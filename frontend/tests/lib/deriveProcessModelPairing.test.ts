@@ -54,7 +54,7 @@ function buildOrder(opts: {
     id: Hex;
     seller: string;
     agreementHash: string;
-    parentOrderIds?: string[];
+    parentOrderHashes?: string[];
     payment?: bigint;
     cumulativeValue?: bigint;
 }): Order {
@@ -72,7 +72,7 @@ function buildOrder(opts: {
         buyerBond: 200n,
         salt: 0n,
         deadline: 0n,
-        ...(opts.parentOrderIds !== undefined ? { parentOrderIds: opts.parentOrderIds } : {}),
+        ...(opts.parentOrderHashes !== undefined ? { parentOrderHashes: opts.parentOrderHashes } : {}),
     };
 }
 
@@ -114,7 +114,7 @@ function merchantFixture() {
         { clause: PROXIMITY_PROOF, version: 1, data: {} },
     ]);
     const agreementHash = computeAgreementHash(agreement);
-    const order = buildOrder({ id: MERCHANT_ORDER, seller: MERCHANT, agreementHash, parentOrderIds: [] });
+    const order = buildOrder({ id: MERCHANT_ORDER, seller: MERCHANT, agreementHash, parentOrderHashes: [] });
     return { order, agreements: new Map([[agreementHash, agreement]]) };
 }
 
@@ -196,10 +196,10 @@ describe("hand-off pairing — cross-order carrier", () => {
         ]);
         const courierHash = computeAgreementHash(courierAgreement);
         const orders = [
-            buildOrder({ id: MERCHANT_ORDER, seller: MERCHANT, agreementHash: merchantHash, parentOrderIds: [] }),
+            buildOrder({ id: MERCHANT_ORDER, seller: MERCHANT, agreementHash: merchantHash, parentOrderHashes: [] }),
             buildOrder({
                 id: COURIER_ORDER, seller: COURIER, agreementHash: courierHash,
-                parentOrderIds: [MERCHANT_ORDER], payment: 50n, cumulativeValue: 150n,
+                parentOrderHashes: [MERCHANT_ORDER], payment: 50n, cumulativeValue: 150n,
             }),
         ];
         const agreements = new Map([[merchantHash, merchantAgreement], [courierHash, courierAgreement]]);
@@ -227,7 +227,7 @@ describe("hand-off pairing — cross-order carrier", () => {
             { clause: PROXIMITY_PROOF, version: 1, data: {} },
         ]);
         const courierHash = computeAgreementHash(courierAgreement);
-        const order = buildOrder({ id: COURIER_ORDER, seller: COURIER, agreementHash: courierHash, parentOrderIds: [] });
+        const order = buildOrder({ id: COURIER_ORDER, seller: COURIER, agreementHash: courierHash, parentOrderHashes: [] });
         const agreements = new Map([[courierHash, courierAgreement]]);
 
         // After en-route-pickup: next stage arrived-pickup is a hand-off → pairs.
@@ -268,7 +268,7 @@ describe("scale — the resolve ceiling flows through the deriver", () => {
             const id = ("0x" + i.toString(16).padStart(64, "0")) as Hex;
             orders.push(buildOrder({
                 id, seller: MERCHANT, agreementHash,
-                parentOrderIds: i === 0 ? [] : [orders[i - 1].id],
+                parentOrderHashes: i === 0 ? [] : [orders[i - 1].id],
                 cumulativeValue: 100n + BigInt(i),
             }));
             // Mid-walk state: two ladder stages down, proof pending.

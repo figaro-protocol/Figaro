@@ -32,7 +32,7 @@ import { activeChain } from "@/lib/shared/wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { clauseDeclaresField, clauseIsProcessLog } from "@/lib/shared/clauseSpecSource";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
-import { buildAssemblyTemplate, serializeAssemblyTemplate, deriveAssemblySlug, templateParentOrderIds, type AssemblyTemplate } from "@/lib/designer/assemblyTemplate";
+import { buildAssemblyTemplate, serializeAssemblyTemplate, deriveAssemblySlug, templateParentOrderHashes, type AssemblyTemplate } from "@/lib/designer/assemblyTemplate";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import {
@@ -99,9 +99,9 @@ export function requiredCounterpartyClauses(template: AssemblyTemplate): string[
 
     const clauses = new Set<string>();
     for (const order of template.orders) {
-        if (templateParentOrderIds(order).length === 0) continue;
+        if (templateParentOrderHashes(order).length === 0) continue;
 
-        const parentAllowsSellerAssigned = templateParentOrderIds(order).some((parentId) =>
+        const parentAllowsSellerAssigned = templateParentOrderHashes(order).some((parentId) =>
             coordinationOf(byId.get(parentId)) === "seller-assigned",
         );
         if (!parentAllowsSellerAssigned) continue;
@@ -271,7 +271,7 @@ export function extractRootModality(
     template: AssemblyTemplate,
 ): { modality?: string; coordination?: string } {
     const rootOrder =
-        template.orders.find((o) => templateParentOrderIds(o).length === 0) ?? template.orders[0];
+        template.orders.find((o) => templateParentOrderHashes(o).length === 0) ?? template.orders[0];
     return {
         modality: readSingleSelectClauseField(rootOrder?.clauses, "modality"),
         coordination: readSingleSelectClauseField(rootOrder?.clauses, "coordination"),
