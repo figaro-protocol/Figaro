@@ -23,10 +23,11 @@
  */
 
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useChainId } from "wagmi";
 import { calculateBonds } from "@figaro/core";
 import { formatToken } from "@/lib/shared/utils";
+import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { Button } from "@/components/ui/Button";
 import { WalletGate } from "@/components/core/WalletGate";
@@ -46,6 +47,7 @@ import { displayNameForAddress } from "@/lib/seller/sellerListing";
 import type { Listing } from "@/lib/seller/sellerListing";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
+import useTokenApproval from "@/hooks/core/useTokenApproval";
 
 // ── Your-turn card: an incoming order awaiting my counter-signature ──
 function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listings }: {
@@ -56,8 +58,38 @@ function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listings }: {
     listings: ReadonlyArray<Listing>;
 }) {
     const { commitment } = payload;
+    const { address } = useAccount();
     const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     const sellerBond = calculateBonds(commitment.expectedCumulativeValue, commitment.payment).sellerBond;
+
+    // The seller locks 2× cumulative value as bond, so the kernel must be allowed
+    // to pull it from this wallet. Mirror the buyer's checkout: if the allowance
+    // is short, approve the bond first, then resume the accept once the approve
+    // confirms (the buyer approves its own bond at checkout — this is the seller's
+    // missing half). A prior max approval just makes needsApproval false → no-op.
+    const core = CONTRACTS.core as `0x${string}` | undefined;
+    const { needsApproval, approve, isApprovePending, isApproveConfirming, isApproveSuccess } = useTokenApproval({
+        tokenAddress: commitment.currency as `0x${string}`,
+        owner: address,
+        spender: (core ?? ZERO_ADDRESS) as `0x${string}`,
+    });
+    const pendingAccept = useRef(false);
+    useEffect(() => {
+        if (isApproveSuccess && pendingAccept.current) {
+            pendingAccept.current = false;
+            onAccept();
+        }
+    }, [isApproveSuccess, onAccept]);
+    const isApproving = isApprovePending || isApproveConfirming;
+    const handleAccept = () => {
+        if (needsApproval(sellerBond)) {
+            pendingAccept.current = true;
+            approve(sellerBond * 10n);
+        } else {
+            onAccept();
+        }
+    };
+
     return (
         <div className="rounded-lg border border-neutral-200 bg-white p-5 space-y-4" data-testid="order-your-turn-card">
             <div className="flex items-start justify-between gap-3">
@@ -80,13 +112,13 @@ function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listings }: {
                 </p>
             </div>
             <div className="flex gap-2">
-                <Button type="button" onClick={onAccept} disabled={isAccepting} className="flex-1" data-testid="btn-accept-order">
-                    {isAccepting ? "Signing…" : "Accept order"}
+                <Button type="button" onClick={handleAccept} disabled={isAccepting || isApproving} className="flex-1" data-testid="btn-accept-order">
+                    {isApproving ? "Approving bond…" : isAccepting ? "Signing…" : "Accept order"}
                 </Button>
                 <button
                     type="button"
                     onClick={onDismiss}
-                    disabled={isAccepting}
+                    disabled={isAccepting || isApproving}
                     className="rounded border border-neutral-300 px-3 py-2 text-sm text-neutral-500 hover:bg-neutral-50 disabled:opacity-40"
                     data-testid="btn-dismiss-order"
                 >
