@@ -1,57 +1,69 @@
 # Figaro Protocol — CLAUDE.md
 
+## The whole system — there is nothing else (read before everything below)
+
+Repeated to agents dozens of times; each rebuilds silt on it. **This is the entire
+system. Measure every proposal, file, and name against it.**
+
+**The kernel (`FigaroCore`) is two mechanisms:** asymmetric bonding at commit, and
+buyer dominance with atomic resolution. They make cooperation the Nash equilibrium,
+which lets **one buyer bind many sellers into a value-added chain**. *All commerce is
+value-added chains* — so the kernel can express ANY chain anyone wants, bounded only by
+the network's gas. Nothing more is needed to make trade safe between strangers.
+
+**On top of the kernel there are exactly FIVE things — nothing more, ever:**
+
+1. **Buyer** — the one party who pays and resolves. Any wallet.
+2. **Seller** — a value-adder in the chain. Any wallet.
+3. **Clause** — defines a relationship: buyer↔seller and seller↔seller. *Topology* (how
+   the sellers are ordered in the chain — who comes before whom) is itself expressed as
+   a clause.
+4. **Assembly** — clauses composed into something anyone can USE and REUSE, anywhere,
+   anytime.
+5. **Composition with other on-network contracts** (Kleros, Uniswap, …) — what makes the
+   network compositional instead of a silo.
+
+It is **open-world**: anyone contributes permissionlessly, and **RPGF** rewards them by
+how much their contribution helps the network evolve.
+
+**The frontend exists only to let people DO these five and READ network state.** Every
+surface expresses buyer, seller, clause, assembly, or composition — or it is **silt to
+delete**. Ask: *which of the five is this?* If "none," stop — but hold the full model
+first (below); agents keep mislabeling designed surfaces as silt.
+
+**A bonded commitment is a digital contract:** its **consideration** = the **Nash
+equilibrium** from the bonds; its **general T&Cs** = the **clauses**; its **specific
+T&Cs** = the **consents** a designer attaches (`/consent`, also the beta-tester consent).
+Consent is a first-class agreement layer, NOT boilerplate.
+
+**Agents keep mislabeling these as silt — they are DESIGNED IN:** agents are first-class
+participants (level field with humans; `/agents` ≠ `/users`); use-case pages
+(`/local-commerce`) are *marketing*, their runtime an assembly in `/assemblies`;
+`/dispute` is third-party composition (Kleros) over a *process*, not consent. Fuller form
+→ `reference_the_whole_system`. Everything below serves this.
+
 ## Read this first — the premise that has cost the most
 
-Before Agent Permissions, before the spine, weigh the one base-model default you
-will carry in unexamined and that is **wrong here**:
+The base-model default you carry in unexamined and that is **wrong here**:
 
-> **"Figaro is a product app."** It is not. It is **protocol infrastructure** — the
-> TCP/IP of trade (see "What Figaro Is"). The frontend is a *protocol surface that
-> composes catalogues*, never a product application.
+> **"Figaro is a product app."** It is not — it is **protocol infrastructure**, the TCP/IP
+> of trade; the frontend is a *protocol surface that composes catalogues*, never a product
+> application.
 
-This is the master invisible assumption — so deep in base training it never surfaces
-as a question, so it ships as a skinning system, a module/slot runtime, a role
-taxonomy, an onboarding funnel, an admin console, or persona-mapped journeys *before
-anyone asks "wait — is this a product?"* The git history is its body count: an entire
-product-app frontend (V4) was built and excised, ~80K net lines deleted across one
-month of V5, and it **recurs every time an agent starts building** (`roleKind`,
-`archetypeId`, onboarding funnels all came back and had to be deleted again). A
-one-time cleanup cannot kill it; only weighing it at generation time can.
-
-**The test, before building any surface:** *"Am I about to build a product feature?"*
-If yes, stop — you have almost certainly mistaken infrastructure for a product.
-Compose from the `lib/` catalogues; do not build an app shell. Fuller treatment in
-"What Figaro Is" / "What Figaro Is Not" and "Frontend = runtime infrastructure, not
-product code" below. This is grievance #0 applied to the single premise that costs
-the most.
+So deep in base training it ships as a role taxonomy, an onboarding funnel, or persona
+journeys *before anyone asks "is this a product?"* Its body count is in git: a whole V4
+product-app frontend built and excised, ~80K net lines deleted, recurring every time an
+agent builds (`roleKind`, `archetypeId`, onboarding funnels all came back, deleted
+again). **The test before any surface:** *"Am I building a product feature?"* If yes,
+stop — compose from `lib/`, don't build an app shell.
 
 ### What open-world looks like — the positive target
 
-Every "do not" in this file has a positive form; **lead with it.** A prohibition
-alone leaves a vacuum, and the base model fills a vacuum with its closed-world
-default — the exact failure this file fights. Open-world means:
-
-1. **Name the role + surface.** Designer composes (`/builders/designer`), seller
-   binds (profile array), buyer selects + fills (checkout), the order's seller
-   attests (runtime), spectator reads — never "the buyer/user does X."
-2. **The set is the live registry.** Clauses/sellers/assemblies are an unbounded
-   set read chain→IPFS via the indexer; any list is an as-of-today snapshot. *Test:
-   would it still hold if a never-seen clause dropped into the registry now?*
-3. **The frontend is a surface.** It composes `lib/` catalogues and renders indexer
-   state — not an app/feature/funnel.
-4. **Meaning is derived; storage is event-driven + IPFS.** The chain holds a
-   fingerprint, content is pinned to IPFS, the indexer reconstructs; what a
-   node/role/modality/category IS is derived at render from clauses + topology +
-   state, never a stored field.
-5. **A clause encodes ANY relationship.** The same kernel serves a market-liberal,
-   cooperative, mutual-aid, or Islamic-finance graph; logistics is one projection,
-   never the default.
-6. **Generic code routes by spec, not name.** Read fields / `block` / `mechanismKinds`
-   / tier; no `if (clause === geo)`.
-7. **Surfaces read at the edge.** The indexer is the read path, registries + IPFS the
-   source; resolved-empty = absence, never a coined default.
-
-Full rubric → `reference_open_world_lens` memory.
+Every "do not" here has a positive form; **lead with it** (prohibition-only routes the
+base model back to closed-world). The positive rubric — role + surface named, live
+chain→IPFS registry not a bundled list, derived-not-stored, any-relationship,
+spec-routed-not-name, reads-at-edge (resolved-empty = absence) → `reference_open_world_lens`
+memory.
 
 ---
 

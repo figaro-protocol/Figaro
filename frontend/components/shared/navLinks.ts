@@ -34,14 +34,13 @@ export const NAV_LINKS: NavLink[] = [
 // `ls app/(app)/*/page.tsx` is the audit. If a route is in
 // `app/(marketing)/`, do NOT add it here — it belongs in `NAV_LINKS`.
 //
-// The first two entries (Orders, Inbox) are the consumer's primary
-// surfaces — buyer's order list and seller's incoming-orders inbox.
-// They precede the protocol-tier surfaces (Builders, Terminal, etc.) so a
-// participant who already has a wallet connected has a one-click path to
-// "their" work.
+// The first entry (Orders) is the consumer's primary surface — the wallet's
+// single actor-neutral order list (every order it's on as buyer OR seller,
+// plus anything awaiting its action). It precedes the protocol-tier surfaces
+// (Builders, Terminal, etc.) so a participant who already has a wallet
+// connected has a one-click path to "their" work.
 export const NAV_LINKS_APP_PRIMARY: NavLink[] = [
     { href: "/orders", label: "Orders" },
-    { href: "/inbox", label: "Inbox" },
     { href: "/sellers", label: "Sellers" },
 ];
 
@@ -50,6 +49,5 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
     ...NAV_LINKS,
     { isSectionHeader: true, label: "App", href: "" },
     { href: "/orders", label: "Orders" },
-    { href: "/inbox", label: "Inbox" },
     { href: "/sellers", label: "Sellers" },
 ];

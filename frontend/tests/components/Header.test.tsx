@@ -4,9 +4,9 @@ import { render, screen } from "@testing-library/react";
 import { Header } from "@/components/shared/Header";
 import { NAV_LINKS } from "@/components/shared/navLinks";
 
-// Mock NotificationBell to test conditional rendering
-vi.mock("@/components/shared/NotificationBell", () => ({
-    NotificationBell: () => React.createElement("div", { "data-testid": "notification-bell" }),
+// Mock YourTurnBadge to test conditional rendering
+vi.mock("@/components/shared/YourTurnBadge", () => ({
+    YourTurnBadge: () => React.createElement("div", { "data-testid": "your-turn-badge" }),
 }));
 
 // Mock useWalletConnected
@@ -29,16 +29,16 @@ describe("Header", () => {
         }
     });
 
-    it("shows notification bell only when wallet is connected", () => {
+    it("shows the your-turn badge only when wallet is connected", () => {
         useWalletConnectedMock.mockReturnValue(true);
         render(<Header />);
-        expect(screen.getByTestId("notification-bell")).toBeInTheDocument();
+        expect(screen.getByTestId("your-turn-badge")).toBeInTheDocument();
     });
 
-    it("does not show notification bell when wallet is not connected", () => {
+    it("does not show the your-turn badge when wallet is not connected", () => {
         useWalletConnectedMock.mockReturnValue(false);
         render(<Header />);
-        expect(screen.queryByTestId("notification-bell")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("your-turn-badge")).not.toBeInTheDocument();
     });
 
     it("logo is a link", () => {

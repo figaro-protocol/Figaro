@@ -6,7 +6,7 @@ import type { NavLink } from "@/components/shared/navLinks";
 
 interface HeaderShellProps {
     /** Right cluster — varies by tier. Marketing uses `<DiscoverButton>`;
-     *  (app) uses `<NotificationBell>` + `<ConnectButton>`. Discover and
+     *  (app) uses `<YourTurnBadge>` + `<ConnectButton>`. Discover and
      *  Connect Wallet never coexist. */
     right: ReactNode;
     /** Optional CTA pinned to the top of the mobile slide-out drawer.

@@ -1,7 +1,7 @@
 "use client";
 
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { NotificationBell } from "@/components/shared/NotificationBell";
+import { YourTurnBadge } from "@/components/shared/YourTurnBadge";
 import { HeaderShell } from "@/components/shared/HeaderShell";
 import { NavLinksRow } from "@/components/shared/NavLinksRow";
 import { NAV_LINKS_APP_PRIMARY, NAV_LINKS_APP_DRAWER } from "@/components/shared/navLinks";
@@ -12,7 +12,7 @@ import { useWalletConnected } from "@/hooks/useWalletConnected";
  * `MarketingHeader`, with two divergences (per
  * `feedback_two_navs_allowed.md`):
  *
- *  1. Right cluster is `<NotificationBell>` (when connected) +
+ *  1. Right cluster is `<YourTurnBadge>` (when connected) +
  *     `<ConnectButton>`. Discover is intentionally absent — that rule is
  *     in `feedback_header_buttons.md` and is independent of the two-nav
  *     decision.
@@ -27,7 +27,7 @@ export function Header() {
         <HeaderShell
             right={
                 <>
-                    {walletConnected && <NotificationBell theme="light" />}
+                    {walletConnected && <YourTurnBadge theme="light" />}
                     <ConnectButton />
                 </>
             }

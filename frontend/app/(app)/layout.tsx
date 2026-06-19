@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
  * `<Providers>` stack (WagmiProvider, RainbowKit, QueryClient, ChainGuard,
  * CommerceProvider, HandoffCleanupProvider, CommitmentSignPreviewProvider,
  * ConfigurationBanner, ClientInit, Toaster, RpcBanner) and the
- * wallet-aware `<Header>` (with ConnectButton + NotificationBell).
+ * wallet-aware `<Header>` (with ConnectButton + YourTurnBadge).
  *
  * The canonical inventory of (app) routes is the directory listing of
  * `app/(app)/`. (`/builders` itself moved to `(marketing)/`;

@@ -10,12 +10,12 @@
  * channel's conversations (the single source of truth) via
  * `subscribeAnyCommitmentPayload`, never reconstructed from local state.
  *
- * Three surfaces consume this — the seller `/inbox` (commitments awaiting
- * MY counter-sign), the buyer `/orders` (commitments awaiting the
- * COUNTERPARTY's signature), and the header notification bell — sharing
- * one subscribe → fetch → deserialize → filter → accumulate path. They
- * diverge only in the `match` predicate the caller passes (and, on the
- * buyer side, an on-chain dedup at the call site). Lives in hooks/ rather
+ * Two surfaces consume this — the `/orders` page (its "Your turn" section
+ * uses `awaitsMyCounterSign`; its "Awaiting acceptance" section uses
+ * `awaitsCounterpartySignature`) and the header `YourTurnBadge` (the
+ * incoming count) — sharing one subscribe → fetch → deserialize → filter →
+ * accumulate path. They diverge only in the `match` predicate the caller
+ * passes (and an on-chain dedup at the call site). Lives in hooks/ rather
  * than lib/core/ because it depends on the handoff feature layer.
  */
 

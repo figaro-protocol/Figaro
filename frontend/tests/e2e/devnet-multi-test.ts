@@ -9,7 +9,7 @@
  *
  *   test('seller accepts offer', async ({ page }) => {
  *       // page starts as account[0] (buyer)
- *       await gotoAsWallet(page, ANVIL_ACCOUNTS[1].address, '/inbox');
+ *       await gotoAsWallet(page, ANVIL_ACCOUNTS[1].address, '/orders');
  *       ...
  *   });
  */
@@ -49,8 +49,8 @@ export const test = base.extend<{ page: Page }>({
  *
  * Use this when a test exercises a wallet OTHER than the default
  * buyer (anvil[0]) — e.g. seller-side `/orders/[processId]`,
- * spectator views, or the merchant `/inbox`. Mirrors the inline
- * pattern from `inbox.devnet.spec.ts` lifted into a reusable helper.
+ * spectator views, or the seller's `/orders` view. Mirrors an inline
+ * pattern lifted into a reusable helper.
  *
  * Defaults `waitUntil` to `domcontentloaded`; full `load` collides
  * with Next.js dev-server cold-compile races (see

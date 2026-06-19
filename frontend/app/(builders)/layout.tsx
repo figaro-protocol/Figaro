@@ -28,7 +28,7 @@ export const metadata: Metadata = {
  *
  * It mounts the full `<Providers>` stack like `(app)` — authoring publishes
  * on-chain, so it needs the wallet — but uses the one-row `<BuilderHeader>`
- * (publication nav + ConnectButton, NO Orders/Inbox/Sellers row) and the
+ * (publication nav + ConnectButton, NO Orders/Sellers row) and the
  * shared `<Footer>`, so the designer reads as a Builders-section page with
  * the same chrome as the home nav (Protocol / Builders / Discover), not as
  * the runtime dashboard. The designer routes live here, not in `(app)/`.

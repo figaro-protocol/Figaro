@@ -2,7 +2,7 @@ import { HeaderShell } from "@/components/shared/HeaderShell";
 
 /**
  * Wagmi-free header for marketing routes (`app/(marketing)/`). Same chrome
- * as `Header.tsx` but without `ConnectButton` / `NotificationBell` /
+ * as `Header.tsx` but without `ConnectButton` / `YourTurnBadge` /
  * `useWalletConnected` so marketing pages don't pull the wallet provider
  * into their client bundle.
  *

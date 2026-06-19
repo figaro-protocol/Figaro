@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * Role-aware process queries used by `/orders` (buyer surface) and
- * `/inbox` (seller surface). Both pages need the same shape: one row
- * per commitment the connected wallet holds in a given role, plus that
- * order's metadata (counterparty, payment, currency, status).
+ * Role-aware process queries. The `/orders` page calls this for BOTH roles
+ * (buyer and seller) and merges the rows into one actor-neutral list — every
+ * order the wallet is on. One row per commitment the wallet holds in a given
+ * role, plus that order's metadata (counterparty, payment, currency, status).
  *
  * Role asymmetry, straight from the kernel's star shape:
  *  - BUYER: the buyer is the buyer on EVERY order in its process
