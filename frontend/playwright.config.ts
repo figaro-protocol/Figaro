@@ -90,7 +90,7 @@ export default defineConfig({
     projects: [
         {
             name: 'devnet-authoring',
-            testMatch: /(scenario-[a-z-]+|sellers-onboarding)\.devnet\.spec\.ts$/,
+            testMatch: /(scenario-[a-z-]+|seed-assembly|sellers-onboarding)\.devnet\.spec\.ts$/,
             fullyParallel: false,
             workers: 1,
             use: { ...devices['Desktop Chrome'] },
@@ -98,7 +98,7 @@ export default defineConfig({
         {
             name: 'devnet',
             testMatch: /\.devnet\.spec\.ts$/,
-            testIgnore: /(scenario-[a-z-]+|sellers-onboarding)\.devnet\.spec\.ts$/,
+            testIgnore: /(scenario-[a-z-]+|seed-assembly|sellers-onboarding)\.devnet\.spec\.ts$/,
             dependencies: ['devnet-authoring'],
             fullyParallel: false,
             workers: 1,
