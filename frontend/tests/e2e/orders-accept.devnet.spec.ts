@@ -55,6 +55,9 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
     test.setTimeout(180_000);
 
     test('the "Your turn" accept flow on /orders commits the order', async ({ page }) => {
+        // Resolve raises a native window.confirm — auto-accept it (the deleted
+        // direct-sale-runtime spec did the same), or the capability blocks.
+        page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
         const config = readLocalDeploymentConfig();
         const core = config.figaroCore as Hex;
         const token = config.tokenAddress as Hex;
@@ -157,5 +160,55 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
         expect(buyerBefore - buyerAfter, 'buyer balance decreased by the buyer bond').toBe(buyerBond);
         expect(sellerBefore - sellerAfter, 'seller balance decreased by the seller bond').toBe(sellerBond);
         expect(coreAfter - coreBefore, 'FigaroCore escrow increased by both bonds').toBe(buyerBond + sellerBond);
+
+        const processId = event.args.processId!;
+        const payment = event.args.payment!;
+
+        // ── Buyer resolves the process (BUYER DOMINANCE — only the buyer can call
+        //    resolveProcess; atomic). Switch back to the buyer, drive the resolve
+        //    capability on the process detail, wait for ProcessResolved. ──
+        const resolvedBefore = (await publicClient.getContractEvents({
+            address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
+        })).length;
+        await gotoAsWallet(page, BUYER, `/orders/${processId}?e2e=devnet`);
+        await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        const resolveBtn = page.getByTestId('capability-execute-resolve-process');
+        await resolveBtn.waitFor({ state: 'visible', timeout: 30000 });
+        await expect(resolveBtn, 'the buyer can resolve the active process').toBeEnabled({ timeout: 30000 });
+        await resolveBtn.click();
+        await expect.poll(async () => (await publicClient.getContractEvents({
+            address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
+        })).length, { timeout: 60000, message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
+
+        // ── Full-cycle settlement (the real proof): buyer NET −payment, seller NET
+        //    +payment, escrow returns to its baseline. The bonds were the mechanism;
+        //    the net is the trade. ──
+        const [buyerFinal, sellerFinal, coreFinal] = await Promise.all([
+            balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
+        ]);
+        expect(buyerBefore - buyerFinal, 'buyer net paid exactly the payment').toBe(payment);
+        expect(sellerFinal - sellerBefore, 'seller net earned exactly the payment').toBe(payment);
+        expect(coreFinal, 'FigaroCore escrow returned to its baseline').toBe(coreBefore);
+
+        // ── Conclude the true Figaro cycle: the audit package surfaces the DOCUMENTS
+        //    and the EVENTS for the (now resolved) process — its agreement documents
+        //    (process financials / per-order line item) and the on-chain events (the
+        //    cash-flow log of commit + resolve transfers). ──
+        await page.goto(`/audit/${processId}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        await expect(
+            page.getByTestId('financials-view'),
+            'the audit package renders the process financials',
+        ).toBeVisible({ timeout: 30000 });
+        await expect(
+            page.locator('[data-testid^="line-item-"]').first(),
+            'the agreement document surfaces as a per-order line item',
+        ).toBeVisible({ timeout: 30000 });
+        await expect(
+            page.getByTestId('financials-cashflow'),
+            'the on-chain events surface in the cash-flow log',
+        ).toBeVisible({ timeout: 30000 });
     });
 });
