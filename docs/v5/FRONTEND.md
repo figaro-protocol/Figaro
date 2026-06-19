@@ -14,13 +14,13 @@ Audit by `ls app/(marketing)/ app/(app)/`. Source of truth is the directory list
 
 **`(marketing)/` (no wallet provider):** `/` (root), `/agents`, `/assemblies`, `/builders` (hub), `/builders/composability`, `/cryptoeconomics`, `/integrate`, `/local-commerce` (worked example), `/physics`, `/protocol`, `/rpgf`, `/clauses`, `/spec`, `/users`, `/why`. The `/clauses` and `/assemblies` inventories read on-chain state event-driven through the standalone `publicClient` — marketing-tier reads do not require the wallet provider.
 
-**`(app)/` (wallet provider mounted):** `/audit` + `/audit/[processId]`, `/builders/designer` (landing), `/builders/designer/new`, `/builders/designer/edit/[slug]`, `/builders/designer/view/[slug]`, `/consent` (beta-only ceremony), `/discover` (seller catalogue), `/dispute` (beta-consent dispute), `/evidence-display` (Kleros juror iframe target), `/fig` (transactional surface, with `/fig/claim`), `/inbox` (incoming-orders inbox), `/s/[seller]` (seller detail + cart), `/sellers` (enrolment) + its sub-routes `/sellers/{agents,assemblies,catalogue,identity,review}` and `/sellers/edit/{agents,assemblies,catalogue,identity}`, `/orders` (buyer order list), `/orders/[processId]` (per-order live timeline), `/sign`. (`/builders` and `/builders/composability` are `(marketing)/` pages, not `(app)/`.)
+**`(app)/` (wallet provider mounted):** `/audit` + `/audit/[processId]`, `/builders/designer` (landing), `/builders/designer/new`, `/builders/designer/edit/[slug]`, `/builders/designer/view/[slug]`, `/consent` (beta-only ceremony), `/discover` (seller catalogue), `/dispute` (beta-consent dispute), `/evidence-display` (Kleros juror iframe target), `/fig` (transactional surface, with `/fig/claim`), `/s/[seller]` (seller detail + cart), `/sellers` (enrolment) + its sub-routes `/sellers/{agents,assemblies,catalogue,identity,review}` and `/sellers/edit/{agents,assemblies,catalogue,identity}`, `/orders` (the wallet's actor-neutral order list — buyer + seller, with the "Your turn" accept section), `/orders/[processId]` (per-order live timeline), `/sign`. (`/builders` and `/builders/composability` are `(marketing)/` pages, not `(app)/`.)
 
 **API:** `/api/geocode`.
 
 **Consumer flow** (May 2026 split, replaces the prior `/i/[slug]` seller-runtime shape):
 - Buyers: `/discover` → `/s/[seller]` (browse + cart) → `/orders/[processId]` (live timeline + Confirm receipt) → `/orders` (history).
-- Sellers: `/inbox` (incoming + active + completed) → `/orders/[processId]` (fire merchant-process events).
+- Sellers: `/orders` (the "Your turn" section — incoming to accept, then in-progress + completed) → `/orders/[processId]` (fire merchant-process events).
 - Builders: `/builders/designer/view/[slug]` (assembly inspector). The prior `/i/[slug]` route was deleted; its inbound bookmarks redirect to `/discover`.
 
 The `/builders/designer` tool is a DAG editor (`ProcessGraphCanvas` + `AgreementDrawer`); the palette/canvas/inspector three-column shape was rejected as "wrong-direction" during this project's evolution.
@@ -73,7 +73,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 
 - **`core/`** — order flows, bond/token, builder/assembly, semantic. Assembly rendering shell: `AssemblyProcessWorkspace` (all `Institution*` names have been renamed)
 - **`marketing/`** — marketing-route layout primitives (`MarketingHeader`, `MarketingHero`, `MarketingSection`)
-- **`modules/`** — feature modules (e.g. `SellerBrandingModule`). The prior module registry and the `/i/[slug]` runtime that rendered registered modules were retired in the V4→V5 narrowing; consumer surfaces are now purpose-shaped pages (`/s/[seller]`, `/orders/[processId]`, `/inbox`).
+- **`modules/`** — feature modules (e.g. `SellerBrandingModule`). The prior module registry and the `/i/[slug]` runtime that rendered registered modules were retired in the V4→V5 narrowing; consumer surfaces are now purpose-shaped pages (`/s/[seller]`, `/orders`, `/orders/[processId]`).
 - **`shared/`** — shell/utility; **`ui/`** — design primitives; **`icons/`** — SVGs; **`sellers/`** — route-specific panels (onboarding shell + edit forms)
 
 ## Canonical exemplars — copy these shapes
@@ -112,7 +112,7 @@ governing wallet-provider load:
 
 - **Marketing** — pure publication / explanation. Lives in `app/(marketing)/`; does not load the wallet provider. Current routes: `/`, `/agents`, `/assemblies`, `/builders`, `/builders/composability`, `/cryptoeconomics`, `/integrate`, `/local-commerce`, `/physics`, `/protocol`, `/rpgf`, `/clauses`, `/security`, `/spec`, `/users`, `/why`.
 - **Reference / read-only (in `(app)/`)** — registries / tools whose primary purpose is read-only inspection but which mount the wallet provider for inline write affordances via `WalletGate`. Current: `/builders/designer*` (drafts in localStorage), `/discover` (seller catalogue), `/audit` + `/audit/[processId]` (audit / forensics), `/s/[seller]` (read-mode catalogue with WalletGate-protected place-order CTA). The `/builders` hub and `/builders/composability` are publication pages and live in `(marketing)/`.
-- **Transactional** — primary purpose is signing or sending transactions; lives in `app/(app)/`; requires a connected wallet. Current: `/sign`, `/sellers`, `/fig`, `/fig/claim`, `/dispute` (beta-consent disputes), `/consent` (beta-only ceremony), `/evidence-display` (Kleros juror iframe target), `/orders` + `/orders/[processId]` (buyer order list + per-order timeline; resolveProcess fires here), `/inbox` (incoming-orders inbox; counter-sign + merchant-process attestations fire here).
+- **Transactional** — primary purpose is signing or sending transactions; lives in `app/(app)/`; requires a connected wallet. Current: `/sign`, `/sellers`, `/fig`, `/fig/claim`, `/dispute` (beta-consent disputes), `/consent` (beta-only ceremony), `/evidence-display` (Kleros juror iframe target), `/orders` (the wallet's actor-neutral order list — buyer + seller; the "Your turn" section is where counter-sign/accept fires) + `/orders/[processId]` (per-order timeline; resolveProcess fires here).
 
 **Rules:**
 

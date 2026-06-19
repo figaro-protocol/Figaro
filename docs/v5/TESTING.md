@@ -68,8 +68,8 @@ RpgfMinter (`RpgfMinter.tla` + `MC_RpgfMinter.tla` + `MC_RpgfMinter.cfg`):
 
 `npx vitest run`. UI logic that needs neither a chain nor a real browser.
 
-- **Component tier** (`tests/components/`, 8 files) — React Testing Library:
-  `Header`, `MobileNav`, `NotificationBell`, `GHGWorkflowPanel`,
+- **Component tier** (`tests/components/`, 7 files) — React Testing Library:
+  `Header`, `MobileNav`, `GHGWorkflowPanel`,
   `SellerTrackRecord`, `TokenAddressInput`, `TokenApprovalFlow`,
   `TokenDecimalDisplayFlows`.
 - **Lib tier** (`tests/lib/`, 56 files) — pure-client unit tests: commitment
@@ -99,8 +99,9 @@ hard-off (RA-5 intent preserved).
 **devnet (`*.devnet.spec.ts`, 44 specs)** — every spec drives the real UI
 against Anvil + deployed contracts (action in the UI, reaction in the UI). By area:
 
-- Commerce / checkout / order lifecycle: `seller-page`, `seller-place-order`,
-  `onsite-purchase`, `inbox`, `inbox-accept`.
+- Commerce / checkout / order lifecycle: `seller-page`, `orders-accept` (the
+  full-cycle spine: order → accept → commit → resolve → settle → audit, both ends
+  driven through `/orders`).
 - Designer + assembly registry: `designer-publish`, `designer-save-draft`,
   `designer-view`, `designer-agreement-drawer`, `designer-delivery-modality`,
   `designer-drafts-delete`, `scenario-direct-sale`, `scenario-local-commerce`,
