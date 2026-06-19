@@ -301,17 +301,17 @@ function ContractPage({ contract }: { contract: AuditBundle["contract"] }) {
                 )}
             </View>
 
-            {/* Lineage */}
-            <Text style={styles.h2}>Lineage</Text>
+            {/* Topology */}
+            <Text style={styles.h2}>Topology</Text>
             <View style={styles.section}>
-                {contract.lineage.parentOrderHashes.length === 0 ? (
+                {contract.topology.parentOrderHashes.length === 0 ? (
                     <Text style={styles.sectionBody}>Root order — no parent commitments.</Text>
                 ) : (
                     <>
                         <Text style={styles.sectionBody}>
-                            Parent order(s){contract.lineage.topologyMode ? ` (mode: ${contract.lineage.topologyMode})` : ""}:
+                            Parent order(s){contract.topology.topologyMode ? ` (mode: ${contract.topology.topologyMode})` : ""}:
                         </Text>
-                        {contract.lineage.parentOrderHashes.map((p) => (
+                        {contract.topology.parentOrderHashes.map((p) => (
                             <Text key={p} style={[styles.mono, { marginTop: 1 }]}>{p}</Text>
                         ))}
                     </>

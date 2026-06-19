@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { EditAssemblyClient } from "./EditAssemblyClient";
 
 /**
- * /builders/designer/edit/[slug] — DAG canvas for editing a saved draft.
+ * /builders/designer/edit/[slug] — topology canvas for editing a saved draft.
  *
  * The slug must resolve to a localStorage draft; the client renders a
  * "draft not found" empty state if no match. Forking a published
@@ -17,7 +17,7 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return {
         title: `Edit · ${params.slug} — Figaro Protocol`,
-        description: "Edit a saved assembly draft on the DAG canvas.",
+        description: "Edit a saved assembly draft on the topology canvas.",
     };
 }
 

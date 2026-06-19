@@ -164,11 +164,11 @@ describe("extractContract", () => {
     });
 });
 
-describe("extractContract — lineage (DAG / parentOrderHashes)", () => {
+describe("extractContract — topology (parentOrderHashes)", () => {
     it("returns empty parentOrderHashes for a root order with no topology clause", () => {
         const c = extractContract(makeOrder(), makeAgreement());
-        expect(c.lineage.parentOrderHashes).toEqual([]);
-        expect(c.lineage.topologyMode).toBeUndefined();
+        expect(c.topology.parentOrderHashes).toEqual([]);
+        expect(c.topology.topologyMode).toBeUndefined();
     });
 
     it("surfaces parentOrderHashes from a topology clause as a first-class field", () => {
@@ -180,8 +180,8 @@ describe("extractContract — lineage (DAG / parentOrderHashes)", () => {
             },
         ]);
         const c = extractContract(makeOrder(), ag);
-        expect(c.lineage.parentOrderHashes).toEqual(parents);
-        expect(c.lineage.topologyMode).toBe("explicit");
+        expect(c.topology.parentOrderHashes).toEqual(parents);
+        expect(c.topology.topologyMode).toBe("explicit");
     });
 
     it("filters out non-string parent entries silently rather than throwing", () => {
@@ -192,7 +192,7 @@ describe("extractContract — lineage (DAG / parentOrderHashes)", () => {
             },
         ]);
         const c = extractContract(makeOrder(), ag);
-        expect(c.lineage.parentOrderHashes).toEqual(["0xVALID", "0xVALID2"]);
+        expect(c.topology.parentOrderHashes).toEqual(["0xVALID", "0xVALID2"]);
     });
 });
 

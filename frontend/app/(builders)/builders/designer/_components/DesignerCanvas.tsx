@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * DesignerCanvas — the shared composition canvas (the ProcessGraphCanvas DAG of
+ * DesignerCanvas — the shared composition canvas (the TopologyCanvas of
  * orders + the per-order AgreementDrawer) used by /builders/designer/new
  * and /builders/designer/edit/[slug]. Both pages render this component
  * with different `seed` props; everything else (state, handlers,
@@ -27,7 +27,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ProcessGraphCanvas } from "@/components/core/ProcessGraphCanvas";
+import { TopologyCanvas } from "@/components/core/TopologyCanvas";
 import { TokenAddressInput } from "@/components/sellers/TokenAddressInput";
 import type { Order } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
@@ -675,7 +675,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 </aside>
                 <div className="flex-1 overflow-hidden">
                     <div className="h-full px-6 py-4 flex flex-col">
-                        <ProcessGraphCanvas
+                        <TopologyCanvas
                             orders={orders}
                             clauseValuesByOrderId={clausesByOrderId}
                             designerMode

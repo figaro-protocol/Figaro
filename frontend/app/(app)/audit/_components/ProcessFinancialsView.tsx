@@ -14,7 +14,7 @@
  *     per-seller breakdown an auditor needs (which seller got how much,
  *     which order is still active, which has resolved). The Figaro
  *     process is structurally an invoice — one buyer paying multiple
- *     sellers across a DAG — and the line-item layout makes that visible.
+ *     sellers across a topology — and the line-item layout makes that visible.
  *   • Cash-flow log: every commit/resolve transfer with on-chain amount,
  *     collapsible per-line.
  *

@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * ProcessGraphCanvas — presentational DAG renderer for a Figaro process.
+ * TopologyCanvas — presentational renderer for a Figaro process topology.
  *
  * Lays out a bonded-process order graph over a react-flow canvas: depth
  * layout, edge construction, double-click zoom, auto-fit. The node itself
- * lives in `./processGraph/OrderNode`. Consumed by the assembly designer
+ * lives in `./topology/OrderNode`. Consumed by the assembly designer
  * (`designerMode`); a future live process view would render it read-only.
  */
 
@@ -31,7 +31,7 @@ import { Card } from "@/components/ui/Card";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
 import { deriveOrderDepths, deriveOrderTopology } from "@/lib/core/orderTopology";
 import { truncateHex } from "@/lib/shared/formatHex";
-import { OrderNode, type OrderNodeData } from "./processGraph/OrderNode";
+import { OrderNode, type OrderNodeData } from "./topology/OrderNode";
 
 
 // ── Layout constants ────────────────────────────────────────────────────────
@@ -85,7 +85,7 @@ const nodeTypes: NodeTypes = {
 
 // ── Public component ────────────────────────────────────────────────────────
 
-export interface ProcessGraphCanvasProps {
+export interface TopologyCanvasProps {
     /** Orders to render. Empty array shows the no-orders empty state. */
     orders: Order[];
     /** Optional process id used in the header label. */
@@ -108,7 +108,7 @@ export interface ProcessGraphCanvasProps {
      * When set, dragging from a node's source handle and releasing on an
      * existing node calls this with (childOrderId, parentOrderId). The
      * source becomes an additional parent of the target — enables
-     * many-to-one merges (e.g. the diamond DAG pattern).
+     * many-to-one merges (e.g. the diamond fan-in pattern).
      */
     onAddParent?: (childOrderId: string, parentOrderId: string) => void;
     /**
@@ -135,12 +135,12 @@ export interface ProcessGraphCanvasProps {
     clauseValuesByOrderId?: Record<string, Record<string, Record<string, unknown>>>;
 }
 
-export function ProcessGraphCanvas({
+export function TopologyCanvas({
     orders,
     viewedProcessId,
     walletAddress,
     decimals = 18,
-    title = "Process Graph",
+    title = "Process Topology",
     emptySubtitle = "Visual representation of the value-added process",
     onAddSubOrder,
     onAddParent,
@@ -148,7 +148,7 @@ export function ProcessGraphCanvas({
     onDeleteNode,
     designerMode = false,
     clauseValuesByOrderId,
-}: ProcessGraphCanvasProps) {
+}: TopologyCanvasProps) {
     // IPFS-first agreement hydration (the shared singleton) — the canvas never
     // reads localStorage synchronously; nodes rebuild as hydration completes.
     const agreementHashes = useMemo(

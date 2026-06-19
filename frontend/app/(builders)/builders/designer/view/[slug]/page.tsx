@@ -17,7 +17,7 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return {
         title: `Inspect · ${params.slug} — Figaro Protocol`,
-        description: "Read-only view of an assembly's DAG and clauses.",
+        description: "Read-only view of an assembly's topology and clauses.",
     };
 }
 

@@ -75,7 +75,7 @@ export function deriveOrderTopology(
             sourceLabel: "default root fallback",
         };
 
-        // First-class design-time topology: when the order carries its DAG edges
+        // First-class design-time topology: when the order carries its topology edges
         // directly (the designer set them), use them — never round-trip through
         // the agreement. Runtime/chain orders have no parentOrderIds; their
         // topology is recovered from the committed agreement section below.
@@ -123,7 +123,7 @@ export function deriveOrderTopology(
  * (so a per-clause commit cursor stays deterministic).
  *
  * `onCycle` is the one policy the two call sites genuinely differ on:
- *   - "throw" — reject a non-DAG (the commit path's load-bearing guard; the
+ *   - "throw" — reject a cyclic topology (the commit path's load-bearing guard; the
  *     caller catches it and degrades the UI).
  *   - "break" — emit the still-unsettled nodes in input order, treating the
  *     cycle edge as absent, so a display metric degrades instead of crashing.
@@ -143,7 +143,7 @@ export function topologicalOrder(
         const idx = pending.findIndex((id) => parentsOf(id).every((p) => settled.has(p)));
         if (idx === -1) {
             if (onCycle === "throw") {
-                throw new Error("Topology is not a DAG — a node's parents are unresolvable.");
+                throw new Error("Topology has a cycle — a node's parents are unresolvable.");
             }
             for (const id of pending) { settled.add(id); ordered.push(id); }
             break;
@@ -163,7 +163,7 @@ export function deriveOrderDepths(orders: Order[], topology: Map<string, OrderTo
     );
     const depthMap = new Map<string, number>();
     for (const orderId of order) {
-        // Parents already placed (topo order guarantees it for a DAG; a cycle
+        // Parents already placed (topo order guarantees it for an acyclic topology; a cycle
         // back-edge is simply not yet in the map and so contributes nothing).
         const parentDepths = (topology.get(orderId)?.parentOrderIds ?? [])
             .filter((parentId) => parentId !== orderId && depthMap.has(parentId))

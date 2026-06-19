@@ -5,10 +5,10 @@
  * localStorage draft under a new slug, and the canvas opens at
  * /builders/designer/edit/<new-slug>.
  *
- * The template carries structure (orders + DAG parents) + the per-order clause
+ * The template carries structure (orders + topology parents) + the per-order clause
  * choices, but no agreements and no payment (payment is a runtime value). So
  * each template order is reconstructed into a display Order with a synthetic
- * agreement (built from its clauses + DAG parents) seeded into the store so the
+ * agreement (built from its clauses + topology parents) seeded into the store so the
  * canvas resolves it by hash; the clause choices are carried into the draft's
  * `clausesByOrderId` so re-opening the fork shows them.
  */
@@ -26,7 +26,7 @@ const SYNTHETIC_PROCESS_ID = `0x${"00".repeat(32)}` as `0x${string}`;
 
 /**
  * Reconstruct displayable orders from a template: each template order → a
- * synthetic agreement (from its clauses + DAG parents) seeded into the store
+ * synthetic agreement (from its clauses + topology parents) seeded into the store
  * so the canvas resolves it by hash. Used by the fork path and the read-only
  * `/view` resolver.
  */

@@ -77,7 +77,7 @@ function defaultNodeClauseFields(): ClauseFields {
 
 /**
  * The single synthetic display-Order choreography: build the agreement from the
- * order's clauses + DAG parents, hash it, persist it to the agreement store (so
+ * order's clauses + topology parents, hash it, persist it to the agreement store (so
  * the canvas + topology derivation resolve it by hash), and assemble the display
  * `Order` with the standard 2× bond derivations. Every synthetic-Order producer
  * — the canvas node-spawn paths here and the template fork/`/view`
@@ -117,7 +117,7 @@ export function buildSyntheticOrder(params: {
         seller: params.seller,
         currency: params.currency,
         agreementHash,
-        // First-class DAG edges (the topology clause's data) — read directly by
+        // First-class topology edges (the topology clause's data) — read directly by
         // the topology deriver, never recovered from the agreement.
         parentOrderIds: params.parentOrderHashes ?? [],
         cumulativeValue: params.cumulativeValue,
@@ -186,7 +186,7 @@ export function createSyntheticSubOrder(
 
 /**
  * Reason a `mergeSyntheticParent` call was rejected. Callers can surface
- * these to the UI; cycles must always be rejected to keep the DAG valid.
+ * these to the UI; cycles must always be rejected to keep the topology acyclic.
  */
 type MergeRejectionReason = "self-loop" | "duplicate-parent" | "would-create-cycle";
 
@@ -256,7 +256,7 @@ export function mergeSyntheticParent(
 
 /**
  * Returns true when `orderId` has no parents in the current topology —
- * i.e. it sits at the root of the DAG. Used by delete-protection logic.
+ * i.e. it sits at the root of the topology. Used by delete-protection logic.
  */
 export function isRootOrder(orderId: string, orders: Order[]): boolean {
     const topology = deriveOrderTopology(orders, buildAgreementsFromCache(orders));
@@ -265,7 +265,7 @@ export function isRootOrder(orderId: string, orders: Order[]): boolean {
 }
 
 /**
- * Walk down the DAG from `rootId` via the topology and return every order
+ * Walk down the topology from `rootId` and return every order
  * id reachable as a descendant — including `rootId` itself. Used by the
  * cascade-delete flow.
  */

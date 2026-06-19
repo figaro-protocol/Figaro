@@ -54,7 +54,7 @@ export interface BuildOrderAgreementParams {
 
 /** Fold the order's STRUCTURAL clauses into its clause set. A structural clause
  *  (spec `block.structural`) is composed on every order by the build itself —
- *  its data is the order's structural properties (payment/currency; DAG
+ *  its data is the order's structural properties (payment/currency; topology
  *  position), never drawer composition. The binding is BY FIELD NAME: each
  *  structural spec draws exactly the fields it declares from the builder's
  *  value bag (currency, payment, lineItems, topologyMode, parentOrderHashes),
@@ -80,7 +80,7 @@ function composeOrderClauseFields(params: BuildOrderAgreementParams): ClauseFiel
     const structuralIds = listKnownClauseIds().filter((clauseId) => clauseIsStructural(clauseId));
     if (structuralIds.length === 0) {
         // Without the chain→IPFS spec cache the structural sections (the
-        // order's payment + DAG position) cannot compose — refuse loudly
+        // order's payment + topology position) cannot compose — refuse loudly
         // rather than build a hollow agreement. Surfaces gate on
         // `useClauseSpecs().loaded`; tests prime the cache.
         throw new Error(

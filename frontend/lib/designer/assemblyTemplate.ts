@@ -2,7 +2,7 @@
  * Assembly template — the no-hash JSON the designer emits.
  *
  * Per order it carries the clauses composed on it (the buyer↔seller
- * relationship's MEANING) — and the DAG is ONE OF THOSE CLAUSES: the
+ * relationship's MEANING) — and the topology is ONE OF THOSE CLAUSES: the
  * manifest-only topology clause holds the order's parent ids. The template
  * carries NO party addresses (PARTY-AGNOSTIC — parties bind at
  * adoption/checkout), NO agreement hashes, NO sentinels: the fingerprint
@@ -23,7 +23,7 @@ export interface AssemblyTemplateOrder {
      *  reference target the topology clause points at. NOT a chain id, and NOT
      *  a party — the template is party-agnostic. */
     id: string;
-    /** clauseId → the design-time field values the designer composed. The DAG
+    /** clauseId → the design-time field values the designer composed. The topology
      *  is a clause here too: the manifest-only topology clause carries
      *  `{ parentOrderIds }` (root = []). Whatever's absent is filled
      *  downstream. */
@@ -50,7 +50,7 @@ export interface AssemblyTemplate {
 }
 
 /** Read a template order's parent ids — the data of its topology clause. The
- *  DAG is a clause like any other; this is the one accessor for it. The entry
+ *  topology is a clause like any other; this is the one accessor for it. The entry
  *  is found by its DATA KEY (`parentOrderIds`), so reading needs no spec
  *  cache and tolerates any registry-defined topology clause. */
 export function templateParentOrderIds(order: AssemblyTemplateOrder): string[] {
@@ -62,7 +62,7 @@ export function templateParentOrderIds(order: AssemblyTemplateOrder): string[] {
 }
 
 /** Build the no-hash assembly template from the design's orders + the per-order
- *  clause selection. The DAG is folded in as the manifest-only topology clause
+ *  clause selection. The parent edges fold in as the manifest-only topology clause
  *  — not a separate field. */
 export function buildAssemblyTemplate(args: {
     name?: string;
@@ -76,7 +76,7 @@ export function buildAssemblyTemplate(args: {
     const topologyClauseId = manifestTopologyClauseId();
     if (!topologyClauseId) {
         // Without the chain→IPFS spec cache the topology clause cannot be
-        // resolved — refuse loudly rather than emit a template with no DAG.
+        // resolved — refuse loudly rather than emit a template with no topology.
         // Designer surfaces gate on `useClauseSpecs().loaded`.
         throw new Error(
             "clause specs not loaded: no manifest-only topology clause in the cache — gate the surface on useClauseSpecs().loaded (or prime the spec cache in tests) before building templates",
@@ -133,7 +133,7 @@ export function serializeAssemblyTemplate(template: AssemblyTemplate): {
 }
 
 /** The published slug — a deterministic id derived from the composition's
- *  content hash (the clauses + their values + the DAG). Identical compositions
+ *  content hash (the clauses + their values + the topology). Identical compositions
  *  → identical slug (the registry's first-write-wins then dedups them); distinct
  *  compositions → distinct slug. There is no user-chosen name and no
  *  circularity: the slug is derived FROM the hash, never part of the hashed

@@ -4,7 +4,7 @@
  * AgreementDrawer — order inspector + live clause registry.
  *
  * Two panels:
- *   - identity (Parties) — buyer / seller / DAG position, read from the order
+ *   - identity (Parties) — buyer / seller / topology position, read from the order
  *     + topology.
  *   - registry — every clause registered on `ClauseRegistry`, read live from
  *     the chain, grouped by `groupClausesByArticle()` (the single clause

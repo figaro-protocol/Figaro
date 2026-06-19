@@ -324,7 +324,7 @@ export function usePublishAssembly() {
             functionName: "registrationDeposit",
         });
         // Publish the no-hash assembly template: per order, who's bound, its
-        // DAG parents, and the selected clauses. The fingerprint forms later
+        // topology parents, and the selected clauses. The fingerprint forms later
         // at checkout when the parties fill the clause fields.
         const template = buildAssemblyTemplate({
             name: snapshot.name.trim() || undefined,

@@ -47,7 +47,7 @@ describe("buildOrderAgreement", () => {
         expect(getTopologyParentOrderHashes(agreement)).toEqual([]);
     });
 
-    it("preserves explicit parent hashes for declared DAG edges", () => {
+    it("preserves explicit parent hashes for declared topology edges", () => {
         const agreement = buildOrderAgreement({
             buyer: BUYER,
             seller: SELLER,

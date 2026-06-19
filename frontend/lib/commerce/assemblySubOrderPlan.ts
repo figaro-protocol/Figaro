@@ -27,7 +27,7 @@ import { parseToken } from "@/lib/shared/utils";
  * ordering is significant and must match the checkout's commit order. `seller`
  * is `null` when the assembly binds no counterparty for that order's clause.
  *
- * Throws when the topology is not a DAG (a sub-order's parents are
+ * Throws when the topology has a cycle (a sub-order's parents are
  * unresolvable) — the same guard the checkout relies on.
  */
 export function planSubOrderSellers(
@@ -38,7 +38,7 @@ export function planSubOrderSellers(
     const rootId =
         assemblyTemplate.orders.find((o) => templateParentOrderIds(o).length === 0)?.id ??
         assemblyTemplate.orders[0]?.id;
-    // Topological order (throws on a non-DAG — the guard the checkout relies on),
+    // Topological order (throws on a cyclic topology — the guard the checkout relies on),
     // then the sub-orders are everything but the root, in commit order.
     const ordered: AssemblyTemplateOrder[] = topologicalOrder(
         assemblyTemplate.orders.map((o) => o.id),

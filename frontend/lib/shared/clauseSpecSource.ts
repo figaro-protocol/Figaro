@@ -165,7 +165,7 @@ export function clauseDeclaresField(clauseId: string, fieldName: string): boolea
 }
 
 /** The manifest-only structural clause — the topology manifest whose data
- *  carries the order's DAG edges, reconstructed off-chain by indexers.
+ *  carries the order's topology edges, reconstructed off-chain by indexers.
  *  Resolved from the registry by TIER (manifest-only is the topology tier by
  *  construction), never by name. undefined while the cache is cold. */
 export function manifestTopologyClauseId(): string | undefined {

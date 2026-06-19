@@ -13,7 +13,7 @@
  * by definition; the on-chain one is the prior snapshot). If neither,
  * the error UI surfaces a clear message.
  *
- * Renders the same `ProcessGraphCanvas` as /new and /edit/[slug] in
+ * Renders the same `TopologyCanvas` as /new and /edit/[slug] in
  * designerMode (so per-node clauses/values surface via the lens
  * overlays), but with no edit handlers — drag-add, delete, drawer
  * mutations all absent. The `AgreementDrawer` mounts in read-only
@@ -27,7 +27,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { keccak256, toBytes } from "viem";
 import { usePublicClient } from "wagmi";
-import { ProcessGraphCanvas } from "@/components/core/ProcessGraphCanvas";
+import { TopologyCanvas } from "@/components/core/TopologyCanvas";
 import { AgreementDrawer } from "../../_components/AgreementDrawer";
 import {
     deleteNamedDraft,
@@ -440,7 +440,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
             <div className="flex-1 overflow-hidden flex flex-row">
                 <div className="flex-1 overflow-hidden">
                     <div className="h-full px-6 py-4 flex flex-col">
-                        <ProcessGraphCanvas
+                        <TopologyCanvas
                             orders={orders}
                             title={`${resolved.name} (read-only)`}
                             designerMode

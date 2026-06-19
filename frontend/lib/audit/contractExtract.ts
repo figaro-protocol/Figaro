@@ -74,15 +74,15 @@ export interface ContractDocument extends ExtractedDocument {
         language?: string;
     };
     /**
-     * Process-DAG lineage for this order. Surfaces the topology-clause
-     * data so the auditor can locate this order in its process DAG without
+     * Process topology for this order. Surfaces the topology-clause
+     * data so the auditor can locate this order in its process topology without
      * having to dig into the generic clauses array.
      *
      *   - `parentOrderHashes` is empty for a root order.
      *   - For a sub-order it lists each parent order's hash; for a
      *     diamond / fan-in node it lists multiple parents.
      */
-    lineage: {
+    topology: {
         parentOrderHashes: string[];
         topologyMode?: string;
     };
@@ -124,7 +124,7 @@ function extractJurisdictionSummary(agreement: Agreement | RedactableAgreement) 
     };
 }
 
-function extractLineage(agreement: Agreement | RedactableAgreement) {
+function extractTopology(agreement: Agreement | RedactableAgreement) {
     const topology = findCleartextSectionByField(agreement, "parentOrderHashes");
     const data = topology?.data as
         | { parentOrderHashes?: unknown; topologyMode?: unknown }
@@ -182,7 +182,7 @@ export function extractContract(
         deadline: order.deadline,
         clauses: agreement.sections.map(clauseFromSection),
         jurisdiction: extractJurisdictionSummary(agreement),
-        lineage: extractLineage(agreement),
+        topology: extractTopology(agreement),
         method: extractMethodSummary(agreement),
         committedAtBlock: order.blockNumber,
     };
