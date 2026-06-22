@@ -2,10 +2,7 @@
 
 import { useAssemblyChoices } from "@/lib/designer/assemblyDiscovery";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
-
-function truncateAddress(addr: `0x${string}`): string {
-    return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
-}
+import { truncateHex } from "@/lib/shared/formatHex";
 
 /**
  * The `/assemblies` inventory, read live from `AssemblyRegistry`.
@@ -65,7 +62,7 @@ export function AssemblyInventory() {
                         </div>
                         <AssemblyShapeLine choice={choice} />
                         <p className="text-xs text-ink-muted">
-                            Author <code className="font-mono">{truncateAddress(choice.author)}</code>
+                            Author <code className="font-mono">{truncateHex(choice.author)}</code>
                         </p>
                     </li>
                 ))}

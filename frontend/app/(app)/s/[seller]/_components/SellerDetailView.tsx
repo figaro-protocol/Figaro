@@ -23,11 +23,10 @@ import { SellerBrandingModule, SellerLogo } from "@/components/modules/SellerBra
 import { useCommerce } from "@/lib/commerce";
 import { useCartStore } from "@/lib/commerce/cartStore";
 import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
-import { CONTRACTS } from "@/lib/core/contracts";
 import { SellerTrackRecord } from "@/components/core/SellerTrackRecord";
 import { useSellerTrackRecord } from "@/lib/seller/useSellerTrackRecord";
 import { useTokenSymbol } from "@/components/sellers/TokenAddressInput";
-import { hexEqual } from "@/lib/shared/evm";
+import { hexEqual, normalizeAddressParam } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
 
@@ -38,10 +37,7 @@ interface Props {
 }
 
 export function SellerDetailView({ sellerAddress }: Props) {
-    const sellerAddressLower = sellerAddress.toLowerCase();
-    const sellerAddressTyped = sellerAddressLower.startsWith("0x")
-        ? (sellerAddressLower as `0x${string}`)
-        : undefined;
+    const { lower: sellerAddressLower, typed: sellerAddressTyped } = normalizeAddressParam(sellerAddress);
 
     const { catalogues: sellerCatalogues, isLoading: cataloguesLoading } = useRegisteredCatalogues();
 

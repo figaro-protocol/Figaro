@@ -173,9 +173,8 @@ const styles = StyleSheet.create({
 
 // ── Display helpers ─────────────────────────────────────────────────────────
 
-const DEFAULT_DECIMALS = 18;
 function fmt(amount: bigint): string {
-    return formatToken(amount, DEFAULT_DECIMALS);
+    return formatToken(amount); // formatToken defaults to 18 decimals
 }
 
 function shortHex(hex: string | undefined, head = 10, tail = 6): string {

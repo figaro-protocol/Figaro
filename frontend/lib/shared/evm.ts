@@ -123,3 +123,17 @@ export function clauseIdHash(name: string, version: number): Hex {
 export function textToBytes32(text: string): string {
     return `0x${bytesToHex(new TextEncoder().encode(text)).slice(0, 64)}`;
 }
+
+/**
+ * Normalize a route-param address into the two forms a seller/checkout surface
+ * needs together: `lower` (lowercased, for comparisons + keys) and `typed`
+ * (the `0x`-typed form, or `undefined` when the param isn't 0x-prefixed).
+ */
+export function normalizeAddressParam(raw: string): {
+    lower: string;
+    typed: `0x${string}` | undefined;
+} {
+    const lower = raw.toLowerCase();
+    const typed = lower.startsWith("0x") ? (lower as `0x${string}`) : undefined;
+    return { lower, typed };
+}

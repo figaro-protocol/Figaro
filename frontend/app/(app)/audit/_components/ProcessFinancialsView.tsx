@@ -38,10 +38,8 @@ import { truncateHex } from "@/lib/shared/formatHex";
 // enhancement is per-currency decimals lookup; for now we surface the raw
 // bigint alongside the formatted value so a reviewer can reconcile against
 // chain regardless of decimal assumptions.
-const DEFAULT_DECIMALS = 18;
-
 function formatAmount(amount: bigint): string {
-    return formatToken(amount, DEFAULT_DECIMALS);
+    return formatToken(amount); // formatToken defaults to 18 decimals
 }
 
 function shortAddr(addr: string): string {

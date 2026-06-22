@@ -34,7 +34,7 @@ import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
 import { useTokenSymbol } from "@/components/sellers/TokenAddressInput";
 import { calculateBonds } from "@figaro/core";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { hexEqual } from "@/lib/shared/evm";
+import { hexEqual, normalizeAddressParam } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatToken, parseToken } from "@/lib/shared/utils";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
@@ -65,10 +65,7 @@ function clauseValueSummary(fields: unknown): string {
 }
 
 export function CheckoutView({ sellerAddress }: Props) {
-    const sellerAddressLower = sellerAddress.toLowerCase();
-    const sellerAddressTyped = sellerAddressLower.startsWith("0x")
-        ? (sellerAddressLower as `0x${string}`)
-        : undefined;
+    const { lower: sellerAddressLower, typed: sellerAddressTyped } = normalizeAddressParam(sellerAddress);
 
     const chainId = useChainId();
     const { data: walletClient } = useWalletClient();
