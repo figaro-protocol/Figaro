@@ -12,8 +12,8 @@
 # marked `[PENDING: <spec target>]` — new entries MAY ship pending, but must
 # be followed by a spec PR within the same sprint.
 
-src/FigaroCore.sol:131 | _pullExact (commit bond pull) | commitBuyerExactDelta, commitSellerExactDelta, commitContractExactDelta, commitAllowanceDrainSafety, commitTokenConservation
-src/FigaroCore.sol:289 | resolveProcess (seller payout) | resolveSingleOrderPayout, resolveSingleOrderConservation
-src/FigaroCore.sol:290 | resolveProcess (buyer payout)  | resolveSingleOrderPayout, resolveSingleOrderConservation
-src/FigaroBatchVerifier.sol:374 | settleBatch → _executePositions (net payout to user)    | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
-src/FigaroBatchVerifier.sol:384 | settleBatch → _pullExact (net deposit from user)        | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
+src/FigaroCore.sol:132 | _pullExact (commit bond pull) | commitBuyerExactDelta, commitSellerExactDelta, commitContractExactDelta, commitAllowanceDrainSafety, commitTokenConservation
+src/FigaroCore.sol:291 | resolveProcess (seller payout) | resolveSingleOrderPayout, resolveSingleOrderConservation
+src/FigaroCore.sol:292 | resolveProcess (buyer payout)  | resolveSingleOrderPayout, resolveSingleOrderConservation
+src/FigaroBatchVerifier.sol:379 | settleBatch → _executePositions (net payout to user)    | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
+src/FigaroBatchVerifier.sol:389 | settleBatch → _pullExact (net deposit from user)        | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
