@@ -207,6 +207,7 @@ external-audit gates above:
 - `SellerRegistry.registrationDeposit` and `SellerRegistry.depositLockPeriod` == the mainnet values picked per Task 3 (NOT the devnet `0.001 ether` / `365 days` placeholders).
 - `AssemblyRegistry.registrationDeposit` and `AssemblyRegistry.depositLockPeriod` == the mainnet values picked per Task 3 — if Task 4 disposition (1) is taken. If disposition (2) is taken, `AssemblyRegistry` is not deployed and this check does not apply.
 - All settlement tokens are non-rebasing and non-fee-on-transfer.
+- Kleros subcourt IDs in the deployed dispute config match the target chain on klerosboard.com (Gnosis subcourt IDs differ from Ethereum mainnet) — verify before the deployment is treated as live.
 - Agreement / assembly-template / profile content is pinned for durable retrieval per Task 6 — on mainnet via sovereign per-party pinning (Option 3), never only a single Kubo node — and is fetchable by CID across the 6-year (5 + 1) retrieval-availability floor.
 - Wallet-security screening: drive one real commit signature through MetaMask against the live deployment and confirm no Blockaid "deceptive request" flag on the EIP-712 request (legitimate contracts get false-flagged — Kleros's escrow did); if flagged, file the MetaMask/Blockaid false-positive report and re-verify before launch. (Surfaced 2026-06-12: the universal Anvil default-deployer addresses tripped the list on devnet; devnet now deploys from a randomized throwaway key.)
 
