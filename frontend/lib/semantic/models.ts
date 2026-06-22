@@ -71,24 +71,6 @@ interface WithdrawSellerDepositCapabilityAction {
     kind: "withdraw-seller-deposit";
 }
 
-interface SubmitDisclosureCommitmentCapabilityAction {
-    executionType: "transaction";
-    kind: "submit-disclosure-commitment";
-    orderHash: string;
-    /** The order's committed DISCLOSURE clause (readable registry id) — put
-     *  there by the deriver from the agreement's sections, never named. */
-    clauseId: string;
-}
-
-interface SubmitDisclosureInventoryCapabilityAction {
-    executionType: "transaction";
-    kind: "submit-disclosure-inventory";
-    orderHash: string;
-    /** The order's committed MEASUREMENT clause (the disclosure's Category-1
-     *  sister; readable registry id) — put there by the deriver. */
-    clauseId: string;
-}
-
 /** Generic runtime attestation — the SELLER of an order advances ANY
  *  category-1 clause's enum ladder. One descriptor for every runtime-attestable
  *  clause; the engine names no clause. The executor builds the on-chain content
@@ -166,8 +148,6 @@ export type CapabilityActionDescriptor =
     | RegisterSellerCapabilityAction
     | UpdateSellerProfileCapabilityAction
     | WithdrawSellerDepositCapabilityAction
-    | SubmitDisclosureCommitmentCapabilityAction
-    | SubmitDisclosureInventoryCapabilityAction
     | SubmitClauseAttestationCapabilityAction
     | ClaimAuctionCapabilityAction
     | ClaimAirdropCapabilityAction
@@ -184,20 +164,6 @@ function isClaimAuctionCapability(
     return capability.action.executionType === "transaction" && capability.action.kind === "claim-auction";
 }
 
-function isDisclosureCommitmentCapability(
-    capability: CapabilityModel,
-): capability is CapabilityModelWithAction<SubmitDisclosureCommitmentCapabilityAction> {
-    return capability.action.executionType === "transaction"
-        && capability.action.kind === "submit-disclosure-commitment";
-}
-
-function isDisclosureInventoryCapability(
-    capability: CapabilityModel,
-): capability is CapabilityModelWithAction<SubmitDisclosureInventoryCapabilityAction> {
-    return capability.action.executionType === "transaction"
-        && capability.action.kind === "submit-disclosure-inventory";
-}
-
 interface RegisterSellerCapabilityInput {
     kind: "register-seller";
     metadataURI?: string;
@@ -212,21 +178,10 @@ interface WithdrawSellerDepositCapabilityInput {
     kind: "withdraw-seller-deposit";
 }
 
-interface SubmitDisclosureCommitmentCapabilityInput {
-    kind: "submit-disclosure-commitment";
-}
-
-interface SubmitDisclosureInventoryCapabilityInput {
-    kind: "submit-disclosure-inventory";
-    grams: bigint;
-}
-
 export type CapabilityExecutionInput =
     | RegisterSellerCapabilityInput
     | UpdateSellerProfileCapabilityInput
-    | WithdrawSellerDepositCapabilityInput
-    | SubmitDisclosureCommitmentCapabilityInput
-    | SubmitDisclosureInventoryCapabilityInput;
+    | WithdrawSellerDepositCapabilityInput;
 
 export interface CapabilityModel {
     id: string;

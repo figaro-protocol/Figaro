@@ -12,7 +12,7 @@ export interface PermitSignature {
     data: `0x${string}`;
 }
 
-function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress: `0x${string}`; owner?: `0x${string}` | undefined; spender: `0x${string}` }) {
+function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress?: `0x${string}` | undefined; owner?: `0x${string}` | undefined; spender: `0x${string}` }) {
     const chainId = useChainId();
 
     const { data: allowance, refetch: refetchAllowance } = useReadContract({
@@ -66,6 +66,7 @@ function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress: `0x$
     }, [allowance]);
 
     const approve = useCallback((amount: bigint) => {
+        if (!tokenAddress) return;
         return writeApprove({
             address: tokenAddress,
             abi: ERC20_ABI,
@@ -116,6 +117,7 @@ function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress: `0x$
     }, [buildPermitTypedData, signTypedDataAsync]);
 
     const permit = useCallback(async (amount: bigint) => {
+        if (!tokenAddress) return;
         const { v, r, s, deadline, owner: ownerAddr } = await signPermitRaw(amount);
         return writePermit({
             address: tokenAddress,

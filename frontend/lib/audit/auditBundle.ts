@@ -22,16 +22,11 @@
  */
 
 import { type Agreement, type RedactableAgreement } from "@/lib/core/agreement";
-import { findCleartextSectionByField } from "@/lib/core/orderAgreement";
-import { clauseIsProcessLog } from "@/lib/shared/clauseSpecSource";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import { extractContract, type ContractDocument } from "./contractExtract";
-import { extractInvoice, type InvoiceDocument } from "./invoiceExtract";
-import { extractBillOfLading, type BillOfLadingDocument } from "./billOfLadingExtract";
-import { extractEmissions, type EmissionsDocument } from "./emissionsExtract";
-import { extractProximity, type ProximityDocument } from "./proximityExtract";
 import { extractProcessLogs, type ProcessLogsDocument } from "./processLogsExtract";
+import { extractClauseData, type ClauseDataDocument } from "./clauseDataExtract";
 import {
     extractDutchAuction,
     type DutchAuctionDocument,
@@ -45,31 +40,12 @@ import {
 } from "./sellerRegistryExtract";
 import { buildHashAppendix, type HashAppendixDocument } from "./hashAppendix";
 
-/** True when the order is a CARRIAGE LEG: a sub-order (its topology section
- *  declares non-empty parents) carrying a runtime process log (a Category-1
- *  enum-ladder clause, per its registered spec). Both signals are derived —
- *  modality is topology + clauses, never a stored field — so any
- *  registry-defined process clause marks the leg. Buyer↔merchant roots,
- *  pickup orders, and consume-onsite orders have no parents and return
- *  false. The process-log check reads the spec, so it sees redacted
- *  sections too; the topology parents read needs the section cleartext
- *  (audit bundles redact only commerce today). */
-export function isCarriageOrder(agreement: Agreement | RedactableAgreement): boolean {
-    const topology = findCleartextSectionByField(agreement, "parentOrderHashes");
-    const parents = (topology?.data as { parentOrderHashes?: unknown } | undefined)?.parentOrderHashes;
-    if (!Array.isArray(parents) || parents.length === 0) return false;
-    return agreement.sections.some((s) => clauseIsProcessLog(s.clause));
-}
-
 export interface AuditBundle {
     contract: ContractDocument;
-    invoice: InvoiceDocument;
-    /** Present only when the order is a carriage leg; see
-     *  `isCarriageOrder` and `docs/v5/BOL_RESEARCH.md`. */
-    billOfLading?: BillOfLadingDocument;
-    emissions: EmissionsDocument;
-    proximity: ProximityDocument;
     processLogs: ProcessLogsDocument;
+    /** Every committed clause's data, rendered generically from its spec — the
+     *  open-world per-clause view (names no clause, assumes no field). */
+    clauseData: ClauseDataDocument;
     dutchAuction: DutchAuctionDocument;
     sellerRegistry: SellerRegistryDocument;
     hashAppendix: HashAppendixDocument;
@@ -97,13 +73,8 @@ export function buildAuditBundle(
     const contract = extractContract(order, agreement);
     return {
         contract,
-        invoice: extractInvoice(order, agreement),
-        ...(isCarriageOrder(agreement)
-            ? { billOfLading: extractBillOfLading(order, agreement, attestations) }
-            : {}),
-        emissions: extractEmissions(order, agreement, attestations),
-        proximity: extractProximity(order, agreement, attestations),
         processLogs: extractProcessLogs(order, attestations),
+        clauseData: extractClauseData(order, agreement),
         dutchAuction: extractDutchAuction(
             order,
             contract.method,

@@ -40,7 +40,8 @@
       "bash scripts/lint-no-clause-grouping-synonyms.sh",
       "bash scripts/lint-type-safety.sh",
       "bash scripts/lint-no-handwritten-kernel-abis.sh",
-      "bash scripts/lint-composition-is-designer-only.sh"
+      "bash scripts/lint-composition-is-designer-only.sh",
+      "bash scripts/lint-no-network-fallbacks.sh"
     ],
     "sdk/src/clauses/examples/*.json": [
       "bash scripts/lint-clause-choices-are-bounded.sh"

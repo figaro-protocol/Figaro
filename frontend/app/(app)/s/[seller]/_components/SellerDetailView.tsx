@@ -51,14 +51,12 @@ export function SellerDetailView({ sellerAddress }: Props) {
     );
 
     const { address: buyer } = useCommerce();
-    // The seller's accepted-token identity — pricing token comes from THEIR
-    // profile; env-var fallback only for fixture / pre-clause-split catalogues.
-    const currency = (sellerCatalogue?.defaultTokenAddress
-        ?? CONTRACTS.mockToken
-        ?? CONTRACTS.permitToken) as `0x${string}`;
-    const { data: resolvedSymbol } = useTokenSymbol(currency);
+    // The seller's declared settlement currency, or undefined — never a coined
+    // default (resolved-empty = absence).
+    const currency = sellerCatalogue?.defaultTokenAddress as `0x${string}` | undefined;
+    const { data: resolvedSymbol } = useTokenSymbol(currency ?? "");
     const tokenSymbol = resolvedSymbol
-        ?? sellerCatalogue?.acceptedTokens?.find((t) => hexEqual(t.address, currency))?.symbol
+        ?? (currency ? sellerCatalogue?.acceptedTokens?.find((t) => hexEqual(t.address, currency))?.symbol : undefined)
         ?? "";
 
     const { items, addItem, removeItem, clearCart } = useCartStore();

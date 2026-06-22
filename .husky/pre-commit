@@ -2,8 +2,17 @@ npx lint-staged
 bash scripts/lint-claude-md.sh
 bash scripts/lint-clause-counts.sh
 bash scripts/lint-chain-gas.sh
+# Open-world floor: no fabricated network state (?? CONTRACTS / coined emoji),
+# swept over the WHOLE tracked tree, not just the staged diff — the structural
+# fix for guards that only policed diffs and so never certified repo state.
+bash scripts/lint-no-network-fallbacks.sh
 # Dead-code guard: knip fails the commit on any orphaned frontend file, unused
 # export, or unused type. The tool is the source of truth for what's dead — not
 # prose, not memory. ~3s; ignores in frontend/knip.json; namespace-access
 # false-positives are tagged `@public` at the declaration.
 ( cd frontend && npx knip --include files,exports,types --no-progress )
+# Semantic open-world gate: a reasoning agent (figaro-open-world-auditor) reads the
+# staged diff and blocks PRIOR-KNOWLEDGE-OF-THE-REGISTRIES that grep structurally
+# cannot see (field-name+meaning couplings). Heaviest check, runs last; fail-open
+# so it never bricks a commit on infra. Override: git commit --no-verify.
+bash scripts/semantic-precommit-audit.sh

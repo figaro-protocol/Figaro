@@ -259,7 +259,7 @@ export function sectionByField(agreement: Agreement, fieldName: string): Agreeme
 /** Redactable-aware sibling of `sectionsByField`: every section — cleartext
  *  OR redacted — whose registered spec declares `fieldName` (data-key
  *  fallback applies only to cleartext sections, where data is readable). */
-export function findAnySectionsByField(
+function findAnySectionsByField(
     agreement: Agreement | RedactableAgreement,
     fieldName: string,
 ): AnyAgreementSection[] {

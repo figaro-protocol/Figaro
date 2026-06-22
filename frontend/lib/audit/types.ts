@@ -1,39 +1,20 @@
 /**
- * Shared types for the audit-bundle pipeline (Phases C-E of the
- * financial-statements deliverable).
+ * Shared types for the audit-bundle pipeline.
  *
- * The audit bundle assembles 5 protocol artifacts into one
- * cryptographically-verifiable document set:
+ * The bundle composes open-world, clause-agnostic documents into one
+ * cryptographically-verifiable set:
  *
- *   1. Contract     — agreement document referenced by `agreementHash`
- *   2. Financials   — balance sheet + income statement + cash flow
- *                     (delivered separately by `lib/semantic/financialsProjection.ts`)
- *   3. Invoice      — line items extracted from the commerce clause (found
- *                     by its declared `lineItems` field)
- *   4. Bill of Lading — handoff + geo + per-role process attestations
- *   5. Hash appendix — every hash in the bundle, anchored to its on-chain source
+ *   - Contract     — agreement document referenced by `agreementHash`
+ *   - Clause data  — every committed clause's fields, rendered generically
+ *                    from its registered spec (names no clause, assumes no field)
+ *   - Process logs — the attestation timeline by tier + ladder
+ *   - Hash appendix — every hash in the bundle, anchored to its on-chain source
  *
- * All four extractors here are PURE functions. Each takes already-loaded
- * chain data as input and returns a structured per-section document.
- * Callers (Phase D PDF renderer, Phase E verify page) are responsible
- * for fetching `Agreement`, `Order`, and `AttestationRecord[]` from chain.
+ * Every extractor is a PURE function: it takes already-loaded chain data and
+ * returns a structured per-section document. Callers (PDF renderer, the
+ * `/audit` verify surface) fetch `Agreement`, `Order`, and the attestation
+ * records from chain.
  */
-
-/**
- * Per-attestation receipt — what landed on chain for one AttestationRecorded
- * event. Shape is uniform across attestation families (GHG measurement,
- * proximity proof, etc.); the original content payload lives in the
- * transaction calldata and is decoded by the clause-specific extractor.
- */
-export interface AttestationReceipt {
-    /** keccak256 of the attestation content bytes. */
-    contentRef: string;
-    attester: string;
-    /** Lifecycle stage the attestation was recorded at (uint8 0-4). */
-    stage: number;
-    blockNumber: number;
-    transactionHash?: string;
-}
 
 export interface ExtractedDocument {
     /** Display title at the top of the rendered section. */
@@ -51,19 +32,3 @@ export interface ExtractedDocument {
     /** Seller address from the order — same load-bearing rationale. */
     seller: string;
 }
-
-/**
- * Canonical 5-stage BoL progression labels. The BoL extractor maps each
- * milestone to its witnessing stage CODE, resolved against whatever
- * process-log clause's spec ladder declares it — see STAGE_WITNESS_CODE in
- * billOfLadingExtract.ts. Names are documentation conventions, not
- * on-chain enforced — declared here so the BoL renderer + auditor see
- * consistent labels.
- */
-export const DELIVERY_LIFECYCLE_STAGES: readonly { id: number; name: string }[] = [
-    { id: 0, name: "PreparationStarted" },
-    { id: 1, name: "ReadyForPickup" },
-    { id: 2, name: "CourierEnRoute" },
-    { id: 3, name: "PickedUp" },
-    { id: 4, name: "Delivered" },
-] as const;

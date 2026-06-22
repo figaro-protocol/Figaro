@@ -16,19 +16,14 @@
  *     (`executeCapability`). Add a clause → its capability surfaces here with
  *     no edit to this page. (Enforced by `lint-no-hardcoded-clauses-in-runtime`.)
  *
- * Self-gating panels (settlement, auction, GHG, offset) render their own empty
- * states off-process; they are clause modules mounted generically, not page
- * logic. This page does NOT replace `/audit/[processId]` (the forensics view).
+ * The settlement panel (kernel proceeds — names no clause) renders once the
+ * process is resolved. This page does NOT replace `/audit/[processId]`.
  */
 
 import Link from "next/link";
 import { useMemo } from "react";
 import { useAccount } from "wagmi";
-import { PreResolveOffsetPanel } from "@/components/core/PreResolveOffsetPanel";
 import { SettlementProceedsPanel } from "@/components/core/SettlementProceedsPanel";
-import { SellerAuctionPanel } from "@/components/core/SellerAuctionPanel";
-import { GHGAnchorPanel } from "@/components/core/GHGAnchorPanel";
-import { GHGWorkflowPanel } from "@/components/core/GHGWorkflowPanel";
 import { CapabilityRail } from "@/components/core/CapabilityRail";
 import { useSemanticProcessWorkspace } from "@/hooks/core/useSemanticProcessWorkspace";
 import { useSellerListings } from "@/lib/seller/useSellerListings";
@@ -149,13 +144,6 @@ export function OrderTimelineView({ processId }: Props) {
                     bondReturned={myOrder.settlementBreakdown?.lockedBond?.amount ?? myOrder.payment * 2n}
                 />
             )}
-
-            {/* Self-gating clause panels — each renders its own empty state when
-                its clause is absent from the process. */}
-            <SellerAuctionPanel processId={processId} />
-            <GHGAnchorPanel processId={processId} />
-            <GHGWorkflowPanel processId={processId} />
-            {role === "buyer" && !isResolved && <PreResolveOffsetPanel processId={processId as `0x${string}`} />}
 
             {/* What you can do — every action the builder derived from the
                 agreement's clauses + attestation state. One execution path. */}

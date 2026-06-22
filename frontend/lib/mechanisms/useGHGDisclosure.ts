@@ -31,17 +31,13 @@ import {
 } from "viem";
 import { isEmptyHex, ZERO_BYTES32, clauseIdHash } from "@/lib/shared/evm";
 import { ATTESTATION_COORDINATOR_ABI } from "@/lib/core/contracts";
-import {
-    DISCLOSURE_KIND,
-    DISCLOSURE_KIND_LABELS,
-    MEASUREMENT_KIND_LABELS,
-} from "@/lib/mechanisms/contracts";
+import { DISCLOSURE_KIND } from "@/lib/mechanisms/contracts";
 import {
     getAttestationsByProcessAndClause,
     getAttestationsByOrder,
     type IndexedAttestationLog,
 } from "@/lib/core/indexer";
-import { clauseDeclaresField, getClauseSpec, listKnownClauseIds } from "@/lib/shared/clauseSpecSource";
+import { clauseDeclaresField, getClauseSpec, listKnownClauseIds, describeAttestation } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
 
 export type AttestationRecord = {
@@ -170,11 +166,11 @@ function parseAttestationLog(log: IndexedAttestationLog): AttestationRecord {
 
 // ── Read hooks — event-sourced via cached indexer ────────────────────────────
 
-function labelFor(clauseIdHash: string, stage: number, measurementHashes: readonly string[]): string {
-    if (measurementHashes.includes(clauseIdHash)) {
-        return MEASUREMENT_KIND_LABELS[stage] ?? `Stage(${stage})`;
-    }
-    return DISCLOSURE_KIND_LABELS[stage] ?? `Stage(${stage})`;
+// The stage label is the clause's OWN spec valueLabel (via describeAttestation),
+// never a hardcoded per-family table — any registered clause labels its own
+// ladder from its spec, so measurement vs disclosure needs no distinction here.
+function labelFor(clauseIdHash: string, stage: number): string {
+    return describeAttestation(clauseIdHash, stage).eventLabel;
 }
 
 export function useOrderDisclosureTasks(orderHash: string | undefined) {
@@ -217,7 +213,7 @@ export function useOrderDisclosureTasks(orderHash: string | undefined) {
                     const task: DisclosureTask = {
                         orderHash: rec.orderHash,
                         stage: rec.stage,
-                        stageLabel: labelFor(rec.clauseId, rec.stage, measurementHashes),
+                        stageLabel: labelFor(rec.clauseId, rec.stage),
                         contentRef: contentHex,
                         attester: rec.attester,
                         actualGrams,

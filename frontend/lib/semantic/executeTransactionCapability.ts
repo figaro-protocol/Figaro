@@ -18,11 +18,6 @@ export interface TransactionCapabilityExecutors {
     /** Withdraws the deposit and clears the dedup guard, freeing the address
      *  to re-register. Subject to the deploy-time lock period. */
     withdrawSellerDeposit?: () => TransactionExecutionResult;
-    /** Disclosure commitment / inventory attestations. The clauseId travels in
-     *  the capability action (the deriver reads it off the order's sections),
-     *  so neither the executor nor its wiring names a clause. */
-    submitDisclosureCommitment?: (orderHash: string, clauseId: string) => TransactionExecutionResult;
-    submitDisclosureInventory?: (orderHash: string, clauseId: string, grams: bigint) => TransactionExecutionResult;
     /** Generic runtime attestation — advances any clause's enum ladder (and pairs
      *  a proximity proof when the descriptor carries one). Replaces the per-clause
      *  merchant/courier executors. */
@@ -89,24 +84,6 @@ export async function executeTransactionCapabilityAction(
                 executors.withdrawSellerDeposit,
                 "Seller deposit withdrawal is unavailable.",
             )();
-            break;
-        }
-        case "submit-disclosure-commitment": {
-            txHash = await ensureExecutor(
-                executors.submitDisclosureCommitment,
-                "Disclosure commitment execution is unavailable.",
-            )(action.orderHash, action.clauseId);
-            break;
-        }
-        case "submit-disclosure-inventory": {
-            const grams = input?.kind === "submit-disclosure-inventory"
-                ? input.grams
-                : 0n;
-            if (grams <= 0n) throw new Error("Enter a non-zero emissions value in grams CO2e.");
-            txHash = await ensureExecutor(
-                executors.submitDisclosureInventory,
-                "Disclosure inventory execution is unavailable.",
-            )(action.orderHash, action.clauseId, grams);
             break;
         }
         case "submit-clause-attestation":

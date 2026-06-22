@@ -48,9 +48,12 @@ export function ContentImage({
             />
         );
     }
+    // No source ⇒ ABSENCE (the optional fallback, else nothing) — never a coined
+    // emoji stand-in. A non-empty non-URI `src` is the seller's own chosen glyph.
+    if (!src) return fallback !== undefined ? <>{fallback}</> : null;
     return (
         <span className={className ?? "text-3xl"} aria-hidden="true">
-            {src || "🍽️"}
+            {src}
         </span>
     );
 }

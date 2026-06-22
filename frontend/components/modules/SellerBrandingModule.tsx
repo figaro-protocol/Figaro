@@ -54,11 +54,8 @@ export function SellerBrandingModule({
  */
 interface SellerLogoProps {
     sellerAddress: `0x${string}` | undefined;
-    /**
-     * Emoji to render when no logo loads AND no `fallbackName` is supplied.
-     * Backward-compatibility default; `fallbackName` is the preferred
-     * fallback path because it produces a per-seller-distinct affordance.
-     */
+    /** The seller's OWN glyph, when they set one. Absent ⇒ a neutral placeholder
+     *  (never a coined default). */
     fallbackEmoji?: string;
     /**
      * Seller's display name. When provided, the fallback path renders a
@@ -73,7 +70,7 @@ interface SellerLogoProps {
 
 export function SellerLogo({
     sellerAddress,
-    fallbackEmoji = "🍽️",
+    fallbackEmoji,
     fallbackName,
     className,
     size = 48,
@@ -142,21 +139,33 @@ export function SellerLogo({
         );
     }
 
-    // Emoji fallback — backward-compatible default.
+    // The seller's OWN glyph when they set one; otherwise a NEUTRAL placeholder —
+    // never a coined stand-in (resolved-empty = absence).
+    if (fallbackEmoji) {
+        return (
+            <span
+                className={className}
+                style={{
+                    fontSize: `${size * 0.6}px`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: size,
+                    height: size,
+                }}
+                aria-hidden="true"
+            >
+                {fallbackEmoji}
+            </span>
+        );
+    }
     return (
         <span
             className={className}
-            style={{
-                fontSize: `${size * 0.6}px`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: size,
-                height: size,
-            }}
+            style={{ width: size, height: size, display: "block" }}
             aria-hidden="true"
         >
-            {fallbackEmoji}
+            <span className="block w-full h-full bg-neutral-100 rounded" />
         </span>
     );
 }

@@ -19,7 +19,7 @@ import type { CheckoutHandle } from "./types";
  * @param spender The contract that will pull funds (defaults to FigaroCore)
  */
 export function useCheckout(
-    token: `0x${string}`,
+    token: `0x${string}` | undefined,
     spender: `0x${string}` = CONTRACTS.core,
 ): CheckoutHandle {
     const { address } = useCommerce();
@@ -33,7 +33,7 @@ export function useCheckout(
         abi: ERC20_ABI,
         functionName: "balanceOf",
         args: [(address ?? ZERO_ADDRESS) as `0x${string}`],
-        query: { enabled: !!address },
+        query: { enabled: !!address && !!token },
     });
     const balance = (rawBalance as bigint | undefined) ?? undefined;
 

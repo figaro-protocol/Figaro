@@ -32,7 +32,6 @@ import {
 } from "@react-pdf/renderer";
 import { formatToken } from "@/lib/shared/utils";
 import type { AuditBundle } from "./auditBundle";
-import type { BillOfLadingDocument } from "./billOfLadingExtract";
 import type {
     BalanceSheetEntry,
     FinancialsModel,
@@ -384,342 +383,46 @@ function ContractPage({ contract }: { contract: AuditBundle["contract"] }) {
     );
 }
 
-// ── Invoice page ────────────────────────────────────────────────────────────
+// ── Generic per-clause data page ────────────────────────────────────────────
+// Renders EVERY committed clause from its registered spec (title + field labels
+// + values) via describeClause. Names no clause, assumes no field — the
+// open-world replacement for the per-family genre pages.
 
-function InvoicePage({ invoice }: { invoice: AuditBundle["invoice"] }) {
-    const totalLineValue = invoice.lineItems.reduce(
-        (acc, li) => acc + Number(li.quantity) * Number(li.unitPrice),
-        0,
-    );
+function ClauseDataPage({ doc }: { doc: AuditBundle["clauseData"] }) {
     return (
         <Page size="A4" style={styles.page}>
             <View style={styles.header}>
-                <Text style={styles.label}>Invoice</Text>
-                <Text style={styles.h1}>{invoice.title}</Text>
+                <Text style={styles.label}>Clause data</Text>
+                <Text style={styles.h1}>{doc.title}</Text>
             </View>
             <View style={styles.section}>
                 <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>invoice no.</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{shortHex(invoice.invoiceNumber, 14, 8)}</Text>
-                </View>
-                {invoice.issuedAtBlock !== undefined && (
-                    <View style={styles.metadataRow}>
-                        <Text style={styles.metadataKey}>issued at block</Text>
-                        <Text style={styles.metadataValue}>{invoice.issuedAtBlock}</Text>
-                    </View>
-                )}
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>bill from (seller)</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{invoice.billFrom}</Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>bill to (buyer)</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{invoice.billTo}</Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>currency</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{invoice.currency}</Text>
+                    <Text style={styles.metadataKey}>orderHash</Text>
+                    <Text style={[styles.metadataValue, styles.mono]}>{doc.orderHash}</Text>
                 </View>
             </View>
-
-            <Text style={styles.h2}>
-                Line items {invoice.lineItemsSealed ? "🔒 sealed" : `(${invoice.lineItems.length})`}
+            <Text style={styles.note}>
+                Every clause committed on this order, rendered from its registered
+                spec — title, field labels, and committed value(s). Names no clause
+                and assumes no field; a clause the protocol has never seen renders
+                here from its own spec.
             </Text>
-            <View style={styles.table}>
-                <View style={[styles.tableRow, styles.tableHeader]}>
-                    <Text style={[styles.tCell, { flex: 2 }]}>Item id</Text>
-                    <Text style={[styles.tCell, { flex: 4 }]}>Name</Text>
-                    <Text style={[styles.tCellRight, { flex: 1 }]}>Qty</Text>
-                    <Text style={[styles.tCellRight, { flex: 2 }]}>Unit price</Text>
-                    <Text style={[styles.tCellRight, { flex: 2 }]}>Line total</Text>
-                </View>
-                {invoice.lineItemsSealed ? (
-                    <View style={styles.tableRow}>
-                        <Text style={[styles.tCell, { flex: 11 }]}>
-                            🔒 Line items sealed. The commerce clause was redacted in
-                            this distribution; cleartext is held by buyer + seller and
-                            can be revealed selectively. The total below is preserved
-                            (recorded on chain at commit, independent of redaction).
-                        </Text>
-                    </View>
-                ) : invoice.lineItems.length === 0 ? (
-                    <View style={styles.tableRow}>
-                        <Text style={[styles.tCell, { flex: 11 }]}>
-                            No line items in the agreement&apos;s commerce clause.
-                        </Text>
-                    </View>
-                ) : (
-                    invoice.lineItems.map((li) => {
-                        const lineTotal = Number(li.quantity) * Number(li.unitPrice);
-                        return (
-                            <View key={li.itemId} style={styles.tableRow}>
-                                <Text style={[styles.tCellMono, { flex: 2 }]}>{li.itemId}</Text>
-                                <Text style={[styles.tCell, { flex: 4 }]}>{li.name}</Text>
-                                <Text style={[styles.tCellRight, { flex: 1 }]}>{li.quantity}</Text>
-                                <Text style={[styles.tCellRight, { flex: 2 }]}>{li.unitPrice}</Text>
-                                <Text style={[styles.tCellRight, { flex: 2 }]}>{lineTotal}</Text>
+            {doc.clauses.map((clause) => (
+                <View key={clause.clauseId}>
+                    <Text style={styles.h2}>{clause.title}</Text>
+                    <View style={styles.table}>
+                        {clause.fields.map((field) => (
+                            <View key={field.name} style={styles.tableRow}>
+                                <Text style={[styles.tCell, { flex: 2 }]}>{field.label}</Text>
+                                <Text style={[styles.tCell, { flex: 3 }]}>{field.values.join(", ")}</Text>
                             </View>
-                        );
-                    })
-                )}
-            </View>
-
-            <View style={styles.section}>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>line-items sum</Text>
-                    <Text style={styles.metadataValue}>{totalLineValue}</Text>
+                        ))}
+                    </View>
                 </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>total (P, smallest units)</Text>
-                    <Text style={[styles.metadataValue, { fontWeight: 700 }]}>{invoice.total.toString()}</Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>total (18-decimal display)</Text>
-                    <Text style={styles.metadataValue}>{fmt(invoice.total)}</Text>
-                </View>
-            </View>
-            <Text style={styles.note}>
-                The line-items sum is the unit-price arithmetic from the
-                agreement; total (P) is the kernel-recorded payment that
-                anchors against on-chain transfers. Reconcile by inspection.
-            </Text>
-            <PageFooter agreementHash={invoice.agreementHash} processId={invoice.processId} />
-        </Page>
-    );
-}
-
-// ── Bill of Lading page ─────────────────────────────────────────────────────
-
-function BillOfLadingPage({ bol }: { bol: BillOfLadingDocument }) {
-    return (
-        <Page size="A4" style={styles.page}>
-            <View style={styles.header}>
-                <Text style={styles.label}>Bill of Lading</Text>
-                <Text style={styles.h1}>{bol.title}</Text>
-            </View>
-            <View style={styles.section}>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>BoL no.</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{shortHex(bol.bolNumber, 14, 8)}</Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>consignor</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{bol.consignor}</Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>consignee</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{bol.consignee}</Text>
-                </View>
-                {bol.handoffMode && (
-                    <View style={styles.metadataRow}>
-                        <Text style={styles.metadataKey}>handoff mode</Text>
-                        <Text style={[styles.metadataValue, styles.mono]}>{bol.handoffMode}</Text>
-                    </View>
-                )}
-                {bol.originGeohash && (
-                    <View style={styles.metadataRow}>
-                        <Text style={styles.metadataKey}>origin geohash</Text>
-                        <Text style={[styles.metadataValue, styles.mono]}>{bol.originGeohash}</Text>
-                    </View>
-                )}
-                {bol.destinationGeohash && (
-                    <View style={styles.metadataRow}>
-                        <Text style={styles.metadataKey}>destination geohash</Text>
-                        <Text style={[styles.metadataValue, styles.mono]}>{bol.destinationGeohash}</Text>
-                    </View>
-                )}
-                {bol.massGrams !== undefined && bol.massGrams > 0 && (
-                    <View style={styles.metadataRow}>
-                        <Text style={styles.metadataKey}>mass</Text>
-                        <Text style={[styles.metadataValue, styles.mono]}>{`${bol.massGrams} g`}</Text>
-                    </View>
-                )}
-                {bol.volumeMl !== undefined && bol.volumeMl > 0 && (
-                    <View style={styles.metadataRow}>
-                        <Text style={styles.metadataKey}>volume</Text>
-                        <Text style={[styles.metadataValue, styles.mono]}>{`${bol.volumeMl} ml`}</Text>
-                    </View>
-                )}
-                {bol.classOfService && (
-                    <View style={styles.metadataRow}>
-                        <Text style={styles.metadataKey}>class of service</Text>
-                        <Text style={[styles.metadataValue, styles.mono]}>{bol.classOfService}</Text>
-                    </View>
-                )}
-            </View>
-
-            <Text style={styles.h2}>Lifecycle stages</Text>
-            <View style={styles.table}>
-                <View style={[styles.tableRow, styles.tableHeader]}>
-                    <Text style={[styles.tCell, { flex: 0.6 }]}>#</Text>
-                    <Text style={[styles.tCell, { flex: 2.5 }]}>Stage</Text>
-                    <Text style={[styles.tCell, { flex: 1.2 }]}>Status</Text>
-                    <Text style={[styles.tCellMono, { flex: 2.5 }]}>Attester</Text>
-                    <Text style={[styles.tCellMono, { flex: 2.5 }]}>contentRef</Text>
-                    <Text style={[styles.tCell, { flex: 1 }]}>Block</Text>
-                </View>
-                {bol.stages.map((stage) => (
-                    <View key={stage.stageId} style={styles.tableRow}>
-                        <Text style={[styles.tCell, { flex: 0.6 }]}>{stage.stageId}</Text>
-                        <Text style={[styles.tCell, { flex: 2.5 }]}>{stage.stageName}</Text>
-                        <Text style={[styles.tCell, { flex: 1.2 }, stage.attested ? styles.badgeOk : styles.badgeBad]}>
-                            {stage.attested ? "Attested" : "Pending"}
-                        </Text>
-                        <Text style={[styles.tCellMono, { flex: 2.5 }]}>
-                            {stage.attester ? shortAddr(stage.attester) : "—"}
-                        </Text>
-                        <Text style={[styles.tCellMono, { flex: 2.5 }]}>
-                            {stage.contentRef ? shortHex(stage.contentRef, 10, 6) : "—"}
-                        </Text>
-                        <Text style={[styles.tCell, { flex: 1 }]}>
-                            {stage.attestedAtBlock ?? "—"}
-                        </Text>
-                    </View>
-                ))}
-            </View>
-            <Text style={styles.note}>
-                Each contentRef = keccak256(content). Original evidenceUri (if
-                any) recoverable from the transaction calldata.
-            </Text>
-            <PageFooter agreementHash={bol.agreementHash} processId={bol.processId} />
-        </Page>
-    );
-}
-
-// ── Emissions page ──────────────────────────────────────────────────────────
-
-function EmissionsPage({ doc }: { doc: AuditBundle["emissions"] }) {
-    return (
-        <Page size="A4" style={styles.page}>
-            <View style={styles.header}>
-                <Text style={styles.label}>Emissions</Text>
-                <Text style={styles.h1}>{doc.title}</Text>
-            </View>
-            <View style={styles.section}>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>orderHash</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{doc.orderHash}</Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>committed?</Text>
-                    <Text style={[styles.metadataValue, doc.disclosed ? styles.badgeOk : styles.badgeBad]}>
-                        {doc.disclosed ? "Yes — GHG framework declared at signing" : "No — order signed without a GHG clause"}
-                    </Text>
-                </View>
-                {doc.standardLabel && (
-                    <View style={styles.metadataRow}>
-                        <Text style={styles.metadataKey}>accounting standard</Text>
-                        <Text style={styles.metadataValue}>{doc.standardLabel}</Text>
-                    </View>
-                )}
-                {doc.standardClauseKey && (
-                    <View style={styles.metadataRow}>
-                        <Text style={styles.metadataKey}>clauseId</Text>
-                        <Text style={[styles.metadataValue, styles.mono]}>{doc.standardClauseKey}</Text>
-                    </View>
-                )}
-                {doc.scope !== undefined && (
-                    <View style={styles.metadataRow}>
-                        <Text style={styles.metadataKey}>scope</Text>
-                        <Text style={styles.metadataValue}>
-                            {doc.scope === 0 ? "Unset" : `Scope ${doc.scope}`}
-                        </Text>
-                    </View>
-                )}
-            </View>
-
-            <Text style={styles.h2}>Runtime measurements ({doc.measurements.length})</Text>
-            {doc.measurements.length === 0 ? (
-                <Text style={styles.sectionBody}>
-                    No runtime grams attestations recorded against this order.
-                </Text>
-            ) : (
-                <View style={styles.table}>
-                    <View style={[styles.tableRow, styles.tableHeader]}>
-                        <Text style={[styles.tCell, { flex: 0.8 }]}>Stage</Text>
-                        <Text style={[styles.tCellMono, { flex: 3 }]}>Attester</Text>
-                        <Text style={[styles.tCellMono, { flex: 4 }]}>contentRef</Text>
-                        <Text style={[styles.tCell, { flex: 1 }]}>Block</Text>
-                    </View>
-                    {doc.measurements.map((m, i) => (
-                        <View key={`${m.contentRef}-${i}`} style={styles.tableRow}>
-                            <Text style={[styles.tCell, { flex: 0.8 }]}>{m.stage}</Text>
-                            <Text style={[styles.tCellMono, { flex: 3 }]}>{shortAddr(m.attester)}</Text>
-                            <Text style={[styles.tCellMono, { flex: 4 }]}>{shortHex(m.contentRef, 14, 8)}</Text>
-                            <Text style={[styles.tCell, { flex: 1 }]}>{m.blockNumber}</Text>
-                        </View>
-                    ))}
-                </View>
+            ))}
+            {doc.clauses.length === 0 && (
+                <Text style={styles.sectionBody}>No clause data committed on this order.</Text>
             )}
-            <Text style={styles.note}>
-                Each contentRef = keccak256(`(uint256 grams)`). Original
-                grams value recoverable from the transaction calldata.
-                Standard identity lives in the clauseId — there is one sister
-                clause per accounting framework.
-            </Text>
-            <PageFooter agreementHash={doc.agreementHash} processId={doc.processId} />
-        </Page>
-    );
-}
-
-// ── Proximity page ──────────────────────────────────────────────────────────
-
-function ProximityPage({ doc }: { doc: AuditBundle["proximity"] }) {
-    return (
-        <Page size="A4" style={styles.page}>
-            <View style={styles.header}>
-                <Text style={styles.label}>Proximity</Text>
-                <Text style={styles.h1}>{doc.title}</Text>
-            </View>
-            <View style={styles.section}>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>orderHash</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{doc.orderHash}</Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>policy committed?</Text>
-                    <Text style={[styles.metadataValue, doc.policyCommitted ? styles.badgeOk : styles.badgeBad]}>
-                        {doc.policyCommitted ? "Yes — band declared at signing" : "No — no policy clause signed"}
-                    </Text>
-                </View>
-                {doc.committedBand !== undefined && (
-                    <View style={styles.metadataRow}>
-                        <Text style={styles.metadataKey}>committed band</Text>
-                        <Text style={styles.metadataValue}>
-                            {doc.committedBand === 0 ? "Unset" : `Band ${doc.committedBand}`}
-                        </Text>
-                    </View>
-                )}
-            </View>
-
-            <Text style={styles.h2}>Runtime proofs ({doc.proofs.length})</Text>
-            {doc.proofs.length === 0 ? (
-                <Text style={styles.sectionBody}>
-                    No proximity-proof attestations recorded against this order.
-                </Text>
-            ) : (
-                <View style={styles.table}>
-                    <View style={[styles.tableRow, styles.tableHeader]}>
-                        <Text style={[styles.tCell, { flex: 0.8 }]}>Stage</Text>
-                        <Text style={[styles.tCellMono, { flex: 3 }]}>Attester</Text>
-                        <Text style={[styles.tCellMono, { flex: 4 }]}>contentRef</Text>
-                        <Text style={[styles.tCell, { flex: 1 }]}>Block</Text>
-                    </View>
-                    {doc.proofs.map((p, i) => (
-                        <View key={`${p.contentRef}-${i}`} style={styles.tableRow}>
-                            <Text style={[styles.tCell, { flex: 0.8 }]}>{p.stage}</Text>
-                            <Text style={[styles.tCellMono, { flex: 3 }]}>{shortAddr(p.attester)}</Text>
-                            <Text style={[styles.tCellMono, { flex: 4 }]}>{shortHex(p.contentRef, 14, 8)}</Text>
-                            <Text style={[styles.tCell, { flex: 1 }]}>{p.blockNumber}</Text>
-                        </View>
-                    ))}
-                </View>
-            )}
-            <Text style={styles.note}>
-                Each contentRef = keccak256(`(uint8 band, bytes32 nonce, bytes
-                witness)`). Off-chain consumers verify proof.band ===
-                committedBand when both are present.
-            </Text>
             <PageFooter agreementHash={doc.agreementHash} processId={doc.processId} />
         </Page>
     );
@@ -1246,18 +949,7 @@ export function AuditBundlePdf({ data }: { data: AuditBundlePdfData }) {
                 <ContractPage key={`contract-${bundle.contract.orderHash}`} contract={bundle.contract} />
             ))}
             {data.perOrderBundles.map((bundle) => (
-                <InvoicePage key={`invoice-${bundle.invoice.orderHash}`} invoice={bundle.invoice} />
-            ))}
-            {data.perOrderBundles.flatMap((bundle) =>
-                bundle.billOfLading
-                    ? [<BillOfLadingPage key={`bol-${bundle.billOfLading.orderHash}`} bol={bundle.billOfLading} />]
-                    : []
-            )}
-            {data.perOrderBundles.map((bundle) => (
-                <EmissionsPage key={`emissions-${bundle.emissions.orderHash}`} doc={bundle.emissions} />
-            ))}
-            {data.perOrderBundles.map((bundle) => (
-                <ProximityPage key={`proximity-${bundle.proximity.orderHash}`} doc={bundle.proximity} />
+                <ClauseDataPage key={`clausedata-${bundle.clauseData.orderHash}`} doc={bundle.clauseData} />
             ))}
             {data.perOrderBundles.map((bundle) => (
                 <ProcessLogsPage key={`processlogs-${bundle.processLogs.orderHash}`} doc={bundle.processLogs} />

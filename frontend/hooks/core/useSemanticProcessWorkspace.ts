@@ -14,7 +14,6 @@ import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
 import { encodeContentFromSpec } from "@figaro/core/clauses";
 import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
-import { DISCLOSURE_KIND, MEASUREMENT_KIND } from "@/lib/mechanisms/contracts";
 import { useAttestationCoordinatorActions } from "@/lib/mechanisms/useAttestationCoordinatorActions";
 import { useRegisterSeller, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/seller/useSellerRegistry";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
@@ -67,7 +66,8 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     );
     const processAgreements = useProcessAgreements(agreementHashes);
     const selectedCurrency = processOrders[0]?.currency as `0x${string}` | undefined;
-    const approvalTokenAddress = (selectedCurrency ?? CONTRACTS.mockToken) as `0x${string}`;
+    // The active order's on-chain currency, or undefined — never a coined default.
+    const approvalTokenAddress = selectedCurrency;
     const [executingCapabilityId, setExecutingCapabilityId] = useState<string | null>(null);
     const [activeActionLabel, setActiveActionLabel] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
@@ -266,26 +266,6 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                 registerSeller: (metadataURI) => registerSeller.register(metadataURI, (registrationDeposit.data as bigint | undefined) ?? 0n),
                 updateSellerProfile: (metadataURI) => updateSellerProfile.updateProfile(metadataURI),
                 withdrawSellerDeposit: () => withdrawSellerDeposit.withdraw(),
-                // Disclosure commitment / inventory — the generic attestation
-                // actions under the clauseId the DERIVER read off the order's
-                // sections. Commitment omits content (defaults to the committed
-                // sectionData); inventory encodes typed grams from the spec.
-                submitDisclosureCommitment: (orderHash, clauseId) =>
-                    attestationActions.submitSellerAttestation({
-                        orderHash: orderHash as Hex,
-                        clauseId: clauseIdHash(clauseId, getClauseSpec(clauseId)?.version ?? 1),
-                        stage: DISCLOSURE_KIND.commitment,
-                    }),
-                submitDisclosureInventory: (orderHash, clauseId, grams) => {
-                    const spec = getClauseSpec(clauseId);
-                    if (!spec) throw new Error(`Clause spec not loaded: ${clauseId}`);
-                    return attestationActions.submitSellerAttestation({
-                        orderHash: orderHash as Hex,
-                        clauseId: clauseIdHash(clauseId, spec.version),
-                        stage: MEASUREMENT_KIND.measured,
-                        content: encodeContentFromSpec(spec, { grams: grams.toString() }),
-                    });
-                },
                 // ONE generic attestation path — the clause spec drives the on-chain
                 // content (enum ladder, or a proof's band) and who attests (party,
                 // from block.attestation). Names no clause; a permissionless clause

@@ -2,22 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { executeTransactionCapabilityAction } from "@/lib/semantic/executeTransactionCapability";
 
 describe("executeTransactionCapabilityAction", () => {
-    it("dispatches disclosure commitments with the descriptor's clauseId", async () => {
-        const submitDisclosureCommitment = vi.fn(async () => undefined);
-
-        await executeTransactionCapabilityAction(
-            {
-                executionType: "transaction",
-                kind: "submit-disclosure-commitment",
-                orderHash: "root-order",
-                clauseId: "any-registered-disclosure-clause",
-            },
-            { submitDisclosureCommitment },
-        );
-
-        expect(submitDisclosureCommitment).toHaveBeenCalledWith("root-order", "any-registered-disclosure-clause");
-    });
-
     it("dispatches airdrop claims with amount and proof from action and waits for confirmation", async () => {
         const txHash = `0x${"12".repeat(32)}` as const;
         const claimAirdrop = vi.fn(async () => txHash);

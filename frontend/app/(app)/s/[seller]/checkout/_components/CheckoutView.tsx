@@ -28,7 +28,6 @@ import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
 import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/commerce/assemblySubOrderPlan";
 import { executeAssemblyCheckout } from "@/lib/commerce/assemblyCheckout";
 import { templateParentOrderHashes } from "@/lib/designer/assemblyTemplate";
-import { CONTRACTS } from "@/lib/core/contracts";
 import { CommitmentSharePanel } from "@/components/core/CommitmentSharePanel";
 import { SellerCataloguePicker, type SellerSelection } from "@/components/core/SellerCataloguePicker";
 import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
@@ -84,16 +83,14 @@ export function CheckoutView({ sellerAddress }: Props) {
     );
 
     const { address: buyer } = useCommerce();
-    // The order settles in the seller's default token. `acceptedTokens` is the
-    // set the buyer may swap into (the swap-and-commit path); the default is the
-    // settlement currency. Env-var fallback only for fixture / pre-clause-split
-    // catalogues with no defaultTokenAddress.
-    const currency = (sellerCatalogue?.defaultTokenAddress
-        ?? CONTRACTS.mockToken
-        ?? CONTRACTS.permitToken) as `0x${string}`;
-    const { data: resolvedSymbol } = useTokenSymbol(currency);
+    // The order settles in the seller's declared default token. `acceptedTokens`
+    // is the set the buyer may swap into (the swap-and-commit path). No declared
+    // currency ⇒ undefined — never a coined default (resolved-empty = absence);
+    // ordering is gated off below until the seller declares one.
+    const currency = sellerCatalogue?.defaultTokenAddress as `0x${string}` | undefined;
+    const { data: resolvedSymbol } = useTokenSymbol(currency ?? "");
     const tokenSymbol = resolvedSymbol
-        ?? sellerCatalogue?.acceptedTokens?.find((t) => hexEqual(t.address, currency))?.symbol
+        ?? (currency ? sellerCatalogue?.acceptedTokens?.find((t) => hexEqual(t.address, currency))?.symbol : undefined)
         ?? "";
     const {
         decimals: tokenDecimals,
@@ -220,6 +217,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // seller offers more than one) and any buyer-chosen counterparty selection
     // (or auction start price) is complete.
     const orderReady = !!pickedAssembly
+        && !!currency
         && (!buyerChoosesCounterparty || !!sellerSelection)
         && (!buyerOpensAuction || auctionStartPriceValid);
     // The root order carries the design-time clauses the buyer is bonding to.
@@ -350,6 +348,9 @@ export function CheckoutView({ sellerAddress }: Props) {
         }
         try {
             setCheckoutError(null);
+            // No declared settlement currency ⇒ no order (resolved-empty = absence).
+            // orderReady already gates the button; this guards the path + narrows the type.
+            if (!currency) { setCheckoutError("This seller hasn't set a settlement currency."); return; }
             // The whole commit algorithm — root prepare/validate, the bilateral
             // single-order relay, or the multi-order walk (sub-orders signed +
             // relayed to their bound sellers, root through the buyer-share-panel
@@ -670,9 +671,11 @@ export function CheckoutView({ sellerAddress }: Props) {
                                     ? "Approving payment…"
                                     : placingOrder
                                         ? "Placing order…"
-                                        : !orderReady
-                                            ? "Select an option to order"
-                                            : "Place order"}
+                                        : !currency
+                                            ? "Seller hasn't set a settlement currency"
+                                            : !orderReady
+                                                ? "Select an option to order"
+                                                : "Place order"}
                         </Button>
 
                         {(checkoutError || commitError) && (

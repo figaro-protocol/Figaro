@@ -24,54 +24,12 @@ import { isValidAddress } from "@/lib/shared/evm";
 //   3 = Verification  — Third-party verification/validation (ISO 14064-3)
 // ──────────────────────────────────────────────────────────────────────────────
 
-export const DISCLOSURE_KIND_LABELS = [
-    "Commitment",
-    "Inventory",
-    "Restatement",
-    "Verification",
-] as const;
-
-/** Extended descriptions mapping each disclosure kind to its normative basis. */
-export const DISCLOSURE_KIND_DESCRIPTIONS: Record<number, string> = {
-    0: "Declaration of intent to disclose process emissions — ISO 14064-1 §5.1",
-    1: "Quantified GHG emissions statement in grams CO₂e — ISO 14064-1 §5.2–5.4",
-    2: "Restatement correcting a prior inventory — GHG Protocol Corporate Standard Ch. 5",
-    3: "Third-party verification or validation statement — ISO 14064-3",
-};
-
 export const DISCLOSURE_KIND = {
     commitment: 0,
     inventory: 1,
     restatement: 2,
     verification: 3,
 } as const;
-
-// ── GHG Measurement — runtime grams CO2e, Category-1 ─────────────────────────
-//
-// Grams measurements live in the runtime measurement companion clause because the
-// disclosure clause (above) is Category-2 and enforces content == sectionData
-// byte-equality, which is incompatible with freely-varying grams values.
-//
-// Stage envelope:
-//   0 = Estimate       — forecast ahead of the work
-//   1 = Measured       — actual after the work
-//   2 = Restatement    — correction to prior measurement
-//   3 = Verification   — third-party validated measurement
-
-
-export const MEASUREMENT_KIND = {
-    estimate: 0,
-    measured: 1,
-    restatement: 2,
-    verification: 3,
-} as const;
-
-export const MEASUREMENT_KIND_LABELS = [
-    "Estimate",
-    "Measured",
-    "Restatement",
-    "Verification",
-] as const;
 
 // ── Addresses ────────────────────────────────────────────────────────────────
 
