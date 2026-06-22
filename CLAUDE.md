@@ -39,8 +39,8 @@ Consent is a first-class agreement layer, NOT boilerplate.
 **Agents keep mislabeling these as silt — they are DESIGNED IN:** agents are first-class
 participants (level field with humans; `/agents` ≠ `/users`); use-case pages
 (`/local-commerce`) are *marketing*, their runtime an assembly in `/assemblies`;
-`/dispute` is third-party composition (Kleros) over a *process*, not consent. Fuller form
-→ `reference_the_whole_system`. Everything below serves this.
+`/dispute` is third-party composition (Kleros) over a *process*, not consent. This section IS
+the canonical statement of the model — everything below serves it.
 
 ## Read this first — the premise that has cost the most
 
@@ -279,7 +279,7 @@ When a code change makes a doc statement stale, fix the doc in the same session.
 
 **`docs/v5/` whitelist (exhaustive).** Files not on this list are deletion candidates at every audit. Do not treat absence-from-whitelist as "ambiguous" — treat it as "delete unless restored by explicit user approval." See the Document Index at the bottom for the categorized list.
 
-**Delete on completion.** When a strategy/plan/audit/punch-list doc's work is closed, **delete the file**. Do not move it to `docs/archive/` (that path is for legacy v4 docs only, not v5 cleanups). Do not mark items done in place. Use git history to retrieve. The same rule that governs the punch-list (`feedback_delete_done_backlog_items.md`) applies to docs.
+**Delete on completion.** When a strategy/plan/audit/punch-list doc's work is closed, **delete the file**. Do not move it to `docs/archive/` (that path is for legacy v4 docs only, not v5 cleanups). Do not mark items done in place. Use git history to retrieve. The same rule that governs the punch-list applies to docs.
 
 **One punch-list; no audit-findings docs.** Open work — engineering tasks, audit findings, punch-list items, papers, research — is tracked in exactly one place: the punch-list at `~/.claude/projects/-Users-adaliana-Figaro/memory/project_punchlist.md` (a TODO list, not a journal — items + their why/how, never a session log). An audit produces punch-list items, not a doc. There are no `AUDIT_FINDINGS_*.md` files and no punch-list docs in `docs/v5/`; closed work is recovered from `git log`. Verification *coverage* (live test counts, harness inventory) lives in `VERIFICATION_MAP.md` / `TESTING.md`; accepted risks and release-gate criteria in `DESIGN_DECISIONS.md` / `RELEASE_READINESS.md`.
 

@@ -57,16 +57,8 @@ Each of these breaks a specific protocol property:
 - **Internal ledger / withdrawal pattern** → payouts are direct ERC-20
   transfers. Internal balances add reentrancy surface for no gain.
 
-## What Figaro Is Not — Framing Anti-Patterns
-
-- Not "removing the middleman" — it makes middlemen structurally unnecessary.
-- Not "Kill Uber" / platform-tax framing — defines Figaro by elimination.
-- Not a DAO, not a governance token. FIG is a coordination Schelling point,
-  not a governance instrument.
-- Not upgradeable. Not pausable. Not owned. Not patched.
-
-Do not reify role labels into entities. "Restaurant", "merchant", "supplier"
-are roles within an assembly's process DAG, not firms.
+(Framing anti-patterns — "removing the middleman", "Kill Uber", DAO/governance-token,
+reifying role labels into firms — live in CLAUDE.md; they are not kernel-review concerns.)
 
 ## The Three-Layer Enforcement Architecture
 
