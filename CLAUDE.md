@@ -350,7 +350,7 @@ This is the exhaustive whitelist. Files not listed are deletion candidates at ev
 
 **Security & verification:** `DESIGN_DECISIONS.md` (14 intentional patterns that look like vulnerabilities — **read before auditing**), `VERIFICATION_MAP.md` (invariant → code → test → formal layer), `RELEASE_READINESS.md` (gate criteria, frozen Solidity surface for external audit), `SCALING_STRATEGY.md` (proof-based scaling, batch sequencer architecture, sequencer trust model).
 
-**Architecture:** `OPEN_WORLD.md` (open-world paradigm + composition model + semantic layer), `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md`. (The architecture lexicon — one canonical name per concept — is still enforced by `scripts/lint-architecture-lexicon.sh`.)
+**Architecture:** `OPEN_WORLD.md` (open-world paradigm + composition model + semantic layer), `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md`, `LEXICON.md` (canonical-name-per-tier grid; documented half of the lexicon, enforced by `scripts/lint-architecture-lexicon.sh`).
 
 **Protocol-specific:** `FIG_TOKEN.md`, `GHG_PROTOCOL_SPEC.md`.
 

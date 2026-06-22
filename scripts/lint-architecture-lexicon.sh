@@ -73,9 +73,9 @@ for file in "$@"; do
     # mechanism is 'asymmetric bonding'.
     check "$file" FAIL "[\"']order-received[\"']" "" "" \
         "'order-received' is not a clause event — the kernel commit IS arrival + acceptance (core-owned)."
-    check "$file" FAIL "process tree" '(^|/)(CLAUDE\.md|docs/v5/BLUEPRINT\.md)$' "" \
+    check "$file" FAIL "process tree" '(^|/)(CLAUDE\.md|docs/v5/LEXICON\.md)$' "" \
         "retired: use 'process chain' (kernel, linear) or 'DAG' (off-chain topology)."
-    check "$file" FAIL "progressive[ -]collateral" '(^|/)(docs/v5/BLUEPRINT\.md)$' "" \
+    check "$file" FAIL "progressive[ -]collateral" '(^|/)(docs/v5/LEXICON\.md)$' "" \
         "retired: 'asymmetric bonding' is the mechanism; its N-party scaling face is 'cumulative upstream bonding' (each seller bonds against cumulative upstream value)."
 
     # ── clause vocabulary (cross-tier) ─────────────────────────────
@@ -84,7 +84,7 @@ for file in "$@"; do
     # any new 'schema' is drift. Carve-outs (legitimate, different sense): IETF
     # "JSON Schema" (the spec format) and the frozen kernel's "commitment
     # schema" / "schema version" (struct layout).
-    check "$file" FAIL "\\bschema" '(^|/)(CLAUDE\.md|docs/v5/BLUEPRINT\.md)$' \
+    check "$file" FAIL "\\bschema" '(^|/)(CLAUDE\.md|docs/v5/LEXICON\.md)$' \
         'json[ -]schema|commitment schema|schema version|schema\.org' \
         "retired: the protocol artifact family is the 'clause' (ClauseRegistry / clauseId), not the 'schema'."
 done
