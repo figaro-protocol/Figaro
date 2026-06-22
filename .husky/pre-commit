@@ -1,4 +1,8 @@
 npx lint-staged
+# Repo-hygiene floor: only the shared agent harness (agents/ skills/ hooks/
+# settings.json) may be committed under .claude/; memory files never are. Reads the
+# staged set directly — catches paths that match no lint-staged glob.
+bash scripts/lint-claude-local-allowlist.sh
 bash scripts/lint-claude-md.sh
 bash scripts/lint-clause-counts.sh
 bash scripts/lint-chain-gas.sh
