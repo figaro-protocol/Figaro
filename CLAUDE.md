@@ -62,8 +62,8 @@ stop — compose from `lib/`, don't build an app shell.
 Every "do not" here has a positive form; **lead with it** (prohibition-only routes the
 base model back to closed-world). The positive rubric — role + surface named, live
 chain→IPFS registry not a bundled list, derived-not-stored, any-relationship,
-spec-routed-not-name, reads-at-edge (resolved-empty = absence) → `reference_open_world_lens`
-memory.
+spec-routed-not-name, reads-at-edge (resolved-empty = absence). Full statement:
+`docs/v5/OPEN_WORLD.md` §1.
 
 ---
 
@@ -233,7 +233,7 @@ The dispute layer is provider-agnostic; Kleros is one arbitration forum, not the
 
 ### General Coding Discipline
 
-Adapted from `andrej-karpathy-skills` CLAUDE.md, minus its YAGNI bullets (which contradict the runtime-infrastructure doctrine in `RUNTIME.md`).
+Adapted from `andrej-karpathy-skills` CLAUDE.md, minus its YAGNI bullets (which contradict the runtime-infrastructure doctrine in `OPEN_WORLD.md`).
 
 **Open every task by reformulating, then asking.** Before the first substantive action on any non-trivial task — code or not — restate the request in your own words to confirm comprehension, and ask any clarifying questions. Wait for confirmation before starting. Reformulation in your own words is the comprehension check; a verbatim echo is not.
 
@@ -259,7 +259,7 @@ If yes, adding on-chain state, role checks, or lifecycle flags is a web2 pattern
 
 ### Frontend = runtime infrastructure, not product code
 
-`frontend/lib/` is runtime infrastructure — the abstraction IS the deliverable; catalogues (`shared/clauseSpecSource.ts`, mechanism packages, `lib/semantic/`) land ahead of their UI consumers **by design**. **YAGNI does not apply**: "no readers today / one implementation / no consumer" are the expected state, not findings — bring UI down to the catalogue, don't shrink the catalogue to today's UI. (Composition model: `RUNTIME.md`; doctrine: `feedback_runtime_abstractions_are_deliverable` memory.)
+`frontend/lib/` is runtime infrastructure — the abstraction IS the deliverable; catalogues (`shared/clauseSpecSource.ts`, mechanism packages, `lib/semantic/`) land ahead of their UI consumers **by design**. **YAGNI does not apply**: "no readers today / one implementation / no consumer" are the expected state, not findings — bring UI down to the catalogue, don't shrink the catalogue to today's UI. (Composition model: `OPEN_WORLD.md` §3; doctrine: `feedback_runtime_abstractions_are_deliverable` memory.)
 
 **Check before you build — no new rows of corn.** Before adding ANY frontend artifact (component, hook, helper, type, util, taxonomy, constant, style), `grep`/`glob` for an existing one and **reuse or extend it** — the bar for a net-new symbol is "no equivalent exists, *shown by a search*," never "I didn't happen to see one." Re-implementing what exists is the single most repeated failure here. A new catalogue that duplicates an existing one is still a finding (the no-new-helpers case, not the abstraction-ahead-of-UI case). When a genuinely new surface is warranted, start from the canonical exemplar of its surface-type (`docs/v5/FRONTEND.md` § "Canonical exemplars — copy these shapes") and copy its shape — never generate the shape from scratch.
 
@@ -350,7 +350,7 @@ This is the exhaustive whitelist. Files not listed are deletion candidates at ev
 
 **Security & verification:** `DESIGN_DECISIONS.md` (14 intentional patterns that look like vulnerabilities — **read before auditing**), `VERIFICATION_MAP.md` (invariant → code → test → formal layer), `RELEASE_READINESS.md` (gate criteria, frozen Solidity surface for external audit), `SCALING_STRATEGY.md` (proof-based scaling, batch sequencer architecture, sequencer trust model).
 
-**Architecture:** `RUNTIME.md` (runtime thesis, frontend composition model, semantic-derivation layer), `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md`. (The architecture lexicon — one canonical name per concept — is still enforced by `scripts/lint-architecture-lexicon.sh`.)
+**Architecture:** `OPEN_WORLD.md` (open-world paradigm + composition model + semantic layer), `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md`. (The architecture lexicon — one canonical name per concept — is still enforced by `scripts/lint-architecture-lexicon.sh`.)
 
 **Protocol-specific:** `FIG_TOKEN.md`, `GHG_PROTOCOL_SPEC.md`.
 

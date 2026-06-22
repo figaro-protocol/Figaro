@@ -24,6 +24,10 @@ Any execution environment must preserve these properties:
 If an execution environment changes any of these, it is not scaling the
 kernel. It is proposing a different protocol.
 
+(These nine are the kernel invariants K-1–K-9; their canonical definitions +
+code/test/formal-layer mappings are authoritative in `VERIFICATION_MAP.md` —
+this list is the scaling-relevant restatement, not a second source.)
+
 ## Two Constraints
 
 Scaling involves two distinct constraints. Do not conflate them.
@@ -39,7 +43,9 @@ Depth is already solved by multi-process composition — the kernel
 supports it structurally via the `processId` field, and the V3
 composability contracts (`SettlementCascade`, `SettlementRouter`,
 `TemplateRegistry`) proved the pattern. This is not a scaling layer
-to build. It is an existing kernel property.
+to build. It is an existing kernel property. (The kernel sees LINEAR
+process chains; DAG topology lives off-chain — canonical statement in
+CLAUDE.md and `OPEN_WORLD.md` §1.)
 
 ## Track 1: Launch
 

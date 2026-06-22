@@ -574,7 +574,7 @@ any forum).
 
 ---
 
-*This document distills the vision from THEORY.md, RUNTIME.md, and
+*This document distills the vision from THEORY.md, OPEN_WORLD.md, and
 iterative development sessions. It is the starting point for new
 agents and visitors. For game-theoretic foundations, see THEORY.md.
-For runtime architecture, see RUNTIME.md.*
+For the open-world paradigm + runtime architecture, see OPEN_WORLD.md.*

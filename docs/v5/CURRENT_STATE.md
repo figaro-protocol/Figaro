@@ -56,8 +56,8 @@ Start with these docs, in this order:
 
 1. `VISION.md`
 2. `THEORY.md`
-3. `RUNTIME.md` (consolidates the runtime thesis, the frontend
-   composition model, and the semantic-layer reference)
+3. `OPEN_WORLD.md` (the open-world paradigm + runtime composition
+   model + semantic-derivation layer)
 4. `PUBLIC_GRAPH_MODEL.md`
 5. `SCALING_STRATEGY.md`
 6. `VERIFICATION_MAP.md`
@@ -108,9 +108,9 @@ If a root-level file clearly says it is archived or historical, do not treat it 
 ## Known Conceptual Boundaries
 
 1. `PUBLIC_GRAPH_MODEL.md` is the protocol-level graph model.
-2. `RUNTIME.md` carries the runtime/frontend layer — Part 1 thesis,
-   Part 2 the bounded-mutation frontend model, Part 3 the semantic
-   derivation reference.
+2. `OPEN_WORLD.md` carries the open-world paradigm (§1), the extension
+   model (§2), the bounded-mutation runtime composition model (§3), and
+   the semantic-derivation layer (§4).
 3. `CLAUSES.md` carries the clause validation architecture and the
    anchoring doctrine (payload vs anchor, the decision rule).
 
