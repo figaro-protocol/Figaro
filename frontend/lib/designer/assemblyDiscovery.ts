@@ -83,7 +83,7 @@ function collectAssemblyClauses(template: AssemblyTemplate): string[] {
  *  no roster is needed and no clause is emitted.
  *
  *  The sub-order's process clause is identified from its SPEC, never by
- *  name: a category-1 clause with an enum ladder that is not a companion
+ *  name: a runtime clause with an enum ladder that is not a companion
  *  (the runtime event-log a sub-order's seller advances). Whatever such
  *  clause the registry defines marks which kind of off-chain seller the
  *  sub-order needs. Returns the set of distinct clauseIds, sorted.

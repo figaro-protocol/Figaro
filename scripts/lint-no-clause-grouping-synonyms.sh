@@ -21,7 +21,7 @@
 #   - `block.tier` / ClauseTier (WHEN a clause is attested — a different axis)
 #   - `LensId` (the ProcessGraphCanvas overlay — a different concept)
 #   - `block.article` / `article` (the CANONICAL grouping source itself)
-#   - `category-1` / `category-2` (tier VALUES — a separate lexicon, gate later)
+#   - `runtime` / `cross-checked` (tier VALUES — a separate lexicon, gate later)
 #
 # Wired into the root package.json lint-staged block under
 # `frontend/**/*.{ts,tsx}`. Run manually:

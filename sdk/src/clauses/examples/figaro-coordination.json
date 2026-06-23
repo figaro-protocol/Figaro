@@ -21,7 +21,7 @@
         }
     ],
     "block": {
-        "tier": "category-2",
+        "tier": "cross-checked",
         "article": "coordination",
         "mechanismKinds": [
             "coordinator"

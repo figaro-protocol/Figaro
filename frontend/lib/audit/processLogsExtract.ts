@@ -2,7 +2,7 @@
  * Sovereign process-log extractor — pure projection of an order's
  * PROCESS-LOG attestations into per-clause event timelines.
  *
- * A process-log clause is any registered Category-1 enum-ladder clause
+ * A process-log clause is any registered runtime enum-ladder clause
  * (per its spec — `clauseIsProcessLog`; never named in code). Such clauses
  * exist because off-chain sellers need a sovereign event log to make their
  * physical-world state changes tamper-proof evidence. The kernel records

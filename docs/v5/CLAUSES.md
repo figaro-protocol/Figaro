@@ -25,7 +25,7 @@ CLAUDE.md keeps the lockstep principle; this file owns the full table, the archi
   the ABI bytes expected by the on-chain validator. Each clause's encoder
   is the canonical TS-side declaration of its field-to-position mapping.
   distinct encoder shapes across the 16 runtime-attestable clauses.
-  Topology has no encoder — it's a manifest-only clause with no runtime
+  Topology has no encoder — it's a agreement-only clause with no runtime
   attestation.
 
 Frontend wiring: `useClauseValidator(clauseId)` hook + `clauseSpecSource.ts`
@@ -61,10 +61,10 @@ preloads built-in specs and lazy-fetches remote ones.
         section is a clause of the order's signed agreement: a
         sorted-pair Merkle `inclusion_proof` verifies the section leaf —
         `keccak256(clauseId ++ keccak256(sectionData))` — against the
-        role commitment's `agreement_hash`. A cross-checking (Category-2)
+        role commitment's `agreement_hash`. A cross-checking (cross-checked)
         clause's committed `sectionData` is the ABI content form, so
         `keccak256(sectionData) == content_ref` and the leaf needs no
-        extra input; a non-cross-checking (Category-1) clause carries its
+        extra input; a non-cross-checking (runtime) clause carries its
         canonical-JSON `section_data` in the proof. Buyer attestations
         skip this gate — a buyer's evidence is the kernel event log, not
         an agreement clause.
@@ -139,7 +139,7 @@ loads each spec from `ClauseRegistry` → IPFS at runtime.
 ## The 17 protocol clauses
 
 16 runtime-attestable clauses (each with a Layer C validator) plus the
-manifest-only `figaro-topology-v1`.
+agreement-only `figaro-topology-v1`.
 
 | clauseId | What it carries | Attestation surface |
 |---|---|---|
@@ -150,11 +150,11 @@ manifest-only `figaro-topology-v1`.
 | `figaro-modalities-v1` | The buyer's request — consume-onsite / pickup / delivery / virtual (single-select) | Layer A + C |
 | `figaro-coordination-v1` | How a delivery's courier edge is arranged — seller-assigned / buyer-assigned / dutch-auction (single-select, composes on the delivery parent order) | Layer A + C |
 | `figaro-handoff-v1` | Hand-off point — where the physical exchange happens (proximity-policy nests under it) | Layer A + C |
-| `figaro-ghg-v1` | GHG accounting methodology (free-form `standard` string) + scope (Category-2) | Layer A + C |
-| `figaro-ghg-measurement-v1` | Runtime grams CO2e (Category-1) | Layer A + C |
-| `figaro-proximity-policy-v1` | Required detection band committed at agreement signing (Category-2) | Layer A + C |
-| `figaro-proximity-proof-v1` | Per-handoff nonce + signed witness payload at runtime (Category-1) | Layer A + C |
-| `figaro-offset-policy-v1` | Carbon-offset provider set committed at agreement signing (Category-2) | Layer A + C |
+| `figaro-ghg-v1` | GHG accounting methodology (free-form `standard` string) + scope (cross-checked) | Layer A + C |
+| `figaro-ghg-measurement-v1` | Runtime grams CO2e (runtime) | Layer A + C |
+| `figaro-proximity-policy-v1` | Required detection band committed at agreement signing (cross-checked) | Layer A + C |
+| `figaro-proximity-proof-v1` | Per-handoff nonce + signed witness payload at runtime (runtime) | Layer A + C |
+| `figaro-offset-policy-v1` | Carbon-offset provider set committed at agreement signing (cross-checked) | Layer A + C |
 | `figaro-merchant-process-v1` | Merchant per-role event enum (sovereign log) | Layer A + C |
 | `figaro-courier-process-v1` | Courier per-role event enum (sovereign log) | Layer A + C |
 | `figaro-arbitration-kleros-v1` | Decentralized off-chain arbitration via Kleros (subcourt + minimum jurors). Provider-specific; sister `figaro-arbitration-<provider>-v1` clauses would cover future ODR providers | Layer A + C |
@@ -171,12 +171,12 @@ uint256 scope)`. It pairs with the `figaro-ghg-measurement-v1` runtime clause
 `figaro-proximity-policy-v1` + `figaro-proximity-proof-v1` are sister
 clauses that split the committed-vs-runtime concerns the way
 GHG-disclosure + GHG-measurement do for emissions. Policy commits the
-required band at agreement signing (Category-2, byte-equality enforced);
+required band at agreement signing (cross-checked, byte-equality enforced);
 proof carries the per-handoff nonce + signed witness payload at runtime
-(Category-1, fresh per attestation). Off-chain consumers verify
+(runtime, fresh per attestation). Off-chain consumers verify
 `proof.band == policy.band` when the policy section is present.
 
-`figaro-topology-v1` is the one **manifest-only** clause — no Layer C
+`figaro-topology-v1` is the one **agreement-only** clause — no Layer C
 validator and no SP1 encoder. That is by design: an order's parent edges are
 fixed at agreement-signing time and are never re-asserted as a runtime
 attestation, so there is no per-event content for a validator to gate. It is
@@ -247,12 +247,12 @@ where the cross-product is the actual decision space. Same conceptual
 coverage, one clause, no duplicate validation surface.
 
 **Split when one clause conflates two cryptographic categories.** A clause is
-either Category-2 (committed at agreement signing, fixed for the order's life)
-or Category-1 (attested at runtime, supplied by a per-event witness). One
+either cross-checked (committed at agreement signing, fixed for the order's life)
+or runtime (attested at runtime, supplied by a per-event witness). One
 clause cannot be both. If a single clause tries to carry both the
 agreement-time policy AND the runtime proof, split it into a sister-clause
 pair. Precedent: `figaro-proximity-v1` was split into `figaro-proximity-policy-v1`
-(Category-2, committed band) + `figaro-proximity-proof-v1` (Category-1,
+(cross-checked, committed band) + `figaro-proximity-proof-v1` (runtime,
 runtime witness) in commit `cc7a394` (2026-04-26), mirroring the existing
 GHG-disclosure / GHG-measurement sister-clause pattern. The split aligns each
 clause with one cryptographic category, lets each evolve independently, and

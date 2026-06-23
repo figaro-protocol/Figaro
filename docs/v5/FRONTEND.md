@@ -66,7 +66,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 - `clauseSpecSource.ts` — the module spec cache. No bundled copy and no
   preload: `useClauseSpecs` warms it chain→IPFS via `loadClauseSpec(id, uri)`
   from `ClauseRegistered` events (17 protocol clauses on the devnet — 16
-  runtime-attestable + the manifest-only `figaro-topology-v1` — plus any
+  runtime-attestable + the agreement-only `figaro-topology-v1` — plus any
   third-party registrations); spec-consuming surfaces gate on its `loaded`.
 
 ## Components (`components/`)

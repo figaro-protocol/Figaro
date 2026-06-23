@@ -29,7 +29,7 @@
         }
     ],
     "block": {
-        "tier": "category-2",
+        "tier": "cross-checked",
         "article": "logistics",
         "mechanismKinds": [
             "coordinator"

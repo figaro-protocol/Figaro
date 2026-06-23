@@ -4,13 +4,13 @@
  * Two clause FAMILIES collaborate to represent a GHG disclosure arc, both
  * resolved from the registry's specs (chain → IPFS), never named in code:
  *
- *   - DISCLOSURE clauses (Category-2, committed) — every registered clause
+ *   - DISCLOSURE clauses (cross-checked, committed) — every registered clause
  *     declaring a `scope` field. The accounting methodology is a free-form
  *     `standard` value on the clause (not a per-standard clause id); the
  *     committed `{standard, scope}` sectionData is the contract-signing-time
  *     declaration ("seller reports under this methodology, scope 1").
  *
- *   - MEASUREMENT clauses (Category-1, runtime grams) — each disclosure
+ *   - MEASUREMENT clauses (runtime, runtime grams) — each disclosure
  *     clause's `block.sisterClauseId`. Content is `abi.encode(uint256 grams)`
  *     per delivery; the validator does NOT cross-check against sectionData
  *     because the committed unit-of-account clause and the per-measurement
@@ -81,7 +81,7 @@ function disclosureClauseIdHashes(): Hex[] {
 }
 
 /** keccak256 event-topic hashes of every registered MEASUREMENT clause —
- *  the disclosure clauses' Category-1 sisters. Empty while the cache is cold. */
+ *  the disclosure clauses' runtime sisters. Empty while the cache is cold. */
 function measurementClauseIdHashes(): Hex[] {
     const sisters = new Set<string>();
     for (const clauseId of listKnownClauseIds()) {

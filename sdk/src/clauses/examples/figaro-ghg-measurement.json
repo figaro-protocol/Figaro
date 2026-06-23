@@ -2,7 +2,7 @@
     "clauseId": "figaro-ghg-measurement",
     "version": 1,
     "title": "GHG (greenhouse gas) emissions measurement",
-    "description": "Runtime grams CO2e measurement attached to an order fulfillment. Category-1: content is a free-form uint256 grams value, not cross-checked against the agreement. Pairs with the figaro-ghg disclosure clause (which commits the accounting methodology + scope) when the standard of accounting needs to be fixed at contract time.",
+    "description": "Runtime grams CO2e measurement attached to an order fulfillment. Runtime-attested: content is a free-form uint256 grams value, not cross-checked against the agreement. Pairs with the figaro-ghg disclosure clause (which commits the accounting methodology + scope) when the standard of accounting needs to be fixed at contract time.",
     "categories": [
         "emissions"
     ],
@@ -49,7 +49,7 @@
         ]
     },
     "block": {
-        "tier": "category-1",
+        "tier": "runtime",
         "mechanismKinds": [
             "disclosure"
         ],

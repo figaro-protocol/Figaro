@@ -43,17 +43,17 @@ const CATALOGUE: [string, string][] = [
     ["figaro-commerce", "currency, payment, line items"],
     ["figaro-geo", "origin / destination geohash"],
     ["figaro-fulfilment", "fulfilment modalities, courier coordinations, and handoff points"],
-    ["figaro-topology", "manifest-only clause; no runtime validator"],
+    ["figaro-topology", "agreement-only clause; no runtime validator"],
     ["figaro-courier-process", "courier per-role event log"],
     ["figaro-merchant-process", "merchant per-role event log"],
-    ["figaro-proximity-policy", "committed detection band (Category-2)"],
-    ["figaro-proximity-proof", "per-handoff signed witness (Category-1)"],
+    ["figaro-proximity-policy", "committed detection band (cross-checked)"],
+    ["figaro-proximity-proof", "per-handoff signed witness (runtime)"],
     ["figaro-consent", "cryptographic acceptance of an off-chain document"],
     ["figaro-arbitration-kleros", "off-chain arbitration-forum selection"],
     ["figaro-applicable-law", "governing-law clause"],
     ["figaro-offset-policy", "carbon-offset retirement policy"],
-    ["figaro-ghg", "GHG emissions disclosure — free-form accounting methodology + scope (Category-2)"],
-    ["figaro-ghg-measurement", "runtime grams CO2e (Category-1)"],
+    ["figaro-ghg", "GHG emissions disclosure — free-form accounting methodology + scope (cross-checked)"],
+    ["figaro-ghg-measurement", "runtime grams CO2e (runtime)"],
 ];
 
 export default function ProtocolExtensionPaper() {
@@ -229,7 +229,7 @@ export default function ProtocolExtensionPaper() {
                         The first-write-wins rule produces a front-running window between <code>ClauseRegistry.registerClause</code> and <code>AttestationCoordinator.setValidator</code>. An adversary observing a pending registration can race to set a malicious validator under the new clauseId before the legitimate validator binds. The malicious validator self-attests as bound to the clauseId (satisfying the binding-integrity check) and then accepts content the legitimate validator would have rejected.
                     </p>
                     <p>
-                        The mitigation is atomic registration: both writes execute in a single transaction. The 17 reference <code>figaro-*</code> validators are bound this way at genesis (the 18th catalogue clause, <code>figaro-topology-v1</code>, is manifest-only and has no on-chain validator), with <code>script/Deploy.s.sol</code> composing the calls in a single deployment broadcast session controlled by one signer (no third-party interleaving against the deployer&rsquo;s nonce stream). For third-party clauses registered post-deploy, the <code>ClauseRegistrationHelper</code> contract supplies genuine single-transaction atomicity as a stateless, no-admin, no-fee public helper:
+                        The mitigation is atomic registration: both writes execute in a single transaction. The 17 reference <code>figaro-*</code> validators are bound this way at genesis (the 18th catalogue clause, <code>figaro-topology-v1</code>, is agreement-only and has no on-chain validator), with <code>script/Deploy.s.sol</code> composing the calls in a single deployment broadcast session controlled by one signer (no third-party interleaving against the deployer&rsquo;s nonce stream). For third-party clauses registered post-deploy, the <code>ClauseRegistrationHelper</code> contract supplies genuine single-transaction atomicity as a stateless, no-admin, no-fee public helper:
                     </p>
                     <CodeBlock>{CODE_HELPER}</CodeBlock>
                     <p>
@@ -244,7 +244,7 @@ export default function ProtocolExtensionPaper() {
                         ))}
                     </ol>
                     <p>
-                        The catalogue exhibits several patterns worth flagging. The <em>sister-clause pattern</em> (the five GHG disclosure clauses, the proximity policy/proof pair, the merchant/courier process clauses) supplies multiple specialized variants of a shared coordination concept; content shape is shared, clauseId is per-standard, and per-standard extensions can be added to a single sister without affecting siblings. The <em>committed-vs-runtime split</em> (proximity policy/proof, GHG disclosure/measurement) separates the band the parties commit at agreement signing (Category-2, byte-equality enforced) from the runtime witness data filed during execution (Category-1, fresh per attestation). The <em>manifest-only clause</em> pattern (<code>figaro-topology-v1</code>) represents a shared-vocabulary anchor whose enforcement is purely off-chain; parties commit to the topology at contract-signing time, the indexer reconstructs the DAG from event logs, and no runtime attestation fires. Each pattern is a discipline-level choice the catalogue&rsquo;s authors made deliberately, and each is reusable by future clauses in the family.
+                        The catalogue exhibits several patterns worth flagging. The <em>sister-clause pattern</em> (the five GHG disclosure clauses, the proximity policy/proof pair, the merchant/courier process clauses) supplies multiple specialized variants of a shared coordination concept; content shape is shared, clauseId is per-standard, and per-standard extensions can be added to a single sister without affecting siblings. The <em>committed-vs-runtime split</em> (proximity policy/proof, GHG disclosure/measurement) separates the band the parties commit at agreement signing (cross-checked, byte-equality enforced) from the runtime witness data filed during execution (runtime, fresh per attestation). The <em>agreement-only clause</em> pattern (<code>figaro-topology-v1</code>) represents a shared-vocabulary anchor whose enforcement is purely off-chain; parties commit to the topology at contract-signing time, the indexer reconstructs the DAG from event logs, and no runtime attestation fires. Each pattern is a discipline-level choice the catalogue&rsquo;s authors made deliberately, and each is reusable by future clauses in the family.
                     </p>
                     <PaperRun title="Class A and Class B records.">
                         A useful evidentiary taxonomy distinguishes records the kernel produces by construction from records participants attest under clause discipline. <em>Class A</em> records are kernel byproducts (commitment digest, bond deposits, cumulative-value accumulator state, order status transitions, resolution events): emitted by the kernel, clause-typed at the kernel level, discretion-free, and cryptographically authenticated. <em>Class B</em> records are discretionary clause-validated attestations (delivery confirmations, GHG disclosures, handoff attestations, custody-of-seal events, lifecycle stage transitions): produced by participants through the <code>AttestationCoordinator</code>, clause-typed at the <em>protocol</em> level, validator-gated, and substantively contestable on truth-of-content grounds. The clause-design discipline of this paper produces Class B records.

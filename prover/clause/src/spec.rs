@@ -30,17 +30,17 @@ impl StringFormat {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ClauseTier {
-    Category1,
-    Category2,
-    ManifestOnly,
+    Runtime,
+    CrossChecked,
+    AgreementOnly,
 }
 
 impl ClauseTier {
     fn from_str(s: &str) -> Option<Self> {
         match s {
-            "category-1" => Some(Self::Category1),
-            "category-2" => Some(Self::Category2),
-            "manifest-only" => Some(Self::ManifestOnly),
+            "runtime" => Some(Self::Runtime),
+            "cross-checked" => Some(Self::CrossChecked),
+            "agreement-only" => Some(Self::AgreementOnly),
             _ => None,
         }
     }
@@ -159,12 +159,12 @@ pub struct ClauseSpec {
 }
 
 impl ClauseSpec {
-    /// Whether this clause's agreement-manifest `sectionData` is the
+    /// Whether this clause's agreement `sectionData` is the
     /// cross-checking ABI content form — true exactly when the block tier
-    /// is `category-2`. For a Category-2 declarative clause the committed
+    /// is `cross-checked`. For a cross-checked declarative clause the committed
     /// `sectionData` and the runtime attestation content are byte-identical,
     /// so the agreement Merkle leaf collapses to `keccak256(clauseId ++
-    /// content_ref)`. Category-1 (runtime-only) clauses — and any spec with
+    /// content_ref)`. `runtime` (runtime-only) clauses — and any spec with
     /// no block binding — are not cross-checking: their leaf is derived
     /// from the canonical-JSON `sectionData` carried in the content proof.
     ///
@@ -174,7 +174,7 @@ impl ClauseSpec {
     pub fn cross_checks(&self) -> bool {
         matches!(
             self.block.as_ref().map(|b| b.tier),
-            Some(ClauseTier::Category2)
+            Some(ClauseTier::CrossChecked)
         )
     }
 }
@@ -554,7 +554,7 @@ fn parse_block_binding(
             err(
                 errors,
                 &format!("{path}.tier"),
-                "tier must be one of: category-1, category-2, manifest-only",
+                "tier must be one of: runtime, cross-checked, agreement-only",
             );
             return None;
         }

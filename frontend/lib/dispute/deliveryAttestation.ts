@@ -7,7 +7,7 @@
  *      Radio-range proof between fulfiller device and verifier device.
  *      Bands: WiFi (~30m), BLE (~10m), NFC (~4cm).
  *      Submitted as a standard attestation under the proximity-proof
- *      clause (Category-1 runtime witness), with proof data (band, nonce,
+ *      clause (runtime runtime witness), with proof data (band, nonce,
  *      deviceSig) in the off-chain contentRef. Off-chain consumers verify
  *      proof.band == policy.band against the committed proximity-policy
  *      section in the agreement.

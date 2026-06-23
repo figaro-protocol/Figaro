@@ -6,7 +6,7 @@
 #
 # Source of truth (single):
 #   total   = `ls sdk/src/clauses/examples/*.json | wc -l`
-#   runtime = total - 1   (subtract figaro-topology, manifest-only)
+#   runtime = total - 1   (subtract figaro-topology, agreement-only)
 #
 # Rationale: every clause add/remove silently desyncs ~10 downstream
 # references — deploy-script console.logs, Foundry assertions, Rust
@@ -85,7 +85,7 @@ check() {
     fi
 }
 
-# ── total count: every clause including manifest-only topology ────────────
+# ── total count: every clause including agreement-only topology ────────────
 # NB: the deploy scripts no longer register clause CONTENT (that moved to
 # populate-clauses.mjs), so they carry no clause-count console.log to track here.
 # They still wire validators — see the runtime-attestable section below.

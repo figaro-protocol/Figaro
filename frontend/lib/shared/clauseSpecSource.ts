@@ -145,12 +145,12 @@ export function clauseIsDefaultOn(clauseId: string): boolean {
     return getClauseSpec(clauseId)?.block?.defaultOn === true;
 }
 
-/** A PROCESS-LOG clause — the Category-1 enum-ladder runtime event log (not a
+/** A PROCESS-LOG clause — the runtime enum-ladder runtime event log (not a
  *  companion proof) an order's seller advances. The generic marker for "this
  *  order runs a lifecycle"; resolved from the spec, never by name. */
 export function clauseIsProcessLog(clauseId: string): boolean {
     return (
-        getClauseSpec(clauseId)?.block?.tier === "category-1"
+        getClauseSpec(clauseId)?.block?.tier === "runtime"
         && clauseLadderField(clauseId) !== null
         && !isCompanionClause(clauseId)
     );
@@ -164,14 +164,14 @@ export function clauseDeclaresField(clauseId: string, fieldName: string): boolea
     return getClauseSpec(clauseId)?.fields.some((f) => f.name === fieldName) === true;
 }
 
-/** The manifest-only structural clause — the topology manifest whose data
+/** The agreement-only structural clause — the topology manifest whose data
  *  carries the order's topology edges, reconstructed off-chain by indexers.
- *  Resolved from the registry by TIER (manifest-only is the topology tier by
+ *  Resolved from the registry by TIER (agreement-only is the topology tier by
  *  construction), never by name. undefined while the cache is cold. */
 export function manifestTopologyClauseId(): string | undefined {
     return listKnownClauseIds().find(
         (clauseId) =>
-            getClauseSpec(clauseId)?.block?.tier === "manifest-only" && clauseIsStructural(clauseId),
+            getClauseSpec(clauseId)?.block?.tier === "agreement-only" && clauseIsStructural(clauseId),
     );
 }
 
@@ -194,7 +194,7 @@ export function clauseHandoffStages(clauseId: string): readonly string[] {
 }
 
 /** The first enum-type field of a clause — the runtime "stage ladder" (the
- *  `eventType` enum on merchant/courier, or any category-1 clause's ladder).
+ *  `eventType` enum on merchant/courier, or any runtime clause's ladder).
  *  Returns the field name + its ordered values, or null when the clause has no
  *  enum field (e.g. ghg-measurement's grams). The generic runtime engine reads
  *  this to advance ANY runtime-attestable clause without naming it. */
@@ -207,7 +207,7 @@ export function clauseLadderField(clauseId: string): { name: string; values: rea
 
 // ── Spec-derived reads ───────────────────────────────────────────────────────
 
-/** When a clause is attested. Derived from block.tier: category-1 ⇒ runtime
+/** When a clause is attested. Derived from block.tier: runtime ⇒ runtime
  *  (attested during/after the process), everything else ⇒ designer-time. */
 export type ClauseTier = "designer-time" | "runtime";
 
@@ -349,7 +349,7 @@ export function clauseEnumValues(clauseId: string, fieldPath: string): readonly 
 
 /** When a clause is attested, from block.tier. */
 export function clauseTier(clauseId: string): ClauseTier {
-    return getClauseSpec(clauseId)?.block?.tier === "category-1" ? "runtime" : "designer-time";
+    return getClauseSpec(clauseId)?.block?.tier === "runtime" ? "runtime" : "designer-time";
 }
 
 interface ClauseArticleEntry {

@@ -70,17 +70,17 @@ Validators are pure / view, no admin, no mutable state.
 `FigaroGHGPAS2050V1Validator`, `FigaroGHGEN16258V1Validator`,
 `FigaroGHGCustomV1Validator` (one per accounting standard),
 `FigaroGHGMeasurementV1Validator`,
-`FigaroProximityPolicyV1Validator` (Category-2, committed band) +
-`FigaroProximityProofV1Validator` (Category-1, runtime witness),
+`FigaroProximityPolicyV1Validator` (cross-checked, committed band) +
+`FigaroProximityProofV1Validator` (runtime, runtime witness),
 `FigaroMerchantProcessV1Validator`,
 `FigaroCourierProcessV1Validator`,
 `FigaroArbitrationKlerosV1Validator`, `FigaroApplicableLawV1Validator`,
 `FigaroConsentV1Validator`,
-`FigaroOffsetPolicyV1Validator` (Category-2, committed providers).
+`FigaroOffsetPolicyV1Validator` (cross-checked, committed providers).
 Each ABI-decodes per-clause content (no on-chain JSON parsing) and reverts with
 typed custom errors. Foundry tests in `test/clauseValidators/`.
 
-Note: `figaro-topology-v1` is a **manifest-only clause** — parties commit to
+Note: `figaro-topology-v1` is a **agreement-only clause** — parties commit to
 it at contract-signing time inside the off-chain agreement manifest, and it's
 never fired as a runtime attestation. It has no on-chain validator and no SP1
 encoder. It is *not* off-chain-only, though: the topology section is a merkle

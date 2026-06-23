@@ -341,7 +341,7 @@ fn every_embedded_spec_parses_and_matches_its_clause_id() {
 #[test]
 fn embedded_spec_json_is_none_for_non_protocol_clauses() {
     use alloy_primitives::keccak256;
-    // figaro-topology is manifest-only; figaro-bogus is unknown.
+    // figaro-topology is agreement-only; figaro-bogus is unknown.
     assert!(figaro_clause::embedded_spec_json(&keccak256(b"figaro-topology")).is_none());
     assert!(figaro_clause::embedded_spec_json(&keccak256(b"figaro-bogus")).is_none());
 }
@@ -350,9 +350,9 @@ fn embedded_spec_json_is_none_for_non_protocol_clauses() {
 fn embedded_spec_tiers_partition_cross_checking_12_and_4() {
     // The kernel's Gate 5 derives `cross_checks` from each spec's block
     // tier (`ClauseSpec::cross_checks`). Every runtime-attestable clause
-    // must declare a category-1 or category-2 tier — never manifest-only —
-    // and the split must stay 12 cross-checking (Category-2 declarative
-    // clauses) / 4 not (Category-1 runtime-only clauses).
+    // must declare a runtime or cross-checked tier — never agreement-only —
+    // and the split must stay 12 cross-checking (cross-checked declarative
+    // clauses) / 4 not (runtime runtime-only clauses).
     let mut cross = 0;
     let mut plain = 0;
     for (key, _version, json) in figaro_clause::all_embedded_specs() {
@@ -363,8 +363,8 @@ fn embedded_spec_tiers_partition_cross_checking_12_and_4() {
             .as_ref()
             .unwrap_or_else(|| panic!("embedded spec {key} has no block binding"));
         assert!(
-            !matches!(block.tier, figaro_clause::ClauseTier::ManifestOnly),
-            "embedded spec {key} is manifest-only — not runtime-attestable",
+            !matches!(block.tier, figaro_clause::ClauseTier::AgreementOnly),
+            "embedded spec {key} is agreement-only — not runtime-attestable",
         );
         if spec.cross_checks() {
             cross += 1;
@@ -372,6 +372,6 @@ fn embedded_spec_tiers_partition_cross_checking_12_and_4() {
             plain += 1;
         }
     }
-    assert_eq!(cross, 12, "12 Category-2 cross-checking clauses");
-    assert_eq!(plain, 4, "4 Category-1 runtime-only clauses");
+    assert_eq!(cross, 12, "12 cross-checked cross-checking clauses");
+    assert_eq!(plain, 4, "4 runtime runtime-only clauses");
 }

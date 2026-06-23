@@ -7,7 +7,7 @@
 //! (`sdk/src/clauses/examples/`), so there is no second copy that
 //! could drift.
 //!
-//! `figaro-topology` is intentionally absent: it is manifest-only,
+//! `figaro-topology` is intentionally absent: it is agreement-only,
 //! never attested at runtime, and has no encoder (see `encode.rs`). The
 //! set here mirrors the encoder dispatch in `encode.rs` exactly — every
 //! clause with a Rust encoder has its spec embedded here, and vice versa.

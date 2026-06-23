@@ -72,7 +72,7 @@ interface WithdrawSellerDepositCapabilityAction {
 }
 
 /** Generic runtime attestation — the SELLER of an order advances ANY
- *  category-1 clause's enum ladder. One descriptor for every runtime-attestable
+ *  runtime clause's enum ladder. One descriptor for every runtime-attestable
  *  clause; the engine names no clause. The executor builds the on-chain content
  *  from the clause spec as `{ [ladderField]: eventCode }`. Replaces the former
  *  per-clause merchant-process / courier-process descriptors. */

@@ -30,7 +30,7 @@ export interface BoundAssembly {
     name: string;
     assemblyTemplate: AssemblyTemplate;
     /** The seller's designated counterparty wallets for this assembly,
-     *  keyed by sub-order process clause (the category-1 ladder clause the
+     *  keyed by sub-order process clause (the runtime ladder clause the
      *  sub-order carries). Sourced from the seller profile's
      *  AssemblyBindingRecord — checkout reads it to fill a delegated
      *  order's seller. */

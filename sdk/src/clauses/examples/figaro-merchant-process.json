@@ -34,7 +34,7 @@
         }
     ],
     "block": {
-        "tier": "category-1",
+        "tier": "runtime",
         "article": "attestations",
         "attestation": "seller",
         "handoffStages": ["handed-off"],

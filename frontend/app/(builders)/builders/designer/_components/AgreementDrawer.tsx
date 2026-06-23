@@ -324,7 +324,7 @@ export function AgreementDrawer({
 
 /**
  * One registered clause on the registry tab: a checkbox to compose it onto the
- * order, plus its design-time fields when selected (category-1 process clauses
+ * order, plus its design-time fields when selected (runtime process clauses
  * toggle whole — no fields). Under any field, renders the clauses that declare
  * `block.nestsUnder === <that field's name>` (read from the spec, never
  * hardcoded) — e.g. proximity-policy nested under the modality clause's
@@ -458,7 +458,7 @@ function ClauseControl({
                     {spec?.title ?? clause.clauseName ?? `${clause.clauseIdHash.slice(0, 10)}…`}
                 </span>
             </label>
-            {selected && spec && spec.fields.length > 0 && spec.block?.tier !== "category-1" && (
+            {selected && spec && spec.fields.length > 0 && spec.block?.tier !== "runtime" && (
                 <div className="ml-6 mt-2 space-y-3">
                     {spec.fields
                         .filter((field) => {

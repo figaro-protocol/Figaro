@@ -92,8 +92,8 @@ pub struct AttestationContentProof {
     /// for seller attestations; ignored for buyer attestations.
     pub inclusion_proof: Vec<B256>,
     /// Canonical-JSON `sectionData` bytes (as a UTF-8 string) for a
-    /// non-cross-checking (Category-1) clause, whose committed `sectionData`
-    /// is not the ABI content form. `None` for cross-checking (Category-2)
+    /// non-cross-checking (runtime) clause, whose committed `sectionData`
+    /// is not the ABI content form. `None` for cross-checking (cross-checked)
     /// clauses, where the leaf is derived from `content_ref` directly.
     pub section_data: Option<String>,
 }
@@ -376,7 +376,7 @@ pub enum KernelError {
     /// signed `agreement_hash` — the attested clause was not part of the
     /// agreement both parties signed.
     InvalidInclusionProof,
-    /// Gate 5: a non-cross-checking (Category-1) clause's content proof
+    /// Gate 5: a non-cross-checking (runtime) clause's content proof
     /// omitted `section_data`, so the agreement Merkle leaf cannot be
     /// derived (its `sectionData` is not the ABI content form).
     MissingSectionData,

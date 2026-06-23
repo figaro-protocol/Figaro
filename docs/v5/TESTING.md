@@ -17,7 +17,7 @@ CLAUDE.md keeps the run commands; this file is the full inventory of test files,
 (protocol / iso-14064 / pas-2050 / en-16258 / custom), GHG measurement,
 jurisdiction, merchant-process, courier-process, offset-policy,
 proximity policy, proximity proof). Each suite covers happy paths + every
-typed-error revert. (Topology has no validator — manifest-only clause.)
+typed-error revert. (Topology has no validator — agreement-only clause.)
 
 ## Halmos (`test/`) — 2 harnesses, 15 properties
 

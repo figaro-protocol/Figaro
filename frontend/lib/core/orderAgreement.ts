@@ -185,7 +185,7 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
 
     // Project every clause in the set through ONE spec-driven walk:
     //   - unknown spec (permissionless / not yet loaded) → fields verbatim;
-    //   - Category-1 → EMPTY anchor (an event-log clause's fields are filled
+    //   - runtime → EMPTY anchor (an event-log clause's fields are filled
     //     at runtime via attestation, never composed at build);
     //   - structural (commerce, topology) → verbatim — their data is assembled
     //     by this build itself, already canonical;
@@ -197,7 +197,7 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
         let data: Record<string, unknown> | null;
         if (!spec) {
             data = fields;
-        } else if (spec.block?.tier === "category-1") {
+        } else if (spec.block?.tier === "runtime") {
             data = {};
         } else if (clauseIsStructural(clauseId)) {
             data = fields;
@@ -209,7 +209,7 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
     }
 
     // Companion (sister) runtime anchors. A composed clause whose spec declares
-    // a Category-1 `sisterClauseId` pairs with that runtime clause; at build the
+    // a runtime `sisterClauseId` pairs with that runtime clause; at build the
     // sister is an EMPTY anchor — its content is attested at runtime, never
     // composed. Emitted generically from the spec (the SSoT for the pairing),
     // not per-clause companion code. Deduped: a sister shared by several composed
@@ -220,7 +220,7 @@ export function buildOrderAgreement(params: BuildOrderAgreementParams): Agreemen
     for (const clauseId of composedClauseIds) {
         const sister = getClauseSpec(clauseId)?.block?.sisterClauseId;
         if (!sister || emittedClauses.has(sister)) continue;
-        if (getClauseSpec(sister)?.block?.tier !== "category-1") continue;
+        if (getClauseSpec(sister)?.block?.tier !== "runtime") continue;
         sections.push({ clause: sister, version: getClauseSpec(sister)?.version ?? 1, data: {} });
         emittedClauses.add(sister);
     }
@@ -326,7 +326,7 @@ export interface CommitmentAgreementIssue {
  *      confirm it matches the hash in the commitment before counter-signing.)
  *   2. CONTENT VALIDITY — every PRESENT section conforms to its clause spec,
  *      via the same `validateContent` the sequencer mempool (Layer B) and the
- *      on-chain `IClauseValidator` (Layer C) enforce. `category-1` runtime
+ *      on-chain `IClauseValidator` (Layer C) enforce. `runtime` runtime
  *      clauses are skipped: they are presence-markers here whose content is
  *      attested (and validated on-chain) later, not at commit. Sections are NOT
  *      skipped for being empty — if a clause is in the agreement, its content
@@ -348,7 +348,7 @@ export function validateCommitmentAgreement(
     for (const section of agreement.sections) {
         const spec = getClauseSpec(section.clause);
         if (!spec) continue;
-        if (spec.block?.tier === "category-1") continue;
+        if (spec.block?.tier === "runtime") continue;
         const result = validateContent(section.data, spec);
         if (!result.ok) {
             for (const e of result.errors) {

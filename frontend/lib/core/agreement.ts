@@ -222,10 +222,10 @@ function canonicalizeSectionData(data: Record<string, unknown>): string {
 /**
  * Return the on-chain sectionData bytes for an agreement section.
  *
- * Category-2 clauses (declarative clauses) encode their data via the
+ * cross-checked clauses (declarative clauses) encode their data via the
  * generic canonical encoder — the same path the runtime attestation's
  * `content` takes — so the on-chain byte-equality check
- * `keccak256(content) == keccak256(sectionData)` succeeds. Category-1
+ * `keccak256(content) == keccak256(sectionData)` succeeds. runtime
  * clauses (no committed clause: lifecycle events, proximity proofs,
  * ghg-measurement) and unknown clauses fall through to canonical JSON
  * bytes.
@@ -242,7 +242,7 @@ export function getSectionDataBytes(section: AgreementSection): `0x${string}` {
     const { embeddedSpec, encodeContentFromSpec } =
         require("@figaro/core/clauses") as typeof import("@figaro/core/clauses");
     const spec = embeddedSpec(section.clause);
-    if (spec && spec.block?.tier === "category-2") {
+    if (spec && spec.block?.tier === "cross-checked") {
         return encodeContentFromSpec(spec, section.data);
     }
     return toHex(new TextEncoder().encode(canonicalizeSectionData(section.data)));

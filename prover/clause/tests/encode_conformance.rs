@@ -279,6 +279,6 @@ fn topology_v1_has_no_embedded_spec() {
     // canonical encoding either.
     assert!(
         embedded_spec_json_by_key("figaro-topology").is_none(),
-        "topology is manifest-only; embedded set must exclude it",
+        "topology is agreement-only; embedded set must exclude it",
     );
 }

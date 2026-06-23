@@ -381,7 +381,7 @@ fn validate_attestation_content(
     // buyer attestations pass None and skip this gate.
     if let Some(agreement_hash) = agreement_hash {
         // The agreement Merkle leaf is keccak256(clauseId ++ sectionDataHash).
-        // For a cross-checking (Category-2) clause the committed sectionData
+        // For a cross-checking (cross-checked) clause the committed sectionData
         // is the ABI content form, so sectionDataHash == content_ref. A
         // non-cross-checking clause carries its canonical-JSON section_data.
         // `cross_checks` is read off the already-parsed embedded spec (its

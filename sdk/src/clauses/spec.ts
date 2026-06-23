@@ -115,7 +115,7 @@ export type ClauseArticle = string;
 /** Doctrinal tier per the protocol-extension doctrine. Independent of the
  *  designer-palette category (`BlockMetadata.category`); the two used to be
  *  both called "category" and got conflated. Now renamed. */
-export type ClauseTier = "category-1" | "category-2" | "manifest-only";
+export type ClauseTier = "runtime" | "cross-checked" | "agreement-only";
 
 /**
  * Block-binding metadata — the single source of truth for how a clause
@@ -137,8 +137,8 @@ export interface ClauseBlockBinding {
     /** Doctrinal tier. */
     tier: ClauseTier;
     /** Drawer article that composes this clause in the canvas designer.
-     *  Undefined when the clause is runtime-only (Category-1 sister of a
-     *  Category-2 clause) and not user-toggleable. */
+     *  Undefined when the clause is runtime-only (runtime sister of a
+     *  cross-checked clause) and not user-toggleable. */
     article?: ClauseArticle;
     /** Mechanism kinds an assembly should include when this clause is
      *  anchored in any of its orders. Empty when the clause has no
@@ -151,10 +151,10 @@ export interface ClauseBlockBinding {
      *  "/evidence-display"]). Empty when the clause is view-tier only or
      *  has no UI at all. */
     routes?: readonly string[];
-    /** The clause's runtime-attestation companion — the Category-1 clause
+    /** The clause's runtime-attestation companion — the runtime clause
      *  paired with this one. The agreement build emits it as an empty anchor
-     *  (its content is attested at runtime, not composed). N Category-2 clauses
-     *  MAY name the same Category-1 companion (e.g. the GHG disclosure clauses →
+     *  (its content is attested at runtime, not composed). N cross-checked clauses
+     *  MAY name the same runtime companion (e.g. the GHG disclosure clauses →
      *  figaro-ghg-measurement-v1); the emitter dedups. Omit for unsistered
      *  clauses. */
     sisterClauseId?: string;
@@ -176,7 +176,7 @@ export interface ClauseBlockBinding {
      *  by reading this flag; no code names the clauses. Omit for elective
      *  clauses. */
     defaultOn?: boolean;
-    /** WHO attests this runtime (category-1) clause: "seller" (the order's seller
+    /** WHO attests this runtime clause: "seller" (the order's seller
      *  — the default for lifecycle clauses like merchant/courier process) or
      *  "bilateral" (BOTH buyer and seller witness — e.g. the proximity proof of
      *  physical presence). The generic runtime capability engine reads this to
@@ -235,7 +235,7 @@ const VALID_STRING_FORMATS: ReadonlySet<string> = new Set([
 ]);
 
 const VALID_CLAUSE_TIERS: ReadonlySet<string> = new Set([
-    "category-1", "category-2", "manifest-only",
+    "runtime", "cross-checked", "agreement-only",
 ]);
 
 function isObject(value: unknown): value is Record<string, unknown> {

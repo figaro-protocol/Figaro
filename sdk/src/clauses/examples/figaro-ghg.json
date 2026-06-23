@@ -27,7 +27,7 @@
         }
     ],
     "block": {
-        "tier": "category-2",
+        "tier": "cross-checked",
         "sisterClauseId": "figaro-ghg-measurement",
         "article": "emissions",
         "mechanismKinds": [

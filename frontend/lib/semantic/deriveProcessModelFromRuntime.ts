@@ -209,7 +209,7 @@ function roleCapabilities(
     const orderIdStr = order.id.toString();
     const agreement = order.agreementHash ? agreements.get(order.agreementHash) : undefined;
 
-    // GENERIC runtime attestation. Every category-1 clause the order's agreement
+    // GENERIC runtime attestation. Every runtime clause the order's agreement
     // carries declares WHO attests in its spec (block.attestation: seller |
     // bilateral). Lifecycle clauses (non-companion enum: merchant/courier/…)
     // advance their enum ladder; proof clauses (companion enum: proximity-proof)
@@ -225,7 +225,7 @@ function roleCapabilities(
         const orderAttestations = indexes.attestationsByOrder.get(orderIdStr) ?? [];
         for (const section of agreement.sections) {
             const clauseId = section.clause;
-            if (clauseTier(clauseId) !== "runtime") continue;          // category-1 only
+            if (clauseTier(clauseId) !== "runtime") continue;          // runtime only
             const ladder = clauseLadderField(clauseId);
             if (!ladder) continue;                                     // non-enum (e.g. ghg grams) → its own surface
             const clauseIdHash = clauseIdHashOf(clauseId, section.version).toLowerCase();
