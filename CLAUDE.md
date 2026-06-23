@@ -50,12 +50,13 @@ The base-model default you carry in unexamined and that is **wrong here**:
 > of trade; the frontend is a *protocol surface that composes catalogues*, never a product
 > application.
 
-So deep in base training it ships as a role taxonomy, an onboarding funnel, or persona
-journeys *before anyone asks "is this a product?"* Its body count is in git: a whole V4
-product-app frontend built and excised, ~80K net lines deleted, recurring every time an
-agent builds (`roleKind`, `archetypeId`, onboarding funnels all came back, deleted
-again). **The test before any surface:** *"Am I building a product feature?"* If yes,
-stop — compose from `lib/`, don't build an app shell.
+So deep in base training it ships as a role taxonomy or onboarding funnel *before anyone asks
+"is this a product?"* — its body count is in git (a V4 product-app frontend excised, ~80K lines).
+**The test before any surface is the `clause.block` seam:** `fields` + `block.tier` are the
+verified protocol; everything else in `block` and the frontend are *replaceable* presentation.
+*"Am I building a product feature?"* → *"which side of the seam?"* — a `block`-driven surface is
+designed presentation, **not silt**; a hardcoded list or stored taxonomy is drift. Compose from
+`lib/`; whole stack → `docs/v5/ARCHITECTURE.md`.
 
 ### What open-world looks like — the positive target
 
@@ -129,7 +130,7 @@ When in doubt, ask. Cheap question, expensive cleanup.
 
 **Figaro is not an app, a firm, or an economic system. It is the TCP/IP of Trade.** A stateless, ownerless protocol defining the smallest unit of a secure handshake: **the Bonded Commitment**. Two parties who have never met transact with mathematical certainty that cooperation is the dominant strategy — no arbitrator, no timeout, no admin backdoor.
 
-**The spine — read it before any architectural reasoning; do not re-derive or duplicate it.** Figaro is one object, the boundary, read four ways: it **HOLDS** (the chain keeps only a fingerprint; agreements, clauses, and proofs live off-chain and are *pinned*, not reconstructed), **COUPLES** (data, identity, compute/agents, and law stay in their native medium and attach through the same boundary), **EMERGES** (a minimal law is silent alone — meaning lives one level up in clauses/assemblies/processes, which the FIG/RPGF token funds), and **ADMITS** (no keeper governs; anyone or anything that can sign and bond participates). The frontend is a **reader of network state, never the custodian in the middle** — reasoning that treats a UI as the product is the recurring failure this pointer exists to stop. Canonical source: `/physics` + `/why` (`frontend/app/(marketing)/{physics,why}/page.tsx`) + the `project_physics_spine` memory.
+**The spine — read it before any architectural reasoning; do not re-derive or duplicate it.** Figaro is one object, the boundary, read four ways: it **HOLDS** (the chain keeps only a fingerprint; agreements, clauses, and proofs live off-chain and are *pinned*, not reconstructed), **COUPLES** (data, identity, compute/agents, and law stay in their native medium and attach through the same boundary), **EMERGES** (a minimal law is silent alone — meaning lives one level up in clauses/assemblies/processes, which the FIG/RPGF token funds), and **ADMITS** (no keeper governs; anyone or anything that can sign and bond participates). The frontend is a **reader of network state, never the custodian in the middle**. Canonical source: `/physics` + `/why` (`frontend/app/(marketing)/{physics,why}/page.tsx`) + the `project_physics_spine` memory.
 
 The kernel runs **two mechanisms that compose, not substitute**, plus one security constraint:
 
@@ -265,7 +266,7 @@ If yes, adding on-chain state, role checks, or lifecycle flags is a web2 pattern
 
 **Check before you build — no new rows of corn.** Before adding ANY frontend artifact (component, hook, helper, type, util, taxonomy, constant, style), `grep`/`glob` for an existing one and **reuse or extend it** — the bar for a net-new symbol is "no equivalent exists, *shown by a search*," never "I didn't happen to see one." Re-implementing what exists is the single most repeated failure here. A new catalogue that duplicates an existing one is still a finding (the no-new-helpers case, not the abstraction-ahead-of-UI case). When a genuinely new surface is warranted, start from the canonical exemplar of its surface-type (`docs/v5/FRONTEND.md` § "Canonical exemplars — copy these shapes") and copy its shape — never generate the shape from scratch.
 
-The frontend is a **protocol surface, not a product app**: every surface renders network state via the indexer; hardcoded/bundled lists are web2 drift. The `(marketing)`/`(app)` split is wallet-scope, not data-freshness.
+The `(marketing)`/`(app)` split is wallet-scope, not data-freshness; hardcoded/bundled lists are web2 drift.
 
 ### Documentation Discipline
 
@@ -349,7 +350,7 @@ This is the exhaustive whitelist. Files not listed are deletion candidates at ev
 
 **Security & verification:** `DESIGN_DECISIONS.md` (14 intentional patterns that look like vulnerabilities — **read before auditing**), `VERIFICATION_MAP.md` (invariant → code → test → formal layer), `RELEASE_READINESS.md` (gate criteria, frozen Solidity surface for external audit), `SCALING_STRATEGY.md` (proof-based scaling, batch sequencer architecture, sequencer trust model).
 
-**Architecture:** `OPEN_WORLD.md` (open-world paradigm + composition model + semantic layer), `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md`, `LEXICON.md` (canonical-name-per-tier grid; documented half of the lexicon, enforced by `scripts/lint-architecture-lexicon.sh`).
+**Architecture:** `ARCHITECTURE.md` (whole-system stack + the `clause.block` seam), `OPEN_WORLD.md` (open-world paradigm + composition model + semantic layer), `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md`, `LEXICON.md` (canonical-name-per-tier grid; documented half of the lexicon, enforced by `scripts/lint-architecture-lexicon.sh`).
 
 **Protocol-specific:** `FIG_TOKEN.md`, `GHG_PROTOCOL_SPEC.md`.
 
