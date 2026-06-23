@@ -87,6 +87,20 @@ for file in "$@"; do
     check "$file" FAIL "\\bschema" '(^|/)(CLAUDE\.md|docs/v5/LEXICON\.md)$' \
         'json[ -]schema|commitment schema|schema version|schema\.org' \
         "retired: the protocol artifact family is the 'clause' (ClauseRegistry / clauseId), not the 'schema'."
+
+    # ── clause attestation tier + 'manifest' (2026 rename) ─────────
+    # Canonical tiers (block.tier): 'cross-checked' / 'runtime' / 'agreement-only'.
+    # 'manifest' is dead — use 'off-chain agreement' / 'pinned content' / 'sealed
+    # payload'. Carve-outs: Cargo's own names (CARGO_MANIFEST_DIR / --manifest-path),
+    # the English VERB (manifestation / will|would manifest), and the FROZEN kernel
+    # (src/FigaroCore.sol keeps its original comments untouched).
+    check "$file" FAIL "category-1\\b|category-2\\b|manifest-only|manifestOnly" \
+        '(^|/)docs/v5/LEXICON\.md$' "" \
+        "retired clause tier: use 'cross-checked' / 'runtime' / 'agreement-only' (block.tier)."
+    check "$file" FAIL "\\bmanifest" \
+        '(^|/)(docs/v5/LEXICON\.md|src/FigaroCore\.sol)$' \
+        'CARGO_MANIFEST|--manifest-path|manifestation|will manifest|would manifest' \
+        "retired: 'manifest' is dead — use 'off-chain agreement' / 'pinned content' / 'sealed payload'."
 done
 
 if (( fail > 0 )); then
