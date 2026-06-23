@@ -513,10 +513,21 @@ function parseBlockBinding(
             return null;
         }
     }
-    const mechanismKinds = parseStringArray(raw.mechanismKinds, `${path}.mechanismKinds`, errors);
-    if (mechanismKinds === null) return null;
-    const moduleIds = parseStringArray(raw.moduleIds, `${path}.moduleIds`, errors);
-    if (moduleIds === null) return null;
+    // Optional: a clause wiring no mechanism module — a pure attestation
+    // lifecycle, or any minimal stranger's clause — omits these; the validator
+    // and prover ignore them. Absent ⇒ []. (Present-but-malformed still errors.)
+    let mechanismKinds: readonly string[] = [];
+    if (raw.mechanismKinds !== undefined) {
+        const parsed = parseStringArray(raw.mechanismKinds, `${path}.mechanismKinds`, errors);
+        if (parsed === null) return null;
+        mechanismKinds = parsed;
+    }
+    let moduleIds: readonly string[] = [];
+    if (raw.moduleIds !== undefined) {
+        const parsed = parseStringArray(raw.moduleIds, `${path}.moduleIds`, errors);
+        if (parsed === null) return null;
+        moduleIds = parsed;
+    }
     let routes: readonly string[] | undefined;
     if (raw.routes !== undefined) {
         const r = parseStringArray(raw.routes, `${path}.routes`, errors);

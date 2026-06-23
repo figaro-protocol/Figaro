@@ -166,6 +166,32 @@ describe("parseClauseSpec — meta-clause validation", () => {
         if (result.ok) expect(result.spec.block?.nestsUnder).toBe("handoff");
     });
 
+    // mechanismKinds / moduleIds are OPTIONAL UI/composition wiring the validator
+    // and prover ignore — a pure attestation lifecycle (or any minimal stranger's
+    // clause) omits them. Absent ⇒ []. The open-world surfacing bar: a clause no
+    // code has seen parses from the minimum it needs to render.
+    it("treats block.mechanismKinds/moduleIds as optional (absent ⇒ [])", () => {
+        const result = parseClauseSpec({
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            fields: [{ name: "x", type: "string", required: true }],
+            block: { tier: "runtime", article: "attestations", attestation: "seller" },
+        });
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+            expect(result.spec.block?.mechanismKinds).toEqual([]);
+            expect(result.spec.block?.moduleIds).toEqual([]);
+        }
+    });
+
+    it("still rejects a malformed (non-array) block.mechanismKinds", () => {
+        const result = parseClauseSpec({
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            fields: [{ name: "x", type: "string", required: true }],
+            block: { tier: "runtime", mechanismKinds: "nope" },
+        });
+        expect(result.ok).toBe(false);
+    });
+
     it("rejects an empty-string block.nestsUnder", () => {
         const result = parseClauseSpec({
             clauseId: "t-v1", version: 1, title: "T", description: "D",

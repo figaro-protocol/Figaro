@@ -573,19 +573,16 @@ fn parse_block_binding(
             }
         },
     };
+    // Optional: absent ⇒ []. A clause wiring no mechanism module (a pure
+    // attestation lifecycle or any minimal stranger's clause) omits these; the
+    // validator and prover ignore them. (Present-but-malformed still errors.)
     let mechanism_kinds = match raw.get("mechanismKinds") {
         Some(v) => parse_string_array(v, &format!("{path}.mechanismKinds"), errors)?,
-        None => {
-            err(errors, &format!("{path}.mechanismKinds"), "expected an array of strings");
-            return None;
-        }
+        None => Vec::new(),
     };
     let module_ids = match raw.get("moduleIds") {
         Some(v) => parse_string_array(v, &format!("{path}.moduleIds"), errors)?,
-        None => {
-            err(errors, &format!("{path}.moduleIds"), "expected an array of strings");
-            return None;
-        }
+        None => Vec::new(),
     };
     let routes = match raw.get("routes") {
         None => None,
