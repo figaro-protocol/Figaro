@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useAccount } from "wagmi";
 import { ProcessFinancialsView } from "../_components/ProcessFinancialsView";
+import { ProcessClauseEvidence } from "../_components/ProcessClauseEvidence";
 import { HashVerifier } from "../_components/HashVerifier";
 import { DisputeStatusPanel } from "@/components/core/DisputeStatusPanel";
 import { useArbitrationCost } from "@/hooks/core/useArbitrationCost";
@@ -85,6 +86,10 @@ export function ProcessAuditClient() {
             </header>
 
             <ProcessFinancialsView processId={processId} />
+
+            <div className="border-t border-default pt-12">
+                <ProcessClauseEvidence processId={processId} />
+            </div>
 
             <div className="border-t border-default pt-12">
                 <ProcessDisputeSection processId={processId} />

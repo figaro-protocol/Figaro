@@ -19,7 +19,7 @@
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 import type { ExtractedDocument } from "./types";
-import { clauseIsProcessLog, getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { clauseIsProcessLog, getClauseSpec, clauseIdForHash } from "@/lib/shared/clauseSpecSource";
 
 interface ProcessLogEntry {
     clauseKey: string;
@@ -62,18 +62,23 @@ export function extractProcessLogs(
 
     for (const att of attestations) {
         if (att.orderHash !== order.id) continue;
-        if (!clauseIsProcessLog(att.clauseId)) continue;
-        let group = groups.get(att.clauseId);
+        // Attestation events carry the clauseId HASH; the spec reads key on the
+        // readable id, so resolve it first (falls back to the raw value when already
+        // readable or the spec isn't cached). Without this, every attestation is
+        // skipped and the process-log section renders empty.
+        const clauseId = clauseIdForHash(att.clauseId) ?? att.clauseId;
+        if (!clauseIsProcessLog(clauseId)) continue;
+        let group = groups.get(clauseId);
         if (!group) {
             group = {
-                clauseId: att.clauseId,
-                title: getClauseSpec(att.clauseId)?.title ?? att.clauseId,
+                clauseId,
+                title: getClauseSpec(clauseId)?.title ?? clauseId,
                 events: [],
             };
-            groups.set(att.clauseId, group);
+            groups.set(clauseId, group);
         }
         group.events.push({
-            clauseKey: att.clauseId,
+            clauseKey: clauseId,
             attester: att.attester,
             stage: att.stage,
             contentRef: att.contentRef,

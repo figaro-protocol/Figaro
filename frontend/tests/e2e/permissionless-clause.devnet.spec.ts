@@ -1,0 +1,388 @@
+/**
+ * permissionless-clause.devnet.spec.ts — THE acceptance test (clean rewrite).
+ *
+ * The single definition of "green" for the open-world claim: a clause that NO
+ * code in this repo has ever heard of must flow through the WHOLE pipeline with
+ * ZERO code changes —
+ *
+ *   drawer   → the event-driven designer drawer surfaces it (read from the live
+ *              ClauseRegistry → IPFS, never a bundled list)
+ *   encode   → composing it into an assembly carries its section into the
+ *              published agreement
+ *   commit   → a real bilateral order commits that agreement on-chain
+ *   runtime  → the order's seller advances the clause's lifecycle through the
+ *              ONE generic capability rail (no clause named in the page)
+ *   audit    → the attestation surfaces in the audit package, its label read
+ *              straight from the spec
+ *
+ * The prior version of this test (and its helpers) was deleted in 3b26329 /
+ * 063c517 because it was coupled to closed-world scenario apparatus (pre-computed
+ * slugs, UI-bypassing place/accept shortcuts). This rewrite imports NONE of that:
+ * it drives the REAL UI end to end, exactly as orders-accept / seed-assembly /
+ * sellers-onboarding do, and the only non-UI step is the documented permissionless
+ * clause registration (ClauseRegistrationHelper + a per-clause MockClauseValidator)
+ * — network seeding, the same path the protocol's own clauses use, NOT a bypass.
+ *
+ * Self-contained: registers its OWN novel clause, authors + publishes its OWN
+ * assembly, onboards its OWN seller (anvil[14], used by no other spec), and
+ * snapshots/reverts so it leaves no residue on the persistent devnet.
+ *
+ * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server (:3100).
+ */
+import fs from 'fs';
+import path from 'path';
+import { test, expect, gotoAsWallet } from './devnet-multi-test';
+import {
+    createPublicClient, createWalletClient, defineChain, http, parseAbi,
+    keccak256, stringToHex, type Hex,
+} from 'viem';
+import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
+import {
+    readLocalDeploymentConfig, pinJSONToIPFS, localPublicClient,
+} from './devnet-helpers';
+import { ANVIL_KEYS } from '../anvilAccounts';
+import { clauseIdHash } from '@/lib/shared/evm';
+import { CORE_ABI } from '@/lib/core/contracts';
+import { calculateBonds } from '@figaro/core';
+import type { Page } from '@playwright/test';
+
+const RPC_URL = 'http://127.0.0.1:8545';
+const LOCAL_ANVIL = defineChain({
+    id: 31337,
+    name: 'Localhost',
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+    rpcUrls: { default: { http: [RPC_URL] } },
+});
+const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
+
+// ── The novel clause — a runtime-attestable lifecycle with one enum ladder, a
+//    name NOTHING in this repo knows. Modeled on the SHAPE of a merchant-process
+//    clause, but never registered, never bundled.
+//
+//    The id + title carry a per-run nonce (minted INSIDE the test, below) so each
+//    run certifies a genuinely never-seen clause AND the run's content-addressed
+//    assembly slug (asm-<contentHash>) is unique. The test leaves its state on-
+//    chain (no revert — devnet is a mainnet rehearsal), so a FIXED id/content
+//    would collide with a prior run's first-write-wins registration on every
+//    re-run and every Playwright retry (registerAssembly reverts: slug taken). ──
+const NOVEL_VERSION = 1;
+const NOVEL_FIRST_STAGE_LABEL = 'Probe opened';
+
+function makeNovelSpec(clauseId: string, title: string) {
+    return {
+        clauseId,
+        version: NOVEL_VERSION,
+        title,
+        description:
+            'A runtime-attestable lifecycle clause that no code in this repo knows — the open-world certification probe.',
+        categories: ['lifecycle', 'probe'],
+        fields: [
+            {
+                name: 'probeStage',
+                type: 'enum',
+                values: ['probe-opened', 'probe-advanced', 'probe-closed'],
+                valueLabels: {
+                    'probe-opened': NOVEL_FIRST_STAGE_LABEL,
+                    'probe-advanced': 'Probe advanced',
+                    'probe-closed': 'Probe closed',
+                },
+                required: true,
+                description: 'Probe lifecycle stage.',
+            },
+        ],
+        block: { tier: 'runtime', article: 'attestations', attestation: 'seller' },
+    };
+}
+
+// Local, non-kernel ABI fragments for the documented register+bind path.
+const CLAUSE_REGISTRY_ABI = parseAbi(['function registered(bytes32) view returns (bool)']);
+const CLAUSE_REGISTRATION_HELPER_ABI = parseAbi([
+    'function registerClauseAndValidator(string clauseId, uint64 version, bytes32 contentHash, string metadataURI, bytes32 family, address validator) external',
+]);
+const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
+
+const BUYER = privateKeyToAccount(ANVIL_KEYS[0] as Hex).address; // anvil[0] — buyer + author + registrar
+const seller = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 14 }); // anvil[14] — used by no other spec
+const SELLER = seller.address;
+
+/** Wait for ClientInit's devnet auto-connect (the "Connect Wallet" button goes). */
+async function waitForConnected(page: Page) {
+    await page.waitForFunction(
+        () => !Array.from(document.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Connect Wallet'),
+        null,
+        { timeout: 30000 },
+    );
+}
+
+/**
+ * Register the novel clause permissionlessly + bind its Layer-C validator
+ * atomically (ClauseRegistrationHelper.registerClauseAndValidator) — the
+ * documented register+bind path the protocol's own clauses use. Idempotent:
+ * skips if already registered (re-run within a fresh snapshot is the norm).
+ */
+async function registerNovelClause(clauseId: string, spec: ReturnType<typeof makeNovelSpec>): Promise<void> {
+    const cfg = readLocalDeploymentConfig();
+    const registry = (process.env.NEXT_PUBLIC_CLAUSE_REGISTRY ?? cfg.clauseRegistry) as Hex;
+    const helper = (process.env.NEXT_PUBLIC_CLAUSE_REGISTRATION_HELPER ?? cfg.clauseRegistrationHelper) as Hex | undefined;
+    if (!helper) throw new Error('NEXT_PUBLIC_CLAUSE_REGISTRATION_HELPER not set — run ./scripts/deploy-local.sh');
+    const pub = localPublicClient();
+    const idHash = clauseIdHash(clauseId, NOVEL_VERSION);
+
+    const already = await pub.readContract({
+        address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registered', args: [idHash],
+    });
+    if (already) return;
+
+    const registrar = privateKeyToAccount(ANVIL_KEYS[0] as Hex);
+    const wallet = createWalletClient({ account: registrar, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+
+    // This clause's own Layer-C validator (Mock — permissive; the constructor
+    // arg is the clauseId HASH it self-attests, which the binding verifies).
+    const artifact = JSON.parse(fs.readFileSync(
+        path.resolve(__dirname, '../../../out/MockClauseValidator.sol/MockClauseValidator.json'), 'utf8',
+    )) as { abi: unknown[]; bytecode: { object: Hex } };
+    const deployHash = await wallet.deployContract({
+        abi: artifact.abi as never, bytecode: artifact.bytecode.object, args: [idHash],
+    });
+    const { contractAddress: validator } = await pub.waitForTransactionReceipt({ hash: deployHash });
+    if (!validator) throw new Error('MockClauseValidator deployment returned no address');
+
+    const { uri } = await pinJSONToIPFS(spec);
+    const contentHash = keccak256(stringToHex(JSON.stringify(spec)));
+    const family = keccak256(stringToHex(spec.categories[0]));
+    const { request } = await pub.simulateContract({
+        account: registrar.address, address: helper, abi: CLAUSE_REGISTRATION_HELPER_ABI,
+        functionName: 'registerClauseAndValidator',
+        args: [clauseId, BigInt(NOVEL_VERSION), contentHash, uri, family, validator],
+    });
+    await pub.waitForTransactionReceipt({ hash: await wallet.writeContract(request) });
+}
+
+test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () => {
+    test.setTimeout(360_000);
+
+    // No evmSnapshot/evmRevert: devnet is a mainnet REHEARSAL — the run leaves its
+    // state on-chain + in IPFS so it can be verified OUT-OF-BAND, never only from the
+    // test's own assertions. Modeled on orders-accept.devnet.spec.ts.
+    test('a never-seen clause flows drawer → encode → commit → runtime attest → audit with zero code changes', async ({ page }) => {
+        page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
+
+        const config = readLocalDeploymentConfig();
+        const core = config.figaroCore as Hex;
+        const token = config.tokenAddress as Hex;
+        const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+
+        // Per-RUN (per-attempt) nonce: makes this run's clause id + assembly content
+        // unique, so the content-addressed slug never collides with a prior run's or
+        // a prior retry's first-write-wins registration on the persistent devnet.
+        const runNonce = `${Date.now()}`;
+        const NOVEL_CLAUSE_ID = `figaro-probe-attest-${runNonce}`;
+        const NOVEL_TITLE = `Probe attestation (acceptance test) ${runNonce}`;
+        const NOVEL_SPEC = makeNovelSpec(NOVEL_CLAUSE_ID, NOVEL_TITLE);
+
+        // ── SETUP: register the novel clause permissionlessly (no UI for clause
+        //    registration exists — this is the documented register+bind path) ──
+        await registerNovelClause(NOVEL_CLAUSE_ID, NOVEL_SPEC);
+
+        // ── DRAWER: author an assembly carrying the novel clause, via the REAL
+        //    designer. The clause appears ONLY because the drawer read it from
+        //    the live registry → IPFS (event-driven, zero code change). ──
+        await page.addInitScript(() => {
+            try {
+                window.localStorage.removeItem('figaro:designer:current');
+                window.localStorage.removeItem('figaro:designer:drafts');
+            } catch { /* noop */ }
+        });
+        await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
+        await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+
+        const rootNode = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])').first();
+        await rootNode.waitFor({ state: 'visible', timeout: 10000 });
+        await rootNode.click();
+        await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
+        await page.getByTestId('drawer-tab-registry').click();
+        await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
+        const novel = page.getByTestId(`drawer-registry-clause-${NOVEL_CLAUSE_ID}`);
+        await expect(
+            novel,
+            'the drawer surfaces the NEVER-SEEN clause from the live registry (drawer leg)',
+        ).toHaveCount(1, { timeout: 20000 });
+        await novel.check();
+
+        const assemblyName = `Probe assembly ${Date.now()}`;
+        await page.getByTestId('designer-name-input').fill(assemblyName);
+        await page.getByTestId('designer-summary-input').fill('Acceptance probe: a never-seen clause end to end.');
+        await page.getByTestId('designer-description-input').fill('Single-node assembly carrying figaro-probe-attest — the open-world certification.');
+        await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
+        await page.getByTestId('designer-review').click();
+
+        await page.waitForURL(/\/builders\/designer\/view\/asm-/, { timeout: 15000 });
+        const handle = page.url().match(/\/view\/(asm-[a-z0-9-]+)/)?.[1];
+        expect(handle, 'review navigated to a draft handle').toBeTruthy();
+        await page.goto(`/builders/designer/view/${handle}?intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        const confirmBtn = page.getByTestId('review-confirm-publish');
+        await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
+        await waitForConnected(page);
+        await confirmBtn.click();
+        await page.getByTestId('assembly-publish-receipt').waitFor({ timeout: 60000 });
+        const slug = (await page.getByTestId('receipt-slug').textContent())?.trim();
+        expect(slug, 'publish receipt shows the content slug').toMatch(/^asm-/);
+
+        // ── BIND: onboard anvil[14] as a seller through the REAL wizard, binding
+        //    the novel assembly. (No code knows this clause; the seller binds the
+        //    assembly the same way it would any other.) ──
+        await gotoAsWallet(page, SELLER, '/sellers');
+        await page.goto('/sellers/identity', { waitUntil: 'domcontentloaded' });
+        await expect(page.locator('#profile-name')).toBeVisible({ timeout: 30000 });
+        await page.locator('#profile-name').fill('Probe Seller');
+        await page.locator('#profile-specialty').fill('acceptance probe');
+        await page.locator('#profile-geohash').fill('9q8yyk8yu');
+        await page.getByRole('button', { name: /\+ MOCK$/ }).click();
+        await page.locator('input[name="defaultTokenAddress"]').first().check();
+        await page.getByRole('button', { name: /^Next/ }).click();
+        await expect(page).toHaveURL(/\/sellers\/catalogue/);
+
+        await page.locator('[id^="item-"][id$="-name"]').first().fill('Probe item');
+        await page.locator('[id^="item-"][id$="-price"]').first().fill('1');
+        await page.getByRole('button', { name: /^Next/ }).click();
+        await expect(page).toHaveURL(/\/sellers\/assemblies/);
+
+        // Bind MY novel assembly (by its unique name), not whatever is first.
+        const myRow = page.locator('[data-testid^="seller-assembly-row-"]').filter({ hasText: assemblyName });
+        await myRow.first().waitFor({ state: 'visible', timeout: 30000 });
+        await myRow.first().locator('input[type="checkbox"]').first().check();
+        await page.getByRole('button', { name: /^Next/ }).click();
+        await expect(page).toHaveURL(/\/sellers\/agents/);
+        await page.getByRole('button', { name: /^Next/ }).click();
+        await page.waitForURL(/\/sellers\/review/, { timeout: 30000 });
+        await page.getByTestId('review-confirm-publish').click();
+        await expect(page.getByRole('heading', { name: /Registered\.|Profile updated/i })).toBeVisible({ timeout: 60000 });
+
+        // ── COMMIT: the buyer (anvil[0]) orders from the seller, signs, relays ──
+        const committedBefore = (await publicClient.getContractEvents({
+            address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: BUYER }, fromBlock: 0n,
+        })).length;
+        // Bond-escrow baseline in the payment token, captured BEFORE the commit pulls
+        // bonds. The deltas (not absolutes) are asserted, so this is robust to any
+        // residue a prior run left on the persistent devnet.
+        const balanceOf = (who: Hex) =>
+            publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
+        const [buyerBefore, sellerBefore, coreBefore] = await Promise.all([
+            balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
+        ]);
+        // Switch the active wallet BACK to the buyer. The seller-onboarding above
+        // left a persistent `__FIGARO_SWITCH_ACCOUNT__(SELLER)` init script (gotoAsWallet
+        // registers one that re-fires on EVERY navigation) — a plain goto here would
+        // place the order as anvil[14] (a self-deal), so the buyer's approval never runs
+        // for anvil[0] and `OrderCommitted{buyer: anvil[0]}` never lands. gotoAsWallet(BUYER)
+        // registers a later switch-script that wins, mounting wagmi as the buyer.
+        await gotoAsWallet(page, BUYER, `/s/${SELLER}?e2e=devnet`);
+        await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        const addBtn = page.locator('[data-testid^="btn-add-"]').first();
+        await addBtn.waitFor({ state: 'visible', timeout: 20000 });
+        await addBtn.click();
+        await page.getByTestId('btn-review-order').click();
+        await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
+        const place = page.getByTestId('btn-place-order');
+        await expect(place, 'buyer connected + order ready → "Place order"').toHaveText(/Place order/, { timeout: 20000 });
+        await place.click();
+        await page.getByTestId('buyer-share-panel').waitFor({ timeout: 60000 });
+        await page.getByTestId('send-commitment-xmtp').click();
+        await expect(page.getByTestId('commitment-xmtp-status')).toBeVisible({ timeout: 30000 });
+
+        // ── ACCEPT: the seller accepts on /orders → counter-sign → commit ──
+        await gotoAsWallet(page, SELLER, '/orders?e2e=devnet');
+        await page.getByTestId('orders-list').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        await page.getByTestId('order-your-turn-card').first().waitFor({ state: 'visible', timeout: 30000 });
+        await page.getByTestId('btn-accept-order').first().click();
+        await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
+        await page.getByTestId('preview-confirm').click();
+
+        const queryCommitted = () => publicClient.getContractEvents({
+            address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: BUYER }, fromBlock: 0n,
+        });
+        await expect.poll(async () => (await queryCommitted()).length, {
+            timeout: 60000, message: 'a new OrderCommitted lands on-chain',
+        }).toBe(committedBefore + 1);
+        const committed = await queryCommitted();
+        const event = committed[committed.length - 1];
+        expect(event.args.seller?.toLowerCase(), 'committed against the novel-assembly seller').toBe(SELLER.toLowerCase());
+        const processId = event.args.processId!;
+        const payment = event.args.payment!;
+        const receipt = await publicClient.getTransactionReceipt({ hash: event.transactionHash });
+        expect(receipt.status, 'the commit transaction succeeded').toBe('success');
+
+        // ── Funds actually moved (the real test): buyer↓ buyerBond, seller↓ sellerBond,
+        //    FigaroCore escrow↑ both. Gas is paid in ETH, so the payment-token deltas
+        //    are the bonds only — the asymmetric-bonding mechanism, on-chain. ──
+        const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, payment);
+        const [buyerAfter, sellerAfter, coreAfter] = await Promise.all([
+            balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
+        ]);
+        expect(buyerBefore - buyerAfter, 'buyer balance decreased by the buyer bond').toBe(buyerBond);
+        expect(sellerBefore - sellerAfter, 'seller balance decreased by the seller bond').toBe(sellerBond);
+        expect(coreAfter - coreBefore, 'FigaroCore escrow increased by both bonds').toBe(buyerBond + sellerBond);
+
+        // ── RUNTIME ATTEST (the make-or-break leg): the seller advances the
+        //    NOVEL clause's lifecycle through the ONE generic capability rail.
+        //    If the runtime engine is clause-agnostic, a capability for a clause
+        //    no code knows surfaces here with NO edit to the order page. ──
+        await gotoAsWallet(page, SELLER, `/orders/${processId}?e2e=devnet`);
+        await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        const attest = page.getByTestId('capability-execute-submit-clause-attestation').first();
+        await expect(
+            attest,
+            'the runtime surfaces a generic attest capability for the NEVER-SEEN clause (runtime leg)',
+        ).toBeVisible({ timeout: 30000 });
+        await expect(attest).toBeEnabled({ timeout: 30000 });
+        await attest.click();
+
+        // The novel clause's first stage, labelled STRAIGHT from its spec, must
+        // surface on the TIMELINE after the attestation lands. Scope to the timeline
+        // list (`order-timeline`) — the capability rail also renders the stage label
+        // ('Probe opened' on both its card and its execute button), so an unscoped
+        // getByText is ambiguous (strict-mode: 2+ matches) until the rail advances.
+        await expect(
+            page.getByTestId('order-timeline').getByText(NOVEL_FIRST_STAGE_LABEL),
+            'the novel clause attestation renders on the timeline, its label read from the spec',
+        ).toBeVisible({ timeout: 60000 });
+
+        // ── RESOLVE: the buyer resolves atomically ──
+        const resolvedBefore = (await publicClient.getContractEvents({
+            address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
+        })).length;
+        await gotoAsWallet(page, BUYER, `/orders/${processId}?e2e=devnet`);
+        await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        const resolveBtn = page.getByTestId('capability-execute-resolve-process');
+        await expect(resolveBtn, 'the buyer can resolve the active process').toBeEnabled({ timeout: 30000 });
+        await resolveBtn.click();
+        await expect.poll(async () => (await publicClient.getContractEvents({
+            address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
+        })).length, { timeout: 60000, message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
+
+        // ── Full-cycle settlement (the real proof, the whole reason for the protocol):
+        //    buyer NET −payment, seller NET +payment, escrow returns to its baseline.
+        //    The bonds were the mechanism; the net is the trade. ──
+        const [buyerFinal, sellerFinal, coreFinal] = await Promise.all([
+            balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
+        ]);
+        expect(buyerBefore - buyerFinal, 'buyer net paid exactly the payment').toBe(payment);
+        expect(sellerFinal - sellerBefore, 'seller net earned exactly the payment').toBe(payment);
+        expect(coreFinal, 'FigaroCore escrow returned to its baseline').toBe(coreBefore);
+
+        // ── AUDIT: the novel clause's attestation surfaces in the audit package,
+        //    its title read from the spec — the full open-world loop, end to end. ──
+        await page.goto(`/audit/${processId}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        await expect(
+            page.getByText(NOVEL_TITLE),
+            'the audit package surfaces the never-seen clause by its spec title',
+        ).toBeVisible({ timeout: 30000 });
+    });
+});

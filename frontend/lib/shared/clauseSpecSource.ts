@@ -116,6 +116,15 @@ export function getClauseSpec(clauseId: string): ClauseSpec | undefined {
     return SPEC_CACHE.get(clauseId);
 }
 
+/** Resolve an on-chain clauseId HASH (keccak of name+version) back to its readable
+ *  registry id, via the warmed cache. The inverse of `clauseIdHash`. Undefined
+ *  until the spec is loaded. Attestation events carry the HASH, while the spec
+ *  reads (`getClauseSpec` / `clauseIsProcessLog`) key on the readable id — callers
+ *  holding a hash resolve it here first. */
+export function clauseIdForHash(clauseIdHashHex: string): string | undefined {
+    return HASH_TO_ID.get(clauseIdHashHex.toLowerCase());
+}
+
 /** Returns the load error for a clauseId, if any. */
 export function getClauseSpecLoadError(clauseId: string): string | undefined {
     return SPEC_LOAD_ERRORS.get(clauseId);
@@ -246,8 +255,10 @@ export function describeAttestation(
     clauseIdHash: string,
     stage: number,
 ): { clauseTitle: string; eventLabel: string; eventCode: string } {
-    const id = HASH_TO_ID.get(clauseIdHash.toLowerCase());
-    const spec = id ? getClauseSpec(id) : undefined;
+    // Accept EITHER the on-chain hash (resolve via the cache) or an already-readable
+    // id (use it directly) — process-log groups now carry the readable id.
+    const id = clauseIdForHash(clauseIdHash) ?? clauseIdHash;
+    const spec = getClauseSpec(id);
     if (!spec) return { clauseTitle: `${clauseIdHash.slice(0, 10)}…`, eventLabel: `stage ${stage}`, eventCode: `stage-${stage}` };
     const ladder = firstEnumField(spec);
     const value = ladder?.values[stage];

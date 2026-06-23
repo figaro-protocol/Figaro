@@ -47,7 +47,7 @@ interface IndexedLog {
     blockNumber?: bigint | number;
 }
 
-function toAttestationRecord(log: IndexedAttestationLog): AttestationRecord | null {
+export function toAttestationRecord(log: IndexedAttestationLog): AttestationRecord | null {
     const args = log.args;
     if (!args || !args.orderHash || !args.processId || !args.attester || !args.clauseId) {
         return null;
