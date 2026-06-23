@@ -169,7 +169,7 @@ Verify 3× before suggesting any change to kernel invariants. The MAD equilibriu
 
 ### Why the Name
 
-**Figaro** is the factotum of the city — Rossini's *Il Barbiere di Siviglia* (1816), the "Largo al factotum" aria: running errands, brokering favors, mediating between parties of incommensurable standing, making commerce of the whole household work without owning any of it. The kernel is named for what it does — the coordinator of everything without being the owner of anything. Naming dates to Figaro-Original (Genovese & Daliana, March 2022); lineage in `VISION.md` "Appendix: Project Lineage". The metaphor is the thesis, not decoration.
+**Figaro** is the factotum of the city — Rossini's *Il Barbiere di Siviglia* (1816), the "Largo al factotum" aria: running errands, brokering favors, mediating between parties of incommensurable standing, making commerce of the whole household work without owning any of it. The kernel is named for what it does — the coordinator of everything without being the owner of anything. Lineage → `VISION.md` "Appendix: Project Lineage". The metaphor is the thesis, not decoration.
 
 **FIG** is a speech-act identifier, the way ETH, BTC, USDC, and USD are. "Send me 10 FIG" works in speech the way "send me 10 ETH" does — evaluate FIG by speech-register fit, not Fortune-500 brand logic.
 
@@ -215,9 +215,11 @@ The recurring, weeks-costly failure is modeling a concern as a stored value when
 - **Nodes are co-equal** (kernel star-shape: buyer == rootBuyer on every order). The courier order is not a sub-order *owned* by the merchant; the DAG parent edge is value-topology, not dominance.
 - **Clauses are a nestable hierarchy: article → clause → sub-clause → …** Articles = `block.article` in the clause JSON (surfaced by the existing grouping component — do not rebuild it). Sub-clauses are logically placed (e.g. the proximity bands `zone-wifi`/`nearby-ble`/`contact-nfc` nest under `figaro-proximity-policy-v1`; the process clauses have none). **Add sub-clauses to the clause JSON spec, emit the event, and reconstruct the nesting OFF-CHAIN in the drawer (rendered recursively from the spec) — NEVER hardcode the sub-clause tree into the UI.**
 
-Full treatment (the fulfilment catch-all clause was retired 2026-06-11, split into the single-select modalities + coordination clauses; every scenario recomposed) → memory `feedback_fulfilment_retired_modality_derived`; clause-spec detail → `docs/v5/CLAUSES.md`.
+Full treatment → memory `feedback_fulfilment_retired_modality_derived`; clause-spec detail → `docs/v5/CLAUSES.md`.
 
 Mechanically enforced: `scripts/lint-no-closed-world-vocab.sh` (pre-commit, lint-staged) fails any commit reintroducing a stored role/archetype/category identifier in code (`roleKind`, `archetypeId`, `clauseCategories`, `documentKind`) and warns on retired `fulfilment` vocabulary until the de-hardcoding migration lands — then the warn list promotes to fail.
+
+**Do not delete the `w_category` substrate-broadening weight** (the RPGF geo·coordination family boost). A recurring closed-world deletion: it is a *category-of-work* incentive for the physical/virtual-flow graph the must-haves can't produce, not author-favoritism — deleting it as "a privileged category breaks neutrality" is the **neutrality ≠ flat-weighting error**. Rationale → `docs/v5/PUBLIC_GRAPH_MODEL.md`; enforced by `scripts/lint-substrate-broadening-weight.sh`.
 
 ### Dispute Resolution — Three Layers
 
@@ -303,10 +305,7 @@ The corpus is web-native (each paper a `/papers/<slug>` page rendered with serve
 
 One test layer per concern. These boundaries are hard; respect them when writing or auditing any test. Commands → `LOCAL_DEV.md`; full harness inventory → `TESTING.md`.
 
-- **Foundry** (`forge test --via-ir`) — contract behavior. The only home for contract tests.
-- **Vitest** (`frontend/tests/components/` RTL, `frontend/tests/lib/` unit) — UI logic, component behavior, validation, pure-client computation. Anything that needs neither a chain nor a real browser.
-- **Playwright `devnet`** (`*.devnet.spec.ts`) — the e2e suite, and the only one. Every spec drives the real UI against Anvil + deployed contracts.
-- **Playwright `mobile`** (`*.mobile.spec.ts`) — the one legitimate non-e2e browser project: responsive / CSS chrome that jsdom cannot test.
+- Layers: **Foundry** (contract behavior — the only home) · **Vitest** (UI logic / validation / pure-client, no chain or browser) · **Playwright `devnet`** (the e2e suite, and the only one) · **Playwright `mobile`** (responsive / CSS chrome jsdom can't test). Per-layer detail → `TESTING.md`.
 
 **e2e means end-to-end: action → reaction, both in the UI.** A genuine e2e test performs an action *through the UI*; the action travels the full real stack (UI → contract → chain → indexer); the reaction returns and is asserted *in the UI*. Driving a participant via a viem helper breaks the action end; asserting only on-chain events breaks the reaction end — either break and it is not e2e. A Playwright spec that drives contracts via viem and never touches the UI is a contract test misfiled; it belongs in Foundry. A mock-backed test cannot be e2e — the reaction is fabricated. The `mock` Playwright project was retired 2026-05-20; do not recreate it.
 

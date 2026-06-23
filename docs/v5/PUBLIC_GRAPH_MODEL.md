@@ -126,6 +126,61 @@ participants that other agents learn from, without centralized orchestration.
 
 ---
 
+## Why the substrate-broadening weight exists — the geo/coordination incentive
+
+This section is load-bearing. Without it, the RPGF `w_category` weight
+(`FIG_TOKEN.md`) reads as an unexplained category privilege in a
+neutrality-preaching system, is mistaken for closed-world cruft, and is removed.
+It is not cruft. Guard: `scripts/lint-substrate-broadening-weight.sh`.
+
+**The must-haves see value, not place.** Every Figaro agreement composes the core
+protocol plus two clauses present in essentially all of them: **topology** (the
+value-added chain — who comes before whom) and **commerce** (who pays whom, in what
+token, how much). From these alone the network emits its economic skeleton by
+construction — who paid whom, in what denomination, for how much, who the parties
+in the value-added process are, and how value accumulates (the Process and Capital
+graphs above). That skeleton is complete on its own.
+
+**What it cannot see is *where*.** The must-haves record *that* value was added and
+*by whom* — never the **physical or virtual flow** of the work: where a pickup
+happened, where a hand-off occurred, which zones a service covers, how goods and
+signals actually moved. That flow-map is not derivable from payment and topology;
+it must be *attested* by clauses that carry it — geolocation, proximity, hand-off,
+fulfilment. It is the Geo graph above, and nothing forces it into existence.
+
+**So the protocol pays more for the clauses that draw the map.** To make the
+flow-graph exist, the substrate-broadening formula weights a **category of work** —
+the geo/coordination family — above the rest (`w_category = 3.0`, frozen at deploy;
+today `keccak256("geo")` and `keccak256("coordination")`; the sealed mirrors are
+`prover/rpgf/src/formula.rs` and `sdk/scripts/rpgf-simulator/formula.ts`). It is a
+deliberate incentive: contribute and use the clauses that emit physical/virtual-flow
+data, and earn more of the supply reserved for clause authors.
+
+**This privileges a kind of public good, not a set of authors.** The weight attaches
+to the *family*, never to a wallet: any author who registers a clause under a
+tier-1 family inherits the boost — permissionlessly, no committee, no application.
+The formula is fixed and discretion-free — *the same rule for every author* — and
+that rule happens to reward the data the network most needs. Procedural neutrality
+(no one decides who deserves what) and a non-flat weighting (some work is worth more
+to the substrate) are not in tension. Conflating them is the **neutrality ≠
+flat-weighting error** — and the error that keeps getting this deleted.
+
+**The objective is a public, verifiable god's-eye view.** Aggregated over time,
+these attestations form a heat-map of physical/virtual flows — demand clusters,
+routes, service areas — every datum emitted by event, content-addressed,
+independently verifiable. No operator owns it; the bonds securing each order give
+participants reason to attest accurately.
+
+**The payoff is the point.** Today the map of who-moves-what-where is the private
+asset on which platform companies build their value capture: they sit between
+participants because they alone hold the coordination data. When that same data is
+a public good — open, verifiable, permissionlessly extended, and incentivized into
+existence by the protocol's own token — the informational moat dissolves. The
+platforms are not attacked; the basis of their capture is simply no longer scarce.
+That is what levels the field.
+
+---
+
 ## What Is Not Public
 
 Private delivery details (exact street address, apartment number, recipient

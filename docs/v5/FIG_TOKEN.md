@@ -153,6 +153,16 @@ score = w_tier1 × processCount^α × pairs^(1 − α)        α = 33/100
 - `w_topology` — the clause's mean chain position over the window, clamped to
   `[1.0, 3.0]`; clauses used deeper in process chains weigh more.
 
+**Why the `w_category` boost exists.** It is a deliberate incentive, not a
+privileged class of authors: it rewards the *category of work* — geo/coordination
+clauses — that produces the public physical/virtual-flow graph the must-have clauses
+(core + topology + commerce) cannot, and whose existence dissolves platform
+value-capture. Removing it on "a privileged category contradicts open-world
+neutrality" is the neutrality ≠ flat-weighting error. Full rationale + the
+anti-platform objective: `docs/v5/PUBLIC_GRAPH_MODEL.md` § "Why the
+substrate-broadening weight exists". Enforced by
+`scripts/lint-substrate-broadening-weight.sh`.
+
 **Value is deliberately excluded.** Payment and bond size do not enter the
 formula. The protocol's cost to move one unit equals its cost to move a
 trillion; weighting by value would import a TradFi "TVL matters" metric the

@@ -5,6 +5,11 @@ npx lint-staged
 bash scripts/lint-claude-local-allowlist.sh
 bash scripts/lint-claude-md.sh
 bash scripts/lint-clause-counts.sh
+# RPGF substrate-broadening weight (geo/coordination tier-1 boost) must not be
+# deleted — the recurring closed-world deletion. The weight rewards a CATEGORY OF
+# WORK, not authors; it is the incentive for the physical/virtual-flow graph the
+# must-have clauses cannot produce. Header + docs/v5/PUBLIC_GRAPH_MODEL.md.
+bash scripts/lint-substrate-broadening-weight.sh
 bash scripts/lint-chain-gas.sh
 # Open-world floor: no fabricated network state (?? CONTRACTS / coined emoji),
 # swept over the WHOLE tracked tree, not just the staged diff — the structural

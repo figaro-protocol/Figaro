@@ -4,35 +4,32 @@ import Link from "next/link";
 export const metadata: Metadata = {
     title: "How clause authors get paid — Figaro Protocol",
     description:
-        "Sixty percent of the FIG supply is reserved for clause authors, paid out by a fixed formula that measures real, settled use — no application, no committee.",
+        "Platforms own the map of who-moves-what-where. Figaro makes that map a public good — and pays the clause authors who draw it, by a fixed formula, no committee.",
 };
 
 export default function Rpgf() {
     return (
         <section className="container mx-auto px-6 pt-24 pb-16 max-w-2xl">
             <h1 className="text-heading-h1 text-ink-heading mb-3">
-                How clause authors get paid.
+                The map is the monopoly.
             </h1>
             <p className="text-body-lead text-ink-muted italic mb-8">
-                No application. No committee. A fixed formula that pays for clauses the network actually uses.
+                Platforms don&apos;t own the trucks or the kitchens. They own the map. Figaro makes the map a public good — and pays the people who draw it.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                Sixty percent of all FIG &mdash; 600 million of the one billion tokens that will ever exist &mdash; is reserved for one group: the people who write the clauses the network comes to rely on. It is the largest single allocation by far, more than the founders&apos; and the DAO&apos;s combined. Figaro is built so that the people who extend it are its largest stakeholders.
+                Platforms don&apos;t own the trucks, the kitchens, or the couriers. What they own is the <em>map</em> &mdash; who needs what, where, and right now. That map is why you can&apos;t leave them: everyone has to return to the one place that sees the whole picture.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                The recipient is the clause&apos;s author &mdash; precisely, the wallet that first registered it on-chain. One clause, one author, one address. There is no committee to apply to and no proposal to write: if you author a clause and register it, you are in. Nothing else is asked.
+                Every agreement on the protocol already records the essentials by itself &mdash; who paid whom, in what, how much, and how a job passed from one contributor to the next. What it can&apos;t see on its own is <em>where</em> the work physically happened: the pickup, the hand-off, the zone a service covers. That has to be added by the people doing the work.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                What earns is use &mdash; real, settled use. At each payout the protocol looks only at deals that actually closed, and asks of every clause: how many separate settled deals carried it, and across how many distinct pairs of counterparties. A clause written into a hundred agreements that never settle earns nothing. Only completed deals count.
+                So the protocol pays them to add it. Sixty percent of all FIG &mdash; 600 million of the one billion that will ever exist &mdash; is reserved for the people who write the clauses the network relies on, the largest single allocation by far. And the clauses that map real-world flow earn more than the rest: the same rule for everyone, no committee, no application &mdash; a standing reward for contributing the data the network most needs and no one else will volunteer. Not because those authors are special; because that data is.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                And it counts breadth over volume. A clause used once between each of fifty different counterparty pairs has widened the network further than the same clause used fifty times between the same two parties &mdash; so the formula weights the spread of counterparties above the raw count. Payment size never enters at all: moving a fortune and moving a few dollars count exactly the same.
-            </p>
-            <p className="text-base text-ink-body leading-relaxed mb-5">
-                Be clear-eyed about the timing. The reward is paid in three rounds &mdash; at years two, five, and nine after launch. The schedule is long on purpose: it rewards clauses that prove durable rather than a fast land-grab, and it is meant to outlast the people who started the protocol. Figaro is not yet on a public network; the first round is years away. This is a reason to build something real, not a quick payout.
+                What earns is real, settled use. At each payout the protocol looks only at deals that actually closed, and asks of every clause: how many separate settled deals carried it, and across how many distinct pairs of counterparties. Breadth counts over volume &mdash; a clause used once between fifty different pairs has widened the network further than one used fifty times between the same two. Payment size never enters; moving a fortune and moving a few dollars count the same. The reward is paid in three rounds, at years two, five, and nine, and no author can take more than fifteen percent of any one. The formula was fixed when the protocol was deployed and cannot be changed &mdash; not by the founders, not by a vote.
             </p>
             <p className="text-base text-ink-body leading-relaxed">
-                One last thing, and it is the whole point: the formula is fixed. It was set when the protocol was deployed and cannot be changed &mdash; not by the founders, not by a vote. Each round it is computed once, the same way for every author, and checked by a proof before any FIG can be claimed. No single author can take more than fifteen percent of one round. No one decides who deserves what &mdash; the arithmetic does.
+                Over time it adds up to something no company owns: a public, verifiable view of how goods and services actually move &mdash; demand clusters, routes, service areas &mdash; every point of it posted in the open and checkable by anyone. When the map is a public good, the monopoly on it ends. The platforms aren&apos;t attacked; the thing they were renting back to everyone is simply free. That is what levels the field.
             </p>
 
             <h2 className="text-base font-semibold text-ink-heading mt-16 mb-4">
