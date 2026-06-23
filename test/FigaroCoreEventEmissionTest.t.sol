@@ -81,7 +81,7 @@ contract FigaroCore_EventEmission is Test {
             currency: address(token),
             payment: payment,
             expectedCumulativeValue: payment,
-            agreementHash: keccak256("root-manifest"),
+            agreementHash: keccak256("root-agreement"),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -103,7 +103,7 @@ contract FigaroCore_EventEmission is Test {
             currency: address(token),
             payment: payment,
             expectedCumulativeValue: expectedCum,
-            agreementHash: keccak256(abi.encodePacked("sub-manifest-", salt)),
+            agreementHash: keccak256(abi.encodePacked("sub-agreement-", salt)),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -151,7 +151,7 @@ contract FigaroCore_EventEmission is Test {
             currency: address(token),
             payment: payment,
             expectedCumulativeValue: payment,
-            agreementHash: keccak256("root-manifest"),
+            agreementHash: keccak256("root-agreement"),
             salt: 1,
             deadline: block.timestamp + 1 hours
         });
@@ -168,7 +168,7 @@ contract FigaroCore_EventEmission is Test {
                 assertEq(logs[i].topics[2], processId, "indexed processId");
                 assertEq(logs[i].topics[3], bytes32(uint256(uint160(buyer))), "indexed buyer");
                 _assertCommittedData(
-                    logs[i].data, seller1, address(token), payment, payment, keccak256("root-manifest")
+                    logs[i].data, seller1, address(token), payment, payment, keccak256("root-agreement")
                 );
                 found = true;
                 break;
@@ -317,7 +317,7 @@ contract FigaroCore_EventEmission is Test {
             currency: address(token),
             payment: subPayment,
             expectedCumulativeValue: expectedCum,
-            agreementHash: keccak256("sub-manifest"),
+            agreementHash: keccak256("sub-agreement"),
             salt: 2,
             deadline: block.timestamp + 1 hours
         });
@@ -332,7 +332,7 @@ contract FigaroCore_EventEmission is Test {
                 assertEq(logs[i].topics[1], subHash, "indexed orderHash");
                 assertEq(logs[i].topics[2], processId, "indexed processId");
                 _assertCommittedData(
-                    logs[i].data, seller2, address(token), subPayment, expectedCum, keccak256("sub-manifest")
+                    logs[i].data, seller2, address(token), subPayment, expectedCum, keccak256("sub-agreement")
                 );
                 found = true;
                 break;

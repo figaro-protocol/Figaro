@@ -10,7 +10,7 @@ contract AssemblyRegistryTest is Test {
     address alice = address(0xA11CE);
     address bob = address(0xB0B);
 
-    bytes32 constant CONTENT_HASH = keccak256("some-canonical-manifest-bytes");
+    bytes32 constant CONTENT_HASH = keccak256("some-canonical-content-bytes");
     string constant METADATA_URI = "ipfs://QmCoffeeShop";
     uint256 constant DEPOSIT = 0.001 ether;
     uint256 constant LOCK_PERIOD = 1095 days; // 3 years

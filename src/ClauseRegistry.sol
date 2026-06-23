@@ -31,7 +31,7 @@ pragma solidity 0.8.26;
 ///         namespace is open — anyone can mint a new family by passing
 ///         a fresh hash; only `bytes32(0)` is rejected.
 ///
-/// @dev V3 ManifestClauseRegistry had: Ownable, Clause struct storage,
+/// @dev V3's clause registry had: Ownable, Clause struct storage,
 ///      activate/deactivate state machine, getters, counter. All removed.
 ///      Only the dedup guard (has this clauseId been registered?) and
 ///      events survive.

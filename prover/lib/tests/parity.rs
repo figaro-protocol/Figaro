@@ -1282,7 +1282,7 @@ fn attest_as_seller_with_wrong_inclusion_proof_fails() {
 
 #[test]
 fn attest_as_seller_non_cross_checking_clause_requires_section_data() {
-    // figaro-ghg-measurement-v1 is Category-1 (non-cross-checking): its
+    // figaro-ghg-measurement-v1 is runtime (non-cross-checking): its
     // committed sectionData is canonical JSON, not the ABI content form, so
     // the agreement Merkle leaf cannot be derived from content_ref alone. A
     // content_proof that omits section_data must fail Gate 5.

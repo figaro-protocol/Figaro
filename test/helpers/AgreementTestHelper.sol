@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 /// @title AgreementTestHelper
 /// @notice Pure-function merkle helpers for building test agreements and their
 ///         inclusion proofs. Mirrors the off-chain
-///         `frontend*/lib/core/agreementManifest.ts` layout:
+///         `frontend*/lib/core/agreement.ts` layout:
 ///           leaf_i = keccak256(clauseId_i || keccak256(sectionData_i))
 ///           root   = OZ-style sorted-pair merkle root over sorted leaves
 ///           proof  = sibling hashes walking the leaf up to the root

@@ -109,7 +109,7 @@ If atomic resolution is claimed across the parties but the structure is multi-pr
 
 Several papers reference clause counts, invariant counts, validator counts. These drift quietly when new clauses land. Check:
 
-- "N runtime-attestable clauses" — count `src/clauseValidators/*.sol` (excluding manifest-only). The current canonical count is in `CLAUDE.md`'s "The N protocol clauses" table; keep them in lockstep.
+- "N runtime-attestable clauses" — count `src/clauseValidators/*.sol` (excluding agreement-only). The current canonical count is in `CLAUDE.md`'s "The N protocol clauses" table; keep them in lockstep.
 - "N invariants in TLA+" — count properties in `formal/FigaroCore.tla`.
 - "N theorems in the paper" — count the `FormalBlock` theorem statements on the page.
 

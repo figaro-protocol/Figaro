@@ -2,7 +2,7 @@
  * Per-order ephemeral secp256k1 keypair generation.
  *
  * Each handoff order gets its own keypair. The buyer's ephemeral public key
- * is embedded in the v3 manifest (on-chain commitment). The ephemeral private
+ * is embedded in the v3 payload (on-chain commitment). The ephemeral private
  * key is stored locally per order so Phase 3 can derive an ECDH shared secret
  * with the assigned fulfiller's wallet.
  */

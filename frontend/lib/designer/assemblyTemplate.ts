@@ -11,7 +11,7 @@
 
 import { keccak256, toHex } from "viem";
 import type { Order } from "@/lib/core/store";
-import { manifestTopologyClauseId } from "@/lib/shared/clauseSpecSource";
+import { topologyClauseId } from "@/lib/shared/clauseSpecSource";
 
 /** A clause on an order → the field values filled at design time. An empty
  *  object means the clause is selected but the designer set no fields (the
@@ -73,8 +73,8 @@ export function buildAssemblyTemplate(args: {
     clausesByOrderId: Readonly<Record<string, ClauseValues>>;
 }): AssemblyTemplate {
     const { name, summary, description, privilegedToken, orders, clausesByOrderId } = args;
-    const topologyClauseId = manifestTopologyClauseId();
-    if (!topologyClauseId) {
+    const topoClauseId = topologyClauseId();
+    if (!topoClauseId) {
         // Without the chain→IPFS spec cache the topology clause cannot be
         // resolved — refuse loudly rather than emit a template with no topology.
         // Designer surfaces gate on `useClauseSpecs().loaded`.
@@ -95,7 +95,7 @@ export function buildAssemblyTemplate(args: {
             id: `order-${i}`,
             clauses: {
                 ...(clausesByOrderId[order.id] ?? {}),
-                [topologyClauseId]: {
+                [topoClauseId]: {
                     parentOrderHashes: (order.parentOrderHashes ?? []).map((p) => idToLocal.get(p) ?? p),
                 },
             },

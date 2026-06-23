@@ -18,7 +18,7 @@ export interface CommittedLogWithPosition {
  *
  * Rationale: FigaroCore's OrderCommitted event does not emit
  * parentOrderIds (DAG topology lives in the off-chain agreement
- * manifest by design — see THEORY.md "process chains are linear at
+ * by design — see THEORY.md "process chains are linear at
  * the kernel level"). For RPGF's substrate-broadening signal the
  * linear-position-within-process is the right semantic: it matches
  * what the kernel sees and avoids an IPFS dependency in the sequencer.

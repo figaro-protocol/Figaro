@@ -143,7 +143,7 @@ agreement-only `figaro-topology-v1`.
 
 | clauseId | What it carries | Attestation surface |
 |---|---|---|
-| `figaro-topology-v1` | DAG lineage (parent order hashes) | **Manifest-only** (no runtime validator) |
+| `figaro-topology-v1` | DAG lineage (parent order hashes) | **Agreement-only** (no runtime validator) |
 | `figaro-commerce-v1` | Currency, payment, line items | Layer A + C |
 | `figaro-geo-v1` | Origin / destination geohash + mass + volume | Layer A + C |
 | `figaro-class-of-service-v1` | Class of service — standard / express / fragile / cold-chain (single-select) | Layer A + C |
@@ -187,7 +187,7 @@ in `frontend/lib/core/agreement.ts`). "No runtime validator" is not "no
 on-chain verification" — topology is verified by inclusion proof against the
 signed agreement, not by an attestation validator. The DAG itself is
 reconstructed off-chain by indexers reading topology sections from the signed
-manifest.
+agreement.
 
 ## When something deserves a clause — payload vs anchor
 
@@ -203,12 +203,12 @@ the weight without any FIG-system redeployment.
 Separate two kinds of data:
 
 - **Per-instance payloads** — operational values attached to one order: a
-  specific delivery manifest, a sealed address, notes for a single fulfilment
+  specific delivery details, a sealed address, notes for a single fulfilment
   event. Often private, instance-specific, decoded by one app's client. These
   stay as order payload bytes; they do NOT get a clause.
 - **Shared reference semantics** — definitions whose meaning must hold across
   counterparties and over time: a disclosure standard, a methodology
-  reference, a manifest *format*. These are what a clause anchors.
+  reference, a content *format*. These are what a clause anchors.
 
 **The decision rule.** Before proposing a clause, ask: *does the protocol need
 this fact to preserve shared reference integrity across counterparties and over

@@ -782,7 +782,7 @@ fully expressible. It simply does not live in the kernel.
    there is no on-chain order DAG.
 
 2. **The topology layer** carries the DAG. It lives off-chain in the signed
-   agreement manifest (the `figaro-topology-v1` clause) and is reconstructed
+   agreement (the `figaro-topology-v1` clause) and is reconstructed
    by indexers and UI. Parents, children, and merges are expressed there, not
    in kernel state.
 

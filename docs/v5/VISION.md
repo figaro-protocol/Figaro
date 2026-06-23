@@ -388,19 +388,19 @@ AES-256-GCM key that seals sensitive details (address, notes, coordination
 data). Compromise of one order does not expose any other. There is no master
 key, no platform-held decryption capability, no data silo.
 
-The protocol core (`FigaroCore`) treats the manifest field as opaque bytes —
+The protocol core (`FigaroCore`) treats the agreement field as opaque bytes —
 it stores nothing, interprets nothing, and only emits the raw bytes and their
-hash in the `OrderCreated` event. What goes into the manifest, how it is
+hash in the `OrderCreated` event. What goes into the agreement, how it is
 encrypted, and what clause it conforms to are **dapp-level policy decisions**.
 A delivery archetype might use geohash-6 + AES-sealed street address. A
 procurement archetype might use H3 hexagons + cleartext warehouse codes. A
 repair archetype might use lat/long + sealed unit number. The protocol remains
 constant; the dapp layer varies.
 
-Manifest clauses follow the same anchoring pattern as GHG disclosures:
+Clauses follow the same anchoring pattern as GHG disclosures:
 off-chain semantics, on-chain reference integrity (clause ID, version, content
 hash). Mechanisms declare which clause(s) they require; order creators declare
-which clause their manifest conforms to. This makes manifest interpretation
+which clause their content conforms to. This makes content interpretation
 verifiable without making the protocol opinionated about content.
 
 ### What This Means For Development

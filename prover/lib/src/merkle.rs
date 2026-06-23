@@ -1,8 +1,8 @@
 //! OpenZeppelin-style sorted-pair Merkle inclusion verification.
 //!
 //! Mirrors `MerkleProof.verify` / `_hashPair` from OpenZeppelin's
-//! `MerkleProof.sol` — the same tree the off-chain agreement manifest
-//! builds (`frontend/lib/core/agreementManifest.ts`, `sdk/src/agreement.ts`)
+//! `MerkleProof.sol` — the same tree the off-chain agreement
+//! builds (`frontend/lib/core/agreement.ts`, `sdk/src/agreement.ts`)
 //! and `AttestationCoordinator._validateContent` verifies on the direct
 //! path. Sorted-pair hashing means the proof carries no direction bits.
 

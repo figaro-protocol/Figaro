@@ -13,7 +13,7 @@
  * Persistent by design — NO evm snapshot/revert; this IS the seed.
  *
  * Pure UI authoring: canvas → compose via the drawer → review → publish →
- * AssemblyRegistered on chain → visible on /assemblies. No hand-built manifest,
+ * AssemblyRegistered on chain → visible on /assemblies. No hand-built agreement,
  * no restored scenario code — the real open-world publish path.
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo.

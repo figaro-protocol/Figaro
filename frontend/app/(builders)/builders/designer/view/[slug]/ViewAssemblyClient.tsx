@@ -156,7 +156,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         setResolved({
                             kind: "error",
                             message:
-                                "Manifest could not be fetched from IPFS. The on-chain identity is anchored regardless; the off-chain content is currently unreachable.",
+                                "Assembly content could not be fetched from IPFS. The on-chain identity is anchored regardless; the off-chain content is currently unreachable.",
                         });
                         return;
                     }

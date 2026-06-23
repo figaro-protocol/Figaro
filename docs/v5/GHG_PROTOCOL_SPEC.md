@@ -348,7 +348,7 @@ The correct middle layer is:
 
 GHG is the first concrete artifact family in this model, not the last.
 
-Manifest clause, quality records, provenance documents, safety declarations, assurance artifacts, and other process-linked references may later fit the same pattern where shared reference integrity matters.
+Bill-of-lading clause, quality records, provenance documents, safety declarations, assurance artifacts, and other process-linked references may later fit the same pattern where shared reference integrity matters.
 
 ## Implementation Direction
 

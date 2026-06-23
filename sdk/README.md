@@ -166,7 +166,7 @@ import {
   encodeHandoffContent,
   encodeCommerceContent,
   // ... encoders for the 9 runtime-attestable local-commerce clauses
-  // (topology is manifest-only and has no ABI encoder)
+  // (topology is agreement-only and has no ABI encoder)
 } from "@figaro/core/clauses";
 
 // 1. Parse a clause spec (typically fetched from IPFS)

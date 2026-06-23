@@ -275,7 +275,7 @@ fn unknown_clause_has_no_embedded_spec() {
 
 #[test]
 fn topology_v1_has_no_embedded_spec() {
-    // Manifest-only — no validator, never attested at runtime, so no
+    // Agreement-only — no validator, never attested at runtime, so no
     // canonical encoding either.
     assert!(
         embedded_spec_json_by_key("figaro-topology").is_none(),

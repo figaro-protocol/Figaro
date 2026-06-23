@@ -17,7 +17,7 @@ const GEO_CLAUSE_KEY = "figaro-geo";
 // Layer A, run on BOTH sides of the bilateral commit (buyer before initiating,
 // seller before counter-signing). Two checks: merkle integrity (the signed hash
 // matches the agreement's computed root) + content validity (every PRESENT
-// non-category-1 section conforms to its spec).
+// non-runtime section conforms to its spec).
 
 const BUYER = `0x${"11".repeat(20)}` as `0x${string}`;
 const SELLER = `0x${"22".repeat(20)}` as `0x${string}`;
@@ -62,7 +62,7 @@ describe("validateCommitmentAgreement (Layer A, pre-commit)", () => {
         expect(result.issues.some((i) => i.clause === GEO_CLAUSE_KEY)).toBe(true);
     });
 
-    it("skips category-1 runtime presence-markers (merchant-process {} is attested later)", () => {
+    it("skips runtime runtime presence-markers (merchant-process {} is attested later)", () => {
         // merchant-process {} would fail its spec (eventType required) IF validated.
         // It must be SKIPPED at commit — content is attested + validated on-chain later.
         const a = agreement([{ clause: MERCHANT_PROCESS_CLAUSE_KEY, version: 1, data: {} }]);

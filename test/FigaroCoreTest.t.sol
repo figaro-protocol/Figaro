@@ -81,7 +81,7 @@ contract FigaroCoreTest is Test {
             currency: address(token),
             payment: payment,
             expectedCumulativeValue: payment,
-            agreementHash: keccak256("root-manifest"),
+            agreementHash: keccak256("root-agreement"),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -109,7 +109,7 @@ contract FigaroCoreTest is Test {
             currency: address(token),
             payment: payment,
             expectedCumulativeValue: expectedCum,
-            agreementHash: keccak256(abi.encodePacked("sub-manifest-", salt)),
+            agreementHash: keccak256(abi.encodePacked("sub-agreement-", salt)),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });

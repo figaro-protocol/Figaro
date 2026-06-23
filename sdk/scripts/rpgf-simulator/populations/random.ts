@@ -10,7 +10,7 @@ export interface RandomFillerOptions {
   seed: number;
   // Per-category weighting (must sum to 1.0). Default mirrors the real
   // clause mix: ~70% committed-policy, ~12% sovereign-log,
-  // ~12% runtime-measurement, ~6% zero (manifest-only / never-launched).
+  // ~12% runtime-measurement, ~6% zero (agreement-only / never-launched).
   categoryWeights: {
     "committed-policy": number;
     "sovereign-log": number;
@@ -78,7 +78,7 @@ function generate(options: RandomFillerOptions): Archetype[] {
     if (cat === "zero") {
       archetypes.push({
         name: clauseId,
-        description: `random — zero-attestation archetype (manifest-only or never-launched)`,
+        description: `random — zero-attestation archetype (agreement-only or never-launched)`,
         snapshotsAtTranches: [zeroSnap(clauseId), zeroSnap(clauseId), zeroSnap(clauseId)],
       });
       continue;

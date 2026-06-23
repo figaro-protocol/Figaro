@@ -123,7 +123,7 @@ contract Deploy is Script {
         // assemblies. Parallel to ClauseRegistry and SellerRegistry —
         // each artifact family has its own registry per the
         // separation-of-concerns doctrine. The registry takes no on-chain
-        // claims about manifest content (manifests live off-chain on
+        // claims about agreement content (agreements live off-chain on
         // IPFS); per-clause validation runs at the per-clause layer
         // at attestation time.
         //
@@ -304,7 +304,7 @@ contract Deploy is Script {
     ///      coordinator enforces `validator.clauseId() == clauseId`, so any
     ///      cross-wired validator reverts InvalidValidatorBinding.
     function _deployAndRegisterValidators(AttestationCoordinator attestation) internal {
-        // Topology is a manifest-only clause (contract-time, not runtime-attested),
+        // Topology is a agreement-only clause (contract-time, not runtime-attested),
         // so no on-chain validator is wired for `figaro-topology-v1`. The clause
         // itself remains registered in ClauseRegistry above for off-chain
         // vocabulary anchoring.

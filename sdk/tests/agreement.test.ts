@@ -32,7 +32,7 @@ const GHG: AgreementSection = {
     clause: "figaro-ghg-iso-14064",
     version: 1,
     // Standard identity lives in the clauseId; data carries only scope.
-    // Category-2 clauses use ABI encoding for sectionData — the clause values
+    // cross-checked clauses use ABI encoding for sectionData — the clause values
     // must be encoder-valid.
     data: { scope: 1 },
 };

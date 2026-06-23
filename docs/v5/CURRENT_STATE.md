@@ -86,7 +86,7 @@ with handoff certification — buyer + merchant both attest
 
 Assembly authoring and parsing live in `frontend/lib/designer/`; published
 assemblies are anchored on-chain via `src/AssemblyRegistry.sol` with their
-manifests pinned off-chain. The slug → human-label table is
+content pinned off-chain. The slug → human-label table is
 `frontend/lib/shared/assemblyLabels.ts`.
 
 ## What Is Historical

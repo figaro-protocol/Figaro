@@ -48,7 +48,7 @@ contract FigaroGHGMeasurementV1ValidatorTest is Test {
     }
 
     function test_sectionDataIgnored() public view {
-        // Category-1: any sectionData is accepted regardless of content.
+        // runtime: any sectionData is accepted regardless of content.
         validator.validate(ID, 1, hex"deadbeef", abi.encode(uint256(500)));
         validator.validate(ID, 1, abi.encode("arbitrary-json"), abi.encode(uint256(500)));
     }

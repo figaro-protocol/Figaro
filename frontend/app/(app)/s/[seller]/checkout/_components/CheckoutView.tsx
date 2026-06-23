@@ -280,7 +280,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // Every order in the assembly — root + sub-orders — surfaced for review:
     // the buyer signs and bonds ALL of them. Each clause renders its COMPOSED
     // values (the terms the buyer is agreeing to), spec-driven. Structural
-    // clauses (`block.structural`, e.g. the topology manifest) are
+    // clauses (`block.structural`, e.g. the topology clause) are
     // protocol-composed, not buyer-chosen terms; they stay out of the review.
     const agreementGroups = ((): Array<{ key: string; label: string; clauses: Array<{ clauseId: string; values: string }> }> => {
         if (!pickedAssembly) return [];

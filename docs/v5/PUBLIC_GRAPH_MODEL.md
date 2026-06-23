@@ -28,16 +28,16 @@ DAG topology, and commitment/resolution state.
 **Truth boundary:** Protocol-enforced. Every node is economically backed.
 Defection is costly; the graph is tamper-proof by design.
 
-### 2. Manifest / Geo Graph (Institution-Declared)
+### 2. Geo Graph (Institution-Declared)
 
-**Source:** Manifest payloads on orders, geohash fields in delivery details.
+**Source:** Off-chain payloads on orders, geohash fields in delivery details.
 
 The geo graph encodes **where** coordination happens: pickup locations,
 delivery drop-off zones, and service areas. This data is public by design
 — it serves as "economic pheromones" (see THEORY.md §Philosophy) that allow
 autonomous agents (human or AI) to discover, filter, and route work.
 
-**Contents:** Pickup geohashes, drop-off geohashes, manifest metadata,
+**Contents:** Pickup geohashes, drop-off geohashes, off-chain metadata,
 cuisine/category tags.
 
 **Truth boundary:** Institution-declared. The runtime encodes this data; the
@@ -187,7 +187,7 @@ Private delivery details (exact street address, apartment number, recipient
 phone, special instructions) are never stored on-chain. They are:
 
 1. Encrypted with a per-order AES key at checkout
-2. Stored in the manifest's encrypted fields
+2. Stored in the order's encrypted fields
 3. Exchanged out-of-band between buyer and assigned driver only
 4. Decryptable only by the buyer and the assigned driver for that specific order
 

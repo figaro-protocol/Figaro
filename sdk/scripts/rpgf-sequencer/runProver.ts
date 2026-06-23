@@ -3,7 +3,7 @@ import type { ProveRequest, ProveResponse } from "./types.js";
 
 export interface RunProverOptions {
   /** Path to prover/Cargo.toml — defaults to <repo>/prover/Cargo.toml */
-  proverManifestPath: string;
+  proverCargoTomlPath: string;
   /** Use --release? Defaults true (the prover is slow without it). */
   release?: boolean;
 }
@@ -24,7 +24,7 @@ export function runProver(
 ): Promise<ProveResponse> {
   const args = ["run"];
   if (opts.release !== false) args.push("--release");
-  args.push("--manifest-path", opts.proverManifestPath);
+  args.push("--manifest-path", opts.proverCargoTomlPath);
   args.push("-p", "figaro-rpgf-script");
 
   return new Promise((resolve, reject) => {

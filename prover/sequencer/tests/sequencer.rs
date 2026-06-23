@@ -489,7 +489,7 @@ async fn mempool_rejects_wrong_inclusion_proof() {
 async fn mempool_rejects_missing_section_data() {
     let pool = Mempool::new(CHAIN_ID, CORE);
 
-    // figaro-ghg-measurement-v1 is a non-cross-checking (Category-1) clause:
+    // figaro-ghg-measurement-v1 is a non-cross-checking (runtime) clause:
     // its content_proof must carry section_data for Gate 5. The fixture
     // builder leaves section_data None, so the gate rejects it.
     let op = build_attest_seller_with_proof(

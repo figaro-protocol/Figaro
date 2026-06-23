@@ -160,7 +160,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
         const result = parseClauseSpec({
             clauseId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "bands", type: "string", required: true }],
-            block: { tier: "category-2", article: "coordination", mechanismKinds: [], moduleIds: [], nestsUnder: "handoff" },
+            block: { tier: "cross-checked", article: "coordination", mechanismKinds: [], moduleIds: [], nestsUnder: "handoff" },
         });
         expect(result.ok).toBe(true);
         if (result.ok) expect(result.spec.block?.nestsUnder).toBe("handoff");
@@ -170,7 +170,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
         const result = parseClauseSpec({
             clauseId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "string", required: true }],
-            block: { tier: "category-2", mechanismKinds: [], moduleIds: [], nestsUnder: "" },
+            block: { tier: "cross-checked", mechanismKinds: [], moduleIds: [], nestsUnder: "" },
         });
         expect(result.ok).toBe(false);
     });
@@ -182,7 +182,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
         const result = parseClauseSpec({
             clauseId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "string", required: true }],
-            block: { tier: "category-2", mechanismKinds: [], moduleIds: [], structural: true },
+            block: { tier: "cross-checked", mechanismKinds: [], moduleIds: [], structural: true },
         });
         expect(result.ok).toBe(true);
         if (result.ok) expect(result.spec.block?.structural).toBe(true);
@@ -192,7 +192,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
         const result = parseClauseSpec({
             clauseId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "string", required: true }],
-            block: { tier: "category-2", mechanismKinds: [], moduleIds: [], structural: "yes" },
+            block: { tier: "cross-checked", mechanismKinds: [], moduleIds: [], structural: "yes" },
         });
         expect(result.ok).toBe(false);
     });
@@ -204,7 +204,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
         const result = parseClauseSpec({
             clauseId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "string", required: true }],
-            block: { tier: "category-2", mechanismKinds: [], moduleIds: [], defaultOn: true },
+            block: { tier: "cross-checked", mechanismKinds: [], moduleIds: [], defaultOn: true },
         });
         expect(result.ok).toBe(true);
         if (result.ok) expect(result.spec.block?.defaultOn).toBe(true);
@@ -214,7 +214,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
         const result = parseClauseSpec({
             clauseId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "string", required: true }],
-            block: { tier: "category-2", mechanismKinds: [], moduleIds: [], defaultOn: "yes" },
+            block: { tier: "cross-checked", mechanismKinds: [], moduleIds: [], defaultOn: "yes" },
         });
         expect(result.ok).toBe(false);
     });
@@ -225,7 +225,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
         const result = parseClauseSpec({
             clauseId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "band", type: "enum", values: ["zone-wifi"], required: true }],
-            block: { tier: "category-1", mechanismKinds: [], moduleIds: [], attestation: "bilateral" },
+            block: { tier: "runtime", mechanismKinds: [], moduleIds: [], attestation: "bilateral" },
         });
         expect(result.ok).toBe(true);
         if (result.ok) expect(result.spec.block?.attestation).toBe("bilateral");
@@ -235,7 +235,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
         const result = parseClauseSpec({
             clauseId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "string", required: true }],
-            block: { tier: "category-1", mechanismKinds: [], moduleIds: [], attestation: "buyer" },
+            block: { tier: "runtime", mechanismKinds: [], moduleIds: [], attestation: "buyer" },
         });
         expect(result.ok).toBe(false);
     });
@@ -246,7 +246,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
         const result = parseClauseSpec({
             clauseId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "eventType", type: "enum", values: ["a", "handed-off"], required: true }],
-            block: { tier: "category-1", mechanismKinds: [], moduleIds: [], handoffStages: ["handed-off"] },
+            block: { tier: "runtime", mechanismKinds: [], moduleIds: [], handoffStages: ["handed-off"] },
         });
         expect(result.ok).toBe(true);
         if (result.ok) expect(result.spec.block?.handoffStages).toEqual(["handed-off"]);

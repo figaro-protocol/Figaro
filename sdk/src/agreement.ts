@@ -1,5 +1,5 @@
 /**
- * agreement.ts — clause-composed agreement manifest + merkle root + inclusion proofs.
+ * agreement.ts — clause-composed agreement + merkle root + inclusion proofs.
  *
  * An Agreement is the off-chain semantic layer whose merkle root becomes the
  * on-chain `agreementHash` in the signed Commitment struct. Each clause (clause

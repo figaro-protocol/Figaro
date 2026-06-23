@@ -14,7 +14,7 @@
  *   4. Uncheck it, save, reload — STILL UNCHECKED. Both directions of a
  *      user-driven clause edit persist.
  *
- * Geo is chosen for simplicity: a category-2 graph-data clause with no
+ * Geo is chosen for simplicity: a cross-checked graph-data clause with no
  * drawer-level required fields — a single checkbox.
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server.

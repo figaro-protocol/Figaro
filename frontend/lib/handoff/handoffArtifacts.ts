@@ -26,7 +26,7 @@ export async function persistHandoffArtifactsForOrder(
 // ---------------------------------------------------------------------------
 // Recovery
 //
-// v3 manifests use per-order random AES keys that are NOT derivable from
+// v3 payloads use per-order random AES keys that are NOT derivable from
 // a wallet signature. If localStorage is cleared, those keys are lost.
 // This is acceptable because handoff keys are short-lived — the fulfiller
 // already has the key once the job is claimed, and the key is meaningless

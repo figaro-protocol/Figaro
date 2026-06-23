@@ -410,7 +410,7 @@ buyer↔courier order's agreement.
 | Carrier | `order.seller` | The committed courier address. |
 | Shipper / consignor (party of contract) | `order.buyer` | The buyer hires the carrier; the buyer is the consignor on the carriage contract. |
 | Tenderer of goods at pickup | merchant (a co-seller in the same process) | Not a party to the carriage contract; a participant in the pickup handoff event. Surfaceable from the topology + the merchant↔buyer order in the same process. |
-| Consignee | `order.buyer` | Same address as the contractual shipper in local commerce. In supply-chain DAGs the buyer may designate the consignee via an encrypted destination address in the order manifest and an address inside `figaro-geo-v2.destinationGeohash`. |
+| Consignee | `order.buyer` | Same address as the contractual shipper in local commerce. In supply-chain DAGs the buyer may designate the consignee via an encrypted destination address in the order's off-chain content and an address inside `figaro-geo-v2.destinationGeohash`. |
 | Origin | `figaro-geo-v2.originGeohash` | Geohash, 1–12 chars precision. |
 | Destination | `figaro-geo-v2.destinationGeohash` | As above. |
 | Mode of carriage | `figaro-handoff-v1.handoff` | Four handoff points: face-to-face / dead-drop / parking-area / locker; local-commerce focused. |

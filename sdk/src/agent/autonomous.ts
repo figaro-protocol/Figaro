@@ -90,7 +90,7 @@ export async function resolveProcess(
  * @param target Commitment for the order being attested (carries the
  *               `agreementHash` the merkle proof opens against). Pass the
  *               same commitment twice for same-order attestation.
- * @param sectionData The raw clause bytes committed in the agreement manifest.
+ * @param sectionData The raw clause bytes committed in the agreement.
  *               Use `canonicalizeSectionData(section.data)` + encode to Hex.
  * @param proof  Merkle inclusion proof produced by `buildSectionInclusionProof`.
  * @param content ABI-encoded content per the clause's encoding (use the

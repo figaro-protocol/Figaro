@@ -73,7 +73,7 @@ RpgfMinter (`RpgfMinter.tla` + `MC_RpgfMinter.tla` + `MC_RpgfMinter.cfg`):
   `SellerTrackRecord`, `TokenAddressInput`, `TokenApprovalFlow`,
   `TokenDecimalDisplayFlows`.
 - **Lib tier** (`tests/lib/`, 56 files) — pure-client unit tests: commitment
-  preparation + stores, agreement manifest, clause-spec source, discovery +
+  preparation + stores, agreement, clause-spec source, discovery +
   catalogue pipeline, GHG disclosure, delivery/handoff attestation, dispute
   evidence, IPFS service, token conversion, geocode, and per-hook tests
   (`useCommitmentFlow`, `useOffsetRetirement`, `useTokenApproval`, …).

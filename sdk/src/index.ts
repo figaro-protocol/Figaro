@@ -108,7 +108,7 @@ export {
 } from "./merkleAirdrop.js";
 export type { AirdropEntry, MerkleAirdropTree } from "./merkleAirdrop.js";
 
-// Agreement manifest + merkle root + inclusion proofs
+// Agreement + merkle root + inclusion proofs
 export {
     canonicalizeSectionData,
     computeSectionLeaf,

@@ -7,7 +7,7 @@
  *
  * The channel carries per-order AES handoff keys from buyer to fulfiller
  * after the fulfiller wins an auction or is assigned. The fulfiller uses
- * the key to decrypt the sealed manifest and reveal the destination address.
+ * the key to decrypt the sealed payload and reveal the destination address.
  */
 
 import { isE2EMockSession, isE2EDevnetSession } from "@/lib/shared/e2e";
@@ -18,7 +18,7 @@ export interface HandoffKeyMessage {
     type: "HANDOFF_KEY";
     /** On-chain order ID. */
     orderId: string;
-    /** Base64url-encoded AES-256-GCM key that decrypts the manifest. */
+    /** Base64url-encoded AES-256-GCM key that decrypts the payload. */
     keyB64: string;
     /** Unix-ms timestamp. */
     ts: number;

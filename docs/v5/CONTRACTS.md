@@ -81,7 +81,7 @@ Each ABI-decodes per-clause content (no on-chain JSON parsing) and reverts with
 typed custom errors. Foundry tests in `test/clauseValidators/`.
 
 Note: `figaro-topology-v1` is a **agreement-only clause** — parties commit to
-it at contract-signing time inside the off-chain agreement manifest, and it's
+it at contract-signing time inside the off-chain agreement, and it's
 never fired as a runtime attestation. It has no on-chain validator and no SP1
 encoder. It is *not* off-chain-only, though: the topology section is a merkle
 leaf under the on-chain `agreementHash`, inclusion-provable via OpenZeppelin
@@ -89,7 +89,7 @@ leaf under the on-chain `agreementHash`, inclusion-provable via OpenZeppelin
 runtime validator" is not "no on-chain verification". Its `ClauseRegistry`
 entry anchors the clauseId as off-chain vocabulary; the DAG itself is
 reconstructed by indexers/frontend reading topology sections from the signed
-manifest.
+agreement.
 
 **`src/IRoleResolver.sol`** — Role-authorization interface for mechanism-delegated attestation.
 
@@ -162,7 +162,7 @@ binding is permanent — `withdrawDeposit` returns only the ETH and never clears
 the binding, because buyers and sellers that reference the slug rely on its
 content staying stable; the deposit is an upfront Sybil-resistance tax with a
 refund path, not a fee. No owner, no admin, no fee, no `transferAssembly`, no
-`removeAssembly`. The contract does not validate manifest content — per-clause
+`removeAssembly`. The contract does not validate content — per-clause
 validity is the per-clause validator's job at commit time. Foundry tests in
 `test/AssemblyRegistryTest.t.sol`.
 

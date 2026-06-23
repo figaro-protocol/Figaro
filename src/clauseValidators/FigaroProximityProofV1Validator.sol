@@ -11,11 +11,11 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 /// @dev Sister-clause split (2026-04-26): the prior `figaro-proximity-v1`
 ///      conflated commit-time policy declaration with runtime handoff proof.
 ///      The committed-policy half lives in `figaro-proximity-policy-v1`
-///      (Category-2); this clause is the runtime-proof half. Mirrors the
+///      (cross-checked); this clause is the runtime-proof half. Mirrors the
 ///      `figaro-ghg-<standard>-v1` (committed) + `figaro-ghg-measurement-v1`
 ///      (runtime) precedent.
 ///
-/// @dev Category-1: runtime-only, NO byte-equality cross-check. The runtime
+/// @dev runtime: runtime-only, NO byte-equality cross-check. The runtime
 ///      content (band, nonce, signature) is fresh per attestation; the
 ///      committed agreement may have placeholder sectionData. Off-chain
 ///      consumers should cross-check `proof.band == policy.band` (the

@@ -6,7 +6,7 @@
  *   1. Fulfiller generates per-order ephemeral keypair, sends pubkey to buyer
  *   2. Both sides independently derive the same ECDH shared secret
  *   3. Buyer wraps the AES handoff key with the ECDH secret → sends publicly
- *   4. Fulfiller unwraps → has AES key → opens manifest
+ *   4. Fulfiller unwraps → has AES key → opens payload
  *
  * Channel data is safe to expose publicly. No reliance on transport-layer
  * confidentiality (XMTP becomes optional).

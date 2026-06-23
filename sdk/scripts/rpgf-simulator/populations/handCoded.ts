@@ -228,10 +228,10 @@ const ARCHETYPES: readonly Archetype[] = [
     ],
   },
 
-  // ─── topology — manifest-only, no attestations ─────────────────────
+  // ─── topology — agreement-only, no attestations ─────────────────────
   {
     name: "topology-decorative",
-    description: "DAG lineage clause. Manifest-only — no validator, no runtime attestations.",
+    description: "DAG lineage clause. Agreement-only — no validator, no runtime attestations.",
     snapshotsAtTranches: [
       zero("figaro-topology-v1", "committed-policy"),
       zero("figaro-topology-v1", "committed-policy"),

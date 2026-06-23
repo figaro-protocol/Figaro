@@ -55,7 +55,7 @@ Valid dependency arrows:
 
 Audit the proposal for:
 
-1. **Clause as host** — registering a non-clause artifact (assembly, seller metadata, mechanism manifest) as a `clauseId` in `ClauseRegistry`. The clause layer must not know other families exist. **BLOCKER.**
+1. **Clause as host** — registering a non-clause artifact (assembly, seller metadata, mechanism metadata) as a `clauseId` in `ClauseRegistry`. The clause layer must not know other families exist. **BLOCKER.**
 2. **SellerRegistry as host** — registering clauses, assemblies, or validator contracts under the seller-metadata surface. `SellerRegistry` anchors the seller entity, not other families' identities. **BLOCKER.**
 3. **Kernel as host** — proposing that `FigaroCore` read assembly composition, clause identity, or seller metadata at runtime. The kernel sees linear commit chains; it does not read anchored artifacts. See `~/.claude/projects/-Users-adaliana-Figaro/memory/reference_kernel_star_shape.md`. **BLOCKER.**
 4. **Reverse-dependency arrow** — modifying an existing primitive to know the new family's existence (a new field on `IClauseValidator` referring to assemblies, a new method on `SellerRegistry` parameterized on assembly identity, etc.). **MAJOR.**

@@ -20,7 +20,7 @@ interface Env {
   capDenominator: number;
   fromBlock?: bigint;
   toBlock?: bigint;
-  proverManifestPath: string;
+  proverCargoTomlPath: string;
 }
 
 function readEnv(): Env {
@@ -59,7 +59,7 @@ function readEnv(): Env {
     capDenominator: intOrDefault("RPGF_CAP_DEN", 100),
     fromBlock: optBigint("RPGF_FROM_BLOCK"),
     toBlock: optBigint("RPGF_TO_BLOCK"),
-    proverManifestPath: process.env.PROVER_MANIFEST_PATH ?? "prover/Cargo.toml",
+    proverCargoTomlPath: process.env.PROVER_CARGO_TOML ?? "prover/Cargo.toml",
   };
 }
 
@@ -95,7 +95,7 @@ async function main() {
   };
 
   console.error("[sequencer] running prover (this can take a while on first run) …");
-  const proof = await runProver(request, { proverManifestPath: env.proverManifestPath });
+  const proof = await runProver(request, { proverCargoTomlPath: env.proverCargoTomlPath });
   console.error(`[sequencer] proof generated. vkey=${proof.vkey.slice(0, 10)}…`);
 
   console.error("[sequencer] submitting root on-chain …");

@@ -18,7 +18,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CORE_ENV="$REPO_ROOT/frontend/.env.local"
 DEPLOY_DIR="$REPO_ROOT/.deployments"
-CORE_MANIFEST="$DEPLOY_DIR/local.json"
+CORE_DEPLOYMENT="$DEPLOY_DIR/local.json"
 
 RPC_URL="${RPC_URL:-http://127.0.0.1:8545}"
 
@@ -164,10 +164,10 @@ update_env "$CORE_ENV" "NEXT_PUBLIC_RPGF_MINTER"               "$RPGF_MINTER_ADD
 default_env "$CORE_ENV" "NEXT_PUBLIC_IPFS_API_URL"     "http://127.0.0.1:5001"
 default_env "$CORE_ENV" "NEXT_PUBLIC_IPFS_GATEWAY_URL" "http://127.0.0.1:8080"
 
-# ── Write deployment manifest ─────────────────────────────────────────────────
-echo "✍️  Writing $CORE_MANIFEST ..."
+# ── Write deployment record ─────────────────────────────────────────────────
+echo "✍️  Writing $CORE_DEPLOYMENT ..."
 mkdir -p "$DEPLOY_DIR"
-cat > "$CORE_MANIFEST" <<EOF
+cat > "$CORE_DEPLOYMENT" <<EOF
 {
   "chainId": 31337,
   "figaroCore": "$CORE_ADDR",
@@ -205,4 +205,4 @@ echo "   NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT=$PROCESS_OFFSET_RECEIPT_ADDR"
 echo "   NEXT_PUBLIC_MOCK_OFFSET_AGGREGATOR=$MOCK_OFFSET_AGGREGATOR_ADDR"
 echo "   NEXT_PUBLIC_RPGF_MINTER=$RPGF_MINTER_ADDR"
 echo "   NEXT_PUBLIC_IPFS_API_URL / NEXT_PUBLIC_IPFS_GATEWAY_URL — local Kubo defaults (set only if absent)"
-echo "   Manifest: $CORE_MANIFEST"
+echo "   Deployment: $CORE_DEPLOYMENT"

@@ -197,7 +197,7 @@ contract DeployMainnet is Script {
     ///      cross-wired validator reverts InvalidValidatorBinding. Without
     ///      this step every attest* call reverts with ValidatorNotSet.
     ///
-    ///      Topology is a manifest-only clause (contract-time, not runtime-
+    ///      Topology is a agreement-only clause (contract-time, not runtime-
     ///      attested), so no on-chain validator is wired for `figaro-topology-v1`.
     ///      The clause itself remains registered in ClauseRegistry above for
     ///      off-chain vocabulary anchoring.

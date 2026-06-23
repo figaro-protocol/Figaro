@@ -38,7 +38,7 @@ export function PublishedList() {
         async (choice: AssemblyChoice) => {
             if (choice.state !== "loaded" || !choice.assemblyTemplate) {
                 window.alert(
-                    `Manifest for "${choice.slug}" is not yet available. Wait for it to load (or check the IPFS gateway) before forking.`,
+                    `Content for "${choice.slug}" is not yet available. Wait for it to load (or check the IPFS gateway) before forking.`,
                 );
                 return;
             }

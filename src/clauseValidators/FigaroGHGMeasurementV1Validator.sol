@@ -7,7 +7,7 @@ import {IClauseValidator} from "../IClauseValidator.sol";
 /// @notice Validates `figaro-ghg-measurement-v1` content — a runtime grams
 ///         CO2e measurement attached to an order's delivery.
 ///
-/// @dev Runtime-only (Category-1) clause. The committed agreement section
+/// @dev Runtime-only (runtime) clause. The committed agreement section
 ///      declares "this process measures in grams CO2e" (unit of account);
 ///      the actual grams value lives in each runtime attestation's `content`.
 ///      The validator does NOT cross-check `content` against `sectionData` —

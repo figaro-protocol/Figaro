@@ -164,11 +164,11 @@ export function clauseDeclaresField(clauseId: string, fieldName: string): boolea
     return getClauseSpec(clauseId)?.fields.some((f) => f.name === fieldName) === true;
 }
 
-/** The agreement-only structural clause — the topology manifest whose data
+/** The agreement-only structural clause — the topology clause whose data
  *  carries the order's topology edges, reconstructed off-chain by indexers.
  *  Resolved from the registry by TIER (agreement-only is the topology tier by
  *  construction), never by name. undefined while the cache is cold. */
-export function manifestTopologyClauseId(): string | undefined {
+export function topologyClauseId(): string | undefined {
     return listKnownClauseIds().find(
         (clauseId) =>
             getClauseSpec(clauseId)?.block?.tier === "agreement-only" && clauseIsStructural(clauseId),
