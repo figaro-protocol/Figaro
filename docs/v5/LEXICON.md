@@ -15,8 +15,8 @@ name at each tier* — these are PROJECTIONS, not synonyms. Translate across tie
 |---|---|---|---|---|
 | paying party | **buyer** | buyer | buyer | `lint-no-product-party-terms` |
 | value-adding party | **seller** | operator · author · provider | merchant · courier · driver · vendor · supplier *(projections)* | `lint-no-product-party-terms` |
-| relationship unit | — | **clause** (+ validator) | clause | `lint-no-clause-grouping-synonyms` (grouping word = `article`; `category`/`family` banned *as a grouping word* — distinct from the substrate row) |
-| ↳ substrate class | — | **`categories`** (spec) → **`family`** = `keccak256(categories[0])` (on-chain; RPGF weight + geo/flow public-graph axis) | — | `lint-substrate-broadening-weight` — a DISTINCT concept, **not** a grouping synonym |
+| relationship unit | — | **clause** (+ validator) | clause | `lint-no-clause-grouping-synonyms` (one grouping mechanism, by `article`) |
+| ↳ clause group | — | ONE concept, three names (residue): **`categories[0]`** (slug) → **`family`** `= keccak256(…)` (on-chain, RPGF) ; **`block.article`** (the grouping word) | grouped by `article` | `lint-no-clause-grouping-synonyms` + `lint-substrate-broadening-weight` |
 | ↳ attestation tier | — | **`block.tier`**: `cross-checked` · `runtime` · `agreement-only` (bounded enum) | derived `designer-time`/`runtime` | `lint-architecture-lexicon` — retired: `category-1/2`, `manifest-only` |
 | reusable composition | — | **assembly** | assembly | `lint-architecture-lexicon` |
 | ↳ serialized form | — | — | **`AssemblyTemplate`** (one name; `AssemblyDocument` retired → 0 occurrences) | — |
@@ -28,10 +28,12 @@ name at each tier* — these are PROJECTIONS, not synonyms. Translate across tie
 **Distinct concepts that are NOT drift** (do not collapse): `contentHash` = the *assembly's*
 fingerprint (AssemblyRegistry) ≠ `agreementHash` (the *agreement's*); `agreementUri` = IPFS
 *location* ≠ a hash; `contentRef` = the *attestation's* fingerprint ≠ either.
-**`family`/`categories` (the substrate class — RPGF + geo/flow graph) ≠ `article` (the drawer
-grouping):** orthogonal axes that diverge per clause (geo's `family` is `geo`, its `article`
-`logistics`); the `category`/`family` ban targets *grouping* uses only, never the substrate —
-which is load-bearing (`PUBLIC_GRAPH_MODEL.md`, `lint-substrate-broadening-weight.sh`).
+**`categories` / `family` / `article` are ONE concept — the clause's GROUP** (geo, coordination,
+emissions…), scattered across three names + locations: a closed-world residue. They should carry
+one value per clause; today some diverge (geo's `family` `geo` vs its `article` `logistics`) — the
+bug, not a design. The RPGF substrate-broadening weight applies to this one group (`family` is its
+on-chain fingerprint; see `PUBLIC_GRAPH_MODEL.md`, `lint-substrate-broadening-weight.sh`). Frontend
+grouping uses the one word `article`; the guard blocks a *second* grouper named `category`/`family`.
 
 ## Drift status (conformance check, 2026-06-22)
 
@@ -49,8 +51,8 @@ canonical across kernel + SDK + frontend (225 uses), rivals (`agreementId`/`Ref`
 - **`lint-architecture-lexicon.sh`** — cross-cutting retired terms (`process tree`, `progressive
   collateralization`, `schema`, `order-received`, the retired clause tiers `category-1/2` /
   `manifest-only`, and `manifest` as off-chain-content); grows tier by tier.
-- **`lint-substrate-broadening-weight.sh`** — protects the `family` / `w_category`
-  substrate-broadening incentive: a distinct, load-bearing concept (not cruft, not a grouping synonym).
+- **`lint-substrate-broadening-weight.sh`** — protects the substrate-broadening weight on the clause
+  group (`family` = the group's on-chain fingerprint, RPGF-weighted) — load-bearing, not cruft.
 - **synonym-audit agent (PENDING)** — the reasoning backstop for a *newly-minted* synonym no static
   guard lists yet; its anchor is THIS grid (punch-list, Agent-workflow hygiene).
 

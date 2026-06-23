@@ -29,7 +29,7 @@ export default function Clauses() {
                 <ul className="space-y-4 text-sm text-ink-body leading-relaxed">
                     <li className="flex gap-4">
                         <span className="font-mono text-xs text-ink-muted mt-1 w-20 shrink-0 uppercase">Layer A</span>
-                        <span><strong>Client-side (TypeScript).</strong> The SDK&apos;s <code>parseClauseSpec</code> and <code>validateContent</code> check that off-chain content conforms to the spec before anyone signs it. Closed subset of JSON Schema with domain types (hex bytes, addresses, ISO datetimes, enums). Catches form errors before they reach chain.</span>
+                        <span><strong>Client-side (TypeScript).</strong> The SDK&apos;s <code>parseClauseSpec</code> and <code>validateContent</code> check that off-chain content conforms to the spec before anyone signs it. Published as a JSON Schema (<code>clause-spec.schema.json</code>) with domain types (hex bytes, addresses, ISO datetimes, enums); open &mdash; unknown fields are tolerated. Catches form errors before they reach chain.</span>
                     </li>
                     <li className="flex gap-4">
                         <span className="font-mono text-xs text-ink-muted mt-1 w-20 shrink-0 uppercase">Layer B</span>
@@ -42,6 +42,25 @@ export default function Clauses() {
                 </ul>
                 <p className="mt-6 text-sm text-ink-body leading-relaxed">
                     All layers parse the same canonical JSON spec and apply the same validation rules. The cross-layer consistency is the discipline; today it&apos;s enforced between Layer A and Layer C, with Layer B closing the loop when shipped. Bytes that Layer A rejects will also be rejected by Layer C.
+                </p>
+            </MarketingSection>
+
+            <MarketingSection title="Write the spec.">
+                <p className="text-sm text-ink-body leading-relaxed mb-5">
+                    A clause is a free-form <strong>content shape</strong>: <code>fields</code> declares any named attributes &mdash; string, enum, array, object &mdash; and <em>that</em> is what gets validated and attested on-chain. With four identity fields, that is already a whole, valid clause:
+                </p>
+                <pre className="text-xs font-mono text-ink-body bg-paper border border-default rounded-section p-4 overflow-x-auto mb-5"><code>{`{
+  "clauseId": "figaro-probe-v1",
+  "version": 1,
+  "title": "Probe",
+  "description": "A minimal clause.",
+  "fields": [ { "name": "note", "type": "string", "required": true } ]
+}`}</code></pre>
+                <p className="text-sm text-ink-body leading-relaxed mb-5">
+                    <strong><code>block</code> is how the clause shows up in the UI &mdash; add it only if you want that.</strong> Omit it and the clause still validates and attests; it just won&apos;t surface in the designer or runtime. <code>block</code> carries the <code>tier</code>, the <code>article</code> (the section it groups under), and what it <code>nestsUnder</code> (its sub-clauses).
+                </p>
+                <p className="text-sm text-ink-body leading-relaxed">
+                    <code>categories[0]</code> and <code>block.article</code> are your clause&apos;s <strong>group</strong> &mdash; geo, coordination, emissions &mdash; one classification with two homes today: <code>categories[0]</code> becomes the on-chain <code>family</code> the RPGF formula weights; <code>block.article</code> is the section it groups under in the designer. Set them to the same value. Validate the whole spec against the published JSON Schema before you register.
                 </p>
             </MarketingSection>
 
