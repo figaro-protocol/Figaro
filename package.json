@@ -45,6 +45,9 @@
       "bash scripts/lint-window-globals.sh",
       "bash scripts/lint-runtime-tests-from-chain.sh"
     ],
+    "frontend/tests/**/*.devnet.spec.ts": [
+      "bash scripts/lint-no-devnet-revert.sh"
+    ],
     "sdk/src/clauses/examples/*.json": [
       "bash scripts/lint-clause-choices-are-bounded.sh"
     ],
