@@ -84,7 +84,10 @@ for file in "$@"; do
     # any new 'schema' is drift. Carve-outs (legitimate, different sense): IETF
     # "JSON Schema" (the spec format) and the frozen kernel's "commitment
     # schema" / "schema version" (struct layout).
-    check "$file" FAIL "\\bschema" '(^|/)(CLAUDE\.md|docs/v5/LEXICON\.md)$' \
+    # Carve-out: a *.schema.json artifact (and its conformance test) IS an IETF
+    # JSON Schema — the published format definition of a clause spec — a homonym
+    # of the retired Figaro 'schema' (the clause artifact family), not drift.
+    check "$file" FAIL "\\bschema" '(^|/)(CLAUDE\.md|docs/v5/LEXICON\.md)$|\.schema\.json$|schema-conformance\.test' \
         'json[ -]schema|commitment schema|schema version|schema\.org' \
         "retired: the protocol artifact family is the 'clause' (ClauseRegistry / clauseId), not the 'schema'."
 

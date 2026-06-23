@@ -1,0 +1,112 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://figaro.org/schemas/clause-spec.json",
+    "title": "Figaro Clause Spec (Layer A)",
+    "description": "The canonical shape of a Figaro clause specification — the off-chain JSON a clause author writes, pins to IPFS, and registers in ClauseRegistry. This schema is the published mirror of the reference parser `parseClauseSpec` (sdk/src/clauses/spec.ts); a conformance test (sdk/tests/clauses/schema-conformance.test.ts) keeps the two in lockstep. Validate your clause against this before registering it — a clause that does not conform is not surfaced by conforming frontends (resolved-empty = absence, never an error). The schema is OPEN (additionalProperties allowed): unknown fields are tolerated and ignored, so the format can grow by versioning without rejecting older clauses.",
+    "type": "object",
+    "required": ["clauseId", "version", "title", "description", "fields"],
+    "additionalProperties": true,
+    "properties": {
+        "clauseId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-readable clause name. keccak256(abi.encode(clauseId, version)) is the on-chain bytes32 id."
+        },
+        "version": { "type": "integer", "minimum": 0, "description": "Clause version." },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "categories": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "description": "Open discovery taxonomy (e.g. \"geo\", \"emissions\", \"lifecycle\"). categories[0] is the substrate class: family = keccak256(categories[0]) on-chain, which the RPGF substrate-broadening formula weights. NOT a grouping word (that is block.article)."
+        },
+        "fields": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/field" },
+            "description": "The clause's content fields. The default shape, applied to all stages unless a stage override is set."
+        },
+        "stages": {
+            "type": "object",
+            "description": "Optional per-stage field overrides, keyed by stage number (uint8 0..255).",
+            "patternProperties": { "^[0-9]+$": { "type": "array", "items": { "$ref": "#/$defs/field" } } }
+        },
+        "block": { "$ref": "#/$defs/block" }
+    },
+    "$defs": {
+        "fieldProps": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "type": { "enum": ["string", "integer", "bigint", "boolean", "enum", "array", "object"] },
+                "required": { "type": "boolean" },
+                "description": { "type": "string" },
+                "label": { "type": "string", "description": "Cosmetic display label (Layer-A only; validator + prover ignore it)." },
+                "default": {
+                    "type": ["string", "number", "boolean", "array"],
+                    "description": "Build/UI default (composition metadata; the ABI encoder ignores it). Shape must match the field type."
+                },
+                "format": { "enum": ["bytes32-hex", "address-hex", "bytes-hex", "iso-datetime"], "description": "string only." },
+                "minLength": { "type": "integer", "description": "string only." },
+                "maxLength": { "type": "integer", "description": "string only." },
+                "pattern": { "type": "string", "description": "string only (regex)." },
+                "min": { "type": ["number", "string"], "description": "integer (number) or bigint (decimal string)." },
+                "max": { "type": ["number", "string"], "description": "integer (number) or bigint (decimal string)." },
+                "values": { "type": "array", "items": { "type": "string" }, "description": "enum only — the ordered value codes." },
+                "sentinel": { "type": "string", "description": "enum only — an ABI position-as-index placeholder, never a valid input." },
+                "valueLabels": { "type": "object", "additionalProperties": { "type": "string" }, "description": "enum only — cosmetic per-value labels." },
+                "items": { "$ref": "#/$defs/itemField", "description": "array only — the element field spec (its name/required are injected, so omit them)." },
+                "minItems": { "type": "integer", "description": "array only." },
+                "maxItems": { "type": "integer", "description": "array only." },
+                "fields": { "type": "array", "items": { "$ref": "#/$defs/field" }, "description": "object only — the nested (named) field specs." }
+            },
+            "allOf": [
+                { "if": { "properties": { "type": { "const": "enum" } } }, "then": { "required": ["values"] } },
+                { "if": { "properties": { "type": { "const": "array" } } }, "then": { "required": ["items"] } },
+                { "if": { "properties": { "type": { "const": "object" } } }, "then": { "required": ["fields"] } }
+            ]
+        },
+        "field": {
+            "description": "A named field — top-level, stage-override, or object property. Requires name + type + required.",
+            "allOf": [{ "$ref": "#/$defs/fieldProps" }, { "required": ["name", "type", "required"] }]
+        },
+        "itemField": {
+            "description": "An array ELEMENT spec. The parser injects name + required, so only type is required here.",
+            "allOf": [{ "$ref": "#/$defs/fieldProps" }, { "required": ["type"] }]
+        },
+        "block": {
+            "type": "object",
+            "description": "Block-binding metadata: how a clause composes into the UI + runtime. The on-chain validator and Rust prover IGNORE this entire object — it is Layer-A-only.",
+            "required": ["tier"],
+            "additionalProperties": true,
+            "properties": {
+                "tier": {
+                    "enum": ["runtime", "cross-checked", "agreement-only"],
+                    "description": "How the clause's content in the signed agreement relates to its runtime attestation. cross-checked: committed in the agreement, runtime attestation verified byte-identical. runtime: content produced/attested live. agreement-only: in the agreement, no validator (e.g. topology)."
+                },
+                "article": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Drawer grouping heading (free-form, never a closed list). The contract-document SECTION this clause reads under. Distinct from the substrate class (categories/family)."
+                },
+                "mechanismKinds": {
+                    "type": "array",
+                    "items": { "type": "string", "minLength": 1 },
+                    "description": "OPTIONAL. Mechanism kinds an assembly includes when this clause is anchored. Omit (absent => []) for a clause that wires no mechanism module."
+                },
+                "moduleIds": {
+                    "type": "array",
+                    "items": { "type": "string", "minLength": 1 },
+                    "description": "OPTIONAL. Runtime view-tier modules that consume/produce this clause's data. Omit (absent => []) when route-tier only or none."
+                },
+                "routes": { "type": "array", "items": { "type": "string" }, "description": "Route-tier surfaces that show this clause." },
+                "sisterClauseId": { "type": "string", "minLength": 1, "description": "A runtime-attestation companion clause emitted as an empty anchor." },
+                "nestsUnder": { "type": "string", "minLength": 1, "description": "A field name on a parent clause this clause nests under in the drawer." },
+                "structural": { "type": "boolean", "description": "Composed on EVERY order (not a designer choice) — e.g. commerce, topology." },
+                "defaultOn": { "type": "boolean", "description": "Pre-composed on every fresh designer node; removable in the drawer." },
+                "attestation": { "enum": ["seller", "bilateral"], "description": "WHO attests a runtime clause." },
+                "handoffStages": { "type": "array", "items": { "type": "string" }, "description": "Ladder stage codes that are physical hand-offs (value changes hands)." }
+            }
+        }
+    }
+}
