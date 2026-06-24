@@ -20,8 +20,11 @@ bash scripts/lint-no-network-fallbacks.sh
 # prose, not memory. ~3s; ignores in frontend/knip.json; namespace-access
 # false-positives are tagged `@public` at the declaration.
 ( cd frontend && npx knip --include files,exports,types --no-progress )
-# Semantic open-world gate: a reasoning agent (figaro-open-world-auditor) reads the
-# staged diff and blocks PRIOR-KNOWLEDGE-OF-THE-REGISTRIES that grep structurally
-# cannot see (field-name+meaning couplings). Heaviest check, runs last; fail-open
-# so it never bricks a commit on infra. Override: git commit --no-verify.
-bash scripts/semantic-precommit-audit.sh
+# Semantic open-world gate: a reasoning agent reads the staged diff and blocks
+# PRIOR-KNOWLEDGE-OF-THE-REGISTRIES that grep structurally cannot see (field-name+
+# meaning couplings). ONE runner, TWO inspectors (SoC): the frontend rulebook watches
+# the screens; the protocol rulebook watches the validators + prover. Both share one
+# definition of open-world (docs/v5/OPEN_WORLD.md §1). Heaviest check, runs last;
+# fail-open so it never bricks a commit on infra. Override: git commit --no-verify.
+bash scripts/semantic-precommit-audit.sh frontend '^frontend/.*\.tsx?$' .claude/agents/figaro-open-world-auditor.md
+bash scripts/semantic-precommit-audit.sh protocol '^(src/.*\.sol|prover/.*\.rs)$' .claude/agents/figaro-protocol-open-world-auditor.md
