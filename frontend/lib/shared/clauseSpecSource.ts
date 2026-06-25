@@ -14,12 +14,18 @@
  * nesting) live here so there is one source and no parallel taxonomy module.
  */
 
-import { parseClauseSpec, type ClauseSpec, type FieldSpec, type EnumFieldSpec } from "@figaro/core/clauses";
+import { parseClauseSpec, type ClauseSpec, type FieldSpec, type EnumFieldSpec, type SpecParseError } from "@figaro/core/clauses";
+import { parseBlockBinding, type ClauseBlockBinding } from "@/lib/shared/clauseBlockBinding";
 import { clauseIdHash } from "@/lib/shared/evm";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 
-const SPEC_CACHE = new Map<string, ClauseSpec>();
+/** A clause spec plus its frontend-parsed `block` slice. The SDK `ClauseSpec` is
+ *  content-only (`fields`/`stages`); the `block` binding is pure presentation the
+ *  frontend owns (`clauseBlockBinding`), parsed off the same spec JSON at load. */
+export type ClauseSpecWithBlock = ClauseSpec & { block?: ClauseBlockBinding };
+
+const SPEC_CACHE = new Map<string, ClauseSpecWithBlock>();
 const SPEC_LOAD_ERRORS = new Map<string, string>();
 
 /** clauseId → the parent FIELD name it nests under in the drawer, read from the
@@ -63,10 +69,10 @@ export function setClauseSpecFetcher(fetcher: ClauseSpecFetcher): void {
 }
 
 /** Register a loaded spec into the cache + the derived maps. */
-function cacheSpec(spec: ClauseSpec): void {
+function cacheSpec(spec: ClauseSpecWithBlock): void {
     SPEC_CACHE.set(spec.clauseId, spec);
     HASH_TO_ID.set(clauseIdHash(spec.clauseId, spec.version).toLowerCase(), spec.clauseId);
-    const nestsUnder = (spec as { block?: { nestsUnder?: unknown } }).block?.nestsUnder;
+    const nestsUnder = spec.block?.nestsUnder;
     if (typeof nestsUnder === "string" && nestsUnder.length > 0) NESTS_UNDER.set(spec.clauseId, nestsUnder);
     const sister = spec.block?.sisterClauseId;
     if (typeof sister === "string" && sister.length > 0) COMPANION_IDS.add(sister);
@@ -84,7 +90,7 @@ export function isCompanionClause(clauseId: string): boolean {
  * Idempotent: a spec already cached resolves immediately. Throws on parse /
  * network failure / clauseId mismatch (no silent fallback).
  */
-export async function loadClauseSpec(clauseId: string, uri: string): Promise<ClauseSpec> {
+export async function loadClauseSpec(clauseId: string, uri: string): Promise<ClauseSpecWithBlock> {
     const cached = SPEC_CACHE.get(clauseId);
     if (cached !== undefined) return cached;
     const raw = await activeFetcher(uri);
@@ -97,8 +103,24 @@ export async function loadClauseSpec(clauseId: string, uri: string): Promise<Cla
     if (parsed.spec.clauseId !== clauseId) {
         throw new Error(`Clause spec at ${uri} declares clauseId "${parsed.spec.clauseId}", expected "${clauseId}"`);
     }
-    cacheSpec(parsed.spec);
-    return parsed.spec;
+    // Parse the `block` presentation slice off the SAME spec JSON (the SDK parser
+    // ignores it — it's content-only). A malformed block is a hard parse failure,
+    // same as a malformed content field: surfaced, never silently dropped.
+    const rawBlock = (raw as { block?: unknown })?.block;
+    let block: ClauseBlockBinding | undefined;
+    if (rawBlock !== undefined) {
+        const blockErrors: SpecParseError[] = [];
+        const parsedBlock = parseBlockBinding(rawBlock, "$.block", blockErrors);
+        if (parsedBlock === null) {
+            const detail = blockErrors.map((e) => `${e.path}: ${e.message}`).join("; ");
+            SPEC_LOAD_ERRORS.set(clauseId, `spec at ${uri} block binding failed to parse: ${detail}`);
+            throw new Error(`Clause spec at ${uri} block binding failed to parse: ${detail}`);
+        }
+        block = parsedBlock;
+    }
+    const spec: ClauseSpecWithBlock = block !== undefined ? { ...parsed.spec, block } : parsed.spec;
+    cacheSpec(spec);
+    return spec;
 }
 
 /** Test-only — clear all caches. */
@@ -112,7 +134,7 @@ export function _resetClauseSpecCache_TESTING_ONLY(): void {
 // ── Sync API (resolves against the loaded cache) ─────────────────────────────
 
 /** Synchronous lookup — returns a cached spec, or `undefined` if not loaded. */
-export function getClauseSpec(clauseId: string): ClauseSpec | undefined {
+export function getClauseSpec(clauseId: string): ClauseSpecWithBlock | undefined {
     return SPEC_CACHE.get(clauseId);
 }
 

@@ -153,129 +153,18 @@ describe("parseClauseSpec — meta-clause validation", () => {
         expect(result.ok).toBe(false);
     });
 
-    // The drawer's cross-clause nesting (e.g. figaro-proximity-policy-v1 under the
-    // hand-off clause's `handoff` field) is read from block.nestsUnder. The parser
-    // MUST round-trip it — dropping it silently makes the nested clause invisible.
-    it("preserves block.nestsUnder through the parse", () => {
+    // NOTE: the `block` slice (designer/runtime composition metadata) is no longer
+    // parsed by the SDK — it's frontend-owned presentation. parseClauseSpec ignores
+    // it. Its parser (`parseBlockBinding`) and tests live in the frontend:
+    // frontend/lib/shared/clauseBlockBinding.ts + frontend/tests/lib/clauseBlockBinding.test.ts.
+    it("ignores the block slice (frontend-owned) without failing", () => {
         const result = parseClauseSpec({
             clauseId: "t-v1", version: 1, title: "T", description: "D",
-            fields: [{ name: "bands", type: "string", required: true }],
-            block: { tier: "cross-checked", article: "coordination", mechanismKinds: [], moduleIds: [], nestsUnder: "handoff" },
+            fields: [{ name: "x", type: "string", required: true }],
+            block: { tier: "runtime", mechanismKinds: [], moduleIds: [], attestation: "seller" },
         });
         expect(result.ok).toBe(true);
-        if (result.ok) expect(result.spec.block?.nestsUnder).toBe("handoff");
-    });
-
-    // mechanismKinds / moduleIds are OPTIONAL UI/composition wiring the validator
-    // and prover ignore — a pure attestation lifecycle (or any minimal stranger's
-    // clause) omits them. Absent ⇒ []. The open-world surfacing bar: a clause no
-    // code has seen parses from the minimum it needs to render.
-    it("treats block.mechanismKinds/moduleIds as optional (absent ⇒ [])", () => {
-        const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
-            fields: [{ name: "x", type: "string", required: true }],
-            block: { tier: "runtime", article: "attestations", attestation: "seller" },
-        });
-        expect(result.ok).toBe(true);
-        if (result.ok) {
-            expect(result.spec.block?.mechanismKinds).toEqual([]);
-            expect(result.spec.block?.moduleIds).toEqual([]);
-        }
-    });
-
-    it("still rejects a malformed (non-array) block.mechanismKinds", () => {
-        const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
-            fields: [{ name: "x", type: "string", required: true }],
-            block: { tier: "runtime", mechanismKinds: "nope" },
-        });
-        expect(result.ok).toBe(false);
-    });
-
-    it("rejects an empty-string block.nestsUnder", () => {
-        const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
-            fields: [{ name: "x", type: "string", required: true }],
-            block: { tier: "cross-checked", mechanismKinds: [], moduleIds: [], nestsUnder: "" },
-        });
-        expect(result.ok).toBe(false);
-    });
-
-    // Structural clauses (commerce, topology) are composed on every order by the
-    // build, never offered as a designer choice. Generic surfaces read this flag
-    // to exclude them — it MUST round-trip through the parse.
-    it("preserves block.structural through the parse", () => {
-        const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
-            fields: [{ name: "x", type: "string", required: true }],
-            block: { tier: "cross-checked", mechanismKinds: [], moduleIds: [], structural: true },
-        });
-        expect(result.ok).toBe(true);
-        if (result.ok) expect(result.spec.block?.structural).toBe(true);
-    });
-
-    it("rejects a non-boolean block.structural", () => {
-        const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
-            fields: [{ name: "x", type: "string", required: true }],
-            block: { tier: "cross-checked", mechanismKinds: [], moduleIds: [], structural: "yes" },
-        });
-        expect(result.ok).toBe(false);
-    });
-
-    // Default-on clauses are pre-composed (empty; field `default`s fill them)
-    // on every fresh designer node — removable in the drawer, unlike structural.
-    // Generic surfaces compose the set from this flag — it MUST round-trip.
-    it("preserves block.defaultOn through the parse", () => {
-        const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
-            fields: [{ name: "x", type: "string", required: true }],
-            block: { tier: "cross-checked", mechanismKinds: [], moduleIds: [], defaultOn: true },
-        });
-        expect(result.ok).toBe(true);
-        if (result.ok) expect(result.spec.block?.defaultOn).toBe(true);
-    });
-
-    it("rejects a non-boolean block.defaultOn", () => {
-        const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
-            fields: [{ name: "x", type: "string", required: true }],
-            block: { tier: "cross-checked", mechanismKinds: [], moduleIds: [], defaultOn: "yes" },
-        });
-        expect(result.ok).toBe(false);
-    });
-
-    // The generic runtime engine reads block.attestation to surface a clause's
-    // attestation to the right party/parties (seller, or bilateral), no names.
-    it("preserves block.attestation through the parse", () => {
-        const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
-            fields: [{ name: "band", type: "enum", values: ["zone-wifi"], required: true }],
-            block: { tier: "runtime", mechanismKinds: [], moduleIds: [], attestation: "bilateral" },
-        });
-        expect(result.ok).toBe(true);
-        if (result.ok) expect(result.spec.block?.attestation).toBe("bilateral");
-    });
-
-    it("rejects an invalid block.attestation", () => {
-        const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
-            fields: [{ name: "x", type: "string", required: true }],
-            block: { tier: "runtime", mechanismKinds: [], moduleIds: [], attestation: "buyer" },
-        });
-        expect(result.ok).toBe(false);
-    });
-
-    // The generic engine reads block.handoffStages to pair a proximity cross-witness
-    // at the physical hand-off stages of a lifecycle clause — round-trip it.
-    it("preserves block.handoffStages through the parse", () => {
-        const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
-            fields: [{ name: "eventType", type: "enum", values: ["a", "handed-off"], required: true }],
-            block: { tier: "runtime", mechanismKinds: [], moduleIds: [], handoffStages: ["handed-off"] },
-        });
-        expect(result.ok).toBe(true);
-        if (result.ok) expect(result.spec.block?.handoffStages).toEqual(["handed-off"]);
+        if (result.ok) expect("block" in result.spec).toBe(false);
     });
 
     // The generic build encoder fills absent optional input from FieldSpec

@@ -104,93 +104,6 @@ export type FieldSpec =
     | ArrayFieldSpec
     | ObjectFieldSpec;
 
-/** Drawer article a clause composes into on the designer canvas. A free-form
- *  string read straight from the spec — the set of articles and their grouping
- *  are whatever the registered clauses declare, never a closed list. */
-export type ClauseArticle = string;
-
-/** Doctrinal tier per the protocol-extension doctrine. Independent of the
- *  designer-palette category (`BlockMetadata.category`); the two used to be
- *  both called "category" and got conflated. Now renamed. */
-export type ClauseTier = "runtime" | "cross-checked" | "agreement-only";
-
-/**
- * Block-binding metadata — the single source of truth for how a clause
- * composes into the UI. Replaces the hand-maintained CLAUSE_OWNERSHIP map
- * and the clauseIds field on BlockMetadata, both of which were redundant
- * with each other and had drifted out of sync.
- *
- * Each clause declares its own binding here. Consumers:
- *   - Designer drawer (which article composes this clause)
- *   - Canvas → assembly derivation (which mechanism kinds + module IDs
- *     to include when this clause is anchored in an order)
- *   - Runtime composer (which modules to mount per anchored clause)
- *   - Route-tier surfaces (which routes surface this clause)
- *
- * Nothing on-chain reads this field — it's purely UI/composition metadata.
- */
-export interface ClauseBlockBinding {
-    /** Doctrinal tier. */
-    tier: ClauseTier;
-    /** Drawer article that composes this clause in the canvas designer.
-     *  Undefined when the clause is runtime-only (runtime sister of a
-     *  cross-checked clause) and not user-toggleable. */
-    article?: ClauseArticle;
-    /** Mechanism kinds an assembly should include when this clause is
-     *  anchored in any of its orders. Empty when the clause has no
-     *  capability-dispatching mechanism (e.g. consent, jurisdiction). */
-    mechanismKinds: readonly string[];
-    /** Runtime view-tier modules that consume / produce this clause's
-     *  data. Empty when the clause is route-tier only. */
-    moduleIds: readonly string[];
-    /** Route-tier blocks that surface this clause (e.g. ["/dispute",
-     *  "/evidence-display"]). Empty when the clause is view-tier only or
-     *  has no UI at all. */
-    routes?: readonly string[];
-    /** The clause's runtime-attestation companion — the runtime clause
-     *  paired with this one. The agreement build emits it as an empty anchor
-     *  (its content is attested at runtime, not composed). N cross-checked clauses
-     *  MAY name the same runtime companion (e.g. the GHG disclosure clauses →
-     *  figaro-ghg-measurement-v1); the emitter dedups. Omit for unsistered
-     *  clauses. */
-    sisterClauseId?: string;
-    /** The FIELD name (on another, parent clause) this clause nests under in the
-     *  designer drawer — a containment relationship read from the spec, never a
-     *  hardcoded tree. The drawer renders this clause nested beneath the parent
-     *  clause's matching field (e.g. figaro-proximity-policy-v1 nests under the
-     *  hand-off clause's `handoff` field). Omit for top-level clauses. */
-    nestsUnder?: string;
-    /** Structural clause — composed on EVERY order by the agreement build, not a
-     *  designer choice (figaro-commerce-v1, figaro-topology-v1). Generic surfaces
-     *  read this to exclude it from selectable lists (the drawer never offers a
-     *  structural clause as a checkbox). Omit for elective clauses. */
-    structural?: boolean;
-    /** Default-on clause — pre-composed (as an empty object the spec's field
-     *  `default`s fill at build) on every freshly-spawned designer node, a
-     *  deliberate analytics default the author can remove in the drawer (unlike
-     *  `structural`, which is never offered). Generic surfaces compose the set
-     *  by reading this flag; no code names the clauses. Omit for elective
-     *  clauses. */
-    defaultOn?: boolean;
-    /** WHO attests this runtime clause: "seller" (the order's seller
-     *  — the default for lifecycle clauses like merchant/courier process) or
-     *  "bilateral" (BOTH buyer and seller witness — e.g. the proximity proof of
-     *  physical presence). The generic runtime capability engine reads this to
-     *  surface the attestation to the right party/parties, with no clause names in
-     *  the engine. Omit for non-attestable clauses. */
-    attestation?: "seller" | "bilateral";
-    /** Enum stage CODES of this lifecycle clause's ladder that are PHYSICAL
-     *  HAND-OFFS — the moments value changes hands (e.g. merchant-process
-     *  `handed-off`; courier-process `arrived-pickup`/`arrived-dropoff`). At such
-     *  a stage the generic engine pairs a proximity cross-witness: the attesting
-     *  seller also signs the proximity proof on whichever order in the process
-     *  carries it (its own, or — across the topology edge — the counterparty's),
-     *  so both sides of the hand-off witness the same proof. Distinct from
-     *  `attestation` (who) — this is WHICH stages are hand-offs. Omit for clauses
-     *  with no physical exchange. */
-    handoffStages?: readonly string[];
-}
-
 export interface ClauseSpec {
     /** Human-readable clause name. keccak256(clauseId) is the on-chain bytes32. */
     clauseId: string;
@@ -206,10 +119,9 @@ export interface ClauseSpec {
     fields: readonly FieldSpec[];
     /** Optional per-stage overrides. Keyed by stage number (matches AttestationCoordinator stage uint8). */
     stages?: Readonly<Record<number, readonly FieldSpec[]>>;
-    /** Block-binding metadata for the designer + runtime composer. See
-     *  ClauseBlockBinding. Optional only for forward-compat with external
-     *  clauses; every protocol clause declares it. */
-    block?: ClauseBlockBinding;
+    // The `block` slice of the spec JSON (designer/runtime composition metadata)
+    // is NOT parsed here — it's pure presentation the SDK never reads. The
+    // frontend parses it off the same JSON (`lib/shared/clauseBlockBinding`).
 }
 
 export interface SpecParseError {
@@ -228,10 +140,6 @@ const VALID_FIELD_TYPES: ReadonlySet<string> = new Set([
 
 const VALID_STRING_FORMATS: ReadonlySet<string> = new Set([
     "bytes32-hex", "address-hex", "bytes-hex", "iso-datetime",
-]);
-
-const VALID_CLAUSE_TIERS: ReadonlySet<string> = new Set([
-    "runtime", "cross-checked", "agreement-only",
 ]);
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -471,110 +379,6 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
     return null;
 }
 
-function parseStringArray(
-    raw: unknown,
-    path: string,
-    errors: SpecParseError[],
-): readonly string[] | null {
-    if (!Array.isArray(raw)) {
-        errors.push({ path, message: "expected an array of strings" });
-        return null;
-    }
-    for (let i = 0; i < raw.length; i++) {
-        if (typeof raw[i] !== "string" || raw[i].length === 0) {
-            errors.push({ path: `${path}[${i}]`, message: "expected a non-empty string" });
-            return null;
-        }
-    }
-    return raw as string[];
-}
-
-function parseBlockBinding(
-    raw: unknown,
-    path: string,
-    errors: SpecParseError[],
-): ClauseBlockBinding | null {
-    if (!isObject(raw)) {
-        errors.push({ path, message: "block binding must be an object" });
-        return null;
-    }
-    const tier = raw.tier;
-    if (typeof tier !== "string" || !VALID_CLAUSE_TIERS.has(tier)) {
-        errors.push({ path: `${path}.tier`, message: `tier must be one of: ${[...VALID_CLAUSE_TIERS].join(", ")}` });
-        return null;
-    }
-    if (raw.article !== undefined) {
-        if (typeof raw.article !== "string" || raw.article.length === 0) {
-            errors.push({ path: `${path}.article`, message: "article must be a non-empty string when present" });
-            return null;
-        }
-    }
-    // Optional: a clause wiring no mechanism module — a pure attestation
-    // lifecycle, or any minimal stranger's clause — omits these; nothing
-    // on-chain reads them. Absent ⇒ []. (Present-but-malformed still errors.)
-    let mechanismKinds: readonly string[] = [];
-    if (raw.mechanismKinds !== undefined) {
-        const parsed = parseStringArray(raw.mechanismKinds, `${path}.mechanismKinds`, errors);
-        if (parsed === null) return null;
-        mechanismKinds = parsed;
-    }
-    let moduleIds: readonly string[] = [];
-    if (raw.moduleIds !== undefined) {
-        const parsed = parseStringArray(raw.moduleIds, `${path}.moduleIds`, errors);
-        if (parsed === null) return null;
-        moduleIds = parsed;
-    }
-    let routes: readonly string[] | undefined;
-    if (raw.routes !== undefined) {
-        const r = parseStringArray(raw.routes, `${path}.routes`, errors);
-        if (r === null) return null;
-        routes = r;
-    }
-    if (raw.sisterClauseId !== undefined) {
-        if (typeof raw.sisterClauseId !== "string" || raw.sisterClauseId.length === 0) {
-            errors.push({ path: `${path}.sisterClauseId`, message: "sisterClauseId must be a non-empty string when present" });
-            return null;
-        }
-    }
-    if (raw.nestsUnder !== undefined) {
-        if (typeof raw.nestsUnder !== "string" || raw.nestsUnder.length === 0) {
-            errors.push({ path: `${path}.nestsUnder`, message: "nestsUnder must be a non-empty string when present" });
-            return null;
-        }
-    }
-    if (raw.structural !== undefined && typeof raw.structural !== "boolean") {
-        errors.push({ path: `${path}.structural`, message: "structural must be a boolean when present" });
-        return null;
-    }
-    if (raw.defaultOn !== undefined && typeof raw.defaultOn !== "boolean") {
-        errors.push({ path: `${path}.defaultOn`, message: "defaultOn must be a boolean when present" });
-        return null;
-    }
-    if (raw.attestation !== undefined && raw.attestation !== "seller" && raw.attestation !== "bilateral") {
-        errors.push({ path: `${path}.attestation`, message: "attestation must be 'seller' or 'bilateral' when present" });
-        return null;
-    }
-    let handoffStages: readonly string[] | undefined;
-    if (raw.handoffStages !== undefined) {
-        const h = parseStringArray(raw.handoffStages, `${path}.handoffStages`, errors);
-        if (h === null) return null;
-        handoffStages = h;
-    }
-    return {
-        tier: tier as ClauseTier,
-        ...(raw.article !== undefined && { article: raw.article as ClauseArticle }),
-        mechanismKinds,
-        moduleIds,
-        ...(routes !== undefined && { routes }),
-        ...(raw.sisterClauseId !== undefined && { sisterClauseId: raw.sisterClauseId as string }),
-        ...(raw.nestsUnder !== undefined && { nestsUnder: raw.nestsUnder as string }),
-        ...(raw.structural !== undefined && { structural: raw.structural as boolean }),
-        ...(raw.defaultOn !== undefined && { defaultOn: raw.defaultOn as boolean }),
-        ...(raw.attestation !== undefined && { attestation: raw.attestation as "seller" | "bilateral" }),
-        ...(handoffStages !== undefined && { handoffStages }),
-    };
-}
-
 /**
  * Parse and validate an unknown value as a ClauseSpec. Validates the
  * meta-clause (the structure of the spec itself, not any content).
@@ -584,7 +388,7 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
     if (!isObject(raw)) {
         return { ok: false, errors: [{ path: "$", message: "clause spec must be an object" }] };
     }
-    const { clauseId, version, title, description, categories, fields, stages, block } = raw;
+    const { clauseId, version, title, description, categories, fields, stages } = raw;
     if (typeof clauseId !== "string" || clauseId.length === 0) {
         errors.push({ path: "$.clauseId", message: "clauseId must be a non-empty string" });
     }
@@ -645,11 +449,8 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
             }
         }
     }
-    let parsedBlock: ClauseBlockBinding | undefined;
-    if (block !== undefined) {
-        const b = parseBlockBinding(block, "$.block", errors);
-        if (b !== null) parsedBlock = b;
-    }
+    // The `block` slice is presentation metadata the SDK does not own — the
+    // frontend parses it (`lib/shared/clauseBlockBinding`). It's ignored here.
     if (errors.length > 0) return { ok: false, errors };
     return {
         ok: true,
@@ -661,7 +462,6 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
             ...(parsedCategories !== undefined && { categories: parsedCategories }),
             fields: parsedFields,
             ...(parsedStages !== undefined && { stages: parsedStages }),
-            ...(parsedBlock !== undefined && { block: parsedBlock }),
         },
     };
 }
