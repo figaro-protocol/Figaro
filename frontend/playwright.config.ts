@@ -75,8 +75,12 @@ export default defineConfig({
     //   `devnet-authoring` — stage 1+2: the scenario specs (author + anchor
     //     each assembly, idempotent on a non-fresh chain) and the
     //     sellers-onboarding wizard (also idempotent).
-    //   `devnet` — everything else; depends on devnet-authoring, so the
-    //     anchors exist before any runtime consumes them. Dev-loop note:
+    //   `devnet-standalone` — self-contained acceptance specs (e.g.
+    //     permissionless-clause) that register their own clause, author their
+    //     own assembly, and onboard their own seller. They share NO seeded
+    //     state, so they depend on NOTHING — never the authoring gate.
+    //   `devnet` — the runtime specs that CONSUME the seeded anchors; depends
+    //     on devnet-authoring, so the anchors exist first. Dev-loop note:
     //     a file-filtered run (`npx playwright test foo.devnet.spec.ts`)
     //     runs the FULL authoring project first — pass `--no-deps` to skip
     //     it when the chain is already anchored.
@@ -96,9 +100,20 @@ export default defineConfig({
             use: { ...devices['Desktop Chrome'] },
         },
         {
+            // Self-contained acceptance specs that author + run + audit their OWN
+            // full cycle (register their own clause, author their own assembly,
+            // onboard their own seller). They share NO seeded state and depend on
+            // NOTHING — so they must NOT pull the devnet-authoring gate.
+            name: 'devnet-standalone',
+            testMatch: /permissionless-clause\.devnet\.spec\.ts$/,
+            fullyParallel: false,
+            workers: 1,
+            use: { ...devices['Desktop Chrome'] },
+        },
+        {
             name: 'devnet',
             testMatch: /\.devnet\.spec\.ts$/,
-            testIgnore: /(scenario-[a-z-]+|seed-assembly|sellers-onboarding)\.devnet\.spec\.ts$/,
+            testIgnore: /(scenario-[a-z-]+|seed-assembly|sellers-onboarding|permissionless-clause)\.devnet\.spec\.ts$/,
             dependencies: ['devnet-authoring'],
             fullyParallel: false,
             workers: 1,

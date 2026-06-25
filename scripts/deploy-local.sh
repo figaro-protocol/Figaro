@@ -73,17 +73,13 @@ TOKEN_ADDR=$(echo "$FORGE_OUT"       | grep 'MockToken deployed at:'            
 PERMIT_ADDR=$(echo "$FORGE_OUT"      | grep 'MockPermitToken deployed at:'        | grep -oE '0x[0-9a-fA-F]+')
 ATTESTATION_ADDR=$(echo "$FORGE_OUT" | grep 'AttestationCoordinator deployed at:' | grep -oE '0x[0-9a-fA-F]+')
 CLAUSE_ADDR=$(echo "$FORGE_OUT"      | grep 'ClauseRegistry deployed at:'         | grep -oE '0x[0-9a-fA-F]+')
-CLAUSE_HELPER_ADDR=$(echo "$FORGE_OUT" | grep 'ClauseRegistrationHelper deployed at:' | grep -oE '0x[0-9a-fA-F]+')
 SELLER_ADDR=$(echo "$FORGE_OUT"    | grep 'SellerRegistry deployed at:'       | grep -oE '0x[0-9a-fA-F]+')
 ASSEMBLY_ADDR=$(echo "$FORGE_OUT"    | grep 'AssemblyRegistry deployed at:'       | grep -oE '0x[0-9a-fA-F]+')
 AUCTION_ADDR=$(echo "$FORGE_OUT"     | grep 'DutchAuction deployed at:'           | grep -oE '0x[0-9a-fA-F]+')
 FIG_TOKEN_ADDR=$(echo "$FORGE_OUT"   | grep 'FigToken deployed at:'               | grep -oE '0x[0-9a-fA-F]+')
-## FigEmission removed
 
-BATCH_VERIFIER_ADDR=$(echo "$FORGE_OUT" | grep 'FigaroBatchVerifier deployed at:' | grep -oE '0x[0-9a-fA-F]+')
 PROCESS_OFFSET_RECEIPT_ADDR=$(echo "$FORGE_OUT" | grep 'ProcessOffsetReceipt deployed at:' | grep -oE '0x[0-9a-fA-F]+')
 MOCK_OFFSET_AGGREGATOR_ADDR=$(echo "$FORGE_OUT" | grep 'MockOffsetAggregator deployed at:' | grep -oE '0x[0-9a-fA-F]+')
-RPGF_MINTER_ADDR=$(echo "$FORGE_OUT" | grep 'RpgfMinter deployed at:' | grep -oE '0x[0-9a-fA-F]+')
 
 if [ -z "$CORE_ADDR" ]; then
   echo "❌ Could not parse FigaroCore address from forge output. Aborting env update."
@@ -148,16 +144,12 @@ update_env "$CORE_ENV" "NEXT_PUBLIC_TOKEN_ADDRESS"             "$TOKEN_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS"      "$PERMIT_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_ATTESTATION_COORDINATOR"   "$ATTESTATION_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_CLAUSE_REGISTRY"           "$CLAUSE_ADDR"
-update_env "$CORE_ENV" "NEXT_PUBLIC_CLAUSE_REGISTRATION_HELPER" "$CLAUSE_HELPER_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_SELLER_REGISTRY"         "$SELLER_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_ASSEMBLY_REGISTRY"         "$ASSEMBLY_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_DUTCH_AUCTION"             "$AUCTION_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_FIG_TOKEN_ADDRESS"         "$FIG_TOKEN_ADDR"
-## FigEmission removed
-update_env "$CORE_ENV" "NEXT_PUBLIC_BATCH_VERIFIER"            "$BATCH_VERIFIER_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT"    "$PROCESS_OFFSET_RECEIPT_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_MOCK_OFFSET_AGGREGATOR"    "$MOCK_OFFSET_AGGREGATOR_ADDR"
-update_env "$CORE_ENV" "NEXT_PUBLIC_RPGF_MINTER"               "$RPGF_MINTER_ADDR"
 
 # IPFS service endpoints — default to the local Kubo daemon. Set only if
 # absent, so a custom endpoint configured by hand survives a redeploy.
@@ -175,15 +167,12 @@ cat > "$CORE_DEPLOYMENT" <<EOF
   "permitTokenAddress": "$PERMIT_ADDR",
   "attestationCoordinator": "$ATTESTATION_ADDR",
   "clauseRegistry": "$CLAUSE_ADDR",
-  "clauseRegistrationHelper": "$CLAUSE_HELPER_ADDR",
   "sellerRegistry": "$SELLER_ADDR",
   "assemblyRegistry": "$ASSEMBLY_ADDR",
   "dutchAuction": "$AUCTION_ADDR",
   "figToken": "$FIG_TOKEN_ADDR",
-  "batchVerifier": "$BATCH_VERIFIER_ADDR",
   "processOffsetReceipt": "$PROCESS_OFFSET_RECEIPT_ADDR",
-  "mockOffsetAggregator": "$MOCK_OFFSET_AGGREGATOR_ADDR",
-  "rpgfMinter": "$RPGF_MINTER_ADDR"
+  "mockOffsetAggregator": "$MOCK_OFFSET_AGGREGATOR_ADDR"
 }
 EOF
 
@@ -195,14 +184,11 @@ echo "   NEXT_PUBLIC_TOKEN_ADDRESS=$TOKEN_ADDR"
 echo "   NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS=$PERMIT_ADDR"
 echo "   NEXT_PUBLIC_ATTESTATION_COORDINATOR=$ATTESTATION_ADDR"
 echo "   NEXT_PUBLIC_CLAUSE_REGISTRY=$CLAUSE_ADDR"
-echo "   NEXT_PUBLIC_CLAUSE_REGISTRATION_HELPER=$CLAUSE_HELPER_ADDR"
 echo "   NEXT_PUBLIC_SELLER_REGISTRY=$SELLER_ADDR"
 echo "   NEXT_PUBLIC_ASSEMBLY_REGISTRY=$ASSEMBLY_ADDR"
 echo "   NEXT_PUBLIC_DUTCH_AUCTION=$AUCTION_ADDR"
 echo "   NEXT_PUBLIC_FIG_TOKEN_ADDRESS=$FIG_TOKEN_ADDR"
-echo "   NEXT_PUBLIC_BATCH_VERIFIER=$BATCH_VERIFIER_ADDR"
 echo "   NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT=$PROCESS_OFFSET_RECEIPT_ADDR"
 echo "   NEXT_PUBLIC_MOCK_OFFSET_AGGREGATOR=$MOCK_OFFSET_AGGREGATOR_ADDR"
-echo "   NEXT_PUBLIC_RPGF_MINTER=$RPGF_MINTER_ADDR"
 echo "   NEXT_PUBLIC_IPFS_API_URL / NEXT_PUBLIC_IPFS_GATEWAY_URL — local Kubo defaults (set only if absent)"
 echo "   Deployment: $CORE_DEPLOYMENT"
