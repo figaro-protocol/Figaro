@@ -12,10 +12,12 @@
  *   commit   → a real bilateral order commits that agreement on-chain
  *   runtime  → the order's seller advances the clause's lifecycle through the
  *              ONE generic capability rail (no clause named in the page)
- *   audit    → the audit package surfaces EVERY committed leaf's value (commerce,
- *              topology, AND the never-seen clause, each labelled from its spec)
- *              and its hash verifier recomputes the merkle root over all leaves,
- *              matching the on-chain agreementHash — the whole tree, tied to chain
+ *   audit    → fed from network state (indexer events + IPFS), the audit package
+ *              surfaces the whole lifecycle: EVERY committed leaf's value (commerce,
+ *              topology, AND the never-seen clause, each labelled from its spec), the
+ *              seller's runtime ATTESTATION (stage label + attester, from the event
+ *              log), and a hash verifier that recomputes the merkle root over all
+ *              leaves to match the on-chain agreementHash — the whole tree, tied to chain
  *
  * The prior version of this test (and its helpers) was deleted in 3b26329 /
  * 063c517 because it was coupled to closed-world scenario apparatus (pre-computed
@@ -41,7 +43,7 @@ import {
 } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
 import {
-    readLocalDeploymentConfig, pinJSONToIPFS, localPublicClient,
+    readLocalDeploymentConfig, pinJSONToIPFS, localPublicClient, assertPinnedInIpfs,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { clauseIdHash } from '@/lib/shared/evm';
@@ -368,44 +370,63 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         expect(sellerFinal - sellerBefore, 'seller net earned exactly the payment').toBe(payment);
         expect(coreFinal, 'FigaroCore escrow returned to its baseline').toBe(coreBefore);
 
-        // ── AUDIT: the novel clause's attestation surfaces in the audit package,
-        //    its title read from the spec — the full open-world loop, end to end. ──
+        // ── AUDIT (fed from network state — indexer events + IPFS, never a local
+        //    cache): the audit package surfaces the WHOLE order lifecycle for the
+        //    never-seen clause — every committed leaf's value, the seller's runtime
+        //    ATTESTATION, and a merkle proof tying the agreement to the on-chain root. ──
         await page.goto(`/audit/${processId}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
         await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
         await waitForConnected(page);
 
-        // ── VALUES: the clause-evidence view surfaces EVERY committed leaf's value,
-        //    each rendered from its registered spec title — the two structural
-        //    leaves (commerce + topology) AND the never-seen clause. ──
+        // VALUES — the clause-evidence view surfaces EVERY committed leaf's value,
+        // each rendered from its registered spec title: the two structural leaves
+        // (commerce + topology) AND the never-seen clause.
         const evidence = page.getByTestId('audit-clause-evidence');
         await evidence.waitFor({ state: 'visible', timeout: 30000 });
         await expect(evidence.getByText('Commerce terms'), 'the commerce leaf value surfaces').toBeVisible({ timeout: 30000 });
         await expect(evidence.getByText('Order topology'), 'the topology leaf value surfaces').toBeVisible({ timeout: 15000 });
         await expect(evidence.getByText(NOVEL_TITLE), 'the never-seen clause leaf surfaces by its spec title').toBeVisible({ timeout: 15000 });
 
-        // ── MERKLE TREE: the audit must surface the WHOLE committed tree — its root
-        //    over EVERY leaf — not just one label. Read the committed agreement the
-        //    auditor sees (saved at place-order, this same browser context) and drive
-        //    the audit page's hash verifier (Mode A) through the UI: it recomputes the
-        //    merkle root over all leaves and confirms it equals the on-chain
-        //    agreementHash — the same root the kernel stored. ──
+        // ATTESTATION — the lifecycle's runtime step must surface in the audit too,
+        // read from the indexer's AttestationRecorded logs (getAttestationsByOrder),
+        // NOT from any local cache: the probe attestation's stage label, attributed
+        // to the SELLER who signed it (the attester address from the event). This is
+        // the audit's proof the attestation EXISTS, fed from chain events.
+        await expect(
+            evidence.getByText(NOVEL_FIRST_STAGE_LABEL),
+            "the seller's runtime attestation surfaces in the audit, its stage label read from the spec",
+        ).toBeVisible({ timeout: 30000 });
+        await expect(
+            evidence.getByText(new RegExp(SELLER, 'i')),
+            'the audit attributes the attestation to the seller who signed it (attester from the event)',
+        ).toBeVisible({ timeout: 15000 });
+
+        // MERKLE TREE — the audit must surface the WHOLE committed tree, its root over
+        // EVERY leaf. Fetch the agreement from IPFS (the network SSoT the audit resolves
+        // via its URI pointer — NOT the local cache), assert it is pinned, then drive
+        // the audit's hash verifier (Mode A): it recomputes the merkle root over all
+        // leaves and confirms it equals the on-chain agreementHash the kernel stored.
         const agreementHash = event.args.agreementHash as `0x${string}`;
-        const agreementJson = await page.evaluate(
+        const agreementUri = await page.evaluate(
             (key) => window.localStorage.getItem(key),
-            `figaro:agreement:${agreementHash}`,
+            `figaro:agreement-uri:${agreementHash}`,
         );
-        expect(agreementJson, 'the committed agreement is present in the audit context').toBeTruthy();
-        const agreement = JSON.parse(agreementJson!) as { sections: { clause: string }[] };
+        expect(agreementUri, 'the committed agreement has a network (IPFS) locator').toMatch(/^ipfs:\/\//);
+        const agreementCid = agreementUri!.replace(/^ipfs:\/\//, '');
+        await assertPinnedInIpfs(agreementCid); // the SSoT copy is genuinely pinned, not a local cache
+        const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
+        const agreementJson = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${agreementCid}`, { method: 'POST' })).text();
+        const agreement = JSON.parse(agreementJson) as { sections: { clause: string }[] };
         const leafClauses = agreement.sections.map((s) => s.clause);
         expect(leafClauses, 'the committed merkle tree carries all three leaves')
             .toEqual(expect.arrayContaining(['figaro-commerce', 'figaro-topology', NOVEL_CLAUSE_ID]));
 
         await page.getByTestId('verify-mode-agreement').click();
-        await page.getByTestId('verify-agreement-input').fill(agreementJson!);
+        await page.getByTestId('verify-agreement-input').fill(agreementJson);
         await page.getByTestId('verify-agreement-expected').fill(agreementHash);
         await expect(
             page.getByTestId('verify-result-computed'),
-            'the audit recomputes a merkle root from the agreement',
+            'the audit recomputes a merkle root from the IPFS agreement',
         ).toBeVisible({ timeout: 15000 });
         await expect(
             page.getByTestId('verify-result-status'),
