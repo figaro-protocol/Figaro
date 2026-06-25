@@ -12,8 +12,10 @@
  *   commit   → a real bilateral order commits that agreement on-chain
  *   runtime  → the order's seller advances the clause's lifecycle through the
  *              ONE generic capability rail (no clause named in the page)
- *   audit    → the attestation surfaces in the audit package, its label read
- *              straight from the spec
+ *   audit    → the audit package surfaces EVERY committed leaf's value (commerce,
+ *              topology, AND the never-seen clause, each labelled from its spec)
+ *              and its hash verifier recomputes the merkle root over all leaves,
+ *              matching the on-chain agreementHash — the whole tree, tied to chain
  *
  * The prior version of this test (and its helpers) was deleted in 3b26329 /
  * 063c517 because it was coupled to closed-world scenario apparatus (pre-computed
@@ -371,9 +373,43 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         await page.goto(`/audit/${processId}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
         await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
         await waitForConnected(page);
+
+        // ── VALUES: the clause-evidence view surfaces EVERY committed leaf's value,
+        //    each rendered from its registered spec title — the two structural
+        //    leaves (commerce + topology) AND the never-seen clause. ──
+        const evidence = page.getByTestId('audit-clause-evidence');
+        await evidence.waitFor({ state: 'visible', timeout: 30000 });
+        await expect(evidence.getByText('Commerce terms'), 'the commerce leaf value surfaces').toBeVisible({ timeout: 30000 });
+        await expect(evidence.getByText('Order topology'), 'the topology leaf value surfaces').toBeVisible({ timeout: 15000 });
+        await expect(evidence.getByText(NOVEL_TITLE), 'the never-seen clause leaf surfaces by its spec title').toBeVisible({ timeout: 15000 });
+
+        // ── MERKLE TREE: the audit must surface the WHOLE committed tree — its root
+        //    over EVERY leaf — not just one label. Read the committed agreement the
+        //    auditor sees (saved at place-order, this same browser context) and drive
+        //    the audit page's hash verifier (Mode A) through the UI: it recomputes the
+        //    merkle root over all leaves and confirms it equals the on-chain
+        //    agreementHash — the same root the kernel stored. ──
+        const agreementHash = event.args.agreementHash as `0x${string}`;
+        const agreementJson = await page.evaluate(
+            (key) => window.localStorage.getItem(key),
+            `figaro:agreement:${agreementHash}`,
+        );
+        expect(agreementJson, 'the committed agreement is present in the audit context').toBeTruthy();
+        const agreement = JSON.parse(agreementJson!) as { sections: { clause: string }[] };
+        const leafClauses = agreement.sections.map((s) => s.clause);
+        expect(leafClauses, 'the committed merkle tree carries all three leaves')
+            .toEqual(expect.arrayContaining(['figaro-commerce', 'figaro-topology', NOVEL_CLAUSE_ID]));
+
+        await page.getByTestId('verify-mode-agreement').click();
+        await page.getByTestId('verify-agreement-input').fill(agreementJson!);
+        await page.getByTestId('verify-agreement-expected').fill(agreementHash);
         await expect(
-            page.getByText(NOVEL_TITLE),
-            'the audit package surfaces the never-seen clause by its spec title',
-        ).toBeVisible({ timeout: 30000 });
+            page.getByTestId('verify-result-computed'),
+            'the audit recomputes a merkle root from the agreement',
+        ).toBeVisible({ timeout: 15000 });
+        await expect(
+            page.getByTestId('verify-result-status'),
+            'the recomputed root over every leaf matches the on-chain agreementHash',
+        ).toHaveText(/Matches expected hash/, { timeout: 15000 });
     });
 });
