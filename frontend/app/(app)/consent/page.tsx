@@ -18,8 +18,8 @@
  * here exercises only the typed-data primitive — no `commit`, no
  * `attestAsBuyer`, no kernel state mutation.
  *
- * The `Consent` typed-data shape is imported from the SDK encoder module
- * (`CONSENT_EIP712_TYPES`) — the field order has one home.
+ * The `Consent` typed-data shape is defined locally — this beta-consent
+ * signing surface owns its field order (it is not a protocol clause encoding).
  */
 
 import { useEffect, useState } from "react";
@@ -30,7 +30,6 @@ import {
     useSignTypedData,
 } from "wagmi";
 import { recoverTypedDataAddress, type Address, type Hex } from "viem";
-import { CONSENT_EIP712_TYPES } from "@figaro/core/clauses";
 
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -52,7 +51,13 @@ const CONSENT_DOMAIN_NAME = "Figaro Beta Consent";
 const CONSENT_DOMAIN_VERSION = "1";
 const CONSENT_COMPLETE_KEY = "figaro-consent-complete";
 
-const CONSENT_TYPES = CONSENT_EIP712_TYPES;
+const CONSENT_TYPES = {
+    Consent: [
+        { name: "documentHash", type: "bytes32" },
+        { name: "documentVersion", type: "string" },
+        { name: "documentTitle", type: "string" },
+    ],
+} as const;
 
 type Stage = "pre-connect" | "pre-sign" | "signing" | "pinning" | "post-sign";
 

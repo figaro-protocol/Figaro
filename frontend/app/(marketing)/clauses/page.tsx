@@ -73,8 +73,7 @@ export default function Clauses() {
 
             <MarketingSection title="The nine-step checklist.">
                 <ol className="space-y-3 text-sm text-ink-body leading-relaxed list-decimal pl-5">
-                    <li>Write the JSON spec at <code>sdk/src/clauses/examples/&lt;your-clause&gt;.json</code>.</li>
-                    <li>Mirror it in <code>frontend/lib/shared/clauses/&lt;your-clause&gt;.json</code> so the UI can preload it.</li>
+                    <li>Write the JSON spec at <code>clauses/&lt;your-clause&gt;.json</code> — <code>populate-clauses</code> pins it to IPFS and anchors it on <code>ClauseRegistry</code>; every consumer fetches it from the registry. Nothing bundles a copy.</li>
                     <li>Write the SDK content encoder in <code>sdk/src/clauses/encode.ts</code> and export from <code>index.ts</code>.</li>
                     <li>Add a conformance test in <code>sdk/tests/clauses/examples.test.ts</code>.</li>
                     <li>Write the Solidity validator at <code>src/clauseValidators/Foo&lt;Clause&gt;V1Validator.sol</code> &mdash; ABI-decode content, revert with typed custom errors.</li>

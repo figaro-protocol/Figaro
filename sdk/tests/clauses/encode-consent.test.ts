@@ -1,15 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { decodeAbiParameters, type Hex } from "viem";
-import { embeddedSpec } from "../../src/clauses/embedded.js";
-import { encodeContentFromSpec, type ConsentContent } from "../../src/clauses/encode.js";
+import { encodeContentFromSpec } from "../../src/clauses/encode.js";
 import { parseClauseSpec } from "../../src/clauses/spec.js";
 import { validateContent } from "../../src/clauses/validate.js";
-import consentSpecRaw from "../../src/clauses/examples/figaro-consent.json" with { type: "json" };
+import consentSpecRaw from "../../../clauses/figaro-consent.json" with { type: "json" };
+
+// Test-local shape for the consent fixture (the encoder itself is generic and
+// takes `Record<string, unknown>` — it knows nothing about consent).
+interface ConsentContent {
+    documents: readonly { documentHash: Hex; documentVersion: string; documentTitle: string }[];
+}
 
 const SAMPLE_HASH: Hex = `0x${"ab".repeat(32)}`;
 const ALT_HASH: Hex = `0x${"cd".repeat(32)}`;
 
-const CONSENT_SPEC = embeddedSpec("figaro-consent")!;
+const _consentParsed = parseClauseSpec(consentSpecRaw);
+if (!_consentParsed.ok) throw new Error(`consent spec failed to parse: ${JSON.stringify(_consentParsed.errors)}`);
+const CONSENT_SPEC = _consentParsed.spec;
 function encodeConsent(content: ConsentContent): Hex {
     return encodeContentFromSpec(CONSENT_SPEC, content as unknown as Record<string, unknown>);
 }

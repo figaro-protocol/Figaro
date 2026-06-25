@@ -17,7 +17,7 @@
 # is NOT a known free-content field — almost certainly a choice that should be `type:"enum"`
 # with a bounded `values` array.
 #
-# Wired under lint-staged `sdk/src/clauses/examples/*.json`. Exit 0 clean, 1 on violation.
+# Wired under lint-staged `clauses/*.json`. Exit 0 clean, 1 on violation.
 
 set -euo pipefail
 

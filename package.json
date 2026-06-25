@@ -48,7 +48,7 @@
     "frontend/tests/**/*.devnet.spec.ts": [
       "bash scripts/lint-no-devnet-revert.sh"
     ],
-    "sdk/src/clauses/examples/*.json": [
+    "clauses/*.json": [
       "bash scripts/lint-clause-choices-are-bounded.sh"
     ],
     "src/**/*.sol": [

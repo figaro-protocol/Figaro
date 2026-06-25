@@ -1,13 +1,12 @@
 /**
- * @figaro/core/clauses — Clause-spec format + content validator
+ * @figaro/core/clauses — clause-spec format + content validator + encoder.
  *
- * The single source of truth for clause-content validation, shared by:
- *   - Client-side form gates (frontend / SDK)
- *   - On-chain per-clause validator contracts (future, Solidity)
- *   - SP1 prover clause enforcement (future, Rust mirror)
- *
- * All three layers parse the same spec JSON and apply the same validation
- * rules. If this format changes, every layer must be updated in lockstep.
+ * The single off-chain source of truth for clause-content validation and ABI
+ * encoding. Fully generic: it parses the spec JSON (fetched from
+ * `ClauseRegistry` → IPFS at runtime) and applies the same rules to ANY
+ * clause — no clause is known to this module, nothing is bundled. The chain
+ * does not validate content; well-formedness is this layer's job (honest
+ * authors) plus a read-time concern (downstream forums reject garbage).
  */
 
 export type {
@@ -37,39 +36,14 @@ export type {
 
 export { validateContent } from "./validate.js";
 
-// ── Content encoding (TS ↔ ABI bridge) ──────────────────────────────────────
-
-export type {
-    GeoContent,
-    ClassOfService,
-    HandoffPoint,
-    HandoffV1Content,
-    KlerosCourt,
-    ArbitrationKlerosContent,
-    ApplicableLawContent,
-    GHGScopeContent,
-    GHGMeasurementContent,
-    CommerceLineItem,
-    CommerceContent,
-    ProximityBand,
-    ProximityPolicyContent,
-    ProximityProofContent,
-    OffsetProvider,
-    OffsetPolicyContent,
-    MerchantEvent,
-    MerchantContent,
-    CourierEvent,
-    CourierContent,
-    ConsentContent,
-    ConsentDocument,
-} from "./encode.js";
+// ── Content encoding (generic, spec-driven) ─────────────────────────────────
+// No per-clause types are exported — the encoder is clause-agnostic and takes
+// a parsed `ClauseSpec` + a plain `Record<string, unknown>`.
 
 export {
-    CONSENT_EIP712_TYPES,
     EMPTY_CONTENT,
     encodeContentFromSpec,
 } from "./encode.js";
 
-// ── Embedded protocol-clause spec catalog ───────────────────────────────────
-
-export { embeddedSpec, allEmbeddedSpecs } from "./embedded.js";
+// Clause specs are NOT bundled — they live in ClauseRegistry (→ IPFS) and are
+// fetched at runtime. There is no embedded catalogue.

@@ -18,8 +18,8 @@ import type { Hex, Address, AttestationEvent } from "../types.js";
  * This is the canonical way to derive clause IDs.
  *
  * Identity is the (name, version) pair: keccak256(abi.encode(name, version)),
- * matching ClauseRegistry + every IClauseValidator on-chain. The name carries
- * no version suffix; the version is a distinct argument.
+ * matching `ClauseRegistry`. The name carries no version suffix; the version
+ * is a distinct argument.
  *
  * @example
  * ```ts

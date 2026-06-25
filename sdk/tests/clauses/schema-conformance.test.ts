@@ -16,7 +16,7 @@ import schema from "../../src/clauses/clause-spec.schema.json";
 const ajv = new Ajv2020({ allErrors: true, strict: false });
 const validateAgainstSchema = ajv.compile(schema);
 
-const examplesDir = join(__dirname, "../../src/clauses/examples");
+const examplesDir = join(__dirname, "../../../clauses");
 const exampleFiles = readdirSync(examplesDir).filter((f) => f.endsWith(".json"));
 
 describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {

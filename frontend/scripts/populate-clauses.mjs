@@ -3,8 +3,8 @@
  * populate-clauses.mjs — the ONE clause-population path for PRODUCTION / TESTNET /
  * MAINNET. Pre-populates ClauseRegistry + IPFS with the protocol's clause specs.
  *
- * For each Layer-A clause spec in `sdk/src/clauses/examples/*.json` (the canonical
- * lockstep source — @figaro/core/clauses):
+ * For each Layer-A clause spec in `clauses/*.json` (the canonical seed data,
+ * the single origin pinned to IPFS and anchored on-chain):
  *   1. pin the spec JSON to IPFS (real CID), and
  *   2. `registerClause(clauseId, version, contentHash, metadataURI, family)` on
  *      ClauseRegistry — anchoring the IPFS LOCATOR (metadataURI) + the spec
@@ -33,9 +33,9 @@ import {
 import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// Canonical Layer-A specs — the SDK lockstep source (@figaro/core/clauses), the
-// single origin pinned to IPFS. No frontend-bundled copy exists anymore.
-const CLAUSES_DIR = path.resolve(__dirname, '../../sdk/src/clauses/examples');
+// Canonical Layer-A specs / ClauseRegistry seed data — the single origin,
+// pinned to IPFS and anchored on-chain. Nothing bundles a copy.
+const CLAUSES_DIR = path.resolve(__dirname, '../../clauses');
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545';
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 

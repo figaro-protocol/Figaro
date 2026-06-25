@@ -585,4 +585,4 @@ backlog item.
 - `docs/v5/CLAUSES.md` — the clause validation architecture and anchoring doctrine governing any future clause additions
 - `frontend/lib/audit/billOfLadingExtract.ts` — the extractor that needs the discriminator
 - `frontend/lib/audit/auditBundle.ts` — where the discriminator gates the BoL emission
-- `sdk/src/clauses/examples/figaro-fulfilment-v2.json` and the other clauses referenced in §7
+- `clauses/figaro-fulfilment-v2.json` and the other clauses referenced in §7

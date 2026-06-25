@@ -1,21 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { parseClauseSpec } from "../../src/clauses/spec.js";
-import modalitiesSpecRaw from "../../src/clauses/examples/figaro-modalities.json" with { type: "json" };
-import coordinationSpecRaw from "../../src/clauses/examples/figaro-coordination.json" with { type: "json" };
+import modalitiesSpecRaw from "../../../clauses/figaro-modalities.json" with { type: "json" };
+import coordinationSpecRaw from "../../../clauses/figaro-coordination.json" with { type: "json" };
 import { validateContent } from "../../src/clauses/validate.js";
-import topologySpecRaw from "../../src/clauses/examples/figaro-topology.json" with { type: "json" };
-import commerceSpecRaw from "../../src/clauses/examples/figaro-commerce.json" with { type: "json" };
-import geoSpecRaw from "../../src/clauses/examples/figaro-geo.json" with { type: "json" };
-import classOfServiceSpecRaw from "../../src/clauses/examples/figaro-class-of-service.json" with { type: "json" };
-import arbitrationKlerosSpecRaw from "../../src/clauses/examples/figaro-arbitration-kleros.json" with { type: "json" };
-import applicableLawSpecRaw from "../../src/clauses/examples/figaro-applicable-law.json" with { type: "json" };
-import ghgSpecRaw from "../../src/clauses/examples/figaro-ghg.json" with { type: "json" };
-import ghgMeasurementSpecRaw from "../../src/clauses/examples/figaro-ghg-measurement.json" with { type: "json" };
-import proximityPolicySpecRaw from "../../src/clauses/examples/figaro-proximity-policy.json" with { type: "json" };
-import proximityProofSpecRaw from "../../src/clauses/examples/figaro-proximity-proof.json" with { type: "json" };
-import offsetPolicySpecRaw from "../../src/clauses/examples/figaro-offset-policy.json" with { type: "json" };
-import merchantSpecRaw from "../../src/clauses/examples/figaro-merchant-process.json" with { type: "json" };
-import courierSpecRaw from "../../src/clauses/examples/figaro-courier-process.json" with { type: "json" };
+import topologySpecRaw from "../../../clauses/figaro-topology.json" with { type: "json" };
+import commerceSpecRaw from "../../../clauses/figaro-commerce.json" with { type: "json" };
+import geoSpecRaw from "../../../clauses/figaro-geo.json" with { type: "json" };
+import classOfServiceSpecRaw from "../../../clauses/figaro-class-of-service.json" with { type: "json" };
+import arbitrationKlerosSpecRaw from "../../../clauses/figaro-arbitration-kleros.json" with { type: "json" };
+import applicableLawSpecRaw from "../../../clauses/figaro-applicable-law.json" with { type: "json" };
+import ghgSpecRaw from "../../../clauses/figaro-ghg.json" with { type: "json" };
+import ghgMeasurementSpecRaw from "../../../clauses/figaro-ghg-measurement.json" with { type: "json" };
+import proximityPolicySpecRaw from "../../../clauses/figaro-proximity-policy.json" with { type: "json" };
+import proximityProofSpecRaw from "../../../clauses/figaro-proximity-proof.json" with { type: "json" };
+import offsetPolicySpecRaw from "../../../clauses/figaro-offset-policy.json" with { type: "json" };
+import merchantSpecRaw from "../../../clauses/figaro-merchant-process.json" with { type: "json" };
+import courierSpecRaw from "../../../clauses/figaro-courier-process.json" with { type: "json" };
 
 describe("example clause specs — parse + validate sample content", () => {
     it("figaro-topology-v1 spec parses cleanly", () => {

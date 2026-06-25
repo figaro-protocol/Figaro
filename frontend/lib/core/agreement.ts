@@ -220,31 +220,14 @@ function canonicalizeSectionData(data: Record<string, unknown>): string {
 // `@/lib/shared/evm` as `clauseIdHash` — one home shared with the SDK + Rust prover.
 
 /**
- * Return the on-chain sectionData bytes for an agreement section.
- *
- * cross-checked clauses (declarative clauses) encode their data via the
- * generic canonical encoder — the same path the runtime attestation's
- * `content` takes — so the on-chain byte-equality check
- * `keccak256(content) == keccak256(sectionData)` succeeds. runtime
- * clauses (no committed clause: lifecycle events, proximity proofs,
- * ghg-measurement) and unknown clauses fall through to canonical JSON
- * bytes.
- *
- * Post-Keystone there is no per-clause dispatch; the embedded spec
- * drives both encoding and tier classification. Every section's data
- * passes through as-is — producers capture spec-typed values, so no
- * field-level adapters live here.
+ * Return the on-chain `sectionData` bytes for an agreement section: the
+ * canonical JSON of the section data. The chain merkle-binds `sectionData`
+ * and never decodes it, and the build and attest sides use the same encoding,
+ * so the leaf is always consistent. No clause spec is consulted — specs live
+ * ONLY in `ClauseRegistry` (→ IPFS), never bundled. Must stay byte-identical
+ * to the SDK's `getSectionDataBytes`.
  */
 export function getSectionDataBytes(section: AgreementSection): `0x${string}` {
-    // Resolve the embedded spec via dynamic require so this module stays
-    // loadable in test environments where the SDK is resolved via link /
-    // pnpm / vitest.
-    const { embeddedSpec, encodeContentFromSpec } =
-        require("@figaro/core/clauses") as typeof import("@figaro/core/clauses");
-    const spec = embeddedSpec(section.clause);
-    if (spec && spec.block?.tier === "cross-checked") {
-        return encodeContentFromSpec(spec, section.data);
-    }
     return toHex(new TextEncoder().encode(canonicalizeSectionData(section.data)));
 }
 

@@ -1,16 +1,13 @@
 /**
- * Figaro clause-spec format — single source of truth for clause-content
- * validation across three layers:
- *   1. Client-side validator (this module)
- *   2. On-chain per-clause validator contract (Solidity, future)
- *   3. SP1 prover (Rust mirror, future)
+ * Figaro clause-spec format — the single source of truth for clause-content
+ * validation. There is ONE validation layer: this off-chain TypeScript module
+ * (used by frontend form gates and SDK agent-action preflight). The chain does
+ * not validate content — it merkle-binds attestations and content-hash-binds
+ * the evidence; well-formedness is this layer's job + a read-time concern.
  *
- * The format is a closed subset of JSON Schema. Small, predictable, and
- * designed to be mirrored faithfully in Rust without ambiguity.
- *
- * Validators in all three layers MUST agree on interpretation. If you
- * extend this format, update the meta-clause parser, the contract, and
- * the prover in lockstep.
+ * The format is a closed subset of JSON Schema: small and predictable. A spec
+ * is DATA (a JSON file in `clauses/`, anchored on `ClauseRegistry` → IPFS),
+ * never code — a new clause adds a spec, not a code path.
  */
 
 export type FieldType =
@@ -37,8 +34,8 @@ export interface BaseFieldSpec {
      *  optional still encodes as the ABI zero-value), so Layers B/C are
      *  unaffected. Shape must match the field type (validated at parse). */
     default?: string | number | boolean | readonly string[];
-    /** Human display label for this field. Purely cosmetic UI metadata — the
-     *  on-chain validator + Rust prover ignore it (like `block`), so it is a
+    /** Human display label for this field. Purely cosmetic UI metadata —
+     *  nothing on-chain reads it (like `block`), so it is a
      *  Layer-A-only field. Lets every render surface (drawer, canvas, checkout,
      *  analysis) name the field from the spec; absent → callers fall back to
      *  the field `name`. */
@@ -80,7 +77,7 @@ export interface EnumFieldSpec extends BaseFieldSpec {
     sentinel?: string;
     /** Per-value human display labels (value → label), e.g.
      *  `{ "zone-wifi": "Same Wi-Fi network" }`. Purely cosmetic Layer-A
-     *  metadata the validator/prover ignore; a render surface labels the
+     *  metadata nothing on-chain reads; a render surface labels the
      *  selected value from here, falling back to the raw value when absent.
      *  Need not cover every value — unlisted values render raw. */
     valueLabels?: Readonly<Record<string, string>>;
@@ -130,8 +127,7 @@ export type ClauseTier = "runtime" | "cross-checked" | "agreement-only";
  *   - Runtime composer (which modules to mount per anchored clause)
  *   - Route-tier surfaces (which routes surface this clause)
  *
- * The on-chain validator + Rust prover ignore this field — it's purely
- * UI/composition metadata.
+ * Nothing on-chain reads this field — it's purely UI/composition metadata.
  */
 export interface ClauseBlockBinding {
     /** Doctrinal tier. */
@@ -514,8 +510,8 @@ function parseBlockBinding(
         }
     }
     // Optional: a clause wiring no mechanism module — a pure attestation
-    // lifecycle, or any minimal stranger's clause — omits these; the validator
-    // and prover ignore them. Absent ⇒ []. (Present-but-malformed still errors.)
+    // lifecycle, or any minimal stranger's clause — omits these; nothing
+    // on-chain reads them. Absent ⇒ []. (Present-but-malformed still errors.)
     let mechanismKinds: readonly string[] = [];
     if (raw.mechanismKinds !== undefined) {
         const parsed = parseStringArray(raw.mechanismKinds, `${path}.mechanismKinds`, errors);

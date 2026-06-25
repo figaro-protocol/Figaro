@@ -1,14 +1,9 @@
 /**
- * Generic spec-driven content encoder — TypeScript mirror of the Rust
- * `prover/clause/src/encode.rs`. Both must stay byte-identical: the
- * SP1 prover's cross-form-binding gate derives content bytes via the
- * Rust encoder and asserts they match the on-chain `content_ref`,
- * which off-chain producers compute via the TS encoder.
- *
- * Post-Keystone there is no per-clause dispatch — one encoder drives
- * every clause. New clauses plug in by declaring their spec; no
- * encoder code is needed. See docs/v5/SCALING_STRATEGY.md "Keystone
- * Design — Canonical ABI Mapping" for the encoding rule:
+ * Generic, spec-driven content encoder. ONE encoder drives EVERY clause:
+ * a new clause plugs in by declaring its spec (`clauses/<id>.json`, anchored
+ * on `ClauseRegistry`) — no encoder code, and no per-clause types, live here.
+ * The encoder has zero prior knowledge of any clause; it reads the parsed
+ * `ClauseSpec` at runtime and applies the canonical ABI mapping:
  *
  *   - top-level fields encode as `encodeAbiParameters` in declaration order
  *   - `boolean` → `bool`
@@ -25,12 +20,6 @@
  * (`0`, `""`, `false`, empty array, zero-bytes). A required absent
  * field throws (caller-detectable; validation should already have
  * caught it upstream).
- *
- * Per-clause *types* (`GeoContent`, `KlerosCourt`, `ConsentDocument`,
- * …) are preserved here as a courtesy to downstream code that wants
- * domain-typed values rather than `Record<string, unknown>`. The
- * type names are not load-bearing for the encoder — they're a
- * convenience layer that runs independently.
  */
 
 import { encodeAbiParameters, type AbiParameter, type Hex } from "viem";
@@ -39,136 +28,6 @@ import type { FieldSpec, ClauseSpec } from "./spec.js";
 // ── Empty content (some clauses accept empty bytes) ─────────────────────────
 
 export const EMPTY_CONTENT: Hex = "0x";
-
-// ── Per-clause content types (for downstream typing convenience) ────────────
-//
-// These mirror the field shapes of each protocol clause. Consumers can
-// supply a `Record<string, unknown>` directly to `encodeContentFromSpec`;
-// these typed aliases just narrow the surface for code that wants TS-side
-// help. None of the index tables that used to back the deleted per-clause
-// encoders survive — the canonical 0-based-position rule is enforced by
-// the spec at runtime, not by hand-maintained enum maps.
-
-/** Class of service. S = Standard. E = Express. F = Fragile. C = Cold Chain. */
-export type ClassOfService = "S" | "E" | "F" | "C";
-
-export interface GeoContent {
-    originGeohash: string;
-    destinationGeohash: string;
-    /** Whole grams. */
-    massGrams: number;
-    /** Whole millilitres. */
-    volumeMl: number;
-    classOfService: ClassOfService;
-}
-
-/** Hand-off point — its own clause (figaro-handoff-v1). */
-export type HandoffPoint = "face-to-face" | "dead-drop" | "parking-area" | "locker";
-
-export interface HandoffV1Content {
-    handoff: readonly HandoffPoint[];
-}
-
-/** Kleros subcourt, encoded position-as-index (general = 0). */
-export type KlerosCourt =
-    | "general"
-    | "blockchain-nontechnical"
-    | "blockchain-technical"
-    | "english-language";
-
-export interface ArbitrationKlerosContent {
-    klerosCourt: KlerosCourt;
-    klerosMinJurors?: number;
-}
-
-export interface ApplicableLawContent {
-    applicableLaw: string;
-    forum?: string;
-    language?: string;
-}
-
-export interface GHGScopeContent {
-    scope?: number;
-}
-
-export interface GHGMeasurementContent {
-    grams: string;
-}
-
-export interface CommerceLineItem {
-    itemId: string;
-    name: string;
-    quantity: bigint;
-    unitPrice: bigint;
-}
-
-export interface CommerceContent {
-    currency: Hex;
-    payment: bigint;
-    lineItems: readonly CommerceLineItem[];
-}
-
-export type ProximityBand = "zone-wifi" | "nearby-ble" | "contact-nfc";
-
-export interface ProximityPolicyContent {
-    bands: readonly ProximityBand[];
-}
-
-export interface ProximityProofContent {
-    band: ProximityBand;
-    nonce: Hex;
-    deviceSig: Hex;
-}
-
-export type OffsetProvider = "klima" | "toucan" | "moss" | "custom";
-
-export interface OffsetPolicyContent {
-    providers: readonly OffsetProvider[];
-}
-
-export type MerchantEvent =
-    | "prep-started"
-    | "ready-for-pickup"
-    | "handed-off";
-
-export interface MerchantContent {
-    eventType: MerchantEvent;
-    evidenceUri?: string;
-}
-
-export interface ConsentDocument {
-    documentHash: Hex;
-    documentVersion: string;
-    documentTitle: string;
-}
-
-export interface ConsentContent {
-    documents: readonly ConsentDocument[];
-}
-
-/** EIP-712 type for a single consent-document signature — field order is
- *  exactly `ConsentDocument`'s tuple order (the order this module's ABI
- *  encoder uses). Surfaces gathering a consent signature import this rather
- *  than re-declaring the shape, so the order has ONE home. */
-export const CONSENT_EIP712_TYPES = {
-    Consent: [
-        { name: "documentHash", type: "bytes32" },
-        { name: "documentVersion", type: "string" },
-        { name: "documentTitle", type: "string" },
-    ],
-} as const;
-
-export type CourierEvent =
-    | "en-route-pickup"
-    | "arrived-pickup"
-    | "in-transit"
-    | "arrived-dropoff"
-    | "completed";
-
-export interface CourierContent {
-    eventType: CourierEvent;
-    evidenceUri?: string;
-}
 
 // ── Generic spec-driven encoder ─────────────────────────────────────────────
 
@@ -260,7 +119,7 @@ function abiValueOf(field: FieldSpec, raw: unknown): unknown {
 
 /**
  * Encode JSON content to canonical ABI bytes from the parsed `ClauseSpec`
- * alone. Byte-identical to the Rust `encode_content_from_spec`.
+ * alone — no clause-specific code path.
  */
 export function encodeContentFromSpec(
     spec: ClauseSpec,

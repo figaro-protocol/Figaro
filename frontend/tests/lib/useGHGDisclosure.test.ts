@@ -7,16 +7,22 @@ import {
     getAttestationContent,
 } from "@/lib/mechanisms/useGHGDisclosure";
 import { ATTESTATION_COORDINATOR_ABI } from "@/lib/core/contracts";
-import { embeddedSpec, encodeContentFromSpec } from "@figaro/core/clauses";
+import { encodeContentFromSpec, parseClauseSpec } from "@figaro/core/clauses";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
 // Test-local grams encoder — the canonical Layer-A spec drives the byte shape
 // (`abi.encode(uint256 grams)`), exactly what the generic capability rail
-// produces in production. Tests may name a clause; production code may not.
+// produces in production. The spec is read from the canonical `clauses/` seed
+// (the same JSON the on-chain `metadataURI` points at), never a bundled list.
+// Tests may name a clause; production code may not.
+const _ghgParsed = parseClauseSpec(
+    JSON.parse(readFileSync(path.resolve(process.cwd(), "../clauses/figaro-ghg-measurement.json"), "utf8")),
+);
+if (!_ghgParsed.ok) throw new Error("ghg-measurement spec failed to parse");
+const GHG_MEASUREMENT_SPEC = _ghgParsed.spec;
 function gramsContent(grams: bigint): `0x${string}` {
-    return encodeContentFromSpec(
-        embeddedSpec("figaro-ghg-measurement")!,
-        { grams: grams.toString() },
-    );
+    return encodeContentFromSpec(GHG_MEASUREMENT_SPEC, { grams: grams.toString() });
 }
 
 const DISCLOSURE_CLAUSE_ID_HASH = clauseIdHash("figaro-ghg-iso-14064", 1);

@@ -1,16 +1,16 @@
 /**
  * Prime the clauseSpecSource cache from the canonical Layer-A specs
- * (`sdk/src/clauses/examples/*.json`) — the same JSON the on-chain
- * `metadataURI` points at. Vitest has no chain, so the fetcher stub reads
- * the file the URI names; everything downstream of the cache behaves
- * exactly as it does after `useClauseSpecs` warms it from the registry.
+ * (`clauses/*.json`) — the same JSON the on-chain `metadataURI` points at.
+ * Vitest has no chain, so the fetcher stub reads the file the URI names;
+ * everything downstream of the cache behaves exactly as it does after
+ * `useClauseSpecs` warms it from the registry.
  */
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 
 // Vitest runs with cwd = frontend/ (the vitest config root).
-const EXAMPLES_DIR = path.resolve(process.cwd(), "../sdk/src/clauses/examples");
+const EXAMPLES_DIR = path.resolve(process.cwd(), "../clauses");
 
 /** Load the named Layer-A specs into the cache — or every example spec when
  *  called with no argument. Idempotent (loadClauseSpec caches). */

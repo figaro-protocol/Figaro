@@ -127,8 +127,8 @@ content (no on-chain JSON parsing). They are pure / view contracts.
 
 Lives off-chain as JSON at the `metadataURI` emitted by `ClauseRegistry`
 (content integrity is the event's `contentHash`). The canonical Layer-A specs
-ship in `sdk/src/clauses/examples/`; the frontend no longer bundles a copy — it
-loads each spec from `ClauseRegistry` → IPFS at runtime.
+live at repo-root `clauses/` (the `ClauseRegistry` seed data); nothing bundles a
+copy — every consumer loads each spec from `ClauseRegistry` → IPFS at runtime.
 
 ## The 17 protocol clauses
 
@@ -261,7 +261,7 @@ to undo once `clauseId` is bound on chain.
 
 ## Adding a new clause — checklist
 
-1. JSON spec in `sdk/src/clauses/examples/<clause>.json` (the canonical Layer-A spec) + import it into `sdk/src/clauses/embedded.ts`.
+1. JSON spec in `clauses/<clause>.json` (the canonical Layer-A spec / `ClauseRegistry` seed data — nothing bundles a copy).
 2. `populate-clauses.mjs` pins it to IPFS + anchors `(clauseId, contentHash, metadataURI)` on `ClauseRegistry`; the frontend loads it chain→IPFS via `clauseSpecSource` (no frontend copy, no preload).
 3. SDK content encoder in `sdk/src/clauses/encode.ts` + export from `index.ts`.
 4. SDK examples test in `sdk/tests/clauses/examples.test.ts`.

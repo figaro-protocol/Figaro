@@ -41,7 +41,7 @@
                 "type": { "enum": ["string", "integer", "bigint", "boolean", "enum", "array", "object"] },
                 "required": { "type": "boolean" },
                 "description": { "type": "string" },
-                "label": { "type": "string", "description": "Cosmetic display label (Layer-A only; validator + prover ignore it)." },
+                "label": { "type": "string", "description": "Cosmetic display label (Layer-A only; nothing on-chain reads it)." },
                 "default": {
                     "type": ["string", "number", "boolean", "array"],
                     "description": "Build/UI default (composition metadata; the ABI encoder ignores it). Shape must match the field type."
@@ -76,7 +76,7 @@
         },
         "block": {
             "type": "object",
-            "description": "Block-binding metadata: how a clause composes into the UI + runtime. The on-chain validator and Rust prover IGNORE this entire object — it is Layer-A-only.",
+            "description": "Block-binding metadata: how a clause composes into the UI + runtime. Nothing on-chain reads this entire object — it is Layer-A-only.",
             "required": ["tier"],
             "additionalProperties": true,
             "properties": {

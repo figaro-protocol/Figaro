@@ -17,8 +17,6 @@
  */
 
 import { keccak256, toHex, concat, encodeAbiParameters, type Hex } from "viem";
-import { encodeContentFromSpec } from "./clauses/encode.js";
-import { embeddedSpec } from "./clauses/embedded.js";
 
 // ── Core types ──────────────────────────────────────────────────────────────
 
@@ -76,23 +74,15 @@ function clauseIdOf(clauseKey: string, version: number): Hex {
 }
 
 /**
- * Return the on-chain sectionData bytes for an agreement section.
- *
- * cross-checked clauses (declarative clauses) encode their data via the
- * generic canonical encoder — the same path the runtime attestation's
- * `content` takes — so the on-chain byte-equality check
- * `keccak256(content) == keccak256(sectionData)` succeeds. runtime
- * clauses (no committed clause) and unknown clauses fall through to
- * canonical JSON bytes.
- *
- * Post-Keystone there is no per-clause dispatch table; the embedded
- * spec drives both encoding and tier classification.
+ * Return the on-chain `sectionData` bytes for an agreement section: the
+ * canonical JSON of the section data. The chain merkle-binds `sectionData`
+ * and never decodes it, and both the build side (`computeAgreementHash`) and
+ * the attest side use this same function, so the leaf is always consistent.
+ * No clause spec is consulted — specs live ONLY in `ClauseRegistry` (→ IPFS),
+ * never bundled into the SDK. A never-seen clause hashes the same way as any
+ * other.
  */
 export function getSectionDataBytes(section: AgreementSection): Hex {
-    const spec = embeddedSpec(section.clause);
-    if (spec && spec.block?.tier === "cross-checked") {
-        return encodeContentFromSpec(spec, section.data);
-    }
     return toHex(new TextEncoder().encode(canonicalizeSectionData(section.data)));
 }
 
