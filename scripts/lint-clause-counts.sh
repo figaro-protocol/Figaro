@@ -86,9 +86,10 @@ check() {
 }
 
 # ── total count: every clause including agreement-only topology ────────────
-# NB: the deploy scripts no longer register clause CONTENT (that moved to
-# populate-clauses.mjs), so they carry no clause-count console.log to track here.
-# They still wire validators — see the runtime-attestable section below.
+# NB: the deploy scripts register neither clause CONTENT (that moved to
+# populate-clauses.mjs) nor per-clause validators (on-chain clause-content
+# validation was removed in the proof-apparatus teardown), so they carry no
+# clause-count console.log to track here.
 check "docs/v5/FRONTEND.md" \
     '[0-9]+ protocol clauses on the devnet' \
     "$total" "FRONTEND.md clauses-dir count"
@@ -99,28 +100,15 @@ check "docs/v5/CLAUSES.md" \
     '[0-9]+ protocol clauses' \
     "$total" "CLAUSES.md heading"
 
-# ── runtime-attestable count: total minus topology ────────────────────────
-check "script/Deploy.s.sol" \
-    'Registered [0-9]+ clause validators' \
-    "$runtime" "Deploy.s.sol validators console.log"
-check "script/DeployMainnet.s.sol" \
-    'AttestationCoordinator: [0-9]+ validators wired' \
-    "$runtime" "DeployMainnet validators console.log"
-check "prover/clause/tests/conformance.rs" \
-    'expected [0-9]+ embedded protocol clauses' \
-    "$runtime" "conformance.rs embedded count"
-check "docs/v5/TESTING.md" \
-    '[0-9]+ embedded canonical specs' \
-    "$runtime" "TESTING.md embedded count"
+# ── runtime-attestable count: total minus agreement-only topology ──────────
+# "runtime-attestable" = clauses that can carry a runtime attestation (merkle-
+# gated, no on-chain content validator); topology is agreement-only.
 check "CLAUDE.md" \
     '[0-9]+ runtime-attestable' \
     "$runtime" "CLAUDE.md runtime-attestable claim"
 check "docs/v5/CLAUSES.md" \
     '[0-9]+ runtime-attestable' \
     "$runtime" "CLAUSES.md runtime-attestable claim"
-check "prover/clause/src/embedded.rs" \
-    '[0-9]+ runtime-attestable protocol clauses' \
-    "$runtime" "embedded.rs doc-comment"
 
 if [ ${#warnings[@]} -gt 0 ]; then
     echo "[clause-counts] warning — count claim(s) not found (reworded/removed, not failing):" >&2

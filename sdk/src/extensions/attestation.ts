@@ -107,39 +107,6 @@ export function formatGrams(grams: bigint): string {
 // ── Attestation event filtering ─────────────────────────────────────────────
 
 /**
- * Filter raw event logs by source contract address. Use this when processing
- * `Attestation`, `ClauseRegistered`, `MechanismClauseSet`, `SellerRegistered`,
- * or any other event re-emitted from `FigaroBatchVerifier` with the same
- * topic hash as its direct-path counterpart. Without contract-address
- * filtering, indexers conflate batch-re-emitted events with direct-path ones
- * — the topic hashes are identical by design (so a single ABI definition
- * decodes both), but the source contract carries the trust-boundary
- * distinction (direct path enforces gates inline; batch path inherits from
- * the SP1 proof).
- *
- * @param logs    Raw event logs from `publicClient.getLogs()` or similar.
- *                Each must carry an `address` field (viem's standard log shape).
- * @param sources One contract address, or an array of accepted addresses.
- * @returns Logs whose `address` matches one of the sources (case-insensitive).
- *
- * @example
- *   const all = await client.getLogs({ event: EV_ATTESTATION, fromBlock, toBlock });
- *   const direct  = filterLogsBySource(all, attestationCoordinator);
- *   const batched = filterLogsBySource(all, batchVerifier);
- *   // Or accept both for downstream tagging:
- *   const both    = filterLogsBySource(all, [attestationCoordinator, batchVerifier]);
- */
-export function filterLogsBySource<T extends { address: Address }>(
-    logs: readonly T[],
-    sources: Address | readonly Address[],
-): T[] {
-    const accept = new Set<string>(
-        (Array.isArray(sources) ? sources : [sources as Address]).map((s) => s.toLowerCase()),
-    );
-    return logs.filter((log) => accept.has(log.address.toLowerCase()));
-}
-
-/**
  * Filter attestation events by clause ID.
  */
 export function filterByClause(

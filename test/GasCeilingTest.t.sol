@@ -2,15 +2,24 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "../src/FigaroCore.sol";
 import "../src/CommitmentTypes.sol";
 import "../src/mocks/MockPermitToken.sol";
 
-/// @title GasCeilingTest — Empirical gas ceiling for resolveProcess
-/// @notice Builds a process with N sub-orders and binary-searches the
-///         maximum N resolvable within the Ethereum 30M gas limit.
-///         Also explicitly verifies atomic enforcement (all-or-nothing).
+/// @title GasCeilingTest — resolveProcess per-order gas regression guard
+/// @notice The canonical per-order resolve cost (`RESOLVE_GAS_PER_ORDER`) is the
+///         ALL-IN figure measured on REAL Anvil transaction receipts:
+///         `resolveProcess(N)` costs `~38,000 + ~23,000·N` gas. A resolve is its
+///         own transaction, so each order's distinct `orderStatus`/balance slots
+///         pay COLD access, and the order's calldata is charged at the tx level.
+///         This in-process test CANNOT reproduce that all-in number — it commits
+///         and resolves in one execution (pre-warming storage) and calldata is
+///         not charged inside the measured call. So it instead (a) guards the
+///         warm EXECUTION marginal of the resolve loop via `vm.lastCallGas()`
+///         against kernel regressions, and (b) verifies atomic all-or-nothing
+///         resolution. The all-in receipt figures live in chainGasCeilings.ts;
+///         `scripts/lint-chain-gas.sh` asserts the two constants below are
+///         byte-equal to the frontend's.
 contract GasCeilingTest is Test {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
@@ -20,20 +29,16 @@ contract GasCeilingTest is Test {
     uint256 internal constant BUYER_KEY = 0xB0B;
     address internal buyer;
 
-    uint256 internal constant GAS_BUDGET = 30_000_000;
-    uint256 internal constant MAX_ORDERS_TO_BUILD = 1800;
     uint256 internal constant PAYMENT = 1 ether;
     uint256 internal constant INITIAL_BALANCE = 1_000_000 ether;
 
     // ── Per-order gas anchors (mirror frontend/lib/shared/chainGasCeilings.ts) ──
-    // The frontend reads `RESOLVE_GAS_PER_ORDER` and `COMMIT_GAS_PER_ORDER`
-    // to derive per-process and per-block ceilings on whatever chain the
-    // user is connected to. These constants are the canonical empirical
-    // anchors; `scripts/lint-chain-gas.sh` asserts the TS module's
-    // matching constants are byte-equal so either side moves the other
-    // moves too. If you bump one, bump both.
-    uint256 internal constant RESOLVE_GAS_PER_ORDER = 14_000;
-    uint256 internal constant COMMIT_GAS_PER_ORDER = 224_000;
+    // Measured on real Anvil transaction receipts (2026-06-25): resolveProcess(N)
+    // = ~38,000 + ~23,000·N (all-in, cold per-tx); a sub-order commit is ~144k
+    // (root ~235k). `scripts/lint-chain-gas.sh` asserts byte-equality with the TS
+    // module — if you bump one, bump both.
+    uint256 internal constant RESOLVE_GAS_PER_ORDER = 23_000;
+    uint256 internal constant COMMIT_GAS_PER_ORDER = 144_000;
 
     function setUp() public {
         buyer = vm.addr(BUYER_KEY);
@@ -66,126 +71,93 @@ contract GasCeilingTest is Test {
         return abi.encodePacked(r, s, v);
     }
 
-    // ── Build a process with N sub-orders, snapshot after each ───
-
-    function _buildProcess(uint256 n)
+    /// @dev Build a fresh, disjoint process of `n` orders (distinct sellers +
+    ///      salts keyed off `keyBase` so processIds never collide across calls).
+    function _buildProcess(uint256 n, uint256 keyBase)
         internal
-        returns (bytes32 processId, CommitmentTypes.Commitment[] memory commitments, uint256[] memory snapshots)
+        returns (bytes32 processId, CommitmentTypes.Commitment[] memory commitments)
     {
         commitments = new CommitmentTypes.Commitment[](n);
-        snapshots = new uint256[](n + 1);
 
-        // ── Root order (seller = fresh address) ─────────────────
-        uint256 sellerKey = 0x5E0001;
-        address seller = vm.addr(sellerKey);
-        token.mint(seller, INITIAL_BALANCE);
-        vm.prank(seller);
+        address rootSeller = vm.addr(keyBase);
+        token.mint(rootSeller, INITIAL_BALANCE);
+        vm.prank(rootSeller);
         token.approve(address(core), type(uint256).max);
 
         CommitmentTypes.Commitment memory root = CommitmentTypes.Commitment({
             processId: bytes32(0),
             buyer: buyer,
-            seller: seller,
+            seller: rootSeller,
             currency: address(token),
             payment: PAYMENT,
             expectedCumulativeValue: PAYMENT,
-            agreementHash: keccak256("root"),
-            salt: 1,
+            agreementHash: keccak256(abi.encodePacked("g-root-", keyBase)),
+            salt: keyBase,
             deadline: block.timestamp + 1 hours
         });
-
-        (processId,) = core.commit(root, _sign(root, BUYER_KEY), _sign(root, sellerKey));
-
-        // Keep processId = bytes32(0) in the stored commitment — that's
-        // what was signed.  resolveProcess uses the processId parameter,
-        // not the commitment's field, for the first hash component.
+        (processId,) = core.commit(root, _sign(root, BUYER_KEY), _sign(root, keyBase));
         commitments[0] = root;
-        snapshots[1] = vm.snapshotState();
 
-        // ── Sub-orders ──────────────────────────────────────────
         uint256 cumulative = PAYMENT;
         for (uint256 i = 1; i < n; i++) {
-            uint256 subKey = 0x5E0001 + i;
-            address subSeller = vm.addr(subKey);
-            token.mint(subSeller, INITIAL_BALANCE);
-            vm.prank(subSeller);
+            uint256 sk = keyBase + i;
+            address ss = vm.addr(sk);
+            token.mint(ss, INITIAL_BALANCE);
+            vm.prank(ss);
             token.approve(address(core), type(uint256).max);
-
             cumulative += PAYMENT;
 
             CommitmentTypes.Commitment memory sub = CommitmentTypes.Commitment({
                 processId: processId,
                 buyer: buyer,
-                seller: subSeller,
+                seller: ss,
                 currency: address(token),
                 payment: PAYMENT,
                 expectedCumulativeValue: cumulative,
-                agreementHash: keccak256(abi.encodePacked("sub-", i)),
-                salt: i + 1,
+                agreementHash: keccak256(abi.encodePacked("g-sub-", keyBase, i)),
+                salt: sk,
                 deadline: block.timestamp + 1 hours
             });
-
-            core.commit(sub, _sign(sub, BUYER_KEY), _sign(sub, subKey));
+            core.commit(sub, _sign(sub, BUYER_KEY), _sign(sub, sk));
             commitments[i] = sub;
-            snapshots[i + 1] = vm.snapshotState();
         }
     }
 
-    // ── Binary search: max orders resolvable under GAS_BUDGET ───
-
-    function test_Gas_MaxOrdersResolvableUnder30MGas() public {
-        (bytes32 processId, CommitmentTypes.Commitment[] memory commitments, uint256[] memory snapshots) =
-            _buildProcess(MAX_ORDERS_TO_BUILD);
-
-        uint256 lo = 1;
-        uint256 hi = MAX_ORDERS_TO_BUILD;
-        uint256 gasUsedAtLo = 0;
-
-        while (lo < hi) {
-            uint256 mid = (lo + hi + 1) / 2;
-            (bool ok, uint256 gasUsed, uint256 refreshedSnapshotId) =
-                _tryResolve(processId, commitments, snapshots[mid], mid);
-            snapshots[mid] = refreshedSnapshotId;
-            if (ok) {
-                lo = mid;
-                gasUsedAtLo = gasUsed;
-            } else {
-                hi = mid - 1;
-            }
-        }
-
-        emit log_named_uint("resolveProcess_gasBudget", GAS_BUDGET);
-        emit log_named_uint("resolveProcess_maxOrders", lo);
-        emit log_named_uint("resolveProcess_gasUsed_atMax", gasUsedAtLo);
-
-        // Empirical finding: ~2,145 orders fit in 30M gas (~14k gas/order).
-        // This test builds up to 1,800 orders (Foundry's default test-function
-        // gas limit constrains how many we can construct). Assert >1,500 to
-        // catch per-order cost regressions. Full ceiling verified with:
-        //   forge test --match-test test_Gas_MaxOrders -vv --gas-limit 9999999999
-        assertGt(lo, 1500, "Must resolve >1500 orders within 30M gas");
-
-        // Anchor the chain-aware ceiling computation in
-        // frontend/lib/shared/chainGasCeilings.ts: the per-order gas cost
-        // observed here must not exceed `RESOLVE_GAS_PER_ORDER`. If this
-        // ever fails, the TS constant + this constant both need bumping
-        // (the lint script catches drift between them; this assertion
-        // catches the underlying empirical drift).
-        uint256 perOrder = gasUsedAtLo / lo;
-        assertLe(
-            perOrder,
-            RESOLVE_GAS_PER_ORDER,
-            "Per-order resolve cost exceeds RESOLVE_GAS_PER_ORDER; bump the constant in lockstep with chainGasCeilings.ts"
-        );
+    /// @dev Build a process of `n` orders and return the EXACT execution gas of
+    ///      the `resolveProcess` call (callee perspective) via `vm.lastCallGas()`.
+    function _resolveExecGas(uint256 n, uint256 keyBase) internal returns (uint256) {
+        (bytes32 processId, CommitmentTypes.Commitment[] memory commitments) = _buildProcess(n, keyBase);
+        vm.prank(buyer);
+        core.resolveProcess(processId, commitments);
+        return vm.lastCallGas().gasTotalUsed;
     }
 
-    // ── Atomic enforcement: partial submission always reverts ────
+    // ── Resolve-loop regression guard (warm execution marginal) ──────
+
+    /// @notice Catches kernel changes to the per-order resolve loop. The warm
+    ///         in-test execution marginal is ~11,960/order (lower than the cold
+    ///         all-in RESOLVE_GAS_PER_ORDER because storage is pre-warmed by the
+    ///         commits and calldata is charged at the tx level, not in the call).
+    ///         If this band breaks, the resolve loop changed — RE-MEASURE the
+    ///         all-in cost on Anvil receipts and update RESOLVE_GAS_PER_ORDER +
+    ///         chainGasCeilings.ts in lockstep.
+    function test_Gas_resolveExecutionMarginal() public {
+        uint256 g50 = _resolveExecGas(50, 0x510000);
+        uint256 g100 = _resolveExecGas(100, 0x520000);
+        uint256 marginal = (g100 - g50) / 50;
+        emit log_named_uint("resolve_warm_exec_marginal", marginal);
+
+        assertGe(marginal, 9_000, "resolve per-order exec dropped unexpectedly (kernel change?)");
+        assertLt(marginal, RESOLVE_GAS_PER_ORDER, "warm exec marginal must stay below the cold all-in anchor");
+        assertLe(marginal, 14_000, "resolve per-order exec rose unexpectedly (re-measure receipts)");
+    }
+
+    // ── Atomic enforcement: partial / empty submission always reverts ──
 
     function test_AtomicResolution_partialCommitmentListReverts() public {
         uint256 n = 5;
-        (bytes32 processId, CommitmentTypes.Commitment[] memory commitments,) = _buildProcess(n);
+        (bytes32 processId, CommitmentTypes.Commitment[] memory commitments) = _buildProcess(n, 0x5A0000);
 
-        // Submit only 3 of 5 commitments — must revert with IncompleteOrderList
         CommitmentTypes.Commitment[] memory subset = new CommitmentTypes.Commitment[](3);
         subset[0] = commitments[0];
         subset[1] = commitments[1];
@@ -198,36 +170,12 @@ contract GasCeilingTest is Test {
 
     function test_AtomicResolution_emptyCommitmentListReverts() public {
         uint256 n = 3;
-        (bytes32 processId,,) = _buildProcess(n);
+        (bytes32 processId,) = _buildProcess(n, 0x5B0000);
 
         CommitmentTypes.Commitment[] memory empty = new CommitmentTypes.Commitment[](0);
 
         vm.prank(buyer);
         vm.expectRevert(abi.encodeWithSelector(FigaroCore.IncompleteOrderList.selector, n, 0));
         core.resolveProcess(processId, empty);
-    }
-
-    // ── Internal ─────────────────────────────────────────────────
-
-    function _tryResolve(
-        bytes32 processId,
-        CommitmentTypes.Commitment[] memory commitments,
-        uint256 snapshotId,
-        uint256 n
-    ) internal returns (bool ok, uint256 gasUsed, uint256 refreshedSnapshotId) {
-        assertTrue(vm.revertToState(snapshotId), "snapshot restore failed");
-        refreshedSnapshotId = vm.snapshotState();
-
-        // Build calldata with first n commitments
-        CommitmentTypes.Commitment[] memory slice = new CommitmentTypes.Commitment[](n);
-        for (uint256 i = 0; i < n; i++) {
-            slice[i] = commitments[i];
-        }
-
-        bytes memory data = abi.encodeCall(core.resolveProcess, (processId, slice));
-        vm.prank(buyer);
-        uint256 gasBefore = gasleft();
-        (ok,) = address(core).call{gas: GAS_BUDGET}(data);
-        gasUsed = gasBefore - gasleft();
     }
 }

@@ -110,14 +110,6 @@ export interface AuctionClaimedEvent {
     blockNumber: number;
 }
 
-export interface BatchSettledEvent {
-    batchId: bigint;
-    prevStateRoot: Hex;
-    newStateRoot: Hex;
-    positionCount: bigint;
-    blockNumber: number;
-}
-
 // ── EIP-712 commitment type (unified — matches CommitmentTypes.sol) ─────────
 
 export interface Commitment {

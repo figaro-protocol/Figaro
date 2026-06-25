@@ -787,7 +787,7 @@ fully expressible. It simply does not live in the kernel.
    in kernel state.
 
 **Structures larger than one linear process** — wider DAGs, or DAGs beyond
-the ~2,145-order gas ceiling — compose by nesting: a sub-order in process A is
+the ~1,240-order gas ceiling — compose by nesting: a sub-order in process A is
 also the root commitment of a child process B. The overall DAG then spans
 multiple processes and multiple settlements, while each individual process
 stays linear and within the ceiling.

@@ -2,7 +2,7 @@
 
 Status: canonical release gate note for the live V5 kernel, protocol, and runtime.
 
-Last updated: 2026-06-07 (IPFS content-persistence task added — Claude Opus 4.8).
+Last updated: 2026-06-24 (Tasks 7–8 — testnet/Cloudflare + SP1 deployment rehearsal — folded in from the punch-list PARKED section).
 
 This note is the current answer to a simple question: what is ready now, what is still open, and what must happen before a public release is treated as complete.
 
@@ -102,6 +102,29 @@ Required output:
 1. **Testnet — managed pinning service (Option 1).** Pin every published agreement, assembly template, and profile to a managed multi-node pinning service (Pinata / Filebase / Storacha) so content survives the loss of the dev node. The pin path (`frontend/lib/shared/ipfsService.ts`) targets the service API; add the service endpoint/key as env vars in `docs/v5/LOCAL_DEV.md` + `frontend/.env.local`.
 2. **Mainnet — sovereign per-party pinning (Option 3).** Shift durability to the parties: each publishing wallet's client pins what it authors, so no single operator is the custodian of availability — matching the ownerless / permissionless doctrine. No central pinning dependency in the mainnet trust model.
 3. **Retrieval-availability floor: 6 years, user-extensible.** An agreement must stay fetchable by its CID for the longest plausible dispute/audit window, anchored to the tax-audit horizon: most administrations can audit ~5 years back, plus 1 year because a year's transactions are declared the following year → a **6-year minimum**. The window varies by jurisdiction and shifts over time, so 6 years is a floor, not a fixed term — each agreement carries a per-party option to extend (longer retention for higher-stakes or longer-tail commitments).
+
+### Task 7: Testnet / Cloudflare Deployment Rehearsal (PAUSED)
+
+**Paused — the repo is device-only.** Resume when the deploy decision flips. Order:
+deploy-script audits → CF provisioning → Sepolia smoke-test → flip the
+device-only deployment-context line in the punch-list and `CLAUDE.md`.
+
+Required output:
+
+1. Audit `script/Deploy.s.sol` + `script/DeployMainnet.s.sol` — confirm the env-var contract, no mocks, and that the atomic clause-validator binding composes on Sepolia.
+2. Cloudflare runbook (`cloudflare/README.md` step 5 still carries Anvil framing) — scrub for Sepolia.
+3. CF infra — KV namespaces (`CODES` / `SESSIONS` / `CONTRACT_ALLOWLIST`); rpc-proxy Worker → Sepolia; contract-address allowlist; `wrangler.toml` placeholders; WS `eth_subscribe` forwarding.
+
+(Kleros subcourt-ID verification and IPFS content durability for this path are already covered by the Pre-Mainnet Deployment Verification checks and Task 6 above.)
+
+### Task 8: SP1 Prover End-to-End on Testnet (PAUSED)
+
+**Paused — needs funded testnet keys and a Groth16-capable machine.**
+
+Required output:
+
+1. **M5 — Sepolia deploy** via `DeployMainnet.s.sol`. Needs a funded deployer key + Sepolia RPC; re-derive vkeys with `SP1_VKEY_ONLY=1`.
+2. **M6 — end-to-end rehearsal** — sequencer → real Groth16 → on-chain verification by `FigaroBatchVerifier` + the RPGF path via `RpgfMinter`. Needs a Groth16-capable machine (an 8 GB Mac OOMs).
 
 ## Validation Commands
 

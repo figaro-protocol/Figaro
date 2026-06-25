@@ -53,16 +53,11 @@ export interface ChainConfig {
     clauseRegistry: `0x${string}`;
     /** DutchAuction. Optional — empty string when not deployed. */
     dutchAuction: `0x${string}`;
-    /** FigaroBatchVerifier (SP1). Optional — empty string when not deployed. */
-    batchVerifier: `0x${string}`;
     /** ProcessOffsetReceipt — Path A carbon-offset receipts anchor. Optional — empty string when not deployed. */
     processOffsetReceipt: `0x${string}`;
     /** SellerRegistry. Read by the core indexer (seller events); the mechanisms
      *  layer re-exports it. Optional — empty string when not deployed. */
     sellerRegistry: `0x${string}`;
-    /** RpgfMinter. Read by the core indexer (Claimed events); the mechanisms
-     *  layer re-exports it. Optional — empty string when not deployed. */
-    rpgfMinter: `0x${string}`;
     /** MockOffsetAggregator — devnet stand-in for Klima/Toucan aggregators. Empty on testnet/mainnet. */
     mockOffsetAggregator: `0x${string}`;
 }
@@ -74,10 +69,8 @@ export const CONTRACTS: ChainConfig = {
     attestationCoordinator: (process.env.NEXT_PUBLIC_ATTESTATION_COORDINATOR || "") as `0x${string}`,
     clauseRegistry: (process.env.NEXT_PUBLIC_CLAUSE_REGISTRY || "") as `0x${string}`,
     dutchAuction: (process.env.NEXT_PUBLIC_DUTCH_AUCTION || "") as `0x${string}`,
-    batchVerifier: (process.env.NEXT_PUBLIC_BATCH_VERIFIER || "") as `0x${string}`,
     processOffsetReceipt: (process.env.NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT || "") as `0x${string}`,
     sellerRegistry: (process.env.NEXT_PUBLIC_SELLER_REGISTRY || "") as `0x${string}`,
-    rpgfMinter: (process.env.NEXT_PUBLIC_RPGF_MINTER || "") as `0x${string}`,
     mockOffsetAggregator: (process.env.NEXT_PUBLIC_MOCK_OFFSET_AGGREGATOR || "") as `0x${string}`,
 };
 

@@ -1,30 +1,28 @@
 // SPDX-License-Identifier: MIT
 // Certora CVL specification for AttestationCoordinator
-// (validator-gated + agreement-receipt binding).
+// (merkle-gated agreement-receipt binding).
 //
-// The coordinator owns one storage mapping (`clauseValidator`). All role checks
-// are reads from the linked FigaroCore instance (no new kernel state). Every
-// runtime attestation carries a merkle inclusion proof against the signed
-// `agreementHash` — the call reverts unless the caller's sectionData and proof
-// open to a committed clause.
+// The coordinator owns no storage. All role checks are reads from the linked
+// FigaroCore instance (no new kernel state). Every runtime attestation carries
+// a merkle inclusion proof against the signed `agreementHash` — the call reverts
+// unless the caller's sectionData and proof open to a committed clause. There is
+// no on-chain clause-content validator; well-formedness is an off-chain concern.
 //
-// Rules are organized into three groups:
+// Rules are organized into two groups:
 //   A) Role-gate invariants on attestAsBuyer (takes a Commitment struct; caller
 //      must equal `c.buyer`, which equals rootBuyer by commit invariant)
 //   B) Parametric rules: no AC call can modify FigaroCore state
-//   C) Validator-gate + binding invariants
 //
 // The seller path (attestAsSeller — takes role + target commitments) and the
 // mechanism path (attestViaResolver) are covered by the Foundry suite in
 // test/AttestationCoordinatorTest.t.sol.
 //
 // Foundry-covered invariants NOT re-proven here:
-//   • validator-binding-check     → test_setValidator_rejectsMismatchedBinding
 //   • contentRef == keccak256(content) → test_contentRefIsKeccakOfContent
-//   • invalid inclusion proof → revert (covered structurally by the spec rules
-//     below: `sectionData`/`proof` land in `_validateContent` which routes
-//     through OZ `MerkleProof.verify`; any successful attestation must have
-//     opened the proof. Tests exercise the revert path directly.)
+//   • invalid inclusion proof → revert → test_attestAsSeller_revertsOnClauseNotInAgreement
+//     / test_attestAsBuyer_revertsOnSectionDataMismatch (the `sectionData`/`proof`
+//     route through OZ `MerkleProof.verify` in `_verifyInclusion`; any successful
+//     attestation must have opened the proof).
 
 using FigaroCore as core;
 
@@ -34,21 +32,10 @@ methods {
     function core.orderProcessId(bytes32) external returns (bytes32) envfree;
     function core.processes(bytes32) external returns (address, address, uint256, uint256) envfree;
 
-    // AttestationCoordinator's own validator-registry getter.
-    function clauseValidator(bytes32) external returns (address) envfree;
-
     // IRoleResolver.isAuthorized — wildcard external call from attestViaResolver.
     // NONDET havocs the return value: AC rules verify that no call path mutates
     // FigaroCore state, which holds regardless of what isAuthorized returns.
     function _.isAuthorized(bytes32, address) external => NONDET;
-
-    // IClauseValidator hooks. `validate` is view and called by _validateContent
-    // for every attest* path; NONDET models "validator accepts" (non-reverting)
-    // since the rules here assert properties orthogonal to content semantics.
-    // `clauseId` is called only by setValidator and its correctness is
-    // Foundry-covered (see file header).
-    function _.validate(bytes32, uint8, bytes, bytes) external => NONDET;
-    function _.clauseId() external => NONDET;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -158,82 +145,4 @@ rule attestationCannotChangeProcessState(bytes32 watchedProcess, method f)
            cumValBefore     == cumValAfter    &&
            countBefore      == countAfter,
         "No AttestationCoordinator function can change FigaroCore process state";
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// GROUP C — Validator-gate + binding invariants
-// ═══════════════════════════════════════════════════════════════════
-
-// ═══════════════════════════════════════════════════════════════════
-// RULE 5: Validator-mandatory-on-attest (buyer path)
-//
-// A clause with no registered validator cannot be attested under: if
-// clauseValidator[clauseId] == 0 pre-call, attestAsBuyer must revert.
-// This is the "no silent attestation" guarantee — an unknown clause cannot
-// emit an Attestation event. Paired with the merkle-proof gate in
-// `_validateContent`, it closes both the unknown-clause and unsigned-clause
-// attack surfaces.
-// ═══════════════════════════════════════════════════════════════════
-
-rule noValidatorBlocksBuyerAttestation(
-    CommitmentTypes.Commitment c,
-    bytes32 clauseId,
-    uint8   stage,
-    bytes   sectionData,
-    bytes32[] proof,
-    bytes   content
-) {
-    env e;
-
-    require clauseValidator(clauseId) == 0;
-
-    attestAsBuyer@withrevert(e, c, clauseId, stage, sectionData, proof, content);
-
-    assert lastReverted,
-        "attestAsBuyer must revert when no validator is registered for clauseId";
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// RULE 6: First-write-wins — cannot overwrite an existing validator
-//
-// setValidator(s, v) must revert whenever clauseValidator[s] != 0.
-// Makes the validator binding immutable post-registration and prevents a
-// validator-swap rug-pull.
-// ═══════════════════════════════════════════════════════════════════
-
-rule setValidatorIsFirstWriteWins(bytes32 clauseId, address newValidator) {
-    env e;
-
-    require clauseValidator(clauseId) != 0;
-
-    setValidator@withrevert(e, clauseId, newValidator);
-
-    assert lastReverted,
-        "setValidator must revert when a validator is already registered for clauseId";
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// RULE 7: setValidator cannot alter bindings for other clauses
-//
-// Storage isolation: setValidator(s1, v) touches only clauseValidator[s1];
-// clauseValidator[s2] for any s2 != s1 is preserved. Combined with rule 6,
-// every (clauseId → validator) binding is stable for life once set.
-// ═══════════════════════════════════════════════════════════════════
-
-rule setValidatorPreservesOtherBindings(
-    bytes32 touchedClause,
-    bytes32 otherClause,
-    address newValidator
-) {
-    env e;
-
-    require touchedClause != otherClause;
-    address otherBefore = clauseValidator(otherClause);
-
-    setValidator@withrevert(e, touchedClause, newValidator);
-
-    address otherAfter = clauseValidator(otherClause);
-
-    assert otherBefore == otherAfter,
-        "setValidator must not modify the validator binding of any other clause";
 }

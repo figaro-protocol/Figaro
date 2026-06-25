@@ -9,7 +9,7 @@
  * pending. Everything derives from the clause specs — the engine names no
  * clause.
  *
- * Also the scale guard: the kernel's resolve ceiling (~2,145 orders / 30M
+ * Also the scale guard: the kernel's resolve ceiling (~1,240 orders / 30M
  * gas) must flow through `deriveProcessModelFromRuntime` without quadratic
  * blowup (the pre-indexed RuntimeIndexes bundle).
  */
@@ -252,8 +252,8 @@ describe("hand-off pairing — cross-order carrier", () => {
 });
 
 describe("scale — the resolve ceiling flows through the deriver", () => {
-    it("derives a 2,145-order process with attestations in linear-ish time", () => {
-        const N = 2145;
+    it("derives a 1,240-order process with attestations in linear-ish time", () => {
+        const N = 1240;
         const agreement = buildAgreement(BUYER, MERCHANT, [
             { clause: MERCHANT_PROCESS, version: 1, data: {} },
             { clause: PROXIMITY_POLICY, version: 1, data: { bands: ["zone-wifi"] } },
@@ -284,7 +284,7 @@ describe("scale — the resolve ceiling flows through the deriver", () => {
         // Every order's next stage is the hand-off, paired with its own proof.
         const last = model.orders[N - 1].capabilities.find((c) => c.actionKind === "submit-clause-attestation");
         expect((last?.action as SubmitClauseAttestationCapabilityAction).pairedProof?.eventCode).toBe("zone-wifi");
-        // O(N²) over 2,145 orders × ~4,290 attestations lands in the tens of
+        // O(N²) over 1,240 orders × ~2,480 attestations lands in the tens of
         // seconds; the pre-indexed engine stays well under this generous bound.
         expect(elapsed).toBeLessThan(5_000);
     });

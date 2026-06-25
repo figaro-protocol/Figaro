@@ -1,8 +1,0 @@
-[package]
-name = "figaro-prover"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-sp1-zkvm = "6.0"
-figaro-kernel = { path = "../lib" }

@@ -5,7 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IPermit2SignatureTransfer} from "../SwapAndCommitCoordinator.sol";
 
 /// @title MockPermit2 — devnet/test mock of Uniswap Permit2 SignatureTransfer
-/// @notice Mirrors the MockERC20 / MockSP1Verifier mock pattern. Performs the
+/// @notice Mirrors the MockERC20 mock pattern. Performs the
 ///         token pull that real Permit2 performs, gated on the owner having
 ///         approved this contract (the standard one-time Permit2 approval). It
 ///         does NOT verify the signature — out of scope for exercising the

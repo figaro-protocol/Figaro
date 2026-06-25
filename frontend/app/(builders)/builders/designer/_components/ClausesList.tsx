@@ -52,8 +52,8 @@ export function ClausesList() {
                 <Link href="/clauses" className="underline">
                     protocol-tier clauses
                 </Link>{" "}
-                to see what&apos;s in force, or register a new one via{" "}
-                <code>ClauseRegistrationHelper</code> on{" "}
+                to see what&apos;s in force, or register a new one via the{" "}
+                <code>ClauseRegistry</code> on{" "}
                 <Link href="/spec" className="underline">/spec</Link>.
             </p>
         );

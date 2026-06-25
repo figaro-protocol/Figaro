@@ -10,28 +10,8 @@ import "../src/ClauseRegistry.sol";
 import "../src/SellerRegistry.sol";
 import "../src/DutchAuction.sol";
 import "../src/fig/FigToken.sol";
-import "../src/fig/RpgfMinter.sol";
 import "../src/mocks/MockPermitToken.sol";
-import "../src/mocks/MockSP1Verifier.sol";
 import "../src/mocks/MockOffsetAggregator.sol";
-import "../src/FigaroBatchVerifier.sol";
-import "../src/ClauseRegistrationHelper.sol";
-import "../src/clauseValidators/FigaroCommerceV1Validator.sol";
-import "../src/clauseValidators/FigaroGeoV1Validator.sol";
-import "../src/clauseValidators/FigaroClassOfServiceValidator.sol";
-import "../src/clauseValidators/FigaroModalitiesV1Validator.sol";
-import "../src/clauseValidators/FigaroCoordinationV1Validator.sol";
-import "../src/clauseValidators/FigaroHandoffV1Validator.sol";
-import "../src/clauseValidators/FigaroGHGV1Validator.sol";
-import "../src/clauseValidators/FigaroGHGMeasurementV1Validator.sol";
-import "../src/clauseValidators/FigaroProximityPolicyV1Validator.sol";
-import "../src/clauseValidators/FigaroOffsetPolicyV1Validator.sol";
-import "../src/clauseValidators/FigaroProximityProofV1Validator.sol";
-import "../src/clauseValidators/FigaroMerchantProcessV1Validator.sol";
-import "../src/clauseValidators/FigaroCourierProcessV1Validator.sol";
-import "../src/clauseValidators/FigaroArbitrationKlerosV1Validator.sol";
-import "../src/clauseValidators/FigaroApplicableLawV1Validator.sol";
-import "../src/clauseValidators/FigaroConsentV1Validator.sol";
 import "../src/AssemblyRegistry.sol";
 import "../src/ProcessOffsetReceipt.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -51,14 +31,13 @@ contract MockToken is ERC20 {
 /// @title Deploy — Full protocol stack to local Anvil
 /// @notice Deploys: FigaroCore, AttestationCoordinator, ClauseRegistry,
 ///         SellerRegistry, DutchAuction, FigToken, MockToken, MockPermitToken.
-///         Registers reference clauses. Mints test tokens to Anvil accounts.
+///         Clauses are populated post-deploy (populate-clauses.mjs). Mints test
+///         tokens to Anvil accounts.
 ///
-///         Devnet FIG allocation (mirrors canonical 10/30/60 shape at token scale):
-///           100M (10%) → deployer's wallet (stands in for founder + DAO + airdrop
-///                                            placeholders on devnet; staged airdrop
-///                                            and dedicated wallets are mainnet-only).
-///           The canonical allocation (100M founder / 300M DAO / 600M staged airdrop
-///           at yr 2/5/9) is realized in script/DeployMainnet.s.sol.
+///         Devnet FIG allocation: 100M → deployer's wallet (stands in for founder
+///         + DAO on devnet; the mainnet split is in script/DeployMainnet.s.sol).
+///         The proof-gated RPGF airdrop was removed in the proof-apparatus
+///         teardown, so there is no staged-airdrop allocation on either path.
 contract Deploy is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -100,23 +79,13 @@ contract Deploy is Script {
         // clause-population path for prod/testnet/mainnet, so each on-chain
         // (contentHash, metadataURI) points at a REAL pinned spec (not a
         // placeholder). Run it after deploy.
-
-        // ── Clause validators ───────────────────────────────────────
-        // Deploy per-clause validator contracts and wire them into the
-        // AttestationCoordinator. Without this block every attest* call reverts
-        // with ValidatorNotSet. First-write-wins — run only on a fresh coordinator.
-        _deployAndRegisterValidators(attestation);
-
-        // ── ClauseRegistrationHelper ────────────────────────────────
-        // Atomic register-clause + bind-validator helper for post-deploy
-        // clause authors. Closes the M-1 front-running window between the
-        // two writes (see DESIGN_DECISIONS.md #13). No state, no admin —
-        // just a permissionless composer of the two underlying public calls.
-        ClauseRegistrationHelper clauseHelper = new ClauseRegistrationHelper(
-            address(clauses),
-            address(attestation)
-        );
-        console.log("ClauseRegistrationHelper deployed at:", address(clauseHelper));
+        //
+        // There is NO on-chain clause-content validation: the chain binds an
+        // attestation to its signed agreement (merkle inclusion) and to its
+        // content (keccak256). Content well-formedness is the off-chain SDK's
+        // job (honest authors) and a read-time concern (downstream forums
+        // reject garbage). Any registered clause is attestable with no
+        // per-clause on-chain code — open-world by construction.
 
         // ── AssemblyRegistry ────────────────────────────────────────
         // Permissionless first-write-wins anchor for designer-built
@@ -168,47 +137,13 @@ contract Deploy is Script {
         // Devnet genesis mint: 100M to deployer as a simplified placeholder
         // for testing. Mainnet performs the 10/30/60 canonical distribution
         // in DeployMainnet.s.sol.
+        // Devnet genesis mint: 100M to deployer. The proof-gated RPGF
+        // distribution (RpgfMinter + its SP1 prover) was removed in the
+        // proof-apparatus teardown; FIG ships with no wired distribution
+        // minter on devnet beyond this genesis allocation.
         address deployer = vm.addr(deployerPrivateKey);
         fig.registerMinter(deployer, 100_000_000 ether);
         fig.mint(deployer, 100_000_000 ether);
-
-        // ── RpgfMinter (devnet test fixture) ────────────────────────
-        // Single shared MockSP1Verifier — reused for both the RpgfMinter
-        // and the FigaroBatchVerifier below. The mock accepts any proof
-        // bytes (chainid-gated to Anvil/31337).
-        MockSP1Verifier mockVerifier = new MockSP1Verifier();
-        console.log("MockSP1Verifier deployed at:", address(mockVerifier));
-
-        // RpgfMinter: on mainnet the root is submitted at tranche time
-        // after an SP1 proof attests it correctly aggregates the
-        // substrate-broadening formula. On devnet all three stages
-        // unlock at genesis (unlockTime = 1), the deployer doubles as
-        // submitter, and we immediately submit a single-leaf root for
-        // the deployer with claim amount 1 ether so /fig/claim works
-        // without time-travel or external sequencer wiring.
-        //
-        // Register BEFORE renounceDeployerMint — minters can't be added
-        // after renounce per FigToken.sol:48. Cap math: 100M deployer +
-        // 600M airdrop = 700M ≤ 1B MAX_SUPPLY.
-        uint64[3] memory rpgfUnlocks = [uint64(1), uint64(1), uint64(1)];
-        bytes32 devProgramVKey = keccak256("figaro-rpgf-dev");
-        RpgfMinter airdrop =
-            new RpgfMinter(address(fig), address(mockVerifier), devProgramVKey, deployer, rpgfUnlocks);
-        fig.registerMinter(address(airdrop), 600_000_000 ether);
-        console.log("RpgfMinter deployed at:", address(airdrop));
-
-        // Submit a stage-0 root for anvil[0] (single-leaf tree: leaf ==
-        // root, empty proof verifies; the mock verifier accepts any proof
-        // bytes). The devnet claimant is pinned to anvil[0] — NOT the
-        // deployer, which deploy-local.sh randomizes to a throwaway key —
-        // so /fig/claim works end-to-end for the standard test wallet
-        // without spinning up an external sequencer.
-        address devnetClaimant = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266; // anvil[0]
-        uint256 airdropClaimAmount = 1 ether;
-        bytes32 airdropLeaf = keccak256(abi.encodePacked(devnetClaimant, airdropClaimAmount));
-        bytes memory rpgfPublicValues = abi.encode(uint8(0), airdropLeaf, airdropClaimAmount, uint32(1));
-        airdrop.submitRoot(rpgfPublicValues, hex"");
-        console.log("RpgfMinter: stage-0 root submitted (devnet fixture)");
 
         fig.renounceDeployerMint();
         console.log("Deployer mint renounced");
@@ -225,22 +160,6 @@ contract Deploy is Script {
         // proof) and get their own anchor.
         ProcessOffsetReceipt offsetReceipts = new ProcessOffsetReceipt(core);
         console.log("ProcessOffsetReceipt deployed at:", address(offsetReceipts));
-
-        // ── BatchVerifier (SP1 — mock verifier for devnet) ──────────
-        // Genesis root = keccak256 of 5 concatenated keccak256("")
-        // sub-hashes — empty processes, order_status, order_process_id,
-        // clauses, sellers maps. Matches the Rust kernel's
-        // KernelState::new().compute_root().
-        //
-        // Note: FigaroBatchVerifier is NOT a FIG minter and never will be.
-        // Settlement-anchored FIG emission was removed from the kernel.
-        bytes32 genesisRoot = 0x826c6f22e4362b1b34f080cc37deab3358df5d98592fd19534c28c1fb713fd8c;
-        FigaroBatchVerifier batchVerifier = new FigaroBatchVerifier(
-            address(mockVerifier),
-            keccak256("figaro-kernel-dev"), // devnet program vKey
-            genesisRoot
-        );
-        console.log("FigaroBatchVerifier deployed at:", address(batchVerifier));
 
         // ── Mint test tokens to Anvil accounts ──────────────────────
         // anvil[0..19] — all 20 accounts minted EXPLICITLY. The deployer is
@@ -286,80 +205,10 @@ contract Deploy is Script {
         console.log("  NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS=", address(permitToken));
         console.log("  NEXT_PUBLIC_ATTESTATION_COORDINATOR=", address(attestation));
         console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=", address(clauses));
-        console.log("  NEXT_PUBLIC_CLAUSE_REGISTRATION_HELPER=", address(clauseHelper));
         console.log("  NEXT_PUBLIC_SELLER_REGISTRY=", address(sellers));
         console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=", address(assemblies));
         console.log("  NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT=", address(offsetReceipts));
         console.log("  NEXT_PUBLIC_DUTCH_AUCTION=", address(auction));
         console.log("  NEXT_PUBLIC_FIG_TOKEN_ADDRESS=", address(fig));
-        console.log("  NEXT_PUBLIC_RPGF_MINTER=", address(airdrop));
-        // console.log(
-        //     "  NEXT_PUBLIC_FIG_EMISSION_ADDRESS=",
-        // );
-        console.log("  NEXT_PUBLIC_BATCH_VERIFIER=", address(batchVerifier));
-    }
-
-    /// @dev Deploy 10 per-clause validators and register each with the
-    ///      AttestationCoordinator via permissionless setValidator. The
-    ///      coordinator enforces `validator.clauseId() == clauseId`, so any
-    ///      cross-wired validator reverts InvalidValidatorBinding.
-    function _deployAndRegisterValidators(AttestationCoordinator attestation) internal {
-        // Topology is a agreement-only clause (contract-time, not runtime-attested),
-        // so no on-chain validator is wired for `figaro-topology-v1`. The clause
-        // itself remains registered in ClauseRegistry above for off-chain
-        // vocabulary anchoring.
-        //
-        // Each deploy+register is inlined into a single statement so no more
-        // than one validator address is live on the Yul stack at a time.
-        // Avoids stack-too-deep under `solc_via_ir`.
-        attestation.setValidator(
-            keccak256(abi.encode("figaro-commerce", uint64(1))), address(new FigaroCommerceV1Validator())
-        );
-        attestation.setValidator(
-            keccak256(abi.encode("figaro-geo", uint64(1))), address(new FigaroGeoV1Validator())
-        );
-        attestation.setValidator(
-            keccak256(abi.encode("figaro-class-of-service", uint64(1))), address(new FigaroClassOfServiceValidator())
-        );
-        attestation.setValidator(
-            keccak256(abi.encode("figaro-modalities", uint64(1))), address(new FigaroModalitiesV1Validator())
-        );
-        attestation.setValidator(
-            keccak256(abi.encode("figaro-coordination", uint64(1))), address(new FigaroCoordinationV1Validator())
-        );
-        attestation.setValidator(
-            keccak256(abi.encode("figaro-handoff", uint64(1))), address(new FigaroHandoffV1Validator())
-        );
-        attestation.setValidator(
-            keccak256(abi.encode("figaro-ghg", uint64(1))), address(new FigaroGHGV1Validator())
-        );
-        attestation.setValidator(
-            keccak256(abi.encode("figaro-ghg-measurement", uint64(1))), address(new FigaroGHGMeasurementV1Validator())
-        );
-        attestation.setValidator(
-            keccak256(abi.encode("figaro-proximity-policy", uint64(1))), address(new FigaroProximityPolicyV1Validator())
-        );
-        attestation.setValidator(
-            keccak256(abi.encode("figaro-proximity-proof", uint64(1))), address(new FigaroProximityProofV1Validator())
-        );
-        attestation.setValidator(
-            keccak256(abi.encode("figaro-merchant-process", uint64(1))), address(new FigaroMerchantProcessV1Validator())
-        );
-        attestation.setValidator(
-            keccak256(abi.encode("figaro-courier-process", uint64(1))), address(new FigaroCourierProcessV1Validator())
-        );
-        attestation.setValidator(
-            keccak256(abi.encode("figaro-arbitration-kleros", uint64(1))), address(new FigaroArbitrationKlerosV1Validator())
-        );
-        attestation.setValidator(
-            keccak256(abi.encode("figaro-applicable-law", uint64(1))), address(new FigaroApplicableLawV1Validator())
-        );
-        attestation.setValidator(
-            keccak256(abi.encode("figaro-consent", uint64(1))), address(new FigaroConsentV1Validator())
-        );
-        attestation.setValidator(
-            keccak256(abi.encode("figaro-offset-policy", uint64(1))), address(new FigaroOffsetPolicyV1Validator())
-        );
-        console.log("Registered 16 clause validators with AttestationCoordinator");
     }
 }

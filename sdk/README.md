@@ -130,17 +130,6 @@ const clauseId = computeClauseId("figaro-ghg-iso-14064-v1");
 const summary = buildProcessDisclosureSummary(attestations, processId, clauseId);
 // → { attestationCount, commitmentCount, inventoryCount, totalActualGrams }
 
-// Indexer hygiene: filter raw event logs by source contract before processing.
-// Required when consuming events that FigaroBatchVerifier re-emits with the
-// same topic hash as the direct-path contract (Attestation, ClauseRegistered,
-// MechanismClauseSet, SellerRegistered, etc.). Without this, batch and
-// direct emissions get conflated.
-const allLogs = await client.getLogs({ event: EV_ATTESTATION, fromBlock, toBlock });
-const direct  = filterLogsBySource(allLogs, attestationCoordinatorAddress);
-const batched = filterLogsBySource(allLogs, batchVerifierAddress);
-// Or accept both:
-const both    = filterLogsBySource(allLogs, [attestationCoordinatorAddress, batchVerifierAddress]);
-
 // Geo: check delivery proximity
 const close = geohashesMatch("dr5ru7", "dr5ru8", 5); // true (5-char prefix match)
 const km = haversineDistance(40.71, -74.00, 34.05, -118.24); // ~3944 km

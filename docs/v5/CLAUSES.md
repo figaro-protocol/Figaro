@@ -15,18 +15,12 @@ CLAUDE.md keeps the lockstep principle; this file owns the full table, the archi
 - `validateContent(content, spec, { stage? })` — validates a JS object against
   a parsed spec. Closed clauses: rejects unknown fields. Per-stage overrides
   via `spec.stages[stage]`.
-- Per-clause content encoders (`encodeCommerceContent`, `encodeGeoContent`,
-  `encodeJurisdictionContent`,
-  `encodeGHGScopeContent` (shared across the 5 GHG sister clauses),
-  `encodeGHGMeasurementContent`, `encodeProximityPolicyContent`,
-  `encodeProximityProofContent`, `encodeOffsetPolicyContent`,
-  `encodeMerchantContent`, `encodeCourierContent`, `encodeConsentContent`)
-  plus a generic `encodeContentFromSpec` — bridge between TS objects and
-  the ABI bytes expected by the on-chain validator. Each clause's encoder
-  is the canonical TS-side declaration of its field-to-position mapping.
-  distinct encoder shapes across the 16 runtime-attestable clauses.
-  Topology has no encoder — it's a agreement-only clause with no runtime
-  attestation.
+- A single **generic `encodeContentFromSpec`** (`sdk/src/clauses/encode.ts`) — the one
+  spec-driven bridge between TS objects and the ABI bytes the on-chain validator decodes.
+  It reads the field-to-position mapping FROM the parsed spec, for ANY clause. The former
+  per-clause encoders (`encodeCommerceContent`, `encodeGeoContent`, … one per clause) were
+  **DELETED** — encoding is generic, not per-clause. Topology has no encoder — it is
+  agreement-only, with no runtime attestation.
 
 Frontend wiring: `useClauseValidator(clauseId)` hook + `clauseSpecSource.ts`
 preloads built-in specs and lazy-fetches remote ones.

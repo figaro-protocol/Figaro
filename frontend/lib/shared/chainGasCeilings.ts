@@ -40,35 +40,38 @@ import type { PublicClient } from "viem";
 // ── Empirical per-order constants (mirror test/GasCeilingTest.t.sol) ─
 
 /**
- * Per-order cost of settling one order during `resolveProcess`. Empirical
- * from `test/GasCeilingTest.t.sol::test_Gas_MaxOrdersResolvableUnder30MGas`
- * which binary-searches the maximum N orders that fit in 30M gas: ~2,145
- * → 30,000,000 / 2,145 ≈ 13,986 → rounded up to 14,000 for safety.
+ * Per-order cost of settling one order during `resolveProcess`, measured on
+ * REAL Anvil transaction receipts (not estimated): resolveProcess over N orders
+ * costs `38,000 + 23,000·N` gas. A resolve is its own transaction, so each
+ * order's distinct `orderStatus`/balance slots pay COLD access — the all-in
+ * per-order is ~23,000 (two ERC-20 transfers + struct keccaks + SSTORE + LOG +
+ * the order's calldata). Receipt points: N=2→83,949, N=10→267,772, N=15→382,930
+ * (marginal flat at ~22,997). Measured 2026-06-25 against `FigaroCore` on Anvil.
  *
  * Linted against the matching `RESOLVE_GAS_PER_ORDER` constant in
  * the Foundry test; either side moves, the other must move too.
  */
-const RESOLVE_GAS_PER_ORDER = 14_000n;
+const RESOLVE_GAS_PER_ORDER = 23_000n;
 
 /**
- * Per-order cost of one `commit()` call. Empirical from
- * `test/BatchGasCeilingTest.t.sol` and per-call profiling: ~224k for a
- * typical commit (one buyer sig + one seller sig + token pulls + event
- * emission + state writes for processes/orderStatus/orderProcessId).
+ * Per-order cost of one `commit()` call, measured on Anvil receipts: a sub-order
+ * commit is ~144k (the per-order marginal — warm process state); the FIRST
+ * commit in a process (root) is ~235k because it creates the cold `ProcessState`.
+ * 144k is the marginal used here; the root's one-time +~91k is amortized away
+ * over a multi-order process.
  *
  * Linted against the matching `COMMIT_GAS_PER_ORDER` constant in the
  * Foundry test.
  */
-const COMMIT_GAS_PER_ORDER = 224_000n;
+const COMMIT_GAS_PER_ORDER = 144_000n;
 
 /**
- * Fixed per-call overhead of `resolveProcess` independent of order count:
- * function dispatch, processId mapping read, activeOrderCount check,
- * resolve event emission. Generous upper bound — the actual measured
- * value is closer to 30k on a fresh process; 50k absorbs cold-state cost
- * variance + per-token state-overwrite overhead.
+ * Fixed per-call overhead of `resolveProcess` independent of order count
+ * (function dispatch, processId/process-state reads, activeOrderCount check,
+ * ProcessResolved emission, tx base). Measured on Anvil receipts as ~38,000
+ * (the intercept of `38,000 + 23,000·N`).
  */
-const RESOLVE_FIXED_OVERHEAD = 50_000n;
+const RESOLVE_FIXED_OVERHEAD = 38_000n;
 
 /**
  * Headroom factor (×100, integer) applied to ceiling computations. 95

@@ -26,9 +26,8 @@
 // ABIs
 export {
     CORE_ABI, ATTESTATION_COORDINATOR_ABI, DUTCH_AUCTION_ABI, CLAUSE_REGISTRY_ABI,
-    CLAUSE_REGISTRATION_HELPER_ABI,
-    BATCH_VERIFIER_ABI, ERC20_ABI, SELLER_REGISTRY_ABI,
-    FIG_TOKEN_ABI, RPGF_MINTER_ABI,
+    ERC20_ABI, SELLER_REGISTRY_ABI,
+    FIG_TOKEN_ABI,
 } from "./abis.js";
 export {
     EV_ORDER_COMMITTED,
@@ -39,7 +38,6 @@ export {
     EV_ATTESTATION,
     EV_AUCTION_CREATED,
     EV_AUCTION_CLAIMED,
-    EV_BATCH_SETTLED,
 } from "./abis.js";
 
 // Types
@@ -54,7 +52,6 @@ export type {
     AttestationEvent,
     AuctionCreatedEvent,
     AuctionClaimedEvent,
-    BatchSettledEvent,
     Commitment,
     EIP712Domain,
     FigaroAddresses,
@@ -100,13 +97,6 @@ export {
     calculateSubOrderSellerApproval,
     validateBonds,
 } from "./bonds.js";
-
-// Merkle airdrop builder
-export {
-    buildMerkleAirdrop,
-    computeAirdropLeaf,
-} from "./merkleAirdrop.js";
-export type { AirdropEntry, MerkleAirdropTree } from "./merkleAirdrop.js";
 
 // Agreement + merkle root + inclusion proofs
 export {

@@ -62,14 +62,3 @@ export {
     executeAction,
 } from "./autonomous.js";
 export type { TxResult } from "./autonomous.js";
-
-// Sequencer client (batch path)
-export { SequencerClient, SequencerError, toSequencerCommitment, toSequencerSig } from "./sequencer.js";
-export type {
-    SequencerClientConfig,
-    SequencerOp,
-    SequencerCommitment,
-    SequencerSignature,
-    SequencerStatus,
-    SubmitResult,
-} from "./sequencer.js";

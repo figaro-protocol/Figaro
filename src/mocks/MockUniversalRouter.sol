@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @title MockUniversalRouter — devnet/test mock of a swap venue
-/// @notice Mirrors the MockERC20 / MockSP1Verifier mock pattern. Swaps an input
+/// @notice Mirrors the MockERC20 mock pattern. Swaps an input
 ///         token for an output token at a settable rate: pulls `amountIn` of
 ///         `tokenIn` from the caller (which must have approved this router) and
 ///         sends the output to `recipient` from this contract's pre-funded

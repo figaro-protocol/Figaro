@@ -33,12 +33,6 @@ import {
 
 // ── SellerRegistry events ──────────────────────────────────────────────────
 
-/** Event signature for RpgfMinter.Claimed (same shape as the legacy
- *  StagedMerkleAirdrop.Claimed it replaced). */
-const EV_RPGF_MINTER_CLAIMED = parseAbiItem(
-    "event Claimed(uint8 indexed stageIndex, address indexed account, uint256 amount)",
-);
-
 // Three seller-registry events survive: registration, profile update, and
 // withdrawal. Lifecycle flags (deactivate/reactivate) and on-chain role
 // tracking remain stripped — seller availability is signal-by-availability,
@@ -80,9 +74,9 @@ export type IndexedAttestationLog = {
 // ── Dual-source merge helper ─────────────────────────────────────────────────
 
 /**
- * Fetch the same event type from multiple contract addresses and merge
- * results by block number (ascending). Used to unify events emitted by
- * both the individual contracts and the FigaroBatchVerifier.
+ * Fetch the same event type from one or more contract addresses and merge
+ * results by block number (ascending). A generic multi-source reader — each
+ * protocol event today has a single emitting contract.
  */
 async function cachedGetLogsMulti(
     client: PublicClient,
@@ -200,9 +194,9 @@ export async function getOrderCommittedBySeller(client: PublicClient, chainId: n
 // ---------------------------------------------------------------------------
 
 async function getAllAttestations(client: PublicClient, chainId: number) {
-    if (!CONTRACTS.attestationCoordinator && !CONTRACTS.batchVerifier) return [];
+    if (!CONTRACTS.attestationCoordinator) return [];
     return cachedGetLogsMulti(client, chainId,
-        [CONTRACTS.attestationCoordinator, CONTRACTS.batchVerifier],
+        [CONTRACTS.attestationCoordinator],
         { event: EV_ATTESTATION, eventName: "Attestation" },
     );
 }
@@ -266,25 +260,25 @@ export async function getAttestationsByProcess(
 // ---------------------------------------------------------------------------
 
 export async function getAllSellerRegistered(client: PublicClient, chainId: number) {
-    if (!CONTRACTS.sellerRegistry && !CONTRACTS.batchVerifier) return [];
+    if (!CONTRACTS.sellerRegistry) return [];
     return cachedGetLogsMulti(client, chainId,
-        [CONTRACTS.sellerRegistry, CONTRACTS.batchVerifier],
+        [CONTRACTS.sellerRegistry],
         { event: EV_SELLER_REGISTERED, eventName: "SellerRegistered" },
     );
 }
 
 async function getAllSellerProfileUpdated(client: PublicClient, chainId: number) {
-    if (!CONTRACTS.sellerRegistry && !CONTRACTS.batchVerifier) return [];
+    if (!CONTRACTS.sellerRegistry) return [];
     return cachedGetLogsMulti(client, chainId,
-        [CONTRACTS.sellerRegistry, CONTRACTS.batchVerifier],
+        [CONTRACTS.sellerRegistry],
         { event: EV_SELLER_PROFILE_UPDATED, eventName: "SellerProfileUpdated" },
     );
 }
 
 async function getAllSellerWithdrawn(client: PublicClient, chainId: number) {
-    if (!CONTRACTS.sellerRegistry && !CONTRACTS.batchVerifier) return [];
+    if (!CONTRACTS.sellerRegistry) return [];
     return cachedGetLogsMulti(client, chainId,
-        [CONTRACTS.sellerRegistry, CONTRACTS.batchVerifier],
+        [CONTRACTS.sellerRegistry],
         { event: EV_SELLER_WITHDRAWN, eventName: "SellerWithdrawn" },
     );
 }
@@ -447,37 +441,6 @@ export async function getSellerState(
         metadataURI,
         registeredBlock: regBlock > 0n ? regBlock : null,
     };
-}
-
-// ---------------------------------------------------------------------------
-// RpgfMinter queries
-// ---------------------------------------------------------------------------
-
-/**
- * Check whether `account` has claimed the RpgfMinter allocation for
- * `stageIndex` (0 = yr 2, 1 = yr 5, 2 = yr 9). Returns true if a Claimed event
- * exists for that (stage, account), false otherwise.
- */
-export async function getRpgfMinterClaimStatus(
-    client: PublicClient,
-    chainId: number,
-    stageIndex: number,
-    account: string,
-): Promise<boolean> {
-    const addr = CONTRACTS.rpgfMinter;
-    if (!addr) return false;
-    const logs = await cachedGetLogs(client, chainId, {
-        address: addr,
-        event: EV_RPGF_MINTER_CLAIMED,
-        eventName: "Claimed",
-    });
-    const lc = account.toLowerCase();
-    return logs.some((log) => {
-        const args = getLogArgs(log);
-        const stageMatches = Number(args.stageIndex ?? -1) === stageIndex;
-        const accountVal = typeof args.account === "string" ? args.account.toLowerCase() : null;
-        return stageMatches && accountVal === lc;
-    });
 }
 
 // ---------------------------------------------------------------------------

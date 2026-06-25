@@ -325,12 +325,12 @@ export interface CommitmentAgreementIssue {
  *      seller-side: the seller receives the agreement over the relay and must
  *      confirm it matches the hash in the commitment before counter-signing.)
  *   2. CONTENT VALIDITY — every PRESENT section conforms to its clause spec,
- *      via the same `validateContent` the sequencer mempool (Layer B) and the
- *      on-chain `IClauseValidator` (Layer C) enforce. `runtime` runtime
- *      clauses are skipped: they are presence-markers here whose content is
- *      attested (and validated on-chain) later, not at commit. Sections are NOT
- *      skipped for being empty — if a clause is in the agreement, its content
- *      must be valid (geo included; opting out of geo means not composing it).
+ *      via the SDK's `validateContent` (the off-chain well-formedness check; the
+ *      chain does not validate content shape, only merkle-binds it). `runtime`
+ *      runtime clauses are skipped: they are presence-markers here whose content
+ *      is attested later, not at commit. Sections are NOT skipped for being empty
+ *      — if a clause is in the agreement, its content must be valid (geo
+ *      included; opting out of geo means not composing it).
  *
  * Catches a malformed agreement client-side, before it costs a mempool/chain
  * round-trip.

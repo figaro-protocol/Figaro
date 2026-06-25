@@ -65,10 +65,10 @@ export default function Security() {
                     What is in place is a verification stack &mdash; six independent tools targeting the same kernel from different angles:
                 </p>
                 <ul className="space-y-2 text-base text-ink-body mb-5 ml-6">
-                    <li>&mdash; <strong className="text-ink-heading font-medium">Foundry</strong>: unit + integration suite, 0 failed / 0 skipped.</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">Foundry</strong>: unit + integration suite, 0 failed.</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">Halmos</strong>: symbolic execution proves 7 properties of the kernel exhaustively.</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">Certora</strong>: formal verification of CVL specs covering bond conservation, atomic resolution, and authorization.</li>
-                    <li>&mdash; <strong className="text-ink-heading font-medium">TLA+</strong>: model-checking of 24 invariants across 3 models of the kernel state machine.</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">TLA+</strong>: model-checking of the kernel and FIG-token state machines.</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">Echidna</strong>: property-based fuzzing of the kernel and the FIG token.</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">Mythril</strong>: symbolic execution for common vulnerability classes.</li>
                 </ul>
@@ -97,25 +97,13 @@ export default function Security() {
 
             <MarketingSection title="Can someone hijack a clause or seller slot?" sectionId="builders-registries">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Clause, seller, and assembly anchoring is permissionless and first-write-wins. Once an identifier is bound to a contract or a profile, the binding is immutable &mdash; no admin can rebind it, no later registrant can displace it. The validator contract bound to a clause is required to be pure: no external state reads, no block- or time-dependence, no external calls. Once it is deployed and bound, its behavior is fixed for as long as the chain exists.
+                    Clause, seller, and assembly anchoring is permissionless and first-write-wins. Once an identifier is bound to a registry &mdash; a clauseId, a seller profile, an assembly slug &mdash; the binding is immutable: no admin can rebind it, no later registrant can displace it. There is no on-chain clause-content validation: the chain merkle-binds each attestation to its signed agreement and content-hash-binds the evidence, but validates no content shape. Any registered clause is attestable with zero per-clause on-chain code.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The three artifact families have different anti-spam postures, calibrated to the asymmetry of their attack surfaces: clauses register with no deposit (the clause-author RPGF anchors trust over time); sellers register with a medium deposit and a lock period; assemblies register with a heavier deposit and a permanent slug burn. Harmonization across the three would weaken the design &mdash; the asymmetry is the point.
+                    The three artifact families have different anti-spam postures, calibrated to the asymmetry of their attack surfaces: clauses register with no deposit; sellers register with a medium deposit and a lock period; assemblies register with a heavier deposit and a permanent slug burn. Harmonization across the three would weaken the design &mdash; the asymmetry is the point.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The caveat for authors: a buggy validator you deploy is permanent. The remediation path is to deploy v2 under a new clauseId; the v1 keeps doing whatever it does, and anyone already using it stays on it until they migrate. The discipline this asks of authors is the same as the discipline of publishing a kernel: ship the result you can defend, not the result you can patch.
-                </p>
-            </MarketingSection>
-
-            <MarketingSection title="Is the proof system trusted?" sectionId="builders-prover">
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The batch sequencer is a coordination convenience, not a trust assumption. Every operation in a batch carries an EIP-712 signature from the relevant parties; the proof verifies those signatures inside the zkVM; the on-chain verifier checks the proof. The sequencer cannot fabricate an operation, cannot steal funds, cannot violate a kernel invariant, cannot forge a state transition. The validity proof enforces the same nine invariants the direct kernel enforces &mdash; the difference is throughput, not security.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    What the sequencer can do is delay or refuse to include your operation in a batch. The protocol-level answer is structural: the direct FigaroCore on-chain path stays deployed and functional alongside the batched path. A participant who distrusts the sequencer can always submit a transaction directly to the kernel. The sequencer is throughput, not gatekeeping.
-                </p>
-                <p className="text-base text-ink-body leading-relaxed">
-                    One honest caveat. An attacker with a small position in a batch can revoke their ERC-20 approval immediately before the batch lands, causing the entire batch transaction to revert and delaying settlement for everyone else in it. The attacker&apos;s cost is roughly the gas for a revocation transaction; no funds are lost by any participant, but settlement is delayed. The mitigation lives at the sequencer (same-block approval re-verification, exclusion of repeat revokers); it cannot be fixed at the protocol layer without breaking the kernel&apos;s stateless design.
+                    The caveat for authors: a registered clauseId is permanent &mdash; its spec cannot be mutated. The remediation path for a flawed clause is to register v2 under a new clauseId; the v1 keeps doing whatever it does, and anyone already using it stays on it until they migrate. The discipline this asks of authors is the same as the discipline of publishing a kernel: ship the result you can defend, not the result you can patch.
                 </p>
             </MarketingSection>
 
@@ -124,7 +112,7 @@ export default function Security() {
                     Three operational facts that aren&apos;t vulnerabilities but are worth knowing before you commit to the protocol.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    <strong className="text-ink-heading font-medium">Gas ceilings per process.</strong> Two separate gas constraints govern a process. <em>Resolution</em> settles every order in a single transaction, so its per-call gas cost gates the per-process size: at Ethereum mainnet&apos;s 30M block gas limit, roughly 2,145 orders. <em>Commit</em> is the other constraint &mdash; each commit is its own ~224k-gas transaction, so a single block can land about 134 commits and a 2,000-order process needs roughly 15 blocks to assemble before it can resolve. Both numbers are chain-specific; a chain with a higher block gas limit raises both proportionally. Large coordinations should compose across processes &mdash; the kernel supports this structurally &mdash; rather than push a single process toward either ceiling. The batched path&apos;s ceiling is different and is dominated by net-position count, not raw order count.
+                    <strong className="text-ink-heading font-medium">Gas ceilings per process.</strong> Two separate gas constraints govern a process. <em>Resolution</em> settles every order in a single transaction, so its per-call gas cost gates the per-process size: at Ethereum mainnet&apos;s 30M block gas limit, roughly 1,240 orders (~23k gas per order, measured all-in on transaction receipts). <em>Commit</em> is the other constraint &mdash; each commit is its own transaction (~144k gas for a sub-order, ~235k for the process root), so a single block can land about 200 commits and a 1,200-order process needs roughly 6 blocks to assemble before it can resolve. Both numbers are chain-specific; a chain with a higher block gas limit raises both proportionally. Large coordinations should compose across processes &mdash; the kernel supports this structurally &mdash; rather than push a single process toward either ceiling.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     <strong className="text-ink-heading font-medium">Fee-on-transfer tokens are rejected.</strong> If the ERC-20 you intend to pay with takes a percentage on transfer, FigaroCore refuses the commit. This is intentional: the bond arithmetic depends on the kernel receiving exactly what was committed. Pay in a non-rebasing, non-fee-on-transfer token.

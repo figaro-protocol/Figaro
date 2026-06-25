@@ -7,7 +7,6 @@ import {
     encodeGramsRef,
     decodeGramsRef,
     formatGrams,
-    filterLogsBySource,
     filterByClause,
     filterByProcess,
     filterByOrder,
@@ -158,52 +157,6 @@ describe("event filtering", () => {
     it("filterByStage", () => {
         expect(filterByStage(events, 0)).toHaveLength(1);
         expect(filterByStage(events, 1)).toHaveLength(3);
-    });
-});
-
-// ── filterLogsBySource ──────────────────────────────────────────────────────
-
-describe("filterLogsBySource", () => {
-    const COORDINATOR = addr(0xAC);
-    const BATCH_VERIFIER = addr(0xBA);
-    const OTHER = addr(0xFF);
-
-    type SimpleLog = { address: Address; data: string };
-    const logs: SimpleLog[] = [
-        { address: COORDINATOR, data: "direct-1" },
-        { address: BATCH_VERIFIER, data: "batched-1" },
-        { address: COORDINATOR, data: "direct-2" },
-        { address: OTHER, data: "unrelated" },
-        { address: BATCH_VERIFIER, data: "batched-2" },
-    ];
-
-    it("filters by single source address", () => {
-        const direct = filterLogsBySource(logs, COORDINATOR);
-        expect(direct).toHaveLength(2);
-        expect(direct.every((l) => l.data.startsWith("direct"))).toBe(true);
-    });
-
-    it("filters by an array of accepted sources", () => {
-        const both = filterLogsBySource(logs, [COORDINATOR, BATCH_VERIFIER]);
-        expect(both).toHaveLength(4);
-        expect(both.find((l) => l.data === "unrelated")).toBeUndefined();
-    });
-
-    it("is case-insensitive on the address comparison", () => {
-        const upper = COORDINATOR.toUpperCase().replace("0X", "0x") as Address;
-        const direct = filterLogsBySource(logs, upper);
-        expect(direct).toHaveLength(2);
-    });
-
-    it("returns empty when no source matches", () => {
-        expect(filterLogsBySource(logs, addr(0xDEAD))).toHaveLength(0);
-        expect(filterLogsBySource(logs, [addr(0xDEAD), addr(0xBEEF)])).toHaveLength(0);
-    });
-
-    it("preserves the original log shape (does not mutate)", () => {
-        const filtered = filterLogsBySource(logs, COORDINATOR);
-        expect(filtered[0]).toBe(logs[0]); // same reference
-        expect(filtered[1]).toBe(logs[2]);
     });
 });
 

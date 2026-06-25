@@ -20,8 +20,11 @@
  * slugs, UI-bypassing place/accept shortcuts). This rewrite imports NONE of that:
  * it drives the REAL UI end to end, exactly as orders-accept / seed-assembly /
  * sellers-onboarding do, and the only non-UI step is the documented permissionless
- * clause registration (ClauseRegistrationHelper + a per-clause MockClauseValidator)
- * — network seeding, the same path the protocol's own clauses use, NOT a bypass.
+ * clause registration (ClauseRegistry.registerClause — NO per-clause validator;
+ * the chain merkle-binds the attestation and validates no content) — network
+ * seeding, the same path the protocol's own clauses use, NOT a bypass. That a
+ * never-seen clause attests with zero per-clause on-chain code IS the open-world
+ * property, now structural: there is no validator to register.
  *
  * Self-contained: registers its OWN novel clause, authors + publishes its OWN
  * assembly, onboards its OWN seller (anvil[14], used by no other spec), and
@@ -29,8 +32,6 @@
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server (:3100).
  */
-import fs from 'fs';
-import path from 'path';
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import {
     createPublicClient, createWalletClient, defineChain, http, parseAbi,
@@ -94,10 +95,10 @@ function makeNovelSpec(clauseId: string, title: string) {
     };
 }
 
-// Local, non-kernel ABI fragments for the documented register+bind path.
-const CLAUSE_REGISTRY_ABI = parseAbi(['function registered(bytes32) view returns (bool)']);
-const CLAUSE_REGISTRATION_HELPER_ABI = parseAbi([
-    'function registerClauseAndValidator(string clauseId, uint64 version, bytes32 contentHash, string metadataURI, bytes32 family, address validator) external',
+// Local, non-kernel ABI fragments for the documented clause-registration path.
+const CLAUSE_REGISTRY_ABI = parseAbi([
+    'function registered(bytes32) view returns (bool)',
+    'function registerClause(string clauseId, uint64 version, bytes32 contentHash, string metadataURI, bytes32 family) external',
 ]);
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
@@ -115,16 +116,16 @@ async function waitForConnected(page: Page) {
 }
 
 /**
- * Register the novel clause permissionlessly + bind its Layer-C validator
- * atomically (ClauseRegistrationHelper.registerClauseAndValidator) — the
- * documented register+bind path the protocol's own clauses use. Idempotent:
- * skips if already registered (re-run within a fresh snapshot is the norm).
+ * Register the novel clause permissionlessly via ClauseRegistry.registerClause —
+ * the documented registration path the protocol's own clauses use. There is NO
+ * validator to bind: on-chain clause-content validation was removed, so any
+ * registered clause is attestable (the coordinator merkle-binds the attestation
+ * to the signed agreement and content-hash-binds the evidence). Idempotent:
+ * skips if already registered (re-run on the persistent devnet is the norm).
  */
 async function registerNovelClause(clauseId: string, spec: ReturnType<typeof makeNovelSpec>): Promise<void> {
     const cfg = readLocalDeploymentConfig();
     const registry = (process.env.NEXT_PUBLIC_CLAUSE_REGISTRY ?? cfg.clauseRegistry) as Hex;
-    const helper = (process.env.NEXT_PUBLIC_CLAUSE_REGISTRATION_HELPER ?? cfg.clauseRegistrationHelper) as Hex | undefined;
-    if (!helper) throw new Error('NEXT_PUBLIC_CLAUSE_REGISTRATION_HELPER not set — run ./scripts/deploy-local.sh');
     const pub = localPublicClient();
     const idHash = clauseIdHash(clauseId, NOVEL_VERSION);
 
@@ -136,24 +137,13 @@ async function registerNovelClause(clauseId: string, spec: ReturnType<typeof mak
     const registrar = privateKeyToAccount(ANVIL_KEYS[0] as Hex);
     const wallet = createWalletClient({ account: registrar, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
-    // This clause's own Layer-C validator (Mock — permissive; the constructor
-    // arg is the clauseId HASH it self-attests, which the binding verifies).
-    const artifact = JSON.parse(fs.readFileSync(
-        path.resolve(__dirname, '../../../out/MockClauseValidator.sol/MockClauseValidator.json'), 'utf8',
-    )) as { abi: unknown[]; bytecode: { object: Hex } };
-    const deployHash = await wallet.deployContract({
-        abi: artifact.abi as never, bytecode: artifact.bytecode.object, args: [idHash],
-    });
-    const { contractAddress: validator } = await pub.waitForTransactionReceipt({ hash: deployHash });
-    if (!validator) throw new Error('MockClauseValidator deployment returned no address');
-
     const { uri } = await pinJSONToIPFS(spec);
     const contentHash = keccak256(stringToHex(JSON.stringify(spec)));
     const family = keccak256(stringToHex(spec.categories[0]));
     const { request } = await pub.simulateContract({
-        account: registrar.address, address: helper, abi: CLAUSE_REGISTRATION_HELPER_ABI,
-        functionName: 'registerClauseAndValidator',
-        args: [clauseId, BigInt(NOVEL_VERSION), contentHash, uri, family, validator],
+        account: registrar.address, address: registry, abi: CLAUSE_REGISTRY_ABI,
+        functionName: 'registerClause',
+        args: [clauseId, BigInt(NOVEL_VERSION), contentHash, uri, family],
     });
     await pub.waitForTransactionReceipt({ hash: await wallet.writeContract(request) });
 }
@@ -181,7 +171,8 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         const NOVEL_SPEC = makeNovelSpec(NOVEL_CLAUSE_ID, NOVEL_TITLE);
 
         // ── SETUP: register the novel clause permissionlessly (no UI for clause
-        //    registration exists — this is the documented register+bind path) ──
+        //    registration exists — this is the documented registration path; no
+        //    validator to bind, the chain validates no clause content) ──
         await registerNovelClause(NOVEL_CLAUSE_ID, NOVEL_SPEC);
 
         // ── DRAWER: author an assembly carrying the novel clause, via the REAL

@@ -21,8 +21,8 @@ pragma solidity 0.8.26;
 ///         per-clause layer when each order's clauses are attested at
 ///         commit time.
 ///
-///         The per-process gas ceiling (2,145 orders, documented in
-///         `FigaroCore.sol:240-250`) is a property of the kernel
+///         The per-process gas ceiling (~1,240 orders, documented in
+///         `FigaroCore.sol`) is a property of the kernel
 ///         resolveProcess path. Publish-side and buyer-side clients
 ///         enforce it; the contract makes no claim about node count
 ///         because that claim would be unenforceable against off-chain

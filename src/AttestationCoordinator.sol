@@ -4,13 +4,12 @@ pragma solidity 0.8.26;
 import "./FigaroCore.sol";
 import "./CommitmentTypes.sol";
 import "./IRoleResolver.sol";
-import "./IClauseValidator.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
-/// @title AttestationCoordinator — Validator-gated stateless attestation
+/// @title AttestationCoordinator — Merkle-gated stateless attestation
 /// @custom:security-contact security@figaro.org
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
-/// @notice Zero-storage, role-gated, validator-gated attestation coordinator.
+/// @notice Zero-storage, role-gated, merkle-gated attestation coordinator.
 ///         Emits clause-typed attestation events for lifecycle, GHG, proximity,
 ///         and any future attestation domain.
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
@@ -38,15 +37,6 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 ///                           seller address must authorize `msg.sender` via
 ///                           `IRoleResolver`.
 ///
-/// @dev Validator gate (mandatory):
-///      Every `attest*` call validates `content` against the clause's registered
-///      `IClauseValidator` before emitting. A clause with no registered validator
-///      cannot be attested under — the call reverts with `ValidatorNotSet`.
-///      Validator registration is permissionless and first-write-wins:
-///      anyone can call `setValidator(clauseId, validator)` once per clauseId,
-///      and the binding is immutable thereafter. This preserves the no-admin
-///      invariant and prevents validator-swap rug-pulls.
-///
 /// @dev Agreement binding (mandatory):
 ///      Every `attest*` call carries an inclusion proof showing the attestation's
 ///      clause and clause data are leaves of the order's signed `agreementHash`
@@ -61,22 +51,19 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 ///
 /// @dev Content encoding:
 ///      `content` is ABI-encoded per the clause's spec (off-chain JSON spec
-///      anchored via ClauseRegistry.uriHash). Each clause validator decodes
-///      with `abi.decode(content, (...))`. The on-chain `contentRef` recorded
-///      in the Attestation event is `keccak256(content)` — content is
-///      cryptographically bound to its hash.
+///      anchored via ClauseRegistry.uriHash). The chain does not decode or
+///      validate it — well-formedness is the off-chain SDK's job (honest
+///      authors) and a read-time concern (downstream forums reject garbage).
+///      The on-chain `contentRef` recorded in the Attestation event is
+///      `keccak256(content)` — content is cryptographically bound to its hash.
 contract AttestationCoordinator {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
     FigaroCore public immutable core;
 
-    /// @notice Validator contract bound to a clauseId. address(0) = no validator
-    ///         registered, attestation under this clauseId is blocked.
-    mapping(bytes32 => address) public clauseValidator;
-
     // ── Events ──────────────────────────────────────────────────────
 
-    /// @notice A role-gated, validator-checked attestation against a registered clause.
+    /// @notice A role-gated, merkle-checked attestation against a signed clause.
     /// @dev `contentRef` is always `keccak256(content)` — content is bound to its hash on-chain.
     event Attestation(
         bytes32 indexed orderHash,
@@ -87,18 +74,11 @@ contract AttestationCoordinator {
         bytes32 contentRef
     );
 
-    /// @notice Emitted when a clause's validator contract is registered (first-write-wins).
-    event ValidatorSet(bytes32 indexed clauseId, address indexed validator);
-
     // ── Errors ──────────────────────────────────────────────────────
 
     error NotAuthorized();
     error ProcessMismatch();
     error UnknownOrder();
-    error ValidatorAlreadySet(bytes32 clauseId);
-    error ValidatorNotSet(bytes32 clauseId);
-    error InvalidValidatorBinding(bytes32 clauseId, bytes32 validatorClauseId);
-    error ZeroValidator();
     error InvalidInclusionProof(bytes32 agreementHash, bytes32 clauseId);
 
     // ── Constructor ─────────────────────────────────────────────────
@@ -106,21 +86,6 @@ contract AttestationCoordinator {
     constructor(address _core) {
         require(_core != address(0), "ZeroAddress");
         core = FigaroCore(_core);
-    }
-
-    // ── Validator registration ──────────────────────────────────────
-
-    /// @notice Register a validator contract for a clauseId. First-write-wins.
-    /// @dev Permissionless. After this call succeeds the binding is immutable.
-    ///      The validator MUST report the matching clauseId via its `clauseId()`
-    ///      view; any mismatch reverts.
-    function setValidator(bytes32 clauseId, address validator) external {
-        if (validator == address(0)) revert ZeroValidator();
-        if (clauseValidator[clauseId] != address(0)) revert ValidatorAlreadySet(clauseId);
-        bytes32 boundId = IClauseValidator(validator).clauseId();
-        if (boundId != clauseId) revert InvalidValidatorBinding(clauseId, boundId);
-        clauseValidator[clauseId] = validator;
-        emit ValidatorSet(clauseId, validator);
     }
 
     // ── Seller attestations ─────────────────────────────────────────
@@ -149,7 +114,7 @@ contract AttestationCoordinator {
         (bytes32 targetOrderHash, bytes32 targetProcessId) = _requireKnownCommitment(target);
         if (roleProcessId != targetProcessId) revert ProcessMismatch();
 
-        bytes32 contentRef = _validateContent(target.agreementHash, clauseId, stage, sectionData, proof, content);
+        bytes32 contentRef = _verifyInclusion(target.agreementHash, clauseId, sectionData, proof, content);
         emit Attestation(targetOrderHash, targetProcessId, msg.sender, clauseId, stage, contentRef);
     }
 
@@ -172,7 +137,7 @@ contract AttestationCoordinator {
         (bytes32 targetOrderHash, bytes32 targetProcessId) = _requireKnownCommitment(target);
         if (msg.sender != target.buyer) revert NotAuthorized();
 
-        bytes32 contentRef = _validateContent(target.agreementHash, clauseId, stage, sectionData, proof, content);
+        bytes32 contentRef = _verifyInclusion(target.agreementHash, clauseId, sectionData, proof, content);
         emit Attestation(targetOrderHash, targetProcessId, msg.sender, clauseId, stage, contentRef);
     }
 
@@ -194,33 +159,31 @@ contract AttestationCoordinator {
             revert NotAuthorized();
         }
 
-        bytes32 contentRef = _validateContent(target.agreementHash, clauseId, stage, sectionData, proof, content);
+        bytes32 contentRef = _verifyInclusion(target.agreementHash, clauseId, sectionData, proof, content);
         emit Attestation(targetOrderHash, targetProcessId, msg.sender, clauseId, stage, contentRef);
     }
 
     // ── Internal ────────────────────────────────────────────────────
 
     /// @dev Verify the clause is a committed leaf of the order's signed
-    ///      agreement, validate the runtime content, and return its hash.
+    ///      agreement and return the runtime content's hash. The chain binds
+    ///      the attestation to the signed contract (merkle inclusion) and to
+    ///      its content (`keccak256(content)`); it does not validate content
+    ///      shape — that is an off-chain SDK / read-time concern.
     ///      Leaf = `keccak256(clauseId || keccak256(sectionData))`, sorted-pair
     ///      merkle tree as produced by the off-chain agreement helpers.
-    function _validateContent(
+    function _verifyInclusion(
         bytes32 agreementHash,
         bytes32 clauseId,
-        uint8 stage,
         bytes calldata sectionData,
         bytes32[] calldata proof,
         bytes calldata content
-    ) internal view returns (bytes32) {
-        address v = clauseValidator[clauseId];
-        if (v == address(0)) revert ValidatorNotSet(clauseId);
-
+    ) internal pure returns (bytes32) {
         bytes32 leaf = keccak256(abi.encodePacked(clauseId, keccak256(sectionData)));
         if (!MerkleProof.verify(proof, agreementHash, leaf)) {
             revert InvalidInclusionProof(agreementHash, clauseId);
         }
 
-        IClauseValidator(v).validate(clauseId, stage, sectionData, content);
         return keccak256(content);
     }
 

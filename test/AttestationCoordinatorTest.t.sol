@@ -7,9 +7,7 @@ import "../src/CommitmentTypes.sol";
 import "../src/AttestationCoordinator.sol";
 import "../src/ClauseRegistry.sol";
 import "../src/IRoleResolver.sol";
-import "../src/IClauseValidator.sol";
 import "../src/mocks/MockPermitToken.sol";
-import {MockClauseValidator} from "../src/mocks/MockClauseValidator.sol";
 import {AgreementTestHelper} from "./helpers/AgreementTestHelper.sol";
 
 /// @title AttestationCoordinatorTest
@@ -74,15 +72,10 @@ contract AttestationCoordinatorTest is Test {
         clauses.registerClause(COMMERCE_CLAUSE_ID, 1, testContentHash, testUri, testFamily);
         clauses.registerClause(MODALITIES_CLAUSE_ID, 1, testContentHash, testUri, testFamily);
 
-        // ── AttestationCoordinator: register a permissive validator for each clause ─
-        // Production deployments register the real per-clause validators from
-        // src/clauseValidators/. These tests isolate coordinator semantics, so
-        // they use MockClauseValidator (accepts any content).
-        coordinator.setValidator(LIFECYCLE_CLAUSE, address(new MockClauseValidator(LIFECYCLE_CLAUSE)));
-        coordinator.setValidator(GHG_CLAUSE,       address(new MockClauseValidator(GHG_CLAUSE)));
-        coordinator.setValidator(PROXIMITY_CLAUSE, address(new MockClauseValidator(PROXIMITY_CLAUSE)));
-        coordinator.setValidator(COMMERCE_CLAUSE,  address(new MockClauseValidator(COMMERCE_CLAUSE)));
-        coordinator.setValidator(MODALITIES_CLAUSE, address(new MockClauseValidator(MODALITIES_CLAUSE)));
+        // There is no on-chain clause-content validation: the coordinator
+        // merkle-binds each attestation to its signed agreement and content-hash-
+        // binds the evidence. Any registered clause is attestable with no
+        // per-clause on-chain code.
 
         // AttestationCoordinator declares which clauses it uses.
         // In production this is called from the deploy script (post-audit amendment);
@@ -688,70 +681,39 @@ contract AttestationCoordinatorTest is Test {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // Validator-gate tests (Layer C on-chain validation)
+    // Merkle-inclusion gate + contentRef binding (the on-chain checks
+    // that survive — there is no clause-content validator)
     // ═══════════════════════════════════════════════════════════════
 
     bytes32 constant UNUSED_CLAUSE = keccak256(abi.encode("figaro-never-registered", uint64(1)));
 
-    function test_setValidator_rejectsZeroAddress() public {
-        vm.expectRevert(AttestationCoordinator.ZeroValidator.selector);
-        coordinator.setValidator(UNUSED_CLAUSE, address(0));
-    }
-
-    function test_setValidator_rejectsAlreadySet() public {
-        // LIFECYCLE_CLAUSE validator is already set in setUp()
-        MockClauseValidator v = new MockClauseValidator(LIFECYCLE_CLAUSE);
-        vm.expectRevert(abi.encodeWithSelector(
-            AttestationCoordinator.ValidatorAlreadySet.selector, LIFECYCLE_CLAUSE
-        ));
-        coordinator.setValidator(LIFECYCLE_CLAUSE, address(v));
-    }
-
-    function test_setValidator_rejectsMismatchedBinding() public {
-        // Validator claims it handles UNUSED_CLAUSE, but we try to register under a different ID.
-        MockClauseValidator v = new MockClauseValidator(UNUSED_CLAUSE);
-        bytes32 differentId = keccak256(abi.encode("figaro-yet-another", uint64(1)));
-        vm.expectRevert(abi.encodeWithSelector(
-            AttestationCoordinator.InvalidValidatorBinding.selector, differentId, UNUSED_CLAUSE
-        ));
-        coordinator.setValidator(differentId, address(v));
-    }
-
-    function test_setValidator_happyPath() public {
-        MockClauseValidator v = new MockClauseValidator(UNUSED_CLAUSE);
-        coordinator.setValidator(UNUSED_CLAUSE, address(v));
-        assertEq(coordinator.clauseValidator(UNUSED_CLAUSE), address(v));
-    }
-
-    function test_attestAsSeller_revertsOnUnregisteredClause() public {
-        // ValidatorNotSet fires before merkle-proof check, so agreementHash is
-        // irrelevant — any commit works.
+    /// @dev An attestation under a clause that is NOT a leaf of the signed
+    ///      agreement fails the merkle inclusion check. This is the only
+    ///      on-chain gate on which clause may be attested: a seller who signed
+    ///      one contract cannot fire an attestation under a clause the buyer
+    ///      never agreed to.
+    function test_attestAsSeller_revertsOnClauseNotInAgreement() public {
+        // Agreement is a single LIFECYCLE leaf; attesting under UNUSED_CLAUSE
+        // (with an empty proof) cannot open against that root.
         (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 1, LIFECYCLE_CLAUSE, "");
         vm.prank(seller1);
         vm.expectRevert(abi.encodeWithSelector(
-            AttestationCoordinator.ValidatorNotSet.selector, UNUSED_CLAUSE
+            AttestationCoordinator.InvalidInclusionProof.selector, c.agreementHash, UNUSED_CLAUSE
         ));
         coordinator.attestAsSeller(c, c, UNUSED_CLAUSE, 1, "", _emptyProof(), "");
     }
 
-    function test_attestAsBuyer_revertsOnUnregisteredClause() public {
+    /// @dev Same merkle gate from the buyer path: wrong sectionData (or wrong
+    ///      clause) breaks inclusion.
+    function test_attestAsBuyer_revertsOnSectionDataMismatch() public {
         (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 2, LIFECYCLE_CLAUSE, "");
         vm.prank(buyer);
         vm.expectRevert(abi.encodeWithSelector(
-            AttestationCoordinator.ValidatorNotSet.selector, UNUSED_CLAUSE
+            AttestationCoordinator.InvalidInclusionProof.selector, c.agreementHash, LIFECYCLE_CLAUSE
         ));
-        coordinator.attestAsBuyer(c, UNUSED_CLAUSE, 1, "", _emptyProof(), "");
-    }
-
-    function test_attestViaResolver_revertsOnUnregisteredClause() public {
-        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 5, LIFECYCLE_CLAUSE, "");
-        // Resolver would authorize the caller, but the validator gate fires first.
-        vm.mockCall(seller1, abi.encodeWithSelector(IRoleResolver.isAuthorized.selector), abi.encode(true));
-        vm.prank(seller2);
-        vm.expectRevert(abi.encodeWithSelector(
-            AttestationCoordinator.ValidatorNotSet.selector, UNUSED_CLAUSE
-        ));
-        coordinator.attestViaResolver(c, UNUSED_CLAUSE, 3, "", _emptyProof(), "");
+        // Signed sectionData was "" — attesting with non-empty sectionData
+        // recomputes a different leaf that won't open against the root.
+        coordinator.attestAsBuyer(c, LIFECYCLE_CLAUSE, 1, "tampered", _emptyProof(), "");
     }
 
     function test_contentRefIsKeccakOfContent() public {
@@ -800,28 +762,5 @@ contract AttestationCoordinatorTest is Test {
             }
         }
         assertTrue(found, "Attestation event emitted");
-    }
-
-    // Fuzz companion to test_setValidator_rejectsMismatchedBinding — every
-    // pair (clauseId, boundId) with clauseId != boundId must revert with
-    // InvalidValidatorBinding. Together with the Certora first-write-wins
-    // rule (rule 8), this closes the binding-integrity half of the validator
-    // gate.
-    function testFuzz_setValidator_rejectsMismatchedBinding(
-        bytes32 clauseId,
-        bytes32 boundId
-    ) public {
-        vm.assume(clauseId != boundId);
-        // Avoid colliding with the clauses pre-registered in setUp(); if clauseId
-        // is already bound, the contract reverts with ValidatorAlreadySet before
-        // ever reaching the binding check. That is a separate invariant
-        // (Certora rule 8) and not what this fuzz targets.
-        vm.assume(coordinator.clauseValidator(clauseId) == address(0));
-
-        MockClauseValidator v = new MockClauseValidator(boundId);
-        vm.expectRevert(abi.encodeWithSelector(
-            AttestationCoordinator.InvalidValidatorBinding.selector, clauseId, boundId
-        ));
-        coordinator.setValidator(clauseId, address(v));
     }
 }

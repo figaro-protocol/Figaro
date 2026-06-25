@@ -55,7 +55,7 @@ interface ProofCarrier {
 
 /** Pre-indexed runtime state, built ONCE per process derivation so the
  *  per-order capability loop stays O(orders + attestations). The kernel's
- *  resolve ceiling (~2,145 orders / 30M gas) must flow through this deriver
+ *  resolve ceiling (~1,240 orders / 30M gas) must flow through this deriver
  *  without quadratic blowup — per-order scans of the full attestation array
  *  are the O(N²) shape this bundle exists to prevent. */
 interface RuntimeIndexes {

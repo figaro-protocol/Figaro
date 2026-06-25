@@ -36,8 +36,9 @@ Scaling involves two distinct constraints. Do not conflate them.
 Solved by cheaper execution environments.
 
 **Depth**: single-process order count bounded by gas.
-`resolveProcess` iterates every commitment in the process (~14k gas per
-order). At Ethereum's 30M gas limit, the ceiling is ~2,145 orders.
+`resolveProcess` iterates every commitment in the process (~23k gas per
+order, all-in cold per-tx — measured on Anvil receipts). At Ethereum's 30M
+gas limit, the ceiling is ~1,240 orders.
 Practical institution assemblies should stay well below this (50–100).
 Depth is already solved by multi-process composition — the kernel
 supports it structurally via the `processId` field, and the V3
@@ -177,24 +178,26 @@ transactions on the direct path but 1 net position on the batch path.
 Netting is the batch path's structural advantage.
 
 **Why it's not "half of FigaroCore."** A naive comparison of the batch
-verifier's ~1,130-position ceiling against `resolveProcess`'s ~2,400-order
-ceiling is misleading. The 2,400 figure measures only the resolve step
-— the cheapest part of the direct lifecycle. The 224k-gas `commit()`
-calls that preceded those resolves consumed ~537M gas across 2,400
-separate transactions. The batch path eliminates all of that: every
-commit, resolve, attestation, and clause registration runs off-chain
-inside the SP1 prover, and only the net financial effects land on-chain.
+verifier's ~1,130-position ceiling against `resolveProcess`'s ~1,240-order
+ceiling is misleading. The 1,240 figure measures only the resolve step
+— the cheapest part of the direct lifecycle. The ~144k-gas sub-order
+`commit()` calls (the root is ~235k) that preceded those resolves consumed
+~179M gas across 1,240 separate transactions. The batch path eliminates all
+of that: every commit, resolve, attestation, and clause registration runs
+off-chain inside the SP1 prover, and only the net financial effects land
+on-chain.
 
-**Empirical gas ceilings at 30M gas limit:**
+**Empirical gas ceilings at 30M gas limit** (resolve/commit measured on Anvil
+transaction receipts, 2026-06-25):
 
 | Path | Ceiling | Unit | Per-unit gas |
 |---|---|---|---|
-| Direct `commit()` | ~130 orders | Per block | ~224k/order |
-| Direct `resolveProcess()` | ~2,400 orders | Single call | ~12.5k/order |
+| Direct `commit()` | ~208 orders | Per block | ~144k/order (sub) |
+| Direct `resolveProcess()` | ~1,240 orders | Single call | ~23k/order (all-in) |
 | Batch `settleBatch()` | ~1,130 positions | Single call | ~26.5k/position |
 
-The correct comparison is total lifecycle cost: ~257k gas per order
-(direct) vs. ~26.5k gas per net position (batch) — roughly **10×
+The correct comparison is total lifecycle cost: ~167k gas per order
+(direct) vs. ~26.5k gas per net position (batch) — roughly **6×
 cheaper** per settled order, with further improvement from netting.
 
 **Implementation note — O(n) hashing required.** The hash verification

@@ -22,8 +22,6 @@ vi.mock('@/lib/core/eventCache', () => ({
 // The indexer reads it from core's CONTRACTS (core/ never imports mechanisms/).
 vi.mock('@/lib/core/contracts', () => ({
     CONTRACTS: {
-        batchVerifier: null,
-        orderManager: null,
         sellerRegistry: '0x1111111111111111111111111111111111111111',
     },
 }));

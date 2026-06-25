@@ -77,10 +77,10 @@ owning doc, not here.
 **Do not reference any contract or file not listed here or in the indexed
 `docs/v5/` files** (full Document Index at the bottom). Primary inventories:
 
-- **`docs/v5/CONTRACTS.md`** — smart-contract inventory: kernel, attestation, clause, mechanism modules, FIG token, batch verifier, mocks, "what does NOT exist".
-- **`docs/v5/CLAUSES.md`** — clause validation architecture (Layer A/B/C), the 19-clause table, the adding-a-clause checklist, third-party deployment discipline.
+- **`docs/v5/CONTRACTS.md`** — smart-contract inventory: kernel, attestation, clause, mechanism modules, FIG token, mocks, "what does NOT exist".
+- **`docs/v5/CLAUSES.md`** — clause validation architecture, the clause table, the adding-a-clause checklist.
 - **`docs/v5/FRONTEND.md`** — frontend route catalogue, lib map, designer surface, wallet-provider scope rules.
-- **`docs/v5/TESTING.md`** — Foundry / Halmos / Certora / Echidna / TLA+ / Vitest / Playwright / Rust prover harness inventory.
+- **`docs/v5/TESTING.md`** — Foundry / Halmos / Certora / Echidna / TLA+ / Vitest / Playwright harness inventory.
 - **`docs/v5/LOCAL_DEV.md`** — commands, env vars, Docker-hosted services, deployment scripts.
 
 ---
@@ -94,7 +94,7 @@ Agents — human-driven or autonomous — have bounded write scope. These are ha
 - **`src/FigaroCore.sol`** — the kernel is frozen. The `.claude/hooks/kernel-warn.sh` hook surfaces this at edit time; do not bypass.
 - **`src/CommitmentTypes.sol`** — kernel structs and EIP-712 hashing.
 - **Any deployed contract on a chain anyone is using.** First-write-wins binding in `SellerRegistry`, `ClauseRegistry`, and the validator-contract pattern means redeployment is incompatible with prior state. To change behavior, write a *new* contract with a *new* identifier; never mutate the existing one.
-- **Existing registered clauses.** Once a `clauseId` is bound to its `IClauseValidator`, the binding is permanent. To change behavior, register a new clauseId (e.g., `figaro-foo-v1` → `figaro-foo-v2`); never mutate the v1 contract or its Layer A spec in `sdk/src/clauses/examples/`. (Carve-out: cosmetic metadata fields the validator never reads — `categories`, docstrings — are overridable; content-shape is not.)
+- **Existing registered clauses.** Once a `clauseId` is registered in `ClauseRegistry`, the binding is permanent. To change behavior, register a new clauseId (e.g., `figaro-foo-v1` → `figaro-foo-v2`); never mutate the v1 spec in `sdk/src/clauses/examples/`. (Carve-out: cosmetic metadata fields nothing reads on-chain — `categories`, docstrings — are overridable; content-shape is not.)
 - **Reference assemblies** in the runtime that are shared infrastructure. New assemblies go in new files; treat existing reference assemblies as immutable for any agent.
 
 **Nothing is frozen but the kernel.** The only truly immutable artifacts are the two kernel files above (`FigaroCore.sol`, `CommitmentTypes.sol`). The "deployed contract" and "registered clause" bullets are **live-chain** rules — this repo is **device-only**, redeployed fresh every `devup`, with no persistent on-chain state to be incompatible with. So contracts, registries, **and clause IDs** (`figaro-*-v1` names, incl. `merchant-process`/`courier-process`) are **renamable**: superseding a name is a fresh deploy + lockstep update across all layers — which the clause doctrine already sanctions ("register a new clauseId"). Do **not** invoke "frozen / registered / item-c-deferred / for safety" to stop short of finishing a rename. Only the kernel is sacrosanct.
@@ -196,7 +196,7 @@ Use the correct tier. "Add yield to locked bonds" → kernel concern. "Add a new
 
 ### Separation of Concerns — Artifact Families
 
-Each protocol artifact family (clauses → `ClauseRegistry` + `IClauseValidator`; sellers → `SellerRegistry`; assemblies → `AssemblyRegistry`) has its own anchor — **parallel, not nested.** (Verified in Solidity: the registries have zero on-chain edges among themselves; assembly→clause and seller→assembly are off-chain.)
+Each protocol artifact family (clauses → `ClauseRegistry`; sellers → `SellerRegistry`; assemblies → `AssemblyRegistry`) has its own anchor — **parallel, not nested.** (Verified in Solidity: the registries have zero on-chain edges among themselves; assembly→clause and seller→assembly are off-chain.)
 
 **The rule.** Each family gets its own registry/anchor, identity scheme, evolution path, indexer event stream. Do not nest one inside another, even when an existing primitive could host it.
 
@@ -220,7 +220,7 @@ Full treatment → memory `feedback_fulfilment_retired_modality_derived`; clause
 
 Mechanically enforced: `scripts/lint-no-closed-world-vocab.sh` (pre-commit, lint-staged) fails any commit reintroducing a stored role/archetype/category identifier in code (`roleKind`, `archetypeId`, `clauseCategories`, `documentKind`) and warns on retired `fulfilment` vocabulary until the de-hardcoding migration lands — then the warn list promotes to fail.
 
-**Do not delete the `w_category` substrate-broadening weight** (the RPGF geo·coordination family boost). A recurring closed-world deletion: it is a *category-of-work* incentive for the physical/virtual-flow graph the must-haves can't produce, not author-favoritism — deleting it as "a privileged category breaks neutrality" is the **neutrality ≠ flat-weighting error**. Rationale → `docs/v5/PUBLIC_GRAPH_MODEL.md`; enforced by `scripts/lint-substrate-broadening-weight.sh`.
+**The `w_category` substrate-broadening weight** (the RPGF geo·coordination family boost) is a *category-of-work* incentive for the physical/virtual-flow graph the must-haves can't produce, not author-favoritism — retiring such a weight as "a privileged category breaks neutrality" is the **neutrality ≠ flat-weighting error**. Its implementation was removed with the RPGF prover in the proof-apparatus teardown; the rationale survives in `docs/v5/PUBLIC_GRAPH_MODEL.md` — re-home it (and its guard) alongside any rebuilt RPGF distribution.
 
 ### Dispute Resolution — Three Layers
 
@@ -320,9 +320,9 @@ All contracts live in `src/` (Solidity 0.8.26, Foundry); V3 in `archive-v3/`. No
 
 ### Clause Validation
 
-A new clause is **not done until all three layers ship in lockstep**: Layer A (TypeScript, `@figaro/core/clauses`), Layer B (Rust SP1 prover, `prover/clause/` — generic, parses any spec at runtime), Layer C (per-clause `IClauseValidator` in `src/clauseValidators/`, bound via `AttestationCoordinator.setValidator` — permissionless, first-write-wins, immutable; no validator → `ValidatorNotSet`). Skip a layer and the gate either rejects all attestations under that clauseId or silently accepts content the spec would reject.
+A clause's spec ships in two lockstep surfaces: **Layer A** (TypeScript, `@figaro/core/clauses`) — the off-chain spec + content encoders + the well-formedness validator — and **on-chain registration** (`ClauseRegistry.registerClause` — permissionless, first-write-wins, immutable). **There is no on-chain clause-content validation** (per-clause validators, the SP1 prover, and the batch-verifier were deleted in the proof-apparatus teardown): the `AttestationCoordinator` merkle-binds each attestation to its signed agreement and content-hash-binds the evidence, but validates no content shape — well-formedness is an off-chain SDK + read-time concern. So a never-seen clause is attestable with **zero per-clause on-chain code** — open-world by construction.
 
-17 protocol clauses total: 16 runtime-attestable (each with a validator) + `figaro-topology-v1` (agreement-only, no validator, DAG reconstructed off-chain by indexers from the signed agreement). Layer detail, the full clause table, the **adding-a-new-clause checklist** (the 9 lockstep steps), and third-party atomic register+bind discipline → `CLAUSES.md`. Count source of truth: `ls sdk/src/clauses/examples/*.json | wc -l` (the canonical Layer-A specs; the frontend loads them from ClauseRegistry → IPFS, no bundled copy). Runtime-attestable = files minus `figaro-topology-v1`.
+17 protocol clauses total: 16 runtime-attestable + `figaro-topology-v1` (agreement-only, DAG reconstructed off-chain by indexers from the signed agreement). The full clause table, the **adding-a-new-clause checklist**, and registration discipline → `CLAUSES.md`. Count source of truth: `ls sdk/src/clauses/examples/*.json | wc -l` (the canonical Layer-A specs; the frontend loads them from ClauseRegistry → IPFS, no bundled copy). Runtime-attestable = files minus `figaro-topology-v1`.
 
 ### Frontend
 
@@ -334,7 +334,7 @@ A new clause is **not done until all three layers ship in lockstep**: Layer A (T
 
 ### Local Development
 
-Commands (Foundry / Halmos / Echidna / TLA+ / Certora / frontend / SDK / prover), environment variables, Docker-hosted services, and deployment scripts → `LOCAL_DEV.md`.
+Commands (Foundry / Halmos / Echidna / TLA+ / Certora / frontend / SDK), environment variables, Docker-hosted services, and deployment scripts → `LOCAL_DEV.md`.
 
 ---
 
@@ -348,7 +348,7 @@ This is the exhaustive whitelist. Files not listed are deletion candidates at ev
 
 **Core theory:** `VISION.md` (post-firm economy, Coasean collapse, token denomination), `THEORY.md` (game-theoretic derivation of the six protocol properties).
 
-**Security & verification:** `DESIGN_DECISIONS.md` (14 intentional patterns that look like vulnerabilities — **read before auditing**), `VERIFICATION_MAP.md` (invariant → code → test → formal layer), `RELEASE_READINESS.md` (gate criteria, frozen Solidity surface for external audit), `SCALING_STRATEGY.md` (proof-based scaling, batch sequencer architecture, sequencer trust model).
+**Security & verification:** `DESIGN_DECISIONS.md` (14 intentional patterns that look like vulnerabilities — **read before auditing**), `VERIFICATION_MAP.md` (invariant → code → test → formal layer), `RELEASE_READINESS.md` (gate criteria, frozen Solidity surface for external audit), `SCALING_STRATEGY.md` (proof-based scaling — stale, pending review).
 
 **Architecture:** `ARCHITECTURE.md` (whole-system stack + the `clause.block` seam), `OPEN_WORLD.md` (open-world paradigm + composition model + semantic layer), `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md`, `LEXICON.md` (canonical-name-per-tier grid; documented half of the lexicon, enforced by `scripts/lint-architecture-lexicon.sh`).
 

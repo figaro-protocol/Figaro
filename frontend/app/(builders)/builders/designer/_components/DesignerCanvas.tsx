@@ -167,7 +167,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     const publicClient = usePublicClient();
     // Chain-aware cap on assembly node count. The hard cap is the RESOLVE
     // ceiling — every order must settle in one atomic resolveProcess within a
-    // block (~2,145 on a 30M-gas chain), the same ceiling the publish-time guard
+    // block (~1,240 on a 30M-gas chain), the same ceiling the publish-time guard
     // enforces. The COMMIT ceiling is NOT a size limit but a landing rate:
     // committing N orders takes ~ceil(N / commits-per-block) blocks (multi-tx
     // checkout), surfaced as a soft signal, never a gate. null = ceilings not

@@ -239,10 +239,12 @@ contract FigaroCore is EIP712, ReentrancyGuard {
     ///         this process cannot be resolved through the contract.
     ///         Use social recovery or multi-sig for the buyer role.
     ///
-    ///         GAS CEILING: Each order costs ~14k gas to resolve
-    ///         (struct hash, SLOAD, two ERC-20 transfers, SSTORE).
-    ///         At Ethereum's 30M block gas limit, that's a hard cap
-    ///         of 2,145 orders per process. The cap is a property of
+    ///         GAS CEILING: Each order costs ~23k gas to resolve
+    ///         (struct hash, cold SLOAD, two ERC-20 transfers, SSTORE,
+    ///         LOG + the order's calldata — measured all-in on real
+    ///         transaction receipts). At Ethereum's 30M block gas limit,
+    ///         that's a hard cap of ~1,240 orders per process (resolve
+    ///         cost ~= 38,000 + 23,000*N). The cap is a property of
     ///         the kernel resolveProcess path; it cannot be enforced
     ///         on-chain at assembly registration because manifests
     ///         live off-chain (AssemblyRegistry only stores their

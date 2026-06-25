@@ -9,8 +9,6 @@
  */
 export {
     SELLER_REGISTRY_ABI,
-    FIG_TOKEN_ABI,
-    RPGF_MINTER_ABI,
 } from "@figaro/core";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { isValidAddress } from "@/lib/shared/evm";
@@ -42,8 +40,6 @@ export const MECHANISM_CONTRACTS = {
         ""
     ) as `0x${string}`,
     sellerRegistry: CONTRACTS.sellerRegistry,
-    figToken: (process.env.NEXT_PUBLIC_FIG_TOKEN_ADDRESS || "") as `0x${string}`,
-    rpgfMinter: CONTRACTS.rpgfMinter,
 };
 
 function resolveAddress(addr: `0x${string}`): `0x${string}` | null {
@@ -56,14 +52,6 @@ export function getDutchAuction(): `0x${string}` | null {
 
 export function getSellerRegistry(): `0x${string}` | null {
     return resolveAddress(MECHANISM_CONTRACTS.sellerRegistry);
-}
-
-export function getFigToken(): `0x${string}` | null {
-    return resolveAddress(MECHANISM_CONTRACTS.figToken);
-}
-
-export function getRpgfMinter(): `0x${string}` | null {
-    return resolveAddress(MECHANISM_CONTRACTS.rpgfMinter);
 }
 
 // ABIs are now imported from @figaro/core (see top of file)

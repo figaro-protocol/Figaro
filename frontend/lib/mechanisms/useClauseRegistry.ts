@@ -36,7 +36,8 @@ export interface RegisteredClauseEvent {
     /** IPFS locator for the spec; `loadClauseSpec` fetches the spec from here. */
     metadataURI: string;
     /** keccak256 of the family slug (e.g. keccak256("geo")). Bound at
-     *  registration; consumed by the RPGF Tier-1 weighting in the SP1 program. */
+     *  registration; groups clauses for discovery and the RPGF
+     *  substrate-broadening weighting. */
     family: `0x${string}`;
     registrar: `0x${string}`;
     blockNumber: bigint;

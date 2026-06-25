@@ -40,7 +40,6 @@ export {
     encodeGramsRef,
     decodeGramsRef,
     formatGrams,
-    filterLogsBySource,
     filterByClause,
     filterByProcess,
     filterByOrder,

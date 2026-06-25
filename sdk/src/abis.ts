@@ -84,17 +84,14 @@ export const EV_PROCESS_RESOLVED = parseAbiItem(
 
 export const ATTESTATION_COORDINATOR_ABI = parseAbi([
     "function core() view returns (address)",
-    "function clauseValidator(bytes32 clauseId) view returns (address)",
-    "function setValidator(bytes32 clauseId, address validator) external",
-    // All three paths now take the full Commitment(s) so the coordinator can
+    // All three paths take the full Commitment(s) so the coordinator can
     // recover `agreementHash` without new kernel state, and carry `sectionData`
     // + merkle `proof` so the attestation's clause is provably part of the
-    // signed agreement.
+    // signed agreement. There is no on-chain clause-content validator.
     `function attestAsSeller(${COMMITMENT_TUPLE} role, ${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content) external`,
     `function attestAsBuyer(${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content) external`,
     `function attestViaResolver(${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content) external`,
     "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)",
-    "event ValidatorSet(bytes32 indexed clauseId, address indexed validator)",
     "error InvalidInclusionProof(bytes32 agreementHash, bytes32 clauseId)",
 ]);
 
@@ -137,43 +134,6 @@ export const CLAUSE_REGISTRY_ABI = parseAbi([
     "event MechanismClauseSet(address indexed mechanism, bytes32 indexed clauseId)",
 ]);
 
-// ── ClauseRegistrationHelper ABI ────────────────────────────────────────────
-// Atomic register-clause + bind-validator helper. Closes the M-1 front-running
-// window between ClauseRegistry.registerClause and AttestationCoordinator.setValidator
-// (DESIGN_DECISIONS.md #13). Stateless, no admin — anyone can call. Use this when
-// registering a non-bootstrap clause; the alternative is the two primitives called
-// separately (which exposes a front-running window for high-stakes clauses).
-
-export const CLAUSE_REGISTRATION_HELPER_ABI = parseAbi([
-    "function clauseRegistry() view returns (address)",
-    "function attestationCoordinator() view returns (address)",
-    "function registerClauseAndValidator(string clauseId, uint64 version, bytes32 contentHash, string metadataURI, bytes32 family, address validator) external",
-]);
-
-// ── FigaroBatchVerifier ABI ──────────────────────────────────────────────────
-
-export const BATCH_VERIFIER_ABI = parseAbi([
-    // ── Batch settlement ────────────────────────────────────────────
-    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId, uint64 version, bytes32 uriHash, bytes32 family, address registrar)[] clauses, (address mechanism, bytes32 clauseId)[] mechanismClauses, (uint8 tag, address seller, string metadataURI)[] sellerEvents) events) external",
-
-    // ── Views ────────────────────────────────────────────────────────
-    "function stateRoot() view returns (bytes32)",
-    "function batchCount() view returns (uint64)",
-    "function verifier() view returns (address)",
-    "function programVKey() view returns (bytes32)",
-
-    // ── Events (protocol-compatible re-emissions + BatchSettled) ─────
-    "event BatchSettled(uint64 indexed batchId, bytes32 indexed prevStateRoot, bytes32 indexed newStateRoot, uint256 positionCount)",
-    "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)",
-    "event ClauseRegistered(bytes32 indexed clauseId, uint64 version, bytes32 uriHash, bytes32 indexed family, address indexed registrar)",
-    "event MechanismClauseSet(address indexed mechanism, bytes32 indexed clauseId)",
-    "event SellerRegistered(address indexed seller, string metadataURI)",
-    "event SellerProfileUpdated(address indexed seller, string metadataURI)",
-]);
-
-export const EV_BATCH_SETTLED = parseAbiItem(
-    "event BatchSettled(uint64 indexed batchId, bytes32 indexed prevStateRoot, bytes32 indexed newStateRoot, uint256 positionCount)",
-);
 
 // ── ERC-20 ABI (standard + EIP-2612 permit) ────────────────────────────────
 
@@ -214,16 +174,4 @@ export const FIG_TOKEN_ABI = parseAbi([
     // emissionContract removed
     "function deployerMintRenounced() view returns (bool)",
     "function deployer() view returns (address)",
-]);
-
-export const RPGF_MINTER_ABI = parseAbi([
-    "function claim(uint8 stageIndex, uint256 amount, bytes32[] proof) external",
-    "function claimed(uint8 stageIndex, address account) view returns (bool)",
-    "function minter() view returns (address)",
-    "function stages(uint8 stageIndex) view returns (bytes32 root, uint64 unlockTime, uint256 totalAllocated)",
-    "function submitter() view returns (address)",
-    "function programVKey() view returns (bytes32)",
-    "function STAGE_COUNT() view returns (uint8)",
-    "event Claimed(uint8 indexed stageIndex, address indexed account, uint256 amount)",
-    "event RootSubmitted(uint8 indexed stageIndex, bytes32 indexed root, uint256 totalAllocated, uint32 clauseCount)",
 ]);

@@ -13,7 +13,5 @@
 # be followed by a spec PR within the same sprint.
 
 src/FigaroCore.sol:132 | _pullExact (commit bond pull) | commitBuyerExactDelta, commitSellerExactDelta, commitContractExactDelta, commitAllowanceDrainSafety, commitTokenConservation
-src/FigaroCore.sol:291 | resolveProcess (seller payout) | resolveSingleOrderPayout, resolveSingleOrderConservation
-src/FigaroCore.sol:292 | resolveProcess (buyer payout)  | resolveSingleOrderPayout, resolveSingleOrderConservation
-src/FigaroBatchVerifier.sol:379 | settleBatch → _executePositions (net payout to user)    | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
-src/FigaroBatchVerifier.sol:389 | settleBatch → _pullExact (net deposit from user)        | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
+src/FigaroCore.sol:293 | resolveProcess (seller payout) | resolveSingleOrderPayout, resolveSingleOrderConservation
+src/FigaroCore.sol:294 | resolveProcess (buyer payout)  | resolveSingleOrderPayout, resolveSingleOrderConservation

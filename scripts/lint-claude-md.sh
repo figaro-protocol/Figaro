@@ -33,9 +33,10 @@
 #      fails if any reappears. Adopting a new tool = a deliberate edit to
 #      MIRROR_DENYLIST below, not silent drift.
 #
-#   6. SIZE TRIPWIRE — CLAUDE.md must stay under MAX_BYTES. The harness
-#      truncates oversized instruction files; this fails the commit first,
-#      forcing a move-to-owning-doc decision (inventories -> docs/v5/*)
+#   6. SIZE TRIPWIRE — CLAUDE.md must stay under MAX_BYTES. Above Claude Code's
+#      documented ~40,000-char threshold, instruction adherence degrades (the file
+#      is NOT truncated); this fails the commit first, forcing a move-to-owning-doc
+#      decision (inventories -> docs/v5/*)
 #      rather than a silent overflow. The file holds discipline + pointers;
 #      lists live in the indexed docs.
 #
@@ -160,7 +161,10 @@ if (( ${#mirror_hits[@]} > 0 )); then
 fi
 
 # --- Check 6: SIZE TRIPWIRE ---
-MAX_BYTES=38912   # 38 KiB; harness limit is ~40K — fail before the tool truncates
+MAX_BYTES=40000   # Claude Code's documented soft threshold is 40,000 chars (~40 KB
+                  # decimal, NOT 40·1024) — above it CLAUDE.md adherence degrades (it is
+                  # NOT truncated). bytes ≥ chars for any multibyte content, so a 40,000-
+                  # byte cap keeps the file under 40,000 chars. Ref: code.claude.com/docs/en/memory
 size=$(wc -c < "$CLAUDE_MD" | tr -d ' ')
 if (( size > MAX_BYTES )); then
     echo "[claude-md] $CLAUDE_MD is ${size} bytes (limit ${MAX_BYTES})."
