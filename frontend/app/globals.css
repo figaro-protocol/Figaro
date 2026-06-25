@@ -171,7 +171,10 @@
    <footer>) plus the explicit .print\:hidden opt-out. */
 @media print {
 
-    header,
+    /* `header:not(.paper-header)` so the SITE chrome header is hidden but a
+       paper's own title/author header (PaperLayout, `.paper-header`) still
+       renders into the PDF — otherwise the bare `header` rule blanked it. */
+    header:not(.paper-header),
     nav,
     footer,
     .print\:hidden {

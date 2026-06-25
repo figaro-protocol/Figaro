@@ -7,6 +7,9 @@ interface PaperLayoutProps {
     title: string;
     subtitle?: string;
     author: string;
+    /** Standing co-author credit, rendered after `author`. Defaults to the AI
+     *  co-author; pass "" to suppress on a paper with no AI contribution. */
+    coauthor?: string;
     date: string;
     abstract: ReactNode;
     keywords?: string;
@@ -27,6 +30,7 @@ export function PaperLayout({
     title,
     subtitle,
     author,
+    coauthor = "Claude (Anthropic)",
     date,
     abstract,
     keywords,
@@ -44,12 +48,15 @@ export function PaperLayout({
                 <PrintButton />
             </div>
 
-            <header className="mb-10 border-b border-default pb-8">
+            <header className="paper-header mb-10 border-b border-default pb-8">
                 <h1 className="text-heading-h1 text-ink-heading leading-tight">{title}</h1>
                 {subtitle && (
                     <p className="text-body-lead text-ink-muted italic mt-3">{subtitle}</p>
                 )}
-                <p className="text-sm text-ink-body mt-5">{author}</p>
+                <p className="text-sm text-ink-body mt-5">
+                    {author}
+                    {coauthor ? ` · ${coauthor}` : ""}
+                </p>
                 <p className="text-sm text-ink-faint">{date}</p>
             </header>
 

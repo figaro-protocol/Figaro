@@ -9,9 +9,9 @@ import {
 import { Math } from "@/components/papers/Math";
 
 export const metadata: Metadata = {
-    title: "A Verified Solidity Settlement Kernel — Figaro Protocol",
+    title: "A Verified Settlement Kernel — Figaro Protocol",
     description:
-        "A reference Solidity implementation of the two-mechanism bonded commitment kernel — ownerless, fee-less, admin-less — with the four-method formal-verification stack (TLA⁺, Echidna, Halmos, Certora) used to audit it, the threat model, and the coordinator pattern for equilibrium-preserving extension.",
+        "A reference implementation of the two-mechanism bonded commitment kernel — ownerless, fee-less, admin-less — with the machine-checked formal-verification methodology used to audit it, the threat model, and the coordinator pattern for equilibrium-preserving extension.",
 };
 
 function FormalBlock({ label, children }: { label: string; children: React.ReactNode }) {
@@ -27,34 +27,26 @@ export default function VerifiedSettlementKernelPaper() {
     return (
         <PaperLayout
             title="Asymmetric Bonding and Buyer Dominance"
-            subtitle="A Verified Solidity Settlement Kernel"
+            subtitle="A Verified Settlement Kernel"
             author="Alessandro Daliana"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"
-            keywords="smart contracts, formal verification, TLA⁺, Halmos, Certora, Echidna, EIP-712, settlement layer, coordinator pattern"
+            keywords="smart contracts, formal verification, model checking, symbolic execution, property-based fuzzing, EIP-712, settlement layer, coordinator pattern"
             abstract={
                 <>
                     <p>
-                        We describe a reference Solidity implementation of the two-mechanism bonded commitment settlement primitive &mdash; <em>asymmetric bonding</em> (each party locks <Math>{"2\\times"}</Math> collateral, with the seller bonding against cumulative upstream value) and <em>buyer dominance with atomic resolution</em> (only the root buyer may extend or resolve, and resolution settles every active order in the process simultaneously or not at all) &mdash; together with the formal-verification stack used to audit it. The kernel (<code>FigaroCore</code>) is <strong>ownerless, fee-less, and admin-less</strong>: two external functions, three storage mappings, no upgrade path, no escape hatch from the bonded state. Verification is layered: TLA⁺ model checking exhaustively explores 6,087,113 distinct states across seven kernel invariants; Echidna fuzzes seven property invariants under a 50,000-call campaign budget; Halmos symbolically proves seven kernel properties via the z3 SMT solver; Certora cloud proves twenty-two declared CVL rules (twenty-three sub-rules in the cloud report) across the kernel, the attestation surface, and a token-operations conservation surface that gates every ERC-20 call site in the source tree.
+                        We describe a reference implementation of the two-mechanism bonded commitment settlement primitive &mdash; <em>asymmetric bonding</em> (each party locks <Math>{"2\\times"}</Math> collateral, with the seller bonding against cumulative upstream value) and <em>buyer dominance with atomic resolution</em> (only the root buyer may extend or resolve, and resolution settles every active order in the process simultaneously or not at all) &mdash; together with the formal-verification methodology used to audit it. The kernel is <strong>ownerless, fee-less, and admin-less</strong>: two external entry points, a minimal storage footprint, no upgrade path, no escape hatch from the bonded state. Verification is layered: exhaustive model checking explores the full reachable state space under bounded parameters; property-based fuzzing exercises the deployed bytecode against randomized adversarial call sequences; symbolic execution discharges the kernel safety properties over all inputs in the modeled traces; and SMT-based specification checking proves method-quantified rules across the kernel, the attestation surface, and a token-operations conservation surface covering every value-transfer call site. The properties established are token conservation, contract solvency, the asymmetric-bonding amounts, monotonic cumulative value, buyer-dominant atomic resolution, and the no-state-change guarantee on the attestation surface.
                     </p>
                     <p>
-                        The implementation also realizes a <em>coordinator pattern</em>: an extension discipline under which external mechanisms (Dutch auction, clause-typed attestation coordinator, clause and seller registries) compose with the kernel without weakening the bonding equilibrium. We give the four sufficient conditions and three concrete instances. Finally, we describe the three-layer enforcement architecture &mdash; economic (bonding), coordinational (atomic resolution), evidentiary (immutable log) &mdash; and the threat model under which the layers compose.
-                    </p>
-                    <p>
-                        This paper is a snapshot at commit-of-record 2026-04-23. Verification counts will grow as the test surface expands; the methodology is the stable artifact.
+                        The implementation also realizes a <em>coordinator pattern</em>: an extension discipline under which external mechanisms (a descending-price auction, a clause-typed attestation coordinator, clause and seller registries) compose with the kernel without weakening the bonding equilibrium. We give the four sufficient conditions and three concrete instances. Finally, we describe the three-layer enforcement architecture &mdash; economic (bonding), coordinational (atomic resolution), evidentiary (immutable log) &mdash; and the threat model under which the layers compose.
                     </p>
                 </>
             }
             references={
                 <>
                     <li>Bloemen, R., Logvinov, L., &amp; Evans, J. EIP-712: Typed Structured Data Hashing and Signing. Ethereum Improvement Proposal 712, 2017.</li>
-                    <li>Certora. <em>The Certora Prover and the CVL Specification Language</em>. Certora Technology Documentation, 2024.</li>
                     <li>de Moura, L. &amp; Bj&oslash;rner, N. Z3: An Efficient SMT Solver. In <em>Tools and Algorithms for the Construction and Analysis of Systems (TACAS)</em>, pages 337&ndash;340, 2008.</li>
-                    <li>Grieco, G., Song, W., Cygan, A., Feist, J., &amp; Groce, A. Echidna: Effective, Usable, and Fast Fuzzing for Smart Contracts. In <em>Proc. ACM SIGSOFT International Symposium on Software Testing and Analysis (ISSTA)</em>, pages 557&ndash;560, 2020.</li>
                     <li>Lamport, L. <em>Specifying Systems: The TLA⁺ Language and Tools for Hardware and Software Engineers</em>. Addison-Wesley, 2002.</li>
-                    <li>OpenZeppelin. <em>OpenZeppelin Contracts: A Library for Secure Smart-Contract Development</em>, version 5.x. OpenZeppelin Documentation, 2024.</li>
-                    <li>Paradigm. <em>The Foundry Book</em>. Foundry Documentation, 2024.</li>
-                    <li>Park, D. and the Halmos contributors. <em>Halmos: A Symbolic Bounded Model Checker for EVM Smart Contracts</em>. a16z crypto, open-source project, 2024.</li>
                 </>
             }
         >
@@ -63,7 +55,7 @@ export default function VerifiedSettlementKernelPaper() {
                     The bonded commitment settlement primitive composes two mechanisms. <em>Asymmetric bonding</em>: for an order with payment <Math>{"P"}</Math> and cumulative upstream value <Math>{"G \\geq P"}</Math>, the buyer locks <Math>{"2P"}</Math> and the seller locks <Math>{"2G"}</Math>, so cooperation is the weakly dominant strategy at every position in an <Math>{"N"}</Math>-party process chain and the cooperative profile is the unique outcome surviving iterated elimination of weakly dominated strategies. <em>Buyer dominance with atomic resolution</em>: only the root buyer may extend or resolve a process, and resolution settles every active order in the process simultaneously or not at all, inducing a weakest-link subgame among co-sellers under which cooperation pressure propagates without explicit communication.
                 </p>
                 <p>
-                    The mechanism is settlement-substrate-agnostic; it admits realisation on any state machine that maintains a monotonic cumulative-value accumulator and authenticates buyer signatures. This paper presents <em>one</em> such realisation &mdash; a Solidity smart contract <code>FigaroCore</code> on the EVM &mdash; and the verification methodology applied to it. The core property the verification is asked to deliver is precisely the gap between mechanism and code: the equilibrium analysis assumes the settlement layer enforces (i) the asymmetric bond formula <Math>{"C_b = 2P"}</Math>, <Math>{"C_s = 2G"}</Math> on <code>commit</code> with a monotonic accumulator, and (ii) buyer dominance with atomic resolution on <code>resolveProcess</code>. The code must <em>actually</em> enforce those, in every reachable path, against all reasonable adversaries.
+                    The mechanism is settlement-substrate-agnostic; it admits realisation on any state machine that maintains a monotonic cumulative-value accumulator and authenticates buyer signatures. This paper presents <em>one</em> such realisation &mdash; the Figaro kernel, a smart contract on a general-purpose blockchain &mdash; and the verification methodology applied to it. The core property the verification is asked to deliver is precisely the gap between mechanism and code: the equilibrium analysis assumes the settlement layer enforces (i) the asymmetric bond formula <Math>{"C_b = 2P"}</Math>, <Math>{"C_s = 2G"}</Math> on commitment with a monotonic accumulator, and (ii) buyer dominance with atomic resolution on process resolution. The code must <em>actually</em> enforce those, in every reachable path, against all reasonable adversaries.
                 </p>
                 <PaperRun title="What verification does and does not deliver.">
                     A distinction worth naming up front: the equilibrium argument is a property of rational play over a payoff structure &mdash; cooperation weakly dominates defection at every position in an <Math>{"N"}</Math>-party process chain, under specified rationality assumptions &mdash; and it is not a property of code. The four verification tools we apply do not verify the equilibrium itself; they verify the <em>structural preconditions</em> that the equilibrium assumes (asymmetric bond formula, monotonic accumulation, buyer dominance, atomic resolution, conservation of value). What we verify is that the code implements the payoff structure faithfully in every reachable path. Claims that some external mechanism &ldquo;preserves the kernel&rsquo;s bonding equilibrium&rdquo; invoke the equilibrium argument (which holds by rational play) and not the verification claim made here (which holds by code inspection). Keeping the two claims distinct matters for any reader who wants to know exactly which property is backed by which evidence.
@@ -73,154 +65,144 @@ export default function VerifiedSettlementKernelPaper() {
                 </PaperRun>
             </PaperSection>
 
-            <PaperSection title="2. Smart Contract Architecture">
+            <PaperSection title="2. Kernel Architecture">
                 <p>
-                    The kernel is a single Solidity 0.8.26 contract, <code>src/FigaroCore.sol</code>, inheriting OpenZeppelin&rsquo;s <code>EIP712</code> and <code>ReentrancyGuard</code>. It exposes two external functions: <code>commit</code> and <code>resolveProcess</code>. There is no constructor parameter, no owner, no admin, no upgrade path.
+                    The kernel is a single smart contract that reuses an audited typed-signing facility and a standard reentrancy mutex. It exposes two external entry points &mdash; <em>commit</em> and <em>resolve</em>. There is no deployment-time parameter, no owner, no admin, no upgrade path.
                 </p>
                 <PaperSubsection title="2.1 Storage Layout">
-                    <p>Three mappings comprise the kernel state:</p>
+                    <p>Three pieces of state comprise the kernel:</p>
                     <ul className="space-y-1 list-disc pl-6 text-sm">
-                        <li><code>processes</code>: <code>bytes32 → ProcessState</code>, where <code>ProcessState</code> is a struct of <code>(address rootBuyer, IERC20 currency, uint256 cumulativeValue, uint256 activeOrderCount)</code>.</li>
-                        <li><code>orderStatus</code>: <code>bytes32 → uint8</code> encoding <Math>{"\\{0:\\text{unknown},\\ 1:\\text{committed},\\ 2:\\text{resolved}\\}"}</Math>. The status function is monotonically non-decreasing; this is one of the verified invariants.</li>
-                        <li><code>orderProcessId</code>: <code>bytes32 → bytes32</code> recording each order&rsquo;s process membership.</li>
+                        <li>A <strong>process record</strong>, keyed by process identifier, holding the root buyer, the process denomination, the cumulative upstream value, and the active-order count.</li>
+                        <li>An <strong>order status</strong>, keyed by order identifier, taking values in <Math>{"\\{0:\\text{unknown},\\ 1:\\text{committed},\\ 2:\\text{resolved}\\}"}</Math>. The status function is monotonically non-decreasing; this is one of the verified invariants.</li>
+                        <li>An <strong>order-to-process binding</strong>, recording each order&rsquo;s process membership.</li>
                     </ul>
                     <p>
-                        The kernel deliberately does not store a per-order struct. Order terms (payment, cumulative-value snapshot, parties, denomination) are reconstructed off-chain from the signed commitment and the emitted <code>OrderCommitted</code> event. Bond amounts (<Math>{"2P"}</Math> for the buyer, <Math>{"2G"}</Math> for the seller) are deterministic functions of those values rather than separate storage variables. Storage is therefore <Math>{"O(\\text{processes}) + O(\\text{orders})"}</Math> uint8 + <Math>{"O(\\text{orders})"}</Math> bytes32, with no order-payload duplication.
+                        The kernel deliberately does not store a per-order record. Order terms (payment, cumulative-value snapshot, parties, denomination) are reconstructed off-chain from the signed commitment and the emitted commitment event. Bond amounts (<Math>{"2P"}</Math> for the buyer, <Math>{"2G"}</Math> for the seller) are deterministic functions of those values rather than separate stored variables. Storage is therefore linear in the number of processes and orders, with no order-payload duplication.
                     </p>
                 </PaperSubsection>
                 <PaperSubsection title="2.2 Commitment Protocol">
                     <p>
-                        Both parties sign an EIP-712 typed commitment (Bloemen, Logvinov, &amp; Evans, 2017) off-chain. A single on-chain <code>commit</code> call verifies both signatures (via <code>ECDSA.recover</code> against the EIP-712 digest) and pulls both bonds atomically. Root commitments create a new process; sub-order commitments extend an existing one by carrying the inherited <code>processId</code> and the next expected cumulative value. This eliminates the accept-reject pattern of traditional escrow protocols (which front-run on acceptance) and makes the act of committing simultaneous from the chain&rsquo;s point of view.
+                        Both parties sign an EIP-712 typed commitment (Bloemen, Logvinov, &amp; Evans, 2017) off-chain. A single on-chain commit call verifies both signatures against the typed-data digest and pulls both bonds atomically. Root commitments create a new process; sub-order commitments extend an existing one by carrying the inherited process identifier and the next expected cumulative value. This eliminates the accept-reject pattern of traditional escrow protocols (which front-run on acceptance) and makes the act of committing simultaneous from the chain&rsquo;s point of view.
                     </p>
                 </PaperSubsection>
                 <PaperSubsection title="2.3 Identifier Derivation">
                     <p>Process and order identifiers are content-addressed:</p>
                     <div className="my-3 overflow-x-auto">
-                        <Math display>{"\\begin{aligned} \\text{processId} &= H_{\\text{EIP-712}}(\\text{root commitment}) \\\\ \\text{orderHash} &= \\mathrm{keccak256}(\\text{processId} \\,\\|\\, \\text{structHash}) \\end{aligned}"}</Math>
+                        <Math display>{"\\begin{aligned} \\text{processId} &= H_{\\text{EIP-712}}(\\text{root commitment}) \\\\ \\text{orderId} &= H(\\text{processId} \\,\\|\\, \\text{structHash}) \\end{aligned}"}</Math>
                     </div>
                     <p>
-                        Here <Math>{"H_{\\text{EIP-712}}"}</Math> denotes the EIP-712 typed-data digest: <Math>{"\\mathrm{keccak256}(\\mathtt{0x1901} \\,\\|\\, \\text{domainSeparator} \\,\\|\\, \\text{structHash})"}</Math>, computed via OpenZeppelin&rsquo;s <code>_hashTypedDataV4</code>. The EIP-712 domain separator binds the root identifier to chain id and verifying contract, preventing replay across deployments. Sub-orders inherit <code>processId</code> from the signed commitment. No auto-incrementing counter exists; identifier collisions require SHA-3 collisions.
+                        Here <Math>{"H_{\\text{EIP-712}}"}</Math> denotes the EIP-712 typed-data digest, which binds the structured data to a domain separator, and <Math>{"H"}</Math> is the chain&rsquo;s collision-resistant hash. The domain separator binds the root identifier to chain id and verifying contract, preventing replay across deployments. Sub-orders inherit the process identifier from the signed commitment. No auto-incrementing counter exists; identifier collisions require hash collisions.
                     </p>
                 </PaperSubsection>
                 <PaperSubsection title="2.4 Fee-on-Transfer Protection">
                     <p>
-                        The internal helper <code>_pullExact(IERC20 token, address from, uint256 amount)</code> reads the contract&rsquo;s pre-transfer balance, calls <code>safeTransferFrom</code>, and reverts with <code>FeeOnTransferDetected</code> if <Math>{"\\text{balanceAfter} - \\text{balanceBefore} \\neq \\text{amount}"}</Math>. This ensures the conservation law cannot be broken by tokens that apply a transfer tax &mdash; a class of issues that has silently corrupted accounting in several DeFi systems.
+                        Every bond pull reads the contract&rsquo;s pre-transfer balance, performs the transfer, and reverts if the realized balance change does not equal the requested amount. This ensures the conservation law cannot be broken by tokens that apply a transfer tax &mdash; a class of issues that has silently corrupted accounting in several DeFi systems.
                     </p>
                 </PaperSubsection>
                 <PaperSubsection title="2.5 Events">
-                    <p>Five events are emitted, supporting full off-chain state reconstruction without a subgraph dependency:</p>
+                    <p>Five event types are emitted, supporting full off-chain state reconstruction without an indexing-service dependency:</p>
                     <ul className="space-y-2 list-disc pl-6 text-sm">
-                        <li><code>OrderCommitted</code> carries the canonical commitment payload &mdash; ten fields: <code>orderHash</code>, <code>processId</code>, <code>buyer</code>, <code>seller</code>, <code>currency</code>, <code>payment</code>, <code>cumulativeValue</code>, <code>agreementHash</code>, <code>salt</code>, <code>deadline</code>. The <code>salt</code> and <code>deadline</code> fields are what enable the SDK&rsquo;s <code>reconstruct()</code> primitive to derive the EIP-712 digest deterministically from event logs alone.</li>
-                        <li><code>OrderSeller</code> and <code>OrderCurrency</code> are companion events that index the seller and currency respectively &mdash; needed because the EVM caps indexed event arguments at three.</li>
-                        <li><code>OrderResolved</code> fires once per order at resolution.</li>
-                        <li><code>ProcessResolved</code> fires once per process at resolution, with the order count.</li>
+                        <li>A <strong>commitment event</strong> carries the canonical commitment payload &mdash; the order and process identifiers, buyer, seller, denomination, payment, cumulative value, the agreement hash, and the salt and deadline. The salt and deadline are what enable a reader to derive the typed-data digest deterministically from event logs alone.</li>
+                        <li>Two <strong>companion events</strong> index the seller and the denomination respectively &mdash; needed because the host chain caps indexed event arguments at three.</li>
+                        <li>An <strong>order-resolution event</strong> fires once per order at resolution.</li>
+                        <li>A <strong>process-resolution event</strong> fires once per process at resolution, with the order count.</li>
                     </ul>
-                    <p>A reader who replays these event types into a state machine exactly reconstructs <code>processes</code>, <code>orderStatus</code>, and <code>orderProcessId</code> &mdash; this is the basis of the SDK&rsquo;s <code>reconstruct()</code> primitive used by agents and frontends.</p>
+                    <p>A reader who replays these event types into a state machine exactly reconstructs the kernel&rsquo;s three pieces of state &mdash; this is the basis of the deterministic reconstruction primitive used by agents and frontends.</p>
                 </PaperSubsection>
             </PaperSection>
 
             <PaperSection title="3. Design Non-Decisions">
                 <p>The following features are deliberately absent. Each absence preserves a mechanism-design property of the bonded commitment primitive (asymmetric bonding, buyer dominance, atomic resolution, or the no-escape-hatch security constraint).</p>
                 <ol className="space-y-2 list-decimal pl-6 text-sm">
-                    <li><strong>No owner, admin, or upgrade.</strong> There is no <code>pause()</code>, <code>upgrade()</code>, or <code>transferOwnership()</code>. The contract is ownerless from deployment. Adding any of these would introduce an unbonded actor (the owner) into the resolution path, which the escape-hatch impossibility theorem rules out.</li>
+                    <li><strong>No owner, admin, or upgrade.</strong> There is no pause, upgrade, or ownership-transfer authority. The kernel is ownerless from deployment. Adding any of these would introduce an unbonded actor (the owner) into the resolution path, which the escape-hatch impossibility theorem rules out.</li>
                     <li><strong>No protocol fee.</strong> Settlement distributes the full bond amount to the parties. A fee at <Math>{"k = 2"}</Math> would shift the buyer&rsquo;s net cooperation payoff above the defection payoff only by <Math>{"P - \\text{fee}"}</Math>, narrowing the dominance margin and &mdash; if the fee approaches <Math>{"P"}</Math> &mdash; collapsing the equilibrium.</li>
                     <li><strong>No timeout.</strong> An active order remains active indefinitely. Per the escape-hatch impossibility theorem, any timeout with recovery fraction <Math>{"\\alpha \\geq \\tfrac{1}{2}"}</Math> destroys weak dominance for the buyer.</li>
-                    <li><strong>No partial resolution.</strong> The resolution function requires the full active order list and reverts otherwise. This enforces atomicity, on which the weakest-link coordination pressure depends.</li>
-                    <li><strong>No internal ledger.</strong> Payouts are direct <code>safeTransfer</code> calls, not balance increments to be withdrawn later. This eliminates withdrawal-pattern reentrancy surface and removes a class of accounting drift bugs.</li>
-                    <li><strong>No restriction on buyer&ndash;seller equality.</strong> The contract does not forbid <Math>{"B = S"}</Math>. If a single address signs both sides of a commitment, that address deposits both bonds and receives both payouts at resolution; the bond math is self-cancelling and no third party is exposed. The equilibrium analysis treats <Math>{"B \\neq S"}</Math> as the standard case but the contract permits the degenerate case rather than introducing a guard whose effect would be cosmetic.</li>
+                    <li><strong>No partial resolution.</strong> Resolution requires the full active order list and reverts otherwise. This enforces atomicity, on which the weakest-link coordination pressure depends.</li>
+                    <li><strong>No internal ledger.</strong> Payouts are direct transfers, not balance increments to be withdrawn later. This eliminates withdrawal-pattern reentrancy surface and removes a class of accounting drift bugs.</li>
+                    <li><strong>No restriction on buyer&ndash;seller equality.</strong> The kernel does not forbid <Math>{"B = S"}</Math>. If a single address signs both sides of a commitment, that address deposits both bonds and receives both payouts at resolution; the bond math is self-cancelling and no third party is exposed. The equilibrium analysis treats <Math>{"B \\neq S"}</Math> as the standard case but the kernel permits the degenerate case rather than introducing a guard whose effect would be cosmetic.</li>
                 </ol>
-                <PaperSubsection title="3.1 Custom Errors as Specification">
+                <PaperSubsection title="3.1 Named Reverts as Specification">
                     <p>
-                        The kernel defines sixteen custom errors, each named for the invariant it protects: <code>DeadlineExpired</code>, <code>InvalidBuyerSignature</code>, <code>InvalidSellerSignature</code>, <code>ZeroPayment</code>, <code>ProcessAlreadyExists</code>, <code>UnknownProcess</code>, <code>CumulativeValueMismatch</code>, <code>NotProcessBuyer</code>, <code>CurrencyMismatch</code>, <code>OrderNotCommitted</code>, <code>NoActiveOrders</code>, <code>IncompleteOrderList</code>, <code>DuplicateCommitment</code>, <code>FeeOnTransferDetected</code>, <code>InvalidRootCumulativeValue</code>, and <code>ProcessAlreadyResolved</code> (which rejects a sub-order against an already-resolved process). The error names function as a partial executable specification: each error is exercised by a Foundry revert-branch test and referenced by name in the verification-results section below. (A bare <code>{`"CumulativeValueOverflow"`}</code> string revert at resolution time, discussed in Section 6, is a string rather than a declared custom error.)
+                        The kernel defines a closed set of named revert conditions, each named for the invariant it protects: an expired deadline, an invalid buyer or seller signature, a zero payment, a process that already exists or is unknown, a cumulative-value mismatch, a non-buyer caller of resolution, a denomination mismatch, an order that is not committed, an empty active-order list, an incomplete order list, a duplicate commitment, a detected transfer fee, an invalid root cumulative value, and a sub-order against an already-resolved process. The revert names function as a partial executable specification: each is exercised by a revert-branch test and referenced by name in the verification-results section below. A single overflow guard at resolution time is raised as a bare string rather than a declared named revert.
                     </p>
                 </PaperSubsection>
             </PaperSection>
 
             <PaperSection title="4. Formal Verification Methodology">
                 <p>We use four verification techniques, each chosen for what it covers that the others do not.</p>
-                <PaperRun title="TLA⁺ model checking (TLC).">
-                    Captures the full state machine as a single transition system. Invariants are propositional safety properties. TLC explores all reachable states under bounded parameters by breadth-first search, exhibiting either an invariant violation with a minimal trace or exhaustive coverage of the bounded space. Strength: high-level state-machine reasoning; abstracts cryptography and ERC-20 mechanics to expose accounting errors. Weakness: bounded by parameters; gives no guarantee for unbounded state.
+                <PaperRun title="Exhaustive model checking.">
+                    Captures the full state machine as a single transition system whose invariants are propositional safety properties. A model checker explores all reachable states under bounded parameters, exhibiting either an invariant violation with a minimal trace or exhaustive coverage of the bounded space. Strength: high-level state-machine reasoning; abstracts cryptography and token mechanics to expose accounting errors. Weakness: bounded by parameters; gives no guarantee for unbounded state.
                 </PaperRun>
-                <PaperRun title="Property-based fuzzing (Echidna).">
-                    Runs randomized call sequences against the deployed bytecode under HEVM, with EIP-712 signing performed via cheatcodes. Strength: exercises real bytecode against concrete adversaries, including combinations of operations the model abstracts. Weakness: random sampling; finds bugs but does not prove their absence.
+                <PaperRun title="Property-based fuzzing.">
+                    Runs randomized call sequences against the deployed bytecode, with EIP-712 signing performed in the test harness. Strength: exercises real bytecode against concrete adversaries, including combinations of operations the model abstracts. Weakness: random sampling; finds bugs but does not prove their absence.
                 </PaperRun>
-                <PaperRun title="Symbolic execution (Halmos, z3-backed).">
-                    Encodes call traces as SMT formulas and asks z3 whether any concrete input satisfies the negation of an invariant. Strength: when it returns <em>verified</em>, the property holds for <em>all</em> inputs in the modeled trace; complements Echidna&rsquo;s bounded random sampling with symbolic coverage of the commit/resolve state machine. Weakness: symbolic complexity blows up with control-flow depth; tractable on bounded path lengths.
+                <PaperRun title="Symbolic execution.">
+                    Encodes call traces as SMT formulas and asks the solver whether any concrete input satisfies the negation of an invariant. Strength: when it returns <em>verified</em>, the property holds for <em>all</em> inputs in the modeled trace, complementing the bounded random sampling of fuzzing with symbolic coverage of the commit/resolve state machine. Weakness: symbolic complexity blows up with control-flow depth; tractable on bounded path lengths.
                 </PaperRun>
-                <PaperRun title="Specification checking (Certora).">
-                    SMT-based proving of CVL rules against the bytecode, run on Certora&rsquo;s cloud service. Strength: rules can quantify over methods (<code>method f</code>), allowing universal statements like &ldquo;no method modifies <Math>{"X"}</Math>&rdquo;. Weakness: paid service; rule encoding is non-trivial.
+                <PaperRun title="SMT-based specification checking.">
+                    SMT-based proving of declarative rules against the bytecode. Strength: rules can quantify over methods, allowing universal statements like &ldquo;no method modifies <Math>{"X"}</Math>&rdquo;. Weakness: rule encoding is non-trivial.
                 </PaperRun>
-                <PaperRun title="Foundry as the regression spine.">
-                    A Foundry test suite serves as the continuous-integration spine. Foundry tests are not counted toward formal verification but provide the harness the other three techniques compile against.
+                <PaperRun title="Regression testing as the spine.">
+                    A unit-test suite serves as the continuous-integration spine. These tests are not counted toward formal verification but provide the harness the other three techniques compile against.
                 </PaperRun>
             </PaperSection>
 
             <PaperSection title="5. Verification Results">
-                <p>All numbers in this section are reported against the snapshot at 2026-04-23, repository commit <code>970ee3a914b2</code>. Re-runs produce different fuzz-call counts; the configuration parameters (invariants, rule counts, model bounds) are the stable artifact.</p>
-                <PaperSubsection title="5.1 TLA⁺ (formal/FigaroCore.tla)">
+                <p>The four techniques converge on the same body of kernel safety properties, each within the bounds it explores. We state below what is established, organized by technique; the configuration parameters (invariants, model bounds, property set) are the stable artifact, while incidental run-time figures are not.</p>
+                <PaperSubsection title="5.1 Exhaustive Model Checking">
                     <p>
-                        The contract is modeled in TLA⁺ with eight state variables (<code>processes</code>, <code>orderStatus</code>, <code>orderRecords</code>, <code>processOrders</code>, <code>contractBalance</code>, <code>wallets</code>, <code>nextProcId</code>, <code>nextOrdId</code>) and three actions: <code>CommitRoot</code>, <code>CommitSub</code>, <code>ResolveProcess</code>. The model abstracts EIP-712 signatures (assumed correct given valid commitments), ERC-20 mechanics (modeled as integer balances), and timing (deadlines are orthogonal to the bonding equilibrium and are exercised in Foundry instead).
+                        The kernel is modeled as a transition system whose state comprises the process records, order statuses, order records, process-to-order membership, the contract balance, and participant wallet balances, with three actions: root commitment, sub-order commitment, and process resolution. The model abstracts signatures (assumed correct given valid commitments), token mechanics (modeled as integer balances), and timing (deadlines are orthogonal to the bonding equilibrium and are exercised by regression testing instead). The bounded configuration uses two buyers and two sellers, several concurrent processes, and several sub-orders per process; two buyers rather than one are required so that the non-buyer-resolution guard is exercised by an attacker buyer.
                     </p>
-                    <PaperRun title="Model bounds (formal/MC.cfg).">
-                        2 buyers, 2 sellers, initial balance 30, maximum payment 3, 2 concurrent processes, 2 sub-orders per process. Two buyers (rather than one) enable cross-buyer invariant verification &mdash; a single-buyer model would not exercise <code>NotProcessBuyer</code> branches reachable by an attacker buyer.
-                    </PaperRun>
-                    <p>Seven safety invariants verified exhaustively:</p>
+                    <p>The following safety invariants are verified exhaustively over the bounded reachable state space, with no violation:</p>
                     <ol className="space-y-1 list-decimal pl-6 text-sm">
-                        <li><strong>TypeOK</strong>: type well-formedness of all state variables.</li>
-                        <li><strong>TokenConservation</strong>: sum of wallet balances plus contract balance equals total supply.</li>
-                        <li><strong>ContractSolvency</strong>: <code>contractBalance</code> <Math>{"\\geq 0"}</Math>.</li>
-                        <li><strong>WalletNonNegative</strong>: all participant balances <Math>{"\\geq 0"}</Math>.</li>
-                        <li><strong>CumulativeIntegrity</strong>: per-process, <Math>{"G"}</Math> equals the sum of all order payments.</li>
-                        <li><strong>ActiveCountCorrect</strong>: stored active-order count matches the count of committed orders.</li>
-                        <li><strong>ResolutionAlwaysPossible</strong>: for every active process, the contract holds sufficient funds to resolve all orders.</li>
+                        <li><strong>Type well-formedness</strong> of all state variables.</li>
+                        <li><strong>Token conservation</strong>: the sum of wallet balances plus the contract balance equals the total supply.</li>
+                        <li><strong>Contract solvency</strong>: the contract balance is non-negative.</li>
+                        <li><strong>Wallet non-negativity</strong>: all participant balances are non-negative.</li>
+                        <li><strong>Cumulative integrity</strong>: per process, <Math>{"G"}</Math> equals the sum of all order payments.</li>
+                        <li><strong>Active-count correctness</strong>: the stored active-order count matches the count of committed orders.</li>
+                        <li><strong>Resolution always possible</strong>: for every active process, the contract holds sufficient funds to resolve all orders.</li>
                     </ol>
-                    <p><em>Result.</em> 6,087,113 distinct states explored in 4 minutes 8 seconds; zero invariant violations. Reproduced via <code>./test-tla.sh</code>.</p>
                 </PaperSubsection>
-                <PaperSubsection title="5.2 Echidna (src/echidna/EchidnaFuzzer.sol)">
-                    <p>Seven property invariants, each prefixed <code>echidna_</code>, checked after every call sequence:</p>
+                <PaperSubsection title="5.2 Property-Based Fuzzing">
+                    <p>The following property invariants are checked after every randomized call sequence, and hold across the campaign with no counterexample produced:</p>
                     <ol className="space-y-1 list-decimal pl-6 text-sm">
-                        <li><code>solvency</code>: token balance <Math>{"\\geq"}</Math> sum of outstanding bonds.</li>
-                        <li><code>active_count_consistent</code>: stored count equals actual.</li>
-                        <li><code>cumulative_accounting</code>: accumulator equals sum of payments.</li>
-                        <li><code>state_monotonicity</code>: orders never transition backwards (0 → 1 → 2, never reverse).</li>
-                        <li><code>token_conservation</code>: total supply constant under all commit/resolve sequences.</li>
-                        <li><code>buyer_dominance</code>: non-buyer <code>resolveProcess</code> always reverts.</li>
-                        <li><code>atomic_resolution</code>: incomplete order list always reverts.</li>
+                        <li><strong>Solvency</strong>: token balance is at least the sum of outstanding bonds.</li>
+                        <li><strong>Active-count consistency</strong>: the stored count equals the actual count.</li>
+                        <li><strong>Cumulative accounting</strong>: the accumulator equals the sum of payments.</li>
+                        <li><strong>State monotonicity</strong>: orders never transition backwards (0 → 1 → 2, never reverse).</li>
+                        <li><strong>Token conservation</strong>: total supply is constant under all commit/resolve sequences.</li>
+                        <li><strong>Buyer dominance</strong>: a non-buyer resolution attempt always reverts.</li>
+                        <li><strong>Atomic resolution</strong>: an incomplete order list always reverts.</li>
                     </ol>
-                    <p><em>Configuration (echidna.yaml).</em> <code>testLimit: 50000</code> (campaign budget), <code>seqLen: 30</code>, <code>shrinkLimit: 5000</code>, three deployer/sender accounts, property mode, 300-second wall-clock timeout. The Echidna campaign budget is the reproducibility anchor; raw call counts vary between runs.</p>
-                    <p><em>Result.</em> All seven properties held across the campaign; the most recent run exercised approximately 43,000 individual calls before the budget was exhausted, with no counterexample produced. Reproduced via <code>./test-echidna.sh</code>.</p>
                 </PaperSubsection>
-                <PaperSubsection title="5.3 Halmos (test/HalmosFigaroCore.t.sol)">
-                    <p>Seven kernel properties, each implemented as a <code>check_</code> function and discharged by z3 under symbolic-input quantification:</p>
+                <PaperSubsection title="5.3 Symbolic Execution">
+                    <p>The following kernel properties are discharged under symbolic-input quantification, holding for all inputs in the modeled trace:</p>
                     <ol className="space-y-1 list-decimal pl-6 text-sm">
-                        <li><code>tokenConservation_afterCommit</code>.</li>
-                        <li><code>contractSolvency_afterCommit</code>.</li>
-                        <li><code>correctBondAmounts</code>: <Math>{"C_b = 2P"}</Math> and <Math>{"C_s = 2G"}</Math> for all symbolic <Math>{"P"}</Math>.</li>
-                        <li><code>resolutionPayouts</code>: <Math>{"\\pi_s = 2G + P"}</Math> and <Math>{"\\pi_b = P"}</Math> for all symbolic <Math>{"P"}</Math>.</li>
-                        <li><code>orderStatusTransition</code>: status moves only <Math>{"0 \\to 1 \\to 2"}</Math>.</li>
-                        <li><code>buyerDominance_revert</code>: any non-buyer caller of <code>resolveProcess</code> reverts.</li>
-                        <li><code>cumulativeValueMonotonic</code>: across two symbolic sub-order commitments, <Math>{"G"}</Math> never decreases.</li>
+                        <li>Token conservation after commitment.</li>
+                        <li>Contract solvency after commitment.</li>
+                        <li>Correct bond amounts: <Math>{"C_b = 2P"}</Math> and <Math>{"C_s = 2G"}</Math> for all symbolic <Math>{"P"}</Math>.</li>
+                        <li>Resolution payouts: <Math>{"\\pi_s = 2G + P"}</Math> and <Math>{"\\pi_b = P"}</Math> for all symbolic <Math>{"P"}</Math>.</li>
+                        <li>Order-status transition: status moves only <Math>{"0 \\to 1 \\to 2"}</Math>.</li>
+                        <li>Buyer dominance: any non-buyer caller of resolution reverts.</li>
+                        <li>Cumulative-value monotonicity: across two symbolic sub-order commitments, <Math>{"G"}</Math> never decreases.</li>
                     </ol>
-                    <p><em>Result.</em> All seven discharged by z3. Reproduced via the Foundry profile <code>halmos</code> as documented in the repo.</p>
                 </PaperSubsection>
-                <PaperSubsection title="5.4 Certora (certora/)">
-                    <p>The repository ships six specification files; we detail the three that bear on the kernel claim and summarize the rest.</p>
-                    <PaperRun title="Kernel (FigaroCore.spec, 8 rules).">
-                        <code>orderStatusNeverDecreases</code>, <code>orderStatusTransitionsAreValid</code>, <code>commitIncreasesActiveCount</code>, <code>onlyBuyerCanResolve</code>, <code>noDoubleCommit</code>, <code>cumulativeValueMonotonic</code>, <code>rootBuyerImmutable</code>, <code>currencyImmutable</code>.
+                <PaperSubsection title="5.4 SMT-Based Specification Checking">
+                    <p>The method-quantified specification establishes three groups of properties bearing on the kernel claim.</p>
+                    <PaperRun title="Kernel.">
+                        Order status never decreases and transitions only validly; commitment increases the active count; only the buyer can resolve; no double commitment is admitted; cumulative value is monotonic; and the root buyer and the process denomination are immutable once set.
                     </PaperRun>
-                    <PaperRun title="Attestation surface (AttestationCoordinator.spec, 7 rules).">
-                        Two role-gate rules: <code>nonBuyerCannotAttestAsBuyer</code>, <code>successfulBuyerAttestationImpliesBuyer</code>. Two parametric kernel-immutability rules (the attestation surface cannot change kernel state, quantified over every public function on the coordinator): <code>attestationCannotChangeOrderStatus</code>, <code>attestationCannotChangeProcessState</code>. One validator-gate rule plus two <code>setValidator</code> storage-isolation invariants: <code>noValidatorBlocksBuyerAttestation</code> (the gate); <code>setValidatorIsFirstWriteWins</code>, <code>setValidatorPreservesOtherBindings</code> (the invariants).
+                    <PaperRun title="Attestation surface.">
+                        A non-buyer cannot attest as the buyer, and a successful buyer attestation implies the caller is the buyer. Quantified over every public entry point on the coordinator, the attestation surface <em>cannot change kernel state</em> &mdash; neither order status nor process state &mdash; which is the headline guarantee for the coordinator. The clause-section bindings established at registration are first-write-wins and isolated from one another.
                     </PaperRun>
-                    <PaperRun title="Token-operations conservation (TokenOpsVerification.spec, 7 declared rules).">
-                        <code>commitBuyerExactDelta</code>, <code>commitSellerExactDelta</code>, <code>commitContractExactDelta</code>, <code>commitAllowanceDrainSafety</code>, <code>commitTokenConservation</code>, <code>resolveSingleOrderPayout</code>, <code>resolveSingleOrderConservation</code>. Certora&rsquo;s prover splits <code>resolveSingleOrderConservation</code> into two sub-cases, so the service report shows 8 sub-rules green for this spec. The token-ops surface is gated by a pre-run lint (<code>lint-token-ops.sh</code>) that asserts the spec&rsquo;s inventory file enumerates every ERC-20 <code>transfer</code>/<code>transferFrom</code>/<code>safeTransfer*</code> call site in <code>src/</code>; new transfer call sites without a matching inventory entry fail before any cloud dispatch.
-                    </PaperRun>
-                    <PaperRun title="Totals.">
-                        <Math>{"8 + 7 + 7 = 22"}</Math> declared rules across the three kernel-relevant specs (kernel, attestation surface, token-operations conservation), shown as 23 sub-rules green in the cloud report once Certora splits the one parametric rule. The repository ships three further specs that do not bear on the kernel claim: <code>BatchVerifierTokenOps.spec</code> (4 rules, the optional batch-settlement path), <code>FigToken.spec</code> (6 rules, the FIG token registry), and <code>RpgfMinter.spec</code> (13 rules, the clause-author RPGF minter). The kernel-relevant total is 22 across three specs; the full six-spec repository total is larger and tracked in the verification-map inventory. A 3-rule spec for the predecessor staged-airdrop contract was retired when that contract was replaced.
+                    <PaperRun title="Token-operations conservation.">
+                        Each commitment moves exactly the buyer&rsquo;s, the seller&rsquo;s, and the contract&rsquo;s balance by the expected delta, with no allowance over-draw and exact conservation; each single-order resolution pays out exactly and conserves value. This surface is gated so that every value-transfer call site in the kernel is covered by a conservation rule before any check is dispatched; a new transfer call site without a matching rule fails the gate.
                     </PaperRun>
                 </PaperSubsection>
-                <PaperSubsection title="5.5 Foundry Regression Spine">
+                <PaperSubsection title="5.5 Regression Spine">
                     <p>
-                        The Foundry suite includes <code>FigaroCoreRevertBranchTest.t.sol</code>, which targets every custom error listed in Section 3; <code>ParityVectors.t.sol</code>, which asserts EIP-712-digest parity between the SDK&rsquo;s TypeScript hash function and the on-chain implementation; and <code>FigaroCoreEventEmissionTest.t.sol</code>, which asserts every event field encodes as the SDK expects. Counts of files and tests are deliberately not stated; they evolve with the test surface.
+                        The regression suite targets every named revert listed in Section 3; asserts typed-data-digest parity between the off-chain hash derivation and the on-chain implementation; and asserts that every event field encodes as readers expect. Counts of files and tests are deliberately not stated; they evolve with the test surface.
                     </p>
                 </PaperSubsection>
                 <PaperSubsection title="5.6 Scope of the Verification Claim">
@@ -228,7 +210,7 @@ export default function VerifiedSettlementKernelPaper() {
                     <ul className="space-y-2 list-disc pl-6 text-sm">
                         <li><strong>That the specification is the right specification.</strong> Verification checks code against a spec; it does not check whether the spec captures what the author meant or what users expect.</li>
                         <li><strong>That bytecode at a deployed address was compiled from this commit.</strong> The production deployment is a separate act, using a compiler under settings this paper does not pin. Relying parties should confirm the source-to-bytecode-to-address chain independently.</li>
-                        <li><strong>That the denomination token behaves.</strong> The kernel takes an arbitrary <code>IERC20</code>. If the chosen token&rsquo;s issuer exercises blocklist, freeze, upgrade, or pause authority over a party&rsquo;s bonded balance, the &ldquo;no escape hatch&rdquo; property is vacuously violated &mdash; the bond is still locked from the kernel&rsquo;s perspective but unreachable from the world&rsquo;s. The choice of denomination token is a selection of whose escape hatches to accept, not an avoidance of escape hatches in aggregate.</li>
+                        <li><strong>That the denomination token behaves.</strong> The kernel takes an arbitrary fungible token. If the chosen token&rsquo;s issuer exercises blocklist, freeze, upgrade, or pause authority over a party&rsquo;s bonded balance, the &ldquo;no escape hatch&rdquo; property is vacuously violated &mdash; the bond is still locked from the kernel&rsquo;s perspective but unreachable from the world&rsquo;s. The choice of denomination token is a selection of whose escape hatches to accept, not an avoidance of escape hatches in aggregate.</li>
                         <li><strong>That chain liveness and key custody persist.</strong> If the host chain halts, censors, or reorgs past finality, and if either party loses or has compromised their signing key, the kernel has no recovery mechanism. These are operational-security dependencies above the verified surface.</li>
                     </ul>
                     <p>Verification reduces one class of risk (specification&ndash;implementation gap within the verified bounds) and displaces several others (specification correctness, deployment chain of custody, token-issuer authority, host-chain liveness, key custody) onto layers the paper does not itself verify. A practitioner or legal reader should treat these claims as input to due diligence, not as a substitute for it.</p>
@@ -245,28 +227,28 @@ export default function VerifiedSettlementKernelPaper() {
                         Each order requires real bond deposits totaling <Math>{"2(G_i + P_i)"}</Math> per order. At scale, Sybil attacks are capital-intensive with no path to extracting the invested capital &mdash; no secondary market for locked bonds, no yield, no governance influence.
                     </PaperRun>
                     <PaperRun title="Front-running.">
-                        Order identifiers are content-addressed from the dual-signed commitment. An attacker who observes a pending <code>commit</code> cannot create a conflicting order for the same process: producing a different signature changes the digest, which changes the order hash, so the front-runner&rsquo;s order would be a distinct order, not a conflicting one. No extractable MEV exists.
+                        Order identifiers are content-addressed from the dual-signed commitment. An attacker who observes a pending commitment cannot create a conflicting order for the same process: producing a different signature changes the digest, which changes the order identifier, so the front-runner&rsquo;s order would be a distinct order, not a conflicting one. No extractable MEV exists.
                     </PaperRun>
                     <PaperRun title="Cumulative value manipulation.">
-                        Overstating cumulative value is strictly dominated under the bond formula <Math>{"C_s = 2G'"}</Math>: a seller who reports <Math>{"G' > G_{\\text{true}}"}</Math> posts a larger bond for the same payment recovery <Math>{"P"}</Math>, leaving expected utility strictly decreasing in the reported value (the mechanism&rsquo;s cumulative-value reporting honesty result). Understating is prevented by the monotonic accumulator check (<code>CumulativeValueMismatch</code> revert).
+                        Overstating cumulative value is strictly dominated under the bond formula <Math>{"C_s = 2G'"}</Math>: a seller who reports <Math>{"G' > G_{\\text{true}}"}</Math> posts a larger bond for the same payment recovery <Math>{"P"}</Math>, leaving expected utility strictly decreasing in the reported value (the mechanism&rsquo;s cumulative-value reporting honesty result). Understating is prevented by the monotonic accumulator check, which reverts on a cumulative-value mismatch.
                     </PaperRun>
                     <PaperRun title="Reentrancy.">
-                        The kernel inherits OpenZeppelin&rsquo;s <code>ReentrancyGuard</code>, and both external entry points carry the <code>nonReentrant</code> modifier. The guard is load-bearing because the resolution loop performs two <code>safeTransfer</code> calls per iteration before writing the order&rsquo;s resolved status: under a token whose transfer hooks call back into the caller (ERC-777, ERC-1363, or any future callback-bearing ERC-20), the callback could otherwise re-enter <code>resolveProcess</code> on the same process. The mutex blocks this by reverting the nested call before any half-resolved state can be observed.
+                        The kernel carries a reentrancy mutex on both external entry points. The guard is load-bearing because the resolution loop performs two transfers per iteration before writing the order&rsquo;s resolved status: under a token whose transfer hooks call back into the caller (a callback-bearing token standard), the callback could otherwise re-enter resolution on the same process. The mutex blocks this by reverting the nested call before any half-resolved state can be observed.
                     </PaperRun>
                     <PaperRun title="ECDSA signature malleability.">
-                        The kernel uses OpenZeppelin&rsquo;s <code>ECDSA.recover</code>, which from v5 onward rejects high-<Math>{"s"}</Math> signatures (the secp256k1 malleability class) and rejects <Math>{"v"}</Math> values outside <Math>{"\\{27, 28\\}"}</Math>. A duplicate commitment cannot be constructed by malleating a valid signature; combined with the <code>DuplicateCommitment</code> guard on <code>orderStatus</code>, the contract is immune to the malleability replay class.
+                        The kernel uses a signature-recovery facility that rejects high-<Math>{"s"}</Math> signatures (the secp256k1 malleability class) and rejects <Math>{"v"}</Math> values outside <Math>{"\\{27, 28\\}"}</Math>. A duplicate commitment cannot be constructed by malleating a valid signature; combined with the duplicate-commitment guard on order status, the kernel is immune to the malleability replay class.
                     </PaperRun>
                     <PaperRun title="Integer-overflow safety.">
-                        Compiled under Solidity 0.8.26 (checked arithmetic by default), the contract additionally carries an explicit pre-multiplication check: inside <code>resolveProcess</code>, before computing <Math>{"2G + P"}</Math>, it reverts with <code>{`"CumulativeValueOverflow"`}</code> if any active commitment&rsquo;s <code>expectedCumulativeValue</code> exceeds <Math>{"\\mathrm{type(uint256).max}/3"}</Math>. The check is asserted at resolution rather than at commit, so an overflow-prone commitment can be admitted but cannot be settled &mdash; harmless because the buyer is the only party who can trigger settlement and bears the locked bond as the cost of any admitted commitment.
+                        Compiled under checked-arithmetic semantics, the kernel additionally carries an explicit pre-multiplication check: before computing <Math>{"2G + P"}</Math> at resolution, it reverts if any active commitment&rsquo;s expected cumulative value exceeds one third of the maximum representable value. The check is asserted at resolution rather than at commitment, so an overflow-prone commitment can be admitted but cannot be settled &mdash; harmless because the buyer is the only party who can trigger settlement and bears the locked bond as the cost of any admitted commitment.
                     </PaperRun>
                     <PaperRun title="Resolution-loop gas bounding.">
-                        The resolution function performs a fixed-cost block per order (struct hash, SLOAD, two ERC-20 transfers, SSTORE). Empirical measurement shows approximately 14,000 gas per order, giving a ceiling of roughly 2,145 orders resolvable in a single transaction at a 30,000,000-gas block limit. Liveness is conditional on <Math>{"\\text{activeOrderCount} \\times g_{\\text{per-order}} < g_{\\text{block}}"}</Math>; processes that exceed this must be composed via the multi-process pattern (a sub-order in process <Math>{"A"}</Math> rooting a separate process <Math>{"B"}</Math>) rather than packed into one resolvable process.
+                        Resolution performs a fixed-cost block of work per order (a hash, a storage read, two transfers, a storage write), so its total cost grows linearly in the active-order count. Liveness is conditional on <Math>{"\\text{activeOrderCount} \\times g_{\\text{per-order}} < g_{\\text{block}}"}</Math>; a process whose order count would exceed the block-gas limit must be composed via the multi-process pattern (a sub-order in process <Math>{"A"}</Math> rooting a separate process <Math>{"B"}</Math>) rather than packed into one resolvable process.
                     </PaperRun>
                     <PaperRun title="Signature replay across forks.">
-                        The EIP-712 domain separator binds the digest to chain id and verifying contract. OpenZeppelin&rsquo;s <code>_hashTypedDataV4</code> recomputes the domain separator when <code>block.chainid</code> changes, so a chain split that updates chainId on one fork invalidates pre-fork signatures on that fork. A split that does <em>not</em> update chainId leaves both forks sharing the domain separator (a property of the chain identification scheme, addressed at the deployment layer).
+                        The EIP-712 domain separator binds the digest to chain id and verifying contract, and is recomputed when the chain id changes, so a chain split that updates the chain id on one fork invalidates pre-fork signatures on that fork. A split that does <em>not</em> update the chain id leaves both forks sharing the domain separator (a property of the chain identification scheme, addressed at the deployment layer).
                     </PaperRun>
                     <PaperRun title="Cross-contract reentrancy via the attestation surface.">
-                        A malicious clause validator could attempt to call <code>commit</code> or <code>resolveProcess</code> during validation. Two guards apply: the <code>IClauseValidator</code> interface specifies <code>validate</code> as <code>pure</code> (a validator performing external calls violates the interface contract), and the kernel&rsquo;s <code>nonReentrant</code> modifier blocks the nested call regardless. The attestation surface is therefore a denial-of-service vector at worst, not a state-corruption vector.
+                        The attestation surface invokes no external per-clause code: it verifies a merkle inclusion proof of the attested clause section against the signed agreement hash and content-hashes the evidence, calling nothing it does not control. There is therefore no untrusted callee that could attempt to re-enter the kernel during attestation; the state-corruption vector that an external, attacker-supplied validator would introduce is structurally absent. Independently, the kernel&rsquo;s reentrancy mutex would block any nested call into the settlement entry points regardless.
                     </PaperRun>
                 </PaperSubsection>
                 <PaperSubsection title="6.2 Liveness">
@@ -323,40 +305,40 @@ export default function VerifiedSettlementKernelPaper() {
             <PaperSection title="7. Mechanism Composition: The Coordinator Pattern">
                 <p>The kernel&rsquo;s bonding equilibrium is a fixed point. The natural next question &mdash; under what conditions does an external mechanism composed with the kernel preserve the equilibrium? &mdash; is answered, in this implementation, by the <em>coordinator pattern</em>.</p>
                 <FormalBlock label="Proposition 7.1 (Coordinator Pattern — Sufficient Conditions).">
-                    <p>An external mechanism <Math>{"M"}</Math> composed with <code>FigaroCore</code> preserves the kernel&rsquo;s bonding equilibrium if it satisfies:</p>
+                    <p>An external mechanism <Math>{"M"}</Math> composed with the kernel preserves the kernel&rsquo;s bonding equilibrium if it satisfies:</p>
                     <ul className="space-y-1 list-none pl-0 text-sm">
-                        <li>(i) <strong>Read-only kernel access</strong>: <Math>{"M"}</Math> interacts with kernel state via <code>staticcall</code> or event consumption only.</li>
-                        <li>(ii) <strong>Role non-impersonation</strong>: <Math>{"M"}</Math> never calls <code>commit</code> or <code>resolveProcess</code> on behalf of a buyer or seller; signatures are originated by the parties themselves.</li>
+                        <li>(i) <strong>Read-only kernel access</strong>: <Math>{"M"}</Math> interacts with kernel state via read-only calls or event consumption only.</li>
+                        <li>(ii) <strong>Role non-impersonation</strong>: <Math>{"M"}</Math> never commits or resolves on behalf of a buyer or seller; signatures are originated by the parties themselves.</li>
                         <li>(iii) <strong>Bond non-modification</strong>: <Math>{"M"}</Math> holds no kernel bonds and does not interpose between the parties and the bond transfers.</li>
-                        <li>(iv) <strong>No bypass and no off-kernel side-payment</strong>: <Math>{"M"}</Math> does not provide an alternative resolution path or escape from <code>Active</code>, and does not commit (on-chain or off-chain) to award value contingent on the kernel&rsquo;s bond outcome.</li>
+                        <li>(iv) <strong>No bypass and no off-kernel side-payment</strong>: <Math>{"M"}</Math> does not provide an alternative resolution path or escape from the active state, and does not commit (on-chain or off-chain) to award value contingent on the kernel&rsquo;s bond outcome.</li>
                     </ul>
                 </FormalBlock>
                 <p>
                     The second clause of (iv) closes a counterexample worth naming: a mechanism <Math>{"M"}</Math> that custodies its own off-chain collateral and promises parties a side-payment indexed to the kernel&rsquo;s resolved state would satisfy (i)&ndash;(iii) and the first clause of (iv) &mdash; it touches no kernel bonds and never bypasses the kernel state machine &mdash; yet would reintroduce an unbonded actor (the side-payment custodian) into the parties&rsquo; decision calculus. The on-chain bond ratio would no longer be the marginal economic signal, and the equilibrium argument that licenses the proposition would degrade. Excluding off-kernel side-payments explicitly is therefore necessary for the proposition to bear on the equilibrium and not only on the kernel state machine.
                 </p>
                 <p>
-                    Proposition 7.1 is sufficient, not necessary; mechanisms that violate one of (i)&ndash;(iv) may still preserve the equilibrium under additional per-mechanism argument. The four conditions are currently checked by inspection per extension contract rather than by a parametric Certora rule that quantifies over arbitrary <Math>{"M"}</Math> &mdash; a parametric rule of the form &ldquo;<Math>{"M"}</Math> does not call <code>commit</code>&rdquo; for arbitrary <Math>{"M"}</Math> has not yet been authored. The present coverage is by-construction review of each named extension below. We exhibit three instances.
+                    Proposition 7.1 is sufficient, not necessary; mechanisms that violate one of (i)&ndash;(iv) may still preserve the equilibrium under additional per-mechanism argument. The four conditions are currently checked by inspection per extension rather than by a parametric specification rule that quantifies over arbitrary <Math>{"M"}</Math> &mdash; a parametric rule of the form &ldquo;<Math>{"M"}</Math> does not commit&rdquo; for arbitrary <Math>{"M"}</Math> has not yet been authored. The present coverage is by-construction review of each named extension below. We exhibit three instances.
                 </p>
-                <PaperRun title="Dutch auction (src/DutchAuction.sol).">
-                    A descending-price coordination primitive that performs role allocation: who may become the seller for a given root commitment. The auction holds no tokens, custodies no bonds, and never calls <code>commit</code>. The winner subsequently signs an EIP-712 commitment off-chain and the parties execute <code>commit</code> themselves. Conditions (i)&ndash;(iv) hold by construction.
+                <PaperRun title="Descending-price auction.">
+                    A descending-price coordination primitive that performs role allocation: who may become the seller for a given root commitment. The auction holds no tokens, custodies no bonds, and never commits. The winner subsequently signs an EIP-712 commitment off-chain and the parties commit themselves. Conditions (i)&ndash;(iv) hold by construction.
                 </PaperRun>
-                <PaperRun title="Attestation coordinator (src/AttestationCoordinator.sol).">
-                    A unified zero-storage attestation surface, validator-gated per <code>clauseId</code>. Three modes: <code>attestAsSeller</code>, <code>attestAsBuyer</code>, <code>attestViaResolver</code>. Each call verifies role membership against the kernel&rsquo;s <code>ProcessState.rootBuyer</code> (or an <code>IRoleResolver</code> for the resolver path), runs <code>clauseValidator[clauseId].validate(...)</code> on the content, and emits an <code>Attestation</code> event whose <code>contentRef</code> is <Math>{"\\mathrm{keccak256}(\\text{content})"}</Math>. The coordinator never modifies kernel state &mdash; this is the headline Certora rule <code>attestationCannotChangeOrderStatus</code> and its sibling <code>attestationCannotChangeProcessState</code>, both verified exhaustively. The cleanest example of an event-only extension.
+                <PaperRun title="Attestation coordinator.">
+                    A unified zero-storage attestation surface keyed by clause type. Each attestation verifies role membership against the process&rsquo;s root buyer (or a role-resolver for the third-party path), verifies a merkle inclusion proof of the attested clause section against the signed agreement hash, content-hashes the evidence into an attestation event, and invokes no external per-clause code. The coordinator never modifies kernel state &mdash; this is its headline verified guarantee, established for both order status and process state. It is the cleanest example of an event-only extension.
                 </PaperRun>
-                <PaperRun title="Clause and seller registries (src/ClauseRegistry.sol, src/SellerRegistry.sol).">
-                    Permissionless, append-only event-first registries. The clause registry anchors content clauses as <code>keccak256(name)</code> with a URI hash pointing at the off-chain JSON spec. The seller registry is on-chain seller self-registration with a reclaimable deposit. Both compose with the kernel by being visible to readers and not callable by <code>commit</code> or <code>resolveProcess</code>. Conditions (i)&ndash;(iv) hold; both are pure coordination surfaces with no kernel interaction. (The stateless atomic-bind helper <code>src/ClauseRegistrationHelper.sol</code>, which composes <code>registerClause</code> with <code>setValidator</code> in one transaction, satisfies the proposition by the same construction.)
+                <PaperRun title="Clause and seller registries.">
+                    Permissionless, append-only, event-first registries. The clause registry anchors content clauses by a hash of the clause name together with a pointer to the off-chain specification. The seller registry is on-chain seller self-registration with a reclaimable deposit. Both compose with the kernel by being visible to readers and never invoking the kernel&rsquo;s settlement entry points. Conditions (i)&ndash;(iv) hold; both are pure coordination surfaces with no kernel interaction.
                 </PaperRun>
                 <PaperRun title="A note on liability allocation when conditions fail.">
-                    The verification status of Proposition 7.1 matters for legal readers: the four conditions are presently checked by inspection per extension contract, not by a parametric Certora rule quantifying over arbitrary <Math>{"M"}</Math>. If an extension silently violates a condition and a downstream user is harmed when the kernel equilibrium breaks for that composition, the kernel verification in this paper does not extend to the resulting harm. The kernel claims it is correct; it does not claim that every extension built against it is correct, nor that the legal chain from kernel correctness to user remedy is closed.
+                    The verification status of Proposition 7.1 matters for legal readers: the four conditions are presently checked by inspection per extension, not by a parametric specification rule quantifying over arbitrary <Math>{"M"}</Math>. If an extension silently violates a condition and a downstream user is harmed when the kernel equilibrium breaks for that composition, the kernel verification in this paper does not extend to the resulting harm. The kernel claims it is correct; it does not claim that every extension built against it is correct, nor that the legal chain from kernel correctness to user remedy is closed.
                 </PaperRun>
             </PaperSection>
 
             <PaperSection title="8. Conclusion">
                 <p>
-                    We have presented a verified Solidity implementation of the two-mechanism bonded commitment settlement primitive: an ownerless, fee-less kernel of two functions and three mappings, with a four-layer verification stack (TLA⁺, Echidna, Halmos, Certora) that exercises the same invariants from four methodological directions. The coordinator pattern provides a discipline for extending the kernel without weakening its equilibrium.
+                    We have presented a verified implementation of the two-mechanism bonded commitment settlement primitive: an ownerless, fee-less kernel of two entry points and a minimal state footprint, with a four-method verification stack that exercises the same invariants from four methodological directions. The coordinator pattern provides a discipline for extending the kernel without weakening its equilibrium.
                 </p>
                 <PaperRun title="The deeper claim: defense in depth, not a probability bound.">
-                    Beyond the headline numbers, the value of the verification stack is that four methodologically different proofs converge on the same seven properties (token conservation, solvency, bond correctness, status monotonicity, buyer dominance, cumulative monotonicity, atomic resolution). We present this as <em>defense in depth</em>: a bug that survives all four toolchains must be consistent with the bounded-exhaustive exploration of TLA⁺, the property-level random sampling of Echidna, the symbolic-input discharge of Halmos, and the method-quantified SMT rules of Certora. We do not attempt a formal probability bound on residual error: Halmos and Certora both lean on the z3 SMT solver, which breaks the independence assumption any probabilistic bound would require, and the prior distribution over kernel-invariant violations in this toolchain ecosystem is not characterized in the literature. The honest statement is that four methodologically distinct proofs agreeing provides substantially stronger assurance than any one alone, not that the residual probability is bounded above by any particular value. The stack reduces risk; it does not retire it.
+                    The value of the verification stack is that four methodologically different proofs converge on the same body of safety properties (token conservation, solvency, bond correctness, status monotonicity, buyer dominance, cumulative monotonicity, atomic resolution). We present this as <em>defense in depth</em>: a bug that survives all four approaches must be consistent with bounded-exhaustive model checking, property-level random sampling, symbolic-input discharge, and method-quantified specification rules at once. We do not attempt a formal probability bound on residual error: the symbolic and specification approaches both lean on a common SMT solver, which breaks the independence assumption any probabilistic bound would require, and the prior distribution over kernel-invariant violations in this toolchain ecosystem is not characterized in the literature. The honest statement is that four methodologically distinct proofs agreeing provides substantially stronger assurance than any one alone, not that the residual probability is bounded above by any particular value. The stack reduces risk; it does not retire it.
                 </PaperRun>
             </PaperSection>
         </PaperLayout>

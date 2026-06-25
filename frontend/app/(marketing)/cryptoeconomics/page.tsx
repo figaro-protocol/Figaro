@@ -50,14 +50,14 @@ export default function Cryptoeconomics() {
                 title="Eight disciplines, one substrate."
                 lead={
                     <>
-                        Voshmgir &amp; Zargham frame cryptoeconomics as eight disciplines, each reading the same substrate in its own vocabulary. This page gathers all of it: the disciplines and the papers organized along them, the composability working groups that build above the kernel, and how the work is funded.
+                        Voshmgir &amp; Zargham frame cryptoeconomics as eight disciplines, each reading the same substrate in its own vocabulary. Because the substrate is open-world &mdash; permissionless registries, and RPGF that rewards a contribution by how much it helps the network evolve &mdash; the working groups around these disciplines self-form, build, and fund themselves without anyone&apos;s leave. This page gathers all of it: the disciplines, the papers that seed them, the composability working groups that build above the kernel, and how the work is funded.
                     </>
                 }
             />
 
             <MarketingSection title="Eight disciplines, eight lenses.">
                 <p className="text-sm text-ink-body leading-relaxed mb-8">
-                    The disciplinary list anchors to Voshmgir &amp; Zargham, <em>Foundations of Cryptoeconomic Systems</em> (2024) &mdash; eight disciplines, fixed. Each frames the substrate, carries its own papers &mdash; collected on the <Link href="/papers" className="underline">Papers</Link> page &mdash; and runs its own working group. Implementation work &mdash; clause authoring, contract development, assembly composition &mdash; organizes at <Link href="/builders" className="underline">/builders</Link>.
+                    The disciplinary list anchors to Voshmgir &amp; Zargham, <em>Foundations of Cryptoeconomic Systems</em> (2024) &mdash; eight disciplines, fixed: a shared set of lenses, not a roster of teams. Each frames the substrate and carries its own papers, collected on the <Link href="/papers" className="underline">Papers</Link> page; a working group can form around any of them &mdash; anywhere, and without permission. The dedicated channels below are seeds and invitations, not gates or membership. Implementation work &mdash; clause authoring, contract development, assembly composition &mdash; organizes at <Link href="/builders" className="underline">/builders</Link>.
                 </p>
                 <div className="space-y-10">
                     {GROUPS_REGISTRY.map((g) => (

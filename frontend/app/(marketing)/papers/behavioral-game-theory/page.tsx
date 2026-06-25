@@ -86,7 +86,7 @@ export default function BehavioralGameTheoryPaper() {
 
             <PaperSection title="2. The Settlement Primitive">
                 <p>
-                    The bonded primitive has a formal mechanism-design treatment, and its Solidity implementation is verified through TLA⁺, Halmos symbolic execution, Echidna property-based fuzzing, and Certora specification rules. We summarize the features the present paper uses.
+                    The bonded primitive has a formal mechanism-design treatment and a machine-checked implementation. We summarize the features the present paper uses.
                 </p>
                 <PaperRun title="Asymmetric bonding (Mechanism 1).">
                     For a transaction with payment <Math>{"P > 0"}</Math> and cumulative upstream value <Math>{"G \\geq P"}</Math>, the buyer locks <Math>{"2P"}</Math> and the seller locks <Math>{"2G"}</Math>. The payoff matrix in the two-party game is:

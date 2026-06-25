@@ -7,7 +7,7 @@ import { GROUPS_REGISTRY } from "@/lib/shared/groupsRegistry";
 export const metadata: Metadata = {
     title: "Papers — Figaro Protocol",
     description:
-        "The Figaro paper corpus, organized along the eight cryptoeconomic disciplines. Each paper reads in the browser and exports to PDF from the page.",
+        "Discussion starters for the working groups that form, permissionlessly, anywhere around the Figaro substrate — the paper corpus organized along the eight cryptoeconomic disciplines. Each reads in the browser and exports to PDF.",
 };
 
 export default function Papers() {
@@ -19,7 +19,7 @@ export default function Papers() {
                 title="Papers."
                 lead={
                     <>
-                        The corpus, organized along the eight cryptoeconomic disciplines &mdash; each paper translating the bonded settlement primitive into one discipline&apos;s vocabulary. Each paper reads in the browser, with server-rendered math, and exports to PDF from the page. The disciplines themselves, the working groups, and how the work is funded sit at{" "}
+                        Discussion starters, not doctrine. Each paper reads the bonded settlement primitive through one of the eight cryptoeconomic disciplines &mdash; a seed for the working groups that form around it, anywhere and without permission, to extend it, contest it, or fork it into an implementation of their own. Each reads in the browser, with server-rendered math, and exports to PDF. The disciplines, the self-forming groups, and how the work is funded sit at{" "}
                         <Link href="/cryptoeconomics" className="text-ink-heading font-medium hover:underline">
                             cryptoeconomics
                         </Link>
@@ -27,6 +27,12 @@ export default function Papers() {
                     </>
                 }
             />
+
+            <MarketingSection title="A different way to coordinate.">
+                <p className="text-sm text-ink-body leading-relaxed max-w-2xl">
+                    Figaro makes cooperation the dominant strategy between strangers and lets institutions dissolve into transaction-scoped processes &mdash; a genuinely different way to coordinate. It is hard to see at first, because the assumptions it sets aside are the ones nearly everyone arrives with: that durable coordination needs a firm, fixed roles, or a trusted party in the middle. Bonded commitments make those structurally unnecessary. The corpus exists to ease the crossing &mdash; each paper meets a reader inside one discipline&rsquo;s vocabulary and carries them from the inherited model to the bonded one. Not to settle the question, but to start the conversation a working group takes from there.
+                </p>
+            </MarketingSection>
 
             <MarketingSection title="By discipline." bottomPad="wide">
                 <div className="space-y-10">
