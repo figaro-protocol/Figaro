@@ -1,12 +1,22 @@
 # Clause Validation Architecture
 
-Figaro enforces clause-content correctness in three layers. All three layers
-parse the same canonical JSON spec format and apply the same validation
-rules. **A new clause is not "done" until all three layers ship in lockstep.**
+Figaro validates clause content in ONE place: an off-chain TypeScript layer
+(`@figaro/core/clauses`, "Layer A") that parses the canonical JSON spec and
+checks content against it. There is **no on-chain content validation** — the
+chain merkle-binds each attestation to its signed agreement and content-hashes
+the evidence (`AttestationCoordinator`), but validates no content shape.
+Well-formedness is the SDK's job (honest authors) plus a read-time concern
+(downstream forums reject garbage). A never-seen clause is attestable with
+**zero per-clause on-chain code** — open-world by construction. (The on-chain
+per-clause validators, the Rust/SP1 prover mirror, and the batch verifier were
+deleted in the proof-apparatus teardown; what remains is Layer A + on-chain
+registration.)
 
-CLAUDE.md keeps the lockstep principle; this file owns the full table, the architectural detail for each layer, and the adding-a-clause checklist below.
+CLAUDE.md keeps the lockstep principle (spec ↔ SDK ↔ on-chain registration);
+this file owns the full clause table, the architectural detail, and the
+adding-a-clause checklist below.
 
-## Layer A — Client-side (TypeScript)
+## Layer A — the off-chain validation layer (TypeScript)
 
 `@figaro/core/clauses` subpath:
 - `parseClauseSpec(json)` — meta-clause validator (closed subset of JSON Schema:
@@ -16,112 +26,28 @@ CLAUDE.md keeps the lockstep principle; this file owns the full table, the archi
   a parsed spec. Closed clauses: rejects unknown fields. Per-stage overrides
   via `spec.stages[stage]`.
 - A single **generic `encodeContentFromSpec`** (`sdk/src/clauses/encode.ts`) — the one
-  spec-driven bridge between TS objects and the ABI bytes the on-chain validator decodes.
-  It reads the field-to-position mapping FROM the parsed spec, for ANY clause. The former
-  per-clause encoders (`encodeCommerceContent`, `encodeGeoContent`, … one per clause) were
-  **DELETED** — encoding is generic, not per-clause. Topology has no encoder — it is
-  agreement-only, with no runtime attestation.
+  spec-driven content encoder, reading the field-to-position mapping FROM the parsed spec
+  for ANY clause. The former per-clause encoders (`encodeCommerceContent`, `encodeGeoContent`,
+  … one per clause) were **DELETED** — encoding is generic, not per-clause. Topology has no
+  encoder — it is agreement-only, with no runtime attestation.
 
-Frontend wiring: `useClauseValidator(clauseId)` hook + `clauseSpecSource.ts`
-preloads built-in specs and lazy-fetches remote ones.
+Frontend wiring: `clauseSpecSource.ts` loads each spec live from `ClauseRegistry`
+→ IPFS (no bundled copy); form gates and previews validate against the parsed spec.
 
-## Layer B — Rust (SP1 prover-integrated)
+## On-chain anchoring — registration + merkle binding (no content validation)
 
-`prover/clause/` — `figaro-clause` crate. Mirrors Layer A byte-for-byte
-(`parse_clause_spec` + `validate_content`). Two consumer surfaces:
+There is **no on-chain content validation**. Two on-chain touch points remain:
 
-1. **SP1 zkVM prover guest program** — `figaro-kernel`'s `apply_batch`
-   gates `AttestAsSeller` / `AttestAsBuyer` operations through
-   `validate_attestation_content` when the op carries an
-   `AttestationContentProof { content_json, inclusion_proof,
-   section_data }`. Five gates run inside the proof:
-     1. The op's `clause_id` resolves to a canonical spec compiled into
-        the prover (`figaro_clause::embedded_spec_json`). The spec is
-        looked up by `clause_id`, never supplied by the caller, so the
-        constraint set is covered by the program verification key.
-     2. `validate_content(content_json, embedded_spec, stage)` returns
-        `Ok` — the structured form satisfies the clause.
-     3. `encode_content_for_clause(clauseId, content_json)` derives
-        canonical ABI bytes (byte-for-byte equivalent to viem's
-        `encodeAbiParameters` in `sdk/src/clauses/encode.ts`). This is
-        the **cross-form binding** — the bytes Layer C decodes are
-        derived *from* the JSON Layer B validates, so they describe the
-        same content by construction. No separate `content_bytes` field
-        exists; it would have allowed the caller to disagree with
-        `content_json` and is impossible.
-     4. `keccak256(derived_bytes) == content_ref` — binds the canonical
-        bytes to the on-chain commitment value.
-     5. **Agreement inclusion.** For a seller attestation, the clause's
-        section is a clause of the order's signed agreement: a
-        sorted-pair Merkle `inclusion_proof` verifies the section leaf —
-        `keccak256(clauseId ++ keccak256(sectionData))` — against the
-        role commitment's `agreement_hash`. A cross-checking (cross-checked)
-        clause's committed `sectionData` is the ABI content form, so
-        `keccak256(sectionData) == content_ref` and the leaf needs no
-        extra input; a non-cross-checking (runtime) clause carries its
-        canonical-JSON `section_data` in the proof. Buyer attestations
-        skip this gate — a buyer's evidence is the kernel event log, not
-        an agreement clause.
-   `content_proof` is `Option`-typed. `None` is permitted only for
-   content-opaque attestations (`content_ref == 0`) and for clauses the
-   kernel has no embedded spec for; an attestation with a non-zero
-   `content_ref` under a runtime-attestable protocol clause MUST carry a
-   proof, else the gate returns `ContentProofRequired`.
-
-2. **Off-chain sequencer** — `figaro_sequencer::mempool::Mempool`
-   mirrors the kernel gate at submission time via
-   `pre_check_attest_content`. The same gates run on every
-   attestation that carries a `content_proof`; any failure surfaces as
-   a `submit()` rejection with a human-readable reason and the op is
-   never enqueued. This means the prover never spends cycles on
-   batches the kernel would reject. Signature-only pre-checks remain
-   for ops that opt out of `content_proof`.
-
-Conformance is locked across the prover test crates:
-
-- `prover/clause/tests/conformance.rs` — spec-parse + content-validation
-  conformance against `sdk/tests/clauses/validate.test.ts`, every shipped
-  protocol clause's parse, and a check that all 16 embedded canonical
-  specs parse and resolve by clauseId.
-- `prover/clause/tests/encode_conformance.rs` — per-clause
-  canonical-encoder output is byte-for-byte equal to viem's
-  `encodeAbiParameters` output for the same input (covers the distinct
-  encoder shapes across the 16 runtime-attestable clauses). Test vectors
-  were captured from the TypeScript encoders.
-- `prover/lib/tests/parity.rs` — kernel-integration tests
-  (`attest_as_seller_with_valid_content_proof_passes`,
-  `_content_hash_mismatch_fails`, `_invalid_content_fails`,
-  `_unsupported_clause_encoder_fails`,
-  `attest_as_seller_under_protocol_clause_requires_content_proof`,
-  `_with_wrong_inclusion_proof_fails`,
-  `attest_as_seller_non_cross_checking_clause_requires_section_data`)
-  exercising every gate inside `apply_batch`, Gate 5 included.
-- `prover/sequencer/tests/sequencer.rs` — mempool-boundary tests
-  (`mempool_accepts_attest_with_valid_content_proof`,
-  `_rejects_content_hash_mismatch`, `_rejects_invalid_content`,
-  `_rejects_unsupported_clause_encoder`,
-  `mempool_rejects_missing_content_proof_for_protocol_clause`,
-  `mempool_rejects_wrong_inclusion_proof`,
-  `mempool_rejects_missing_section_data`)
-  verifying the gate trips at submission time.
-
-The user-supplied `pattern` field uses the `regex` crate; the four
-canonical formats (bytes32-hex, address-hex, bytes-hex, iso-datetime)
-use hand-rolled character matching to avoid regex-engine cost in the
-zkVM hot path. The per-clause ABI encoders use `alloy-dyn-abi` for
-runtime-typed encoding.
-
-## Layer C — On-chain (Solidity)
-
-`AttestationCoordinator.setValidator(clauseId, validator)` registers an
-`IClauseValidator` for a clauseId — **permissionless, first-write-wins**.
-Once set, the binding is immutable (no admin, no rug-pull). Every
-`attest*` call routes through the registered validator before emitting
-the `Attestation` event. A clause with no validator cannot be attested
-under (`ValidatorNotSet` revert).
-
-Per-clause validators live in `src/clauseValidators/` and ABI-decode
-content (no on-chain JSON parsing). They are pure / view contracts.
+- **`ClauseRegistry.registerClause(clauseId, version, contentHash, metadataURI, family)`**
+  — permissionless, first-write-wins, immutable. It anchors the clauseId, the spec's
+  IPFS locator, and the spec's content hash. No validator is registered or bound; a
+  registered clause is immediately attestable.
+- **`AttestationCoordinator`** merkle-binds each attestation: it verifies an OZ-style
+  inclusion proof of `leaf = keccak256(clauseId ++ keccak256(sectionData))` against the
+  signed `agreementHash`, content-hashes the evidence (`contentRef = keccak256(content)`),
+  and emits `Attestation`. It validates **no content shape** — an attestation whose clause
+  was not committed at signing cannot land (the proof won't open), but any committed clause
+  attests with zero per-clause on-chain code.
 
 ## Clause-spec format
 
@@ -132,28 +58,28 @@ copy — every consumer loads each spec from `ClauseRegistry` → IPFS at runtim
 
 ## The 17 protocol clauses
 
-16 runtime-attestable clauses (each with a Layer C validator) plus the
-agreement-only `figaro-topology-v1`.
+16 runtime-attestable clauses (content validated off-chain by Layer A; no
+on-chain validator) plus the agreement-only `figaro-topology-v1`.
 
 | clauseId | What it carries | Attestation surface |
 |---|---|---|
-| `figaro-topology-v1` | DAG lineage (parent order hashes) | **Agreement-only** (no runtime validator) |
-| `figaro-commerce-v1` | Currency, payment, line items | Layer A + C |
-| `figaro-geo-v1` | Origin / destination geohash + mass + volume | Layer A + C |
-| `figaro-class-of-service-v1` | Class of service — standard / express / fragile / cold-chain (single-select) | Layer A + C |
-| `figaro-modalities-v1` | The buyer's request — consume-onsite / pickup / delivery / virtual (single-select) | Layer A + C |
-| `figaro-coordination-v1` | How a delivery's courier edge is arranged — seller-assigned / buyer-assigned / dutch-auction (single-select, composes on the delivery parent order) | Layer A + C |
-| `figaro-handoff-v1` | Hand-off point — where the physical exchange happens (proximity-policy nests under it) | Layer A + C |
-| `figaro-ghg-v1` | GHG accounting methodology (free-form `standard` string) + scope (cross-checked) | Layer A + C |
-| `figaro-ghg-measurement-v1` | Runtime grams CO2e (runtime) | Layer A + C |
-| `figaro-proximity-policy-v1` | Required detection band committed at agreement signing (cross-checked) | Layer A + C |
-| `figaro-proximity-proof-v1` | Per-handoff nonce + signed witness payload at runtime (runtime) | Layer A + C |
-| `figaro-offset-policy-v1` | Carbon-offset provider set committed at agreement signing (cross-checked) | Layer A + C |
-| `figaro-merchant-process-v1` | Merchant per-role event enum (sovereign log) | Layer A + C |
-| `figaro-courier-process-v1` | Courier per-role event enum (sovereign log) | Layer A + C |
-| `figaro-arbitration-kleros-v1` | Decentralized off-chain arbitration via Kleros (subcourt + minimum jurors). Provider-specific; sister `figaro-arbitration-<provider>-v1` clauses would cover future ODR providers | Layer A + C |
-| `figaro-applicable-law-v1` | State / ADR / traditional-jurisdiction recourse layer (applicable law + forum + language). Provider-agnostic. Composes with arbitration clauses | Layer A + C |
-| `figaro-consent-v1` | Cryptographic acceptance of an off-chain document (hash + version + title) — supports beta consent, ToS acceptance, governance vote receipts, etc. (`consent` family) | Layer A + C |
+| `figaro-topology-v1` | DAG lineage (parent order hashes) | **Agreement-only** (no runtime attestation) |
+| `figaro-commerce-v1` | Currency, payment, line items | Layer A (off-chain) |
+| `figaro-geo-v1` | Origin / destination geohash + mass + volume | Layer A (off-chain) |
+| `figaro-class-of-service-v1` | Class of service — standard / express / fragile / cold-chain (single-select) | Layer A (off-chain) |
+| `figaro-modalities-v1` | The buyer's request — consume-onsite / pickup / delivery / virtual (single-select) | Layer A (off-chain) |
+| `figaro-coordination-v1` | How a delivery's courier edge is arranged — seller-assigned / buyer-assigned / dutch-auction (single-select, composes on the delivery parent order) | Layer A (off-chain) |
+| `figaro-handoff-v1` | Hand-off point — where the physical exchange happens (proximity-policy nests under it) | Layer A (off-chain) |
+| `figaro-ghg-v1` | GHG accounting methodology (free-form `standard` string) + scope (cross-checked) | Layer A (off-chain) |
+| `figaro-ghg-measurement-v1` | Runtime grams CO2e (runtime) | Layer A (off-chain) |
+| `figaro-proximity-policy-v1` | Required detection band committed at agreement signing (cross-checked) | Layer A (off-chain) |
+| `figaro-proximity-proof-v1` | Per-handoff nonce + signed witness payload at runtime (runtime) | Layer A (off-chain) |
+| `figaro-offset-policy-v1` | Carbon-offset provider set committed at agreement signing (cross-checked) | Layer A (off-chain) |
+| `figaro-merchant-process-v1` | Merchant per-role event enum (sovereign log) | Layer A (off-chain) |
+| `figaro-courier-process-v1` | Courier per-role event enum (sovereign log) | Layer A (off-chain) |
+| `figaro-arbitration-kleros-v1` | Decentralized off-chain arbitration via Kleros (subcourt + minimum jurors). Provider-specific; sister `figaro-arbitration-<provider>-v1` clauses would cover future ODR providers | Layer A (off-chain) |
+| `figaro-applicable-law-v1` | State / ADR / traditional-jurisdiction recourse layer (applicable law + forum + language). Provider-agnostic. Composes with arbitration clauses | Layer A (off-chain) |
+| `figaro-consent-v1` | Cryptographic acceptance of an off-chain document (hash + version + title) — supports beta consent, ToS acceptance, governance vote receipts, etc. (`consent` family) | Layer A (off-chain) |
 
 `figaro-ghg-v1` is a single disclosure clause whose accounting methodology is
 a **free-form `standard` string** — any methodology, existing or future ("GHG
@@ -170,29 +96,27 @@ proof carries the per-handoff nonce + signed witness payload at runtime
 (runtime, fresh per attestation). Off-chain consumers verify
 `proof.band == policy.band` when the policy section is present.
 
-`figaro-topology-v1` is the one **agreement-only** clause — no Layer C
-validator and no SP1 encoder. That is by design: an order's parent edges are
-fixed at agreement-signing time and are never re-asserted as a runtime
-attestation, so there is no per-event content for a validator to gate. It is
+`figaro-topology-v1` is the one **agreement-only** clause — committed at
+agreement-signing time, never re-asserted as a runtime attestation. It is
 *not* off-chain-only, though. Like every agreement section, the topology
 section is a merkle leaf under the on-chain `agreementHash`, inclusion-provable
 via OpenZeppelin `MerkleProof` (`computeSectionLeaf` / `buildSectionInclusionProof`
-in `frontend/lib/core/agreement.ts`). "No runtime validator" is not "no
+in `frontend/lib/core/agreement.ts`). "No runtime attestation" is not "no
 on-chain verification" — topology is verified by inclusion proof against the
-signed agreement, not by an attestation validator. The DAG itself is
-reconstructed off-chain by indexers reading topology sections from the signed
-agreement.
+signed agreement. The DAG itself is reconstructed off-chain by indexers reading
+topology sections from the signed agreement.
 
 ## When something deserves a clause — payload vs anchor
 
 A clause is an *anchored artifact family*: an off-chain definition whose
 meaning must stay stable across parties, tools, and time, anchored on-chain by
-a minimal reference point — `clauseId` + `uriHash` + `family` in
-`ClauseRegistry`, plus the Layer C validator. Not every value that flows
-through an order deserves one. The `family` (e.g. `keccak256("geo")`) is the
-unit the RPGF SP1 program weights — Tier-1 families are deploy-frozen, but
-new clauses register under existing families permissionlessly and inherit
-the weight without any FIG-system redeployment.
+a minimal reference point — `clauseId` + `contentHash` + `metadataURI` +
+`family` in `ClauseRegistry`. Not every value that flows through an order
+deserves one. The `family` (e.g. `keccak256("geo")`) is the unit RPGF weights
+by category; new clauses register under existing families permissionlessly and
+inherit the category's standing. (The on-chain RPGF distribution mechanism was
+removed in the proof-apparatus teardown; the family-weighting rationale survives
+in `docs/v5/PUBLIC_GRAPH_MODEL.md`.)
 
 Separate two kinds of data:
 
@@ -219,9 +143,8 @@ obligations, disclosures, verifiable reference integrity — not in possibility.
 
 Clauses are one artifact family among several (sellers, assemblies); each
 family carries its own anchor and never nests inside another — see CLAUDE.md
-"Separation of Concerns — Artifact Families". Clause identity is append-only
-(Layer C above): new meaning is a new `clauseId`, never a mutation of an old
-one.
+"Separation of Concerns — Artifact Families". Clause identity is append-only:
+new meaning is a new `clauseId`, never a mutation of an old one.
 
 ## Composition and decomposition — when to merge or split clauses
 
@@ -261,47 +184,15 @@ to undo once `clauseId` is bound on chain.
 
 ## Adding a new clause — checklist
 
+There is **no on-chain validator and no Rust/prover mirror** — both were deleted in
+the proof-apparatus teardown. A new clause is a spec + off-chain encoder + registration.
+
 1. JSON spec in `clauses/<clause>.json` (the canonical Layer-A spec / `ClauseRegistry` seed data — nothing bundles a copy).
-2. `populate-clauses.mjs` pins it to IPFS + anchors `(clauseId, contentHash, metadataURI)` on `ClauseRegistry`; the frontend loads it chain→IPFS via `clauseSpecSource` (no frontend copy, no preload).
-3. SDK content encoder in `sdk/src/clauses/encode.ts` + export from `index.ts`.
-4. SDK examples test in `sdk/tests/clauses/examples.test.ts`.
-5. Solidity `Foo<Clause>V1Validator.sol` in `src/clauseValidators/`. Validate function MUST be declared `external pure override` (no external state reads, no `block.*`/`tx.*`, no external calls). Use `bytes32 public constant override clauseId = keccak256("...")` so the clauseId is a compile-time literal — `immutable` constructor-set clauseIds force the override to `view` and forfeit the EVM-enforced determinism guarantee. See `IClauseValidator` NatSpec for the rationale.
+2. `populate-clauses.mjs` pins it to IPFS + anchors `(clauseId, version, contentHash, metadataURI, family)` on `ClauseRegistry`; the frontend loads it chain→IPFS via `clauseSpecSource` (no frontend copy, no preload).
+3. **No per-clause encoder is needed** — `sdk/src/clauses/encode.ts` (`encodeContentFromSpec`) is the single generic, spec-driven encoder for ANY clause. A new clause adds a spec, not a code path.
+4. SDK conformance/examples test reads the new spec from `clauses/` as a fixture (e.g. `sdk/tests/clauses/examples.test.ts`); the off-chain validator (`validateContent`) is generic and needs no per-clause case.
+5. Registration in `script/Deploy.s.sol` + `script/DeployMainnet.s.sol`: `registerClause(clauseId, version, contentHash, metadataURI, family)`; the `family` is `keccak256(categories[0])` from the spec. No `setValidator` step exists — registration alone makes the clause attestable. No frontend registration step either: the drawer, `/clauses` inventory, and every surface read the clause set live from `ClauseRegistry` events and the spec from IPFS (`clauseSpecSource`); titles, articles, tiers, and families come from the spec.
 
-   **When to add an seller-process clause vs not** (kernel-participant vs off-chain-seller principle): an off-chain seller needs its own process clause if and only if its state transitions are off-chain. Off-chain sellers (merchants, couriers, locker sellers, etc.) need a process clause because their state transitions happen in physical reality and need a sovereign event log to be tamper-proof evidence. Kernel participants — most importantly the **buyer**, who acts via `commit` and `resolveProcess` — do NOT need a process clause; their evidence IS the kernel event log itself. `merchant-process` and `courier-process` are sovereign-log primitives in this sense. Don't add `figaro-buyer-process-v1` — it would duplicate kernel events. Do add a process clause for any new off-chain seller whose internal events need to be on-chain attestable. The clause-category taxonomy carries this as the `seller-process` category (see `frontend/lib/shared/clauseCategories.ts`).
-6. Foundry test in `test/clauseValidators/`.
-7. Rust mirror at Layer B is generic (`prover/clause/`). A new clause does
-   NOT require a new Rust file — Layer B parses any spec at runtime from
-   its JSON. Adding a per-clause content-encoder helper to Layer B is only
-   needed when a downstream Rust consumer wants strongly-typed content
-   (the SP1 prover guest, for instance, can pass through serde_json::Value).
-8. No frontend registration step remains — the drawer, `/clauses` inventory, and every other surface read the clause set live from on-chain `ClauseRegistry` events and the spec from IPFS (`clauseSpecSource`); titles, articles, tiers, and families all come from the spec itself. (The former `clauseCategories.ts` registry was deleted in the open-world de-hardcode.) The clause appears everywhere once step 9's on-chain registration lands.
-9. `registerClause(clauseId, version, uriHash, family)` + `setValidator(clauseId, validator)` calls added to `script/Deploy.s.sol` and `script/DeployMainnet.s.sol`; regression covered by `test/DeployScriptTest.t.sol`. The `family` is `keccak256(primaryCategory)` from the spec's `categories[0]` (Tier-1 boost goes to `keccak256("geo")` and `keccak256("coordination")`); the same `family` keys the RPGF Tier-1 weighting in `prover/rpgf/src/formula.rs` — Tier-1 families are deploy-frozen, but a new clause joining an existing family inherits the weight permissionlessly. (Bootstrap-time atomicity: the deploy scripts inline clause registration + validator binding within a single broadcast transaction. Post-deploy third-party clauses should use `ClauseRegistrationHelper.registerClauseAndValidator(...)` instead — see "Third-party clause deployment" below.)
+**When to add a seller-process clause vs not** (kernel-participant vs off-chain-seller principle): an off-chain seller needs its own process clause if and only if its state transitions are off-chain. Off-chain sellers (merchants, couriers, locker sellers, etc.) need a process clause because their state transitions happen in physical reality and need a sovereign event log to be tamper-proof evidence. Kernel participants — most importantly the **buyer**, who acts via `commit` and `resolveProcess` — do NOT need a process clause; their evidence IS the kernel event log itself. `merchant-process` and `courier-process` are sovereign-log primitives in this sense. Don't add a `figaro-buyer-process` clause — it would duplicate kernel events.
 
-If any step is skipped the validator gate either rejects all attestations under that clauseId
-(missing on-chain validator) or silently accepts content the spec would have rejected (Layer A
-gap). Maintain lockstep.
-
-## Third-party clause deployment — atomic register+bind required
-
-`ClauseRegistry.registerClause` and `AttestationCoordinator.setValidator` are
-independent permissionless writes. The 16 reference figaro-* clauses are bound
-inside a single transaction by `script/Deploy.s.sol:_deployAndRegisterValidators`,
-so no front-running window exists at genesis.
-
-For any **third-party clause** registered post-deploy, the clause author MUST
-perform both writes in a single transaction. The recommended path is
-**`ClauseRegistrationHelper.registerClauseAndValidator(clauseId, version, uriHash, family, validator)`**
-— a stateless, no-admin helper contract deployed alongside the protocol that
-composes the two underlying public calls atomically. Alternative paths: a
-custom deploy script, or a wallet multicall covering both writes.
-
-Two separate transactions exposes a window where any address can `setValidator`
-under the new clauseId with a malicious validator that self-attests the correct
-`clauseId()`, capturing the binding permanently (binding is immutable
-first-write-wins). The validator's `validate()` logic is not constrained at
-binding time, so a self-attesting malicious validator passes
-`InvalidValidatorBinding` and becomes the gate forever.
-
-This is deployment discipline, not a protocol gap. See
-`docs/v5/DESIGN_DECISIONS.md` #13 for the full rationale and the rejection of
-admin-based mitigations.
+If the spec and the on-chain registration drift (a spec field the registered `contentHash` doesn't match, or a registered clauseId with no pinned spec) the clause won't surface — keep them in lockstep.

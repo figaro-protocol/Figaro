@@ -54,7 +54,7 @@ export default function Composability() {
                     <div id="tier-1" className="border-l-2 border-default pl-6 scroll-mt-24">
                         <dt className="text-base font-semibold text-ink-heading mb-1">Tier 1 — Compose against existing primitives</dt>
                         <dd className="text-ink-body leading-relaxed">
-                            An assembly is a configuration artifact that binds the deployed kernel, attestation coordinator, clause registry, and validators in force. No new on-chain code; the assembly is the only authored artifact. The equilibrium is unchanged because nothing new is deployed.
+                            An assembly is a configuration artifact that binds the deployed kernel, attestation coordinator, and clause registry. No new on-chain code; the assembly is the only authored artifact. The equilibrium is unchanged because nothing new is deployed.
                         </dd>
                     </div>
                     <div id="tier-2" className="border-l-2 border-default-strong pl-6 scroll-mt-24">
@@ -114,12 +114,12 @@ export default function Composability() {
                     <li>
                         <Link href="/spec" className="text-ink-heading font-medium hover:underline">Specifications</Link>
                         {" — "}
-                        the canonical on-chain surface: kernel, attestation coordinator, clause registry, validators in force, token, batch verifier.
+                        the canonical on-chain surface: kernel, attestation coordinator, clause registry, token.
                     </li>
                     <li>
                         <Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>
                         {" — "}
-                        the three-layer validation architecture and the reference clause set.
+                        the off-chain clause-validation architecture and the reference clause set.
                     </li>
                     <li>
                         <Link href="/integrate" className="text-ink-heading font-medium hover:underline">Integrate</Link>

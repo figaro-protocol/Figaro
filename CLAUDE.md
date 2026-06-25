@@ -252,7 +252,7 @@ Adapted from `andrej-karpathy-skills` CLAUDE.md, minus its YAGNI bullets (which 
 
 ### Before Raising Any Finding
 
-Read `DESIGN_DECISIONS.md` before flagging anything as a vulnerability. It documents 14 patterns that look like vulnerabilities but are correct by design. Common false positives: missing lifecycle guards, resolved-process re-entry, cross-order attestation, buyer==seller, no admin/owner, no stuck-fund recovery.
+Read `DESIGN_DECISIONS.md` before flagging anything as a vulnerability. It documents 12 patterns that look like vulnerabilities but are correct by design. Common false positives: missing lifecycle guards, resolved-process re-entry, cross-order attestation, buyer==seller, no admin/owner, no stuck-fund recovery.
 
 ### The Core Question for Any Proposed Change
 
@@ -348,7 +348,7 @@ This is the exhaustive whitelist. Files not listed are deletion candidates at ev
 
 **Core theory:** `VISION.md` (post-firm economy, Coasean collapse, token denomination), `THEORY.md` (game-theoretic derivation of the six protocol properties).
 
-**Security & verification:** `DESIGN_DECISIONS.md` (14 intentional patterns that look like vulnerabilities — **read before auditing**), `VERIFICATION_MAP.md` (invariant → code → test → formal layer), `RELEASE_READINESS.md` (gate criteria, frozen Solidity surface for external audit), `SCALING_STRATEGY.md` (proof-based scaling — stale, pending review).
+**Security & verification:** `DESIGN_DECISIONS.md` (12 intentional patterns that look like vulnerabilities — **read before auditing**), `VERIFICATION_MAP.md` (invariant → code → test → formal layer), `RELEASE_READINESS.md` (gate criteria, frozen Solidity surface for external audit), `SCALING_STRATEGY.md` (proof-based scaling — stale, pending review).
 
 **Architecture:** `ARCHITECTURE.md` (whole-system stack + the `clause.block` seam), `OPEN_WORLD.md` (open-world paradigm + composition model + semantic layer), `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md`, `LEXICON.md` (canonical-name-per-tier grid; documented half of the lexicon, enforced by `scripts/lint-architecture-lexicon.sh`).
 

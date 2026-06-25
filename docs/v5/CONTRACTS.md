@@ -12,7 +12,7 @@ This file is the canonical inventory. CLAUDE.md indexes it; agents must not refe
 - 2 external functions: `commit` (unified dual-signed), `resolveProcess`
 - 3 mappings: `processes` (ProcessState), `orderStatus` (uint8), `orderProcessId` (bytes32)
 - EIP-712 dual-signed commitments; asymmetric bonding; direct transfer at resolution
-- Covered by Foundry unit tests, 7 Echidna properties (EchidnaFuzzer), 7 Halmos symbolic proofs (HalmosFigaroCore), and 6 Certora CVL specs across the protocol (FigaroCore, AttestationCoordinator, TokenOpsVerification, BatchVerifierTokenOps, FigToken, RpgfMinter — the StagedMerkleAirdrop Halmos pass + Certora spec were retired alongside the contract; see `docs/v5/VERIFICATION_MAP.md` for the current per-contract verification coverage)
+- Covered by Foundry unit tests, 7 Echidna properties (EchidnaFuzzer), 7 Halmos symbolic proofs (HalmosFigaroCore), and 4 Certora CVL specs across the protocol (FigaroCore, AttestationCoordinator, TokenOpsVerification, FigToken — see `docs/v5/VERIFICATION_MAP.md` for the current per-contract verification coverage)
 
 **`src/CommitmentTypes.sol`** — EIP-712 typed structs and hash functions.
 Single `Commitment` struct for both root and sub-orders; `processId` zero for root.
@@ -20,76 +20,51 @@ Single `Commitment` struct for both root and sub-orders; `processId` zero for ro
 ## Attestation & Clause
 
 **`src/AttestationCoordinator.sol`** — Unified zero-storage attestation,
-validator-gated, receipt-bound to the signed `agreementHash`. Three modes:
+**merkle-only**, receipt-bound to the signed `agreementHash`. Three modes:
 - `attestAsSeller(Commitment role, Commitment target, bytes32 clauseId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content)` — role + target commitments; pass the same commitment twice for same-order attestation, or distinct commitments for cross-order within a process.
 - `attestAsBuyer(Commitment target, bytes32 clauseId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content)` — caller must equal `target.buyer` (which equals rootBuyer by commit invariant).
 - `attestViaResolver(Commitment target, ...)` — caller authorized by `IRoleResolver(target.seller).isAuthorized`.
 
 For every call, the coordinator verifies an OZ-style merkle inclusion proof of
 `leaf = keccak256(clauseId || keccak256(sectionData))` against
-`target.agreementHash` before invoking the registered validator, then emits
+`target.agreementHash`, then emits
 `Attestation(orderHash, processId, attester, clauseId, stage, contentRef)`
-where `contentRef = keccak256(content)`. An attestation whose clause was not
-committed at contract-signing time cannot land — the proof won't open
-(`InvalidInclusionProof` revert).
+where `contentRef = keccak256(content)`. It **validates no content shape** — it
+binds the attestation to the signed agreement (merkle inclusion) and content-hashes
+the evidence; well-formedness is an off-chain SDK + read-time concern. An
+attestation whose clause was not committed at contract-signing time cannot land —
+the proof won't open (`InvalidInclusionProof` revert). A never-seen clause is
+attestable with **zero per-clause on-chain code**.
 
 No new kernel state: `agreementHash` is read from the caller-supplied
 Commitment struct, which `_requireKnownCommitment` verifies matches a
 committed orderHash via `core.orderStatus`.
 
-7 Certora CVL rules in `certora/AttestationCoordinator.spec` (2 role-gate,
-2 parametric Core-immutability, 1 validator-mandatory, 2 setValidator
-invariants). Binding-integrity, `contentRef == keccak256(content)`, and the
-inclusion-proof revert path are covered by Foundry tests.
+4 Certora CVL rules in `certora/AttestationCoordinator.spec` (role-gate +
+parametric Core-immutability). Binding-integrity, `contentRef == keccak256(content)`,
+and the inclusion-proof revert path are covered by Foundry tests.
 
 `attestViaResolver` is a latent Level-3 path — no current production caller.
-A mechanism contract adopting it must (a) have its seller address implement
-`IRoleResolver.isAuthorized(orderHash, caller)` and (b) use a clauseId with
-a registered validator. Validator gate and inclusion-proof gate both fire
+A mechanism contract adopting it must have its seller address implement
+`IRoleResolver.isAuthorized(orderHash, caller)`; the inclusion-proof gate fires
 before the resolver check.
 
 **`src/ClauseRegistry.sol`** — Permissionless event-only clause anchoring.
 `clauseId = keccak256(humanReadableName)`. `uriHash` points at off-chain JSON spec.
+`registerClause` is first-write-wins and immutable; there is **no on-chain
+clause-content validation** — registration anchors the spec locator (IPFS) +
+content hash, and well-formedness is the off-chain Layer-A SDK's job
+(`@figaro/core/clauses` `validate.ts`/`encode.ts`) plus a read-time concern.
 
-**`src/ClauseRegistrationHelper.sol`** — Stateless atomic-bind helper.
-Composes `ClauseRegistry.registerClause` + `AttestationCoordinator.setValidator`
-in a single transaction. Closes the M-1 front-running window for non-bootstrap
-clauses. No admin, no fee, no privilege over targets — just a permissionless
-composer. Use for any post-deploy third-party clause registration.
-
-**`src/IClauseValidator.sol`** — Per-clause content validator interface.
-`validate(bytes32 clauseId, uint8 stage, bytes calldata content) view` reverts on
-invalid content; binds to one clauseId via `clauseId() view returns (bytes32)`.
-Validators are pure / view, no admin, no mutable state.
-
-**`src/clauseValidators/`** — 17 production validator contracts, one per
-*runtime-attestable* clauseId (local-commerce use case + jurisdiction baseline + consent):
-`FigaroCommerceV1Validator`, `FigaroGeoV2Validator`,
-`FigaroModalitiesV1Validator`, `FigaroCoordinationV1Validator`, plus the 5 GHG sister clauses
-`FigaroGHGProtocolV1Validator`, `FigaroGHGISO14064V1Validator`,
-`FigaroGHGPAS2050V1Validator`, `FigaroGHGEN16258V1Validator`,
-`FigaroGHGCustomV1Validator` (one per accounting standard),
-`FigaroGHGMeasurementV1Validator`,
-`FigaroProximityPolicyV1Validator` (cross-checked, committed band) +
-`FigaroProximityProofV1Validator` (runtime, runtime witness),
-`FigaroMerchantProcessV1Validator`,
-`FigaroCourierProcessV1Validator`,
-`FigaroArbitrationKlerosV1Validator`, `FigaroApplicableLawV1Validator`,
-`FigaroConsentV1Validator`,
-`FigaroOffsetPolicyV1Validator` (cross-checked, committed providers).
-Each ABI-decodes per-clause content (no on-chain JSON parsing) and reverts with
-typed custom errors. Foundry tests in `test/clauseValidators/`.
-
-Note: `figaro-topology-v1` is a **agreement-only clause** — parties commit to
+Note: `figaro-topology` is an **agreement-only clause** — parties commit to
 it at contract-signing time inside the off-chain agreement, and it's
-never fired as a runtime attestation. It has no on-chain validator and no SP1
-encoder. It is *not* off-chain-only, though: the topology section is a merkle
-leaf under the on-chain `agreementHash`, inclusion-provable via OpenZeppelin
-`MerkleProof` (`buildSectionInclusionProof` in `agreement.ts`) — "no
-runtime validator" is not "no on-chain verification". Its `ClauseRegistry`
-entry anchors the clauseId as off-chain vocabulary; the DAG itself is
-reconstructed by indexers/frontend reading topology sections from the signed
-agreement.
+never fired as a runtime attestation. It is *not* off-chain-only, though: the
+topology section is a merkle leaf under the on-chain `agreementHash`,
+inclusion-provable via OpenZeppelin `MerkleProof` (`buildSectionInclusionProof`
+in `agreement.ts`) — "no runtime attestation" is not "no on-chain verification".
+Its `ClauseRegistry` entry anchors the clauseId as off-chain vocabulary; the DAG
+itself is reconstructed by indexers/frontend reading topology sections from the
+signed agreement.
 
 **`src/IRoleResolver.sol`** — Role-authorization interface for mechanism-delegated attestation.
 
@@ -162,9 +137,9 @@ binding is permanent — `withdrawDeposit` returns only the ETH and never clears
 the binding, because buyers and sellers that reference the slug rely on its
 content staying stable; the deposit is an upfront Sybil-resistance tax with a
 refund path, not a fee. No owner, no admin, no fee, no `transferAssembly`, no
-`removeAssembly`. The contract does not validate content — per-clause
-validity is the per-clause validator's job at commit time. Foundry tests in
-`test/AssemblyRegistryTest.t.sol`.
+`removeAssembly`. The contract does not validate content — well-formedness is an
+off-chain (Layer-A SDK + read-time) concern, never an on-chain check. Foundry
+tests in `test/AssemblyRegistryTest.t.sol`.
 
 ## FIG Token (`src/fig/`)
 
@@ -172,52 +147,19 @@ validity is the per-clause validator's job at commit time. Foundry tests in
 Reentrancy-guarded. Minter registry with `totalRegisteredCap` (sum of all registered
 caps enforced not to exceed MAX_SUPPLY). Deployer registers capped minters, then renounces.
 
-**`RpgfMinter.sol`** — Three-stage SP1-gated retroactive public-goods funding
-minter. One contract with three immutable unlock timestamps (yr 2 / yr 5 / yr 9)
-and three submitter-set Merkle roots (set once per tranche after an SP1 proof
-verifies the aggregation). One-shot per (stage, address) on the claim side.
-Calls `IFigMinter.mint`. Aggregation logic lives in `prover/rpgf/` (Rust);
-host-side SP1 wrapper in `prover/rpgf-script/`; TypeScript sequencer
-orchestrator in `sdk/scripts/rpgf-sequencer/`.
-
 **`IFigMinter.sol`** — `mint(address, uint256)` interface implemented by FigToken.
 
 **FIG allocation (canonical, 1B total):**
 - **100M (10%) founders** — genesis mint, no vesting, no unlock
 - **300M (30%) DAO**       — genesis mint, no vesting, no unlock
-- **600M (60%) clause-author RPGF** — one `RpgfMinter` contract, staged:
-  - stage 0 (year 2): up to 300M (30% of total)
-  - stage 1 (year 5): up to 200M (20% of total)
-  - stage 2 (year 9): up to 100M (10% of total)
-
-  Per-tranche budgets are caps; actual allocation at each tranche is determined
-  by the V5 substrate-broadening aggregation (run off-chain, verified on-chain
-  via SP1 proof). When the per-author cap binds for every contributor at a
-  tranche, the unallocated portion of the budget stays unminted by design.
+- **600M (60%) clause-author RPGF** — the proof-gated distribution (an `RpgfMinter`
+  staged behind an SP1 prover) was **removed in the proof-apparatus teardown**, so this
+  600M of the cap currently has **no wired mint path**. The RPGF rationale survives in
+  `docs/v5/PUBLIC_GRAPH_MODEL.md`; re-home a distribution mechanism there if one is rebuilt.
 
 Deploy flow: deployer registers itself as a one-shot genesis minter with cap 400M,
-mints 100M+300M to founder/DAO wallets, registers the RPGF minter with cap 600M,
-renounces. `totalRegisteredCap = 1B` exactly at the end of deploy. No further mints
-are possible outside valid merkle claims on `RpgfMinter`.
-
-No settlement-anchored emission. No batch-path minting. `FigaroBatchVerifier` is
-NOT a FIG minter and will never be registered as one.
-
-## Batch Verification
-
-**`src/FigaroBatchVerifier.sol`** — On-chain verifier for SP1-proved batches.
-Verifies state root continuity, chain binding, auxiliary data hashes. Executes net token transfers.
-3-argument constructor (the legacy `figToken` dead-code field — flagged as INFO-2 in the
-AI audit — has been removed).
-
-**`src/interfaces/ISP1Verifier.sol`** — Succinct SP1 verifier gateway interface.
-**`src/mocks/MockSP1Verifier.sol`** — Accepts any proof for devnet testing.
-
-Deployment note: devnet wires `FigaroBatchVerifier` to `MockSP1Verifier` (the
-`Deploy.s.sol` program vKey is a placeholder the mock ignores). Testnet and
-mainnet MUST wire a real SP1 verifier and run the sequencer with `SP1_PROVER`
-≠ `mock` so it self-proves Groth16 — a real verifier paired with the mock
-prover would reject every batch.
+mints 100M+300M to the founder/DAO wallets, then renounces. Only the 400M genesis is
+minted; the remaining 600M has no wired mint path. No settlement-anchored emission.
 
 ## Test / Mock Contracts
 
@@ -225,18 +167,22 @@ prover would reject every batch.
 - `src/mocks/MockOffsetAggregator.sol` — devnet stand-in for Klima KlimaInfinity / Toucan OffsetHelper. Fixed `pricePerTon` constructor arg, pulls input token via `transferFrom`, emits `Retired`. Wired into `Deploy.s.sol` only — mainnet uses real aggregators.
 - `src/mocks/MockKlerosArbitrableProxy.sol`, `src/mocks/MockKlerosArbitrator.sol` — devnet stand-ins for the Kleros dispute-resolution flow; deployed via `script/DeployMockKleros.s.sol` (run from `./scripts/deploy-mock-kleros.sh`) on top of `./scripts/deploy-local.sh`. Mainnet uses the real Kleros contracts.
 - `src/mocks/MockPermit2.sol` — test stand-in for Uniswap Permit2 SignatureTransfer; implements `permitTransferFrom` (deadline + amount enforced, signature not verified), pulling the owner's input token under the standard one-time Permit2 approval. Test-only (`SwapAndCommitCoordinatorTest`); not wired into any deploy script — mainnet uses the canonical Permit2.
-- `src/mocks/MockClauseValidator.sol` — constructor-parameterized permissive `IClauseValidator` (binds to any clauseId, accepts any content under it; `view` per the parameterized-test-mock carve-out in `IClauseValidator`'s NatSpec). Used by `AttestationCoordinatorTest` / `ClauseRegistrationHelperTest` and deployed at test time by the permissionless e2e specs so a never-seen clause can register + bind atomically via `ClauseRegistrationHelper`. Not wired into any deploy script — a real third-party clause authors its own validator.
 - `src/mocks/MockUniversalRouter.sol` — test stand-in for a swap venue; `swap(tokenIn, tokenOut, amountIn, recipient)` at a settable rate, paying out of pre-funded liquidity. Test-only (`SwapAndCommitCoordinatorTest`); not wired into any deploy script — mainnet uses the real Uniswap Universal Router.
-- `src/echidna/EchidnaFuzzer.sol`, `EchidnaToken.sol`
+- `src/echidna/EchidnaFuzzer.sol`, `EchidnaFigToken.sol`, `EchidnaToken.sol`
 
 ## What Does NOT Exist
 
-No `FigaroFactory.sol`, `FigaroRouter.sol`, `governance/`, `compliance/`,
-`FigEmission.sol`, `FigTimeLock.sol`, `MerkleAirdrop.sol`, `StagedMerkleAirdrop.sol`
-(this last replaced by `RpgfMinter.sol` in 2026-05),
-`TrancheVesting.sol` (removed — founder and DAO receive tokens at genesis with no vesting),
-`ProximityTypes.sol` (removed), `IRoleResolverV4.sol` (renamed to `IRoleResolver.sol`),
-generic `JSONSchemaValidator.sol` (per-clause validators instead — see `docs/v5/CLAUSES.md`),
+**Deleted in the proof-apparatus teardown (no on-chain content validation, no proof/batch path):**
+the 17 `src/clauseValidators/*` validators, `IClauseValidator.sol`, `MockClauseValidator.sol`,
+`ClauseRegistrationHelper.sol`, `JSONSchemaValidator.sol`; `FigaroBatchVerifier.sol`,
+`src/interfaces/ISP1Verifier.sol`, `MockSP1Verifier.sol`; `RpgfMinter.sol`; the entire Rust
+`prover/` tree and the SDK sequencer / `merkleAirdrop`. Validation is now off-chain Layer-A
+(SDK `validate.ts`/`encode.ts`) + `ClauseRegistry.registerClause`; settlement is the kernel's
+atomic `resolveProcess` only.
+
+Also absent: `FigaroFactory.sol`, `FigaroRouter.sol`, `governance/`, `compliance/`,
+`FigEmission.sol`, `FigTimeLock.sol`, `MerkleAirdrop.sol`, `StagedMerkleAirdrop.sol`,
+`TrancheVesting.sol` (founder and DAO receive tokens at genesis with no vesting),
+`ProximityTypes.sol`, `IRoleResolverV4.sol` (renamed to `IRoleResolver.sol`),
 upgradeable proxy, protocol fee, owner, or admin surface.
-FIG is not a governance token. `FigTokenModule` (UI) does not exist —
-`/fig` and `/fig/claim` use `useFigToken` hooks directly.
+FIG is not a governance token.

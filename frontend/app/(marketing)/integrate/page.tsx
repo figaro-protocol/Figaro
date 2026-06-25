@@ -53,7 +53,7 @@ export default function Integrate() {
                         <strong>Dutch auction, attestation/GHG encoding, geo/handoff utilities, did:web resolution.</strong> Everything at the protocol tier that isn&apos;t kernel-critical but is commonly needed.
                     </LabelledListRow>
                     <LabelledListRow label="/clauses" labelWidth="narrow" uppercase>
-                        <strong>Meta-clause validator + per-clause content encoders.</strong> Canonical spec format that the SP1 prover and Solidity validators mirror. Layer-A of the three-layer validation pattern (see <Link href="/clauses" className="underline">/clauses</Link>).
+                        <strong>Meta-clause validator + a generic content encoder.</strong> Canonical spec format, validated off-chain (Layer A); the chain registers and merkle-binds clauses but validates no content shape (see <Link href="/clauses" className="underline">/clauses</Link>).
                     </LabelledListRow>
                 </ul>
             </MarketingSection>
@@ -193,7 +193,7 @@ const state = reconstruct(events);
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
                     <li><strong>Repository:</strong> <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="underline">github.com/figaro-protocol/Figaro</a>. SDK lives at <code>sdk/</code>.</li>
                     <li><strong>SDK README:</strong> <code>sdk/README.md</code> in the repo. Covers every subpath export and the test-harness conventions.</li>
-                    <li><strong>ABIs:</strong> <code>CORE_ABI</code>, <code>ATTESTATION_COORDINATOR_ABI</code>, <code>DUTCH_AUCTION_ABI</code>, <code>CLAUSE_REGISTRY_ABI</code>, <code>ERC20_ABI</code>, <code>SELLER_REGISTRY_ABI</code>, <code>FIG_TOKEN_ABI</code>, <code>RPGF_MINTER_ABI</code>. All exported from <code>@figaro/core</code>; canonical contract surface at <Link href="/spec" className="underline">/spec</Link>.</li>
+                    <li><strong>ABIs:</strong> <code>CORE_ABI</code>, <code>ATTESTATION_COORDINATOR_ABI</code>, <code>DUTCH_AUCTION_ABI</code>, <code>CLAUSE_REGISTRY_ABI</code>, <code>ERC20_ABI</code>, <code>SELLER_REGISTRY_ABI</code>, <code>FIG_TOKEN_ABI</code>. All exported from <code>@figaro/core</code>; canonical contract surface at <Link href="/spec" className="underline">/spec</Link>.</li>
                     <li><strong>Tests as documentation:</strong> <code>sdk/tests/</code> includes round-trip tests of every exported primitive. If the README is ambiguous, read the tests.</li>
                 </ul>
                 <p className="mt-8 text-sm text-ink-muted leading-relaxed">

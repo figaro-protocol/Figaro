@@ -90,14 +90,11 @@ is a choice, not an exploit.
 
 ## 4. No owner, no admin, no escape hatch — by design
 
-**Pattern**: FigaroCore, AttestationCoordinator, ClauseRegistry,
-ClauseRegistrationHelper, DutchAuction, SellerRegistry, AssemblyRegistry,
-ProcessOffsetReceipt, and FigaroBatchVerifier have no owner, no pause function,
-no upgrade path, and no admin recovery. FigToken has a one-shot deployer who
-registers minter contracts then renounces (`deployerMintRenounced`); RpgfMinter
-has a `submitter` (sequencer wallet) authorized to call `submitRoot` against
-the SP1 verifier — these are bounded privileged actors, documented separately
-in `CONTRACTS.md`.
+**Pattern**: FigaroCore, AttestationCoordinator, ClauseRegistry, DutchAuction,
+SellerRegistry, AssemblyRegistry, and ProcessOffsetReceipt have no owner, no
+pause function, no upgrade path, and no admin recovery. FigToken has a one-shot
+deployer who registers minter contracts then renounces (`deployerMintRenounced`)
+— a bounded privileged actor, documented separately in `CONTRACTS.md`.
 
 **Why it looks wrong**: Most protocols include emergency controls for incident
 response.
@@ -207,25 +204,7 @@ enforcement.
 
 ---
 
-## 10. FigaroBatchVerifier trusts the ZK proof program — not additional on-chain guards
-
-**Pattern**: The batch verifier does not check things like `newRoot != prevRoot`
-(no-op batches) or validate individual position amounts against known limits.
-
-**Why it looks wrong**: Defense-in-depth usually means layering redundant
-checks.
-
-**Why it is correct**: The SP1 program is the single source of truth for valid
-state transitions. Duplicating program invariants as on-chain checks would
-create a maintenance surface where the on-chain guard and the program could
-diverge. If a state transition is invalid, the proof will not verify. If the
-proof verifies, the state transition is valid by the program's definition.
-On-chain guards are applied only at the trust boundary (proof verification,
-chain ID, verifying contract, auxiliary data hashes).
-
----
-
-## 11. `_pullExact` rejects fee-on-transfer and rebasing tokens — permanently
+## 10. `_pullExact` rejects fee-on-transfer and rebasing tokens — permanently
 
 **Pattern**: `_pullExact` uses a before/after balance check with strict equality.
 Any token that transfers less than requested (fee-on-transfer) or changes
@@ -238,7 +217,7 @@ Wrapped, non-rebasing variants (e.g., wstETH instead of stETH) must be used.
 
 ---
 
-## 12. Single currency per process — multi-token is a composition concern
+## 11. Single currency per process — multi-token is a composition concern
 
 **Pattern**: `commit` binds every order in a process to one `currency` address;
 sub-orders with a mismatched currency revert (`CurrencyMismatch`). Two parties
@@ -276,72 +255,7 @@ three composition patterns above.
 
 ---
 
-## 13. Clause validator binding is not bundled with clause registration
-
-**Pattern**: `ClauseRegistry.registerClause` and
-`AttestationCoordinator.setValidator` are independent permissionless writes.
-There is no single-call function that registers a clause and binds its
-validator atomically. A clause can be registered with no validator bound
-(attestations under it revert with `ValidatorNotSet`); a validator can be
-bound to a clauseId before that clauseId has been registered in
-`ClauseRegistry`. The two writes are not transactionally coupled at the
-protocol layer.
-
-**Why it looks wrong**: A new clause registered via
-`ClauseRegistry.registerClause` exposes a window where any address can call
-`setValidator(clauseId, maliciousValidator)` and capture the binding
-permanently — `setValidator` is first-write-wins and immutable. A malicious
-validator that returns the correct `clauseId()` from its self-attestation
-(passing the `InvalidValidatorBinding` check) but contains adversarial
-`validate()` logic can become the immutable binding before the legitimate
-validator deploys. The clauseId is then permanently captured.
-
-**Why it is correct**: First-write-wins binding IS the no-admin mechanism
-(Decision #4). Adding an admin who can override or revoke validator bindings
-is the only way to "fix" this front-running risk at the protocol layer, and
-that admin is itself the larger problem — it reintroduces the trusted third
-party the protocol is designed to eliminate. The risk lives at the deployment-
-discipline layer, not the protocol layer.
-
-**The discipline**: A clause author deploys their validator and binds it to
-their clauseId **in a single transaction**. The pattern is established by
-`script/Deploy.s.sol:_deployAndRegisterValidators`, which deploys each of the
-16 reference figaro-* validators inline with its `setValidator` call so no
-front-running window exists between deploy and bind. Third-party clause
-authors must follow the same pattern via one of:
-
-1. **`ClauseRegistrationHelper.registerClauseAndValidator(clauseId, version, uriHash, validator)`** —
-   the recommended path for post-deploy clauses. A stateless, no-admin helper
-   contract deployed alongside the protocol that composes both writes
-   atomically. See `src/ClauseRegistrationHelper.sol`.
-2. A custom deploy script that performs both writes in one external transaction.
-3. A multicall/batch transaction submitted via the clause author's wallet.
-
-**Why a separate helper contract instead of bundling into AttestationCoordinator**:
-the kernel-discipline framing prefers keeping `ClauseRegistry` and
-`AttestationCoordinator` as independently-addressable primitives. The helper
-is opt-in syntactic sugar — clause authors who want atomic register+bind use it;
-those who don't can still call the two primitives separately. Neither AC nor
-ClauseRegistry gains a dependency on the other. The "two primitives bundled"
-concern is preserved at the kernel layer; the bundling happens at a
-non-privileged composer one tier above.
-
-**Behavioral note for helper users**: when a clause is registered through the
-helper, the `ClauseRegistered` event records the helper's address as the
-`registrar`, not the calling user's address. Clause authors who want to be
-on record as the registrar (e.g., for off-chain provenance) should call
-`ClauseRegistry.registerClause` directly — this trades atomicity for
-registrar-identity. The atomic-bind property protects against malicious-
-validator front-running; the registrar-identity property is informational.
-
-The risk surface is bounded: `script/Deploy.s.sol` and
-`script/DeployMainnet.s.sol` have zero front-running window for the 16
-reference clauses; only post-deploy third-party clauses need to apply the
-discipline.
-
----
-
-## 14. No MLETR-style transferable records — by design
+## 12. No MLETR-style transferable records — by design
 
 **Pattern**: Figaro's audit bundle assembles a Bill-of-Lading view (and
 contract-of-carriage, invoice, and stage-progression views) from the
@@ -463,8 +377,6 @@ off.
 | 7 | Attestations on resolved orders | Operating on stale state | Post-resolution lifecycle events are valid |
 | 8 | Permissionless clause registry | Namespace squatting | Content-addressed IDs; governance is off-chain |
 | 9 | Auction creator can self-claim | Defeats price discovery | No funds held; financial commitment is in FigaroCore |
-| 10 | No redundant on-chain batch guards | Insufficient defense-in-depth | ZK proof is the single authority; duplicating guards creates drift |
-| 11 | Strict token compatibility rejection | Overly restrictive | Bond math requires exact amounts; wrapping is the solution |
-| 12 | Single currency per process | Can't do multi-token commerce | 2:1 bond ratio is Nash-stable only in one currency; multi-token lives at composition layer (process / wallet swap / Level-3 bundler) |
-| 13 | `setValidator` unbundled from `registerClause` | Front-running window for new clauses | First-write-wins is the no-admin mechanism; atomic deploy+bind is deployment discipline, not a protocol gap |
-| 14 | No `transferTitle` / `endorse` / `nominate` for BoLs | Industry-standard MLETR-aligned eBLs are negotiable; CargoX / TradeTrust / TradeLens all implement this | Single-buyer invariant + parties-fixed-at-commit + no-escape-hatches each separately rule it out; cargo doesn't carry rights, the commitment does |
+| 10 | Strict token compatibility rejection | Overly restrictive | Bond math requires exact amounts; wrapping is the solution |
+| 11 | Single currency per process | Can't do multi-token commerce | 2:1 bond ratio is Nash-stable only in one currency; multi-token lives at composition layer (process / wallet swap / Level-3 bundler) |
+| 12 | No `transferTitle` / `endorse` / `nominate` for BoLs | Industry-standard MLETR-aligned eBLs are negotiable; CargoX / TradeTrust / TradeLens all implement this | Single-buyer invariant + parties-fixed-at-commit + no-escape-hatches each separately rule it out; cargo doesn't carry rights, the commitment does |

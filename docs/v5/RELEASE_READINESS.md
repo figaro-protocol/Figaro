@@ -2,7 +2,7 @@
 
 Status: canonical release gate note for the live V5 kernel, protocol, and runtime.
 
-Last updated: 2026-06-24 (Tasks 7–8 — testnet/Cloudflare + SP1 deployment rehearsal — folded in from the punch-list PARKED section).
+Last updated: 2026-06-25 (proof-apparatus teardown: the SP1 prover, `FigaroBatchVerifier`, and `RpgfMinter` were deleted — Task 8 is VOID; Task 7 testnet/Cloudflare remains).
 
 This note is the current answer to a simple question: what is ready now, what is still open, and what must happen before a public release is treated as complete.
 
@@ -95,7 +95,7 @@ Remaining output:
 
 ### Task 6: IPFS Content Persistence — Pinning Durability
 
-The chain stores only the agreement fingerprint (`agreementHash` / assembly `contentHash`); the agreement itself lives on IPFS, and every downstream consumer — counterparty validation, indexer graph reconstruction, the SP1 prover, a dispute forum — retrieves it by CID. IPFS does **not** auto-replicate: pinned content lives only on the node(s) that pin it, so a single Kubo node is a single point of failure. The devnet runs one Docker Kubo node (API `:5001` and gateway `:8080` are two interfaces to the *same* node), which is correct for device-only dev (wiped each `devup`, no long-lived commitments). On a live network a commitment's agreement must stay fetchable by its CID for the life of any possible dispute, so content durability must outlive any single node.
+The chain stores only the agreement fingerprint (`agreementHash` / assembly `contentHash`); the agreement itself lives on IPFS, and every downstream consumer — counterparty validation, indexer graph reconstruction, a dispute forum — retrieves it by CID. IPFS does **not** auto-replicate: pinned content lives only on the node(s) that pin it, so a single Kubo node is a single point of failure. The devnet runs one Docker Kubo node (API `:5001` and gateway `:8080` are two interfaces to the *same* node), which is correct for device-only dev (wiped each `devup`, no long-lived commitments). On a live network a commitment's agreement must stay fetchable by its CID for the life of any possible dispute, so content durability must outlive any single node.
 
 Required output:
 
@@ -117,14 +117,11 @@ Required output:
 
 (Kleros subcourt-ID verification and IPFS content durability for this path are already covered by the Pre-Mainnet Deployment Verification checks and Task 6 above.)
 
-### Task 8: SP1 Prover End-to-End on Testnet (PAUSED)
+### Task 8: SP1 Prover End-to-End — VOID
 
-**Paused — needs funded testnet keys and a Groth16-capable machine.**
-
-Required output:
-
-1. **M5 — Sepolia deploy** via `DeployMainnet.s.sol`. Needs a funded deployer key + Sepolia RPC; re-derive vkeys with `SP1_VKEY_ONLY=1`.
-2. **M6 — end-to-end rehearsal** — sequencer → real Groth16 → on-chain verification by `FigaroBatchVerifier` + the RPGF path via `RpgfMinter`. Needs a Groth16-capable machine (an 8 GB Mac OOMs).
+The SP1 prover, `FigaroBatchVerifier`, and `RpgfMinter` were deleted in the
+proof-apparatus teardown. There is no proof/batch path to deploy or rehearse;
+this task is removed.
 
 ## Validation Commands
 
@@ -226,7 +223,6 @@ external-audit gates above:
 
 - `FigToken.deployer` == the expected deployer EOA; `FigToken.deployerMintRenounced` == `true` after minter setup; `FigToken.totalSupply()` == the expected genesis allocation; every registered minter is an intended allocation contract.
 - `AttestationCoordinator.core` == the deployed `FigaroCore` address.
-- `FigaroBatchVerifier.verifier` == the real SP1 verifier gateway (never `MockSP1Verifier`); `FigaroBatchVerifier.stateRoot` == the expected genesis root; `FigaroBatchVerifier.programVKey` == the correct program verification key.
 - `SellerRegistry.registrationDeposit` and `SellerRegistry.depositLockPeriod` == the mainnet values picked per Task 3 (NOT the devnet `0.001 ether` / `365 days` placeholders).
 - `AssemblyRegistry.registrationDeposit` and `AssemblyRegistry.depositLockPeriod` == the mainnet values picked per Task 3 — if Task 4 disposition (1) is taken. If disposition (2) is taken, `AssemblyRegistry` is not deployed and this check does not apply.
 - All settlement tokens are non-rebasing and non-fee-on-transfer.
@@ -247,8 +243,8 @@ narrow follow-up review or a repeat audit decision.
 
 | Directory / file | Contents |
 |---|---|
-| `src/` | `FigaroCore.sol`, `AttestationCoordinator.sol`, `CommitmentTypes.sol`, `IRoleResolver.sol`, `IClauseValidator.sol`, `ClauseRegistry.sol`, `ClauseRegistrationHelper.sol`, `DutchAuction.sol`, `SellerRegistry.sol`, `AssemblyRegistry.sol`, `ProcessOffsetReceipt.sol`, `FigaroBatchVerifier.sol` |
-| `src/fig/` | `FigToken.sol`, `RpgfMinter.sol`, `IFigMinter.sol` |
+| `src/` | `FigaroCore.sol`, `AttestationCoordinator.sol`, `CommitmentTypes.sol`, `IRoleResolver.sol`, `ClauseRegistry.sol`, `DutchAuction.sol`, `SellerRegistry.sol`, `AssemblyRegistry.sol`, `ProcessOffsetReceipt.sol` |
+| `src/fig/` | `FigToken.sol`, `IFigMinter.sol` |
 | `script/Deploy.s.sol` | Devnet deploy (defines the devnet surface) |
 | `script/DeployMainnet.s.sol` | Mainnet deploy (defines the audited mainnet surface) |
 
@@ -256,7 +252,7 @@ narrow follow-up review or a repeat audit decision.
 
 - `src/mocks/` — test helpers, never deployed to mainnet
 - `src/echidna/` — fuzzing harnesses, never deployed to mainnet
-- `test/`, `frontend/`, `sdk/`, `prover/` — non-Solidity surfaces
+- `test/`, `frontend/`, `sdk/` — non-Solidity surfaces
 
 ### Verifying a freeze
 
@@ -288,5 +284,5 @@ Any Solidity edit after the freeze commit must be:
 2. Reviewed by the original auditor or a qualified substitute
 3. Recorded in the backlog with finding reference and outcome
 
-Changes to `test/`, `frontend/`, `sdk/`, or `prover/` do not require
+Changes to `test/`, `frontend/`, or `sdk/` do not require
 re-audit unless they expose a new on-chain attack surface.

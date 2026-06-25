@@ -9,7 +9,7 @@ This document ties every protocol property to its enforcement across five layers
 - **Theory** — the game-theoretic invariant (from THEORY.md / VISION.md)
 - **Code** — what is actually enforced on-chain (Solidity)
 - **Tests** — what is continuously regression-checked (Foundry, Echidna, SDK Vitest)
-- **TLA+** — what is exhaustively model-checked (24 invariants across 3 models: FigaroCore 7 / 6M+ states, FigToken 8 / 160k states, RpgfMinter 9 / 11,821 states)
+- **TLA+** — what is exhaustively model-checked (15 invariants across 2 models: FigaroCore 7 / 6M+ states, FigToken 8 / 160k states)
 - **Halmos** — what is symbolically proved at the bytecode level (7 invariants, z3 solver)
 - **Certora** — what is formally verified via SMT-based proving (state-machine rules)
 - **UI** — where the feature is explained or rendered for users (pages, sections)
@@ -23,8 +23,8 @@ The V3 map (archived at `docs/archive/V3_VERIFICATION_MAP.md`) covered Theory �
 ### In-scope (this document)
 
 - **Kernel**: `src/FigaroCore.sol` — 2 external functions, 3 mappings, no owner, no fee
-- **Protocol extensions**: `AttestationCoordinator`, `ClauseRegistry`, `DutchAuction`, `SellerRegistry`, `FigaroBatchVerifier`
-- **FIG token ecosystem**: `FigToken`, `RpgfMinter` (replaced `StagedMerkleAirdrop` 2026-05; formal-verification status reset — see "Retired properties" below)
+- **Protocol extensions**: `AttestationCoordinator`, `ClauseRegistry`, `DutchAuction`, `SellerRegistry`, `AssemblyRegistry`, `ProcessOffsetReceipt`, `SwapAndCommitCoordinator`
+- **FIG token ecosystem**: `FigToken` (`IFigMinter` interface; no implementation wired)
 - **Formal model**: `formal/FigaroCore.tla`, `formal/MC.tla`, `formal/MC.cfg`
 - **Tests**: the Foundry, Halmos, Certora, Echidna, and TLA+ harnesses, plus the SDK suite — suite, file, property, and rule counts are in `TESTING.md` (the single source)
 - **Frontend**: All pages in `frontend/app/`, components, mechanism modules
@@ -34,7 +34,6 @@ The V3 map (archived at `docs/archive/V3_VERIFICATION_MAP.md`) covered Theory �
 - Archived V3/V4 contracts (`archive-v3/`, `archive-v4/`)
 - Frontend Vitest unit tests — these test UI components, not protocol invariants (inventory in `TESTING.md`)
 - Playwright E2E tests — these test UI rendering, not protocol properties
-- Rust prover workspace (`prover/`) — SP1 kernel-parity and sequencer tests
 
 ---
 
@@ -68,11 +67,7 @@ The V3 map (archived at `docs/archive/V3_VERIFICATION_MAP.md`) covered Theory �
 - `E-2` **Clause immutability**: registered clauses cannot be overwritten
 - `E-3` **Auction price monotonicity**: Dutch auction price only decreases over time
 - `E-4` **Seller deposit lock**: withdrawal only after deactivation + lock period
-- `E-5` **Batch state root continuity**: each batch must chain from previous state root
 - `E-6` **FIG supply cap**: total minted ≤ 1,000,000,000 FIG (enforced on every mint path)
-- `E-7` **Per-stage one-shot claim** (RpgfMinter — Halmos `check_alreadyClaimedReverts`, Echidna `echidna_claim_flag_monotonic`, Certora `claimedFlagMonotonic` + `claimRequiresNotAlreadyClaimed`, TLA+ enforced by `Claim` action guard)
-- `E-8` **Merkle inclusion** (RpgfMinter — `MerkleProof.verify` with `keccak256(abi.encodePacked(account, amount))` leaves; Foundry `test_CannotClaimIfNotInTree`, `test_CannotClaimWithAlteredAmount`; abstracted in TLA+ as `Entitlements[stage][account] = amount`)
-- `E-9` **Per-stage unlock timestamp** (RpgfMinter — Halmos `check_notUnlockedReverts`, Echidna `echidna_unlock_times_immutable`, Certora `unlockTimeImmutable` + `claimRequiresUnlocked`, TLA+ `Inv_UnlockTimeImmutable` + `Inv_ClaimImpliesUnlocked`)
 
 ---
 
@@ -110,15 +105,11 @@ The V3 map (archived at `docs/archive/V3_VERIFICATION_MAP.md`) covered Theory �
 
 | ID | Statement | Code enforcement | Tests | UI presentation |
 |---|---|---|---|---|
-| E-1 | Only verified role-holder can attest | `attestAsSeller`: verifies seller via commitment orderHash lookup; `attestAsBuyer`: verifies via ProcessState.rootBuyer; `attestViaResolver`: delegates to IRoleResolver | `AttestationCoordinatorTest`: 20 tests covering all 3 paths + cross-order same-process | `/legal` → Six evidentiary properties; `/local-commerce` → Attestation Coordinator; `/builders` → Clause validators in force |
-| E-2 | Registered clauses cannot be overwritten | `registerClause`: event-only anchoring (no storage to overwrite); dedup guard on re-registration | `ClauseRegistryTest`: 12 tests including dedup | `/builders` → Clause validators in force; `/local-commerce` → clause-typed events |
+| E-1 | Only verified role-holder can attest | `attestAsSeller`: verifies seller via commitment orderHash lookup; `attestAsBuyer`: verifies via ProcessState.rootBuyer; `attestViaResolver`: delegates to IRoleResolver | `AttestationCoordinatorTest`: 20 tests covering all 3 paths + cross-order same-process | `/legal` → Six evidentiary properties; `/local-commerce` → Attestation Coordinator; `/builders` → Clause validation |
+| E-2 | Registered clauses cannot be overwritten | `registerClause`: event-only anchoring (no storage to overwrite); dedup guard on re-registration | `ClauseRegistryTest`: 12 tests including dedup | `/builders` → Clause validation; `/local-commerce` → clause-typed events |
 | E-3 | Dutch auction price only decreases over time | `getCurrentPrice`: linear decay from `maxPrice` to floor, time-based | `DutchAuctionTest`: 35 tests covering price decay, floor BPS, claim, cancel, expire | `/local-commerce` → Dutch auction description; `/verification` → Coordinator pattern (Dutch auction reference instance); `/builders` → Three levels |
 | E-4 | Seller deposit lock — withdraw only after `registeredAt + lockPeriod` | `withdraw()`: requires `_registered[msg.sender]` + `block.timestamp >= registeredAt + lockPeriod`; clears the dedup guard so the same address can re-register with the lock restarting. `updateProfile()` is a separate caller-only path that emits a new `SellerProfileUpdated` event without touching the deposit or restarting the lock | `SellerRegistryTest`: 18 tests covering register, deposit-bound match, dedup, withdraw flow, lock-period gate, re-registration restarts the lock, plus updateProfile (only-self, no deposit movement, no lock reset) | `/local-commerce` → Seller Registry; `/sellers`; `/builders` → Seller identity |
-| E-5 | Batch state root continuity | `settleBatch()`: `require(prevStateRoot == currentStateRoot)` + `currentStateRoot = newStateRoot` | `FigaroBatchVerifierTest`: 22 tests covering state root chain, re-emission | `/builders` → Batch verification (state root, SP1, net positions, event re-emission) |
 | E-6 | FIG supply cap: $\leq$ 1B on every mint | `mint()`: `if (totalSupply() + amount > MAX_SUPPLY) revert SupplyCapExceeded()` + reentrancy guard | `FigToken.t.sol`: ~22 tests covering cap enforcement, multi-minter, renounce | `/fig` → FIG dashboard (supply display); `/fig/design` → Supply integrity (Paper D) |
-| E-7 | RpgfMinter: each address can claim at most once per stage | `claim(stageIndex, ...)`: reverts `AlreadyClaimed(stageIndex, msg.sender)` if `claimed[stageIndex][msg.sender]` is set; otherwise sets it before mint | `RpgfMinter.t.sol`: `test_CannotClaimSameStageTwice`; `RpgfMinterConformance.t.sol`: `test_RecaimByAuthorFailsAsOneShot` | `/fig` → per-stage claim status |
-| E-8 | RpgfMinter: only stage-specific Merkle-root-included addresses can claim | `MerkleProof.verify(proof, stages[stageIndex].root, leaf)` enforced per-stage before any mint; root submitted via `submitRoot` after SP1 proof | `RpgfMinter.t.sol`: `test_CannotClaimIfNotInTree`, `test_CannotClaimWithAlteredAmount`; conformance: `test_AllFourAuthorsClaimExpectedAmounts` | `/fig` → per-stage eligibility |
-| E-9 | RpgfMinter: per-stage unlock timestamp (immutable) | `claim(stageIndex, ...)`: reverts `NotUnlocked(stageIndex)` if `block.timestamp < stages[stageIndex].unlockTime` | `RpgfMinter.t.sol`: `test_ClaimRevertsBeforeUnlock` | `/fig` → stage unlock dates |
 
 ---
 
@@ -130,7 +121,7 @@ This section tracks features that are not protocol invariants but are significan
 |---|---|---|---|---|---|
 | **Handoff encryption (ECDH)** | `frontend/lib/handoff/` (13 files) | — | `/local-commerce` → Handoff Encryption | `HandoffKeyExchangeModule`, `HandoffTrackerModule`, `HandoffDetailsModule` | — |
 | **Delivery attestation (4 modes)** | `frontend/lib/dispute/deliveryAttestation.ts` | `@figaro/core/extensions`: `geohashesMatch`, `haversineDistance` | `/local-commerce` → Proximity Proofs; `/builders` → attestation modes | `DeliveryAttestationPanel`, `/evidence-display` | — |
-| **GHG disclosure** | `frontend/lib/mechanisms/useGHGDisclosure.ts` | `@figaro/core/extensions`: `encodeGramsRef`, `decodeGramsRef`, `buildProcessDisclosureSummary` | `/local-commerce` → GHG two-stage; `/builders` → Clause validators in force | `GHGAnchorPanel`, `GHGWorkflowPanel`, `DisclosureModule` | — |
+| **GHG disclosure** | `frontend/lib/mechanisms/useGHGDisclosure.ts` | `@figaro/core/extensions`: `encodeGramsRef`, `decodeGramsRef`, `buildProcessDisclosureSummary` | `/local-commerce` → GHG two-stage; `/builders` → Clause validation | `GHGAnchorPanel`, `GHGWorkflowPanel`, `DisclosureModule` | — |
 | **DID:web identity** | `frontend/lib/mechanisms/useDidWeb.ts` | `@figaro/core/extensions`: `resolveDidWeb`, `didWebToUrl`, `didDocumentMatchesAddress`, `buildSellerDidDocument` | `/builders` → Seller identity | `DidVerificationBadge` (component) | — |
 | **Kleros dispute / evidence** | `frontend/lib/dispute/` (6 files) | `@figaro/core/extensions`: Kleros evidence envelope | `/builders` → Kleros integration | `/evidence-display` (full rendering for jurors) | — |
 | **Agent SDK** | `sdk/` (3 subpath exports) | Self-referential (166 tests) | `/builders` → Agent SDK section | — | — |
@@ -138,7 +129,6 @@ This section tracks features that are not protocol invariants but are significan
 | **Institution assembly** | `frontend/lib/designer/`; `src/AssemblyRegistry.sol` | — | `/builders` → Level 1 assembly config; `/local-commerce` → "Fork Local Commerce" | `/builders/assemblies`, `/builders/authoring`, `/builders/prototype` | — |
 | **Agreement publication** | `frontend/lib/core/agreementStore.ts`, `agreement.ts` | — | `/builders` → Agreement publication | — | — |
 | **Commerce checkout** | `frontend/lib/commerce/` (4 files) | — | — | `CartModule` (interactive) | — |
-| **Batch sequencer** | `prover/` (Rust), `frontend` sequencer surface | SDK: `sequencer.test.ts`, `batch-e2e.test.ts` | `/builders` → Batch verification | `/console` → sequencer surface | — |
 | **Process topology** | `frontend/lib/core/orderTopology.ts` | SDK: `reconstruct()`, `ProcessGraph` | `/workbench` → process graph | `OrderGraph`, `ProcessTopologyPanel`, `ProcessGraphModule` | — |
 | **Bond calculator** | `frontend/components/core/BondCalculator.tsx` | SDK: `calculateBonds`, `calculateSettlement` | `/builders` → bond math formulas | `BondCalculator`, `BondApprovalPanel`, `OrderBondInfo` | — |
 | **EIP-2612 permit** | `frontend/lib/core/permitExecution.ts` | — | `/builders` → Gasless token approvals | `PermitControl` component | — |
@@ -222,7 +212,7 @@ This closes the verification gap between TLA+ (which verifies the abstract model
 and Foundry/Echidna (which test concrete/random scenarios). Halmos proves the
 actual compiled bytecode satisfies the invariants.
 
-### Properties proved (11/11)
+### Properties proved (7/7)
 
 **HalmosFigaroCore (7 properties)**
 
@@ -236,20 +226,7 @@ actual compiled bytecode satisfies the invariants.
 | `check_buyerDominance_revert` | K-2 | z3 | 21 |
 | `check_cumulativeValueMonotonic` | K-5, A-4 | z3 | 31 |
 
-**HalmosRpgfMinter (8 properties) — `test/HalmosRpgfMinter.t.sol`**
-
-| Property | Kernel claim | Solver | Path count |
-|---|---|---|---|
-| `check_claimSetsFlag` | E-7 (one-shot claim flag set) | z3 | 4 |
-| `check_alreadyClaimedReverts` | E-7 (one-shot enforcement) | z3 | 5 |
-| `check_notUnlockedReverts` | E-9 (time-locked gate) | z3 | 4 |
-| `check_invalidStageReverts` | stage-index bound | z3 | 3 |
-| `check_rootNotSetReverts` | claim requires root | z3 | 2 |
-| `check_submitRootNotSubmitterReverts` | submitter auth gate | z3 | 2 |
-| `check_submitRootAlreadySetReverts` | root one-shot | z3 | 2 |
-| `check_submitRootZeroRootReverts` | zero-root rejection | z3 | 1 |
-
-**Total: 15/15 proved (FigaroCore 7 + RpgfMinter 8), 0 failed. Typical wall time ~4 minutes.**
+**Total: 7/7 proved (FigaroCore 7), 0 failed. Typical wall time ~4 minutes.**
 
 Per-property times vary significantly between runs (Z3's search path is
 non-deterministic). `check_resolutionPayouts` — the only property that
@@ -303,7 +280,7 @@ that complement the Halmos token-conservation proofs.
 | `rootBuyerImmutable` | K-2 | Parametric rule (all methods) |
 | `currencyImmutable` | K-7 | Parametric rule (all methods) |
 
-**AttestationCoordinator (7 declared rules — re-authored 2026-04-23 for the commitment-arg ABI + merkle-proof receipt binding; cloud re-dispatch pending)**
+**AttestationCoordinator (4 declared rules — re-authored 2026-04-23 for the commitment-arg ABI + merkle-proof receipt binding; cloud re-dispatch pending)**
 
 | CVL rule | Maps to | Type |
 |---|---|---|
@@ -311,14 +288,10 @@ that complement the Halmos token-conservation proofs.
 | `successfulBuyerAttestationImpliesBuyer` | E-1 | Contrapositive — successful call ⟹ `msg.sender == c.buyer` |
 | `attestationCannotChangeOrderStatus` | K-4 | Parametric (`filtered { f -> f.contract == currentContract }`) |
 | `attestationCannotChangeProcessState` | K-4, K-7 | Same filter |
-| `noValidatorBlocksBuyerAttestation` | E-1 | Validator-mandatory: `clauseValidator[id] == 0` ⟹ `attestAsBuyer` reverts |
-| `setValidatorIsFirstWriteWins` | E-1 | Storage-mapping immutability |
-| `setValidatorPreservesOtherBindings` | E-1 | Storage isolation across clauses |
 
-Dropped (subsumed by the new commitment-arg design): `unknownProcessRevertsAsBuyer` and `buyerAttestationEnforcesProcessBoundary` — the target commitment now carries its own processId and orderHash, so "wrong process" is no longer a distinct failure mode. `_requireKnownCommitment` reverts `UnknownOrder` if the caller's Commitment struct isn't backed by a committed order.
+The coordinator is merkle-only: it merkle-binds each attestation to its signed agreement and content-hash-binds the evidence (`contentRef == keccak256(content)`), and validates no content shape.
 
-Foundry-covered companions (scene would need a mock-validator contract for universal CVL coverage):
-- `testFuzz_setValidator_rejectsMismatchedBinding` — validator-binding-check under random (clauseId, boundId) pairs
+Foundry-covered companion:
 - `testFuzz_contentRefIsKeccakOfContent` — emitted `contentRef` equals `keccak256(content)` for arbitrary bytes
 
 **FigToken (7 sub-rules from 6 declared) — `rule_sanity: none` (vacuity heuristic not meaningful for these state-invariant claims)**
@@ -332,42 +305,18 @@ Foundry-covered companions (scene would need a mock-validator contract for unive
 | `minterCapImmutable` | E-6 | Per-minter immutability |
 | `minterMintedWithinCap` | E-6 | Inductive (unconditional `minted <= cap`, strictly strong enough to exclude symbolic unreachable pre-states) |
 
-**RpgfMinter (12 rules) — `certora/RpgfMinter.spec`**
-
-| CVL rule | Maps to | Type |
-|---|---|---|
-| `submitterImmutable` | submitter `immutable` keyword | Parametric (never changes) |
-| `minterTargetImmutable` | minter `immutable` keyword | Parametric (never changes) |
-| `programVKeyImmutable` | programVKey `immutable` keyword | Parametric (never changes) |
-| `unlockTimeImmutable` | E-9 (per-stage unlock immutable) | Parametric (over all stage indices) |
-| `rootOneShot` | root one-shot per stage | Parametric (post-set immutability) |
-| `totalAllocatedLockedWithRoot` | totalAllocated locks with root | Parametric (post-set immutability) |
-| `claimedFlagMonotonic` | E-7 (claim one-shot) | Parametric (monotonic latch) |
-| `onlySubmitterCanSetRoot` | submitter auth | Parametric (root change only via submitRoot) |
-| `submitRootRequiresSubmitter` | submitter auth | Method-specific revert |
-| `claimRevertsOnInvalidStage` | stage-index bound | Method-specific revert |
-| `claimRequiresRootSet` | claim requires root | Method-specific implication |
-| `claimRequiresUnlocked` | E-9 (time-locked) | Method-specific implication |
-| `claimRequiresNotAlreadyClaimed` | E-7 (one-shot) | Method-specific implication |
-
-(External `verifier.verifyProof` and `IFigMinter.mint` calls are summarized
-as `NONDET` — they cannot touch this contract's storage.)
-
 ### Status
 
-45 declared rules across 6 specs (up from 35 after the RpgfMinter spec
-was added). **All green**. AC re-dispatched 2026-04-23 after the
-agreement-receipt ABI change — 8/8 sub-rules verified.
+25 declared rules across 4 specs (FigaroCore 8 + FigToken 6 +
+AttestationCoordinator 4 + TokenOpsVerification 7). **All green**. AC
+re-dispatched 2026-04-23 after the agreement-receipt ABI change.
 
 | Spec | Report URL |
 |---|---|
 | FigaroCore | https://prover.certora.com/output/9512759/dc9fa6e2d9dd4361845214222bd70258 (2026-04-21) |
-| AttestationCoordinator | https://prover.certora.com/output/9512759/dd5e5e4dde634419967d3be4958a0eae (2026-04-23, commitment-arg ABI + receipt binding, 8/8 green) |
-| TokenOpsVerification | https://prover.certora.com/output/9512759/4768752379cc434aa53cc7b8894cdd25 (2026-04-23, 8/8 green — FigaroCore token-flow universal proof) |
-| BatchVerifierTokenOps | https://prover.certora.com/output/9512759/a8a8878f373f4b5d940e47b81576b2dd (2026-04-23, 4/4 green — single-position batch token-flow) |
+| AttestationCoordinator | https://prover.certora.com/output/9512759/dd5e5e4dde634419967d3be4958a0eae (2026-04-23, commitment-arg ABI + receipt binding) |
+| TokenOpsVerification | https://prover.certora.com/output/9512759/4768752379cc434aa53cc7b8894cdd25 (2026-04-23, FigaroCore token-flow universal proof) |
 | FigToken | https://prover.certora.com/output/9512759/e48a5c0c4b94465ba93b44a716b31025 (2026-04-21) |
-| RpgfMinter | https://prover.certora.com/output/9512759/936c01b76f9043b3a023c28869d370de?anonymousKey=46f9d5f33551110081e30ce88178f3f7a7aeafe4 (2026-05-19, 12 rules → 76 sub-rule checks, 0 violations, prover time 48.6s) |
-| ~~StagedMerkleAirdrop~~ | RETIRED 2026-05 — contract deleted; historical 2026-04-21 proof at https://prover.certora.com/output/9512759/c48b77f25a734eab894102ee5706da7e — succeeded by `RpgfMinter` spec above |
 
 ```bash
 # Install
@@ -394,8 +343,6 @@ export CERTORAKEY=<your-key>
 | `auction.test.ts` | Price curves, floor BPS, claim evaluation, auction state derivation | E-3 |
 | `did.test.ts` | did:web validation, resolution, address extraction, seller DID docs | DID:web identity |
 | `geo.test.ts` | Geohash matching, haversine distance, photo+GPS evidence | Delivery attestation |
-| `batch-e2e.test.ts` | End-to-end batch settlement (SP1 mock) | E-5 |
-| `sequencer.test.ts` | Batch sequencer API, mempool, state mirror, batch assembly | Batch sequencer |
 
 ---
 
@@ -403,17 +350,14 @@ export CERTORAKEY=<your-key>
 
 | Layer | Files | Test count | What it covers |
 |---|---|---|---|
-| **TLA+ model checking** | 3 models | 24 invariants (FigaroCore: 7 across 6,087,113 states / 4m 8s; FigToken: 8 across 160,844 states / 9s; RpgfMinter: 9 across 11,821 states / 7s — all via `./scripts/test-tla.sh`) | Kernel safety (conservation, solvency, bonding, atomicity, resolution) + FIG token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, renounce-monotonicity, deployer-cannot-mint-after-renounce) + RPGF minter state machine (immutables, root one-shot, claim-flag monotonicity, time-lock, stage-bound) |
-| **Halmos symbolic testing** | 2 files | 15 properties | FigaroCore (7): token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. RpgfMinter (8): claim sets flag, already-claimed revert, not-unlocked revert, invalid-stage revert, root-not-set revert, submitter auth, root one-shot, zero-root rejection. |
-| **Certora formal verification** | 6 specs | 45 declared rules (8 + 7 + 7 + 4 + 6 + 13) | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability + validator-gate on the new commitment-arg ABI. TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. BatchVerifierTokenOps: single-position settleBatch balance-flow proofs. FigToken: supply cap + minter registry preservation. RpgfMinter: immutables, root one-shot, totalAllocated-locked-with-root, claim-flag monotonicity, submitter authorization, claim preconditions (stage-bound, root-set, unlocked, not-already-claimed). |
-| **Echidna fuzzing** | 2 harnesses | 15 properties | Kernel (7): solvency, monotonicity, buyer dominance, atomicity. RpgfMinter (8): claim-flag monotonicity, total-minted-within-cap, immutables, root one-shot, claim balance consistency. |
-| **Foundry unit tests** | 14 suites | 225 tests | Core lifecycle, revert branches, mechanisms, gas, FIG, staged airdrop, parity vectors |
-| **SDK Vitest** | 12 files | 166 tests | Event parsing, state reconstruction, bond math, commitments, extensions |
+| **TLA+ model checking** | 2 models | 15 invariants (FigaroCore: 7 across 6,087,113 states / 4m 8s; FigToken: 8 across 160,844 states / 9s — all via `./scripts/test-tla.sh`) | Kernel safety (conservation, solvency, bonding, atomicity, resolution) + FIG token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, renounce-monotonicity, deployer-cannot-mint-after-renounce) |
+| **Halmos symbolic testing** | 1 file | 7 properties | FigaroCore (7): token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. |
+| **Certora formal verification** | 4 specs | 25 declared rules (8 + 4 + 7 + 6) | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability (merkle-only — no content-shape validation). TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. FigToken: supply cap + minter registry preservation. |
+| **Echidna fuzzing** | 3 harnesses | Kernel 7 properties | `EchidnaFuzzer` Kernel (7): solvency, monotonicity, buyer dominance, atomicity, cumulative accounting, conservation, active-count consistency. `EchidnaFigToken` / `EchidnaToken`: FigToken supply/minter fuzzing. |
+| **Foundry unit tests** | 14 suites | 225 tests | Core lifecycle, revert branches, mechanisms, gas, FIG, parity vectors |
+| **SDK Vitest** | 16 files | 166 tests | Event parsing, state reconstruction, bond math, commitments, extensions, clauses |
 | **Frontend Vitest** | 84 files | 560 tests | Components, hooks, semantic derivation, assembly, runtime identity |
 | **Playwright** | 38 specs | 169 tests | UI rendering, content regression, devnet integration |
-| **Rust (prover)** | 2 crates | 55 tests | SP1 kernel parity, batch execution, sequencer |
-
-**Total**: 1,185+ tests across 157 files + formal verification (TLA+ + Halmos) + fuzzing
 
 ---
 
@@ -433,7 +377,7 @@ forge test --via-ir
 
 Prereqs (one-time): `brew install z3 && pipx install halmos`.
 
-### Certora (27 sub-rules across 4 specs — requires API key)
+### Certora (25 declared rules across 4 specs: FigaroCore, AttestationCoordinator, TokenOpsVerification, FigToken — requires API key)
 
 ```bash
 export CERTORAKEY=<key from certora.com/signup>
@@ -475,16 +419,6 @@ cd frontend && npx vitest run
 cd frontend && npx playwright test --project=devnet  # Anvil required
 ```
 
-### Rust prover (55 tests)
-
-```bash
-cd prover && cargo test -p figaro-kernel
-cd prover && cargo test -p figaro-sequencer
-```
-
-CI job: `.github/workflows/prover-ci.yml` runs both on every push/PR that
-touches `prover/`.
-
 ---
 
 ## 14) Known gaps
@@ -499,4 +433,3 @@ details that are now explained on `/builders` but do not appear on marketing pag
 | Fee-on-transfer rejection (A-7) | `FigaroCore.sol` `_pullExact()` | `/builders` → Composability → Fee-on-Transfer Guard |
 | EIP-2612 permit pathway | `frontend/lib/core/permitExecution.ts` | `/builders` → Gasless token approvals |
 | Content-addressed order IDs (K-9) | `FigaroCore.sol` commit hash | `/builders` → Composability → Content-Addressed Order IDs |
-| Batch verification detail (E-5) | `FigaroBatchVerifier.sol` state root chain | `/builders` → Batch verification (4 cards: state root, SP1, net positions, event re-emission) |

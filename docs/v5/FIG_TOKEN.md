@@ -2,21 +2,21 @@
 
 ## Status
 
-Implemented. Three contracts:
+Implemented. Two contracts:
 
 - `src/fig/FigToken.sol` — ERC-20 + EIP-2612 permit, 1B hard cap, minter registry
   with `totalRegisteredCap` enforcement.
-- `src/fig/RpgfMinter.sol` — three-stage SP1-gated minter for the
-  clause-author RPGF (year 2 / year 5 / year 9). Per-tranche Merkle
-  root submitted at tranche time; the SP1 proof attests that the
-  aggregation formula was applied correctly to the event stream the
-  submitter supplied — it does not attest that that stream mirrors
-  chain history, which is a trusted-submitter assumption. Aggregation
-  logic in `prover/rpgf/` (Rust).
-- `src/fig/IFigMinter.sol` — minimal `mint(address,uint256)` interface.
+- `src/fig/IFigMinter.sol` — minimal `mint(address,uint256)` interface, implemented
+  by `FigToken`.
 
-Deployment: `script/DeployMainnet.s.sol` performs the full genesis distribution
-and seals minting in a single transaction bundle.
+The proof-gated RPGF distribution (`src/fig/RpgfMinter.sol`, its SP1 prover, and the
+off-chain aggregation/sequencer machinery) was removed in the proof-apparatus
+teardown. There is no on-chain RPGF distribution. The surviving FIG stack is the
+token contract plus its minter interface; the genesis distribution lives in the
+deploy scripts.
+
+Deployment: `script/DeployMainnet.s.sol` (mainnet) and `script/Deploy.s.sol` (devnet)
+perform the genesis distribution and seal minting.
 
 ---
 
@@ -48,8 +48,7 @@ not a governance right, not a staking instrument.
   settlement behind a token would reintroduce infrastructure rent. The
   protocol's permissionless nature is load-bearing.
 - **Not settlement-anchored emission.** FIG is **not minted on `resolveProcess`**.
-  There is no per-settlement reward path. The earlier `FigEmission` contract
-  and any batch-verifier minting have been permanently removed.
+  There is no per-settlement reward path.
 
 ---
 
@@ -69,21 +68,32 @@ the full name is the protocol.
 |---|---|---|---|
 | **Founders** | **10%** | **100,000,000** | Genesis mint to founder wallet — **no vesting, no unlock** |
 | **DAO**      | **30%** | **300,000,000** | Genesis mint to DAO wallet — **no vesting, no unlock** |
-| **RPGF — Year 2** | 30% | 300,000,000 | Clause-author RPGF, unlocks at year 2 |
-| **RPGF — Year 5** | 20% | 200,000,000 | Clause-author RPGF, unlocks at year 5 |
-| **RPGF — Year 9** | 10% | 100,000,000 | Clause-author RPGF, unlocks at year 9 |
+| **Clause-author RPGF** | **60%** | **600,000,000** | **No wired minter (removed in teardown)** — see below |
 | **Total** | **100%** | **1,000,000,000** | |
 
-Founders and DAO receive tokens directly to their wallets at deploy time.
-The community airdrop is a single `RpgfMinter` contract with three immutable
-unlock timestamps. Per-tranche Merkle roots are NOT baked at deploy — they
-are submitted at tranche time by a sequencer. The accompanying SP1 proof
-attests that the clause-author substrate-broadening aggregation formula
-was applied correctly to the event stream the sequencer supplied; it does
-not attest that that stream faithfully mirrors chain history — the
-sequencer is trusted for input provenance. See `prover/rpgf/` (Rust
-aggregator) and `prover/rpgf-script/` (host-side SP1 wrapper) for the
-off-chain pieces.
+Founders and DAO receive tokens directly to their wallets at deploy time. Only
+the 400M founder + DAO allocation is minted; the remaining 600M of the 1B cap
+has **no wired mint path**.
+
+### The 600M clause-author RPGF allocation
+
+The *intent* of this allocation is unchanged: 60% of the supply is reserved for
+clause authors, distributed by how much a contribution broadens the protocol's
+substrate — a category-weighted formula favoring Tier-1 families such as geo and
+coordination clauses, which produce the public physical/virtual-flow graph that
+dissolves platform value-capture.
+
+**The on-chain mechanism that delivered this allocation was removed in the
+proof-apparatus teardown.** The proof-gated minter (`RpgfMinter`, an SP1-gated
+three-stage airdrop with per-tranche Merkle roots and claim transactions), its
+Rust aggregator, and the off-chain sequencer/conformance tooling are all gone.
+There is currently no contract that mints any part of the 600M, and no
+settlement-anchored emission replaces it.
+
+The rationale for the allocation — the substrate-broadening / category formula
+and why the geo/coordination weight exists — survives in
+`docs/v5/PUBLIC_GRAPH_MODEL.md` § "Why the substrate-broadening weight exists".
+Re-home the formula and any rebuilt distribution mechanism alongside it.
 
 ### Rationale
 
@@ -92,164 +102,85 @@ off-chain pieces.
   investors. Adding a vesting cliff would be theater. The DAO needs its tokens
   at genesis to perform its coordination function from day one.
 
-- **Staged community airdrop (30 / 20 / 10).** The distribution is weighted
-  toward the earliest stage because early-network coordination has higher
-  marginal impact. The nine-year tail reserves 10% for long-term participants
-  who demonstrate sustained engagement.
-
-- **No settlement-anchored emission.** The original `FigEmission` design
-  (per-settlement FIG mint with halving or Euler oscillation) was removed.
-  It complicated the trust surface, coupled the token to protocol activity
-  in ways that invited gaming, and added a large dead-code path in the
-  batch verifier. The three airdrop stages replace it as the post-genesis
-  distribution mechanism.
+- **No settlement-anchored emission.** FIG is not minted per settlement. Coupling
+  the token to protocol activity invites gaming and complicates the trust surface.
 
 - **No token sale.** FIG is never sold — not in an ICO, IDO, SAFT, or
   presale. There is no investment contract. The founders and DAO receive
-  their allocations at genesis; everyone else claims via the staged airdrop.
+  their allocations at genesis.
 
 ---
 
-## The Substrate-Broadening Formula
+## FigToken Mechanics
 
-The three RPGF tranches reserve FIG for clause authors — but the allocation
-table does not say *which* authors, or *how much* each receives. That is decided
-by the **substrate-broadening formula**, implemented canonically in
-`prover/rpgf/` (Rust, compiled into the SP1 program) and mirrored by
-`sdk/scripts/rpgf-simulator/` (TypeScript conformance spec). The SP1 proof that
-gates `RpgfMinter.submitRoot` attests this formula was applied correctly to the
-event window the sequencer supplied — not that the window mirrors chain history
-(see the trusted-submitter note above).
+`FigToken` (`src/fig/FigToken.sol`) is an ERC-20 with EIP-2612 permit
+(`ERC20Permit`) and a reentrancy-guarded `mint`. The supply discipline is
+enforced entirely at registration and mint time — there is no admin, no pause,
+no upgrade path.
 
-**Recipient.** A clause's allocation goes to its `clauseAuthor` — the
-first-write-wins wallet that registered the clause on `ClauseRegistry`. One
-clause, one recipient. There is no per-attestation, per-seller, or
-per-settlement reward path anywhere in the system.
+- **Hard cap.** `MAX_SUPPLY = 1_000_000_000 ether`. Every `mint` reverts with
+  `SupplyCapExceeded` if it would push `totalSupply()` past the cap.
 
-**What is measured.** Per tranche, the aggregator builds one snapshot per clause
-from a window of on-chain events, under a **resolved-only filter**: an
-attestation counts only if its order belongs to a process that has resolved.
-Work that never settles earns nothing; a clause with no resolved attestations in
-the window receives zero by absence.
+- **Minter registry.** The deployer registers minter contracts via
+  `registerMinter(minter, cap)`. Each minter has a `Minter { cap, minted }`
+  record; a minter can only be registered once (`MinterAlreadySet`), and `mint`
+  reverts past that minter's own `cap` (`MinterCapExceeded`).
 
-**The score.** Each clause is scored:
+- **`totalRegisteredCap`.** The sum of all registered minter caps. Registration
+  reverts (`SupplyCapExceeded`) if `totalRegisteredCap + cap > MAX_SUPPLY`, so
+  the allocation plan cannot be over-committed even before any minting occurs.
 
-```
-score = w_tier1 × processCount^α × pairs^(1 − α)        α = 33/100
-```
+- **Renounce.** `renounceDeployerMint()` permanently sets `deployerMintRenounced`.
+  After renounce, no new minters can be registered and the deployer can never
+  mint again. The action cannot be undone.
 
-- `processCount` — distinct resolved processes the clause appeared in.
-- `pairs` — distinct buyer↔seller pairs that used it.
-- The exponent split (α = 0.33) weights **counterparty diversity** (`pairs`)
-  above raw `processCount`: a clause adopted across many distinct relationships
-  broadens the protocol's substrate more than one used heavily between the same
-  two parties. A clause with zero processes or zero pairs scores zero.
-
-**The tier-1 weight** (`w_tier1`, range 1.0–5.0) adds two dimensions —
-`w = 1 + (w_category − 1) + (w_topology − 1)`:
-
-- `w_category` — `3.0` for tier-1 category clauses (the coordination family and
-  `figaro-geo-v2`, hard-coded at deploy), `1.0` otherwise.
-- `w_topology` — the clause's mean chain position over the window, clamped to
-  `[1.0, 3.0]`; clauses used deeper in process chains weigh more.
-
-**Why the `w_category` boost exists.** It is a deliberate incentive, not a
-privileged class of authors: it rewards the *category of work* — geo/coordination
-clauses — that produces the public physical/virtual-flow graph the must-have clauses
-(core + topology + commerce) cannot, and whose existence dissolves platform
-value-capture. Removing it on "a privileged category contradicts open-world
-neutrality" is the neutrality ≠ flat-weighting error. Full rationale + the
-anti-platform objective: `docs/v5/PUBLIC_GRAPH_MODEL.md` § "Why the
-substrate-broadening weight exists". Enforced by
-`scripts/lint-substrate-broadening-weight.sh`.
-
-**Value is deliberately excluded.** Payment and bond size do not enter the
-formula. The protocol's cost to move one unit equals its cost to move a
-trillion; weighting by value would import a TradFi "TVL matters" metric the
-coordination layer rejects.
-
-**Scores to FIG.** Scores become pro-rata shares of the tranche budget. A
-**15% per-author cap** is then enforced by iterative water-filling — any share
-above the cap is truncated and its excess redistributed pro-rata across
-under-cap shares, iterated to a fixpoint — so no author can take more than 15%
-of a single tranche. Capped shares scale to FIG amounts; the
-`(clauseAuthor, amount)` pairs form the Merkle tree whose root `submitRoot`
-records.
-
-**The formula is frozen.** `α = 33/100`, the `15/100` cap, and the tier-1
-category set are deploy-time constants. The SP1 program commits to this one
-formula and applies it unchanged across all three tranches (years 2 / 5 / 9).
-Changing it would require deploying a new FIG system — the minter is sealed by
-`renounceDeployerMint`.
+- **EIP-2612 permit.** Gasless approvals via the inherited `ERC20Permit`
+  (`permit`, `nonces`, `DOMAIN_SEPARATOR`).
 
 ---
 
-## Deployment Flow (`DeployMainnet.s.sol`)
+## Deployment Flow
 
-The deploy script is a single transaction bundle that permanently seals
-minting at the canonical 1B cap:
+### Mainnet — `script/DeployMainnet.s.sol`
+
+The deploy script mints only the founder + DAO genesis allocation, then seals
+minting. `FOUNDER_ALLOC = 100M`, `DAO_ALLOC = 300M`.
 
 ```
 1. Deploy FigToken (deployer becomes the constructor deployer).
-2. Deploy RpgfMinter with (SP1 verifier, programVKey, submitter, 3 unlock timestamps). Roots are NOT baked at deploy — they are submitted at tranche time.
-3. Register the deployer as a one-shot genesis minter with cap 400M.
-4. fig.mint(founderWallet, 100M)     — founder genesis mint.
-5. fig.mint(daoWallet, 300M)         — DAO genesis mint.
-6. Register RpgfMinter as a minter with cap 600M.
-7. fig.renounceDeployerMint()        — permanent. No new minters. Deployer can never mint again.
+2. Register the deployer as a one-shot genesis minter with cap 400M (= FOUNDER_ALLOC + DAO_ALLOC).
+3. fig.mint(FOUNDER_WALLET, 100M)  — founder genesis mint.
+4. fig.mint(DAO_WALLET, 300M)      — DAO genesis mint.
+5. fig.renounceDeployerMint()      — permanent. No new minters. Deployer can never mint again.
 ```
 
-After step 7:
+After renounce:
 
 - Deployer minter: `cap = 400M, minted = 400M`. Exhausted. Cannot mint more.
-- RpgfMinter minter: `cap = 600M, minted = 0`. Drains only through valid merkle claims against sequencer-submitted, SP1-proved per-tranche roots.
-- `totalRegisteredCap = 1B` (exact MAX_SUPPLY).
+- `totalRegisteredCap = 400M`. The remaining 600M of the 1B cap has **no
+  registered minter** — the proof-gated RPGF airdrop that would have minted it
+  was removed in the teardown.
 - Deployer mint renounced. **No further minter registration is possible.**
 
-The 400M + 600M = 1B cap sum is enforced at registration time via
-`FigToken.totalRegisteredCap`, so the allocation plan cannot be over-committed
-even by deployer misconfiguration.
+### Devnet — `script/Deploy.s.sol`
 
----
-
-## Claim Mechanism
-
-Each airdrop stage uses the standard OZ MerkleProof pattern:
-
-```solidity
-leaf = keccak256(abi.encodePacked(recipient, amount));
-```
-
-A claim transaction on `RpgfMinter` specifies:
-
-- `stageIndex` (0 = year 2, 1 = year 5, 2 = year 9),
-- `amount` (the leaf amount),
-- `proof` (merkle proof against that stage's root).
-
-Revert paths:
-
-- `NotUnlocked(stageIndex)` — if `block.timestamp < stage.unlockTime`.
-- `AlreadyClaimed(stageIndex, account)` — one-shot per (stage, account).
-- `InvalidProof()` — proof does not verify against the stage's root.
-- `InvalidStage(stageIndex)` — `stageIndex >= 3`.
-
-The contract then calls `IFigMinter(minter).mint(msg.sender, amount)`, which
-mints FIG directly to the claimer. The minter (`FigToken`) enforces its own
-per-minter cap, so a stage cannot mint more than its merkle tree entitlements
-summed to less than 600M collectively — and in any case cannot exceed the
-registered 600M airdrop cap.
+On devnet the deployer registers itself with a 100M cap, mints 100M to its own
+wallet (standing in for founder + DAO), and renounces. There is no staged-airdrop
+allocation on either path.
 
 ---
 
 ## Open Design Questions
 
-All resolved. Each item in this section is a **decision**, not an open question.
+All resolved. Each item is a **decision**, not an open question.
 
 1. **Total supply: 1,000,000,000 FIG.** Round, memorable.
 2. **Founder + DAO at genesis, no vesting.** See "Rationale" above.
-3. **Airdrop staged 30/20/10 at years 2/5/9.** Single contract.
-4. **FIG token standard: ERC-20 + EIP-2612 permit.**
-5. **No emission contract, no batch-verifier minting.** Dead and removed.
+3. **FIG token standard: ERC-20 + EIP-2612 permit.**
+4. **No emission contract, no settlement-anchored minting.**
+5. **No on-chain RPGF distribution.** The proof-gated minter was removed in the
+   proof-apparatus teardown; the 600M clause-author allocation has no wired mint
+   path. The allocation intent survives in `docs/v5/PUBLIC_GRAPH_MODEL.md`.
 6. **Immutability.** Once deployed, no contract in the FIG stack can be
    upgraded, paused, or reconfigured. If any contract is wrong, a new one
    is deployed and the community migrates. There is no admin.

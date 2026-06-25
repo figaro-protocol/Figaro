@@ -150,11 +150,13 @@ fulfilment. It is the Geo graph above, and nothing forces it into existence.
 
 **So the protocol pays more for the clauses that draw the map.** To make the
 flow-graph exist, the substrate-broadening formula weights a **category of work** —
-the geo/coordination family — above the rest (`w_category = 3.0`, frozen at deploy;
-today `keccak256("geo")` and `keccak256("coordination")`; the sealed mirrors are
-`prover/rpgf/src/formula.rs` and `sdk/scripts/rpgf-simulator/formula.ts`). It is a
-deliberate incentive: contribute and use the clauses that emit physical/virtual-flow
-data, and earn more of the supply reserved for clause authors.
+the geo/coordination family — above the rest (`w_category = 3.0`; today
+`keccak256("geo")` and `keccak256("coordination")`). The formula's on-chain
+implementation (the SP1 prover + its sealed Rust/TS mirrors) was removed in the
+proof-apparatus teardown; this section is the rationale's surviving home, to be
+re-homed alongside any rebuilt RPGF distribution. It is a deliberate incentive:
+contribute and use the clauses that emit physical/virtual-flow data, and earn more
+of the supply reserved for clause authors.
 
 **This privileges a kind of public good, not a set of authors.** The weight attaches
 to the *family*, never to a wallet: any author who registers a clause under a

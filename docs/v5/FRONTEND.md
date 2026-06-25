@@ -102,8 +102,8 @@ Y", not as an open-ended build.)
   (pins to IPFS + anchors on-chain, persisted) and
   `tests/e2e/direct-sale-runtime.devnet.spec.ts` (consumes from chain + IPFS;
   discovers, never imports a roster).
-- **Network reads** — `lib/core/indexer.ts` (the read side; the sequencer in
-  `prover/sequencer/` is the write/batch/prove side).
+- **Network reads** — `lib/core/indexer.ts` (the canonical read side; reconstructs
+  process/clause/seller state from chain events).
 
 ## Wallet-provider scope per route
 

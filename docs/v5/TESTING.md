@@ -1,41 +1,29 @@
 # Testing — Harness Inventory
 
-CLAUDE.md keeps the run commands; this file is the full inventory of test files, harnesses, and properties across all six verification layers.
+CLAUDE.md keeps the run commands; this file is the full inventory of test files, harnesses, and properties across all verification layers.
 
 ## Foundry (`test/`)
 
 `FigaroCoreTest`, `FigaroCoreRevertBranchTest`, `FigaroCoreEventEmissionTest`,
-`AttestationCoordinatorTest`, `ClauseRegistryTest`, `ClauseRegistrationHelperTest`,
-`AssemblyRegistryTest`, `DutchAuctionTest`, `SellerRegistryTest`,
-`ProcessOffsetReceiptTest`, `FigaroBatchVerifierTest`, `DeployScriptTest`,
-`ParityVectors`, `fig/FigToken.t.sol`, `fig/RpgfMinter.t.sol`,
-`fig/RpgfMinterConformance.t.sol`, `BatchGasCeilingTest`, `BatchGasBoundaryTest`,
-`GasCeilingTest`, `SwapAndCommitCoordinatorTest`, `MockKlerosArbitratorTest`.
+`AttestationCoordinatorTest`, `ClauseRegistryTest`, `AssemblyRegistryTest`,
+`DutchAuctionTest`, `SellerRegistryTest`, `ProcessOffsetReceiptTest`,
+`PolygonOffsetForkTest`, `GasCeilingTest`, `SwapAndCommitCoordinatorTest`,
+`MockKlerosArbitratorTest`, `HalmosFigaroCore`, `fig/FigToken.t.sol`.
 
-`test/clauseValidators/` — one test file per `IClauseValidator` implementation
-(currently 16: commerce, consent, geo, fulfilment, the 5 GHG sister clauses
-(protocol / iso-14064 / pas-2050 / en-16258 / custom), GHG measurement,
-jurisdiction, merchant-process, courier-process, offset-policy,
-proximity policy, proximity proof). Each suite covers happy paths + every
-typed-error revert. (Topology has no validator — agreement-only clause.)
-
-## Halmos (`test/`) — 2 harnesses, 15 properties
+## Halmos (`test/`) — 1 harness, 7 properties
 
 | Harness | Properties | Key invariants |
 |---|---|---|
 | `HalmosFigaroCore.t.sol` | 7 | Token conservation, bond amounts, resolution payouts, status transitions, buyer dominance, monotonicity |
-| `HalmosRpgfMinter.t.sol` | 8 | Claim flag set, already-claimed revert, not-unlocked revert, invalid-stage revert, root-not-set revert, submitter auth, root one-shot, zero-root rejection |
 
-## Certora (`certora/`) — 6 specs, 44 declared rules (46 sub-rules)
+## Certora (`certora/`) — 4 specs
 
 | Spec | Rules | Covers |
 |---|---|---|
 | `FigaroCore.spec` | 8 | Status monotonicity, transitions, active count, buyer dominance, no double-commit, cumulative monotonicity, rootBuyer immutable, currency immutable |
-| `AttestationCoordinator.spec` | 7 → 8 sub-rules | Role-gate on `attestAsBuyer` (non-buyer reverts; success ⟹ caller is buyer) + parametric Core-immutability (AC cannot change orderStatus or processes[]) + validator-gate (clauseId with no registered validator reverts) + setValidator invariants (first-write-wins, per-clause storage isolation). Re-authored + cloud-verified 2026-04-23 for the new commitment-arg ABI — 8/8 green. |
-| `TokenOpsVerification.spec` | 7 → 8 sub-rules | Universal FigaroCore token-flow: exact commit deltas (buyer/seller/Core), allowance-drain safety (∀ address), commit + single-order resolve conservation, single-order resolve exact payouts. Generalizes Halmos root-only coverage to arbitrary sub-orders. |
-| `BatchVerifierTokenOps.spec` | 4 | Single-position `settleBatch`: user balance delta = payout − deposit, contract delta = deposit − payout, allowance-drain safety, conservation. |
+| `AttestationCoordinator.spec` | 4 | Role-gate on `attestAsBuyer` (non-buyer reverts; success ⟹ caller is buyer) + parametric Core-immutability (AC cannot change orderStatus or processes[]). No on-chain clause-content validator — well-formedness is an off-chain concern. |
+| `TokenOpsVerification.spec` | 7 | Universal FigaroCore token-flow: exact commit deltas (buyer/seller/Core), allowance-drain safety (∀ address), commit + single-order resolve conservation, single-order resolve exact payouts. Generalizes Halmos root-only coverage to arbitrary sub-orders. |
 | `FigToken.spec` | 6 | Supply cap, registered-cap bound, registered-cap monotonicity, renounce one-way latch, minter cap immutability, minter within cap |
-| `RpgfMinter.spec` | 12 | submitter/minter/programVKey immutable, per-stage unlockTime immutable, root one-shot, totalAllocated locked-with-root, claim-flag monotonic, only-submitter sets root, claim preconditions (stage-bound, root-set, unlocked, not-already-claimed). |
 
 Companion: `certora/token-ops.inventory` + `scripts/lint-token-ops.sh` — declarative inventory of every ERC20 transfer call site in `src/`; the linter (run as a `./scripts/test-certora.sh` prelude) fails if a new transfer call merges without an inventory entry.
 
@@ -44,10 +32,10 @@ Companion: `certora/token-ops.inventory` + `scripts/lint-token-ops.sh` — decla
 | Harness | Properties | Path |
 |---|---|---|
 | `EchidnaFuzzer` | 7 | `src/echidna/EchidnaFuzzer.sol` — kernel: solvency, active-count consistency, cumulative accounting, state monotonicity, token conservation, buyer dominance, atomic resolution |
-| `EchidnaRpgfMinter` | 8 | `src/echidna/EchidnaRpgfMinter.sol` — claim-flag monotonic, total-minted within cap, minter / submitter / programVKey / unlockTimes immutable, root one-shot, claim balance consistency |
 | `EchidnaFigToken` | 8 | `src/echidna/EchidnaFigToken.sol` — FigToken: MAX_SUPPLY never exceeded, deployer can renounce, no deployer mint after renounce, minter cap enforced, no zero-address minter, no mint to zero address, total supply = sum of balances, transfer preserves supply |
+| `EchidnaToken` | 8 | `src/echidna/EchidnaToken.sol` — ERC20 token invariants |
 
-## TLA+ (`formal/`) — 24 invariants across 3 models (FigaroCore 7 + FigToken 8 + RpgfMinter 9)
+## TLA+ (`formal/`) — 15 invariants across 2 models (FigaroCore 7 + FigToken 8)
 
 FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
 `WalletNonNegative`, `CumulativeIntegrity`, `ActiveCountCorrect`,
@@ -58,18 +46,12 @@ FigToken (`FigToken.tla` + `FigToken.cfg`): `Inv_MaxSupply`,
 `Inv_CapBelowMaxSupply`, `Inv_SupplyEqualsSumMinted`, `Inv_NonNegative`,
 `Inv_NoMintToZero`, `Inv_BalancesSumToSupply`.
 
-RpgfMinter (`RpgfMinter.tla` + `MC_RpgfMinter.tla` + `MC_RpgfMinter.cfg`):
-`TypeOK`, `Inv_SubmitterImmutable`, `Inv_UnlockTimeImmutable`,
-`Inv_RootInRange`, `Inv_ClaimedTyped`, `Inv_ClaimImpliesRootSet`,
-`Inv_ClaimImpliesUnlocked`, `Inv_TotalAllocatedLockedWithRoot`,
-`Inv_StageIndexBounded`.
-
 ## Frontend Vitest (`frontend/tests/`) — 2 tiers, 64 files
 
 `npx vitest run`. UI logic that needs neither a chain nor a real browser.
 
-- **Component tier** (`tests/components/`, 7 files) — React Testing Library:
-  `Header`, `MobileNav`, `GHGWorkflowPanel`,
+- **Component tier** (`tests/components/`, 8 files) — React Testing Library:
+  `Header`, `MobileNav`, `CapabilityRail`, `OnboardingWelcome`,
   `SellerTrackRecord`, `TokenAddressInput`, `TokenApprovalFlow`,
   `TokenDecimalDisplayFlows`.
 - **Lib tier** (`tests/lib/`, 56 files) — pure-client unit tests: commitment
@@ -96,51 +78,19 @@ iteration. In production builds, test-helper gating honors only the explicit
 `lib/shared/e2e.ts`); real deployments never set it, so their builds inline the
 hard-off (RA-5 intent preserved).
 
-**devnet (`*.devnet.spec.ts`, 44 specs)** — every spec drives the real UI
-against Anvil + deployed contracts (action in the UI, reaction in the UI). By area:
-
-- Commerce / checkout / order lifecycle: `seller-page`, `orders-accept` (the
-  full-cycle spine: order → accept → commit → resolve → settle → audit, both ends
-  driven through `/orders`).
-- Designer + assembly registry: `designer-publish`, `designer-save-draft`,
-  `designer-view`, `designer-agreement-drawer`, `designer-delivery-modality`,
-  `designer-drafts-delete`, `scenario-direct-sale`, `scenario-local-commerce`,
-  `scenario-local-commerce-offset`, `scenario-local-commerce-pickup`,
-  `scenario-kit-assembly` (authors the 4-node DAG-join diamond),
-  `seeded-assembly-fork`, `published-list-ui`.
-- Sellers: `sellers-onboarding`, `seller-edit-ui`, `seller-withdraw`.
-- Order / role surfaces: `seller-timeline`, `spectator-view`, `audit-page`,
-  `audit-page-seller`, `local-commerce-offset-runtime` (full multi-role
-  emissions-aware runtime: commit → coordinate → emissions → offset → resolve),
-  `local-commerce-pickup-runtime` (full buyer↔merchant pickup runtime: commit
-  → merchant lifecycle → both parties witness proximity-proof at handoff →
-  resolve), `kit-assembly-runtime` (4-node diamond: buyer commits all four
-  orders with live per-contributor pricing → one atomic resolve pays every
-  seller; per-party clause-exercise is open — see backlog).
-- Attestation + delivery: `proximity-proof-ui`.
-- GHG / offsets: `offset-retirement-ui`. (GHG panel-level coverage also
-  lives end-to-end in `local-commerce-offset-runtime`.)
-- Dispute: `dispute-ui`. FIG token: `fig-claim-ui`.
-
-Retired from the e2e suite (drove no UI — contract tests misfiled into Playwright;
-behavior lives in Foundry): `assembly-registry` (AssemblyRegistryTest),
-`buyer-attestation` (AttestationCoordinatorTest), `dutch-auction-lifecycle`
-(DutchAuctionTest), `fig-claim` (fig/RpgfMinter.t.sol), `offset-retirement`
-(ProcessOffsetReceiptTest), `process-closure` (FigaroCoreTest), `proximity-proof`
-(FigaroProximityProofV1ValidatorTest), `seller-update-profile` (SellerRegistryTest).
+**devnet (`*.devnet.spec.ts`)** — 16 specs on disk (`frontend/tests/e2e/`); see
+the files. Every spec drives the real UI against Anvil + deployed contracts
+(action in the UI, reaction in the UI): commerce / checkout / order lifecycle
+(`seller-page`, `orders-accept` — the full-cycle spine), designer + assembly
+registry (`designer-publish`, `designer-save-draft`, `designer-view`,
+`designer-agreement-drawer`, `designer-drafts-delete`, `seed-assembly`,
+`published-list-ui`), sellers (`sellers-onboarding`, `seller-edit-ui`,
+`seller-withdraw`), inventories (`assemblies-inventory`, `clauses-inventory`),
+consent (`consent-ceremony`), and the open-world proof (`permissionless-clause`
+— a never-seen clause attestable with zero per-clause on-chain code).
 
 **mobile (`*.mobile.spec.ts`, 1 spec)** — responsive/viewport chrome jsdom
 can't render: `navigation.mobile.spec.ts` (Pixel 5 / Chromium).
-
-## Rust prover — figaro-kernel + figaro-sequencer + figaro-clause + figaro-rpgf
-
-- `figaro-kernel` (`prover/lib/`): kernel logic mirror — types, EIP-712 hashing, apply_batch state machine.
-- `figaro-sequencer` (`prover/sequencer/`): batch mempool, state mirror, assembler, submitter, API.
-- `figaro-clause` (`prover/clause/`): Layer B clause validator. Conformance tests against the
-  TypeScript Layer A reference (`sdk/tests/clauses/validate.test.ts`) — every shipped protocol
-  clause's parse, per-clause content checks for `figaro-ghg-v1` and `figaro-geo-v1`, and
-  a check that all 16 embedded canonical specs the content gate uses parse and resolve by clauseId.
-- `figaro-rpgf` (`prover/rpgf/`): substrate-broadening aggregator + conformance to TypeScript simulator.
 
 ## Opportunistic — Mythril
 

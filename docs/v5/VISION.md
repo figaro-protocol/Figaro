@@ -367,11 +367,11 @@ inflated. There is no settlement-anchored emission: FIG is not minted on
 `resolveProcess`, and there is no per-settlement reward path. The allocation
 is 100M (10%) to founders and 300M (30%) to the DAO — both minted at genesis,
 no vesting — and 600M (60%) reserved for clause-author retroactive
-public-goods funding, released in three staged tranches at years 2, 5, and 9
-through a single `RpgfMinter` contract whose per-tranche Merkle roots are
-proven correct by an SP1 proof before each release. Every contract in the FIG
-stack is immutable: no owner, no upgrade path, no parameter changes. If one is
-wrong, a new one is deployed and the community migrates.
+public-goods funding. The proof-gated distribution mechanism was removed in the
+proof-apparatus teardown, so the 600M currently has no wired minter (the
+rationale survives in `PUBLIC_GRAPH_MODEL.md`). The surviving FIG contracts are
+immutable: no owner, no upgrade path, no parameter changes. If one is wrong, a
+new one is deployed and the community migrates.
 
 This design is deliberate. FIG is not required for participation. It is not
 staked, slashed, or voted with. The 98% cooperation rate comes from the

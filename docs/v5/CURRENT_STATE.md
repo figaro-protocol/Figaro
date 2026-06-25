@@ -35,15 +35,14 @@ of directly bonded contributors and dissolves at settlement.
 Before reasoning about scaling, StarkNet, or Cairo execution, read
 `SCALING_STRATEGY.md`.
 
-The proof-based kernel scaling track (SP1/Rust) is the active scaling
-architecture. It is implemented and tested:
+Proof-based kernel scaling (SP1/Rust) is a **deferred** architecture documented
+in `SCALING_STRATEGY.md`. Its implementation — the Rust kernel/guest, the
+`FigaroBatchVerifier`, and the batch sequencer — was **removed in the
+proof-apparatus teardown**; the design is retained as the planned scaling path,
+not as shipped code. The current settlement path is the kernel's single atomic
+`resolveProcess` (per-process ceiling ~1,240 orders at the 30M block gas limit).
 
-- Rust kernel (`prover/lib/`): full protocol surface in Rust, unit-tested
-- SP1 guest program (`prover/program/`): ~1.0M cycle execution verified (k256 precompile patched); real Core proof generated and verified locally
-- On-chain verifier (`src/FigaroBatchVerifier.sol`): Foundry-tested
-- Devnet batch sequencer (`prover/sequencer/`): Rust crate, tested (test counts in `TESTING.md`)
-
-Read `SCALING_STRATEGY.md` §"Batch Sequencer Architecture" for the sequencer architecture.
+Read `SCALING_STRATEGY.md` for the deferred proof-based scaling design.
 
 If the task involves rewriting or deleting the old Cairo branch, also read
 `CAIRO_REWRITE_PREREQUISITES.md`.

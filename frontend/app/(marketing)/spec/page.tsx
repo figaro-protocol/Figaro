@@ -6,7 +6,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 
 export const metadata: Metadata = {
     title: "Specifications — Figaro Protocol",
-    description: "Canonical on-chain surface: kernel, attestation coordinator, clause registry, validators in force, token, batch verifier, and optional protocol contracts.",
+    description: "Canonical on-chain surface: kernel, attestation coordinator, clause registry, token, and optional protocol contracts.",
 };
 
 const GH = "https://github.com/figaro-protocol/Figaro/blob/main/src";
@@ -57,36 +57,22 @@ export default function Specifications() {
                         id="AttestationCoordinator"
                         title="AttestationCoordinator.sol"
                         href={`${GH}/AttestationCoordinator.sol`}
-                        meta="receipt-bound · validator-gated"
-                        desc="Three attest modes (seller / buyer / resolver). Merkle inclusion proof against the signed agreementHash before validator invocation. Attestations whose clause was not committed cannot land (InvalidInclusionProof revert)."
+                        meta="receipt-bound · merkle-only"
+                        desc="Three attest modes (seller / buyer / resolver). A merkle inclusion proof binds each attestation to the signed agreementHash, and the evidence is content-hashed; the chain validates no content shape. Attestations whose clause was not committed cannot land (InvalidInclusionProof revert)."
                     />
                     <ContractEntry
                         id="ClauseRegistry"
                         title="ClauseRegistry.sol"
                         href={`${GH}/ClauseRegistry.sol`}
                         meta="permissionless · event-only"
-                        desc="Event-only clause anchoring. clauseId = keccak256(humanReadableName). uriHash points at off-chain JSON spec."
-                    />
-                    <ContractEntry
-                        id="IClauseValidator"
-                        title="IClauseValidator.sol"
-                        href={`${GH}/IClauseValidator.sol`}
-                        meta="per-clauseId · view"
-                        desc="Per-clause content validator interface. Reverts on invalid content; binds to one clauseId via clauseId(). No admin, no mutable state."
-                    />
-                    <ContractEntry
-                        id="ClauseRegistrationHelper"
-                        title="ClauseRegistrationHelper.sol"
-                        href={`${GH}/ClauseRegistrationHelper.sol`}
-                        meta="atomic register+bind"
-                        desc="Stateless helper. registerClauseAndValidator(clauseId, version, uriHash, validator) composes registry + setValidator in one transaction. Closes the front-running window for post-deploy third-party clause registration. No admin, no fee, no privilege over targets — just a permissionless composer."
+                        desc="Event-only clause anchoring, first-write-wins. clauseId = keccak256(humanReadableName); metadataURI points at the off-chain JSON spec. No on-chain content validation — a registered clause is immediately attestable."
                     />
                 </ul>
             </MarketingSection>
 
-            <MarketingSection title="Clause validators in force">
+            <MarketingSection title="Clause validation">
                 <p className="text-base text-ink-body leading-relaxed">
-                    Every runtime-attestable clause binds to a deployed <code>IClauseValidator</code> contract; <code>figaro-topology-v1</code> is agreement-only &mdash; committed at agreement signing, with no on-chain validator. The full inventory &mdash; every clauseId, what it carries, and the three-layer validation architecture &mdash; is on <Link href="/clauses" className="underline">Clauses</Link>.
+                    Clause content is validated <strong>off-chain</strong> (the Layer-A TypeScript SDK); the chain registers clauses and merkle-binds attestations but validates no content shape, so a never-seen clause is attestable with zero per-clause on-chain code. <code>figaro-topology-v1</code> is agreement-only &mdash; committed at signing, with no runtime attestation. The full inventory &mdash; every clauseId and what it carries &mdash; is on <Link href="/clauses" className="underline">Clauses</Link>.
                 </p>
             </MarketingSection>
 
@@ -100,13 +86,6 @@ export default function Specifications() {
                         desc="ERC-20 + EIP-2612 permit. 1,000,000,000 MAX_SUPPLY hard cap on every mint. Minter registry with totalRegisteredCap. Deployer registers capped minters, then renounces."
                     />
                     <ContractEntry
-                        id="RpgfMinter"
-                        title="RpgfMinter.sol"
-                        href={`${GH}/fig/RpgfMinter.sol`}
-                        meta="3 stages · SP1-gated · one-shot per claim"
-                        desc="Three-stage SP1-gated retroactive public-goods funding minter (year 2 / 5 / 9). Three immutable unlock timestamps; per-tranche Merkle roots submitted by the sequencer after an SP1 proof verifies the substrate-broadening aggregation. Calls IFigMinter.mint on claim."
-                    />
-                    <ContractEntry
                         id="IFigMinter"
                         title="IFigMinter.sol"
                         href={`${GH}/fig/IFigMinter.sol`}
@@ -114,26 +93,8 @@ export default function Specifications() {
                     />
                 </ul>
                 <p className="text-xs text-ink-muted mt-4">
-                    Allocation: 100M founders (genesis), 300M DAO (genesis), 600M community airdrop (300 / 200 / 100 at yr 2 / 5 / 9). See <Link href="/fig" className="underline">FIG</Link>.
+                    Allocation: 100M founders (genesis), 300M DAO (genesis), 600M clause-author RPGF (no minter wired &mdash; the proof-gated distribution was removed). See <Link href="/fig" className="underline">FIG</Link>.
                 </p>
-            </MarketingSection>
-
-            <MarketingSection title="Batch verification">
-                <ul className="space-y-4">
-                    <ContractEntry
-                        id="FigaroBatchVerifier"
-                        title="FigaroBatchVerifier.sol"
-                        href={`${GH}/FigaroBatchVerifier.sol`}
-                        meta="SP1-proved · off-chain execution"
-                        desc="On-chain verifier for SP1-proved batches. Verifies state root continuity, chain binding, auxiliary data hashes. Executes net token transfers."
-                    />
-                    <ContractEntry
-                        id="ISP1Verifier"
-                        title="ISP1Verifier.sol"
-                        href={`${GH}/interfaces/ISP1Verifier.sol`}
-                        desc="Succinct SP1 verifier gateway interface."
-                    />
-                </ul>
             </MarketingSection>
 
             <MarketingSection title="Optional protocol contracts">

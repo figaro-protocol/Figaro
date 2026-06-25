@@ -59,8 +59,8 @@ the spec, not around it:
 
 | Part | Who reads it | Verified? |
 |---|---|---|
-| **`fields`** (the content) | Layer A (`validate.ts`), Layer B (`validate.rs`, in the SP1 circuit), Layer C (`IClauseValidator`, `abi.decode`s `content`) | **Yes** — validated identically across layers, attested on-chain, merkle-bound to `agreementHash`, secured by bonds |
-| **`block.tier`** | the agreementHash builder (`orderAgreement.ts`) + the prover's cross-check gate (`spec.rs::cross_checks`) | **Yes (structural)** — declares the verification posture: `cross-checked` → content byte-committed into `agreementHash`; `runtime` → attested live, empty anchor; `agreement-only` → in the signed agreement, no validator (e.g. topology, reconstructed off-chain) |
+| **`fields`** (the content) | Layer A (`validate.ts`, off-chain) | **Yes (off-chain)** — validated against the spec off-chain; the section is merkle-bound to `agreementHash` and the attestation is secured by bonds. The chain validates no content shape. |
+| **`block.tier`** | the agreementHash builder (`orderAgreement.ts`) | **Yes (structural)** — declares the verification posture: `cross-checked` → content byte-committed into `agreementHash`; `runtime` → attested live, empty anchor; `agreement-only` → in the signed agreement, no runtime attestation (e.g. topology, reconstructed off-chain) |
 | **the rest of `block`** — `article`, `nestsUnder`, `mechanismKinds`, `moduleIds`, `attestation`, `sisterClauseId` | the UI only (drawer grouping, sub-clause nesting, capability-rail mounting) | **No** — every on-chain and verification path ignores it |
 
 So `fields` + `block.tier` are the **protocol**; everything else in `block` is **replaceable
@@ -82,14 +82,12 @@ Three recurring questions collapse to "which side of the seam?":
    (presentation) or below it (verified substance)?" Below the seam, you compose from `lib/` and
    the registries; you never build an app shell, because the clause spec itself shows the UI is
    downstream.
-3. **Permissionless boundary — where data ends and code begins.** `block` is *always* data,
-   always permissionless. `fields` are validated: a **declarative** clause (types/enums/bounds)
-   is validated by the already-generic `validate.ts`/`validate.rs` — data-only; an **imperative**
-   clause (proximity-proof verification, GHG arithmetic, cross-field constraints) needs a custom
-   validator — code, correctly gated behind the repo. Today the only generic Layer-C validator is
-   the permissive mock; closing that gap (a spec-driven `SpecDrivenValidator`, or routing
-   declarative clauses through the proof path) would make declarative clauses data-only end to
-   end. (Tracked on the punch-list; see `CLAUSES.md` for the three-layer detail.)
+3. **Permissionless boundary — data, not code.** `block` is *always* data, always
+   permissionless, and so are `fields`: every clause's content is validated off-chain by the
+   already-generic `validate.ts` against the spec — data-only, no per-clause code. Imperative
+   checks (proximity-proof verification, GHG arithmetic, cross-field constraints) are off-chain /
+   read-time concerns, never on-chain validators. There is no on-chain content validation at all —
+   the chain registers clauses and merkle-binds attestations, nothing more. (See `CLAUSES.md`.)
 
 ## Related
 
