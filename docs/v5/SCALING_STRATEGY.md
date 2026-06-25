@@ -1,6 +1,17 @@
 # Scaling Strategy
 
-Status: canonical scaling document for the V5 kernel.
+**Status: a possible FUTURE development path — deferred, not shipped.** The
+proof-based batch-scaling approach in Track 2 below was prototyped end to end —
+a Rust kernel mirror, an SP1 guest program that generated and locally verified a
+real Core proof, the `FigaroBatchVerifier` Solidity contract under Foundry, and
+a devnet sequencer — and then **removed in the 2026-06-25 proof-apparatus
+teardown**. Present settlement is the kernel's single atomic `resolveProcess`
+(per-process ceiling ~1,240 orders at the 30M block gas limit). This document is
+retained as the **design baseline** for if/when batch-proof scaling is rebuilt:
+the `prover/`, `FigaroBatchVerifier`, `MockSP1Verifier`, and `ISP1Verifier`
+paths it cites refer to that removed prototype, not to current code. Track 1
+(launch the unchanged kernel) is the live path; everything proof/sequencer-related
+is the deferred design.
 
 ## The Kernel's Shape
 
@@ -76,9 +87,11 @@ transitions off-chain and publishes a succinct proof to the
 settlement chain that the resulting state root is reachable from the
 prior state root under V5 rules.
 
-### Implementation Status
+### Prototype status (built, verified locally, then removed)
 
-The proof-based kernel is implemented and tested:
+A working prototype was built and verified locally, then **deleted in the
+proof-apparatus teardown**. What it demonstrated (retained here as the design
+baseline; none of these files exist in the tree today):
 
 **Rust kernel** (`prover/lib/`): Full protocol surface translated to Rust.
 8 `KernelOp` variants covering commit, resolve, attestation (seller/buyer),
@@ -738,9 +751,9 @@ won't match the on-chain `stateRoot`) and re-sync before the next batch.
 
 ## Implementation Phases
 
-### Phase 1: Devnet Sequencer (implemented)
+### Phase 1: Devnet Sequencer (prototyped, then removed in the teardown)
 
-Rust crate in `prover/sequencer/`. 6 modules, 22 tests.
+The prototype was a Rust crate in `prover/sequencer/` — 6 modules, 22 tests.
 
 - **Mempool** (`mempool.rs`): Thread-safe operation queue with full EIP-712
   pre-check validation for all 11 `KernelOp` variants. Rejects malformed or
