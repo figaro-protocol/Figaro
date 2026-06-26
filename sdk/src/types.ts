@@ -139,7 +139,6 @@ export interface FigaroAddresses {
     attestationCoordinator?: Address;
     clauseRegistry?: Address;
     dutchAuction?: Address;
-    batchVerifier?: Address;
 }
 
 // ── Bond breakdown ──────────────────────────────────────────────────────────
