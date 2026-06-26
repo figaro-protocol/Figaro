@@ -53,7 +53,7 @@ export default function Agents() {
                     Autonomous agents that want cross-protocol discoverability declare ERC-8004-compatible service endpoints in their <code>SellerRegistry.metadataURI</code> JSON. The clause can be anchored as <code>erc8004-agent-services-v1</code> in <Link href="/clauses" className="underline">ClauseRegistry</Link> for reference integrity. No new contract is needed; the registry already supports arbitrary metadata.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    An agent&apos;s <code>did:web</code> identifier resolves to a DID Document whose verification methods bind the agent&apos;s on-chain Ethereum address in CAIP-10 form. The SDK ships <code>resolveDidWeb</code>, <code>didDocumentMatchesAddress</code>, and <code>buildSellerDidDocument</code> in <code>@figaro/core/extensions</code> for the round-trip.
+                    An agent&apos;s <code>did:web</code> identifier resolves to a DID Document whose verification methods bind the agent&apos;s on-chain Ethereum address in CAIP-10 form. The SDK ships <code>resolveDidWeb</code>, <code>didDocumentMatchesAddress</code>, and <code>buildSellerDidDocument</code> in <code>@figaro/core/agent</code> for the round-trip.
                 </p>
             </MarketingSection>
 
@@ -70,7 +70,7 @@ export default function Agents() {
                 <ul className="space-y-3 text-base">
                     <li>
                         <Link href="/integrate" className="text-ink-heading font-medium hover:underline">The SDK</Link>
-                        <span className="text-ink-body"> &mdash; <code>@figaro/core/agent</code>: HITL action queue, autonomous tx submission, role inference. <code>@figaro/core/extensions</code>: <code>did:web</code> + ERC-8004 utilities.</span>
+                        <span className="text-ink-body"> &mdash; <code>@figaro/core/agent</code>: HITL action queue, autonomous tx submission, role inference, <code>did:web</code> identity.</span>
                     </li>
                     <li>
                         <Link href="/sellers" className="text-ink-heading font-medium hover:underline">Sellers</Link>

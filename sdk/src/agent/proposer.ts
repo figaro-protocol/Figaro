@@ -71,7 +71,7 @@ export interface AttestAction extends BaseAction {
     orderHashes: Hex[];
     /**
      * Optional clauseId for the attestation. When omitted, the executor picks
-     * a role-appropriate default (e.g. `figaro-courier-process-v1` for a
+     * a role-appropriate default (e.g. `figaro-courier-process` for a
      * sub-order carrying that clause). Must correspond to a clause committed in the
      * target's signed agreement — otherwise the coordinator's inclusion-proof
      * gate rejects the call.

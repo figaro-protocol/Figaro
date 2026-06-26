@@ -59,7 +59,8 @@ const { commitment, typedData } = buildCommitment(
 
 ### `@figaro/core/agent` — Agent Coordination
 
-Context sync, action proposer, human-in-the-loop queue, autonomous execution.
+Context sync, action proposer, human-in-the-loop queue, autonomous execution,
+did:web identity.
 
 ```ts
 import { FigaroContext, proposeActions, ActionQueue } from "@figaro/core/agent";
@@ -75,17 +76,17 @@ const actions = proposeActions(ctx.getProcessBriefing(processId), myAddress);
 // Human-in-the-loop: queue actions for approval with optional review context
 type ApprovalContext = {
   bindingId?: string;
-  roleKind?: string;
-  runtimeSummary?: string;
+  party?: string;          // "buyer" | "seller"
+  runtimeSummary?: string; // free-form context for the approver
 };
 
 const queue = new ActionQueue<ApprovalContext>();
 queue.enqueueAll(actions.map((action) => ({
   action,
   approvalContext: {
-    bindingId: "binding:bobs-pizza-palace:local-anvil",
-    roleKind: "seller",
-    runtimeSummary: "Bob's Pizza Palace · Figaro Local Commerce · Restaurant",
+    bindingId: "binding:my-seller:local-anvil",
+    party: "seller",
+    runtimeSummary: "Seller of record · process 0x9c2b…",
   },
 })));
 // ... user reviews and approves ...
@@ -96,50 +97,35 @@ console.log(approved.approvalContext?.runtimeSummary);
 const result = await commit(walletClient, coreAddress, commitment, buyerSig, sellerSig);
 // Or dispatch from a proposed action:
 const result = await executeAction(walletClient, addresses, approvedAction);
+
+// did:web: an agent resolves a counterparty's DID Document and verifies the
+// on-chain address it binds (build your own with buildSellerDidDocument).
+import { resolveDidWeb, didDocumentMatchesAddress } from "@figaro/core/agent";
+const { document } = await resolveDidWeb("did:web:seller.example.com");
+const bound = document ? didDocumentMatchesAddress(document, "0xSeller...", 1) : false;
 ```
 
 ### `@figaro/core/extensions` — Protocol Extensions
 
-Dutch auction price curves, attestation/GHG utilities, geo/handoff helpers,
-did:web identity resolution.
+Clause-agnostic attestation filtering and geo math.
 
 ```ts
 import {
-  computeCurrentPrice,
-  evaluateClaim,
   computeClauseId,
-  buildProcessDisclosureSummary,
+  filterByClause,
   haversineDistance,
   geohashesMatch,
-  resolveDidWeb,
-  didDocumentMatchesAddress,
-  buildSellerDidDocument,
 } from "@figaro/core/extensions";
 
-// Dutch auction: compute current price on a descending curve
-const price = computeCurrentPrice(maxPrice, floorBps, duration, startTime, now);
-
-// Evaluate whether an agent should claim now
-const eval = evaluateClaim(maxPrice, floorBps, duration, startTime, now, false);
-// → { currentPrice, floorPrice, savingsVsMax, discountPct, secondsToFloor, claimable }
-
-// GHG disclosure: derive clause ID, build process summary
-// Standard identity is the clauseId — pick a sister clause (figaro-ghg-protocol-v1,
-// figaro-ghg-iso-14064-v1, figaro-ghg-pas-2050-v1, figaro-ghg-en-16258-v1, figaro-ghg-custom-v1).
-const clauseId = computeClauseId("figaro-ghg-iso-14064-v1");
-const summary = buildProcessDisclosureSummary(attestations, processId, clauseId);
-// → { attestationCount, commitmentCount, inventoryCount, totalActualGrams }
+// Attestations: derive a clause ID (name, version), then filter events for it.
+// The SDK knows no specific clause — the stage/contentRef meaning is clause-spec
+// data read at the edge, never baked in here.
+const clauseId = computeClauseId("figaro-ghg", 1);
+const forClause = filterByClause(attestations, clauseId);
 
 // Geo: check delivery proximity
 const close = geohashesMatch("dr5ru7", "dr5ru8", 5); // true (5-char prefix match)
 const km = haversineDistance(40.71, -74.00, 34.05, -118.24); // ~3944 km
-
-// did:web: resolve a seller's DID Document and verify on-chain address
-const { document, error } = await resolveDidWeb("did:web:seller.example.com");
-if (document) {
-  const match = didDocumentMatchesAddress(document, "0xSeller...", 1);
-  // → true if the DID Document contains a verification method for this address
-}
 ```
 
 ### `@figaro/core/clauses` — Clause-Spec Format + Content Validation

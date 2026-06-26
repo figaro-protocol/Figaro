@@ -52,14 +52,14 @@ describe("ActionQueue", () => {
 
         queue.enqueue(mkAction(), {
             approvalContext: {
-                bindingId: "binding:bobs-pizza-palace:local-anvil",
+                bindingId: "binding:my-seller:local-anvil",
                 party: "seller",
             },
         });
 
         const item = queue.approve(1);
         expect(item.approvalContext).toEqual({
-            bindingId: "binding:bobs-pizza-palace:local-anvil",
+            bindingId: "binding:my-seller:local-anvil",
             party: "seller",
         });
     });
@@ -70,7 +70,7 @@ describe("ActionQueue", () => {
             {
                 action: mkAction(),
                 approvalContext: {
-                    runtimeSummary: "Bob's Pizza Palace · Figaro Local Commerce · Restaurant",
+                    runtimeSummary: "Seller of record · process 0x9c2b…",
                 },
             },
             mkAction(),
@@ -78,7 +78,7 @@ describe("ActionQueue", () => {
 
         expect(ids).toEqual([1, 2]);
         expect(queue.get(1)?.approvalContext).toEqual({
-            runtimeSummary: "Bob's Pizza Palace · Figaro Local Commerce · Restaurant",
+            runtimeSummary: "Seller of record · process 0x9c2b…",
         });
         expect(queue.get(2)?.approvalContext).toBeUndefined();
     });

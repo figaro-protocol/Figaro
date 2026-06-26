@@ -20,7 +20,7 @@
  * const queue = new ActionQueue<{ bindingId?: string; party?: string }>();
  * queue.enqueueAll(actions.map((action) => ({
  *   action,
- *   approvalContext: { bindingId: "binding:bobs-pizza-palace:local-anvil", party: "seller" },
+ *   approvalContext: { bindingId: "binding:my-seller:local-anvil", party: "seller" },
  * })));
  * const approved = queue.approve(1);
  *
@@ -62,3 +62,20 @@ export {
     executeAction,
 } from "./autonomous.js";
 export type { TxResult } from "./autonomous.js";
+
+// did:web identity — agents bind their on-chain address to a resolvable DID
+export {
+    isDidWeb,
+    didWebToUrl,
+    validateDidDocument,
+    resolveDidWeb,
+    extractEthereumAddresses,
+    didDocumentMatchesAddress,
+    buildSellerDidDocument,
+} from "./did.js";
+export type {
+    VerificationMethod,
+    DIDService,
+    DIDDocument,
+    DIDResolutionResult,
+} from "./did.js";

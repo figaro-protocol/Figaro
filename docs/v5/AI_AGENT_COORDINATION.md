@@ -231,7 +231,8 @@ the on-chain seller address.
 ```
 
 The SDK provides `resolveDidWeb()`, `didDocumentMatchesAddress()`, and
-`buildSellerDidDocument()` in `@figaro/core/extensions`. The frontend
+`buildSellerDidDocument()` in `@figaro/core/agent` (did:web is an agent-identity
+concern). The frontend
 provides the `useDidVerification()` hook in
 `lib/mechanisms/useDidWeb.ts`.
 

@@ -7,8 +7,8 @@ import {
     extractEthereumAddresses,
     didDocumentMatchesAddress,
     buildSellerDidDocument,
-} from "../src/extensions/did.js";
-import type { DIDDocument } from "../src/extensions/did.js";
+} from "../src/agent/did.js";
+import type { DIDDocument } from "../src/agent/did.js";
 
 // ── isDidWeb ────────────────────────────────────────────────────────────────
 

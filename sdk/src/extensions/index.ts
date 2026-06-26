@@ -1,85 +1,29 @@
 /**
- * @figaro/core/extensions — Protocol Extension Modules
+ * @figaro/core/extensions — Clause-agnostic SDK utilities
  *
- * Mechanism-specific utilities layered on top of the core SDK.
+ * Generic helpers layered on top of the core SDK, carrying no knowledge of any
+ * specific clause, mechanism, or provider.
  * Import via: `import { ... } from "@figaro/core/extensions"`
  *
  * Modules:
- * - Dutch auction: price curves, claim evaluation, state derivation
- * - Attestation & GHG: clause IDs, event filtering, disclosure summaries
- * - Geo & handoff: geohash matching, Haversine distance, evidence envelopes
+ * - Attestation: clause-ID derivation, clause-agnostic event filtering
+ * - Geo math: geohash prefix matching, Haversine distance
  */
 
-// ── Dutch Auction ───────────────────────────────────────────────────────────
-
-export {
-    computeCurrentPrice,
-    computeFloorPrice,
-    timeToFloor,
-    elapsed,
-    isExpired,
-    evaluateClaim,
-    fetchAuctionConfig,
-    fetchAuctionState,
-    deriveAuctionStates,
-} from "./auction.js";
-export type {
-    AuctionStatus,
-    AuctionState,
-    AuctionConfig,
-    ClaimEvaluation,
-} from "./auction.js";
-
-// ── Attestation & GHG ──────────────────────────────────────────────────────
+// ── Clause ID & Attestation filtering ──────────────────────────────────────
 
 export {
     computeClauseId,
-    DisclosureKind,
-    DISCLOSURE_KIND_LABELS,
-    encodeCommitmentRef,
-    encodeGramsRef,
-    decodeGramsRef,
-    formatGrams,
     filterByClause,
     filterByProcess,
     filterByOrder,
     filterByStage,
-    buildProcessDisclosureSummary,
 } from "./attestation.js";
-export type { ProcessDisclosureSummary } from "./attestation.js";
 
-// ── Geo & Handoff ───────────────────────────────────────────────────────────
+// ── Geo math ────────────────────────────────────────────────────────────────
 
 export {
-    AttestationMode,
-    ProximityBand,
     geohashesMatch,
     geohashCommonPrefix,
     haversineDistance,
-    formatPhotoGPSEvidence,
-    formatGeohashMatchEvidence,
 } from "./geo.js";
-export type {
-    HandoffStep,
-    PhotoGPSAttestation,
-    GeohashMatchAttestation,
-    KlerosEvidence,
-} from "./geo.js";
-
-// ── DID (did:web) ───────────────────────────────────────────────────────────
-
-export {
-    isDidWeb,
-    didWebToUrl,
-    validateDidDocument,
-    resolveDidWeb,
-    extractEthereumAddresses,
-    didDocumentMatchesAddress,
-    buildSellerDidDocument,
-} from "./did.js";
-export type {
-    VerificationMethod,
-    DIDService,
-    DIDDocument,
-    DIDResolutionResult,
-} from "./did.js";
