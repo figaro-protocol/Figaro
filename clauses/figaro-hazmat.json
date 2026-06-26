@@ -60,6 +60,7 @@
         "tier": "cross-checked",
         "article": "logistics",
         "mechanismKinds": [],
-        "moduleIds": []
+        "moduleIds": [],
+        "nestsUnder": "massGrams"
     }
 }
