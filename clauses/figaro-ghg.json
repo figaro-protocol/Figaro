@@ -3,9 +3,6 @@
     "version": 1,
     "title": "GHG emissions disclosure",
     "description": "Disclosure that the seller will report greenhouse-gas emissions for fulfilling this order under a named accounting methodology and scope. The methodology is FREE-FORM — any standard, existing or future (e.g. \"GHG Protocol Corporate Standard\", \"ISO 14064\", \"PAS 2050\", \"EN 16258\", or a custom methodology). The protocol takes no closed list of standards. Pairs with the figaro-ghg-measurement runtime clause that carries the measured grams CO2e.",
-    "categories": [
-        "emissions"
-    ],
     "fields": [
         {
             "name": "standard",

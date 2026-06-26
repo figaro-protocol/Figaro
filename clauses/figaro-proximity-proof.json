@@ -3,9 +3,6 @@
     "version": 1,
     "title": "Proximity proof (runtime)",
     "description": "Runtime cryptographic proof of physical proximity between two parties at a handoff. Sister to figaro-proximity-policy (which commits the band at agreement signing). Runtime-attested: content is fresh per attestation, no byte-equality cross-check against committed sectionData. Off-chain consumers should verify proof.band == policy.band when needed.",
-    "categories": [
-        "proximity"
-    ],
     "fields": [
         {
             "name": "band",
@@ -42,6 +39,7 @@
     ],
     "block": {
         "tier": "runtime",
+        "article": "fulfilment",
         "attestation": "bilateral",
         "mechanismKinds": [
             "attestation"

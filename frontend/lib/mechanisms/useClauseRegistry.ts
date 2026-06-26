@@ -5,8 +5,8 @@
  *
  * The on-chain event carries the readable `clauseId` and a `metadataURI` (the
  * IPFS locator) directly — so both the human name and the spec location come
- * straight off the chain. No preimage table, no bundled spec set. `family` and
- * `registrar` are indexed.
+ * straight off the chain. No preimage table, no bundled spec set. `registrar` is
+ * indexed. (Grouping is `block.article` in the spec JSON — no on-chain group field.)
  *
  * Two readers:
  *   - `useRegisteredClausesByWallet` — wallet-scoped (the designer's "clauses you
@@ -35,10 +35,6 @@ export interface RegisteredClauseEvent {
     contentHash: `0x${string}`;
     /** IPFS locator for the spec; `loadClauseSpec` fetches the spec from here. */
     metadataURI: string;
-    /** keccak256 of the family slug (e.g. keccak256("geo")). Bound at
-     *  registration; groups clauses for discovery and the RPGF
-     *  substrate-broadening weighting. */
-    family: `0x${string}`;
     registrar: `0x${string}`;
     blockNumber: bigint;
     transactionHash: `0x${string}`;
@@ -59,7 +55,6 @@ function mapClauseRegisteredLog(log: ClauseRegisteredLog): RegisteredClauseEvent
         version: bigint | number;
         contentHash: `0x${string}`;
         metadataURI: string;
-        family: `0x${string}`;
         registrar: `0x${string}`;
     }>;
     const clauseName = args.clauseId ?? "";
@@ -69,7 +64,6 @@ function mapClauseRegisteredLog(log: ClauseRegisteredLog): RegisteredClauseEvent
         version: Number(args.version ?? 0),
         contentHash: (args.contentHash ?? "0x") as `0x${string}`,
         metadataURI: args.metadataURI ?? "",
-        family: (args.family ?? "0x") as `0x${string}`,
         registrar: (args.registrar ?? "0x") as `0x${string}`,
         blockNumber: log.blockNumber ?? 0n,
         transactionHash: (log.transactionHash ?? "0x") as `0x${string}`,

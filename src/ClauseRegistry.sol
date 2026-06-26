@@ -21,15 +21,12 @@ pragma solidity 0.8.26;
 ///         Mechanism self-declaration: any contract can emit which clause
 ///         it uses. Frontends read these events to determine encoding.
 ///
-///         Family tag: each clause declares a `family` (bytes32, typically
-///         keccak256 of a category slug such as "geo" or "coordination").
-///         The family is the unit the RPGF substrate-broadening formula
-///         weights — Tier-1 family hashes are deploy-frozen in the SP1
-///         program (see `prover/rpgf/src/formula.rs`), so registering a
-///         new clause under an existing Tier-1 family confers the Tier-1
-///         weight without touching the kernel or formula. The on-chain
-///         namespace is open — anyone can mint a new family by passing
-///         a fresh hash; only `bytes32(0)` is rejected.
+///         Grouping: a clause's group is `block.article` in its off-chain spec
+///         JSON (integrity-bound by contentHash). The registry stores identity +
+///         integrity only — there is NO on-chain group field. The RPGF substrate-
+///         broadening formula, when restored, derives its group key as
+///         keccak256(article) from the contentHash-verified spec; nothing is
+///         stored on-chain for it (derive, don't store).
 ///
 /// @dev V3's clause registry had: Ownable, Clause struct storage,
 ///      activate/deactivate state machine, getters, counter. All removed.
@@ -50,18 +47,9 @@ contract ClauseRegistry {
     /// @param metadataURI Off-chain spec locator (IPFS, etc.). The pointer that lets
     ///                    any reader FETCH the spec from chain state alone — the same
     ///                    role `metadataURI` plays in SellerRegistry / AssemblyRegistry.
-    /// @param family      keccak256 of the family slug (e.g. "geo", "coordination").
-    ///                    Indexers + the RPGF SP1 program key Tier-1 weighting off
-    ///                    this; new clauses joining an existing Tier-1 family
-    ///                    inherit the weight without redeployment.
     /// @param registrar   Address that registered the clause.
     event ClauseRegistered(
-        string clauseId,
-        uint64 version,
-        bytes32 contentHash,
-        string metadataURI,
-        bytes32 indexed family,
-        address indexed registrar
+        string clauseId, uint64 version, bytes32 contentHash, string metadataURI, address indexed registrar
     );
 
     /// @notice Emitted when a mechanism declares which clause it uses.
@@ -76,7 +64,6 @@ contract ClauseRegistry {
     error EmptyClauseId();
     error EmptyMetadataURI();
     error ZeroContentHash();
-    error ZeroFamily();
 
     // ── Clause registration (permissionless) ────────────────────────
 
@@ -86,24 +73,16 @@ contract ClauseRegistry {
     /// @param version     Clause version number.
     /// @param contentHash keccak256 of the canonical spec JSON (integrity).
     /// @param metadataURI Off-chain spec locator (IPFS) — readers FETCH the spec from it.
-    /// @param family      keccak256 of the family slug (e.g. `keccak256("geo")`).
-    ///                    Permanently bound to the clause; consumed by the RPGF
-    ///                    Tier-1 weighting in `prover/rpgf/src/formula.rs`.
-    function registerClause(
-        string calldata clauseId,
-        uint64 version,
-        bytes32 contentHash,
-        string calldata metadataURI,
-        bytes32 family
-    ) external {
+    function registerClause(string calldata clauseId, uint64 version, bytes32 contentHash, string calldata metadataURI)
+        external
+    {
         if (bytes(clauseId).length == 0) revert EmptyClauseId();
         if (bytes(metadataURI).length == 0) revert EmptyMetadataURI();
         if (contentHash == bytes32(0)) revert ZeroContentHash();
-        if (family == bytes32(0)) revert ZeroFamily();
         bytes32 idHash = keccak256(abi.encode(clauseId, version));
         if (registered[idHash]) revert AlreadyRegistered(idHash);
         registered[idHash] = true;
-        emit ClauseRegistered(clauseId, version, contentHash, metadataURI, family, msg.sender);
+        emit ClauseRegistered(clauseId, version, contentHash, metadataURI, msg.sender);
     }
 
     // ── Mechanism self-declaration (permissionless) ─────────────────

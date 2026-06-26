@@ -80,7 +80,6 @@ function makeNovelSpec(clauseId: string, title: string) {
         title,
         description:
             'A runtime-attestable lifecycle clause that no code in this repo knows — the open-world certification probe.',
-        categories: ['lifecycle', 'probe'],
         fields: [
             {
                 name: 'probeStage',
@@ -102,7 +101,7 @@ function makeNovelSpec(clauseId: string, title: string) {
 // Local, non-kernel ABI fragments for the documented clause-registration path.
 const CLAUSE_REGISTRY_ABI = parseAbi([
     'function registered(bytes32) view returns (bool)',
-    'function registerClause(string clauseId, uint64 version, bytes32 contentHash, string metadataURI, bytes32 family) external',
+    'function registerClause(string clauseId, uint64 version, bytes32 contentHash, string metadataURI) external',
 ]);
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
@@ -150,11 +149,10 @@ async function registerNovelClause(clauseId: string, spec: ReturnType<typeof mak
 
     const { uri } = await pinJSONToIPFS(spec);
     const contentHash = keccak256(stringToHex(JSON.stringify(spec)));
-    const family = keccak256(stringToHex(spec.categories[0]));
     const { request } = await pub.simulateContract({
         account: registrar.address, address: registry, abi: CLAUSE_REGISTRY_ABI,
         functionName: 'registerClause',
-        args: [clauseId, BigInt(NOVEL_VERSION), contentHash, uri, family],
+        args: [clauseId, BigInt(NOVEL_VERSION), contentHash, uri],
     });
     await pub.waitForTransactionReceipt({ hash: await wallet.writeContract(request) });
 }

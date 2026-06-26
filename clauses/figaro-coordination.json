@@ -3,9 +3,6 @@
     "version": 1,
     "title": "Coordination",
     "description": "How the courier edge of a delivery is arranged across the process topology. Composes on the delivery (parent) order; the courier order itself is just another buyer↔seller order. Single-select — an assembly composes exactly one coordination variant; variants are separate assemblies, never options inside one.",
-    "categories": [
-        "coordination"
-    ],
     "fields": [
         {
             "name": "coordination",

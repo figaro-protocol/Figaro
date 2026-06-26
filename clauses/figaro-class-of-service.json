@@ -3,9 +3,6 @@
     "version": 1,
     "title": "Class of service",
     "description": "The handling class for a shipment — standard, express, fragile, or cold-chain. Elective and NEVER default-on: composed only when handling class is material to the order. Most buyer↔seller relationships (a review, a license, a consultation) need no shipping class; split out of figaro-geo so logistics attributes are never unconditionally mandatory.",
-    "categories": [
-        "logistics"
-    ],
     "fields": [
         {
             "name": "classOfService",

@@ -52,45 +52,6 @@ describe("parseClauseSpec — meta-clause validation", () => {
         expect(bad.ok).toBe(false);
     });
 
-    it("accepts spec with categories array", () => {
-        const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
-            categories: ["emissions", "lifecycle"],
-            fields: [{ name: "x", type: "string", required: true }],
-        });
-        expect(result.ok).toBe(true);
-        if (result.ok) expect(result.spec.categories).toEqual(["emissions", "lifecycle"]);
-    });
-
-    it("omits categories when absent", () => {
-        const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
-            fields: [{ name: "x", type: "string", required: true }],
-        });
-        expect(result.ok).toBe(true);
-        if (result.ok) expect(result.spec.categories).toBeUndefined();
-    });
-
-    it("rejects non-array categories", () => {
-        const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
-            categories: "emissions",
-            fields: [{ name: "x", type: "string", required: true }],
-        });
-        expect(result.ok).toBe(false);
-        if (!result.ok) expect(result.errors[0].path).toBe("$.categories");
-    });
-
-    it("rejects empty-string category entries", () => {
-        const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
-            categories: ["emissions", ""],
-            fields: [{ name: "x", type: "string", required: true }],
-        });
-        expect(result.ok).toBe(false);
-        if (!result.ok) expect(result.errors[0].path).toBe("$.categories[1]");
-    });
-
     it("recursively parses array.items", () => {
         const result = parseClauseSpec({
             clauseId: "t-v1", version: 1, title: "T", description: "D",

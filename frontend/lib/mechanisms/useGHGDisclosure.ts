@@ -167,7 +167,7 @@ function parseAttestationLog(log: IndexedAttestationLog): AttestationRecord {
 // ── Read hooks — event-sourced via cached indexer ────────────────────────────
 
 // The stage label is the clause's OWN spec valueLabel (via describeAttestation),
-// never a hardcoded per-family table — any registered clause labels its own
+// never a hardcoded per-clause table — any registered clause labels its own
 // ladder from its spec, so measurement vs disclosure needs no distinction here.
 function labelFor(clauseIdHash: string, stage: number): string {
     return describeAttestation(clauseIdHash, stage).eventLabel;
@@ -176,7 +176,7 @@ function labelFor(clauseIdHash: string, stage: number): string {
 export function useOrderDisclosureTasks(orderHash: string | undefined) {
     const publicClient = usePublicClient();
     const chainId = publicClient?.chain?.id ?? 0;
-    // The clause families are spec-derived; re-run when the cache warms.
+    // The clause set is spec-derived; re-run when the cache warms.
     const { version: clauseSpecsVersion } = useClauseSpecs();
     const [tasks, setTasks] = useState<DisclosureTask[]>([]);
     const [loading, setLoading] = useState(false);
@@ -239,7 +239,7 @@ export function useOrderDisclosureTasks(orderHash: string | undefined) {
 export function useProcessDisclosureSummary(processId: Hex | undefined) {
     const publicClient = usePublicClient();
     const chainId = publicClient?.chain?.id ?? 0;
-    // The clause families are spec-derived; re-run when the cache warms.
+    // The clause set is spec-derived; re-run when the cache warms.
     const { version: clauseSpecsVersion } = useClauseSpecs();
     const [summary, setSummary] = useState<ProcessDisclosureSummary | null>(null);
     const [loading, setLoading] = useState(false);
@@ -250,7 +250,7 @@ export function useProcessDisclosureSummary(processId: Hex | undefined) {
         setLoading(true);
         (async () => {
             try {
-                // Query every registered clause in each family in parallel.
+                // Query every registered clause in each set in parallel.
                 // Disclosures carry commitment / restatement / verification
                 // events; measurements carry grams.
                 const disclosureHashes = disclosureClauseIdHashes();

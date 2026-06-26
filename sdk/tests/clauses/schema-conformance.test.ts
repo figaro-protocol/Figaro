@@ -34,11 +34,19 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
     const negatives: ReadonlyArray<readonly [string, unknown]> = [
         ["missing clauseId", { version: 1, title: "T", description: "D", fields: [] }],
         ["enum field with no values", { clauseId: "x-v1", version: 1, title: "T", description: "D", fields: [{ name: "s", type: "enum", required: true }] }],
-        ["unknown block.tier", { clauseId: "x-v1", version: 1, title: "T", description: "D", fields: [], block: { tier: "not-a-tier" } }],
         ["array field with no items", { clauseId: "x-v1", version: 1, title: "T", description: "D", fields: [{ name: "a", type: "array", required: true }] }],
     ];
     it.each(negatives)("rejects (%s) in BOTH schema and parser", (_name, spec) => {
         expect(validateAgainstSchema(spec)).toBe(false);
         expect(parseClauseSpec(spec).ok).toBe(false);
+    });
+
+    // `block` is presentation metadata the SDK parser does NOT own (see spec.ts) —
+    // it is validated by this schema and the frontend's clauseBlockBinding, never by
+    // parseClauseSpec. So a malformed block (e.g. an unknown tier) is a SCHEMA-level
+    // rejection only; the parser is silent on block by design.
+    it("rejects unknown block.tier at the schema (the parser does not own block)", () => {
+        const spec = { clauseId: "x-v1", version: 1, title: "T", description: "D", fields: [], block: { tier: "not-a-tier" } };
+        expect(validateAgainstSchema(spec)).toBe(false);
     });
 });

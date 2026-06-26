@@ -38,9 +38,10 @@ Frontend wiring: `clauseSpecSource.ts` loads each spec live from `ClauseRegistry
 
 There is **no on-chain content validation**. Two on-chain touch points remain:
 
-- **`ClauseRegistry.registerClause(clauseId, version, contentHash, metadataURI, family)`**
+- **`ClauseRegistry.registerClause(clauseId, version, contentHash, metadataURI)`**
   — permissionless, first-write-wins, immutable. It anchors the clauseId, the spec's
-  IPFS locator, and the spec's content hash. No validator is registered or bound; a
+  IPFS locator, and the spec's content hash (identity + integrity only — no group
+  field; grouping is `block.article` in the spec JSON). No validator is registered or bound; a
   registered clause is immediately attestable.
 - **`AttestationCoordinator`** merkle-binds each attestation: it verifies an OZ-style
   inclusion proof of `leaf = keccak256(clauseId ++ keccak256(sectionData))` against the
@@ -79,7 +80,7 @@ on-chain validator) plus the agreement-only `figaro-topology-v1`.
 | `figaro-courier-process-v1` | Courier per-role event enum (sovereign log) | Layer A (off-chain) |
 | `figaro-arbitration-kleros-v1` | Decentralized off-chain arbitration via Kleros (subcourt + minimum jurors). Provider-specific; sister `figaro-arbitration-<provider>-v1` clauses would cover future ODR providers | Layer A (off-chain) |
 | `figaro-applicable-law-v1` | State / ADR / traditional-jurisdiction recourse layer (applicable law + forum + language). Provider-agnostic. Composes with arbitration clauses | Layer A (off-chain) |
-| `figaro-consent-v1` | Cryptographic acceptance of an off-chain document (hash + version + title) — supports beta consent, ToS acceptance, governance vote receipts, etc. (`consent` family) | Layer A (off-chain) |
+| `figaro-consent-v1` | Cryptographic acceptance of an off-chain document (hash + version + title) — supports beta consent, ToS acceptance, governance vote receipts, etc. (`consent` article) | Layer A (off-chain) |
 
 `figaro-ghg-v1` is a single disclosure clause whose accounting methodology is
 a **free-form `standard` string** — any methodology, existing or future ("GHG
@@ -110,13 +111,14 @@ topology sections from the signed agreement.
 
 A clause is an *anchored artifact family*: an off-chain definition whose
 meaning must stay stable across parties, tools, and time, anchored on-chain by
-a minimal reference point — `clauseId` + `contentHash` + `metadataURI` +
-`family` in `ClauseRegistry`. Not every value that flows through an order
-deserves one. The `family` (e.g. `keccak256("geo")`) is the unit RPGF weights
-by category; new clauses register under existing families permissionlessly and
-inherit the category's standing. (The on-chain RPGF distribution mechanism was
-removed in the proof-apparatus teardown; the family-weighting rationale survives
-in `docs/v5/PUBLIC_GRAPH_MODEL.md`.)
+a minimal reference point — `clauseId` + `contentHash` + `metadataURI` in
+`ClauseRegistry` (identity + integrity only; no group field). Not every value
+that flows through an order deserves one. A clause's group is `block.article`
+in its spec JSON; the RPGF substrate-broadening formula, when rebuilt, derives
+its group key as `keccak256(block.article)` from the contentHash-verified spec
+(derive, don't store). (The on-chain RPGF distribution mechanism was removed in
+the proof-apparatus teardown; the group-weighting rationale survives in
+`docs/v5/PUBLIC_GRAPH_MODEL.md`.)
 
 Separate two kinds of data:
 
@@ -163,7 +165,7 @@ modality. The merge produced a single clause with three orthogonal fields
 where the cross-product is the actual decision space. Same conceptual
 coverage, one clause, no duplicate validation surface.
 
-**Split when one clause conflates two cryptographic categories.** A clause is
+**Split when one clause conflates two cryptographic concerns.** A clause is
 either cross-checked (committed at agreement signing, fixed for the order's life)
 or runtime (attested at runtime, supplied by a per-event witness). One
 clause cannot be both. If a single clause tries to carry both the
@@ -188,10 +190,10 @@ There is **no on-chain validator and no Rust/prover mirror** — both were delet
 the proof-apparatus teardown. A new clause is a spec + off-chain encoder + registration.
 
 1. JSON spec in `clauses/<clause>.json` (the canonical Layer-A spec / `ClauseRegistry` seed data — nothing bundles a copy).
-2. `populate-clauses.mjs` pins it to IPFS + anchors `(clauseId, version, contentHash, metadataURI, family)` on `ClauseRegistry`; the frontend loads it chain→IPFS via `clauseSpecSource` (no frontend copy, no preload).
+2. `populate-clauses.mjs` pins it to IPFS + anchors `(clauseId, version, contentHash, metadataURI)` on `ClauseRegistry`; the frontend loads it chain→IPFS via `clauseSpecSource` (no frontend copy, no preload).
 3. **No per-clause encoder is needed** — `sdk/src/clauses/encode.ts` (`encodeContentFromSpec`) is the single generic, spec-driven encoder for ANY clause. A new clause adds a spec, not a code path.
 4. SDK conformance/examples test reads the new spec from `clauses/` as a fixture (e.g. `sdk/tests/clauses/examples.test.ts`); the off-chain validator (`validateContent`) is generic and needs no per-clause case.
-5. Registration in `script/Deploy.s.sol` + `script/DeployMainnet.s.sol`: `registerClause(clauseId, version, contentHash, metadataURI, family)`; the `family` is `keccak256(categories[0])` from the spec. No `setValidator` step exists — registration alone makes the clause attestable. No frontend registration step either: the drawer, `/clauses` inventory, and every surface read the clause set live from `ClauseRegistry` events and the spec from IPFS (`clauseSpecSource`); titles, articles, tiers, and families come from the spec.
+5. Registration via `frontend/scripts/populate-clauses.mjs` (NOT the Solidity deploy — `Deploy.s.sol`/`DeployMainnet.s.sol` deploy the registry but register no clauses): `registerClause(clauseId, version, contentHash, metadataURI)`. No `setValidator` step exists — registration alone makes the clause attestable. No frontend registration step either: the drawer, `/clauses` inventory, and every surface read the clause set live from `ClauseRegistry` events and the spec from IPFS (`clauseSpecSource`); titles, articles, and tiers come from the spec.
 
 **When to add a seller-process clause vs not** (kernel-participant vs off-chain-seller principle): an off-chain seller needs its own process clause if and only if its state transitions are off-chain. Off-chain sellers (merchants, couriers, locker sellers, etc.) need a process clause because their state transitions happen in physical reality and need a sovereign event log to be tamper-proof evidence. Kernel participants — most importantly the **buyer**, who acts via `commit` and `resolveProcess` — do NOT need a process clause; their evidence IS the kernel event log itself. `merchant-process` and `courier-process` are sovereign-log primitives in this sense. Don't add a `figaro-buyer-process` clause — it would duplicate kernel events.
 

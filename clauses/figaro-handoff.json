@@ -3,9 +3,6 @@
     "version": 1,
     "title": "Hand-off point",
     "description": "Where the physical hand-off happens for this order's exchange. Each bonded order with a physical exchange carries its own hand-off (the merchant→courier pickup, the courier→buyer drop-off, the on-site counter). The proximity-verification policy (figaro-proximity-policy-v1) nests under this hand-off — the bands that certify the exchange.",
-    "categories": [
-        "coordination"
-    ],
     "fields": [
         {
             "name": "handoff",

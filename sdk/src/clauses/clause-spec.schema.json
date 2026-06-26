@@ -15,11 +15,6 @@
         "version": { "type": "integer", "minimum": 0, "description": "Clause version." },
         "title": { "type": "string", "minLength": 1 },
         "description": { "type": "string" },
-        "categories": {
-            "type": "array",
-            "items": { "type": "string", "minLength": 1 },
-            "description": "Open discovery taxonomy (e.g. \"geo\", \"emissions\", \"lifecycle\"). categories[0] is the substrate class: family = keccak256(categories[0]) on-chain, which the RPGF substrate-broadening formula weights. NOT a grouping word (that is block.article)."
-        },
         "fields": {
             "type": "array",
             "items": { "$ref": "#/$defs/field" },
@@ -87,7 +82,7 @@
                 "article": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "Drawer grouping heading (free-form, never a closed list). The contract-document SECTION this clause reads under. Distinct from the substrate class (categories/family)."
+                    "description": "Drawer grouping heading (free-form, never a closed list). The contract-document SECTION this clause reads under, and the clause's sole classification. The RPGF substrate-broadening formula, when active, derives its group key as keccak256(article); nothing is stored on-chain for it."
                 },
                 "mechanismKinds": {
                     "type": "array",

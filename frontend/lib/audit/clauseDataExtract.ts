@@ -1,6 +1,6 @@
 /**
  * Generic per-clause data extractor — the OPEN-WORLD replacement for the
- * per-family genre extractors (emissions / proximity / invoice / bill-of-lading),
+ * per-genre extractors (emissions / proximity / invoice / bill-of-lading),
  * each of which paired a hardcoded field name with a fixed meaning.
  *
  * This names no clause and assumes no field: it renders EVERY committed clause's

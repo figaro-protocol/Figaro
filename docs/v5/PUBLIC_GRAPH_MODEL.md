@@ -150,17 +150,19 @@ fulfilment. It is the Geo graph above, and nothing forces it into existence.
 
 **So the protocol pays more for the clauses that draw the map.** To make the
 flow-graph exist, the substrate-broadening formula weights a **category of work** —
-the geo/coordination family — above the rest (`w_category = 3.0`; today
-`keccak256("geo")` and `keccak256("coordination")`). The formula's on-chain
+the physical/virtual-flow article groups (logistics, coordination, fulfilment…) —
+above the rest (`w_category = 3.0`). The group key is derived as
+`keccak256(block.article)` from the contentHash-verified spec — nothing is stored
+on-chain (there is no `family` field; derive, don't store). The formula's on-chain
 implementation (the SP1 prover + its sealed Rust/TS mirrors) was removed in the
 proof-apparatus teardown; this section is the rationale's surviving home, to be
-re-homed alongside any rebuilt RPGF distribution. It is a deliberate incentive:
-contribute and use the clauses that emit physical/virtual-flow data, and earn more
-of the supply reserved for clause authors.
+re-homed alongside any rebuilt RPGF distribution (which finalizes the tier-1 article
+set). It is a deliberate incentive: contribute and use the clauses that emit
+physical/virtual-flow data, and earn more of the supply reserved for clause authors.
 
 **This privileges a kind of public good, not a set of authors.** The weight attaches
-to the *family*, never to a wallet: any author who registers a clause under a
-tier-1 family inherits the boost — permissionlessly, no committee, no application.
+to the *article group*, never to a wallet: any author who registers a clause under a
+tier-1 article inherits the boost — permissionlessly, no committee, no application.
 The formula is fixed and discretion-free — *the same rule for every author* — and
 that rule happens to reward the data the network most needs. Procedural neutrality
 (no one decides who deserves what) and a non-flat weighting (some work is worth more

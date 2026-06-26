@@ -385,7 +385,7 @@ function ContractPage({ contract }: { contract: AuditBundle["contract"] }) {
 // ── Generic per-clause data page ────────────────────────────────────────────
 // Renders EVERY committed clause from its registered spec (title + field labels
 // + values) via describeClause. Names no clause, assumes no field — the
-// open-world replacement for the per-family genre pages.
+// open-world replacement for the per-genre pages.
 
 function ClauseDataPage({ doc }: { doc: AuditBundle["clauseData"] }) {
     return (

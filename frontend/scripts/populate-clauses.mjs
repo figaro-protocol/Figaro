@@ -6,7 +6,7 @@
  * For each Layer-A clause spec in `clauses/*.json` (the canonical seed data,
  * the single origin pinned to IPFS and anchored on-chain):
  *   1. pin the spec JSON to IPFS (real CID), and
- *   2. `registerClause(clauseId, version, contentHash, metadataURI, family)` on
+ *   2. `registerClause(clauseId, version, contentHash, metadataURI)` on
  *      ClauseRegistry — anchoring the IPFS LOCATOR (metadataURI) + the spec
  *      integrity digest (contentHash), so any reader fetches the spec from chain
  *      state alone (the shape SellerRegistry / AssemblyRegistry already use).
@@ -47,7 +47,7 @@ export const LOCAL_ANVIL = defineChain({
 });
 
 const CLAUSE_REGISTRY_ABI = parseAbi([
-    'function registerClause(string clauseId, uint64 version, bytes32 contentHash, string metadataURI, bytes32 family) external',
+    'function registerClause(string clauseId, uint64 version, bytes32 contentHash, string metadataURI) external',
     'function registered(bytes32) view returns (bool)',
 ]);
 
@@ -116,20 +116,18 @@ export async function populateClauses({ publicClient, walletClient, account, reg
         const canonical = JSON.stringify(spec);
         const metadataURI = await pinJSON(ipfsApiUrl, canonical);
         const contentHash = keccak256(toHex(canonical));
-        const familySlug = (spec.categories ?? ['general'])[0];
-        const family = keccak256(toHex(familySlug));
 
         const { request } = await publicClient.simulateContract({
             account: account.address,
             address: registry,
             abi: CLAUSE_REGISTRY_ABI,
             functionName: 'registerClause',
-            args: [clauseIdStr, version, contentHash, metadataURI, family],
+            args: [clauseIdStr, version, contentHash, metadataURI],
         });
         const hash = await walletClient.writeContract(request);
         await publicClient.waitForTransactionReceipt({ hash });
         registered += 1;
-        log(`  ✓ ${clauseIdStr} v${version} — pinned ${metadataURI} (family ${familySlug})`);
+        log(`  ✓ ${clauseIdStr} v${version} — pinned ${metadataURI} (article ${spec.block?.article ?? '-'})`);
     }
     return registered;
 }

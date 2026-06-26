@@ -65,12 +65,11 @@ contract AttestationCoordinatorTest is Test {
         clauses = new ClauseRegistry();
         bytes32 testContentHash = keccak256("spec-json");
         string memory testUri = "ipfs://figaro-test-uri";
-        bytes32 testFamily = keccak256("test-family");
-        clauses.registerClause(LIFECYCLE_CLAUSE_ID, 1, testContentHash, testUri, testFamily);
-        clauses.registerClause(GHG_CLAUSE_ID, 1, testContentHash, testUri, testFamily);
-        clauses.registerClause(PROXIMITY_CLAUSE_ID, 1, testContentHash, testUri, testFamily);
-        clauses.registerClause(COMMERCE_CLAUSE_ID, 1, testContentHash, testUri, testFamily);
-        clauses.registerClause(MODALITIES_CLAUSE_ID, 1, testContentHash, testUri, testFamily);
+        clauses.registerClause(LIFECYCLE_CLAUSE_ID, 1, testContentHash, testUri);
+        clauses.registerClause(GHG_CLAUSE_ID, 1, testContentHash, testUri);
+        clauses.registerClause(PROXIMITY_CLAUSE_ID, 1, testContentHash, testUri);
+        clauses.registerClause(COMMERCE_CLAUSE_ID, 1, testContentHash, testUri);
+        clauses.registerClause(MODALITIES_CLAUSE_ID, 1, testContentHash, testUri);
 
         // There is no on-chain clause-content validation: the coordinator
         // merkle-binds each attestation to its signed agreement and content-hash-

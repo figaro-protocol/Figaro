@@ -128,9 +128,9 @@ export const EV_AUCTION_CLAIMED = parseAbiItem(
 
 export const CLAUSE_REGISTRY_ABI = parseAbi([
     "function registered(bytes32 clauseId) view returns (bool)",
-    "function registerClause(string clauseId, uint64 version, bytes32 contentHash, string metadataURI, bytes32 family) external",
+    "function registerClause(string clauseId, uint64 version, bytes32 contentHash, string metadataURI) external",
     "function setMechanismClause(bytes32 clauseId) external",
-    "event ClauseRegistered(string clauseId, uint64 version, bytes32 contentHash, string metadataURI, bytes32 indexed family, address indexed registrar)",
+    "event ClauseRegistered(string clauseId, uint64 version, bytes32 contentHash, string metadataURI, address indexed registrar)",
     "event MechanismClauseSet(address indexed mechanism, bytes32 indexed clauseId)",
 ]);
 

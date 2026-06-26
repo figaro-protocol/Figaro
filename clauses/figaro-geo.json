@@ -3,9 +3,6 @@
     "version": 1,
     "title": "Logistics",
     "description": "Origin and destination geohashes plus shipment mass and volume. Composed when an order moves physical goods between locations. Handling class is its own elective clause (figaro-class-of-service).",
-    "categories": [
-        "geo"
-    ],
     "fields": [
         {
             "name": "originGeohash",

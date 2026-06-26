@@ -113,8 +113,6 @@ export interface ClauseSpec {
     title: string;
     /** Prose description. */
     description: string;
-    /** Optional discovery categories — open taxonomy used by builder/browser surfaces to filter clauses by topic (e.g. "emissions", "geo", "lifecycle"). Not enforcement metadata. */
-    categories?: readonly string[];
     /** Default field shape; applies to all stages unless a stage override is set. */
     fields: readonly FieldSpec[];
     /** Optional per-stage overrides. Keyed by stage number (matches AttestationCoordinator stage uint8). */
@@ -388,7 +386,7 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
     if (!isObject(raw)) {
         return { ok: false, errors: [{ path: "$", message: "clause spec must be an object" }] };
     }
-    const { clauseId, version, title, description, categories, fields, stages } = raw;
+    const { clauseId, version, title, description, fields, stages } = raw;
     if (typeof clauseId !== "string" || clauseId.length === 0) {
         errors.push({ path: "$.clauseId", message: "clauseId must be a non-empty string" });
     }
@@ -403,19 +401,6 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
     }
     if (!Array.isArray(fields)) {
         errors.push({ path: "$.fields", message: "fields must be an array" });
-    }
-    let parsedCategories: readonly string[] | undefined;
-    if (categories !== undefined) {
-        if (!Array.isArray(categories)) {
-            errors.push({ path: "$.categories", message: "categories must be an array of strings" });
-        } else {
-            const bad = categories.findIndex((c) => typeof c !== "string" || c.length === 0);
-            if (bad >= 0) {
-                errors.push({ path: `$.categories[${bad}]`, message: "category must be a non-empty string" });
-            } else {
-                parsedCategories = categories as string[];
-            }
-        }
     }
     const parsedFields: FieldSpec[] = [];
     if (Array.isArray(fields)) {
@@ -459,7 +444,6 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
             version: version as number,
             title: title as string,
             description: description as string,
-            ...(parsedCategories !== undefined && { categories: parsedCategories }),
             fields: parsedFields,
             ...(parsedStages !== undefined && { stages: parsedStages }),
         },

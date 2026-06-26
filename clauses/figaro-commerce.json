@@ -3,7 +3,6 @@
     "version": 1,
     "title": "Commerce terms",
     "description": "Currency, payment amount, and itemized line items for the commercial half of an order.",
-    "categories": ["commerce", "payment"],
     "fields": [
         {
             "name": "currency",

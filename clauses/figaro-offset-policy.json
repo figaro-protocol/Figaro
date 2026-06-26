@@ -3,9 +3,6 @@
     "version": 1,
     "title": "Carbon-offset providers",
     "description": "Carbon-offset providers an assembly accepts for emissions compensation. Multi-valued \u2014 at template time a merchant declares which offset sellers it composes with; at runtime a buyer's commitment carries the same shape with a single-element array reflecting the chosen provider. An order without an offset-policy clause has no offset path. The actual offset purchase is modeled as a sub-order against the chosen provider (seller-registry-bonded as seller); the burn receipt attaches as an attestation against that sub-order.",
-    "categories": [
-        "emissions"
-    ],
     "fields": [
         {
             "name": "providers",
