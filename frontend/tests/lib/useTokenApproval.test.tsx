@@ -11,7 +11,7 @@ vi.mock("wagmi", () => {
             const fn = opts?.functionName;
             if (fn === "allowance") return { data: 0n, refetch: vi.fn() };
             if (fn === "nonces") return { data: 0n };
-            if (fn === "name") return { data: "MockToken" };
+            if (fn === "name") return { data: "Mock Token" };
             return { data: undefined };
         },
         useWriteContract: () => ({
@@ -30,7 +30,6 @@ describe("useTokenApproval", () => {
         let hookResult: any = null;
         function Test() {
             // call hook inside component
-            // @ts-ignore
             hookResult = useTokenApproval({ tokenAddress: "0x0000000000000000000000000000000000000001", owner: "0x0000000000000000000000000000000000000002", spender: "0x0000000000000000000000000000000000000003" });
             return null;
         }
@@ -50,7 +49,6 @@ describe("useTokenApproval", () => {
     it("permit signs typed data and calls permit write", async () => {
         let hookResult: any = null;
         function Test() {
-            // @ts-ignore
             hookResult = useTokenApproval({ tokenAddress: "0x0000000000000000000000000000000000000001", owner: "0x0000000000000000000000000000000000000002", spender: "0x0000000000000000000000000000000000000003" });
             return null;
         }
