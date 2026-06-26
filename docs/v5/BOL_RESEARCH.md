@@ -429,8 +429,8 @@ buyer↔courier order's agreement.
 These appear on traditional BoLs and in the supply-chain BoL conventions
 TradeTrust documents but have no current clause in Figaro:
 
-- **Cargo-type / class-of-service for hazardous goods.** Hazmat / dangerous-goods declarations (UN numbers, packing groups, transport categories) are not expressible. `figaro-coordination-v1.coordination` carries a courier-coordination enum but it is about *who organizes* the carriage, not about *what kind of cargo* is being carried.
-- **Special-handling instructions.** Temperature-controlled / fragile / orientation-sensitive / live-animal — none of these have a clause slot.
+- **Cargo-type / transport-category beyond hazmat.** Hazmat / dangerous-goods declarations are now expressible via `figaro-hazmat-v1` (UN number, proper shipping name, hazard class 1–9, packing group, anchored to the UN Recommendations / ADR / IMDG / IATA-DGR). Broader cargo-type / transport-category taxonomies beyond dangerous goods remain unmodelled. (The earlier `figaro-class-of-service` sketch was deleted as conflating four orthogonal axes; hazard and temperature are now separate standard-anchored electives.)
+- **Special-handling instructions.** Fragile / orientation-sensitive / live-animal — none of these have a clause slot. (Temperature-controlled handling is covered by `figaro-cold-chain-v1`.)
 - **Notify party.** A third party who is to be notified at arrival, distinct from the consignee. Figaro's data model does not currently carry a notify address separate from the consignee address.
 - **Cargo-detail beyond SKU.** Weight, volume, marks, numbers, packaging type per shipment. `figaro-commerce-v1.lineItems` carries `quantity` and `name` but not packed-shipment dimensions.
 - **Liability terms / freight-paid status / freight-collect.** Whether the freight is prepaid by the shipper or collect-from-consignee. In Figaro this is implicit (the buyer pays the seller in the bonded payment); making it explicit is a labelling concern, not a clause concern.

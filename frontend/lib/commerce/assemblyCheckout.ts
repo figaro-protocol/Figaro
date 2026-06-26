@@ -42,8 +42,7 @@ export interface AssemblyCheckoutLineItem {
     quantity: number;
     unitPrice: string;
     /** Physical attributes from the cart — collapsed into the root order's
-     *  geo section at checkout (mass/volume sums × quantity; the
-     *  highest-priority class of service). */
+     *  geo section at checkout (mass/volume sums × quantity). */
     massGrams?: number;
     volumeMl?: number;
 }
@@ -116,7 +115,7 @@ export async function executeAssemblyCheckout(
     // The root node carries the design-time clause choices, spread verbatim —
     // then the cart's PHYSICAL attributes collapse into the geo entry (found
     // by its declared fields, never by clause name): mass/volume sum across
-    // items × quantity; class of service takes the highest-priority class.
+    // items × quantity.
     const root = assembly.assemblyTemplate.orders.find((o) => templateParentOrderHashes(o).length === 0)
         ?? assembly.assemblyTemplate.orders[0];
     if (!root) throw new Error("This assembly has no root order.");

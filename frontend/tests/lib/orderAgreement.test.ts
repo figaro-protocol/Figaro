@@ -33,7 +33,6 @@ describe("buildOrderAgreement", () => {
                 destinationGeohash: "dr5reh",
                 massGrams: 1000,
                 volumeMl: 5000,
-                classOfService: "E",
             }),
         });
 

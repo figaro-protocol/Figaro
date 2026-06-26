@@ -12,7 +12,6 @@ import type { ClauseFields } from "@/lib/core/encoding";
 // open set at runtime; lib/ finds sections by spec-declared fields). These
 // literals mirror the canonical Layer-A example specs.
 const GEO_CLAUSE_KEY = "figaro-geo";
-const CLASS_OF_SERVICE_CLAUSE_KEY = "figaro-class-of-service";
 const GHG_CLAUSE_KEY = "figaro-ghg";
 const MODALITIES_CLAUSE_KEY = "figaro-modalities";
 const COORDINATION_CLAUSE_KEY = "figaro-coordination";
@@ -32,9 +31,6 @@ export interface FlatClauseFields {
     destinationGeohash?: string;
     massGrams?: number;
     volumeMl?: number;
-    /** Class of service — its own clause now (figaro-class-of-service), no
-     *  longer a geo field. Enum S/E/F/C. */
-    classOfService?: string;
     /** Single-select modality (figaro-modalities). */
     modality?: string;
     /** Single-select coordination (figaro-coordination). */
@@ -65,11 +61,6 @@ export function cf(flat: FlatClauseFields): ClauseFields {
     if (flat.massGrams !== undefined) geo.massGrams = flat.massGrams;
     if (flat.volumeMl !== undefined) geo.volumeMl = flat.volumeMl;
     if (Object.keys(geo).length > 0) out[GEO_CLAUSE_KEY] = geo;
-
-    // Class of service is its own clause now (split out of geo).
-    if (flat.classOfService !== undefined) {
-        out[CLASS_OF_SERVICE_CLAUSE_KEY] = { classOfService: flat.classOfService };
-    }
 
     if (flat.modality) out[MODALITIES_CLAUSE_KEY] = { modality: flat.modality };
     if (flat.coordination) out[COORDINATION_CLAUSE_KEY] = { coordination: flat.coordination };

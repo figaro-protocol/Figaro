@@ -322,7 +322,7 @@ All contracts live in `src/` (Solidity 0.8.26, Foundry); V3 in `archive-v3/`. No
 
 A clause's spec ships in two lockstep surfaces: **Layer A** (TypeScript, `@figaro/core/clauses`) — the off-chain spec + content encoders + the well-formedness validator — and **on-chain registration** (`ClauseRegistry.registerClause` — permissionless, first-write-wins, immutable). **There is no on-chain clause-content validation** (per-clause validators, the SP1 prover, and the batch-verifier were deleted in the proof-apparatus teardown): the `AttestationCoordinator` merkle-binds each attestation to its signed agreement and content-hash-binds the evidence, but validates no content shape — well-formedness is an off-chain SDK + read-time concern. So a never-seen clause is attestable with **zero per-clause on-chain code** — open-world by construction.
 
-17 protocol clauses total: 16 runtime-attestable + `figaro-topology-v1` (agreement-only, DAG reconstructed off-chain by indexers from the signed agreement). The full clause table, the **adding-a-new-clause checklist**, and registration discipline → `CLAUSES.md`. Count source of truth: `ls clauses/*.json | wc -l` (the canonical Layer-A specs / `ClauseRegistry` seed data, at repo-root `clauses/`; nothing bundles a copy — every consumer loads them from ClauseRegistry → IPFS at runtime). Runtime-attestable = files minus `figaro-topology-v1`.
+18 protocol clauses total: 17 runtime-attestable + `figaro-topology-v1` (agreement-only, DAG reconstructed off-chain by indexers from the signed agreement). The full clause table, the **adding-a-new-clause checklist**, and registration discipline → `CLAUSES.md`. Count source of truth: `ls clauses/*.json | wc -l` (the canonical Layer-A specs / `ClauseRegistry` seed data, at repo-root `clauses/`; nothing bundles a copy — every consumer loads them from ClauseRegistry → IPFS at runtime). Runtime-attestable = files minus `figaro-topology-v1`.
 
 ### Frontend
 
@@ -330,7 +330,7 @@ A clause's spec ships in two lockstep surfaces: **Layer A** (TypeScript, `@figar
 
 ### Agent SDK
 
-`@figaro/core` — TypeScript SDK for reading, analyzing, and proposing Figaro transactions. Single dependency: `viem ^2.0.0`. ESM, four subpath exports: `@figaro/core` (root: ABIs, events, state reconstruction, commitment/bond utilities, merkle airdrop builder), `@figaro/core/agent` (HITL action queue + autonomous tx), `@figaro/core/extensions` (Dutch auction price, GHG/geo/handoff utilities, DID:web), `@figaro/core/clauses` (the lockstep source-of-truth for clause spec + validation + content encoders). Full entry-point map + build/test commands → `sdk/README.md`.
+`@figaro/core` — TypeScript SDK for reading, analyzing, and proposing Figaro transactions. Single dependency: `viem ^2.0.0`. ESM, four subpath exports: `@figaro/core` (root: ABIs, events, state reconstruction, commitment/bond utilities, merkle airdrop builder), `@figaro/core/agent` (HITL action queue + autonomous tx + did:web identity), `@figaro/core/extensions` (clause-agnostic helpers: clause-ID derivation, attestation-event filtering, geo math), `@figaro/core/clauses` (the lockstep source-of-truth for clause spec + validation + content encoders). Full entry-point map + build/test commands → `sdk/README.md`.
 
 ### Local Development
 

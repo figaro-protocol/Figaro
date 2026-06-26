@@ -65,7 +65,8 @@ prohibition-only frame leaves a vacuum the base model fills with its default.
 ## 2. Extending the ecosystem — bounded, versioned, spec-declared
 
 How the network grows with **zero code change and zero kernel change**. Worked out via
-the GHG consolidation + class-of-service split (2026-06); the model for every extension.
+the GHG consolidation + the hazmat / cold-chain handling clauses (2026-06); the model for
+every extension.
 
 - **N closed-world variants → ONE clause + a spec-declared option set.** The clause is
   the reusable concept; the variation is **data in the spec** (an `enum` array or a

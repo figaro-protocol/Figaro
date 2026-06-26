@@ -21,7 +21,7 @@
  *   sections: [
  *     { clause: "<commerce clauseId>",   data: { lineItems, currency, payment } },
  *     { clause: "<modality clauseId>", data: { modalities, delivery: { coordination } } },
- *     { clause: "<geo clauseId>",        data: { originGeohash, destinationGeohash, massGrams, volumeMl, classOfService } },
+ *     { clause: "<geo clauseId>",        data: { originGeohash, destinationGeohash, massGrams, volumeMl } },
  *     { clause: "<disclosure clauseId>", data: { scope } },
  *   ]
  * }

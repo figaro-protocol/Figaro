@@ -6,7 +6,8 @@ import { validateContent } from "../../src/clauses/validate.js";
 import topologySpecRaw from "../../../clauses/figaro-topology.json" with { type: "json" };
 import commerceSpecRaw from "../../../clauses/figaro-commerce.json" with { type: "json" };
 import geoSpecRaw from "../../../clauses/figaro-geo.json" with { type: "json" };
-import classOfServiceSpecRaw from "../../../clauses/figaro-class-of-service.json" with { type: "json" };
+import hazmatSpecRaw from "../../../clauses/figaro-hazmat.json" with { type: "json" };
+import coldChainSpecRaw from "../../../clauses/figaro-cold-chain.json" with { type: "json" };
 import arbitrationKlerosSpecRaw from "../../../clauses/figaro-arbitration-kleros.json" with { type: "json" };
 import applicableLawSpecRaw from "../../../clauses/figaro-applicable-law.json" with { type: "json" };
 import ghgSpecRaw from "../../../clauses/figaro-ghg.json" with { type: "json" };
@@ -82,7 +83,7 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(result.ok).toBe(false);
     });
 
-    // ── figaro-geo (class-of-service split out) ──
+    // ── figaro-geo ──
 
     it("figaro-geo accepts a valid 4-tuple", () => {
         const parsed = parseClauseSpec(geoSpecRaw);
@@ -137,20 +138,78 @@ describe("example clause specs — parse + validate sample content", () => {
         }, parsed.spec).ok).toBe(false);
     });
 
-    // ── figaro-class-of-service (split out of geo) ──
+    // ── figaro-hazmat (UN dangerous goods) ──
 
-    it("figaro-class-of-service accepts every class value", () => {
-        const parsed = parseClauseSpec(classOfServiceSpecRaw);
+    it("figaro-hazmat accepts a valid dangerous-goods declaration", () => {
+        const parsed = parseClauseSpec(hazmatSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        for (const cls of ["S", "E", "F", "C"]) {
-            expect(validateContent({ classOfService: cls }, parsed.spec).ok).toBe(true);
-        }
+        expect(validateContent({
+            unNumber: "UN1203",
+            properShippingName: "Petrol",
+            hazardClass: "3",
+            packingGroup: "II",
+        }, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-class-of-service rejects an unknown class", () => {
-        const parsed = parseClauseSpec(classOfServiceSpecRaw);
+    it("figaro-hazmat accepts an omitted (optional) packing group", () => {
+        const parsed = parseClauseSpec(hazmatSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ classOfService: "X" }, parsed.spec).ok).toBe(false);
+        expect(validateContent({
+            unNumber: "UN1971",
+            properShippingName: "Methane, compressed",
+            hazardClass: "2",
+        }, parsed.spec).ok).toBe(true);
+    });
+
+    it("figaro-hazmat rejects a malformed UN number", () => {
+        const parsed = parseClauseSpec(hazmatSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({
+            unNumber: "1203",
+            properShippingName: "Petrol",
+            hazardClass: "3",
+        }, parsed.spec).ok).toBe(false);
+    });
+
+    it("figaro-hazmat rejects an unknown hazard class", () => {
+        const parsed = parseClauseSpec(hazmatSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({
+            unNumber: "UN1203",
+            properShippingName: "Petrol",
+            hazardClass: "10",
+        }, parsed.spec).ok).toBe(false);
+    });
+
+    // ── figaro-cold-chain (GDP cold-chain) ──
+
+    it("figaro-cold-chain accepts a valid temperature window", () => {
+        const parsed = parseClauseSpec(coldChainSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({
+            tempClass: "refrigerated",
+            tempMinC: 2,
+            tempMaxC: 8,
+        }, parsed.spec).ok).toBe(true);
+    });
+
+    it("figaro-cold-chain rejects an unknown temperature class", () => {
+        const parsed = parseClauseSpec(coldChainSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({
+            tempClass: "warm",
+            tempMinC: 20,
+            tempMaxC: 25,
+        }, parsed.spec).ok).toBe(false);
+    });
+
+    it("figaro-cold-chain rejects a missing temperature bound", () => {
+        const parsed = parseClauseSpec(coldChainSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({
+            tempClass: "frozen",
+            tempMinC: -25,
+        }, parsed.spec).ok).toBe(false);
     });
 
     // ── figaro-modalities-v1 ──

@@ -21,9 +21,12 @@
 
 set -euo pipefail
 
-# Genuinely-free string fields (addresses, crypto data, geohashes, URIs, free prose) — NOT
-# choices. A field whose name matches this is legitimately free-form.
-FREE_CONTENT='^(currency|nonce|.*[Ss]ig|.*[Uu]ri|.*[Hh]ash|.*[Gg]eohash|description|name|tagline|specialty|notes?)$'
+# Genuinely-free string fields (addresses, crypto data, geohashes, URIs, free prose,
+# externally-standardised identifiers/names) — NOT choices. A field whose name matches
+# this is legitimately free-form. `unNumber`/`properShippingName` are the UN dangerous-
+# goods number + official shipping name: regulated values anchored to an external standard
+# (the clause references the standard rather than enumerating its thousands of entries).
+FREE_CONTENT='^(currency|nonce|.*[Ss]ig|.*[Uu]ri|.*[Hh]ash|.*[Gg]eohash|description|name|properShippingName|unNumber|tagline|specialty|notes?)$'
 
 # Known violations pending conversion to enums (tracked in the backlog UI/UX audit). Allowed
 # for now so the guard doesn't block existing work; REMOVE each as it becomes an enum — then

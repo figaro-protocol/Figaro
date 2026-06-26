@@ -1,0 +1,46 @@
+{
+    "clauseId": "figaro-cold-chain",
+    "version": 1,
+    "title": "Cold chain",
+    "description": "Temperature-controlled handling requirement anchored to Good Distribution Practice (GDP) cold-chain classes. Elective and NEVER default-on: composed only when the goods require temperature control. Carries the cold-chain class plus the agreed temperature window in whole degrees Celsius. The external standard is the source of truth; this clause references it.",
+    "fields": [
+        {
+            "name": "tempClass",
+            "type": "enum",
+            "required": true,
+            "values": ["frozen", "refrigerated", "cool", "controlled-room-temp"],
+            "valueLabels": {
+                "frozen": "Frozen (≤ -18 °C)",
+                "refrigerated": "Refrigerated (2–8 °C)",
+                "cool": "Cool (8–15 °C)",
+                "controlled-room-temp": "Controlled room temperature (15–25 °C)"
+            },
+            "label": "Cold-chain class",
+            "description": "GDP cold-chain class. The explicit min/max window below pins the agreed range within the class."
+        },
+        {
+            "name": "tempMinC",
+            "type": "integer",
+            "required": true,
+            "min": -273,
+            "max": 100,
+            "label": "Min temperature (°C)",
+            "description": "Minimum allowable temperature in whole degrees Celsius."
+        },
+        {
+            "name": "tempMaxC",
+            "type": "integer",
+            "required": true,
+            "min": -273,
+            "max": 100,
+            "label": "Max temperature (°C)",
+            "description": "Maximum allowable temperature in whole degrees Celsius. Must be ≥ tempMinC (checked off-chain at read time)."
+        }
+    ],
+    "block": {
+        "tier": "cross-checked",
+        "article": "logistics",
+        "mechanismKinds": [],
+        "moduleIds": []
+    }
+}

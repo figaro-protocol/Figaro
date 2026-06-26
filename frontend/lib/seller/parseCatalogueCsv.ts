@@ -21,7 +21,6 @@
  *   available      — optional, "true"/"false"/"1"/"0" (default true)
  *   massGrams      — optional, parsed as number
  *   volumeMl       — optional, parsed as number
- *   classOfService — optional, one of "standard"/"express"/"fragile"/"cold-chain"
  *
  * Any other columns are silently ignored. Rows missing a required
  * field land in `errors`; the caller can decide whether to surface

@@ -58,6 +58,9 @@ export default function Clauses() {
                 <p className="text-sm text-ink-body leading-relaxed">
                     <code>block.article</code> is your clause&apos;s <strong>group</strong> &mdash; geo, coordination, emissions &mdash; the section it groups under in the designer, and the only classification it needs. The RPGF substrate-broadening formula, when active, derives its group key as <code>keccak256(article)</code> from the spec &mdash; nothing extra is stored on-chain. Validate the whole spec against the published JSON Schema before you register.
                 </p>
+                <p className="text-sm text-ink-body leading-relaxed mt-5">
+                    <strong>Best practice: anchor your clause to a norm or standard.</strong> A clause is strongest when its content references an external, named, versioned standard the parties already recognize &mdash; a body of law (<code>figaro-applicable-law</code>), an arbitration forum&apos;s rules (<code>figaro-arbitration-kleros</code>), an accounting standard (<code>figaro-ghg</code> names ISO&nbsp;14064, the GHG&nbsp;Protocol, &hellip; in its <code>standard</code> field). Anchoring to a standard gives the clause stable, shared meaning across parties and over time &mdash; the standard is the source of truth and your clause points to it &mdash; and it bridges how people already reason, through established norms, to how the protocol reasons. Name the standard and carry its version, and the clause stays durable as the world changes around it.
+                </p>
             </MarketingSection>
 
             <MarketingSection title="Registered clauses, by article.">

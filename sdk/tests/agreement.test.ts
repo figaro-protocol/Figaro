@@ -25,7 +25,6 @@ const GEO: AgreementSection = {
         destinationGeohash: "dr5reh",
         massGrams: 500,
         volumeMl: 1000,
-        classOfService: "S",
     },
 };
 const GHG: AgreementSection = {
