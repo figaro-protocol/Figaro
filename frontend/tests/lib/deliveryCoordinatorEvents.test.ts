@@ -115,7 +115,7 @@ describe("createDeliveryCoordinatorSource", () => {
         const events = await source.fetchEvents(client as any, "0xabc" as `0x${string}`);
 
         expect(events).toHaveLength(1);
-        expect(events[0].label).toBe("Merchant internal process events — handed-off");
+        expect(events[0].label).toBe("Merchant internal process events — Handed off");
         expect(events[0].eventName).toBe("Attestation");
         expect(events[0].orderHash).toBe("0xorder1");
         expect(events[0].timestamp).toBe(1700000100);
@@ -141,7 +141,7 @@ describe("createDeliveryCoordinatorSource", () => {
         const events = await source.fetchEvents(client as any, "0xabc" as `0x${string}`);
 
         expect(events).toHaveLength(1);
-        expect(events[0].label).toBe("Proximity proof (runtime) — nearby-ble");
+        expect(events[0].label).toBe("Proximity proof (runtime) — Nearby (Bluetooth)");
         expect(events[0].eventName).toBe("Attestation");
         expect(events[0].details.clauseId).toBe(PROXIMITY_CLAUSE_ID);
     });
@@ -164,7 +164,7 @@ describe("createDeliveryCoordinatorSource", () => {
         const events = await source.fetchEvents(client as any, "0xabc" as `0x${string}`);
 
         expect(events).toHaveLength(1);
-        expect(events[0].label).toBe("Proximity proof (runtime) — contact-nfc");
+        expect(events[0].label).toBe("Proximity proof (runtime) — Contact (NFC)");
     });
 
     it("maps courier-process Attestation for completed (stage 4, the clause enum)", async () => {
@@ -185,7 +185,7 @@ describe("createDeliveryCoordinatorSource", () => {
         const events = await source.fetchEvents(client as any, "0xabc" as `0x${string}`);
 
         expect(events).toHaveLength(1);
-        expect(events[0].label).toBe("Courier internal process events — completed");
+        expect(events[0].label).toBe("Courier internal process events — Completed");
         expect(events[0].eventName).toBe("Attestation");
         expect(events[0].details.clauseId).toBe(COURIER_CLAUSE_ID);
     });
@@ -253,9 +253,9 @@ describe("createDeliveryCoordinatorSource", () => {
 
         expect(events).toHaveLength(3);
         expect(events.map((e) => e.label)).toEqual([
-            "Merchant internal process events — handed-off",   // merchant stage 2
-            "Courier internal process events — in-transit",    // courier stage 2
-            "Proximity proof (runtime) — contact-nfc",         // band ordinal 2
+            "Merchant internal process events — Handed off",   // merchant stage 2
+            "Courier internal process events — In transit",    // courier stage 2
+            "Proximity proof (runtime) — Contact (NFC)",       // band ordinal 2
         ]);
     });
 
