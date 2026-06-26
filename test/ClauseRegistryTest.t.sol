@@ -71,12 +71,12 @@ contract ClauseRegistryTest is Test {
 
     function test_sameNameDifferentVersionIsDistinct() public {
         // Permissionless versioning — the (name, version) pair is the identity, so
-        // a future figaro-geo-v3 registers without colliding with v2.
-        registry.registerClause("figaro-geo", 2, keccak256("geo-v2-spec"), "ipfs://geo/v2");
-        registry.registerClause("figaro-geo", 3, keccak256("geo-v3-spec"), "ipfs://geo/v3");
+        // a future figaro-geolocation-v3 registers without colliding with v2.
+        registry.registerClause("figaro-geolocation", 2, keccak256("geo-v2-spec"), "ipfs://geo/v2");
+        registry.registerClause("figaro-geolocation", 3, keccak256("geo-v3-spec"), "ipfs://geo/v3");
 
-        assertTrue(registry.registered(keccak256(abi.encode("figaro-geo", uint64(2)))));
-        assertTrue(registry.registered(keccak256(abi.encode("figaro-geo", uint64(3)))));
+        assertTrue(registry.registered(keccak256(abi.encode("figaro-geolocation", uint64(2)))));
+        assertTrue(registry.registered(keccak256(abi.encode("figaro-geolocation", uint64(3)))));
     }
 
     // ── Events ───────────────────────────────────────────────────────

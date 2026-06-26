@@ -7,7 +7,7 @@
  * can order it. Runs in the `devnet-authoring` gate BEFORE sellers-onboarding
  * (alphabetical: "seed-" < "sellers-").
  *
- * It composes ONE clause (figaro-geo — a single checkbox, no required fields)
+ * It composes ONE clause (figaro-geolocation — a single checkbox, no required fields)
  * so the composition has a UNIQUE content hash (slug): it neither collides with
  * the blank composition `designer-publish` round-trips, nor needs a revert.
  * Persistent by design — NO evm snapshot/revert; this IS the seed.
@@ -30,7 +30,7 @@ const LOCAL_ANVIL = defineChain({
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
     rpcUrls: { default: { http: [RPC_URL] } },
 });
-const GEO_CLAUSE_KEY = 'figaro-geo';
+const GEO_CLAUSE_KEY = 'figaro-geolocation';
 
 test.describe('Seed assembly (devnet authoring gate)', () => {
     // Multi-route nav + IPFS pin + on-chain tx pushes this past 60s.

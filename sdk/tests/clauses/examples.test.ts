@@ -5,7 +5,8 @@ import coordinationSpecRaw from "../../../clauses/figaro-coordination.json" with
 import { validateContent } from "../../src/clauses/validate.js";
 import topologySpecRaw from "../../../clauses/figaro-topology.json" with { type: "json" };
 import commerceSpecRaw from "../../../clauses/figaro-commerce.json" with { type: "json" };
-import geoSpecRaw from "../../../clauses/figaro-geo.json" with { type: "json" };
+import geolocationSpecRaw from "../../../clauses/figaro-geolocation.json" with { type: "json" };
+import cargoSpecRaw from "../../../clauses/figaro-cargo.json" with { type: "json" };
 import hazmatSpecRaw from "../../../clauses/figaro-hazmat.json" with { type: "json" };
 import coldChainSpecRaw from "../../../clauses/figaro-cold-chain.json" with { type: "json" };
 import freightClassSpecRaw from "../../../clauses/figaro-freight-class.json" with { type: "json" };
@@ -84,59 +85,53 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(result.ok).toBe(false);
     });
 
-    // ── figaro-geo ──
+    // ── figaro-geolocation ──
 
-    it("figaro-geo accepts a valid 4-tuple", () => {
-        const parsed = parseClauseSpec(geoSpecRaw);
+    it("figaro-geolocation accepts a valid origin/destination pair", () => {
+        const parsed = parseClauseSpec(geolocationSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
             originGeohash: "u4pruydqqv",
             destinationGeohash: "9q8yyk8yvr",
-            massGrams: 500,
-            volumeMl: 1000,
         }, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-geo rejects geohash with disallowed characters", () => {
-        const parsed = parseClauseSpec(geoSpecRaw);
+    it("figaro-geolocation rejects geohash with disallowed characters", () => {
+        const parsed = parseClauseSpec(geolocationSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         // 'a' is not in the geohash base32 alphabet
         expect(validateContent({
             originGeohash: "abc",
             destinationGeohash: "abc",
-            massGrams: 1,
-            volumeMl: 1,
         }, parsed.spec).ok).toBe(false);
     });
 
-    it("figaro-geo rejects zero mass", () => {
-        const parsed = parseClauseSpec(geoSpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({
-            originGeohash: "u",
-            destinationGeohash: "v",
-            massGrams: 0,
-            volumeMl: 1,
-        }, parsed.spec).ok).toBe(false);
-    });
-
-    it("figaro-geo rejects zero volume", () => {
-        const parsed = parseClauseSpec(geoSpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({
-            originGeohash: "u",
-            destinationGeohash: "v",
-            massGrams: 1,
-            volumeMl: 0,
-        }, parsed.spec).ok).toBe(false);
-    });
-
-    it("figaro-geo rejects missing required fields", () => {
-        const parsed = parseClauseSpec(geoSpecRaw);
+    it("figaro-geolocation rejects missing required fields", () => {
+        const parsed = parseClauseSpec(geolocationSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
             originGeohash: "u",
         }, parsed.spec).ok).toBe(false);
+    });
+
+    // ── figaro-cargo ──
+
+    it("figaro-cargo accepts a valid mass/volume pair", () => {
+        const parsed = parseClauseSpec(cargoSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ massGrams: 500, volumeMl: 1000 }, parsed.spec).ok).toBe(true);
+    });
+
+    it("figaro-cargo rejects zero mass", () => {
+        const parsed = parseClauseSpec(cargoSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ massGrams: 0, volumeMl: 1 }, parsed.spec).ok).toBe(false);
+    });
+
+    it("figaro-cargo rejects zero volume", () => {
+        const parsed = parseClauseSpec(cargoSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ massGrams: 1, volumeMl: 0 }, parsed.spec).ok).toBe(false);
     });
 
     // ── figaro-hazmat (UN dangerous goods) ──

@@ -7,14 +7,14 @@
  * survive the save + reload round-trip — through the UI on both ends:
  *
  *   1. /builders/designer/new?fresh=1 — blank canvas, one root order.
- *   2. Open the drawer → registry tab → compose figaro-geo (awaited into
+ *   2. Open the drawer → registry tab → compose figaro-geolocation (awaited into
  *      existence: checkboxes render once the spec cache warms chain→IPFS).
- *   3. Name + Save; reload via /builders/designer/edit/<slug> — the geo
+ *   3. Name + Save; reload via /builders/designer/edit/<slug> — the geolocation
  *      checkbox is STILL CHECKED.
  *   4. Uncheck it, save, reload — STILL UNCHECKED. Both directions of a
  *      user-driven clause edit persist.
  *
- * Geo is chosen for simplicity: a cross-checked graph-data clause with no
+ * Geolocation is chosen for simplicity: a cross-checked graph-data clause with no
  * drawer-level required fields — a single checkbox.
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server.
@@ -22,7 +22,7 @@
 import { test, expect } from './devnet-multi-test';
 import type { Page } from '@playwright/test';
 
-const GEO_CLAUSE_KEY = 'figaro-geo';
+const GEO_CLAUSE_KEY = 'figaro-geolocation';
 const DRAFT_NAME = 'devnet-drawer-geo';
 
 /** Open the (sole) root order's drawer on its registry tab and return the

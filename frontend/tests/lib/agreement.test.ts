@@ -38,12 +38,10 @@ const COMMERCE_SECTION: AgreementSection = {
 };
 
 const GEO_SECTION: AgreementSection = {
-    clause: "figaro-geo", version: 1,
+    clause: "figaro-geolocation", version: 1,
     data: {
         originGeohash: "dr5reg",
         destinationGeohash: "dr5reh",
-        massGrams: 1000,
-        volumeMl: 5000,
     },
 };
 
@@ -121,7 +119,7 @@ describe("computeAgreementHash", () => {
     it("different section data produces different hashes", () => {
         const h1 = computeAgreementHash(makeAgreement({ sections: [GEO_SECTION] }));
         const h2 = computeAgreementHash(makeAgreement({
-            sections: [{ clause: "figaro-geo", version: 1, data: { ...GEO_SECTION.data, originGeohash: "u33dc0" } }],
+            sections: [{ clause: "figaro-geolocation", version: 1, data: { ...GEO_SECTION.data, originGeohash: "u33dc0" } }],
         }));
         expect(h1).not.toBe(h2);
     });
@@ -182,7 +180,7 @@ describe("buildAgreement", () => {
         expect(hasSection(a, "figaro-commerce")).toBe(true);
         expect(hasSection(a, "figaro-modalities")).toBe(true);
         expect(hasSection(a, "figaro-ghg-iso-14064")).toBe(true);
-        expect(hasSection(a, "figaro-geo")).toBe(true);
+        expect(hasSection(a, "figaro-geolocation")).toBe(true);
     });
 });
 
@@ -322,7 +320,7 @@ describe("redactSections / computeRedactableAgreementHash / verifyRevealedSectio
     it("non-targeted sections are passed through unchanged", () => {
         const cleartext = makeAgreement({ sections: [COMMERCE_SECTION, GEO_SECTION] });
         const redacted = redactSections(cleartext, ["figaro-commerce"]);
-        const geoEntry = redacted.sections.find((s) => s.clause === "figaro-geo")!;
+        const geoEntry = redacted.sections.find((s) => s.clause === "figaro-geolocation")!;
         expect(isRedactedSection(geoEntry)).toBe(false);
         // Cleartext section: same data field as before redaction.
         expect((geoEntry as AgreementSection).data).toEqual(GEO_SECTION.data);

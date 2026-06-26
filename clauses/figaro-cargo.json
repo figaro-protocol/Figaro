@@ -1,0 +1,32 @@
+{
+    "clauseId": "figaro-cargo",
+    "version": 1,
+    "title": "Cargo",
+    "description": "Physical shipment measure — the agreed mass and volume of the goods. Elective and NEVER default-on: composed only when an order moves physical goods. Density (mass ÷ volume) informs freight classification and handoff logistics; the declared NMFC class itself lives in the elective figaro-freight-class clause.",
+    "fields": [
+        {
+            "name": "massGrams",
+            "type": "integer",
+            "required": true,
+            "min": 1,
+            "max": 4294967295,
+            "default": 1,
+            "description": "Shipment mass in whole grams. Must be at least 1 g; capped at uint32 max (≈4.29 million kg)."
+        },
+        {
+            "name": "volumeMl",
+            "type": "integer",
+            "required": true,
+            "min": 1,
+            "max": 4294967295,
+            "default": 1,
+            "description": "Shipment volume in whole millilitres. Must be at least 1 ml; capped at uint32 max (≈4.29 million L)."
+        }
+    ],
+    "block": {
+        "tier": "cross-checked",
+        "article": "logistics",
+        "mechanismKinds": [],
+        "moduleIds": []
+    }
+}

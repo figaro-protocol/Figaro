@@ -1,8 +1,8 @@
 {
-    "clauseId": "figaro-geo",
+    "clauseId": "figaro-geolocation",
     "version": 1,
-    "title": "Logistics",
-    "description": "Origin and destination geohashes plus shipment mass and volume. Composed when an order moves physical goods between locations. Handling requirements (hazard, temperature) are their own elective clauses.",
+    "title": "Geolocation",
+    "description": "Origin and destination geohashes — where an order originates and terminates. Composed for ANY modality: a physical shipment route, a service jurisdiction, or geofenced digital delivery. Carries no physical-shipment assumption; mass and volume live in the elective figaro-cargo clause.",
     "fields": [
         {
             "name": "originGeohash",
@@ -23,24 +23,6 @@
             "pattern": "^[0123456789bcdefghjkmnpqrstuvwxyz]+$",
             "default": "0",
             "description": "Destination geohash (base32). 1–12 characters; longer = higher precision. Default \"0\" is the minimal valid placeholder (whole-region cell) pending a real value at commit time."
-        },
-        {
-            "name": "massGrams",
-            "type": "integer",
-            "required": true,
-            "min": 1,
-            "max": 4294967295,
-            "default": 1,
-            "description": "Shipment mass in whole grams. Must be at least 1 g; capped at uint32 max (≈4.29 million kg)."
-        },
-        {
-            "name": "volumeMl",
-            "type": "integer",
-            "required": true,
-            "min": 1,
-            "max": 4294967295,
-            "default": 1,
-            "description": "Shipment volume in whole millilitres. Must be at least 1 ml; capped at uint32 max (≈4.29 million L)."
         }
     ],
     "block": {

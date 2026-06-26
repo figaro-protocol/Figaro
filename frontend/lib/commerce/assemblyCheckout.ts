@@ -122,19 +122,19 @@ export async function executeAssemblyCheckout(
     const isMultiOrder = assembly.assemblyTemplate.orders.length > 1;
 
     const clauseFields = { ...root.clauses };
-    // Aggregate cart mass/volume into the geo clause (found by FIELD name, never
-    // clause id). Class of service is its own elective clause now — composed at
-    // design time, never derived from cart items.
-    const geoClauseId = Object.keys(clauseFields).find(
+    // Aggregate cart mass/volume into the cargo clause (found by FIELD name,
+    // never clause id; gracefully skipped when the assembly composes no clause
+    // declaring massGrams — cargo is elective).
+    const cargoClauseId = Object.keys(clauseFields).find(
         (clauseId) => clauseDeclaresField(clauseId, "massGrams"),
     );
-    if (geoClauseId) {
+    if (cargoClauseId) {
         const massGrams = lineItems.reduce(
             (sum, li) => sum + (li.massGrams ?? 0) * li.quantity, 0);
         const volumeMl = lineItems.reduce(
             (sum, li) => sum + (li.volumeMl ?? 0) * li.quantity, 0);
-        clauseFields[geoClauseId] = {
-            ...clauseFields[geoClauseId],
+        clauseFields[cargoClauseId] = {
+            ...clauseFields[cargoClauseId],
             ...(massGrams > 0 ? { massGrams } : {}),
             ...(volumeMl > 0 ? { volumeMl } : {}),
         };

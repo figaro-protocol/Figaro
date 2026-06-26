@@ -65,7 +65,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
   to a form value. `{ isReady, validate, loadError }`.
 - `clauseSpecSource.ts` — the module spec cache. No bundled copy and no
   preload: `useClauseSpecs` warms it chain→IPFS via `loadClauseSpec(id, uri)`
-  from `ClauseRegistered` events (19 protocol clauses on the devnet — 18
+  from `ClauseRegistered` events (20 protocol clauses on the devnet — 19
   runtime-attestable + the agreement-only `figaro-topology-v1` — plus any
   third-party registrations); spec-consuming surfaces gate on its `loaded`.
 

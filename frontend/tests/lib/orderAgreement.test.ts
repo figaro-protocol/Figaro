@@ -37,7 +37,8 @@ describe("buildOrderAgreement", () => {
         });
 
         expect(getSection(agreement, "figaro-commerce")).toBeDefined();
-        expect(getSection(agreement, "figaro-geo")).toBeDefined();
+        expect(getSection(agreement, "figaro-geolocation")).toBeDefined();
+        expect(getSection(agreement, "figaro-cargo")).toBeDefined();
         expect(getSection(agreement, "figaro-topology")).toBeDefined();
         expect(getSection(agreement, "figaro-commerce")?.data.lineItems).toEqual([
             { itemId: "meal-1", name: "Lunch", quantity: 2, unitPrice: "5" },
@@ -163,12 +164,18 @@ describe("generic spec-driven encode (defaults, sentinel, drop semantics)", () =
     const build = (clauseFields: ReturnType<typeof cf>) =>
         buildOrderAgreement({ buyer: BUYER, seller: SELLER, currency: CURRENCY, payment: 10n, clauseFields });
 
-    it("fills absent geo fields from the spec's `default`s (minimum-valid tuple)", () => {
-        const agreement = build(cf({ originGeohash: "dr5reg", destinationGeohash: "dr5reh" }));
-        expect(getSection(agreement, "figaro-geo")?.data).toEqual({
+    it("fills absent geolocation fields from the spec's `default`s", () => {
+        const agreement = build(cf({ originGeohash: "dr5reg" }));
+        expect(getSection(agreement, "figaro-geolocation")?.data).toEqual({
             originGeohash: "dr5reg",
-            destinationGeohash: "dr5reh",
-            massGrams: 1,
+            destinationGeohash: "0",
+        });
+    });
+
+    it("fills absent cargo fields from the spec's `default`s", () => {
+        const agreement = build(cf({ massGrams: 500 }));
+        expect(getSection(agreement, "figaro-cargo")?.data).toEqual({
+            massGrams: 500,
             volumeMl: 1,
         });
     });
@@ -176,8 +183,8 @@ describe("generic spec-driven encode (defaults, sentinel, drop semantics)", () =
     it("drops a section whose required field is unsatisfiable (no default)", () => {
         // applicableLaw is required and carries no default — a section arriving
         // with only the optional forum cannot be satisfied and is dropped.
-        // (geo no longer works as this fixture: every geo field now carries a
-        // spec default, the designer's default-on placeholder fill.)
+        // (geolocation no longer works as this fixture: every geolocation field
+        // now carries a spec default, the designer's default-on placeholder fill.)
         const agreement = build({ "figaro-applicable-law": { forum: "ny-southern-district" } });
         expect(getSection(agreement, "figaro-applicable-law")).toBeUndefined();
     });

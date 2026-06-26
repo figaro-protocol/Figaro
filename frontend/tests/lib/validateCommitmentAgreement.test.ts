@@ -12,7 +12,7 @@ const MERCHANT_PROCESS_CLAUSE_KEY = "figaro-merchant-process";
 const MODALITIES_CLAUSE_KEY = "figaro-modalities";
 const COORDINATION_CLAUSE_KEY = "figaro-coordination";
 const HANDOFF_CLAUSE_KEY = "figaro-handoff";
-const GEO_CLAUSE_KEY = "figaro-geo";
+const GEO_CLAUSE_KEY = "figaro-geolocation";
 
 // Layer A, run on BOTH sides of the bilateral commit (buyer before initiating,
 // seller before counter-signing). Two checks: merkle integrity (the signed hash

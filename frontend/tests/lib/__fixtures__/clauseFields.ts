@@ -11,7 +11,8 @@ import type { ClauseFields } from "@/lib/core/encoding";
 // Tests may name clauses; production code may not (the registry defines the
 // open set at runtime; lib/ finds sections by spec-declared fields). These
 // literals mirror the canonical Layer-A example specs.
-const GEO_CLAUSE_KEY = "figaro-geo";
+const GEOLOCATION_CLAUSE_KEY = "figaro-geolocation";
+const CARGO_CLAUSE_KEY = "figaro-cargo";
 const GHG_CLAUSE_KEY = "figaro-ghg";
 const MODALITIES_CLAUSE_KEY = "figaro-modalities";
 const COORDINATION_CLAUSE_KEY = "figaro-coordination";
@@ -24,11 +25,13 @@ const APPLICABLE_LAW_CLAUSE_KEY = "figaro-applicable-law";
 const CONSENT_CLAUSE_KEY = "figaro-consent";
 
 export interface FlatClauseFields {
-    /** Spec-named geo fields (figaro-geo). The legacy origin/mass/class_
-     *  vocabulary and its unit-string parsing died with the per-clause
-     *  encoder map — tests compose what production composes. */
+    /** Spec-named geolocation fields (figaro-geolocation). The legacy
+     *  origin/mass/class_ vocabulary and its unit-string parsing died with the
+     *  per-clause encoder map — tests compose what production composes. */
     originGeohash?: string;
     destinationGeohash?: string;
+    /** Physical shipment measure (figaro-cargo) — its own elective clause now,
+     *  split out of geolocation. */
     massGrams?: number;
     volumeMl?: number;
     /** Single-select modality (figaro-modalities). */
@@ -58,9 +61,12 @@ export function cf(flat: FlatClauseFields): ClauseFields {
     const geo: Record<string, unknown> = {};
     if (flat.originGeohash !== undefined) geo.originGeohash = flat.originGeohash;
     if (flat.destinationGeohash !== undefined) geo.destinationGeohash = flat.destinationGeohash;
-    if (flat.massGrams !== undefined) geo.massGrams = flat.massGrams;
-    if (flat.volumeMl !== undefined) geo.volumeMl = flat.volumeMl;
-    if (Object.keys(geo).length > 0) out[GEO_CLAUSE_KEY] = geo;
+    if (Object.keys(geo).length > 0) out[GEOLOCATION_CLAUSE_KEY] = geo;
+
+    const cargo: Record<string, unknown> = {};
+    if (flat.massGrams !== undefined) cargo.massGrams = flat.massGrams;
+    if (flat.volumeMl !== undefined) cargo.volumeMl = flat.volumeMl;
+    if (Object.keys(cargo).length > 0) out[CARGO_CLAUSE_KEY] = cargo;
 
     if (flat.modality) out[MODALITIES_CLAUSE_KEY] = { modality: flat.modality };
     if (flat.coordination) out[COORDINATION_CLAUSE_KEY] = { coordination: flat.coordination };

@@ -57,16 +57,17 @@ Lives off-chain as JSON at the `metadataURI` emitted by `ClauseRegistry`
 live at repo-root `clauses/` (the `ClauseRegistry` seed data); nothing bundles a
 copy — every consumer loads each spec from `ClauseRegistry` → IPFS at runtime.
 
-## The 19 protocol clauses
+## The 20 protocol clauses
 
-18 runtime-attestable clauses (content validated off-chain by Layer A; no
+19 runtime-attestable clauses (content validated off-chain by Layer A; no
 on-chain validator) plus the agreement-only `figaro-topology-v1`.
 
 | clauseId | What it carries | Attestation surface |
 |---|---|---|
 | `figaro-topology-v1` | DAG lineage (parent order hashes) | **Agreement-only** (no runtime attestation) |
 | `figaro-commerce-v1` | Currency, payment, line items | Layer A (off-chain) |
-| `figaro-geo-v1` | Origin / destination geohash + mass + volume | Layer A (off-chain) |
+| `figaro-geolocation-v1` | Origin / destination geohash — where an order originates/terminates (any modality, incl. virtual). Default-on | Layer A (off-chain) |
+| `figaro-cargo-v1` | Physical shipment measure — mass + volume of the goods. Elective | Layer A (off-chain) |
 | `figaro-hazmat-v1` | Dangerous-goods declaration anchored to the UN Recommendations (ADR / IMDG / IATA-DGR) — UN number, proper shipping name, hazard class, packing group. Elective | Layer A (off-chain) |
 | `figaro-cold-chain-v1` | Temperature-controlled handling anchored to GDP cold-chain classes — class + min/max °C window. Elective | Layer A (off-chain) |
 | `figaro-freight-class-v1` | Declared freight classification anchored to the NMFC (NMFTA) — the NMFC class (50–500) + optional item number. Elective | Layer A (off-chain) |

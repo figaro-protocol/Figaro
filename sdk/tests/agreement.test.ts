@@ -18,13 +18,11 @@ const COMMERCE: AgreementSection = {
     data: { currency: CURRENCY, payment: "1000000000000000000", lineItems: [] },
 };
 const GEO: AgreementSection = {
-    clause: "figaro-geo",
-    version: 2,
+    clause: "figaro-geolocation",
+    version: 1,
     data: {
         originGeohash: "dr5reg",
         destinationGeohash: "dr5reh",
-        massGrams: 500,
-        volumeMl: 1000,
     },
 };
 const GHG: AgreementSection = {
