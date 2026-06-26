@@ -24,11 +24,11 @@
  * slugs, UI-bypassing place/accept shortcuts). This rewrite imports NONE of that:
  * it drives the REAL UI end to end, exactly as orders-accept / seed-assembly /
  * sellers-onboarding do, and the only non-UI step is the documented permissionless
- * clause registration (ClauseRegistry.registerClause — NO per-clause validator;
- * the chain merkle-binds the attestation and validates no content) — network
- * seeding, the same path the protocol's own clauses use, NOT a bypass. That a
- * never-seen clause attests with zero per-clause on-chain code IS the open-world
- * property, now structural: there is no validator to register.
+ * clause registration (ClauseRegistry.registerClause — a single contentHash +
+ * metadata URI, NO merkle tree, NO per-clause validator, no on-chain content
+ * validation) — network seeding, the same path the protocol's own clauses use,
+ * NOT a bypass. That a never-seen clause attests with zero per-clause on-chain
+ * code IS the open-world property, now structural: there is no validator to register.
  *
  * Self-contained: registers its OWN novel clause, authors + publishes its OWN
  * assembly, onboards its OWN seller (anvil[14], used by no other spec), and
@@ -121,11 +121,18 @@ async function waitForConnected(page: Page) {
 
 /**
  * Register the novel clause permissionlessly via ClauseRegistry.registerClause —
- * the documented registration path the protocol's own clauses use. There is NO
- * validator to bind: on-chain clause-content validation was removed, so any
- * registered clause is attestable (the coordinator merkle-binds the attestation
- * to the signed agreement and content-hash-binds the evidence). Idempotent:
- * skips if already registered (re-run on the persistent devnet is the norm).
+ * the documented registration path the protocol's own clauses use. Registration
+ * records a single keccak256 contentHash of the spec plus a metadata URI and emits
+ * ClauseRegistered (ClauseRegistry.sol:92-107) — NO merkle tree, NO validator to
+ * bind, no on-chain content validation. (The merkle tree is a SEPARATE concern: it
+ * is built OFF-CHAIN by the agreement helpers, its leaves live in the IPFS
+ * agreement, and only its ROOT — the agreementHash — is committed on-chain. At
+ * attestation time the AttestationCoordinator merely VERIFIES a caller-supplied
+ * inclusion proof against that root (MerkleProof.verify, AttestationCoordinator.sol
+ * :175-188); it neither builds nor stores the tree. Exercised in the runtime + audit
+ * legs below — never in registration.) That a registered clause is attestable with
+ * zero per-clause on-chain code IS the open-world property. Idempotent: skips if
+ * already registered (re-run on the persistent devnet is the norm).
  */
 async function registerNovelClause(clauseId: string, spec: ReturnType<typeof makeNovelSpec>): Promise<void> {
     const cfg = readLocalDeploymentConfig();
@@ -287,6 +294,26 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         await page.getByTestId('send-commitment-xmtp').click();
         await expect(page.getByTestId('commitment-xmtp-status')).toBeVisible({ timeout: 30000 });
 
+        // ── BUYER ORDERS LIST — AWAITING ACCEPTANCE: the commitment is relayed over
+        //    the coordination channel but NOT yet on-chain, so the buyer's /orders
+        //    list shows it under "Awaiting acceptance" (the outbound,
+        //    awaitsCounterpartySignature view). This is the SAME relayed pending
+        //    commitment the seller sees as "Your turn" in the accept leg below —
+        //    buyer-outbound and seller-incoming are two reads of ONE off-chain
+        //    payload, the pre-commit half of the actor-neutral list. It exists only
+        //    in this window: once OrderCommitted lands, notCommitted() drops it. ──
+        await gotoAsWallet(page, BUYER, '/orders?e2e=devnet');
+        await page.getByTestId('orders-list').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        await expect(
+            page.getByTestId('orders-pending-section'),
+            'the buyer sees the relayed-but-uncommitted order under "Awaiting acceptance"',
+        ).toBeVisible({ timeout: 30000 });
+        await expect(
+            page.getByTestId('order-pending-row').first(),
+            'the buyer-outbound pending row renders (the same payload the seller accepts below)',
+        ).toBeVisible({ timeout: 15000 });
+
         // ── ACCEPT: the seller accepts on /orders → counter-sign → commit ──
         await gotoAsWallet(page, SELLER, '/orders?e2e=devnet');
         await page.getByTestId('orders-list').waitFor({ timeout: 30000 });
@@ -346,6 +373,24 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
             'the novel clause attestation renders on the timeline, its label read from the spec',
         ).toBeVisible({ timeout: 60000 });
 
+        // ── BUYER ORDERS LIST — IN PROGRESS: before resolving, the buyer reads the
+        //    actor-neutral /orders list. It is event-driven: useWalletProcessRows
+        //    reads the OrderCommitted/OrderResolved EVENT logs through the indexer
+        //    query layer (lib/core/indexer.ts), the SAME events the seller's list
+        //    reads — there is NO separate buyer/seller inbox. The committed-but-
+        //    unresolved process shows under "In progress", labelled from its state. ──
+        await gotoAsWallet(page, BUYER, '/orders?e2e=devnet');
+        await page.getByTestId('orders-list').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        await expect(
+            page.getByTestId('orders-active-section').getByTestId(`order-row-${processId}`),
+            'the buyer sees the committed process under "In progress"',
+        ).toBeVisible({ timeout: 30000 });
+        await expect(
+            page.getByTestId(`order-status-${processId}`),
+            "the buyer's in-progress row is labelled In progress",
+        ).toHaveText(/In progress/, { timeout: 15000 });
+
         // ── RESOLVE: the buyer resolves atomically ──
         const resolvedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
@@ -369,6 +414,22 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         expect(buyerBefore - buyerFinal, 'buyer net paid exactly the payment').toBe(payment);
         expect(sellerFinal - sellerBefore, 'seller net earned exactly the payment').toBe(payment);
         expect(coreFinal, 'FigaroCore escrow returned to its baseline').toBe(coreBefore);
+
+        // ── BUYER ORDERS LIST — COMPLETED: after resolution the SAME /orders list
+        //    moves the process out of "In progress" into "Completed" (the row's
+        //    isResolved flips once the OrderResolved event is read) — the buyer's
+        //    second view of the same event-driven, actor-neutral list, no role split. ──
+        await gotoAsWallet(page, BUYER, '/orders?e2e=devnet');
+        await page.getByTestId('orders-list').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        await expect(
+            page.getByTestId('orders-completed-section').getByTestId(`order-row-${processId}`),
+            'the buyer sees the resolved process under "Completed"',
+        ).toBeVisible({ timeout: 30000 });
+        await expect(
+            page.getByTestId(`order-status-${processId}`),
+            "the buyer's completed row is labelled Completed",
+        ).toHaveText(/Completed/, { timeout: 15000 });
 
         // ── AUDIT (fed from network state — indexer events + IPFS, never a local
         //    cache): the audit package surfaces the WHOLE order lifecycle for the
