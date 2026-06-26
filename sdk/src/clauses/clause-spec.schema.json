@@ -72,7 +72,7 @@
         "block": {
             "type": "object",
             "description": "Block-binding metadata: how a clause composes into the UI + runtime. Nothing on-chain reads this entire object — it is Layer-A-only.",
-            "required": ["tier"],
+            "required": ["tier", "article"],
             "additionalProperties": true,
             "properties": {
                 "tier": {

@@ -47,10 +47,10 @@ type ClauseArticle = string;
 export interface ClauseBlockBinding {
     /** Doctrinal tier. */
     tier: ClauseBlockTier;
-    /** Drawer article that composes this clause in the canvas designer.
-     *  Undefined when the clause is runtime-only (runtime sister of a
-     *  cross-checked clause) and not user-toggleable. */
-    article?: ClauseArticle;
+    /** Drawer article that composes this clause in the canvas designer — the
+     *  clause's sole classification (post-K1-OW). REQUIRED: every clause
+     *  declares exactly one article. */
+    article: ClauseArticle;
     /** Mechanism kinds an assembly should include when this clause is
      *  anchored in any of its orders. Empty when the clause has no
      *  capability-dispatching mechanism (e.g. consent, jurisdiction). */
@@ -151,11 +151,9 @@ export function parseBlockBinding(
         errors.push({ path: `${path}.tier`, message: `tier must be one of: ${[...VALID_CLAUSE_TIERS].join(", ")}` });
         return null;
     }
-    if (raw.article !== undefined) {
-        if (typeof raw.article !== "string" || raw.article.length === 0) {
-            errors.push({ path: `${path}.article`, message: "article must be a non-empty string when present" });
-            return null;
-        }
+    if (typeof raw.article !== "string" || raw.article.length === 0) {
+        errors.push({ path: `${path}.article`, message: "article is required and must be a non-empty string (the clause's sole classification)" });
+        return null;
     }
     // Optional: a clause wiring no mechanism module — a pure attestation
     // lifecycle, or any minimal stranger's clause — omits these; nothing
@@ -210,7 +208,7 @@ export function parseBlockBinding(
     }
     return {
         tier: tier as ClauseBlockTier,
-        ...(raw.article !== undefined && { article: raw.article as ClauseArticle }),
+        article: raw.article as ClauseArticle,
         mechanismKinds,
         moduleIds,
         ...(routes !== undefined && { routes }),
