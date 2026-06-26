@@ -42,7 +42,7 @@ cd sdk && npm run lint                   # tsc --noEmit
 # --- Deploy to local Anvil ---
 ./scripts/devup.sh                       # ⭐ one-shot, idempotent: ensures Anvil + IPFS, deploys protocol + Kleros
 # …or the individual steps it wraps:
-./scripts/deploy-local.sh
+./scripts/deploy-local.sh                # deploys the stack AND pins+anchors clauses (incl. structural commerce/topology) — self-sufficient
 ./scripts/deploy-mock-kleros.sh          # run AFTER deploy-local.sh for the Kleros mock flow
 ```
 

@@ -62,8 +62,10 @@ fi
 note "Figaro protocol stack"
 if [[ "${FORCE_REDEPLOY:-0}" != "1" ]] && (cd frontend && node scripts/verify-devnet-deployment.mjs) >/dev/null 2>&1; then
     echo "  already deployed (preflight passed) — skipping. FORCE_REDEPLOY=1 to override."
+    DEPLOY_SKIPPED=1
 else
     bash scripts/deploy-local.sh
+    DEPLOY_SKIPPED=0
 fi
 
 # ── 4. Mock Kleros (external arbitration forum) ──────────────────────────────
@@ -75,10 +77,14 @@ else
 fi
 
 # ── 5. Clauses — pin specs to IPFS + anchor on ClauseRegistry ────────────────
-# Deploy.s.sol deploys the registry but no longer registers clauses; this is the
-# single clause-population path (same script prod/testnet/mainnet uses). Idempotent.
-note "Clauses (pin → IPFS, anchor → ClauseRegistry)"
-(cd frontend && node scripts/populate-clauses.mjs)
+# deploy-local.sh now populates clauses itself (the single clause-population path,
+# same script prod/testnet/mainnet use). This step is therefore only needed when the
+# deploy above was SKIPPED (already-deployed path) — it self-heals a registry whose
+# clauses went missing. Idempotent: a clause already on the registry is skipped.
+if [[ "${DEPLOY_SKIPPED:-0}" == "1" ]]; then
+    note "Clauses (pin → IPFS, anchor → ClauseRegistry)"
+    (cd frontend && node scripts/populate-clauses.mjs)
+fi
 
 note "devnet ready"
 echo "  chain     : $RPC_URL"

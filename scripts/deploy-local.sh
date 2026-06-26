@@ -192,3 +192,16 @@ echo "   NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT=$PROCESS_OFFSET_RECEIPT_ADDR"
 echo "   NEXT_PUBLIC_MOCK_OFFSET_AGGREGATOR=$MOCK_OFFSET_AGGREGATOR_ADDR"
 echo "   NEXT_PUBLIC_IPFS_API_URL / NEXT_PUBLIC_IPFS_GATEWAY_URL — local Kubo defaults (set only if absent)"
 echo "   Deployment: $CORE_DEPLOYMENT"
+
+# ── Clauses — pin specs to IPFS + anchor on ClauseRegistry ───────────────────
+# Deploy.s.sol deploys the registry but registers NO clauses — Solidity cannot pin
+# to IPFS (Deploy.s.sol:77-80). populate-clauses.mjs is the single clause-population
+# path (same script prod/testnet/mainnet use) and is idempotent: a clause already on
+# the registry is skipped. Running it HERE makes a bare `deploy-local.sh` self-
+# sufficient — every deploy ends with the structural clauses (figaro-commerce,
+# figaro-topology, required by EVERY order) pinned + anchored. Without it the
+# frontend's useClauseSpecs() never loads and the designer/checkout surfaces crash
+# with "clause specs not loaded: no structural clauses in the cache".
+echo ""
+echo "📎 Populating clauses (pin → IPFS, anchor → ClauseRegistry)..."
+(cd "$REPO_ROOT/frontend" && node scripts/populate-clauses.mjs)
