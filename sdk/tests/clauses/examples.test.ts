@@ -8,6 +8,7 @@ import commerceSpecRaw from "../../../clauses/figaro-commerce.json" with { type:
 import geoSpecRaw from "../../../clauses/figaro-geo.json" with { type: "json" };
 import hazmatSpecRaw from "../../../clauses/figaro-hazmat.json" with { type: "json" };
 import coldChainSpecRaw from "../../../clauses/figaro-cold-chain.json" with { type: "json" };
+import freightClassSpecRaw from "../../../clauses/figaro-freight-class.json" with { type: "json" };
 import arbitrationKlerosSpecRaw from "../../../clauses/figaro-arbitration-kleros.json" with { type: "json" };
 import applicableLawSpecRaw from "../../../clauses/figaro-applicable-law.json" with { type: "json" };
 import ghgSpecRaw from "../../../clauses/figaro-ghg.json" with { type: "json" };
@@ -210,6 +211,29 @@ describe("example clause specs — parse + validate sample content", () => {
             tempClass: "frozen",
             tempMinC: -25,
         }, parsed.spec).ok).toBe(false);
+    });
+
+    // ── figaro-freight-class (NMFC) ──
+
+    it("figaro-freight-class accepts a valid NMFC class with item number", () => {
+        const parsed = parseClauseSpec(freightClassSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({
+            nmfcClass: "70",
+            nmfcItem: "156600",
+        }, parsed.spec).ok).toBe(true);
+    });
+
+    it("figaro-freight-class accepts a class without the optional item number", () => {
+        const parsed = parseClauseSpec(freightClassSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ nmfcClass: "100" }, parsed.spec).ok).toBe(true);
+    });
+
+    it("figaro-freight-class rejects an unknown class", () => {
+        const parsed = parseClauseSpec(freightClassSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ nmfcClass: "73" }, parsed.spec).ok).toBe(false);
     });
 
     // ── figaro-modalities-v1 ──

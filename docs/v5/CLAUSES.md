@@ -57,9 +57,9 @@ Lives off-chain as JSON at the `metadataURI` emitted by `ClauseRegistry`
 live at repo-root `clauses/` (the `ClauseRegistry` seed data); nothing bundles a
 copy — every consumer loads each spec from `ClauseRegistry` → IPFS at runtime.
 
-## The 18 protocol clauses
+## The 19 protocol clauses
 
-17 runtime-attestable clauses (content validated off-chain by Layer A; no
+18 runtime-attestable clauses (content validated off-chain by Layer A; no
 on-chain validator) plus the agreement-only `figaro-topology-v1`.
 
 | clauseId | What it carries | Attestation surface |
@@ -69,6 +69,7 @@ on-chain validator) plus the agreement-only `figaro-topology-v1`.
 | `figaro-geo-v1` | Origin / destination geohash + mass + volume | Layer A (off-chain) |
 | `figaro-hazmat-v1` | Dangerous-goods declaration anchored to the UN Recommendations (ADR / IMDG / IATA-DGR) — UN number, proper shipping name, hazard class, packing group. Elective | Layer A (off-chain) |
 | `figaro-cold-chain-v1` | Temperature-controlled handling anchored to GDP cold-chain classes — class + min/max °C window. Elective | Layer A (off-chain) |
+| `figaro-freight-class-v1` | Declared freight classification anchored to the NMFC (NMFTA) — the NMFC class (50–500) + optional item number. Elective | Layer A (off-chain) |
 | `figaro-modalities-v1` | The buyer's request — consume-onsite / pickup / delivery / virtual (single-select) | Layer A (off-chain) |
 | `figaro-coordination-v1` | How a delivery's courier edge is arranged — seller-assigned / buyer-assigned / dutch-auction (single-select, composes on the delivery parent order) | Layer A (off-chain) |
 | `figaro-handoff-v1` | Hand-off point — where the physical exchange happens (proximity-policy nests under it) | Layer A (off-chain) |
