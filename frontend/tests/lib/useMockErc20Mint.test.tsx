@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { useMockTokenMint } from "@/hooks/core/useMockTokenMint";
+import { useMockErc20Mint } from "@/hooks/core/useMockErc20Mint";
 
 const writeContractAsyncMock = vi.fn(async () => `0x${"12".repeat(32)}`);
 
@@ -34,14 +34,14 @@ vi.mock("@/lib/shared/chains", () => ({
 
 vi.mock("@/lib/core/contracts", () => ({
     CONTRACTS: {
-        mockToken: "0x2222222222222222222222222222222222222222",
+        mockErc20: "0x2222222222222222222222222222222222222222",
     },
     MOCK_MINT_ABI: [],
 }));
 
-describe("useMockTokenMint", () => {
+describe("useMockErc20Mint", () => {
     it("mints against the configured mock token using token decimals", async () => {
-        const { result } = renderHook(() => useMockTokenMint());
+        const { result } = renderHook(() => useMockErc20Mint());
 
         await act(async () => {
             await result.current.mint("100");

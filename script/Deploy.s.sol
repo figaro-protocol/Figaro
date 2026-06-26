@@ -12,25 +12,15 @@ import "../src/DutchAuction.sol";
 import "../src/fig/FigToken.sol";
 import "../src/mocks/MockPermitToken.sol";
 import "../src/mocks/MockOffsetAggregator.sol";
+import "../src/mocks/MockERC20.sol";
 import "../src/AssemblyRegistry.sol";
 import "../src/ProcessOffsetReceipt.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-/// @notice Minimal mock token for local dev.
-contract MockToken is ERC20 {
-    constructor() ERC20("Mock Token", "MOCK") {
-        _mint(msg.sender, 1_000_000 ether);
-    }
-
-    function mint(address to, uint256 amount) external {
-        _mint(to, amount);
-    }
-}
 
 /// @title Deploy — Full protocol stack to local Anvil
 /// @notice Deploys: FigaroCore, AttestationCoordinator, ClauseRegistry,
-///         SellerRegistry, DutchAuction, FigToken, MockToken, MockPermitToken.
+///         AssemblyRegistry, SellerRegistry, DutchAuction, FigToken,
+///         ProcessOffsetReceipt, MockERC20, MockPermitToken, MockOffsetAggregator.
 ///         Clauses are populated post-deploy (populate-clauses.mjs). Mints test
 ///         tokens to Anvil accounts.
 ///
@@ -45,8 +35,8 @@ contract Deploy is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // ── Mock tokens ─────────────────────────────────────────────
-        MockToken token = new MockToken();
-        console.log("MockToken deployed at:", address(token));
+        MockERC20 token = new MockERC20("Mock Token", "MOCK");
+        console.log("MockERC20 deployed at:", address(token));
 
         MockPermitToken permitToken = new MockPermitToken();
         console.log("MockPermitToken deployed at:", address(permitToken));

@@ -44,7 +44,8 @@ export const MOCK_MINT_ABI = parseAbi([
 
 export interface ChainConfig {
     core: `0x${string}`;
-    mockToken: `0x${string}`;
+    /** Devnet payment/bond token (MockERC20), from NEXT_PUBLIC_TOKEN_ADDRESS. */
+    mockErc20: `0x${string}`;
     /** EIP-2612 permit-capable test token (MockPermitToken). Optional — empty string when not deployed. */
     permitToken: `0x${string}`;
     /** AttestationCoordinator. Optional — empty string when not deployed. */
@@ -64,7 +65,7 @@ export interface ChainConfig {
 
 export const CONTRACTS: ChainConfig = {
     core: (process.env.NEXT_PUBLIC_FIGARO_CORE || "") as `0x${string}`,
-    mockToken: (process.env.NEXT_PUBLIC_TOKEN_ADDRESS || "") as `0x${string}`,
+    mockErc20: (process.env.NEXT_PUBLIC_TOKEN_ADDRESS || "") as `0x${string}`,
     permitToken: (process.env.NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS || "") as `0x${string}`,
     attestationCoordinator: (process.env.NEXT_PUBLIC_ATTESTATION_COORDINATOR || "") as `0x${string}`,
     clauseRegistry: (process.env.NEXT_PUBLIC_CLAUSE_REGISTRY || "") as `0x${string}`,

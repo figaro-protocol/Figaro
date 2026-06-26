@@ -8,11 +8,11 @@ import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 import { CONTRACTS, MOCK_MINT_ABI } from "@/lib/core/contracts";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
-export function useMockTokenMint() {
+export function useMockErc20Mint() {
     const { address } = useAccount();
     const chainId = useChainId();
     const chain = activeChain;
-    const tokenAddress = CONTRACTS.mockToken as `0x${string}` | undefined;
+    const tokenAddress = CONTRACTS.mockErc20 as `0x${string}` | undefined;
     const { decimals } = useTokenDecimals(tokenAddress);
     const { writeContractAsync, data: hash, isPending } = useWriteContract();
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });

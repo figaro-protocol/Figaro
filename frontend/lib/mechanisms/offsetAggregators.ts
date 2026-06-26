@@ -56,7 +56,7 @@ export interface AggregatorAdapter {
     address: Address;
     /** ABI fragments the hook needs to call. */
     abi: readonly unknown[];
-    /** ERC-20 the buyer pays in. USDC.e on Polygon, MockToken on devnet. */
+    /** ERC-20 the buyer pays in. USDC.e on Polygon, MockERC20 on devnet. */
     inputToken: Address;
     /** Quote how much `inputToken` is needed to retire `tonsToRetire` tonnes. */
     quote(client: PublicClient, tonsToRetire: bigint): Promise<AggregatorQuote>;
@@ -178,7 +178,7 @@ const MOCK_OFFSET_AGGREGATOR_ABI = parseAbi([
 
 function buildMockAdapter(): AggregatorAdapter | null {
     const aggregator = CONTRACTS.mockOffsetAggregator;
-    const inputToken = CONTRACTS.mockToken;
+    const inputToken = CONTRACTS.mockErc20;
     if (!aggregator || aggregator.length !== 42 || !inputToken || inputToken.length !== 42) {
         return null;
     }

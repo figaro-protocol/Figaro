@@ -163,7 +163,8 @@ minted; the remaining 600M has no wired mint path. No settlement-anchored emissi
 
 ## Test / Mock Contracts
 
-- `src/mocks/MockERC20.sol`, `MockERC20FeeOnTransfer.sol`, `MockPermitToken.sol`
+- `src/mocks/MockERC20.sol` — the devnet payment/bond token. Plain ERC-20 with a permissionless `mint(to, amount)`; constructor takes `(name, symbol)`. Deployed by `Deploy.s.sol` as `NEXT_PUBLIC_TOKEN_ADDRESS` (minted 100k to anvil[0..19]) and used by the Foundry tests — one mock, not a per-file inline copy. (Mainnet uses a real ERC-20, e.g. USDC.e.)
+- `src/mocks/MockERC20FeeOnTransfer.sol`, `MockPermitToken.sol` — fee-on-transfer ERC-20 (Foundry tests only) and EIP-2612 permit ERC-20 (`Deploy.s.sol` deploys it as `NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS` for the `*WithPermit` flow).
 - `src/mocks/MockOffsetAggregator.sol` — devnet stand-in for Klima KlimaInfinity / Toucan OffsetHelper. Fixed `pricePerTon` constructor arg, pulls input token via `transferFrom`, emits `Retired`. Wired into `Deploy.s.sol` only — mainnet uses real aggregators.
 - `src/mocks/MockKlerosArbitrableProxy.sol`, `src/mocks/MockKlerosArbitrator.sol` — devnet stand-ins for the Kleros dispute-resolution flow; deployed via `script/DeployMockKleros.s.sol` (run from `./scripts/deploy-mock-kleros.sh`) on top of `./scripts/deploy-local.sh`. Mainnet uses the real Kleros contracts.
 - `src/mocks/MockPermit2.sol` — test stand-in for Uniswap Permit2 SignatureTransfer; implements `permitTransferFrom` (deadline + amount enforced, signature not verified), pulling the owner's input token under the standard one-time Permit2 approval. Test-only (`SwapAndCommitCoordinatorTest`); not wired into any deploy script — mainnet uses the canonical Permit2.

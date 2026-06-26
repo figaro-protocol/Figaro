@@ -25,7 +25,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 ///      up by chainId in `lib/mechanisms/offsetAggregators.ts`. The mock is
 ///      registered under chainId 31337 (Anvil) only.
 contract MockOffsetAggregator {
-    /// @notice Token the mock accepts as payment (e.g. devnet MockToken
+    /// @notice Token the mock accepts as payment (e.g. devnet MockERC20
     ///         standing in for USDC.e on Polygon).
     IERC20 public immutable inputToken;
 

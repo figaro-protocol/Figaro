@@ -20,7 +20,7 @@ vi.mock("@/lib/core/contracts", async () => {
         CONTRACTS: {
             ...actual.CONTRACTS,
             mockOffsetAggregator: "0x1111111111111111111111111111111111111111",
-            mockToken: "0x2222222222222222222222222222222222222222",
+            mockErc20: "0x2222222222222222222222222222222222222222",
         },
     };
 });

@@ -6,9 +6,9 @@ set -e
 #   frontend/.env.local            (frontend)
 #   .deployments/local.json         (downstream/manual consumption)
 #
-# Stack: FigaroCore, AttestationCoordinator, ClauseRegistry,
-#        ClauseRegistrationHelper, SellerRegistry, DutchAuction, FigToken,
-#        MockToken, MockPermitToken, FigaroBatchVerifier.
+# Stack: FigaroCore, AttestationCoordinator, ClauseRegistry, AssemblyRegistry,
+#        SellerRegistry, DutchAuction, FigToken, ProcessOffsetReceipt,
+#        MockERC20, MockPermitToken, MockOffsetAggregator.
 #
 # Usage:
 #   ./scripts/deploy-local.sh                                  # Anvil (default)
@@ -23,7 +23,7 @@ CORE_DEPLOYMENT="$DEPLOY_DIR/local.json"
 RPC_URL="${RPC_URL:-http://127.0.0.1:8545}"
 
 # Randomized throwaway deployer (devnet default). The universal Anvil
-# default-deployer addresses (FigaroCore at 0xCf7Ed3…, MockToken at
+# default-deployer addresses (FigaroCore at 0xCf7Ed3…, MockERC20 at
 # 0x5FbDB…, etc. — identical on every dev machine on Earth) collide with
 # wallet-security threat lists: MetaMask/Blockaid flags the EIP-712 commit
 # signature as "This is a deceptive request" because those exact addresses
@@ -69,7 +69,7 @@ echo "$FORGE_OUT"
 
 # ── Parse addresses from console.log output (macOS-safe: no grep -P) ────────────
 CORE_ADDR=$(echo "$FORGE_OUT"        | grep 'FigaroCore deployed at:'             | grep -oE '0x[0-9a-fA-F]+')
-TOKEN_ADDR=$(echo "$FORGE_OUT"       | grep 'MockToken deployed at:'              | grep -oE '0x[0-9a-fA-F]+')
+TOKEN_ADDR=$(echo "$FORGE_OUT"       | grep 'MockERC20 deployed at:'              | grep -oE '0x[0-9a-fA-F]+')
 PERMIT_ADDR=$(echo "$FORGE_OUT"      | grep 'MockPermitToken deployed at:'        | grep -oE '0x[0-9a-fA-F]+')
 ATTESTATION_ADDR=$(echo "$FORGE_OUT" | grep 'AttestationCoordinator deployed at:' | grep -oE '0x[0-9a-fA-F]+')
 CLAUSE_ADDR=$(echo "$FORGE_OUT"      | grep 'ClauseRegistry deployed at:'         | grep -oE '0x[0-9a-fA-F]+')

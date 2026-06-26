@@ -56,9 +56,9 @@ async function main() {
     const env = readEnvLocal();
     const clauseRegistry = env.NEXT_PUBLIC_CLAUSE_REGISTRY;
     const sellerRegistry = env.NEXT_PUBLIC_SELLER_REGISTRY;
-    const mockToken = env.NEXT_PUBLIC_TOKEN_ADDRESS;
+    const mockErc20 = env.NEXT_PUBLIC_TOKEN_ADDRESS;
     const ipfsApiUrl = env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
-    if (!clauseRegistry || !sellerRegistry || !mockToken) {
+    if (!clauseRegistry || !sellerRegistry || !mockErc20) {
         throw new Error('NEXT_PUBLIC_CLAUSE_REGISTRY / NEXT_PUBLIC_SELLER_REGISTRY / NEXT_PUBLIC_TOKEN_ADDRESS missing — deploy first.');
     }
 
@@ -73,8 +73,8 @@ async function main() {
 
     // ── 2. Sellers (catalogue → profile → register, all pinned + anchored) ──
     const [tokenSymbol, tokenName] = await Promise.all([
-        publicClient.readContract({ address: mockToken, abi: ERC20_VIEW_ABI, functionName: 'symbol' }),
-        publicClient.readContract({ address: mockToken, abi: ERC20_VIEW_ABI, functionName: 'name' }),
+        publicClient.readContract({ address: mockErc20, abi: ERC20_VIEW_ABI, functionName: 'symbol' }),
+        publicClient.readContract({ address: mockErc20, abi: ERC20_VIEW_ABI, functionName: 'name' }),
     ]);
 
     console.log('\nSellers:');
@@ -104,8 +104,8 @@ async function main() {
             specialty: s.specialty,
             catalogueURI,
             location: { geohash: s.geohash },
-            acceptedTokens: [{ address: mockToken, symbol: tokenSymbol, name: tokenName }],
-            defaultTokenAddress: mockToken,
+            acceptedTokens: [{ address: mockErc20, symbol: tokenSymbol, name: tokenName }],
+            defaultTokenAddress: mockErc20,
             // No bindings seeded: a seller binds a PUBLISHED assembly (asm-<hash>)
             // through the real flow — author + publish in the designer, then bind.
             assemblyBindings: [],

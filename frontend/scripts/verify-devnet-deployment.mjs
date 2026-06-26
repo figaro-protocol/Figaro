@@ -12,7 +12,7 @@ const expectedChainId = '0x7a69';
 
 const requiredContracts = [
     { key: 'NEXT_PUBLIC_FIGARO_CORE', label: 'FigaroCore' },
-    { key: 'NEXT_PUBLIC_TOKEN_ADDRESS', label: 'MockToken' },
+    { key: 'NEXT_PUBLIC_TOKEN_ADDRESS', label: 'MockERC20' },
     { key: 'NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS', label: 'MockPermitToken' },
     { key: 'NEXT_PUBLIC_ATTESTATION_COORDINATOR', label: 'AttestationCoordinator' },
 ];
