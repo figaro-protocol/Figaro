@@ -5,6 +5,7 @@
     "lib/composition/useOffsetRetirement.ts",
     "lib/composition/useGHGDisclosure.ts",
     "lib/composition/useDutchAuction.ts",
-    "lib/seller/sellerAuction.ts"
+    "lib/seller/sellerAuction.ts",
+    "lib/agent/useDidWeb.ts"
   ]
 }
