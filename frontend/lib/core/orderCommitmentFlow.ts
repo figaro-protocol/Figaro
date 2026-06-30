@@ -106,11 +106,13 @@ export function useOrderCommitmentFlow() {
     }, [chainId, signTypedDataAsync]);
 
     /**
-     * BUYER side: sign the previewed order and relay it to the seller. The bond
-     * is already approved (the page gated this on `useOrderApprovalFlow.approved`).
-     * Returns the signed payload now in flight.
+     * BUYER side: sign the previewed order WITHOUT relaying it. Returns the
+     * signed payload so the caller chooses the transport (the share panel's
+     * XMTP / QR / copy). The sign goes through the SAME confirm gate as every
+     * other order — there is no bypass. The bond is already approved (the page
+     * gated this on the approval flow before calling).
      */
-    const signAndShare = useCallback(async (
+    const signCommitment = useCallback(async (
         preview: OrderPreview,
     ): Promise<CommitmentPayload> => {
         if (!address) throw new Error("Connect a wallet first.");
@@ -118,13 +120,31 @@ export function useOrderCommitmentFlow() {
         try {
             setStep("signing");
             const buyerSig = await signAs(preview.commitment, preview.agreement);
-
-            const payload: CommitmentPayload = {
+            setStep("awaiting-seller");
+            return {
                 commitment: preview.commitment,
                 agreement: preview.agreement,
                 buyerSig,
             };
+        } catch (e: unknown) {
+            setError(extractErrorMessage(e, "Order failed"));
+            setStep("error");
+            throw e;
+        }
+    }, [address, signAs]);
 
+    /**
+     * BUYER side: sign the previewed order and relay it to the seller — sign +
+     * share in one step (the XMTP auto-relay path). Composes `signCommitment`
+     * then pins + relays. Returns the signed payload now in flight.
+     */
+    const signAndShare = useCallback(async (
+        preview: OrderPreview,
+    ): Promise<CommitmentPayload> => {
+        if (!address) throw new Error("Connect a wallet first.");
+        const payload = await signCommitment(preview);
+        setError(null);
+        try {
             setStep("sharing");
             await shareSignedOrder({
                 payload,
@@ -143,7 +163,7 @@ export function useOrderCommitmentFlow() {
             setStep("error");
             throw e;
         }
-    }, [address, chainId, walletClient, services, signAs]);
+    }, [address, chainId, walletClient, services, signCommitment]);
 
     /**
      * COUNTER-PARTY side (usually the seller): an incoming pending payload →
@@ -211,6 +231,7 @@ export function useOrderCommitmentFlow() {
     return {
         step,
         error,
+        signCommitment,
         signAndShare,
         acceptOrder,
         commitOrder,

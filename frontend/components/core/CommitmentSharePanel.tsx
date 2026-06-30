@@ -1,11 +1,11 @@
 /**
- * CommitmentSharePanel — displays an unsigned or partially-signed EIP-712
- * commitment and provides QR/link sharing for dual-signature collection.
+ * CommitmentSharePanel — displays the buyer-signed EIP-712 commitment and the
+ * transports for relaying it to the seller (XMTP send + QR/copy fallback).
  *
  * Flow:
- *   1. Initiating party signs → panel shows commitment details + QR code
- *   2. Counter-party scans QR (or opens link) → counter-signs
- *   3. Either party broadcasts the fully-signed commitment on-chain
+ *   1. The buyer signs the order → the panel shows its details.
+ *   2. The buyer relays it to the seller (XMTP, or QR/copy for the /sign page).
+ *   3. The seller counter-signs and commits on-chain (in their /orders inbox).
  */
 
 "use client";
@@ -16,24 +16,17 @@ import { useAccount, useChainId, useWalletClient } from "wagmi";
 import { formatToken } from "@/lib/shared/utils";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import type {
-    CommitmentPayload,
-    CommitmentFlowStep,
-} from "@/lib/core/useCommitmentFlow";
+import {
+    serializeCommitmentPayload,
+    shareSignedOrder,
+    type CommitmentPayload,
+} from "@/lib/core/orderSignedAndShared";
+import type { OrderFlowStep } from "@/lib/core/orderCommitmentFlow";
 import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import type { MessageSendStatus } from "@/lib/shared/messageSendStatus";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import {
-    serializeCommitmentPayload,
-    buildTransportPayload,
-    shareCommitmentPayload,
-} from "@/lib/core/commitmentShare";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { truncateHex } from "@/lib/shared/formatHex";
-
-// serialize / transport / deserialize helpers all live in
-// @/lib/core/commitmentShare (shared with the multi-order checkout, the inbox,
-// and the buyer's /orders pending view).
 
 /** Share-panel has no waiting state — exclude from the canonical send union. */
 type TransportStatus = Exclude<MessageSendStatus, "waiting">;
@@ -77,11 +70,9 @@ async function generateQRDataURL(payload: string, size: number): Promise<string>
 
 interface CommitmentSharePanelProps {
     payload: CommitmentPayload | null;
-    step: CommitmentFlowStep;
+    step: OrderFlowStep;
     /** Token decimals for formatting payment display. */
     tokenDecimals?: number;
-    /** Called when the user wants to broadcast (both sigs present). */
-    onBroadcast?: () => void;
     /** Called when the user copies the share link. */
     onCopyLink?: () => void;
     /** QR code size in px. */
@@ -94,7 +85,6 @@ export function CommitmentSharePanel({
     payload,
     step,
     tokenDecimals = 18,
-    onBroadcast,
     onCopyLink,
     qrSize = 200,
 }: CommitmentSharePanelProps) {
@@ -109,7 +99,7 @@ export function CommitmentSharePanel({
     const [transportError, setTransportError] = useState<string | null>(null);
     const [transportRecipient, setTransportRecipient] = useState<string | null>(null);
 
-    const serialized = payload ? serializeCommitmentPayload(buildTransportPayload(payload)) : null;
+    const serialized = payload ? serializeCommitmentPayload(payload) : null;
     const recipientAddress = payload ? resolveRecipientAddress(payload, address) : null;
 
     useEffect(() => {
@@ -120,7 +110,7 @@ export function CommitmentSharePanel({
 
     // Generate QR when payload is ready and waiting for counter-party
     useEffect(() => {
-        if (!serialized || step !== "awaiting-counter") {
+        if (!serialized || step !== "awaiting-seller") {
             setQrDataUrl(null);
             setQrUnavailable(false);
             return;
@@ -164,7 +154,7 @@ export function CommitmentSharePanel({
         setTransportStatus("sending");
         setTransportError(null);
         try {
-            await shareCommitmentPayload({
+            await shareSignedOrder({
                 payload,
                 recipientAddress,
                 senderAddress: address,
@@ -187,7 +177,6 @@ export function CommitmentSharePanel({
     const isRoot = commitment.processId === ZERO_PROCESS_ID;
     const hasBuyerSig = !!payload.buyerSig;
     const hasSellerSig = !!payload.sellerSig;
-    const hasBothSigs = hasBuyerSig && hasSellerSig;
 
     return (
         <Card className="p-4 space-y-4">
@@ -233,8 +222,8 @@ export function CommitmentSharePanel({
                 </span>
             </div>
 
-            {/* QR code (shown when awaiting counter-party) */}
-            {step === "awaiting-counter" && (
+            {/* QR code (shown when awaiting the seller's counter-signature) */}
+            {step === "awaiting-seller" && (
                 <div className="flex flex-col items-center gap-2">
                     <p className="text-xs text-gray-500">
                         Share with the counter-party to collect their signature.
@@ -296,12 +285,6 @@ export function CommitmentSharePanel({
                 </div>
             )}
 
-            {payload.agreementUri && (
-                <div className="text-xs text-gray-500 break-all">
-                    Agreement artifact: <span className="font-mono text-black">{payload.agreementUri}</span>
-                </div>
-            )}
-
             {/* Signing state */}
             {step === "signing" && (
                 <p className="text-xs text-blue-600 animate-pulse">
@@ -309,19 +292,7 @@ export function CommitmentSharePanel({
                 </p>
             )}
 
-            {/* Ready to broadcast */}
-            {(step === "ready" || hasBothSigs) && (
-                <Button
-                    onClick={onBroadcast}
-                    disabled={step === "broadcasting"}
-                    data-testid="broadcast-commitment"
-                    className="w-full"
-                >
-                    {step === "broadcasting" ? "Broadcasting…" : "Submit On-Chain"}
-                </Button>
-            )}
-
-            {/* Done */}
+            {/* Done — the seller has counter-signed and committed on-chain. */}
             {step === "done" && (
                 <p className="text-xs text-green-600 font-medium">
                     Commitment submitted successfully.

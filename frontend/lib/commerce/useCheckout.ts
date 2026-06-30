@@ -1,8 +1,11 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import { useReadContract } from "wagmi";
 import { useCommerce } from "./CommerceProvider";
-import { useCommitmentFlow } from "@/lib/core/useCommitmentFlow";
+import { useOrderCommitmentFlow } from "@/lib/core/orderCommitmentFlow";
+import type { OrderPreview } from "@/lib/core/orderPreview";
+import type { CommitmentPayload } from "@/lib/core/orderSignedAndShared";
 import useTokenApproval from "@/hooks/core/useTokenApproval";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 import { ERC20_ABI, CONTRACTS } from "@/lib/core/contracts";
@@ -50,16 +53,31 @@ export function useCheckout(
         spender,
     });
 
-    // ── Order signing + broadcast ───────────────────────────────
+    // ── Order signing (the order* path) ─────────────────────────
+    // The root order's signed payload is held here so the share panel can
+    // render it; sub-orders sign + relay through the flow directly and never
+    // touch this state.
     const {
         signCommitment,
-        initiateAsParty,
-        broadcast,
-        payload,
+        signAndShare,
         step: commitStep,
         error: commitError,
         reset,
-    } = useCommitmentFlow();
+    } = useOrderCommitmentFlow();
+    const [payload, setPayload] = useState<CommitmentPayload | null>(null);
+
+    // Sign the ROOT and surface its payload to the share panel — the buyer
+    // relays it from there. No auto-relay (that is `signAndShare`, for subs).
+    const signRoot = useCallback(async (preview: OrderPreview): Promise<CommitmentPayload> => {
+        const p = await signCommitment(preview);
+        setPayload(p);
+        return p;
+    }, [signCommitment]);
+
+    const resetOrder = useCallback(() => {
+        reset();
+        setPayload(null);
+    }, [reset]);
 
     return {
         // Token state
@@ -76,14 +94,13 @@ export function useCheckout(
         },
 
         // Order flow
-        signCommitment,
-        initiateAsParty,
-        broadcast,
+        signRoot,
+        signAndShare,
         order: {
             step: commitStep,
             error: commitError,
             payload,
         },
-        resetOrder: reset,
+        resetOrder,
     };
 }

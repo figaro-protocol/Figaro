@@ -36,10 +36,9 @@ export function resolveContentUri(uri: string, gatewayUrl: string = IPFS_GATEWAY
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 // A pin/upload must never block its caller indefinitely. An unbounded fetch to
-// Kubo that connects but never responds would hang the checkout's
-// `prepareOrderCommitment` forever (the agreement-pin path has a graceful
-// inline-agreement fallback for *rejections* but not for hangs). Bound the
-// request so a stalled pin rejects and the fallback can take over.
+// Kubo that connects but never responds would hang the checkout's order-share
+// pin (`shareSignedOrder`) forever. Bound the request so a stalled pin rejects
+// and the caller can surface the failure instead of hanging.
 const IPFS_REQUEST_TIMEOUT_MS = 8000;
 
 // A small payload keeps the 8s floor above; larger payloads (media up to

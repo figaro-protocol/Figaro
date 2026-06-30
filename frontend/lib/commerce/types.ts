@@ -6,9 +6,9 @@
  * wagmi directly.
  */
 
-import type { Commitment } from "@figaro/core";
-import type { CommitmentPayload, CommitmentPayloadMeta, CommitmentFlowStep } from "@/lib/core/useCommitmentFlow";
-import type { PartyRole } from "@/lib/core/walletProcessQueries";
+import type { OrderPreview } from "@/lib/core/orderPreview";
+import type { CommitmentPayload } from "@/lib/core/orderSignedAndShared";
+import type { OrderFlowStep } from "@/lib/core/orderCommitmentFlow";
 
 // ── Identity ────────────────────────────────────────────────────
 
@@ -36,7 +36,7 @@ interface AuthorizationState {
 // ── Order flow ──────────────────────────────────────────────────
 
 interface OrderFlowState {
-    step: CommitmentFlowStep;
+    step: OrderFlowStep;
     error: string | null;
     payload: CommitmentPayload | null;
 }
@@ -53,13 +53,13 @@ export interface CheckoutHandle {
     authorize: (amount: bigint) => void;
     authorization: AuthorizationState;
 
-    // Order placement — the bilateral relay:
-    //   initiateAsParty: signs one side, sets the shareable payload (root order)
-    //   signCommitment:  signs one side, returns the sig (sub-orders, relayed
-    //                    without touching the share-panel payload state)
-    initiateAsParty: (commitment: Commitment, role: PartyRole, meta?: CommitmentPayloadMeta, opts?: { skipPreview?: boolean }) => Promise<CommitmentPayload>;
-    signCommitment: (commitment: Commitment, opts?: { skipPreview?: boolean }) => Promise<`0x${string}`>;
-    broadcast: (payload: CommitmentPayload) => Promise<`0x${string}` | undefined>;
+    // Order placement — the buyer signs each previewed order through the SAME
+    // confirm gate the seller's accept uses (no checkout-only bypass):
+    //   signRoot:     signs the root and surfaces its payload to the share
+    //                 panel; the buyer relays it (XMTP / QR / copy) from there.
+    //   signAndShare: signs + relays a sub-order to its bound seller in one step.
+    signRoot: (preview: OrderPreview) => Promise<CommitmentPayload>;
+    signAndShare: (preview: OrderPreview) => Promise<CommitmentPayload>;
 
     // Order status
     order: OrderFlowState;

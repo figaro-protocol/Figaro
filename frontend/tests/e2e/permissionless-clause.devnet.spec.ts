@@ -288,6 +288,10 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         const place = page.getByTestId('btn-place-order');
         await expect(place, 'buyer connected + order ready → "Place order"').toHaveText(/Place order/, { timeout: 20000 });
         await place.click();
+        // The buyer confirms the agreement in the SAME pre-sign gate the seller's
+        // accept uses — there is no checkout-only bypass.
+        await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
+        await page.getByTestId('preview-confirm').click();
         await page.getByTestId('buyer-share-panel').waitFor({ timeout: 60000 });
         await page.getByTestId('send-commitment-xmtp').click();
         await expect(page.getByTestId('commitment-xmtp-status')).toBeVisible({ timeout: 30000 });

@@ -1,69 +1,64 @@
 /**
  * assemblyCheckout — the buyer-side commit algorithm for a bound assembly.
  *
- * One function owns the whole sequencing the checkout surface runs:
- * prepare the root order from the assembly's root node, Layer-A validate,
- * then either the single-order bilateral relay (the buyer signs + shares via
- * the buyer-share-panel) or the multi-order walk — the buyer funds EVERY
- * order up front: the root's processId is its EIP-712 digest
- * (deterministic), so each sub-order is prepared, validated, signed, and
- * relayed onto the coordination channel to its bound seller BEFORE any
- * commit; the root goes through the buyer-share-panel last. Each seller
- * counter-signs its own order in their inbox — the kernel enforces commit
- * order (root creates the process, subs extend it), so the sellers accept
- * root-first. Every order's clauses come verbatim from the assembly
- * template; no clause is named.
+ * One function owns the whole sequencing the checkout surface runs: build the
+ * root order from the assembly's root node, Layer-A validate, then either the
+ * single-order relay (the buyer signs the one order, then relays it from the
+ * share panel) or the multi-order walk — the buyer funds EVERY order up front:
+ * the root's processId is its EIP-712 digest (deterministic, computable from
+ * the unsigned commitment), so each sub-order is built, validated, signed, and
+ * relayed onto the coordination channel to its bound seller BEFORE any commit;
+ * the root is signed LAST and surfaced to the share panel. Each seller
+ * counter-signs its own order — the kernel enforces commit order (root creates
+ * the process, subs extend it), so the sellers' accepts self-serialize
+ * root-first. Every order's clauses come verbatim from the assembly template;
+ * no clause is named — the commerce + cargo sections are found by their declared
+ * fields. The buyer signs each order through the SAME confirm gate the seller's
+ * accept uses; there is no checkout-only bypass.
  *
  * The UI surface (`CheckoutView`) keeps only wallet/cart guards and error
  * display; this module is the protocol algorithm. Throws Error with a
  * user-facing message on any failure — the caller renders it.
  */
 
-import { computeCommitmentProcessId, computeOrderHash } from "@/lib/core/commitmentStore";
-import { prepareOrderCommitment } from "@/lib/core/orderCommitmentPreparation";
+import {
+    computeCommitmentProcessId,
+    computeOrderHash,
+} from "@figaro/core";
+import { buildOrderPreview, type OrderPreview } from "@/lib/core/orderPreview";
 import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
+import type { DraftOrder } from "@/lib/core/draftOrders";
+import type { CommitmentPayload } from "@/lib/core/orderSignedAndShared";
+import type { ClauseFields } from "@/lib/core/encoding";
 import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/commerce/assemblySubOrderPlan";
 import { templateParentOrderHashes } from "@/lib/designer/assemblyTemplate";
 import { clauseDeclaresField } from "@/lib/shared/clauseSpecSource";
-import { shareCommitmentPayload } from "@/lib/core/commitmentShare";
 import { sellerAuctionId, stashSellerDraft } from "@/lib/seller/sellerAuction";
 import { parseToken } from "@/lib/shared/utils";
 import { CONTRACTS } from "@/lib/core/contracts";
-import type { Commitment } from "@/lib/core/useFigaroActions";
-import type { CommitmentPayloadMeta } from "@/lib/core/useCommitmentFlow";
 import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
 import type { SellerCatalogue } from "@/lib/seller/types";
-import type { CoordinationMessagingService } from "@/lib/handoff/coordinationMessagingService";
-import type { IpfsService } from "@/lib/shared/ipfsService";
 
 export interface AssemblyCheckoutLineItem {
     itemId: string;
     name: string;
     quantity: number;
+    /** Decimal string, smallest unit (matches the commerce clause's bigint field). */
     unitPrice: string;
     /** Physical attributes from the cart — collapsed into the root order's
-     *  geo section at checkout (mass/volume sums × quantity). */
+     *  cargo section at checkout (mass/volume sums × quantity). */
     massGrams?: number;
     volumeMl?: number;
 }
 
-/** The signing + transport capabilities the algorithm drives — provided by
- *  `useCheckout` / `useRuntimeServices` at the surface. */
+/** The signing capabilities the algorithm drives — provided by `useCheckout`,
+ *  which backs them with the order* commitment flow. */
 export interface AssemblyCheckoutDeps {
     chainId: number;
-    signCommitment: (
-        commitment: Commitment,
-        opts?: { skipPreview?: boolean },
-    ) => Promise<`0x${string}`>;
-    initiateAsParty: (
-        commitment: Commitment,
-        role: "buyer",
-        meta?: CommitmentPayloadMeta,
-        opts?: { skipPreview?: boolean },
-    ) => Promise<unknown>;
-    walletClient?: { signMessage(params: { message: string }): Promise<`0x${string}`> } | null;
-    coordinationMessaging: CoordinationMessagingService;
-    evidenceTransport: Pick<IpfsService, "pinBlob">;
+    /** Sign the root and surface its payload to the share panel (no auto-relay). */
+    signRoot: (preview: OrderPreview) => Promise<CommitmentPayload>;
+    /** Sign + relay a sub-order to its bound seller in one step. */
+    signAndShare: (preview: OrderPreview) => Promise<CommitmentPayload>;
     /** Opens the descending-price seller auction for a deferred sub-order —
      *  the surface owns the tx + receipt wait (useDutchAuctionActions). */
     openSellerAuction?: (args: {
@@ -72,6 +67,53 @@ export interface AssemblyCheckoutDeps {
         processId: `0x${string}`;
         currency: `0x${string}`;
     }) => Promise<void>;
+}
+
+/**
+ * Write the order's settlement terms into the commerce section, found by its
+ * declared `lineItems` field (never by clause id; gracefully skipped when the
+ * assembly composes no commerce clause). currency + payment are stored as the
+ * clause spec wants them (address-hex string, decimal string); `lineItems` is
+ * supplied only for the root (the buyer's cart) and stripped to the commerce
+ * section's closed shape — the cart's physical attributes belong to the cargo
+ * collapse, not here.
+ */
+function fillCommerceSection(
+    clauses: ClauseFields,
+    currency: `0x${string}`,
+    payment: bigint,
+    lineItems?: AssemblyCheckoutLineItem[],
+): ClauseFields {
+    const commerceClauseId = Object.keys(clauses).find(
+        (clauseId) => clauseDeclaresField(clauseId, "lineItems"),
+    );
+    if (!commerceClauseId) return clauses;
+    return {
+        ...clauses,
+        [commerceClauseId]: {
+            ...clauses[commerceClauseId],
+            currency,
+            payment: payment.toString(),
+            ...(lineItems
+                ? {
+                    lineItems: lineItems.map(({ itemId, name, quantity, unitPrice }) =>
+                        ({ itemId, name, quantity, unitPrice })),
+                }
+                : {}),
+        },
+    };
+}
+
+/** Layer A — the buyer does not sign an invalid agreement. */
+function assertValidToSign(preview: OrderPreview, label: string): void {
+    const check = validateCommitmentAgreement(preview.agreement, preview.agreementHash);
+    if (!check.ok) {
+        throw new Error(
+            `${label} isn't valid to sign yet: ${check.issues
+                .map((i) => `${i.clause} ${i.path}: ${i.message}`)
+                .join("; ")}`,
+        );
+    }
 }
 
 export async function executeAssemblyCheckout(
@@ -97,8 +139,8 @@ export async function executeAssemblyCheckout(
          *  sub-order is DEFERRED — its build parameters are stashed on this
          *  device and a descending-price auction opens at the buyer's start
          *  price; the claiming seller commits the order post-claim (the
-         *  SellerAuctionPanel on the order page), counter-signed by the buyer
-         *  in their inbox. The process commits with the root only. */
+         *  SellerAuctionPanel on the order page), counter-signed by the buyer.
+         *  The process commits with the root only. */
         subOrderAuctions?: Record<string, { startPrice: string }>;
     },
     deps: AssemblyCheckoutDeps,
@@ -107,25 +149,20 @@ export async function executeAssemblyCheckout(
         buyer, leadSellerAddress, currency, payment, lineItems,
         assembly, sellerCatalogues, tokenDecimals, subOrderSelections,
     } = params;
-    const {
-        chainId, signCommitment, initiateAsParty,
-        walletClient, coordinationMessaging, evidenceTransport,
-    } = deps;
+    const { chainId, signRoot, signAndShare } = deps;
 
-    // The root node carries the design-time clause choices, spread verbatim —
-    // then the cart's PHYSICAL attributes collapse into the geo entry (found
-    // by its declared fields, never by clause name): mass/volume sum across
-    // items × quantity.
+    // The root node carries the design-time clause choices, spread verbatim.
     const root = assembly.assemblyTemplate.orders.find((o) => templateParentOrderHashes(o).length === 0)
         ?? assembly.assemblyTemplate.orders[0];
     if (!root) throw new Error("This assembly has no root order.");
     const isMultiOrder = assembly.assemblyTemplate.orders.length > 1;
 
-    const clauseFields = { ...root.clauses };
-    // Aggregate cart mass/volume into the cargo clause (found by FIELD name,
-    // never clause id; gracefully skipped when the assembly composes no clause
-    // declaring massGrams — cargo is elective).
-    const cargoClauseId = Object.keys(clauseFields).find(
+    // The root's clause map: template clauses, the cart's PHYSICAL attributes
+    // collapsed into the cargo entry (found by its declared fields, never by
+    // clause name; mass/volume sum across items × quantity), then the
+    // settlement terms written into the commerce section.
+    let rootClauses: ClauseFields = { ...root.clauses };
+    const cargoClauseId = Object.keys(rootClauses).find(
         (clauseId) => clauseDeclaresField(clauseId, "massGrams"),
     );
     if (cargoClauseId) {
@@ -133,46 +170,30 @@ export async function executeAssemblyCheckout(
             (sum, li) => sum + (li.massGrams ?? 0) * li.quantity, 0);
         const volumeMl = lineItems.reduce(
             (sum, li) => sum + (li.volumeMl ?? 0) * li.quantity, 0);
-        clauseFields[cargoClauseId] = {
-            ...clauseFields[cargoClauseId],
+        rootClauses[cargoClauseId] = {
+            ...rootClauses[cargoClauseId],
             ...(massGrams > 0 ? { massGrams } : {}),
             ...(volumeMl > 0 ? { volumeMl } : {}),
         };
     }
+    rootClauses = fillCommerceSection(rootClauses, currency, payment, lineItems);
 
-    const prepared = await prepareOrderCommitment({
-        buyer,
-        seller: leadSellerAddress,
-        currency,
-        payment,
-        // The commerce clause's lineItems are CLOSED objects — the physical
-        // attributes exist on AssemblyCheckoutLineItem solely for the geo
-        // collapse above and must not reach the commerce section (Layer-A
-        // rejects undeclared fields).
-        lineItems: lineItems.map(({ itemId, name, quantity, unitPrice }) =>
-            ({ itemId, name, quantity, unitPrice })),
-        clauseFields,
-    });
-    // Layer A — the buyer does not sign an invalid agreement.
-    const buyerCheck = validateCommitmentAgreement(prepared.agreement, prepared.agreementHash);
-    if (!buyerCheck.ok) {
-        throw new Error(
-            `This order isn't valid to sign yet: ${buyerCheck.issues
-                .map((i) => `${i.clause} ${i.path}: ${i.message}`)
-                .join("; ")}`,
-        );
-    }
-    // Single order (distinct parties OR self-commit) → the bilateral relay:
-    // the buyer signs + shares via the buyer-share-panel; the seller
-    // counter-signs the one order in their inbox.
+    const rootDraft: DraftOrder = { buyer, seller: leadSellerAddress, currency, payment, clauses: rootClauses };
+    const rootPreview = await buildOrderPreview(rootDraft);
+    assertValidToSign(rootPreview, "This order");
+
+    // Single order (distinct parties OR self-commit) → the buyer signs the one
+    // order; the share panel relays it to the seller, who counter-signs.
     if (!isMultiOrder) {
-        await initiateAsParty(prepared.commitment, "buyer", prepared.commitmentMeta, { skipPreview: true });
+        await signRoot(rootPreview);
         return;
     }
 
-    const processId = computeCommitmentProcessId(prepared.commitment, chainId, CONTRACTS.core);
+    // The root's process id is its EIP-712 digest — computable from the unsigned
+    // commitment, so the sub-orders can name it before the root commits.
+    const processId = computeCommitmentProcessId(rootPreview.commitment, chainId, CONTRACTS.core);
     const realOrderHash = new Map<string, `0x${string}`>([
-        [root.id, computeOrderHash(prepared.commitment, chainId, CONTRACTS.core)],
+        [root.id, computeOrderHash(rootPreview.commitment, chainId, CONTRACTS.core)],
     ]);
     let cumulativeValue = payment;
 
@@ -220,48 +241,25 @@ export async function executeAssemblyCheckout(
                 node, seller: subSeller, sellerCatalogues, tokenDecimals,
             });
         cumulativeValue += subPayment;
-        const subPrepared = await prepareOrderCommitment({
-            buyer,
-            seller: subSeller,
-            currency,
-            payment: subPayment,
+        const subClauses = fillCommerceSection({ ...node.clauses }, currency, subPayment);
+        const subDraft: DraftOrder = {
+            buyer, seller: subSeller, currency, payment: subPayment,
+            clauses: subClauses, parentOrderHashes,
+        };
+        const subPreview = await buildOrderPreview(subDraft, {
             processId,
-            parentOrderHashes,
             expectedCumulativeValue: cumulativeValue,
-            clauseFields: { ...node.clauses },
         });
-        // Layer A — the buyer does not sign an invalid sub-order either.
-        const subCheck = validateCommitmentAgreement(subPrepared.agreement, subPrepared.agreementHash);
-        if (!subCheck.ok) {
-            throw new Error(
-                `A sub-order isn't valid to sign yet: ${subCheck.issues
-                    .map((i) => `${i.clause} ${i.path}: ${i.message}`)
-                    .join("; ")}`,
-            );
-        }
-        const subSig = await signCommitment(subPrepared.commitment, { skipPreview: true });
-        await shareCommitmentPayload({
-            payload: {
-                commitment: subPrepared.commitment,
-                buyerSig: subSig,
-                agreement: subPrepared.commitmentMeta.agreement,
-                agreementUri: subPrepared.commitmentMeta.agreementUri,
-            },
-            recipientAddress: subSeller,
-            senderAddress: buyer,
-            walletClient,
-            chainId,
-            coordinationMessaging,
-            evidenceTransport,
-        });
+        assertValidToSign(subPreview, "A sub-order");
+        await signAndShare(subPreview);
         realOrderHash.set(
             node.id,
-            computeOrderHash(subPrepared.commitment, chainId, CONTRACTS.core),
+            computeOrderHash(subPreview.commitment, chainId, CONTRACTS.core),
         );
     }
 
-    // Root last → the buyer-share-panel shows the root for the buyer to relay
-    // to the lead. The lead accepts → root commits → the already shared
-    // sub-orders unlock for their sellers to accept.
-    await initiateAsParty(prepared.commitment, "buyer", prepared.commitmentMeta, { skipPreview: true });
+    // Root last → the share panel shows the root for the buyer to relay to the
+    // lead. The lead accepts → root commits → the already-shared sub-orders
+    // unlock for their sellers to accept.
+    await signRoot(rootPreview);
 }

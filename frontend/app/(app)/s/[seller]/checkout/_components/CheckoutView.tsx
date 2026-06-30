@@ -19,7 +19,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useChainId, usePublicClient, useWalletClient } from "wagmi";
+import { useChainId, usePublicClient } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { Button } from "@/components/ui/Button";
 import { useCommerce, useCheckout } from "@/lib/commerce";
@@ -37,7 +37,6 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual, normalizeAddressParam } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatToken, parseToken } from "@/lib/shared/utils";
-import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { useSellerBoundAssemblies } from "@/lib/seller/useSellerBoundAssemblies";
 import { extractRootModality } from "@/lib/designer/assemblyDiscovery";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
@@ -68,10 +67,8 @@ export function CheckoutView({ sellerAddress }: Props) {
     const { lower: sellerAddressLower, typed: sellerAddressTyped } = normalizeAddressParam(sellerAddress);
 
     const chainId = useChainId();
-    const { data: walletClient } = useWalletClient();
     const publicClient = usePublicClient();
     const { createAuction } = useDutchAuctionActions();
-    const { coordinationMessaging, evidenceTransport } = useRuntimeServices();
     const { catalogues: sellerCatalogues, isLoading: cataloguesLoading } = useRegisteredCatalogues();
 
     const sellerCatalogue = useMemo(
@@ -95,8 +92,8 @@ export function CheckoutView({ sellerAddress }: Props) {
         needsAuthorization: needsApproval,
         authorize: approve,
         authorization: { isPending: isApprovePending, isConfirming: isApproveConfirming, isSuccess: isApproveSuccess },
-        signCommitment,
-        initiateAsParty,
+        signRoot,
+        signAndShare,
         order: { step: commitStep, error: commitError, payload },
     } = useCheckout(currency);
 
@@ -218,8 +215,9 @@ export function CheckoutView({ sellerAddress }: Props) {
         && (!buyerChoosesCounterparty || !!sellerSelection)
         && (!buyerOpensAuction || auctionStartPriceValid);
     // The root order carries the design-time clauses the buyer is bonding to.
-    // Surfaced inline below so the buyer reviews the terms before signing — the
-    // visible terms + the explicit place-order click replace the modal gate.
+    // Surfaced inline below so the buyer reviews the terms before placing the
+    // order; the final per-order sign confirmation is the shared agreement-preview
+    // gate (the same one the seller's accept uses).
     const pickedRoot = pickedAssembly
         ? (pickedAssembly.assemblyTemplate.orders.find((o) => templateParentOrderHashes(o).length === 0)
             ?? pickedAssembly.assemblyTemplate.orders[0])
@@ -385,11 +383,8 @@ export function CheckoutView({ sellerAddress }: Props) {
                 },
                 {
                     chainId,
-                    signCommitment,
-                    initiateAsParty,
-                    walletClient,
-                    coordinationMessaging,
-                    evidenceTransport,
+                    signRoot,
+                    signAndShare,
                     openSellerAuction: async ({ auctionId, startPrice, processId, currency: auctionCurrency }) => {
                         const hash = await createAuction(auctionId, startPrice, processId, auctionCurrency);
                         if (publicClient && hash) {
@@ -542,9 +537,9 @@ export function CheckoutView({ sellerAddress }: Props) {
                         </div>
 
                         {/* Inline agreement terms — the clauses the buyer is
-                            bonding to, read straight from the assembly. This is
-                            the pre-sign review (replaces the modal gate): the
-                            buyer sees the terms, then place-order signs them. */}
+                            bonding to, read straight from the assembly. A pre-sign
+                            review; the per-order wallet sign is then confirmed in
+                            the shared agreement-preview modal. */}
                         {agreementGroups.length > 0 && (
                             <div className="space-y-2 border-t border-neutral-200 pt-3" data-testid="checkout-agreement-terms">
                                 <p className="text-xs font-semibold text-neutral-500">Agreement</p>
@@ -681,7 +676,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                             </p>
                         )}
 
-                        {commitStep === "awaiting-counter" && payload && (
+                        {commitStep === "awaiting-seller" && payload && (
                             <div className="pt-2" data-testid="buyer-share-panel">
                                 <CommitmentSharePanel
                                     payload={payload}
