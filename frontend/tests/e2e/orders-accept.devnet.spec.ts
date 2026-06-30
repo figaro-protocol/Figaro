@@ -97,7 +97,11 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
         await expect(place, 'buyer connected + order ready → "Place order"')
             .toHaveText(/Place order/, { timeout: 20000 });
         await place.click();
-        // Share panel appears once SIGNED (commitStep = awaiting-counter) — but the
+        // The buyer confirms the agreement in the SAME pre-sign gate the seller's
+        // accept uses — there is no checkout-only bypass.
+        await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
+        await page.getByTestId('preview-confirm').click();
+        // Share panel appears once SIGNED (commitStep = awaiting-seller) — but the
         // root commitment is NOT relayed until the buyer sends it. Click "Send via
         // XMTP" (mock channel in devnet → persisted to localStorage), so the seller's
         // /orders can replay it. (assemblyCheckout's auto-relay is sub-orders only.)
