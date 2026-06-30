@@ -16,9 +16,7 @@ import { Order, OrderState } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ClauseFields } from "@/lib/core/encoding";
 import { buildOrderAgreement } from "@/lib/core/orderAgreement";
-import { computeAgreementHash } from "@figaro/core";
-import { saveAgreement } from "@/lib/core/agreementStore";
-import { buildAgreementsFromCache } from "@/lib/core/orderTopology";
+import { saveAgreement, buildAgreementsFromCache } from "@/lib/designer/syntheticAgreementStore";
 import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 
 /** Address space for synthetic actors. Distinct prefix avoids visual confusion with live wallets. */
@@ -90,15 +88,16 @@ export function buildSyntheticOrder(params: {
     clauseFields: ClauseFields;
     parentOrderHashes?: string[];
 }): CreatedOrder {
-    const agreement = buildOrderAgreement({
-        buyer: params.buyer,
-        seller: params.seller,
-        currency: params.currency,
-        payment: params.payment,
-        clauseFields: params.clauseFields,
-        ...(params.parentOrderHashes ? { parentOrderHashes: params.parentOrderHashes } : {}),
-    });
-    const agreementHash = computeAgreementHash(agreement);
+    // The clause map IS the seller's pinned assembly, valued for this order —
+    // buildOrderAgreement projects it, names no clause.
+    const { agreement, agreementHash } = buildOrderAgreement(
+        params.buyer,
+        params.seller,
+        params.clauseFields,
+    );
+    // Persist to the designer's authoring store (localStorage) so the in-progress
+    // design survives until publish — the assembly-management counterpart to the
+    // buyer's draftOrders.
     saveAgreement(agreement);
 
     const order: Order = {
@@ -228,15 +227,13 @@ export function mergeSyntheticParent(
     }
 
     const nextParents = [...existingParents, newParentId];
-    const newAgreement = buildOrderAgreement({
-        buyer: child.buyer as `0x${string}`,
-        seller: child.seller as `0x${string}`,
-        currency: (child.currency ?? ZERO_ADDRESS) as `0x${string}`,
-        payment: child.payment,
-        clauseFields: defaultNodeClauseFields(),
-        parentOrderHashes: nextParents,
-    });
-    const newAgreementHash = computeAgreementHash(newAgreement);
+    // Topology is first-class on the order (parentOrderHashes below); the
+    // agreement projects the node's assembly clauses.
+    const { agreement: newAgreement, agreementHash: newAgreementHash } = buildOrderAgreement(
+        child.buyer as `0x${string}`,
+        child.seller as `0x${string}`,
+        defaultNodeClauseFields(),
+    );
     saveAgreement(newAgreement);
 
     return {

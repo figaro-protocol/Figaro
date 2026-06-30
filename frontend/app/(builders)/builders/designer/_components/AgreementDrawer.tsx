@@ -24,8 +24,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Order } from "@/lib/core/store";
-import { loadAgreement } from "@/lib/core/agreementStore";
-import { getTopologyParentOrderHashes } from "@/lib/core/orderAgreement";
 import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/core/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/core/useClauseSpecs";
 import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsStructural } from "@/lib/shared/clauseSpecSource";
@@ -109,7 +107,10 @@ export function AgreementDrawer({
 
     const orderIndex = orders ? orders.findIndex((o) => o.id === order.id) : -1;
     const orderNumber = orderIndex >= 0 ? orderIndex + 1 : 1;
-    const parentOrderHashes = getTopologyParentOrderHashes(loadAgreement(order.agreementHash));
+    // Topology is first-class on the order (the topology clause's data), read
+    // directly — never recovered from the agreement. Forking a live assembly
+    // reconstructs these onto the order via fetchAgreement in the fork flow.
+    const parentOrderHashes = order.parentOrderHashes ?? [];
 
     const presentArticles: readonly string[] = ["identity", "registry"];
 
