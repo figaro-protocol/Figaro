@@ -1,6 +1,6 @@
 import type { PublicClient } from "viem";
 
-export interface SignedPermitPayload {
+interface SignedPermitPayload {
     target: `0x${string}`;
     data: `0x${string}`;
 }

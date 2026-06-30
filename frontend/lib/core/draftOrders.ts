@@ -59,12 +59,18 @@ function fromStored(s: StoredDraftOrder): DraftOrder {
     };
 }
 
-/** Save (or replace) a draft order under `draftId`. */
+// The draft-order localStorage API is a runtime DELIVERABLE ahead of its UI: the
+// buyer's order-composition surface (draft → preview → sign) is not yet wired, so
+// these have no consumer — they ship with the order* path by design. @public on
+// each keeps knip green until that surface lands (see the punch-list draft-order
+// testing item).
+
+/** @public — Save (or replace) a draft order under `draftId`. */
 export function saveDraftOrder(draftId: string, draft: DraftOrder): void {
     writeJsonStorage(STORE_PREFIX + draftId, toStored(draft));
 }
 
-/** Load a draft order by id. Returns null if none is held. */
+/** @public — Load a draft order by id. Returns null if none is held. */
 export function loadDraftOrder(draftId: string): DraftOrder | null {
     const stored = readJsonStorage<StoredDraftOrder | null>(STORE_PREFIX + draftId, null);
     if (!stored) return null;
@@ -75,7 +81,7 @@ export function loadDraftOrder(draftId: string): DraftOrder | null {
     }
 }
 
-/** The ids of every draft order currently held. */
+/** @public — The ids of every draft order currently held. */
 export function listDraftOrders(): string[] {
     const ids: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
@@ -85,7 +91,7 @@ export function listDraftOrders(): string[] {
     return ids;
 }
 
-/** Drop a draft (e.g. once it has been finalized + shared). */
+/** @public — Drop a draft (e.g. once it has been finalized + shared). */
 export function deleteDraftOrder(draftId: string): void {
     localStorage.removeItem(STORE_PREFIX + draftId);
 }

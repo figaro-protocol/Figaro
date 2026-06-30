@@ -20,7 +20,7 @@
  * Requires Anvil + ./deploy-local.sh + Kubo.
  */
 import { test, expect } from './devnet-multi-test';
-import { evmRevert, evmSnapshot } from './devnet-helpers';
+import { publishProbeAssembly } from './probeAssembly';
 
 
 test.describe('PublishedList fork + inspect (devnet)', () => {
@@ -30,83 +30,39 @@ test.describe('PublishedList fork + inspect (devnet)', () => {
     test.setTimeout(180_000);
 
     test('publish an assembly, then Inspect and Fork it from PublishedList', async ({ page }) => {
-        // ── Publish an assembly via the canvas ───────────────────────
-        // Mirrors designer-publish.devnet.spec.ts: the canvas authors a
-        // valid assemblyTemplate and pins it; PublishedList then reads the
-        // AssemblyRegistered event for the connected wallet.
-        // Editorial name (hash-excluded). The published SLUG is content-derived;
-        // this blank composition hashes identically every run, so isolate the
-        // publish in an evm snapshot — revert frees the slug for the siblings.
-        const draftName = `a8-${Date.now()}`;
-        const snapshotId = await evmSnapshot();
-        try {
-            await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
-            await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
-            await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+        // Publish a per-run-unique assembly via the REAL canvas — the nonce in the
+        // probe clause id gives a fresh content-derived slug each run, so no
+        // snapshot/revert (devnet is a mainnet rehearsal). PublishedList then reads
+        // the AssemblyRegistered event for the connected wallet.
+        const { slug } = await publishProbeAssembly(page);
 
-            await page.getByTestId('designer-name-input').fill(draftName);
+        // ── The row appears on the designer index ────────────────────
+        await page.goto('/builders/designer?e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.getByTestId(`published-row-${slug}`).waitFor({ timeout: 30000 });
 
-            await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
-            await page.getByTestId('designer-review').click();
+        // Fork is disabled until the assemblyTemplate fetch resolves
+        // (`choice.state === "loaded"`). Waiting for it enabled proves
+        // the IPFS-pinned assemblyTemplate was fetched and parsed.
+        await expect(page.getByTestId(`published-fork-${slug}`)).toBeEnabled({ timeout: 30000 });
 
-            // Review navigates to /view/<random-handle>?intent=publish (dropping
-            // the ?e2e= param). Capture the handle, re-goto with ?e2e=devnet.
-            await page.waitForURL(/\/builders\/designer\/view\/asm-/, { timeout: 15000 });
-            const handle = page.url().match(/\/view\/(asm-[a-z0-9-]+)/)?.[1];
-            expect(handle, 'review navigated to a draft handle').toBeTruthy();
-            await page.goto(
-                `/builders/designer/view/${handle}?intent=publish&e2e=devnet`,
-                { waitUntil: 'domcontentloaded' },
-            );
+        // ── Inspect → /builders/designer/view/<slug> ─────────────────
+        await page.getByTestId(`published-inspect-${slug}`).click();
+        await page.waitForURL(new RegExp(`/builders/designer/view/${slug}`), { timeout: 15000 });
+        await expect(page.getByTestId('assembly-view-page')).toBeVisible({ timeout: 30000 });
 
-            const confirmBtn = page.getByTestId('review-confirm-publish');
-            await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
-            await page.waitForFunction(
-                () => {
-                    const buttons = Array.from(document.querySelectorAll('button'));
-                    return !buttons.some((b) => b.textContent?.trim() === 'Connect Wallet');
-                },
-                null,
-                { timeout: 30000 },
-            );
-            await confirmBtn.click();
-            await page.getByTestId('assembly-publish-receipt').waitFor({ timeout: 60000 });
-            // The content-derived slug PublishedList keys its row/fork/inspect on.
-            const slug = (await page.getByTestId('receipt-slug').textContent())?.trim();
-            expect(slug, 'receipt shows the content slug').toMatch(/^asm-/);
+        // ── Back to the index, Fork → /builders/designer/edit/<forkSlug> ──
+        await page.goto('/builders/designer?e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await expect(page.getByTestId(`published-fork-${slug}`)).toBeEnabled({ timeout: 30000 });
 
-            // ── The row appears on the designer index ────────────────────
-            await page.goto('/builders/designer?e2e=devnet', { waitUntil: 'domcontentloaded' });
-            await page.getByTestId(`published-row-${slug}`).waitFor({ timeout: 30000 });
+        // forkPublishedAssembly() prompts for the new slug via window.prompt —
+        // Playwright auto-dismisses dialogs unless handled, which would cancel the
+        // fork. Accept with an explicit slug so the fork proceeds deterministically.
+        const forkSlug = `${slug}-fork-a8`;
+        page.once('dialog', (dialog) => { void dialog.accept(forkSlug); });
+        await page.getByTestId(`published-fork-${slug}`).click();
 
-            // Fork is disabled until the assemblyTemplate fetch resolves
-            // (`choice.state === "loaded"`). Waiting for it enabled proves
-            // the IPFS-pinned assemblyTemplate was fetched and parsed.
-            await expect(page.getByTestId(`published-fork-${slug}`)).toBeEnabled({ timeout: 30000 });
-
-            // ── Inspect → /builders/designer/view/<slug> ─────────────────
-            await page.getByTestId(`published-inspect-${slug}`).click();
-            await page.waitForURL(new RegExp(`/builders/designer/view/${slug}`), { timeout: 15000 });
-            await expect(page.getByTestId('assembly-view-page')).toBeVisible({ timeout: 30000 });
-
-            // ── Back to the index, Fork → /builders/designer/edit/<forkSlug> ──
-            await page.goto('/builders/designer?e2e=devnet', { waitUntil: 'domcontentloaded' });
-            await expect(page.getByTestId(`published-fork-${slug}`)).toBeEnabled({ timeout: 30000 });
-
-            // forkPublishedAssembly() prompts for the new slug via
-            // window.prompt — Playwright auto-dismisses dialogs unless
-            // handled, which would cancel the fork. Accept with an explicit
-            // slug so the fork proceeds deterministically.
-            const forkSlug = `${slug}-fork-a8`;
-            page.once('dialog', (dialog) => { void dialog.accept(forkSlug); });
-            await page.getByTestId(`published-fork-${slug}`).click();
-
-            await page.waitForURL(new RegExp(`/builders/designer/edit/${forkSlug}`), { timeout: 15000 });
-            // The forked draft hydrated into an editable canvas — not just a
-            // URL change.
-            await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
-        } finally {
-            await evmRevert(snapshotId);
-        }
+        await page.waitForURL(new RegExp(`/builders/designer/edit/${forkSlug}`), { timeout: 15000 });
+        // The forked draft hydrated into an editable canvas — not just a URL change.
+        await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
     });
 });

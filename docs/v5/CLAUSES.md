@@ -57,9 +57,9 @@ Lives off-chain as JSON at the `metadataURI` emitted by `ClauseRegistry`
 live at repo-root `clauses/` (the `ClauseRegistry` seed data); nothing bundles a
 copy — every consumer loads each spec from `ClauseRegistry` → IPFS at runtime.
 
-## The 20 protocol clauses
+## The 17 protocol clauses
 
-19 runtime-attestable clauses (content validated off-chain by Layer A; no
+16 runtime-attestable clauses (content validated off-chain by Layer A; no
 on-chain validator) plus the agreement-only `figaro-topology-v1`.
 
 | clauseId | What it carries | Attestation surface |

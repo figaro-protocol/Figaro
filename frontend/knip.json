@@ -2,9 +2,9 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "ignore": [
     "tests/e2e/fixtures/inject-ethereum-multi.js",
-    "lib/mechanisms/useOffsetRetirement.ts",
-    "lib/mechanisms/useGHGDisclosure.ts",
-    "lib/mechanisms/useDutchAuction.ts",
+    "lib/composition/useOffsetRetirement.ts",
+    "lib/composition/useGHGDisclosure.ts",
+    "lib/composition/useDutchAuction.ts",
     "lib/seller/sellerAuction.ts"
   ]
 }

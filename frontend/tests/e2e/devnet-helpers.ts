@@ -85,17 +85,11 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
 }
 
 
-// ── Anvil EVM snapshot / revert ──────────────────────────────────────────────
-
+// evmSnapshot/evmRevert were removed — devnet is a mainnet REHEARSAL, so specs
+// leave their state on-chain and stay idempotent via a per-run nonce (see
+// probeAssembly.ts), never evm_snapshot/evm_revert (lint-no-devnet-revert). The
+// client below remains for the time-jump helper (evm_increaseTime is not a revert).
 const snapshotClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-
-export async function evmSnapshot(): Promise<string> {
-    return snapshotClient.request({ method: 'evm_snapshot' as any }) as Promise<string>;
-}
-
-export async function evmRevert(snapshotId: string): Promise<void> {
-    await snapshotClient.request({ method: 'evm_revert' as any, params: [snapshotId] } as any);
-}
 
 
 /** SellerRegistry ABI fragment for seedRegisteredSeller. Local copy keeps
@@ -400,10 +394,9 @@ function resolveIpfsURI(uri: string): string {
 /**
  * Advance Anvil's block timestamp by `seconds` and mine an empty block
  * so reads pick up the new `block.timestamp`. Used by tests that exercise
- * time-locked paths (SellerRegistry.withdraw's 365-day lock, etc.).
- *
- * Pair with `evmSnapshot()` / `evmRevert()` so the time jump doesn't leak
- * into adjacent tests.
+ * time-locked paths (SellerRegistry.withdraw's 365-day lock, etc.). The jump is
+ * permanent (no revert — devnet is a mainnet rehearsal); time-locked specs read
+ * the post-jump state directly.
  */
 export async function evmIncreaseTime(seconds: number): Promise<void> {
     await snapshotClient.request({ method: 'evm_increaseTime' as any, params: [seconds] } as any);

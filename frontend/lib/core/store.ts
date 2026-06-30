@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { OrderState } from "@figaro/core";
-import { textToBytes32 } from "@/lib/shared/evm";
 
 // Re-export so existing consumers keep working
 export { OrderState };
@@ -50,14 +49,6 @@ interface ProcessInfo {
     totalPayment: bigint;
     resolved: boolean;
     createdAt: number;
-}
-
-// ---------------------------------------------------------------------------
-// generateProcessId — standalone helper (used by mock path in useFigaroActions)
-// ---------------------------------------------------------------------------
-
-export function generateProcessId(): string {
-    return textToBytes32(`process-${Date.now()}-${Math.random()}`);
 }
 
 // ---------------------------------------------------------------------------

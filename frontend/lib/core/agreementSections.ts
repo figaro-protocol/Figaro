@@ -15,10 +15,11 @@
 import type { Agreement, AgreementSection } from "@figaro/core";
 import { clauseDeclaresField, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 
-/** Every section whose registered spec declares a top-level field named
- *  `fieldName`. Falls back to data-key presence only when the spec isn't cached
- *  (a clause registered but not yet hydrated) — still keyed on the field, never
- *  on the clause id. */
+/** @public — the by-field catalogue's many-result reader, pending consumer
+ *  (the single-result `sectionByField` is the one wired so far). Every section
+ *  whose registered spec declares a top-level field named `fieldName`. Falls back
+ *  to data-key presence only when the spec isn't cached (a clause registered but
+ *  not yet hydrated) — still keyed on the field, never on the clause id. */
 export function sectionsByField(agreement: Agreement, fieldName: string): AgreementSection[] {
     return agreement.sections.filter((s) =>
         getClauseSpec(s.clause)

@@ -28,20 +28,15 @@ export function saveAgreement(agreement: Agreement): `0x${string}` {
     return hash;
 }
 
-export function loadAgreement(agreementHash: string | undefined | null): Agreement | null {
+// Internal: read one synthetic agreement back by hash — used by
+// buildAgreementsFromCache below to assemble the topology deriver's Map.
+function loadAgreement(agreementHash: string | undefined | null): Agreement | null {
     if (!canUseStorage() || !agreementHash) return null;
     try {
         return safeJsonParse<Agreement>(localStorage.getItem(key(agreementHash)));
     } catch {
         return null;
     }
-}
-
-export function deleteAgreement(agreementHash: string): void {
-    if (!canUseStorage()) return;
-    try {
-        localStorage.removeItem(key(agreementHash));
-    } catch { /* non-fatal */ }
 }
 
 /** Build the agreements Map the topology deriver needs from the authoring store,

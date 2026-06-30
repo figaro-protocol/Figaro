@@ -176,15 +176,6 @@ export function clauseDeclaresField(clauseId: string, fieldName: string): boolea
     return getClauseSpec(clauseId)?.fields.some((f) => f.name === fieldName) === true;
 }
 
-/** The topology clause whose data carries the order's topology edges,
- *  reconstructed off-chain by indexers. Resolved from the registry by its own
- *  `parentOrderHashes` field, never by name. undefined while the cache is cold. */
-export function topologyClauseId(): string | undefined {
-    return listKnownClauseIds().find(
-        (clauseId) => clauseDeclaresField(clauseId, "parentOrderHashes"),
-    );
-}
-
 /** The first enum-type field of a clause — the runtime "stage ladder" (the
  *  `eventType` enum on merchant/courier, or any runtime clause's ladder).
  *  Returns the field name + its ordered values, or null when the clause has no

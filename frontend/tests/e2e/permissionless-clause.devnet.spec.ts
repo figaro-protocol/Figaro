@@ -39,15 +39,12 @@
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import {
-    createPublicClient, createWalletClient, defineChain, http, parseAbi,
-    keccak256, stringToHex, type Hex,
+    createPublicClient, defineChain, http, parseAbi, type Hex,
 } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
-import {
-    readLocalDeploymentConfig, pinJSONToIPFS, localPublicClient, assertPinnedInIpfs,
-} from './devnet-helpers';
+import { readLocalDeploymentConfig, assertPinnedInIpfs } from './devnet-helpers';
+import { makeProbeSpec, registerProbeClause } from './probeAssembly';
 import { ANVIL_KEYS } from '../anvilAccounts';
-import { clauseIdHash } from '@/lib/shared/evm';
 import { CORE_ABI } from '@/lib/core/contracts';
 import { calculateBonds } from '@figaro/core';
 import type { Page } from '@playwright/test';
@@ -71,43 +68,13 @@ const ANVIL_MNEMONIC = 'test test test test test test test test test test test j
 //    chain (no revert — devnet is a mainnet rehearsal), so a FIXED id/content
 //    would collide with a prior run's first-write-wins registration on every
 //    re-run and every Playwright retry (registerAssembly reverts: slug taken). ──
-const NOVEL_VERSION = 1;
 const NOVEL_FIRST_STAGE_LABEL = 'Probe opened';
 
-function makeNovelSpec(clauseId: string, title: string) {
-    return {
-        clauseId,
-        version: NOVEL_VERSION,
-        title,
-        description:
-            'A runtime-attestable lifecycle clause that no code in this repo knows — the open-world certification probe.',
-        fields: [
-            {
-                name: 'probeStage',
-                type: 'enum',
-                values: ['probe-opened', 'probe-advanced', 'probe-closed'],
-                valueLabels: {
-                    'probe-opened': NOVEL_FIRST_STAGE_LABEL,
-                    'probe-advanced': 'Probe advanced',
-                    'probe-closed': 'Probe closed',
-                },
-                required: true,
-                description: 'Probe lifecycle stage.',
-            },
-        ],
-        // `article` is the clause's sole block classification post-teardown
-        // (block.tier / block.attestation were removed — runtime-attestability is
-        // DERIVED from the spec's enum ladder, not declared). A never-seen clause
-        // carrying only this still flows the whole pipeline.
-        block: { article: 'attestations' },
-    };
-}
+// The probe clause spec + its permissionless registration are shared with the
+// other publish specs in `./probeAssembly` (makeProbeSpec / registerProbeClause):
+// a runtime-attestable lifecycle clause carrying only `block.article` —
+// runtime-attestability is DERIVED from its enum ladder, not declared.
 
-// Local, non-kernel ABI fragments for the documented clause-registration path.
-const CLAUSE_REGISTRY_ABI = parseAbi([
-    'function registered(bytes32) view returns (bool)',
-    'function registerClause(string clauseId, uint64 version, bytes32 contentHash, string metadataURI) external',
-]);
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
 const BUYER = privateKeyToAccount(ANVIL_KEYS[0] as Hex).address; // anvil[0] — buyer + author + registrar
@@ -121,45 +88,6 @@ async function waitForConnected(page: Page) {
         null,
         { timeout: 30000 },
     );
-}
-
-/**
- * Register the novel clause permissionlessly via ClauseRegistry.registerClause —
- * the documented registration path the protocol's own clauses use. Registration
- * records a single keccak256 contentHash of the spec plus a metadata URI and emits
- * ClauseRegistered (ClauseRegistry.sol:92-107) — NO merkle tree, NO validator to
- * bind, no on-chain content validation. (The merkle tree is a SEPARATE concern: it
- * is built OFF-CHAIN by the agreement helpers, its leaves live in the IPFS
- * agreement, and only its ROOT — the agreementHash — is committed on-chain. At
- * attestation time the AttestationCoordinator merely VERIFIES a caller-supplied
- * inclusion proof against that root (MerkleProof.verify, AttestationCoordinator.sol
- * :175-188); it neither builds nor stores the tree. Exercised in the runtime + audit
- * legs below — never in registration.) That a registered clause is attestable with
- * zero per-clause on-chain code IS the open-world property. Idempotent: skips if
- * already registered (re-run on the persistent devnet is the norm).
- */
-async function registerNovelClause(clauseId: string, spec: ReturnType<typeof makeNovelSpec>): Promise<void> {
-    const cfg = readLocalDeploymentConfig();
-    const registry = (process.env.NEXT_PUBLIC_CLAUSE_REGISTRY ?? cfg.clauseRegistry) as Hex;
-    const pub = localPublicClient();
-    const idHash = clauseIdHash(clauseId, NOVEL_VERSION);
-
-    const already = await pub.readContract({
-        address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registered', args: [idHash],
-    });
-    if (already) return;
-
-    const registrar = privateKeyToAccount(ANVIL_KEYS[0] as Hex);
-    const wallet = createWalletClient({ account: registrar, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-
-    const { uri } = await pinJSONToIPFS(spec);
-    const contentHash = keccak256(stringToHex(JSON.stringify(spec)));
-    const { request } = await pub.simulateContract({
-        account: registrar.address, address: registry, abi: CLAUSE_REGISTRY_ABI,
-        functionName: 'registerClause',
-        args: [clauseId, BigInt(NOVEL_VERSION), contentHash, uri],
-    });
-    await pub.waitForTransactionReceipt({ hash: await wallet.writeContract(request) });
 }
 
 test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () => {
@@ -182,12 +110,12 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         const runNonce = `${Date.now()}`;
         const NOVEL_CLAUSE_ID = `figaro-probe-attest-${runNonce}`;
         const NOVEL_TITLE = `Probe attestation (acceptance test) ${runNonce}`;
-        const NOVEL_SPEC = makeNovelSpec(NOVEL_CLAUSE_ID, NOVEL_TITLE);
+        const NOVEL_SPEC = makeProbeSpec(NOVEL_CLAUSE_ID, NOVEL_TITLE);
 
         // ── SETUP: register the novel clause permissionlessly (no UI for clause
         //    registration exists — this is the documented registration path; no
         //    validator to bind, the chain validates no clause content) ──
-        await registerNovelClause(NOVEL_CLAUSE_ID, NOVEL_SPEC);
+        await registerProbeClause(NOVEL_CLAUSE_ID, NOVEL_SPEC);
 
         // ── DRAWER: author an assembly carrying the novel clause, via the REAL
         //    designer. The clause appears ONLY because the drawer read it from

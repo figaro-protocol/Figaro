@@ -26,6 +26,8 @@ function resolveAddress(addr: `0x${string}`): `0x${string}` | null {
     return isValidAddress(addr) ? addr : null;
 }
 
+/** @public — composition resolver, pending consumer: the K2 clauseId→surface
+ *  registry mounts the attestation surface from this. */
 export function getAttestationCoordinator(): `0x${string}` | null {
     return resolveAddress(COMPOSITION_CONTRACTS.attestationCoordinator);
 }
@@ -34,6 +36,8 @@ export function getDutchAuction(): `0x${string}` | null {
     return resolveAddress(COMPOSITION_CONTRACTS.dutchAuction);
 }
 
+/** @public — composition resolver, pending consumer: the restored offset
+ *  (emissions-retirement) panel reads the receipt contract from this. */
 export function getProcessOffsetReceipt(): `0x${string}` | null {
     return resolveAddress(COMPOSITION_CONTRACTS.processOffsetReceipt);
 }

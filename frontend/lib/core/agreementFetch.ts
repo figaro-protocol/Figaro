@@ -30,15 +30,17 @@ export interface AgreementFetchOptions {
 
 const transport = (o?: AgreementFetchOptions) => o?.evidenceTransport ?? DEFAULT_IPFS_SERVICE;
 
-/** Record the IPFS URI a wallet witnessed for an agreementHash (event-driven). */
-export function saveAgreementUri(agreementHash: Hex | string, uri: string): void {
+/** Record the IPFS URI a wallet witnessed for an agreementHash (event-driven).
+ *  Internal: the witnessed-URI pointer is written via `publishAgreement` and read
+ *  via `fetchAgreement` — both in this file. */
+function saveAgreementUri(agreementHash: Hex | string, uri: string): void {
     if (!canUseStorage() || !uri) return;
     try {
         localStorage.setItem(uriKey(agreementHash), uri);
     } catch { /* non-fatal */ }
 }
 
-export function loadAgreementUri(agreementHash: Hex | string | undefined | null): string | null {
+function loadAgreementUri(agreementHash: Hex | string | undefined | null): string | null {
     if (!canUseStorage() || !agreementHash) return null;
     try {
         return localStorage.getItem(uriKey(agreementHash));
