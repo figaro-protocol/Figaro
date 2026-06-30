@@ -19,7 +19,9 @@ import {
     type Agreement,
     type AgreementSection,
 } from "@figaro/core";
-import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { validateContent } from "@figaro/core/clauses";
+import { getClauseSpec, clauseIsProcessLog } from "@/lib/shared/clauseSpecSource";
+import { hexEqual } from "@/lib/shared/evm";
 import type { ClauseFields } from "@/lib/core/encoding";
 
 export interface OrderAgreement {
@@ -49,4 +51,63 @@ export function buildOrderAgreement(
 
     const agreement: Agreement = { version: "a1", buyer, seller, sections };
     return { agreement, agreementHash: computeAgreementHash(agreement) };
+}
+
+/** A single Layer-A issue found before signing: which clause, which field path
+ *  (or "(merkle)"), and what's wrong. */
+export interface CommitmentAgreementIssue {
+    clause: string;
+    path: string;
+    message: string;
+}
+
+/**
+ * Layer A of the verification stack, run on BOTH sides of the bilateral commit
+ * (buyer before initiating, seller before counter-signing) so neither party
+ * signs an invalid agreement. Two checks: every present section conforms to its
+ * clause spec (SDK validateContent; runtime clauses are presence-markers, skipped),
+ * and the `agreementHash` about to be signed equals the merkle root recomputed
+ * from the sections. Catches a malformed agreement before a chain round-trip.
+ */
+export function validateCommitmentAgreement(
+    agreement: Agreement,
+    expectedHash: `0x${string}`,
+): { ok: boolean; issues: CommitmentAgreementIssue[] } {
+    const issues: CommitmentAgreementIssue[] = [];
+
+    for (const section of agreement.sections) {
+        const spec = getClauseSpec(section.clause);
+        if (!spec) continue;
+        // A runtime-lifecycle clause is an empty anchor at commit — its content
+        // is attested later, so there is nothing to validate here.
+        if (clauseIsProcessLog(section.clause)) continue;
+        const result = validateContent(section.data, spec);
+        if (!result.ok) {
+            for (const e of result.errors) {
+                issues.push({ clause: section.clause, path: e.path, message: e.message });
+            }
+        }
+    }
+
+    if (issues.length === 0) {
+        let computed: `0x${string}` | null = null;
+        try {
+            computed = computeAgreementHash(agreement);
+        } catch (cause) {
+            issues.push({
+                clause: "(merkle)",
+                path: "agreementHash",
+                message: `agreement content failed to encode: ${cause instanceof Error ? cause.message : String(cause)}`,
+            });
+        }
+        if (computed && !hexEqual(computed, expectedHash)) {
+            issues.push({
+                clause: "(merkle)",
+                path: "agreementHash",
+                message: `signed hash ${expectedHash} does not match the agreement's computed root ${computed}`,
+            });
+        }
+    }
+
+    return { ok: issues.length === 0, issues };
 }
