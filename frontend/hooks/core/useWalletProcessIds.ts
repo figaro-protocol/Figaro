@@ -12,9 +12,7 @@ import { useState, useEffect, useCallback } from "react";
 import { usePublicClient, useWatchContractEvent } from "wagmi";
 import { CONTRACTS, CORE_ABI } from "@/lib/core/contracts";
 import { Order, OrderState, useOrderStore } from "@/lib/core/store";
-import { mockSubscribe } from "@/lib/core/mockEventStore";
 import { hexEqual } from "@/lib/shared/evm";
-import { isE2EMockSession } from "@/lib/shared/e2e";
 import {
     getAllOrderCommitted,
     getAllOrderResolved,
@@ -130,36 +128,16 @@ function insertOrderIntoSummaries(prev: ProcessSummary[], order: Order): Process
 }
 
 export function useWalletProcessIds(address: string | undefined): ProcessSummary[] {
-    const isE2EMock = isE2EMockSession();
-
     const [summaries, setSummaries] = useState<ProcessSummary[]>([]);
     const publicClient = usePublicClient();
     const contractAddr = CONTRACTS.core || undefined;
     const processReloadKey = useOrderStore((s) => s.processReloadKey);
 
     useEffect(() => {
-        if (!isE2EMock) return;
-
-        const unsub = mockSubscribe((allOrders: Order[]) => {
-            if (!address) {
-                setSummaries(summarise(allOrders));
-                return;
-            }
-            const lc = address.toLowerCase();
-            const relevant = allOrders.filter(
-                (o) => hexEqual(o.buyer, address) || hexEqual(o.seller, address)
-            );
-            setSummaries(summarise(relevant));
-        });
-        return unsub;
-    }, [isE2EMock, address]);
-
-    useEffect(() => {
-        if (isE2EMock || !address || !publicClient || !contractAddr) return;
+        if (!address || !publicClient || !contractAddr) return;
 
         const client = publicClient;
         let cancelled = false;
-        const lc = address.toLowerCase();
         const chainId = client.chain?.id ?? 31337;
 
         async function load() {
@@ -213,9 +191,9 @@ export function useWalletProcessIds(address: string | undefined): ProcessSummary
 
         void load();
         return () => { cancelled = true; };
-    }, [isE2EMock, address, publicClient, contractAddr, processReloadKey]);
+    }, [address, publicClient, contractAddr, processReloadKey]);
 
-    const realEnabled = !isE2EMock && !!contractAddr;
+    const realEnabled = !!contractAddr;
     const realAddr = realEnabled ? (contractAddr as `0x${string}`) : undefined;
     const normalizedAddress = address?.toLowerCase();
 

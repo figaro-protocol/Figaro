@@ -19,7 +19,8 @@
 
 import { type PublicClient } from "viem";
 import type { CoordinatorEventSource, TimelineEvent } from "@/lib/dispute/evidenceTimeline";
-import { CONTRACTS, ATTESTATION_COORDINATOR_ABI } from "@/lib/core/contracts";
+import { ATTESTATION_COORDINATOR_ABI } from "@/lib/composition/abis";
+import { COMPOSITION_CONTRACTS } from "@/lib/composition/contracts";
 import { describeAttestation } from "@/lib/shared/clauseSpecSource";
 
 // Every attestation — whatever clause — is labeled from its OWN spec via
@@ -60,7 +61,7 @@ export function createDeliveryCoordinatorSource(): CoordinatorEventSource {
     return {
         name: "DeliveryCoordinator",
         fetchEvents: async (client, processId) => {
-            const addr = CONTRACTS.attestationCoordinator;
+            const addr = COMPOSITION_CONTRACTS.attestationCoordinator;
             if (!addr || addr.length !== 42) return [];
 
             const blockCache = new Map<string, number>();

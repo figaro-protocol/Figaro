@@ -1,29 +1,15 @@
 // Core Hook for V5 Protocol Actions (Unified Commit, Commitment[] Resolution)
 
-import { useState, useEffect } from "react";
 import { useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId, usePublicClient } from "wagmi";
 import { CORE_ABI, ERC20_ABI, CONTRACTS } from "@/lib/core/contracts";
 import { TEST_HELPERS_ENABLED, windowSafe } from '@/lib/core/testHelpers';
 import { activeChain } from "@/lib/shared/chains";
-import { ZERO_PROCESS_ID } from "@/lib/shared/evm";
-import { useOrderStore, generateProcessId, OrderState, Order } from "@/lib/core/store";
-import { isE2EMockSession } from "@/lib/shared/e2e";
-import {
-    mockEmitOrder,
-    mockResolveProcess,
-} from "@/lib/core/mockEventStore";
 import type { Commitment } from "@figaro/core";
-import { calculateBonds } from "@figaro/core";
 
 // Re-export for existing consumers
 export type { Commitment };
 
 export const useFigaroActions = () => {
-    // E2E mock mode: enable by visiting URL with `?e2e=mock` in development.
-    // Canonical `isE2EMockSession` carries the window + production guards.
-    const isE2EMock = isE2EMockSession();
-
-    const orderStore = useOrderStore();
 
     // Call wagmi/react hooks unconditionally to satisfy Rules of Hooks
     const { writeContractAsync, data: hash, isPending } = useWriteContract();
@@ -32,65 +18,6 @@ export const useFigaroActions = () => {
     const chainId = useChainId();
     const publicClient = usePublicClient();
 
-    // C6: track mock success so OrderControls can trigger form-reset and modal in E2E mode
-    const [mockIsSuccess, setMockIsSuccess] = useState(false);
-    useEffect(() => {
-        if (mockIsSuccess) {
-            const t = setTimeout(() => setMockIsSuccess(false), 3000);
-            return () => clearTimeout(t);
-        }
-    }, [mockIsSuccess]);
-
-    if (isE2EMock) {
-        // Mock implementations that update local Zustand store and resolve immediately
-        const commit = async (
-            commitment: Commitment,
-            _buyerSig?: `0x${string}`,
-            _sellerSig?: `0x${string}`,
-        ): Promise<`0x${string}`> => {
-            const isRoot = commitment.processId === ZERO_PROCESS_ID;
-            const processId = isRoot ? generateProcessId() : commitment.processId;
-            if (isRoot) orderStore.setViewedProcessId(processId);
-            const orderHash = `0x${BigInt(Date.now()).toString(16).padStart(64, '0')}`;
-            const bonds = calculateBonds(commitment.expectedCumulativeValue, commitment.payment);
-            const order: Order = {
-                id: orderHash,
-                processId,
-                buyer: String(commitment.buyer),
-                seller: String(commitment.seller),
-                currency: String(commitment.currency),
-                agreementHash: commitment.agreementHash,
-                cumulativeValue: commitment.expectedCumulativeValue,
-                payment: commitment.payment,
-                state: OrderState.Active,
-                sellerBond: bonds.sellerBond,
-                buyerBond: bonds.buyerBond,
-                salt: commitment.salt,
-                deadline: commitment.deadline,
-                timestamp: Date.now(),
-            };
-            mockEmitOrder(order);
-            setMockIsSuccess(true);
-            return Promise.resolve(("0x" + BigInt(Date.now()).toString(16)) as `0x${string}`);
-        };
-
-        const resolveProcess = async (processId: string, _commitments: Commitment[]): Promise<`0x${string}`> => {
-            mockResolveProcess(processId);
-            setMockIsSuccess(true);
-            return Promise.resolve(("0x" + BigInt(Date.now()).toString(16)) as `0x${string}`);
-        };
-
-        const approveToken = async () => Promise.resolve({ mock: true });
-
-        return {
-            approveToken,
-            commit,
-            resolveProcess,
-            hash: undefined,
-            isPending: false,
-            mockIsSuccess,
-        };
-    }
 
     // Use activeChain so wallets that enforce chain-matching
     // (Coinbase Wallet, WalletConnect v2) don't reject the call.
@@ -181,6 +108,5 @@ export const useFigaroActions = () => {
         isPending,
         isConfirming,
         isConfirmed,
-        mockIsSuccess,
     };
 };

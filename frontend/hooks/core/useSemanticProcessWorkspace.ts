@@ -20,7 +20,6 @@ import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModel
 import { getAttestationsByProcess, type RuntimeAttestation } from "@/lib/composition/indexer";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { CapabilityActionDescriptor, CapabilityExecutionInput, CapabilityModel, OrderNodeModel } from "@/lib/semantic/models";
-import { buildResolutionCommitments } from "@/lib/core/commitmentStore";
 import { executeTransactionCapabilityAction } from "@/lib/semantic/executeTransactionCapability";
 import { toHex, type Hex } from "viem";
 import { clauseIdHash } from "@/lib/shared/evm";
@@ -80,7 +79,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     // model must re-derive once a late-loading spec resolves. `version` bumps as
     // specs warm; reading it here re-renders + re-derives processModel below.
     const { version: clauseSpecsVersion } = useClauseSpecs();
-    const { resolveProcess, hash, isPending, mockIsSuccess } = useFigaroActions();
+    const { resolveProcess, hash, isPending } = useFigaroActions();
     const attestationActions = useAttestationCoordinatorActions();
     const dutchAuctionActions = useDutchAuctionActions();
     const registerSeller = useRegisterSeller();
@@ -112,7 +111,6 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         || updateSellerProfile.isConfirming
         || withdrawSellerDeposit.isConfirming;
     const isActionSuccess = isSuccess
-        || mockIsSuccess
         || attestationActions.isSuccess
         || dutchAuctionActions.isSuccess
         || registerSeller.isSuccess
@@ -220,20 +218,20 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         );
         if (activeOrders.length === 0) throw new Error("No active orders are available to resolve.");
 
-        const commitments = buildResolutionCommitments(
-            activeOrders.map((order) => ({
-                id: order.id as Hex,
-                processId: order.processId as Hex,
-                buyer: order.buyer as Hex,
-                seller: order.seller as Hex,
-                currency: order.currency as Hex,
-                payment: order.payment,
-                cumulativeValue: order.cumulativeValue,
-                agreementHash: order.agreementHash as Hex,
-                salt: order.salt,
-                deadline: order.deadline,
-            })),
-        );
+        // Reconstruct each order's Commitment from its indexer event record —
+        // resolveProcess needs the full Commitment[] to settle the process
+        // atomically. expectedCumulativeValue is the order's committed cumulativeValue.
+        const commitments = activeOrders.map((order) => ({
+            processId: order.processId as Hex,
+            buyer: order.buyer as Hex,
+            seller: order.seller as Hex,
+            currency: order.currency as Hex,
+            payment: order.payment,
+            expectedCumulativeValue: order.cumulativeValue,
+            agreementHash: order.agreementHash as Hex,
+            salt: order.salt,
+            deadline: order.deadline,
+        }));
 
         return resolveProcess(targetProcessId, commitments);
     };
@@ -387,7 +385,6 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         isPending: isActionPending,
         isConfirming: isActionConfirming,
         isSuccess: isActionSuccess,
-        mockIsSuccess,
         selectedParentOrderIds,
         subOrderParent,
         executeCapability,
