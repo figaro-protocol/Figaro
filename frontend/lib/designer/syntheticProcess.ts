@@ -16,9 +16,10 @@ import { Order, OrderState } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ClauseFields } from "@/lib/core/encoding";
 import { buildOrderAgreement } from "@/lib/core/orderAgreement";
-import { computeAgreementHash } from "@/lib/core/agreement";
+import { computeAgreementHash } from "@figaro/core";
 import { saveAgreement } from "@/lib/core/agreementStore";
-import { buildAgreementsFromCache, deriveOrderTopology } from "@/lib/core/orderTopology";
+import { buildAgreementsFromCache } from "@/lib/core/orderTopology";
+import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 
 /** Address space for synthetic actors. Distinct prefix avoids visual confusion with live wallets. */
 export function syntheticAddress(slot: number): `0x${string}` {

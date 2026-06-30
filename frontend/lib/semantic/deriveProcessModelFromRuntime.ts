@@ -1,11 +1,7 @@
 import { Order, OrderState } from "@/lib/core/store";
-import {
-    getSection,
-    type Agreement,
-    type TopologyMode,
-} from "@/lib/core/agreement";
-import { sectionByField } from "@/lib/core/orderAgreement";
-import { deriveOrderTopology } from "@/lib/core/orderTopology";
+import type { Agreement } from "@figaro/core";
+import { sectionByField } from "@/lib/core/agreementSections";
+import { deriveOrderTopology, type TopologyMode } from "@/lib/semantic/processTopology";
 import { ProcessSummary } from "@/hooks/core/useWalletProcessIds";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
 import { clauseLadderField, getClauseSpec, labelEnumValue } from "@/lib/shared/clauseSpecSource";

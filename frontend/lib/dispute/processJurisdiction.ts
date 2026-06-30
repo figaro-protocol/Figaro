@@ -17,8 +17,8 @@
  */
 import type { Address } from "viem";
 import type { Order } from "@/lib/core/store";
-import { type Agreement } from "@/lib/core/agreement";
-import { sectionByField } from "@/lib/core/orderAgreement";
+import type { Agreement } from "@figaro/core";
+import { sectionByField } from "@/lib/core/agreementSections";
 import { getKlerosCourt, encodeArbitratorExtraData, type KlerosCourt } from "./klerosCourts";
 import type { KlerosConfig } from "./klerosProxy";
 

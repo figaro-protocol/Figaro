@@ -29,7 +29,7 @@ import { Order, OrderState } from "@/lib/core/store";
 import { hexEqual } from "@/lib/shared/evm";
 import { Card } from "@/components/ui/Card";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
-import { deriveOrderDepths, deriveOrderTopology } from "@/lib/core/orderTopology";
+import { deriveOrderDepths, deriveOrderTopology } from "@/lib/semantic/processTopology";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { OrderNode, type OrderNodeData } from "./topology/OrderNode";
 
