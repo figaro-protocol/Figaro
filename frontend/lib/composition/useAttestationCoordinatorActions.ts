@@ -9,8 +9,9 @@ import { COMPOSITION_CONTRACTS } from "@/lib/composition/contracts";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { fetchAgreement } from "@/lib/core/agreementFetch";
 import { getAllOrderCommitted, getStringArg } from "@/lib/core/indexer";
-import { hexEqual, clauseIdHash } from "@/lib/shared/evm";
-import { buildSectionInclusionProof, getSectionDataBytes, type Commitment } from "@figaro/core";
+import { CONTRACTS } from "@/lib/core/contracts";
+import { hexEqual, clauseIdHash, ZERO_PROCESS_ID } from "@/lib/shared/evm";
+import { buildSectionInclusionProof, computeCommitmentProcessId, getSectionDataBytes, type Commitment } from "@figaro/core";
 
 type SellerAttestationInput = {
     /** The order being attested — its `agreementHash` anchors the inclusion proof. */
@@ -91,6 +92,16 @@ export function useAttestationCoordinatorActions() {
             salt: BigInt((args.salt as bigint | string | number) ?? 0),
             deadline: BigInt((args.deadline as bigint | string | number) ?? 0),
         };
+        // A ROOT order was SIGNED with processId 0 — the kernel derived the
+        // process id as its EIP-712 digest and emitted THAT in the event. The
+        // coordinator recomputes the orderHash from `hashStruct(commitment)`, so
+        // it must see the SIGNED commitment: restore processId 0 for the root, or
+        // the recomputed hash misses and the attestation reverts UnknownOrder. A
+        // sub-order's signed processId equals the event's (its derived digest
+        // differs from the process id), so it is left untouched.
+        if (hexEqual(computeCommitmentProcessId({ ...c, processId: ZERO_PROCESS_ID }, chainId, CONTRACTS.core), c.processId)) {
+            c.processId = ZERO_PROCESS_ID;
+        }
         return c;
     }, [publicClient]);
 

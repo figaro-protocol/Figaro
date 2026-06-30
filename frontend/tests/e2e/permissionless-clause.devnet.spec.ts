@@ -95,7 +95,11 @@ function makeNovelSpec(clauseId: string, title: string) {
                 description: 'Probe lifecycle stage.',
             },
         ],
-        block: { tier: 'runtime', article: 'attestations', attestation: 'seller' },
+        // `article` is the clause's sole block classification post-teardown
+        // (block.tier / block.attestation were removed — runtime-attestability is
+        // DERIVED from the spec's enum ladder, not declared). A never-seen clause
+        // carrying only this still flows the whole pipeline.
+        block: { article: 'attestations' },
     };
 }
 
