@@ -230,6 +230,13 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         const slug = (await page.getByTestId('receipt-slug').textContent())?.trim();
         expect(slug, 'publish receipt shows the content slug').toMatch(/^asm-/);
 
+        // ── PUBLIC INVENTORY: the freshly-published assembly is discoverable on the
+        //    public /assemblies inventory (on-chain AssemblyRegistered → standalone
+        //    indexer → render), adoptable by any reader exactly as on mainnet. This
+        //    closes the author → IPFS pin → AssemblyRegistered → visible round-trip. ──
+        await page.goto('/assemblies?e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await expect(page.locator(`#assembly-${slug}`)).toBeVisible({ timeout: 30000 });
+
         // ── BIND: onboard anvil[14] as a seller through the REAL wizard, binding
         //    the novel assembly. (No code knows this clause; the seller binds the
         //    assembly the same way it would any other.) ──
