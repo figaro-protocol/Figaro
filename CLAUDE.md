@@ -250,6 +250,8 @@ Adapted from `andrej-karpathy-skills` CLAUDE.md, minus its YAGNI bullets (which 
 
 **Delete dead code; never rename it.** When a feature was removed, its orphaned remnants (consumers with no producer, vestigial plumbing) get **deleted**, not swept into the new vocabulary. Renaming dead code makes it look intentional and deepens the confusion a clarity pass is meant to remove. Before renaming a thing, confirm it's live (has a producer/caller); if it's a corpse, bury it.
 
+**Never bypass the guards.** Commit with the pre-commit hook **running** — no `git commit --no-verify`. The hook (lint-staged + the whole-tree guards + knip + the semantic open-world gate) is the safety net; a session of `--no-verify` hid a knip-red tree, a clause-count doc drift, and `evmSnapshot`/`evmRevert` specs — none caught until asked. If a mid-work bypass is unavoidable it is a **debt to restore** before the session ends, not a shortcut. "Verify the guards" = run every lint script + knip + clause-counts over the **whole tree** (the per-diff guards never re-check committed files). Detail: `feedback_never_bypass_guards` memory.
+
 ### Before Raising Any Finding
 
 Read `DESIGN_DECISIONS.md` before flagging anything as a vulnerability. It documents 12 patterns that look like vulnerabilities but are correct by design. Common false positives: missing lifecycle guards, resolved-process re-entry, cross-order attestation, buyer==seller, no admin/owner, no stuck-fund recovery.

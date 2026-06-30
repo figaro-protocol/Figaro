@@ -58,7 +58,7 @@ FigToken (`FigToken.tla` + `FigToken.cfg`): `Inv_MaxSupply`,
   preparation + stores, agreement, clause-spec source, discovery +
   catalogue pipeline, GHG disclosure, delivery/handoff attestation, dispute
   evidence, IPFS service, token conversion, geocode, and per-hook tests
-  (`useCommitmentFlow`, `useOffsetRetirement`, `useTokenApproval`, …).
+  (`useOrderCommitmentFlow`, `useOffsetRetirement`, `useTokenApproval`, …).
 
 ## Playwright — devnet (e2e) + mobile (viewport) projects
 
