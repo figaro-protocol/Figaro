@@ -22,6 +22,7 @@ import {
     deserializeCommitmentPayload,
     type CommitmentPayload,
 } from "@/lib/core/orderSignedAndShared";
+import { publishAgreement } from "@/lib/core/agreementFetch";
 
 /**
  * Awaiting MY counter-signature: I am a party, the OTHER party has signed, I
@@ -90,6 +91,12 @@ export function usePendingSellerSignature(
                         if (!res.ok || cancelled) return;
                         const payload = deserializeCommitmentPayload(await res.text());
                         if (!payload.commitment?.buyer || !payload.commitment?.seller) return;
+                        // Persist the witnessed-URI pointer (+ standalone agreement
+                        // pin) for EVERY payload this wallet receives — it witnessed
+                        // the order, so its order/audit pages must be able to hydrate
+                        // the agreement by hash after a fresh navigation. Before the
+                        // `match` filter: a wallet witnesses inbound AND outbound orders.
+                        await publishAgreement(payload.agreement, { evidenceTransport: services.evidenceTransport });
                         if (!matchRef.current(payload, address)) return;
                         receivedOrderIds.current.add(orderId);
                         setPending((prev) => [...prev, payload]);

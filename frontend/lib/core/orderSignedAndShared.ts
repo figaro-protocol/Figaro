@@ -18,6 +18,7 @@ import {
     type Hex,
 } from "@figaro/core";
 import { CONTRACTS } from "@/lib/core/contracts";
+import { publishAgreement } from "@/lib/core/agreementFetch";
 import type { IpfsService } from "@/lib/shared/ipfsService";
 import { strippingReviver } from "@/lib/shared/safeJson";
 
@@ -75,7 +76,7 @@ export async function shareSignedOrder(params: {
     walletClient?: WalletMessageSigner | null;
     chainId: number;
     coordinationMessaging: CommitmentPayloadRelay;
-    evidenceTransport: Pick<IpfsService, "pinBlob">;
+    evidenceTransport: Pick<IpfsService, "pinBlob" | "pinJSON" | "buildURI" | "resolveFetchUrl">;
 }): Promise<string> {
     const {
         payload, recipientAddress, senderAddress, walletClient, chainId,
@@ -87,6 +88,13 @@ export async function shareSignedOrder(params: {
             "Core contract address is not configured, so the transport order ID cannot be derived.",
         );
     }
+
+    // Pin the agreement body STANDALONE (separate from the relayed payload) and
+    // remember its witnessed-URI pointer, so the SENDER's own order/audit pages
+    // can hydrate it by hash after a fresh navigation. The recipient does the
+    // same when the payload arrives (orderPendingSellerSignature) — content
+    // addressing makes both pins the same CID.
+    await publishAgreement(payload.agreement, { evidenceTransport });
 
     const orderId = computeOrderHash(payload.commitment, chainId, CONTRACTS.core);
     const blob = new Blob([serializeCommitmentPayload(payload)], { type: "application/json" });
