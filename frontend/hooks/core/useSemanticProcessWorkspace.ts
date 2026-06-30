@@ -17,6 +17,7 @@ import { useDutchAuctionActions } from "@/lib/composition/useDutchAuction";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
 import { useRegisterSeller, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/seller/useSellerRegistry";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
+import { restoreSignedProcessId } from "@/lib/core/signedCommitment";
 import { getAttestationsByProcess, type RuntimeAttestation } from "@/lib/composition/indexer";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { CapabilityActionDescriptor, CapabilityExecutionInput, CapabilityModel, OrderNodeModel } from "@/lib/semantic/models";
@@ -221,7 +222,11 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         // Reconstruct each order's Commitment from its indexer event record —
         // resolveProcess needs the full Commitment[] to settle the process
         // atomically. expectedCumulativeValue is the order's committed cumulativeValue.
-        const commitments = activeOrders.map((order) => ({
+        // resolveProcess recomputes each order's hash from hashStruct(commitment),
+        // so the SIGNED commitment is required — restore the root's processId 0
+        // (the event/store carries the derived processId).
+        const chainId = publicClient?.chain?.id ?? 31337;
+        const commitments = activeOrders.map((order) => restoreSignedProcessId({
             processId: order.processId as Hex,
             buyer: order.buyer as Hex,
             seller: order.seller as Hex,
@@ -231,7 +236,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
             agreementHash: order.agreementHash as Hex,
             salt: order.salt,
             deadline: order.deadline,
-        }));
+        }, chainId));
 
         return resolveProcess(targetProcessId, commitments);
     };
