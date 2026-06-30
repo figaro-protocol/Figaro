@@ -20,12 +20,7 @@
  * each step independently.
  */
 
-import {
-    type Agreement,
-    type RedactableAgreement,
-    computeSectionLeaf,
-    isRedactedSection,
-} from "@/lib/core/agreement";
+import { type Agreement, computeSectionLeaf } from "@figaro/core";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/composition/useGHGDisclosure";
 import type { ExtractedDocument } from "./types";
@@ -60,7 +55,7 @@ export interface HashAppendixDocument extends ExtractedDocument {
 
 export function buildHashAppendix(
     order: Order,
-    agreement: Agreement | RedactableAgreement,
+    agreement: Agreement,
     attestations: readonly AttestationRecord[],
 ): HashAppendixDocument {
     const anchors: HashAnchor[] = [];
@@ -87,19 +82,14 @@ export function buildHashAppendix(
         sourceLocation: "OrderCommitted.agreementHash (matches keccak256 of canonical agreement JSON, computed as merkle root over section leaves)",
     });
 
-    // 3. Each agreement section's leaf. Redacted sections carry their leaf
-    //    directly; cleartext sections compute it on the fly. The hash itself
-    //    is identical regardless — only the verifier's reconstruction path
-    //    differs (read-and-recompute vs trust-the-leaf).
+    // 3. Each agreement section's leaf — every section is cleartext (the IPFS
+    //    body carries them in full), so the leaf is recomputed on the fly.
     for (const section of agreement.sections) {
-        const redacted = isRedactedSection(section);
         anchors.push({
             kind: "agreement-section-leaf",
-            label: `Section leaf — ${section.clause}${redacted ? " (sealed)" : ""}`,
-            hash: redacted ? section.leaf : computeSectionLeaf(section),
-            sourceLocation: redacted
-                ? `Merkle leaf under agreementHash root. Section is redacted in this distribution; cleartext is held by the original parties and can be revealed selectively. Reader recomputes from revealed cleartext via computeSectionLeaf(...) and checks it matches this leaf.`
-                : `Merkle leaf under agreementHash root. Reader recomputes via computeSectionLeaf({clause: "${section.clause}", data}) and verifies inclusion in the agreementHash tree.`,
+            label: `Section leaf — ${section.clause}`,
+            hash: computeSectionLeaf(section),
+            sourceLocation: `Merkle leaf under agreementHash root. Reader recomputes via computeSectionLeaf({clause: "${section.clause}", data}) and verifies inclusion in the agreementHash tree.`,
         });
     }
 

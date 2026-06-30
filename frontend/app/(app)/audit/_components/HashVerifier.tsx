@@ -28,14 +28,10 @@
 import { useState, useMemo } from "react";
 import {
     computeAgreementHash,
-    computeRedactableAgreementHash,
     computeSectionLeaf,
-    isRedactedSection,
     type Agreement,
     type AgreementSection,
-    type AnyAgreementSection,
-    type RedactableAgreement,
-} from "@/lib/core/agreement";
+} from "@figaro/core";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -134,37 +130,23 @@ function AgreementMode() {
     const result = useMemo(() => {
         if (!json.trim()) return { kind: "idle" as const };
         try {
-            const parsed = JSON.parse(json) as Agreement | RedactableAgreement;
+            const parsed = JSON.parse(json) as Agreement;
             if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.sections)) {
                 return { kind: "error" as const, message: "Parsed JSON is not an Agreement (missing sections array)." };
             }
-            // Validate each section: must be either cleartext ({ clause, data })
-            // or redacted ({ clause, leaf, redacted: true }). Mixing is allowed.
-            for (const s of parsed.sections as AnyAgreementSection[]) {
+            // Every section is cleartext ({ clause, data }) — the IPFS body
+            // carries them all. Selective disclosure is a merkle inclusion proof,
+            // not a redacted agreement form.
+            for (const s of parsed.sections as AgreementSection[]) {
                 if (!s || typeof s !== "object" || typeof s.clause !== "string") {
                     return { kind: "error" as const, message: "Each section must have a string `clause` field." };
                 }
-                if (isRedactedSection(s)) {
-                    if (typeof s.leaf !== "string" || !s.leaf.startsWith("0x")) {
-                        return { kind: "error" as const, message: `Redacted section "${s.clause}" missing valid 0x-prefixed leaf.` };
-                    }
-                } else {
-                    if (typeof (s as AgreementSection).data !== "object") {
-                        return {
-                            kind: "error" as const,
-                            message: `Section "${s.clause}" missing data field (or use { leaf, redacted: true } for redacted form).`,
-                        };
-                    }
+                if (typeof s.data !== "object") {
+                    return { kind: "error" as const, message: `Section "${s.clause}" missing data field.` };
                 }
             }
-            const hasRedacted = (parsed.sections as AnyAgreementSection[]).some(isRedactedSection);
-            const hash = hasRedacted
-                ? computeRedactableAgreementHash(parsed as RedactableAgreement)
-                : computeAgreementHash(parsed as Agreement);
-            const redactedClauses = (parsed.sections as AnyAgreementSection[])
-                .filter(isRedactedSection)
-                .map((s) => s.clause);
-            return { kind: "ok" as const, hash, redactedClauses };
+            const hash = computeAgreementHash(parsed);
+            return { kind: "ok" as const, hash, redactedClauses: [] as string[] };
         } catch (e) {
             return { kind: "error" as const, message: extractErrorMessage(e, "JSON parse failed.") };
         }
@@ -175,11 +157,7 @@ function AgreementMode() {
             <p className="text-xs text-neutral-600">
                 Paste an `Agreement` JSON (the off-chain document referenced by `agreementHash`).
                 The recomputed merkle root is shown below — compare to the on-chain
-                `OrderCommitted.agreementHash` event field. Redacted forms are
-                accepted: any section can be{" "}
-                <code className="font-mono">{"{ clause, leaf, redacted: true }"}</code>{" "}
-                instead of <code className="font-mono">{"{ clause, data }"}</code>, and the
-                merkle root is the same value either way.
+                `OrderCommitted.agreementHash` event field.
             </p>
             <label className="block text-xs font-semibold text-neutral-700">
                 Agreement JSON

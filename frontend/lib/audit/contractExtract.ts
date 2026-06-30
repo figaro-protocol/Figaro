@@ -13,12 +13,9 @@
 import {
     type Agreement,
     type AgreementSection,
-    type AnyAgreementSection,
-    type RedactableAgreement,
     computeSectionLeaf,
-    isRedactedSection,
-} from "@/lib/core/agreement";
-import { findCleartextSectionByField } from "@/lib/core/orderAgreement";
+} from "@figaro/core";
+import { sectionByField } from "@/lib/core/agreementSections";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import type { Order } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
@@ -94,16 +91,10 @@ export interface ContractDocument extends ExtractedDocument {
     committedAtBlock?: number;
 }
 
-function clauseFromSection(section: AnyAgreementSection): ContractClause {
-    if (isRedactedSection(section)) {
-        return {
-            clauseKey: section.clause,
-            title: clauseTitle(section.clause),
-            body: {},
-            leafHash: section.leaf,
-            sealed: true,
-        };
-    }
+function clauseFromSection(section: AgreementSection): ContractClause {
+    // Agreements are cleartext: the IPFS body carries every section in full and
+    // the audit recomputes each leaf. Selective disclosure, if ever needed, is a
+    // merkle inclusion proof (@figaro/core), not a redacted distribution form.
     return {
         clauseKey: section.clause,
         title: clauseTitle(section.clause),
@@ -112,8 +103,8 @@ function clauseFromSection(section: AnyAgreementSection): ContractClause {
     };
 }
 
-function extractJurisdictionSummary(agreement: Agreement | RedactableAgreement) {
-    const applicableLaw = findCleartextSectionByField(agreement, "applicableLaw");
+function extractJurisdictionSummary(agreement: Agreement) {
+    const applicableLaw = sectionByField(agreement, "applicableLaw");
     if (!applicableLaw) return undefined;
     const data = applicableLaw.data as { applicableLaw?: string; forum?: string; language?: string };
     if (!data.applicableLaw || typeof data.applicableLaw !== "string") return undefined;
@@ -124,8 +115,8 @@ function extractJurisdictionSummary(agreement: Agreement | RedactableAgreement) 
     };
 }
 
-function extractTopology(agreement: Agreement | RedactableAgreement) {
-    const topology = findCleartextSectionByField(agreement, "parentOrderHashes");
+function extractTopology(agreement: Agreement) {
+    const topology = sectionByField(agreement, "parentOrderHashes");
     const data = topology?.data as
         | { parentOrderHashes?: unknown; topologyMode?: unknown }
         | undefined;
@@ -136,17 +127,17 @@ function extractTopology(agreement: Agreement | RedactableAgreement) {
     return { parentOrderHashes, topologyMode };
 }
 
-function extractMethodSummary(agreement: Agreement | RedactableAgreement) {
+function extractMethodSummary(agreement: Agreement) {
     // The modality + coordination sections are found by their declared
     // FIELDS, never by clause name. Both are single-select scalars; the raw
     // values flow through verbatim — an unseen modality the registry defines
     // must NOT fall into an undefined hole (open-world).
-    const modalityData = findCleartextSectionByField(agreement, "modality")?.data as
+    const modalityData = sectionByField(agreement, "modality")?.data as
         | { modality?: unknown }
         | undefined;
     const modality = typeof modalityData?.modality === "string" ? modalityData.modality : undefined;
     if (!modality) return undefined;
-    const coordinationData = findCleartextSectionByField(agreement, "coordination")?.data as
+    const coordinationData = sectionByField(agreement, "coordination")?.data as
         | { coordination?: unknown }
         | undefined;
     const coordination = typeof coordinationData?.coordination === "string"
@@ -157,14 +148,14 @@ function extractMethodSummary(agreement: Agreement | RedactableAgreement) {
 
 export function extractContract(
     order: Order,
-    agreement: Agreement | RedactableAgreement,
+    agreement: Agreement,
 ): ContractDocument {
     // Currency: prefer the agreement's commerce-section currency (signed by both
     // parties) over the order's currency field (which is event-derived, normally
     // identical, but the commerce section is the authoritative party-signed
     // source). When commerce is redacted, fall back to order.currency — the
     // kernel records currency on the commitment regardless of redaction.
-    const commerce = findCleartextSectionByField(agreement, "lineItems");
+    const commerce = sectionByField(agreement, "lineItems");
     const commerceCurrency = (commerce?.data as { currency?: string } | undefined)?.currency;
 
     return {

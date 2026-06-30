@@ -21,7 +21,7 @@
  * `docs/v5/BOL_RESEARCH.md` for the full rationale.
  */
 
-import { type Agreement, type RedactableAgreement } from "@/lib/core/agreement";
+import type { Agreement } from "@figaro/core";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/composition/useGHGDisclosure";
 import { extractContract, type ContractDocument } from "./contractExtract";
@@ -66,7 +66,7 @@ export interface AuditBundleInputs {
 
 export function buildAuditBundle(
     order: Order,
-    agreement: Agreement | RedactableAgreement,
+    agreement: Agreement,
     attestations: readonly AttestationRecord[],
     inputs: AuditBundleInputs = {},
 ): AuditBundle {

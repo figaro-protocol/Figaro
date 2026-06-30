@@ -12,8 +12,7 @@
 
 import type { PublicClient } from "viem";
 import type { Order } from "@/lib/core/store";
-import { redactSections, type Agreement } from "@/lib/core/agreement";
-import { sectionsByField } from "@/lib/core/orderAgreement";
+import type { Agreement } from "@figaro/core";
 import { getAllSellerRegistered } from "@/lib/core/indexer";
 import {
     getAttestationsByOrder,
@@ -142,7 +141,6 @@ export async function buildAuditBundlePdfBlob(
     agreements: Map<string, Agreement>,
     options: BuildAuditBundlePdfOptions = {},
 ): Promise<Blob> {
-    const redactLineItems = options.redactLineItems ?? false;
     const perOrderBundles: AuditBundle[] = [];
 
     let auctionCreatedAll: DutchAuctionCreatedEvent[] = [];
@@ -177,14 +175,9 @@ export async function buildAuditBundlePdfBlob(
         if (!cleartextAgreement) {
             continue;
         }
-        // The commerce section is found by its declared `lineItems` field —
-        // redaction targets whatever registered clause carries the basket.
-        const agreement = redactLineItems
-            ? redactSections(
-                cleartextAgreement,
-                sectionsByField(cleartextAgreement, "lineItems").map((s) => s.clause),
-            )
-            : cleartextAgreement;
+        // Agreements are cleartext end to end (the IPFS body carries every
+        // section in full). No redacted distribution form.
+        const agreement = cleartextAgreement;
 
         let attestations: readonly AttestationRecord[] = [];
         if (publicClient) {

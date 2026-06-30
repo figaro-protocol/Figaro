@@ -11,7 +11,7 @@
  * applies to attestation timelines.
  */
 
-import { type Agreement, type RedactableAgreement } from "@/lib/core/agreement";
+import type { Agreement } from "@figaro/core";
 import { describeClause, type ClauseDescription } from "@/lib/shared/clauseSpecSource";
 import type { Order } from "@/lib/core/store";
 import type { ExtractedDocument } from "./types";
@@ -25,7 +25,7 @@ export interface ClauseDataDocument extends ExtractedDocument {
 
 export function extractClauseData(
     order: Order,
-    agreement: Agreement | RedactableAgreement,
+    agreement: Agreement,
 ): ClauseDataDocument {
     const clauses = agreement.sections
         .map((section) =>
