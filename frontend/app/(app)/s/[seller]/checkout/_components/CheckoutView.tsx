@@ -30,7 +30,7 @@ import { executeAssemblyCheckout } from "@/lib/commerce/assemblyCheckout";
 import { templateParentOrderHashes } from "@/lib/designer/assemblyTemplate";
 import { CommitmentSharePanel } from "@/components/core/CommitmentSharePanel";
 import { SellerCataloguePicker, type SellerSelection } from "@/components/core/SellerCataloguePicker";
-import { useDutchAuctionActions } from "@/lib/mechanisms/useDutchAuction";
+import { useDutchAuctionActions } from "@/lib/composition/useDutchAuction";
 import { useTokenSymbol } from "@/components/sellers/TokenAddressInput";
 import { calculateBonds } from "@figaro/core";
 import { extractErrorMessage } from "@/lib/shared/errors";

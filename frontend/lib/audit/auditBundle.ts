@@ -23,7 +23,7 @@
 
 import { type Agreement, type RedactableAgreement } from "@/lib/core/agreement";
 import type { Order } from "@/lib/core/store";
-import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
+import type { AttestationRecord } from "@/lib/composition/useGHGDisclosure";
 import { extractContract, type ContractDocument } from "./contractExtract";
 import { extractProcessLogs, type ProcessLogsDocument } from "./processLogsExtract";
 import { extractClauseData, type ClauseDataDocument } from "./clauseDataExtract";

@@ -25,7 +25,7 @@ vi.mock("@/lib/core/contracts", async () => {
     };
 });
 
-import { getOffsetAggregators } from "@/lib/mechanisms/offsetAggregators";
+import { getOffsetAggregators } from "@/lib/composition/offsetAggregators";
 
 describe("getOffsetAggregators", () => {
     beforeEach(() => {

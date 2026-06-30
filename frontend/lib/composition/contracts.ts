@@ -16,6 +16,10 @@ export const COMPOSITION_CONTRACTS = {
     attestationCoordinator: (process.env.NEXT_PUBLIC_ATTESTATION_COORDINATOR || "") as `0x${string}`,
     dutchAuction: (process.env.NEXT_PUBLIC_DUTCH_AUCTION || "") as `0x${string}`,
     processOffsetReceipt: (process.env.NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT || "") as `0x${string}`,
+    // Carbon-offset aggregator. On a local chain this env points at a generic
+    // mock router standing in for the real service (KLIMA, …) that isn't deployed
+    // on Anvil — a real on-chain composition target, not a truth-faking mock.
+    offsetAggregator: (process.env.NEXT_PUBLIC_MOCK_OFFSET_AGGREGATOR || "") as `0x${string}`,
 };
 
 function resolveAddress(addr: `0x${string}`): `0x${string}` | null {

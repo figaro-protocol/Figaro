@@ -29,7 +29,9 @@ import {
     useWriteContract,
 } from "wagmi";
 import { type Address, type Hex } from "viem";
-import { CONTRACTS, ERC20_ABI, PROCESS_OFFSET_RECEIPT_ABI } from "@/lib/core/contracts";
+import { ERC20_ABI } from "@/lib/core/contracts";
+import { PROCESS_OFFSET_RECEIPT_ABI } from "@/lib/composition/abis";
+import { COMPOSITION_CONTRACTS } from "@/lib/composition/contracts";
 import { activeChain } from "@/lib/shared/chains";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import {
@@ -37,8 +39,8 @@ import {
     type AggregatorQuote,
     getOffsetAggregators,
     type OffsetProvider,
-} from "@/lib/mechanisms/offsetAggregators";
-import { useProcessDisclosureSummary } from "@/lib/mechanisms/useGHGDisclosure";
+} from "@/lib/composition/offsetAggregators";
+import { useProcessDisclosureSummary } from "@/lib/composition/useGHGDisclosure";
 
 type OffsetRetirementStatus =
     | "idle"
@@ -228,7 +230,7 @@ export function useOffsetRetirement(processId: Hex | undefined): UseOffsetRetire
 
     const recordReceipt = useCallback(async () => {
         if (!adapter || !processId || !buyer || !retireTxHash || !quote) return;
-        const receiptsAddress = CONTRACTS.processOffsetReceipt;
+        const receiptsAddress = COMPOSITION_CONTRACTS.processOffsetReceipt;
         if (!receiptsAddress || receiptsAddress.length !== 42) return;
         setActionInFlight("record");
         setActionError(null);
@@ -256,7 +258,7 @@ export function useOffsetRetirement(processId: Hex | undefined): UseOffsetRetire
     }, [adapter, processId, buyer, retireTxHash, quote, tonsToRetire, writeContractAsync]);
 
     // Status derivation — single source of truth, no internal status state.
-    const receiptsAnchorAddress = CONTRACTS.processOffsetReceipt;
+    const receiptsAnchorAddress = COMPOSITION_CONTRACTS.processOffsetReceipt;
     const status: OffsetRetirementStatus = useMemo(() => {
         if (actionError) return "error";
         if (totalGrams === 0n) return "no-measurements";

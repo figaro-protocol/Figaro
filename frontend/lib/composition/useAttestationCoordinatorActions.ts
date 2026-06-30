@@ -4,7 +4,8 @@ import { useCallback, useState } from "react";
 import { useAccount, usePublicClient, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { activeChain } from "@/lib/shared/chains";
 import type { Hex } from "viem";
-import { CONTRACTS, ATTESTATION_COORDINATOR_ABI } from "@/lib/core/contracts";
+import { ATTESTATION_COORDINATOR_ABI } from "@/lib/composition/abis";
+import { COMPOSITION_CONTRACTS } from "@/lib/composition/contracts";
 import { loadOrFetchCommitment } from "@/lib/core/commitmentStore";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { hydrateAgreement } from "@/lib/core/agreementStore";
@@ -50,7 +51,7 @@ export function useAttestationCoordinatorActions() {
     const { address } = useAccount();
     const publicClient = usePublicClient();
     const chain = activeChain;
-    const coordinator = CONTRACTS.attestationCoordinator;
+    const coordinator = COMPOSITION_CONTRACTS.attestationCoordinator;
     const hasCoordinator = !!coordinator && coordinator.length === 42;
     const { writeContractAsync, data: hash, isPending } = useWriteContract();
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });

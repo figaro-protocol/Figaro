@@ -24,7 +24,7 @@ import { getActiveSellers } from "@/lib/core/indexer";
 import { createUriFetcher } from "@/lib/shared/uriFetcher";
 import { tryParseSellerProfileDocument } from "@/lib/seller/sellerProfileMetadata";
 import type { PublicClient } from "viem";
-import { MECHANISM_CONTRACTS } from "@/lib/mechanisms/contracts";
+import { CONTRACTS } from "@/lib/core/contracts";
 import { usePublishedAssemblies } from "@/lib/core/useAssemblyRegistry";
 
 export interface UseSellerListingsResult {
@@ -42,8 +42,8 @@ const EMPTY_RESULT: UseSellerListingsResult = {
 };
 
 function isRegistryConfigured(): boolean {
-    return !!MECHANISM_CONTRACTS.sellerRegistry
-        && MECHANISM_CONTRACTS.sellerRegistry.length === 42;
+    return !!CONTRACTS.sellerRegistry
+        && CONTRACTS.sellerRegistry.length === 42;
 }
 
 const profileFetcher = createUriFetcher({

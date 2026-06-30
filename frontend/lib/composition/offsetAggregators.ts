@@ -27,7 +27,7 @@
  */
 
 import { parseAbi, type Address, type Hex, type PublicClient } from "viem";
-import { CONTRACTS } from "@/lib/core/contracts";
+import { COMPOSITION_CONTRACTS } from "@/lib/composition/contracts";
 import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 
 // ── Public types ─────────────────────────────────────────────────────────────
@@ -177,8 +177,9 @@ const MOCK_OFFSET_AGGREGATOR_ABI = parseAbi([
 ] as const);
 
 function buildMockAdapter(): AggregatorAdapter | null {
-    const aggregator = CONTRACTS.mockOffsetAggregator;
-    const inputToken = CONTRACTS.mockErc20;
+    const aggregator = COMPOSITION_CONTRACTS.offsetAggregator;
+    // The token the offset swap consumes — the agnostic devnet payment token.
+    const inputToken = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS || "") as `0x${string}`;
     if (!aggregator || aggregator.length !== 42 || !inputToken || inputToken.length !== 42) {
         return null;
     }

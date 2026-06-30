@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useAccount, useChainId, usePublicClient, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { activeChain } from "@/lib/shared/chains";
-import { DUTCH_AUCTION_ABI } from "@/lib/core/contracts";
+import { DUTCH_AUCTION_ABI } from "@/lib/composition/abis";
 import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { getDutchAuction } from "@/lib/mechanisms/contracts";
+import { getDutchAuction } from "@/lib/composition/contracts";
 
 /**
  * Minimal order shape needed by the auction hook.

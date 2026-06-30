@@ -1,7 +1,7 @@
 import type { PublicClient } from 'viem';
 import { getActiveSellers } from '@/lib/core/indexer';
 import type { SellerCatalogue } from '@/lib/seller/types';
-import { MECHANISM_CONTRACTS } from '@/lib/mechanisms/contracts';
+import { CONTRACTS } from "@/lib/core/contracts";
 import { resolveContentUri } from "@/lib/shared/ipfsService";
 import type { SellerCatalogueMetadata } from '@/lib/seller/sellerCatalogueMetadata';
 import {
@@ -125,7 +125,7 @@ export function createDiscoveryService(
 
     const service: DiscoveryService = {
         isRegistryConfigured() {
-            return !!MECHANISM_CONTRACTS.sellerRegistry && MECHANISM_CONTRACTS.sellerRegistry.length === 42;
+            return !!CONTRACTS.sellerRegistry && CONTRACTS.sellerRegistry.length === 42;
         },
         async listCatalogues(client: PublicClient, chainId: number) {
             if (!service.isRegistryConfigured()) {

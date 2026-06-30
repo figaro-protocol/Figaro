@@ -10,7 +10,7 @@ import { extractClauseData } from "@/lib/audit/clauseDataExtract";
 import { extractProcessLogs } from "@/lib/audit/processLogsExtract";
 import { describeAttestation } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/core/useClauseSpecs";
-import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
+import type { AttestationRecord } from "@/lib/composition/useGHGDisclosure";
 
 /**
  * Clause evidence — the on-page rendering of the same `clauseData` +

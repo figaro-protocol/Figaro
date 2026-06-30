@@ -42,6 +42,12 @@ export const CONTRACTS: ChainConfig = {
     figToken: (process.env.NEXT_PUBLIC_FIG_TOKEN_ADDRESS || "") as `0x${string}`,
 };
 
+/** The SellerRegistry address if it's a well-formed address, else null. */
+export function getSellerRegistry(): `0x${string}` | null {
+    const a = CONTRACTS.sellerRegistry;
+    return /^0x[0-9a-fA-F]{40}$/.test(a) ? a : null;
+}
+
 // Runtime validation helper.
 export function getMissingContractEnv(): string[] {
     const missing: string[] = [];

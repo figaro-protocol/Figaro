@@ -10,7 +10,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { gramsToTonsCeil1e18 } from "@/lib/mechanisms/useOffsetRetirement";
+import { gramsToTonsCeil1e18 } from "@/lib/composition/useOffsetRetirement";
 
 const ONE_TONNE_IN_1E18 = 10n ** 18n;
 

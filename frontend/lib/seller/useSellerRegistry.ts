@@ -13,7 +13,8 @@
  */
 import { useCallback, useState, useEffect } from "react";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId, useReadContract } from "wagmi";
-import { getSellerRegistry, SELLER_REGISTRY_ABI } from "@/lib/mechanisms/contracts";
+import { getSellerRegistry } from "@/lib/core/contracts";
+import { SELLER_REGISTRY_ABI } from "@figaro/core";
 import { getSellerState, getSellerMetadataURI } from "@/lib/core/indexer";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { resolveContentUri } from "@/lib/shared/ipfsService";

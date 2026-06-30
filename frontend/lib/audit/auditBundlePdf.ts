@@ -33,7 +33,7 @@ import {
     projectFinancials,
     type FinancialsModel,
 } from "@/lib/semantic/financialsProjection";
-import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
+import type { AttestationRecord } from "@/lib/composition/useGHGDisclosure";
 import {
     buildExtendedTimeline,
     buildProcessTimeline,

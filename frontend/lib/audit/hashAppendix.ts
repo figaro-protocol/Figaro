@@ -27,7 +27,7 @@ import {
     isRedactedSection,
 } from "@/lib/core/agreement";
 import type { Order } from "@/lib/core/store";
-import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
+import type { AttestationRecord } from "@/lib/composition/useGHGDisclosure";
 import type { ExtractedDocument } from "./types";
 import { truncateHex } from "@/lib/shared/formatHex";
 
