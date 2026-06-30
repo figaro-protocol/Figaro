@@ -4,7 +4,7 @@
  * A buyer signature makes the order FINAL, so this is the first point it may be
  * pinned to IPFS. The signed payload (commitment + signatures + the agreement,
  * inline) is pinned and its CID is relayed to the seller over the coordination
- * channel, keyed by the on-chain order hash. The seller's inbox
+ * channel, keyed by the on-chain order hash. The seller's /orders pending view
  * (orderPendingSellerSignature) surfaces it to counter-sign.
  *
  * core/ depends on no feature layer: the relay capability is a minimal

@@ -198,7 +198,7 @@ export const DEFAULT_COORDINATION_MESSAGING_SERVICE: CoordinationMessagingServic
 
 /**
  * Dereference an IPFS-pinned commitment payload to its JSON string.
- * Used by inbox-style subscribers that receive a CID and need the
+ * Used by /orders-style subscribers that receive a CID and need the
  * underlying AnyCommitmentPayload JSON for parsing.
  */
 export async function fetchCommitmentPayloadJsonByCid(

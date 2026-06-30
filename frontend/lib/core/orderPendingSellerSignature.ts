@@ -25,8 +25,9 @@ import {
 
 /**
  * Awaiting MY counter-signature: I am a party, the OTHER party has signed, I
- * have not. The seller inbox's filter. (A seller-initiated order reaches the
- * BUYER's inbox the same way, so this is symmetric in the parties.)
+ * have not. The seller's /orders pending filter. (A seller-initiated order
+ * reaches the BUYER's pending view the same way, so this is symmetric in the
+ * parties.)
  */
 export function awaitsMyCounterSign(p: CommitmentPayload, address: string): boolean {
     const isSeller = hexEqual(address, p.commitment.seller);

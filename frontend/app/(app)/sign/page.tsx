@@ -29,7 +29,7 @@ import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { fetchCommitmentPayloadJsonByCid } from "@/lib/handoff/coordinationMessagingService";
 import { truncateHex } from "@/lib/shared/formatHex";
 
-type InboxStatus = "idle" | "listening" | "received" | "error";
+type ChannelStatus = "idle" | "listening" | "received" | "error";
 
 function SignPageContent() {
     const { address } = useAccount();
@@ -44,9 +44,9 @@ function SignPageContent() {
     const [parsed, setParsed] = useState<CommitmentPayload | null>(null);
     const [parseError, setParseError] = useState<string | null>(null);
     const [approvalDone, setApprovalDone] = useState(false);
-    const [inboxStatus, setInboxStatus] = useState<InboxStatus>("idle");
-    const [inboxError, setInboxError] = useState<string | null>(null);
-    const [loadedFromInbox, setLoadedFromInbox] = useState(false);
+    const [channelStatus, setChannelStatus] = useState<ChannelStatus>("idle");
+    const [channelError, setChannelError] = useState<string | null>(null);
+    const [loadedFromChannel, setLoadedFromChannel] = useState(false);
 
     // Reset approval state when a new commitment is parsed
     useEffect(() => { setApprovalDone(false); }, [parsed]);
@@ -73,7 +73,7 @@ function SignPageContent() {
     }, []);
 
     const handleParse = async () => {
-        setLoadedFromInbox(false);
+        setLoadedFromChannel(false);
         await parseSerializedPayload(rawInput.trim());
     };
 
@@ -85,7 +85,7 @@ function SignPageContent() {
 
         hydratedPayloadRef.current = linkedPayload;
         setRawInput((current) => current || linkedPayload);
-        setLoadedFromInbox(false);
+        setLoadedFromChannel(false);
         void parseSerializedPayload(linkedPayload);
     }, [parseSerializedPayload, searchParams]);
 
@@ -97,8 +97,8 @@ function SignPageContent() {
 
         let cancelled = false;
         let cleanup: (() => void) | null = null;
-        setInboxStatus("listening");
-        setInboxError(null);
+        setChannelStatus("listening");
+        setChannelError(null);
 
         void coordinationMessaging.subscribeAnyCommitmentPayload({
             address,
@@ -116,8 +116,8 @@ function SignPageContent() {
                     );
                 } catch (error) {
                     if (!cancelled) {
-                        setInboxStatus("error");
-                        setInboxError(extractErrorMessage(error, "Could not fetch the commitment payload from IPFS."));
+                        setChannelStatus("error");
+                        setChannelError(extractErrorMessage(error, "Could not fetch the commitment payload from IPFS."));
                     }
                     return;
                 }
@@ -127,16 +127,16 @@ function SignPageContent() {
                 const nextPayload = await parseSerializedPayload(payloadJson);
                 if (cancelled || !nextPayload) {
                     if (!cancelled && !nextPayload) {
-                        setInboxStatus("error");
-                        setInboxError("Received an invalid commitment payload over XMTP.");
+                        setChannelStatus("error");
+                        setChannelError("Received an invalid commitment payload over XMTP.");
                     }
                     return;
                 }
 
                 receivedTransportOrderIdsRef.current.add(orderId);
-                setLoadedFromInbox(true);
+                setLoadedFromChannel(true);
                 setRawInput(payloadJson);
-                setInboxStatus("received");
+                setChannelStatus("received");
             },
         }).then((unsubscribe) => {
             if (cancelled) {
@@ -150,8 +150,8 @@ function SignPageContent() {
                 return;
             }
 
-            setInboxStatus("error");
-            setInboxError(extractErrorMessage(error, "Could not open the XMTP inbox."));
+            setChannelStatus("error");
+            setChannelError(extractErrorMessage(error, "Could not open the XMTP channel."));
         });
 
         return () => {
@@ -174,9 +174,9 @@ function SignPageContent() {
         setRawInput("");
         setParsed(null);
         setParseError(null);
-        setInboxStatus("idle");
-        setInboxError(null);
-        setLoadedFromInbox(false);
+        setChannelStatus("idle");
+        setChannelError(null);
+        setLoadedFromChannel(false);
         receivedTransportOrderIdsRef.current.clear();
         reset();
     };
@@ -212,15 +212,15 @@ function SignPageContent() {
 
             {!parsed && !rawInput.trim() && !searchParams.get("payload") && address && (
                 <Card className="p-4 space-y-2">
-                    <h2 className="text-sm font-semibold text-neutral-900">Secure Channel Inbox</h2>
-                    {inboxStatus === "listening" && (
-                        <p className="text-xs text-blue-600" data-testid="xmtp-commitment-inbox-status">
+                    <h2 className="text-sm font-semibold text-neutral-900">Secure Channel</h2>
+                    {channelStatus === "listening" && (
+                        <p className="text-xs text-blue-600" data-testid="xmtp-commitment-channel-status">
                             Listening for incoming commitment payloads over XMTP…
                         </p>
                     )}
-                    {inboxStatus === "error" && (
-                        <p className="text-xs text-amber-700" data-testid="xmtp-commitment-inbox-status">
-                            {inboxError ?? "Could not open the XMTP inbox."}
+                    {channelStatus === "error" && (
+                        <p className="text-xs text-amber-700" data-testid="xmtp-commitment-channel-status">
+                            {channelError ?? "Could not open the XMTP channel."}
                         </p>
                     )}
                     <p className="text-xs text-neutral-500">
@@ -305,7 +305,7 @@ function SignPageContent() {
                         </span>
                     </div>
 
-                    {loadedFromInbox && (
+                    {loadedFromChannel && (
                         <p className="text-xs text-green-700 rounded bg-green-50 border border-green-200 px-2 py-1">
                             Received via XMTP secure channel.
                         </p>

@@ -149,7 +149,7 @@ export function CheckoutView({ sellerAddress }: Props) {
 
     // No post-place redirect: in the bilateral relay the buyer signs + shares,
     // then stays on the share panel; each order commits when its seller
-    // counter-signs in their inbox. The buyer is never the broadcaster here.
+    // counter-signs in their /orders list. The buyer is never the broadcaster here.
 
     if (cataloguesLoading) {
         return (

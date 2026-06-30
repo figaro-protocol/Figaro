@@ -41,10 +41,11 @@ const nextConfig = {
             { source: '/figaro-eats/:path*', destination: '/local-commerce/:path*', permanent: true },
             // /i/[slug] removed 2026-05: the assembly runtime was a
             // builder/debug surface that doubled as a parameterised
-            // operator shell. Consumers now go through /m/<merchant> →
-            // /orders/<processId> (buyer) and /inbox (merchant); builders
-            // inspect via /builders/designer/view/<slug>. Inbound legacy
-            // bookmarks redirect to /discover.
+            // operator shell. Consumers now go through /s/<seller> →
+            // checkout → /orders (both parties act there — there is no
+            // separate inbox); builders inspect via
+            // /builders/designer/view/<slug>. Inbound legacy bookmarks
+            // redirect to /discover.
             { source: '/i/:slug', destination: '/discover', permanent: true },
             { source: '/i/:slug/:path*', destination: '/discover', permanent: true },
             // The pre-rename /i/figaro-eats path passes through /i/:slug above.

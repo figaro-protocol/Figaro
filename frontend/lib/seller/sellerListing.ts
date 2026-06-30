@@ -110,7 +110,7 @@ export function findListingByAddress(
 /** Resolve an address to a human-readable display name using the loaded
  *  registry listings, falling back to the truncated address when the
  *  wallet isn't registered (or the listings haven't loaded yet). Used by
- *  every counterparty-name surface (inbox, orders list, order timeline). */
+ *  every counterparty-name surface (orders list, order timeline). */
 export function displayNameForAddress(
     listings: ReadonlyArray<Listing>,
     address: string,

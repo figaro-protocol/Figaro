@@ -300,7 +300,7 @@ export async function createXmtpChannel(
                         callback(parsed.payloadCid, parsed.orderId);
                     }
                 } catch (err) {
-                    console.warn("[xmtp] commitment inbox listener error:", err);
+                    console.warn("[xmtp] commitment channel listener error:", err);
                 }
             };
 

@@ -5,7 +5,7 @@
  * Flow:
  *   1. The buyer signs the order → the panel shows its details.
  *   2. The buyer relays it to the seller (XMTP, or QR/copy for the /sign page).
- *   3. The seller counter-signs and commits on-chain (in their /orders inbox).
+ *   3. The seller counter-signs and commits on-chain (in their /orders list).
  */
 
 "use client";
