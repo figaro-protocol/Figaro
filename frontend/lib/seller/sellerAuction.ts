@@ -16,7 +16,7 @@
  * (IPFS pin + XMTP CID) is the documented follow-on for a production relay.
  */
 import { keccak256, encodePacked, type Hex } from "viem";
-import type { BuildOrderAgreementParams } from "@/lib/core/orderAgreement";
+import type { ClauseFields } from "@/lib/core/encoding";
 import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
 
 /**
@@ -38,7 +38,7 @@ export interface SellerAuctionDraft {
     currency: Hex;
     processId: Hex;
     parentOrderHashes: Hex[];
-    clauseFields: BuildOrderAgreementParams["clauseFields"];
+    clauseFields: ClauseFields;
     /** Human-readable street address, sent to the seller over the
      *  coordination channel after the delivery order commits. */
     deliveryAddress?: string;

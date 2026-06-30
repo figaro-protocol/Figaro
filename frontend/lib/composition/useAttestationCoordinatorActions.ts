@@ -6,14 +6,11 @@ import { activeChain } from "@/lib/shared/chains";
 import type { Hex } from "viem";
 import { ATTESTATION_COORDINATOR_ABI } from "@/lib/composition/abis";
 import { COMPOSITION_CONTRACTS } from "@/lib/composition/contracts";
-import { loadOrFetchCommitment } from "@/lib/core/commitmentStore";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { fetchAgreement } from "@/lib/core/agreementFetch";
-import {
-    buildSectionInclusionProof,
-    getSectionById,
-    getSectionDataBytes,
-} from "@/lib/core/agreement";
+import { getAllOrderCommitted, getStringArg } from "@/lib/core/indexer";
+import { hexEqual, clauseIdHash } from "@/lib/shared/evm";
+import { buildSectionInclusionProof, getSectionDataBytes, type Commitment } from "@figaro/core";
 
 type SellerAttestationInput = {
     /** The order being attested — its `agreementHash` anchors the inclusion proof. */
@@ -72,16 +69,28 @@ export function useAttestationCoordinatorActions() {
             setError(message);
             throw new Error(message);
         }
-        const c = await loadOrFetchCommitment(
-            publicClient,
-            publicClient.chain?.id ?? 31337,
-            orderHash,
-        );
-        if (!c) {
+        // Reconstruct the target Commitment from its OrderCommitted event — the
+        // indexer is the source, no commitment store.
+        const chainId = publicClient.chain?.id ?? 31337;
+        const log = (await getAllOrderCommitted(publicClient, chainId))
+            .find((l) => getStringArg(l, "orderHash") === orderHash);
+        if (!log) {
             const message = `Unable to reconstruct commitment for ${orderHash.slice(0, 10)}…`;
             setError(message);
             throw new Error(message);
         }
+        const args = (log as { args?: Record<string, unknown> }).args ?? {};
+        const c: Commitment = {
+            processId: String(args.processId) as Hex,
+            buyer: String(args.buyer) as Hex,
+            seller: String(args.seller) as Hex,
+            currency: String(args.currency) as Hex,
+            payment: BigInt((args.payment as bigint | string | number) ?? 0),
+            expectedCumulativeValue: BigInt((args.cumulativeValue as bigint | string | number) ?? 0),
+            agreementHash: String(args.agreementHash) as Hex,
+            salt: BigInt((args.salt as bigint | string | number) ?? 0),
+            deadline: BigInt((args.deadline as bigint | string | number) ?? 0),
+        };
         return c;
     }, [publicClient]);
 
@@ -99,7 +108,9 @@ export function useAttestationCoordinatorActions() {
             setError(message);
             throw new Error(message);
         }
-        const section = getSectionById(agreement, clauseId);
+        // The clauseId here is a runtime value (the clause being attested), not a
+        // hardcoded literal — find its section by matching the on-chain id.
+        const section = agreement.sections.find((s) => hexEqual(clauseIdHash(s.clause, s.version), clauseId));
         if (!section) {
             const message = `Clause ${clauseId.slice(0, 10)}… not committed in the signed agreement`;
             setError(message);
