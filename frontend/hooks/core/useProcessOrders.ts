@@ -5,9 +5,9 @@
  *
  * Returns the live Order[] for a given processId (or all orders when null).
  *
- * • Mock mode (?e2e=mock): subscribes to the module-level mockEventStore.
- * • Real mode: loads history via getLogs on mount, then streams live updates
- *   via watchContractEvent.
+ * Loads history via getLogs on mount, then streams live updates via
+ * watchContractEvent — reads come from the indexer only, no mock source.
+ * Agreement bodies are NOT hydrated here; useProcessAgreements owns that.
  *
  * The kernel uses a unified `commit()` (no separate offer/accept), and
  * OrderCommitted events carry salt + deadline rather than bond + timestamp;
@@ -18,14 +18,10 @@ import { useState, useEffect, useCallback } from "react";
 import { usePublicClient, useWatchContractEvent } from "wagmi";
 import { CORE_ABI, CONTRACTS } from "@/lib/core/contracts";
 import { Order, OrderState, useOrderStore } from "@/lib/core/store";
-import { mockSubscribe, mockGetOrders } from "@/lib/core/mockEventStore";
-import { hydrateAgreement, loadAgreement } from "@/lib/core/agreementStore";
 import {
     getAllOrderCommitted,
     getAllOrderResolved,
 } from "@/lib/core/indexer";
-import { ZERO_BYTES32 } from "@/lib/shared/evm";
-import { isE2EMockSession } from "@/lib/shared/e2e";
 import { calculateBonds } from "@figaro/core";
 
 // ---------------------------------------------------------------------------
@@ -103,10 +99,7 @@ function applyLogToOrders(
 // ---------------------------------------------------------------------------
 
 export function useProcessOrders(processId: string | null): Order[] {
-    const isE2EMock = isE2EMockSession();
-
     const [orders, setOrders] = useState<Order[]>([]);
-    const [, setAgreementRefresh] = useState(0);
     const publicClient = usePublicClient();
     const contractAddr = CONTRACTS.core || undefined;
     const processReloadKey = useOrderStore((s) => s.processReloadKey);
@@ -127,7 +120,7 @@ export function useProcessOrders(processId: string | null): Order[] {
     // Real mode: load historical logs on mount / when processId changes
     // ------------------------------------------------------------------
     useEffect(() => {
-        if (isE2EMock || !publicClient || !contractAddr || !shouldLoad) return;
+        if (!publicClient || !contractAddr || !shouldLoad) return;
 
         let cancelled = false;
         const chainId = publicClient.chain?.id ?? 31337;
@@ -171,12 +164,12 @@ export function useProcessOrders(processId: string | null): Order[] {
             setOrders([]);
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [publicClient, contractAddr, processId, isE2EMock, processReloadKey]);
+    }, [publicClient, contractAddr, processId, processReloadKey]);
 
     // ------------------------------------------------------------------
-    // Real mode: live event watchers
+    // Live event watchers
     // ------------------------------------------------------------------
-    const realEnabled = !isE2EMock && !!contractAddr && !!processId;
+    const realEnabled = !!contractAddr && !!processId;
     const realAddr = realEnabled ? (contractAddr as `0x${string}`) : undefined;
 
     useWatchContractEvent({
@@ -197,60 +190,6 @@ export function useProcessOrders(processId: string | null): Order[] {
             .forEach((l) => applyEvent("OrderResolved", l.args as unknown as OrderResolvedArgs)),
         enabled: realEnabled,
     });
-
-    // ------------------------------------------------------------------
-    // Mock mode: subscribe to mockEventStore
-    // ------------------------------------------------------------------
-    useEffect(() => {
-        if (!isE2EMock) return;
-
-        setOrders(
-            processId
-                ? mockGetOrders().filter((o) => o.processId === processId)
-                : mockGetOrders()
-        );
-
-        return mockSubscribe((all) => {
-            setOrders(processId ? all.filter((o) => o.processId === processId) : all);
-        });
-    }, [isE2EMock, processId]);
-
-    useEffect(() => {
-        if (!publicClient || orders.length === 0) {
-            return;
-        }
-
-        const missingAgreementHashes = [...new Set(
-            orders
-                .map((order) => order.agreementHash)
-                .filter((agreementHash): agreementHash is string => (
-                    Boolean(agreementHash)
-                    && agreementHash !== ZERO_BYTES32
-                    && !loadAgreement(agreementHash)
-                )),
-        )];
-
-        if (missingAgreementHashes.length === 0) {
-            return;
-        }
-
-        let cancelled = false;
-
-        void Promise.all(
-            missingAgreementHashes.map(async (agreementHash) => {
-                const agreement = await hydrateAgreement(agreementHash);
-                return Boolean(agreement);
-            }),
-        ).then((results) => {
-            if (!cancelled && results.some(Boolean)) {
-                setAgreementRefresh((version) => version + 1);
-            }
-        });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [orders, publicClient]);
 
     return orders;
 }

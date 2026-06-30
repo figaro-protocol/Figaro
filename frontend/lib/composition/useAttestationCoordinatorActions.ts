@@ -8,7 +8,7 @@ import { ATTESTATION_COORDINATOR_ABI } from "@/lib/composition/abis";
 import { COMPOSITION_CONTRACTS } from "@/lib/composition/contracts";
 import { loadOrFetchCommitment } from "@/lib/core/commitmentStore";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { hydrateAgreement } from "@/lib/core/agreementStore";
+import { fetchAgreement } from "@/lib/core/agreementFetch";
 import {
     buildSectionInclusionProof,
     getSectionById,
@@ -92,7 +92,7 @@ export function useAttestationCoordinatorActions() {
      * and produces the merkle inclusion proof the coordinator verifies.
      */
     const buildReceipt = useCallback(async (targetAgreementHash: Hex, clauseId: Hex) => {
-        const agreement = await hydrateAgreement(targetAgreementHash);
+        const agreement = await fetchAgreement(targetAgreementHash);
         if (!agreement) {
             const message = `Agreement assemblyTemplate unavailable for ${targetAgreementHash.slice(0, 10)}… — `
                 + `cannot generate inclusion proof`;
