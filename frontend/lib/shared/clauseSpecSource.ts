@@ -147,19 +147,25 @@ export function clauseNestsUnder(clauseId: string): string | null {
     return NESTS_UNDER.get(clauseId) ?? null;
 }
 
-/** True if a clause is STRUCTURAL — composed on every order by the agreement
- *  build, not a designer choice. The two structural clauses are derived from
- *  their own content: topology (declares `parentOrderHashes`) and commerce
- *  (declares `payment`); generic surfaces exclude them from selectable lists. */
+/** True if a clause is STRUCTURAL — mandatory on every order, composed by the
+ *  build (commerce + topology), not a designer choice. Classified by its sole
+ *  block article `structural` (one word for one concept); generic surfaces
+ *  exclude structural clauses from selectable lists and fold them in
+ *  automatically. ANY registered clause declaring `block.article: "structural"`
+ *  participates — including one this codebase has never seen. */
 export function clauseIsStructural(clauseId: string): boolean {
-    return clauseDeclaresField(clauseId, "parentOrderHashes") || clauseDeclaresField(clauseId, "payment");
+    return getClauseSpec(clauseId)?.block?.article === "structural";
 }
 
 /** A PROCESS-LOG clause — the runtime enum-ladder runtime event log (not a
  *  companion proof) an order's seller advances. The generic marker for "this
  *  order runs a lifecycle"; resolved from the spec, never by name. */
 export function clauseIsProcessLog(clauseId: string): boolean {
-    return clauseLadderField(clauseId) !== null;
+    // A STRUCTURAL clause may carry an enum (topology's `topologyMode`) but is
+    // NOT a runtime process-log — it is committed structural content, not a
+    // lifecycle the seller advances. Exclude it so it validates as content and
+    // never surfaces a runtime attestation capability.
+    return !clauseIsStructural(clauseId) && clauseLadderField(clauseId) !== null;
 }
 
 /** Whether a clause's spec declares a top-level field named `fieldName`.

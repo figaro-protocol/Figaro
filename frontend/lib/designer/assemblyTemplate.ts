@@ -11,7 +11,7 @@
 
 import { keccak256, toHex } from "viem";
 import type { Order } from "@/lib/core/store";
-import { topologyClauseId } from "@/lib/shared/clauseSpecSource";
+import { clauseIsStructural, getClauseSpec, listKnownClauseIds } from "@/lib/shared/clauseSpecSource";
 
 /** A clause on an order → the field values filled at design time. An empty
  *  object means the clause is selected but the designer set no fields (the
@@ -61,9 +61,34 @@ export function templateParentOrderHashes(order: AssemblyTemplateOrder): string[
     return Array.isArray(ids) ? ids.filter((p): p is string => typeof p === "string") : [];
 }
 
+/** Fold the MANDATORY structural clauses into an order's clause set. Each
+ *  structural clause (`block.article: "structural"`) draws the fields it declares
+ *  from the design-time value bag — topology gets `{ topologyMode,
+ *  parentOrderHashes }`; commerce's currency/payment/lineItems are NOT design-time
+ *  (the buyer fills them at checkout), so commerce folds in empty. Generic: a
+ *  never-seen structural clause composes the subset of the bag it declares, with
+ *  zero per-clause code. */
+function composeStructuralClauses(structuralIds: readonly string[], parents: string[]): ClauseValues {
+    // The design-time structural value bag. Checkout-time values (commerce's
+    // currency/payment/lineItems) are deliberately absent — filled downstream.
+    const bag: Record<string, unknown> = {
+        topologyMode: parents.length === 0 ? "root" : "explicit",
+        parentOrderHashes: parents,
+    };
+    const out: ClauseValues = {};
+    for (const id of structuralIds) {
+        const data: Record<string, unknown> = {};
+        for (const field of getClauseSpec(id)?.fields ?? []) {
+            if (field.name in bag) data[field.name] = bag[field.name];
+        }
+        out[id] = data;
+    }
+    return out;
+}
+
 /** Build the no-hash assembly template from the design's orders + the per-order
- *  clause selection. The parent edges fold in as the structural topology clause
- *  — not a separate field. */
+ *  clause selection. The MANDATORY structural clauses (commerce + topology) fold
+ *  in automatically on every order — they are not designer choices. */
 export function buildAssemblyTemplate(args: {
     name?: string;
     summary?: string;
@@ -73,18 +98,18 @@ export function buildAssemblyTemplate(args: {
     clausesByOrderId: Readonly<Record<string, ClauseValues>>;
 }): AssemblyTemplate {
     const { name, summary, description, privilegedToken, orders, clausesByOrderId } = args;
-    const topoClauseId = topologyClauseId();
-    if (!topoClauseId) {
-        // Without the chain→IPFS spec cache the topology clause cannot be
-        // resolved — refuse loudly rather than emit a template with no topology.
+    const structuralIds = listKnownClauseIds().filter(clauseIsStructural);
+    if (structuralIds.length === 0) {
+        // Without the chain→IPFS spec cache the structural clauses cannot be
+        // resolved — refuse loudly rather than emit a template missing them.
         // Designer surfaces gate on `useClauseSpecs().loaded`.
         throw new Error(
-            "clause specs not loaded: no structural topology clause in the cache — gate the surface on useClauseSpecs().loaded (or prime the spec cache in tests) before building templates",
+            "clause specs not loaded: no structural clauses in the cache — gate the surface on useClauseSpecs().loaded (or prime the spec cache in tests) before building templates",
         );
     }
     // Re-label each design-time (synthetic) order id to a clean local label.
     // The template carries no chain ids and no party addresses — only the
-    // clauses (topology among them), keyed by these local labels.
+    // clauses (the structural ones among them), keyed by these local labels.
     const idToLocal = new Map(orders.map((o, i) => [o.id, `order-${i}`]));
     return {
         ...(name ? { name } : {}),
@@ -95,9 +120,10 @@ export function buildAssemblyTemplate(args: {
             id: `order-${i}`,
             clauses: {
                 ...(clausesByOrderId[order.id] ?? {}),
-                [topoClauseId]: {
-                    parentOrderHashes: (order.parentOrderHashes ?? []).map((p) => idToLocal.get(p) ?? p),
-                },
+                ...composeStructuralClauses(
+                    structuralIds,
+                    (order.parentOrderHashes ?? []).map((p) => idToLocal.get(p) ?? p),
+                ),
             },
         })),
     };

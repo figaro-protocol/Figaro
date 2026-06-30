@@ -4,7 +4,7 @@ import { sectionByField } from "@/lib/core/agreementSections";
 import { deriveOrderTopology, type TopologyMode } from "@/lib/semantic/processTopology";
 import { ProcessSummary } from "@/hooks/core/useWalletProcessIds";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
-import { clauseLadderField, getClauseSpec, labelEnumValue } from "@/lib/shared/clauseSpecSource";
+import { clauseIsStructural, clauseLadderField, getClauseSpec, labelEnumValue } from "@/lib/shared/clauseSpecSource";
 import { ZERO_BYTES32, hexEqual, clauseIdHash as clauseIdHashOf } from "@/lib/shared/evm";
 import {
     AttachmentModel,
@@ -176,6 +176,7 @@ function roleCapabilities(
         const orderAttestations = indexes.attestationsByOrder.get(orderIdStr) ?? [];
         for (const section of agreement.sections) {
             const clauseId = section.clause;
+            if (clauseIsStructural(clauseId)) continue;                // structural (commerce/topology) is content, not a lifecycle
             const ladder = clauseLadderField(clauseId);
             if (!ladder) continue;                                     // non-enum (e.g. ghg grams) → its own surface
             const clauseIdHash = clauseIdHashOf(clauseId, section.version).toLowerCase();
