@@ -14,13 +14,15 @@ import { useSearchParams } from "next/navigation";
 import { useAccount, useWalletClient } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { useCommitmentFlow, type CommitmentPayload } from "@/lib/core/useCommitmentFlow";
+import { useOrderCommitmentFlow } from "@/lib/core/orderCommitmentFlow";
+import {
+    deserializeCommitmentPayload,
+    type CommitmentPayload,
+} from "@/lib/core/orderSignedAndShared";
 import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { calculateBonds } from "@figaro/core";
-import { deserializePayload } from "@/lib/core/commitmentShare";
 import { TokenApprovalFlow } from "@/components/core/TokenApprovalFlow";
-import { primeAgreementArtifact } from "@/lib/core/agreementStore";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 import { formatToken } from "@/lib/shared/utils";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
@@ -34,7 +36,7 @@ function SignPageContent() {
     const { data: walletClient } = useWalletClient();
     const searchParams = useSearchParams();
     const { coordinationMessaging, evidenceTransport } = useRuntimeServices();
-    const { counterSign, broadcast, step, error: commitError, payload, reset } = useCommitmentFlow();
+    const { acceptOrder, commitOrder, step, error: commitError, reset } = useOrderCommitmentFlow();
     const hydratedPayloadRef = useRef<string | null>(null);
     const receivedTransportOrderIdsRef = useRef<Set<string>>(new Set());
 
@@ -52,7 +54,7 @@ function SignPageContent() {
     const parseSerializedPayload = useCallback(async (serialized: string) => {
         try {
             setParseError(null);
-            const p = deserializePayload(serialized);
+            const p = deserializeCommitmentPayload(serialized);
             // Basic validation
             if (!p.commitment?.buyer || !p.commitment?.seller) {
                 throw new Error("Invalid commitment: missing buyer or seller");
@@ -60,11 +62,6 @@ function SignPageContent() {
             if (!p.buyerSig && !p.sellerSig) {
                 throw new Error("No signatures found — this commitment has not been signed yet");
             }
-            await primeAgreementArtifact({
-                agreementHash: p.commitment.agreementHash,
-                agreement: p.agreement,
-                agreementUri: p.agreementUri,
-            });
             setParsed(p);
             return p;
         } catch (e: unknown) {
@@ -166,11 +163,10 @@ function SignPageContent() {
     const handleCounterSign = async () => {
         if (!parsed) return;
         try {
-            const updated = await counterSign(parsed);
-            // After counter-signing, broadcast immediately
-            await broadcast(updated);
+            // acceptOrder counter-signs AND broadcasts (bond already approved above).
+            await acceptOrder(parsed);
         } catch {
-            // Error state handled by useCommitmentFlow
+            // Error state handled by the order commitment flow.
         }
     };
 
@@ -341,23 +337,23 @@ function SignPageContent() {
                     {needsMySignature && approvalDone && (
                         <Button
                             onClick={handleCounterSign}
-                            disabled={step === "signing" || step === "broadcasting" || !address}
+                            disabled={step === "signing" || step === "committing" || !address}
                             data-testid="btn-counter-sign"
                             className="w-full"
                         >
-                            {step === "signing" ? "Signing…" : step === "broadcasting" ? "Broadcasting…" : "Counter-Sign & Submit"}
+                            {step === "signing" ? "Signing…" : step === "committing" ? "Submitting…" : "Counter-Sign & Submit"}
                         </Button>
                     )}
 
                     {/* Already signed — show broadcast button if both sigs present */}
                     {!needsMySignature && hasBuyerSig && hasSellerSig && (
                         <Button
-                            onClick={() => broadcast(parsed)}
-                            disabled={step === "broadcasting"}
+                            onClick={() => commitOrder(parsed)}
+                            disabled={step === "committing"}
                             data-testid="btn-broadcast"
                             className="w-full"
                         >
-                            {step === "broadcasting" ? "Broadcasting…" : "Submit On-Chain"}
+                            {step === "committing" ? "Submitting…" : "Submit On-Chain"}
                         </Button>
                     )}
 

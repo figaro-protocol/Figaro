@@ -17,7 +17,6 @@ import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ClauseFields } from "@/lib/core/encoding";
 import { buildOrderAgreement } from "@/lib/core/orderAgreement";
 import { computeAgreementHash } from "@/lib/core/agreement";
-import { clauseIsDefaultOn, listKnownClauseIds } from "@/lib/shared/clauseSpecSource";
 import { saveAgreement } from "@/lib/core/agreementStore";
 import { buildAgreementsFromCache, deriveOrderTopology } from "@/lib/core/orderTopology";
 
@@ -57,22 +56,13 @@ export interface CreatedOrder {
 }
 
 /**
- * Clause-field defaults applied to every freshly-spawned synthetic order:
- * every registered clause whose spec declares `block.defaultOn`, composed as
- * an EMPTY object — the generic build walk fills each from the spec's field
- * `default`s (the minimally-valid placeholder values the buyer overwrites at
- * commit time). The set is defined by the network's registry at runtime,
- * never by this code; structural clauses (commerce, topology) are composed
- * by the build itself and never appear here. A function, not a module
- * constant: it reads the chain→IPFS spec cache, which the designer surfaces
- * gate on (`useClauseSpecs().loaded`) before any synthetic order is built.
+ * Clause-field defaults applied to every freshly-spawned synthetic order.
+ * No clause is pre-composed by default: structural clauses (commerce, topology)
+ * are composed by the build itself, and every other clause is an explicit
+ * designer choice in the drawer.
  */
 function defaultNodeClauseFields(): ClauseFields {
-    return Object.fromEntries(
-        listKnownClauseIds()
-            .filter((clauseId) => clauseIsDefaultOn(clauseId))
-            .map((clauseId) => [clauseId, {}]),
-    );
+    return {};
 }
 
 /**

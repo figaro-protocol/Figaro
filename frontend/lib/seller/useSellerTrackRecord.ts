@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { usePublicClient, useChainId } from "wagmi";
-import { getSellerTrackRecord, type SellerTrackRecord } from "@/lib/core/indexer";
+import { getSellerTrackRecord, type SellerTrackRecord } from "@/lib/composition/indexer";
 
 export interface UseSellerTrackRecordResult {
     trackRecord: SellerTrackRecord | null;

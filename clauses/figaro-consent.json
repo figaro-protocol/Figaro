@@ -41,12 +41,6 @@
         }
     ],
     "block": {
-        "tier": "cross-checked",
-        "article": "consent",
-        "mechanismKinds": [],
-        "moduleIds": [],
-        "routes": [
-            "/consent"
-        ]
+        "article": "consent"
     }
 }

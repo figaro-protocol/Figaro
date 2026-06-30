@@ -26,10 +26,6 @@
         }
     ],
     "block": {
-        "tier": "agreement-only",
-        "article": "identity",
-        "structural": true,
-        "mechanismKinds": ["core"],
-        "moduleIds": ["process-graph", "order-node"]
+        "article": "identity"
     }
 }

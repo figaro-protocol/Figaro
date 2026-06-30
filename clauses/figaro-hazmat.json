@@ -57,10 +57,7 @@
         }
     ],
     "block": {
-        "tier": "cross-checked",
         "article": "logistics",
-        "mechanismKinds": [],
-        "moduleIds": [],
         "nestsUnder": "massGrams"
     }
 }

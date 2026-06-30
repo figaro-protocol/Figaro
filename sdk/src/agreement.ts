@@ -120,7 +120,8 @@ function buildMerkleRoot(leaves: readonly Hex[]): Hex {
 
 /**
  * Compute the `agreementHash` for an Agreement: merkle root over sorted
- * section leaves. Empty agreements return bytes32(0).
+ * section leaves. The agreement hash IS the merkle root — there is no separate
+ * "root" object. Empty agreements return bytes32(0).
  */
 export function computeAgreementHash(agreement: Agreement): Hex {
     const keys = agreement.sections.map((s) => s.clause);

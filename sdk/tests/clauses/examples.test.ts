@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseClauseSpec } from "../../src/clauses/spec.js";
 import modalitiesSpecRaw from "../../../clauses/figaro-modalities.json" with { type: "json" };
-import coordinationSpecRaw from "../../../clauses/figaro-coordination.json" with { type: "json" };
 import { validateContent } from "../../src/clauses/validate.js";
 import topologySpecRaw from "../../../clauses/figaro-topology.json" with { type: "json" };
 import commerceSpecRaw from "../../../clauses/figaro-commerce.json" with { type: "json" };
@@ -13,9 +12,7 @@ import freightClassSpecRaw from "../../../clauses/figaro-freight-class.json" wit
 import arbitrationKlerosSpecRaw from "../../../clauses/figaro-arbitration-kleros.json" with { type: "json" };
 import applicableLawSpecRaw from "../../../clauses/figaro-applicable-law.json" with { type: "json" };
 import ghgSpecRaw from "../../../clauses/figaro-ghg.json" with { type: "json" };
-import ghgMeasurementSpecRaw from "../../../clauses/figaro-ghg-measurement.json" with { type: "json" };
 import proximityPolicySpecRaw from "../../../clauses/figaro-proximity-policy.json" with { type: "json" };
-import proximityProofSpecRaw from "../../../clauses/figaro-proximity-proof.json" with { type: "json" };
 import offsetPolicySpecRaw from "../../../clauses/figaro-offset-policy.json" with { type: "json" };
 import merchantSpecRaw from "../../../clauses/figaro-merchant-process.json" with { type: "json" };
 import courierSpecRaw from "../../../clauses/figaro-courier-process.json" with { type: "json" };
@@ -258,27 +255,6 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(validateContent({}, parsed.spec).ok).toBe(false);
     });
 
-    // ── figaro-coordination-v1 ──
-
-    it("figaro-coordination-v1 spec parses cleanly", () => {
-        const result = parseClauseSpec(coordinationSpecRaw);
-        expect(result.ok).toBe(true);
-    });
-
-    it("figaro-coordination-v1 accepts each single-select coordination", () => {
-        const parsed = parseClauseSpec(coordinationSpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        for (const coordination of ["seller-assigned", "buyer-assigned", "dutch-auction"]) {
-            expect(validateContent({ coordination }, parsed.spec).ok).toBe(true);
-        }
-    });
-
-    it("figaro-coordination-v1 rejects an unknown coordination", () => {
-        const parsed = parseClauseSpec(coordinationSpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ coordination: "telepathy" }, parsed.spec).ok).toBe(false);
-    });
-
     // ── figaro-arbitration-kleros-v1 ──
 
     it("figaro-arbitration-kleros-v1 accepts a subcourt with default jurors", () => {
@@ -313,10 +289,24 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(validateContent({ applicableLaw: "US-CA", forum: "JAMS-arbitration", language: "en" }, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-applicable-law-v1 accepts non-state legal order", () => {
+    it("figaro-applicable-law-v1 accepts non-state legal order (forum omitted, not blank)", () => {
         const parsed = parseClauseSpec(applicableLawSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ applicableLaw: "Sharia", forum: "", language: "ar" }, parsed.spec).ok).toBe(true);
+        // forum is OMITTED — absence expresses "courts of competent jurisdiction",
+        // never a stored empty string (which the hardened minLength now rejects).
+        expect(validateContent({ applicableLaw: "Sharia", language: "ar" }, parsed.spec).ok).toBe(true);
+    });
+
+    it("figaro-applicable-law-v1 hardening rejects malformed shapes", () => {
+        const parsed = parseClauseSpec(applicableLawSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        // applicableLaw: must be a hyphen-joined alnum token starting with a letter.
+        expect(validateContent({ applicableLaw: "US CA" }, parsed.spec).ok).toBe(false);
+        expect(validateContent({ applicableLaw: "-US" }, parsed.spec).ok).toBe(false);
+        // forum: empty string is no longer a valid value (omit instead).
+        expect(validateContent({ applicableLaw: "US", forum: "" }, parsed.spec).ok).toBe(false);
+        // language: ISO 639 / BCP 47 shape — a full word is not a code.
+        expect(validateContent({ applicableLaw: "US", language: "english" }, parsed.spec).ok).toBe(false);
     });
 
     it("figaro-applicable-law-v1 accepts minimal applicableLaw only", () => {
@@ -369,26 +359,6 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(validateContent({ standard: "", scope: 1 }, parsed.spec).ok).toBe(false);
     });
 
-    // ── figaro-ghg-measurement-v1 ──
-
-    it("figaro-ghg-measurement-v1 spec parses cleanly", () => {
-        expect(parseClauseSpec(ghgMeasurementSpecRaw).ok).toBe(true);
-    });
-
-    it("figaro-ghg-measurement-v1 accepts each stage with a grams value", () => {
-        const parsed = parseClauseSpec(ghgMeasurementSpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        for (let s = 0; s <= 3; s++) {
-            expect(validateContent({ grams: "1250" }, parsed.spec, { stage: s }).ok).toBe(true);
-        }
-    });
-
-    it("figaro-ghg-measurement-v1 rejects missing grams", () => {
-        const parsed = parseClauseSpec(ghgMeasurementSpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({}, parsed.spec, { stage: 1 }).ok).toBe(false);
-    });
-
     // ── figaro-proximity-policy-v1 ──
 
     it("figaro-proximity-policy-v1 accepts each declared band as a single-element list", () => {
@@ -423,28 +393,6 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(validateContent({
             bands: ["contact-nfc"],
             nonce: "0x" + "ab".repeat(32),
-        }, parsed.spec).ok).toBe(false);
-    });
-
-    // ── figaro-proximity-proof-v1 ──
-
-    it("figaro-proximity-proof-v1 accepts a contact-nfc proof", () => {
-        const parsed = parseClauseSpec(proximityProofSpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({
-            band: "contact-nfc",
-            nonce: "0x" + "ab".repeat(32),
-            deviceSig: "0x" + "cd".repeat(65),
-        }, parsed.spec).ok).toBe(true);
-    });
-
-    it("figaro-proximity-proof-v1 rejects an unknown band", () => {
-        const parsed = parseClauseSpec(proximityProofSpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({
-            band: "psychic",
-            nonce: "0x" + "ab".repeat(32),
-            deviceSig: "0x" + "cd".repeat(65),
         }, parsed.spec).ok).toBe(false);
     });
 

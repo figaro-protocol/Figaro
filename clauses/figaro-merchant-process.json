@@ -30,16 +30,6 @@
         }
     ],
     "block": {
-        "tier": "runtime",
-        "article": "attestations",
-        "attestation": "seller",
-        "handoffStages": ["handed-off"],
-        "mechanismKinds": [
-            "coordinator"
-        ],
-        "moduleIds": [
-            "coordinator-actions",
-            "merchant-fulfilment"
-        ]
+        "article": "attestations"
     }
 }

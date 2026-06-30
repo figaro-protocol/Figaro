@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { useAllRegisteredClauses } from "@/lib/mechanisms/useClauseRegistry";
-import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
+import { useAllRegisteredClauses } from "@/lib/core/useClauseRegistry";
+import { useClauseSpecs } from "@/lib/core/useClauseSpecs";
 import { groupClausesByArticle } from "@/lib/shared/clauseSpecSource";
 import { ClausesByArticle } from "@/components/core/ClausesByArticle";
 

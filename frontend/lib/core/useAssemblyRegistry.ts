@@ -13,20 +13,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toError } from "@/lib/shared/errors";
-import { parseAbi, BaseError, ContractFunctionRevertedError } from "viem";
+import { BaseError, ContractFunctionRevertedError } from "viem";
 import { publicClient } from "@/lib/shared/wagmi";
+import { ASSEMBLY_REGISTRY_ABI, CONTRACTS } from "@/lib/core/contracts";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { type AssemblyTemplate } from "@/lib/designer/assemblyTemplate";
-
-export const ASSEMBLY_REGISTRY_ABI = parseAbi([
-    "function registerAssembly(string slug, bytes32 contentHash, string metadataURI) external payable",
-    "function withdrawDeposit(string slug) external",
-    "function bindings(bytes32 slugHash) view returns (address author, uint64 registeredAt, bool depositWithdrawn, bytes32 contentHash, string metadataURI)",
-    "function registrationDeposit() view returns (uint256)",
-    "function depositLockPeriod() view returns (uint256)",
-    "event AssemblyRegistered(bytes32 indexed slugHash, address indexed author, string slug, bytes32 contentHash, string metadataURI)",
-    "event DepositWithdrawn(bytes32 indexed slugHash, address indexed author, uint256 amount)",
-] as const);
 
 // Per-process gas ceiling moved to `@/lib/shared/chainGasCeilings`
 // (`maxOrdersResolvablePerProcess`) — the ceiling depends on the active
@@ -35,9 +26,7 @@ export const ASSEMBLY_REGISTRY_ABI = parseAbi([
 // the chain-aware cap import `maxOrdersResolvablePerProcess` directly.
 
 export function getAssemblyRegistry(): `0x${string}` | null {
-    const addr = process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY;
-    if (!addr) return null;
-    return addr as `0x${string}`;
+    return CONTRACTS.assemblyRegistry || null;
 }
 
 export interface PublishOutcome {

@@ -96,8 +96,7 @@ export interface SubmitClauseAttestationCapabilityAction {
      *  witness (nonce + signature) on top of the spec fields. */
     isProof?: boolean;
     roleOrderHash?: string;
-    /** Present when this lifecycle stage is a physical hand-off (the stage is
-     *  listed in the clause spec's `block.handoffStages`) and the attesting
+    /** Present when this lifecycle stage is a physical hand-off and the attesting
      *  seller has not yet witnessed the proximity proof. The executor submits
      *  the proof PAIRED with the stage attestation: proof clause on the order
      *  whose agreement carries it (own order, else the topology-adjacent

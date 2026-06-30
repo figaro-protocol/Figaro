@@ -2,7 +2,7 @@
     "clauseId": "figaro-applicable-law",
     "version": 1,
     "title": "Applicable law and forum",
-    "description": "State / ADR / traditional-jurisdiction recourse layer. Identifies the body of law governing the order and, optionally, the named adjudication venue and proceedings language. Provider-agnostic by construction (free-form strings). Compose with `figaro-arbitration-kleros-v1` (or another `figaro-arbitration-<provider>-v1`) to add a decentralized ODR layer.",
+    "description": "State / ADR / traditional-jurisdiction recourse layer. Identifies the body of law governing the order and, optionally, the named adjudication venue and proceedings language. Provider-agnostic by construction: every field is a free-form string whose pattern enforces SHAPE only — the named external standard (ISO 3166 for jurisdiction, ISO 639 / BCP 47 for language) remains the source of truth, and the clause never holds a closed list of jurisdictions, forums, or languages. Compose with `figaro-arbitration-kleros-v1` (or another `figaro-arbitration-<provider>-v1`) to add a decentralized ODR layer.",
     "fields": [
         {
             "name": "applicableLaw",
@@ -10,35 +10,32 @@
             "required": true,
             "minLength": 2,
             "maxLength": 16,
-            "description": "Identifier for the body of law that governs the contract. Conventionally an ISO 3166-1 alpha-2 country code (e.g., 'US', 'NL', 'JP'), optionally with ISO 3166-2 subdivision (e.g., 'US-CA', 'CA-ON'). 'EU' for European Union law. 'INTL' for international/treaty law. Free-form for non-state legal orders (e.g., 'Sharia', 'ICANN-UDRP')."
+            "pattern": "^[A-Za-z][A-Za-z0-9-]{1,15}$",
+            "label": "Applicable law",
+            "description": "Identifier for the body of law that governs the contract. Conventionally an ISO 3166-1 alpha-2 country code (e.g. 'US', 'NL', 'JP'), optionally with an ISO 3166-2 subdivision (e.g. 'US-CA', 'CA-ON'); 'EU' for European Union law; 'INTL' for international / treaty law. Free-form for non-state legal orders (e.g. 'Sharia', 'ICANN-UDRP'). The pattern admits a hyphen-joined alphanumeric token that starts with a letter — it enforces shape only, never a fixed list of jurisdictions; the cited standard is the source of truth."
         },
         {
             "name": "forum",
             "type": "string",
             "required": false,
-            "minLength": 0,
+            "minLength": 1,
             "maxLength": 64,
-            "description": "Named adjudication venue (e.g., 'JAMS-arbitration', 'AAA-arbitration', 'ICC-arbitration', 'us-federal-court', 'small-claims-court'). Empty means: courts of competent jurisdiction within applicableLaw."
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9 ./-]{0,63}$",
+            "label": "Adjudication forum",
+            "description": "Named adjudication venue (e.g. 'JAMS-arbitration', 'AAA-arbitration', 'ICC-arbitration', 'us-federal-court', 'small-claims-court', or a spelled-out court such as 'Courts of England and Wales'). OMIT the field to mean: courts of competent jurisdiction within applicableLaw — absence, not a stored blank."
         },
         {
             "name": "language",
             "type": "string",
             "required": false,
-            "minLength": 0,
-            "maxLength": 16,
-            "description": "ISO 639-1 / 639-2 language code for adjudication proceedings (e.g., 'en', 'fr', 'zh', 'ar'). Empty means: official language of the forum."
+            "minLength": 2,
+            "maxLength": 12,
+            "pattern": "^[A-Za-z]{2,3}(-[A-Za-z]{2,4})?$",
+            "label": "Language of proceedings",
+            "description": "Language for adjudication proceedings as an ISO 639-1 two-letter code (e.g. 'en', 'fr', 'zh', 'ar') or ISO 639-2 three-letter code (e.g. 'eng'), optionally with a BCP 47 region or script subtag (e.g. 'pt-BR', 'zh-Hant'). OMIT the field to mean: official language of the forum."
         }
     ],
     "block": {
-        "tier": "cross-checked",
-        "article": "dispute-resolution",
-        "mechanismKinds": [],
-        "moduleIds": [
-            "dispute-status"
-        ],
-        "routes": [
-            "/dispute",
-            "/evidence-display"
-        ]
+        "article": "dispute-resolution"
     }
 }

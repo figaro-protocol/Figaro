@@ -17,7 +17,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAccount } from "wagmi";
-import { useRegisteredClausesByWallet } from "@/lib/mechanisms/useClauseRegistry";
+import { useRegisteredClausesByWallet } from "@/lib/core/useClauseRegistry";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 export function ClausesList() {

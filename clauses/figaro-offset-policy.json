@@ -22,13 +22,6 @@
         }
     ],
     "block": {
-        "tier": "cross-checked",
-        "article": "emissions",
-        "mechanismKinds": [
-            "disclosure"
-        ],
-        "moduleIds": [
-            "disclosure-actions"
-        ]
+        "article": "emissions"
     }
 }

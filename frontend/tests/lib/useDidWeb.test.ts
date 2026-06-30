@@ -3,8 +3,8 @@ import {
     isDidWeb,
     didWebToUrl,
     extractEthereumAddresses,
-} from '@/lib/mechanisms/useDidWeb';
-import type { DIDDocument } from '@/lib/mechanisms/useDidWeb';
+} from '@/lib/agent/useDidWeb';
+import type { DIDDocument } from '@/lib/agent/useDidWeb';
 
 describe('isDidWeb', () => {
     it('accepts valid did:web identifiers', () => {

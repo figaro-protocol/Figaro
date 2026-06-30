@@ -1,6 +1,6 @@
 /**
  * assemblyDiscovery — the publish-build + template-enrichment orchestration
- * layer over the on-chain `AssemblyRegistry` hooks (`@/lib/mechanisms/useAssemblyRegistry`).
+ * layer over the on-chain `AssemblyRegistry` hooks (`@/lib/core/useAssemblyRegistry`).
  *
  * This is designer-tier composition: it builds the off-chain assembly
  * template from a design snapshot, pins it, registers it, and enriches the
@@ -35,14 +35,14 @@ import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { buildAssemblyTemplate, serializeAssemblyTemplate, deriveAssemblySlug, templateParentOrderHashes, type AssemblyTemplate } from "@/lib/designer/assemblyTemplate";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
+import { ASSEMBLY_REGISTRY_ABI } from "@/lib/core/contracts";
 import {
-    ASSEMBLY_REGISTRY_ABI,
     getAssemblyRegistry,
     usePublishedAssemblies,
     fetchAssemblyTemplate,
     translatePublishRevert,
     type PublishOutcome,
-} from "@/lib/mechanisms/useAssemblyRegistry";
+} from "@/lib/core/useAssemblyRegistry";
 
 /**
  * Synthesize a `networkTargets` value for an on-chain-registered assembly

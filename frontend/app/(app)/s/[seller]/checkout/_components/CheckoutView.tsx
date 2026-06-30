@@ -41,7 +41,7 @@ import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { useSellerBoundAssemblies } from "@/lib/seller/useSellerBoundAssemblies";
 import { extractRootModality } from "@/lib/designer/assemblyDiscovery";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
-import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec, clauseIsStructural } from "@/lib/shared/clauseSpecSource";
 
 interface Props {
     sellerAddress: string;
@@ -280,8 +280,8 @@ export function CheckoutView({ sellerAddress }: Props) {
     // Every order in the assembly — root + sub-orders — surfaced for review:
     // the buyer signs and bonds ALL of them. Each clause renders its COMPOSED
     // values (the terms the buyer is agreeing to), spec-driven. Structural
-    // clauses (`block.structural`, e.g. the topology clause) are
-    // protocol-composed, not buyer-chosen terms; they stay out of the review.
+    // clauses (e.g. the topology clause) are protocol-composed, not
+    // buyer-chosen terms; they stay out of the review.
     const agreementGroups = ((): Array<{ key: string; label: string; clauses: Array<{ clauseId: string; values: string }> }> => {
         if (!pickedAssembly) return [];
         const orders = pickedAssembly.assemblyTemplate.orders;
@@ -300,7 +300,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                 key: String(order.id ?? i),
                 label: assigned ? nameOf(assigned) : "(to be assigned)",
                 clauses: Object.entries(order.clauses)
-                    .filter(([clauseId]) => !getClauseSpec(clauseId)?.block?.structural)
+                    .filter(([clauseId]) => !clauseIsStructural(clauseId))
                     .map(([clauseId, fields]) => ({ clauseId, values: clauseValueSummary(fields) })),
             };
         });

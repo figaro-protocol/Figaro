@@ -26,15 +26,6 @@
         }
     ],
     "block": {
-        "tier": "cross-checked",
-        "article": "logistics",
-        "mechanismKinds": [
-            "coordinator"
-        ],
-        "moduleIds": [
-            "handoff-details",
-            "handoff-tracker"
-        ],
-        "defaultOn": true
+        "article": "logistics"
     }
 }

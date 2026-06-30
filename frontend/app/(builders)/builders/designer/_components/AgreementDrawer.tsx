@@ -26,9 +26,9 @@ import { useEffect, useMemo, useState } from "react";
 import type { Order } from "@/lib/core/store";
 import { loadAgreement } from "@/lib/core/agreementStore";
 import { getTopologyParentOrderHashes } from "@/lib/core/orderAgreement";
-import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/mechanisms/useClauseRegistry";
-import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
-import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, isCompanionClause, clauseIsStructural } from "@/lib/shared/clauseSpecSource";
+import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/core/useClauseRegistry";
+import { useClauseSpecs } from "@/lib/core/useClauseSpecs";
+import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsStructural } from "@/lib/shared/clauseSpecSource";
 import { ClausesByArticle } from "@/components/core/ClausesByArticle";
 import type { FieldSpec } from "@figaro/core/clauses";
 
@@ -363,7 +363,7 @@ function ClauseRegistryPanel({
             .map((g) => ({
                 article: g.article,
                 entries: g.clauses
-                    .filter((c) => !isCompanionClause(c.clauseId) && !clauseIsStructural(c.clauseId))
+                    .filter((c) => !clauseIsStructural(c.clauseId))
                     .map((c) => eventByName.get(c.clauseId))
                     .filter((e): e is RegisteredClauseEvent => e !== undefined),
             }))
@@ -458,7 +458,7 @@ function ClauseControl({
                     {spec?.title ?? clause.clauseName ?? `${clause.clauseIdHash.slice(0, 10)}…`}
                 </span>
             </label>
-            {selected && spec && spec.fields.length > 0 && spec.block?.tier !== "runtime" && (
+            {selected && spec && spec.fields.length > 0 && (
                 <div className="ml-6 mt-2 space-y-3">
                     {spec.fields
                         .filter((field) => {

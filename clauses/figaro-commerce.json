@@ -38,10 +38,6 @@
         }
     ],
     "block": {
-        "tier": "cross-checked",
-        "article": "order",
-        "structural": true,
-        "mechanismKinds": ["core"],
-        "moduleIds": ["cart", "incoming-orders", "merchant-fulfilment", "settlement-breakdown"]
+        "article": "order"
     }
 }

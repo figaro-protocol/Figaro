@@ -6,9 +6,8 @@ import {
     subscribeToPendingSign,
     _resetSignPreviewStore_TESTING_ONLY,
     _setSignPreviewMode_TESTING_ONLY,
-} from "@/lib/core/commitmentSignPreviewStore";
-import type { Commitment } from "@figaro/core";
-import type { Agreement } from "@/lib/core/agreement";
+} from "@/lib/core/orderPreview";
+import type { Commitment, Agreement } from "@figaro/core";
 
 const COMMITMENT: Commitment = {
     processId: "0x" + "00".repeat(32) as `0x${string}`,
@@ -42,7 +41,7 @@ afterEach(() => {
     _resetSignPreviewStore_TESTING_ONLY();
 });
 
-describe("commitmentSignPreviewStore", () => {
+describe("orderPreview confirm gate", () => {
     it("requestSignConfirmation resolves true when confirmPendingSign is called", async () => {
         const promise = requestSignConfirmation(COMMITMENT, AGREEMENT);
         confirmPendingSign();

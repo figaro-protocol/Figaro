@@ -3,8 +3,8 @@
 /**
  * CommitmentSignPreviewProvider — global mount for the pre-sign gate.
  *
- * Subscribes to `commitmentSignPreviewStore`. When `requestSignConfirmation`
- * is called from anywhere in the app (currently only `useCommitmentFlow.signCommitment`),
+ * Subscribes to the confirm gate in `orderPreview`. When `requestSignConfirmation`
+ * is called from anywhere in the app (the order commitment flow's sign step),
  * the store posts a pending preview; this provider renders the
  * AgreementPreviewModal. User clicks Confirm or Cancel; the store resolves
  * the awaited promise; the modal disappears.
@@ -20,7 +20,7 @@ import {
     confirmPendingSign,
     subscribeToPendingSign,
     type PendingPreview,
-} from "@/lib/core/commitmentSignPreviewStore";
+} from "@/lib/core/orderPreview";
 
 export function CommitmentSignPreviewProvider() {
     const [pending, setPending] = useState<PendingPreview | null>(null);

@@ -35,7 +35,7 @@ import {
     readLocalDeploymentConfig,
     seedRegisteredSeller,
 } from './devnet-helpers';
-import { ASSEMBLY_REGISTRY_ABI } from '@/lib/mechanisms/useAssemblyRegistry';
+import { ASSEMBLY_REGISTRY_ABI } from '@figaro/core';
 import { ANVIL_KEYS } from '../anvilAccounts';
 
 const RPC_URL = 'http://127.0.0.1:8545';

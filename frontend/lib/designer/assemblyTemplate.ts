@@ -3,7 +3,7 @@
  *
  * Per order it carries the clauses composed on it (the buyer↔seller
  * relationship's MEANING) — and the topology is ONE OF THOSE CLAUSES: the
- * agreement-only topology clause holds the order's parent ids. The template
+ * structural topology clause holds the order's parent ids. The template
  * carries NO party addresses (PARTY-AGNOSTIC — parties bind at
  * adoption/checkout), NO agreement hashes, NO sentinels: the fingerprint
  * forms later, at checkout, when the real parties fill the clause fields.
@@ -24,7 +24,7 @@ export interface AssemblyTemplateOrder {
      *  a party — the template is party-agnostic. */
     id: string;
     /** clauseId → the design-time field values the designer composed. The topology
-     *  is a clause here too: the agreement-only topology clause carries
+     *  is a clause here too: the structural topology clause carries
      *  `{ parentOrderHashes }` (root = []). Whatever's absent is filled
      *  downstream. */
     clauses: ClauseValues;
@@ -62,7 +62,7 @@ export function templateParentOrderHashes(order: AssemblyTemplateOrder): string[
 }
 
 /** Build the no-hash assembly template from the design's orders + the per-order
- *  clause selection. The parent edges fold in as the agreement-only topology clause
+ *  clause selection. The parent edges fold in as the structural topology clause
  *  — not a separate field. */
 export function buildAssemblyTemplate(args: {
     name?: string;
@@ -79,7 +79,7 @@ export function buildAssemblyTemplate(args: {
         // resolved — refuse loudly rather than emit a template with no topology.
         // Designer surfaces gate on `useClauseSpecs().loaded`.
         throw new Error(
-            "clause specs not loaded: no agreement-only topology clause in the cache — gate the surface on useClauseSpecs().loaded (or prime the spec cache in tests) before building templates",
+            "clause specs not loaded: no structural topology clause in the cache — gate the surface on useClauseSpecs().loaded (or prime the spec cache in tests) before building templates",
         );
     }
     // Re-label each design-time (synthetic) order id to a clean local label.

@@ -39,12 +39,6 @@ const NESTS_UNDER = new Map<string, string>();
  *  log keys on the hash. */
 const HASH_TO_ID = new Map<string, string>();
 
-/** clauseIds that some other loaded spec names as its `block.sisterClauseId` —
- *  i.e. companion clauses, emitted by their sister at commit rather than chosen
- *  directly (proximity proofs, runtime measurements). Derived
- *  purely from the JSON; populated as specs load. */
-const COMPANION_IDS = new Set<string>();
-
 // ── Loading (chain → IPFS) ───────────────────────────────────────────────────
 
 /**
@@ -74,15 +68,6 @@ function cacheSpec(spec: ClauseSpecWithBlock): void {
     HASH_TO_ID.set(clauseIdHash(spec.clauseId, spec.version).toLowerCase(), spec.clauseId);
     const nestsUnder = spec.block?.nestsUnder;
     if (typeof nestsUnder === "string" && nestsUnder.length > 0) NESTS_UNDER.set(spec.clauseId, nestsUnder);
-    const sister = spec.block?.sisterClauseId;
-    if (typeof sister === "string" && sister.length > 0) COMPANION_IDS.add(sister);
-}
-
-/** True if a clause is some other clause's `sisterClauseId` — a companion the
- *  designer surfaces via its sister at commit, not as a directly-selectable
- *  clause. Derived from the spec, never a hardcoded list. */
-export function isCompanionClause(clauseId: string): boolean {
-    return COMPANION_IDS.has(clauseId);
 }
 
 /**
@@ -163,28 +148,18 @@ export function clauseNestsUnder(clauseId: string): string | null {
 }
 
 /** True if a clause is STRUCTURAL — composed on every order by the agreement
- *  build, not a designer choice (commerce, topology). Read from the spec's
- *  `block.structural`; generic surfaces exclude it from selectable lists. */
+ *  build, not a designer choice. The two structural clauses are derived from
+ *  their own content: topology (declares `parentOrderHashes`) and commerce
+ *  (declares `payment`); generic surfaces exclude them from selectable lists. */
 export function clauseIsStructural(clauseId: string): boolean {
-    return getClauseSpec(clauseId)?.block?.structural === true;
-}
-
-/** Default-on clause — pre-composed (as an empty object; the spec's field
- *  `default`s fill it through the generic build walk) on every freshly-spawned
- *  designer node, removable in the drawer. From `block.defaultOn`. */
-export function clauseIsDefaultOn(clauseId: string): boolean {
-    return getClauseSpec(clauseId)?.block?.defaultOn === true;
+    return clauseDeclaresField(clauseId, "parentOrderHashes") || clauseDeclaresField(clauseId, "payment");
 }
 
 /** A PROCESS-LOG clause — the runtime enum-ladder runtime event log (not a
  *  companion proof) an order's seller advances. The generic marker for "this
  *  order runs a lifecycle"; resolved from the spec, never by name. */
 export function clauseIsProcessLog(clauseId: string): boolean {
-    return (
-        getClauseSpec(clauseId)?.block?.tier === "runtime"
-        && clauseLadderField(clauseId) !== null
-        && !isCompanionClause(clauseId)
-    );
+    return clauseLadderField(clauseId) !== null;
 }
 
 /** Whether a clause's spec declares a top-level field named `fieldName`.
@@ -195,33 +170,13 @@ export function clauseDeclaresField(clauseId: string, fieldName: string): boolea
     return getClauseSpec(clauseId)?.fields.some((f) => f.name === fieldName) === true;
 }
 
-/** The agreement-only structural clause — the topology clause whose data
- *  carries the order's topology edges, reconstructed off-chain by indexers.
- *  Resolved from the registry by TIER (agreement-only is the topology tier by
- *  construction), never by name. undefined while the cache is cold. */
+/** The topology clause whose data carries the order's topology edges,
+ *  reconstructed off-chain by indexers. Resolved from the registry by its own
+ *  `parentOrderHashes` field, never by name. undefined while the cache is cold. */
 export function topologyClauseId(): string | undefined {
     return listKnownClauseIds().find(
-        (clauseId) =>
-            getClauseSpec(clauseId)?.block?.tier === "agreement-only" && clauseIsStructural(clauseId),
+        (clauseId) => clauseDeclaresField(clauseId, "parentOrderHashes"),
     );
-}
-
-/** WHO attests a runtime clause — "seller" (the order's seller, default) or
- *  "bilateral" (both buyer and seller witness, e.g. proximity proof). Read from
- *  `block.attestation`; the generic runtime engine surfaces the attestation to
- *  the right party/parties without naming any clause. */
-export function clauseAttestation(clauseId: string): "seller" | "bilateral" {
-    return getClauseSpec(clauseId)?.block?.attestation ?? "seller";
-}
-
-/** The enum stage CODES of a lifecycle clause that are PHYSICAL HAND-OFFS (value
- *  changes hands). Read from `block.handoffStages`; the generic engine pairs a
- *  proximity cross-witness at these stages. Empty when the clause has no hand-off. */
-/** @public — engine reader shipped with `block.handoffStages` (the data is in
- *  the specs); the proximity cross-witness pairing consumes it when the generic
- *  handoff wiring lands. */
-export function clauseHandoffStages(clauseId: string): readonly string[] {
-    return getClauseSpec(clauseId)?.block?.handoffStages ?? [];
 }
 
 /** The first enum-type field of a clause — the runtime "stage ladder" (the
@@ -237,10 +192,6 @@ export function clauseLadderField(clauseId: string): { name: string; values: rea
 }
 
 // ── Spec-derived reads ───────────────────────────────────────────────────────
-
-/** When a clause is attested. Derived from block.tier: runtime ⇒ runtime
- *  (attested during/after the process), everything else ⇒ designer-time. */
-export type ClauseTier = "designer-time" | "runtime";
 
 /** The first enum field on a spec — the eventType ladder (merchant / courier)
  *  or the band set (proximity). Looks through enum and enum-typed array fields. */
@@ -378,11 +329,6 @@ export function clauseEnumValues(clauseId: string, fieldPath: string): readonly 
     if (field?.type === "enum") return field.values;
     if (field?.type === "array" && field.items.type === "enum") return field.items.values;
     return [];
-}
-
-/** When a clause is attested, from block.tier. */
-export function clauseTier(clauseId: string): ClauseTier {
-    return getClauseSpec(clauseId)?.block?.tier === "runtime" ? "runtime" : "designer-time";
 }
 
 interface ClauseArticleEntry {

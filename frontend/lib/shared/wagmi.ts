@@ -51,7 +51,7 @@ export const config = createConfig({
     } as Record<number, ReturnType<typeof mockAwareHttp>>,
     connectors,
     // EIP-6963 multi-injected-provider discovery. Default in wagmi v2 is `true`;
-    // setting explicitly because multiple call sites (ClientInit, useCommitmentFlow)
+    // setting explicitly because multiple call sites (ClientInit, the order commitment flow)
     // assume discovery is happening. Disabling it would silently break MetaMask /
     // Rabby / Frame side-by-side selection.
     multiInjectedProviderDiscovery: true,

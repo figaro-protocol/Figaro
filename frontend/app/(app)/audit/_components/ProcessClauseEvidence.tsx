@@ -4,12 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
-import { getAttestationsByOrder, type IndexedAttestationLog } from "@/lib/core/indexer";
+import { getAttestationsByOrder, type IndexedAttestationLog } from "@/lib/composition/indexer";
 import { toAttestationRecord } from "@/lib/audit/auditBundlePdf";
 import { extractClauseData } from "@/lib/audit/clauseDataExtract";
 import { extractProcessLogs } from "@/lib/audit/processLogsExtract";
 import { describeAttestation } from "@/lib/shared/clauseSpecSource";
-import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
+import { useClauseSpecs } from "@/lib/core/useClauseSpecs";
 import type { AttestationRecord } from "@/lib/mechanisms/useGHGDisclosure";
 
 /**

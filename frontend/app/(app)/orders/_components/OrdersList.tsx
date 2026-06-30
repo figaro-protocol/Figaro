@@ -32,16 +32,16 @@ import { truncateHex } from "@/lib/shared/formatHex";
 import { Button } from "@/components/ui/Button";
 import { WalletGate } from "@/components/core/WalletGate";
 import { useWalletProcessRows, type ProcessRow } from "@/lib/core/walletProcessQueries";
-import { useCommitmentFlow, type CommitmentPayload } from "@/lib/core/useCommitmentFlow";
-import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
+import { useOrderCommitmentFlow } from "@/lib/core/orderCommitmentFlow";
+import { type CommitmentPayload } from "@/lib/core/orderSignedAndShared";
+import { computeOrderHash, computeAgreementHash } from "@figaro/core";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { computeOrderHash } from "@/lib/core/commitmentStore";
 import { CONTRACTS } from "@/lib/core/contracts";
 import {
-    usePendingCommitments,
+    usePendingSellerSignature,
     awaitsMyCounterSign,
     awaitsCounterpartySignature,
-} from "@/hooks/core/usePendingCommitments";
+} from "@/lib/core/orderPendingSellerSignature";
 import { useSellerListings } from "@/lib/seller/useSellerListings";
 import { displayNameForAddress } from "@/lib/seller/sellerListing";
 import type { Listing } from "@/lib/seller/sellerListing";
@@ -216,27 +216,22 @@ export function OrdersList() {
     const isLoading = buyer.isLoading || seller.isLoading;
 
     // YOUR TURN — relayed commitments awaiting my counter-signature (accept).
-    const { pending: incoming, dismiss: dismissIncoming } = usePendingCommitments(awaitsMyCounterSign);
-    const { counterSign, broadcast, error: flowError, reset, step: flowStep } = useCommitmentFlow();
+    const { pending: incoming, dismiss: dismissIncoming } = usePendingSellerSignature(awaitsMyCounterSign);
+    const { acceptOrder, error: flowError, reset, step: flowStep } = useOrderCommitmentFlow();
     const [acceptingIndex, setAcceptingIndex] = useState<number | null>(null);
     const [acceptError, setAcceptError] = useState<string | null>(null);
 
     const handleAccept = useCallback(async (index: number) => {
         const payload = incoming[index];
         if (!payload) return;
-        // Layer A — never counter-sign an invalid agreement. Confirm the
-        // relayed agreement's merkle root matches the commitment's hash and
-        // every present clause validates before committing.
+        // Layer A — never counter-sign an agreement that doesn't match the hash
+        // being signed. Recompute the relayed agreement's merkle root and confirm
+        // it equals the commitment's agreementHash before committing.
         if (payload.agreement) {
-            const check = validateCommitmentAgreement(
-                payload.agreement,
-                payload.commitment.agreementHash as `0x${string}`,
-            );
-            if (!check.ok) {
+            const recomputed = computeAgreementHash(payload.agreement);
+            if (recomputed.toLowerCase() !== payload.commitment.agreementHash.toLowerCase()) {
                 setAcceptError(
-                    `This order isn't valid to commit: ${check.issues
-                        .map((i) => `${i.clause} ${i.path}: ${i.message}`)
-                        .join("; ")}`,
+                    "This order isn't valid to commit: the agreement does not match its signed hash.",
                 );
                 return;
             }
@@ -244,8 +239,7 @@ export function OrdersList() {
         setAcceptingIndex(index);
         setAcceptError(null);
         try {
-            const signed = await counterSign(payload);
-            await broadcast(signed);
+            await acceptOrder(payload);
             dismissIncoming(index);
             reset();
         } catch (cause: unknown) {
@@ -253,10 +247,10 @@ export function OrdersList() {
         } finally {
             setAcceptingIndex(null);
         }
-    }, [incoming, counterSign, broadcast, reset, dismissIncoming]);
+    }, [incoming, acceptOrder, reset, dismissIncoming]);
 
     // AWAITING ACCEPTANCE — commitments I relayed, waiting on the counterparty.
-    const { pending: outbound } = usePendingCommitments(awaitsCounterpartySignature);
+    const { pending: outbound } = usePendingSellerSignature(awaitsCounterpartySignature);
 
     // A relayed payload still reads single-sig after commit; hide any pending
     // (either direction) whose order is already on-chain in `rows`.
@@ -307,7 +301,7 @@ export function OrdersList() {
                                         payload={payload}
                                         onAccept={() => void handleAccept(index)}
                                         onDismiss={() => dismissIncoming(index)}
-                                        isAccepting={acceptingIndex === index || flowStep === "signing" || flowStep === "broadcasting"}
+                                        isAccepting={acceptingIndex === index || flowStep === "signing" || flowStep === "committing"}
                                         listings={listings}
                                     />
                                 ))}

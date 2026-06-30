@@ -22,7 +22,7 @@ import { expect } from "@playwright/test";
 import { test, gotoAsWallet } from "./devnet-multi-test";
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from "viem";
 import { assertPinnedInIpfs, discoverSellers, readLocalDeploymentConfig } from "./devnet-helpers";
-import { ASSEMBLY_REGISTRY_ABI } from "@/lib/mechanisms/useAssemblyRegistry";
+import { ASSEMBLY_REGISTRY_ABI } from '@figaro/core';
 
 const RPC_URL = "http://127.0.0.1:8545";
 const LOCAL_ANVIL = defineChain({

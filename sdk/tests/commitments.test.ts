@@ -1,12 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { keccak256, toBytes, encodeAbiParameters, encodePacked, hashTypedData } from "viem";
 import {
     buildDomain,
     generateSalt,
     computeDeadline,
     buildCommitment,
     COMMITMENT_TYPES,
+    COMMITMENT_TYPEHASH,
+    hashCommitmentStruct,
+    computeCommitmentProcessId,
+    computeOrderHash,
 } from "../src/commitments.js";
-import type { Address, Hex, EIP712Domain } from "../src/types.js";
+import type { Address, Hex, EIP712Domain, Commitment } from "../src/types.js";
 
 const CORE_ADDR = "0x1234567890abcdef1234567890abcdef12345678" as Address;
 const BUYER = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as Address;
@@ -134,5 +139,65 @@ describe("buildCommitment", () => {
 
         expect(typedData.types).toBe(COMMITMENT_TYPES);
         expect(typedData.primaryType).toBe("Commitment");
+    });
+});
+
+describe("order-hash derivation (mirrors CommitmentTypes.sol)", () => {
+    const ZERO = `0x${"0".repeat(64)}` as Hex;
+    const root: Commitment = {
+        processId: ZERO,
+        buyer: BUYER,
+        seller: SELLER,
+        currency: TOKEN,
+        payment: 500n,
+        expectedCumulativeValue: 500n,
+        agreementHash: AGREEMENT,
+        salt: 12345n,
+        deadline: 1700000000n,
+    };
+
+    it("COMMITMENT_TYPEHASH equals the kernel's literal type string", () => {
+        const literal =
+            "Commitment(bytes32 processId,address buyer,address seller,address currency," +
+            "uint256 payment,uint256 expectedCumulativeValue,bytes32 agreementHash," +
+            "uint256 salt,uint256 deadline)";
+        expect(COMMITMENT_TYPEHASH).toBe(keccak256(toBytes(literal)));
+    });
+
+    it("hashCommitmentStruct matches an explicit abi.encode (kernel hashStruct)", () => {
+        const explicit = keccak256(
+            encodeAbiParameters(
+                [
+                    { type: "bytes32" }, { type: "bytes32" }, { type: "address" },
+                    { type: "address" }, { type: "address" }, { type: "uint256" },
+                    { type: "uint256" }, { type: "bytes32" }, { type: "uint256" },
+                    { type: "uint256" },
+                ],
+                [
+                    COMMITMENT_TYPEHASH, root.processId, root.buyer, root.seller,
+                    root.currency, root.payment, root.expectedCumulativeValue,
+                    root.agreementHash, root.salt, root.deadline,
+                ],
+            ),
+        );
+        expect(hashCommitmentStruct(root)).toBe(explicit);
+    });
+
+    it("computeOrderHash for a root order matches the kernel formula", () => {
+        const processId = hashTypedData({
+            domain: buildDomain(1, CORE_ADDR),
+            types: COMMITMENT_TYPES,
+            primaryType: "Commitment",
+            message: root,
+        });
+        expect(computeCommitmentProcessId(root, 1, CORE_ADDR)).toBe(processId);
+        const structHash = hashCommitmentStruct(root);
+        const expected = keccak256(encodePacked(["bytes32", "bytes32"], [processId, structHash]));
+        expect(computeOrderHash(root, 1, CORE_ADDR)).toBe(expected);
+    });
+
+    it("a sub-order keeps its target processId (no digest)", () => {
+        const sub: Commitment = { ...root, processId: `0x${"11".repeat(32)}` as Hex };
+        expect(computeCommitmentProcessId(sub, 1, CORE_ADDR)).toBe(sub.processId);
     });
 });

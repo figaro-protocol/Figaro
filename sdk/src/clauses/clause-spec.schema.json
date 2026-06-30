@@ -72,35 +72,15 @@
         "block": {
             "type": "object",
             "description": "Block-binding metadata: how a clause composes into the UI + runtime. Nothing on-chain reads this entire object — it is Layer-A-only.",
-            "required": ["tier", "article"],
+            "required": ["article"],
             "additionalProperties": true,
             "properties": {
-                "tier": {
-                    "enum": ["runtime", "cross-checked", "agreement-only"],
-                    "description": "How the clause's content in the signed agreement relates to its runtime attestation. cross-checked: committed in the agreement, runtime attestation verified byte-identical. runtime: content produced/attested live. agreement-only: in the agreement, no validator (e.g. topology)."
-                },
                 "article": {
                     "type": "string",
                     "minLength": 1,
                     "description": "Drawer grouping heading (free-form, never a closed list). The contract-document SECTION this clause reads under, and the clause's sole classification. The RPGF substrate-broadening formula, when active, derives its group key as keccak256(article); nothing is stored on-chain for it."
                 },
-                "mechanismKinds": {
-                    "type": "array",
-                    "items": { "type": "string", "minLength": 1 },
-                    "description": "OPTIONAL. Mechanism kinds an assembly includes when this clause is anchored. Omit (absent => []) for a clause that wires no mechanism module."
-                },
-                "moduleIds": {
-                    "type": "array",
-                    "items": { "type": "string", "minLength": 1 },
-                    "description": "OPTIONAL. Runtime view-tier modules that consume/produce this clause's data. Omit (absent => []) when route-tier only or none."
-                },
-                "routes": { "type": "array", "items": { "type": "string" }, "description": "Route-tier surfaces that show this clause." },
-                "sisterClauseId": { "type": "string", "minLength": 1, "description": "A runtime-attestation companion clause emitted as an empty anchor." },
-                "nestsUnder": { "type": "string", "minLength": 1, "description": "A field name on a parent clause this clause nests under in the drawer." },
-                "structural": { "type": "boolean", "description": "Composed on EVERY order (not a designer choice) — e.g. commerce, topology." },
-                "defaultOn": { "type": "boolean", "description": "Pre-composed on every fresh designer node; removable in the drawer." },
-                "attestation": { "enum": ["seller", "bilateral"], "description": "WHO attests a runtime clause." },
-                "handoffStages": { "type": "array", "items": { "type": "string" }, "description": "Ladder stage codes that are physical hand-offs (value changes hands)." }
+                "nestsUnder": { "type": "string", "minLength": 1, "description": "A field name on a parent clause this clause nests under in the drawer." }
             }
         }
     }

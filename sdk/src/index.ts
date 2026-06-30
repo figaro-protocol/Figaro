@@ -26,8 +26,11 @@
 // ABIs
 export {
     CORE_ABI, ATTESTATION_COORDINATOR_ABI, DUTCH_AUCTION_ABI, CLAUSE_REGISTRY_ABI,
-    ERC20_ABI, SELLER_REGISTRY_ABI,
+    ERC20_ABI, SELLER_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI,
     FIG_TOKEN_ABI,
+    // Kernel Commitment struct tuple — a core primitive, used by composition-layer
+    // contract ABIs that take a Commitment as a calldata arg.
+    COMMITMENT_TUPLE,
 } from "./abis.js";
 export {
     EV_ORDER_COMMITTED,
@@ -80,12 +83,16 @@ export type { CoreEvents } from "./state.js";
 // Commitment builder
 export {
     COMMITMENT_TYPES,
+    COMMITMENT_TYPEHASH,
     buildDomain,
     generateSalt,
     computeDeadline,
     fetchCumulativeValue,
     buildCommitment,
     buildCommitmentSafe,
+    hashCommitmentStruct,
+    computeCommitmentProcessId,
+    computeOrderHash,
 } from "./commitments.js";
 export type { CommitmentParams } from "./commitments.js";
 

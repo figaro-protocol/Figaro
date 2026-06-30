@@ -11,7 +11,7 @@
  */
 
 import Link from "next/link";
-import { usePendingCommitments, awaitsMyCounterSign } from "@/hooks/core/usePendingCommitments";
+import { usePendingSellerSignature, awaitsMyCounterSign } from "@/lib/core/orderPendingSellerSignature";
 import Bell from "@/components/icons/Bell";
 
 interface YourTurnBadgeProps {
@@ -19,7 +19,7 @@ interface YourTurnBadgeProps {
 }
 
 export function YourTurnBadge({ theme = "dark" }: YourTurnBadgeProps) {
-    const { pending } = usePendingCommitments(awaitsMyCounterSign);
+    const { pending } = usePendingSellerSignature(awaitsMyCounterSign);
     const count = pending.length;
 
     const cls = theme === "dark"

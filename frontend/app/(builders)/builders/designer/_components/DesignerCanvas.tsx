@@ -50,7 +50,7 @@ import {
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "./AgreementDrawer";
-import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
+import { useClauseSpecs } from "@/lib/core/useClauseSpecs";
 import { maxCommitsLandableInOneBlock, maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { useChainId, usePublicClient } from "wagmi";
 

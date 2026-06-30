@@ -34,14 +34,14 @@ import {
     loadNamedDraft,
     clearCurrentSession,
 } from "@/lib/designer/syntheticDesignStore";
+import { ASSEMBLY_REGISTRY_ABI } from "@/lib/core/contracts";
 import {
-    ASSEMBLY_REGISTRY_ABI,
     fetchAssemblyTemplate,
     getAssemblyRegistry,
-} from "@/lib/mechanisms/useAssemblyRegistry";
+} from "@/lib/core/useAssemblyRegistry";
 import { usePublishAssembly } from "@/lib/designer/assemblyDiscovery";
 import { templateToOrders } from "@/lib/designer/assemblyTemplateToDraft";
-import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
+import { useClauseSpecs } from "@/lib/core/useClauseSpecs";
 import type { AssemblyTemplate } from "@/lib/designer/assemblyTemplate";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
 import type { Order } from "@/lib/core/store";

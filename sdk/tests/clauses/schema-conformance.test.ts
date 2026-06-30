@@ -43,10 +43,10 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
 
     // `block` is presentation metadata the SDK parser does NOT own (see spec.ts) —
     // it is validated by this schema and the frontend's clauseBlockBinding, never by
-    // parseClauseSpec. So a malformed block (e.g. an unknown tier) is a SCHEMA-level
-    // rejection only; the parser is silent on block by design.
-    it("rejects unknown block.tier at the schema (the parser does not own block)", () => {
-        const spec = { clauseId: "x-v1", version: 1, title: "T", description: "D", fields: [], block: { tier: "not-a-tier" } };
+    // parseClauseSpec. So a malformed block (e.g. missing the required article) is a
+    // SCHEMA-level rejection only; the parser is silent on block by design.
+    it("rejects a block missing the required article at the schema (the parser does not own block)", () => {
+        const spec = { clauseId: "x-v1", version: 1, title: "T", description: "D", fields: [], block: { mechanismKinds: [] } };
         expect(validateAgainstSchema(spec)).toBe(false);
     });
 });

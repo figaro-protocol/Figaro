@@ -26,7 +26,7 @@ mapping in `VERIFICATION_MAP.md`. Do not duplicate those here.
 │   • block.tier → the clause's VERIFICATION POSTURE (cross-checked / runtime /  │
 │     agreement-only); governs how/whether the content enters the agreementHash. │
 │ ═══════════════════════════  THE SEAM  ═══════════════════════════════════════ │
-│ clause.block.{article, nestsUnder, mechanismKinds, moduleIds, attestation, …}  │  ── presentation
+│ clause.block.{article, nestsUnder, mechanismKinds, attestation, …}             │  ── presentation
 │   • Layer-A-only metadata.  NO on-chain or verification path reads it.         │     (replaceable)
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ UI + IPFS.  Reads registry → IPFS; uses `block` to present (group by article, │
@@ -61,7 +61,7 @@ the spec, not around it:
 |---|---|---|
 | **`fields`** (the content) | Layer A (`validate.ts`, off-chain) | **Yes (off-chain)** — validated against the spec off-chain; the section is merkle-bound to `agreementHash` and the attestation is secured by bonds. The chain validates no content shape. |
 | **`block.tier`** | the agreementHash builder (`orderAgreement.ts`) | **Yes (structural)** — declares the verification posture: `cross-checked` → content byte-committed into `agreementHash`; `runtime` → attested live, empty anchor; `agreement-only` → in the signed agreement, no runtime attestation (e.g. topology, reconstructed off-chain) |
-| **the rest of `block`** — `article`, `nestsUnder`, `mechanismKinds`, `moduleIds`, `attestation`, `sisterClauseId` | the UI only (drawer grouping, sub-clause nesting, capability-rail mounting) | **No** — every on-chain and verification path ignores it |
+| **the rest of `block`** — `article`, `nestsUnder`, `mechanismKinds`, `attestation`, `sisterClauseId` | the UI only (drawer grouping, sub-clause nesting, capability-rail mounting) | **No** — every on-chain and verification path ignores it |
 
 So `fields` + `block.tier` are the **protocol**; everything else in `block` is **replaceable
 presentation**. The consequence is the whole thesis in one line:

@@ -6,7 +6,7 @@
  * Reads every `ClauseRegistered` event (`useAllRegisteredClauses`) and fetches
  * each clause's spec from its on-chain `metadataURI` into the module cache
  * (`loadClauseSpec`). Once `loaded` is true, the synchronous reads in
- * `clauseSpecSource` (getClauseSpec / clauseEnumValues / clauseTier /
+ * `clauseSpecSource` (getClauseSpec / clauseEnumValues /
  * describeAttestation / groupClausesByArticle / clauseNestsUnder) resolve for every
  * registered clause.
  *

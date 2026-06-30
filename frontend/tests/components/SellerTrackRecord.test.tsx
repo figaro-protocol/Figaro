@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { SellerTrackRecord } from "@/components/core/SellerTrackRecord";
-import type { SellerTrackRecord as TrackRecord } from "@/lib/core/indexer";
+import type { SellerTrackRecord as TrackRecord } from "@/lib/composition/indexer";
 
 const WITH_HISTORY: TrackRecord = {
     operatingSinceBlock: 100n,

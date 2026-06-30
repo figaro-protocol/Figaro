@@ -26,9 +26,6 @@ import {
     EV_ORDER_COMMITTED,
     EV_ORDER_SELLER,
     EV_ORDER_RESOLVED,
-    EV_ATTESTATION,
-    EV_AUCTION_CREATED,
-    EV_AUCTION_CLAIMED,
 } from "@figaro/core";
 
 // ── SellerRegistry events ──────────────────────────────────────────────────
@@ -49,27 +46,8 @@ const EV_SELLER_WITHDRAWN = parseAbiItem(
     "event SellerWithdrawn(address indexed seller, uint256 deposit)",
 );
 
-type IndexedLog = Awaited<ReturnType<typeof cachedGetLogs>>[number];
+export type IndexedLog = Awaited<ReturnType<typeof cachedGetLogs>>[number];
 type IndexedLogWithArgs = IndexedLog & { args?: Record<string, unknown> };
-
-/**
- * Typed view of an `AttestationRecorded` log row as returned by
- * `getAttestationsByOrder` / `getAttestationsByProcessAndClause`. The
- * `blockNumber` and `transactionHash` may be `null` for pending logs;
- * downstream consumers should guard accordingly.
- */
-export type IndexedAttestationLog = {
-    args?: Record<string, unknown> & {
-        orderHash?: string;
-        processId?: string;
-        attester?: string;
-        clauseId?: string;
-        stage?: number | bigint;
-        contentRef?: string;
-    };
-    blockNumber?: number | bigint | null;
-    transactionHash?: `0x${string}` | null;
-};
 
 // ── Dual-source merge helper ─────────────────────────────────────────────────
 
@@ -78,7 +56,7 @@ export type IndexedAttestationLog = {
  * results by block number (ascending). A generic multi-source reader — each
  * protocol event today has a single emitting contract.
  */
-async function cachedGetLogsMulti(
+export async function cachedGetLogsMulti(
     client: PublicClient,
     chainId: number,
     addresses: string[],
@@ -106,7 +84,7 @@ function getLogArgs(log: IndexedLog): Record<string, unknown> {
     return (log as IndexedLogWithArgs).args ?? {};
 }
 
-function getStringArg(log: IndexedLog, key: string): string | null {
+export function getStringArg(log: IndexedLog, key: string): string | null {
     const value = getLogArgs(log)[key];
     return typeof value === "string" ? value : null;
 }
@@ -128,24 +106,6 @@ export async function getAllOrderResolved(client: PublicClient, chainId: number)
         address: CONTRACTS.core as `0x${string}`,
         event: EV_ORDER_RESOLVED,
         eventName: "OrderResolved",
-    });
-}
-
-export async function getAllAuctionCreated(client: PublicClient, chainId: number) {
-    if (!CONTRACTS.dutchAuction) return [];
-    return cachedGetLogs(client, chainId, {
-        address: CONTRACTS.dutchAuction as `0x${string}`,
-        event: EV_AUCTION_CREATED,
-        eventName: "AuctionCreated",
-    });
-}
-
-export async function getAllAuctionClaimed(client: PublicClient, chainId: number) {
-    if (!CONTRACTS.dutchAuction) return [];
-    return cachedGetLogs(client, chainId, {
-        address: CONTRACTS.dutchAuction as `0x${string}`,
-        event: EV_AUCTION_CLAIMED,
-        eventName: "AuctionClaimed",
     });
 }
 
@@ -189,71 +149,8 @@ export async function getOrderCommittedBySeller(client: PublicClient, chainId: n
     });
 }
 
-// ---------------------------------------------------------------------------
-// AttestationCoordinator queries
-// ---------------------------------------------------------------------------
-
-async function getAllAttestations(client: PublicClient, chainId: number) {
-    if (!CONTRACTS.attestationCoordinator) return [];
-    return cachedGetLogsMulti(client, chainId,
-        [CONTRACTS.attestationCoordinator],
-        { event: EV_ATTESTATION, eventName: "Attestation" },
-    );
-}
-
-/** Attestation logs filtered by orderHash. */
-export async function getAttestationsByOrder(client: PublicClient, chainId: number, orderHash: string) {
-    const all = await getAllAttestations(client, chainId);
-    return all.filter((log) => getStringArg(log, "orderHash") === orderHash);
-}
-
-/** Attestation logs filtered by processId AND clauseId. */
-export async function getAttestationsByProcessAndClause(
-    client: PublicClient,
-    chainId: number,
-    processId: string,
-    clauseId: string,
-) {
-    const all = await getAllAttestations(client, chainId);
-    return all.filter(
-        (log) => getStringArg(log, "processId") === processId && getStringArg(log, "clauseId") === clauseId,
-    );
-}
-
-/** A process attestation flattened to the fields the runtime model needs:
- *  which clause, which order, which stage, who attested. The clauseId is
- *  DATA off the event — no caller hardcodes it. */
-export interface RuntimeAttestation {
-    clauseId: string;
-    orderHash: string;
-    stage: number;
-    attester: string;
-    blockNumber: number;
-}
-
-/** All attestations on a process, clause-agnostic. The single read the
- *  semantic builder buckets by clause to gate capabilities, and the order
- *  page renders as a generic timeline (clause + stage straight from data). */
-export async function getAttestationsByProcess(
-    client: PublicClient,
-    chainId: number,
-    processId: string,
-): Promise<RuntimeAttestation[]> {
-    const all = await getAllAttestations(client, chainId);
-    return all
-        .filter((log) => getStringArg(log, "processId") === processId)
-        .map((log) => {
-            const args = (log as { args?: Record<string, unknown> }).args ?? {};
-            return {
-                clauseId: getStringArg(log, "clauseId") ?? "",
-                orderHash: getStringArg(log, "orderHash") ?? "",
-                stage: Number(args.stage ?? 0),
-                attester: getStringArg(log, "attester") ?? "",
-                blockNumber: Number((log as { blockNumber?: unknown }).blockNumber ?? 0),
-            };
-        })
-        .sort((a, b) => a.blockNumber - b.blockNumber);
-}
+// AttestationCoordinator + DutchAuction event readers are NON-CORE — they live
+// in lib/composition/indexer.ts (core must not reference composition contracts).
 
 // ---------------------------------------------------------------------------
 // SellerRegistry event fetchers
@@ -443,158 +340,3 @@ export async function getSellerState(
     };
 }
 
-// ---------------------------------------------------------------------------
-// Seller track record — public-graph-derived activity
-// ---------------------------------------------------------------------------
-
-/** Value an seller transacted as a seller, summed per currency. */
-interface TrackRecordValue {
-    currency: string;
-    total: bigint;
-}
-
-/** Attestations an seller emitted, grouped by clauseId. */
-interface TrackRecordAttestations {
-    clauseId: string;
-    count: number;
-}
-
-/**
- * An seller's public-graph track record — every indicator reconstructed
- * from on-chain events, recomputable by anyone. This is NOT a stored or
- * soulbound score; it is the raw settlement/coordination history the public
- * graph exposes (PUBLIC_GRAPH_MODEL.md §"Reputation derivation").
- */
-export interface SellerTrackRecord {
-    /** Block of the seller's first SellerRegistered; null if never registered. */
-    operatingSinceBlock: bigint | null;
-    /** Unix-seconds timestamp of that block; null if unavailable. */
-    operatingSinceTimestamp: bigint | null;
-    /** Processes the seller participated in that have resolved. */
-    completedProcesses: number;
-    /** Processes the seller participated in still open. */
-    activeProcesses: number;
-    /** Orders committed with the seller as seller (merchant or courier). */
-    ordersSold: number;
-    /** Orders committed with the seller as buyer. */
-    ordersBought: number;
-    /** Value transacted as seller — summed payment, per currency. */
-    valueTransacted: TrackRecordValue[];
-    /** Distinct buyers the seller has sold to. */
-    buyersServed: number;
-    /** Distinct sellers the seller has bought from. */
-    sellersUsed: number;
-    /** Dutch-auction jobs the seller claimed (a courier signal). */
-    auctionJobsWon: number;
-    /** Total attestations the seller has emitted. */
-    attestationsEmitted: number;
-    /** Attestations emitted, grouped by clauseId, most-frequent first. */
-    attestationsByClause: TrackRecordAttestations[];
-}
-
-function getBigIntArg(log: IndexedLog, key: string): bigint {
-    const value = getLogArgs(log)[key];
-    return typeof value === "bigint" ? value : 0n;
-}
-
-/**
- * Reconstruct an seller's full public-graph track record. Combines the
- * OrderCommitted / OrderResolved process graph, the DutchAuction capital
- * graph, and the AttestationCoordinator disclosure graph — all keyed to one
- * address. Every figure is recomputed from events; nothing is stored, so the
- * result is verifiable by anyone with chain access.
- */
-export async function getSellerTrackRecord(
-    client: PublicClient,
-    chainId: number,
-    seller: string,
-): Promise<SellerTrackRecord> {
-    const [sellerOrders, buyerOrders, resolved, registrations, auctions, attestations] =
-        await Promise.all([
-            getOrderCommittedBySeller(client, chainId, seller),
-            getOrderCommittedByBuyer(client, chainId, seller),
-            getAllOrderResolved(client, chainId),
-            getAllSellerRegistered(client, chainId),
-            getAllAuctionClaimed(client, chainId),
-            getAllAttestations(client, chainId),
-        ]);
-
-    // Resolved processes — a process whose orders carry an OrderResolved.
-    const resolvedProcessIds = new Set(
-        resolved.map((log) => getStringArg(log, "processId")).filter((p): p is string => !!p),
-    );
-
-    // The seller's processes — distinct processIds across all its orders.
-    const sellerProcessIds = new Set<string>();
-    for (const log of [...sellerOrders, ...buyerOrders]) {
-        const pid = getStringArg(log, "processId");
-        if (pid) sellerProcessIds.add(pid);
-    }
-    let completedProcesses = 0;
-    for (const pid of sellerProcessIds) {
-        if (resolvedProcessIds.has(pid)) completedProcesses++;
-    }
-
-    // Value transacted as seller — summed payment per currency.
-    const valueByCurrency = new Map<string, bigint>();
-    for (const log of sellerOrders) {
-        const currency = getStringArg(log, "currency")?.toLowerCase();
-        if (!currency) continue;
-        valueByCurrency.set(currency, (valueByCurrency.get(currency) ?? 0n) + getBigIntArg(log, "payment"));
-    }
-
-    // Distinct counterparties.
-    const buyersServed = new Set(
-        sellerOrders.map((log) => getStringArg(log, "buyer")?.toLowerCase()).filter((b): b is string => !!b),
-    );
-    const sellersUsed = new Set(
-        buyerOrders.map((log) => getStringArg(log, "seller")?.toLowerCase()).filter((s): s is string => !!s),
-    );
-
-    // Operating since — earliest SellerRegistered for this address.
-    const ownRegistrations = registrations
-        .filter((log) => hexEqual(getStringArg(log, "seller"), seller))
-        .sort((a, b) => Number(a.blockNumber ?? 0n) - Number(b.blockNumber ?? 0n));
-    const firstBlock = ownRegistrations[0]?.blockNumber;
-    const operatingSinceBlock: bigint | null = firstBlock != null ? BigInt(firstBlock) : null;
-    let operatingSinceTimestamp: bigint | null = null;
-    if (operatingSinceBlock != null) {
-        try {
-            operatingSinceTimestamp = (await client.getBlock({ blockNumber: operatingSinceBlock })).timestamp;
-        } catch {
-            operatingSinceTimestamp = null;
-        }
-    }
-
-    // Auction jobs won — AuctionClaimed where the seller is the provider.
-    const auctionJobsWon = auctions.filter(
-        (log) => hexEqual(getStringArg(log, "provider"), seller),
-    ).length;
-
-    // Attestations emitted — grouped by clauseId.
-    const attestationsByClauseMap = new Map<string, number>();
-    for (const log of attestations) {
-        if (!hexEqual(getStringArg(log, "attester"), seller)) continue;
-        const clauseId = getStringArg(log, "clauseId") ?? "unknown";
-        attestationsByClauseMap.set(clauseId, (attestationsByClauseMap.get(clauseId) ?? 0) + 1);
-    }
-    let attestationsEmitted = 0;
-    for (const count of attestationsByClauseMap.values()) attestationsEmitted += count;
-
-    return {
-        operatingSinceBlock,
-        operatingSinceTimestamp,
-        completedProcesses,
-        activeProcesses: sellerProcessIds.size - completedProcesses,
-        ordersSold: sellerOrders.length,
-        ordersBought: buyerOrders.length,
-        valueTransacted: [...valueByCurrency.entries()].map(([currency, total]) => ({ currency, total })),
-        buyersServed: buyersServed.size,
-        sellersUsed: sellersUsed.size,
-        auctionJobsWon,
-        attestationsEmitted,
-        attestationsByClause: [...attestationsByClauseMap.entries()]
-            .map(([clauseId, count]) => ({ clauseId, count }))
-            .sort((a, b) => b.count - a.count),
-    };
-}

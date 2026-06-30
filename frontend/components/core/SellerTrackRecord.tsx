@@ -12,7 +12,7 @@
  */
 
 import { formatUnits } from "viem";
-import type { SellerTrackRecord as TrackRecord } from "@/lib/core/indexer";
+import type { SellerTrackRecord as TrackRecord } from "@/lib/composition/indexer";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 interface Props {

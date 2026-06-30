@@ -30,15 +30,15 @@ import {
     type PublicClient,
 } from "viem";
 import { isEmptyHex, ZERO_BYTES32, clauseIdHash } from "@/lib/shared/evm";
-import { ATTESTATION_COORDINATOR_ABI } from "@/lib/core/contracts";
-import { DISCLOSURE_KIND } from "@/lib/mechanisms/contracts";
+import { ATTESTATION_COORDINATOR_ABI } from "@/lib/composition/abis";
+import { DISCLOSURE_KIND } from "@/lib/composition/contracts";
 import {
     getAttestationsByProcessAndClause,
     getAttestationsByOrder,
     type IndexedAttestationLog,
-} from "@/lib/core/indexer";
+} from "@/lib/composition/indexer";
 import { clauseDeclaresField, getClauseSpec, listKnownClauseIds, describeAttestation } from "@/lib/shared/clauseSpecSource";
-import { useClauseSpecs } from "@/lib/mechanisms/useClauseSpecs";
+import { useClauseSpecs } from "@/lib/core/useClauseSpecs";
 
 export type AttestationRecord = {
     orderHash: string;
@@ -80,16 +80,10 @@ function disclosureClauseIdHashes(): Hex[] {
         .map((clauseId) => clauseIdHash(clauseId, getClauseSpec(clauseId)?.version ?? 1));
 }
 
-/** keccak256 event-topic hashes of every registered MEASUREMENT clause —
- *  the disclosure clauses' runtime sisters. Empty while the cache is cold. */
+/** The runtime GHG-measurement companion clause was removed; there are no
+ *  measurement sisters to watch. */
 function measurementClauseIdHashes(): Hex[] {
-    const sisters = new Set<string>();
-    for (const clauseId of listKnownClauseIds()) {
-        if (!clauseDeclaresField(clauseId, "scope")) continue;
-        const sister = getClauseSpec(clauseId)?.block?.sisterClauseId;
-        if (sister) sisters.add(sister);
-    }
-    return Array.from(sisters).map((clauseId) => clauseIdHash(clauseId, getClauseSpec(clauseId)?.version ?? 1));
+    return [];
 }
 
 // ── Pure utility functions ───────────────────────────────────────────────────

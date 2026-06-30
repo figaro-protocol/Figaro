@@ -13,7 +13,10 @@ import { parseAbi, parseAbiItem } from "viem";
 //    uint256 payment, uint256 expectedCumulativeValue, bytes32 agreementHash,
 //    uint256 salt, uint256 deadline)
 
-const COMMITMENT_TUPLE =
+/** The kernel `Commitment` struct as an ABI tuple string. A core primitive —
+ *  exported so contracts the frontend composes with (which take a Commitment as
+ *  a calldata arg) can build their ABIs without re-stating the kernel struct. */
+export const COMMITMENT_TUPLE =
     "(bytes32 processId, address buyer, address seller, address currency, uint256 payment, uint256 expectedCumulativeValue, bytes32 agreementHash, uint256 salt, uint256 deadline)";
 
 // ── FigaroCore ABI ──────────────────────────────────────────────────────────
@@ -158,6 +161,28 @@ export const SELLER_REGISTRY_ABI = parseAbi([
     "event SellerRegistered(address indexed seller, string metadataURI)",
     "event SellerProfileUpdated(address indexed seller, string metadataURI)",
     "event SellerWithdrawn(address indexed seller, uint256 deposit)",
+]);
+
+// ── AssemblyRegistry ABI ──────────────────────────────────────────────────
+
+export const ASSEMBLY_REGISTRY_ABI = parseAbi([
+    "function registerAssembly(string slug, bytes32 contentHash, string metadataURI) external payable",
+    "function withdrawDeposit(string slug) external",
+    "function bindings(bytes32 slugHash) view returns (address author, uint64 registeredAt, bool depositWithdrawn, bytes32 contentHash, string metadataURI)",
+    "function registrationDeposit() view returns (uint256)",
+    "function depositLockPeriod() view returns (uint256)",
+    "event AssemblyRegistered(bytes32 indexed slugHash, address indexed author, string slug, bytes32 contentHash, string metadataURI)",
+    "event DepositWithdrawn(bytes32 indexed slugHash, address indexed author, uint256 amount)",
+    "error EmptySlug()",
+    "error EmptyMetadataURI()",
+    "error EmptyContentHash()",
+    "error SlugAlreadyRegistered(string slug)",
+    "error WrongDeposit(uint256 provided, uint256 required)",
+    "error NotRegistered()",
+    "error NotAuthor(address caller, address author)",
+    "error DepositLocked(uint64 unlocksAt)",
+    "error AlreadyWithdrawn()",
+    "error TransferFailed()",
 ]);
 
 // ── FIG Token ABIs ──────────────────────────────────────────────────────────

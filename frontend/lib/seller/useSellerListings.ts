@@ -25,7 +25,7 @@ import { createUriFetcher } from "@/lib/shared/uriFetcher";
 import { tryParseSellerProfileDocument } from "@/lib/seller/sellerProfileMetadata";
 import type { PublicClient } from "viem";
 import { MECHANISM_CONTRACTS } from "@/lib/mechanisms/contracts";
-import { usePublishedAssemblies } from "@/lib/mechanisms/useAssemblyRegistry";
+import { usePublishedAssemblies } from "@/lib/core/useAssemblyRegistry";
 
 export interface UseSellerListingsResult {
     listings: Listing[];

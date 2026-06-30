@@ -19,6 +19,7 @@
  */
 
 import type { PublicClient } from "viem";
+import { keccak256, encodeAbiParameters, encodePacked, hashTypedData, toBytes } from "viem";
 import { CORE_ABI } from "./abis.js";
 import type {
     Hex,
@@ -53,6 +54,63 @@ export function buildDomain(chainId: number, coreAddress: Address): EIP712Domain
         chainId,
         verifyingContract: coreAddress,
     };
+}
+
+// ── Order-hash derivation (mirrors CommitmentTypes.sol + FigaroCore) ──────────
+//
+// Single source for the on-chain order id. The EIP-712 typehash and the struct
+// encoding are DERIVED from COMMITMENT_TYPES above, so they can never drift from
+// the type the parties sign. Frontends import these — they do not re-implement.
+
+const ZERO_PROCESS_ID = `0x${"0".repeat(64)}` as Hex;
+
+/** The EIP-712 type string, derived from COMMITMENT_TYPES (single source). */
+const COMMITMENT_TYPE_STRING =
+    `Commitment(${COMMITMENT_TYPES.Commitment.map((f) => `${f.type} ${f.name}`).join(",")})`;
+
+/** keccak256 of the EIP-712 type string — matches `CommitmentTypes.COMMITMENT_TYPEHASH`. */
+export const COMMITMENT_TYPEHASH = keccak256(toBytes(COMMITMENT_TYPE_STRING));
+
+/** EIP-712 hashStruct of a Commitment (NO domain separator) — mirrors
+ *  `CommitmentTypes.hashStruct`: keccak256(abi.encode(TYPEHASH, ...fields)). */
+export function hashCommitmentStruct(c: Commitment): Hex {
+    const params = [
+        { type: "bytes32" },
+        ...COMMITMENT_TYPES.Commitment.map((f) => ({ type: f.type })),
+    ];
+    const values = [
+        COMMITMENT_TYPEHASH,
+        ...COMMITMENT_TYPES.Commitment.map((f) => c[f.name as keyof Commitment]),
+    ];
+    return keccak256(encodeAbiParameters(params, values as never));
+}
+
+/** The order's process id: a root order (processId == 0) uses the full EIP-712
+ *  digest the kernel derives; a sub-order keeps its target processId. */
+export function computeCommitmentProcessId(
+    c: Commitment,
+    chainId: number,
+    coreAddress: Address,
+): Hex {
+    return c.processId.toLowerCase() === ZERO_PROCESS_ID
+        ? hashTypedData({
+            domain: buildDomain(chainId, coreAddress),
+            types: COMMITMENT_TYPES,
+            primaryType: "Commitment",
+            message: c,
+        })
+        : c.processId;
+}
+
+/** The on-chain order hash: keccak256(abi.encodePacked(processId, hashStruct(c))).
+ *  Mirrors the kernel's order-id derivation — the single canonical implementation. */
+export function computeOrderHash(c: Commitment, chainId: number, coreAddress: Address): Hex {
+    return keccak256(
+        encodePacked(
+            ["bytes32", "bytes32"],
+            [computeCommitmentProcessId(c, chainId, coreAddress), hashCommitmentStruct(c)],
+        ),
+    );
 }
 
 // ── Salt generation ─────────────────────────────────────────────────────────

@@ -11,15 +11,14 @@
  * to the wallet.
  *
  * Consumers should not import this directly — it's rendered by the
- * `<CommitmentSignPreviewProvider>` against the
- * `commitmentSignPreviewStore` singleton. To gate a sign flow, call
+ * `<CommitmentSignPreviewProvider>` against the confirm gate in
+ * `orderPreview`. To gate a sign flow, call
  * `requestSignConfirmation(commitment, agreement)` from your async path;
  * the provider opens this modal and resolves your promise on confirm/cancel.
  */
 
 import { formatToken } from "@/lib/shared/utils";
-import type { Commitment } from "@figaro/core";
-import type { Agreement, AgreementSection } from "@/lib/core/agreement";
+import type { Commitment, Agreement, AgreementSection } from "@figaro/core";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { ModalChrome } from "@/components/ui/ModalChrome";
 

@@ -14,13 +14,13 @@ import type { PublicClient } from "viem";
 import type { Order } from "@/lib/core/store";
 import { redactSections, type Agreement } from "@/lib/core/agreement";
 import { sectionsByField } from "@/lib/core/orderAgreement";
-import type { IndexedAttestationLog } from "@/lib/core/indexer";
+import { getAllSellerRegistered } from "@/lib/core/indexer";
 import {
     getAttestationsByOrder,
     getAllAuctionCreated,
     getAllAuctionClaimed,
-    getAllSellerRegistered,
-} from "@/lib/core/indexer";
+    type IndexedAttestationLog,
+} from "@/lib/composition/indexer";
 import { buildAuditBundle, type AuditBundle } from "@/lib/audit/auditBundle";
 import type {
     DutchAuctionCreatedEvent,

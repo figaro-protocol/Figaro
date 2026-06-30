@@ -5,7 +5,7 @@
  * Seller-domain composition: reads the seller's profile (SellerRegistry →
  * IPFS), intersects the profile's `assemblyBindings[].assemblySlug` with the
  * published assembly events, and fetches each matched assemblyTemplate. The
- * on-chain reads come from `@/lib/mechanisms/useAssemblyRegistry` (a legal
+ * on-chain reads come from `@/lib/core/useAssemblyRegistry` (a legal
  * downward arrow); the seller-profile parsing stays intra-seller.
  */
 
@@ -20,7 +20,7 @@ import {
 import {
     useAllPublishedAssemblies,
     fetchAssemblyTemplate,
-} from "@/lib/mechanisms/useAssemblyRegistry";
+} from "@/lib/core/useAssemblyRegistry";
 import { extractRootModality } from "@/lib/designer/assemblyDiscovery";
 
 /** A seller's on-chain bound assembly, assemblyTemplate resolved. */
