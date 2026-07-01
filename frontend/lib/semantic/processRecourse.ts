@@ -7,7 +7,7 @@
  * agreement NAMES it — the dispute-resolution clause(s) the assembly designer
  * authored into the order(s).
  *
- * This resolver is OPEN-WORLD: it recognises a recourse clause by its
+ * This reader is OPEN-WORLD: it recognises a recourse clause by its
  * `block.article === "dispute-resolution"`, never by a hardcoded field name or
  * clause id. So ANY decentralized-ADR or applicable-law clause — the two that
  * exist today, or a `figaro-arbitration-<provider>` registered tomorrow — is
@@ -27,20 +27,21 @@ const RECOURSE_ARTICLE = "dispute-resolution";
 
 /** A dispute-resolution clause a process authored — the clauseId plus its
  *  committed data. Surfaced generically (rendered via `describeClause` at the
- *  edge); the resolver never interprets the fields itself. */
+ *  edge); the reader never interprets the fields itself. */
 export interface RecourseClause {
     clauseId: string;
     data: Record<string, unknown>;
 }
 
 /**
- * Resolve the dispute-resolution clause(s) a process's orders authored —
+ * Derive the dispute-resolution clause(s) a process's orders authored —
  * array-aware, deduped. Reads every order's committed sections and keeps those
  * whose clause declares the dispute-resolution article. A designer may author
  * more than one (e.g. a decentralized-ADR clause + an applicable-law clause),
- * so every distinct one is returned in first-seen order.
+ * so every distinct one is returned in first-seen order. Named `derive`, not
+ * `resolve`, to stay clear of the kernel's `resolveProcess` settlement call.
  */
-export function resolveProcessRecourse(
+export function deriveProcessRecourse(
     orders: readonly Order[],
     agreements: Map<string, Agreement>,
 ): RecourseClause[] {

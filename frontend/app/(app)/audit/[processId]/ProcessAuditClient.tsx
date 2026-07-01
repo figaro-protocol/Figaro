@@ -8,7 +8,7 @@ import { HashVerifier } from "../_components/HashVerifier";
 import { DisputeStatusPanel } from "@/components/core/DisputeStatusPanel";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
-import { resolveProcessRecourse } from "@/lib/semantic/processRecourse";
+import { deriveProcessRecourse } from "@/lib/semantic/processRecourse";
 
 /**
  * Dispute escalation for the process. In the three-layer dispute model
@@ -28,7 +28,7 @@ function ProcessDisputeSection({ processId }: { processId: string }) {
 
     // Layer-3 recourse is whatever the assembly's dispute-resolution clauses
     // named — read off the committed orders by spec, not a global default.
-    const recourses = useMemo(() => resolveProcessRecourse(orders, agreements), [orders, agreements]);
+    const recourses = useMemo(() => deriveProcessRecourse(orders, agreements), [orders, agreements]);
 
     return (
         <div data-testid="audit-dispute-section">
