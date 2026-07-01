@@ -29,7 +29,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import type { Order } from "@/lib/core/store";
 import { buildAuditBundlePdfBlob } from "@/lib/audit/auditBundlePdf";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
-import type { CoordinatorEventSource, JurisdictionRecourse } from "@/lib/dispute";
+import type { JurisdictionRecourse } from "@/lib/dispute";
 
 /** Kleros's own first-party dispute UI, built on ArbitrableProxy. */
 const KLEROS_RESOLVER_BASE = "https://resolve.kleros.io";
@@ -40,9 +40,6 @@ interface DisputeStatusPanelProps {
      *  (arbitration and/or applicable-law), read off the committed orders by
      *  spec. Display-only — surfaces the forum the designer named. */
     recourses?: readonly JurisdictionRecourse[];
-    /** Optional coordinator event sources folded into the evidence-bundle
-     *  timeline (lifecycle signals, proximity proofs, etc.). */
-    coordinatorSources?: CoordinatorEventSource[];
     /** All orders in the process — the audit-bundle PDF aggregates per-order
      *  extracts. When omitted/empty, the evidence-bundle action is hidden. */
     orders?: readonly Order[];
@@ -51,7 +48,6 @@ interface DisputeStatusPanelProps {
 export function DisputeStatusPanel({
     processId,
     recourses,
-    coordinatorSources,
     orders,
 }: DisputeStatusPanelProps) {
     const mounted = useMounted();
@@ -86,7 +82,7 @@ export function DisputeStatusPanel({
                 publicClient ?? undefined,
                 chainId,
                 agreements,
-                { redactLineItems: bundleRedact, coordinatorSources },
+                { redactLineItems: bundleRedact },
             );
             const cid = await evidenceTransport.pinBlob(blob);
             setPdfBlob(blob);
@@ -96,7 +92,7 @@ export function DisputeStatusPanel({
         } finally {
             setLoading(false);
         }
-    }, [orders, processId, publicClient, chainId, agreements, bundleRedact, coordinatorSources, evidenceTransport]);
+    }, [orders, processId, publicClient, chainId, agreements, bundleRedact, evidenceTransport]);
 
     const handleDownload = useCallback(() => {
         if (!pdfBlob) return;

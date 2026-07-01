@@ -91,13 +91,6 @@ describe("Visual proximity band", () => {
         const QR_VISUAL_BAND = 4;
         expect(QR_VISUAL_BAND).toBe(4);
     });
-
-    it("band labels include Visual entry", async () => {
-        // Dynamically load to verify the export
-        const mod = await import("@/lib/dispute/deliveryCoordinatorEvents");
-        // BAND_LABELS is not exported, but we verify the module loads without error
-        expect(mod).toBeDefined();
-    });
 });
 
 // ---------------------------------------------------------------------------

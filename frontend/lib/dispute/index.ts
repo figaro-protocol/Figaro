@@ -16,7 +16,6 @@ export {
 export type {
     TimelineEvent,
     ProcessTimeline,
-    CoordinatorEventSource,
 } from "./evidenceTimeline";
 
 // Process-jurisdiction recourse — reads the dispute-resolution clause(s) the

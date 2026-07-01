@@ -34,9 +34,7 @@ import {
 } from "@/lib/semantic/financialsProjection";
 import type { AttestationRecord } from "@/lib/composition/useGHGDisclosure";
 import {
-    buildExtendedTimeline,
     buildProcessTimeline,
-    type CoordinatorEventSource,
     type ProcessTimeline,
 } from "@/lib/dispute/evidenceTimeline";
 
@@ -118,13 +116,6 @@ async function loadPdfModule() {
 
 export interface BuildAuditBundlePdfOptions {
     redactLineItems?: boolean;
-    /**
-     * Coordinator event sources to extend the FigaroCore timeline page.
-     * When omitted, only kernel events appear. Mirror of the
-     * `DisputeStatusPanel` coordinatorSources prop so the timeline that
-     * lands in the PDF matches the timeline a dispute page would build.
-     */
-    coordinatorSources?: CoordinatorEventSource[];
     /**
      * Skip the timeline page entirely. Defaults to including the timeline
      * whenever a `publicClient` is available. Set to `false` only if the
@@ -210,9 +201,7 @@ export async function buildAuditBundlePdfBlob(
     let timeline: ProcessTimeline | null = null;
     if (publicClient && options.includeTimeline !== false) {
         try {
-            timeline = options.coordinatorSources?.length
-                ? await buildExtendedTimeline(publicClient, processId as `0x${string}`, options.coordinatorSources)
-                : await buildProcessTimeline(publicClient, processId as `0x${string}`);
+            timeline = await buildProcessTimeline(publicClient, processId as `0x${string}`);
         } catch {
             // Non-fatal — render without the timeline page if RPC fails.
             // Hash-anchored evidence (clauses, contentRefs) is still sufficient

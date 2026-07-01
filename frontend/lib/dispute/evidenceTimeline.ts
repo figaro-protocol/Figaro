@@ -1,16 +1,24 @@
 /**
  * Evidence timeline renderer.
  *
- * Given a processId, queries all FigaroCore lifecycle events and reconstructs
- * a chronological, human-readable timeline suitable for dispute evidence.
+ * Given a processId, queries all FigaroCore lifecycle events AND every clause's
+ * runtime attestations (the unified AttestationCoordinator event), and
+ * reconstructs a chronological, human-readable timeline. Attestations are
+ * labelled from each clause's OWN spec via `describeAttestation` (clause title
+ * + the enum value at `stage`) — no clause names, no per-clause label maps, so
+ * a permissionlessly-registered clause's attestations appear correctly with no
+ * code change.
  *
- * Pure read — no contract writes, no on-chain storage.
- * The output can be serialized to JSON for Kleros ERC-1497 evidence
- * submission or rendered in a UI.
+ * Pure read — no contract writes, no on-chain storage. The output is
+ * serializable (for the audit-bundle PDF / a juror evidence reader) or
+ * renderable in a UI.
  */
 
 import type { PublicClient } from "viem";
 import { CORE_ABI, CONTRACTS } from "@/lib/core/contracts";
+import { ATTESTATION_COORDINATOR_ABI } from "@/lib/composition/abis";
+import { COMPOSITION_CONTRACTS } from "@/lib/composition/contracts";
+import { describeAttestation } from "@/lib/shared/clauseSpecSource";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -198,6 +206,54 @@ export async function buildProcessTimeline(
             },
         });
     }
+
+    // ── Runtime attestations (every clause) ─────────────────────────
+    // All attestations — lifecycle, proximity, disclosure, any permissionless
+    // clause — arrive through AttestationCoordinator's unified Attestation
+    // event, each labelled from its OWN spec. No clause names; an unknown
+    // clause falls back to a short hash + stage (describeAttestation handles
+    // it). The event's `contentRef = keccak256(content)` is a verification
+    // digest, not an off-chain pointer.
+    const coordinatorAddr = COMPOSITION_CONTRACTS.attestationCoordinator;
+    if (coordinatorAddr && coordinatorAddr.length === 42) {
+        const attestLogs = await client.getContractEvents({
+            address: coordinatorAddr,
+            abi: ATTESTATION_COORDINATOR_ABI,
+            eventName: "Attestation",
+            args: { processId },
+            fromBlock: 0n,
+            toBlock: "latest",
+        });
+        for (const log of attestLogs) {
+            const a = log.args as Partial<{
+                clauseId: string;
+                stage: bigint | number;
+                orderHash: string;
+                attester: string;
+                contentRef: string;
+            }>;
+            if (!a.clauseId) continue;
+            const stage = Number(a.stage ?? 0);
+            const ts = await getBlockTimestamp(client, log.blockNumber!, blockCache);
+            const { clauseTitle, eventLabel } = describeAttestation(a.clauseId, stage);
+            events.push({
+                label: `${clauseTitle} — ${eventLabel}`,
+                blockNumber: log.blockNumber!,
+                timestamp: ts,
+                iso: new Date(ts * 1000).toISOString(),
+                txHash: log.transactionHash!,
+                orderHash: a.orderHash ?? "",
+                eventName: "Attestation",
+                details: {
+                    attester: a.attester ?? "",
+                    stage: String(stage),
+                    contentRef: a.contentRef ?? "",
+                    clauseId: a.clauseId,
+                },
+            });
+        }
+    }
+
     events.sort((a, b) => {
         const bn = Number(a.blockNumber - b.blockNumber);
         if (bn !== 0) return bn;
@@ -220,46 +276,4 @@ export async function buildProcessTimeline(
             totalBuyerPayout: weiToDecimal(totalBuyerPayout),
         },
     };
-}
-// Extension point: coordinator events
-//
-// Downstream archetypes (e.g. Figaro-eats) can extend the timeline by
-// providing additional event sources. This keeps the core module
-// archetype-agnostic while allowing rich evidence for specific workflows.
-// ---------------------------------------------------------------------------
-
-export interface CoordinatorEventSource {
-    /** Display name for the coordinator (e.g. "AttestationCoordinator"). */
-    name: string;
-    /** Fetch additional timeline events for the given processId. */
-    fetchEvents: (
-        client: PublicClient,
-        processId: `0x${string}`,
-    ) => Promise<TimelineEvent[]>;
-}
-
-/**
- * Build an extended timeline that includes coordinator-specific events.
- * Core events always come first; coordinator events are merged chronologically.
- */
-export async function buildExtendedTimeline(
-    client: PublicClient,
-    processId: `0x${string}`,
-    coordinatorSources: CoordinatorEventSource[],
-): Promise<ProcessTimeline> {
-    const base = await buildProcessTimeline(client, processId);
-
-    const extraEvents: TimelineEvent[] = [];
-    for (const source of coordinatorSources) {
-        const events = await source.fetchEvents(client, processId);
-        extraEvents.push(...events);
-    }
-
-    base.events = [...base.events, ...extraEvents].sort((a, b) => {
-        const bn = Number(a.blockNumber - b.blockNumber);
-        if (bn !== 0) return bn;
-        return a.timestamp - b.timestamp;
-    });
-
-    return base;
 }

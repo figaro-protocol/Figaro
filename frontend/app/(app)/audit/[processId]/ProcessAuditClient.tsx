@@ -8,7 +8,6 @@ import { HashVerifier } from "../_components/HashVerifier";
 import { DisputeStatusPanel } from "@/components/core/DisputeStatusPanel";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
-import { createDeliveryCoordinatorSource } from "@/lib/dispute/deliveryCoordinatorEvents";
 import { resolveProcessRecourse } from "@/lib/dispute";
 
 /**
@@ -26,7 +25,6 @@ function ProcessDisputeSection({ processId }: { processId: string }) {
         [orders],
     );
     const agreements = useProcessAgreements(agreementHashes);
-    const coordinatorSources = useMemo(() => [createDeliveryCoordinatorSource()], []);
 
     // Layer-3 recourse is whatever the assembly's dispute-resolution clauses
     // named — read off the committed orders by spec, not a global default.
@@ -37,7 +35,6 @@ function ProcessDisputeSection({ processId }: { processId: string }) {
             <DisputeStatusPanel
                 processId={processId as `0x${string}`}
                 recourses={recourses}
-                coordinatorSources={coordinatorSources}
                 orders={orders}
             />
         </div>
