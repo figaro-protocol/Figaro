@@ -1,17 +1,20 @@
 /**
- * Evidence timeline renderer.
+ * Process audit timeline.
  *
- * Given a processId, queries all FigaroCore lifecycle events AND every clause's
- * runtime attestations (the unified AttestationCoordinator event), and
- * reconstructs a chronological, human-readable timeline. Attestations are
- * labelled from each clause's OWN spec via `describeAttestation` (clause title
- * + the enum value at `stage`) — no clause names, no per-clause label maps, so
- * a permissionlessly-registered clause's attestations appear correctly with no
- * code change.
+ * THE process event record for `audit/`: given a processId, queries all
+ * FigaroCore lifecycle events AND every clause's runtime attestations (the
+ * unified AttestationCoordinator event) and reconstructs a chronological,
+ * human-readable timeline. Attestations are labelled from each clause's OWN
+ * spec via `describeAttestation` (clause title + the enum value at `stage`) —
+ * no clause names, no per-clause label maps, so a permissionlessly-registered
+ * clause's attestations appear correctly with no code change.
  *
- * Pure read — no contract writes, no on-chain storage. The output is
- * serializable (for the audit-bundle PDF / a juror evidence reader) or
- * renderable in a UI.
+ * This is the audit documentation, and the audit documentation IS the
+ * evidence: the same record the parties read is what a forum (Kleros or any
+ * other) reads. There is no separate "evidence" timeline — the audit-bundle
+ * PDF and the forum-facing `/evidence-display` reader are two views of THIS one
+ * timeline. Pure read — no contract writes, no on-chain storage; the output is
+ * serializable.
  */
 
 import type { PublicClient } from "viem";

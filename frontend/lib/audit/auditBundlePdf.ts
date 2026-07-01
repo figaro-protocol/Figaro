@@ -36,7 +36,7 @@ import type { AttestationRecord } from "@/lib/composition/useGHGDisclosure";
 import {
     buildProcessTimeline,
     type ProcessTimeline,
-} from "@/lib/dispute/evidenceTimeline";
+} from "@/lib/audit/processTimeline";
 
 interface IndexedLog {
     args?: Record<string, unknown>;

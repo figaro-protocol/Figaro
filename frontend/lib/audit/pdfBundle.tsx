@@ -38,7 +38,7 @@ import type {
     OrderLineItem,
 } from "@/lib/semantic/financialsProjection";
 import { OrderState } from "@/lib/core/store";
-import type { ProcessTimeline, TimelineEvent } from "@/lib/dispute/evidenceTimeline";
+import type { ProcessTimeline, TimelineEvent } from "@/lib/audit/processTimeline";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 // ── Styles ──────────────────────────────────────────────────────────────────
