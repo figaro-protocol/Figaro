@@ -18,12 +18,18 @@
 import type { Order } from "@/lib/core/store";
 import type { Agreement } from "@figaro/core";
 import { sectionByField } from "@/lib/core/agreementSections";
-import { getKlerosCourt, type KlerosCourt } from "./klerosCourts";
+import { clauseFieldSpec, labelEnumValue } from "@/lib/shared/clauseSpecSource";
 
-/** A Kleros (decentralized ODR) recourse path authored in a clause. */
+/** The shape of a resolved agreement section — its clauseId + committed data. */
+type ClauseSection = { clause: string; data?: Record<string, unknown> };
+
+/** A Kleros (decentralized ODR) recourse path authored in a clause. The court
+ *  key + its human label come from the clause spec (the arbitration clause's
+ *  `klerosCourt` enum + `valueLabels`), never a forked local catalog. */
 interface KlerosRecourse {
     kind: "kleros";
-    court: KlerosCourt;
+    courtKey: string;
+    courtLabel: string;
     minJurors: number;
 }
 
@@ -40,19 +46,26 @@ export type JurisdictionRecourse = KlerosRecourse | TraditionalRecourse;
 /** Stable identity for a recourse — dedupes identical clauses across orders. */
 function recourseKey(r: JurisdictionRecourse): string {
     return r.kind === "kleros"
-        ? `kleros:${r.court.key}:${r.minJurors}`
+        ? `kleros:${r.courtKey}:${r.minJurors}`
         : `traditional:${r.applicableLaw}:${r.forum ?? ""}:${r.language ?? ""}`;
 }
 
-function parseArbitrationKlerosSection(data: Record<string, unknown>): KlerosRecourse | null {
-    const klerosCourt = typeof data.klerosCourt === "string" ? data.klerosCourt : "";
-    if (!klerosCourt) return null;
-    const court = getKlerosCourt(klerosCourt);
-    if (!court) return null;
+function parseArbitrationKlerosSection(section: ClauseSection): KlerosRecourse | null {
+    const data = section.data ?? {};
+    const courtKey = typeof data.klerosCourt === "string" ? data.klerosCourt : "";
+    if (!courtKey) return null;
+    // Display label: the arbitration clause's own `klerosCourt` valueLabels are
+    // the SSoT (unknown value → raw key, open-world). The clause is found by
+    // field, so its clauseId is read off the section, never hardcoded.
+    const courtField = clauseFieldSpec(section.clause, "klerosCourt");
+    const courtLabel = labelEnumValue(courtField?.type === "enum" ? courtField : null, courtKey);
+    // Min-juror default: the clause's `klerosMinJurors.default` (Kleros default 3).
     const raw = data.klerosMinJurors;
     const parsed = typeof raw === "number" ? raw : typeof raw === "string" ? parseInt(raw, 10) : NaN;
-    const minJurors = Number.isInteger(parsed) && parsed >= 1 ? parsed : court.defaultMinJurors;
-    return { kind: "kleros", court, minJurors };
+    const minField = clauseFieldSpec(section.clause, "klerosMinJurors");
+    const defaultMin = typeof minField?.default === "number" ? minField.default : 3;
+    const minJurors = Number.isInteger(parsed) && parsed >= 1 ? parsed : defaultMin;
+    return { kind: "kleros", courtKey, courtLabel, minJurors };
 }
 
 function parseApplicableLawSection(data: Record<string, unknown>): TraditionalRecourse | null {
@@ -84,7 +97,7 @@ export function resolveProcessRecourse(
         if (!agreement) continue;
         const klerosSection = sectionByField(agreement, "klerosCourt");
         if (klerosSection) {
-            const recourse = parseArbitrationKlerosSection(klerosSection.data);
+            const recourse = parseArbitrationKlerosSection(klerosSection);
             if (recourse) {
                 const key = recourseKey(recourse);
                 if (!seen.has(key)) {

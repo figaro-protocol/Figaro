@@ -131,11 +131,11 @@ export function DisputeStatusPanel({
                     {recourses.map((r) =>
                         r.kind === "kleros" ? (
                             <p
-                                key={`k-${r.court.key}`}
+                                key={`k-${r.courtKey}`}
                                 className="text-xs text-neutral-700"
                                 data-testid="dispute-recourse-kleros"
                             >
-                                Kleros — {r.court.name} · minimum {r.minJurors} jurors
+                                Kleros — {r.courtLabel} · minimum {r.minJurors} jurors
                             </p>
                         ) : (
                             <p

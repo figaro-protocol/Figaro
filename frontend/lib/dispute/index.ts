@@ -19,8 +19,9 @@ export type {
 } from "./evidenceTimeline";
 
 // Process-jurisdiction recourse — reads the dispute-resolution clause(s) the
-// assembly authored and resolves the Layer-3 recourse forum(s). The Kleros
-// subcourt catalog (klerosCourts) is an internal detail of the resolution.
+// assembly authored and resolves the Layer-3 recourse forum(s). Court display
+// labels come from the arbitration clause's own `valueLabels` (the SSoT), not
+// a forked local catalog.
 export {
     resolveProcessRecourse,
 } from "./processJurisdiction";
