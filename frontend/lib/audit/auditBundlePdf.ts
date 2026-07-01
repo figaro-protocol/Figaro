@@ -24,7 +24,7 @@ import { buildAuditBundle, type AuditBundle } from "@/lib/audit/auditBundle";
 import type {
     DutchAuctionCreatedEvent,
     DutchAuctionClaimedEvent,
-} from "@/lib/audit/dutchAuctionExtract";
+} from "@/lib/composition/dutchAuctionExtract";
 import type {
     SellerRegisteredEvent,
 } from "@/lib/audit/sellerRegistryExtract";

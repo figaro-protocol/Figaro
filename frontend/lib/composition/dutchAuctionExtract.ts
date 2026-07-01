@@ -22,7 +22,7 @@
  */
 
 import type { Order } from "@/lib/core/store";
-import type { ExtractedDocument } from "./types";
+import type { ExtractedDocument } from "@/lib/audit/types";
 import { hexEqual } from "@/lib/shared/evm";
 
 export interface DutchAuctionCreatedEvent {

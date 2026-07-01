@@ -32,7 +32,7 @@ import {
     type DutchAuctionDocument,
     type DutchAuctionCreatedEvent,
     type DutchAuctionClaimedEvent,
-} from "./dutchAuctionExtract";
+} from "@/lib/composition/dutchAuctionExtract";
 import {
     extractSellerRegistry,
     type SellerRegistryDocument,
