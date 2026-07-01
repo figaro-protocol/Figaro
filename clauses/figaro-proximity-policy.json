@@ -2,7 +2,7 @@
     "clauseId": "figaro-proximity-policy",
     "version": 1,
     "title": "Proximity-verification policy",
-    "description": "Committed proximity-verification options for this assembly: the set of detection bands a merchant offers (zone-wifi, nearby-ble, contact-nfc). Multi-valued \u2014 at template time the merchant declares which bands are acceptable; at runtime a buyer's commitment carries the bands required. An order without a proximity-policy clause has no proximity verification. Per-handoff nonce + signed witness payload travel in the sister clause figaro-proximity-proof-v1 at runtime.",
+    "description": "The proximity-detection bands accepted for verifying a physical hand-off on this order, committed at agreement signing. Each band corresponds to a standard short-range detection technology — Wi-Fi presence, Bluetooth Low Energy, ultra-wideband ranging, or NFC contact. Multi-valued: the designer commits the set the assembly accepts; an order carrying no proximity-policy clause requires no proximity verification. The runtime proof that a hand-off actually occurred within an accepted band is a separate attestation concern, produced at hand-off time — not part of this agreement-time policy.",
     "fields": [
         {
             "name": "bands",
@@ -12,12 +12,20 @@
                 "values": [
                     "zone-wifi",
                     "nearby-ble",
+                    "precise-uwb",
                     "contact-nfc"
-                ]
+                ],
+                "valueLabels": {
+                    "zone-wifi": "Zone (Wi-Fi)",
+                    "nearby-ble": "Nearby (Bluetooth LE)",
+                    "precise-uwb": "Precise (UWB)",
+                    "contact-nfc": "Contact (NFC)"
+                }
             },
             "minItems": 1,
             "required": true,
-            "description": "Required detection modalities. zone-wifi = same WiFi network. nearby-ble = BLE proximity. contact-nfc = physical NFC tap. At least one must be set when this clause is included in an agreement."
+            "label": "Detection bands",
+            "description": "The proximity-detection technologies the assembly accepts, ordered loosest to closest. zone-wifi = same Wi-Fi network (presence within an access point's coverage). nearby-ble = Bluetooth Low Energy proximity (~metres). precise-uwb = ultra-wideband ranging (IEEE 802.15.4z / FiRa; decimetre-accurate distance at range). contact-nfc = NFC tap (near-contact, ~centimetres). At least one must be set when this clause is present."
         }
     ],
     "block": {
