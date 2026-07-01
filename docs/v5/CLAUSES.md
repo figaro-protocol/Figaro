@@ -72,12 +72,9 @@ on-chain validator) plus the agreement-only `figaro-topology-v1`.
 | `figaro-cold-chain-v1` | Temperature-controlled handling anchored to GDP cold-chain classes — class + min/max °C window. Elective; a co-equal logistics clause | Layer A (off-chain) |
 | `figaro-freight-class-v1` | Declared freight classification anchored to the NMFC (NMFTA) — the NMFC class (50–500) + optional item number. Elective; a co-equal logistics clause | Layer A (off-chain) |
 | `figaro-modalities-v1` | The buyer's request — consume-onsite / pickup / delivery / virtual (single-select) | Layer A (off-chain) |
-| `figaro-coordination-v1` | How a delivery's courier edge is arranged — seller-assigned / buyer-assigned / dutch-auction (single-select, composes on the delivery parent order) | Layer A (off-chain) |
 | `figaro-handoff-v1` | Hand-off point — where the physical exchange happens (proximity-policy nests under it) | Layer A (off-chain) |
 | `figaro-ghg-v1` | GHG accounting methodology (free-form `standard` string) + scope (cross-checked) | Layer A (off-chain) |
-| `figaro-ghg-measurement-v1` | Runtime grams CO2e (runtime) | Layer A (off-chain) |
-| `figaro-proximity-policy-v1` | Required detection band committed at agreement signing (cross-checked) | Layer A (off-chain) |
-| `figaro-proximity-proof-v1` | Per-handoff nonce + signed witness payload at runtime (runtime) | Layer A (off-chain) |
+| `figaro-proximity-policy-v1` | Required detection bands committed at agreement signing (cross-checked) | Layer A (off-chain) |
 | `figaro-offset-policy-v1` | Carbon-offset provider set committed at agreement signing (cross-checked) | Layer A (off-chain) |
 | `figaro-merchant-process-v1` | Merchant per-role event enum (sovereign log) | Layer A (off-chain) |
 | `figaro-courier-process-v1` | Courier per-role event enum (sovereign log) | Layer A (off-chain) |
@@ -89,16 +86,17 @@ on-chain validator) plus the agreement-only `figaro-topology-v1`.
 a **free-form `standard` string** — any methodology, existing or future ("GHG
 Protocol Corporate Standard", "ISO 14064", "PAS 2050", "EN 16258", or a custom
 one); the protocol takes no closed list. Content shape is `(string standard,
-uint256 scope)`. It pairs with the `figaro-ghg-measurement-v1` runtime clause
-(grams CO2e) via `sisterClauseId`.
+uint256 scope)`. Measured emissions (grams CO2e) are carried as a **runtime
+attestation** on this clause, not a separate registered clause — the runtime
+`figaro-ghg-measurement` companion was removed when runtime attestation was
+deferred.
 
-`figaro-proximity-policy-v1` + `figaro-proximity-proof-v1` are sister
-clauses that split the committed-vs-runtime concerns the way
-GHG-disclosure + GHG-measurement do for emissions. Policy commits the
-required band at agreement signing (cross-checked, byte-equality enforced);
-proof carries the per-handoff nonce + signed witness payload at runtime
-(runtime, fresh per attestation). Off-chain consumers verify
-`proof.band == policy.band` when the policy section is present.
+`figaro-proximity-policy-v1` commits, at agreement signing, the set of
+proximity-detection bands a hand-off will accept (cross-checked). The runtime
+proof that a hand-off actually occurred within an accepted band is carried as a
+**runtime attestation**, not a separate registered clause — an earlier
+`figaro-proximity-proof` clause modelled that witness as its own clause and was
+deleted as the wrong treatment when runtime attestation was deferred.
 
 `figaro-topology-v1` is the one **agreement-only** clause — committed at
 agreement-signing time, never re-asserted as a runtime attestation. It is
