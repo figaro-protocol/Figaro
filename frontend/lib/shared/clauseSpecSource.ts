@@ -174,6 +174,16 @@ export function composesForumUrl(clauseId: string): string | undefined {
     return getClauseSpec(clauseId)?.block?.composes?.forumUrl;
 }
 
+/** The STANDARD composition interface a clause binds to, from its
+ *  `block.composes.interface` — the open-world discriminator for WHICH on-network
+ *  contract an order composes with (e.g. "descending-auction",
+ *  "carbon-aggregator", "dispute-forum"). Generic surfaces derive composition
+ *  behaviour from this string, never a bundled clause-id. Undefined when the
+ *  clause composes with nothing, or its spec isn't loaded. */
+export function composesInterface(clauseId: string): string | undefined {
+    return getClauseSpec(clauseId)?.block?.composes?.interface;
+}
+
 /** A PROCESS-LOG clause — the runtime enum-ladder runtime event log (not a
  *  companion proof) an order's seller advances. The generic marker for "this
  *  order runs a lifecycle"; resolved from the spec, never by name. */

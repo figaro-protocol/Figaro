@@ -38,9 +38,8 @@ import { hexEqual, normalizeAddressParam } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatToken, parseToken } from "@/lib/shared/utils";
 import { useSellerBoundAssemblies } from "@/lib/seller/useSellerBoundAssemblies";
-import { extractRootModality } from "@/lib/designer/assemblyDiscovery";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
-import { getClauseSpec, clauseIsStructural } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec, clauseIsStructural, composesInterface } from "@/lib/shared/clauseSpecSource";
 
 interface Props {
     sellerAddress: string;
@@ -104,17 +103,18 @@ export function CheckoutView({ sellerAddress }: Props) {
 
     // The buyer's options ARE the seller's bound assemblies — each is one
     // option, labelled by the assembly's own name and keyed by its slug.
-    // Coordination variants (seller-assigned / buyer-assigned / dutch-auction)
-    // are DISTINCT assemblies, so picking the assembly picks the coordination;
-    // the checkout hardcodes no taxonomy.
+    // Fill-mechanism variants (a catalogue-bound counterparty, a buyer pick, a
+    // descending-auction composition) are DISTINCT assemblies, so picking the
+    // assembly picks the mechanism; the checkout hardcodes no taxonomy and reads
+    // no coordination field — the mechanism is derived from binding + composes.
     const assemblyOptions: { slug: string; name: string }[] = useMemo(
         () => boundAssemblies.map((a) => ({ slug: a.slug, name: a.name })),
         [boundAssemblies],
     );
     // The buyer's chosen assembly slug, when the seller offers more than one.
     const [selectedSlug, setSelectedSlug] = useState<string | undefined>(undefined);
-    // Auction start price for dutch-auction coordination — checkout-phase
-    // input, like the cart line items.
+    // Auction start price for an unbound sub-order that composes a descending
+    // auction — checkout-phase input, like the cart line items.
     const [auctionStartPrice, setAuctionStartPrice] = useState("");
 
     // Clear a stale choice the seller no longer offers; auto-select the sole
@@ -134,7 +134,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     const pendingCheckout = useRef(false);
     const [checkoutError, setCheckoutError] = useState<string | null>(null);
     // The buyer's checkout-time counterparty choice for a sub-order the
-    // adopting seller's profile leaves unbound (buyer-assigned coordination).
+    // adopting seller's catalogue leaves unbound (the buyer assigns it).
     const [sellerSelection, setSellerSelection] = useState<SellerSelection | null>(null);
     useEffect(() => { setSellerSelection(null); }, [selectedSlug]);
 
@@ -181,15 +181,10 @@ export function CheckoutView({ sellerAddress }: Props) {
     const pickedAssembly = boundAssemblies.length === 1
         ? boundAssemblies[0]
         : boundAssemblies.find((a) => a.slug === selectedSlug);
-    // The picked assembly's coordination posture, read from its root order BY
-    // FIELD NAME (never a clause id). buyer-assigned / dutch-auction / undefined
-    // (seller-assigned or no delivery) decide which checkout-phase input shows.
-    const coordination = pickedAssembly
-        ? extractRootModality(pickedAssembly.assemblyTemplate).coordination
-        : undefined;
-    // Sub-orders the adopting seller's profile leaves UNBOUND take the buyer's
-    // checkout-time choice (buyer-assigned coordination); the picker below
-    // surfaces it. Bound sub-orders keep the profile's designation.
+    // Sub-orders the adopting seller's catalogue leaves UNBOUND take the buyer's
+    // checkout-time choice; bound sub-orders keep the catalogue's designation
+    // (seller-assigned). The fill mechanism is DERIVED from binding state +
+    // composition — there is no coordination field.
     const unboundSubOrders = (() => {
         if (!pickedAssembly || pickedAssembly.assemblyTemplate.orders.length <= 1) return [];
         try {
@@ -198,12 +193,15 @@ export function CheckoutView({ sellerAddress }: Props) {
             return [];
         }
     })();
-    const buyerChoosesCounterparty =
-        coordination === "buyer-assigned" && unboundSubOrders.length > 0;
-    // Dutch-auction coordination: the unbound sub-order is deferred — the
-    // buyer names the descending auction's start price instead of a seller.
-    const buyerOpensAuction =
-        coordination === "dutch-auction" && unboundSubOrders.length > 0;
+    // An unbound sub-order whose clause composes a descending auction defers to
+    // the auction (the buyer names its start price); any other unbound sub-order
+    // is the buyer's counterparty pick. Both derived from block.composes /
+    // binding state, never a stored coordination value.
+    const unboundAuctionNodes = unboundSubOrders.filter((p) =>
+        Object.keys(p.node.clauses).some((cid) => composesInterface(cid) === "descending-auction"),
+    );
+    const buyerOpensAuction = unboundAuctionNodes.length > 0;
+    const buyerChoosesCounterparty = unboundSubOrders.length > unboundAuctionNodes.length;
     const auctionStartPriceValid = (() => {
         try { return parseToken(auctionStartPrice || "0", tokenDecimals) > 0n; } catch { return false; }
     })();
@@ -252,8 +250,8 @@ export function CheckoutView({ sellerAddress }: Props) {
                         payment: resolveSubOrderPayment({ node, seller, sellerCatalogues, tokenDecimals }),
                     };
                 }
-                // Unbound node under dutch coordination: deferred to the
-                // auction — its price is set by the claim, not the commit.
+                // Unbound node that composes a descending auction: deferred to
+                // the auction — its price is set by the claim, not the commit.
                 if (buyerOpensAuction) {
                     return { name: "(dutch auction)", payment: 0n };
                 }
@@ -609,10 +607,10 @@ export function CheckoutView({ sellerAddress }: Props) {
                             </div>
                         )}
 
-                        {/* Buyer-assigned coordination: the profile leaves the
-                            delivery sub-order unbound — the buyer chooses the
-                            counterparty here, priced from that seller's own
-                            catalogue. Checkout-phase data, like the cart. */}
+                        {/* Buyer-assigned: the catalogue leaves the sub-order
+                            unbound (and it composes no auction) — the buyer
+                            chooses the counterparty here, priced from that
+                            seller's own catalogue. Checkout-phase data, like the cart. */}
                         {buyerChoosesCounterparty && (
                             <SellerCataloguePicker
                                 mode="buyer-assigned"
@@ -622,7 +620,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                             />
                         )}
 
-                        {/* Dutch-auction coordination: the sub-order defers to a
+                        {/* Descending-auction composition: the sub-order defers to a
                             descending-price auction — the buyer names its start
                             price; a seller claims it on the order page. */}
                         {buyerOpensAuction && (

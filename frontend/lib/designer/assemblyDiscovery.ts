@@ -73,14 +73,13 @@ function collectAssemblyClauses(template: AssemblyTemplate): string[] {
     return Array.from(set).sort();
 }
 
-/** Process clauses the seller must populate with counterparty wallets
- *  when they bind to this assembly. Emitted only for non-root orders
- *  whose parent's coordination clause is `seller-assigned` —
- *  the case where the buyer may pick a fulfiller from the seller's
- *  roster at checkout. When the parent's coordination is exclusively
- *  `dutch-auction` (the auction contract assigns the fulfiller at
- *  runtime) or `buyer-assigned` (the buyer picks freely at checkout),
- *  no roster is needed and no clause is emitted.
+/** Process clauses the seller may bind counterparty wallets to when they
+ *  adopt this assembly. Emitted for every non-root order that carries a
+ *  process-log clause — whatever the seller binds in their catalogue is
+ *  seller-assigned; whatever they leave unbound becomes the buyer's
+ *  checkout-time choice. There is NO coordination clause: the fill mechanism
+ *  is DERIVED (bound vs unbound in the catalogue; a `descending-auction`
+ *  composition defers to the auction), never read from a stored field.
  *
  *  The sub-order's process clause is identified from its SPEC, never by
  *  name: a runtime clause with an enum ladder that is not a companion
@@ -91,21 +90,9 @@ function collectAssemblyClauses(template: AssemblyTemplate): string[] {
  *  Root order is excluded — the rootBuyer is the connected wallet at
  *  checkout, not designated by the seller's profile. */
 export function requiredCounterpartyClauses(template: AssemblyTemplate): string[] {
-    const byId = new Map(template.orders.map((o) => [o.id, o]));
-
-    function coordinationOf(order: AssemblyTemplate["orders"][number] | undefined): string | undefined {
-        return readSingleSelectClauseField(order?.clauses, "coordination");
-    }
-
     const clauses = new Set<string>();
     for (const order of template.orders) {
-        if (templateParentOrderHashes(order).length === 0) continue;
-
-        const parentAllowsSellerAssigned = templateParentOrderHashes(order).some((parentId) =>
-            coordinationOf(byId.get(parentId)) === "seller-assigned",
-        );
-        if (!parentAllowsSellerAssigned) continue;
-
+        if (templateParentOrderHashes(order).length === 0) continue; // root has no counterparty
         for (const clauseId of Object.keys(order.clauses)) {
             if (clauseIsProcessLog(clauseId)) clauses.add(clauseId);
         }
@@ -269,12 +256,11 @@ function readSingleSelectClauseField(
 
 export function extractRootModality(
     template: AssemblyTemplate,
-): { modality?: string; coordination?: string } {
+): { modality?: string } {
     const rootOrder =
         template.orders.find((o) => templateParentOrderHashes(o).length === 0) ?? template.orders[0];
     return {
         modality: readSingleSelectClauseField(rootOrder?.clauses, "modality"),
-        coordination: readSingleSelectClauseField(rootOrder?.clauses, "coordination"),
     };
 }
 

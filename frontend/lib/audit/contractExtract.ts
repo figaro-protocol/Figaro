@@ -83,9 +83,10 @@ export interface ContractDocument extends ExtractedDocument {
         parentOrderHashes: string[];
         topologyMode?: string;
     };
-    /** Canonical method when a modality clause is present: consume-onsite |
-     *  pickup | virtual | deliver:buyer-assigned | deliver:seller-assigned |
-     *  deliver:dutch-auction. */
+    /** Canonical method — the modality clause's raw value (consume-onsite |
+     *  pickup | delivery | virtual | any registry-defined modality). The
+     *  courier-edge fill mechanism is DERIVED (binding state + a
+     *  `descending-auction` composition), never encoded here. */
     method?: string;
     /** Block number when OrderCommitted was mined, if known. */
     committedAtBlock?: number;
@@ -128,22 +129,16 @@ function extractTopology(agreement: Agreement) {
 }
 
 function extractMethodSummary(agreement: Agreement) {
-    // The modality + coordination sections are found by their declared
-    // FIELDS, never by clause name. Both are single-select scalars; the raw
-    // values flow through verbatim — an unseen modality the registry defines
-    // must NOT fall into an undefined hole (open-world).
+    // The modality section is found by its declared FIELD, never by clause
+    // name. Single-select scalar; the raw value flows through verbatim — an
+    // unseen modality the registry defines must NOT fall into an undefined hole
+    // (open-world). There is no coordination field: the courier-edge fill
+    // mechanism is derived (binding state + a `descending-auction` composition),
+    // not stored, so it never appears in the canonical method.
     const modalityData = sectionByField(agreement, "modality")?.data as
         | { modality?: unknown }
         | undefined;
-    const modality = typeof modalityData?.modality === "string" ? modalityData.modality : undefined;
-    if (!modality) return undefined;
-    const coordinationData = sectionByField(agreement, "coordination")?.data as
-        | { coordination?: unknown }
-        | undefined;
-    const coordination = typeof coordinationData?.coordination === "string"
-        ? coordinationData.coordination
-        : undefined;
-    return coordination ? `${modality}:${coordination}` : modality;
+    return typeof modalityData?.modality === "string" ? modalityData.modality : undefined;
 }
 
 export function extractContract(
