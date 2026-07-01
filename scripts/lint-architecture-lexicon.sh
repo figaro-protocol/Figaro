@@ -91,15 +91,21 @@ for file in "$@"; do
         'json[ -]schema|commitment schema|schema version|schema\.org' \
         "retired: the protocol artifact family is the 'clause' (ClauseRegistry / clauseId), not the 'schema'."
 
-    # ── clause attestation tier + 'manifest' (2026 rename) ─────────
-    # Canonical tiers (block.tier): 'cross-checked' / 'runtime' / 'agreement-only'.
-    # 'manifest' is dead — use 'off-chain agreement' / 'pinned content' / 'sealed
-    # payload'. Carve-outs: Cargo's own names (CARGO_MANIFEST_DIR / --manifest-path),
-    # the English VERB (manifestation / will|would manifest), and the FROZEN kernel
+    # ── retired clause vocabulary ('tier' / 'manifest', 2026) ──────
+    # block.tier is DEAD — ripped from the block model. There is NO per-clause
+    # "verification tier": every clause section is a merkle leaf under the signed
+    # agreementHash, and that uniform keccak binding IS the cross-check (security
+    # is the whole reason for the merkle tree). 'cross-checked' and 'runtime'
+    # named the SAME object; the real, DERIVED distinction is agreement-only
+    # (committed, never attested) vs runtime-attested (clauseIsProcessLog — an
+    # empty anchor at commit, content filed later). 'manifest' is dead — use
+    # 'off-chain agreement' / 'pinned content' / 'sealed payload'. Carve-outs:
+    # Cargo's own names (CARGO_MANIFEST_DIR / --manifest-path), the English VERB
+    # (manifestation / will|would manifest), and the FROZEN kernel
     # (src/FigaroCore.sol keeps its original comments untouched).
     check "$file" FAIL "category-1\\b|category-2\\b|manifest-only|manifestOnly" \
         '(^|/)docs/v5/LEXICON\.md$' "" \
-        "retired clause tier: use 'cross-checked' / 'runtime' / 'agreement-only' (block.tier)."
+        "retired clause tier: block.tier is dead — clauses are uniformly merkle-committed; lifecycle (agreement-only vs runtime-attested) is derived in code, not a stored tier."
     check "$file" FAIL "\\bmanifest" \
         '(^|/)(docs/v5/LEXICON\.md|src/FigaroCore\.sol)$' \
         'CARGO_MANIFEST|--manifest-path|manifestation|will manifest|would manifest' \

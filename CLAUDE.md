@@ -52,8 +52,9 @@ The base-model default you carry in unexamined and that is **wrong here**:
 
 So deep in base training it ships as a role taxonomy or onboarding funnel *before anyone asks
 "is this a product?"* — its body count is in git (a V4 product-app frontend excised, ~80K lines).
-**The test before any surface is the `clause.block` seam:** `fields` + `block.tier` are the
-verified protocol; everything else in `block` and the frontend are *replaceable* presentation.
+**The test before any surface is the `clause.block` seam:** a clause's content `fields`
+(merkle-committed under `agreementHash`) are the verified protocol; everything in `block` and
+the frontend are *replaceable* presentation.
 *"Am I building a product feature?"* → *"which side of the seam?"* — a `block`-driven surface is
 designed presentation, **not silt**; a hardcoded list or stored taxonomy is drift. Compose from
 `lib/`; whole stack → `docs/v5/ARCHITECTURE.md`.

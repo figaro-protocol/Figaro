@@ -20,11 +20,13 @@ type SellerAttestationInput = {
     stage: number;
     /**
      * ABI-encoded content per the clause's encoding. Omit to default to the
-     * committed `sectionData` — correct for cross-checked clauses (handoff, geo,
-     * modality, ghg-disclosure, commerce) whose validators enforce
-     * `keccak256(content) == keccak256(sectionData)`. Supply an explicit value
-     * for runtime clauses (merchant-process, courier-process, proximity,
-     * measurement) whose content shape differs from the committed clause.
+     * committed `sectionData` — correct when the attestation RE-ASSERTS the
+     * committed section (content == sectionData; e.g. handoff, geo, modality,
+     * ghg-disclosure). Supply an explicit value when the runtime witness DIFFERS
+     * from the committed section (merchant-process / courier-process ladders,
+     * proximity proof, measurement). Either way the attestation is merkle-bound
+     * to the committed clause under `agreementHash` — that binding is the check,
+     * uniform across both; there is no "cross-checked" vs "runtime" clause tier.
      */
     content?: Hex;
     /** Optional — defaults to `orderHash` for same-order attestation. Supply

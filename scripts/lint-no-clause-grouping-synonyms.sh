@@ -18,10 +18,13 @@
 #     `block.article` 2026-06-11; the drawer is one consumer, not the concept)
 #
 # NOT banned (legitimate, distinct concepts — each its own single word):
-#   - `block.tier` / ClauseTier (WHEN a clause is attested — a different axis)
 #   - `LensId` (the ProcessGraphCanvas overlay — a different concept)
 #   - `block.article` / `article` (the CANONICAL grouping source itself)
-#   - `runtime` / `cross-checked` (tier VALUES — a separate lexicon, gate later)
+#
+# RETIRED — no longer concepts: `block.tier` / ClauseTier and its
+# `cross-checked` / `runtime` tier values were ripped from the block model.
+# There is no per-clause verification tier — clauses are uniformly merkle-bound
+# to the agreementHash (see lint-architecture-lexicon.sh).
 #
 # Wired into the root package.json lint-staged block under
 # `frontend/**/*.{ts,tsx}`. Run manually:

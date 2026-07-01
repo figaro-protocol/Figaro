@@ -17,7 +17,7 @@ name at each tier* — these are PROJECTIONS, not synonyms. Translate across tie
 | value-adding party | **seller** | operator · author · provider | merchant · courier · driver · vendor · supplier *(projections)* | `lint-no-product-party-terms` |
 | relationship unit | — | **clause** (+ validator) | clause | `lint-no-clause-grouping-synonyms` (one grouping mechanism, by `article`) |
 | ↳ clause group | — | **`block.article`** — the one grouping word (`categories` array + on-chain `family` removed 2026-06-26) | grouped by `article` | `lint-no-clause-grouping-synonyms` |
-| ↳ attestation tier | — | **`block.tier`**: `cross-checked` · `runtime` · `agreement-only` (bounded enum) | derived `designer-time`/`runtime` | `lint-architecture-lexicon` — retired: `category-1/2`, `manifest-only` |
+| ↳ clause lifecycle | — | uniform: every section is **merkle-bound** to `agreementHash` (the keccak cross-check — no per-clause verification tier) | derived in code, not stored: **agreement-only** (committed, never attested) vs **runtime-attested** (`clauseIsProcessLog` — empty anchor at commit) | `lint-architecture-lexicon` — retired: **`block.tier`** and its `cross-checked`/`runtime` tiers, `category-1/2`, `manifest-only` |
 | reusable composition | — | **assembly** | assembly | `lint-architecture-lexicon` |
 | ↳ serialized form | — | — | **`AssemblyTemplate`** (one name; `AssemblyDocument` retired → 0 occurrences) | — |
 | deal instance | **order** → **process** · commitment | — | order · process | `lint-architecture-lexicon` (`order-received` banned) |

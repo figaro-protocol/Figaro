@@ -80,7 +80,7 @@ export interface AttestAction extends BaseAction {
     /** Optional stage; executor default is 1. */
     stage?: number;
     /** Optional ABI-encoded content. Omit to default to the committed
-     *  sectionData (correct for cross-checked clauses). */
+     *  sectionData (when the attestation re-asserts the committed section). */
     content?: Hex;
     /** Optional — seller-attest only. Supply a distinct role commitment for
      *  cross-order attestation; omit for same-order attestation. */

@@ -20,11 +20,11 @@ mapping in `VERIFICATION_MAP.md`. Do not duplicate those here.
 │ Registries (Clause / Seller / Assembly) + RPGF.  Permissionless, content-     │
 │ addressed anchors; first-write-wins; RPGF rewards contribution.               │  ── protocol
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ clause.fields  +  clause.block.tier                                           │
-│   • fields  → ABI-encoded → validated A/B/C → attested → merkle-bound to       │  ── protocol
-│     agreementHash → secured by bonds.  The verified SUBSTANCE.                 │     (verified)
-│   • block.tier → the clause's VERIFICATION POSTURE (cross-checked / runtime /  │
-│     agreement-only); governs how/whether the content enters the agreementHash. │
+│ clause.fields  →  the verified substance                                       │
+│   • fields → ABI-encoded → validated (Layer A, off-chain) →                    │  ── protocol
+│     merkle-bound to agreementHash → attested → secured by bonds.               │     (verified)
+│   • verification is UNIFORM — every section is a merkle leaf under             │
+│     the signed agreementHash (the keccak cross-check). No per-clause tier.     │
 │ ═══════════════════════════  THE SEAM  ═══════════════════════════════════════ │
 │ clause.block.{article, nestsUnder, mechanismKinds, attestation, …}             │  ── presentation
 │   • Layer-A-only metadata.  NO on-chain or verification path reads it.         │     (replaceable)
@@ -60,10 +60,18 @@ the spec, not around it:
 | Part | Who reads it | Verified? |
 |---|---|---|
 | **`fields`** (the content) | Layer A (`validate.ts`, off-chain) | **Yes (off-chain)** — validated against the spec off-chain; the section is merkle-bound to `agreementHash` and the attestation is secured by bonds. The chain validates no content shape. |
-| **`block.tier`** | the agreementHash builder (`orderAgreement.ts`) | **Yes (structural)** — declares the verification posture: `cross-checked` → content byte-committed into `agreementHash`; `runtime` → attested live, empty anchor; `agreement-only` → in the signed agreement, no runtime attestation (e.g. topology, reconstructed off-chain) |
-| **the rest of `block`** — `article`, `nestsUnder`, `mechanismKinds`, `attestation`, `sisterClauseId` | the UI only (drawer grouping, sub-clause nesting, capability-rail mounting) | **No** — every on-chain and verification path ignores it |
+| **all of `block`** — `article`, `nestsUnder`, `composes`, `block.fields` (runtime inputs) | the UI only (drawer grouping, sub-clause nesting, composition dispatch, runtime-input forms) | **No** — every on-chain and verification path ignores it |
 
-So `fields` + `block.tier` are the **protocol**; everything else in `block` is **replaceable
+There is **no `block.tier`** (it was ripped from the block model). Verification is **uniform**:
+every clause section is a merkle leaf under the signed `agreementHash`, and that keccak binding
+*is* the security cross-check — there is no per-clause "verification posture". What varies is the
+clause's lifecycle, **derived in code, never a stored tier**: a runtime-lifecycle clause
+(`clauseIsProcessLog`) is an empty anchor at commit whose content is attested later; an
+agreement-only clause (topology, descending-auction) is committed but never attested; every
+other clause commits its content at signing. "cross-checked" and "runtime" named the same
+merkle-bound object.
+
+So `fields` are the **protocol**; everything in `block` is **replaceable
 presentation**. The consequence is the whole thesis in one line:
 
 > **Anyone can build a different frontend — ignore `block`, invent their own presentation — and
@@ -93,5 +101,5 @@ Three recurring questions collapse to "which side of the seam?":
 
 `CLAUDE.md` (the discipline + the five nouns), `OPEN_WORLD.md` (the open-world paradigm + the
 7-pattern lens), `CLAUSES.md` (the three validation layers + the clause table), `CONTRACTS.md`
-(the kernel + registries + validators), `LEXICON.md` (the `block.tier` / `article` / `family`
+(the kernel + registries + validators), `LEXICON.md` (the `article` / clause-lifecycle
 rows), `THEORY.md` (why the kernel's two mechanisms make cooperation dominant).

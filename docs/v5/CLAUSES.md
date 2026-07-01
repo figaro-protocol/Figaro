@@ -74,9 +74,9 @@ on-chain validator) plus 2 agreement-only clauses (`figaro-topology-v1`,
 | `figaro-freight-class-v1` | Declared freight classification anchored to the NMFC (NMFTA) — the NMFC class (50–500) + optional item number. Elective; a co-equal logistics clause | Layer A (off-chain) |
 | `figaro-modalities-v1` | The buyer's request — consume-onsite / pickup / delivery / virtual (single-select) | Layer A (off-chain) |
 | `figaro-handoff-v1` | Hand-off point — where the physical exchange happens (proximity-policy nests under it) | Layer A (off-chain) |
-| `figaro-ghg-v1` | GHG accounting methodology (free-form `standard` string) + scope (cross-checked) | Layer A (off-chain) |
-| `figaro-proximity-policy-v1` | Required detection bands committed at agreement signing (cross-checked) | Layer A (off-chain) |
-| `figaro-offset-policy-v1` | Carbon-offset provider set committed at agreement signing (cross-checked) | Layer A (off-chain) |
+| `figaro-ghg-v1` | GHG accounting methodology (free-form `standard` string) + scope (committed at signing) | Layer A (off-chain) |
+| `figaro-proximity-policy-v1` | Required detection bands committed at agreement signing | Layer A (off-chain) |
+| `figaro-offset-policy-v1` | Carbon-offset provider set committed at agreement signing | Layer A (off-chain) |
 | `figaro-merchant-process-v1` | Merchant per-role event enum (sovereign log) | Layer A (off-chain) |
 | `figaro-courier-process-v1` | Courier per-role event enum (sovereign log) | Layer A (off-chain) |
 | `figaro-descending-auction-v1` | Composition marker — this order's counterparty is auction-selected (composes the `descending-auction` interface; `startPrice` is a `block.fields` runtime input supplied at checkout) | **Agreement-only** (no runtime attestation; the auction runs on the composed `DutchAuction` contract) |
@@ -94,7 +94,7 @@ attestation** on this clause, not a separate registered clause — the runtime
 deferred.
 
 `figaro-proximity-policy-v1` commits, at agreement signing, the set of
-proximity-detection bands a hand-off will accept (cross-checked). The runtime
+proximity-detection bands a hand-off will accept. The runtime
 proof that a hand-off actually occurred within an accepted band is carried as a
 **runtime attestation**, not a separate registered clause — an earlier
 `figaro-proximity-proof` clause modelled that witness as its own clause and was
@@ -171,24 +171,26 @@ modality. The merge produced a single clause with three orthogonal fields
 where the cross-product is the actual decision space. Same conceptual
 coverage, one clause, no duplicate validation surface.
 
-**Split when one clause conflates two cryptographic concerns.** A clause is
-either cross-checked (committed at agreement signing, fixed for the order's life)
-or runtime (attested at runtime, supplied by a per-event witness). One
-clause cannot be both. If a single clause tries to carry both the
-agreement-time policy AND the runtime proof, split it into a sister-clause
-pair. Precedent: `figaro-proximity-v1` was split into `figaro-proximity-policy-v1`
-(cross-checked, committed band) + `figaro-proximity-proof-v1` (runtime,
-runtime witness) in commit `cc7a394` (2026-04-26), mirroring the existing
-GHG-disclosure / GHG-measurement sister-clause pattern. The split aligns each
-clause with one cryptographic category, lets each evolve independently, and
-preserves the binding via the policy clause's reference to its proof.
+**Committed content vs a runtime witness is a LIFECYCLE difference, not two
+cryptographic categories.** Every clause section — a committed policy or a
+runtime witness — is a merkle leaf under the same `agreementHash`; that keccak
+binding is the one cross-check, uniform across all of them (there is no
+"cross-checked" tier vs a "runtime" tier — they are the same merkle-bound
+object). What differs is *when* the content is supplied: a clause commits its
+policy at agreement signing (fixed for the order's life), and any runtime proof
+of that policy is filed during execution as a **runtime attestation on that same
+clause** — not a separate proof clause. The earlier `figaro-proximity-proof` /
+`figaro-ghg-measurement` sister-proof clauses were **retired** for exactly this
+reason (the runtime witness is an attestation, not a registered clause — see
+above). So do not split a clause to separate its committed band from its runtime
+proof; carry the proof as an attestation on the committed clause.
 
 **The diagnostic.** Before adding a clause, ask: (a) does an existing clause
 already cover this concept with a different enum value? If yes, extend the
-existing clause's fields, do not add a new one. (b) Does the proposed clause
-mix committed and runtime content? If yes, split into the sister-clause pair
-before registering. Both checks are cheap to do at design time and expensive
-to undo once `clauseId` is bound on chain.
+existing clause's fields, do not add a new one. (b) Does the concept need a
+runtime proof of a committed policy? Carry the proof as a runtime attestation on
+the clause — do not add a separate proof clause. Both checks are cheap to do at
+design time and expensive to undo once `clauseId` is bound on chain.
 
 ## Adding a new clause — checklist
 

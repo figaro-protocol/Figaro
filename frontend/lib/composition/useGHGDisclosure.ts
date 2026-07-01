@@ -4,17 +4,18 @@
  * Two clause FAMILIES collaborate to represent a GHG disclosure arc, both
  * resolved from the registry's specs (chain → IPFS), never named in code:
  *
- *   - DISCLOSURE clauses (cross-checked, committed) — every registered clause
+ *   - DISCLOSURE clauses (committed at signing) — every registered clause
  *     declaring a `scope` field. The accounting methodology is a free-form
  *     `standard` value on the clause (not a per-standard clause id); the
  *     committed `{standard, scope}` sectionData is the contract-signing-time
  *     declaration ("seller reports under this methodology, scope 1").
  *
- *   - MEASUREMENT clauses (runtime, runtime grams) — each disclosure
+ *   - MEASUREMENT (runtime attestation — grams) — each disclosure
  *     clause's `block.sisterClauseId`. Content is `abi.encode(uint256 grams)`
- *     per delivery; the validator does NOT cross-check against sectionData
- *     because the committed unit-of-account clause and the per-measurement
- *     value are deliberately decoupled.
+ *     per delivery; the runtime grams are fresh per delivery, NOT a re-assertion
+ *     of the committed sectionData — the committed unit-of-account and the
+ *     per-measurement value are deliberately decoupled. (Still merkle-bound to
+ *     the agreement, like every attestation.)
  *
  * Read hooks reconstruct disclosure state from indexed Attestation events
  * under both families — no contract storage reads. Writes flow through the
