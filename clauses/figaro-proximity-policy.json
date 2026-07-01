@@ -21,7 +21,7 @@
         }
     ],
     "block": {
-        "article": "fulfilment",
+        "article": "coordination",
         "nestsUnder": "handoff"
     }
 }
