@@ -57,10 +57,11 @@ Lives off-chain as JSON at the `metadataURI` emitted by `ClauseRegistry`
 live at repo-root `clauses/` (the `ClauseRegistry` seed data); nothing bundles a
 copy — every consumer loads each spec from `ClauseRegistry` → IPFS at runtime.
 
-## The 17 protocol clauses
+## The 18 protocol clauses
 
 16 runtime-attestable clauses (content validated off-chain by Layer A; no
-on-chain validator) plus the agreement-only `figaro-topology-v1`.
+on-chain validator) plus 2 agreement-only clauses (`figaro-topology-v1`,
+`figaro-descending-auction-v1`).
 
 | clauseId | What it carries | Attestation surface |
 |---|---|---|
@@ -78,6 +79,7 @@ on-chain validator) plus the agreement-only `figaro-topology-v1`.
 | `figaro-offset-policy-v1` | Carbon-offset provider set committed at agreement signing (cross-checked) | Layer A (off-chain) |
 | `figaro-merchant-process-v1` | Merchant per-role event enum (sovereign log) | Layer A (off-chain) |
 | `figaro-courier-process-v1` | Courier per-role event enum (sovereign log) | Layer A (off-chain) |
+| `figaro-descending-auction-v1` | Composition marker — this order's counterparty is auction-selected (composes the `descending-auction` interface; `startPrice` is a `block.fields` runtime input supplied at checkout) | **Agreement-only** (no runtime attestation; the auction runs on the composed `DutchAuction` contract) |
 | `figaro-arbitration-kleros-v1` | Decentralized off-chain arbitration via Kleros (subcourt + minimum jurors). Provider-specific; sister `figaro-arbitration-<provider>-v1` clauses would cover future ODR providers | Layer A (off-chain) |
 | `figaro-applicable-law-v1` | State / ADR / traditional-jurisdiction recourse layer (applicable law + forum + language). Provider-agnostic. Composes with arbitration clauses | Layer A (off-chain) |
 | `figaro-consent-v1` | Cryptographic acceptance of an off-chain document (hash + version + title) — supports beta consent, ToS acceptance, governance vote receipts, etc. (`consent` article) | Layer A (off-chain) |
@@ -98,15 +100,18 @@ proof that a hand-off actually occurred within an accepted band is carried as a
 `figaro-proximity-proof` clause modelled that witness as its own clause and was
 deleted as the wrong treatment when runtime attestation was deferred.
 
-`figaro-topology-v1` is the one **agreement-only** clause — committed at
-agreement-signing time, never re-asserted as a runtime attestation. It is
-*not* off-chain-only, though. Like every agreement section, the topology
-section is a merkle leaf under the on-chain `agreementHash`, inclusion-provable
-via OpenZeppelin `MerkleProof` (`computeSectionLeaf` / `buildSectionInclusionProof`
-in `frontend/lib/core/agreement.ts`). "No runtime attestation" is not "no
-on-chain verification" — topology is verified by inclusion proof against the
-signed agreement. The DAG itself is reconstructed off-chain by indexers reading
-topology sections from the signed agreement.
+`figaro-topology-v1` and `figaro-descending-auction-v1` are the two
+**agreement-only** clauses — committed at agreement-signing time, never
+re-asserted as a runtime attestation. They are *not* off-chain-only, though.
+Like every agreement section, an agreement-only section is a merkle leaf under
+the on-chain `agreementHash`, inclusion-provable via OpenZeppelin `MerkleProof`
+(`computeSectionLeaf` / `buildSectionInclusionProof` in
+`frontend/lib/core/agreement.ts`). "No runtime attestation" is not "no on-chain
+verification". `figaro-topology-v1`'s DAG is reconstructed off-chain by indexers
+reading topology sections from the signed agreement; `figaro-descending-auction-v1`
+is a composition marker whose auction executes on the composed `DutchAuction`
+contract (its state read from that contract's own events), not via
+`AttestationCoordinator`.
 
 ## When something deserves a clause — payload vs anchor
 

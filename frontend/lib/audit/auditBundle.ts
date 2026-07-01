@@ -24,6 +24,7 @@
 import type { Agreement } from "@figaro/core";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/composition/useGHGDisclosure";
+import { composesInterface } from "@/lib/shared/clauseSpecSource";
 import { extractContract, type ContractDocument } from "./contractExtract";
 import { extractProcessLogs, type ProcessLogsDocument } from "./processLogsExtract";
 import { extractClauseData, type ClauseDataDocument } from "./clauseDataExtract";
@@ -71,13 +72,19 @@ export function buildAuditBundle(
     inputs: AuditBundleInputs = {},
 ): AuditBundle {
     const contract = extractContract(order, agreement);
+    // Does this order compose the descending-auction interface? Derived from the
+    // agreement's clauses via block.composes (never a clause-id literal) — the
+    // gate for the descending-auction extractor.
+    const composesDescendingAuction = agreement.sections.some(
+        (s) => composesInterface(s.clause) === "descending-auction",
+    );
     return {
         contract,
         processLogs: extractProcessLogs(order, attestations),
         clauseData: extractClauseData(order, agreement),
         dutchAuction: extractDutchAuction(
             order,
-            contract.method,
+            composesDescendingAuction,
             inputs.auctionCreatedEvents ?? [],
             inputs.auctionClaimedEvents ?? [],
         ),

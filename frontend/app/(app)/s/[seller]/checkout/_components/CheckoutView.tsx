@@ -19,7 +19,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useChainId, usePublicClient } from "wagmi";
+import { useChainId } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { Button } from "@/components/ui/Button";
 import { useCommerce, useCheckout } from "@/lib/commerce";
@@ -30,7 +30,8 @@ import { executeAssemblyCheckout } from "@/lib/commerce/assemblyCheckout";
 import { templateParentOrderHashes } from "@/lib/designer/assemblyTemplate";
 import { CommitmentSharePanel } from "@/components/core/CommitmentSharePanel";
 import { SellerCataloguePicker, type SellerSelection } from "@/components/core/SellerCataloguePicker";
-import { useDutchAuctionActions } from "@/lib/composition/useDutchAuction";
+import { useCompositionActions } from "@/lib/composition/useCompositionActions";
+import { FieldControl } from "@/components/core/FieldControl";
 import { useTokenSymbol } from "@/components/sellers/TokenAddressInput";
 import { calculateBonds } from "@figaro/core";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -39,10 +40,20 @@ import { truncateHex } from "@/lib/shared/formatHex";
 import { formatToken, parseToken } from "@/lib/shared/utils";
 import { useSellerBoundAssemblies } from "@/lib/seller/useSellerBoundAssemblies";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
-import { getClauseSpec, clauseIsStructural, composesInterface } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec, clauseIsStructural } from "@/lib/shared/clauseSpecSource";
+import type { FieldSpec } from "@figaro/core/clauses";
 
 interface Props {
     sellerAddress: string;
+}
+
+/** One order's on-network composition (fifth noun): the composing clause, its
+ *  standard interface, and the runtime `block.fields` the buyer fills. */
+interface OrderComposition {
+    nodeId: string;
+    clauseId: string;
+    interface: string;
+    fields: readonly FieldSpec[];
 }
 
 /** Compact, spec-agnostic value summary of a clause's composed fields — the
@@ -66,8 +77,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     const { lower: sellerAddressLower, typed: sellerAddressTyped } = normalizeAddressParam(sellerAddress);
 
     const chainId = useChainId();
-    const publicClient = usePublicClient();
-    const { createAuction } = useDutchAuctionActions();
+    const { compose } = useCompositionActions();
     const { catalogues: sellerCatalogues, isLoading: cataloguesLoading } = useRegisteredCatalogues();
 
     const sellerCatalogue = useMemo(
@@ -113,9 +123,18 @@ export function CheckoutView({ sellerAddress }: Props) {
     );
     // The buyer's chosen assembly slug, when the seller offers more than one.
     const [selectedSlug, setSelectedSlug] = useState<string | undefined>(undefined);
-    // Auction start price for an unbound sub-order that composes a descending
-    // auction — checkout-phase input, like the cart line items.
-    const [auctionStartPrice, setAuctionStartPrice] = useState("");
+    // Runtime inputs for any order that composes an on-network contract — the
+    // clause's `block.fields`, filled at checkout (like the cart line items),
+    // keyed by template node id then field name. Interface-agnostic: the form
+    // renders whatever fields the composing clause declares, naming no clause.
+    const [compositionInputs, setCompositionInputs] = useState<Record<string, Record<string, unknown>>>({});
+    const setCompositionField = (nodeId: string, fieldName: string, value: unknown) =>
+        setCompositionInputs((prev) => {
+            const nextNode = { ...(prev[nodeId] ?? {}) };
+            if (value === undefined) delete nextNode[fieldName];
+            else nextNode[fieldName] = value;
+            return { ...prev, [nodeId]: nextNode };
+        });
 
     // Clear a stale choice the seller no longer offers; auto-select the sole
     // option (a one-option dropdown is noise — the static line shows it).
@@ -193,25 +212,45 @@ export function CheckoutView({ sellerAddress }: Props) {
             return [];
         }
     })();
-    // An unbound sub-order whose clause composes a descending auction defers to
-    // the auction (the buyer names its start price); any other unbound sub-order
-    // is the buyer's counterparty pick. Both derived from block.composes /
-    // binding state, never a stored coordination value.
-    const unboundAuctionNodes = unboundSubOrders.filter((p) =>
-        Object.keys(p.node.clauses).some((cid) => composesInterface(cid) === "descending-auction"),
-    );
-    const buyerOpensAuction = unboundAuctionNodes.length > 0;
-    const buyerChoosesCounterparty = unboundSubOrders.length > unboundAuctionNodes.length;
-    const auctionStartPriceValid = (() => {
-        try { return parseToken(auctionStartPrice || "0", tokenDecimals) > 0n; } catch { return false; }
+    // Any order that composes an on-network contract (the fifth noun) —
+    // discovered by reading `block.composes` + `block.fields` off the clause
+    // spec, naming no clause and no interface. Applies to ANY order (root, sub,
+    // 136th), not just sub-orders. The buyer fills each composition's runtime
+    // `block.fields` below.
+    const orderCompositions = ((): OrderComposition[] => {
+        if (!pickedAssembly) return [];
+        const out: OrderComposition[] = [];
+        for (const order of pickedAssembly.assemblyTemplate.orders) {
+            for (const cid of Object.keys(order.clauses)) {
+                const block = getClauseSpec(cid)?.block;
+                if (block?.composes && block.fields && block.fields.length > 0) {
+                    out.push({ nodeId: order.id, clauseId: cid, interface: block.composes.interface, fields: block.fields });
+                    break; // one composition per order
+                }
+            }
+        }
+        return out;
     })();
+    const nodeComposes = (nodeId: string) => orderCompositions.some((c) => c.nodeId === nodeId);
+    // An unbound sub-order that composes gets its counterparty from the composed
+    // contract (an auction selects it); one that does NOT compose is the buyer's
+    // counterparty pick. Derived from binding state + block.composes presence —
+    // never the interface name, never a stored coordination value.
+    const buyerPickSubOrders = unboundSubOrders.filter((p) => !nodeComposes(p.node.id));
+    const buyerChoosesCounterparty = buyerPickSubOrders.length > 0;
+    // Every composition's REQUIRED block.fields must be filled before placing.
+    const isFilled = (v: unknown) =>
+        v !== undefined && v !== null && v !== "" && (!Array.isArray(v) || v.length > 0);
+    const compositionsReady = orderCompositions.every((c) =>
+        c.fields.every((f) => !f.required || isFilled(compositionInputs[c.nodeId]?.[f.name])),
+    );
     // Ready to place when a profile-bound assembly is resolved (chosen, when the
-    // seller offers more than one) and any buyer-chosen counterparty selection
-    // (or auction start price) is complete.
+    // seller offers more than one), any buyer-chosen counterparty is selected,
+    // and every composition's runtime inputs are complete.
     const orderReady = !!pickedAssembly
         && !!currency
         && (!buyerChoosesCounterparty || !!sellerSelection)
-        && (!buyerOpensAuction || auctionStartPriceValid);
+        && compositionsReady;
     // The root order carries the design-time clauses the buyer is bonding to.
     // Surfaced inline below so the buyer reviews the terms before placing the
     // order; the final per-order sign confirmation is the shared agreement-preview
@@ -250,10 +289,12 @@ export function CheckoutView({ sellerAddress }: Props) {
                         payment: resolveSubOrderPayment({ node, seller, sellerCatalogues, tokenDecimals }),
                     };
                 }
-                // Unbound node that composes a descending auction: deferred to
-                // the auction — its price is set by the claim, not the commit.
-                if (buyerOpensAuction) {
-                    return { name: "(dutch auction)", payment: 0n };
+                // Unbound node that composes an on-network contract: its
+                // counterparty + price come from the composition (e.g. an auction
+                // claim), not the commit. Label derived from the interface name.
+                const comp = orderCompositions.find((c) => c.nodeId === node.id);
+                if (comp) {
+                    return { name: `(${comp.interface.replace(/-/g, " ")})`, payment: 0n };
                 }
                 // Unbound node: the buyer's checkout-time choice fills it — the
                 // shown figure is the SAME selection the commit will use.
@@ -367,15 +408,15 @@ export function CheckoutView({ sellerAddress }: Props) {
                     sellerCatalogues,
                     tokenDecimals,
                     subOrderSelections: buyerChoosesCounterparty && sellerSelection
-                        ? Object.fromEntries(unboundSubOrders.map(({ node }) => [
+                        ? Object.fromEntries(buyerPickSubOrders.map(({ node }) => [
                             node.id,
                             { seller: sellerSelection.seller, price: sellerSelection.price },
                         ]))
                         : undefined,
-                    subOrderAuctions: buyerOpensAuction
-                        ? Object.fromEntries(unboundSubOrders.map(({ node }) => [
-                            node.id,
-                            { startPrice: auctionStartPrice },
+                    subOrderCompositions: orderCompositions.length > 0
+                        ? Object.fromEntries(orderCompositions.map((c) => [
+                            c.nodeId,
+                            { interface: c.interface, fieldValues: compositionInputs[c.nodeId] ?? {} },
                         ]))
                         : undefined,
                 },
@@ -383,12 +424,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                     chainId,
                     signRoot,
                     signAndShare,
-                    openSellerAuction: async ({ auctionId, startPrice, processId, currency: auctionCurrency }) => {
-                        const hash = await createAuction(auctionId, startPrice, processId, auctionCurrency);
-                        if (publicClient && hash) {
-                            await publicClient.waitForTransactionReceipt({ hash });
-                        }
-                    },
+                    compose,
                 },
             );
         } catch (cause: unknown) {
@@ -620,29 +656,26 @@ export function CheckoutView({ sellerAddress }: Props) {
                             />
                         )}
 
-                        {/* Descending-auction composition: the sub-order defers to a
-                            descending-price auction — the buyer names its start
-                            price; a seller claims it on the order page. */}
-                        {buyerOpensAuction && (
-                            <div>
-                                <label
-                                    htmlFor="delivery-max-price"
-                                    className="text-xs font-semibold text-neutral-500 mb-1 block"
-                                >
-                                    Auction start price{tokenSymbol ? ` (${tokenSymbol})` : ""}
-                                </label>
-                                <input
-                                    id="delivery-max-price"
-                                    type="text"
-                                    inputMode="decimal"
-                                    value={auctionStartPrice}
-                                    onChange={(e) => setAuctionStartPrice(e.target.value)}
-                                    placeholder="Descending start price"
-                                    data-testid="input-delivery-max-price"
-                                    className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
-                                />
+                        {/* On-network composition inputs (the fifth noun): any
+                            order whose clause declares block.composes + block.fields
+                            gets those runtime fields rendered here generically —
+                            one form, naming no clause or interface. A descending
+                            auction surfaces its startPrice this way; a novel
+                            composition surfaces its own fields with zero code. */}
+                        {orderCompositions.map((c) => (
+                            <div key={c.nodeId} data-testid={`composition-${c.nodeId}`} className="space-y-2">
+                                {c.fields.map((field) => (
+                                    <FieldControl
+                                        key={field.name}
+                                        field={field}
+                                        mode="runtime"
+                                        value={compositionInputs[c.nodeId]?.[field.name]}
+                                        onChange={(v) => setCompositionField(c.nodeId, field.name, v)}
+                                        testId={`composition-${c.nodeId}-${field.name}`}
+                                    />
+                                ))}
                             </div>
-                        )}
+                        ))}
 
                         <Button
                             onClick={handlePlaceOrder}

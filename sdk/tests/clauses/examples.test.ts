@@ -16,6 +16,7 @@ import proximityPolicySpecRaw from "../../../clauses/figaro-proximity-policy.jso
 import offsetPolicySpecRaw from "../../../clauses/figaro-offset-policy.json" with { type: "json" };
 import merchantSpecRaw from "../../../clauses/figaro-merchant-process.json" with { type: "json" };
 import courierSpecRaw from "../../../clauses/figaro-courier-process.json" with { type: "json" };
+import descendingAuctionSpecRaw from "../../../clauses/figaro-descending-auction.json" with { type: "json" };
 
 describe("example clause specs — parse + validate sample content", () => {
     it("figaro-topology-v1 spec parses cleanly", () => {
@@ -454,5 +455,27 @@ describe("example clause specs — parse + validate sample content", () => {
         const parsed = parseClauseSpec(courierSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ eventType: "teleported" }, parsed.spec).ok).toBe(false);
+    });
+
+    // ── figaro-descending-auction (agreement-only composition marker) ──
+    // Like figaro-topology, this clause has no runtime attestation and no
+    // content encoder. Its semantics live in block.composes + block.fields
+    // (frontend-owned, not SDK-parsed), so the content shape is empty. The SDK's
+    // job is only to confirm the spec parses and validates as empty content.
+
+    it("figaro-descending-auction spec parses cleanly", () => {
+        expect(parseClauseSpec(descendingAuctionSpecRaw).ok).toBe(true);
+    });
+
+    it("figaro-descending-auction accepts empty content (no committed fields)", () => {
+        const parsed = parseClauseSpec(descendingAuctionSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({}, parsed.spec).ok).toBe(true);
+    });
+
+    it("figaro-descending-auction rejects any content field (closed empty shape — startPrice is a runtime block.field, not content)", () => {
+        const parsed = parseClauseSpec(descendingAuctionSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ startPrice: "1000000000000000000" }, parsed.spec).ok).toBe(false);
     });
 });

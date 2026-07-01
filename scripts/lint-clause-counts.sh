@@ -50,12 +50,23 @@ if [ "$total" -eq 0 ]; then
     exit 2
 fi
 
-if [ ! -f "$CLAUSES_DIR/figaro-topology.json" ]; then
-    echo "[clause-counts] figaro-topology.json missing — runtime-attestable count assumes it exists" >&2
-    exit 2
-fi
+# Agreement-only clauses: committed via agreementHash at signing, never
+# re-asserted as a runtime attestation, so they are NOT runtime-attestable.
+# There is no single stored JSON flag for this (the property is derived — no
+# attestation surface), so the enumerable set is named here explicitly:
+#   - figaro-topology         — the DAG is reconstructed off-chain by indexers.
+#   - figaro-descending-auction — a composition marker; the auction executes on
+#                                 the composed DutchAuction contract (events),
+#                                 not via AttestationCoordinator.
+AGREEMENT_ONLY=("figaro-topology" "figaro-descending-auction")
+for c in "${AGREEMENT_ONLY[@]}"; do
+    if [ ! -f "$CLAUSES_DIR/$c.json" ]; then
+        echo "[clause-counts] $c.json missing — runtime-attestable count assumes the agreement-only set exists" >&2
+        exit 2
+    fi
+done
 
-runtime=$((total - 1))
+runtime=$((total - ${#AGREEMENT_ONLY[@]}))
 
 declare -a failures
 declare -a warnings

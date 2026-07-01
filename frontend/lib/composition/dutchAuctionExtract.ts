@@ -45,8 +45,8 @@ export interface DutchAuctionClaimedEvent {
 }
 
 export interface DutchAuctionDocument extends ExtractedDocument {
-    /** True when the order's canonical method indicates Dutch-auction
-     *  pricing AND the matching auction events were located. */
+    /** True when the order composes the descending-auction interface AND the
+     *  matching auction events were located. */
     auctionApplicable: boolean;
     /** The auctionId that priced this order, if known. */
     auctionId?: string;
@@ -67,9 +67,10 @@ export interface DutchAuctionDocument extends ExtractedDocument {
 
 /**
  * @param order            The committed order.
- * @param canonicalMethod Canonical canonical-method string (from the
- *                         modality clause's summary); if it isn't
- *                         "deliver:dutch-auction" this extractor reports
+ * @param composesDescendingAuction Whether the order's agreement carries a
+ *                         clause that composes the `descending-auction`
+ *                         interface (derived from `block.composes`, never a
+ *                         clause-id literal). When false this extractor reports
  *                         auctionApplicable=false and does no further work.
  * @param createdEvents    `AuctionCreated` events filtered to auctions whose
  *                         `processId === order.processId`. Caller fetches
@@ -80,7 +81,7 @@ export interface DutchAuctionDocument extends ExtractedDocument {
  */
 export function extractDutchAuction(
     order: Order,
-    canonicalMethod: string | undefined,
+    composesDescendingAuction: boolean,
     createdEvents: readonly DutchAuctionCreatedEvent[],
     claimedEvents: readonly DutchAuctionClaimedEvent[],
 ): DutchAuctionDocument {
@@ -93,7 +94,7 @@ export function extractDutchAuction(
         seller: order.seller,
     };
 
-    if (canonicalMethod !== "deliver:dutch-auction") {
+    if (!composesDescendingAuction) {
         return { ...base, auctionApplicable: false };
     }
 
@@ -105,7 +106,7 @@ export function extractDutchAuction(
     );
 
     if (!matchingClaim) {
-        // The canonical method says auction, but we can't locate the
+        // The order composes a descending auction, but we can't locate the
         // matching claim event. Still flag auctionApplicable=true so the
         // PDF page renders a "claim event not located — investigate" notice
         // rather than silently omitting.
