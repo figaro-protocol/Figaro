@@ -214,13 +214,6 @@ export function OrderTimelineView({ processId }: Props) {
                 >
                     View audit record
                 </Link>
-                <Link
-                    href="/dispute"
-                    className="rounded border border-neutral-300 px-4 py-2 text-neutral-700 hover:bg-neutral-50"
-                    data-testid="link-dispute"
-                >
-                    Report a problem
-                </Link>
             </section>
         </div>
     );

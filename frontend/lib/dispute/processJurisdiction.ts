@@ -15,15 +15,13 @@
  * across a design, so resolution is array-aware: it returns every distinct
  * recourse path the process's orders carry.
  */
-import type { Address } from "viem";
 import type { Order } from "@/lib/core/store";
 import type { Agreement } from "@figaro/core";
 import { sectionByField } from "@/lib/core/agreementSections";
-import { getKlerosCourt, encodeArbitratorExtraData, type KlerosCourt } from "./klerosCourts";
-import type { KlerosConfig } from "./klerosProxy";
+import { getKlerosCourt, type KlerosCourt } from "./klerosCourts";
 
 /** A Kleros (decentralized ODR) recourse path authored in a clause. */
-export interface KlerosRecourse {
+interface KlerosRecourse {
     kind: "kleros";
     court: KlerosCourt;
     minJurors: number;
@@ -108,19 +106,4 @@ export function resolveProcessRecourse(
         }
     }
     return out;
-}
-
-/**
- * Build the on-chain KlerosConfig for a Kleros recourse. The clause's court
- * + min-juror count encode `arbitratorExtraData`; the `arbitrableProxy`
- * address is deployment config — a contract address, not a clause term.
- */
-export function klerosConfigForRecourse(
-    recourse: KlerosRecourse,
-    arbitrableProxy: Address,
-): KlerosConfig {
-    return {
-        arbitrableProxy,
-        arbitratorExtraData: encodeArbitratorExtraData(recourse.court.id, recourse.minJurors),
-    };
 }

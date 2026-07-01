@@ -2,17 +2,14 @@
 
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
-import { useAccount } from "wagmi";
 import { ProcessFinancialsView } from "../_components/ProcessFinancialsView";
 import { ProcessClauseEvidence } from "../_components/ProcessClauseEvidence";
 import { HashVerifier } from "../_components/HashVerifier";
 import { DisputeStatusPanel } from "@/components/core/DisputeStatusPanel";
-import { useArbitrationCost } from "@/hooks/core/useArbitrationCost";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
 import { createDeliveryCoordinatorSource } from "@/lib/dispute/deliveryCoordinatorEvents";
-import { resolveProcessRecourse, klerosConfigForRecourse, type KlerosRecourse } from "@/lib/dispute";
-import { hexEqual } from "@/lib/shared/evm";
+import { resolveProcessRecourse } from "@/lib/dispute";
 
 /**
  * Dispute escalation for the process. In the three-layer dispute model
@@ -23,8 +20,6 @@ import { hexEqual } from "@/lib/shared/evm";
  * process — not one per order.
  */
 function ProcessDisputeSection({ processId }: { processId: string }) {
-    const { address } = useAccount();
-    const { klerosConfig: envKlerosConfig } = useArbitrationCost();
     const orders = useProcessOrders(processId);
     const agreementHashes = useMemo(
         () => orders.map((o) => o.agreementHash).filter((h): h is string => Boolean(h)),
@@ -32,26 +27,16 @@ function ProcessDisputeSection({ processId }: { processId: string }) {
     );
     const agreements = useProcessAgreements(agreementHashes);
     const coordinatorSources = useMemo(() => [createDeliveryCoordinatorSource()], []);
-    const role = hexEqual(address, orders[0]?.buyer ?? "") ? "buyer" : "seller";
 
     // Layer-3 recourse is whatever the assembly's dispute-resolution clauses
     // named — read off the committed orders by spec, not a global default.
     const recourses = useMemo(() => resolveProcessRecourse(orders, agreements), [orders, agreements]);
-    // The Kleros raise-dispute flow uses the court the clause authored; the
-    // arbitrableProxy address is deployment config, so it stays from env.
-    const klerosConfig = useMemo(() => {
-        const kleros = recourses.find((r): r is KlerosRecourse => r.kind === "kleros");
-        const proxy = envKlerosConfig?.arbitrableProxy;
-        return kleros && proxy ? klerosConfigForRecourse(kleros, proxy) : undefined;
-    }, [recourses, envKlerosConfig]);
 
     return (
         <div data-testid="audit-dispute-section">
             <DisputeStatusPanel
                 processId={processId as `0x${string}`}
-                klerosConfig={klerosConfig}
                 recourses={recourses}
-                role={role}
                 coordinatorSources={coordinatorSources}
                 orders={orders}
             />

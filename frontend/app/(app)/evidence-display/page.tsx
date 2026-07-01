@@ -1,22 +1,20 @@
 "use client";
 
 /**
- * Kleros Evidence Display Interface
+ * Process evidence display.
  *
- * This page is designed to be iframed by the Kleros court. When jurors view
- * a Figaro process dispute, Kleros loads this page with query parameters
- * identifying the dispute. The page renders the full on-chain timeline so
- * jurors can review all lifecycle events without leaving the court UI.
+ * A forum-agnostic, embeddable reader of a Figaro process's on-chain evidence
+ * timeline. Any arbitration forum (e.g. Kleros's Dispute Resolver) can iframe
+ * this page so a reviewer sees every lifecycle event without leaving the forum
+ * UI; it is equally a standalone public reader by URL. Figaro renders the
+ * evidence — it does not run the forum.
  *
- * Expected query params (from Kleros MetaEvidence evidenceDisplayInterfaceURI):
- *   - disputeID:               Dispute ID on the Arbitrator
- *   - chainID:                 Chain ID (e.g. 31337, 1, 100)
- *   - arbitrableContractAddress: ArbitrableProxy address
- *   - arbitrableJsonRpcUrl:    (optional) RPC URL to use for reading events
- *
- * Figaro-specific params (appended by our MetaEvidence or evidence JSON):
- *   - processId:               The Figaro process ID (bytes32-hex)
- *   - coreAddress:             FigaroCore contract address
+ * Query params:
+ *   - processId:            The Figaro process ID (bytes32-hex)   [required]
+ *   - coreAddress:          FigaroCore contract address (the core the process settled on)
+ *   - chainID:              Chain ID (e.g. 31337, 1, 100)
+ *   - arbitrableJsonRpcUrl: (optional) RPC URL to read events from
+ *   - disputeID:            (optional) a forum-side dispute reference, shown for context
  */
 
 import { useEffect, useState, useMemo, useCallback } from "react";
@@ -264,8 +262,8 @@ export default function EvidenceDisplayPage() {
             : "Untrusted RPC URL — only HTTPS or localhost endpoints are allowed.";
     }, [rpcUrl]);
 
-    // Build a viem client from query params (runs inside Kleros iframe
-    // so we cannot rely on wagmi provider).
+    // Build a viem client from query params (may run inside a forum's iframe
+    // where we cannot rely on the wagmi provider).
     const client = useMemo(() => {
         if (!rpcUrl || clientError) return null;
         return createPublicClient({ transport: mockAwareHttp(rpcUrl) });

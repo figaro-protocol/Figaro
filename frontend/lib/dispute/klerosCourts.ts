@@ -1,35 +1,26 @@
 /**
- * Kleros subcourt catalog and arbitratorExtraData encoder.
+ * Kleros subcourt catalog — display metadata for the recourse forum a
+ * dispute-resolution clause names.
  *
- * Kleros disputes are routed to a subcourt; each subcourt has its own
- * juror pool, juror-selection rules, and policy URL. The
- * `arbitratorExtraData` bytes passed to `createDispute` encode the
- * subcourt ID and the minimum juror count. Standard Kleros Liquid /
- * KlerosCore encoding is `abi.encode(uint96 subcourtID, uint96 minJurors)`,
- * which produces 64 bytes (two right-padded uint96 words).
+ * A clause's `klerosCourt` field carries a court key; `getKlerosCourt`
+ * resolves it to the human-readable court this catalog describes, which the
+ * recourse panel surfaces. Figaro does NOT create disputes on-chain (Kleros's
+ * own UI, resolve.kleros.io, does that), so no `arbitratorExtraData` encoding
+ * lives here — this is read/display only.
  *
- * The IDs below are for **Kleros Liquid on Ethereum mainnet** at the time
- * of authoring. Kleros V2 (KlerosCore), Gnosis chain, and any other
- * deployment use different IDs. **Verify against the actual Kleros
- * deployment you're targeting before mainnet.** The Kleros governance
- * page at https://klerosboard.com/ shows the current canonical court tree.
- *
- * For Figaro consent disputes, the most relevant courts are:
- *   - General Court — catch-all
- *   - Blockchain Non-Technical — disputes hinging on protocol semantics
- *   - Blockchain Technical — disputes requiring technical evaluation
- *   - English Language — disputes hinging on language interpretation
+ * The IDs below are for **Kleros Liquid on Ethereum mainnet** at the time of
+ * authoring. Kleros V2 (KlerosCore), Gnosis chain, and any other deployment
+ * use different IDs. The Kleros governance page at https://klerosboard.com/
+ * shows the current canonical court tree.
  *
  * This catalog is small by design. Add subcourts here as they become
  * relevant; do not turn this into an exhaustive Kleros-wide registry.
  */
 
-import { encodeAbiParameters } from "viem";
-
 export interface KlerosCourt {
     /** Subcourt ID on the target deployment. Verify against klerosboard. */
     id: number;
-    /** Stable key used by the UI selector. */
+    /** Stable key a clause's `klerosCourt` field references. */
     key: string;
     /** Human-readable name. */
     name: string;
@@ -79,43 +70,6 @@ export const KLEROS_COURTS: readonly KlerosCourt[] = [
     },
 ] as const;
 
-export const KLEROS_COURT_KEYS = KLEROS_COURTS.map((c) => c.key);
-export type KlerosCourtKey = (typeof KLEROS_COURTS)[number]["key"] | "custom";
-
 export function getKlerosCourt(key: string): KlerosCourt | null {
     return KLEROS_COURTS.find((c) => c.key === key) ?? null;
 }
-
-/**
- * Encode `arbitratorExtraData` for a subcourt + min-juror selection.
- *
- * Standard Kleros Liquid / KlerosCore shape:
- *   abi.encode(uint96 subcourtID, uint96 minJurors)
- *
- * Always produces exactly 64 bytes (32 + 32, right-padded uint96 words).
- */
-export function encodeArbitratorExtraData(
-    subcourtId: number,
-    minJurors: number,
-): `0x${string}` {
-    if (!Number.isInteger(subcourtId) || subcourtId < 0) {
-        throw new Error(`subcourtId must be a non-negative integer; got ${subcourtId}`);
-    }
-    if (!Number.isInteger(minJurors) || minJurors < 1) {
-        throw new Error(`minJurors must be a positive integer; got ${minJurors}`);
-    }
-    return encodeAbiParameters(
-        [
-            { name: "subcourtID", type: "uint96" },
-            { name: "minJurors", type: "uint96" },
-        ],
-        [BigInt(subcourtId), BigInt(minJurors)],
-    );
-}
-
-/**
- * UI sanity floor for the minimum juror count — `encodeArbitratorExtraData`
- * requires a positive count for a well-formed encoding. This is not a
- * Kleros-enforced limit; each Kleros subcourt sets its own (higher) minimum.
- */
-export const KLEROS_MIN_JURORS_FLOOR = 1;
