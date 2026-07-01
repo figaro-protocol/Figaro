@@ -66,6 +66,7 @@ export interface AssemblyCheckoutDeps {
      *  commit. */
     compose?: (args: {
         interface: string;
+        abiCID?: string;
         fieldValues: Record<string, unknown>;
         processId: `0x${string}`;
         currency: `0x${string}`;
@@ -147,7 +148,7 @@ export async function executeAssemblyCheckout(
          *  commits the order post-claim (the SellerAuctionPanel on the order
          *  page), counter-signed by the buyer, and the process commits with the
          *  root only. Interface-agnostic — the walk names no clause. */
-        subOrderCompositions?: Record<string, { interface: string; fieldValues: Record<string, unknown> }>;
+        subOrderCompositions?: Record<string, { interface: string; abiCID?: string; fieldValues: Record<string, unknown> }>;
     },
     deps: AssemblyCheckoutDeps,
 ): Promise<void> {
@@ -229,6 +230,7 @@ export async function executeAssemblyCheckout(
             });
             const { deferred } = await deps.compose({
                 interface: composition.interface,
+                abiCID: composition.abiCID,
                 fieldValues: composition.fieldValues,
                 processId,
                 currency,
