@@ -36,7 +36,7 @@ Frontend wiring: `clauseSpecSource.ts` loads each spec live from `ClauseRegistry
 
 ## On-chain anchoring — registration + merkle binding (no content validation)
 
-There is **no on-chain content validation**. Two on-chain touch points remain:
+Two on-chain touch points remain:
 
 - **`ClauseRegistry.registerClause(clauseId, version, contentHash, metadataURI)`**
   — permissionless, first-write-wins, immutable. It anchors the clauseId, the spec's
@@ -60,31 +60,31 @@ copy — every consumer loads each spec from `ClauseRegistry` → IPFS at runtim
 ## The 18 protocol clauses
 
 16 runtime-attestable clauses (content validated off-chain by Layer A; no
-on-chain validator) plus 2 agreement-only clauses (`figaro-topology-v1`,
-`figaro-descending-auction-v1`).
+on-chain validator) plus 2 agreement-only clauses (`figaro-topology`,
+`figaro-descending-auction`).
 
 | clauseId | What it carries | Attestation surface |
 |---|---|---|
-| `figaro-topology-v1` | DAG lineage (parent order hashes) | **Agreement-only** (no runtime attestation) |
-| `figaro-commerce-v1` | Currency, payment, line items | Layer A (off-chain) |
-| `figaro-geolocation-v1` | Origin / destination geohash — where an order originates/terminates (any modality, incl. virtual). Default-on | Layer A (off-chain) |
-| `figaro-cargo-v1` | Physical shipment measure — mass + volume of the goods. Elective (hazmat / cold-chain / freight-class nest under it) | Layer A (off-chain) |
-| `figaro-hazmat-v1` | Dangerous-goods declaration anchored to the UN Recommendations (ADR / IMDG / IATA-DGR) — UN number, proper shipping name, hazard class, packing group. Elective; a co-equal logistics clause | Layer A (off-chain) |
-| `figaro-cold-chain-v1` | Temperature-controlled handling anchored to GDP cold-chain classes — class + min/max °C window. Elective; a co-equal logistics clause | Layer A (off-chain) |
-| `figaro-freight-class-v1` | Declared freight classification anchored to the NMFC (NMFTA) — the NMFC class (50–500) + optional item number. Elective; a co-equal logistics clause | Layer A (off-chain) |
-| `figaro-modalities-v1` | The buyer's request — consume-onsite / pickup / delivery / virtual (single-select) | Layer A (off-chain) |
-| `figaro-handoff-v1` | Hand-off point — where the physical exchange happens (proximity-policy nests under it) | Layer A (off-chain) |
-| `figaro-ghg-v1` | GHG accounting methodology (free-form `standard` string) + scope (committed at signing) | Layer A (off-chain) |
-| `figaro-proximity-policy-v1` | Required detection bands committed at agreement signing | Layer A (off-chain) |
-| `figaro-offset-policy-v1` | Carbon-offset provider set committed at agreement signing | Layer A (off-chain) |
-| `figaro-merchant-process-v1` | Merchant per-role event enum (sovereign log) | Layer A (off-chain) |
-| `figaro-courier-process-v1` | Courier per-role event enum (sovereign log) | Layer A (off-chain) |
-| `figaro-descending-auction-v1` | Composition marker — this order's counterparty is auction-selected (composes the `descending-auction` interface; `startPrice` is a `block.fields` runtime input supplied at checkout) | **Agreement-only** (no runtime attestation; the auction runs on the composed `DutchAuction` contract) |
-| `figaro-arbitration-kleros-v1` | Decentralized off-chain arbitration via Kleros (subcourt + minimum jurors). Provider-specific; sister `figaro-arbitration-<provider>-v1` clauses would cover future ODR providers | Layer A (off-chain) |
-| `figaro-applicable-law-v1` | State / ADR / traditional-jurisdiction recourse layer (applicable law + forum + language). Provider-agnostic. Composes with arbitration clauses | Layer A (off-chain) |
-| `figaro-consent-v1` | Cryptographic acceptance of an off-chain document (hash + version + title) — supports beta consent, ToS acceptance, governance vote receipts, etc. (`consent` article) | Layer A (off-chain) |
+| `figaro-topology` | DAG lineage (parent order hashes) | **Agreement-only** (no runtime attestation) |
+| `figaro-commerce` | Currency, payment, line items | Layer A (off-chain) |
+| `figaro-geolocation` | Origin / destination geohash — where an order originates/terminates (any modality, incl. virtual). Default-on | Layer A (off-chain) |
+| `figaro-cargo` | Physical shipment measure — mass + volume of the goods. Elective (hazmat / cold-chain / freight-class nest under it) | Layer A (off-chain) |
+| `figaro-hazmat` | Dangerous-goods declaration anchored to the UN Recommendations (ADR / IMDG / IATA-DGR) — UN number, proper shipping name, hazard class, packing group. Elective; a co-equal logistics clause | Layer A (off-chain) |
+| `figaro-cold-chain` | Temperature-controlled handling anchored to GDP cold-chain classes — class + min/max °C window. Elective; a co-equal logistics clause | Layer A (off-chain) |
+| `figaro-freight-class` | Declared freight classification anchored to the NMFC (NMFTA) — the NMFC class (50–500) + optional item number. Elective; a co-equal logistics clause | Layer A (off-chain) |
+| `figaro-modalities` | The buyer's request — consume-onsite / pickup / delivery / virtual (single-select) | Layer A (off-chain) |
+| `figaro-handoff` | Hand-off point — where the physical exchange happens (proximity-policy nests under it) | Layer A (off-chain) |
+| `figaro-ghg` | GHG accounting methodology (free-form `standard` string) + scope (committed at signing) | Layer A (off-chain) |
+| `figaro-proximity-policy` | Required detection bands committed at agreement signing | Layer A (off-chain) |
+| `figaro-offset-policy` | Carbon-offset provider set committed at agreement signing | Layer A (off-chain) |
+| `figaro-merchant-process` | Merchant per-role event enum (sovereign log) | Layer A (off-chain) |
+| `figaro-courier-process` | Courier per-role event enum (sovereign log) | Layer A (off-chain) |
+| `figaro-descending-auction` | Composition marker — this order's counterparty is auction-selected (composes the `descending-auction` interface; `startPrice` is a `block.fields` runtime input supplied at checkout) | **Agreement-only** (no runtime attestation; the auction runs on the composed `DutchAuction` contract) |
+| `figaro-arbitration-kleros` | Decentralized off-chain arbitration via Kleros (subcourt + minimum jurors). Provider-specific; sister `figaro-arbitration-<provider>` clauses would cover future ODR providers | Layer A (off-chain) |
+| `figaro-applicable-law` | State / ADR / traditional-jurisdiction recourse layer (applicable law + forum + language). Provider-agnostic. Composes with arbitration clauses | Layer A (off-chain) |
+| `figaro-consent` | Cryptographic acceptance of an off-chain document (hash + version + title) — supports beta consent, ToS acceptance, governance vote receipts, etc. (`consent` article) | Layer A (off-chain) |
 
-`figaro-ghg-v1` is a single disclosure clause whose accounting methodology is
+`figaro-ghg` is a single disclosure clause whose accounting methodology is
 a **free-form `standard` string** — any methodology, existing or future ("GHG
 Protocol Corporate Standard", "ISO 14064", "PAS 2050", "EN 16258", or a custom
 one); the protocol takes no closed list. Content shape is `(string standard,
@@ -93,22 +93,22 @@ attestation** on this clause, not a separate registered clause — the runtime
 `figaro-ghg-measurement` companion was removed when runtime attestation was
 deferred.
 
-`figaro-proximity-policy-v1` commits, at agreement signing, the set of
+`figaro-proximity-policy` commits, at agreement signing, the set of
 proximity-detection bands a hand-off will accept. The runtime
 proof that a hand-off actually occurred within an accepted band is carried as a
 **runtime attestation**, not a separate registered clause — an earlier
 `figaro-proximity-proof` clause modelled that witness as its own clause and was
 deleted as the wrong treatment when runtime attestation was deferred.
 
-`figaro-topology-v1` and `figaro-descending-auction-v1` are the two
+`figaro-topology` and `figaro-descending-auction` are the two
 **agreement-only** clauses — committed at agreement-signing time, never
 re-asserted as a runtime attestation. They are *not* off-chain-only, though.
 Like every agreement section, an agreement-only section is a merkle leaf under
 the on-chain `agreementHash`, inclusion-provable via OpenZeppelin `MerkleProof`
 (`computeSectionLeaf` / `buildSectionInclusionProof` in
 `frontend/lib/core/agreement.ts`). "No runtime attestation" is not "no on-chain
-verification". `figaro-topology-v1`'s DAG is reconstructed off-chain by indexers
-reading topology sections from the signed agreement; `figaro-descending-auction-v1`
+verification". `figaro-topology`'s DAG is reconstructed off-chain by indexers
+reading topology sections from the signed agreement; `figaro-descending-auction`
 is a composition marker whose auction executes on the composed `DutchAuction`
 contract (its state read from that contract's own events), not via
 `AttestationCoordinator`.
@@ -118,10 +118,10 @@ contract (its state read from that contract's own events), not via
 A clause is an *anchored artifact family*: an off-chain definition whose
 meaning must stay stable across parties, tools, and time, anchored on-chain by
 a minimal reference point — `clauseId` + `contentHash` + `metadataURI` in
-`ClauseRegistry` (identity + integrity only; no group field). Not every value
-that flows through an order deserves one. A clause's group is `block.article`
-in its spec JSON; the RPGF substrate-broadening formula, when rebuilt, derives
-its group key as `keccak256(block.article)` from the contentHash-verified spec
+`ClauseRegistry` (identity + integrity only). Not every value
+that flows through an order deserves one. The RPGF substrate-broadening
+formula, when rebuilt, derives a clause's group key as
+`keccak256(block.article)` from the contentHash-verified spec
 (derive, don't store). (The on-chain RPGF distribution mechanism was removed in
 the proof-apparatus teardown; the group-weighting rationale survives in
 `docs/v5/PUBLIC_GRAPH_MODEL.md`.)
@@ -157,19 +157,17 @@ new meaning is a new `clauseId`, never a mutation of an old one.
 ## Composition and decomposition — when to merge or split clauses
 
 Two failure modes appear at the boundary between clauses. Each has a
-canonical fix and a precedent in the repo's history.
+canonical fix.
 
 **Merge when two clauses duplicate one concept.** If two clauses occupy the
 same conceptual space and the only difference is which single enum field they
 expose, they are not independent — they are a degenerate parameterisation of
 one concept. Replace with one clause whose orthogonal fields make the
-parameterisation explicit. Precedent: `figaro-handoff-v1` was merged into
-`figaro-fulfilment-v2` (commit `d4eda40`, 2026-05-11). Both clauses described
-"how the order moves between parties"; both used a single enum to express
-modality. The merge produced a single clause with three orthogonal fields
-(`modalities`, `coordinations`, `handoffPoints`) — each a multi-valued enum
-where the cross-product is the actual decision space. Same conceptual
-coverage, one clause, no duplicate validation surface.
+parameterisation explicit — but only when the fields are genuinely facets of
+one decision. If what looked like one concept turns out to carry independent
+decisions (a modality *request* is not the same decision as a physical
+*hand-off point*), keep them as separate clauses; a merge you have to undo is
+worse than two honest clauses.
 
 **Committed content vs a runtime witness is a LIFECYCLE difference, not two
 cryptographic categories.** Every clause section — a committed policy or a

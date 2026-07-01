@@ -37,7 +37,7 @@ The `/builders/designer` tool is a DAG editor (`ProcessGraphCanvas` + `Agreement
 - **`sellers/`** — Seller-profile / onboarding state helpers
 - **`seller/`** — Seller-side catalogue / seller helpers, the discovery-service implementation (`discoveryService.ts`)
 - **`semantic/`** — Runtime-process model derivation: `deriveProcessModelFromRuntime.ts`, `financialsProjection.ts`, `models.ts`
-- **`shared/`** — Wagmi config (`chains.ts`, `connectors.ts`, `rpc.ts`), IPFS (`ipfsService.ts`), clause specs (`clauseSpecSource.ts` + `clauses/`), seller + catalogue metadata (`sellerProfileMetadata.ts`, `sellerCatalogueMetadata.ts`), slug↔label tables (`assemblyLabels.ts`). `shared/` is the generic leaf — it imports no other `lib/` layer; the one sanctioned exception is the runtime-services DI seam (`runtimeServices.ts` + `runtimeServicesContext.tsx`), which assembles feature-layer service implementations. Enforced by `scripts/lint-lib-import-direction.sh` (with the core/-imports-no-feature-layer rule).
+- **`shared/`** — Wagmi config (`chains.ts`, `connectors.ts`, `rpc.ts`), IPFS (`ipfsService.ts`), clause specs (`clauseSpecSource.ts` + `clauses/`), seller + catalogue metadata (`sellerProfileMetadata.ts`, `sellerCatalogueMetadata.ts`). `shared/` is the generic leaf — it imports no other `lib/` layer; the one sanctioned exception is the runtime-services DI seam (`runtimeServices.ts` + `runtimeServicesContext.tsx`), which assembles feature-layer service implementations. Enforced by `scripts/lint-lib-import-direction.sh` (with the core/-imports-no-feature-layer rule).
 
 ## Designer tool surface (`frontend/`)
 
@@ -55,7 +55,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 - `DraftsList.tsx` — saved-drafts list on the landing.
 - `PublishedList.tsx` — published-assemblies list for the connected wallet.
 - `ClausesList.tsx` — clauses catalogue on the landing.
-- Shared DAG canvas: `components/core/ProcessGraphCanvas.tsx` (drag green handle to spawn sub-orders; drag onto another node to merge fan-in; click edge pill to swap fulfilment method).
+- Shared DAG canvas: `components/core/ProcessGraphCanvas.tsx` (drag green handle to spawn sub-orders; drag onto another node to merge fan-in; click edge pill to swap modality).
 
 **State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `mergeSyntheticParent`, `editSyntheticAgreement`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage). Bridge: `lib/designer/forkAssembly.ts` + `lib/designer/assemblyTemplateToDraft.ts` (fork a published assembly's template into an editable draft).
 
@@ -66,8 +66,8 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 - `clauseSpecSource.ts` — the module spec cache. No bundled copy and no
   preload: `useClauseSpecs` warms it chain→IPFS via `loadClauseSpec(id, uri)`
   from `ClauseRegistered` events (18 protocol clauses on the devnet — 16
-  runtime-attestable + 2 agreement-only (`figaro-topology-v1`,
-  `figaro-descending-auction-v1`) — plus any third-party registrations);
+  runtime-attestable + 2 agreement-only (`figaro-topology`,
+  `figaro-descending-auction`) — plus any third-party registrations);
   spec-consuming surfaces gate on its `loaded`.
 
 ## Components (`components/`)

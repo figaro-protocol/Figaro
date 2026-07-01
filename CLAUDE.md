@@ -95,10 +95,10 @@ Agents — human-driven or autonomous — have bounded write scope. These are ha
 - **`src/FigaroCore.sol`** — the kernel is frozen. The `.claude/hooks/kernel-warn.sh` hook surfaces this at edit time; do not bypass.
 - **`src/CommitmentTypes.sol`** — kernel structs and EIP-712 hashing.
 - **Any deployed contract on a chain anyone is using.** First-write-wins binding in `SellerRegistry`, `ClauseRegistry`, and the validator-contract pattern means redeployment is incompatible with prior state. To change behavior, write a *new* contract with a *new* identifier; never mutate the existing one.
-- **Existing registered clauses.** Once a `clauseId` is registered in `ClauseRegistry`, the binding is permanent. To change behavior, register a new clauseId (e.g., `figaro-foo-v1` → `figaro-foo-v2`); never mutate the v1 spec in `clauses/`. (Carve-out: cosmetic metadata fields nothing reads on-chain — docstrings, `valueLabels` — are overridable; content-shape is not.)
+- **Existing registered clauses.** Once a `clauseId` is registered in `ClauseRegistry`, the binding is permanent. To change behavior, register a new version — `clauseId = keccak(name, version)`, so bumping `figaro-foo` to version 2 is a fresh binding; never mutate the v1 spec in `clauses/`. (Carve-out: cosmetic metadata fields nothing reads on-chain — docstrings, `valueLabels` — are overridable; content-shape is not.)
 - **Reference assemblies** in the runtime that are shared infrastructure. New assemblies go in new files; treat existing reference assemblies as immutable for any agent.
 
-**Nothing is frozen but the kernel.** The only truly immutable artifacts are the two kernel files above (`FigaroCore.sol`, `CommitmentTypes.sol`). The "deployed contract" and "registered clause" bullets are **live-chain** rules — this repo is **device-only**, redeployed fresh every `devup`, with no persistent on-chain state to be incompatible with. So contracts, registries, **and clause IDs** (`figaro-*-v1` names, incl. `merchant-process`/`courier-process`) are **renamable**: superseding a name is a fresh deploy + lockstep update across all layers — which the clause doctrine already sanctions ("register a new clauseId"). Do **not** invoke "frozen / registered / item-c-deferred / for safety" to stop short of finishing a rename. Only the kernel is sacrosanct.
+**Nothing is frozen but the kernel.** The only truly immutable artifacts are the two kernel files above (`FigaroCore.sol`, `CommitmentTypes.sol`). The "deployed contract" and "registered clause" bullets are **live-chain** rules — this repo is **device-only**, redeployed fresh every `devup`, with no persistent on-chain state to be incompatible with. So contracts, registries, **and clause IDs** (`figaro-*` names, incl. `merchant-process`/`courier-process`) are **renamable**: superseding a name is a fresh deploy + lockstep update across all layers — which the clause doctrine already sanctions ("register a new clauseId"). Do **not** invoke "frozen / registered / item-c-deferred / for safety" to stop short of finishing a rename. Only the kernel is sacrosanct.
 
 ### Edit only what belongs to the user the agent is acting for
 
@@ -211,11 +211,11 @@ When in doubt, dispatch `figaro-separation-of-concerns-auditor` BEFORE recommend
 
 The recurring, weeks-costly failure is modeling a concern as a stored value when it is **derived** from the graph. The canonical case: **there is no "fulfilment" field and no "delivery" checkbox.**
 
-- **Fulfilment modality is DERIVED, never stored.** on-site / pickup / delivery is read from topology + which clauses are present: a second, co-equal **buyer↔courier order** carrying `figaro-courier-process-v1` (+ proximity) IS delivery; a single node is on-site/pickup (tracked when it carries `merchant-process` + `proximity-policy`, bare when it does not). Do not add a modality field; do not add a checkbox that "spawns" a node.
+- **Fulfilment modality is DERIVED, never stored.** on-site / pickup / delivery is read from topology + which clauses are present: a second, co-equal **buyer↔courier order** carrying `figaro-courier-process` (+ proximity) IS delivery; a single node is on-site/pickup (tracked when it carries `merchant-process` + `proximity-policy`, bare when it does not). Do not add a modality field; do not add a checkbox that "spawns" a node.
 - **Coordination lives in the process clauses** — `merchant-process` on the merchant order, `courier-process` on the courier order — not in a fulfilment field.
 - **Coordination variants are separate assemblies.** seller-assigned / buyer-assigned / dutch-auction are distinct assemblies (composed at the assembly level, like proximity), not a stored field.
 - **Nodes are co-equal** (kernel star-shape: buyer == rootBuyer on every order). The courier order is not a sub-order *owned* by the merchant; the DAG parent edge is value-topology, not dominance.
-- **Clauses are a nestable hierarchy: article → clause → sub-clause → …** Articles = `block.article` in the clause JSON (surfaced by the existing grouping component — do not rebuild it). Sub-clauses are logically placed (e.g. the proximity bands `zone-wifi`/`nearby-ble`/`contact-nfc` nest under `figaro-proximity-policy-v1`; the process clauses have none). **Add sub-clauses to the clause JSON spec, emit the event, and reconstruct the nesting OFF-CHAIN in the drawer (rendered recursively from the spec) — NEVER hardcode the sub-clause tree into the UI.**
+- **Clauses are a nestable hierarchy: article → clause → sub-clause → …** Articles = `block.article` in the clause JSON (surfaced by the existing grouping component — do not rebuild it). Sub-clauses are logically placed (e.g. the proximity bands `zone-wifi`/`nearby-ble`/`contact-nfc` nest under `figaro-proximity-policy`; the process clauses have none). **Add sub-clauses to the clause JSON spec, emit the event, and reconstruct the nesting OFF-CHAIN in the drawer (rendered recursively from the spec) — NEVER hardcode the sub-clause tree into the UI.**
 
 Full treatment → memory `feedback_fulfilment_retired_modality_derived`; clause-spec detail → `docs/v5/CLAUSES.md`.
 
@@ -325,7 +325,7 @@ All contracts live in `src/` (Solidity 0.8.26, Foundry); V3 in `archive-v3/`. No
 
 A clause's spec ships in two lockstep surfaces: **Layer A** (TypeScript, `@figaro/core/clauses`) — the off-chain spec + content encoders + the well-formedness validator — and **on-chain registration** (`ClauseRegistry.registerClause` — permissionless, first-write-wins, immutable). **There is no on-chain clause-content validation** (per-clause validators, the SP1 prover, and the batch-verifier were deleted in the proof-apparatus teardown): the `AttestationCoordinator` merkle-binds each attestation to its signed agreement and content-hash-binds the evidence, but validates no content shape — well-formedness is an off-chain SDK + read-time concern. So a never-seen clause is attestable with **zero per-clause on-chain code** — open-world by construction.
 
-18 protocol clauses total: 16 runtime-attestable + 2 agreement-only (`figaro-topology-v1`, `figaro-descending-auction-v1`). The full clause table, the **adding-a-new-clause checklist**, and registration discipline → `CLAUSES.md`. Count source of truth: `ls clauses/*.json | wc -l` (the canonical Layer-A specs / `ClauseRegistry` seed data, at repo-root `clauses/`; nothing bundles a copy — every consumer loads them from ClauseRegistry → IPFS at runtime). Runtime-attestable = files minus the two agreement-only clauses.
+18 protocol clauses total: 16 runtime-attestable + 2 agreement-only (`figaro-topology`, `figaro-descending-auction`). The full clause table, the **adding-a-new-clause checklist**, and registration discipline → `CLAUSES.md`. Count source of truth: `ls clauses/*.json | wc -l` (the canonical Layer-A specs / `ClauseRegistry` seed data, at repo-root `clauses/`; nothing bundles a copy — every consumer loads them from ClauseRegistry → IPFS at runtime). Runtime-attestable = files minus the two agreement-only clauses.
 
 ### Frontend
 
@@ -345,7 +345,7 @@ Commands (Foundry / Halmos / Echidna / TLA+ / Certora / frontend / SDK), environ
 
 This is the exhaustive whitelist. Files not listed are deletion candidates at every audit.
 
-**Entry points:** `README.md`, `CURRENT_STATE.md` (active reading path and archive boundaries).
+**Entry points:** `README.md` (V5 doc map, reading path, and archive boundaries).
 
 **Inventories (CLAUDE.md indexes these):** `CONTRACTS.md`, `CLAUSES.md`, `FRONTEND.md`, `TESTING.md`, `LOCAL_DEV.md`.
 

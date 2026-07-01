@@ -251,7 +251,7 @@ The protocol source of truth is the set of active submissions, not an off-chain 
 
 Carbon offset retirement is implemented as a process extension, separate from
 the disclosure graph itself: `ProcessOffsetReceipt.sol` anchors it on-chain, and
-the `figaro-offset-policy-v1` clause carries the committed offset-provider set.
+the `figaro-offset-policy` clause carries the committed offset-provider set.
 
 The shipped mechanism (Path A) is:
 

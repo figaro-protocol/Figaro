@@ -177,7 +177,7 @@ and `uriHash`. There is no approval, no staking, no identity check.
 and spam.
 
 **Why it is correct**: `clauseId` is content-addressed — it is the keccak256
-of a human-readable clause name. Squatting `keccak256("figaro-delivery-v1")`
+of a human-readable clause name. Squatting `keccak256("figaro-commerce")`
 requires knowing the preimage. Registering a garbage `uriHash` for a known
 clauseId is blocked by the dedup guard (`AlreadyRegistered` revert).
 
@@ -307,8 +307,8 @@ separately rule transferability out:
    relationship.
 
 Adding transferability would require either (a) abandoning the
-single-buyer invariant, which invalidates Theorem 5.3's progressive-
-collateralization derivation since cumulative-value math depends on a
+single-buyer invariant, which invalidates the asymmetric-bonding
+derivation since cumulative-value math depends on a
 fixed root buyer, or (b) introducing a J ∉ {B, S} authorization path,
 which weakens the Nash equilibrium that makes the bonded commitment
 work. Neither is acceptable.
@@ -355,11 +355,10 @@ off.
 > `BOL_RESEARCH.md` §5/§6 dismissed the protocol-layer question as "out
 > of scope by design" on flawed economics (the rejected "early
 > `resolveProcess` + new process" pattern doubles DAG cost) — that
-> dismissal is incorrect-as-written. See
-> `memory/project_bol_transferability_parked.md` (full sketch + open
-> design points), the "🔬 Open — BoL transferability mechanism design
-> (parked)" entry in `memory/project_backlog.md`, and V3 reference
-> material at `archive-v3/src/composability/` +
+> dismissal is incorrect-as-written. The BoL-transferability question is
+> tracked in the punch-list (FORKS / open questions); the full sketch and
+> open design points are in `BOL_RESEARCH.md` §5/§6 and its status header.
+> V3 reference material at `archive-v3/src/composability/` +
 > `docs/archive/COMPOSABILITY.md`.
 
 ---

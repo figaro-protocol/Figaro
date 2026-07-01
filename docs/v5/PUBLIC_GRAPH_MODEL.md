@@ -1,7 +1,7 @@
 # Public Graph Model — Design Decision
 
 Status: active conceptual model. For the current codebase reading path and
-archive boundaries, start with [CURRENT_STATE.md](CURRENT_STATE.md).
+doc map, start with [README.md](README.md).
 
 This document names and defines the five semantic graphs that emerge from the
 Figaro protocol and its extensions. These graphs are **intentionally public

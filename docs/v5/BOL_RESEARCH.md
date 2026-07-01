@@ -4,8 +4,7 @@
 **Author**: drafted by an agent with `claude-opus-4-7[1m]`, grounded in the
 codebase at the time of writing and the source citations below.
 **Closes**: backlog items "Order-as-traditional-contract UI + PDF" and the
-research dependency of "Supply-chain reference assembly" — both in
-`memory/project_backlog.md`.
+research dependency of "Supply-chain reference assembly".
 
 This document settles whether Figaro can or should accommodate the BoL
 patterns established by CargoX, TradeTrust, the UNCITRAL Model Law on
@@ -43,13 +42,10 @@ clause) can be made on solid ground.
 > committed independently. **Status: parked pending full mechanism
 > design**; five open design points (resolution-timing coordination, fee
 > schedule conventions, re-routing of in-progress sub-orders, EOA-seller
-> cancellation, CancellableSeller standardization) listed in the parked
-> memory.
+> cancellation, CancellableSeller standardization) listed inline above.
 >
-> See `memory/project_bol_transferability_parked.md` (full sketch +
-> invariant check + open points), the
-> "🔬 Open — BoL transferability mechanism design (parked)" entry in
-> `memory/project_backlog.md`, and V3 reference material at
+> The BoL-transferability question is tracked in the punch-list
+> (FORKS / open questions). V3 reference material at
 > `archive-v3/src/composability/` + `docs/archive/COMPOSABILITY.md`.
 > Do not act on §5/§6 alone without reading those first.
 
@@ -58,9 +54,10 @@ clause) can be made on solid ground.
 The first thing this document fixes is a vocabulary collapse in our prior
 prose: handoff and BoL are not the same object.
 
-**Handoff is a Figaro primitive.** `figaro-modalities-v1` +
-`figaro-proximity-policy-v1` + `figaro-proximity-proof-v1` +
-`figaro-courier-process-v1` together document the fact-of-custody-change
+**Handoff is a Figaro primitive.** `figaro-modalities` +
+`figaro-proximity-policy` (the committed detection bands, with the runtime
+proof-of-proximity filed as an attestation on that same clause) +
+`figaro-courier-process` together document the fact-of-custody-change
 and its conditions. Any order in any DAG that has a physical exchange opts
 in. Two parties exchanging anything physical → handoff applies. The custody
 change itself is what is being proved; no carrier role is required.
@@ -80,8 +77,8 @@ Today's `lib/audit/billOfLadingExtract.ts` does not draw this line. It
 runs on every order in the bundle and emits a "Bill of Lading" page even
 for buyer↔merchant orders where no carrier exists. That is a bug, not a
 research question, and the fix is a discriminator predicate at the bundle
-level (presence of `figaro-courier-process-v1`, or presence of
-`figaro-courier-process-v1` *with* a non-buyer non-merchant seller —
+level (presence of `figaro-courier-process`, or presence of
+`figaro-courier-process` *with* a non-buyer non-merchant seller —
 exact predicate to be settled at code-change time).
 
 The rest of this document concerns the BoL document genre, not the handoff
@@ -311,8 +308,8 @@ kernel properties each separately rule it out:
 
 **This is not a gap to fill. It is a structural consequence of the
 kernel invariants.** Filling it would require either (a) changing the
-single-buyer invariant — invalidating Theorem 5.3's progressive
-collateralization derivation, since the cumulative-value calculation
+single-buyer invariant — invalidating the asymmetric-bonding
+derivation, since the cumulative-value calculation
 depends on a fixed buyer at the root — or (b) introducing a J ∉ {B, S}
 authorization path — invalidating Theorem 4.7's no-escape-hatches
 property and weakening the Nash equilibrium. Neither is acceptable. The
@@ -413,30 +410,30 @@ buyer↔courier order's agreement.
 | Consignee | `order.buyer` | Same address as the contractual shipper in local commerce. In supply-chain DAGs the buyer may designate the consignee via an encrypted destination address in the order's off-chain content and an address inside `figaro-geolocation.destinationGeohash`. |
 | Origin | `figaro-geolocation.originGeohash` | Geohash, 1–12 chars precision. |
 | Destination | `figaro-geolocation.destinationGeohash` | As above. |
-| Mode of carriage | `figaro-handoff-v1.handoff` | Four handoff points: face-to-face / dead-drop / parking-area / locker; local-commerce focused. |
-| Service class (modality + organizer) | `figaro-modalities-v1.modality` + `figaro-coordination-v1.coordination` | Modality: consume-onsite / pickup / delivery / virtual (single-select). Coordination (composed on delivery parents): seller-assigned / buyer-assigned / dutch-auction. |
-| Stage progression (loaded / in-transit / delivered) | `figaro-courier-process-v1` | 5 stages: preparationStarted / readyForPickup / courierEnRoute / pickedUp / delivered; per-stage attestations. |
-| Custody-change verification at handoff | `figaro-proximity-policy-v1` (committed band) + `figaro-proximity-proof-v1` (runtime nonce + sig) | Sister-clause split mirrors GHG. Off-chain consumers verify proof.band == policy.band. |
-| Cargo description (line items) | `figaro-commerce-v1.lineItems` | itemId / name / quantity / unitPrice. Cleartext today; encryption is a separate backlog item ("line-item privacy"). |
-| Freight (carriage payment) | `figaro-commerce-v1.payment` + `currency` (on the buyer↔courier order, not the buyer↔merchant order) | The carriage is its own commerce clause on its own order. |
+| Mode of carriage | `figaro-handoff.handoff` | Four handoff points: face-to-face / dead-drop / parking-area / locker; local-commerce focused. |
+| Service class (modality + organizer) | `figaro-modalities.modality` | Modality: consume-onsite / pickup / delivery / virtual (single-select). The organizer/coordination variant — seller-assigned / buyer-assigned / dutch-auction — is an assembly-level composition, not a clause field. |
+| Stage progression (loaded / in-transit / delivered) | `figaro-courier-process` | 5 stages: preparationStarted / readyForPickup / courierEnRoute / pickedUp / delivered; per-stage attestations. |
+| Custody-change verification at handoff | `figaro-proximity-policy` (committed band) + a runtime proximity attestation on that same clause (runtime nonce + sig) | The runtime proof is an attestation on the committed clause, not a separate clause. Off-chain consumers verify proof.band == policy.band. |
+| Cargo description (line items) | `figaro-commerce.lineItems` | itemId / name / quantity / unitPrice. Cleartext today; encryption is a separate backlog item ("line-item privacy"). |
+| Freight (carriage payment) | `figaro-commerce.payment` + `currency` (on the buyer↔courier order, not the buyer↔merchant order) | The carriage is its own commerce clause on its own order. |
 | Liability for non-performance | The bond mechanism (asymmetric bonding + atomic resolution) | Figaro's bond *is* the liability mechanism; Hague-Visby tonnage-based caps are incommensurable with this bond structure. |
-| Applicable law / forum | `figaro-applicable-law-v1` | applicableLaw + forum + language. The doc-of-title transferability is governed by this clause, but Figaro has no transferability to govern. |
-| DAG topology | `figaro-topology-v1` | parentOrderHashes — needed to render the multi-leg structure when the BoL is for one leg of a longer chain. |
-| Carrier per-role event log | `figaro-courier-process-v1` | 8 event types: available / accepted / en-route-pickup / arrived-pickup / in-transit / arrived-dropoff / completed / cancelled. |
+| Applicable law / forum | `figaro-applicable-law` | applicableLaw + forum + language. The doc-of-title transferability is governed by this clause, but Figaro has no transferability to govern. |
+| DAG topology | `figaro-topology` | parentOrderHashes — needed to render the multi-leg structure when the BoL is for one leg of a longer chain. |
+| Carrier per-role event log | `figaro-courier-process` | 8 event types: available / accepted / en-route-pickup / arrived-pickup / in-transit / arrived-dropoff / completed / cancelled. |
 
 ### 7.1 Fields that are *not* covered today
 
 These appear on traditional BoLs and in the supply-chain BoL conventions
 TradeTrust documents but have no current clause in Figaro:
 
-- **Cargo-type / transport-category beyond hazmat.** Hazmat / dangerous-goods declarations are now expressible via `figaro-hazmat-v1` (UN number, proper shipping name, hazard class 1–9, packing group, anchored to the UN Recommendations / ADR / IMDG / IATA-DGR). Broader cargo-type / transport-category taxonomies beyond dangerous goods remain unmodelled. (The earlier `figaro-class-of-service` sketch was deleted as conflating four orthogonal axes; hazard and temperature are now separate standard-anchored electives.)
-- **Special-handling instructions.** Fragile / orientation-sensitive / live-animal — none of these have a clause slot. (Temperature-controlled handling is covered by `figaro-cold-chain-v1`.)
+- **Cargo-type / transport-category beyond hazmat.** Hazmat / dangerous-goods declarations are now expressible via `figaro-hazmat` (UN number, proper shipping name, hazard class 1–9, packing group, anchored to the UN Recommendations / ADR / IMDG / IATA-DGR). Broader cargo-type / transport-category taxonomies beyond dangerous goods remain unmodelled. (The earlier `figaro-class-of-service` sketch was deleted as conflating four orthogonal axes; hazard and temperature are now separate standard-anchored electives.)
+- **Special-handling instructions.** Fragile / orientation-sensitive / live-animal — none of these have a clause slot. (Temperature-controlled handling is covered by `figaro-cold-chain`.)
 - **Notify party.** A third party who is to be notified at arrival, distinct from the consignee. Figaro's data model does not currently carry a notify address separate from the consignee address.
-- **Cargo-detail beyond SKU.** Weight, volume, marks, numbers, packaging type per shipment. `figaro-commerce-v1.lineItems` carries `quantity` and `name` but not packed-shipment dimensions.
+- **Cargo-detail beyond SKU.** `figaro-cargo` now carries the shipment's mass and volume, and `figaro-commerce.lineItems` carries `quantity` and `name`. Marks, numbers, and packaging type per shipment remain unmodelled.
 - **Liability terms / freight-paid status / freight-collect.** Whether the freight is prepaid by the shipper or collect-from-consignee. In Figaro this is implicit (the buyer pays the seller in the bonded payment); making it explicit is a labelling concern, not a clause concern.
 
-The decision on each of these — extend `figaro-fulfilment-v2`, fork
-`figaro-cargo-description-v1`, defer to a future supply-chain assembly,
+The decision on each of these — extend an existing clause (e.g. `figaro-cargo`),
+fork a new one, defer to a future supply-chain assembly,
 or accept the gap as out-of-scope for local commerce — is a per-field
 call. None of them are blocking for the non-negotiable buyer↔courier
 case. They become live questions if and when the supply-chain reference
@@ -449,20 +446,20 @@ of them.
 `buildAuditBundle` in `frontend/lib/audit/auditBundle.ts` runs
 `extractBillOfLading` on every order indiscriminately. The discriminator
 should be: emit a BoL document only when the order is a carriage leg —
-concretely, when the agreement carries `figaro-courier-process-v1` (or
+concretely, when the agreement carries `figaro-courier-process` (or
 when the seller's role is courier as expressed on the order). Orders that
 have handoff data but no carrier role get their handoff/proximity data
 surfaced as a different document genre — a "Proof of Handoff" page, name
 TBD — not as a "Bill of Lading". This is a small code change against
 existing extractors; no new clause is required.
 
-**8.2 No `figaro-bol-v1` clause for now.** The non-negotiable BoL view is
+**8.2 No `figaro-bol` clause for now.** The non-negotiable BoL view is
 fully assemblable from the existing clauses. Adding a new clause would be
 ceremonial. Defer this decision until a real supply-chain customer
 demands a feature the existing clauses can't express.
 
 **8.3 Document the negotiability limitation explicitly.** ✅ Shipped as
-entry #14 in `docs/v5/DESIGN_DECISIONS.md`: "No MLETR-style transferable
+entry #12 in `docs/v5/DESIGN_DECISIONS.md`: "No MLETR-style transferable
 records — by design." Captures the three-invariant rejection
 (single-buyer + parties-fixed-at-commit + no-escape-hatches) and
 references this document for the full comparison. A reviewer
@@ -473,8 +470,8 @@ it as a gap.
 None of these block local commerce. They become live questions when the
 supply-chain assembly enters build phase. At that point the question is
 per-field: extend an existing clause, fork a new one, or document an
-out-of-scope decision. A pre-emptive `figaro-cargo-description-v1` would
-be premature design.
+out-of-scope decision. A pre-emptive `figaro-cargo-description` fork would
+be premature design — `figaro-cargo` already covers mass and volume.
 
 **8.5 No interoperability with CargoX / TradeTrust title flows.** Because
 the underlying transferability semantics differ structurally, a Figaro
@@ -535,30 +532,29 @@ Items the research surfaced but did not settle. Each can become its own
 backlog item.
 
 - **The exact discriminator predicate for "this order is a carriage
-  leg".** Likely: presence of `figaro-courier-process-v1` on the seller
-  side, or presence of `figaro-courier-process-v1` with a
+  leg".** Likely: presence of `figaro-courier-process` on the seller
+  side, or presence of `figaro-courier-process` with a
   non-buyer-non-merchant seller role. Final form: a small predicate in
   `auditBundle.ts`.
 - **Naming for the "Proof of Handoff" document genre.** Distinct from
   "Bill of Lading"; needs to be precise about scope (any custody-change
   event, regardless of whether a carrier was involved).
-- **Whether `figaro-fulfilment-v2` needs to grow a `handoffParticipant`
+- **Whether `figaro-handoff` needs to grow a `handoffParticipant`
   field.** In supply-chain assemblies the merchant-as-tenderer is
   conceptually distinct from the carrier-as-tenderee; surfacing both on
   the handoff record may matter for evidentiary completeness.
 - **Hazmat / dangerous-goods clause decision.** Defer until the
   supply-chain assembly demands it; revisit then.
 - ~~**`docs/v5/DESIGN_DECISIONS.md` entry for the negotiability
-  limitation.**~~ ✅ Shipped as entry #14 in the same session as this
+  limitation.**~~ ✅ Shipped as entry #12 in the same session as this
   document. Scoped to the kernel layer only; protocol-layer claim
   parked (see status note at document header).
 - **🔬 BoL transferability mechanism design (parked, 2026-04-28)**.
   The protocol-layer composition question — whether a DAG fork in an
   existing process or a V5 reincarnation of the V3 "conditional
   contract for combining processes" pattern can express MLETR-style
-  transferability without doubling DAG cost — is open. Tracked as a
-  research project in `memory/project_backlog.md` and detailed in
-  `memory/project_bol_transferability_parked.md`. Reference material
+  transferability without doubling DAG cost — is open. Tracked in the
+  punch-list (FORKS / open questions). Reference material
   for restart: `archive-v3/src/composability/` +
   `docs/archive/COMPOSABILITY.md`.
 
@@ -581,8 +577,8 @@ backlog item.
 **Cross-references inside the repo**:
 - `CLAUDE.md` § "What Figaro Is", § "What Figaro Is Not", § "Common Misframings — Do Not Propose"
 - `docs/v5/THEORY.md` — game-theoretic derivation of the kernel invariants
-- `docs/v5/DESIGN_DECISIONS.md` — 14 intentional patterns that look like vulnerabilities but are correct by design (entry #14 captures the MLETR-non-implementability finding from this research)
+- `docs/v5/DESIGN_DECISIONS.md` — 12 intentional patterns that look like vulnerabilities but are correct by design (entry #12 captures the MLETR-non-implementability finding from this research)
 - `docs/v5/CLAUSES.md` — the clause validation architecture and anchoring doctrine governing any future clause additions
 - `frontend/lib/audit/billOfLadingExtract.ts` — the extractor that needs the discriminator
 - `frontend/lib/audit/auditBundle.ts` — where the discriminator gates the BoL emission
-- `clauses/figaro-fulfilment-v2.json` and the other clauses referenced in §7
+- the clause specs in `clauses/` referenced in §7

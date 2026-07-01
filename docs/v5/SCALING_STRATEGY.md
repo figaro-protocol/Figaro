@@ -439,23 +439,23 @@ carries `max`.)
 
 1. *Enum index.* `EnumFieldSpec` carries only `values`; today's
    per-clause index tables are inconsistent (merchant/courier 0-based,
-   geo/fulfilment/proximity/offset/kleros 1-based). Canonical rule: index
+   geo/modalities/proximity/offset/kleros 1-based). Canonical rule: index
    = 0-based position in `values`. Enum *arrays* need no sentinel — an
    absent optional array is the empty array.
 2. *Defaults.* No `default` field is needed: "absent optional → ABI
-   zero-value" covers every current case (`scope`→0, `evidenceUri`→`""`,
-   `coordinations`/`handoffPoints`→`[]`).
+   zero-value" covers every current case (`scope`→0, `evidenceUri`→`""`, an
+   absent optional array→`[]`).
 
 **Arbitration / applicable-law — fully structural after the jurisdiction
-split.** The split of legacy `figaro-jurisdiction-v1` into
-`figaro-arbitration-kleros-v1` (required `klerosCourt` + optional
-`klerosMinJurors`) and `figaro-applicable-law-v1` (required
+split.** The split of legacy `figaro-jurisdiction` into
+`figaro-arbitration-kleros` (required `klerosCourt` + optional
+`klerosMinJurors`) and `figaro-applicable-law` (required
 `applicableLaw` + optional `forum` + `language`) eliminates the prior
 non-structural carve-out: both new clauses encode their fields literally.
 The "suggest 3 jurors" default lives in the authoring UI, not the
 encoder.
 
-**`figaro-consent-v1` — the one layout change.** Its `documents`
+**`figaro-consent` — the one layout change.** Its `documents`
 object-array is encoded struct-of-arrays (`bytes32[], string[],
 string[]`); the canonical rule is `tuple[]`. Consent's encoder and Layer
 C validator are rewritten to `tuple[]`.
