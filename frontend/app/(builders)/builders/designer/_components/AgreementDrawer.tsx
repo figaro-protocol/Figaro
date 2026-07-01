@@ -28,7 +28,7 @@ import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/core/
 import { useClauseSpecs } from "@/lib/core/useClauseSpecs";
 import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsStructural } from "@/lib/shared/clauseSpecSource";
 import { ClausesByArticle } from "@/components/core/ClausesByArticle";
-import type { FieldSpec } from "@figaro/core/clauses";
+import { FieldControl } from "@/components/core/FieldControl";
 
 interface Props {
     /** Currently-selected order. May be null in `embedded` mode (renders an
@@ -484,7 +484,7 @@ function ClauseControl({
                             );
                             return (
                                 <div key={field.name}>
-                                    <ClauseFieldControl
+                                    <FieldControl
                                         field={field}
                                         value={values[field.name]}
                                         onChange={(v) => onSetClauseField?.(clauseKey, field.name, v)}
@@ -511,177 +511,6 @@ function ClauseControl({
                         })}
                 </div>
             )}
-        </div>
-    );
-}
-
-/**
- * One clause field, captured at design time — single-select per the
- * one-choice-per-article rule. enum / array-of-enum render as radios; scalar
- * fields render as inputs; structured fields (object / array-of-object) are
- * left blank here and filled downstream at checkout.
- */
-function ClauseFieldControl({
-    field,
-    value,
-    onChange,
-    testId,
-    hideLabel = false,
-}: {
-    field: FieldSpec;
-    value: unknown;
-    onChange: (next: unknown) => void;
-    testId: string;
-    /** Suppress the field's own name label when it duplicates the clause title
-     *  (e.g. the `modalities` field inside the "Modalities" clause). */
-    hideLabel?: boolean;
-}) {
-    const label = hideLabel ? null : (
-        <span
-            className={`text-xs text-ink-muted${field.description ? " cursor-help" : ""}`}
-            title={field.description}
-        >
-            {field.name}
-        </span>
-    );
-
-    if (field.type === "enum") {
-        const selected = typeof value === "string" ? value : undefined;
-        return (
-            <div data-testid={`${testId}-group`}>
-                {label && <div className="mb-1">{label}</div>}
-                <div className="space-y-1">
-                    {field.values.map((opt) => (
-                        <label key={opt} className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer">
-                            <input
-                                type="radio"
-                                name={testId}
-                                checked={selected === opt}
-                                onChange={() => onChange(opt)}
-                                data-testid={`${testId}-${opt}`}
-                                className="accent-accent"
-                            />
-                            <span>{opt}</span>
-                        </label>
-                    ))}
-                </div>
-            </div>
-        );
-    }
-
-    // array-of-enum → MULTI-select. The spec models a SET (the values a merchant
-    // OFFERS — proximity bands, hand-off locations, accepted offset providers),
-    // narrowed to one at checkout by the party that fills it. Design-time
-    // composition declares the whole set; stored as the array the field expects.
-    if (field.type === "array" && field.items.type === "enum") {
-        const arr = Array.isArray(value) ? (value as string[]) : [];
-        const options = field.items.values;
-        return (
-            <div data-testid={`${testId}-group`}>
-                {label && <div className="mb-1">{label}</div>}
-                <div className="space-y-1">
-                    {options.map((opt) => (
-                        <label key={opt} className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={arr.includes(opt)}
-                                onChange={() =>
-                                    onChange(arr.includes(opt) ? arr.filter((x) => x !== opt) : [...arr, opt])
-                                }
-                                data-testid={`${testId}-${opt}`}
-                                className="accent-accent"
-                            />
-                            <span>{opt}</span>
-                        </label>
-                    ))}
-                </div>
-            </div>
-        );
-    }
-
-    if (field.type === "boolean") {
-        return (
-            <label className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer">
-                <input
-                    type="checkbox"
-                    checked={value === true}
-                    onChange={(e) => onChange(e.target.checked ? true : undefined)}
-                    data-testid={testId}
-                    className="accent-accent"
-                />
-                <span>{field.name}</span>
-            </label>
-        );
-    }
-
-    // An object field is a sub-clause: render its child fields recursively,
-    // reading the tree from the spec (never hardcoded). This is how delivery's
-    // coordination + handoff sub-clauses, and handoff's proximity, surface.
-    if (field.type === "object") {
-        const obj =
-            value && typeof value === "object" && !Array.isArray(value)
-                ? (value as Record<string, unknown>)
-                : {};
-        return (
-            <div data-testid={`${testId}-object`}>
-                {label && <div className="mb-1">{label}</div>}
-                <div className="space-y-2 border-l border-neutral-200 pl-3">
-                    {field.fields.map((child) => (
-                        <ClauseFieldControl
-                            key={child.name}
-                            field={child}
-                            value={obj[child.name]}
-                            onChange={(next) => {
-                                const nextObj = { ...obj };
-                                if (next === undefined) delete nextObj[child.name];
-                                else nextObj[child.name] = next;
-                                onChange(Object.keys(nextObj).length ? nextObj : undefined);
-                            }}
-                            testId={`${testId}-${child.name}`}
-                        />
-                    ))}
-                </div>
-            </div>
-        );
-    }
-
-    // A REQUIRED scalar with NO default is a design-time commitment that cannot
-    // be deferred: the agreement build drops any section whose required field is
-    // unfilled (orderAgreement `projectThroughSpec` → null). So it must be
-    // captured here, as a spec-typed value (string → text, integer/number →
-    // number). Driven purely off the spec — no clause names. Everything with a
-    // default or that's optional keeps deferring below (the default survives the
-    // build; the real value lands at checkout/runtime, like geo's geohash/mass).
-    if ((field.type === "string" || field.type === "integer")
-        && field.required && field.default === undefined) {
-        const numeric = field.type === "integer";
-        const current = value === undefined || value === null ? "" : String(value);
-        return (
-            <div data-testid={`${testId}-field`}>
-                {label && <div className="mb-1">{label}</div>}
-                <input
-                    type={numeric ? "number" : "text"}
-                    value={current}
-                    onChange={(e) => {
-                        const raw = e.target.value;
-                        if (raw === "") onChange(undefined);
-                        else onChange(numeric ? Number(raw) : raw);
-                    }}
-                    data-testid={testId}
-                    className="w-full rounded border border-neutral-300 bg-white px-2 py-1 text-xs text-black focus:outline-none focus:ring-1 focus:ring-accent"
-                />
-            </div>
-        );
-    }
-
-    // Everything else is a free-form / structured value, not a bounded design
-    // choice (e.g. array-of-object commerce line-items). The designer does NOT
-    // type it here — a fill-in field is exactly what turns the template into a
-    // checkout hash. It's captured downstream by a mounted component at
-    // checkout/runtime. Surface it as deferred, not fillable.
-    return (
-        <div className="text-xs text-ink-faint italic" data-testid={`${testId}-deferred`}>
-            {field.name} — provided at checkout
         </div>
     );
 }
