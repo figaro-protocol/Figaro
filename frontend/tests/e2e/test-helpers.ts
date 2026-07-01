@@ -3,25 +3,6 @@ import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 
 export { ANVIL_ACCOUNTS };
 
-export async function waitForWalletConnected(
-    page: Page,
-    expectedAddress?: string,
-    opts: { timeout?: number } = {},
-): Promise<void> {
-    await page.waitForFunction(
-        (expected: string | null) => {
-            const state = window.__FIGARO_WALLET__;
-            if (!state || !state.isConnected || !state.address) return false;
-            if (!expected) return true;
-            return state.address.toLowerCase() === expected.toLowerCase();
-        },
-        expectedAddress ?? null,
-        { timeout: opts.timeout ?? 30000 },
-    );
-}
-
-
-
 /**
  * Wait for a React-rendered element to be hydrated. The signal is the
  * presence of a `__reactFiber` / `__reactProps` key on the DOM node;

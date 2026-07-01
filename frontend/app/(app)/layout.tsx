@@ -1,7 +1,6 @@
 import { Providers } from "../providers";
 import { Header } from "@/components/shared/Header";
 import { Footer } from "@/components/shared/Footer";
-import { Watermark } from "@/components/shared/Watermark";
 
 // Wallet-dependent pages (everything in this group) read window.ethereum
 // + wagmi/RainbowKit client state at render time. Static pre-render would
@@ -41,7 +40,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <main id="main-content" className="flex-1">{children}</main>
                 <Footer />
             </div>
-            <Watermark />
         </Providers>
     );
 }

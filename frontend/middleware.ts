@@ -49,10 +49,10 @@ function buildCsp(nonce: string, frameAncestors: string): string {
     // either of those relaxations because RSC streaming injects nonced
     // <script> tags directly. 'wasm-unsafe-eval' permits ONLY
     // WebAssembly compilation (not JS eval): @react-pdf/renderer's
-    // fontkit compiles its Harfbuzz WASM module for the /consent receipt
-    // and the dispute-evidence PDF; dev got this for free from
-    // 'unsafe-eval', prod blocked it (surfaced by the prod-build e2e,
-    // 2026-06-12 — consent receipt stuck at "(not pinned)").
+    // fontkit compiles its Harfbuzz WASM module for the /audit evidence-
+    // bundle PDF; dev got this for free from 'unsafe-eval', prod blocked
+    // it (surfaced by the prod-build e2e, 2026-06-12 — the receipt PDF
+    // stuck at "(not pinned)").
     const scriptSrc = isDev
         ? `script-src 'self' 'nonce-${nonce}' 'unsafe-eval' 'unsafe-inline'`
         : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'`;
@@ -72,9 +72,9 @@ function buildCsp(nonce: string, frameAncestors: string): string {
         "font-src 'self' data: https://fonts.gstatic.com",
         // `data:` is required for @react-pdf/renderer's fontkit, which
         // loads its Harfbuzz WASM module as a `data:application/octet-stream`
-        // URI on first use. /consent's PDF receipt depends on it; without
-        // this the consent page hangs at "Pinning…" with the WASM blocked
-        // by CSP. Widening connect-src to `data:` does not let pages exfil
+        // URI on first use. The /audit evidence-bundle PDF depends on it;
+        // without this the PDF build hangs with the WASM blocked by CSP.
+        // Widening connect-src to `data:` does not let pages exfil
         // data cross-origin (browsers still block that), so the practical
         // attack surface is narrow.
         // XMTP (the coordination channel): the browser SDK talks gRPC-web to
