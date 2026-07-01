@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
+import {IDescendingAuction} from "./IDescendingAuction.sol";
+
 /// @title DutchAuction — Permissionless descending-price job allocation
 /// @custom:security-contact security@figaro.org
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
@@ -29,7 +31,10 @@ pragma solidity 0.8.26;
 ///      4. Off-chain: buyer + provider sign a commitment with payment = clearingPrice
 ///      5. commit on FigaroCore — provider is the seller, bonds directly
 ///      6. resolveProcess — FigaroCore pays provider directly. No auction settlement.
-contract DutchAuction {
+///
+/// @dev Reference implementation of `IDescendingAuction` — the standard shape a
+///      clause names via `block.composes.interface = "descending-auction"`.
+contract DutchAuction is IDescendingAuction {
     struct Auction {
         address creator; // slot 0: who started the auction (20 bytes)
         uint64 startTime; // slot 0: when the clock started (+8 = 28 bytes)
@@ -95,7 +100,7 @@ contract DutchAuction {
     /// @param maxPrice    Starting (maximum) price in token smallest units.
     /// @param processId   CoreV4 processId this auction coordinates (event-only).
     /// @param currency    Token address for price denomination (event-only).
-    function createAuction(bytes32 auctionId, uint256 maxPrice, bytes32 processId, address currency) external {
+    function createAuction(bytes32 auctionId, uint256 maxPrice, bytes32 processId, address currency) external override {
         if (auctions[auctionId].creator != address(0)) revert AlreadyExists();
         if (maxPrice == 0) revert ZeroPrice();
         // Prevent overflow in getCurrentPrice floor calculation
@@ -121,7 +126,7 @@ contract DutchAuction {
     /// @dev For very large maxPrice, createAuction will revert. For very small maxPrice, floor truncates to 0.
     /// @custom:audit-info
     /// @dev This function is not MEV-resistant. Front-running is possible: the first caller to claim() wins the job and must bond capital. No funds are at risk, but the winner is determined by transaction ordering.
-    function getCurrentPrice(bytes32 auctionId) public view returns (uint256) {
+    function getCurrentPrice(bytes32 auctionId) public view override returns (uint256) {
         Auction storage a = auctions[auctionId];
         if (a.creator == address(0)) revert NotStarted();
 
@@ -137,7 +142,7 @@ contract DutchAuction {
 
     /// @notice Claim the job at the current price. First caller wins.
     /// @param auctionId The auction to claim.
-    function claim(bytes32 auctionId) external {
+    function claim(bytes32 auctionId) external override {
         Auction storage a = auctions[auctionId];
         if (a.creator == address(0)) revert NotStarted();
         if (a.provider != address(0)) revert AlreadyClaimed();
@@ -151,7 +156,7 @@ contract DutchAuction {
 
     /// @notice Cancel an unclaimed auction. Only the creator can cancel.
     /// @param auctionId The auction to cancel.
-    function cancel(bytes32 auctionId) external {
+    function cancel(bytes32 auctionId) external override {
         Auction storage a = auctions[auctionId];
         if (a.creator != msg.sender) revert NotCreator();
         if (a.provider != address(0)) revert AlreadyClaimed();

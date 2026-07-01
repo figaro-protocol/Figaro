@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import {DutchAuction} from "../src/DutchAuction.sol";
+import {IDescendingAuction} from "../src/IDescendingAuction.sol";
 
 contract DutchAuctionTest is Test {
     DutchAuction auction;
@@ -435,5 +436,41 @@ contract DutchAuctionTest is Test {
 
         (,,,, uint256 cp) = auction.auctions(AUCTION_ID);
         assertEq(cp, 20 ether); // floor price
+    }
+
+    // ── IDescendingAuction conformance ───────────────────────────────
+    // Drive the reference implementation through the STANDARD interface type —
+    // exactly what the open-world composition path does after resolving the
+    // instance address + ABI from a clause's `block.composes`. A caller that
+    // knows only IDescendingAuction can open, price, claim, and cancel.
+
+    function test_iface_conformance_fullCycleThroughInterface() public {
+        IDescendingAuction iface = IDescendingAuction(address(auction));
+
+        vm.prank(creator);
+        iface.createAuction(AUCTION_ID, MAX_PRICE, PROCESS_ID, CURRENCY);
+
+        vm.warp(block.timestamp + DURATION / 2);
+        assertEq(iface.getCurrentPrice(AUCTION_ID), 60 ether);
+
+        vm.prank(provider1);
+        iface.claim(AUCTION_ID);
+
+        (,,, address provider, uint256 cp) = auction.auctions(AUCTION_ID);
+        assertEq(provider, provider1);
+        assertEq(cp, 60 ether);
+    }
+
+    function test_iface_conformance_cancelThroughInterface() public {
+        IDescendingAuction iface = IDescendingAuction(address(auction));
+
+        vm.prank(creator);
+        iface.createAuction(AUCTION_ID, MAX_PRICE, PROCESS_ID, CURRENCY);
+
+        vm.prank(creator);
+        iface.cancel(AUCTION_ID);
+
+        (address c,,,,) = auction.auctions(AUCTION_ID);
+        assertEq(c, address(0)); // slot cleared
     }
 }
