@@ -31,7 +31,7 @@ import { buildAuditBundlePdfBlob } from "@/lib/audit/auditBundlePdf";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
 import { describeClause } from "@/lib/shared/clauseSpecSource";
 import { recourseForumUrl } from "@/lib/composition/recourseForums";
-import type { RecourseClause } from "@/lib/dispute/processJurisdiction";
+import type { RecourseClause } from "@/lib/semantic/processRecourse";
 
 interface DisputeStatusPanelProps {
     processId: `0x${string}`;
