@@ -68,9 +68,9 @@ on-chain validator) plus the agreement-only `figaro-topology-v1`.
 | `figaro-commerce-v1` | Currency, payment, line items | Layer A (off-chain) |
 | `figaro-geolocation-v1` | Origin / destination geohash — where an order originates/terminates (any modality, incl. virtual). Default-on | Layer A (off-chain) |
 | `figaro-cargo-v1` | Physical shipment measure — mass + volume of the goods. Elective (hazmat / cold-chain / freight-class nest under it) | Layer A (off-chain) |
-| `figaro-hazmat-v1` | Dangerous-goods declaration anchored to the UN Recommendations (ADR / IMDG / IATA-DGR) — UN number, proper shipping name, hazard class, packing group. Elective; nests under cargo | Layer A (off-chain) |
-| `figaro-cold-chain-v1` | Temperature-controlled handling anchored to GDP cold-chain classes — class + min/max °C window. Elective; nests under cargo | Layer A (off-chain) |
-| `figaro-freight-class-v1` | Declared freight classification anchored to the NMFC (NMFTA) — the NMFC class (50–500) + optional item number. Elective; nests under cargo | Layer A (off-chain) |
+| `figaro-hazmat-v1` | Dangerous-goods declaration anchored to the UN Recommendations (ADR / IMDG / IATA-DGR) — UN number, proper shipping name, hazard class, packing group. Elective; a co-equal logistics clause | Layer A (off-chain) |
+| `figaro-cold-chain-v1` | Temperature-controlled handling anchored to GDP cold-chain classes — class + min/max °C window. Elective; a co-equal logistics clause | Layer A (off-chain) |
+| `figaro-freight-class-v1` | Declared freight classification anchored to the NMFC (NMFTA) — the NMFC class (50–500) + optional item number. Elective; a co-equal logistics clause | Layer A (off-chain) |
 | `figaro-modalities-v1` | The buyer's request — consume-onsite / pickup / delivery / virtual (single-select) | Layer A (off-chain) |
 | `figaro-coordination-v1` | How a delivery's courier edge is arranged — seller-assigned / buyer-assigned / dutch-auction (single-select, composes on the delivery parent order) | Layer A (off-chain) |
 | `figaro-handoff-v1` | Hand-off point — where the physical exchange happens (proximity-policy nests under it) | Layer A (off-chain) |

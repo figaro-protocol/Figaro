@@ -31,7 +31,13 @@ const SPEC_LOAD_ERRORS = new Map<string, string>();
 /** clauseId → the parent FIELD name it nests under in the drawer, read from the
  *  spec's `block.nestsUnder`. Populated as specs load. Drives the drawer's
  *  cross-clause nesting (e.g. a proximity policy renders nested under the
- *  modality clause's `handoff` field). Read from the spec; never a hardcoded tree. */
+ *  handoff clause's `handoff` array field). Read from the spec; never a hardcoded tree.
+ *
+ *  `nestsUnder` names a field, and means "this clause REFINES that field" — a
+ *  DIFFERENT job from `block.article`, which GROUPS co-equal clauses together. Do not
+ *  reach for `nestsUnder` to say "these clauses belong together" (that's `article`); the
+ *  target must be a STRUCTURED field (enum/array/object) a sub-clause elaborates, never a
+ *  scalar. Enforced by scripts/lint-clause-nests-under-a-field.sh. */
 const NESTS_UNDER = new Map<string, string>();
 
 /** clauseId HASH (keccak256 of the clauseId string, as the on-chain Attestation

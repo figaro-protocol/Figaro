@@ -57,7 +57,6 @@
         }
     ],
     "block": {
-        "article": "logistics",
-        "nestsUnder": "massGrams"
+        "article": "logistics"
     }
 }

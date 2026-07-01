@@ -5,6 +5,11 @@ npx lint-staged
 bash scripts/lint-claude-local-allowlist.sh
 bash scripts/lint-claude-md.sh
 bash scripts/lint-clause-counts.sh
+# Nesting guard: block.nestsUnder must name a STRUCTURED field (enum/array/object) of another
+# clause — never a scalar, never a non-existent field. Kills the article-vs-nestsUnder
+# conflation (grouping is article's job; nestsUnder is sub-clause refinement). Whole-tree:
+# it resolves each target across the full clauses/ set, so it can't be a per-diff check.
+bash scripts/lint-clause-nests-under-a-field.sh
 # NOTE: the RPGF substrate-broadening-weight guard was retired in the proof-
 # apparatus teardown — its protected files (prover/rpgf/src/formula.rs +
 # sdk/scripts/rpgf-simulator/formula.ts) were deleted with the RPGF prover.
