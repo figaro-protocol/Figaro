@@ -12,10 +12,10 @@
  * clause id. So ANY decentralized-ADR or applicable-law clause — the two that
  * exist today, or a `figaro-arbitration-<provider>` registered tomorrow — is
  * read the instant it declares that article. The runtime surface renders each
- * clause generically from its own spec (`describeClause`); forum-specific
- * integration (e.g. a deep-link into a forum's own dispute UI) lives in the
- * composition layer (`lib/composition/recourseForums`), the one place a
- * specific forum is named.
+ * clause generically from its own spec (`describeClause`); a provider's own
+ * dispute UI is deep-linked from the clause spec's `block.composes.forumUrl`
+ * (read via `composesForumUrl`) — the forum is named in the clause spec, not in
+ * code, so a never-seen `figaro-arbitration-<provider>` surfaces its own forum.
  */
 import type { Order } from "@/lib/core/store";
 import type { Agreement } from "@figaro/core";

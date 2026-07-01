@@ -2,8 +2,9 @@
  * Clause block-binding — the `block` slice of a clause spec.
  *
  * This is pure UI / runtime-composition metadata: which drawer article a clause
- * composes into, the field a clause nests under in the drawer, and its
- * runtime-attestation companion (sisterClauseId).
+ * composes into, the field a clause nests under in the drawer, and the
+ * on-network contract / external forum it composes with (`composes` — the fifth
+ * noun).
  *
  * It lives in the FRONTEND, not the protocol SDK: nothing on-chain reads it, and
  * nothing in `@figaro/core` reads it either. The SDK `ClauseSpec` is content-only
@@ -44,6 +45,22 @@ export interface ClauseBlockBinding {
      *  clause's matching field (e.g. a proximity-policy clause nests under a
      *  hand-off clause's `handoff` field). Omit for top-level clauses. */
     nestsUnder?: string;
+    /** Composition binding — the on-network contract or external forum this
+     *  clause composes with (the fifth noun). `interface` names a STANDARD
+     *  composition interface (chain-agnostic, read from spec — never a bundled
+     *  clause-id switch in code); the concrete instance ADDRESS is chain-specific
+     *  and resolves at runtime (clause data / chain self-declaration / env), NOT
+     *  here. `forumUrl` deep-links a provider's own web UI for URL-only
+     *  compositions (e.g. a dispute forum). `abiCID` / `choreographyCID` (Level 2)
+     *  pin a novel interface's ABI + its choreography (the fn→capability mapping)
+     *  to IPFS beside the spec, so a never-seen contract flows through with zero
+     *  bundled code. Omit for clauses that compose with nothing. */
+    composes?: {
+        interface: string;
+        forumUrl?: string;
+        abiCID?: string;
+        choreographyCID?: string;
+    };
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -74,8 +91,33 @@ export function parseBlockBinding(
             return null;
         }
     }
+    let composes: ClauseBlockBinding["composes"];
+    if (raw.composes !== undefined) {
+        if (!isObject(raw.composes)) {
+            errors.push({ path: `${path}.composes`, message: "composes must be an object when present" });
+            return null;
+        }
+        if (typeof raw.composes.interface !== "string" || raw.composes.interface.length === 0) {
+            errors.push({ path: `${path}.composes.interface`, message: "composes.interface is required and must be a non-empty string" });
+            return null;
+        }
+        for (const opt of ["forumUrl", "abiCID", "choreographyCID"] as const) {
+            const v = raw.composes[opt];
+            if (v !== undefined && (typeof v !== "string" || v.length === 0)) {
+                errors.push({ path: `${path}.composes.${opt}`, message: `composes.${opt} must be a non-empty string when present` });
+                return null;
+            }
+        }
+        composes = {
+            interface: raw.composes.interface,
+            ...(raw.composes.forumUrl !== undefined && { forumUrl: raw.composes.forumUrl as string }),
+            ...(raw.composes.abiCID !== undefined && { abiCID: raw.composes.abiCID as string }),
+            ...(raw.composes.choreographyCID !== undefined && { choreographyCID: raw.composes.choreographyCID as string }),
+        };
+    }
     return {
         article: raw.article as ClauseArticle,
         ...(raw.nestsUnder !== undefined && { nestsUnder: raw.nestsUnder as string }),
+        ...(composes !== undefined && { composes }),
     };
 }

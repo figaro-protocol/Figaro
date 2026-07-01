@@ -29,8 +29,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import type { Order } from "@/lib/core/store";
 import { buildAuditBundlePdfBlob } from "@/lib/audit/auditBundlePdf";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
-import { describeClause } from "@/lib/shared/clauseSpecSource";
-import { recourseForumUrl } from "@/lib/composition/recourseForums";
+import { describeClause, composesForumUrl } from "@/lib/shared/clauseSpecSource";
 import type { RecourseClause } from "@/lib/semantic/processRecourse";
 
 interface DisputeStatusPanelProps {
@@ -134,7 +133,7 @@ export function DisputeStatusPanel({
                         // gets a deep-link (composition); an un-integrated clause still
                         // surfaces, just without one.
                         const desc = describeClause(r.clauseId, r.data);
-                        const forumUrl = recourseForumUrl(r.clauseId);
+                        const forumUrl = composesForumUrl(r.clauseId);
                         return (
                             <div
                                 key={r.clauseId}

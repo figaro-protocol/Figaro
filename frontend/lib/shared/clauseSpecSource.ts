@@ -163,6 +163,17 @@ export function clauseIsStructural(clauseId: string): boolean {
     return getClauseSpec(clauseId)?.block?.article === "structural";
 }
 
+/** The deep-link to a composed provider's OWN web UI, read from the clause's
+ *  `block.composes.forumUrl` — the open-world replacement for a bundled
+ *  clause-id→URL switch. Any clause that composes with a URL-only forum (a
+ *  dispute-resolution provider like Kleros, or a never-seen
+ *  `figaro-arbitration-<provider>`) declares its own forum URL in its spec and
+ *  surfaces here with zero code change. Undefined when the clause composes with
+ *  no forum, or its spec isn't loaded. */
+export function composesForumUrl(clauseId: string): string | undefined {
+    return getClauseSpec(clauseId)?.block?.composes?.forumUrl;
+}
+
 /** A PROCESS-LOG clause — the runtime enum-ladder runtime event log (not a
  *  companion proof) an order's seller advances. The generic marker for "this
  *  order runs a lifecycle"; resolved from the spec, never by name. */

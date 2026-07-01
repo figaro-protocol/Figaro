@@ -36,6 +36,10 @@
         }
     ],
     "block": {
-        "article": "dispute-resolution"
+        "article": "dispute-resolution",
+        "composes": {
+            "interface": "dispute-forum",
+            "forumUrl": "https://resolve.kleros.io"
+        }
     }
 }
