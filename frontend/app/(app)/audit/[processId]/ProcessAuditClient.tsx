@@ -8,7 +8,7 @@ import { HashVerifier } from "../_components/HashVerifier";
 import { DisputeStatusPanel } from "@/components/core/DisputeStatusPanel";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
-import { resolveProcessRecourse } from "@/lib/dispute";
+import { resolveProcessRecourse } from "@/lib/dispute/processJurisdiction";
 
 /**
  * Dispute escalation for the process. In the three-layer dispute model

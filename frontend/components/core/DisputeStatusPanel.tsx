@@ -4,18 +4,18 @@
  * Process recourse + evidence hand-off panel.
  *
  * Figaro does NOT run arbitration — the forum the assembly's dispute-resolution
- * clause names does. Kleros ships its own dispute UI (resolve.kleros.io) built
- * on ArbitrableProxy, which is explicitly designed for the create / submit /
- * appeal UI to be OUTSOURCED to it — so Figaro building that UI would only
- * duplicate it and deepen the coupling. This panel does the one thing Figaro
- * owns:
- *   - shows the clause-derived recourse forum(s) (read off the committed
- *     orders by spec — never a global default);
+ * clause names does. This panel does the one thing Figaro owns:
+ *   - shows the dispute-resolution clause(s) the assembly authored, resolved
+ *     GENERICALLY by article and rendered from each clause's own spec — the
+ *     panel knows no clause, so any ADR / applicable-law clause (present or
+ *     future) surfaces here unchanged;
  *   - assembles the timestamped evidence bundle (the audit-bundle PDF:
  *     lifecycle timeline, per-order clauses, runtime attestations,
  *     consolidated financials, hash appendix), pins it to IPFS, and offers it
- *     for download;
- *   - deep-links to the forum's own UI to open the dispute there.
+ *     for download — the audit documentation IS the evidence;
+ *   - for a forum that integrates its own dispute UI (e.g. Kleros's
+ *     resolve.kleros.io — named only in the composition layer), deep-links a
+ *     party into it with that evidence.
  *
  * Process-scoped. Mount it in any process detail view.
  */
@@ -29,17 +29,17 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import type { Order } from "@/lib/core/store";
 import { buildAuditBundlePdfBlob } from "@/lib/audit/auditBundlePdf";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
-import type { JurisdictionRecourse } from "@/lib/dispute";
-
-/** Kleros's own first-party dispute UI, built on ArbitrableProxy. */
-const KLEROS_RESOLVER_BASE = "https://resolve.kleros.io";
+import { describeClause } from "@/lib/shared/clauseSpecSource";
+import { recourseForumUrl } from "@/lib/composition/recourseForums";
+import type { RecourseClause } from "@/lib/dispute/processJurisdiction";
 
 interface DisputeStatusPanelProps {
     processId: `0x${string}`;
-    /** Recourse forum(s) the assembly's dispute-resolution clauses authored
-     *  (arbitration and/or applicable-law), read off the committed orders by
-     *  spec. Display-only — surfaces the forum the designer named. */
-    recourses?: readonly JurisdictionRecourse[];
+    /** The dispute-resolution clause(s) the assembly authored, resolved
+     *  generically by article (any ADR/applicable-law clause, present or
+     *  future). Rendered from each clause's own spec; a forum that integrates
+     *  its own dispute UI gets a deep-link via the composition layer. */
+    recourses?: readonly RecourseClause[];
     /** All orders in the process — the audit-bundle PDF aggregates per-order
      *  extracts. When omitted/empty, the evidence-bundle action is hidden. */
     orders?: readonly Order[];
@@ -128,26 +128,40 @@ export function DisputeStatusPanel({
                     <p className="text-[11px] font-semibold text-neutral-500">
                         Recourse forum — from the assembly&apos;s dispute-resolution clauses
                     </p>
-                    {recourses.map((r) =>
-                        r.kind === "kleros" ? (
-                            <p
-                                key={`k-${r.courtKey}`}
+                    {recourses.map((r) => {
+                        // Render generically from the clause's OWN spec — the panel
+                        // knows no clause. A forum that integrates its own dispute UI
+                        // gets a deep-link (composition); an un-integrated clause still
+                        // surfaces, just without one.
+                        const desc = describeClause(r.clauseId, r.data);
+                        const forumUrl = recourseForumUrl(r.clauseId);
+                        return (
+                            <div
+                                key={r.clauseId}
                                 className="text-xs text-neutral-700"
-                                data-testid="dispute-recourse-kleros"
+                                data-testid={`dispute-recourse-${r.clauseId}`}
                             >
-                                Kleros — {r.courtLabel} · minimum {r.minJurors} jurors
-                            </p>
-                        ) : (
-                            <p
-                                key={`t-${r.applicableLaw}-${r.forum ?? ""}`}
-                                className="text-xs text-neutral-700"
-                                data-testid="dispute-recourse-traditional"
-                            >
-                                {r.applicableLaw}{r.forum ? ` · ${r.forum}` : ""}
-                                {r.language ? ` · ${r.language}` : ""}
-                            </p>
-                        ),
-                    )}
+                                <span className="font-medium">{desc.title}</span>
+                                {desc.fields.length > 0 && (
+                                    <span className="text-neutral-500">
+                                        {" — "}
+                                        {desc.fields.map((f) => `${f.label}: ${f.values.join(", ")}`).join(" · ")}
+                                    </span>
+                                )}
+                                {forumUrl && (
+                                    <a
+                                        href={forumUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        data-testid="dispute-open-forum"
+                                        className="ml-2 whitespace-nowrap text-blue-600 hover:text-blue-800 underline"
+                                    >
+                                        Open a dispute →
+                                    </a>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 
@@ -209,17 +223,6 @@ export function DisputeStatusPanel({
                     )}
                 </div>
             )}
-
-            {/* ── Deep-link to the forum's own UI ─────────────── */}
-            <a
-                href={KLEROS_RESOLVER_BASE}
-                target="_blank"
-                rel="noopener noreferrer"
-                data-testid="dispute-open-forum"
-                className="mt-2 inline-block text-xs text-blue-600 hover:text-blue-800 underline"
-            >
-                Open a dispute on Kleros (resolve.kleros.io) →
-            </a>
 
             {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
         </Card>
