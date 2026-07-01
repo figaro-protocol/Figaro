@@ -49,17 +49,18 @@ export interface ClauseBlockBinding {
      *  clause composes with (the fifth noun). `interface` names a STANDARD
      *  composition interface (chain-agnostic, read from spec — never a bundled
      *  clause-id switch in code); the concrete instance ADDRESS is chain-specific
-     *  and resolves at runtime (clause data / chain self-declaration / env), NOT
+     *  and comes at runtime (clause data / chain self-declaration / env), NOT
      *  here. `forumUrl` deep-links a provider's own web UI for URL-only
-     *  compositions (e.g. a dispute forum). `abiCID` / `choreographyCID` (Level 2)
-     *  pin a novel interface's ABI + its choreography (the fn→capability mapping)
-     *  to IPFS beside the spec, so a never-seen contract flows through with zero
-     *  bundled code. Omit for clauses that compose with nothing. */
+     *  compositions (e.g. a dispute forum). `abiCID` (Level 2) pins a novel
+     *  interface's ABI to IPFS beside the spec, so a never-seen contract's ABI
+     *  flows through with zero bundled code. (The CALL-SHAPE is the interface
+     *  standard itself; the trade-level coordination is the assembly — no
+     *  separate choreography artifact.) Omit for clauses that compose with
+     *  nothing. */
     composes?: {
         interface: string;
         forumUrl?: string;
         abiCID?: string;
-        choreographyCID?: string;
     };
     /** Runtime inputs — the fields a party supplies at RUNTIME, distinct
      *  from the clause's content `fields` (which are committed into the agreement
@@ -109,7 +110,7 @@ export function parseBlockBinding(
             errors.push({ path: `${path}.composes.interface`, message: "composes.interface is required and must be a non-empty string" });
             return null;
         }
-        for (const opt of ["forumUrl", "abiCID", "choreographyCID"] as const) {
+        for (const opt of ["forumUrl", "abiCID"] as const) {
             const v = raw.composes[opt];
             if (v !== undefined && (typeof v !== "string" || v.length === 0)) {
                 errors.push({ path: `${path}.composes.${opt}`, message: `composes.${opt} must be a non-empty string when present` });
@@ -120,7 +121,6 @@ export function parseBlockBinding(
             interface: raw.composes.interface,
             ...(raw.composes.forumUrl !== undefined && { forumUrl: raw.composes.forumUrl as string }),
             ...(raw.composes.abiCID !== undefined && { abiCID: raw.composes.abiCID as string }),
-            ...(raw.composes.choreographyCID !== undefined && { choreographyCID: raw.composes.choreographyCID as string }),
         };
     }
     let fields: readonly FieldSpec[] | undefined;

@@ -8,7 +8,7 @@ vi.mock("@/lib/composition/contracts", async (importOriginal) => {
     return { ...actual, getDutchAuction: () => "0x00000000000000000000000000000000000000A1" as `0x${string}` };
 });
 
-import { resolveComposition, setCompositionAbiFetcher } from "@/lib/composition/resolveComposition";
+import { compositionTarget, setCompositionAbiFetcher } from "@/lib/composition/compositionTarget";
 import { DUTCH_AUCTION_ABI } from "@/lib/composition/abis";
 
 const AUCTION_ADDR = "0x00000000000000000000000000000000000000A1";
@@ -23,7 +23,7 @@ const MOCK_ABI: Abi = [
     },
 ];
 
-describe("resolveComposition", () => {
+describe("compositionTarget", () => {
     afterEach(() => {
         // Reset to a fetcher that fails loudly, so a leaked injection can't
         // silently pass a later test.
@@ -33,7 +33,7 @@ describe("resolveComposition", () => {
     });
 
     it("Level 1: resolves the env address + bundled ABI for a known interface", async () => {
-        const r = await resolveComposition("descending-auction");
+        const r = await compositionTarget("descending-auction");
         expect(r).not.toBeNull();
         expect(r!.address).toBe(AUCTION_ADDR);
         // The bundled Level-1 shape, used when no abiCID is pinned.
@@ -46,7 +46,7 @@ describe("resolveComposition", () => {
             fetched.push(cid);
             return MOCK_ABI;
         });
-        const r = await resolveComposition("descending-auction", { abiCID: "bafyMOCKcid" });
+        const r = await compositionTarget("descending-auction", { abiCID: "bafyMOCKcid" });
         expect(fetched).toEqual(["bafyMOCKcid"]); // fetched, not bundled
         expect(r!.address).toBe(AUCTION_ADDR);
         expect(r!.abi).toBe(MOCK_ABI);
@@ -54,6 +54,6 @@ describe("resolveComposition", () => {
     });
 
     it("returns null for an interface with no resolvable instance", async () => {
-        expect(await resolveComposition("no-such-interface")).toBeNull();
+        expect(await compositionTarget("no-such-interface")).toBeNull();
     });
 });

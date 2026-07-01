@@ -2,7 +2,7 @@
 
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { activeChain } from "@/lib/shared/chains";
-import { resolveComposition } from "@/lib/composition/resolveComposition";
+import { compositionTarget } from "@/lib/composition/compositionTarget";
 import { sellerAuctionId } from "@/lib/seller/sellerAuction";
 import { parseToken } from "@/lib/shared/utils";
 
@@ -17,13 +17,15 @@ import { parseToken } from "@/lib/shared/utils";
  * is the single place a standard interface NAME maps to the concrete call — a
  * spec-routed dispatch, never a clause-id switch scattered through the UI.
  *
- * The concrete `{ address, abi }` is resolved by `resolveComposition` (env
- * address; ABI from a Level-2 `abiCID` on IPFS, else the bundled Level-1 shape),
- * so this hook carries no bundled contract handle. What stays here is the
- * CALL-SHAPE (which function, in what arg order) — integration code, per the
- * K1-OW P1 doctrine (separate deployment facts from integration code). A
- * never-seen clause still renders and collects its fields with zero code here;
- * invoking a novel contract needs a handler here (or, later, choreography).
+ * The concrete `{ address, abi }` comes from `compositionTarget` (env address;
+ * ABI from a Level-2 `abiCID` on IPFS, else the bundled Level-1 shape), so this
+ * hook carries no bundled contract handle. What stays here is the CALL-SHAPE
+ * (which function, in what arg order) — integration code, per the K1-OW P1
+ * doctrine (separate deployment facts from integration code). The call-shape is
+ * the interface STANDARD; the trade-level coordination is the ASSEMBLY — there
+ * is no separate choreography artifact. A never-seen clause still renders and
+ * collects its fields with zero code here; invoking a novel contract needs a
+ * handler here.
  */
 
 /** Context the checkout walk hands each composition invocation. All fields are
@@ -68,15 +70,15 @@ export function useCompositionActions() {
                 if (!address) {
                     throw new Error("Connect a wallet to open the auction.");
                 }
-                const resolved = await resolveComposition(ctx.interface, { abiCID: ctx.abiCID });
-                if (!resolved) {
-                    throw new Error(`No resolvable on-network instance for composition interface "${ctx.interface}".`);
+                const target = await compositionTarget(ctx.interface, { abiCID: ctx.abiCID });
+                if (!target) {
+                    throw new Error(`No on-network instance available for composition interface "${ctx.interface}".`);
                 }
                 // Call-shape is integration code: createAuction(auctionId, maxPrice,
-                // processId, currency). Address + ABI came from resolveComposition.
+                // processId, currency). Address + ABI came from compositionTarget.
                 const hash = await writeContractAsync({
-                    address: resolved.address,
-                    abi: resolved.abi,
+                    address: target.address,
+                    abi: target.abi,
                     functionName: "createAuction",
                     args: [sellerAuctionId(ctx.processId), startPrice, ctx.processId, ctx.currency],
                     account: address,
@@ -90,7 +92,7 @@ export function useCompositionActions() {
             default:
                 throw new Error(
                     `No runtime handler for composition interface "${ctx.interface}". ` +
-                    "A novel interface needs a registered handler here (or Level-2 choreography).",
+                    "A novel interface needs a registered handler here.",
                 );
         }
     };

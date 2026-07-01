@@ -1,5 +1,5 @@
 /**
- * resolveComposition — resolve a composition's concrete `{ address, abi }` from
+ * compositionTarget — look up a composition's concrete `{ address, abi }` from
  * the standard interface a clause names (`block.composes.interface`) plus its
  * optional Level-2 `abiCID`.
  *
@@ -11,16 +11,20 @@
  *   - **ABI** — a pinned `abiCID` (Level 2) takes precedence: a NEVER-SEEN
  *     contract's ABI is fetched from IPFS with zero bundled copy. Absent an
  *     `abiCID`, the bundled Level-1 standard ABI for the interface is used.
- *   - **address** — env-resolved by interface (a deployment fact).
+ *   - **address** — env-looked-up by interface (a deployment fact).
  *
- * The CALL-SHAPE (which function, in what arg order) is NOT resolved here — that
- * is integration code kept in the interface's handler (`useCompositionActions`),
- * per the K1-OW P1 doctrine (separate deployment facts from integration code).
+ * The CALL-SHAPE (which function, in what arg order) is NOT here — it is the
+ * interface STANDARD (e.g. `IDescendingAuction`), and the trade-level
+ * coordination is the ASSEMBLY; there is no separate choreography artifact. The
+ * handler (`useCompositionActions`) holds the standard's call-shape as
+ * integration code, per the K1-OW P1 doctrine (separate deployment facts from
+ * integration code).
  *
  * Known limitation (K1-OW P1, operator FORK): a never-seen interface has no
- * env-resolvable instance address yet — address self-declaration (chain vs env)
- * is undecided. So `abiCID` makes a novel contract's ABI flow through today; a
- * novel interface's ADDRESS still needs the K1-OW P1 decision.
+ * env instance address yet — address self-declaration (chain vs env, or the
+ * ASSEMBLY naming the concrete instance) is undecided. So `abiCID` makes a novel
+ * contract's ABI flow through today; a novel interface's ADDRESS still needs the
+ * K1-OW P1 decision.
  */
 
 import type { Abi } from "viem";
@@ -28,14 +32,14 @@ import { DUTCH_AUCTION_ABI } from "@/lib/composition/abis";
 import { getDutchAuction } from "@/lib/composition/contracts";
 import { resolveContentUri } from "@/lib/shared/ipfsService";
 
-export interface ResolvedComposition {
+export interface CompositionTarget {
     address: `0x${string}`;
     abi: Abi;
 }
 
-/** Level-1 standard interfaces: bundled ABI + env-resolved instance address,
- *  keyed by `block.composes.interface`. Add a row per standard interface; the
- *  ABI here is the fallback when a clause pins no `abiCID`. */
+/** Level-1 standard interfaces: bundled ABI + env instance address, keyed by
+ *  `block.composes.interface`. Add a row per standard interface; the ABI here is
+ *  the fallback when a clause pins no `abiCID`. */
 const STANDARD_INTERFACES: Record<string, { address: () => `0x${string}` | null; abi: Abi }> = {
     "descending-auction": { address: getDutchAuction, abi: DUTCH_AUCTION_ABI as unknown as Abi },
 };
@@ -46,7 +50,7 @@ type AbiFetcher = (cid: string) => Promise<Abi>;
 
 const defaultAbiFetcher: AbiFetcher = async (cid) => {
     const url = resolveContentUri(`ipfs://${cid}`);
-    if (!url) throw new Error(`Cannot resolve composition ABI CID: ${cid}`);
+    if (!url) throw new Error(`Cannot locate composition ABI CID: ${cid}`);
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Failed to fetch composition ABI ${cid}: ${res.status} ${res.statusText}`);
     const json: unknown = await res.json();
@@ -62,14 +66,14 @@ export function setCompositionAbiFetcher(fetcher: AbiFetcher): void {
 }
 
 /**
- * Resolve the concrete `{ address, abi }` to invoke for a composition. Returns
- * null when no instance address is resolvable for the interface (see the K1-OW
- * P1 limitation above).
+ * The concrete `{ address, abi }` to invoke for a composition. Returns null when
+ * no instance address is available for the interface (see the K1-OW P1
+ * limitation above).
  */
-export async function resolveComposition(
+export async function compositionTarget(
     interfaceName: string,
     composes?: { abiCID?: string },
-): Promise<ResolvedComposition | null> {
+): Promise<CompositionTarget | null> {
     const std = STANDARD_INTERFACES[interfaceName];
     const address = std?.address() ?? null;
     if (!address) return null;
