@@ -10,11 +10,12 @@ pragma solidity 0.8.26;
 ///
 ///         Clauses anchor the off-chain vocabulary used by agreementHash
 ///         pre-images, AttestationCoordinator attestations, and mechanism
-///         modules. The clauseId is keccak256 of a human-readable name
-///         (e.g. "figaro-courier-process-v1", "figaro-ghg-iso-14064-v1").
+///         modules. The clauseId is the human-readable name (e.g.
+///         "figaro-courier-process", "figaro-ghg"); the on-chain key is
+///         keccak256(abi.encode(clauseId, version)).
 ///
 ///         Registration is permissionless — anyone can register a clause.
-///         The clauseId is self-authenticating (content-addressed). Once
+///         The clauseId is self-authenticating (name-derived). Once
 ///         registered, a clause cannot be removed or deactivated. Clause
 ///         governance is a convention-layer concern, not enforcement.
 ///
@@ -39,7 +40,7 @@ contract ClauseRegistry {
     // ── Events ──────────────────────────────────────────────────────
 
     /// @notice Emitted when a new clause is registered.
-    /// @param clauseId    Human-readable clause name (e.g. "figaro-courier-process-v1").
+    /// @param clauseId    Human-readable clause name (e.g. "figaro-courier-process").
     ///                    Non-indexed so the string is recoverable from the log —
     ///                    indexers reconstruct the clauseId without a preimage table.
     /// @param version     Clause version number.
@@ -68,7 +69,7 @@ contract ClauseRegistry {
     // ── Clause registration (permissionless) ────────────────────────
 
     /// @notice Register a clause. Anyone can call. Reverts if already registered.
-    /// @param clauseId    Human-readable clause name (e.g. "figaro-courier-process-v1").
+    /// @param clauseId    Human-readable clause name (e.g. "figaro-courier-process").
     ///                    The on-chain key is its keccak256 hash.
     /// @param version     Clause version number.
     /// @param contentHash keccak256 of the canonical spec JSON (integrity).

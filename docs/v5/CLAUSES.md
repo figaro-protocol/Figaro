@@ -39,10 +39,14 @@ Frontend wiring: `clauseSpecSource.ts` loads each spec live from `ClauseRegistry
 Two on-chain touch points remain:
 
 - **`ClauseRegistry.registerClause(clauseId, version, contentHash, metadataURI)`**
-  — permissionless, first-write-wins, immutable. It anchors the clauseId, the spec's
-  IPFS locator, and the spec's content hash (identity + integrity only — no group
-  field; grouping is `block.article` in the spec JSON). No validator is registered or bound; a
-  registered clause is immediately attestable.
+  — permissionless, first-write-wins, immutable. `clauseId` is the **bare
+  human-readable name** (a string, e.g. `figaro-ghg`) and `version` is a separate
+  `uint64`; the on-chain identity/dedup key is `keccak256(abi.encode(clauseId, version))`,
+  so the same name at a new version is a distinct registration (version is the
+  evolution axis). It anchors the clauseId, the spec's IPFS locator, and the spec's
+  content hash (identity + integrity only — no group field; grouping is `block.article`
+  in the spec JSON). No validator is registered or bound; a registered clause is
+  immediately attestable.
 - **`AttestationCoordinator`** merkle-binds each attestation: it verifies an OZ-style
   inclusion proof of `leaf = keccak256(clauseId ++ keccak256(sectionData))` against the
   signed `agreementHash`, content-hashes the evidence (`contentRef = keccak256(content)`),
@@ -89,16 +93,17 @@ a **free-form `standard` string** — any methodology, existing or future ("GHG
 Protocol Corporate Standard", "ISO 14064", "PAS 2050", "EN 16258", or a custom
 one); the protocol takes no closed list. Content shape is `(string standard,
 uint256 scope)`. Measured emissions (grams CO2e) are carried as a **runtime
-attestation** on this clause, not a separate registered clause — the runtime
-`figaro-ghg-measurement` companion was removed when runtime attestation was
-deferred.
+attestation** on this clause, not a separate registered clause — a runtime
+witness is an attestation on the committed clause, so there is no
+`figaro-ghg-measurement` companion clause (the WHY is in "Composition and
+decomposition" below).
 
 `figaro-proximity-policy` commits, at agreement signing, the set of
 proximity-detection bands a hand-off will accept. The runtime
 proof that a hand-off actually occurred within an accepted band is carried as a
 **runtime attestation**, not a separate registered clause — an earlier
 `figaro-proximity-proof` clause modelled that witness as its own clause and was
-deleted as the wrong treatment when runtime attestation was deferred.
+retired for the same reason.
 
 `figaro-topology` and `figaro-descending-auction` are the two
 **agreement-only** clauses — committed at agreement-signing time, never

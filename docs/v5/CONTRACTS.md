@@ -50,7 +50,7 @@ A mechanism contract adopting it must have its seller address implement
 before the resolver check.
 
 **`src/ClauseRegistry.sol`** — Permissionless event-only clause anchoring.
-`clauseId = keccak256(humanReadableName)`. `uriHash` points at off-chain JSON spec.
+`clauseId` is the bare human-readable name; the on-chain dedup key is `keccak256(abi.encode(clauseId, version))` (details in CLAUSES.md). `uriHash` points at off-chain JSON spec.
 `registerClause` is first-write-wins and immutable; there is **no on-chain
 clause-content validation** — registration anchors the spec locator (IPFS) +
 content hash, and well-formedness is the off-chain Layer-A SDK's job

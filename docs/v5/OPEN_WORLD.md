@@ -81,7 +81,7 @@ every extension.
   which a free string cannot; (3) **renderable** as a real choice control.
 
 - **Extend by VERSIONING, not by unbounding.** To add an option, register a NEW clause
-  version (`clauseId = keccak256(abi.encode(name, version))`) on the **additive-only**
+  version (a new `(name, version)` pair — the on-chain key `keccak256(abi.encode(name, version))` makes it distinct) on the **additive-only**
   registries (once registered, a clause cannot be removed or deactivated). The network
   only grows: new versions/clauses, never mutation, never unbounding.
 
