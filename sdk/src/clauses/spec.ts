@@ -170,7 +170,12 @@ function defaultMatchesField(spec: FieldSpec, value: unknown): boolean {
     }
 }
 
-function parseFieldSpec(raw: unknown, path: string, errors: SpecParseError[]): FieldSpec | null {
+/** Parse+validate ONE field spec (the same rules `parseClauseSpec` applies to a
+ *  clause's content `fields`). Exported so other surfaces can parse field specs
+ *  that live outside a clause's content — e.g. the frontend's `block.fields`
+ *  (a composition's runtime-input fields). Pushes `SpecParseError`s on `errors`
+ *  and returns null on any malformed field. */
+export function parseFieldSpec(raw: unknown, path: string, errors: SpecParseError[]): FieldSpec | null {
     const spec = parseFieldSpecCore(raw, path, errors);
     if (spec === null) return null;
     const rawDefault = (raw as Record<string, unknown>).default;

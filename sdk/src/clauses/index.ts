@@ -26,7 +26,7 @@ export type {
     ParseClauseSpecResult,
 } from "./spec.js";
 
-export { parseClauseSpec } from "./spec.js";
+export { parseClauseSpec, parseFieldSpec } from "./spec.js";
 
 export type {
     ValidationError,

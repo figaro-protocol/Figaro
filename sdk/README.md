@@ -137,6 +137,8 @@ on-chain `IClauseValidator` contracts.
 ```ts
 import {
   parseClauseSpec,
+  parseFieldSpec, // parse ONE field spec (for field specs outside a clause's
+                  // content `fields` — e.g. a composition's runtime-input fields)
   validateContent,
   encodeHandoffContent,
   encodeCommerceContent,

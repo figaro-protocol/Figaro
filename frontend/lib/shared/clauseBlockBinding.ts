@@ -19,7 +19,7 @@
  * block errors into the same "spec failed to parse" report.
  */
 
-import type { SpecParseError } from "@figaro/core/clauses";
+import { parseFieldSpec, type SpecParseError, type FieldSpec } from "@figaro/core/clauses";
 
 /** Drawer article a clause composes into on the designer canvas. A free-form
  *  string read straight from the spec — the set of articles and their grouping
@@ -61,6 +61,14 @@ export interface ClauseBlockBinding {
         abiCID?: string;
         choreographyCID?: string;
     };
+    /** Runtime inputs — the fields a party supplies at RUNTIME, distinct
+     *  from the clause's content `fields` (which are committed into the agreement
+     *  at signing). Rendered by ONE generic form; the surface reads no interface
+     *  name. Serves any runtime input: a composed contract's parameters (e.g. a
+     *  descending auction's start price — paired with `composes`) or a runtime
+     *  attestation's witness. Same `FieldSpec` shape as content fields — one
+     *  parser, one renderer. Omit for clauses with no runtime input. */
+    fields?: readonly FieldSpec[];
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -115,9 +123,26 @@ export function parseBlockBinding(
             ...(raw.composes.choreographyCID !== undefined && { choreographyCID: raw.composes.choreographyCID as string }),
         };
     }
+    let fields: readonly FieldSpec[] | undefined;
+    if (raw.fields !== undefined) {
+        if (!Array.isArray(raw.fields)) {
+            errors.push({ path: `${path}.fields`, message: "block.fields must be an array of field specs when present" });
+            return null;
+        }
+        // Reuse the SDK's field-spec parser — block.fields are the SAME shape as
+        // a clause's content fields, so one parser drives both.
+        const parsed: FieldSpec[] = [];
+        for (let i = 0; i < raw.fields.length; i++) {
+            const f = parseFieldSpec(raw.fields[i], `${path}.fields[${i}]`, errors);
+            if (f === null) return null;
+            parsed.push(f);
+        }
+        fields = parsed;
+    }
     return {
         article: raw.article as ClauseArticle,
         ...(raw.nestsUnder !== undefined && { nestsUnder: raw.nestsUnder as string }),
         ...(composes !== undefined && { composes }),
+        ...(fields !== undefined && { fields }),
     };
 }
