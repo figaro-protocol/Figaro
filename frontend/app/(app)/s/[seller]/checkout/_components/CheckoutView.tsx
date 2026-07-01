@@ -53,8 +53,6 @@ interface OrderComposition {
     nodeId: string;
     clauseId: string;
     interface: string;
-    /** Level-2 ABI pin from `block.composes.abiCID`, when the clause declares one. */
-    abiCID?: string;
     fields: readonly FieldSpec[];
 }
 
@@ -226,7 +224,7 @@ export function CheckoutView({ sellerAddress }: Props) {
             for (const cid of Object.keys(order.clauses)) {
                 const block = getClauseSpec(cid)?.block;
                 if (block?.composes && block.fields && block.fields.length > 0) {
-                    out.push({ nodeId: order.id, clauseId: cid, interface: block.composes.interface, abiCID: block.composes.abiCID, fields: block.fields });
+                    out.push({ nodeId: order.id, clauseId: cid, interface: block.composes.interface, fields: block.fields });
                     break; // one composition per order
                 }
             }
@@ -418,7 +416,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                     subOrderCompositions: orderCompositions.length > 0
                         ? Object.fromEntries(orderCompositions.map((c) => [
                             c.nodeId,
-                            { interface: c.interface, abiCID: c.abiCID, fieldValues: compositionInputs[c.nodeId] ?? {} },
+                            { interface: c.interface, fieldValues: compositionInputs[c.nodeId] ?? {} },
                         ]))
                         : undefined,
                 },

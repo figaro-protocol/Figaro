@@ -13,31 +13,27 @@ import { parseToken } from "@/lib/shared/utils";
  * The checkout surface is fully open-world: it discovers WHICH orders compose an
  * on-network contract by reading `block.composes` off the clause spec, renders
  * each composition's `block.fields` generically (one form, no interface name),
- * and hands the collected `{ interface, fieldValues, abiCID? }` here. This hook
- * is the single place a standard interface NAME maps to the concrete call — a
+ * and hands the collected `{ interface, fieldValues }` here. This hook is the
+ * single place a standard interface NAME maps to the concrete call — a
  * spec-routed dispatch, never a clause-id switch scattered through the UI.
  *
- * The concrete `{ address, abi }` comes from `compositionTarget` (env address;
- * ABI from a Level-2 `abiCID` on IPFS, else the bundled Level-1 shape), so this
- * hook carries no bundled contract handle. What stays here is the CALL-SHAPE
- * (which function, in what arg order) — integration code, per the K1-OW P1
- * doctrine (separate deployment facts from integration code). The call-shape is
- * the interface STANDARD; the trade-level coordination is the ASSEMBLY — there
- * is no separate choreography artifact. A never-seen clause still renders and
- * collects its fields with zero code here; invoking a novel contract needs a
- * handler here.
+ * The concrete `{ address, abi }` comes from `compositionTarget` (env address +
+ * the standard's ABI), so this hook carries no bundled contract handle. What
+ * stays here is the CALL-SHAPE (which function, in what arg order) — integration
+ * code. The call-shape is the interface STANDARD; the trade-level coordination
+ * is the ASSEMBLY. A never-seen clause still renders and collects its fields with
+ * zero code here; INVOKING a contract needs a handler here — invocation is
+ * per-standard-interface (code), not a config artifact.
  */
 
 /** Context the checkout walk hands each composition invocation. All fields are
  *  DERIVED (order/process/currency) except `fieldValues` (the buyer's
- *  `block.fields` inputs) and `abiCID` (the clause's Level-2 ABI pin, if any). */
+ *  `block.fields` inputs). */
 export interface ComposeContext {
     /** The standard interface named by the clause's `block.composes.interface`. */
     interface: string;
     /** The buyer's `block.fields` values for the composing clause, by field name. */
     fieldValues: Record<string, unknown>;
-    /** The clause's `block.composes.abiCID` — a Level-2 ABI pin, when present. */
-    abiCID?: string;
     processId: `0x${string}`;
     currency: `0x${string}`;
     tokenDecimals: number;
@@ -70,7 +66,7 @@ export function useCompositionActions() {
                 if (!address) {
                     throw new Error("Connect a wallet to open the auction.");
                 }
-                const target = await compositionTarget(ctx.interface, { abiCID: ctx.abiCID });
+                const target = compositionTarget(ctx.interface);
                 if (!target) {
                     throw new Error(`No on-network instance available for composition interface "${ctx.interface}".`);
                 }
