@@ -42,12 +42,6 @@ export interface AssemblyTemplate {
     name?: string;
     summary?: string;
     description?: string;
-    /** ERC-20 the assembly privileges (its denomination / value-capture
-     *  token). Absent = ERC-20-agnostic (any token, per the process at
-     *  checkout). One token per assembly; offering several = several
-     *  assemblies. The Core stays token-agnostic — this is an assembly-layer
-     *  choice, not a kernel constraint. */
-    privilegedToken?: string;
     orders: AssemblyTemplateOrder[];
 }
 

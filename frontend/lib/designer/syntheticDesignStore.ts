@@ -99,9 +99,6 @@ export interface DesignSnapshot {
     summary?: string;
     /** Editorial long-form description; optional. Hash-excluded, like `name`. */
     description?: string;
-    /** ERC-20 the assembly privileges (absent = ERC-20-agnostic). Chosen from
-     *  the per-chain common-token list; carried into the assembly template. */
-    privilegedToken?: string;
     /** Synthetic process id this design lives under. */
     processId: string;
     /** Counter for generating new order ids — preserved across saves. */

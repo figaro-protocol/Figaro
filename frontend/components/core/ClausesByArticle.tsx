@@ -29,9 +29,6 @@ interface ClausesByArticleProps<T> {
     sections: ReadonlyArray<ClauseArticleSection<T>>;
     /** Render one item as a complete `<li>` (own key, own markup). */
     renderClause: (item: T, index: number) => ReactNode;
-    /** Optional trailing content inside a section's `<ul>` — e.g. the drawer's
-     *  privileged-token picker in the consent group (NOT a clause). */
-    renderSectionFooter?: (article: string) => ReactNode;
     /** Optional override for the article heading (defaults to a `<p>`). */
     renderHeading?: (label: string) => ReactNode;
     /** `data-testid` for each section wrapper, derived from the article key. */
@@ -46,7 +43,6 @@ interface ClausesByArticleProps<T> {
 export function ClausesByArticle<T>({
     sections,
     renderClause,
-    renderSectionFooter,
     renderHeading,
     sectionTestId,
     rootTestId,
@@ -63,7 +59,6 @@ export function ClausesByArticle<T>({
                         {renderHeading ? renderHeading(label) : <p className={headingClassName}>{label}</p>}
                         <ul className={listClassName}>
                             {section.items.map((item, i) => renderClause(item, i))}
-                            {renderSectionFooter?.(section.article)}
                         </ul>
                     </div>
                 );

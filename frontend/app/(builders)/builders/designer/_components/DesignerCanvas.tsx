@@ -28,7 +28,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TopologyCanvas } from "@/components/core/TopologyCanvas";
-import { TokenAddressInput } from "@/components/sellers/TokenAddressInput";
 import type { Order } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import {
@@ -66,7 +65,6 @@ interface InitialState {
     summary: string;
     description: string;
     slug: string | null;
-    privilegedToken: string;
     clausesByOrderId: Record<string, Record<string, Record<string, unknown>>>;
 }
 
@@ -82,7 +80,6 @@ function buildBlankInitial(): InitialState {
         summary: "",
         description: "",
         slug: null,
-        privilegedToken: "",
         clausesByOrderId: {},
     };
 }
@@ -100,7 +97,6 @@ function snapshotToInitial(snap: DesignSnapshot): InitialState {
         summary: snap.summary ?? "",
         description: snap.description ?? "",
         slug: snap.slug || null,
-        privilegedToken: snap.privilegedToken ?? "",
         clausesByOrderId: snap.clausesByOrderId ?? {},
     };
 }
@@ -160,9 +156,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     const NAME_MAX = 80;
     const SUMMARY_MAX = 140;
     const DESCRIPTION_MAX = 600;
-    // ERC-20 the assembly privileges ("" = agnostic). Chosen from the per-chain
-    // common-token list; carried into the template + persisted in the draft.
-    const [privilegedToken, setPrivilegedToken] = useState<string>(() => initial.privilegedToken);
     const chainId = useChainId();
     const publicClient = usePublicClient();
     // Chain-aware cap on assembly node count. The hard cap is the RESOLVE
@@ -216,7 +209,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             setSummary(restored.summary);
             setDescription(restored.description);
             setSlug(restored.slug);
-            setPrivilegedToken(restored.privilegedToken);
             setClausesByOrderId(restored.clausesByOrderId);
             setHydrated(true);
             return;
@@ -231,7 +223,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             setSummary(init.summary);
             setDescription(init.description);
             setSlug(init.slug);
-            setPrivilegedToken(init.privilegedToken);
             setClausesByOrderId(init.clausesByOrderId);
         }
         setHydrated(true);
@@ -248,7 +239,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             name,
             summary: summary || undefined,
             description: description || undefined,
-            privilegedToken: privilegedToken || undefined,
             processId: session.processId,
             nextOrderIndex: session.nextOrderIndex,
             nextSellerIndex: session.nextSellerIndex,
@@ -259,7 +249,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         };
         saveCurrentSession(snap);
         setSavedAt(Date.now());
-    }, [hydrated, seedError, orders, clausesByOrderId, name, summary, description, slug, privilegedToken, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
+    }, [hydrated, seedError, orders, clausesByOrderId, name, summary, description, slug, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
 
     // Read both chain gas ceilings (each depends on the live block gas limit, so
     // it's a runtime read; recompute when the chain changes).
@@ -414,7 +404,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 name,
                 summary: summary || undefined,
                 description: description || undefined,
-                privilegedToken: privilegedToken || undefined,
                 processId: session.processId,
                 nextOrderIndex: session.nextOrderIndex,
                 nextSellerIndex: session.nextSellerIndex,
@@ -424,7 +413,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 updatedAt: Date.now(),
             },
         };
-    }, [slug, name, summary, description, privilegedToken, orders, clausesByOrderId, session]);
+    }, [slug, name, summary, description, orders, clausesByOrderId, session]);
 
     function explainSnapshotReason(_reason: "empty-composition"): string {
         return "Add at least one order before publishing.";
@@ -660,18 +649,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                         )}
                     </div>
 
-                    {/* Assembly-wide terms — carried on the root order, applying to
-                        the whole process (not a single order). The privileged token
-                        is the value-capture token the assembly is priced in. */}
-                    <div className="mt-5 pt-4 border-t border-default space-y-2">
-                        <p className="text-xs font-semibold text-ink-heading">Assembly-wide terms</p>
-                        <div data-testid="inspector-privileged-token">
-                            <p className="text-xs text-ink-body mb-1">
-                                Specify the ERC-20 token that token-gates this process.
-                            </p>
-                            <TokenAddressInput value={privilegedToken} onChange={setPrivilegedToken} />
-                        </div>
-                    </div>
                 </aside>
                 <div className="flex-1 overflow-hidden">
                     <div className="h-full px-6 py-4 flex flex-col">

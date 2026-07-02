@@ -86,7 +86,6 @@ export function usePublishAssembly() {
             name: snapshot.name.trim() || undefined,
             summary: snapshot.summary?.trim() || undefined,
             description: snapshot.description?.trim() || undefined,
-            privilegedToken: snapshot.privilegedToken,
             orders: snapshot.orders,
             clausesByOrderId: snapshot.clausesByOrderId ?? {},
         });

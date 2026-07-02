@@ -46,11 +46,10 @@ export function buildAssemblyTemplate(args: {
     name?: string;
     summary?: string;
     description?: string;
-    privilegedToken?: string;
     orders: readonly Order[];
     clausesByOrderId: Readonly<Record<string, ClauseFields>>;
 }): AssemblyTemplate {
-    const { name, summary, description, privilegedToken, orders, clausesByOrderId } = args;
+    const { name, summary, description, orders, clausesByOrderId } = args;
     const structuralIds = listKnownClauseIds().filter(clauseIsStructural);
     if (structuralIds.length === 0) {
         // Without the chain→IPFS spec cache the structural clauses cannot be
@@ -68,7 +67,6 @@ export function buildAssemblyTemplate(args: {
         ...(name ? { name } : {}),
         ...(summary ? { summary } : {}),
         ...(description ? { description } : {}),
-        ...(privilegedToken ? { privilegedToken } : {}),
         orders: orders.map((order, i) => ({
             id: `order-${i}`,
             clauses: {
@@ -99,12 +97,11 @@ export function serializeAssemblyTemplate(template: AssemblyTemplate): {
 } {
     // The pinned document carries everything — INCLUDING the editorial
     // name/summary/description. But the content hash (→ slug + on-chain anchor)
-    // derives from the COMPOSITION ONLY (privilegedToken + orders), so editorial
-    // edits never fork identity: identical compositions collapse to one slug
-    // regardless of their prose.
+    // derives from the COMPOSITION ONLY (the orders), so editorial edits never
+    // fork identity: identical compositions collapse to one slug regardless of
+    // their prose.
     const json = canonicalize(template);
     const composition = {
-        ...(template.privilegedToken ? { privilegedToken: template.privilegedToken } : {}),
         orders: template.orders,
     };
     const contentHash = keccak256(toHex(canonicalize(composition)));
