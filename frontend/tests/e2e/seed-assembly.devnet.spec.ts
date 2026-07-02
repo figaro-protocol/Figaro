@@ -7,9 +7,12 @@
  * can order it. Runs in the `devnet-authoring` gate BEFORE sellers-onboarding
  * (alphabetical: "seed-" < "sellers-").
  *
- * It composes ONE clause (figaro-geolocation — a single checkbox, no required fields)
- * so the composition has a UNIQUE content hash (slug): it neither collides with
- * the blank composition `designer-publish` round-trips, nor needs a revert.
+ * It composes ONE clause (figaro-geolocation) and values its originGeohash
+ * with a PER-RUN token (digits are valid geohash base32), so every run's
+ * composition — and therefore its content-derived slug — is unique: no
+ * collision with the blank composition `designer-publish` round-trips, no
+ * collision with a prior run's seed on a persistent devnet (the probeAssembly
+ * nonce doctrine: devnet is a mainnet rehearsal; specs leave their state).
  * Persistent by design — NO evm snapshot/revert; this IS the seed.
  *
  * Pure UI authoring: canvas → compose via the drawer → review → publish →
@@ -61,6 +64,11 @@ test.describe('Seed assembly (devnet authoring gate)', () => {
         const geo = page.getByTestId(`drawer-registry-clause-${GEO_CLAUSE_KEY}`);
         await expect(geo, 'drawer surfaces the geo clause from the live registry').toHaveCount(1, { timeout: 20000 });
         await geo.check();
+        // Per-run origin value → unique composition → unique slug on reruns.
+        // Digits are valid geohash base32; the spec caps length at 12.
+        const runToken = Date.now().toString().slice(0, 12);
+        await page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-originGeohash`)
+            .fill(runToken);
 
         // ── Editorial identity (name + summary + description are ALL mandatory
         //    for publish — publishBlockedReason gates on every one), then
