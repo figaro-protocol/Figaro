@@ -7,12 +7,13 @@
  * can order it. Runs in the `devnet-authoring` gate BEFORE sellers-onboarding
  * (alphabetical: "seed-" < "sellers-").
  *
- * It composes ONE clause (figaro-geolocation) and values its originGeohash
- * with a PER-RUN token (digits are valid geohash base32), so every run's
- * composition — and therefore its content-derived slug — is unique: no
- * collision with the blank composition `designer-publish` round-trips, no
- * collision with a prior run's seed on a persistent devnet (the probeAssembly
- * nonce doctrine: devnet is a mainnet rehearsal; specs leave their state).
+ * ENSURE-EXISTS semantics: the seed's one job is that ≥1 anchored assembly
+ * exists for the suite to bind. On a FRESH chain it authors + publishes (one
+ * composed clause — figaro-geolocation, a single checkbox — so the content
+ * slug differs from a bare blank composition); on a chain a prior run already
+ * seeded, it verifies the anchored assembly renders on /assemblies and stops —
+ * the slug is content-derived and the registry first-write-wins, so
+ * re-publishing an identical composition can only revert.
  * Persistent by design — NO evm snapshot/revert; this IS the seed.
  *
  * Pure UI authoring: canvas → compose via the drawer → review → publish →
@@ -44,6 +45,29 @@ test.describe('Seed assembly (devnet authoring gate)', () => {
         const assemblyRegistry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY
             ?? config.assemblyRegistry) as Hex;
 
+        // ── ENSURE-EXISTS, not publish-every-run. The seed's one job is that
+        //    the downstream suite has ≥1 anchored, bindable assembly. The slug
+        //    is content-derived and the registry is first-write-wins, so
+        //    re-publishing the identical composition on a persistent devnet
+        //    can only revert — if a prior run already seeded, verify the
+        //    inventory renders it and stop. The full authoring path runs on
+        //    every FRESH chain (each devup FORCE_REDEPLOY).
+        const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+        const anchored = await publicClient.getContractEvents({
+            address: assemblyRegistry,
+            abi: ASSEMBLY_REGISTRY_ABI,
+            eventName: 'AssemblyRegistered',
+            fromBlock: 0n,
+        });
+        if (anchored.length > 0) {
+            const existingSlug = anchored[0].args.slug as string;
+            await page.goto('/assemblies?e2e=devnet', { waitUntil: 'domcontentloaded' });
+            await expect(page.locator(`#assembly-${existingSlug}`),
+                'a prior run already seeded — the anchored assembly renders on /assemblies',
+            ).toBeVisible({ timeout: 30000 });
+            return;
+        }
+
         await page.addInitScript(() => {
             try {
                 window.localStorage.removeItem('figaro:designer:current');
@@ -64,11 +88,6 @@ test.describe('Seed assembly (devnet authoring gate)', () => {
         const geo = page.getByTestId(`drawer-registry-clause-${GEO_CLAUSE_KEY}`);
         await expect(geo, 'drawer surfaces the geo clause from the live registry').toHaveCount(1, { timeout: 20000 });
         await geo.check();
-        // Per-run origin value → unique composition → unique slug on reruns.
-        // Digits are valid geohash base32; the spec caps length at 12.
-        const runToken = Date.now().toString().slice(0, 12);
-        await page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-originGeohash`)
-            .fill(runToken);
 
         // ── Editorial identity (name + summary + description are ALL mandatory
         //    for publish — publishBlockedReason gates on every one), then
@@ -103,7 +122,6 @@ test.describe('Seed assembly (devnet authoring gate)', () => {
         expect(publishedSlug, 'receipt shows the content slug').toMatch(/^asm-/);
 
         // ── On-chain assertion — AssemblyRegistered, persistent (no revert) ──
-        const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const slugHash = keccak256(toHex(publishedSlug as string));
         const events = await publicClient.getContractEvents({
             address: assemblyRegistry,
