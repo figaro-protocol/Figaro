@@ -35,7 +35,7 @@ import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Canonical Layer-A specs / ClauseRegistry seed data — the single origin,
 // pinned to IPFS and anchored on-chain. Nothing bundles a copy.
-const CLAUSES_DIR = path.resolve(__dirname, '../../clauses');
+export const CLAUSES_DIR = path.resolve(__dirname, '../../clauses');
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545';
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 

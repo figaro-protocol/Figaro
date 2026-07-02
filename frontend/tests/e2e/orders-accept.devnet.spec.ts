@@ -14,7 +14,7 @@
  * (localStorage-backed, same origin) replays the relayed commitment into the
  * seller's /orders, where `awaitsMyCounterSign` surfaces the "Your turn" card.
  *
- * Depends on the `devnet-authoring` gate (seed-assembly + sellers-onboarding):
+ * Depends on populate-test-data (clauses + seed assembly + sellers) and the `devnet-authoring` gate (sellers-onboarding):
  * the published assembly and the bound seller must already exist. Iterate with
  * `--no-deps` once the gate has seeded the chain.
  */

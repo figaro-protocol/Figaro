@@ -67,14 +67,15 @@ export default defineConfig({
         timeout: WEB_MODE === 'prod' ? 300_000 : 120_000,
     },
 
-    // Three projects, two concerns. The e2e suite is split along the
-    // persisted pipeline's stage boundary so a COLD devnet runs in stage
-    // order (alphabetical file order would run runtimes before the
-    // scenarios that anchor what they consume):
+    // The e2e suite is split along the persisted pipeline's stage boundary
+    // so a COLD devnet runs in stage order (alphabetical file order would
+    // run runtimes before the scenarios that anchor what they consume):
     //
-    //   `devnet-authoring` — stage 1+2: the scenario specs (author + anchor
-    //     each assembly, idempotent on a non-fresh chain) and the
-    //     sellers-onboarding wizard (also idempotent).
+    //   `devnet-authoring` — the sellers-onboarding wizard (idempotent).
+    //     Everything it consumes (clauses, ONE anchored seed assembly,
+    //     sellers) is PRE-POPULATED by scripts/populate-test-data.mjs, which
+    //     `test:e2e:devnet` runs before Playwright — seeding is never a test
+    //     (the scenario-era build-order coupling is the cautionary tale).
     //   `devnet-standalone` — self-contained acceptance specs (e.g.
     //     permissionless-clause) that register their own clause, author their
     //     own assembly, and onboard their own seller. They share NO seeded
@@ -94,7 +95,7 @@ export default defineConfig({
     projects: [
         {
             name: 'devnet-authoring',
-            testMatch: /(seed-assembly|sellers-onboarding)\.devnet\.spec\.ts$/,
+            testMatch: /sellers-onboarding\.devnet\.spec\.ts$/,
             fullyParallel: false,
             workers: 1,
             use: { ...devices['Desktop Chrome'] },
@@ -113,7 +114,7 @@ export default defineConfig({
         {
             name: 'devnet',
             testMatch: /\.devnet\.spec\.ts$/,
-            testIgnore: /(seed-assembly|sellers-onboarding|permissionless-clause)\.devnet\.spec\.ts$/,
+            testIgnore: /(sellers-onboarding|permissionless-clause)\.devnet\.spec\.ts$/,
             dependencies: ['devnet-authoring'],
             fullyParallel: false,
             workers: 1,

@@ -2,8 +2,9 @@
 /**
  * populate-test-data.mjs — the ONE pre-population path FOR TESTING. Populates the
  * registries the e2e suite consumes from: clauses (ClauseRegistry + IPFS, reusing
- * populate-clauses) AND sellers (SellerRegistry + IPFS). Run after deploy, before
- * the test suite. The runtime specs then discover everything from chain → IPFS.
+ * populate-clauses), ONE seed assembly (AssemblyRegistry + IPFS — the blank
+ * structural composition sellers bind), AND sellers (SellerRegistry + IPFS).
+ * Run after deploy, before the test suite. The runtime specs then discover everything from chain → IPFS.
  *
  * This is the single source of the test SELLERS — it replaces `seller-roster.ts`
  * (which was wrongly imported by runtime specs as a parallel path). The seller
@@ -16,10 +17,12 @@
  * Env (frontend/.env.local): NEXT_PUBLIC_CLAUSE_REGISTRY, NEXT_PUBLIC_SELLER_REGISTRY,
  *   NEXT_PUBLIC_TOKEN_ADDRESS, NEXT_PUBLIC_IPFS_API_URL, RPC_URL.
  */
-import { createPublicClient, createWalletClient, http, parseAbi } from 'viem';
+import fs from 'node:fs';
+import path from 'node:path';
+import { createPublicClient, createWalletClient, http, keccak256, parseAbi, toHex } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
 import {
-    LOCAL_ANVIL, pinJSON, populateClauses, readEnvLocal, registrarAccount,
+    CLAUSES_DIR, LOCAL_ANVIL, pinJSON, populateClauses, readEnvLocal, registrarAccount,
 } from './populate-clauses.mjs';
 
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545';
@@ -34,6 +37,11 @@ const SELLER_REGISTRY_ABI = parseAbi([
 const ERC20_VIEW_ABI = parseAbi([
     'function symbol() view returns (string)',
     'function name() view returns (string)',
+]);
+const ASSEMBLY_REGISTRY_ABI = parseAbi([
+    'function registerAssembly(string slug, bytes32 contentHash, string metadataURI) external payable',
+    'function registrationDeposit() view returns (uint256)',
+    'event AssemblyRegistered(bytes32 indexed slugHash, address indexed author, string slug, bytes32 contentHash, string metadataURI)',
 ]);
 
 // The test sellers. addressIndex ∈ [5,19] (disjoint from buyers anvil[0..4]).
@@ -52,14 +60,93 @@ const SELLERS = [
 const slugifyId = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Error ? err.message : String(err));
 
+
+// ── Seed assembly (AssemblyRegistry) ─────────────────────────────────────────
+// The suite's runtime specs need >=1 anchored assembly BEFORE any test runs
+// (the even-surfacing rule: a seller surfaces only with an anchored binding,
+// so an empty AssemblyRegistry means zero surfaced sellers). Seeding is
+// PRE-POPULATION, exactly like clauses and sellers above — never a test
+// (operator ruling 2026-07-02; the scenario-era build-order coupling is the
+// cautionary tale). The template reproduces the designer's emission byte for
+// byte — sources of truth: `lib/designer/buildAssemblyTemplate.ts` (structural
+// fold), `lib/shared/assemblyTemplate.ts` (slug derivation) — so the anchored
+// document is indistinguishable from a designer-published one.
+
+/** Sorted-keys JSON at every depth — mirrors buildAssemblyTemplate.ts. */
+function canonicalize(value) {
+    return JSON.stringify(value, (_key, raw) => {
+        if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return raw;
+        const sorted = {};
+        for (const k of Object.keys(raw).sort()) sorted[k] = raw[k];
+        return sorted;
+    });
+}
+
+/** Fold the MANDATORY structural clauses (block.article === "structural",
+ *  read from the canonical Layer-A specs — derived, never named) onto one
+ *  root order: each takes the subset of the design-time bag it declares. */
+function structuralClauseFold() {
+    const bag = { parentOrderHashes: [] };
+    const out = {};
+    for (const file of fs.readdirSync(CLAUSES_DIR).filter((f) => f.endsWith('.json')).sort()) {
+        const spec = JSON.parse(fs.readFileSync(path.join(CLAUSES_DIR, file), 'utf8'));
+        if (spec.block?.article !== 'structural') continue;
+        const data = {};
+        for (const field of spec.fields ?? []) {
+            if (field.name in bag) data[field.name] = bag[field.name];
+        }
+        out[spec.clauseId] = data;
+    }
+    if (Object.keys(out).length === 0) throw new Error('no structural clauses found in clauses/*.json');
+    return out;
+}
+
+async function seedAssembly({ publicClient, walletClient, account, registry, ipfsApiUrl }) {
+    // A blank single-order composition: the structural clauses only, no
+    // electives — the minimal bindable assembly.
+    const template = {
+        name: 'Devnet seed',
+        summary: 'Pre-populated bindable assembly for the e2e suite.',
+        description: 'A blank single-order composition (structural clauses only), anchored by populate-test-data so sellers can bind before any spec runs.',
+        orders: [{ id: 'order-0', clauses: structuralClauseFold() }],
+    };
+    // Content hash over the COMPOSITION ONLY (editorial excluded) — mirrors
+    // serializeAssemblyTemplate.ts; slug mirrors deriveAssemblySlug.
+    const contentHash = keccak256(toHex(canonicalize({ orders: template.orders })));
+    const slug = `asm-${contentHash.slice(2, 18)}`;
+
+    const anchored = await publicClient.getContractEvents({
+        address: registry, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered',
+        args: { slugHash: keccak256(toHex(slug)) }, fromBlock: 0n,
+    });
+    if (anchored.length > 0) {
+        console.log(`  · ${slug} — already anchored, skipped`);
+        return slug;
+    }
+
+    const metadataURI = await pinJSON(ipfsApiUrl, canonicalize(template));
+    const deposit = await publicClient.readContract({
+        address: registry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'registrationDeposit',
+    });
+    const { request } = await publicClient.simulateContract({
+        account: account.address, address: registry, abi: ASSEMBLY_REGISTRY_ABI,
+        functionName: 'registerAssembly', args: [slug, contentHash, metadataURI], value: deposit,
+    });
+    const hash = await walletClient.writeContract(request);
+    await publicClient.waitForTransactionReceipt({ hash });
+    console.log(`  ✓ ${slug} — anchored; template ${metadataURI}`);
+    return slug;
+}
+
 async function main() {
     const env = readEnvLocal();
     const clauseRegistry = env.NEXT_PUBLIC_CLAUSE_REGISTRY;
     const sellerRegistry = env.NEXT_PUBLIC_SELLER_REGISTRY;
+    const assemblyRegistry = env.NEXT_PUBLIC_ASSEMBLY_REGISTRY;
     const mockErc20 = env.NEXT_PUBLIC_TOKEN_ADDRESS;
     const ipfsApiUrl = env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
-    if (!clauseRegistry || !sellerRegistry || !mockErc20) {
-        throw new Error('NEXT_PUBLIC_CLAUSE_REGISTRY / NEXT_PUBLIC_SELLER_REGISTRY / NEXT_PUBLIC_TOKEN_ADDRESS missing — deploy first.');
+    if (!clauseRegistry || !sellerRegistry || !assemblyRegistry || !mockErc20) {
+        throw new Error('NEXT_PUBLIC_CLAUSE_REGISTRY / NEXT_PUBLIC_SELLER_REGISTRY / NEXT_PUBLIC_ASSEMBLY_REGISTRY / NEXT_PUBLIC_TOKEN_ADDRESS missing — deploy first.');
     }
 
     const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
@@ -70,6 +157,10 @@ async function main() {
     const registrarClient = createWalletClient({ account: registrar, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
     console.log('Clauses:');
     await populateClauses({ publicClient, walletClient: registrarClient, account: registrar, registry: clauseRegistry, ipfsApiUrl });
+
+    // ── 1b. Seed assembly (blank structural composition, idempotent) ────────
+    console.log('\nAssembly:');
+    await seedAssembly({ publicClient, walletClient: registrarClient, account: registrar, registry: assemblyRegistry, ipfsApiUrl });
 
     // ── 2. Sellers (catalogue → profile → register, all pinned + anchored) ──
     const [tokenSymbol, tokenName] = await Promise.all([
@@ -132,7 +223,7 @@ async function main() {
             console.log(`  ↻ ${s.name} — already registered; profile updated ${metadataURI}`);
         }
     }
-    console.log('\nDone — test clauses + sellers pre-populated.');
+    console.log('\nDone — test clauses + seed assembly + sellers pre-populated.');
 }
 
 main().catch((err) => { console.error(err); process.exit(1); });
