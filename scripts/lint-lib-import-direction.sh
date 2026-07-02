@@ -3,11 +3,9 @@
 # lint-lib-import-direction.sh — frontend/lib layer arrows point ONE way.
 #
 # Two rules, both already documented in source:
-#   1. lib/core/   may import NO feature layer (commerce, mechanisms, semantic,
-#      designer, seller, handoff, dispute, audit). core/ is the kernel-adjacent
-#      read/sign layer; everything else builds ON it. (The first half of the
-#      rule stated at lib/mechanisms/contracts.ts: "core/ code must NEVER
-#      import from mechanisms/" — generalized to every feature layer.)
+#   1. lib/core/   may import NO feature layer (checkout, composition, semantic,
+#      designer, seller, handoff, audit, agent). core/ is the kernel-adjacent
+#      read/sign layer; everything else builds ON it.
 #   2. lib/shared/ may import NOTHING from lib/ outside shared/ — it is the
 #      generic leaf (evm, json, formatting, service INTERFACES). The single
 #      sanctioned exception is the runtime-services composition seam
@@ -16,7 +14,8 @@
 #
 # Service implementations live in their feature layer (handoff/, seller/);
 # core code that needs a transport capability declares a minimal STRUCTURAL
-# type instead of importing the feature interface (see lib/core/commitmentShare).
+# type instead of importing the feature interface (see the CommitmentPayloadRelay
+# structural type in lib/core/orderSignedAndShared.ts).
 #
 # Wired into the root package.json lint-staged block under frontend/**/*.{ts,tsx}.
 # Run manually:  bash scripts/lint-lib-import-direction.sh [files...]
@@ -25,7 +24,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FEATURE_LAYERS='commerce|mechanisms|semantic|designer|seller|handoff|dispute|audit'
+FEATURE_LAYERS='checkout|composition|semantic|designer|seller|handoff|audit|agent'
 
 files=("$@")
 if [[ ${#files[@]} -eq 0 ]]; then
