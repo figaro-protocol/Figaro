@@ -72,7 +72,7 @@ export default function Specifications() {
 
             <MarketingSection title="Clause validation">
                 <p className="text-base text-ink-body leading-relaxed">
-                    Clause content is validated <strong>off-chain</strong> (the Layer-A TypeScript SDK); the chain registers clauses and merkle-binds attestations but validates no content shape, so a never-seen clause is attestable with zero per-clause on-chain code. <code>figaro-topology-v1</code> and <code>figaro-descending-auction-v1</code> are agreement-only &mdash; committed at signing, with no runtime attestation. The full inventory &mdash; every clauseId and what it carries &mdash; is on <Link href="/clauses" className="underline">Clauses</Link>.
+                    Clause content is validated <strong>off-chain</strong> (the Layer-A TypeScript SDK); the chain registers clauses and merkle-binds attestations but validates no content shape, so a never-seen clause is attestable with zero per-clause on-chain code. <code>figaro-topology-v1</code> is agreement-only &mdash; committed at signing, with no runtime attestation. The full inventory &mdash; every clauseId and what it carries &mdash; is on <Link href="/clauses" className="underline">Clauses</Link>.
                 </p>
             </MarketingSection>
 
@@ -99,12 +99,6 @@ export default function Specifications() {
 
             <MarketingSection title="Optional protocol contracts">
                 <ul className="space-y-4">
-                    <ContractEntry
-                        id="DutchAuction"
-                        title="DutchAuction.sol"
-                        href={`${GH}/DutchAuction.sol`}
-                        desc="Descending-price coordination primitive. No token handling."
-                    />
                     <ContractEntry
                         id="SellerRegistry"
                         title="SellerRegistry.sol"

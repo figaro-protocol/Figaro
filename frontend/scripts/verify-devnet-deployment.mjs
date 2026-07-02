@@ -21,7 +21,6 @@ const optionalContracts = [
     { key: 'NEXT_PUBLIC_CLAUSE_REGISTRY', label: 'ClauseRegistry' },
     { key: 'NEXT_PUBLIC_SELLER_REGISTRY', label: 'SellerRegistry' },
     { key: 'NEXT_PUBLIC_ASSEMBLY_REGISTRY', label: 'AssemblyRegistry' },
-    { key: 'NEXT_PUBLIC_DUTCH_AUCTION', label: 'DutchAuction' },
 ];
 
 function fail(message) {

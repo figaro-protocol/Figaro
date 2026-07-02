@@ -8,7 +8,6 @@ import "../src/FigaroCore.sol";
 import "../src/AttestationCoordinator.sol";
 import "../src/ClauseRegistry.sol";
 import "../src/SellerRegistry.sol";
-import "../src/DutchAuction.sol";
 import "../src/fig/FigToken.sol";
 import "../src/ProcessOffsetReceipt.sol";
 
@@ -47,7 +46,6 @@ contract DeployMainnet is Script {
     address internal _attestation;
     address internal _clauses;
     address internal _sellers;
-    address internal _auction;
     address internal _fig;
     address internal _offsetReceipts;
 
@@ -117,10 +115,6 @@ contract DeployMainnet is Script {
         _sellers = address(sellers);
         console.log("SellerRegistry:       ", _sellers);
 
-        DutchAuction auction = new DutchAuction(30 minutes, 2000);
-        _auction = address(auction);
-        console.log("DutchAuction:           ", _auction);
-
         // Permissionless on-chain anchor for Path A carbon-offset receipts.
         // Buyer calls record(processId, ...) after performing the off-protocol
         // retirement at an aggregator (Klima KlimaInfinity, Toucan
@@ -169,7 +163,6 @@ contract DeployMainnet is Script {
         console.log("  NEXT_PUBLIC_ATTESTATION_COORDINATOR=  ", _attestation);
         console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=          ", _clauses);
         console.log("  NEXT_PUBLIC_SELLER_REGISTRY=        ", _sellers);
-        console.log("  NEXT_PUBLIC_DUTCH_AUCTION=            ", _auction);
         console.log("  NEXT_PUBLIC_FIG_TOKEN_ADDRESS=        ", _fig);
         console.log("  NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT=   ", _offsetReceipts);
         console.log("---");

@@ -22,7 +22,6 @@ export interface TransactionCapabilityExecutors {
      *  a proximity proof when the descriptor carries one). Replaces the per-clause
      *  merchant/courier executors. */
     submitClauseAttestation?: (action: SubmitClauseAttestationCapabilityAction) => TransactionExecutionResult;
-    claimAuction?: (auctionId: string) => TransactionExecutionResult;
     claimAirdrop?: (amount: bigint, proof: `0x${string}`[]) => TransactionExecutionResult;
     claimVesting?: (variant: VestingVariant) => TransactionExecutionResult;
 }
@@ -89,12 +88,6 @@ export async function executeTransactionCapabilityAction(
                 executors.submitClauseAttestation,
                 "Clause attestation execution is unavailable.",
             )(action);
-            break;
-        case "claim-auction":
-            txHash = await ensureExecutor(
-                executors.claimAuction,
-                "Auction-claim execution is unavailable.",
-            )(action.auctionId);
             break;
         case "claim-airdrop":
             txHash = await ensureExecutor(

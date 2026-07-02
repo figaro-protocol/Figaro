@@ -102,31 +102,6 @@ export const EV_ATTESTATION = parseAbiItem(
     "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)",
 );
 
-// ── DutchAuction ABI ────────────────────────────────────────────────────────
-
-export const DUTCH_AUCTION_ABI = parseAbi([
-    "function duration() view returns (uint64)",
-    "function floorBps() view returns (uint16)",
-    "function auctions(bytes32 auctionId) view returns (address creator, uint64 startTime, uint256 maxPrice, address provider, uint256 clearingPrice)",
-    "function createAuction(bytes32 auctionId, uint256 maxPrice, bytes32 processId, address currency) external",
-    "function claim(bytes32 auctionId) external",
-    "function cancel(bytes32 auctionId) external",
-    "function expire(bytes32 auctionId) external",
-    "function getCurrentPrice(bytes32 auctionId) view returns (uint256)",
-    "event AuctionCreated(bytes32 indexed auctionId, address indexed creator, uint256 maxPrice, bytes32 indexed processId, address currency)",
-    "event AuctionClaimed(bytes32 indexed auctionId, address indexed provider, uint256 clearingPrice)",
-    "event AuctionCancelled(bytes32 indexed auctionId)",
-    "event AuctionExpired(bytes32 indexed auctionId)",
-]);
-
-export const EV_AUCTION_CREATED = parseAbiItem(
-    "event AuctionCreated(bytes32 indexed auctionId, address indexed creator, uint256 maxPrice, bytes32 indexed processId, address currency)",
-);
-
-export const EV_AUCTION_CLAIMED = parseAbiItem(
-    "event AuctionClaimed(bytes32 indexed auctionId, address indexed provider, uint256 clearingPrice)",
-);
-
 // ── ClauseRegistry ABI ──────────────────────────────────────────────────────
 
 export const CLAUSE_REGISTRY_ABI = parseAbi([

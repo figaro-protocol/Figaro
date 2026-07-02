@@ -90,7 +90,7 @@ is a choice, not an exploit.
 
 ## 4. No owner, no admin, no escape hatch — by design
 
-**Pattern**: FigaroCore, AttestationCoordinator, ClauseRegistry, DutchAuction,
+**Pattern**: FigaroCore, AttestationCoordinator, ClauseRegistry,
 SellerRegistry, AssemblyRegistry, and ProcessOffsetReceipt have no owner, no
 pause function, no upgrade path, and no admin recovery. FigToken has a one-shot
 deployer who registers minter contracts then renounces (`deployerMintRenounced`)
@@ -186,21 +186,19 @@ concern resolved off-chain, consistent with the event-sourced architecture.
 
 ---
 
-## 9. DutchAuction holds no funds and enforces no role separation
+## 9. RETIRED — DutchAuction (contract deleted 2026-07-02)
 
-**Pattern**: The auction creator can claim their own auction. There is no
-check that `driver != creator`. The contract holds no tokens and stores only
-a `clearingPrice`.
+**Was**: "DutchAuction holds no funds and enforces no role separation" — the
+auction creator could claim their own auction; the contract held no tokens.
 
-**Why it looks wrong**: An auction where the creator wins appears to defeat
-the auction's purpose.
-
-**Why it is correct**: DutchAuction is a pure price-discovery coordination
-primitive. It does not intermediate funds. The financial commitment happens in
-FigaroCore, where the driver becomes the seller and must bond capital. Whether
-the creator and driver are the same address is a governance concern for the
-off-chain institution, not a financial invariant that needs on-chain
-enforcement.
+**Retirement**: competitive pricing was abandoned. A mid-chain order whose
+price or counterparty is unknown at signing is structurally incompatible with
+the kernel's exact-match cumulative accumulator (`expectedCumulativeValue`),
+and the V3-era workaround (the market contract standing in as the kernel
+seller, bonds borrowed from a float vault) is banned three ways in V5:
+ECDSA-only parties, no bond lending, no custody. Pricing is a catalogue
+concern (e.g. rate × geohash distance). The number is kept so the pattern
+count and cross-references stay stable.
 
 ---
 
@@ -375,7 +373,7 @@ off.
 | 6 | No prevrandao salt | Missing on-chain entropy | Validators predict prevrandao; party-chosen salt sufficient |
 | 7 | Attestations on resolved orders | Operating on stale state | Post-resolution lifecycle events are valid |
 | 8 | Permissionless clause registry | Namespace squatting | Content-addressed IDs; governance is off-chain |
-| 9 | Auction creator can self-claim | Defeats price discovery | No funds held; financial commitment is in FigaroCore |
+| 9 | RETIRED (DutchAuction deleted 2026-07-02) | — | Competitive pricing abandoned; see §9 |
 | 10 | Strict token compatibility rejection | Overly restrictive | Bond math requires exact amounts; wrapping is the solution |
 | 11 | Single currency per process | Can't do multi-token commerce | 2:1 bond ratio is Nash-stable only in one currency; multi-token lives at composition layer (process / wallet swap / Level-3 bundler) |
 | 12 | No `transferTitle` / `endorse` / `nominate` for BoLs | Industry-standard MLETR-aligned eBLs are negotiable; CargoX / TradeTrust / TradeLens all implement this | Single-buyer invariant + parties-fixed-at-commit + no-escape-hatches each separately rule it out; cargo doesn't carry rights, the commitment does |

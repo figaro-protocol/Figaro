@@ -14,18 +14,16 @@
  */
 
 import type { Abi } from "viem";
-import { DUTCH_AUCTION_ABI } from "@/lib/composition/abis";
-import { getDutchAuction } from "@/lib/composition/contracts";
 
 export interface CompositionTarget {
     address: `0x${string}`;
     abi: Abi;
 }
 
-/** Known standard interfaces, keyed by `block.composes.interface`. */
-const STANDARD_INTERFACES: Record<string, { address: () => `0x${string}` | null; abi: Abi }> = {
-    "descending-auction": { address: getDutchAuction, abi: DUTCH_AUCTION_ABI as unknown as Abi },
-};
+/** Known standard interfaces, keyed by `block.composes.interface`. Currently
+ *  EMPTY: the descending auction (the first tenant) was abandoned 2026-07-02;
+ *  the next expected row is the emissions cluster's `carbon-aggregator`. */
+const STANDARD_INTERFACES: Record<string, { address: () => `0x${string}` | null; abi: Abi }> = {};
 
 /** The `{ address, abi }` to invoke for a composition interface, or null when
  *  the interface is unknown or its instance address is unavailable. */

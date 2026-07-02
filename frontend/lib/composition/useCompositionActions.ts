@@ -3,7 +3,6 @@
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { activeChain } from "@/lib/shared/chains";
 import { compositionTarget } from "@/lib/composition/compositionTarget";
-import { sellerAuctionId } from "@/lib/seller/sellerAuction";
 import { parseToken } from "@/lib/shared/utils";
 
 /**
@@ -39,52 +38,15 @@ export interface ComposeContext {
     tokenDecimals: number;
 }
 
-export interface ComposeResult {
-    /** True when the composition DEFERS the order's counterparty selection — the
-     *  order is stashed and joins the process when the composition resolves (e.g.
-     *  a seller claims the descending auction), so the checkout walk skips
-     *  committing it now. False → the composition runs alongside a normal commit. */
-    deferred: boolean;
-}
+
 
 export function useCompositionActions() {
     const { address } = useAccount();
     const publicClient = usePublicClient();
     const { writeContractAsync } = useWriteContract();
 
-    const compose = async (ctx: ComposeContext): Promise<ComposeResult> => {
+    const compose = async (ctx: ComposeContext): Promise<void> => {
         switch (ctx.interface) {
-            case "descending-auction": {
-                // The descending auction's sole runtime input is its opening
-                // (maximum) price — the auction id + process + currency are all
-                // derived. The auction selects the counterparty, so the order is
-                // deferred until a provider claims.
-                const startPrice = parseToken(String(ctx.fieldValues.startPrice ?? "0"), ctx.tokenDecimals);
-                if (startPrice <= 0n) {
-                    throw new Error("A descending auction needs an opening price above zero.");
-                }
-                if (!address) {
-                    throw new Error("Connect a wallet to open the auction.");
-                }
-                const target = compositionTarget(ctx.interface);
-                if (!target) {
-                    throw new Error(`No on-network instance available for composition interface "${ctx.interface}".`);
-                }
-                // Call-shape is integration code: createAuction(auctionId, maxPrice,
-                // processId, currency). Address + ABI came from compositionTarget.
-                const hash = await writeContractAsync({
-                    address: target.address,
-                    abi: target.abi,
-                    functionName: "createAuction",
-                    args: [sellerAuctionId(ctx.processId), startPrice, ctx.processId, ctx.currency],
-                    account: address,
-                    chain: activeChain,
-                });
-                if (publicClient && hash) {
-                    await publicClient.waitForTransactionReceipt({ hash });
-                }
-                return { deferred: true };
-            }
             default:
                 throw new Error(
                     `No runtime handler for composition interface "${ctx.interface}". ` +

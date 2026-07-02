@@ -65,7 +65,6 @@ export function SellerTrackRecord({ record, isLoading }: Props) {
                         <Stat testId="track-stat-orders-bought" label="orders bought" value={String(record.ordersBought)} />
                         <Stat testId="track-stat-buyers-served" label="buyers served" value={String(record.buyersServed)} />
                         <Stat testId="track-stat-sellers-used" label="sellers used" value={String(record.sellersUsed)} />
-                        <Stat testId="track-stat-auction-jobs" label="auction jobs won" value={String(record.auctionJobsWon)} />
                         <Stat testId="track-stat-attestations" label="attestations emitted" value={String(record.attestationsEmitted)} />
                     </div>
 

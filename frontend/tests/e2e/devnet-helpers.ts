@@ -39,7 +39,6 @@ type DeploymentConfig = {
     attestationCoordinator?: `0x${string}`;
     clauseRegistry?: `0x${string}`;
     clauseRegistrationHelper?: `0x${string}`;
-    dutchAuction?: `0x${string}`;
     sellerRegistry?: `0x${string}`;
     assemblyRegistry?: `0x${string}`;
 };
@@ -63,7 +62,6 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
             if (key === 'NEXT_PUBLIC_ATTESTATION_COORDINATOR') config.attestationCoordinator = value;
             if (key === 'NEXT_PUBLIC_CLAUSE_REGISTRY') config.clauseRegistry = value;
             if (key === 'NEXT_PUBLIC_CLAUSE_REGISTRATION_HELPER') config.clauseRegistrationHelper = value;
-            if (key === 'NEXT_PUBLIC_DUTCH_AUCTION') config.dutchAuction = value;
             if (key === 'NEXT_PUBLIC_SELLER_REGISTRY') config.sellerRegistry = value;
             if (key === 'NEXT_PUBLIC_ASSEMBLY_REGISTRY') config.assemblyRegistry = value;
         }
@@ -76,7 +74,6 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
         config.attestationCoordinator = config.attestationCoordinator ?? (contents as any).attestationCoordinator;
         config.clauseRegistry = config.clauseRegistry ?? (contents as any).clauseRegistry;
         config.clauseRegistrationHelper = config.clauseRegistrationHelper ?? (contents as any).clauseRegistrationHelper;
-        config.dutchAuction = config.dutchAuction ?? (contents as any).dutchAuction;
         config.sellerRegistry = config.sellerRegistry ?? contents.sellerRegistry;
         config.assemblyRegistry = config.assemblyRegistry ?? (contents as any).assemblyRegistry;
     }

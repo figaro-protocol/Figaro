@@ -247,10 +247,10 @@ function CoverPage({ processId, buyer, generatedAt }: {
             </Text>
             <Text style={styles.note}>
                 Sections: Process timeline (FigaroCore lifecycle, once for the
-                whole process). Then per order, repeated: Contract · Invoice ·
-                Bill of Lading · Emissions · Proximity · Sovereign process
-                logs · Dutch auction trail · Seller registry. Then once for
-                the whole process: Financials (consolidated) · Hash appendix.
+                whole process). Then per order, repeated: Contract · Clause
+                data (every committed clause, rendered from its spec) ·
+                Process logs · Seller registry. Then once for the whole
+                process: Financials (consolidated) · Hash appendix.
             </Text>
             <PageFooter processId={processId} />
         </Page>
@@ -481,99 +481,6 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
                 <Text style={styles.sectionBody}>
                     No sovereign process events attested for this order.
                 </Text>
-            )}
-            <PageFooter agreementHash={doc.agreementHash} processId={doc.processId} />
-        </Page>
-    );
-}
-
-// ── Dutch auction page ──────────────────────────────────────────────────────
-
-function DutchAuctionPage({ doc }: { doc: AuditBundle["dutchAuction"] }) {
-    return (
-        <Page size="A4" style={styles.page}>
-            <View style={styles.header}>
-                <Text style={styles.label}>Dutch auction trail</Text>
-                <Text style={styles.h1}>{doc.title}</Text>
-            </View>
-            <View style={styles.section}>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>orderHash</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{doc.orderHash}</Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>buyer</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{doc.buyer}</Text>
-                </View>
-                <View style={styles.metadataRow}>
-                    <Text style={styles.metadataKey}>seller (provider)</Text>
-                    <Text style={[styles.metadataValue, styles.mono]}>{doc.seller}</Text>
-                </View>
-            </View>
-
-            {!doc.auctionApplicable ? (
-                <Text style={styles.sectionBody}>
-                    This order&apos;s canonical method is not Dutch auction —
-                    no auction trail applies.
-                </Text>
-            ) : !doc.auctionId ? (
-                <Text style={[styles.sectionBody, styles.badgeBad]}>
-                    Canonical method indicates Dutch-auction pricing, but the
-                    matching AuctionClaimed event was not located. Investigate
-                    — the price-discovery trail is missing from the bundle.
-                </Text>
-            ) : (
-                <>
-                    <Text style={styles.h2}>Price discovery</Text>
-                    <View style={styles.section}>
-                        <View style={styles.metadataRow}>
-                            <Text style={styles.metadataKey}>auctionId</Text>
-                            <Text style={[styles.metadataValue, styles.mono]}>{doc.auctionId}</Text>
-                        </View>
-                        {doc.creator && (
-                            <View style={styles.metadataRow}>
-                                <Text style={styles.metadataKey}>creator</Text>
-                                <Text style={[styles.metadataValue, styles.mono]}>{doc.creator}</Text>
-                            </View>
-                        )}
-                        {doc.maxPrice !== undefined && (
-                            <View style={styles.metadataRow}>
-                                <Text style={styles.metadataKey}>maxPrice</Text>
-                                <Text style={styles.metadataValue}>{fmt(doc.maxPrice)}</Text>
-                            </View>
-                        )}
-                        {doc.startBlock !== undefined && (
-                            <View style={styles.metadataRow}>
-                                <Text style={styles.metadataKey}>opened at block</Text>
-                                <Text style={styles.metadataValue}>{doc.startBlock}</Text>
-                            </View>
-                        )}
-                        {doc.clearingPrice !== undefined && (
-                            <View style={styles.metadataRow}>
-                                <Text style={styles.metadataKey}>clearingPrice</Text>
-                                <Text style={[styles.metadataValue, { fontWeight: 700 }]}>{fmt(doc.clearingPrice)}</Text>
-                            </View>
-                        )}
-                        {doc.claimedAtBlock !== undefined && (
-                            <View style={styles.metadataRow}>
-                                <Text style={styles.metadataKey}>claimed at block</Text>
-                                <Text style={styles.metadataValue}>{doc.claimedAtBlock}</Text>
-                            </View>
-                        )}
-                        {doc.blocksToClaim !== undefined && (
-                            <View style={styles.metadataRow}>
-                                <Text style={styles.metadataKey}>blocks to claim</Text>
-                                <Text style={styles.metadataValue}>{doc.blocksToClaim}</Text>
-                            </View>
-                        )}
-                    </View>
-                    <Text style={styles.note}>
-                        The auction&apos;s clearingPrice equals the order&apos;s
-                        committed payment (P) — the auction&apos;s output IS the
-                        order&apos;s price. Latency from open to claim measures
-                        the price-discovery footprint.
-                    </Text>
-                </>
             )}
             <PageFooter agreementHash={doc.agreementHash} processId={doc.processId} />
         </Page>
@@ -947,9 +854,6 @@ export function AuditBundlePdf({ data }: { data: AuditBundlePdfData }) {
             ))}
             {data.perOrderBundles.map((bundle) => (
                 <ProcessLogsPage key={`processlogs-${bundle.processLogs.orderHash}`} doc={bundle.processLogs} />
-            ))}
-            {data.perOrderBundles.map((bundle) => (
-                <DutchAuctionPage key={`auction-${bundle.dutchAuction.orderHash}`} doc={bundle.dutchAuction} />
             ))}
             {data.perOrderBundles.map((bundle) => (
                 <SellerRegistryPage key={`opreg-${bundle.sellerRegistry.orderHash}`} doc={bundle.sellerRegistry} />

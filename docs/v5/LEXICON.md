@@ -64,7 +64,7 @@ canonical across kernel + SDK + frontend (225 uses), rivals (`agreementId`/`Ref`
    different event vocabularies = different work lifecycles) — clause-bound, NOT party names.
 
 **Homonym (not a synonym):** `provider` = `OffsetProvider` (klima/toucan) · the wallet provider ·
-`DutchAuction`'s `provider` (auction claimer) — three distinct concepts, intentionally same word.
+— distinct concepts, intentionally same word. (The `DutchAuction` `provider` sense retired with the contract, 2026-07-02.)
 
 Related: `CLAUDE.md` "Three-Tier Naming" + "Layered vocabulary"; `OPEN_WORLD.md` §1 (the projection
 distinction); `reference_layered_vocabulary` memory (the failure-mode "why").

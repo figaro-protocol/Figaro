@@ -94,7 +94,7 @@ every extension.
   through the surface permissionlessly — that openness IS the composability claim, not a
   feature shipped one-by-one. Never inventory external coupling as graded integrations
   ("shipped / shallow / roadmap"); name what each example DEMONSTRATES about the surface
-  (Kleros/Klima/Dutch-auction are builders composing through the boundary), never its
+  (Kleros/Klima/Toucan are builders composing through the boundary), never its
   shipped-depth.
 
 - **Each artifact family gets its own anchor** (clauses → ClauseRegistry; sellers →

@@ -87,12 +87,6 @@ export interface SubmitClauseAttestationCapabilityAction {
     roleOrderHash?: string;
 }
 
-interface ClaimAuctionCapabilityAction {
-    executionType: "transaction";
-    kind: "claim-auction";
-    auctionId: string;
-}
-
 
 interface ClaimAirdropCapabilityAction {
     executionType: "transaction";
@@ -121,7 +115,6 @@ export type CapabilityActionDescriptor =
     | UpdateSellerProfileCapabilityAction
     | WithdrawSellerDepositCapabilityAction
     | SubmitClauseAttestationCapabilityAction
-    | ClaimAuctionCapabilityAction
     | ClaimAirdropCapabilityAction
     | ClaimVestingCapabilityAction
     | PrototypeCapabilityAction;

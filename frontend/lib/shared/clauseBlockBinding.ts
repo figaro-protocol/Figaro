@@ -64,7 +64,7 @@ export interface ClauseBlockBinding {
      *  from the clause's content `fields` (which are committed into the agreement
      *  at signing). Rendered by ONE generic form; the surface reads no interface
      *  name. Serves any runtime input: a composed contract's parameters (e.g. a
-     *  descending auction's start price — paired with `composes`) or a runtime
+     *  composed contract's opening parameter — paired with `composes`) or a runtime
      *  attestation's witness. Same `FieldSpec` shape as content fields — one
      *  parser, one renderer. Omit for clauses with no runtime input. */
     fields?: readonly FieldSpec[];

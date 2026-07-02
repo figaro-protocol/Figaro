@@ -4,8 +4,6 @@
     "tests/e2e/fixtures/inject-ethereum-multi.js",
     "lib/composition/useOffsetRetirement.ts",
     "lib/composition/useGHGDisclosure.ts",
-    "lib/composition/useDutchAuction.ts",
-    "lib/seller/sellerAuction.ts",
     "lib/agent/useDidWeb.ts"
   ]
 }

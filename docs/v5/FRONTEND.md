@@ -53,7 +53,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 
 **Components (`app/(builders)/builders/designer/_components/`):**
 - `DesignerCanvas.tsx` — the shared editor surface used by `/new` and `/edit/[slug]`. Hosts the toolbar (← Assemblies | name | saved hint | Save | Publish | Reset), the DAG canvas, the agreement drawer, and the autosave loop.
-- `AgreementDrawer.tsx` — per-node clause composer. Two tabs: Parties (buyer / seller / DAG position) and a network-driven **Registry** tab listing every clause registered on `ClauseRegistry` (grouped by `block.article`), each a checkbox that expands to single-select design-time field choices. Checked clauses + their values are captured into the no-hash assembly template (`clausesByOrderId` → `buildAssemblyTemplate`); the assembly-level privileged-token choice lives in the consent group. No hardcoded clause roster.
+- `AgreementDrawer.tsx` — per-node clause composer. Two tabs: Parties (buyer / seller / DAG position) and a network-driven **Registry** tab listing every clause registered on `ClauseRegistry` (grouped by `block.article`), each a checkbox that expands to single-select design-time field choices. Checked clauses + their values are captured into the no-hash assembly template (`clausesByOrderId` → `buildAssemblyTemplate`). No hardcoded clause roster.
 - `DraftsList.tsx` — saved-drafts list on the landing.
 - `PublishedList.tsx` — published-assemblies list for the connected wallet.
 - `ClausesList.tsx` — clauses catalogue on the landing.
@@ -67,9 +67,9 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
   to a form value. `{ isReady, validate, loadError }`.
 - `clauseSpecSource.ts` — the module spec cache. No bundled copy and no
   preload: `useClauseSpecs` warms it chain→IPFS via `loadClauseSpec(id, uri)`
-  from `ClauseRegistered` events (18 protocol clauses on the devnet — 16
+  from `ClauseRegistered` events (17 protocol clauses on the devnet — 16
   runtime-attestable + 2 agreement-only (`figaro-topology`,
-  `figaro-descending-auction`) — plus any third-party registrations);
+  plus any third-party registrations);
   spec-consuming surfaces gate on its `loaded`.
 
 ## Components (`components/`)

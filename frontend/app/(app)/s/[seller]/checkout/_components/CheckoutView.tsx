@@ -9,9 +9,8 @@
  * validates Layer A, runs the bilateral / multi-order commit, and redirects to
  * `/orders/<processId>`. Every order's clauses come straight from the assembly
  * template; every sub-order's seller is resolved generically from the assembly's
- * `counterpartyBindings`. No dutch-auction, no courier picker, no modality
- * taxonomy, no buyer-set pricing — those are the assembly's concerns, not the
- * checkout's.
+ * `counterpartyBindings`. No courier picker, no modality taxonomy, no
+ * buyer-set pricing — those are the assembly's concerns, not the checkout's.
  *
  * The cart is read-only here: it is the buyer's line-item selection, edited on
  * the browse page. Checkout reads it, it does not mutate it.
@@ -113,10 +112,10 @@ export function CheckoutView({ sellerAddress }: Props) {
 
     // The buyer's options ARE the seller's bound assemblies — each is one
     // option, labelled by the assembly's own name and keyed by its slug.
-    // Fill-mechanism variants (a catalogue-bound counterparty, a buyer pick, a
-    // descending-auction composition) are DISTINCT assemblies, so picking the
-    // assembly picks the mechanism; the checkout hardcodes no taxonomy and reads
-    // no coordination field — the mechanism is derived from binding + composes.
+    // Fill-mechanism variants (a catalogue-bound counterparty, a buyer pick)
+    // are DISTINCT assemblies, so picking the assembly picks the mechanism;
+    // the checkout hardcodes no taxonomy and reads no coordination field —
+    // the mechanism is derived from binding state.
     const assemblyOptions: { slug: string; name: string }[] = useMemo(
         () => boundAssemblies.map((a) => ({ slug: a.slug, name: a.name })),
         [boundAssemblies],
@@ -231,12 +230,10 @@ export function CheckoutView({ sellerAddress }: Props) {
         }
         return out;
     })();
-    const nodeComposes = (nodeId: string) => orderCompositions.some((c) => c.nodeId === nodeId);
-    // An unbound sub-order that composes gets its counterparty from the composed
-    // contract (an auction selects it); one that does NOT compose is the buyer's
-    // counterparty pick. Derived from binding state + block.composes presence —
-    // never the interface name, never a stored coordination value.
-    const buyerPickSubOrders = unboundSubOrders.filter((p) => !nodeComposes(p.node.id));
+    // A composition never supplies a counterparty (counterparty-deferring
+    // compositions were retired with the dutch auction 2026-07-02) — every
+    // unbound sub-order is the buyer's pick, whether or not it composes.
+    const buyerPickSubOrders = unboundSubOrders;
     const buyerChoosesCounterparty = buyerPickSubOrders.length > 0;
     // Every composition's REQUIRED block.fields must be filled before placing.
     const isFilled = (v: unknown) =>
@@ -288,13 +285,6 @@ export function CheckoutView({ sellerAddress }: Props) {
                         name: nameOf(seller),
                         payment: resolveSubOrderPayment({ node, seller, sellerCatalogues, tokenDecimals }),
                     };
-                }
-                // Unbound node that composes an on-network contract: its
-                // counterparty + price come from the composition (e.g. an auction
-                // claim), not the commit. Label derived from the interface name.
-                const comp = orderCompositions.find((c) => c.nodeId === node.id);
-                if (comp) {
-                    return { name: `(${comp.interface.replace(/-/g, " ")})`, payment: 0n };
                 }
                 // Unbound node: the buyer's checkout-time choice fills it — the
                 // shown figure is the SAME selection the commit will use.
@@ -644,9 +634,9 @@ export function CheckoutView({ sellerAddress }: Props) {
                         )}
 
                         {/* Buyer-assigned: the catalogue leaves the sub-order
-                            unbound (and it composes no auction) — the buyer
-                            chooses the counterparty here, priced from that
-                            seller's own catalogue. Checkout-phase data, like the cart. */}
+                            unbound — the buyer chooses the counterparty here,
+                            priced from that seller's own catalogue.
+                            Checkout-phase data, like the cart. */}
                         {buyerChoosesCounterparty && (
                             <SellerCataloguePicker
                                 tokenSymbol={tokenSymbol}
@@ -657,8 +647,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                         {/* On-network composition inputs (the fifth noun): any
                             order whose clause declares block.composes + block.fields
                             gets those runtime fields rendered here generically —
-                            one form, naming no clause or interface. A descending
-                            auction surfaces its startPrice this way; a novel
+                            one form, naming no clause or interface — a novel
                             composition surfaces its own fields with zero code. */}
                         {orderCompositions.map((c) => (
                             <div key={c.nodeId} data-testid={`composition-${c.nodeId}`} className="space-y-2">

@@ -46,7 +46,7 @@ for f in $files; do
     # Defaulting a protocol ADDRESS to its configured constant is config
     # resolution, not fabricated content — only token/content fallbacks fabricate
     # what the network should say (a seller's currency, a catalogue image, …).
-    ADDR='CONTRACTS\.(core|figaroCore|attestationCoordinator|clauseRegistry|clauseRegistrationHelper|sellerRegistry|assemblyRegistry|dutchAuction)'
+    ADDR='CONTRACTS\.(core|figaroCore|attestationCoordinator|clauseRegistry|clauseRegistrationHelper|sellerRegistry|assemblyRegistry)'
     hits=$(grep -nE "$PAT_DEFAULT|$PAT_COINED" "$f" | grep -vE "$ADDR" || true)
     if [[ -n "$hits" ]]; then
         echo "[no-network-fallbacks] $f — fabricates network state (resolved-empty must render as ABSENCE):"

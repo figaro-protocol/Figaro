@@ -55,8 +55,8 @@ function collectAssemblyClauses(template: AssemblyTemplate): string[] {
  *  process-log clause — whatever the seller binds in their catalogue is
  *  seller-assigned; whatever they leave unbound becomes the buyer's
  *  checkout-time choice. There is NO coordination clause: the fill mechanism
- *  is DERIVED (bound vs unbound in the catalogue; a `descending-auction`
- *  composition defers to the auction), never read from a stored field.
+ *  is DERIVED (bound vs unbound in the catalogue), never read from a
+ *  stored field.
  *
  *  The sub-order's process clause is identified from its SPEC, never by
  *  name: a runtime clause with an enum ladder that is not a companion

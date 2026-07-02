@@ -16,15 +16,9 @@ import type { Agreement } from "@figaro/core";
 import { getAllSellerRegistered } from "@/lib/protocol/sellerRegistryIndexer";
 import {
     getAttestationsByOrder,
-    getAllAuctionCreated,
-    getAllAuctionClaimed,
     type IndexedAttestationLog,
 } from "@/lib/composition/indexer";
 import { buildAuditBundle, type AuditBundle } from "@/lib/audit/auditBundle";
-import type {
-    DutchAuctionCreatedEvent,
-    DutchAuctionClaimedEvent,
-} from "@/lib/composition/dutchAuctionExtract";
 import type {
     SellerRegisteredEvent,
 } from "@/lib/audit/sellerRegistryExtract";
@@ -59,36 +53,6 @@ export function toAttestationRecord(log: IndexedAttestationLog): AttestationReco
         contentRef: args.contentRef ?? "0x",
         transactionHash: log.transactionHash ?? null,
         blockNumber: log.blockNumber === undefined ? 0 : Number(log.blockNumber),
-    };
-}
-
-function toAuctionCreated(log: IndexedLog): DutchAuctionCreatedEvent | null {
-    const a = log.args;
-    if (!a || typeof a.auctionId !== "string" || typeof a.creator !== "string"
-        || typeof a.processId !== "string" || typeof a.currency !== "string") {
-        return null;
-    }
-    return {
-        auctionId: a.auctionId,
-        creator: a.creator,
-        maxPrice: typeof a.maxPrice === "bigint" ? a.maxPrice : BigInt(String(a.maxPrice ?? 0)),
-        processId: a.processId,
-        currency: a.currency,
-        blockNumber: log.blockNumber === undefined ? undefined : Number(log.blockNumber),
-        transactionHash: log.transactionHash,
-    };
-}
-
-function toAuctionClaimed(log: IndexedLog): DutchAuctionClaimedEvent | null {
-    const a = log.args;
-    if (!a || typeof a.auctionId !== "string" || typeof a.provider !== "string") return null;
-    return {
-        auctionId: a.auctionId,
-        provider: a.provider,
-        clearingPrice:
-            typeof a.clearingPrice === "bigint" ? a.clearingPrice : BigInt(String(a.clearingPrice ?? 0)),
-        blockNumber: log.blockNumber === undefined ? undefined : Number(log.blockNumber),
-        transactionHash: log.transactionHash,
     };
 }
 
@@ -133,28 +97,16 @@ export async function buildAuditBundlePdfBlob(
 ): Promise<Blob> {
     const perOrderBundles: AuditBundle[] = [];
 
-    let auctionCreatedAll: DutchAuctionCreatedEvent[] = [];
-    let auctionClaimedAll: DutchAuctionClaimedEvent[] = [];
     let sellerRegisteredAll: SellerRegisteredEvent[] = [];
     if (publicClient) {
         try {
-            const [createdLogs, claimedLogs, opRegLogs] = await Promise.all([
-                getAllAuctionCreated(publicClient, chainId),
-                getAllAuctionClaimed(publicClient, chainId),
-                getAllSellerRegistered(publicClient, chainId),
-            ]);
-            auctionCreatedAll = (createdLogs as IndexedLog[])
-                .map(toAuctionCreated)
-                .filter((r): r is DutchAuctionCreatedEvent => r !== null);
-            auctionClaimedAll = (claimedLogs as IndexedLog[])
-                .map(toAuctionClaimed)
-                .filter((r): r is DutchAuctionClaimedEvent => r !== null);
+            const opRegLogs = await getAllSellerRegistered(publicClient, chainId);
             sellerRegisteredAll = (opRegLogs as IndexedLog[])
                 .map(toSellerRegistered)
                 .filter((r): r is SellerRegisteredEvent => r !== null);
         } catch {
-            // Non-fatal — extractors will report auctionApplicable=false /
-            // registered=false and the bundle still renders.
+            // Non-fatal — the extractor reports registered=false and the
+            // bundle still renders.
         }
     }
 
@@ -181,14 +133,8 @@ export async function buildAuditBundlePdfBlob(
             }
         }
 
-        const orderAuctionsCreated = auctionCreatedAll.filter((e) => e.processId === order.processId);
-        const auctionIds = new Set(orderAuctionsCreated.map((e) => e.auctionId));
-        const orderAuctionsClaimed = auctionClaimedAll.filter((e) => auctionIds.has(e.auctionId));
-
         perOrderBundles.push(
             buildAuditBundle(order, agreement, attestations, {
-                auctionCreatedEvents: orderAuctionsCreated,
-                auctionClaimedEvents: orderAuctionsClaimed,
                 sellerRegistrationEvents: sellerRegisteredAll,
             }),
         );

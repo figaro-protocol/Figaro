@@ -36,9 +36,11 @@ An agent queries the process graph to find:
 - Active deliveries awaiting drivers (courier agents)
 - Settlement history for reliability assessment (any agent)
 
-The Dutch auction mechanism (`DutchAuction`) is the primary
-coordination surface for driver agents: a decaying price curve that agents
-monitor and claim when the price meets their profitability threshold.
+Courier agents monitor open delivery demand (unfilled courier edges in
+committed processes) and accept work whose catalogue-rate economics meet
+their profitability threshold. (The Dutch-auction coordination surface was
+abandoned 2026-07-02; pricing is a catalogue concern — e.g. rate × geohash
+distance.)
 
 ### Geo Graph → Spatial Routing
 
@@ -65,7 +67,7 @@ Automated compliance agents can:
 
 Agents optimize capital allocation by monitoring:
 - Bond flows and settlement payouts over time (capital efficiency)
-- Auction clearing prices over time (market rate for delivery services)
+- Settled courier payments over time (market rate for delivery services)
 - Bond sizes relative to order values (risk assessment)
 - Settlement velocity (time from Active to Resolved)
 
@@ -87,9 +89,9 @@ function as decentralized coordination:
    prepared here"
 2. A buyer creates an order with a drop-off geohash → signal: "demand exists
    in this zone"
-3. A Dutch auction opens with a clearing price → signal: "this delivery job
-   is worth up to X"
-4. A driver claims the job → signal: "this zone is being served"
+3. A courier order commits at a catalogue-rate payment → signal: "delivery
+   in this zone clears at X"
+4. The courier's attestations advance → signal: "this zone is being served"
 5. Settlement completes → signal: "this route was profitable"
 
 Over time, agents accumulate a spatial-temporal model of supply and demand
@@ -103,7 +105,7 @@ firms would dissolve when transaction costs reach zero.
 
 | Agent Type | Graph Consumed | Action Taken |
 |------------|---------------|--------------|
-| Driver (human) | Geo, Process, Capital | Filter jobs by zone, claim auctions |
+| Driver (human) | Geo, Process, Capital | Filter jobs by zone, accept work |
 | Driver (AI) | Geo, Process, Capital | Optimize multi-stop routes, dynamic pricing |
 | Food preparer | Process | Accept/decline orders, manage prep pipeline |
 | Buyer | Process, GHG | Place orders, verify disclosures |
@@ -122,8 +124,7 @@ firms would dissolve when transaction costs reach zero.
 3. **No data moats**: Competitors and collaborators see the same signals.
    Advantage comes from better *interpretation*, not better *access*.
 4. **Composable agents**: An agent built for Local Commerce delivery routing can be
-   adapted for any other archetype that uses geohash + Dutch auction
-   coordination.
+   adapted for any other archetype that uses geohash coordination.
 
 ---
 

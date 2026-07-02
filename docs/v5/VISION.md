@@ -138,7 +138,7 @@ that constitute the information layer of the public coordination economy:
 1. **Process graph** (protocol-enforced) — orders, bonds, settlement, DAG
 2. **Spatial graph** (institution-declared) — geohashes, routing signals, zones
 3. **Disclosure graph** (protocol-derived) — clauses, requirements, submissions
-4. **Capital graph** (protocol-enforced) — bond flows, vault positions, auction clearing
+4. **Capital graph** (protocol-enforced) — bond flows, settlement payouts
 5. **Cross-process graph** (protocol-derived) — template provenance, settlement links
 
 Each graph has its own truth boundary:
@@ -268,8 +268,8 @@ threshold required — only solvency.
 independent value-adder. The entity formerly known as a "restaurant" does not
 exist — what exists is a cook, a kitchen seller, an ingredient sourcer, each
 bonding independently, each compensated directly for the value they add. A
-"driver" is a fulfiller who won an auction, not an employee dispatched by
-management. Token fees flow to each node for the value it contributes —
+"driver" is an independent fulfiller who counter-signed a bonded order at
+their own catalogue rate, not an employee dispatched by management. Token fees flow to each node for the value it contributes —
 identical in structure to validator fees paid for compute.
 
 Two settlement topologies emerge naturally from this:

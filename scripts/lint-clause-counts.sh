@@ -54,11 +54,8 @@ fi
 # re-asserted as a runtime attestation, so they are NOT runtime-attestable.
 # There is no single stored JSON flag for this (the property is derived — no
 # attestation surface), so the enumerable set is named here explicitly:
-#   - figaro-topology         — the DAG is reconstructed off-chain by indexers.
-#   - figaro-descending-auction — a composition marker; the auction executes on
-#                                 the composed DutchAuction contract (events),
-#                                 not via AttestationCoordinator.
-AGREEMENT_ONLY=("figaro-topology" "figaro-descending-auction")
+#   - figaro-topology — the DAG is reconstructed off-chain by indexers.
+AGREEMENT_ONLY=("figaro-topology")
 for c in "${AGREEMENT_ONLY[@]}"; do
     if [ ! -f "$CLAUSES_DIR/$c.json" ]; then
         echo "[clause-counts] $c.json missing — runtime-attestable count assumes the agreement-only set exists" >&2

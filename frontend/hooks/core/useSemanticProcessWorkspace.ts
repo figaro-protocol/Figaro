@@ -14,7 +14,6 @@ import { isE2EMockSession } from "@/lib/shared/e2e";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { encodeContentFromSpec } from "@figaro/core/clauses";
-import { useDutchAuctionActions } from "@/lib/composition/useDutchAuction";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
 import { useRegisterSeller, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/seller/useSellerRegistry";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
@@ -68,7 +67,6 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     const { version: clauseSpecsVersion } = useClauseSpecs();
     const { resolveProcess, hash, isPending } = useFigaroActions();
     const attestationActions = useAttestationCoordinatorActions();
-    const dutchAuctionActions = useDutchAuctionActions();
     const registerSeller = useRegisterSeller();
     const updateSellerProfile = useUpdateProfile();
     const withdrawSellerDeposit = useWithdrawDeposit();
@@ -87,19 +85,16 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
     const isActionPending = isPending
         || attestationActions.isPending
-        || dutchAuctionActions.isPending
         || registerSeller.isPending
         || updateSellerProfile.isPending
         || withdrawSellerDeposit.isPending;
     const isActionConfirming = isConfirming
         || attestationActions.isConfirming
-        || dutchAuctionActions.isConfirming
         || registerSeller.isConfirming
         || updateSellerProfile.isConfirming
         || withdrawSellerDeposit.isConfirming;
     const isActionSuccess = isSuccess
         || attestationActions.isSuccess
-        || dutchAuctionActions.isSuccess
         || registerSeller.isSuccess
         || updateSellerProfile.isSuccess
         || withdrawSellerDeposit.isSuccess;
@@ -270,7 +265,6 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                         ? attestationActions.submitBuyerAttestation(args)
                         : attestationActions.submitSellerAttestation({ ...args, roleOrderHash: action.roleOrderHash as Hex | undefined });
                 },
-                claimAuction: dutchAuctionActions.claim,
             }, input);
         } catch (error) {
             setActionError(extractErrorMessage(error, "Action failed."));

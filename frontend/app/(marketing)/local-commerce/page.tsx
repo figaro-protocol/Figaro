@@ -28,7 +28,7 @@ export default function LocalCommercePage() {
                 <dl className="space-y-4 text-sm">
                     <div>
                         <dt className="text-base font-semibold text-ink-heading">Buyer</dt>
-                        <dd className="text-ink-body leading-relaxed mt-1">Root buyer of the process. Commits the root order to a merchant for goods, bonding 2× the goods payment. Commits a delivery sub-order to a courier (chosen via <code>DutchAuction</code>), bonding 2× the delivery payment. Triggers <code>resolveProcess</code> once delivery is confirmed; the kernel atomically settles the whole process.</dd>
+                        <dd className="text-ink-body leading-relaxed mt-1">Root buyer of the process. Commits the root order to a merchant for goods, bonding 2× the goods payment. Commits a delivery sub-order to a courier (the seller&apos;s bound courier, or the buyer&apos;s checkout-time choice), bonding 2× the delivery payment. Triggers <code>resolveProcess</code> once delivery is confirmed; the kernel atomically settles the whole process.</dd>
                     </div>
                     <div>
                         <dt className="text-base font-semibold text-ink-heading">Merchant</dt>
@@ -36,7 +36,7 @@ export default function LocalCommercePage() {
                     </div>
                     <div>
                         <dt className="text-base font-semibold text-ink-heading">Courier</dt>
-                        <dd className="text-ink-body leading-relaxed mt-1">Counter-signs the buyer&apos;s delivery sub-order at an auction-determined fee. Bonds 2× cumulative process value (goods + delivery) &mdash; cumulative upstream bonding in operation. Maps to a driver, cyclist, walker, drone, or any other delivery modality.</dd>
+                        <dd className="text-ink-body leading-relaxed mt-1">Counter-signs the buyer&apos;s delivery sub-order at their catalogue rate. Bonds 2× cumulative process value (goods + delivery) &mdash; cumulative upstream bonding in operation. Maps to a driver, cyclist, walker, drone, or any other delivery modality.</dd>
                     </div>
                 </dl>
             </section>
@@ -49,10 +49,6 @@ export default function LocalCommercePage() {
                     <li className="border-b border-default pb-3">
                         <div className="text-ink-heading font-medium"><code>FigaroCore</code></div>
                         <p className="text-sm text-ink-muted mt-0.5">Kernel. Holds bonds. <code>commit</code> establishes root + sub-orders; <code>resolveProcess</code> atomically settles the whole process.</p>
-                    </li>
-                    <li className="border-b border-default pb-3">
-                        <div className="text-ink-heading font-medium"><code>DutchAuction</code></div>
-                        <p className="text-sm text-ink-muted mt-0.5">Descending-price mechanism for courier dispatch. The merchant posts a delivery job; the auction starts at a max price and linearly decays to a floor. The first courier to accept wins at the current price; surplus refunds to the buyer.</p>
                     </li>
                     <li className="border-b border-default pb-3">
                         <div className="text-ink-heading font-medium"><code>AttestationCoordinator</code></div>

@@ -6,7 +6,7 @@
  *   - Mock: in-memory message bus for e2e tests
  *
  * The channel carries per-order AES handoff keys from buyer to fulfiller
- * after the fulfiller wins an auction or is assigned. The fulfiller uses
+ * after the fulfiller is assigned. The fulfiller uses
  * the key to decrypt the sealed payload and reveal the destination address.
  */
 

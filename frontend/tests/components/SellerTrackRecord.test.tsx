@@ -15,7 +15,6 @@ const WITH_HISTORY: TrackRecord = {
     ],
     buyersServed: 9,
     sellersUsed: 4,
-    auctionJobsWon: 3,
     attestationsEmitted: 25,
     attestationsByClause: [{ clauseId: "0xabc", count: 25 }],
 };
@@ -30,7 +29,6 @@ const NO_HISTORY: TrackRecord = {
     valueTransacted: [],
     buyersServed: 0,
     sellersUsed: 0,
-    auctionJobsWon: 0,
     attestationsEmitted: 0,
     attestationsByClause: [],
 };
@@ -40,7 +38,7 @@ describe("SellerTrackRecord", () => {
         render(<SellerTrackRecord record={WITH_HISTORY} isLoading={false} />);
         expect(screen.getByTestId("seller-track-record")).toBeInTheDocument();
         // The eight stat tiles — distinct values, one per indicator.
-        for (const value of ["7", "2", "14", "6", "9", "4", "3", "25"]) {
+        for (const value of ["7", "2", "14", "6", "9", "4", "25"]) {
             expect(screen.getByText(value)).toBeInTheDocument();
         }
         // Value transacted, formatted per currency.

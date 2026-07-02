@@ -48,7 +48,7 @@ coordination) and NEVER touches bonding, which is always linear and on-chain.
 - routes only by STRUCTURAL spec properties any entry declares (`block.article`, enum-ladder presence, `block.nestsUnder`, `block.composes`, declared-field presence via `clauseDeclaresField`) without assuming a specific field's meaning;
 - is the generic registry reader (`clauseSpecSource`) or a whole-registry hook (`useClauseRegistry`/`useAssemblyRegistry`/`useClauseSpecs`) or the indexer (reads all events generically);
 - derives from KERNEL state available for any process (bond math from payment/cumulativeValue, order state from events). NOT sanctioned: FABRICATING data the parties never committed — the retired cumulative-value "linear-fallback" invented topology edges and was deleted (2026-07-02); topology+commerce are structural/mandatory, so an unreadable section means NOT-YET-HYDRATED (render absence), never a synthesized default;
-- composes with a specific ON-NETWORK CONTRACT as an adapter (Kleros, Klima/Toucan, DutchAuction) — the fifth noun, sanctioned composition; a clause-specific *evidence producer* (consent/proximity Kleros evidence) is likewise a named adapter, not a generic surface pretending to be open — flag ONLY if it leaks into generic code;
+- composes with a specific ON-NETWORK CONTRACT as an adapter (Kleros, Klima/Toucan) — the fifth noun, sanctioned composition; a clause-specific *evidence producer* (consent/proximity Kleros evidence) is likewise a named adapter, not a generic surface pretending to be open — flag ONLY if it leaks into generic code;
 - stores a seller's OWN free-form editorial (name/specialty/description);
 - merely MENTIONS a family in a comment / descriptive filename / type name while the LOGIC doesn't depend on it.
 

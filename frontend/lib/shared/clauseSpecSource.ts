@@ -176,10 +176,13 @@ export function composesForumUrl(clauseId: string): string | undefined {
 
 /** The STANDARD composition interface a clause binds to, from its
  *  `block.composes.interface` — the open-world discriminator for WHICH on-network
- *  contract an order composes with (e.g. "descending-auction",
- *  "carbon-aggregator", "dispute-forum"). Generic surfaces derive composition
- *  behaviour from this string, never a bundled clause-id. Undefined when the
- *  clause composes with nothing, or its spec isn't loaded. */
+ *  contract an order composes with (e.g. "carbon-aggregator", "dispute-forum").
+ *  Generic surfaces derive composition behaviour from this string, never a
+ *  bundled clause-id. Undefined when the clause composes with nothing, or its
+ *  spec isn't loaded.
+ *  @public pending consumer: the composes-seam reader (kept by operator ruling
+ *  2026-07-02); its next consumer is the emissions cluster's carbon-aggregator
+ *  interface gate. */
 export function composesInterface(clauseId: string): string | undefined {
     return getClauseSpec(clauseId)?.block?.composes?.interface;
 }

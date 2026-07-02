@@ -33,7 +33,7 @@ If the user pointed you at a diff, run it (`git diff <range>`). If a file, read 
 State the tier explicitly. Rules differ across tiers:
 
 - **Kernel** = `src/FigaroCore.sol`, `src/CommitmentTypes.sol`, kernel storage mappings (`processes`, `orderStatus`, `orderProcessId`), bonding math. Frozen. Verify 3× before approving any change.
-- **Protocol** = extension contracts (`ClauseRegistry.sol`, `AttestationCoordinator.sol`, `SellerRegistry.sol`, `DutchAuction.sol`, `clauseValidators/*`, `FigaroBatchVerifier.sol`). Extension doctrine in `docs/v5/CLAUSES.md` applies.
+- **Protocol** = extension contracts (`ClauseRegistry.sol`, `AttestationCoordinator.sol`, `SellerRegistry.sol`, `AssemblyRegistry.sol`). Extension doctrine in `docs/v5/CLAUSES.md` applies.
 - **Runtime** = `frontend/`, semantic layer, builder surfaces, UI. Most patterns are fine here.
 
 A pattern that is an anti-pattern at the kernel tier may be acceptable at runtime. **Always state the tier in your findings.**

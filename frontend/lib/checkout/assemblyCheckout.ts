@@ -30,7 +30,6 @@ import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/checkout/assemblySubOrderPlan";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { clauseDeclaresField } from "@/lib/shared/clauseSpecSource";
-import { stashSellerDraft } from "@/lib/seller/sellerAuction";
 import { parseToken } from "@/lib/shared/utils";
 import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
 import type { SellerCatalogue } from "@/lib/seller/types";
@@ -57,16 +56,15 @@ export interface AssemblyCheckoutDeps {
     signAndShare: (preview: OrderPreview) => Promise<CommitmentPayload>;
     /** Invokes a sub-order's on-network composition (the fifth noun) — the
      *  surface routes the standard `interface` to its handler and owns the tx +
-     *  receipt wait (useCompositionActions). Returns whether the composition
-     *  defers the order's counterparty (auction) or runs alongside a normal
-     *  commit. */
+     *  receipt wait (useCompositionActions). The composition runs alongside the
+     *  order's normal commit. */
     compose?: (args: {
         interface: string;
         fieldValues: Record<string, unknown>;
         processId: `0x${string}`;
         currency: `0x${string}`;
         tokenDecimals: number;
-    }) => Promise<{ deferred: boolean }>;
+    }) => Promise<void>;
 }
 
 /**
@@ -137,12 +135,9 @@ export async function executeAssemblyCheckout(
         subOrderSelections?: Record<string, { seller: `0x${string}`; price: string }>;
         /** On-network compositions (the fifth noun) keyed by template node id:
          *  the composing clause's `interface` (from `block.composes`) plus the
-         *  buyer's `block.fields` values collected at checkout. For a deferring
-         *  composition (a descending auction) the unbound sub-order is stashed on
-         *  this device and the composed contract opens; the claiming seller
-         *  commits the order post-claim (the SellerAuctionPanel on the order
-         *  page), counter-signed by the buyer, and the process commits with the
-         *  root only. Interface-agnostic — the walk names no clause. */
+         *  buyer's `block.fields` values collected at checkout. The composition
+         *  runs alongside the order's normal commit. Interface-agnostic — the
+         *  walk names no clause. */
         subOrderCompositions?: Record<string, { interface: string; fieldValues: Record<string, unknown> }>;
     },
     deps: AssemblyCheckoutDeps,
@@ -200,40 +195,26 @@ export async function executeAssemblyCheckout(
     let cumulativeValue = payment;
 
     for (const { node, seller: boundSeller } of planSubOrderSellers(assembly)) {
-        // On-network composition (fifth noun): an unbound sub-order whose clause
-        // declares `block.composes` gets its counterparty from the composed
-        // contract, not a buyer pick. The interface is routed to its handler by
-        // the surface (`deps.compose`) — the walk names no clause. A DEFERRING
-        // composition (a descending auction) stashes the order's build
-        // parameters here and skips it; it joins the process when a provider
-        // claims (committed post-claim from the draft, its cumulative-value
-        // check read fresh at that point).
+        // On-network composition (fifth noun): a sub-order whose clause declares
+        // `block.composes` invokes the composed contract ALONGSIDE its normal
+        // commit — the interface is routed to its handler by the surface
+        // (`deps.compose`); the walk names no clause. (Counterparty-deferring
+        // compositions were retired with the dutch auction 2026-07-02: a
+        // mid-chain order whose price or party is unknown at signing is
+        // structurally incompatible with the kernel's exact-match cumulative
+        // accumulator.)
         const composition = boundSeller ? undefined : params.subOrderCompositions?.[node.id];
         if (composition) {
             if (!deps.compose) {
                 throw new Error("This assembly composes an on-network contract for a sub-order, but no composition mechanism is available.");
             }
-            const parentHashes = templateParentOrderHashes(node)
-                .map((pid) => realOrderHash.get(pid))
-                .filter((h): h is `0x${string}` => !!h);
-            stashSellerDraft(processId, {
-                buyer,
-                currency,
-                processId,
-                parentOrderHashes: parentHashes,
-                clauseFields: { ...node.clauses },
-            });
-            const { deferred } = await deps.compose({
+            await deps.compose({
                 interface: composition.interface,
                 fieldValues: composition.fieldValues,
                 processId,
                 currency,
                 tokenDecimals,
             });
-            // A deferring composition skips the commit now (the provider commits
-            // post-claim from the stash); a non-deferring one falls through to
-            // the normal sub-order commit below (it still needs a counterparty).
-            if (deferred) continue;
         }
         // A profile binding designates the counterparty; a node the profile
         // leaves unbound takes the buyer's checkout-time choice.

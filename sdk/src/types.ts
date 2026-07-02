@@ -94,21 +94,7 @@ export interface AttestationEvent {
     blockNumber: number;
 }
 
-export interface AuctionCreatedEvent {
-    auctionId: Hex;
-    creator: Address;
-    maxPrice: bigint;
-    processId: Hex;
-    currency: Address;
-    blockNumber: number;
-}
 
-export interface AuctionClaimedEvent {
-    auctionId: Hex;
-    provider: Address;
-    clearingPrice: bigint;
-    blockNumber: number;
-}
 
 // ── EIP-712 commitment type (unified — matches CommitmentTypes.sol) ─────────
 
@@ -138,7 +124,6 @@ export interface FigaroAddresses {
     token?: Address;
     attestationCoordinator?: Address;
     clauseRegistry?: Address;
-    dutchAuction?: Address;
 }
 
 // ── Bond breakdown ──────────────────────────────────────────────────────────

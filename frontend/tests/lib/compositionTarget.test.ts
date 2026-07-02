@@ -1,26 +1,17 @@
-import { describe, expect, it, vi } from "vitest";
-
-// getDutchAuction reads the instance address from env (empty in the test env);
-// override just that export so we exercise resolution, not env plumbing.
-vi.mock("@/lib/composition/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/composition/contracts")>();
-    return { ...actual, getDutchAuction: () => "0x00000000000000000000000000000000000000A1" as `0x${string}` };
-});
+import { describe, expect, it } from "vitest";
 
 import { compositionTarget } from "@/lib/composition/compositionTarget";
-import { DUTCH_AUCTION_ABI } from "@/lib/composition/abis";
 
-const AUCTION_ADDR = "0x00000000000000000000000000000000000000A1";
-
+// The standard-interface registry is currently EMPTY (the descending auction —
+// its first tenant — was abandoned 2026-07-02). The seam's contract is that an
+// unknown interface resolves to null, never to a fabricated target; when the
+// next standard lands (carbon-aggregator), add a resolution case here.
 describe("compositionTarget", () => {
-    it("resolves the env address + the standard ABI for a known interface", () => {
-        const t = compositionTarget("descending-auction");
-        expect(t).not.toBeNull();
-        expect(t!.address).toBe(AUCTION_ADDR);
-        expect(t!.abi).toBe(DUTCH_AUCTION_ABI);
-    });
-
     it("returns null for an interface with no registered handler", () => {
         expect(compositionTarget("no-such-interface")).toBeNull();
+    });
+
+    it("returns null for the retired descending-auction interface", () => {
+        expect(compositionTarget("descending-auction")).toBeNull();
     });
 });

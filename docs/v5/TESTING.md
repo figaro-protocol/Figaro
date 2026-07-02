@@ -6,7 +6,7 @@ CLAUDE.md keeps the run commands; this file is the full inventory of test files,
 
 `FigaroCoreTest`, `FigaroCoreRevertBranchTest`, `FigaroCoreEventEmissionTest`,
 `AttestationCoordinatorTest`, `ClauseRegistryTest`, `AssemblyRegistryTest`,
-`DutchAuctionTest`, `SellerRegistryTest`, `ProcessOffsetReceiptTest`,
+`SellerRegistryTest`, `ProcessOffsetReceiptTest`,
 `PolygonOffsetForkTest`, `GasCeilingTest`, `SwapAndCommitCoordinatorTest`,
 `MockKlerosArbitratorTest`, `HalmosFigaroCore`, `fig/FigToken.t.sol`.
 

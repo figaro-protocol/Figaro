@@ -243,7 +243,7 @@ narrow follow-up review or a repeat audit decision.
 
 | Directory / file | Contents |
 |---|---|
-| `src/` | `FigaroCore.sol`, `AttestationCoordinator.sol`, `CommitmentTypes.sol`, `IRoleResolver.sol`, `ClauseRegistry.sol`, `DutchAuction.sol`, `SellerRegistry.sol`, `AssemblyRegistry.sol`, `ProcessOffsetReceipt.sol` |
+| `src/` | `FigaroCore.sol`, `AttestationCoordinator.sol`, `CommitmentTypes.sol`, `IRoleResolver.sol`, `ClauseRegistry.sol`, `SellerRegistry.sol`, `AssemblyRegistry.sol`, `ProcessOffsetReceipt.sol` |
 | `src/fig/` | `FigToken.sol`, `IFigMinter.sol` |
 | `script/Deploy.s.sol` | Devnet deploy (defines the devnet surface) |
 | `script/DeployMainnet.s.sol` | Mainnet deploy (defines the audited mainnet surface) |

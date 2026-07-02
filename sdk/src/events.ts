@@ -10,15 +10,13 @@
  */
 
 import { type PublicClient, type Log, decodeEventLog } from "viem";
-import { CORE_ABI, ATTESTATION_COORDINATOR_ABI, DUTCH_AUCTION_ABI } from "./abis.js";
+import { CORE_ABI, ATTESTATION_COORDINATOR_ABI } from "./abis.js";
 import {
     EV_ORDER_COMMITTED,
     EV_ORDER_RESOLVED,
     EV_PROCESS_RESOLVED,
     EV_ORDER_SELLER,
     EV_ATTESTATION,
-    EV_AUCTION_CREATED,
-    EV_AUCTION_CLAIMED,
 } from "./abis.js";
 import type {
     Hex,
@@ -27,8 +25,6 @@ import type {
     OrderResolvedEvent,
     ProcessResolvedEvent,
     AttestationEvent,
-    AuctionCreatedEvent,
-    AuctionClaimedEvent,
     FigaroAddresses,
 } from "./types.js";
 
@@ -129,55 +125,7 @@ export function parseAttestationLogs(logs: Log[]): AttestationEvent[] {
     return results;
 }
 
-export function parseAuctionCreatedLogs(logs: Log[]): AuctionCreatedEvent[] {
-    const results: AuctionCreatedEvent[] = [];
-    for (const log of logs) {
-        try {
-            const decoded = decodeEventLog({
-                abi: DUTCH_AUCTION_ABI,
-                data: log.data,
-                topics: log.topics,
-            });
-            if (decoded.eventName !== "AuctionCreated") continue;
-            const a = decoded.args as Record<string, unknown>;
-            results.push({
-                auctionId: a.auctionId as Hex,
-                creator: a.creator as Address,
-                maxPrice: a.maxPrice as bigint,
-                processId: a.processId as Hex,
-                currency: a.currency as Address,
-                blockNumber: Number(log.blockNumber ?? 0),
-            });
-        } catch {
-            // Skip non-matching logs
-        }
-    }
-    return results;
-}
 
-export function parseAuctionClaimedLogs(logs: Log[]): AuctionClaimedEvent[] {
-    const results: AuctionClaimedEvent[] = [];
-    for (const log of logs) {
-        try {
-            const decoded = decodeEventLog({
-                abi: DUTCH_AUCTION_ABI,
-                data: log.data,
-                topics: log.topics,
-            });
-            if (decoded.eventName !== "AuctionClaimed") continue;
-            const a = decoded.args as Record<string, unknown>;
-            results.push({
-                auctionId: a.auctionId as Hex,
-                provider: a.provider as Address,
-                clearingPrice: a.clearingPrice as bigint,
-                blockNumber: Number(log.blockNumber ?? 0),
-            });
-        } catch {
-            // Skip non-matching logs
-        }
-    }
-    return results;
-}
 
 // ── Bulk fetch helpers ──────────────────────────────────────────────────────
 

@@ -8,7 +8,6 @@ import "../src/FigaroCore.sol";
 import "../src/AttestationCoordinator.sol";
 import "../src/ClauseRegistry.sol";
 import "../src/SellerRegistry.sol";
-import "../src/DutchAuction.sol";
 import "../src/fig/FigToken.sol";
 import "../src/mocks/MockPermitToken.sol";
 import "../src/mocks/MockOffsetAggregator.sol";
@@ -19,7 +18,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @title Deploy — Full protocol stack to local Anvil
 /// @notice Deploys: FigaroCore, AttestationCoordinator, ClauseRegistry,
-///         AssemblyRegistry, SellerRegistry, DutchAuction, FigToken,
+///         AssemblyRegistry, SellerRegistry, FigToken,
 ///         ProcessOffsetReceipt, MockERC20, MockPermitToken, MockOffsetAggregator.
 ///         Clauses are populated post-deploy (populate-clauses.mjs). Mints test
 ///         tokens to Anvil accounts.
@@ -113,13 +112,6 @@ contract Deploy is Script {
         SellerRegistry sellers = new SellerRegistry(0.001 ether, 365 days);
         console.log("SellerRegistry deployed at:", address(sellers));
 
-        // ── DutchAuction ────────────────────────────────────────────
-        DutchAuction auction = new DutchAuction(
-            30 minutes, // duration
-            2000 // 20% floor
-        );
-        console.log("DutchAuction deployed at:", address(auction));
-
         // ── FIG Token ───────────────────────────────────────────────
         FigToken fig = new FigToken();
         console.log("FigToken deployed at:", address(fig));
@@ -198,7 +190,6 @@ contract Deploy is Script {
         console.log("  NEXT_PUBLIC_SELLER_REGISTRY=", address(sellers));
         console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=", address(assemblies));
         console.log("  NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT=", address(offsetReceipts));
-        console.log("  NEXT_PUBLIC_DUTCH_AUCTION=", address(auction));
         console.log("  NEXT_PUBLIC_FIG_TOKEN_ADDRESS=", address(fig));
     }
 }

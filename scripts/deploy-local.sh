@@ -7,7 +7,7 @@ set -e
 #   .deployments/local.json         (downstream/manual consumption)
 #
 # Stack: FigaroCore, AttestationCoordinator, ClauseRegistry, AssemblyRegistry,
-#        SellerRegistry, DutchAuction, FigToken, ProcessOffsetReceipt,
+#        SellerRegistry, FigToken, ProcessOffsetReceipt,
 #        MockERC20, MockPermitToken, MockOffsetAggregator.
 #
 # Usage:
@@ -75,7 +75,6 @@ ATTESTATION_ADDR=$(echo "$FORGE_OUT" | grep 'AttestationCoordinator deployed at:
 CLAUSE_ADDR=$(echo "$FORGE_OUT"      | grep 'ClauseRegistry deployed at:'         | grep -oE '0x[0-9a-fA-F]+')
 SELLER_ADDR=$(echo "$FORGE_OUT"    | grep 'SellerRegistry deployed at:'       | grep -oE '0x[0-9a-fA-F]+')
 ASSEMBLY_ADDR=$(echo "$FORGE_OUT"    | grep 'AssemblyRegistry deployed at:'       | grep -oE '0x[0-9a-fA-F]+')
-AUCTION_ADDR=$(echo "$FORGE_OUT"     | grep 'DutchAuction deployed at:'           | grep -oE '0x[0-9a-fA-F]+')
 FIG_TOKEN_ADDR=$(echo "$FORGE_OUT"   | grep 'FigToken deployed at:'               | grep -oE '0x[0-9a-fA-F]+')
 
 PROCESS_OFFSET_RECEIPT_ADDR=$(echo "$FORGE_OUT" | grep 'ProcessOffsetReceipt deployed at:' | grep -oE '0x[0-9a-fA-F]+')
@@ -146,7 +145,6 @@ update_env "$CORE_ENV" "NEXT_PUBLIC_ATTESTATION_COORDINATOR"   "$ATTESTATION_ADD
 update_env "$CORE_ENV" "NEXT_PUBLIC_CLAUSE_REGISTRY"           "$CLAUSE_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_SELLER_REGISTRY"         "$SELLER_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_ASSEMBLY_REGISTRY"         "$ASSEMBLY_ADDR"
-update_env "$CORE_ENV" "NEXT_PUBLIC_DUTCH_AUCTION"             "$AUCTION_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_FIG_TOKEN_ADDRESS"         "$FIG_TOKEN_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT"    "$PROCESS_OFFSET_RECEIPT_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_MOCK_OFFSET_AGGREGATOR"    "$MOCK_OFFSET_AGGREGATOR_ADDR"
@@ -169,7 +167,6 @@ cat > "$CORE_DEPLOYMENT" <<EOF
   "clauseRegistry": "$CLAUSE_ADDR",
   "sellerRegistry": "$SELLER_ADDR",
   "assemblyRegistry": "$ASSEMBLY_ADDR",
-  "dutchAuction": "$AUCTION_ADDR",
   "figToken": "$FIG_TOKEN_ADDR",
   "processOffsetReceipt": "$PROCESS_OFFSET_RECEIPT_ADDR",
   "mockOffsetAggregator": "$MOCK_OFFSET_AGGREGATOR_ADDR"
@@ -186,7 +183,6 @@ echo "   NEXT_PUBLIC_ATTESTATION_COORDINATOR=$ATTESTATION_ADDR"
 echo "   NEXT_PUBLIC_CLAUSE_REGISTRY=$CLAUSE_ADDR"
 echo "   NEXT_PUBLIC_SELLER_REGISTRY=$SELLER_ADDR"
 echo "   NEXT_PUBLIC_ASSEMBLY_REGISTRY=$ASSEMBLY_ADDR"
-echo "   NEXT_PUBLIC_DUTCH_AUCTION=$AUCTION_ADDR"
 echo "   NEXT_PUBLIC_FIG_TOKEN_ADDRESS=$FIG_TOKEN_ADDR"
 echo "   NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT=$PROCESS_OFFSET_RECEIPT_ADDR"
 echo "   NEXT_PUBLIC_MOCK_OFFSET_AGGREGATOR=$MOCK_OFFSET_AGGREGATOR_ADDR"

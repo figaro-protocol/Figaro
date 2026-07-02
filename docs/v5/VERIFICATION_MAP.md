@@ -23,7 +23,7 @@ The V3 map (archived at `docs/archive/V3_VERIFICATION_MAP.md`) covered Theory �
 ### In-scope (this document)
 
 - **Kernel**: `src/FigaroCore.sol` — 2 external functions, 3 mappings, no owner, no fee
-- **Protocol extensions**: `AttestationCoordinator`, `ClauseRegistry`, `DutchAuction`, `SellerRegistry`, `AssemblyRegistry`, `ProcessOffsetReceipt`, `SwapAndCommitCoordinator`
+- **Protocol extensions**: `AttestationCoordinator`, `ClauseRegistry`, `SellerRegistry`, `AssemblyRegistry`, `ProcessOffsetReceipt`, `SwapAndCommitCoordinator`
 - **FIG token ecosystem**: `FigToken` (`IFigMinter` interface; no implementation wired)
 - **Formal model**: `formal/FigaroCore.tla`, `formal/MC.tla`, `formal/MC.cfg`
 - **Tests**: the Foundry, Halmos, Certora, Echidna, and TLA+ harnesses, plus the SDK suite — suite, file, property, and rule counts are in `TESTING.md` (the single source)
@@ -65,7 +65,6 @@ The V3 map (archived at `docs/archive/V3_VERIFICATION_MAP.md`) covered Theory �
 
 - `E-1` **Attestation role gating**: only verified role-holder (buyer/seller/resolver) can attest
 - `E-2` **Clause immutability**: registered clauses cannot be overwritten
-- `E-3` **Auction price monotonicity**: Dutch auction price only decreases over time
 - `E-4` **Seller deposit lock**: withdrawal only after deactivation + lock period
 - `E-6` **FIG supply cap**: total minted ≤ 1,000,000,000 FIG (enforced on every mint path)
 
@@ -107,7 +106,6 @@ The V3 map (archived at `docs/archive/V3_VERIFICATION_MAP.md`) covered Theory �
 |---|---|---|---|---|
 | E-1 | Only verified role-holder can attest | `attestAsSeller`: verifies seller via commitment orderHash lookup; `attestAsBuyer`: verifies via ProcessState.rootBuyer; `attestViaResolver`: delegates to IRoleResolver | `AttestationCoordinatorTest`: 20 tests covering all 3 paths + cross-order same-process | `/legal` → Six evidentiary properties; `/local-commerce` → Attestation Coordinator; `/builders` → Clause validation |
 | E-2 | Registered clauses cannot be overwritten | `registerClause`: event-only anchoring (no storage to overwrite); dedup guard on re-registration | `ClauseRegistryTest`: 12 tests including dedup | `/builders` → Clause validation; `/local-commerce` → clause-typed events |
-| E-3 | Dutch auction price only decreases over time | `getCurrentPrice`: linear decay from `maxPrice` to floor, time-based | `DutchAuctionTest`: 35 tests covering price decay, floor BPS, claim, cancel, expire | `/local-commerce` → Dutch auction description; `/verification` → Coordinator pattern (Dutch auction reference instance); `/builders` → Three levels |
 | E-4 | Seller deposit lock — withdraw only after `registeredAt + lockPeriod` | `withdraw()`: requires `_registered[msg.sender]` + `block.timestamp >= registeredAt + lockPeriod`; clears the dedup guard so the same address can re-register with the lock restarting. `updateProfile()` is a separate caller-only path that emits a new `SellerProfileUpdated` event without touching the deposit or restarting the lock | `SellerRegistryTest`: 18 tests covering register, deposit-bound match, dedup, withdraw flow, lock-period gate, re-registration restarts the lock, plus updateProfile (only-self, no deposit movement, no lock reset) | `/local-commerce` → Seller Registry; `/sellers`; `/builders` → Seller identity |
 | E-6 | FIG supply cap: $\leq$ 1B on every mint | `mint()`: `if (totalSupply() + amount > MAX_SUPPLY) revert SupplyCapExceeded()` + reentrancy guard | `FigToken.t.sol`: ~22 tests covering cap enforcement, multi-minter, renounce | `/fig` → FIG dashboard (supply display); `/fig/design` → Supply integrity (Paper D) |
 
@@ -340,7 +338,6 @@ export CERTORAKEY=<your-key>
 | `proposer.test.ts` | Agent proposer: proposeActions, typed action generation | K-2 (buyer action routing) |
 | `hitl.test.ts` | ActionQueue HITL — approve/reject/execute lifecycle | Agent coordination |
 | `attestation.test.ts` | Clause IDs, GHG constants, grams encoding, event filtering, disclosure summaries | E-1, E-2 |
-| `auction.test.ts` | Price curves, floor BPS, claim evaluation, auction state derivation | E-3 |
 | `did.test.ts` | did:web validation, resolution, address extraction, seller DID docs | DID:web identity |
 | `geo.test.ts` | Geohash matching, haversine distance, photo+GPS evidence | Delivery attestation |
 

@@ -24,16 +24,9 @@
 import type { Agreement } from "@figaro/core";
 import type { Order } from "@/lib/kernel/store";
 import type { AttestationRecord } from "@/lib/composition/useGHGDisclosure";
-import { composesInterface } from "@/lib/shared/clauseSpecSource";
 import { extractContract, type ContractDocument } from "./contractExtract";
 import { extractProcessLogs, type ProcessLogsDocument } from "./processLogsExtract";
 import { extractClauseData, type ClauseDataDocument } from "./clauseDataExtract";
-import {
-    extractDutchAuction,
-    type DutchAuctionDocument,
-    type DutchAuctionCreatedEvent,
-    type DutchAuctionClaimedEvent,
-} from "@/lib/composition/dutchAuctionExtract";
 import {
     extractSellerRegistry,
     type SellerRegistryDocument,
@@ -47,18 +40,11 @@ export interface AuditBundle {
     /** Every committed clause's data, rendered generically from its spec — the
      *  open-world per-clause view (names no clause, assumes no field). */
     clauseData: ClauseDataDocument;
-    dutchAuction: DutchAuctionDocument;
     sellerRegistry: SellerRegistryDocument;
     hashAppendix: HashAppendixDocument;
 }
 
 export interface AuditBundleInputs {
-    /** AuctionCreated events scoped to this order's processId. Empty array
-     *  if the order didn't come through Dutch auction or events aren't
-     *  available; the extractor reports `auctionApplicable: false`. */
-    auctionCreatedEvents?: readonly DutchAuctionCreatedEvent[];
-    /** AuctionClaimed events scoped to the same auctionIds. */
-    auctionClaimedEvents?: readonly DutchAuctionClaimedEvent[];
     /** SellerRegistered events filtered to events where the indexed
      *  `seller` matches `order.seller`. Empty array if the seller is
      *  unregistered — the extractor surfaces that as an audit notice. */
@@ -72,22 +58,10 @@ export function buildAuditBundle(
     inputs: AuditBundleInputs = {},
 ): AuditBundle {
     const contract = extractContract(order, agreement);
-    // Does this order compose the descending-auction interface? Derived from the
-    // agreement's clauses via block.composes (never a clause-id literal) — the
-    // gate for the descending-auction extractor.
-    const composesDescendingAuction = agreement.sections.some(
-        (s) => composesInterface(s.clause) === "descending-auction",
-    );
     return {
         contract,
         processLogs: extractProcessLogs(order, attestations),
         clauseData: extractClauseData(order, agreement),
-        dutchAuction: extractDutchAuction(
-            order,
-            composesDescendingAuction,
-            inputs.auctionCreatedEvents ?? [],
-            inputs.auctionClaimedEvents ?? [],
-        ),
         sellerRegistry: extractSellerRegistry(
             order,
             inputs.sellerRegistrationEvents ?? [],

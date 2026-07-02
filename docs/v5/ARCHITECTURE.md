@@ -67,7 +67,7 @@ every clause section is a merkle leaf under the signed `agreementHash`, and that
 *is* the security cross-check — there is no per-clause "verification posture". What varies is the
 clause's lifecycle, **derived in code, never a stored tier**: a runtime-lifecycle clause
 (`clauseIsProcessLog`) is an empty anchor at commit whose content is attested later; an
-agreement-only clause (topology, descending-auction) is committed but never attested; every
+agreement-only clause (topology) is committed but never attested; every
 other clause commits its content at signing. "cross-checked" and "runtime" named the same
 merkle-bound object.
 

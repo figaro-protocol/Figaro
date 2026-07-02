@@ -294,7 +294,7 @@ Invariant 7 is part of the intended model even where the current implementation 
 
 The generic GHG layer must not encode app-specific business semantics such as:
 
-1. Dutch auction rules
+1. pricing-mechanism rules
 2. driver assignment logic
 3. restaurant-specific workflows
 4. delivery lifecycle state machines

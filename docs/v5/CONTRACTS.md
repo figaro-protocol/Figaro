@@ -70,7 +70,7 @@ signed agreement.
 
 ## Mechanism Modules
 
-**`src/DutchAuction.sol`** — Descending-price coordination primitive. No token handling.
+**Dutch auction — DELETED 2026-07-02.** Competitive pricing was abandoned: a mid-chain order whose price or counterparty is unknown at signing is structurally incompatible with the kernel's exact-match cumulative accumulator, and the V3-style workaround (contract-as-seller + float-vault bond lending) is banned three ways. Pricing is a catalogue concern (e.g. rate × geohash distance).
 
 **`src/ProcessOffsetReceipt.sol`** — Permissionless on-chain anchor for Path A
 carbon-offset receipts. The buyer performs the offset retirement off-protocol

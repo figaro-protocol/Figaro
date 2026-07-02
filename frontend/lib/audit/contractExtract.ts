@@ -75,8 +75,8 @@ export interface ContractDocument extends ExtractedDocument {
     };
     /** Canonical method — the modality clause's raw value (consume-onsite |
      *  pickup | delivery | virtual | any registry-defined modality). The
-     *  courier-edge fill mechanism is DERIVED (binding state + a
-     *  `descending-auction` composition), never encoded here. */
+     *  courier-edge fill mechanism is DERIVED (binding state), never
+     *  encoded here. */
     method?: string;
     /** Block number when OrderCommitted was mined, if known. */
     committedAtBlock?: number;
@@ -120,7 +120,7 @@ function extractMethodSummary(agreement: Agreement) {
     // name. Single-select scalar; the raw value flows through verbatim — an
     // unseen modality the registry defines must NOT fall into an undefined hole
     // (open-world). There is no coordination field: the courier-edge fill
-    // mechanism is derived (binding state + a `descending-auction` composition),
+    // mechanism is derived (binding state),
     // not stored, so it never appears in the canonical method.
     const modalityData = sectionByField(agreement, "modality")?.data as
         | { modality?: unknown }

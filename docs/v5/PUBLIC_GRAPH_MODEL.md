@@ -71,13 +71,12 @@ itself lives off-chain. The protocol ensures *referential integrity*, not
 
 ### 4. Capital Graph (Protocol-Enforced)
 
-**Source:** Bond mechanics in `FigaroCore`, auction clearing in
-`DutchAuction`.
+**Source:** Bond mechanics in `FigaroCore`.
 
 The capital graph tracks where economic value flows: bonds locked, payments
-settled, auction clearing prices.
+settled.
 
-**Contents:** Bond amounts per order, settlement payouts, auction clearing
+**Contents:** Bond amounts per order, settlement payouts, clearing
 prices.
 
 **Truth boundary:** Protocol-enforced. All capital flows are on-chain and

@@ -411,7 +411,7 @@ buyer↔courier order's agreement.
 | Origin | `figaro-geolocation.originGeohash` | Geohash, 1–12 chars precision. |
 | Destination | `figaro-geolocation.destinationGeohash` | As above. |
 | Mode of carriage | `figaro-handoff.handoff` | Four handoff points: face-to-face / dead-drop / parking-area / locker; local-commerce focused. |
-| Service class (modality + organizer) | `figaro-modalities.modality` | Modality: consume-onsite / pickup / delivery / virtual (single-select). The organizer/coordination variant — seller-assigned / buyer-assigned / dutch-auction — is an assembly-level composition, not a clause field. |
+| Service class (modality + organizer) | `figaro-modalities.modality` | Modality: consume-onsite / pickup / delivery / virtual (single-select). The organizer/coordination variant — seller-assigned / buyer-assigned — is an assembly-level composition, not a clause field. |
 | Stage progression (loaded / in-transit / delivered) | `figaro-courier-process` | 5 stages: preparationStarted / readyForPickup / courierEnRoute / pickedUp / delivered; per-stage attestations. |
 | Custody-change verification at handoff | `figaro-proximity-policy` (committed band) + a runtime proximity attestation on that same clause (runtime nonce + sig) | The runtime proof is an attestation on the committed clause, not a separate clause. Off-chain consumers verify proof.band == policy.band. |
 | Cargo description (line items) | `figaro-commerce.lineItems` | itemId / name / quantity / unitPrice. Cleartext today; encryption is a separate backlog item ("line-item privacy"). |

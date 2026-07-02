@@ -1,6 +1,6 @@
 /**
  * lib/composition/indexer.ts — event readers for the contracts the frontend
- * COMPOSES with (attestation coordinator, dutch auction).
+ * COMPOSES with (the attestation coordinator).
  *
  * These read non-core contracts, so they live OUTSIDE `lib/kernel/indexer.ts`
  * (core must not reference composition addresses). They reuse the core
@@ -20,28 +20,8 @@ import {
 } from "@/lib/kernel/indexer";
 import { getAllSellerRegistered } from "@/lib/protocol/sellerRegistryIndexer";
 import { hexEqual } from "@/lib/shared/evm";
-import { EV_ATTESTATION, EV_AUCTION_CREATED, EV_AUCTION_CLAIMED } from "@/lib/composition/abis";
+import { EV_ATTESTATION } from "@/lib/composition/abis";
 import { COMPOSITION_CONTRACTS } from "@/lib/composition/contracts";
-
-// ── DutchAuction ─────────────────────────────────────────────────────────────
-
-export async function getAllAuctionCreated(client: PublicClient, chainId: number) {
-    if (!COMPOSITION_CONTRACTS.dutchAuction) return [];
-    return cachedGetLogs(client, chainId, {
-        address: COMPOSITION_CONTRACTS.dutchAuction,
-        event: EV_AUCTION_CREATED,
-        eventName: "AuctionCreated",
-    });
-}
-
-export async function getAllAuctionClaimed(client: PublicClient, chainId: number) {
-    if (!COMPOSITION_CONTRACTS.dutchAuction) return [];
-    return cachedGetLogs(client, chainId, {
-        address: COMPOSITION_CONTRACTS.dutchAuction,
-        event: EV_AUCTION_CLAIMED,
-        eventName: "AuctionClaimed",
-    });
-}
 
 // ── AttestationCoordinator ────────────────────────────────────────────────────
 
@@ -126,8 +106,8 @@ export async function getAttestationsByProcess(
 
 // ── Seller track record — public-graph-derived activity ──────────────────────
 //
-// Composes core reads (orders, registrations) WITH non-core reads (auction,
-// attestation) into one address-keyed record — which is why it lives here, not
+// Composes core reads (orders, registrations) WITH non-core reads
+// (attestations) into one address-keyed record — which is why it lives here, not
 // in lib/kernel/indexer.ts. Every figure is recomputed from events; nothing is
 // stored, so the result is verifiable by anyone with chain access.
 
@@ -159,7 +139,6 @@ export interface SellerTrackRecord {
     valueTransacted: TrackRecordValue[];
     buyersServed: number;
     sellersUsed: number;
-    auctionJobsWon: number;
     attestationsEmitted: number;
     attestationsByClause: TrackRecordAttestations[];
 }
@@ -171,21 +150,20 @@ function getBigIntArg(log: IndexedLog, key: string): bigint {
 
 /**
  * Reconstruct a seller's full public-graph track record from the OrderCommitted
- * / OrderResolved process graph, the DutchAuction capital graph, and the
- * AttestationCoordinator disclosure graph — all keyed to one address.
+ * / OrderResolved process graph and the AttestationCoordinator disclosure
+ * graph — all keyed to one address.
  */
 export async function getSellerTrackRecord(
     client: PublicClient,
     chainId: number,
     seller: string,
 ): Promise<SellerTrackRecord> {
-    const [sellerOrders, buyerOrders, resolved, registrations, auctions, attestations] =
+    const [sellerOrders, buyerOrders, resolved, registrations, attestations] =
         await Promise.all([
             getOrderCommittedBySeller(client, chainId, seller),
             getOrderCommittedByBuyer(client, chainId, seller),
             getAllOrderResolved(client, chainId),
             getAllSellerRegistered(client, chainId),
-            getAllAuctionClaimed(client, chainId),
             getAllAttestations(client, chainId),
         ]);
 
@@ -231,10 +209,6 @@ export async function getSellerTrackRecord(
         }
     }
 
-    const auctionJobsWon = auctions.filter(
-        (log) => hexEqual(getStringArg(log, "provider"), seller),
-    ).length;
-
     const attestationsByClauseMap = new Map<string, number>();
     for (const log of attestations) {
         if (!hexEqual(getStringArg(log, "attester"), seller)) continue;
@@ -254,7 +228,6 @@ export async function getSellerTrackRecord(
         valueTransacted: [...valueByCurrency.entries()].map(([currency, total]) => ({ currency, total })),
         buyersServed: buyersServed.size,
         sellersUsed: sellersUsed.size,
-        auctionJobsWon,
         attestationsEmitted,
         attestationsByClause: [...attestationsByClauseMap.entries()]
             .map(([clauseId, count]) => ({ clauseId, count }))

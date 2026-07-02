@@ -130,5 +130,5 @@ export async function getOrderCommittedBySeller(client: PublicClient, chainId: n
     });
 }
 
-// AttestationCoordinator + DutchAuction event readers are NON-CORE — they live
+// AttestationCoordinator event readers are NON-CORE — they live
 // in lib/composition/indexer.ts (core must not reference composition contracts).

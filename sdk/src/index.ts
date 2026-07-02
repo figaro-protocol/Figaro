@@ -25,7 +25,7 @@
 
 // ABIs
 export {
-    CORE_ABI, ATTESTATION_COORDINATOR_ABI, DUTCH_AUCTION_ABI, CLAUSE_REGISTRY_ABI,
+    CORE_ABI, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI,
     ERC20_ABI, SELLER_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI,
     FIG_TOKEN_ABI,
     // Kernel Commitment struct tuple — a core primitive, used by composition-layer
@@ -39,8 +39,6 @@ export {
     EV_ORDER_RESOLVED,
     EV_PROCESS_RESOLVED,
     EV_ATTESTATION,
-    EV_AUCTION_CREATED,
-    EV_AUCTION_CLAIMED,
 } from "./abis.js";
 
 // Types
@@ -53,8 +51,6 @@ export type {
     OrderResolvedEvent,
     ProcessResolvedEvent,
     AttestationEvent,
-    AuctionCreatedEvent,
-    AuctionClaimedEvent,
     Commitment,
     EIP712Domain,
     FigaroAddresses,
@@ -71,8 +67,6 @@ export {
     parseOrderResolvedLogs,
     parseProcessResolvedLogs,
     parseAttestationLogs,
-    parseAuctionCreatedLogs,
-    parseAuctionClaimedLogs,
     fetchCoreEvents,
 } from "./events.js";
 
