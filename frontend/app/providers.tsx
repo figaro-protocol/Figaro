@@ -6,7 +6,7 @@ import { RainbowKitProvider, lightTheme } from "@rainbow-me/rainbowkit";
 import { config } from "@/lib/shared/wagmi";
 import { Toaster } from "sonner";
 import { ChainGuard } from "@/components/core/ChainGuard";
-import { CommerceProvider } from "@/lib/commerce";
+import { CommerceProvider } from "@/lib/checkout";
 import "@rainbow-me/rainbowkit/styles.css";
 import { RpcBanner } from "@/components/core/RpcBanner";
 import ClientInit from "@/components/core/ClientInit";

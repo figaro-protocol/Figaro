@@ -6,7 +6,7 @@
  * This is the thin on-chain layer: the ABI, registry-address resolution, the
  * event-derived read hooks, the revert translator, and the IPFS template
  * fetch. The publish-build + template-enrichment orchestration lives one
- * layer up in `@/lib/designer/assemblyDiscovery`; the seller-profile
+ * layer up in `@/lib/core/assemblyChoices`; the seller-profile
  * resolution lives in `@/lib/seller/useSellerBoundAssemblies`. This file
  * imports only viem / wagmi / `@/lib/shared/*` / `@/lib/core/*`.
  */
@@ -17,7 +17,7 @@ import { BaseError, ContractFunctionRevertedError } from "viem";
 import { publicClient } from "@/lib/shared/wagmi";
 import { ASSEMBLY_REGISTRY_ABI, CONTRACTS } from "@/lib/core/contracts";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
-import { type AssemblyTemplate } from "@/lib/designer/assemblyTemplate";
+import { type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 
 // Per-process gas ceiling moved to `@/lib/shared/chainGasCeilings`
 // (`maxOrdersResolvablePerProcess`) — the ceiling depends on the active

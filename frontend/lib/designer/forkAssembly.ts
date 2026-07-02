@@ -28,7 +28,7 @@ import {
     uniqueDraftSlug,
 } from "./syntheticDesignStore";
 import { assemblyTemplateToDraft } from "./assemblyTemplateToDraft";
-import type { AssemblyTemplate } from "./assemblyTemplate";
+import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 
 export function forkPublishedAssembly(
     sourceSlug: string,

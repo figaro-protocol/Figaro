@@ -22,12 +22,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useChainId } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { Button } from "@/components/ui/Button";
-import { useCommerce, useCheckout } from "@/lib/commerce";
-import { useCartStore } from "@/lib/commerce/cartStore";
+import { useCommerce, useCheckout } from "@/lib/checkout";
+import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
-import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/commerce/assemblySubOrderPlan";
-import { executeAssemblyCheckout } from "@/lib/commerce/assemblyCheckout";
-import { templateParentOrderHashes } from "@/lib/designer/assemblyTemplate";
+import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/checkout/assemblySubOrderPlan";
+import { executeAssemblyCheckout } from "@/lib/checkout/assemblyCheckout";
+import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { CommitmentSharePanel } from "@/components/core/CommitmentSharePanel";
 import { SellerCataloguePicker, type SellerSelection } from "@/components/core/SellerCataloguePicker";
 import { useCompositionActions } from "@/lib/composition/useCompositionActions";
@@ -388,7 +388,7 @@ export function CheckoutView({ sellerAddress }: Props) {
             // The whole commit algorithm — root prepare/validate, the bilateral
             // single-order relay, or the multi-order walk (sub-orders signed +
             // relayed to their bound sellers, root through the buyer-share-panel
-            // last) — lives in lib/commerce/assemblyCheckout. The surface keeps
+            // last) — lives in lib/checkout/assemblyCheckout. The surface keeps
             // guards and error display only.
             await executeAssemblyCheckout(
                 {

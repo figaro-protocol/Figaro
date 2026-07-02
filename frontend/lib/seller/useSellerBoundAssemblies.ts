@@ -11,7 +11,7 @@
 
 import { useEffect, useState } from "react";
 import { resolveContentUri } from "@/lib/shared/ipfsService";
-import type { AssemblyTemplate } from "@/lib/designer/assemblyTemplate";
+import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { useSellerProfile } from "@/lib/seller/useSellerRegistry";
 import {
     tryParseSellerProfileDocument,
@@ -21,7 +21,7 @@ import {
     useAllPublishedAssemblies,
     fetchAssemblyTemplate,
 } from "@/lib/core/useAssemblyRegistry";
-import { extractRootModality } from "@/lib/designer/assemblyDiscovery";
+import { extractRootModality } from "@/lib/core/assemblyChoices";
 
 /** A seller's on-chain bound assembly, assemblyTemplate resolved. */
 export interface BoundAssembly {

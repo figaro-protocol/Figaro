@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-    serializeAssemblyTemplate,
-    deriveAssemblySlug,
-    type AssemblyTemplate,
-} from "@/lib/designer/assemblyTemplate";
+import { serializeAssemblyTemplate } from "@/lib/designer/buildAssemblyTemplate";
+import { deriveAssemblySlug, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 
 // Construct templates directly (no spec cache needed) to test the
 // serialize → contentHash → slug pipeline in isolation.

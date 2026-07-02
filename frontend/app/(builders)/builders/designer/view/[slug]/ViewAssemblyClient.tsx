@@ -39,10 +39,10 @@ import {
     fetchAssemblyTemplate,
     getAssemblyRegistry,
 } from "@/lib/core/useAssemblyRegistry";
-import { usePublishAssembly } from "@/lib/designer/assemblyDiscovery";
+import { usePublishAssembly } from "@/lib/designer/publishAssembly";
 import { templateToOrders } from "@/lib/designer/assemblyTemplateToDraft";
 import { useClauseSpecs } from "@/lib/core/useClauseSpecs";
-import type { AssemblyTemplate } from "@/lib/designer/assemblyTemplate";
+import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
 import type { Order } from "@/lib/core/store";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";

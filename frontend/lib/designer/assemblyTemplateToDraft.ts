@@ -14,7 +14,7 @@
  */
 
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
-import { templateParentOrderHashes, type AssemblyTemplate } from "./assemblyTemplate";
+import { templateParentOrderHashes, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import type { ClauseFields } from "@/lib/core/encoding";
 import type { DesignSnapshot } from "./syntheticDesignStore";
 import { Order } from "@/lib/core/store";

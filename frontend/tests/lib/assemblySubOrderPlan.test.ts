@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
     planSubOrderSellers,
     resolveSubOrderPayment,
-} from "@/lib/commerce/assemblySubOrderPlan";
-import type { AssemblyTemplateOrder } from "@/lib/designer/assemblyTemplate";
+} from "@/lib/checkout/assemblySubOrderPlan";
+import type { AssemblyTemplateOrder } from "@/lib/shared/assemblyTemplate";
 import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
 import type { SellerCatalogue } from "@/lib/seller/types";
 
