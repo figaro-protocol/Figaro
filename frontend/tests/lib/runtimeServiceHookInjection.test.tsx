@@ -50,14 +50,14 @@ vi.mock("wagmi", () => ({
     useWalletClient: () => useWalletClientMock(),
 }));
 
-vi.mock("@/lib/core/indexer", () => ({
+vi.mock("@/lib/protocol/sellerRegistryIndexer", () => ({
     getSellerMetadataURI: (...args: unknown[]) => getSellerMetadataURIMock(...args),
 }));
 
 // The surfacing rule's AssemblyRegistry cross-check gate — resolved (empty)
 // so useRegisteredCatalogues proceeds; the filtering itself lives in the
 // (injected) discovery service.
-vi.mock("@/lib/core/useAssemblyRegistry", () => ({
+vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
     usePublishedAssemblies: () => ({ data: [], isLoading: false }),
 }));
 

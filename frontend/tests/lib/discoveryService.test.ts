@@ -6,7 +6,7 @@ import {
 const getActiveSellersMock = vi.fn();
 const fetchDocumentMock = vi.fn();
 
-vi.mock('@/lib/core/indexer', () => ({
+vi.mock('@/lib/protocol/sellerRegistryIndexer', () => ({
     getActiveSellers: (...args: unknown[]) => getActiveSellersMock(...args),
 }));
 

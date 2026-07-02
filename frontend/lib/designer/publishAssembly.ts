@@ -4,7 +4,7 @@
  * Designer-tier only. Builds the off-chain assembly template from a design
  * snapshot, pins it to IPFS, and registers it on `AssemblyRegistry`.
  * READING published assemblies (the `AssemblyChoice` enrichment) lives in
- * `@/lib/core/assemblyChoices` — design is design; reading is everyone's.
+ * `@/lib/protocol/assemblyChoices` — design is design; reading is everyone's.
  *
  * Publish flow:
  *   1. Build a full off-chain assemblyTemplate from the snapshot — topology
@@ -34,7 +34,7 @@ import {
     getAssemblyRegistry,
     translatePublishRevert,
     type PublishOutcome,
-} from "@/lib/core/useAssemblyRegistry";
+} from "@/lib/protocol/useAssemblyRegistry";
 
 export function usePublishAssembly() {
     const client = usePublicClient();

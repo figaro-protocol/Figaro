@@ -16,9 +16,9 @@ import {
     getOrderCommittedBySeller,
     getOrderCommittedByBuyer,
     getAllOrderResolved,
-    getAllSellerRegistered,
     type IndexedLog,
 } from "@/lib/core/indexer";
+import { getAllSellerRegistered } from "@/lib/protocol/sellerRegistryIndexer";
 import { hexEqual } from "@/lib/shared/evm";
 import { EV_ATTESTATION, EV_AUCTION_CREATED, EV_AUCTION_CLAIMED } from "@/lib/composition/abis";
 import { COMPOSITION_CONTRACTS } from "@/lib/composition/contracts";

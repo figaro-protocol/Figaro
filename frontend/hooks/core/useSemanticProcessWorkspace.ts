@@ -11,7 +11,7 @@ import { OrderState, useOrderStore } from "@/lib/core/store";
 import { useFigaroActions } from "@/lib/core/useFigaroActions";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { useClauseSpecs } from "@/lib/core/useClauseSpecs";
+import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { encodeContentFromSpec } from "@figaro/core/clauses";
 import { useDutchAuctionActions } from "@/lib/composition/useDutchAuction";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";

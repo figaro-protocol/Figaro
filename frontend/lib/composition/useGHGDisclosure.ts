@@ -35,7 +35,7 @@ import {
     type IndexedAttestationLog,
 } from "@/lib/composition/indexer";
 import { clauseDeclaresField, getClauseSpec, listKnownClauseIds, describeAttestation } from "@/lib/shared/clauseSpecSource";
-import { useClauseSpecs } from "@/lib/core/useClauseSpecs";
+import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 
 export type AttestationRecord = {
     orderHash: string;

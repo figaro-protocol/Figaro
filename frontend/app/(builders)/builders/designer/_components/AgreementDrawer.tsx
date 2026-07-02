@@ -24,8 +24,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Order } from "@/lib/core/store";
-import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/core/useClauseRegistry";
-import { useClauseSpecs } from "@/lib/core/useClauseSpecs";
+import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/protocol/useClauseRegistry";
+import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsStructural } from "@/lib/shared/clauseSpecSource";
 import { ClausesByArticle } from "@/components/core/ClausesByArticle";
 import { FieldControl } from "@/components/core/FieldControl";

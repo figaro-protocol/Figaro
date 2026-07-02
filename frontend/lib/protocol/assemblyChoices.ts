@@ -1,8 +1,8 @@
 /**
- * lib/core/assemblyChoices.ts — READING published assemblies.
+ * lib/protocol/assemblyChoices.ts — READING published assemblies.
  *
  * The enrichment layer over the on-chain `AssemblyRegistry` hooks
- * (`@/lib/core/useAssemblyRegistry`): every published assembly, enriched with
+ * (`@/lib/protocol/useAssemblyRegistry`): every published assembly, enriched with
  * its lazily-fetched template (name, order count, clause set), projected into
  * the selectable/inspectable `AssemblyChoice` shape. Consumed by every
  * reading surface — the designer's published list, the seller-profile
@@ -19,7 +19,7 @@ import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import {
     usePublishedAssemblies,
     fetchAssemblyTemplate,
-} from "@/lib/core/useAssemblyRegistry";
+} from "@/lib/protocol/useAssemblyRegistry";
 
 /**
  * Synthesize a `networkTargets` value for an on-chain-registered assembly

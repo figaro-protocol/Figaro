@@ -20,7 +20,7 @@ import {
     DEFAULT_DISCOVERY_SERVICE,
     type DiscoveryService,
 } from "@/lib/seller/discoveryService";
-import { usePublishedAssemblies } from "@/lib/core/useAssemblyRegistry";
+import { usePublishedAssemblies } from "@/lib/protocol/useAssemblyRegistry";
 
 export interface UseRegisteredCataloguesResult {
     catalogues: SellerCatalogue[];

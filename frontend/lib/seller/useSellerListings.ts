@@ -20,12 +20,12 @@ import {
     profileToListing,
     type Listing,
 } from "@/lib/seller/sellerListing";
-import { getActiveSellers } from "@/lib/core/indexer";
+import { getActiveSellers } from "@/lib/protocol/sellerRegistryIndexer";
 import { createUriFetcher } from "@/lib/shared/uriFetcher";
 import { tryParseSellerProfileDocument } from "@/lib/seller/sellerProfileMetadata";
 import type { PublicClient } from "viem";
 import { CONTRACTS } from "@/lib/core/contracts";
-import { usePublishedAssemblies } from "@/lib/core/useAssemblyRegistry";
+import { usePublishedAssemblies } from "@/lib/protocol/useAssemblyRegistry";
 
 export interface UseSellerListingsResult {
     listings: Listing[];

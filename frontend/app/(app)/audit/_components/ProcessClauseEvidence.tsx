@@ -9,7 +9,7 @@ import { toAttestationRecord } from "@/lib/audit/auditBundlePdf";
 import { extractClauseData } from "@/lib/audit/clauseDataExtract";
 import { extractProcessLogs } from "@/lib/audit/processLogsExtract";
 import { describeAttestation } from "@/lib/shared/clauseSpecSource";
-import { useClauseSpecs } from "@/lib/core/useClauseSpecs";
+import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import type { AttestationRecord } from "@/lib/composition/useGHGDisclosure";
 
 /**

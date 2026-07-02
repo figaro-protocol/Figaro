@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getSellerState } from '@/lib/core/indexer';
+import { getSellerState } from '@/lib/protocol/sellerRegistryIndexer';
 
 // ── Mock the event cache and contract addresses ───────────────────────────────
 // getSellerState calls getAllSellerRegistered + getAllSellerProfileUpdated

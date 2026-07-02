@@ -1,6 +1,6 @@
 "use client";
 
-import { useAssemblyChoices } from "@/lib/core/assemblyChoices";
+import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 import { truncateHex } from "@/lib/shared/formatHex";
 

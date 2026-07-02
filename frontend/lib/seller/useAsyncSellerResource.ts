@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { usePublicClient, useChainId } from "wagmi";
-import { getSellerMetadataURI } from "@/lib/core/indexer";
+import { getSellerMetadataURI } from "@/lib/protocol/sellerRegistryIndexer";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
 export interface UseAsyncSellerResourceResult<T> {

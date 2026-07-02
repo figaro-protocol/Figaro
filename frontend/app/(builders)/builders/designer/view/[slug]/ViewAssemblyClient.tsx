@@ -38,10 +38,10 @@ import { ASSEMBLY_REGISTRY_ABI } from "@/lib/core/contracts";
 import {
     fetchAssemblyTemplate,
     getAssemblyRegistry,
-} from "@/lib/core/useAssemblyRegistry";
+} from "@/lib/protocol/useAssemblyRegistry";
 import { usePublishAssembly } from "@/lib/designer/publishAssembly";
 import { templateToOrders } from "@/lib/designer/assemblyTemplateToDraft";
-import { useClauseSpecs } from "@/lib/core/useClauseSpecs";
+import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
 import type { Order } from "@/lib/core/store";

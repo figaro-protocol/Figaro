@@ -1,5 +1,5 @@
 import type { PublicClient } from 'viem';
-import { getActiveSellers } from '@/lib/core/indexer';
+import { getActiveSellers } from '@/lib/protocol/sellerRegistryIndexer';
 import type { SellerCatalogue } from '@/lib/seller/types';
 import { CONTRACTS } from "@/lib/core/contracts";
 import { resolveContentUri } from "@/lib/shared/ipfsService";

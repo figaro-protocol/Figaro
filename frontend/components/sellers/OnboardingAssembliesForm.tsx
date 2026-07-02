@@ -16,7 +16,7 @@ import {
     type AssemblyChoice,
     requiredCounterpartyClauses,
     useAssemblyChoices,
-} from "@/lib/core/assemblyChoices";
+} from "@/lib/protocol/assemblyChoices";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 
 /**
