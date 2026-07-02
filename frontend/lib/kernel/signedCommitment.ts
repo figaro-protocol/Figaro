@@ -13,6 +13,7 @@
  */
 import {
     computeCommitmentProcessId,
+    computeOrderHash,
     type Agreement,
     type Commitment,
     type Hex,
@@ -20,6 +21,27 @@ import {
 import { strippingReviver } from "@/lib/shared/safeJson";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { hexEqual, ZERO_PROCESS_ID } from "@/lib/shared/evm";
+
+function configuredCore(): `0x${string}` {
+    if (!CONTRACTS.core) {
+        throw new Error("Core contract address is not configured, so commitment hashes cannot be derived.");
+    }
+    return CONTRACTS.core as `0x${string}`;
+}
+
+/** This deployment's order hash for a commitment — the ONE home for the
+ *  (commitment, chainId, Core address) hashing plumbing. Throws when the
+ *  Core address is unconfigured. */
+export function commitmentOrderHash(c: Commitment, chainId: number): `0x${string}` {
+    return computeOrderHash(c, chainId, configuredCore());
+}
+
+/** This deployment's derived process id — the ROOT commitment's EIP-712
+ *  digest, computable from the unsigned commitment (so sub-orders can name
+ *  the process before the root commits). */
+export function commitmentProcessId(c: Commitment, chainId: number): `0x${string}` {
+    return computeCommitmentProcessId(c, chainId, configuredCore());
+}
 
 export function restoreSignedProcessId(c: Commitment, chainId: number): Commitment {
     const asRoot = { ...c, processId: ZERO_PROCESS_ID };

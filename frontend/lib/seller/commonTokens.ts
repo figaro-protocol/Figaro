@@ -6,8 +6,11 @@
  * accepted-tokens field). Replaces the bare-address input with a
  * "+ USDC" / "+ USDT" / "+ Mock" picker.
  *
- * Devnet (chainId 31337) reads the project-deployed mock tokens from
- * env vars; production chains carry hardcoded canonical addresses.
+ * Devnet (chainId 31337) reads the project-deployed mock tokens from env
+ * vars. No chain carries a hardcoded roster (a baked-in token list is
+ * closed-world drift): on chains without an env-driven entry the form is
+ * manual input only, and any pasted token's symbol/decimals are read from
+ * the chain itself.
  */
 
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
@@ -46,25 +49,12 @@ const localTokens: () => CommonToken[] = () => {
 };
 
 /**
- * Per-chain canonical addresses. Update as chains are added; missing
- * chains return an empty array (the form falls back to manual input
- * only).
+ * Per-chain suggestions, all env-driven. Missing chains return an empty
+ * array (the form falls back to manual input only).
  */
 const CHAIN_TOKENS: Record<number, () => CommonToken[]> = {
     // Local Anvil — env-driven mocks.
     [DEVNET_CHAIN_ID]: localTokens,
-
-    // Sepolia (testnet) — Circle's official testnet USDC.
-    11155111: () => [
-        { address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", symbol: "USDC", name: "USD Coin (Sepolia testnet)" },
-    ],
-
-    // Ethereum mainnet
-    1: () => [
-        { address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", symbol: "USDC", name: "USD Coin" },
-        { address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", symbol: "USDT", name: "Tether USD" },
-        { address: "0x6B175474E89094C44Da98b954EedeAC495271d0F", symbol: "DAI", name: "Dai Stablecoin" },
-    ],
 };
 
 /**

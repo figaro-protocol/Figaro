@@ -23,6 +23,7 @@ import {
     type CommitmentPayload,
 } from "@/lib/kernel/signedCommitment";
 import { publishAgreement } from "@/lib/kernel/agreementFetch";
+import type { IpfsService } from "@/lib/shared/ipfsService";
 
 /**
  * Awaiting MY counter-signature: I am a party, the OTHER party has signed, I
@@ -129,4 +130,24 @@ export function usePendingSellerSignature(
     }, []);
 
     return { pending, dismiss };
+}
+
+/**
+ * Dereference an IPFS-pinned commitment payload to its JSON string.
+ * Used by /orders-style subscribers that receive a CID and need the
+ * underlying AnyCommitmentPayload JSON for parsing.
+ */
+export async function fetchCommitmentPayloadJsonByCid(
+    ipfs: Pick<IpfsService, "resolveFetchUrl">,
+    payloadCid: string,
+): Promise<string> {
+    const url = ipfs.resolveFetchUrl(`ipfs://${payloadCid}`);
+    if (!url) {
+        throw new Error(`Could not resolve IPFS gateway URL for CID: ${payloadCid}`);
+    }
+    const res = await fetch(url);
+    if (!res.ok) {
+        throw new Error(`IPFS fetch failed for CID ${payloadCid}: ${res.status} ${res.statusText}`);
+    }
+    return await res.text();
 }

@@ -2,7 +2,6 @@ import {
     getCoordinationChannel,
     type CoordinationChannel,
 } from "@/lib/handoff/channel";
-import type { IpfsService } from "@/lib/shared/ipfsService";
 
 interface WalletMessageSignerSource {
     signMessage(params: { message: string }): Promise<`0x${string}`>;
@@ -195,23 +194,3 @@ class DefaultCoordinationMessagingService implements CoordinationMessagingServic
 
 export const DEFAULT_COORDINATION_MESSAGING_SERVICE: CoordinationMessagingService =
     new DefaultCoordinationMessagingService();
-
-/**
- * Dereference an IPFS-pinned commitment payload to its JSON string.
- * Used by /orders-style subscribers that receive a CID and need the
- * underlying AnyCommitmentPayload JSON for parsing.
- */
-export async function fetchCommitmentPayloadJsonByCid(
-    ipfs: Pick<IpfsService, "resolveFetchUrl">,
-    payloadCid: string,
-): Promise<string> {
-    const url = ipfs.resolveFetchUrl(`ipfs://${payloadCid}`);
-    if (!url) {
-        throw new Error(`Could not resolve IPFS gateway URL for CID: ${payloadCid}`);
-    }
-    const res = await fetch(url);
-    if (!res.ok) {
-        throw new Error(`IPFS fetch failed for CID ${payloadCid}: ${res.status} ${res.statusText}`);
-    }
-    return await res.text();
-}

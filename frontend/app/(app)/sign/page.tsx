@@ -26,7 +26,7 @@ import { TokenApprovalFlow } from "@/components/core/TokenApprovalFlow";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 import { formatToken } from "@/lib/shared/utils";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
-import { fetchCommitmentPayloadJsonByCid } from "@/lib/handoff/coordinationMessagingService";
+import { fetchCommitmentPayloadJsonByCid } from "@/lib/checkout/orderPendingSellerSignature";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 type ChannelStatus = "idle" | "listening" | "received" | "error";

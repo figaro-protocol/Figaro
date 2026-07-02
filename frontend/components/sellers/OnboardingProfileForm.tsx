@@ -24,7 +24,7 @@ import type {
     OnboardingProfileDraft,
 } from "@/lib/seller/onboardingState";
 import type { AcceptedTokenMetadata } from "@/lib/seller/acceptedTokenMetadata";
-import { encodeGeohash } from "@/lib/handoff/geohash";
+import { encodeGeohash } from "@/lib/shared/geohash";
 import { geocodeAddress, getDeviceLocation, type GeocodeFailureReason } from "@/lib/seller/geocode";
 import { getCommonTokens, type CommonToken } from "@/lib/seller/commonTokens";
 import { hexEqual } from "@/lib/shared/evm";

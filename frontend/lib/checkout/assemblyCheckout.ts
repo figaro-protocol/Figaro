@@ -21,21 +21,17 @@
  * user-facing message on any failure — the caller renders it.
  */
 
-import {
-    computeCommitmentProcessId,
-    computeOrderHash,
-} from "@figaro/core";
+
 import { buildOrderPreview, type OrderPreview } from "@/lib/checkout/orderPreview";
 import { validateCommitmentAgreement } from "@/lib/kernel/orderAgreement";
 import type { DraftOrder } from "@/lib/checkout/draftOrders";
-import type { CommitmentPayload } from "@/lib/kernel/signedCommitment";
+import { commitmentOrderHash, commitmentProcessId, type CommitmentPayload } from "@/lib/kernel/signedCommitment";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/checkout/assemblySubOrderPlan";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { clauseDeclaresField } from "@/lib/shared/clauseSpecSource";
 import { stashSellerDraft } from "@/lib/seller/sellerAuction";
 import { parseToken } from "@/lib/shared/utils";
-import { CONTRACTS } from "@/lib/kernel/contracts";
 import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
 import type { SellerCatalogue } from "@/lib/seller/types";
 
@@ -197,9 +193,9 @@ export async function executeAssemblyCheckout(
 
     // The root's process id is its EIP-712 digest — computable from the unsigned
     // commitment, so the sub-orders can name it before the root commits.
-    const processId = computeCommitmentProcessId(rootPreview.commitment, chainId, CONTRACTS.core);
+    const processId = commitmentProcessId(rootPreview.commitment, chainId);
     const realOrderHash = new Map<string, `0x${string}`>([
-        [root.id, computeOrderHash(rootPreview.commitment, chainId, CONTRACTS.core)],
+        [root.id, commitmentOrderHash(rootPreview.commitment, chainId)],
     ]);
     let cumulativeValue = payment;
 
@@ -268,7 +264,7 @@ export async function executeAssemblyCheckout(
         await signAndShare(subPreview);
         realOrderHash.set(
             node.id,
-            computeOrderHash(subPreview.commitment, chainId, CONTRACTS.core),
+            commitmentOrderHash(subPreview.commitment, chainId),
         );
     }
 

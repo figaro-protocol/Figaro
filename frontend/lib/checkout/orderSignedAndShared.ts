@@ -11,10 +11,9 @@
  * satisfied by the handoff CoordinationMessagingService at the call site — so
  * checkout stays decoupled from the handoff layer's concrete transport.
  */
-import { computeOrderHash } from "@figaro/core";
-import { CONTRACTS } from "@/lib/kernel/contracts";
 import { publishAgreement } from "@/lib/kernel/agreementFetch";
 import {
+    commitmentOrderHash,
     serializeCommitmentPayload,
     type CommitmentPayload,
 } from "@/lib/kernel/signedCommitment";
@@ -54,12 +53,6 @@ export async function shareSignedOrder(params: {
         coordinationMessaging, evidenceTransport,
     } = params;
 
-    if (!CONTRACTS.core) {
-        throw new Error(
-            "Core contract address is not configured, so the transport order ID cannot be derived.",
-        );
-    }
-
     // Pin the agreement body STANDALONE (separate from the relayed payload) and
     // remember its witnessed-URI pointer, so the SENDER's own order/audit pages
     // can hydrate it by hash after a fresh navigation. The recipient does the
@@ -67,7 +60,7 @@ export async function shareSignedOrder(params: {
     // addressing makes both pins the same CID.
     await publishAgreement(payload.agreement, { evidenceTransport });
 
-    const orderId = computeOrderHash(payload.commitment, chainId, CONTRACTS.core);
+    const orderId = commitmentOrderHash(payload.commitment, chainId);
     const blob = new Blob([serializeCommitmentPayload(payload)], { type: "application/json" });
     const payloadCid = await evidenceTransport.pinBlob(blob);
     await coordinationMessaging.sendCommitmentPayload({
