@@ -33,7 +33,7 @@ import type { ClauseFields } from "@/lib/core/encoding";
 import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/commerce/assemblySubOrderPlan";
 import { templateParentOrderHashes } from "@/lib/designer/assemblyTemplate";
 import { clauseDeclaresField } from "@/lib/shared/clauseSpecSource";
-import { sellerAuctionId, stashSellerDraft } from "@/lib/seller/sellerAuction";
+import { stashSellerDraft } from "@/lib/seller/sellerAuction";
 import { parseToken } from "@/lib/shared/utils";
 import { CONTRACTS } from "@/lib/core/contracts";
 import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";

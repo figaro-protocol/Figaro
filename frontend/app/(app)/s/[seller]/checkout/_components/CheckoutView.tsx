@@ -649,8 +649,6 @@ export function CheckoutView({ sellerAddress }: Props) {
                             seller's own catalogue. Checkout-phase data, like the cart. */}
                         {buyerChoosesCounterparty && (
                             <SellerCataloguePicker
-                                mode="buyer-assigned"
-                                partnerAddresses={[]}
                                 tokenSymbol={tokenSymbol}
                                 onSelect={setSellerSelection}
                             />

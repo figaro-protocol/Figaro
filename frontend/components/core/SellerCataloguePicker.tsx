@@ -29,7 +29,6 @@ import { isAddress } from "viem";
 import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
 import type { CatalogueItemMetadata } from "@/lib/seller/sellerCatalogueMetadata";
 import { hexEqual } from "@/lib/shared/evm";
-import { truncateHex } from "@/lib/shared/formatHex";
 
 export interface SellerSelection {
     seller: `0x${string}`;
@@ -40,11 +39,6 @@ export interface SellerSelection {
 }
 
 interface Props {
-    /** Canonical canonical method — `deliver:seller-assigned` or
-     *  `deliver:buyer-assigned`. Decides how the address is acquired. */
-    mode: string;
-    /** Seller addresses the lead seller designated — seller-assigned only. */
-    partnerAddresses: string[];
     /** Token symbol for price display. */
     tokenSymbol: string;
     /** Reports the completed selection, or `null` while incomplete. */
@@ -53,7 +47,7 @@ interface Props {
 
 const FIELD = "w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent";
 
-export function SellerCataloguePicker({ mode, partnerAddresses, tokenSymbol, onSelect }: Props) {
+export function SellerCataloguePicker({ tokenSymbol, onSelect }: Props) {
     const [selectedSellerAddress, setSelectedSellerAddress] = useState("");
     const [selectedItemId, setSelectedItemId] = useState("");
 
@@ -84,40 +78,23 @@ export function SellerCataloguePicker({ mode, partnerAddresses, tokenSymbol, onS
         onSelect({ seller: validSeller, item: selectedItem, price: selectedItem.price });
     }, [validSeller, selectedItem, onSelect]);
 
-    const sellerLabel = (addr: string) =>
-        sellerCatalogues.find((c) => hexEqual(c.address, addr))?.name ?? truncateHex(addr);
-
     const resetItem = () => setSelectedItemId("");
 
     return (
         <div className="space-y-2" data-testid="seller-catalogue-picker">
             <label className="text-xs font-semibold text-neutral-500 block">
-                {mode === "deliver:seller-assigned" ? "Choose a seller" : "Seller address"}
+                Seller address
             </label>
 
-            {/* Address step — partner list (seller-assigned) or free input (buyer-assigned). */}
-            {mode === "deliver:seller-assigned" ? (
-                <select
-                    value={selectedSellerAddress}
-                    onChange={(e) => { setSelectedSellerAddress(e.target.value); resetItem(); }}
-                    data-testid="select-seller-partner"
-                    className={FIELD}
-                >
-                    <option value="">Select a partner seller…</option>
-                    {partnerAddresses.map((a) => (
-                        <option key={a} value={a}>{sellerLabel(a)}</option>
-                    ))}
-                </select>
-            ) : (
-                <input
-                    type="text"
-                    value={selectedSellerAddress}
-                    onChange={(e) => { setSelectedSellerAddress(e.target.value); resetItem(); }}
-                    placeholder="0x… — any seller's address"
-                    data-testid="input-seller-address"
-                    className={FIELD}
-                />
-            )}
+            {/* Address step — the buyer enters any seller's address. */}
+            <input
+                type="text"
+                value={selectedSellerAddress}
+                onChange={(e) => { setSelectedSellerAddress(e.target.value); resetItem(); }}
+                placeholder="0x… — any seller's address"
+                data-testid="input-seller-address"
+                className={FIELD}
+            />
 
             {/* Catalogue step — the seller's published price list. */}
             {validSeller && isLoading && catalogueItems.length === 0 && (

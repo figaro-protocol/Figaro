@@ -22,21 +22,8 @@ import { getAttestationsByProcess, type RuntimeAttestation } from "@/lib/composi
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { CapabilityActionDescriptor, CapabilityExecutionInput, CapabilityModel, OrderNodeModel } from "@/lib/semantic/models";
 import { executeTransactionCapabilityAction } from "@/lib/semantic/executeTransactionCapability";
-import { toHex, type Hex } from "viem";
+import { type Hex } from "viem";
 import { clauseIdHash } from "@/lib/shared/evm";
-
-/** Per-attestation device witness for runtime PROOF clauses (e.g. proximity).
- *  The validator checks only nonce ≠ 0 and deviceSig length ∈ [65,512]; the real
- *  per-handoff witness comes from a device sensor (BLE/NFC/Wi-Fi) whose capture
- *  SDK is not built yet. This is the device-capture seam — a runtime VALUE
- *  provider, not clause knowledge. */
-const PROXIMITY_DEVICE_SIG_PLACEHOLDER: Hex = `0x${"01".repeat(65)}`;
-function deviceWitness(): { nonce: Hex; deviceSig: Hex } {
-    return {
-        nonce: toHex(crypto.getRandomValues(new Uint8Array(32))),
-        deviceSig: PROXIMITY_DEVICE_SIG_PLACEHOLDER,
-    };
-}
 
 function collectRuntimeCapabilities(capabilities: CapabilityModel[]): CapabilityModel[] {
     const seen = new Set<string>();
@@ -270,18 +257,12 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                 updateSellerProfile: (metadataURI) => updateSellerProfile.updateProfile(metadataURI),
                 withdrawSellerDeposit: () => withdrawSellerDeposit.withdraw(),
                 // ONE generic attestation path — the clause spec drives the on-chain
-                // content (enum ladder, or a proof's band) and who attests (party,
-                // from block.attestation). Names no clause; a permissionless clause
-                // attests through here unchanged. Proof clauses get the device witness.
-                // A hand-off stage carries `pairedProof`: one user action, two
-                // attestations — the stage, then the proximity proof on the order
-                // that carries it (roleOrderHash = own order when the carrier is a
-                // sibling: the coordinator's same-process cross-order witness).
+                // content (enum ladder) and who attests (party). Names no clause; a
+                // permissionless clause attests through here unchanged.
                 submitClauseAttestation: async (action) => {
                     const spec = getClauseSpec(action.clauseId);
                     if (!spec) throw new Error(`Clause spec not loaded: ${action.clauseId}`);
                     const fields: Record<string, unknown> = { [action.ladderField]: action.eventCode };
-                    if (action.isProof) Object.assign(fields, deviceWitness());
                     const args = {
                         orderHash: action.orderHash as Hex,
                         clauseId: clauseIdHash(action.clauseId, spec.version),
@@ -289,28 +270,9 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                         content: encodeContentFromSpec(spec, fields),
                         failureMessage: `${action.clauseId} ${action.eventCode} attestation failed`,
                     };
-                    const stageTx = await (action.party === "buyer"
+                    return action.party === "buyer"
                         ? attestationActions.submitBuyerAttestation(args)
-                        : attestationActions.submitSellerAttestation({ ...args, roleOrderHash: action.roleOrderHash as Hex | undefined }));
-                    if (!action.pairedProof || action.party !== "seller") return stageTx;
-                    // Confirm the stage tx before the paired proof so the two
-                    // writes never race a shared wallet nonce.
-                    await waitForTransactionConfirmation(stageTx as Hex | undefined);
-                    const proofSpec = getClauseSpec(action.pairedProof.clauseId);
-                    if (!proofSpec) throw new Error(`Clause spec not loaded: ${action.pairedProof.clauseId}`);
-                    return attestationActions.submitSellerAttestation({
-                        orderHash: action.pairedProof.orderHash as Hex,
-                        clauseId: clauseIdHash(action.pairedProof.clauseId, proofSpec.version),
-                        stage: action.pairedProof.stage,
-                        content: encodeContentFromSpec(proofSpec, {
-                            [action.pairedProof.ladderField]: action.pairedProof.eventCode,
-                            ...deviceWitness(),
-                        }),
-                        roleOrderHash: action.pairedProof.orderHash !== action.orderHash
-                            ? (action.orderHash as Hex)
-                            : undefined,
-                        failureMessage: `${action.pairedProof.clauseId} ${action.pairedProof.eventCode} paired witness failed`,
-                    });
+                        : attestationActions.submitSellerAttestation({ ...args, roleOrderHash: action.roleOrderHash as Hex | undefined });
                 },
                 claimAuction: dutchAuctionActions.claim,
             }, input);

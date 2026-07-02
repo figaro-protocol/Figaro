@@ -19,7 +19,7 @@ import Link from "next/link";
 import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
 import { ContentImage } from "@/components/shared/ContentImage";
-import { SellerBrandingModule, SellerLogo } from "@/components/modules/SellerBrandingModule";
+import { SellerLogo } from "@/components/modules/SellerBrandingModule";
 import { useCommerce } from "@/lib/commerce";
 import { useCartStore } from "@/lib/commerce/cartStore";
 import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
@@ -138,7 +138,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
     const categories = Array.from(new Set(sellerCatalogue.items.map((item) => item.category)));
 
     return (
-        <SellerBrandingModule sellerAddress={sellerAddressTyped}>
+        <div>
             <div data-testid="seller-detail-view" data-seller-address={sellerAddressLower} className="container mx-auto px-6 py-10 max-w-5xl space-y-8">
                 <div>
                     <Link href="/discover" className="text-sm text-neutral-500 hover:text-black">
@@ -316,6 +316,6 @@ export function SellerDetailView({ sellerAddress }: Props) {
                     </aside>
                 </div>
             </div>
-        </SellerBrandingModule>
+        </div>
     );
 }

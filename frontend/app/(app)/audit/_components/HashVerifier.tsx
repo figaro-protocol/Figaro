@@ -146,7 +146,7 @@ function AgreementMode() {
                 }
             }
             const hash = computeAgreementHash(parsed);
-            return { kind: "ok" as const, hash, redactedClauses: [] as string[] };
+            return { kind: "ok" as const, hash };
         } catch (e) {
             return { kind: "error" as const, message: extractErrorMessage(e, "JSON parse failed.") };
         }
@@ -182,32 +182,7 @@ function AgreementMode() {
             </label>
             {result.kind === "error" && <ErrorBox message={result.message} />}
             {result.kind === "ok" && (
-                <>
-                    <HashResult computed={result.hash} expected={expected.trim()} label="Recomputed agreement merkle root" />
-                    {result.redactedClauses.length > 0 && (
-                        <div
-                            className="rounded border border-amber-200 bg-amber-50 p-4 space-y-2 text-xs text-amber-900"
-                            data-testid="verify-agreement-redacted-notice"
-                        >
-                            <p className="font-semibold uppercase tracking-wider text-[11px]">
-                                {result.redactedClauses.length} section{result.redactedClauses.length > 1 ? "s" : ""} sealed
-                            </p>
-                            <p>
-                                The merkle root above is computed using the stored leaf
-                                hashes for redacted sections. To verify a revealed
-                                cleartext section, switch to <strong>Mode B</strong>,
-                                paste the section JSON, and use the redacted entry&apos;s
-                                <code className="font-mono">leaf</code> as the expected
-                                leaf hash.
-                            </p>
-                            <ul className="list-disc list-inside font-mono text-[11px]">
-                                {result.redactedClauses.map((s) => (
-                                    <li key={s}>{s}</li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                </>
+                <HashResult computed={result.hash} expected={expected.trim()} label="Recomputed agreement merkle root" />
             )}
         </div>
     );

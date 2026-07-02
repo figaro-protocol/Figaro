@@ -1,25 +1,21 @@
 /**
  * GHG module — V5 event-sourced via AttestationCoordinator.
  *
- * Two clause FAMILIES collaborate to represent a GHG disclosure arc, both
- * resolved from the registry's specs (chain → IPFS), never named in code:
+ * DISCLOSURE clauses (committed at signing) — every registered clause
+ * declaring a `scope` field, resolved from the registry's specs (chain →
+ * IPFS), never named in code. The accounting methodology is a free-form
+ * `standard` value on the clause (not a per-standard clause id); the
+ * committed `{standard, scope}` sectionData is the contract-signing-time
+ * declaration ("seller reports under this methodology, scope 1").
  *
- *   - DISCLOSURE clauses (committed at signing) — every registered clause
- *     declaring a `scope` field. The accounting methodology is a free-form
- *     `standard` value on the clause (not a per-standard clause id); the
- *     committed `{standard, scope}` sectionData is the contract-signing-time
- *     declaration ("seller reports under this methodology, scope 1").
+ * The runtime MEASUREMENT companion clause was retired (a consequence, not a
+ * clause — operator ruling; re-affirmed 2026-07-02). The measured-grams
+ * channel is an emissions-cluster design decision; until it lands,
+ * `totalActualGrams` is 0.
  *
- *   - MEASUREMENT (runtime attestation — grams) — each disclosure
- *     clause's `block.sisterClauseId`. Content is `abi.encode(uint256 grams)`
- *     per delivery; the runtime grams are fresh per delivery, NOT a re-assertion
- *     of the committed sectionData — the committed unit-of-account and the
- *     per-measurement value are deliberately decoupled. (Still merkle-bound to
- *     the agreement, like every attestation.)
- *
- * Read hooks reconstruct disclosure state from indexed Attestation events
- * under both families — no contract storage reads. Writes flow through the
- * generic capability rail (`submit-clause-attestation`), not this module.
+ * Read hooks reconstruct disclosure state from indexed Attestation events —
+ * no contract storage reads. Writes flow through the generic capability rail
+ * (`submit-clause-attestation`), not this module.
  */
 "use client";
 
@@ -58,7 +54,6 @@ export type DisclosureTask = {
     stageLabel: string;
     contentRef: Hex | null;
     attester: string;
-    actualGrams: bigint | null;
     blockNumber: number;
 };
 
@@ -66,7 +61,8 @@ export type ProcessDisclosureSummary = {
     processId: string;
     attestationCount: number;
     commitmentCount: number;
-    actualCount: number;
+    /** 0 until the emissions-cluster rebuild defines the measured-grams
+     *  channel (the measurement companion clause was retired). */
     totalActualGrams: bigint;
     attestations: AttestationRecord[];
 };
@@ -79,12 +75,6 @@ function disclosureClauseIdHashes(): Hex[] {
     return listKnownClauseIds()
         .filter((clauseId) => clauseDeclaresField(clauseId, "scope"))
         .map((clauseId) => clauseIdHash(clauseId, getClauseSpec(clauseId)?.version ?? 1));
-}
-
-/** The runtime GHG-measurement companion clause was removed; there are no
- *  measurement sisters to watch. */
-function measurementClauseIdHashes(): Hex[] {
-    return [];
 }
 
 // ── Pure utility functions ───────────────────────────────────────────────────
@@ -126,26 +116,6 @@ export async function getAttestationContent(
     }
 }
 
-/**
- * Decode a measurement-clause content payload back to grams.
- * Shape: `abi.encode(uint256 grams)` — 32 bytes, big-endian padded, equivalent
- * to a raw hex integer. Returns `null` for empty / zero / unparseable content.
- */
-export function decodeMeasurementGramsContent(content: Hex | null | undefined): bigint | null {
-    if (isEmptyHex(content) || content === ZERO_BYTES32) return null;
-    try {
-        return BigInt(content);
-    } catch {
-        return null;
-    }
-}
-
-export function formatActualGrams(grams: bigint): string {
-    if (grams < 1000n) return `${grams} g CO₂e`;
-    if (grams < 1_000_000n) return `${(Number(grams) / 1000).toFixed(2)} kg CO₂e`;
-    return `${(Number(grams) / 1_000_000).toFixed(3)} t CO₂e`;
-}
-
 function parseAttestationLog(log: IndexedAttestationLog): AttestationRecord {
     return {
         orderHash: log.args?.orderHash ?? "",
@@ -183,9 +153,7 @@ export function useOrderDisclosureTasks(orderHash: string | undefined) {
         setLoading(true);
         (async () => {
             try {
-                const disclosureHashes = disclosureClauseIdHashes();
-                const measurementHashes = measurementClauseIdHashes();
-                const ghgHashes = new Set<string>([...disclosureHashes, ...measurementHashes]);
+                const ghgHashes = new Set<string>(disclosureClauseIdHashes());
                 const logs = await getAttestationsByOrder(publicClient, chainId, orderHash);
                 if (cancelled) return;
                 const ghgLogs = logs.filter(
@@ -193,29 +161,20 @@ export function useOrderDisclosureTasks(orderHash: string | undefined) {
                         typeof log.args?.clauseId === "string" && ghgHashes.has(log.args.clauseId)
                     ),
                 );
-                const result = await Promise.all(ghgLogs.map(async (log) => {
+                const result = ghgLogs.map((log) => {
                     const rec = parseAttestationLog(log);
                     const contentHex = rec.contentRef !== ZERO_BYTES32
                         ? rec.contentRef as Hex : null;
-                    let actualGrams: bigint | null = null;
-                    if (measurementHashes.includes(rec.clauseId as Hex) && rec.transactionHash) {
-                        const content = await getAttestationContent(
-                            publicClient,
-                            rec.transactionHash as Hex,
-                        );
-                        actualGrams = decodeMeasurementGramsContent(content);
-                    }
                     const task: DisclosureTask = {
                         orderHash: rec.orderHash,
                         stage: rec.stage,
                         stageLabel: labelFor(rec.clauseId, rec.stage),
                         contentRef: contentHex,
                         attester: rec.attester,
-                        actualGrams,
                         blockNumber: rec.blockNumber,
                     };
                     return task;
-                }));
+                });
                 if (!cancelled) setTasks(result);
             } catch (err) {
                 console.error("useOrderDisclosureTasks error:", err);
@@ -245,56 +204,27 @@ export function useProcessDisclosureSummary(processId: Hex | undefined) {
         setLoading(true);
         (async () => {
             try {
-                // Query every registered clause in each set in parallel.
-                // Disclosures carry commitment / restatement / verification
-                // events; measurements carry grams.
+                // Query every registered disclosure clause in parallel.
                 const disclosureHashes = disclosureClauseIdHashes();
-                const measurementHashes = measurementClauseIdHashes();
-                const [disclosureLogs, measurementLogs] = await Promise.all([
-                    Promise.all(disclosureHashes.map((h) =>
-                        getAttestationsByProcessAndClause(publicClient, chainId, processId, h),
-                    )).then((r) => r.flat()),
-                    Promise.all(measurementHashes.map((h) =>
-                        getAttestationsByProcessAndClause(publicClient, chainId, processId, h),
-                    )).then((r) => r.flat()),
-                ]);
+                const disclosureLogs = await Promise.all(disclosureHashes.map((h) =>
+                    getAttestationsByProcessAndClause(publicClient, chainId, processId, h),
+                )).then((r) => r.flat());
                 if (cancelled) return;
-                const disclosureAttestations = disclosureLogs.map(
+                const attestations = disclosureLogs.map(
                     (log) => parseAttestationLog(log as IndexedAttestationLog),
                 );
-                const measurementAttestations = measurementLogs.map(
-                    (log) => parseAttestationLog(log as IndexedAttestationLog),
-                );
-                const measurementGrams = await Promise.all(
-                    measurementAttestations
-                        .filter((a) => a.transactionHash)
-                        .map(async (a) => {
-                            const content = await getAttestationContent(
-                                publicClient,
-                                a.transactionHash as Hex,
-                            );
-                            return decodeMeasurementGramsContent(content);
-                        }),
-                );
-                if (cancelled) return;
 
                 let commitmentCount = 0;
-                for (const a of disclosureAttestations) {
+                for (const a of attestations) {
                     if (a.stage === DISCLOSURE_KIND.commitment) commitmentCount++;
                 }
-                let totalActualGrams = 0n;
-                for (const grams of measurementGrams) {
-                    if (grams !== null) totalActualGrams += grams;
-                }
-                const attestations = [...disclosureAttestations, ...measurementAttestations];
 
                 if (!cancelled) {
                     setSummary({
                         processId,
                         attestationCount: attestations.length,
                         commitmentCount,
-                        actualCount: measurementAttestations.length,
-                        totalActualGrams,
+                        totalActualGrams: 0n,
                         attestations,
                     });
                 }

@@ -1,12 +1,9 @@
 /**
- * lib/mechanisms/useAsyncSellerResource.ts
+ * lib/seller/useAsyncSellerResource.ts
  *
  * Generic shape for "seller address → resolved metadataURI → fetched
- * resource" hooks. Two callers consolidate onto this:
- *   - useSellerBranding   → resolved branding
- *   - useSellerCatalogue  → seller catalogue
- *
- * Each caller wraps this with a typed result alias and a fixed fetcher.
+ * resource" hooks (e.g. useSellerBranding → resolved branding). Each caller
+ * wraps this with a typed result alias and a fixed fetcher.
  */
 "use client";
 

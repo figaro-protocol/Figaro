@@ -34,21 +34,12 @@ interface ContractClause {
     clauseKey: string;
     /** Human-readable title. */
     title: string;
-    /** The clause's data payload — clause-specific structure. Empty
-     *  object when the clause is sealed (see `sealed` flag). */
+    /** The clause's data payload — clause-specific structure. */
     body: Record<string, unknown>;
     /** Merkle leaf hash of this section under the agreementHash root.
      *  Auditor recomputes this from the body and verifies it appears in
-     *  the agreementHash merkle tree. For sealed clauses this leaf
-     *  is the value carried directly in the redacted section — the
-     *  cleartext that produces the same leaf is held by the original
-     *  parties and can be selectively revealed via
-     *  `verifyRevealedSection`. */
+     *  the agreementHash merkle tree. */
     leafHash: `0x${string}`;
-    /** True when this clause's body has been redacted in the input
-     *  agreement. Verifiers see `body: {}` and a leaf-only commitment;
-     *  the clause's content can be revealed selectively by the holder. */
-    sealed?: boolean;
 }
 
 export interface ContractDocument extends ExtractedDocument {
@@ -81,7 +72,6 @@ export interface ContractDocument extends ExtractedDocument {
      */
     topology: {
         parentOrderHashes: string[];
-        topologyMode?: string;
     };
     /** Canonical method — the modality clause's raw value (consume-onsite |
      *  pickup | delivery | virtual | any registry-defined modality). The
@@ -118,14 +108,11 @@ function extractJurisdictionSummary(agreement: Agreement) {
 
 function extractTopology(agreement: Agreement) {
     const topology = sectionByField(agreement, "parentOrderHashes");
-    const data = topology?.data as
-        | { parentOrderHashes?: unknown; topologyMode?: unknown }
-        | undefined;
+    const data = topology?.data as { parentOrderHashes?: unknown } | undefined;
     const parentOrderHashes = Array.isArray(data?.parentOrderHashes)
         ? (data.parentOrderHashes.filter((p) => typeof p === "string") as string[])
         : [];
-    const topologyMode = typeof data?.topologyMode === "string" ? data.topologyMode : undefined;
-    return { parentOrderHashes, topologyMode };
+    return { parentOrderHashes };
 }
 
 function extractMethodSummary(agreement: Agreement) {
@@ -148,8 +135,8 @@ export function extractContract(
     // Currency: prefer the agreement's commerce-section currency (signed by both
     // parties) over the order's currency field (which is event-derived, normally
     // identical, but the commerce section is the authoritative party-signed
-    // source). When commerce is redacted, fall back to order.currency — the
-    // kernel records currency on the commitment regardless of redaction.
+    // source). When the commerce section is absent, fall back to order.currency
+    // — the kernel records currency on the commitment regardless.
     const commerce = sectionByField(agreement, "lineItems");
     const commerceCurrency = (commerce?.data as { currency?: string } | undefined)?.currency;
 

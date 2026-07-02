@@ -5,8 +5,9 @@
  *
  * On click: build a process-scoped audit-bundle PDF (via `buildAuditBundlePdfBlob`)
  * and trigger a browser download. No server round-trip; the user's data
- * never leaves the browser. The redact toggle seals commerce line items
- * via `redactSections` while preserving the agreement merkle root.
+ * never leaves the browser. Agreements are cleartext — the chain is a
+ * deterministic state machine and this surface is a reader; there are no
+ * redacted distribution forms (operator ruling 2026-07-02).
  */
 import { useMemo, useState } from "react";
 import { useChainId, usePublicClient } from "wagmi";
@@ -41,54 +42,19 @@ export function DownloadAuditBundleButton({ processId, orders }: DownloadAuditBu
     const agreements = useProcessAgreements(agreementHashes);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [redactLineItems, setRedactLineItems] = useState(false);
 
     const disabled = busy || orders.length === 0;
-    const filenameSuffix = redactLineItems ? "-redacted" : "";
 
     return (
         <div className="flex flex-col gap-2" data-testid="download-audit-bundle">
-            <label
-                className="flex items-center gap-2 text-[11px] text-neutral-700 cursor-pointer select-none"
-                data-testid="download-audit-bundle-redact-toggle"
-            >
-                <input
-                    type="checkbox"
-                    checked={redactLineItems}
-                    onChange={(e) => setRedactLineItems(e.target.checked)}
-                    disabled={busy}
-                    className="h-3 w-3"
-                    data-testid="download-audit-bundle-redact-checkbox"
-                />
-                <span>
-                    Seal commerce line items (for distribution)
-                    {redactLineItems && (
-                        <span className="ml-1 text-amber-700 font-semibold">— 🔒 sealed</span>
-                    )}
-                </span>
-            </label>
-            {redactLineItems && (
-                <p
-                    className="text-[10px] text-neutral-600 leading-tight max-w-md"
-                    data-testid="download-audit-bundle-redact-note"
-                >
-                    The PDF will hide line-item detail (SKU, quantity, unit price)
-                    while preserving the agreement merkle root, totals, currency,
-                    and every other clause. The recipient verifies the root
-                    against chain; you can selectively reveal individual sections
-                    later via /audit Mode B if needed.
-                </p>
-            )}
             <button
                 type="button"
                 onClick={async () => {
                     setBusy(true);
                     setError(null);
                     try {
-                        const blob = await buildAuditBundlePdfBlob(processId, orders, publicClient, chainId, agreements, {
-                            redactLineItems,
-                        });
-                        triggerDownload(blob, `audit-bundle-${processId.slice(0, 10)}${filenameSuffix}.pdf`);
+                        const blob = await buildAuditBundlePdfBlob(processId, orders, publicClient, chainId, agreements);
+                        triggerDownload(blob, `audit-bundle-${processId.slice(0, 10)}.pdf`);
                     } catch (e) {
                         setError(extractErrorMessage(e, "PDF generation failed."));
                     } finally {
@@ -99,7 +65,7 @@ export function DownloadAuditBundleButton({ processId, orders }: DownloadAuditBu
                 className={`text-xs px-3 py-1.5 rounded border ${disabled ? "bg-neutral-100 text-neutral-400 border-neutral-200 cursor-not-allowed" : "bg-black text-white border-black hover:bg-neutral-800"}`}
                 data-testid="download-audit-bundle-button"
             >
-                {busy ? "Building bundle…" : redactLineItems ? "Download redacted bundle (PDF)" : "Download audit bundle (PDF)"}
+                {busy ? "Building bundle…" : "Download audit bundle (PDF)"}
             </button>
             {error && (
                 <p className="text-[11px] text-red-700" data-testid="download-audit-bundle-error">

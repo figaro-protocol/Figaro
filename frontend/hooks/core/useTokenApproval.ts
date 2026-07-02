@@ -5,7 +5,7 @@ import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useSig
 import { encodeFunctionData, parseSignature } from "viem";
 import { ERC20_ABI } from "@/lib/core/contracts";
 
-export interface PermitSignature {
+interface PermitSignature {
     /** Token contract address — passed as `permitTarget` to `*WithPermit` functions. */
     target: `0x${string}`;
     /** ABI-encoded `permit(owner, spender, value, deadline, v, r, s)` calldata. */

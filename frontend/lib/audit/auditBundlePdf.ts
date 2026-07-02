@@ -4,10 +4,10 @@
  * Pure async helper consumed by both surfaces that emit the audit-bundle
  * PDF: `DownloadAuditBundleButton` (browser download) and the
  * `DisputeStatusPanel` Submit Evidence flow (IPFS pin + on-chain
- * evidence submission). The redact-line-items toggle is wired here so
- * both call sites get identical redaction semantics. The PDF includes
- * a Process Timeline page when a `publicClient` is supplied, so the
- * timeline doesn't need a separate IPFS pin or evidence submission.
+ * evidence submission). Agreements are cleartext — there is no redacted
+ * distribution form. The PDF includes a Process Timeline page when a
+ * `publicClient` is supplied, so the timeline doesn't need a separate
+ * IPFS pin or evidence submission.
  */
 
 import type { PublicClient } from "viem";
@@ -115,7 +115,6 @@ async function loadPdfModule() {
 }
 
 export interface BuildAuditBundlePdfOptions {
-    redactLineItems?: boolean;
     /**
      * Skip the timeline page entirely. Defaults to including the timeline
      * whenever a `publicClient` is available. Set to `false` only if the

@@ -28,8 +28,13 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         const hamburger = page.getByRole('button', { name: 'Toggle mobile menu' });
         await expect(hamburger).toBeVisible();
 
-        // Desktop nav container is CSS-hidden below the md breakpoint.
-        await expect(page.getByTestId('desktop-nav')).toBeHidden();
+        // Desktop nav container is CSS-hidden below the md breakpoint. Assert
+        // it is ATTACHED first — toBeHidden() passes vacuously for a testid
+        // that doesn't exist, which is how a rename made this assertion
+        // meaningless once before (desktop-nav → desktop-nav-app).
+        const desktopNav = page.getByTestId('desktop-nav-app');
+        await expect(desktopNav).toBeAttached();
+        await expect(desktopNav).toBeHidden();
     });
 
     test('clicking hamburger opens the drawer, close button closes it', async ({ page }) => {

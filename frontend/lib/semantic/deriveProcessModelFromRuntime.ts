@@ -4,7 +4,7 @@ import { sectionByField } from "@/lib/core/agreementSections";
 import { deriveOrderTopology, type TopologyMode } from "@/lib/semantic/processTopology";
 import { ProcessSummary } from "@/hooks/core/useWalletProcessIds";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
-import { clauseIsStructural, clauseLadderField, getClauseSpec, labelEnumValue } from "@/lib/shared/clauseSpecSource";
+import { clauseIsStructural, clauseLadderField, labelEnumValue } from "@/lib/shared/clauseSpecSource";
 import { ZERO_BYTES32, hexEqual, clauseIdHash as clauseIdHashOf } from "@/lib/shared/evm";
 import {
     AttachmentModel,
@@ -15,7 +15,6 @@ import {
     ProcessModel,
     ProcessRelationModel,
 } from "@/lib/semantic/models";
-import { keccak256, stringToHex, type Hex } from "viem";
 
 /** Root orders anchor a process at cumulativeValue === payment. */
 function isRootOrder(order: Order): boolean {
@@ -38,17 +37,6 @@ function ledgerSource(sourceLabel: string, referenceId?: string) {
     };
 }
 
-/** The runtime proof clause an order's agreement carries (a companion enum,
- *  e.g. a proximity proof) at the band committed in its sister policy section
- *  on the same order — the order's hand-off pairing carrier. */
-interface ProofCarrier {
-    clauseId: string;
-    clauseIdHash: string;
-    stage: number;
-    eventCode: string;
-    ladderField: string;
-}
-
 /** Pre-indexed runtime state, built ONCE per process derivation so the
  *  per-order capability loop stays O(orders + attestations). The kernel's
  *  resolve ceiling (~1,240 orders / 30M gas) must flow through this deriver
@@ -57,8 +45,6 @@ interface ProofCarrier {
 interface RuntimeIndexes {
     /** Attestations grouped by the order they target. */
     attestationsByOrder: Map<string, RuntimeAttestation[]>;
-    /** Per order id: its proof carrier (see ProofCarrier). */
-    proofCarrierByOrder: Map<string, ProofCarrier>;
     /** Off-chain topology edges, both directions, keyed by order id. */
     childrenByOrder: Map<string, string[]>;
     parentsByOrder: Map<string, string[]>;
@@ -77,9 +63,6 @@ function buildRuntimeIndexes(
         else attestationsByOrder.set(attestation.orderHash, [attestation]);
     }
 
-    // Runtime proof companion clauses were removed; no order carries a hand-off proof.
-    const proofCarrierByOrder = new Map<string, ProofCarrier>();
-
     const childrenByOrder = new Map<string, string[]>();
     const parentsByOrder = new Map<string, string[]>();
     for (const order of processOrders) {
@@ -93,31 +76,7 @@ function buildRuntimeIndexes(
         }
     }
 
-    return { attestationsByOrder, proofCarrierByOrder, childrenByOrder, parentsByOrder };
-}
-
-/** The order whose agreement carries the proximity proof for a hand-off on
- *  `orderId`: the order itself, else a topology-adjacent order (child first,
- *  then parent) — the cross-order witness case. */
-function findProofCarrierOrder(orderId: string, indexes: RuntimeIndexes): string | null {
-    if (indexes.proofCarrierByOrder.has(orderId)) return orderId;
-    for (const child of indexes.childrenByOrder.get(orderId) ?? []) {
-        if (indexes.proofCarrierByOrder.has(child)) return child;
-    }
-    for (const parent of indexes.parentsByOrder.get(orderId) ?? []) {
-        if (indexes.proofCarrierByOrder.has(parent)) return parent;
-    }
-    return null;
-}
-
-/** Hand-off stage pairing was driven by `block.handoffStages`, now removed —
- *  there is no pending-hand-off state to suppress the standalone proof button. */
-function sellerHasPendingHandoffStage(
-    _agreement: Agreement,
-    _orderAttestations: RuntimeAttestation[],
-    _sellerAddr: string,
-): boolean {
-    return false;
+    return { attestationsByOrder, childrenByOrder, parentsByOrder };
 }
 
 function roleCapabilities(
@@ -163,15 +122,9 @@ function roleCapabilities(
     const orderIdStr = order.id.toString();
     const agreement = order.agreementHash ? agreements.get(order.agreementHash) : undefined;
 
-    // GENERIC runtime attestation. Lifecycle clauses (non-companion enum:
-    // merchant/courier/…) advance their enum ladder; proof clauses (companion
-    // enum: proximity-proof) are a single attestation at the band committed in
-    // the sister policy. The attestation is seller-side (the bilateral and
-    // hand-off-pairing wiring, formerly driven by the removed block.attestation /
-    // block.handoffStages flags, no longer fires).
-    // The seller's standalone proof button stays suppressed while a pairing
-    // stage is pending. No clause names — a permissionlessly-registered clause
-    // flows through this loop unchanged.
+    // GENERIC runtime attestation: any non-structural clause with an enum
+    // ladder advances it, seller-side. No clause names — a permissionlessly-
+    // registered clause flows through this loop unchanged.
     if (agreement) {
         const orderAttestations = indexes.attestationsByOrder.get(orderIdStr) ?? [];
         for (const section of agreement.sections) {

@@ -22,8 +22,6 @@ import { useSearchParams } from "next/navigation";
 import { createPublicClient, isAddress } from "viem";
 import { mockAwareHttp } from "@/lib/shared/mockTransport";
 import { buildProcessTimeline, type ProcessTimeline, type TimelineEvent } from "@/lib/audit/processTimeline";
-import { resolveContentUri } from "@/lib/shared/ipfsService";
-import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
@@ -44,17 +42,12 @@ function formatTimestamp(iso: string): string {
     });
 }
 
-/** Color map for event types */
+/** Color map for the event names `buildProcessTimeline` emits. */
 const EVENT_COLORS: Record<string, string> = {
-    OrderCreated: "bg-blue-500",
-    OrderAccepted: "bg-green-500",
+    OrderCommitted: "bg-blue-500",
+    Attestation: "bg-green-500",
     OrderResolved: "bg-emerald-600",
-    OrderCancelled: "bg-red-500",
 };
-
-// ---------------------------------------------------------------------------
-// IPFS Artifact Viewer — renders attestation photos from IPFS CIDs
-// ---------------------------------------------------------------------------
 
 /** Validate an RPC URL to prevent SSRF via attacker-controlled endpoints. */
 function isAllowedRpcUrl(url: string): boolean {
@@ -69,81 +62,6 @@ function isAllowedRpcUrl(url: string): boolean {
     } catch {
         return false;
     }
-}
-
-/** Validate an IPFS CID (base58 Qm... or base32 bafy...). */
-function isValidCID(cid: string): boolean {
-    return /^(Qm[1-9A-HJ-NP-Za-km-z]{44}|bafy[a-z2-7]{55})$/.test(cid);
-}
-
-function IpfsPhotoViewer({ cid, caption }: { cid: string; caption: string }) {
-    if (!isValidCID(cid)) return null;
-    const url = resolveContentUri(`ipfs://${cid}`) ?? undefined;
-    return (
-        <div className="mt-2 border border-gray-200 rounded overflow-hidden" data-testid="ipfs-photo">
-            {/* eslint-disable-next-line @next/next/no-img-element -- Evidence media comes from dynamic IPFS gateways and uses runtime load-failure hiding. */}
-            <img
-                src={url}
-                alt={caption}
-                className="w-full max-h-48 object-contain bg-gray-50"
-                loading="lazy"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-            />
-            <p className="text-xs text-gray-500 px-2 py-1 font-mono truncate">{cid}</p>
-        </div>
-    );
-}
-
-// ---------------------------------------------------------------------------
-// IPFS Attestation Renderer — fetches and displays attestation JSON from IPFS
-// ---------------------------------------------------------------------------
-
-function AttestationViewer({ cid }: { cid: string }) {
-    const [attestation, setAttestation] = useState<Record<string, unknown> | null>(null);
-
-    useEffect(() => {
-        if (!isValidCID(cid)) return;
-        const url = resolveContentUri(`ipfs://${cid}`);
-        if (!url) return;
-        fetch(url)
-            .then((r) => safeJsonFromResponse<Record<string, unknown>>(r))
-            .then((data) => setAttestation(data))
-            .catch(() => setAttestation(null));
-    }, [cid]);
-
-    if (!attestation) return null;
-
-    const mode = attestation.mode as string | undefined;
-    const photoCID = attestation.photoCID as string | undefined;
-
-    return (
-        <div className="mt-2 bg-gray-50 border border-gray-200 rounded p-2 text-xs space-y-1" data-testid="attestation-viewer">
-            <div className="font-semibold text-gray-600">
-                {mode === "photo-gps" ? "📸 Photo + GPS Attestation" :
-                    mode === "geohash-match" ? "📍 Geohash Match Attestation" :
-                        "📋 Attestation Evidence"}
-            </div>
-            {attestation.latitude !== undefined && (
-                <p className="text-gray-500">
-                    Location: {Number(attestation.latitude).toFixed(6)}, {Number(attestation.longitude).toFixed(6)}
-                    {attestation.accuracyMeters ? ` (±${Number(attestation.accuracyMeters).toFixed(0)}m)` : ""}
-                </p>
-            )}
-            {!!attestation.geohash && (
-                <p className="text-gray-500 font-mono">Geohash: {String(attestation.geohash)}</p>
-            )}
-            {!!attestation.fulfillerGeohash && (
-                <p className="text-gray-500 font-mono">
-                    Fulfiller: {String(attestation.fulfillerGeohash)} vs Order: {String(attestation.orderDropoffGeohash)}
-                    {" — "}{attestation.matches ? "✅ Match" : "❌ No match"}
-                </p>
-            )}
-            {!!attestation.notes && (
-                <p className="text-gray-500 italic">&ldquo;{String(attestation.notes)}&rdquo;</p>
-            )}
-            {photoCID && <IpfsPhotoViewer cid={photoCID} caption="Delivery photo evidence" />}
-        </div>
-    );
 }
 
 // ---------------------------------------------------------------------------
@@ -191,16 +109,6 @@ function TimelineEventCard({ event, index }: { event: TimelineEvent; index: numb
                             </div>
                         ))}
                     </div>
-                )}
-
-                {/* Attestation artifacts (evidence submissions carry attestationCID) */}
-                {event.details.attestationCID && (
-                    <AttestationViewer cid={event.details.attestationCID} />
-                )}
-
-                {/* Photo evidence (some events carry photoCID directly) */}
-                {event.details.photoCID && !event.details.attestationCID && (
-                    <IpfsPhotoViewer cid={event.details.photoCID} caption="Photo evidence" />
                 )}
 
                 {/* Tx hash link */}

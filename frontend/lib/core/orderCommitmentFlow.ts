@@ -5,15 +5,15 @@
  *
  * Preview and APPROVE happen first and TOGETHER, OUTSIDE this hook: the page
  * builds the preview (orderPreview.buildOrderPreview) and approves the bond via
- * `useOrderApprovalFlow`, whose `approved` flag gates the sign action so the
- * approval can never be forgotten. This hook owns only the deliberate SIGN step
- * that follows, plus the share / commit it leads into:
+ * `useTokenApproval`, wired beside the preview so the approval can never be
+ * forgotten. This hook owns only the deliberate SIGN step that follows, plus
+ * the share / commit it leads into:
  *
  *   buyer:  signAndShare(preview) → sign → relay to the seller
  *   seller: acceptOrder(payload)  → sign → broadcast on-chain
  *
  * It owns the EIP-712 domain and the pre-sign confirm gate. It does NOT approve
- * — that is `useOrderApprovalFlow`'s job, wired beside the preview.
+ * — that is `useTokenApproval`'s job, wired beside the preview.
  */
 import { useCallback, useState } from "react";
 import {
@@ -168,7 +168,7 @@ export function useOrderCommitmentFlow() {
     /**
      * COUNTER-PARTY side (usually the seller): an incoming pending payload →
      * counter-sign → broadcast on-chain. The bond is already approved (the page
-     * gated this on `useOrderApprovalFlow.approved`). Returns the tx hash.
+     * gated this on `useTokenApproval`). Returns the tx hash.
      */
     const acceptOrder = useCallback(async (
         incoming: CommitmentPayload,

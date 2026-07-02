@@ -8,7 +8,7 @@ import {
     writeSessionStorage,
 } from "@/lib/shared/storage";
 
-export interface HandoffKeyRecord {
+interface HandoffKeyRecord {
     keyB64: string;
     txHash: string;
     processId: string;
@@ -18,7 +18,7 @@ export interface HandoffKeyRecord {
     ephemeralPrivateKeyHex?: string;
 }
 
-export interface PendingHandoffIntent {
+interface PendingHandoffIntent {
     processId: string;
     originOrderId: string;
     pickupGeohash: string;
@@ -27,7 +27,7 @@ export interface PendingHandoffIntent {
     createdAt: number;
 }
 
-export interface PersistHandoffArtifactsParams {
+interface PersistHandoffArtifactsParams {
     publicClient: PublicClient;
     buyerAddress: string;
     orderTxHash: `0x${string}`;
@@ -39,13 +39,13 @@ export interface PersistHandoffArtifactsParams {
     ephemeralPrivateKeyHex?: string;
 }
 
-export interface PersistedHandoffArtifacts {
+interface PersistedHandoffArtifacts {
     processId: string;
     orderId: string;
     txHash: string;
 }
 
-export interface OrderRef {
+interface OrderRef {
     processId: string;
     orderId: string;
     txHash?: string;

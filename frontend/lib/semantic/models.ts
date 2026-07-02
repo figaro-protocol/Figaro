@@ -86,31 +86,12 @@ export interface SubmitClauseAttestationCapabilityAction {
     stage: number;
     /** The enum stage CODE — content = `{ [ladderField]: eventCode }`. */
     eventCode: string;
-    /** The spec field holding the enum (the ladder, or the proof's band). */
+    /** The spec field holding the enum ladder. */
     ladderField: string;
-    /** WHICH party attests — from the clause spec's `attestation` field. "seller"
-     *  for lifecycle clauses; "buyer" surfaces only for a `bilateral` clause. */
+    /** WHICH party attests. "seller" for lifecycle clauses; "buyer" surfaces
+     *  only for a bilateral clause. */
     party: "seller" | "buyer";
-    /** True when the clause is a runtime PROOF (a companion of a committed clause,
-     *  e.g. proximity-proof) — the executor supplies the per-attestation device
-     *  witness (nonce + signature) on top of the spec fields. */
-    isProof?: boolean;
     roleOrderHash?: string;
-    /** Present when this lifecycle stage is a physical hand-off and the attesting
-     *  seller has not yet witnessed the proximity proof. The executor submits
-     *  the proof PAIRED with the stage attestation: proof clause on the order
-     *  whose agreement carries it (own order, else the topology-adjacent
-     *  carrier), with roleOrderHash = the attester's own order when the
-     *  carrier is a sibling (the cross-order witness seam). One user action,
-     *  two attestations — both edge-sellers end up witnessing the same proof. */
-    pairedProof?: {
-        clauseId: string;
-        /** The order whose agreement carries the proof clause. */
-        orderHash: string;
-        stage: number;
-        eventCode: string;
-        ladderField: string;
-    };
 }
 
 interface ClaimAuctionCapabilityAction {
@@ -152,16 +133,6 @@ export type CapabilityActionDescriptor =
     | ClaimAirdropCapabilityAction
     | ClaimVestingCapabilityAction
     | PrototypeCapabilityAction;
-
-type CapabilityModelWithAction<T extends CapabilityActionDescriptor> = CapabilityModel & {
-    action: T;
-};
-
-function isClaimAuctionCapability(
-    capability: CapabilityModel,
-): capability is CapabilityModelWithAction<ClaimAuctionCapabilityAction> {
-    return capability.action.executionType === "transaction" && capability.action.kind === "claim-auction";
-}
 
 interface RegisterSellerCapabilityInput {
     kind: "register-seller";

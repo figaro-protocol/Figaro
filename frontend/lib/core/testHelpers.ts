@@ -45,19 +45,4 @@ export function windowSafe(): Window | undefined {
     return window;
 }
 
-/**
- * Returns a named function from the E2E mock window object, or null if
- * test helpers are disabled or the function is not present.
- */
-export function getMockFn<T = (...args: unknown[]) => unknown>(name: string): T | null {
-    try {
-        if (!TEST_HELPERS_ENABLED) return null;
-        const _win = windowSafe();
-        if (!_win) return null;
-        const fn = (_win as unknown as Record<string, unknown>)[name];
-        return typeof fn === 'function' ? (fn as T) : null;
-    } catch {
-        return null;
-    }
-}
 

@@ -2,29 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { useHandoffCleanup } from "@/lib/handoff/useHandoffCleanup";
-import {
-    persistHandoffArtifactsForOrder,
-    recoverHandoffKeys,
-} from "@/lib/handoff/handoffArtifacts";
-import {
-    getHandoffKey,
-    removeHandoffKey,
-    saveHandoffKey,
-} from "@/lib/handoff/handoffKeys";
-import {
-    getPendingHandoffIntent,
-    removePendingHandoffIntent,
-    savePendingHandoffIntent,
-} from "@/lib/handoff/handoffIntent";
-import { useSellerCatalogue } from "@/lib/seller/useSellerCatalogue";
 import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
 import {
     RuntimeServicesProvider,
     useRuntimeServices,
 } from "@/lib/shared/runtimeServicesContext";
 import type { SellerCatalogue } from "@/lib/seller/types";
-import type { SellerCatalogueMetadata } from "@/lib/seller/sellerCatalogueMetadata";
-import type { CatalogueService } from "@/lib/seller/catalogueService";
 import type { DiscoveryService } from "@/lib/seller/discoveryService";
 import type { IpfsService } from "@/lib/shared/ipfsService";
 import type { RuntimeServices } from "@/lib/shared/runtimeServices";
@@ -226,32 +209,6 @@ describe("runtime service hook injection", () => {
         defaultIsRegistryConfiguredMock.mockReturnValue(false);
     });
 
-    it("uses an injected catalogue service instead of the default provider", async () => {
-        getSellerMetadataURIMock.mockResolvedValueOnce("ipfs://merchant-a");
-
-        const catalogue: SellerCatalogueMetadata = {
-            subjectAddress: "0x0000000000000000000000000000000000000011",
-            items: [],
-            version: "1.0.0",
-        };
-        const fetchSellerCatalogue = vi.fn().mockResolvedValue(catalogue);
-        const service = {
-            fetchSellerCatalogue,
-        } as unknown as CatalogueService;
-
-        const { result } = renderHook(() => useSellerCatalogue(
-            "0x0000000000000000000000000000000000000011",
-            { service },
-        ));
-
-        await waitFor(() => {
-            expect(result.current.catalogue).toEqual(catalogue);
-        });
-
-        expect(fetchSellerCatalogue).toHaveBeenCalledWith("ipfs://merchant-a");
-        expect(defaultFetchSellerCatalogueMock).not.toHaveBeenCalled();
-    });
-
     it("uses an injected discovery service instead of the default provider", async () => {
         const listFallbackCatalogues = vi.fn().mockReturnValue({
             catalogues: [fallbackRestaurant],
@@ -327,90 +284,5 @@ describe("runtime service hook injection", () => {
         expect(defaultSweepDuePurgesMock).not.toHaveBeenCalled();
         expect(defaultSchedulePurgeMock).not.toHaveBeenCalled();
         expect(schedulePurge).not.toHaveBeenCalled();
-    });
-
-    it("uses an injected handoff persistence service in handoff helper wrappers", async () => {
-        const persist = vi.fn().mockResolvedValue({
-            processId: "process-1",
-            orderId: "order-1",
-            txHash: "0xabc",
-        });
-        const recover = vi.fn().mockResolvedValue(2);
-        const saveKey = vi.fn();
-        const getKey = vi.fn().mockReturnValue({ keyB64: "key-123" });
-        const removeKeyForOrder = vi.fn();
-        const saveIntent = vi.fn();
-        const getIntent = vi.fn().mockReturnValue({ processId: "process-1", originOrderId: "order-1" });
-        const removeIntent = vi.fn();
-        const service = {
-            persistHandoffArtifactsForOrder: persist,
-            recoverHandoffKeys: recover,
-            saveHandoffKey: saveKey,
-            getHandoffKey: getKey,
-            removeHandoffKey: removeKeyForOrder,
-            savePendingHandoffIntent: saveIntent,
-            getPendingHandoffIntent: getIntent,
-            removePendingHandoffIntent: removeIntent,
-        } as unknown as RuntimeServices["handoffPersistence"];
-        const persistParams = {
-            publicClient: publicClient as never,
-            buyerAddress: "0x1234567890123456789012345678901234567890",
-            orderTxHash: "0xabc" as `0x${string}`,
-            keyB64: "key-123",
-            pickupGeohash: "dr5reg",
-            dropoffGeohash: "dr5rs3",
-            maxFulfillerPrice: "1",
-        };
-        const keyRecord = {
-            keyB64: "key-123",
-            txHash: "0xabc",
-            processId: "process-1",
-            orderId: "order-1",
-            createdAt: 1,
-        };
-        const intentRecord = {
-            processId: "process-1",
-            originOrderId: "order-1",
-            pickupGeohash: "dr5reg",
-            dropoffGeohash: "dr5rs3",
-            maxFulfillerPrice: "1",
-            createdAt: 1,
-        };
-        const orders = [{ processId: "process-1", orderId: "order-1", assemblyTemplate: "ipfs://assemblyTemplate" }];
-
-        await expect(persistHandoffArtifactsForOrder(persistParams, { service })).resolves.toEqual({
-            processId: "process-1",
-            orderId: "order-1",
-            txHash: "0xabc",
-        });
-        await expect(recoverHandoffKeys(walletClientMock, "0x1234567890123456789012345678901234567890", orders, { service })).resolves.toBe(2);
-
-        saveHandoffKey("0x1234567890123456789012345678901234567890", keyRecord, { service });
-        expect(getHandoffKey("0x1234567890123456789012345678901234567890", "process-1", "order-1", { service })).toEqual({ keyB64: "key-123" });
-        removeHandoffKey("0x1234567890123456789012345678901234567890", "process-1", "order-1", { service });
-
-        savePendingHandoffIntent("0x1234567890123456789012345678901234567890", intentRecord, { service });
-        expect(getPendingHandoffIntent("0x1234567890123456789012345678901234567890", "process-1", "order-1", { service })).toEqual({
-            processId: "process-1",
-            originOrderId: "order-1",
-        });
-        removePendingHandoffIntent("0x1234567890123456789012345678901234567890", "process-1", "order-1", { service });
-
-        expect(persist).toHaveBeenCalledWith(persistParams);
-        expect(recover).toHaveBeenCalledWith(walletClientMock, "0x1234567890123456789012345678901234567890", orders);
-        expect(saveKey).toHaveBeenCalledWith("0x1234567890123456789012345678901234567890", keyRecord);
-        expect(getKey).toHaveBeenCalledWith("0x1234567890123456789012345678901234567890", "process-1", "order-1");
-        expect(removeKeyForOrder).toHaveBeenCalledWith("0x1234567890123456789012345678901234567890", "process-1", "order-1");
-        expect(saveIntent).toHaveBeenCalledWith("0x1234567890123456789012345678901234567890", intentRecord);
-        expect(getIntent).toHaveBeenCalledWith("0x1234567890123456789012345678901234567890", "process-1", "order-1");
-        expect(removeIntent).toHaveBeenCalledWith("0x1234567890123456789012345678901234567890", "process-1", "order-1");
-        expect(defaultPersistHandoffArtifactsForOrderMock).not.toHaveBeenCalled();
-        expect(defaultRecoverHandoffKeysMock).not.toHaveBeenCalled();
-        expect(defaultSaveHandoffKeyMock).not.toHaveBeenCalled();
-        expect(defaultGetHandoffKeyMock).not.toHaveBeenCalled();
-        expect(defaultRemoveHandoffKeyMock).not.toHaveBeenCalled();
-        expect(defaultSavePendingHandoffIntentMock).not.toHaveBeenCalled();
-        expect(defaultGetPendingHandoffIntentMock).not.toHaveBeenCalled();
-        expect(defaultRemovePendingHandoffIntentMock).not.toHaveBeenCalled();
     });
 });

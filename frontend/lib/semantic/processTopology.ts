@@ -1,18 +1,24 @@
 /**
  * processTopology.ts — reconstruct a process's order DAG off-chain.
  *
- * Topology is a clause like any other: an order's parents + mode are read BY
- * FIELD NAME (`parentOrderHashes`, `topologyMode`) from its committed agreement
- * via `agreementSections` — no privileged topology read path, no `orderTopology`
- * module. What remains here is generic graph math (topological order, depth)
- * plus the fallback that linearizes a chain by cumulative value when an order
- * carries no explicit edges. The agreements Map is supplied by the caller
- * (render path: `useProcessAgreements`); this module never fetches.
+ * Topology is a clause like any other: an order's parents are read BY FIELD
+ * NAME (`parentOrderHashes`) from its committed agreement via
+ * `agreementSections` — no privileged topology read path, no `orderTopology`
+ * module, and no stored mode (the mode is DERIVED from the edges). What remains
+ * here is generic graph math (topological order, depth) plus the fallback that
+ * linearizes a chain by cumulative value when an order carries no explicit
+ * edges. The agreements Map is supplied by the caller (render path:
+ * `useProcessAgreements`); this module never fetches.
  */
 import type { Agreement } from "@figaro/core";
 import type { Order } from "@/lib/core/store";
 import { sectionByField } from "@/lib/core/agreementSections";
 
+/** All three labels are DERIVED — the topology clause stores only
+ *  `parentOrderHashes`, never a mode: `explicit` = the committed section
+ *  declares parent edges; `root` = it declares none (or the order leads the
+ *  process by cumulative value); `linear-fallback` = no committed topology,
+ *  chain linearized by cumulative value. */
 export type TopologyMode = "root" | "explicit" | "linear-fallback";
 
 export interface OrderTopologyInfo {
@@ -30,14 +36,6 @@ function topologyParentOrderHashes(agreement: Agreement | null | undefined): str
     const raw = (section.data as Record<string, unknown>).parentOrderHashes;
     if (!Array.isArray(raw)) return [];
     return raw.filter((v): v is string => typeof v === "string" && v.trim().length > 0);
-}
-
-function topologyMode(agreement: Agreement | null | undefined): TopologyMode | null {
-    if (!agreement) return null;
-    const section = sectionByField(agreement, "topologyMode");
-    if (!section) return null;
-    const m = (section.data as Record<string, unknown>).topologyMode;
-    return m === "root" || m === "explicit" || m === "linear-fallback" ? m : null;
 }
 
 // ── Topology derivation ───────────────────────────────────────────────────────
@@ -93,15 +91,11 @@ export function deriveOrderTopology(
 
         const agreement = order.agreementHash ? (agreements.get(order.agreementHash) ?? null) : null;
         const explicitParents = topologyParentOrderHashes(agreement);
-        const explicitMode = topologyMode(agreement);
 
-        if (explicitParents !== null || explicitMode !== null) {
-            const parentOrderHashes = explicitParents ?? [];
+        if (explicitParents !== null) {
             topology.set(order.id, {
-                parentOrderHashes,
-                topologyMode: parentOrderHashes.length === 0
-                    ? "root"
-                    : explicitMode === "linear-fallback" ? "linear-fallback" : "explicit",
+                parentOrderHashes: explicitParents,
+                topologyMode: explicitParents.length === 0 ? "root" : "explicit",
                 sourceLabel: "agreement topology section committed through agreementHash",
             });
             continue;

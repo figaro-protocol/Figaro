@@ -63,8 +63,8 @@ export function templateParentOrderHashes(order: AssemblyTemplateOrder): string[
 
 /** Fold the MANDATORY structural clauses into an order's clause set. Each
  *  structural clause (`block.article: "structural"`) draws the fields it declares
- *  from the design-time value bag — topology gets `{ topologyMode,
- *  parentOrderHashes }`; commerce's currency/payment/lineItems are NOT design-time
+ *  from the design-time value bag — topology gets `{ parentOrderHashes }` (mode
+ *  is DERIVED from the edges, never stored); commerce's currency/payment/lineItems are NOT design-time
  *  (the buyer fills them at checkout), so commerce folds in empty. Generic: a
  *  never-seen structural clause composes the subset of the bag it declares, with
  *  zero per-clause code. */
@@ -72,7 +72,6 @@ function composeStructuralClauses(structuralIds: readonly string[], parents: str
     // The design-time structural value bag. Checkout-time values (commerce's
     // currency/payment/lineItems) are deliberately absent — filled downstream.
     const bag: Record<string, unknown> = {
-        topologyMode: parents.length === 0 ? "root" : "explicit",
         parentOrderHashes: parents,
     };
     const out: ClauseValues = {};

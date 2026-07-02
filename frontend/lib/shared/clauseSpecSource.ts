@@ -188,10 +188,10 @@ export function composesInterface(clauseId: string): string | undefined {
  *  companion proof) an order's seller advances. The generic marker for "this
  *  order runs a lifecycle"; resolved from the spec, never by name. */
 export function clauseIsProcessLog(clauseId: string): boolean {
-    // A STRUCTURAL clause may carry an enum (topology's `topologyMode`) but is
-    // NOT a runtime process-log — it is committed structural content, not a
-    // lifecycle the seller advances. Exclude it so it validates as content and
-    // never surfaces a runtime attestation capability.
+    // A STRUCTURAL clause may carry an enum but is NOT a runtime process-log —
+    // it is committed structural content, not a lifecycle the seller advances.
+    // Exclude it so it validates as content and never surfaces a runtime
+    // attestation capability.
     return !clauseIsStructural(clauseId) && clauseLadderField(clauseId) !== null;
 }
 
@@ -206,8 +206,8 @@ export function clauseDeclaresField(clauseId: string, fieldName: string): boolea
 /** The first enum-type field of a clause — the runtime "stage ladder" (the
  *  `eventType` enum on merchant/courier, or any runtime clause's ladder).
  *  Returns the field name + its ordered values, or null when the clause has no
- *  enum field (e.g. ghg-measurement's grams). The generic runtime engine reads
- *  this to advance ANY runtime-attestable clause without naming it. */
+ *  enum field. The generic runtime engine reads this to advance ANY
+ *  runtime-attestable clause without naming it. */
 export function clauseLadderField(clauseId: string): { name: string; values: readonly string[]; valueLabels?: Readonly<Record<string, string>> } | null {
     for (const field of getClauseSpec(clauseId)?.fields ?? []) {
         if (field.type === "enum") return { name: field.name, values: field.values, valueLabels: field.valueLabels };

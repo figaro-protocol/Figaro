@@ -307,7 +307,7 @@ function ContractPage({ contract }: { contract: AuditBundle["contract"] }) {
                 ) : (
                     <>
                         <Text style={styles.sectionBody}>
-                            Parent order(s){contract.topology.topologyMode ? ` (mode: ${contract.topology.topologyMode})` : ""}:
+                            Parent order(s):
                         </Text>
                         {contract.topology.parentOrderHashes.map((p) => (
                             <Text key={p} style={[styles.mono, { marginTop: 1 }]}>{p}</Text>
@@ -361,13 +361,8 @@ function ContractPage({ contract }: { contract: AuditBundle["contract"] }) {
                 </View>
                 {contract.clauses.map((clause) => (
                     <View key={clause.clauseKey} style={styles.tableRow}>
-                        <Text style={[styles.tCellMono, { flex: 2 }]}>
-                            {clause.clauseKey}
-                            {clause.sealed ? " 🔒" : ""}
-                        </Text>
-                        <Text style={[styles.tCell, { flex: 3 }]}>
-                            {clause.sealed ? `${clause.title} — sealed` : clause.title}
-                        </Text>
+                        <Text style={[styles.tCellMono, { flex: 2 }]}>{clause.clauseKey}</Text>
+                        <Text style={[styles.tCell, { flex: 3 }]}>{clause.title}</Text>
                         <Text style={[styles.tCellMono, { flex: 4 }]}>{shortHex(clause.leafHash, 14, 10)}</Text>
                     </View>
                 ))}

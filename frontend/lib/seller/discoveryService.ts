@@ -67,7 +67,7 @@ async function fetchSellerAsCatalogue(
     if (!profile) return null;
 
     // Stamp the wallet onto the profile so downstream renderers can
-    // route from the listing back to /m/<address>.
+    // route from the listing back to /s/<address>.
     const stamped: SellerProfileMetadata = {
         ...profile,
         subjectAddress: profile.subjectAddress ?? (address as `0x${string}`),
@@ -89,11 +89,6 @@ async function fetchSellerAsCatalogue(
         } catch {
             // proceed with empty items
         }
-    }
-
-    // Backward-compat: legacy fat profiles inlined the items as `menu`.
-    if (!items) {
-        items = tryParseCatalogueItems(doc);
     }
 
     const catalogue: SellerCatalogueMetadata | undefined = items && items.length > 0

@@ -1,50 +1,11 @@
 /**
- * components/modules/SellerBrandingModule.tsx
- *
- * Scoped branding for seller-themed UI regions.
- *
- * Two responsibilities:
- * 1. Set the --seller-accent CSS custom property from the seller's accentColor
- * 2. Apply the seller's themeClass to the container
- *
- * Usage:
- *   <SellerBrandingModule sellerAddress={address}>
- *     {children}
- *   </SellerBrandingModule>
+ * components/modules/SellerBrandingModule.tsx — SellerLogo, the seller's
+ * logo rendered from IPFS/HTTP with initials/emoji/neutral fallbacks.
  */
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useSellerBranding } from "@/lib/seller/useSellerBranding";
-import type { ResolvedSellerBranding } from "@/lib/seller/sellerBranding";
-
-interface SellerBrandingModuleProps {
-    sellerAddress: `0x${string}` | undefined;
-    children: ReactNode;
-    /** Optional CSS class added to the wrapper div */
-    className?: string;
-    brandingOverride?: ResolvedSellerBranding | null;
-}
-
-export function SellerBrandingModule({
-    sellerAddress,
-    children,
-    className,
-    brandingOverride,
-}: SellerBrandingModuleProps) {
-    // Accent/theme branding was driven by spec fields that no producer ever
-    // wrote (accentColor/themeClass); with those gone this is a plain scoped
-    // wrapper. `sellerAddress`/`brandingOverride` are retained on the props for
-    // call-site compatibility and the still-live SellerLogo path below.
-    void sellerAddress;
-    void brandingOverride;
-
-    return (
-        <div className={className || undefined}>
-            {children}
-        </div>
-    );
-}
 
 /**
  * SellerLogo — renders the seller's logo from IPFS/HTTP, with two
@@ -65,7 +26,6 @@ interface SellerLogoProps {
     fallbackName?: string;
     className?: string;
     size?: number;
-    brandingOverride?: ResolvedSellerBranding | null;
 }
 
 export function SellerLogo({
@@ -74,10 +34,8 @@ export function SellerLogo({
     fallbackName,
     className,
     size = 48,
-    brandingOverride,
 }: SellerLogoProps) {
-    const { branding: resolvedBranding, isLoading } = useSellerBranding(brandingOverride ? undefined : sellerAddress);
-    const branding = brandingOverride ?? resolvedBranding;
+    const { branding, isLoading } = useSellerBranding(sellerAddress);
     const logoURL = branding?.logoURL;
     const [imageFailed, setImageFailed] = useState(false);
 
@@ -85,7 +43,7 @@ export function SellerLogo({
         setImageFailed(false);
     }, [logoURL]);
 
-    if (!brandingOverride && isLoading) {
+    if (isLoading) {
         return (
             <div
                 className={className}

@@ -62,14 +62,12 @@ export function DisputeStatusPanel({
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [bundleRedact, setBundleRedact] = useState(false);
     const [bundleCID, setBundleCID] = useState<string | null>(null);
     const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
 
-    // Build the process-scoped audit bundle in-browser, pin it to IPFS. The
-    // redaction flag is applied at the source (hash-then-omit; merkle root
-    // preserved, cleartext line items sealed). The pinned CID is the evidence
-    // a party attaches on the forum's own UI.
+    // Build the process-scoped audit bundle in-browser, pin it to IPFS.
+    // Agreements are cleartext — no redacted distribution form. The pinned
+    // CID is the evidence a party attaches on the forum's own UI.
     const handlePrepareBundle = useCallback(async () => {
         if (!orders || orders.length === 0) return;
         setLoading(true);
@@ -81,7 +79,6 @@ export function DisputeStatusPanel({
                 publicClient ?? undefined,
                 chainId,
                 agreements,
-                { redactLineItems: bundleRedact },
             );
             const cid = await evidenceTransport.pinBlob(blob);
             setPdfBlob(blob);
@@ -91,7 +88,7 @@ export function DisputeStatusPanel({
         } finally {
             setLoading(false);
         }
-    }, [orders, processId, publicClient, chainId, agreements, bundleRedact, evidenceTransport]);
+    }, [orders, processId, publicClient, chainId, agreements, evidenceTransport]);
 
     const handleDownload = useCallback(() => {
         if (!pdfBlob) return;
@@ -176,22 +173,6 @@ export function DisputeStatusPanel({
                     className="mt-2 flex flex-col gap-1.5 rounded border border-neutral-200 bg-neutral-50 p-2"
                     data-testid="dispute-evidence-bundle"
                 >
-                    <label className="flex items-center gap-2 text-[11px] text-neutral-700 cursor-pointer select-none">
-                        <input
-                            type="checkbox"
-                            checked={bundleRedact}
-                            onChange={(e) => setBundleRedact(e.target.checked)}
-                            disabled={loading}
-                            data-testid="dispute-evidence-redact"
-                            className="h-3 w-3"
-                        />
-                        <span>
-                            Seal commerce line items
-                            {bundleRedact && (
-                                <span className="ml-1 text-amber-700 font-semibold">— 🔒 sealed</span>
-                            )}
-                        </span>
-                    </label>
                     <button
                         onClick={handlePrepareBundle}
                         disabled={loading}
@@ -202,7 +183,7 @@ export function DisputeStatusPanel({
                     </button>
                     <p className="text-[10px] text-neutral-600 leading-tight">
                         Builds the process-scoped audit bundle (timeline, contracts,
-                        invoices, BoL, attestations, financials) in your browser and pins
+                        clause data, attestations, financials) in your browser and pins
                         the PDF to IPFS. Attach the pinned URI as evidence on the forum.
                     </p>
 

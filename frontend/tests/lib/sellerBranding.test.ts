@@ -1,7 +1,4 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { createElement } from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import { SellerBrandingModule } from '@/components/modules/SellerBrandingModule';
 import {
     fetchSellerBranding,
     clearBrandingCache,
@@ -176,31 +173,6 @@ describe('sellerBranding', () => {
 
             expect(result).not.toBeNull();
             expect(result!.logoURL).toBe('http://127.0.0.1:8080/ipfs/example/logo.png');
-        });
-
-        it('applies a branding override without fetching seller metadata', async () => {
-            const brandingOverride = resolveSellerBrandingFromSellerProfile(SELLER_PROFILE_METADATA_EXAMPLE);
-
-            render(createElement(
-                SellerBrandingModule,
-                {
-                    sellerAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
-                    brandingOverride,
-                    children: createElement('div', null, 'Branded child'),
-                },
-                createElement('div', null, 'Branded child')
-            ));
-
-            const wrapper = screen.getByText('Branded child').parentElement as HTMLDivElement;
-
-            // The module is a plain scoped wrapper now — accentColor/themeClass
-            // theming was retired (branding is logoURI-only). The override path
-            // still renders children without fetching seller metadata; there is
-            // no theme class or accent custom property to assert.
-            await waitFor(() => {
-                expect(wrapper).not.toBeNull();
-                expect(wrapper.style.getPropertyValue('--seller-accent')).toBe('');
-            });
         });
     });
 });
