@@ -2,7 +2,7 @@
 
 import { useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId, usePublicClient } from "wagmi";
 import { CORE_ABI, ERC20_ABI, CONTRACTS } from "@/lib/core/contracts";
-import { TEST_HELPERS_ENABLED, windowSafe } from '@/lib/core/testHelpers';
+import { TEST_HELPERS_ENABLED, windowSafe } from '@/lib/shared/testHelpers';
 import { activeChain } from "@/lib/shared/chains";
 import type { Commitment } from "@figaro/core";
 

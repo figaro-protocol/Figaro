@@ -27,7 +27,7 @@ export function getE2EModeFromSearchParams(search: string | URLSearchParams): E2
  */
 export function getE2EModeSession(): E2EMode {
     if (typeof window === "undefined") return null;
-    // Same build-time opt-in as TEST_HELPERS_ENABLED (lib/core/testHelpers.ts)
+    // Same build-time opt-in as TEST_HELPERS_ENABLED (lib/shared/testHelpers.ts)
     // — parsed inline because lib/shared must not import lib/core.
     if (process.env.NODE_ENV === "production") {
         const v = String(process.env.NEXT_PUBLIC_ENABLE_TEST_HELPERS ?? "").toLowerCase();

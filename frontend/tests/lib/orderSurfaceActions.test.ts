@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { handleOrderSurfaceFailure, runOrderSurfaceAction } from '@/lib/core/orderSurfaceActions';
+import { handleOrderSurfaceFailure, runOrderSurfaceAction } from '@/lib/shared/orderSurfaceActions';
 
 describe('orderSurfaceActions', () => {
     it('runs the action after clearing prior errors', async () => {
