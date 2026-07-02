@@ -49,13 +49,6 @@ interface ResolveProcessCapabilityAction {
     processId: string;
 }
 
-interface OpenSubOrderComposerCapabilityAction {
-    executionType: "runtime";
-    kind: "open-sub-order-composer";
-    parentOrderHashes: string[];
-    currency?: `0x${string}`;
-}
-
 interface RegisterSellerCapabilityAction {
     executionType: "transaction";
     kind: "register-seller";
@@ -124,7 +117,6 @@ interface PrototypeCapabilityAction {
 
 export type CapabilityActionDescriptor =
     | ResolveProcessCapabilityAction
-    | OpenSubOrderComposerCapabilityAction
     | RegisterSellerCapabilityAction
     | UpdateSellerProfileCapabilityAction
     | WithdrawSellerDepositCapabilityAction

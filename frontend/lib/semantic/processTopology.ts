@@ -1,13 +1,16 @@
 /**
  * processTopology.ts — reconstruct a process's order DAG off-chain.
  *
- * Topology is a clause like any other: an order's parents are read BY FIELD
- * NAME (`parentOrderHashes`) from its committed agreement via
- * `agreementSections` — no privileged topology read path, no `orderTopology`
- * module, and no stored mode (the mode is DERIVED from the edges). What remains
- * here is generic graph math (topological order, depth) plus the fallback that
- * linearizes a chain by cumulative value when an order carries no explicit
- * edges. The agreements Map is supplied by the caller (render path:
+ * Topology is a clause like any other, and a STRUCTURAL one: every committed
+ * agreement carries the topology section (mandatory, like commerce), so an
+ * order's parents are always readable BY FIELD NAME (`parentOrderHashes`) via
+ * `agreementSections` — no privileged topology read path, no stored mode, and
+ * NO invented edges: an agreement not yet hydrated from IPFS renders edgeless
+ * until it loads (loading, never fabrication). Topology is an organizational
+ * element of a process — UI reconstruction + seller coordination — and is
+ * independent of bonding, which is ALWAYS linear and on-chain. What remains
+ * here is the by-field read plus generic graph math (topological order,
+ * depth). The agreements Map is supplied by the caller (render path:
  * `useProcessAgreements`); this module never fetches.
  */
 import type { Agreement } from "@figaro/core";
@@ -36,44 +39,14 @@ function topologyParentOrderHashes(agreement: Agreement | null | undefined): str
 
 // ── Topology derivation ───────────────────────────────────────────────────────
 
-function compareOrders(left: Order, right: Order): number {
-    if (left.cumulativeValue !== right.cumulativeValue) {
-        return left.cumulativeValue < right.cumulativeValue ? -1 : 1;
-    }
-    const leftBlock = left.blockNumber ?? left.timestamp ?? 0;
-    const rightBlock = right.blockNumber ?? right.timestamp ?? 0;
-    if (leftBlock !== rightBlock) return leftBlock - rightBlock;
-    if (left.id < right.id) return -1;
-    if (left.id > right.id) return 1;
-    return 0;
-}
-
 export function deriveOrderTopology(
     orders: Order[],
     agreements: Map<string, Agreement>,
 ): Map<string, OrderTopologyInfo> {
-    const sortedOrders = [...orders].sort(compareOrders);
-    const fallbackTopology = new Map<string, OrderTopologyInfo>();
-    sortedOrders.forEach((order, index) => {
-        fallbackTopology.set(order.id, {
-            parentOrderHashes: index === 0 ? [] : [sortedOrders[index - 1].id],
-            sourceLabel: index === 0
-                ? "first order in cumulative process progression"
-                : "linearized from cumulative process progression",
-        });
-    });
-
     const topology = new Map<string, OrderTopologyInfo>();
     for (const order of orders) {
-        const fallback = fallbackTopology.get(order.id) ?? {
-            parentOrderHashes: [],
-            sourceLabel: "default fallback (no edges)",
-        };
-
-        // First-class design-time topology: when the order carries its edges
-        // directly (the designer set them), use them. Runtime/chain orders have
-        // no parentOrderHashes; their topology is recovered from the committed
-        // agreement section below.
+        // Design-time: a designer draft carries its edges directly (the canvas
+        // is the origin of the topology clause's data, pre-commit).
         if (order.parentOrderHashes !== undefined) {
             topology.set(order.id, {
                 parentOrderHashes: order.parentOrderHashes,
@@ -82,9 +55,9 @@ export function deriveOrderTopology(
             continue;
         }
 
+        // Committed: the mandatory structural topology section, read by field.
         const agreement = order.agreementHash ? (agreements.get(order.agreementHash) ?? null) : null;
         const explicitParents = topologyParentOrderHashes(agreement);
-
         if (explicitParents !== null) {
             topology.set(order.id, {
                 parentOrderHashes: explicitParents,
@@ -93,7 +66,13 @@ export function deriveOrderTopology(
             continue;
         }
 
-        topology.set(order.id, fallback);
+        // Agreement not hydrated yet (IPFS fetch pending). Topology is
+        // structural — the section EXISTS on-chain-committed; we just can't
+        // read it yet. Edgeless until it loads; NEVER invented edges.
+        topology.set(order.id, {
+            parentOrderHashes: [],
+            sourceLabel: "agreement not yet hydrated — edges pending",
+        });
     }
 
     return topology;

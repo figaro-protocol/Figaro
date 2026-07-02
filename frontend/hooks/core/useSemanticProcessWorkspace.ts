@@ -20,7 +20,7 @@ import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModel
 import { restoreSignedProcessId } from "@/lib/core/signedCommitment";
 import { getAttestationsByProcess, type RuntimeAttestation } from "@/lib/composition/indexer";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { CapabilityActionDescriptor, CapabilityExecutionInput, CapabilityModel, OrderNodeModel } from "@/lib/semantic/models";
+import { CapabilityActionDescriptor, CapabilityExecutionInput, CapabilityModel } from "@/lib/semantic/models";
 import { executeTransactionCapabilityAction } from "@/lib/semantic/executeTransactionCapability";
 import { type Hex } from "viem";
 import { clauseIdHash } from "@/lib/shared/evm";
@@ -59,8 +59,6 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     const [activeActionLabel, setActiveActionLabel] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
     const lastFailedActionRef = useRef<{ capability: CapabilityModel; input?: CapabilityExecutionInput } | null>(null);
-    const [selectedParentOrderIds, setSelectedParentOrderIds] = useState<Set<string>>(new Set());
-    const [subOrderParent, setSubOrderParent] = useState<{ orderIds: string[]; currency?: `0x${string}` } | null>(null);
     const processReloadKey = useOrderStore((state) => state.processReloadKey);
     // Subscribe to the clause-spec warm: the generic capability deriver reads each
     // clause's spec (tier, ladder, attestation) from the chain→IPFS cache, so the
@@ -184,11 +182,6 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         }
     }, [isActionSuccess, bumpProcessReload]);
 
-    useEffect(() => {
-        setSelectedParentOrderIds(new Set());
-        setSubOrderParent(null);
-    }, [effectiveProcessId]);
-
     const waitForTransactionConfirmation = async (txHash?: `0x${string}`) => {
         if (isE2EMock || !publicClient || !txHash) return;
         const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
@@ -236,12 +229,6 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         setActionError(null);
 
         try {
-            if (action.executionType === "runtime" && action.kind === "open-sub-order-composer") {
-                if (action.parentOrderHashes.length === 0) throw new Error("No parent orders selected.");
-                setSubOrderParent({ orderIds: action.parentOrderHashes, currency: action.currency });
-                return;
-            }
-
             if (action.executionType === "prototype") {
                 throw new Error(`Prototype capability is not executable in the live workspace: ${action.kind}`);
             }
@@ -297,48 +284,6 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         if (last) void executeCapability(last.capability, last.input);
     };
 
-    const openSubOrderComposer = (order: OrderNodeModel) => {
-        void executeCapabilityAction({
-            executionType: "runtime",
-            kind: "open-sub-order-composer",
-            parentOrderHashes: [order.orderId],
-            currency: order.currency,
-        });
-    };
-
-    const openSubOrderComposerFromTopology = (orderId: string, currency?: `0x${string}`) => {
-        void executeCapabilityAction({
-            executionType: "runtime",
-            kind: "open-sub-order-composer",
-            parentOrderHashes: [orderId],
-            currency,
-        });
-    };
-
-    const toggleParentSelection = (orderId: string) => {
-        setSelectedParentOrderIds((previous) => {
-            const next = new Set(previous);
-            if (next.has(orderId)) next.delete(orderId);
-            else next.add(orderId);
-            return next;
-        });
-    };
-
-    const openMultiParentComposer = (orderIds: string[], currency?: `0x${string}`) => {
-        if (orderIds.length === 0) return;
-        void executeCapabilityAction({
-            executionType: "runtime",
-            kind: "open-sub-order-composer",
-            parentOrderHashes: orderIds,
-            currency,
-        });
-    };
-
-    const closeSubOrderComposer = () => {
-        setSubOrderParent(null);
-        setSelectedParentOrderIds(new Set());
-    };
-
     return {
         effectiveProcessId,
         processModel,
@@ -352,15 +297,8 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         isPending: isActionPending,
         isConfirming: isActionConfirming,
         isSuccess: isActionSuccess,
-        selectedParentOrderIds,
-        subOrderParent,
         executeCapability,
         retryLastAction,
         isE2EMock,
-        openSubOrderComposer,
-        openSubOrderComposerFromTopology,
-        toggleParentSelection,
-        openMultiParentComposer,
-        closeSubOrderComposer,
     };
 }

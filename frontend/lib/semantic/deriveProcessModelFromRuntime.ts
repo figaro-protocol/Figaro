@@ -93,28 +93,10 @@ function roleCapabilities(
     const isBuyer = _isE2EMock ? true : hexEqual(order.buyer, normalized);
     const isSeller = _isE2EMock ? true : hexEqual(order.seller, normalized);
 
+    // DERIVE means derive: this model READS the committed process — it never
+    // alters it. The process shape is fixed by the assembly the buyer selected
+    // at checkout; there is no runtime composition (operator ruling 2026-07-02).
     const out: CapabilityModel[] = [];
-
-    if (isBuyer) {
-        out.push({
-            id: `${order.processId}:${order.id.toString()}:compose-sub-order`,
-            label: "Add Sub-order",
-            actionKind: "open-sub-order-composer",
-            action: {
-                executionType: "runtime",
-                kind: "open-sub-order-composer",
-                parentOrderHashes: [order.id.toString()],
-                currency: order.currency as `0x${string}`,
-            },
-            mechanismId: "core-orders",
-            scopeType: "order",
-            scopeId: order.id.toString(),
-            preconditions: ["buyer-of-active-order"],
-            riskLabel: "standard",
-            uiPriority: 80,
-            source: runtimeSource("buyer may compose downstream bonded work from an active order", `${order.processId}:${order.id.toString()}:compose-sub-order`),
-        });
-    }
 
     // Lifecycle / handoff capabilities, gated on the clauses the agreement
     // carries AND the attestation state. Labels are the clause's own event
