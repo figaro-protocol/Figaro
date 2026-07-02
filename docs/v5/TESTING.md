@@ -62,7 +62,9 @@ FigToken (`FigToken.tla` + `FigToken.cfg`): `Inv_MaxSupply`,
 
 ## Playwright — devnet (e2e) + mobile (viewport) projects
 
-`npm run test:e2e:devnet` (preflight → seed → run) and `npm run test:e2e:mobile`.
+`npm run test:e2e:devnet` (preflight → populate-test-data (clauses + ONE seed
+assembly + sellers; seeding is pre-population, never a test) → run) and
+`npm run test:e2e:mobile`.
 Config: `playwright.config.ts`. The retired `mock` project is gone — Playwright
 is e2e-only.
 

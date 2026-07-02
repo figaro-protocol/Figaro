@@ -16,6 +16,10 @@ This file is the canonical inventory. CLAUDE.md indexes it; agents must not refe
 
 **`src/CommitmentTypes.sol`** — EIP-712 typed structs and hash functions.
 Single `Commitment` struct for both root and sub-orders; `processId` zero for root.
+`salt` is identity (repeat orders hash distinctly); `deadline` is expiry of the
+unconsummated dual-signature window — a signature cannot be revoked (no cancel,
+by doctrine), so it must age out (`DeadlineExpired` gates commit; nothing
+expires post-commit). See `DESIGN_DECISIONS.md` §13.
 
 ## Attestation & Clause
 

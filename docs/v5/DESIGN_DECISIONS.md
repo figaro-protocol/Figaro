@@ -361,6 +361,33 @@ off.
 
 ---
 
+## 13. `deadline` is not auction residue and not redundant with `salt`
+
+**Pattern**: The `Commitment` struct carries both a `salt` and a `deadline`;
+`commit` rejects expired commitments (`DeadlineExpired`,
+`FigaroCore.sol:153`) and nothing else in the kernel reads the field.
+
+**Why it looks wrong**: `salt` already appears to "secure" the commitment,
+so `deadline` reads as leftover plumbing — plausibly from the deleted
+DutchAuction (it wasn't: V3's core, which lived alongside the original
+auction, had no deadline; the field arrived with the V5 baseline).
+
+**Why it is correct**: the two fields answer different attacks. `salt` is
+IDENTITY — it makes two otherwise-identical orders hash differently, and
+provides no time-bounding at all. `deadline` is EXPIRY of the
+UNCONSUMMATED dual-signature window: signing and committing are two steps
+with real latency between them (share → counter-sign → commit), a
+signature cannot be revoked (no cancel — revocation is escape-hatch
+machinery), so without a deadline every signed-but-never-committed order
+is a perpetual option on the signer's funds, exercisable whenever standing
+allowances permit. The deadline makes stale signatures die on their own —
+the only passive protection a no-cancel kernel can offer. Doctrinal check:
+it gates ENTRY only; nothing expires post-commit (bonds have no timeout),
+so it is the mirror image of an escape hatch, not an instance of one.
+Questioned and ruled KEEP 2026-07-02.
+
+---
+
 ## Summary Table
 
 | # | Pattern | Looks wrong because | Is correct because |
@@ -377,3 +404,4 @@ off.
 | 10 | Strict token compatibility rejection | Overly restrictive | Bond math requires exact amounts; wrapping is the solution |
 | 11 | Single currency per process | Can't do multi-token commerce | 2:1 bond ratio is Nash-stable only in one currency; multi-token lives at composition layer (process / wallet swap / Level-3 bundler) |
 | 12 | No `transferTitle` / `endorse` / `nominate` for BoLs | Industry-standard MLETR-aligned eBLs are negotiable; CargoX / TradeTrust / TradeLens all implement this | Single-buyer invariant + parties-fixed-at-commit + no-escape-hatches each separately rule it out; cargo doesn't carry rights, the commitment does |
+| 13 | `deadline` alongside `salt` | Redundant / auction residue | Salt is identity, deadline is expiry of the unconsummated signature window; no-cancel kernel needs signatures to age out |

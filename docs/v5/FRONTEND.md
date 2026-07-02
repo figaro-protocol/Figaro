@@ -23,7 +23,7 @@ Audit by `ls app/(marketing)/ app/(app)/`. Source of truth is the directory list
 - Sellers: `/orders` (the "Your turn" section — incoming to accept, then in-progress + completed) → `/orders/[processId]` (fire merchant-process events).
 - Builders: `/builders/designer/view/[slug]` (assembly inspector). The prior `/i/[slug]` route was deleted; its inbound bookmarks redirect to `/discover`.
 
-The `/builders/designer` tool is a DAG editor (`ProcessGraphCanvas` + `AgreementDrawer`); the palette/canvas/inspector three-column shape was rejected as "wrong-direction" during this project's evolution.
+The `/builders/designer` tool is a DAG editor (`TopologyCanvas` + `AgreementDrawer`); the palette/canvas/inspector three-column shape was rejected as "wrong-direction" during this project's evolution.
 
 ## Key Library Areas (`lib/`)
 
@@ -57,7 +57,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 - `DraftsList.tsx` — saved-drafts list on the landing.
 - `PublishedList.tsx` — published-assemblies list for the connected wallet.
 - `ClausesList.tsx` — clauses catalogue on the landing.
-- Shared DAG canvas: `components/core/ProcessGraphCanvas.tsx` (drag green handle to spawn sub-orders; drag onto another node to merge fan-in; click edge pill to swap modality).
+- Shared DAG canvas: `components/core/TopologyCanvas.tsx` (drag green handle to spawn sub-orders; drag onto another node to merge fan-in).
 
 **State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `mergeSyntheticParent`, `editSyntheticAgreement`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage). Bridge: `lib/designer/forkAssembly.ts` + `lib/designer/assemblyTemplateToDraft.ts` (fork a published assembly's template into an editable draft).
 
