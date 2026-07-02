@@ -46,6 +46,9 @@ function toOrder(log: IndexedOrderLog): Order {
     const ts = typeof timestamp === "bigint" ? Number(timestamp) : bn;
     const payment = getBigIntArg(log, "payment");
     const cumulativeValue = getBigIntArg(log, "cumulativeValue");
+    // Destructured, NOT spread — calculateBonds also returns totalLocked, which
+    // must not ride along as an extra bigint field on the Order.
+    const { sellerBond, buyerBond } = calculateBonds(cumulativeValue, payment);
     return {
         id: getStringArg(log, "orderHash"),
         processId: getStringArg(log, "processId"),
@@ -59,7 +62,8 @@ function toOrder(log: IndexedOrderLog): Order {
         // The event does NOT emit bond fields — derive them from the emitted
         // values via the SDK's kernel math (never read args that don't exist,
         // never re-implement the 2x rule).
-        ...calculateBonds(cumulativeValue, payment),
+        sellerBond,
+        buyerBond,
         salt: getBigIntArg(log, "salt"),
         deadline: getBigIntArg(log, "deadline"),
         blockNumber: bn,

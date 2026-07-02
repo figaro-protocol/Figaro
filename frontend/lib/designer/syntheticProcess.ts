@@ -101,6 +101,11 @@ export function buildSyntheticOrder(params: {
     // buyer's draftOrders.
     saveAgreement(agreement);
 
+    // The kernel's bond math, taken from the SDK — never re-implemented.
+    // Destructured, NOT spread: calculateBonds also returns totalLocked, and a
+    // stray bigint field on the Order breaks the draft store's JSON round-trip
+    // (writeJson swallows the throw, so the draft silently never persists).
+    const { sellerBond, buyerBond } = calculateBonds(params.cumulativeValue, params.payment);
     const order: Order = {
         id: params.orderId,
         processId: params.processId,
@@ -114,8 +119,8 @@ export function buildSyntheticOrder(params: {
         cumulativeValue: params.cumulativeValue,
         payment: params.payment,
         state: OrderState.Active,
-        // The kernel's bond math, taken from the SDK — never re-implemented.
-        ...calculateBonds(params.cumulativeValue, params.payment),
+        sellerBond,
+        buyerBond,
         salt: params.salt,
         deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
     };
