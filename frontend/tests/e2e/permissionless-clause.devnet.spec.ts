@@ -22,7 +22,7 @@
  * The prior version of this test (and its helpers) was deleted in 3b26329 /
  * 063c517 because it was coupled to closed-world scenario apparatus (pre-computed
  * slugs, UI-bypassing place/accept shortcuts). This rewrite imports NONE of that:
- * it drives the REAL UI end to end, exactly as orders-accept / seed-assembly /
+ * it drives the REAL UI end to end, exactly as orders-accept /
  * sellers-onboarding do, and the only non-UI step is the documented permissionless
  * clause registration (ClauseRegistry.registerClause — a single contentHash +
  * metadata URI, NO merkle tree, NO per-clause validator, no on-chain content

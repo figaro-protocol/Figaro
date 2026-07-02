@@ -83,7 +83,7 @@ the files. Every spec drives the real UI against Anvil + deployed contracts
 (action in the UI, reaction in the UI): commerce / checkout / order lifecycle
 (`seller-page`, `orders-accept` — the full-cycle spine), designer + assembly
 registry (`designer-publish`, `designer-save-draft`, `designer-view`,
-`designer-agreement-drawer`, `designer-drafts-delete`, `seed-assembly`,
+`designer-agreement-drawer`, `designer-drafts-delete`,
 `published-list-ui`), sellers (`sellers-onboarding`, `seller-edit-ui`,
 `seller-withdraw`), inventories (`assemblies-inventory`, `clauses-inventory`),
 consent (`consent-ceremony`), and the open-world proof (`permissionless-clause`
