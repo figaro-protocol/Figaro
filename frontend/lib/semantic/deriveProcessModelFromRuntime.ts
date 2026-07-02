@@ -15,10 +15,9 @@ import {
     ProcessModel,
 } from "@/lib/semantic/models";
 
-/** Root orders anchor a process at cumulativeValue === payment. */
-function isRootOrder(order: Order): boolean {
-    return order.cumulativeValue === order.payment;
-}
+// Rootness is a TOPOLOGY concept (no parent edges in the committed topology
+// section) — never derived from bond arithmetic. Bonding is kernel-layer,
+// linear, and has nothing to do with topology (operator ruling 2026-07-02).
 
 function runtimeSource(sourceLabel: string, referenceId?: string) {
     return {
@@ -201,7 +200,7 @@ function deriveProcessCapabilities(
     return capabilities;
 }
 
-function deriveSettlementBreakdown(order: Order, address?: string): EconomicBreakdownModel | undefined {
+function deriveSettlementBreakdown(order: Order, parentOrderHashes: string[], address?: string): EconomicBreakdownModel | undefined {
     if (!address) return undefined;
     const normalized = address.toLowerCase();
     const isBuyer = hexEqual(order.buyer, normalized);
@@ -258,7 +257,7 @@ function deriveSettlementBreakdown(order: Order, address?: string): EconomicBrea
             },
         },
         typedOutputs,
-        downstreamReferencedAmount: !isRootOrder(order)
+        downstreamReferencedAmount: parentOrderHashes.length > 0
             ? {
                 label: "Downstream referenced value",
                 amount: order.payment,
@@ -275,6 +274,7 @@ function deriveSettlementBreakdown(order: Order, address?: string): EconomicBrea
 function deriveProcessEconomicSummary(
     processId: string,
     orders: Order[],
+    topology: Map<string, string[]>,
     address?: string,
 ): EconomicBreakdownModel | undefined {
     if (!address || orders.length === 0) return undefined;
@@ -290,7 +290,7 @@ function deriveProcessEconomicSummary(
         0n
     );
     const downstreamReferenced = orders
-        .filter((order) => !isRootOrder(order))
+        .filter((order) => (topology.get(order.id) ?? []).length > 0)
         .reduce((sum, order) => sum + order.payment, 0n);
     const lockedBondAmount = actorBuyerBond + actorSellerBond;
 
@@ -351,23 +351,23 @@ function deriveProcessEconomicSummary(
     };
 }
 
-function deriveOrderAttachments(order: Order, address?: string): AttachmentModel[] {
+function deriveOrderAttachments(order: Order, parentOrderHashes: string[], address?: string): AttachmentModel[] {
     const attachments: AttachmentModel[] = [];
     const orderId = order.id.toString();
     const normalized = address?.toLowerCase();
 
-    if (isRootOrder(order)) {
+    if (parentOrderHashes.length === 0) {
         attachments.push({
             id: `${order.processId}:${orderId}:root`,
             mechanismId: "core-orders",
             targetType: "order",
             targetId: orderId,
             label: "Root order",
-            description: "This order anchors the process (cumulativeValue equals payment).",
+            description: "This order anchors the process (no parent orders in its committed topology).",
             attachmentKind: "topology-root",
             state: "derived",
             visibleByDefault: true,
-            source: runtimeSource("cumulativeValue === payment identifies the root order", `${order.processId}:${orderId}:root`),
+            source: runtimeSource("no topology parents identifies the root order", `${order.processId}:${orderId}:root`),
         });
     } else {
         attachments.push({
@@ -380,7 +380,7 @@ function deriveOrderAttachments(order: Order, address?: string): AttachmentModel
             attachmentKind: "topology-child",
             state: "derived",
             visibleByDefault: true,
-            source: runtimeSource("cumulativeValue > payment identifies a sub-order", `${order.processId}:${orderId}:child`),
+            source: runtimeSource("committed topology parents identify a sub-order", `${order.processId}:${orderId}:child`),
         });
     }
 
@@ -472,7 +472,7 @@ function deriveProcessAttachments(
     }
 
     const activeCount = orders.filter((order) => order.state === OrderState.Active).length;
-    const descendantCount = orders.filter((order) => !isRootOrder(order)).length;
+    const descendantCount = orders.filter((order) => order.id.toString() !== rootOrderId).length;
 
     attachments.push({
         id: `${processId}:state-summary`,
@@ -498,7 +498,7 @@ function deriveProcessAttachments(
             attachmentKind: "topology-summary",
             state: "composed",
             visibleByDefault: true,
-            source: runtimeSource("sub-orders with cumulativeValue > payment create descendant topology", `${processId}:descendants`),
+            source: runtimeSource("orders beyond the topology root are descendants", `${processId}:descendants`),
         });
     }
 
@@ -549,8 +549,8 @@ function deriveOrderNodeModelFromOrder(
     address?: string,
     isE2EMock = false,
 ): OrderNodeModel {
-    const attachments = deriveOrderAttachments(order, address);
     const parentOrderHashes = topology.get(order.id) ?? [];
+    const attachments = deriveOrderAttachments(order, parentOrderHashes, address);
 
     return {
         orderId: order.id.toString(),
@@ -564,7 +564,7 @@ function deriveOrderNodeModelFromOrder(
         agreementHash: (order.agreementHash ?? ZERO_BYTES32) as `0x${string}`,
         attachments,
         capabilities: roleCapabilities(order, agreements, indexes, address, isE2EMock),
-        settlementBreakdown: deriveSettlementBreakdown(order, address),
+        settlementBreakdown: deriveSettlementBreakdown(order, parentOrderHashes, address),
     };
 }
 
@@ -607,7 +607,7 @@ export function deriveProcessModelFromRuntime(
             ? `Active · ${stateCounts.active} active / ${processOrders.length} total`
             : `Closed · ${stateCounts.closed} settled / ${processOrders.length} total`,
         capabilities: deriveProcessCapabilities(summary.processId, processOrders, address, isE2EMock),
-        economicSummary: deriveProcessEconomicSummary(summary.processId, processOrders, address),
+        economicSummary: deriveProcessEconomicSummary(summary.processId, processOrders, topology, address),
         attachments: deriveProcessAttachments(summary.processId, processOrders, rootOrderId, address, currencyAddress),
     };
 }

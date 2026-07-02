@@ -18,21 +18,18 @@
  * parties fill the clause fields.
  */
 
-/** A clause on an order → the field values filled at design time. An empty
- *  object means the clause is selected but the designer set no fields (the
- *  rest is filled downstream — seller at first-use, buyer at checkout). */
-export type ClauseValues = Record<string, Record<string, unknown>>;
+import type { ClauseFields } from "@/lib/shared/clauseFields";
 
 export interface AssemblyTemplateOrder {
     /** Local order label — `order-<index>`, stable within the template; the
      *  reference target the topology clause points at. NOT a chain id, and NOT
      *  a party — the template is party-agnostic. */
     id: string;
-    /** clauseId → the design-time field values the designer composed. The topology
-     *  is a clause here too: the structural topology clause carries
-     *  `{ parentOrderHashes }` (root = []). Whatever's absent is filled
-     *  downstream. */
-    clauses: ClauseValues;
+    /** clauseId → the design-time field values the designer composed (an empty
+     *  object = selected, no fields set — filled downstream: seller at
+     *  first-use, buyer at checkout). The topology is a clause here too: the
+     *  structural topology clause carries `{ parentOrderHashes }` (root = []). */
+    clauses: ClauseFields;
 }
 
 export interface AssemblyTemplate {

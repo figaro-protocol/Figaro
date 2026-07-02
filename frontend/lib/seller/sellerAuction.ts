@@ -16,7 +16,7 @@
  * (IPFS pin + XMTP CID) is the documented follow-on for a production relay.
  */
 import { keccak256, encodePacked, type Hex } from "viem";
-import type { ClauseFields } from "@/lib/core/encoding";
+import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
 
 /**

@@ -12,9 +12,10 @@
  */
 
 import type { Hex } from "viem";
+import { calculateBonds } from "@figaro/core";
 import { Order, OrderState } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
-import type { ClauseFields } from "@/lib/core/encoding";
+import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { buildOrderAgreement } from "@/lib/core/orderAgreement";
 import { saveAgreement, buildAgreementsFromCache } from "@/lib/designer/syntheticAgreementStore";
 import { deriveOrderTopology } from "@/lib/semantic/processTopology";
@@ -113,8 +114,8 @@ export function buildSyntheticOrder(params: {
         cumulativeValue: params.cumulativeValue,
         payment: params.payment,
         state: OrderState.Active,
-        sellerBond: params.cumulativeValue * 2n,
-        buyerBond: params.payment * 2n,
+        // The kernel's bond math, taken from the SDK — never re-implemented.
+        ...calculateBonds(params.cumulativeValue, params.payment),
         salt: params.salt,
         deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
     };
@@ -149,16 +150,20 @@ export function createSyntheticRootOrder(
 export function createSyntheticSubOrder(
     session: SyntheticProcessSession,
     parent: Order,
-    /** Optional per-sub-order assemblyTemplate overrides. Merged onto
-     *  defaultNodeClauseFields() — use this to mark role-specific
-     *  flags at creation time (e.g., `courierProcessIncluded: true` for
-     *  delivery-spawned courier sub-orders). */
+    /** ALL orders currently in the draft — the kernel's cumulative-value
+     *  accumulator is GLOBAL per process (Σ of every order's payment), never
+     *  branch-local along a topology edge. Topology is organizational;
+     *  bonding is linear (operator ruling 2026-07-02). */
+    allOrders: readonly Order[],
+    /** Optional per-sub-order clause-field overrides, merged onto
+     *  defaultNodeClauseFields(). */
     clauseFieldOverrides?: ClauseFields,
 ): CreatedOrder {
     const orderIndex = session.nextOrderIndex++;
     const sellerIndex = session.nextSellerIndex++;
     const currency = (parent.currency ?? ZERO_ADDRESS) as `0x${string}`;
     const payment = parent.payment / 2n > 0n ? parent.payment / 2n : 1n;
+    const priorPayments = allOrders.reduce((sum, o) => sum + o.payment, 0n);
 
     return buildSyntheticOrder({
         orderId: syntheticBytes32(`order${orderIndex}${session.processId.slice(2, 8)}`),
@@ -167,7 +172,7 @@ export function createSyntheticSubOrder(
         seller: syntheticAddress(sellerIndex),
         currency,
         payment,
-        cumulativeValue: parent.cumulativeValue + payment,
+        cumulativeValue: priorPayments + payment,
         salt: BigInt(orderIndex + 1),
         clauseFields: { ...defaultNodeClauseFields(), ...clauseFieldOverrides },
         parentOrderHashes: [parent.id],

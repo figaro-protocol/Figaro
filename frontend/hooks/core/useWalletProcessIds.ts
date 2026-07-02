@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { usePublicClient, useWatchContractEvent } from "wagmi";
+import { calculateBonds } from "@figaro/core";
 import { CONTRACTS, CORE_ABI } from "@/lib/core/contracts";
 import { Order, OrderState, useOrderStore } from "@/lib/core/store";
 import { hexEqual } from "@/lib/shared/evm";
@@ -55,6 +56,8 @@ function toOrder(log: IndexedOrderLog): Order {
     const bn = typeof log.blockNumber === "bigint" ? Number(log.blockNumber) : 0;
     const timestamp = getLogArgs(log).timestamp;
     const ts = typeof timestamp === "bigint" ? Number(timestamp) : bn;
+    const payment = getBigIntArg(log, "payment");
+    const cumulativeValue = getBigIntArg(log, "cumulativeValue");
     return {
         id: getStringArg(log, "orderHash"),
         processId: getStringArg(log, "processId"),
@@ -62,11 +65,13 @@ function toOrder(log: IndexedOrderLog): Order {
         seller: getStringArg(log, "seller"),
         currency: getStringArg(log, "currency"),
         agreementHash: getStringArg(log, "agreementHash"),
-        payment: getBigIntArg(log, "payment"),
-        cumulativeValue: getBigIntArg(log, "cumulativeValue"),
+        payment,
+        cumulativeValue,
         state: OrderState.Active,
-        sellerBond: getBigIntArg(log, "sellerBond"),
-        buyerBond: getBigIntArg(log, "buyerBond"),
+        // The event does NOT emit bond fields — derive them from the emitted
+        // values via the SDK's kernel math (never read args that don't exist,
+        // never re-implement the 2x rule).
+        ...calculateBonds(cumulativeValue, payment),
         salt: getBigIntArg(log, "salt"),
         deadline: getBigIntArg(log, "deadline"),
         blockNumber: bn,

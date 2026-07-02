@@ -22,7 +22,7 @@ import {
 import { validateContent } from "@figaro/core/clauses";
 import { getClauseSpec, clauseIsProcessLog } from "@/lib/shared/clauseSpecSource";
 import { hexEqual } from "@/lib/shared/evm";
-import type { ClauseFields } from "@/lib/core/encoding";
+import type { ClauseFields } from "@/lib/shared/clauseFields";
 
 export interface OrderAgreement {
     agreement: Agreement;

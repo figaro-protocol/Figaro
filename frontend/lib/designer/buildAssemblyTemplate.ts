@@ -12,7 +12,8 @@
 import { keccak256, toHex } from "viem";
 import type { Order } from "@/lib/core/store";
 import { clauseIsStructural, getClauseSpec, listKnownClauseIds } from "@/lib/shared/clauseSpecSource";
-import type { AssemblyTemplate, ClauseValues } from "@/lib/shared/assemblyTemplate";
+import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
+import type { ClauseFields } from "@/lib/shared/clauseFields";
 
 /** Fold the MANDATORY structural clauses into an order's clause set. Each
  *  structural clause (`block.article: "structural"`) draws the fields it declares
@@ -21,13 +22,13 @@ import type { AssemblyTemplate, ClauseValues } from "@/lib/shared/assemblyTempla
  *  (the buyer fills them at checkout), so commerce folds in empty. Generic: a
  *  never-seen structural clause composes the subset of the bag it declares, with
  *  zero per-clause code. */
-function composeStructuralClauses(structuralIds: readonly string[], parents: string[]): ClauseValues {
+function composeStructuralClauses(structuralIds: readonly string[], parents: string[]): ClauseFields {
     // The design-time structural value bag. Checkout-time values (commerce's
     // currency/payment/lineItems) are deliberately absent — filled downstream.
     const bag: Record<string, unknown> = {
         parentOrderHashes: parents,
     };
-    const out: ClauseValues = {};
+    const out: ClauseFields = {};
     for (const id of structuralIds) {
         const data: Record<string, unknown> = {};
         for (const field of getClauseSpec(id)?.fields ?? []) {
@@ -47,7 +48,7 @@ export function buildAssemblyTemplate(args: {
     description?: string;
     privilegedToken?: string;
     orders: readonly Order[];
-    clausesByOrderId: Readonly<Record<string, ClauseValues>>;
+    clausesByOrderId: Readonly<Record<string, ClauseFields>>;
 }): AssemblyTemplate {
     const { name, summary, description, privilegedToken, orders, clausesByOrderId } = args;
     const structuralIds = listKnownClauseIds().filter(clauseIsStructural);

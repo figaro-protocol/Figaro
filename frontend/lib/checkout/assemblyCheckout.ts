@@ -29,7 +29,7 @@ import { buildOrderPreview, type OrderPreview } from "@/lib/core/orderPreview";
 import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
 import type { DraftOrder } from "@/lib/core/draftOrders";
 import type { CommitmentPayload } from "@/lib/core/orderSignedAndShared";
-import type { ClauseFields } from "@/lib/core/encoding";
+import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/checkout/assemblySubOrderPlan";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { clauseDeclaresField } from "@/lib/shared/clauseSpecSource";

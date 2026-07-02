@@ -11,7 +11,7 @@
  * Drafts are the user's alone (this browser's localStorage); the caller supplies
  * the draft id used as the key.
  */
-import type { ClauseFields } from "@/lib/core/encoding";
+import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
 
 const STORE_PREFIX = "figaro:draft-order:";
