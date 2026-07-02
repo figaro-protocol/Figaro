@@ -2,7 +2,7 @@ import { Order, OrderState } from "@/lib/kernel/store";
 import type { Agreement } from "@figaro/core";
 import { sectionByField } from "@/lib/kernel/agreementSections";
 import { deriveOrderTopology } from "@/lib/semantic/processTopology";
-import { ProcessSummary } from "@/hooks/core/useWalletProcessIds";
+import type { ProcessSummary } from "@/lib/kernel/walletProcessQueries";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
 import { clauseIsStructural, clauseLadderField, labelEnumValue } from "@/lib/shared/clauseSpecSource";
 import { ZERO_BYTES32, hexEqual, clauseIdHash as clauseIdHashOf } from "@/lib/shared/evm";

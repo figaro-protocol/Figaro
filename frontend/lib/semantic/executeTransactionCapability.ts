@@ -52,7 +52,6 @@ export async function executeTransactionCapabilityAction(
 
     switch (action.kind) {
         case "resolve-process":
-            if (!globalThis.window?.confirm("This will settle the entire process and release all bonds. Continue?")) return;
             txHash = await ensureExecutor(
                 executors.resolveProcess,
                 "Resolve-process execution is unavailable.",
@@ -79,7 +78,6 @@ export async function executeTransactionCapabilityAction(
             break;
         }
         case "withdraw-seller-deposit": {
-            if (!globalThis.window?.confirm("Withdraw your seller deposit and clear the registry binding for this address? You'll need to re-register (with a fresh deposit and a new lock period) to operate again.")) return;
             txHash = await ensureExecutor(
                 executors.withdrawSellerDeposit,
                 "Seller deposit withdrawal is unavailable.",

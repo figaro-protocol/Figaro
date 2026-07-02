@@ -15,7 +15,7 @@
 
 import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
 import { templateParentOrderHashes, type AssemblyTemplateOrder } from "@/lib/shared/assemblyTemplate";
-import { topologicalOrder } from "@/lib/semantic/processTopology";
+import { topologicalOrder } from "@/lib/shared/orderTopology";
 import type { SellerCatalogue } from "@/lib/seller/types";
 import { hexEqual } from "@/lib/shared/evm";
 import { parseToken } from "@/lib/shared/utils";

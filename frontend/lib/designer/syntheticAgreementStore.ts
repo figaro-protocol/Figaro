@@ -11,8 +11,6 @@
  * from the network via `lib/kernel/agreementFetch`, never read from here.
  */
 import { computeAgreementHash, type Agreement } from "@figaro/core";
-import type { Order } from "@/lib/kernel/store";
-import { safeJsonParse } from "@/lib/shared/safeJson";
 
 const PREFIX = "figaro:agreement:";
 const key = (h: string) => PREFIX + h;
@@ -26,28 +24,4 @@ export function saveAgreement(agreement: Agreement): `0x${string}` {
         localStorage.setItem(key(hash), JSON.stringify(agreement));
     } catch { /* localStorage failure is non-fatal during authoring */ }
     return hash;
-}
-
-// Internal: read one synthetic agreement back by hash — used by
-// buildAgreementsFromCache below to assemble the topology deriver's Map.
-function loadAgreement(agreementHash: string | undefined | null): Agreement | null {
-    if (!canUseStorage() || !agreementHash) return null;
-    try {
-        return safeJsonParse<Agreement>(localStorage.getItem(key(agreementHash)));
-    } catch {
-        return null;
-    }
-}
-
-/** Build the agreements Map the topology deriver needs from the authoring store,
- *  for designer sessions that are hot-cache by construction (the author just
- *  wrote them this tick). Runtime/cross-wallet consumers use useProcessAgreements. */
-export function buildAgreementsFromCache(orders: Order[]): Map<string, Agreement> {
-    const map = new Map<string, Agreement>();
-    for (const order of orders) {
-        if (!order.agreementHash) continue;
-        const agreement = loadAgreement(order.agreementHash);
-        if (agreement) map.set(order.agreementHash, agreement);
-    }
-    return map;
 }

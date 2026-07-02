@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, usePublicClient, useWaitForTransactionReceipt } from "wagmi";
-import { useWalletProcessIds, type ProcessSummary } from "@/hooks/core/useWalletProcessIds";
+import { useWalletProcessIds } from "@/hooks/core/useWalletProcessIds";
+import type { ProcessSummary } from "@/lib/kernel/walletProcessQueries";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
 import useTokenApproval from "@/hooks/core/useTokenApproval";
@@ -239,10 +240,18 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
             setActiveActionLabel(options?.label ?? null);
             await executeTransactionCapabilityAction(action, {
                 waitForTransactionConfirmation,
-                resolveProcess: resolveActiveProcess,
+                // Confirm dialogs are UI copy and live HERE, at the UI edge — the
+                // semantic executor dispatches, it never speaks to the user.
+                resolveProcess: async (processId) => {
+                    if (!window.confirm("This will settle the entire process and release all bonds. Continue?")) return;
+                    return resolveActiveProcess(processId);
+                },
                 registerSeller: (metadataURI) => registerSeller.register(metadataURI, (registrationDeposit.data as bigint | undefined) ?? 0n),
                 updateSellerProfile: (metadataURI) => updateSellerProfile.updateProfile(metadataURI),
-                withdrawSellerDeposit: () => withdrawSellerDeposit.withdraw(),
+                withdrawSellerDeposit: () => {
+                    if (!window.confirm("Withdraw your seller deposit and clear the registry binding for this address? You'll need to re-register (with a fresh deposit and a new lock period) to operate again.")) return Promise.resolve(undefined);
+                    return withdrawSellerDeposit.withdraw();
+                },
                 // ONE generic attestation path — the clause spec drives the on-chain
                 // content (enum ladder) and who attests (party). Names no clause; a
                 // permissionless clause attests through here unchanged.

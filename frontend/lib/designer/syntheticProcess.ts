@@ -17,8 +17,8 @@ import { Order, OrderState } from "@/lib/kernel/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { buildOrderAgreement } from "@/lib/kernel/orderAgreement";
-import { saveAgreement, buildAgreementsFromCache } from "@/lib/designer/syntheticAgreementStore";
-import { deriveOrderTopology } from "@/lib/semantic/processTopology";
+import { saveAgreement } from "@/lib/designer/syntheticAgreementStore";
+import { draftOrderTopology } from "@/lib/shared/orderTopology";
 
 /** Address space for synthetic actors. Distinct prefix avoids visual confusion with live wallets. */
 export function syntheticAddress(slot: number): `0x${string}` {
@@ -213,7 +213,7 @@ export function mergeSyntheticParent(
 
     // Cycle check: if walking down from `child` reaches `newParentId`, then
     // making newParentId a parent of child would create a cycle.
-    const topology = deriveOrderTopology(allOrders, buildAgreementsFromCache(allOrders));
+    const topology = draftOrderTopology(allOrders);
     const visited = new Set<string>();
     const stack = [child.id];
     while (stack.length > 0) {
@@ -252,7 +252,7 @@ export function mergeSyntheticParent(
  * i.e. it sits at the root of the topology. Used by delete-protection logic.
  */
 export function isRootOrder(orderId: string, orders: Order[]): boolean {
-    const topology = deriveOrderTopology(orders, buildAgreementsFromCache(orders));
+    const topology = draftOrderTopology(orders);
     const parents = topology.get(orderId) ?? [];
     return parents.length === 0;
 }
@@ -263,7 +263,7 @@ export function isRootOrder(orderId: string, orders: Order[]): boolean {
  * cascade-delete flow.
  */
 export function collectDescendants(rootId: string, orders: Order[]): Set<string> {
-    const topology = deriveOrderTopology(orders, buildAgreementsFromCache(orders));
+    const topology = draftOrderTopology(orders);
     const collected = new Set<string>([rootId]);
     let frontier: string[] = [rootId];
     while (frontier.length > 0) {

@@ -27,9 +27,26 @@ import {
     getOrderCommittedBySeller,
 } from "@/lib/kernel/indexer";
 import { CONTRACTS, CORE_ABI } from "@/lib/kernel/contracts";
+import type { OrderState } from "@/lib/kernel/store";
 
 /** The two roles in a Figaro order commitment. */
 export type PartyRole = "buyer" | "seller";
+
+/** One order's id + state inside a wallet-scoped process summary. */
+interface OrderStub {
+    id: string;
+    state: OrderState;
+}
+
+/** A wallet-scoped process rollup derived from OrderCommitted/OrderResolved
+ *  events — produced by `useWalletProcessIds`, consumed by the semantic model. */
+export interface ProcessSummary {
+    processId: string;
+    orderCount: number;
+    hasActive: boolean;
+    createdAt: number;
+    orders: OrderStub[];
+}
 
 export interface ProcessRow {
     processId: string;

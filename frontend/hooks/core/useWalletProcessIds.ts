@@ -18,19 +18,7 @@ import {
     getAllOrderCommitted,
     getAllOrderResolved,
 } from "@/lib/kernel/indexer";
-
-interface OrderStub {
-    id: string;
-    state: OrderState;
-}
-
-export interface ProcessSummary {
-    processId: string;
-    orderCount: number;
-    hasActive: boolean;
-    createdAt: number;
-    orders: OrderStub[];
-}
+import type { ProcessSummary } from "@/lib/kernel/walletProcessQueries";
 
 type IndexedOrderLog = Awaited<ReturnType<typeof getAllOrderCommitted>>[number];
 
