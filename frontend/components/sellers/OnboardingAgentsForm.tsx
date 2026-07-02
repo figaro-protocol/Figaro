@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
-import { useMounted } from "@/lib/shared/useMounted";
+import { useMounted } from "@/hooks/useMounted";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
 import type { SellerAgentServices } from "@/lib/seller/sellerProfileMetadata";
 

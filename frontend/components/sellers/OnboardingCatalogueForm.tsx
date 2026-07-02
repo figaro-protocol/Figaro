@@ -10,7 +10,7 @@ import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { IpfsImageUpload } from "@/components/sellers/IpfsImageUpload";
-import { useMounted } from "@/lib/shared/useMounted";
+import { useMounted } from "@/hooks/useMounted";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
 import { parseCatalogueCsv } from "@/lib/seller/parseCatalogueCsv";
 import type {

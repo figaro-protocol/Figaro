@@ -31,7 +31,7 @@ import {
     asRecord,
     asString,
     type UnknownRecord,
-} from "@/lib/shared/parseHelpers";
+} from "@/lib/seller/parseHelpers";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

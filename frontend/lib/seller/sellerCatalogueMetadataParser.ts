@@ -21,7 +21,7 @@ import {
     asOptionalString,
     asRecord,
     asString,
-} from "@/lib/shared/parseHelpers";
+} from "@/lib/seller/parseHelpers";
 
 const ALLOWED_UNIT_SYSTEMS = new Set<UnitSystem>(["metric", "imperial"]);
 

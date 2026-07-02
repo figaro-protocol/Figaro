@@ -20,7 +20,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Card } from "@/components/ui/Card";
-import { useMounted } from "@/lib/shared/useMounted";
+import { useMounted } from "@/hooks/useMounted";
 import { useSellerProfile } from "@/lib/seller/useSellerRegistry";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
 import { useUpdateSellerProfile } from "@/lib/seller/useUpdateSellerProfile";

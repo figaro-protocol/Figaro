@@ -3,7 +3,7 @@ import Link from "next/link";
 import { DisciplineGlyph } from "@/components/shared/DisciplineGlyph";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
-import { GROUPS_REGISTRY } from "@/lib/shared/groupsRegistry";
+import { GROUPS_REGISTRY } from "@/app/(marketing)/_lib/groupsRegistry";
 
 export const metadata: Metadata = {
     title: "Cryptoeconomics — Figaro Protocol",

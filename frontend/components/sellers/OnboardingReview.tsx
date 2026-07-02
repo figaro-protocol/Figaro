@@ -8,7 +8,7 @@ import { formatToken } from "@/lib/shared/utils";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ContentImage } from "@/components/shared/ContentImage";
-import { useMounted } from "@/lib/shared/useMounted";
+import { useMounted } from "@/hooks/useMounted";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import {

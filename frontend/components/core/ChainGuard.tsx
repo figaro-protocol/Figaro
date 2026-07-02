@@ -9,7 +9,7 @@
 
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { AlertTriangle } from "lucide-react";
-import { showWarning } from "@/lib/shared/toast";
+import { showWarning } from "@/components/ui/toast";
 import { useEffect, useState } from "react";
 import { activeChain } from "@/lib/shared/chains";
 

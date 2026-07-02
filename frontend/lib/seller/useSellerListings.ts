@@ -21,7 +21,7 @@ import {
     type Listing,
 } from "@/lib/seller/sellerListing";
 import { getActiveSellers } from "@/lib/protocol/sellerRegistryIndexer";
-import { createUriFetcher } from "@/lib/shared/uriFetcher";
+import { createUriFetcher } from "@/lib/seller/uriFetcher";
 import { tryParseSellerProfileDocument } from "@/lib/seller/sellerProfileMetadata";
 import type { PublicClient } from "viem";
 import { CONTRACTS } from "@/lib/kernel/contracts";

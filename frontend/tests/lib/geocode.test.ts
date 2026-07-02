@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { geocodeAddress } from "@/lib/shared/geocode";
+import { geocodeAddress } from "@/lib/seller/geocode";
 
 const fetchMock = vi.fn();
 const originalFetch = globalThis.fetch;

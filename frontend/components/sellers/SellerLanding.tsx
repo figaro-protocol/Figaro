@@ -22,7 +22,7 @@ import Link from "next/link";
 import { useAccount, usePublicClient } from "wagmi";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { useMounted } from "@/lib/shared/useMounted";
+import { useMounted } from "@/hooks/useMounted";
 import {
     useDepositLockPeriod,
     useSellerProfile,

@@ -18,14 +18,14 @@ import {
 } from "@/components/sellers/TokenAddressInput";
 import { addressIntegrity, isValidAddress } from "@/lib/shared/evm";
 import { IpfsImageUpload } from "@/components/sellers/IpfsImageUpload";
-import { useMounted } from "@/lib/shared/useMounted";
+import { useMounted } from "@/hooks/useMounted";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
 import type {
     OnboardingProfileDraft,
 } from "@/lib/seller/onboardingState";
 import type { AcceptedTokenMetadata } from "@/lib/seller/acceptedTokenMetadata";
 import { encodeGeohash } from "@/lib/handoff/geohash";
-import { geocodeAddress, getDeviceLocation, type GeocodeFailureReason } from "@/lib/shared/geocode";
+import { geocodeAddress, getDeviceLocation, type GeocodeFailureReason } from "@/lib/seller/geocode";
 import { getCommonTokens, type CommonToken } from "@/lib/seller/commonTokens";
 import { hexEqual } from "@/lib/shared/evm";
 

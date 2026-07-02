@@ -23,7 +23,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { usePublicClient, useChainId } from "wagmi";
 import { Card } from "@/components/ui/Card";
-import { useMounted } from "@/lib/shared/useMounted";
+import { useMounted } from "@/hooks/useMounted";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { Order } from "@/lib/kernel/store";

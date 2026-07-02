@@ -25,13 +25,12 @@ import {
 } from "@/lib/kernel/signedCommitment";
 import type { OrderFlowStep } from "@/lib/checkout/orderCommitmentFlow";
 import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
-import type { MessageSendStatus } from "@/lib/shared/messageSendStatus";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { truncateHex } from "@/lib/shared/formatHex";
 
-/** Share-panel has no waiting state — exclude from the canonical send union. */
-type TransportStatus = Exclude<MessageSendStatus, "waiting">;
+/** Send state machine for the outbound share: idle → sending → sent | error. */
+type TransportStatus = "idle" | "sending" | "sent" | "error";
 
 function resolveRecipientAddress(
     payload: CommitmentPayload,
