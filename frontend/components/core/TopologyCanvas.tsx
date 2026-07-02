@@ -190,7 +190,7 @@ export function TopologyCanvas({
             const isBuyer = walletAddress ? hexEqual(walletAddress, order.buyer) : false;
             const isSeller = walletAddress ? hexEqual(walletAddress, order.seller) : false;
 
-            const knownParents = (topology.get(order.id)?.parentOrderHashes ?? []).filter(
+            const knownParents = (topology.get(order.id) ?? []).filter(
                 (pid) => pid !== order.id && knownOrderIds.has(pid),
             );
             const isRoot = knownParents.length === 0;
@@ -212,7 +212,7 @@ export function TopologyCanvas({
 
         const newEdges: Edge[] = [];
         orders.forEach((order) => {
-            const parentOrderHashes = (topology.get(order.id)?.parentOrderHashes ?? []).filter(
+            const parentOrderHashes = (topology.get(order.id) ?? []).filter(
                 (parentOrderId) => parentOrderId !== order.id && knownOrderIds.has(parentOrderId),
             );
 

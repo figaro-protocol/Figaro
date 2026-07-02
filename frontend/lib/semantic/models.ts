@@ -225,18 +225,6 @@ export interface OrderNodeModel {
     settlementBreakdown?: EconomicBreakdownModel;
 }
 
-export interface ProcessRelationModel {
-    id: string;
-    processId: string;
-    parentOrderId: string;
-    childOrderId: string;
-    relationKind: string;
-    labels: string[];
-    referencedValue: EconomicBreakdownValue;
-    allocatedReferenceValue?: EconomicBreakdownValue;
-    source: SemanticSource;
-}
-
 export interface ProcessModel {
     processId: string;
     rootOrderId: string;
@@ -246,13 +234,10 @@ export interface ProcessModel {
      *  without reading a clause section itself. Null when uncommitted. */
     rootModality?: string | null;
     orders: OrderNodeModel[];
-    relations: ProcessRelationModel[];
     stateSummary: string;
     capabilities: CapabilityModel[];
     economicSummary?: EconomicBreakdownModel;
     attachments: AttachmentModel[];
-    upstreamLinks: string[];
-    downstreamLinks: string[];
 }
 
 interface AssemblyModel {

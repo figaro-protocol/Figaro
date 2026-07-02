@@ -13,7 +13,6 @@ import {
     EconomicBreakdownValue,
     OrderNodeModel,
     ProcessModel,
-    ProcessRelationModel,
 } from "@/lib/semantic/models";
 
 /** Root orders anchor a process at cumulativeValue === payment. */
@@ -52,7 +51,7 @@ interface RuntimeIndexes {
 
 function buildRuntimeIndexes(
     processOrders: Order[],
-    topology: Map<string, { parentOrderHashes: string[] }>,
+    topology: Map<string, string[]>,
     agreements: Map<string, Agreement>,
     attestations: RuntimeAttestation[],
 ): RuntimeIndexes {
@@ -67,7 +66,7 @@ function buildRuntimeIndexes(
     const parentsByOrder = new Map<string, string[]>();
     for (const order of processOrders) {
         const id = order.id.toString();
-        const parents = topology.get(order.id)?.parentOrderHashes ?? [];
+        const parents = topology.get(order.id) ?? [];
         parentsByOrder.set(id, parents);
         for (const parent of parents) {
             const children = childrenByOrder.get(parent);
@@ -544,14 +543,14 @@ function deriveProcessAttachments(
 
 function deriveOrderNodeModelFromOrder(
     order: Order,
-    topology: Map<string, { parentOrderHashes: string[] }>,
+    topology: Map<string, string[]>,
     agreements: Map<string, Agreement>,
     indexes: RuntimeIndexes,
     address?: string,
     isE2EMock = false,
 ): OrderNodeModel {
     const attachments = deriveOrderAttachments(order, address);
-    const parentOrderHashes = topology.get(order.id)?.parentOrderHashes ?? [];
+    const parentOrderHashes = topology.get(order.id) ?? [];
 
     return {
         orderId: order.id.toString(),
@@ -567,52 +566,6 @@ function deriveOrderNodeModelFromOrder(
         capabilities: roleCapabilities(order, agreements, indexes, address, isE2EMock),
         settlementBreakdown: deriveSettlementBreakdown(order, address),
     };
-}
-
-function deriveProcessRelations(
-    processId: string,
-    orders: Order[],
-    topology: Map<string, { parentOrderHashes: string[]; sourceLabel: string }>,
-): ProcessRelationModel[] {
-    const relationModels: ProcessRelationModel[] = [];
-    const knownOrderIds = new Set(orders.map((order) => order.id.toString()));
-
-    orders.forEach((order) => {
-        const orderTopology = topology.get(order.id);
-        const parentOrderHashes = (orderTopology?.parentOrderHashes ?? []).filter(
-            (parentOrderId) => parentOrderId !== order.id.toString() && knownOrderIds.has(parentOrderId),
-        );
-
-        parentOrderHashes.forEach((parentOrderId) => {
-            relationModels.push({
-                id: `${processId}-${parentOrderId}-${order.id.toString()}`,
-                processId,
-                parentOrderId,
-                childOrderId: order.id.toString(),
-                // An edge is an edge — no mode taxonomy. The kernel's bonding is
-                // linear/on-chain; edges are off-chain display data (provenance
-                // rides on `source.sourceLabel`).
-                relationKind: "parent-reference",
-                labels: ["parent dependency", "same-process settlement path"],
-                referencedValue: {
-                    label: "Sub-order payment reference",
-                    amount: order.payment,
-                    source: {
-                        truthClass: "protocol-derived",
-                        sourceLabel: "sub-order payment is the value added to the process",
-                        referenceId: `${processId}:${order.id.toString()}:shared-reference`,
-                    },
-                },
-                source: {
-                    truthClass: "protocol-derived",
-                    sourceLabel: orderTopology?.sourceLabel ?? "derived process topology",
-                    referenceId: `${processId}:${parentOrderId}:${order.id.toString()}`,
-                },
-            });
-        });
-    });
-
-    return relationModels;
 }
 
 export function deriveProcessModelFromRuntime(
@@ -632,7 +585,6 @@ export function deriveProcessModelFromRuntime(
     // whole model stays O(orders + attestations) at the resolve ceiling.
     const indexes = buildRuntimeIndexes(processOrders, topology, agreements, attestations);
     const semanticOrders = processOrders.map((order) => deriveOrderNodeModelFromOrder(order, topology, agreements, indexes, address, isE2EMock));
-    const relations = deriveProcessRelations(summary.processId, processOrders, topology);
     const rootOrderId = semanticOrders.find((order) => order.parentOrderHashes.length === 0)?.orderId ?? semanticOrders[0]?.orderId ?? "";
     const rootOrder = processOrders.find((order) => order.id.toString() === rootOrderId);
     const rootAgreement = rootOrder?.agreementHash ? agreements.get(rootOrder.agreementHash) : undefined;
@@ -645,23 +597,17 @@ export function deriveProcessModelFromRuntime(
         active: processOrders.filter((order) => order.state === OrderState.Active).length,
         closed: processOrders.filter((order) => order.state === OrderState.Resolved).length,
     };
-    const upstreamLinks = [...new Set(relations.map((relation) => relation.parentOrderId))];
-    const downstreamLinks = [...new Set(relations.map((relation) => relation.childOrderId))];
-
     return {
         processId: summary.processId,
         rootOrderId,
         currency: processOrders[0]?.currency as `0x${string}` | undefined,
         rootModality,
         orders: semanticOrders,
-        relations,
         stateSummary: stateCounts.active > 0
             ? `Active · ${stateCounts.active} active / ${processOrders.length} total`
             : `Closed · ${stateCounts.closed} settled / ${processOrders.length} total`,
         capabilities: deriveProcessCapabilities(summary.processId, processOrders, address, isE2EMock),
         economicSummary: deriveProcessEconomicSummary(summary.processId, processOrders, address),
         attachments: deriveProcessAttachments(summary.processId, processOrders, rootOrderId, address, currencyAddress),
-        upstreamLinks,
-        downstreamLinks,
     };
 }

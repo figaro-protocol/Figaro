@@ -17,15 +17,6 @@ import type { Agreement } from "@figaro/core";
 import type { Order } from "@/lib/core/store";
 import { sectionByField } from "@/lib/core/agreementSections";
 
-/** The ONLY topology data is the parent edges. There is no mode — the
- *  kernel's bonding is linear and on-chain (cumulative value); the DAG is
- *  off-chain display data. `sourceLabel` is provenance prose (where the
- *  edges were read from), not a taxonomy. */
-export interface OrderTopologyInfo {
-    parentOrderHashes: string[];
-    sourceLabel: string;
-}
-
 // ── By-field reads of the topology clause (no clause id named) ────────────────
 
 function topologyParentOrderHashes(agreement: Agreement | null | undefined): string[] | null {
@@ -39,42 +30,25 @@ function topologyParentOrderHashes(agreement: Agreement | null | undefined): str
 
 // ── Topology derivation ───────────────────────────────────────────────────────
 
+/** The ONLY topology data is the parent edges: order id → parent order ids.
+ *  Two sources: a designer draft carries its edges directly (the canvas is
+ *  the origin of the topology clause's data, pre-commit); a committed order's
+ *  edges are read from its agreement's mandatory structural topology section.
+ *  An agreement not yet hydrated from IPFS yields [] — edgeless until it
+ *  loads, NEVER invented edges. */
 export function deriveOrderTopology(
     orders: Order[],
     agreements: Map<string, Agreement>,
-): Map<string, OrderTopologyInfo> {
-    const topology = new Map<string, OrderTopologyInfo>();
+): Map<string, string[]> {
+    const topology = new Map<string, string[]>();
     for (const order of orders) {
-        // Design-time: a designer draft carries its edges directly (the canvas
-        // is the origin of the topology clause's data, pre-commit).
         if (order.parentOrderHashes !== undefined) {
-            topology.set(order.id, {
-                parentOrderHashes: order.parentOrderHashes,
-                sourceLabel: "first-class design-time topology (the topology clause)",
-            });
+            topology.set(order.id, order.parentOrderHashes);
             continue;
         }
-
-        // Committed: the mandatory structural topology section, read by field.
         const agreement = order.agreementHash ? (agreements.get(order.agreementHash) ?? null) : null;
-        const explicitParents = topologyParentOrderHashes(agreement);
-        if (explicitParents !== null) {
-            topology.set(order.id, {
-                parentOrderHashes: explicitParents,
-                sourceLabel: "agreement topology section committed through agreementHash",
-            });
-            continue;
-        }
-
-        // Agreement not hydrated yet (IPFS fetch pending). Topology is
-        // structural — the section EXISTS on-chain-committed; we just can't
-        // read it yet. Edgeless until it loads; NEVER invented edges.
-        topology.set(order.id, {
-            parentOrderHashes: [],
-            sourceLabel: "agreement not yet hydrated — edges pending",
-        });
+        topology.set(order.id, topologyParentOrderHashes(agreement) ?? []);
     }
-
     return topology;
 }
 
@@ -115,16 +89,16 @@ export function topologicalOrder(
 
 export function deriveOrderDepths(
     orders: Order[],
-    topology: Map<string, OrderTopologyInfo>,
+    topology: Map<string, string[]>,
 ): Map<string, number> {
     const order = topologicalOrder(
         orders.map((o) => o.id),
-        (id) => topology.get(id)?.parentOrderHashes ?? [],
+        (id) => topology.get(id) ?? [],
         "break",
     );
     const depth = new Map<string, number>();
     for (const id of order) {
-        const parents = topology.get(id)?.parentOrderHashes ?? [];
+        const parents = topology.get(id) ?? [];
         const parentDepths = parents.map((p) => depth.get(p) ?? 0);
         depth.set(id, parents.length === 0 ? 0 : Math.max(...parentDepths) + 1);
     }
