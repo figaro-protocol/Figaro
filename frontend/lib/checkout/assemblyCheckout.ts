@@ -25,10 +25,10 @@ import {
     computeCommitmentProcessId,
     computeOrderHash,
 } from "@figaro/core";
-import { buildOrderPreview, type OrderPreview } from "@/lib/core/orderPreview";
+import { buildOrderPreview, type OrderPreview } from "@/lib/checkout/orderPreview";
 import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
-import type { DraftOrder } from "@/lib/core/draftOrders";
-import type { CommitmentPayload } from "@/lib/core/orderSignedAndShared";
+import type { DraftOrder } from "@/lib/checkout/draftOrders";
+import type { CommitmentPayload } from "@/lib/core/signedCommitment";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/checkout/assemblySubOrderPlan";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";

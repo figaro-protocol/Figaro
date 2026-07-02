@@ -6,9 +6,9 @@
  * wagmi directly.
  */
 
-import type { OrderPreview } from "@/lib/core/orderPreview";
-import type { CommitmentPayload } from "@/lib/core/orderSignedAndShared";
-import type { OrderFlowStep } from "@/lib/core/orderCommitmentFlow";
+import type { OrderPreview } from "@/lib/checkout/orderPreview";
+import type { CommitmentPayload } from "@/lib/core/signedCommitment";
+import type { OrderFlowStep } from "@/lib/checkout/orderCommitmentFlow";
 
 // ── Identity ────────────────────────────────────────────────────
 

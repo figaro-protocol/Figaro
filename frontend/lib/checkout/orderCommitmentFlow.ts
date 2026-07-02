@@ -36,8 +36,9 @@ import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { hexEqual, isValidAddress, ZERO_ADDRESS } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { PartyRole } from "@/lib/core/walletProcessQueries";
-import { requestSignConfirmation, type OrderPreview } from "@/lib/core/orderPreview";
-import { shareSignedOrder, type CommitmentPayload } from "@/lib/core/orderSignedAndShared";
+import { requestSignConfirmation, type OrderPreview } from "@/lib/checkout/orderPreview";
+import { shareSignedOrder } from "@/lib/checkout/orderSignedAndShared";
+import type { CommitmentPayload } from "@/lib/core/signedCommitment";
 import { commitSignedOrder } from "@/lib/core/orderCommitted";
 
 export type OrderFlowStep =

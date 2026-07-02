@@ -2,7 +2,7 @@ import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
-import { _setSignPreviewMode_TESTING_ONLY } from '@/lib/core/orderPreview';
+import { _setSignPreviewMode_TESTING_ONLY } from '@/lib/checkout/orderPreview';
 
 // Default test mode: auto-approve commitment-sign confirmation modals so
 // unit tests don't deadlock waiting for a Provider that isn't mounted.

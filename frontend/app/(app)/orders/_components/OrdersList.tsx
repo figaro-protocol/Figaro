@@ -32,8 +32,8 @@ import { truncateHex } from "@/lib/shared/formatHex";
 import { Button } from "@/components/ui/Button";
 import { WalletGate } from "@/components/core/WalletGate";
 import { useWalletProcessRows, type ProcessRow } from "@/lib/core/walletProcessQueries";
-import { useOrderCommitmentFlow } from "@/lib/core/orderCommitmentFlow";
-import { type CommitmentPayload } from "@/lib/core/orderSignedAndShared";
+import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
+import { type CommitmentPayload } from "@/lib/core/signedCommitment";
 import { computeOrderHash, computeAgreementHash } from "@figaro/core";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { CONTRACTS } from "@/lib/core/contracts";
@@ -41,7 +41,7 @@ import {
     usePendingSellerSignature,
     awaitsMyCounterSign,
     awaitsCounterpartySignature,
-} from "@/lib/core/orderPendingSellerSignature";
+} from "@/lib/checkout/orderPendingSellerSignature";
 import { useSellerListings } from "@/lib/seller/useSellerListings";
 import { displayNameForAddress } from "@/lib/seller/sellerListing";
 import type { Listing } from "@/lib/seller/sellerListing";

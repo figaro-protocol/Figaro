@@ -14,11 +14,11 @@ import { useSearchParams } from "next/navigation";
 import { useAccount, useWalletClient } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { useOrderCommitmentFlow } from "@/lib/core/orderCommitmentFlow";
+import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
 import {
     deserializeCommitmentPayload,
     type CommitmentPayload,
-} from "@/lib/core/orderSignedAndShared";
+} from "@/lib/core/signedCommitment";
 import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { calculateBonds } from "@figaro/core";

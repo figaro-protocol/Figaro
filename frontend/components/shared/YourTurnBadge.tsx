@@ -11,7 +11,7 @@
  */
 
 import Link from "next/link";
-import { usePendingSellerSignature, awaitsMyCounterSign } from "@/lib/core/orderPendingSellerSignature";
+import { usePendingSellerSignature, awaitsMyCounterSign } from "@/lib/checkout/orderPendingSellerSignature";
 import Bell from "@/components/icons/Bell";
 
 interface YourTurnBadgeProps {

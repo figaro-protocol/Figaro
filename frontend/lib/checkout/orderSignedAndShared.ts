@@ -7,54 +7,25 @@
  * channel, keyed by the on-chain order hash. The seller's /orders pending view
  * (orderPendingSellerSignature) surfaces it to counter-sign.
  *
- * core/ depends on no feature layer: the relay capability is a minimal
- * STRUCTURAL type (CommitmentPayloadRelay), satisfied by the handoff
- * CoordinationMessagingService at the call site.
+ * The relay capability is a minimal STRUCTURAL type (CommitmentPayloadRelay),
+ * satisfied by the handoff CoordinationMessagingService at the call site — so
+ * checkout stays decoupled from the handoff layer's concrete transport.
  */
-import {
-    computeOrderHash,
-    type Agreement,
-    type Commitment,
-    type Hex,
-} from "@figaro/core";
+import { computeOrderHash } from "@figaro/core";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { publishAgreement } from "@/lib/core/agreementFetch";
+import {
+    serializeCommitmentPayload,
+    type CommitmentPayload,
+} from "@/lib/core/signedCommitment";
 import type { IpfsService } from "@/lib/shared/ipfsService";
-import { strippingReviver } from "@/lib/shared/safeJson";
-
-/** The order as a (partially-)signed transport envelope. */
-export interface CommitmentPayload {
-    commitment: Commitment;
-    /** The agreement, inline — pinned with the payload so the recipient hydrates
-     *  everything from a single CID. */
-    agreement: Agreement;
-    buyerSig?: Hex;
-    sellerSig?: Hex;
-}
-
-/** Serialize a payload to compact JSON (bigints → hex strings). */
-export function serializeCommitmentPayload(p: CommitmentPayload): string {
-    return JSON.stringify(p, (_k, v) => (typeof v === "bigint" ? `0x${v.toString(16)}` : v));
-}
-
-/** Deserialize a payload back to typed form (hex strings → bigints). */
-export function deserializeCommitmentPayload(json: string): CommitmentPayload {
-    // strippingReviver drops __proto__/constructor/prototype at parse time so a
-    // malicious relayed envelope can't pollute the prototype chain downstream.
-    const raw = JSON.parse(json, strippingReviver);
-    const c = raw.commitment;
-    for (const f of ["payment", "salt", "deadline", "expectedCumulativeValue"]) {
-        if (typeof c[f] === "string" && c[f].startsWith("0x")) c[f] = BigInt(c[f]);
-    }
-    return raw as CommitmentPayload;
-}
 
 interface WalletMessageSigner {
     signMessage(params: { message: string }): Promise<`0x${string}`>;
 }
 
-/** The one transport capability this module needs — structural, so core/ depends
- *  on no feature layer. `CoordinationMessagingService` (handoff/) satisfies it. */
+/** The one transport capability this module needs — structural, so this module
+ *  names no concrete transport. `CoordinationMessagingService` (handoff/) satisfies it. */
 export interface CommitmentPayloadRelay {
     sendCommitmentPayload(params: {
         address: string;

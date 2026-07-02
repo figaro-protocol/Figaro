@@ -3,9 +3,9 @@
 import { useCallback, useState } from "react";
 import { useReadContract } from "wagmi";
 import { useCommerce } from "./CommerceProvider";
-import { useOrderCommitmentFlow } from "@/lib/core/orderCommitmentFlow";
-import type { OrderPreview } from "@/lib/core/orderPreview";
-import type { CommitmentPayload } from "@/lib/core/orderSignedAndShared";
+import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
+import type { OrderPreview } from "@/lib/checkout/orderPreview";
+import type { CommitmentPayload } from "@/lib/core/signedCommitment";
 import useTokenApproval from "@/hooks/core/useTokenApproval";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 import { ERC20_ABI, CONTRACTS } from "@/lib/core/contracts";

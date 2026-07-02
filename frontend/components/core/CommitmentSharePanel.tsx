@@ -17,11 +17,13 @@ import { formatToken } from "@/lib/shared/utils";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import {
-    serializeCommitmentPayload,
     shareSignedOrder,
+} from "@/lib/checkout/orderSignedAndShared";
+import {
+    serializeCommitmentPayload,
     type CommitmentPayload,
-} from "@/lib/core/orderSignedAndShared";
-import type { OrderFlowStep } from "@/lib/core/orderCommitmentFlow";
+} from "@/lib/core/signedCommitment";
+import type { OrderFlowStep } from "@/lib/checkout/orderCommitmentFlow";
 import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import type { MessageSendStatus } from "@/lib/shared/messageSendStatus";
 import { extractErrorMessage } from "@/lib/shared/errors";

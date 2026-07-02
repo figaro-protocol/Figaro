@@ -22,7 +22,7 @@ import {
 import { publicClient } from "@/lib/shared/wagmi";
 import { ZERO_PROCESS_ID } from "@/lib/shared/evm";
 import { buildOrderAgreement } from "@/lib/core/orderAgreement";
-import type { DraftOrder } from "@/lib/core/draftOrders";
+import type { DraftOrder } from "@/lib/checkout/draftOrders";
 
 // ── Build the buyer's preview from a draft ──────────────────────────────────
 

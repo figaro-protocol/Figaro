@@ -20,7 +20,7 @@ import {
     confirmPendingSign,
     subscribeToPendingSign,
     type PendingPreview,
-} from "@/lib/core/orderPreview";
+} from "@/lib/checkout/orderPreview";
 
 export function CommitmentSignPreviewProvider() {
     const [pending, setPending] = useState<PendingPreview | null>(null);

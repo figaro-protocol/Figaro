@@ -15,7 +15,7 @@
 # Service implementations live in their feature layer (handoff/, seller/);
 # core code that needs a transport capability declares a minimal STRUCTURAL
 # type instead of importing the feature interface (see the CommitmentPayloadRelay
-# structural type in lib/core/orderSignedAndShared.ts).
+# structural type in lib/checkout/orderSignedAndShared.ts).
 #
 # Wired into the root package.json lint-staged block under frontend/**/*.{ts,tsx}.
 # Run manually:  bash scripts/lint-lib-import-direction.sh [files...]

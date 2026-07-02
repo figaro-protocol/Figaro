@@ -21,7 +21,7 @@ import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import {
     deserializeCommitmentPayload,
     type CommitmentPayload,
-} from "@/lib/core/orderSignedAndShared";
+} from "@/lib/core/signedCommitment";
 import { publishAgreement } from "@/lib/core/agreementFetch";
 
 /**

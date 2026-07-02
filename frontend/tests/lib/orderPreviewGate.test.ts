@@ -6,7 +6,7 @@ import {
     subscribeToPendingSign,
     _resetSignPreviewStore_TESTING_ONLY,
     _setSignPreviewMode_TESTING_ONLY,
-} from "@/lib/core/orderPreview";
+} from "@/lib/checkout/orderPreview";
 import type { Commitment, Agreement } from "@figaro/core";
 
 const COMMITMENT: Commitment = {
