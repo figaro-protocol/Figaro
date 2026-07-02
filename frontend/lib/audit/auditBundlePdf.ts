@@ -31,7 +31,7 @@ import type {
 import {
     projectFinancials,
     type FinancialsModel,
-} from "@/lib/semantic/financialsProjection";
+} from "@/lib/audit/financialsProjection";
 import type { AttestationRecord } from "@/lib/composition/useGHGDisclosure";
 import {
     buildProcessTimeline,

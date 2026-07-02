@@ -17,6 +17,11 @@
  *   - At resolve (cooperate path): seller receives 2G + P, buyer receives P
  *   - Identity holds at every block: assets = liabilities + retained earnings
  *
+ * The kernel math is never re-implemented here: bond figures are READ from
+ * the order (`order.buyerBond` / `order.sellerBond`, derived once at the
+ * event-read edge via the SDK's `calculateBonds`), and settlement payouts
+ * come from the SDK's `calculateSettlement`.
+ *
  * Cash-basis (not GAAP/IFRS):
  *   - Sales recognized when buyer's deposit arrives at commit
  *   - Cost recognized when payment transfers to seller at resolve
@@ -34,6 +39,7 @@
  *   Income statement records: sales (P), cost (P), net income (0)
  */
 
+import { calculateSettlement } from "@figaro/core";
 import { OrderState, type Order } from "@/lib/kernel/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 
@@ -162,12 +168,6 @@ function emptyIncomeStatement(): IncomeStatementEntry {
     return { sales: 0n, cost: 0n, netIncome: 0n };
 }
 
-function bondTwo(value: bigint): bigint {
-    // Single arithmetic site so the multiplier is grep-able. The kernel uses
-    // `* 2` in src/FigaroCore.sol:206-207 and 283 — see project_bonding_formula.md.
-    return value * 2n;
-}
-
 /**
  * Build the per-order line item — the invoice-style row capturing this
  * order's individual contribution to every aggregate. Pure; no side effects.
@@ -192,10 +192,10 @@ function buildLineItem(order: Order): OrderLineItem {
         state: order.state,
         agreementHash: order.agreementHash,
 
-        buyerCustodyContribution: isActive ? bondTwo(P) : 0n,
-        sellerCustodyContribution: isActive ? bondTwo(G) : 0n,
+        buyerCustodyContribution: isActive ? order.buyerBond : 0n,
+        sellerCustodyContribution: isActive ? order.sellerBond : 0n,
         refundOwedToBuyerContribution: isActive ? P : 0n,
-        refundOwedToSellerContribution: isActive ? bondTwo(G) : 0n,
+        refundOwedToSellerContribution: isActive ? order.sellerBond : 0n,
         retainedEarningsContribution: isActive ? P : 0n,
 
         salesContribution: P,
@@ -242,30 +242,31 @@ function projectOrder(
         kind: "commit-buyer-deposit",
         orderId: order.id,
         currency,
-        amount: bondTwo(order.payment),
+        amount: order.buyerBond,
         party: order.buyer,
     });
     cashFlow.push({
         kind: "commit-seller-deposit",
         orderId: order.id,
         currency,
-        amount: bondTwo(order.cumulativeValue),
+        amount: order.sellerBond,
         party: order.seller,
     });
 
     if (order.state === OrderState.Resolved) {
+        const settlement = calculateSettlement(order.payment, order.sellerBond, order.buyerBond);
         cashFlow.push({
             kind: "resolve-buyer-refund",
             orderId: order.id,
             currency,
-            amount: order.payment,
+            amount: settlement.buyerPayout,
             party: order.buyer,
         });
         cashFlow.push({
             kind: "resolve-seller-payout",
             orderId: order.id,
             currency,
-            amount: bondTwo(order.cumulativeValue) + order.payment,
+            amount: settlement.sellerPayout,
             party: order.seller,
         });
     }

@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
     projectFinancials,
     checkBalanceSheetIdentity,
-} from "@/lib/semantic/financialsProjection";
+} from "@/lib/audit/financialsProjection";
+import { calculateBonds } from "@figaro/core";
 import { OrderState, type Order } from "@/lib/kernel/store";
 import { ANVIL_ACCOUNTS, DEFAULT_LOCAL_MOCK_TOKEN } from "../anvilAccounts";
 
@@ -15,7 +16,7 @@ const TOKEN_A = DEFAULT_LOCAL_MOCK_TOKEN;
 const TOKEN_B = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
 
 function makeOrder(overrides: Partial<Order> = {}): Order {
-    return {
+    const merged = {
         id: "0xORDER1",
         processId: "0xPROCESS1",
         buyer: BUYER,
@@ -25,12 +26,15 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
         cumulativeValue: 100n,
         state: OrderState.Active,
         agreementHash: "0xAGREEMENT1",
-        sellerBond: 200n,
-        buyerBond: 200n,
         salt: 1n,
         deadline: 9999999999n,
         ...overrides,
     };
+    // Bonds mirror the read edge: derived once from the order's own
+    // payment/cumulativeValue via the SDK's kernel math — a fixture may not
+    // carry bonds inconsistent with its values.
+    const { sellerBond, buyerBond } = calculateBonds(merged.cumulativeValue, merged.payment);
+    return { ...merged, sellerBond, buyerBond };
 }
 
 // ── Single active order ───────────────────────────────────────────────────────

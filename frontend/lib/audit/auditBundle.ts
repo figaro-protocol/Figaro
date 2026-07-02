@@ -7,7 +7,7 @@
  * user-supplied content.
  *
  * The financial-statements panel is not part of this bundle directly —
- * it lives in `lib/semantic/financialsProjection.ts` and is composed
+ * it lives in `lib/audit/financialsProjection.ts` and is composed
  * alongside the bundle by the consumer (the PDF renderer renders both).
  *
  * Bill-of-Lading discriminator: the BoL is a document genre that exists

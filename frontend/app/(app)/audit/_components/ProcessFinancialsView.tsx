@@ -29,7 +29,7 @@ import {
     checkBalanceSheetIdentity,
     type FinancialsModel,
     type OrderLineItem,
-} from "@/lib/semantic/financialsProjection";
+} from "@/lib/audit/financialsProjection";
 import { OrderState } from "@/lib/kernel/store";
 import { DownloadAuditBundleButton } from "@/components/core/DownloadAuditBundleButton";
 import { truncateHex } from "@/lib/shared/formatHex";

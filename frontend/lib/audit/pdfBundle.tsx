@@ -36,7 +36,7 @@ import type {
     BalanceSheetEntry,
     FinancialsModel,
     OrderLineItem,
-} from "@/lib/semantic/financialsProjection";
+} from "@/lib/audit/financialsProjection";
 import { OrderState } from "@/lib/kernel/store";
 import type { ProcessTimeline, TimelineEvent } from "@/lib/audit/processTimeline";
 import { truncateHex } from "@/lib/shared/formatHex";
