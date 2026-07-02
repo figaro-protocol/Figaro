@@ -14,16 +14,12 @@ import type { Agreement } from "@figaro/core";
 import type { Order } from "@/lib/core/store";
 import { sectionByField } from "@/lib/core/agreementSections";
 
-/** All three labels are DERIVED — the topology clause stores only
- *  `parentOrderHashes`, never a mode: `explicit` = the committed section
- *  declares parent edges; `root` = it declares none (or the order leads the
- *  process by cumulative value); `linear-fallback` = no committed topology,
- *  chain linearized by cumulative value. */
-export type TopologyMode = "root" | "explicit" | "linear-fallback";
-
+/** The ONLY topology data is the parent edges. There is no mode — the
+ *  kernel's bonding is linear and on-chain (cumulative value); the DAG is
+ *  off-chain display data. `sourceLabel` is provenance prose (where the
+ *  edges were read from), not a taxonomy. */
 export interface OrderTopologyInfo {
     parentOrderHashes: string[];
-    topologyMode: TopologyMode;
     sourceLabel: string;
 }
 
@@ -61,10 +57,9 @@ export function deriveOrderTopology(
     sortedOrders.forEach((order, index) => {
         fallbackTopology.set(order.id, {
             parentOrderHashes: index === 0 ? [] : [sortedOrders[index - 1].id],
-            topologyMode: index === 0 ? "root" : "linear-fallback",
             sourceLabel: index === 0
                 ? "first order in cumulative process progression"
-                : "linear fallback derived from cumulative process progression",
+                : "linearized from cumulative process progression",
         });
     });
 
@@ -72,8 +67,7 @@ export function deriveOrderTopology(
     for (const order of orders) {
         const fallback = fallbackTopology.get(order.id) ?? {
             parentOrderHashes: [],
-            topologyMode: "root" as const,
-            sourceLabel: "default root fallback",
+            sourceLabel: "default fallback (no edges)",
         };
 
         // First-class design-time topology: when the order carries its edges
@@ -83,7 +77,6 @@ export function deriveOrderTopology(
         if (order.parentOrderHashes !== undefined) {
             topology.set(order.id, {
                 parentOrderHashes: order.parentOrderHashes,
-                topologyMode: order.parentOrderHashes.length === 0 ? "root" : "explicit",
                 sourceLabel: "first-class design-time topology (the topology clause)",
             });
             continue;
@@ -95,7 +88,6 @@ export function deriveOrderTopology(
         if (explicitParents !== null) {
             topology.set(order.id, {
                 parentOrderHashes: explicitParents,
-                topologyMode: explicitParents.length === 0 ? "root" : "explicit",
                 sourceLabel: "agreement topology section committed through agreementHash",
             });
             continue;

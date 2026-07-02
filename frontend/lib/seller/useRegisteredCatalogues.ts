@@ -20,6 +20,7 @@ import {
     DEFAULT_DISCOVERY_SERVICE,
     type DiscoveryService,
 } from "@/lib/seller/discoveryService";
+import { usePublishedAssemblies } from "@/lib/core/useAssemblyRegistry";
 
 export interface UseRegisteredCataloguesResult {
     catalogues: SellerCatalogue[];
@@ -50,17 +51,27 @@ export function useRegisteredCatalogues(
     const [isLoading, setIsLoading] = useState(false);
     const client = usePublicClient();
     const chainId = useChainId();
+    // The AssemblyRegistry read the surfacing rule cross-checks against —
+    // the SAME gate useSellerListings applies (rule applied evenly, operator
+    // 2026-07-02). `null` = still reading — that is LOADING, not absence: the
+    // unchecked seller list is never rendered (NO FALLBACKS).
+    const { data: publishedAssemblies } = usePublishedAssemblies(undefined);
 
     useEffect(() => {
         if (!client || !service.isRegistryConfigured()) {
             setDiscoveryResult(EMPTY_RESULT);
             return;
         }
+        if (publishedAssemblies === null) {
+            setIsLoading(true);
+            return;
+        }
+        const publishedSlugs = new Set(publishedAssemblies.map((a) => a.slug));
 
         let cancelled = false;
         setIsLoading(true);
 
-        service.listCatalogues(client, chainId)
+        service.listCatalogues(client, chainId, publishedSlugs)
             .then((result) => {
                 if (cancelled) return;
                 setDiscoveryResult({ ...result, isLoading: false });
@@ -75,7 +86,7 @@ export function useRegisteredCatalogues(
         return () => {
             cancelled = true;
         };
-    }, [client, chainId, service]);
+    }, [client, chainId, service, publishedAssemblies]);
 
     return {
         catalogues: discoveryResult.catalogues,

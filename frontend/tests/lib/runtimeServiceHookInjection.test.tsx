@@ -54,6 +54,13 @@ vi.mock("@/lib/core/indexer", () => ({
     getSellerMetadataURI: (...args: unknown[]) => getSellerMetadataURIMock(...args),
 }));
 
+// The surfacing rule's AssemblyRegistry cross-check gate — resolved (empty)
+// so useRegisteredCatalogues proceeds; the filtering itself lives in the
+// (injected) discovery service.
+vi.mock("@/lib/core/useAssemblyRegistry", () => ({
+    usePublishedAssemblies: () => ({ data: [], isLoading: false }),
+}));
+
 vi.mock("@/lib/seller/catalogueService", () => ({
     DEFAULT_CATALOGUE_SERVICE: {
         fetchSellerCatalogue: (...args: unknown[]) => defaultFetchSellerCatalogueMock(...args),
@@ -231,7 +238,7 @@ describe("runtime service hook injection", () => {
             expect(result.current.catalogues).toEqual([injectedRestaurant]);
         });
 
-        expect(listCatalogues).toHaveBeenCalledWith(publicClient, 31337);
+        expect(listCatalogues).toHaveBeenCalledWith(publicClient, 31337, new Set());
         expect(defaultListRestaurantsMock).not.toHaveBeenCalled();
     });
 

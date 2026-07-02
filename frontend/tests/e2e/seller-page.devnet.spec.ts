@@ -10,8 +10,11 @@
  *   1. Pin a SellerCatalogueMetadata JSON to local Kubo.
  *   2. Register/update the seller through the canonical idempotent
  *      seeder (devnet-helpers.seedRegisteredSeller) with a profile
- *      pointing at the catalogue. NO assembly binding — this page is
- *      browse-only and must render for a binding-less profile too.
+ *      pointing at the catalogue AND binding an assembly DISCOVERED
+ *      from the AssemblyRegistry (the devnet-authoring project anchors
+ *      one first). The surfacing rule is applied EVENLY (operator
+ *      2026-07-02): a seller without ≥1 anchored binding is absent on
+ *      /discover, /s, and checkout alike — browse-only is retired.
  *   3. Open /s/<sellerAddress>?e2e=devnet from a buyer wallet.
  *
  * Assertions: the seller-detail-view shell renders for the seller
@@ -30,13 +33,44 @@
  *     http://localhost:3100 (per CLAUDE.md "Docker-hosted services").
  */
 import { test, expect, ANVIL_ACCOUNTS } from './devnet-multi-test';
-import { type Hex } from 'viem';
+import { createPublicClient, defineChain, http, type Hex } from 'viem';
 import {
     pinJSONToIPFS,
     readLocalDeploymentConfig,
     seedRegisteredSeller,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
+import { ASSEMBLY_REGISTRY_ABI } from '@figaro/core';
+
+const RPC_URL = 'http://127.0.0.1:8545';
+const LOCAL_ANVIL = defineChain({
+    id: 31337,
+    name: 'Localhost',
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+    rpcUrls: { default: { http: [RPC_URL] } },
+});
+
+/** Discover an anchored assembly slug from chain (never a roster) — the
+ *  seeded profile must bind one to satisfy the even surfacing rule. */
+async function discoverAnchoredAssemblySlug(): Promise<string> {
+    const config = readLocalDeploymentConfig();
+    const registry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY
+        ?? config.assemblyRegistry ?? '') as Hex;
+    if (!registry || registry.length !== 42) {
+        throw new Error('NEXT_PUBLIC_ASSEMBLY_REGISTRY not set — run ./deploy-local.sh');
+    }
+    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const events = await publicClient.getContractEvents({
+        address: registry,
+        abi: ASSEMBLY_REGISTRY_ABI,
+        eventName: 'AssemblyRegistered',
+        fromBlock: 0n,
+    });
+    if (events.length === 0) {
+        throw new Error('no anchored assemblies on this devnet — run the devnet-authoring project first');
+    }
+    return events[events.length - 1].args.slug as string;
+}
 
 const SELLER_KEY = ANVIL_KEYS[1];
 const SELLER_ADDR = ANVIL_ACCOUNTS[1];
@@ -77,6 +111,7 @@ async function seedRegisteredSellerWithCatalogue(): Promise<SeededSeller> {
     };
     const { uri: catalogueURI } = await pinJSONToIPFS(catalogue);
 
+    const anchoredSlug = await discoverAnchoredAssemblySlug();
     await seedRegisteredSeller({
         walletKey: SELLER_KEY,
         profile: {
@@ -85,6 +120,12 @@ async function seedRegisteredSellerWithCatalogue(): Promise<SeededSeller> {
             catalogueURI,
             acceptedTokens: [{ address: tokenAddress, symbol: 'MOCK', chainId: 31337 }],
             defaultTokenAddress: tokenAddress,
+            assemblyBindings: [{
+                bindingId: `seller-page-binding-${Date.now()}`,
+                subjectAddress: SELLER_ADDR as Hex,
+                assemblySlug: anchoredSlug,
+                counterpartyBindings: [],
+            }],
         },
     });
 

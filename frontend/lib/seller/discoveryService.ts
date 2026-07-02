@@ -51,6 +51,7 @@ async function fetchSellerAsCatalogue(
     address: string,
     metadataURI: string,
     fetchFn: (url: string) => Promise<Response>,
+    publishedSlugs: ReadonlySet<string>,
 ): Promise<SellerCatalogue | null> {
     const url = resolveContentUri(metadataURI);
     if (!url) return null;
@@ -65,6 +66,17 @@ async function fetchSellerAsCatalogue(
     // list.
     const profile = tryParseSellerProfileDocument(doc);
     if (!profile) return null;
+
+    // The frontend's surfacing rule, applied EVENLY across every projection
+    // (operator ruling 2026-07-02; extends the 2026-06-12 discover rule): the
+    // contracts are permissionless — anyone can anchor any profile shape —
+    // but this frontend surfaces only sellers whose profile binds ≥1 assembly
+    // anchored in the AssemblyRegistry (the registry is the authority, the
+    // profile an assertion). No anchored binding ⇒ absence, on /discover,
+    // /s, and checkout alike.
+    const hasAnchoredBinding = (profile.assemblyBindings ?? [])
+        .some((b) => publishedSlugs.has(b.assemblySlug));
+    if (!hasAnchoredBinding) return null;
 
     // Stamp the wallet onto the profile so downstream renderers can
     // route from the listing back to /s/<address>.
@@ -104,7 +116,10 @@ async function fetchSellerAsCatalogue(
 
 export interface DiscoveryService {
     isRegistryConfigured(): boolean;
-    listCatalogues(client: PublicClient, chainId: number): Promise<DiscoveryResult>;
+    /** `publishedSlugs` = the AssemblyRegistry's anchored slugs; the surfacing
+     *  rule drops sellers without ≥1 anchored binding (applied evenly across
+     *  every projection). */
+    listCatalogues(client: PublicClient, chainId: number, publishedSlugs: ReadonlySet<string>): Promise<DiscoveryResult>;
 }
 
 export interface DiscoveryServiceOptions {
@@ -122,7 +137,7 @@ export function createDiscoveryService(
         isRegistryConfigured() {
             return !!CONTRACTS.sellerRegistry && CONTRACTS.sellerRegistry.length === 42;
         },
-        async listCatalogues(client: PublicClient, chainId: number) {
+        async listCatalogues(client: PublicClient, chainId: number, publishedSlugs: ReadonlySet<string>) {
             if (!service.isRegistryConfigured()) {
                 return EMPTY_RESULT;
             }
@@ -134,7 +149,8 @@ export function createDiscoveryService(
                 // The catalogue's items signal what business the seller is
                 // in; there is no nominal categorization field to filter on.
                 // fetchSellerAsCatalogue is the gate that drops sellers
-                // whose document doesn't parse as a seller catalogue.
+                // whose document doesn't parse as a seller catalogue or
+                // binds no anchored assembly (the surfacing rule).
                 const results = await Promise.all(
                     sellers.map(async (seller) => {
                         try {
@@ -143,6 +159,7 @@ export function createDiscoveryService(
                                 seller.address,
                                 seller.metadataURI,
                                 fetchFn,
+                                publishedSlugs,
                             );
                         } catch {
                             return null;

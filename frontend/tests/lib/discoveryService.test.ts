@@ -24,6 +24,19 @@ function makeJsonResponse(body: unknown): Response {
     } as unknown as Response;
 }
 
+// The AssemblyRegistry's anchored slugs the surfacing rule cross-checks
+// against (applied evenly across every projection, operator 2026-07-02).
+const ANCHORED = new Set(['asm-anchored']);
+
+function anchoredBinding(subjectAddress: string) {
+    return [{
+        bindingId: 'binding-1',
+        subjectAddress,
+        assemblySlug: 'asm-anchored',
+        counterpartyBindings: [],
+    }];
+}
+
 describe('discoveryService', () => {
     let discoveryService: ReturnType<typeof createDiscoveryService>;
 
@@ -36,7 +49,7 @@ describe('discoveryService', () => {
     it('returns an empty result when the registry has no sellers', async () => {
         getActiveSellersMock.mockResolvedValueOnce([]);
 
-        const result = await discoveryService.listCatalogues({} as never, 31337);
+        const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
 
         expect(result.catalogues).toHaveLength(0);
         expect(result.source.ipfs).toBe(0);
@@ -68,10 +81,11 @@ describe('discoveryService', () => {
                 },
             ],
             acceptedTokens: [{ address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', symbol: 'FIG' }],
+            assemblyBindings: anchoredBinding('0x70997970C51812dc3A010C7d01b50e0d17dc79C8'),
             version: '1.0.0',
         }));
 
-        const result = await discoveryService.listCatalogues({} as never, 31337);
+        const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
 
         expect(result.source.ipfs).toBe(1);
         expect(result.source.mock).toBe(0);
@@ -98,6 +112,7 @@ describe('discoveryService', () => {
             acceptedTokens: [
                 { address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', symbol: 'USDC' },
             ],
+            assemblyBindings: anchoredBinding('0xaabbccddaabbccddaabbccddaabbccddaabbccdd'),
             catalogueURI: 'ipfs://op-catalogue',
         }));
         // Second fetch: catalogue document
@@ -108,7 +123,7 @@ describe('discoveryService', () => {
             ],
         }));
 
-        const result = await discoveryService.listCatalogues({} as never, 31337);
+        const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
 
         expect(result.source.ipfs).toBe(1);
         expect(result.catalogues[0]).toEqual(expect.objectContaining({
@@ -128,9 +143,10 @@ describe('discoveryService', () => {
         ]);
         fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
             name: 'Ghost Kitchen',
+            assemblyBindings: anchoredBinding('0xaabbccddaabbccddaabbccddaabbccddaabbccdd'),
         }));
 
-        const result = await discoveryService.listCatalogues({} as never, 31337);
+        const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
 
         expect(result.source.ipfs).toBe(1);
         expect(result.catalogues[0].name).toBe('Ghost Kitchen');
@@ -141,11 +157,38 @@ describe('discoveryService', () => {
     it('returns an empty result when the seller-event lookup fails', async () => {
         getActiveSellersMock.mockRejectedValueOnce(new Error('indexer offline'));
 
-        const result = await discoveryService.listCatalogues({} as never, 31337);
+        const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
 
         expect(result.catalogues).toHaveLength(0);
         expect(result.source.ipfs).toBe(0);
         expect(result.source.mock).toBe(0);
+    });
+
+    it('excludes sellers without an anchored assembly binding (surfacing rule, applied evenly)', async () => {
+        getActiveSellersMock.mockResolvedValueOnce([
+            {
+                address: '0x70997970c51812dc3a010c7d01b50e0d17dc79c8',
+                role: 1,
+                metadataURI: 'ipfs://unbound',
+            },
+        ]);
+        // Parses fine as a profile — but binds nothing anchored in the
+        // AssemblyRegistry, so this frontend does not surface it anywhere.
+        fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
+            subjectAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+            name: 'Unbound Seller',
+            assemblyBindings: [{
+                bindingId: 'binding-x',
+                subjectAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+                assemblySlug: 'asm-not-anchored',
+                counterpartyBindings: [],
+            }],
+        }));
+
+        const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
+
+        expect(result.catalogues).toHaveLength(0);
+        expect(result.source.ipfs).toBe(0);
     });
 
     it('excludes sellers whose documents cannot be fetched', async () => {
@@ -158,7 +201,7 @@ describe('discoveryService', () => {
         ]);
         fetchDocumentMock.mockResolvedValueOnce({ ok: false } as Response);
 
-        const result = await discoveryService.listCatalogues({} as never, 31337);
+        const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
 
         expect(result.catalogues).toHaveLength(0);
         expect(result.source.ipfs).toBe(0);

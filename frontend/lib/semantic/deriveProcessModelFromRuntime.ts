@@ -1,7 +1,7 @@
 import { Order, OrderState } from "@/lib/core/store";
 import type { Agreement } from "@figaro/core";
 import { sectionByField } from "@/lib/core/agreementSections";
-import { deriveOrderTopology, type TopologyMode } from "@/lib/semantic/processTopology";
+import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 import { ProcessSummary } from "@/hooks/core/useWalletProcessIds";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
 import { clauseIsStructural, clauseLadderField, labelEnumValue } from "@/lib/shared/clauseSpecSource";
@@ -590,7 +590,7 @@ function deriveOrderNodeModelFromOrder(
 function deriveProcessRelations(
     processId: string,
     orders: Order[],
-    topology: Map<string, { parentOrderHashes: string[]; topologyMode: TopologyMode; sourceLabel: string }>,
+    topology: Map<string, { parentOrderHashes: string[]; sourceLabel: string }>,
 ): ProcessRelationModel[] {
     const relationModels: ProcessRelationModel[] = [];
     const knownOrderIds = new Set(orders.map((order) => order.id.toString()));
@@ -607,12 +607,11 @@ function deriveProcessRelations(
                 processId,
                 parentOrderId,
                 childOrderId: order.id.toString(),
-                relationKind: orderTopology?.topologyMode === "explicit"
-                    ? "declared-parent-reference"
-                    : "linear-fallback-reference",
-                labels: orderTopology?.topologyMode === "explicit"
-                    ? ["declared dependency", "agreement-defined edge", "same-process settlement path"]
-                    : ["linear fallback", "previous-order dependency", "same-process settlement path"],
+                // An edge is an edge — no mode taxonomy. The kernel's bonding is
+                // linear/on-chain; edges are off-chain display data (provenance
+                // rides on `source.sourceLabel`).
+                relationKind: "parent-reference",
+                labels: ["parent dependency", "same-process settlement path"],
                 referencedValue: {
                     label: "Sub-order payment reference",
                     amount: order.payment,
