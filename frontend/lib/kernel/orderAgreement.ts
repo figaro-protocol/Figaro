@@ -11,8 +11,11 @@
  *   3. returns it with its `agreementHash` = the merkle root over the section
  *      leaves, computed by the ONE builder in `@figaro/core`.
  *
- * It names no clause, injects nothing, special-cases nothing, and re-implements
- * no hashing. Commerce and topology are leaves like any other.
+ * It names no clause, special-cases nothing, and re-implements no hashing.
+ * Commerce and topology are leaves like any other. The ONE spec-driven step:
+ * each clause spec's own declared field defaults fill fields the composing
+ * input omitted (`BaseFieldSpec.default` — "applied when the composing input
+ * omits this field") — the SPEC speaks, the code injects nothing of its own.
  */
 import {
     computeAgreementHash,
@@ -36,6 +39,22 @@ export interface OrderAgreement {
  * is deterministic; the merkle root sorts its own leaves, so order never
  * affects the hash.
  */
+/** Fill fields the composing input omitted with the clause spec's OWN declared
+ *  defaults (registry-sourced, never code-sourced). A process-log clause is an
+ *  empty anchor at commit and stays untouched. */
+function withSpecDefaults(clause: string, data: Record<string, unknown>): Record<string, unknown> {
+    const spec = getClauseSpec(clause);
+    if (!spec || clauseIsProcessLog(clause)) return data;
+    let out = data;
+    for (const field of spec.fields ?? []) {
+        if (field.default !== undefined && out[field.name] === undefined) {
+            if (out === data) out = { ...data };
+            out[field.name] = field.default;
+        }
+    }
+    return out;
+}
+
 export function buildOrderAgreement(
     buyer: `0x${string}`,
     seller: `0x${string}`,
@@ -45,7 +64,7 @@ export function buildOrderAgreement(
         .map((clause) => ({
             clause,
             version: getClauseSpec(clause)?.version ?? 1,
-            data: clauses[clause] ?? {},
+            data: withSpecDefaults(clause, clauses[clause] ?? {}),
         }))
         .sort((a, b) => (a.clause < b.clause ? -1 : a.clause > b.clause ? 1 : 0));
 

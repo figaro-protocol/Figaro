@@ -9,8 +9,9 @@
  *   1. /builders/designer/new?fresh=1 — blank canvas, one root order.
  *   2. Open the drawer → registry tab → compose figaro-geolocation (awaited into
  *      existence: checkboxes render once the spec cache warms chain→IPFS).
- *   3. Name + Save; reload via /builders/designer/edit/<slug> — the geolocation
- *      checkbox is STILL CHECKED.
+ *   3. Save; discover the assigned draft handle from the hub's drafts list and
+ *      reload via /builders/designer/edit/<slug> — the geolocation checkbox is
+ *      STILL CHECKED.
  *   4. Uncheck it, save, reload — STILL UNCHECKED. Both directions of a
  *      user-driven clause edit persist.
  *
@@ -23,7 +24,6 @@ import { test, expect } from './devnet-multi-test';
 import type { Page } from '@playwright/test';
 
 const GEO_CLAUSE_KEY = 'figaro-geolocation';
-const DRAFT_NAME = 'devnet-drawer-geo';
 
 /** Open the (sole) root order's drawer on its registry tab and return the
  *  geo checkbox, awaited into existence (chain→IPFS spec warm). */
@@ -39,12 +39,21 @@ async function openGeoToggle(page: Page) {
     return box;
 }
 
-/** Name + Save the draft, landing back on the designer hub. */
-async function saveDraft(page: Page) {
+/** Save the draft, landing back on the designer hub, and DISCOVER the slug
+ *  the canvas assigned from the hub's drafts list (drafts carry a random
+ *  `asm-draft-*` handle since the content-derived-slug migration — the UI is
+ *  the only source of it; a name-derived slug is a retired model). */
+async function saveDraft(page: Page): Promise<string> {
     await expect(page.getByTestId('designer-save')).toBeEnabled({ timeout: 5000 });
     await page.getByTestId('designer-save').click();
     // Save lands on the hub, preserving ?e2e=devnet in the query.
     await page.waitForURL(/\/builders\/designer(\?|$)/, { timeout: 15000 });
+    const row = page.locator('[data-testid^="draft-row-"]').first();
+    await row.waitFor({ state: 'visible', timeout: 15000 });
+    const testId = await row.getAttribute('data-testid');
+    const slug = testId?.replace(/^draft-row-/, '');
+    expect(slug, 'the hub lists the saved draft').toBeTruthy();
+    return slug as string;
 }
 
 /** Reopen the saved draft in the editor. */
@@ -57,8 +66,6 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
     test.setTimeout(180_000);
 
     test('toggling the geo clause persists through save and reload — both directions', async ({ page }) => {
-        const slug = DRAFT_NAME.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-
         await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
         await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
@@ -67,7 +74,7 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         const geoToggle = await openGeoToggle(page);
         await expect(geoToggle, 'geo is NOT default-composed on a fresh order').not.toBeChecked();
         await geoToggle.check();
-        await saveDraft(page);
+        const slug = await saveDraft(page);
 
         await reopenDraft(page, slug);
         const geoAfterOn = await openGeoToggle(page);
@@ -75,7 +82,8 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
 
         // ── Toggle OFF, save, reload — the removal survives too ─────────────
         await geoAfterOn.uncheck();
-        await saveDraft(page);
+        const slugAfterResave = await saveDraft(page);
+        expect(slugAfterResave, 're-saving keeps the same draft handle').toBe(slug);
 
         await reopenDraft(page, slug);
         const geoAfterOff = await openGeoToggle(page);

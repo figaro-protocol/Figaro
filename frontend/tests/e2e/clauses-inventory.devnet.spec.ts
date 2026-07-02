@@ -33,23 +33,27 @@ test.describe('Clauses marketing inventory (devnet)', () => {
         const registered = await publicClient.getContractEvents({
             address: registry, abi: CLAUSE_REGISTRY_ABI, eventName: 'ClauseRegistered', fromBlock: 0n,
         });
-        const liveCount = new Set(registered.map((e) => (e.args as { clauseId?: string }).clauseId)).size;
+        const liveIds = [...new Set(
+            registered
+                .map((e) => (e.args as { clauseId?: string }).clauseId)
+                .filter((id): id is string => typeof id === 'string' && id.length > 0),
+        )];
+        expect(liveIds.length, 'the deploy registered clauses on-chain').toBeGreaterThan(0);
 
         await page.goto('/clauses');
 
         // The count line is ClauseInventory's resolved-state proof.
-        await expect(page.getByText(new RegExp(`${liveCount} clauses are registered`))).toBeVisible({
+        await expect(page.getByText(new RegExp(`${liveIds.length} clauses are registered`))).toBeVisible({
             timeout: 15_000,
         });
 
-        // A handful of specific row ids confirm the inventory rendered
-        // actual entries from the on-chain set, not just the header line.
+        // EVERY on-chain clause renders a row — the expected set is DISCOVERED
+        // from ClauseRegistered events, never a hand-written roster (a roster
+        // rots on every clause rename and can't see novel registrations).
         // Row id pattern is `#clause-<clauseId>` per ClauseInventory.
-        await expect(page.locator('#clause-figaro-commerce')).toBeVisible();
-        await expect(page.locator('#clause-figaro-modalities')).toBeVisible();
-        await expect(page.locator('#clause-figaro-coordination')).toBeVisible();
-        await expect(page.locator('#clause-figaro-arbitration-kleros')).toBeVisible();
-        await expect(page.locator('#clause-figaro-applicable-law')).toBeVisible();
-        await expect(page.locator('#clause-figaro-topology')).toBeVisible();
+        for (const clauseId of liveIds) {
+            await expect(page.locator(`#clause-${clauseId}`),
+                `on-chain clause "${clauseId}" renders in the inventory`).toBeVisible();
+        }
     });
 });
