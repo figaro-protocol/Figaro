@@ -18,7 +18,7 @@ import {
     type Hex,
 } from "@figaro/core";
 import { strippingReviver } from "@/lib/shared/safeJson";
-import { CONTRACTS } from "@/lib/core/contracts";
+import { CONTRACTS } from "@/lib/kernel/contracts";
 import { hexEqual, ZERO_PROCESS_ID } from "@/lib/shared/evm";
 
 export function restoreSignedProcessId(c: Commitment, chainId: number): Commitment {

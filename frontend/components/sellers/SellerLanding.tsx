@@ -29,7 +29,7 @@ import {
     useRegistrationDeposit,
     useWithdrawDeposit,
 } from "@/lib/seller/useSellerRegistry";
-import { getSellerRegistry } from "@/lib/core/contracts";
+import { getSellerRegistry } from "@/lib/kernel/contracts";
 import { SELLER_REGISTRY_ABI } from "@figaro/core";
 import { resolveContentUri } from "@/lib/shared/ipfsService";
 import { tryParseSellerProfileDocument } from "@/lib/seller/sellerProfileMetadata";

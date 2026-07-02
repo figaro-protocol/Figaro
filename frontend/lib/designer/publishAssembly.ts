@@ -29,7 +29,7 @@ import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { buildAssemblyTemplate, serializeAssemblyTemplate } from "@/lib/designer/buildAssemblyTemplate";
 import { deriveAssemblySlug } from "@/lib/shared/assemblyTemplate";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
-import { ASSEMBLY_REGISTRY_ABI } from "@/lib/core/contracts";
+import { ASSEMBLY_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import {
     getAssemblyRegistry,
     translatePublishRevert,

@@ -3,7 +3,7 @@
  *
  * These are NOT core. Core is the five Figaro contracts (kernel +
  * Clause/Seller/Assembly registries + FIG) + the agnostic ERC-20 — those live
- * in `@figaro/core` and `lib/core/contracts.ts`, enforced by
+ * in `@figaro/core` and `lib/kernel/contracts.ts`, enforced by
  * `scripts/lint-core-contract-abis.sh`. Everything here is a contract the
  * protocol composes WITH (dutch auction, carbon-offset receipt, attestation),
  * so its ABI carries no privilege and lives outside core.

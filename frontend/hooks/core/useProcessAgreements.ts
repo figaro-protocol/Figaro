@@ -20,7 +20,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { fetchAgreement } from "@/lib/core/agreementFetch";
+import { fetchAgreement } from "@/lib/kernel/agreementFetch";
 import { ZERO_BYTES32 } from "@/lib/shared/evm";
 import type { Agreement } from "@figaro/core";
 

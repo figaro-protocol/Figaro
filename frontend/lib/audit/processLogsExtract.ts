@@ -16,7 +16,7 @@
  * requires decoding the transaction calldata.
  */
 
-import type { Order } from "@/lib/core/store";
+import type { Order } from "@/lib/kernel/store";
 import type { AttestationRecord } from "@/lib/composition/useGHGDisclosure";
 import type { ExtractedDocument } from "./types";
 import { clauseIsProcessLog, getClauseSpec, clauseIdForHash } from "@/lib/shared/clauseSpecSource";

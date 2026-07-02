@@ -22,7 +22,7 @@ import {
 import {
     serializeCommitmentPayload,
     type CommitmentPayload,
-} from "@/lib/core/signedCommitment";
+} from "@/lib/kernel/signedCommitment";
 import type { OrderFlowStep } from "@/lib/checkout/orderCommitmentFlow";
 import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import type { MessageSendStatus } from "@/lib/shared/messageSendStatus";

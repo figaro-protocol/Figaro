@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from "react";
 import { useAccount, useReadContract } from "wagmi";
-import { ERC20_ABI, CONTRACTS } from "@/lib/core/contracts";
+import { ERC20_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { handleOrderSurfaceFailure } from "@/lib/shared/orderSurfaceActions";
 import useTokenApproval from "@/hooks/core/useTokenApproval";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";

@@ -25,8 +25,8 @@ import {
     getAllOrderResolved,
     getOrderCommittedByBuyer,
     getOrderCommittedBySeller,
-} from "@/lib/core/indexer";
-import { CONTRACTS, CORE_ABI } from "@/lib/core/contracts";
+} from "@/lib/kernel/indexer";
+import { CONTRACTS, CORE_ABI } from "@/lib/kernel/contracts";
 
 /** The two roles in a Figaro order commitment. */
 export type PartyRole = "buyer" | "seller";

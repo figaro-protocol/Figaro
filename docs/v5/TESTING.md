@@ -74,7 +74,7 @@ build inlines `frontend/.env.local`, so kill :3100 after a `FORCE_REDEPLOY` or
 an app-code edit — a reused server keeps serving the build it started with.
 `PLAYWRIGHT_WEB_MODE=dev` restores the dev-server webServer for HMR-speed
 iteration. In production builds, test-helper gating honors only the explicit
-`NEXT_PUBLIC_ENABLE_TEST_HELPERS` build-time opt-in (`lib/core/testHelpers.ts`,
+`NEXT_PUBLIC_ENABLE_TEST_HELPERS` build-time opt-in (`lib/shared/testHelpers.ts`,
 `lib/shared/e2e.ts`); real deployments never set it, so their builds inline the
 hard-off (RA-5 intent preserved).
 

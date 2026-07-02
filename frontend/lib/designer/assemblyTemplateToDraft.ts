@@ -17,7 +17,7 @@ import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { templateParentOrderHashes, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 import type { DesignSnapshot } from "./syntheticDesignStore";
-import { Order } from "@/lib/core/store";
+import { Order } from "@/lib/kernel/store";
 import { buildSyntheticOrder, syntheticAddress } from "./syntheticProcess";
 
 /** 1.0 — display-only payment; the template itself carries none. */

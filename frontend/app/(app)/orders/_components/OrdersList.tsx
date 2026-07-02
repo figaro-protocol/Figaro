@@ -31,12 +31,12 @@ import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { Button } from "@/components/ui/Button";
 import { WalletGate } from "@/components/core/WalletGate";
-import { useWalletProcessRows, type ProcessRow } from "@/lib/core/walletProcessQueries";
+import { useWalletProcessRows, type ProcessRow } from "@/lib/kernel/walletProcessQueries";
 import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
-import { type CommitmentPayload } from "@/lib/core/signedCommitment";
+import { type CommitmentPayload } from "@/lib/kernel/signedCommitment";
 import { computeOrderHash, computeAgreementHash } from "@figaro/core";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { CONTRACTS } from "@/lib/core/contracts";
+import { CONTRACTS } from "@/lib/kernel/contracts";
 import {
     usePendingSellerSignature,
     awaitsMyCounterSign,

@@ -81,7 +81,7 @@ You may write to:
 
 - `frontend/app/` (excluding `archive-frontend/`)
 - `frontend/components/`
-- `frontend/lib/` — but only user-facing UI helpers; do not modify `lib/handoff/`, `lib/audit/`, `lib/dispute/`, `lib/core/`, `lib/shared/` without explicit instruction (those are owned by other workflows)
+- `frontend/lib/` — but only user-facing UI helpers; do not modify `lib/handoff/`, `lib/audit/`, `lib/kernel/`, `lib/protocol/`, `lib/shared/` without explicit instruction (those are owned by other workflows)
 - `frontend/tests/components/` and `frontend/tests/lib/` for tests
 
 You may NOT write to:
@@ -89,7 +89,7 @@ You may NOT write to:
 - `src/` (Solidity) — clause-author's domain
 - `sdk/` — protocol SDK, clause-author's domain
 - `agents/` — agent infrastructure
-- `frontend/lib/handoff/`, `lib/audit/`, `lib/dispute/`, `lib/core/`, `lib/shared/` without explicit instruction
+- `frontend/lib/handoff/`, `lib/audit/`, `lib/kernel/`, `lib/protocol/`, `lib/shared/` without explicit instruction
 - `archive-frontend/` — never
 
 If a request requires changes outside this scope, refuse and refer to the appropriate agent or maintainer.

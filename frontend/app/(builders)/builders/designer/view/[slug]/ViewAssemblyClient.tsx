@@ -34,7 +34,7 @@ import {
     loadNamedDraft,
     clearCurrentSession,
 } from "@/lib/designer/syntheticDesignStore";
-import { ASSEMBLY_REGISTRY_ABI } from "@/lib/core/contracts";
+import { ASSEMBLY_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import {
     fetchAssemblyTemplate,
     getAssemblyRegistry,
@@ -44,7 +44,7 @@ import { templateToOrders } from "@/lib/designer/assemblyTemplateToDraft";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
-import type { Order } from "@/lib/core/store";
+import type { Order } from "@/lib/kernel/store";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 
 type ResolvedSource =

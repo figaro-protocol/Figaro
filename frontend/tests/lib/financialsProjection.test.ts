@@ -3,7 +3,7 @@ import {
     projectFinancials,
     checkBalanceSheetIdentity,
 } from "@/lib/semantic/financialsProjection";
-import { OrderState, type Order } from "@/lib/core/store";
+import { OrderState, type Order } from "@/lib/kernel/store";
 import { ANVIL_ACCOUNTS, DEFAULT_LOCAL_MOCK_TOKEN } from "../anvilAccounts";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────

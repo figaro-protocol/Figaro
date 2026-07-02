@@ -2,20 +2,24 @@
 #
 # lint-lib-import-direction.sh — frontend/lib layer arrows point ONE way.
 #
-# Two rules, both already documented in source:
-#   1. lib/core/   may import NO feature layer (checkout, composition, semantic,
-#      designer, seller, handoff, audit, agent). core/ is the kernel-adjacent
-#      read/sign layer; everything else builds ON it.
-#   2. lib/shared/ may import NOTHING from lib/ outside shared/ — it is the
-#      generic leaf (evm, json, formatting, service INTERFACES). The single
-#      sanctioned exception is the runtime-services composition seam
-#      (runtimeServices.ts + runtimeServicesContext.tsx), the DI registry that
-#      by design assembles feature-layer service implementations.
+# The tiers, bottom to top (each may import only what sits BELOW it):
+#   shared/    — the generic leaf (evm, json, formatting, service INTERFACES).
+#                May import NOTHING from lib/ outside shared/. The single
+#                sanctioned exception is the runtime-services composition seam
+#                (runtimeServices.ts + runtimeServicesContext.tsx), the DI
+#                registry that by design assembles feature-layer services.
+#   kernel/    — the FigaroCore seam (commit/resolve writes, order events,
+#                commitment/agreement hashing, chain config). May import only
+#                shared/.
+#   protocol/  — the registry tier (ClauseRegistry, SellerRegistry,
+#                AssemblyRegistry readers). May import kernel/ and shared/.
+#   feature layers (checkout, composition, semantic, designer, seller,
+#                handoff, audit, agent) — build on all of the above.
 #
 # Service implementations live in their feature layer (handoff/, seller/);
-# core code that needs a transport capability declares a minimal STRUCTURAL
-# type instead of importing the feature interface (see the CommitmentPayloadRelay
-# structural type in lib/checkout/orderSignedAndShared.ts).
+# lower-tier code that needs a transport capability declares a minimal
+# STRUCTURAL type instead of importing the feature interface (see the
+# CommitmentPayloadRelay structural type in lib/checkout/orderSignedAndShared.ts).
 #
 # Wired into the root package.json lint-staged block under frontend/**/*.{ts,tsx}.
 # Run manually:  bash scripts/lint-lib-import-direction.sh [files...]
@@ -39,9 +43,16 @@ for file in "${files[@]}"; do
     [[ "$file" == *.ts || "$file" == *.tsx ]] || continue
 
     case "$file" in
-        *"frontend/lib/core/"*)
+        *"frontend/lib/kernel/"*)
+            if hits=$(grep -nE "from [\"']@/lib/(${FEATURE_LAYERS}|protocol)/" "$file"); then
+                echo "[lib-import-direction] $file — lib/kernel/ may import only lib/shared/:"
+                echo "$hits" | sed 's/^/    /'
+                violations=1
+            fi
+            ;;
+        *"frontend/lib/protocol/"*)
             if hits=$(grep -nE "from [\"']@/lib/(${FEATURE_LAYERS})/" "$file"); then
-                echo "[lib-import-direction] $file — lib/core/ may not import a feature layer:"
+                echo "[lib-import-direction] $file — lib/protocol/ may not import a feature layer:"
                 echo "$hits" | sed 's/^/    /'
                 violations=1
             fi
@@ -49,7 +60,7 @@ for file in "${files[@]}"; do
         *"frontend/lib/shared/runtimeServices.ts"|*"frontend/lib/shared/runtimeServicesContext.tsx")
             ;; # the sanctioned DI composition seam
         *"frontend/lib/shared/"*)
-            if hits=$(grep -nE "from [\"']@/lib/(${FEATURE_LAYERS}|core)/" "$file"); then
+            if hits=$(grep -nE "from [\"']@/lib/(${FEATURE_LAYERS}|kernel|protocol)/" "$file"); then
                 echo "[lib-import-direction] $file — lib/shared/ is the generic leaf; it may not import lib/ outside shared/:"
                 echo "$hits" | sed 's/^/    /'
                 violations=1
@@ -60,9 +71,10 @@ done
 
 if [[ $violations -ne 0 ]]; then
     echo ""
-    echo "Layer arrows point one way: feature layers import core/ and shared/,"
-    echo "never the reverse. Move the module to the layer its imports say it"
-    echo "belongs to, or depend on a minimal structural type instead."
+    echo "Layer arrows point one way: feature layers import protocol/, kernel/,"
+    echo "and shared/; protocol/ imports kernel/ and shared/; kernel/ imports"
+    echo "shared/; shared/ imports nothing. Move the module to the layer its"
+    echo "imports say it belongs to, or depend on a minimal structural type."
     exit 1
 fi
 

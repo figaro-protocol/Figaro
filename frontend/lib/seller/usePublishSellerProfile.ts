@@ -38,7 +38,7 @@ import type {
     SellerCatalogueMetadata,
     UnitSystem,
 } from "@/lib/seller/sellerCatalogueMetadata";
-import { getSellerRegistry } from "@/lib/core/contracts";
+import { getSellerRegistry } from "@/lib/kernel/contracts";
 import { SELLER_REGISTRY_ABI } from "@figaro/core";
 
 export interface PublishSellerInput {

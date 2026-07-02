@@ -22,7 +22,7 @@
  */
 
 import type { Agreement } from "@figaro/core";
-import type { Order } from "@/lib/core/store";
+import type { Order } from "@/lib/kernel/store";
 import type { AttestationRecord } from "@/lib/composition/useGHGDisclosure";
 import { composesInterface } from "@/lib/shared/clauseSpecSource";
 import { extractContract, type ContractDocument } from "./contractExtract";

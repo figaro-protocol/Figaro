@@ -309,7 +309,7 @@ export interface DiscoveredSeller {
  *  fetch or parse is skipped rather than crashing discovery — anyone can
  *  register a garbage URI; consumers must tolerate it — and the live profile
  *  is the most recent `SellerProfileUpdated` post-dating the surviving
- *  registration (mirrors `lib/core/indexer.ts`; `updateProfile` is a
+ *  registration (mirrors `lib/kernel/indexer.ts`; `updateProfile` is a
  *  by-design SellerRegistry surface). */
 export async function discoverSellers(): Promise<DiscoveredSeller[]> {
     const publicClient = localPublicClient();

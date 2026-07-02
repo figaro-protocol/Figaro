@@ -18,7 +18,7 @@ import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
 import {
     deserializeCommitmentPayload,
     type CommitmentPayload,
-} from "@/lib/core/signedCommitment";
+} from "@/lib/kernel/signedCommitment";
 import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { calculateBonds } from "@figaro/core";

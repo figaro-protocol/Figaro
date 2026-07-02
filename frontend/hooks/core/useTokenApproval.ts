@@ -3,7 +3,7 @@
 import { useCallback, useEffect } from "react";
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useSignTypedData, useChainId } from "wagmi";
 import { encodeFunctionData, parseSignature } from "viem";
-import { ERC20_ABI } from "@/lib/core/contracts";
+import { ERC20_ABI } from "@/lib/kernel/contracts";
 
 interface PermitSignature {
     /** Token contract address — passed as `permitTarget` to `*WithPermit` functions. */

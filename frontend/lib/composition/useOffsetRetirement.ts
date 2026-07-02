@@ -29,7 +29,7 @@ import {
     useWriteContract,
 } from "wagmi";
 import { type Address, type Hex } from "viem";
-import { ERC20_ABI } from "@/lib/core/contracts";
+import { ERC20_ABI } from "@/lib/kernel/contracts";
 import { PROCESS_OFFSET_RECEIPT_ABI } from "@/lib/composition/abis";
 import { COMPOSITION_CONTRACTS } from "@/lib/composition/contracts";
 import { activeChain } from "@/lib/shared/chains";

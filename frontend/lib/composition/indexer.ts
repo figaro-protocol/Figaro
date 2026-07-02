@@ -2,14 +2,14 @@
  * lib/composition/indexer.ts — event readers for the contracts the frontend
  * COMPOSES with (attestation coordinator, dutch auction).
  *
- * These read non-core contracts, so they live OUTSIDE `lib/core/indexer.ts`
+ * These read non-core contracts, so they live OUTSIDE `lib/kernel/indexer.ts`
  * (core must not reference composition addresses). They reuse the core
- * event-cache primitives (`lib/composition/` may import `lib/core/`; never the
+ * event-cache primitives (`lib/composition/` may import `lib/kernel/`; never the
  * reverse). Reads are clause-agnostic — clauseId is DATA off the event, never
  * hardcoded.
  */
 import type { PublicClient } from "viem";
-import { cachedGetLogs } from "@/lib/core/eventCache";
+import { cachedGetLogs } from "@/lib/kernel/eventCache";
 import {
     cachedGetLogsMulti,
     getStringArg,
@@ -17,7 +17,7 @@ import {
     getOrderCommittedByBuyer,
     getAllOrderResolved,
     type IndexedLog,
-} from "@/lib/core/indexer";
+} from "@/lib/kernel/indexer";
 import { getAllSellerRegistered } from "@/lib/protocol/sellerRegistryIndexer";
 import { hexEqual } from "@/lib/shared/evm";
 import { EV_ATTESTATION, EV_AUCTION_CREATED, EV_AUCTION_CLAIMED } from "@/lib/composition/abis";
@@ -128,7 +128,7 @@ export async function getAttestationsByProcess(
 //
 // Composes core reads (orders, registrations) WITH non-core reads (auction,
 // attestation) into one address-keyed record — which is why it lives here, not
-// in lib/core/indexer.ts. Every figure is recomputed from events; nothing is
+// in lib/kernel/indexer.ts. Every figure is recomputed from events; nothing is
 // stored, so the result is verifiable by anyone with chain access.
 
 /** Value a seller transacted as a seller, summed per currency. */

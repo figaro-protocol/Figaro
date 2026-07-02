@@ -13,7 +13,7 @@
 
 import type { Agreement } from "@figaro/core";
 import { describeClause, type ClauseDescription } from "@/lib/shared/clauseSpecSource";
-import type { Order } from "@/lib/core/store";
+import type { Order } from "@/lib/kernel/store";
 import type { ExtractedDocument } from "./types";
 
 export interface ClauseDataDocument extends ExtractedDocument {

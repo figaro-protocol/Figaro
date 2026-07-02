@@ -111,7 +111,7 @@ re-asserted as a runtime attestation. They are *not* off-chain-only, though.
 Like every agreement section, an agreement-only section is a merkle leaf under
 the on-chain `agreementHash`, inclusion-provable via OpenZeppelin `MerkleProof`
 (`computeSectionLeaf` / `buildSectionInclusionProof` in
-`frontend/lib/core/agreement.ts`). "No runtime attestation" is not "no on-chain
+`sdk/src/agreement.ts` (@figaro/core)). "No runtime attestation" is not "no on-chain
 verification". `figaro-topology`'s DAG is reconstructed off-chain by indexers
 reading topology sections from the signed agreement; `figaro-descending-auction`
 is a composition marker whose auction executes on the composed `DutchAuction`

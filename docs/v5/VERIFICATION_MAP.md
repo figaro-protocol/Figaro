@@ -120,18 +120,18 @@ This section tracks features that are not protocol invariants but are significan
 | Feature | Code location | SDK coverage | UI explainer pages | UI functional surfaces | Gap? |
 |---|---|---|---|---|---|
 | **Handoff encryption (ECDH)** | `frontend/lib/handoff/` (13 files) | — | `/local-commerce` → Handoff Encryption | `HandoffKeyExchangeModule`, `HandoffTrackerModule`, `HandoffDetailsModule` | — |
-| **Delivery attestation (4 modes)** | `frontend/lib/dispute/deliveryAttestation.ts` | `@figaro/core/extensions`: `geohashesMatch`, `haversineDistance` | `/local-commerce` → Proximity Proofs; `/builders` → attestation modes | `DeliveryAttestationPanel`, `/evidence-display` | — |
-| **GHG disclosure** | `frontend/lib/mechanisms/useGHGDisclosure.ts` | — (frontend-local; SDK carries no GHG helpers) | `/local-commerce` → GHG two-stage; `/builders` → Clause validation | `GHGAnchorPanel`, `GHGWorkflowPanel`, `DisclosureModule` | — |
-| **DID:web identity** | `frontend/lib/mechanisms/useDidWeb.ts` | `@figaro/core/agent`: `resolveDidWeb`, `didWebToUrl`, `didDocumentMatchesAddress`, `buildSellerDidDocument` | `/builders` → Seller identity | `DidVerificationBadge` (component) | — |
-| **Kleros dispute / evidence** | `frontend/lib/dispute/` (6 files) | — (frontend-local; SDK carries no Kleros helpers) | `/builders` → Kleros integration | `/evidence-display` (full rendering for jurors) | — |
+| **Delivery attestation (4 modes)** | removed (proximity proofs live in the handoff clause runtime, `frontend/lib/handoff/`) | `@figaro/core/extensions`: `geohashesMatch`, `haversineDistance` | `/local-commerce` → Proximity Proofs; `/builders` → attestation modes | `DeliveryAttestationPanel`, `/evidence-display` | — |
+| **GHG disclosure** | `frontend/lib/composition/useGHGDisclosure.ts` | — (frontend-local; SDK carries no GHG helpers) | `/local-commerce` → GHG two-stage; `/builders` → Clause validation | `GHGAnchorPanel`, `GHGWorkflowPanel`, `DisclosureModule` | — |
+| **DID:web identity** | `frontend/lib/agent/useDidWeb.ts` | `@figaro/core/agent`: `resolveDidWeb`, `didWebToUrl`, `didDocumentMatchesAddress`, `buildSellerDidDocument` | `/builders` → Seller identity | `DidVerificationBadge` (component) | — |
+| **Kleros dispute / evidence** | `frontend/lib/audit/` + `frontend/lib/semantic/processRecourse.ts` | — (frontend-local; SDK carries no Kleros helpers) | `/builders` → Kleros integration | `/evidence-display` (full rendering for jurors) | — |
 | **Agent SDK** | `sdk/` (3 subpath exports) | Self-referential (166 tests) | `/builders` → Agent SDK section | — | — |
 | **Semantic derivation** | `frontend/lib/semantic/` (7 files) | — | `/builders` → How the runtime renders institutions | `/workbench` → SemanticProcessWorkspacePanel | — |
 | **Institution assembly** | `frontend/lib/designer/`; `src/AssemblyRegistry.sol` | — | `/builders` → Level 1 assembly config; `/local-commerce` → "Fork Local Commerce" | `/builders/assemblies`, `/builders/authoring`, `/builders/prototype` | — |
-| **Agreement publication** | `frontend/lib/core/agreementStore.ts`, `agreement.ts` | — | `/builders` → Agreement publication | — | — |
-| **Commerce checkout** | `frontend/lib/commerce/` (4 files) | — | — | `CartModule` (interactive) | — |
-| **Process topology** | `frontend/lib/core/orderTopology.ts` | SDK: `reconstruct()`, `ProcessGraph` | `/workbench` → process graph | `OrderGraph`, `ProcessTopologyPanel`, `ProcessGraphModule` | — |
+| **Agreement publication** | `frontend/lib/kernel/agreementFetch.ts`, `orderAgreement.ts` | — | `/builders` → Agreement publication | — | — |
+| **Commerce checkout** | `frontend/lib/checkout/` | — | — | `CartModule` (interactive) | — |
+| **Process topology** | `frontend/lib/semantic/processTopology.ts` | SDK: `reconstruct()`, `ProcessGraph` | `/workbench` → process graph | `OrderGraph`, `ProcessTopologyPanel`, `ProcessGraphModule` | — |
 | **Bond calculator** | `frontend/components/core/BondCalculator.tsx` | SDK: `calculateBonds`, `calculateSettlement` | `/builders` → bond math formulas | `BondCalculator`, `BondApprovalPanel`, `OrderBondInfo` | — |
-| **EIP-2612 permit** | `frontend/lib/core/permitExecution.ts` | — | `/builders` → Gasless token approvals | `PermitControl` component | — |
+| **EIP-2612 permit** | removed (permit path deleted 2026-07-02; approve-only) | — | `/builders` → Gasless token approvals | `PermitControl` component | — |
 | **Single-currency binding** | `src/FigaroCore.sol` | — | `/builders` → Composability → Single-Currency Binding | — | — |
 | **Fee-on-transfer rejection** | `src/FigaroCore.sol` `_pullExact()` | — | `/builders` → Composability → Fee-on-Transfer Guard | — | — |
 
@@ -431,5 +431,5 @@ details that are now explained on `/builders` but do not appear on marketing pag
 |---|---|---|
 | Single-currency binding (K-7) | `FigaroCore.sol` `CurrencyMismatch` revert | `/builders` → Composability → Single-Currency Binding |
 | Fee-on-transfer rejection (A-7) | `FigaroCore.sol` `_pullExact()` | `/builders` → Composability → Fee-on-Transfer Guard |
-| EIP-2612 permit pathway | `frontend/lib/core/permitExecution.ts` | `/builders` → Gasless token approvals |
+| EIP-2612 permit pathway | removed (permit path deleted 2026-07-02; approve-only) | `/builders` → Gasless token approvals |
 | Content-addressed order IDs (K-9) | `FigaroCore.sol` commit hash | `/builders` → Composability → Content-Addressed Order IDs |

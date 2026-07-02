@@ -10,7 +10,7 @@
  */
 
 import { keccak256, toHex } from "viem";
-import type { Order } from "@/lib/core/store";
+import type { Order } from "@/lib/kernel/store";
 import { clauseIsStructural, getClauseSpec, listKnownClauseIds } from "@/lib/shared/clauseSpecSource";
 import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import type { ClauseFields } from "@/lib/shared/clauseFields";

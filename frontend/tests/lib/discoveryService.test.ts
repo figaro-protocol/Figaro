@@ -10,7 +10,7 @@ vi.mock('@/lib/protocol/sellerRegistryIndexer', () => ({
     getActiveSellers: (...args: unknown[]) => getActiveSellersMock(...args),
 }));
 
-vi.mock('@/lib/core/contracts', () => ({
+vi.mock('@/lib/kernel/contracts', () => ({
     CONTRACTS: {
         sellerRegistry: '0x1111111111111111111111111111111111111111',
     },

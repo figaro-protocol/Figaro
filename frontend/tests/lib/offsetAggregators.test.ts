@@ -13,8 +13,8 @@ import { describe, expect, it, beforeEach, vi } from "vitest";
 
 // Mock CONTRACTS so the devnet branch resolves to known addresses without
 // requiring real env vars in the test runner.
-vi.mock("@/lib/core/contracts", async () => {
-    const actual = await vi.importActual<typeof import("@/lib/core/contracts")>("@/lib/core/contracts");
+vi.mock("@/lib/kernel/contracts", async () => {
+    const actual = await vi.importActual<typeof import("@/lib/kernel/contracts")>("@/lib/kernel/contracts");
     return {
         ...actual,
         CONTRACTS: {

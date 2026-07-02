@@ -25,7 +25,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { Address } from "viem";
-import { Order, OrderState } from "@/lib/core/store";
+import { Order, OrderState } from "@/lib/kernel/store";
 import { hexEqual } from "@/lib/shared/evm";
 import { Card } from "@/components/ui/Card";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";

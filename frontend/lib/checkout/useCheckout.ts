@@ -5,10 +5,10 @@ import { useReadContract } from "wagmi";
 import { useCommerce } from "./CommerceProvider";
 import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
 import type { OrderPreview } from "@/lib/checkout/orderPreview";
-import type { CommitmentPayload } from "@/lib/core/signedCommitment";
+import type { CommitmentPayload } from "@/lib/kernel/signedCommitment";
 import useTokenApproval from "@/hooks/core/useTokenApproval";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
-import { ERC20_ABI, CONTRACTS } from "@/lib/core/contracts";
+import { ERC20_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { CheckoutHandle } from "./types";
 

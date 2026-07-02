@@ -21,7 +21,7 @@
  * from chain (filtered to the relevant `auctionId`) and passes them in.
  */
 
-import type { Order } from "@/lib/core/store";
+import type { Order } from "@/lib/kernel/store";
 import type { ExtractedDocument } from "@/lib/audit/types";
 import { hexEqual } from "@/lib/shared/evm";
 

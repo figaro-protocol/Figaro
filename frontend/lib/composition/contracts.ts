@@ -2,8 +2,8 @@
  * lib/composition/contracts.ts — addresses + config for the contracts the
  * frontend COMPOSES with (dutch auction, carbon-offset receipt, attestation).
  *
- * Not core. `lib/composition/` may import from `lib/core/` (e.g. event-cache
- * primitives); `lib/core/` must NEVER import from here.
+ * Not core. `lib/composition/` may import from `lib/kernel/` (e.g. event-cache
+ * primitives); `lib/kernel/` must NEVER import from here.
  *
  * Addresses come from env (deploy-local.sh writes them) — an address is not
  * prior knowledge the way an ABI is. STEP-2 TARGET: a composed contract's

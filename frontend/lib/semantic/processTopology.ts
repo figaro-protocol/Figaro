@@ -14,8 +14,8 @@
  * `useProcessAgreements`); this module never fetches.
  */
 import type { Agreement } from "@figaro/core";
-import type { Order } from "@/lib/core/store";
-import { sectionByField } from "@/lib/core/agreementSections";
+import type { Order } from "@/lib/kernel/store";
+import { sectionByField } from "@/lib/kernel/agreementSections";
 
 // ── By-field reads of the topology clause (no clause id named) ────────────────
 

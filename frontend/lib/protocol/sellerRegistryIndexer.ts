@@ -16,8 +16,8 @@
 import type { PublicClient } from "viem";
 import { parseAbiItem } from "viem";
 import { hexEqual } from "@/lib/shared/evm";
-import { CONTRACTS } from "@/lib/core/contracts";
-import { cachedGetLogsMulti, getStringArg, type IndexedLog } from "@/lib/core/indexer";
+import { CONTRACTS } from "@/lib/kernel/contracts";
+import { cachedGetLogsMulti, getStringArg, type IndexedLog } from "@/lib/kernel/indexer";
 
 const EV_SELLER_REGISTERED = parseAbiItem(
     "event SellerRegistered(address indexed seller, string metadataURI)",

@@ -1,6 +1,6 @@
-import { Order, OrderState } from "@/lib/core/store";
+import { Order, OrderState } from "@/lib/kernel/store";
 import type { Agreement } from "@figaro/core";
-import { sectionByField } from "@/lib/core/agreementSections";
+import { sectionByField } from "@/lib/kernel/agreementSections";
 import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 import { ProcessSummary } from "@/hooks/core/useWalletProcessIds";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";

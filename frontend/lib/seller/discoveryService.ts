@@ -1,7 +1,7 @@
 import type { PublicClient } from 'viem';
 import { getActiveSellers } from '@/lib/protocol/sellerRegistryIndexer';
 import type { SellerCatalogue } from '@/lib/seller/types';
-import { CONTRACTS } from "@/lib/core/contracts";
+import { CONTRACTS } from "@/lib/kernel/contracts";
 import { resolveContentUri } from "@/lib/shared/ipfsService";
 import type { SellerCatalogueMetadata } from '@/lib/seller/sellerCatalogueMetadata';
 import {

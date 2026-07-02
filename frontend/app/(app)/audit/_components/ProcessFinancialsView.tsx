@@ -30,7 +30,7 @@ import {
     type FinancialsModel,
     type OrderLineItem,
 } from "@/lib/semantic/financialsProjection";
-import { OrderState } from "@/lib/core/store";
+import { OrderState } from "@/lib/kernel/store";
 import { DownloadAuditBundleButton } from "@/components/core/DownloadAuditBundleButton";
 import { truncateHex } from "@/lib/shared/formatHex";
 

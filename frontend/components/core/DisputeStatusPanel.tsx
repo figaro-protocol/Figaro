@@ -26,7 +26,7 @@ import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/lib/shared/useMounted";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import type { Order } from "@/lib/core/store";
+import type { Order } from "@/lib/kernel/store";
 import { buildAuditBundlePdfBlob } from "@/lib/audit/auditBundlePdf";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
 import { describeClause, composesForumUrl } from "@/lib/shared/clauseSpecSource";

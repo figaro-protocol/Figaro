@@ -9,7 +9,7 @@
  * `commit` is injected (useFigaroActions) so this stays a pure, testable step.
  */
 import type { Commitment, Hex } from "@figaro/core";
-import type { CommitmentPayload } from "@/lib/core/signedCommitment";
+import type { CommitmentPayload } from "@/lib/kernel/signedCommitment";
 
 interface CommitBroadcaster {
     (commitment: Commitment, buyerSig: Hex, sellerSig: Hex): Promise<Hex>;

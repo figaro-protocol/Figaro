@@ -40,7 +40,7 @@ for f in $files; do
     # config sourced from env vars) — reading them there is not a fallback. Tests
     # supply FIXTURE data, not network renders — the roster guard covers tests.
     case "$f" in
-        *"lib/core/contracts.ts"|*"lib/mechanisms/contracts.ts") continue ;;
+        *"lib/kernel/contracts.ts") continue ;;
         */tests/*|*.test.ts|*.test.tsx|*.spec.ts) continue ;;
     esac
     # Defaulting a protocol ADDRESS to its configured constant is config

@@ -16,12 +16,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { usePublicClient, useWatchContractEvent } from "wagmi";
-import { CORE_ABI, CONTRACTS } from "@/lib/core/contracts";
-import { Order, OrderState, useOrderStore } from "@/lib/core/store";
+import { CORE_ABI, CONTRACTS } from "@/lib/kernel/contracts";
+import { Order, OrderState, useOrderStore } from "@/lib/kernel/store";
 import {
     getAllOrderCommitted,
     getAllOrderResolved,
-} from "@/lib/core/indexer";
+} from "@/lib/kernel/indexer";
 import { calculateBonds } from "@figaro/core";
 
 // ---------------------------------------------------------------------------

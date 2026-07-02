@@ -27,17 +27,19 @@ The `/builders/designer` tool is a DAG editor (`ProcessGraphCanvas` + `Agreement
 
 ## Key Library Areas (`lib/`)
 
-- **`core/`** — FigaroCore hooks, commitment/agreement utilities
-- **`audit/`** — Audit-bundle assembly + verification (read path for `/audit/[processId]`)
-- **`commerce/`** — Checkout / cart provider (`CommerceProvider`, `useCheckout`), the assembly commit algorithm + sub-order planner (`assemblyCheckout.ts`, `assemblySubOrderPlan.ts`)
-- **`designer/`** — Synthetic DAG session + autosave + fork (`syntheticProcess.ts`, `syntheticDesignStore.ts`, `forkAssembly.ts`, `assemblyTemplateToDraft.ts`, `deriveDesignSurface.ts`, `agreementHints.ts`)
-- **`dispute/`** — Kleros evidence, delivery attestation 4 modes
-- **`handoff/`** — ECDH key exchange, per-order encryption, the coordination-messaging + handoff-persistence service implementations (`coordinationMessagingService.ts`, `handoffPersistenceService.ts`)
-- **`mechanisms/`** — Mechanism hooks (Dutch auction, courier process, DID:web, attestation coordinator, FIG token, …)
-- **`sellers/`** — Seller-profile / onboarding state helpers
-- **`seller/`** — Seller-side catalogue / seller helpers, the discovery-service implementation (`discoveryService.ts`)
-- **`semantic/`** — Runtime-process model derivation: `deriveProcessModelFromRuntime.ts`, `financialsProjection.ts`, `models.ts`
-- **`shared/`** — Wagmi config (`chains.ts`, `connectors.ts`, `rpc.ts`), IPFS (`ipfsService.ts`), clause specs (`clauseSpecSource.ts` + `clauses/`), seller + catalogue metadata (`sellerProfileMetadata.ts`, `sellerCatalogueMetadata.ts`). `shared/` is the generic leaf — it imports no other `lib/` layer; the one sanctioned exception is the runtime-services DI seam (`runtimeServices.ts` + `runtimeServicesContext.tsx`), which assembles feature-layer service implementations. Enforced by `scripts/lint-lib-import-direction.sh` (with the core/-imports-no-feature-layer rule).
+Tiered, bottom to top; each tier imports only what sits below it (enforced by `scripts/lint-lib-import-direction.sh`).
+
+- **`shared/`** — the generic leaf: EVM helpers (`evm.ts`), wagmi/chain config (`wagmi.ts`, `chains.ts`, `connectors.ts`), IPFS (`ipfsService.ts`), clause-spec cache source (`clauseSpecSource.ts`), assembly-template reading vocabulary (`assemblyTemplate.ts`, `clauseFields.ts`), errors/formatting/json. Imports no other `lib/` layer; the one sanctioned exception is the runtime-services DI seam (`runtimeServices.ts` + `runtimeServicesContext.tsx`), which assembles feature-layer service implementations.
+- **`kernel/`** — the FigaroCore seam: commit/resolve writes (`useFigaroActions.ts`, `orderCommitted.ts`), order-event reads (`indexer.ts`, `walletProcessQueries.ts`, `eventCache.ts`), commitment + agreement hashing (`signedCommitment.ts`, `orderAgreement.ts`, `agreementFetch.ts`, `agreementSections.ts`), chain config (`contracts.ts` — the five core contract ABIs + ERC20, SDK-sourced), the `Order` domain types + UI store (`store.ts`). Imports only `shared/`.
+- **`protocol/`** — the registry tier: `useClauseRegistry.ts`, `useClauseSpecs.ts`, `useAssemblyRegistry.ts`, `assemblyChoices.ts`, `sellerRegistryIndexer.ts`. Reads ClauseRegistry / SellerRegistry / AssemblyRegistry; imports `kernel/` + `shared/`.
+- **`agent/`** — did:web identity for agents acting for wallets (`useDidWeb.ts`)
+- **`audit/`** — audit-bundle assembly + dispute evidence (read path for `/audit/[processId]`)
+- **`checkout/`** — the Checkout lifecycle phase: cart (`cartStore.ts`, `CommerceProvider.tsx`, `useCheckout.ts`), the assembly commit algorithm + sub-order planner (`assemblyCheckout.ts`, `assemblySubOrderPlan.ts`), and the commitment choreography (`draftOrders.ts`, `orderPreview.ts`, `orderCommitmentFlow.ts`, `orderSignedAndShared.ts`, `orderPendingSellerSignature.ts`)
+- **`composition/`** — third-party on-network contract composition (the fifth noun): the generic dispatch (`compositionTarget.ts`, `useCompositionActions.ts`) + per-contract hooks/readers
+- **`designer/`** — assembly authoring: synthetic DAG session + autosave + fork + publish (`syntheticProcess.ts`, `syntheticDesignStore.ts`, `forkAssembly.ts`, `assemblyTemplateToDraft.ts`, `buildAssemblyTemplate.ts`, `publishAssembly.ts`)
+- **`handoff/`** — handoff-clause runtime: ECDH key exchange, coordination-messaging + handoff-persistence services (`coordinationMessagingService.ts`, `handoffPersistenceService.ts`)
+- **`seller/`** — seller profile + catalogue management, the discovery-service implementation (`discoveryService.ts`)
+- **`semantic/`** — runtime derivation from committed state: `deriveProcessModelFromRuntime.ts`, `processTopology.ts`, `processRecourse.ts`, `models.ts`, capability execution
 
 ## Designer tool surface (`frontend/`)
 
@@ -94,7 +96,7 @@ Y", not as an open-ended build.)
   (`simulateContract` → write → `waitForTransactionReceipt` → verify
   `status === "success"` before navigating).
 - **IPFS-hydrated reads** — `hooks/core/useProcessAgreements.ts` over
-  `lib/core/agreementStore.ts` (singleton Map; never a synchronous
+  `lib/kernel/agreementFetch.ts` (singleton Map; never a synchronous
   `loadAgreement` in a render path).
 - **Event-driven inventory page + smoke** — the `/clauses` and `/assemblies`
   marketing pages with `tests/e2e/clauses-inventory.devnet.spec.ts` /
@@ -103,7 +105,7 @@ Y", not as an open-ended build.)
   (pins to IPFS + anchors on-chain, persisted) and
   `tests/e2e/direct-sale-runtime.devnet.spec.ts` (consumes from chain + IPFS;
   discovers, never imports a roster).
-- **Network reads** — `lib/core/indexer.ts` (the canonical read side; reconstructs
+- **Network reads** — `lib/kernel/indexer.ts` (order events) + `lib/protocol/sellerRegistryIndexer.ts` (registry events) (the canonical read side; reconstructs
   process/clause/seller state from chain events).
 
 ## Wallet-provider scope per route

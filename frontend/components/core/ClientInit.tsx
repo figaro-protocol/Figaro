@@ -3,7 +3,7 @@
 import { useCallback, useEffect } from "react";
 import { useConnect, useAccount, useChainId } from "wagmi";
 import { TEST_HELPERS_ENABLED, windowSafe } from "@/lib/shared/testHelpers";
-import { useOrderStore } from "@/lib/core/store";
+import { useOrderStore } from "@/lib/kernel/store";
 import { calculateBonds } from "@figaro/core";
 import { textToBytes32 } from "@/lib/shared/evm";
 

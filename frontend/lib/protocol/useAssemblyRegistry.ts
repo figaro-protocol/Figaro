@@ -8,14 +8,14 @@
  * fetch. The publish-build + template-enrichment orchestration lives one
  * layer up in `@/lib/protocol/assemblyChoices`; the seller-profile
  * resolution lives in `@/lib/seller/useSellerBoundAssemblies`. This file
- * imports only viem / wagmi / `@/lib/shared/*` / `@/lib/core/*`.
+ * imports only viem / wagmi / `@/lib/shared/*` / `@/lib/kernel/*`.
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { toError } from "@/lib/shared/errors";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { publicClient } from "@/lib/shared/wagmi";
-import { ASSEMBLY_REGISTRY_ABI, CONTRACTS } from "@/lib/core/contracts";
+import { ASSEMBLY_REGISTRY_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 

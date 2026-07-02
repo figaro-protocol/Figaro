@@ -17,7 +17,7 @@
  * (read via `composesForumUrl`) — the forum is named in the clause spec, not in
  * code, so a never-seen `figaro-arbitration-<provider>` surfaces its own forum.
  */
-import type { Order } from "@/lib/core/store";
+import type { Order } from "@/lib/kernel/store";
 import type { Agreement } from "@figaro/core";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 

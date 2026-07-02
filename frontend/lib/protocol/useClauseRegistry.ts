@@ -20,7 +20,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { clauseIdHash } from "@/lib/shared/evm";
 import { usePublicClient } from "wagmi";
-import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/core/contracts";
+import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import { publicClient } from "@/lib/shared/wagmi";
 
 export interface RegisteredClauseEvent {

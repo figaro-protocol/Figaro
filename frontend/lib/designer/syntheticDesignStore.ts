@@ -15,7 +15,7 @@
  * topology / lens lookups assume they're available.
  */
 
-import type { Order } from "@/lib/core/store";
+import type { Order } from "@/lib/kernel/store";
 
 const CURRENT_KEY = "figaro:designer:current";
 const DRAFT_PREFIX = "figaro:designer:drafts:";
@@ -78,7 +78,7 @@ function deserializeOrder(s: SerializedOrder): Order {
  *    addressable by slug.
  *  - **named draft** — a snapshot the user explicitly "Save"d, stored by
  *    slug via `saveNamedDraft`. Survives across canvas resets.
- *  - **published `AssemblyTemplate`** (`lib/mechanisms/useAssemblyRegistry`)
+ *  - **published `AssemblyTemplate`** (`lib/protocol/useAssemblyRegistry`)
  *    — the IPFS-pinned, published version. Structurally a superset of
  *    `DesignSnapshot` (carries inlined agreement bodies; bigint fields
  *    serialized as decimal strings). `assemblyTemplateToDraft` re-hydrates it

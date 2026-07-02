@@ -22,7 +22,7 @@ import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
 import { calculateBonds } from '@figaro/core';
 import { readLocalDeploymentConfig } from './devnet-helpers';
-import { CORE_ABI } from '@/lib/core/contracts';
+import { CORE_ABI } from '@/lib/kernel/contracts';
 import type { Page } from '@playwright/test';
 
 /** Wait for ClientInit's devnet auto-connect — the "Connect Wallet" header

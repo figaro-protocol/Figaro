@@ -234,7 +234,7 @@ The SDK provides `resolveDidWeb()`, `didDocumentMatchesAddress()`, and
 `buildSellerDidDocument()` in `@figaro/core/agent` (did:web is an agent-identity
 concern). The frontend
 provides the `useDidVerification()` hook in
-`lib/mechanisms/useDidWeb.ts`.
+`lib/agent/useDidWeb.ts`.
 
 ### Trust Model Difference
 

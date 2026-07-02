@@ -7,9 +7,9 @@ import type { Hex } from "viem";
 import { ATTESTATION_COORDINATOR_ABI } from "@/lib/composition/abis";
 import { COMPOSITION_CONTRACTS } from "@/lib/composition/contracts";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { fetchAgreement } from "@/lib/core/agreementFetch";
-import { getAllOrderCommitted, getStringArg } from "@/lib/core/indexer";
-import { restoreSignedProcessId } from "@/lib/core/signedCommitment";
+import { fetchAgreement } from "@/lib/kernel/agreementFetch";
+import { getAllOrderCommitted, getStringArg } from "@/lib/kernel/indexer";
+import { restoreSignedProcessId } from "@/lib/kernel/signedCommitment";
 import { hexEqual, clauseIdHash } from "@/lib/shared/evm";
 import { buildSectionInclusionProof, getSectionDataBytes, type Commitment } from "@figaro/core";
 

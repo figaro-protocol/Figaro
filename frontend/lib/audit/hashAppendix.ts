@@ -21,7 +21,7 @@
  */
 
 import { type Agreement, computeSectionLeaf } from "@figaro/core";
-import type { Order } from "@/lib/core/store";
+import type { Order } from "@/lib/kernel/store";
 import type { AttestationRecord } from "@/lib/composition/useGHGDisclosure";
 import type { ExtractedDocument } from "./types";
 import { truncateHex } from "@/lib/shared/formatHex";

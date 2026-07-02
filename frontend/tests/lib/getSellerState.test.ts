@@ -14,13 +14,13 @@ import { getSellerState } from '@/lib/protocol/sellerRegistryIndexer';
 
 const cachedGetLogsMock = vi.fn();
 
-vi.mock('@/lib/core/eventCache', () => ({
+vi.mock('@/lib/kernel/eventCache', () => ({
     cachedGetLogs: (...args: unknown[]) => cachedGetLogsMock(...args),
 }));
 
 // Provide a non-null sellerRegistry so the event fetchers don't short-circuit.
 // The indexer reads it from core's CONTRACTS (core/ never imports mechanisms/).
-vi.mock('@/lib/core/contracts', () => ({
+vi.mock('@/lib/kernel/contracts', () => ({
     CONTRACTS: {
         sellerRegistry: '0x1111111111111111111111111111111111111111',
     },

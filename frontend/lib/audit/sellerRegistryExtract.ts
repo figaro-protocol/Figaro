@@ -19,7 +19,7 @@
  * `order.seller`) and passes them in.
  */
 
-import type { Order } from "@/lib/core/store";
+import type { Order } from "@/lib/kernel/store";
 import type { ExtractedDocument } from "./types";
 import { hexEqual } from "@/lib/shared/evm";
 

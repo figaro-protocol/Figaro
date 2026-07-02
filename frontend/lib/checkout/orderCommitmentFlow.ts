@@ -30,16 +30,16 @@ import {
     type Commitment,
     type Hex,
 } from "@figaro/core";
-import { CONTRACTS } from "@/lib/core/contracts";
-import { useFigaroActions } from "@/lib/core/useFigaroActions";
+import { CONTRACTS } from "@/lib/kernel/contracts";
+import { useFigaroActions } from "@/lib/kernel/useFigaroActions";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { hexEqual, isValidAddress, ZERO_ADDRESS } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import type { PartyRole } from "@/lib/core/walletProcessQueries";
+import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 import { requestSignConfirmation, type OrderPreview } from "@/lib/checkout/orderPreview";
 import { shareSignedOrder } from "@/lib/checkout/orderSignedAndShared";
-import type { CommitmentPayload } from "@/lib/core/signedCommitment";
-import { commitSignedOrder } from "@/lib/core/orderCommitted";
+import type { CommitmentPayload } from "@/lib/kernel/signedCommitment";
+import { commitSignedOrder } from "@/lib/kernel/orderCommitted";
 
 export type OrderFlowStep =
     | "idle"

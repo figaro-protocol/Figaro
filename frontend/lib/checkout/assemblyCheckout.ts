@@ -26,16 +26,16 @@ import {
     computeOrderHash,
 } from "@figaro/core";
 import { buildOrderPreview, type OrderPreview } from "@/lib/checkout/orderPreview";
-import { validateCommitmentAgreement } from "@/lib/core/orderAgreement";
+import { validateCommitmentAgreement } from "@/lib/kernel/orderAgreement";
 import type { DraftOrder } from "@/lib/checkout/draftOrders";
-import type { CommitmentPayload } from "@/lib/core/signedCommitment";
+import type { CommitmentPayload } from "@/lib/kernel/signedCommitment";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/checkout/assemblySubOrderPlan";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { clauseDeclaresField } from "@/lib/shared/clauseSpecSource";
 import { stashSellerDraft } from "@/lib/seller/sellerAuction";
 import { parseToken } from "@/lib/shared/utils";
-import { CONTRACTS } from "@/lib/core/contracts";
+import { CONTRACTS } from "@/lib/kernel/contracts";
 import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
 import type { SellerCatalogue } from "@/lib/seller/types";
 

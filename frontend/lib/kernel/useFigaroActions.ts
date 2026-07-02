@@ -1,7 +1,7 @@
 // Core Hook for V5 Protocol Actions (Unified Commit, Commitment[] Resolution)
 
 import { useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId, usePublicClient } from "wagmi";
-import { CORE_ABI, ERC20_ABI, CONTRACTS } from "@/lib/core/contracts";
+import { CORE_ABI, ERC20_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { TEST_HELPERS_ENABLED, windowSafe } from '@/lib/shared/testHelpers';
 import { activeChain } from "@/lib/shared/chains";
 import type { Commitment } from "@figaro/core";

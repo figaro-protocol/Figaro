@@ -1,5 +1,5 @@
 import { decodeEventLog, type PublicClient } from "viem";
-import { CORE_ABI } from "@/lib/core/contracts";
+import { CORE_ABI } from "@/lib/kernel/contracts";
 import { removeFulfillerEcdhKeypair } from "@/lib/handoff/ecdh";
 import {
     readJsonStorage,

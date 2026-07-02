@@ -8,10 +8,10 @@
  * are pinned to IPFS (publishAgreement) and removed from here.
  *
  * This is authoring state, NOT a runtime cache: committed agreements are fetched
- * from the network via `lib/core/agreementFetch`, never read from here.
+ * from the network via `lib/kernel/agreementFetch`, never read from here.
  */
 import { computeAgreementHash, type Agreement } from "@figaro/core";
-import type { Order } from "@/lib/core/store";
+import type { Order } from "@/lib/kernel/store";
 import { safeJsonParse } from "@/lib/shared/safeJson";
 
 const PREFIX = "figaro:agreement:";

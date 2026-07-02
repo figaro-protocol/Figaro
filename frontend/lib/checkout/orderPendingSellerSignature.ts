@@ -21,8 +21,8 @@ import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import {
     deserializeCommitmentPayload,
     type CommitmentPayload,
-} from "@/lib/core/signedCommitment";
-import { publishAgreement } from "@/lib/core/agreementFetch";
+} from "@/lib/kernel/signedCommitment";
+import { publishAgreement } from "@/lib/kernel/agreementFetch";
 
 /**
  * Awaiting MY counter-signature: I am a party, the OTHER party has signed, I

@@ -11,13 +11,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { usePublicClient, useWatchContractEvent } from "wagmi";
 import { calculateBonds } from "@figaro/core";
-import { CONTRACTS, CORE_ABI } from "@/lib/core/contracts";
-import { Order, OrderState, useOrderStore } from "@/lib/core/store";
+import { CONTRACTS, CORE_ABI } from "@/lib/kernel/contracts";
+import { Order, OrderState, useOrderStore } from "@/lib/kernel/store";
 import { hexEqual } from "@/lib/shared/evm";
 import {
     getAllOrderCommitted,
     getAllOrderResolved,
-} from "@/lib/core/indexer";
+} from "@/lib/kernel/indexer";
 
 interface OrderStub {
     id: string;

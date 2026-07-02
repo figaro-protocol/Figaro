@@ -13,10 +13,10 @@
 
 import type { Hex } from "viem";
 import { calculateBonds } from "@figaro/core";
-import { Order, OrderState } from "@/lib/core/store";
+import { Order, OrderState } from "@/lib/kernel/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
-import { buildOrderAgreement } from "@/lib/core/orderAgreement";
+import { buildOrderAgreement } from "@/lib/kernel/orderAgreement";
 import { saveAgreement, buildAgreementsFromCache } from "@/lib/designer/syntheticAgreementStore";
 import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 

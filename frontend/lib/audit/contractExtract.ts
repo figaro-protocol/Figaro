@@ -15,9 +15,9 @@ import {
     type AgreementSection,
     computeSectionLeaf,
 } from "@figaro/core";
-import { sectionByField } from "@/lib/core/agreementSections";
+import { sectionByField } from "@/lib/kernel/agreementSections";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import type { Order } from "@/lib/core/store";
+import type { Order } from "@/lib/kernel/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ExtractedDocument } from "./types";
 

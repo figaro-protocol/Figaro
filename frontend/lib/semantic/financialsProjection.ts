@@ -34,7 +34,7 @@
  *   Income statement records: sales (P), cost (P), net income (0)
  */
 
-import { OrderState, type Order } from "@/lib/core/store";
+import { OrderState, type Order } from "@/lib/kernel/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 
 /**

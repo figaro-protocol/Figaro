@@ -18,7 +18,7 @@
  */
 
 import type { PublicClient } from "viem";
-import { CORE_ABI, CONTRACTS } from "@/lib/core/contracts";
+import { CORE_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { ATTESTATION_COORDINATOR_ABI } from "@/lib/composition/abis";
 import { COMPOSITION_CONTRACTS } from "@/lib/composition/contracts";
 import { describeAttestation } from "@/lib/shared/clauseSpecSource";
