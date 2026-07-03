@@ -2,8 +2,9 @@
 /**
  * populate-test-data.mjs — the ONE pre-population path FOR TESTING. Populates the
  * registries the e2e suite consumes from: clauses (ClauseRegistry + IPFS, reusing
- * populate-clauses), ONE seed assembly (AssemblyRegistry + IPFS — the blank
- * structural composition sellers bind), AND sellers (SellerRegistry + IPFS).
+ * populate-clauses), the seed assemblies (AssemblyRegistry + IPFS — the blank
+ * structural composition sellers bind, plus the multi-order delivery chain
+ * the multi-order e2e runs), AND sellers (SellerRegistry + IPFS).
  * Run after deploy, before the test suite. The runtime specs then discover everything from chain → IPFS.
  *
  * This is the single source of the test SELLERS — it replaces `seller-roster.ts`
@@ -83,10 +84,11 @@ function canonicalize(value) {
 }
 
 /** Fold the MANDATORY structural clauses (block.article === "structural",
- *  read from the canonical Layer-A specs — derived, never named) onto one
- *  root order: each takes the subset of the design-time bag it declares. */
-function structuralClauseFold() {
-    const bag = { parentOrderHashes: [] };
+ *  read from the canonical Layer-A specs — derived, never named) onto an
+ *  order: each takes the subset of the design-time bag it declares. Parents
+ *  are LOCAL template ids — mirrors the designer's composeStructuralClauses. */
+function structuralClauseFold(parents = []) {
+    const bag = { parentOrderHashes: parents };
     const out = {};
     for (const file of fs.readdirSync(CLAUSES_DIR).filter((f) => f.endsWith('.json')).sort()) {
         const spec = JSON.parse(fs.readFileSync(path.join(CLAUSES_DIR, file), 'utf8'));
@@ -101,15 +103,7 @@ function structuralClauseFold() {
     return out;
 }
 
-async function seedAssembly({ publicClient, walletClient, account, registry, ipfsApiUrl }) {
-    // A blank single-order composition: the structural clauses only, no
-    // electives — the minimal bindable assembly.
-    const template = {
-        name: 'Devnet seed',
-        summary: 'Pre-populated bindable assembly for the e2e suite.',
-        description: 'A blank single-order composition (structural clauses only), anchored by populate-test-data so sellers can bind before any spec runs.',
-        orders: [{ id: 'order-0', clauses: structuralClauseFold() }],
-    };
+async function anchorAssembly({ publicClient, walletClient, account, registry, ipfsApiUrl, template }) {
     // Content hash over the COMPOSITION ONLY (editorial excluded) — mirrors
     // serializeAssemblyTemplate.ts; slug mirrors deriveAssemblySlug.
     const contentHash = keccak256(toHex(canonicalize({ orders: template.orders })));
@@ -138,6 +132,55 @@ async function seedAssembly({ publicClient, walletClient, account, registry, ipf
     return slug;
 }
 
+/** The blank single-order composition: structural clauses only — the minimal
+ *  bindable assembly the single-order specs run against. */
+function seedTemplateBlank() {
+    return {
+        name: 'Devnet seed',
+        summary: 'Pre-populated bindable assembly for the e2e suite.',
+        description: 'A blank single-order composition (structural clauses only), anchored by populate-test-data so sellers can bind before any spec runs.',
+        orders: [{ id: 'order-0', clauses: structuralClauseFold() }],
+    };
+}
+
+/** The multi-order value-added CHAIN — the externalized P&L the multi-order
+ *  e2e runs end-to-end: a root meal order (merchant process, delivery
+ *  modality) plus courier and supplier sub-orders. Which clauses compose
+ *  which order is scenario DATA (a designed artifact this seed reproduces
+ *  byte-for-byte), exactly like the seller roster above. Counterparties are
+ *  NOT seeded — the lead binds + designates them through the real UI flow. */
+function seedTemplateChain() {
+    return {
+        name: 'Devnet delivery chain',
+        summary: 'Three-order value-added chain: meal, courier, supplier.',
+        description: 'A delivery chain for the multi-order e2e: the buyer sees the full decomposition at checkout, each contributor is bond-secured, and the single resolve pays every party.',
+        orders: [
+            {
+                id: 'order-0',
+                clauses: {
+                    'figaro-merchant-process': {},
+                    'figaro-modalities': { modality: 'delivery' },
+                    ...structuralClauseFold([]),
+                },
+            },
+            {
+                id: 'order-1',
+                clauses: {
+                    'figaro-courier-process': {},
+                    ...structuralClauseFold(['order-0']),
+                },
+            },
+            {
+                id: 'order-2',
+                clauses: {
+                    'figaro-merchant-process': {},
+                    ...structuralClauseFold(['order-0']),
+                },
+            },
+        ],
+    };
+}
+
 async function main() {
     const env = readEnvLocal();
     const clauseRegistry = env.NEXT_PUBLIC_CLAUSE_REGISTRY;
@@ -158,9 +201,11 @@ async function main() {
     console.log('Clauses:');
     await populateClauses({ publicClient, walletClient: registrarClient, account: registrar, registry: clauseRegistry, ipfsApiUrl });
 
-    // ── 1b. Seed assembly (blank structural composition, idempotent) ────────
-    console.log('\nAssembly:');
-    await seedAssembly({ publicClient, walletClient: registrarClient, account: registrar, registry: assemblyRegistry, ipfsApiUrl });
+    // ── 1b. Seed assemblies (blank + multi-order chain, idempotent) ─────────
+    console.log('\nAssemblies:');
+    const anchorArgs = { publicClient, walletClient: registrarClient, account: registrar, registry: assemblyRegistry, ipfsApiUrl };
+    await anchorAssembly({ ...anchorArgs, template: seedTemplateBlank() });
+    await anchorAssembly({ ...anchorArgs, template: seedTemplateChain() });
 
     // ── 2. Sellers (catalogue → profile → register, all pinned + anchored) ──
     const [tokenSymbol, tokenName] = await Promise.all([
