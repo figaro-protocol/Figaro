@@ -17,6 +17,7 @@ import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
 import { templateParentOrderHashes, type AssemblyTemplateOrder } from "@/lib/shared/assemblyTemplate";
 import { topologicalOrder } from "@/lib/shared/orderTopology";
 import type { SellerCatalogue } from "@/lib/seller/types";
+import type { CatalogueItemMetadata } from "@/lib/seller/sellerCatalogueMetadata";
 import { hexEqual } from "@/lib/shared/evm";
 import { parseToken } from "@/lib/shared/utils";
 
@@ -78,9 +79,22 @@ export function resolveSubOrderPayment(args: {
     sellerCatalogues: SellerCatalogue[];
     tokenDecimals: number;
 }): bigint {
-    const { seller, sellerCatalogues, tokenDecimals } = args;
-    const catalogue = sellerCatalogues.find((c) => hexEqual(c.address, seller));
-    const item = catalogue?.items.find((i) => i.available !== false);
+    const item = resolveSubOrderItem(args);
     if (!item) return 0n;
-    return parseToken(item.price, tokenDecimals);
+    return parseToken(item.price, args.tokenDecimals);
+}
+
+/**
+ * Resolve the catalogue ITEM a sub-order buys from its contributor — the
+ * single source `resolveSubOrderPayment` prices from, exposed so the commit
+ * can also write it into the sub-order's commerce section as the line item
+ * (the agreement's statement of WHAT the payment buys). Same rule as the
+ * pricing: the contributor's first available item.
+ */
+export function resolveSubOrderItem(args: {
+    seller: `0x${string}`;
+    sellerCatalogues: SellerCatalogue[];
+}): CatalogueItemMetadata | null {
+    const catalogue = args.sellerCatalogues.find((c) => hexEqual(c.address, args.seller));
+    return catalogue?.items.find((i) => i.available !== false) ?? null;
 }

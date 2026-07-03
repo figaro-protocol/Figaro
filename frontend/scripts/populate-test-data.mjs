@@ -218,17 +218,20 @@ async function main() {
         const account = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: s.addressIndex });
         const sellerClient = createWalletClient({ account, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
+        // The canonical catalogue-document shape (`SellerCatalogueMetadata`):
+        // the items key is `items` (a `menu` key parses to an EMPTY catalogue —
+        // the item list every read projects from, incl. sub-order pricing);
+        // `category` only when authored (never a coined default).
         const catalogue = {
             subjectAddress: account.address,
             version: '0.1.0',
             unitSystem: 'metric',
-            menu: s.products.map((p) => ({
+            items: s.products.map((p) => ({
                 id: slugifyId(p.name),
                 name: p.name,
                 description: p.name,
                 price: p.price,
-                pricingPolicy: 'fixed',
-                category: p.category ?? 'General',
+                ...(p.category ? { category: p.category } : {}),
                 available: true,
             })),
         };

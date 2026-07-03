@@ -27,7 +27,7 @@ import { validateCommitmentAgreement } from "@/lib/kernel/orderAgreement";
 import type { DraftOrder } from "@/lib/checkout/draftOrders";
 import { commitmentOrderHash, commitmentProcessId, type CommitmentPayload } from "@/lib/kernel/signedCommitment";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
-import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/checkout/assemblySubOrderPlan";
+import { planSubOrderSellers, resolveSubOrderItem, resolveSubOrderPayment } from "@/lib/checkout/assemblySubOrderPlan";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { clauseDeclaresField } from "@/lib/shared/clauseSpecSource";
 import { parseToken } from "@/lib/shared/utils";
@@ -102,6 +102,31 @@ function fillCommerceSection(
     };
 }
 
+/**
+ * Write the REAL parent-order hashes into the topology section, found by its
+ * declared `parentOrderHashes` field (never by clause id). The template's
+ * topology data carries template-LOCAL order ids ("order-0"); the committed
+ * agreement must carry the actual EIP-712 order hashes — they are the DAG
+ * edges every off-chain reader (audit, derive) reconstructs from, and the
+ * bytes32 shape Layer A validates.
+ */
+function writeTopologySection(
+    clauses: ClauseFields,
+    parentOrderHashes: `0x${string}`[],
+): ClauseFields {
+    const topologyClauseId = Object.keys(clauses).find(
+        (clauseId) => clauseDeclaresField(clauseId, "parentOrderHashes"),
+    );
+    if (!topologyClauseId) return clauses;
+    return {
+        ...clauses,
+        [topologyClauseId]: {
+            ...clauses[topologyClauseId],
+            parentOrderHashes,
+        },
+    };
+}
+
 /** Layer A — the buyer does not sign an invalid agreement. */
 function assertValidToSign(preview: OrderPreview, label: string): void {
     const check = validateCommitmentAgreement(preview.agreement, preview.agreementHash);
@@ -130,9 +155,14 @@ export async function executeAssemblyCheckout(
         /** The buyer's checkout-time counterparty choices, keyed by template
          *  node id — fills sub-orders the adopting seller's profile leaves
          *  unbound (buyer-assigned coordination). The price is the picker's
-         *  resolved figure (catalogue or buyer-set). Checkout-phase data,
-         *  like the cart — never design-time clause activation. */
-        subOrderSelections?: Record<string, { seller: `0x${string}`; price: string }>;
+         *  resolved figure and `item` the picked catalogue item (it becomes
+         *  the sub-order's commerce line item). Checkout-phase data, like the
+         *  cart — never design-time clause activation. */
+        subOrderSelections?: Record<string, {
+            seller: `0x${string}`;
+            price: string;
+            item: { id: string; name: string };
+        }>;
         /** On-network compositions (the fifth noun) keyed by template node id:
          *  the composing clause's `interface` (from `block.composes`) plus the
          *  buyer's `block.fields` values collected at checkout. The composition
@@ -232,7 +262,20 @@ export async function executeAssemblyCheckout(
                 node, seller: subSeller, sellerCatalogues, tokenDecimals,
             });
         cumulativeValue += subPayment;
-        const subClauses = fillCommerceSection({ ...node.clauses }, currency, subPayment);
+        // The sub-order's commerce section states WHAT the payment buys: the
+        // contributor's resolved catalogue item (the same item the payment was
+        // priced from), or the buyer's picked item on the unbound path. The
+        // commerce clause requires lineItems on EVERY order, subs included.
+        const subItem = selection
+            ? selection.item
+            : resolveSubOrderItem({ seller: subSeller, sellerCatalogues });
+        const subLineItems: AssemblyCheckoutLineItem[] | undefined = subItem
+            ? [{ itemId: subItem.id, name: subItem.name, quantity: 1, unitPrice: subPayment.toString() }]
+            : undefined;
+        const subClauses = fillCommerceSection(
+            writeTopologySection({ ...node.clauses }, parentOrderHashes),
+            currency, subPayment, subLineItems,
+        );
         const subDraft: DraftOrder = {
             buyer, seller: subSeller, currency, payment: subPayment,
             clauses: subClauses, parentOrderHashes,

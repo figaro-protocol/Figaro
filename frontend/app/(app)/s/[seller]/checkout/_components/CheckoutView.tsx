@@ -400,7 +400,11 @@ export function CheckoutView({ sellerAddress }: Props) {
                     subOrderSelections: buyerChoosesCounterparty && sellerSelection
                         ? Object.fromEntries(buyerPickSubOrders.map(({ node }) => [
                             node.id,
-                            { seller: sellerSelection.seller, price: sellerSelection.price },
+                            {
+                                seller: sellerSelection.seller,
+                                price: sellerSelection.price,
+                                item: { id: sellerSelection.item.id, name: sellerSelection.item.name },
+                            },
                         ]))
                         : undefined,
                     subOrderCompositions: orderCompositions.length > 0

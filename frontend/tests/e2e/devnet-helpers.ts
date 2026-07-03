@@ -10,6 +10,7 @@ import {
     parseEther,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
+import { ASSEMBLY_REGISTRY_ABI } from '@figaro/core';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -379,6 +380,42 @@ export async function discoverSellers(): Promise<DiscoveredSeller[]> {
 
 
 
+
+/** An anchored assembly with its template's order list resolved — enough for a
+ *  spec to select an assembly by SHAPE (order count, clause ids) instead of a
+ *  hardcoded slug. */
+export interface DiscoveredAssembly {
+    slug: string;
+    orders: Array<{ id?: string; clauses?: Record<string, unknown> }>;
+}
+
+/** Every anchored assembly, discovered from chain → IPFS (AssemblyRegistered
+ *  events + template docs), in anchoring order. Mainnet-realistic tolerance:
+ *  a template that fails to fetch or parse is skipped — anyone can anchor a
+ *  garbage URI; consumers must tolerate it. */
+export async function discoverAnchoredAssemblies(): Promise<DiscoveredAssembly[]> {
+    const publicClient = localPublicClient();
+    const config = readLocalDeploymentConfig();
+    const assemblyRegistry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? config.assemblyRegistry ?? '') as `0x${string}`;
+    const anchored = await publicClient.getContractEvents({
+        address: assemblyRegistry, abi: ASSEMBLY_REGISTRY_ABI,
+        eventName: 'AssemblyRegistered', fromBlock: 0n,
+    });
+    const out: DiscoveredAssembly[] = [];
+    for (const ev of anchored) {
+        const { slug, metadataURI } = ev.args as { slug?: string; metadataURI?: string };
+        if (!slug || !metadataURI) continue;
+        try {
+            const doc = await (await fetch(resolveIpfsURI(metadataURI))).json() as { orders?: DiscoveredAssembly['orders'] };
+            if (Array.isArray(doc.orders) && doc.orders.length > 0) {
+                out.push({ slug, orders: doc.orders });
+            }
+        } catch {
+            continue; // unresolvable / non-JSON template — not discoverable
+        }
+    }
+    return out;
+}
 
 /** Resolve an `ipfs://` URI to a Kubo-gateway URL. */
 function resolveIpfsURI(uri: string): string {

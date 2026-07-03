@@ -10,18 +10,20 @@
  * a dedicated wallet (anvil[13]) that no other test registers, so the wizard
  * genuinely runs. Assembly binding is MANDATORY (user rule 2026-06-12 — a
  * profile without bindings cannot be ordered from), so the spec asserts the
- * refusal first, then binds the first anchored assembly from the live list
- * (the scenario specs run earlier in this Playwright project and anchor
- * them). This test has nothing to do with how other tests get sellers
- * on-chain: runtime specs DISCOVER sellers from SellerRegistry → IPFS,
- * never from here.
+ * refusal first, then binds the SINGLE-ORDER seed assembly, discovered from
+ * the live registry by SHAPE (one order), never by slug or list position —
+ * this wallet's scenario is the bilateral single-order flow (orders-accept
+ * orders from it); a multi-order or second binding would gate its checkout
+ * behind counterparty designation / the method picker. This test has nothing
+ * to do with how other tests get sellers on-chain: runtime specs DISCOVER
+ * sellers from SellerRegistry → IPFS, never from here.
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server.
  */
 import { expect } from "@playwright/test";
 import { test, gotoAsWallet } from "./devnet-multi-test";
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from "viem";
-import { assertPinnedInIpfs, discoverSellers, readLocalDeploymentConfig } from "./devnet-helpers";
+import { assertPinnedInIpfs, discoverAnchoredAssemblies, discoverSellers, readLocalDeploymentConfig } from "./devnet-helpers";
 import { ASSEMBLY_REGISTRY_ABI } from '@figaro/core';
 
 const RPC_URL = "http://127.0.0.1:8545";
@@ -61,8 +63,9 @@ async function waitForSellersReady(page: import("@playwright/test").Page) {
     );
 }
 
-/** Walk the registration wizard 1→6 as the seller's wallet and register on-chain. */
-async function onboardViaWizard(page: import("@playwright/test").Page) {
+/** Walk the registration wizard 1→6 as the seller's wallet and register
+ *  on-chain, binding EXACTLY the given assembly. */
+async function onboardViaWizard(page: import("@playwright/test").Page, assemblySlug: string) {
     await gotoAsWallet(page, SELLER.address, "/sellers");
     await waitForSellersReady(page);
     await page.goto("/sellers/identity", { waitUntil: "domcontentloaded" });
@@ -84,19 +87,27 @@ async function onboardViaWizard(page: import("@playwright/test").Page) {
     await expect(page).toHaveURL(/\/sellers\/assemblies/);
 
     // Step 4 — Assemblies: MANDATORY (user rule 2026-06-12 — a profile
-    // without bindings cannot be ordered from). First assert the control:
-    // Next with nothing selected is refused with the validation message.
+    // without bindings cannot be ordered from). An update-mode run hydrates
+    // the wallet's prior bindings — clear them first: this scenario's premise
+    // is EXACTLY ONE single-order binding (the bilateral flow orders-accept
+    // consumes), and the cleared state also makes the refusal assertable.
+    const rows = page.locator('[data-testid^="seller-assembly-row-"]');
+    await rows.first().waitFor({ state: 'visible', timeout: 30_000 });
+    const checkedBoxes = page.locator('[data-testid^="seller-assembly-row-"] input[type="checkbox"]:checked');
+    while (await checkedBoxes.count() > 0) {
+        await checkedBoxes.first().uncheck();
+    }
+    // Assert the control: Next with nothing selected is refused.
     await page.getByRole("button", { name: /^Next/ }).click();
     // Scoped filter — the step indicator is its own live-region alert.
     await expect(
         page.getByRole("alert").filter({ hasText: /bind at least one published assembly/i }),
     ).toBeVisible();
     await expect(page).toHaveURL(/\/sellers\/assemblies/);
-    // Then bind the first anchored assembly, discovered from the live list
-    // (the scenario specs run earlier in this project and anchor them).
-    const firstAssemblyRow = page.locator('[data-testid^="seller-assembly-row-"]').first();
-    await firstAssemblyRow.waitFor({ state: 'visible', timeout: 30_000 });
-    await firstAssemblyRow.locator('input[type="checkbox"]').first().check();
+    // Then bind the single-order seed assembly, by slug from shape discovery.
+    const assemblyRow = page.getByTestId(`seller-assembly-row-${assemblySlug}`);
+    await assemblyRow.waitFor({ state: 'visible', timeout: 30_000 });
+    await assemblyRow.locator('input[type="checkbox"]').first().check();
     await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/sellers\/agents/);
 
@@ -126,10 +137,18 @@ test.describe("seller registration wizard (devnet)", () => {
         const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY ?? config.sellerRegistry) as Hex;
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
+        // The single-order seed assembly, discovered from the live registry by
+        // SHAPE (never a hardcoded slug): the earliest anchored one-order
+        // template. This wallet's scenario premise is the bilateral flow —
+        // exactly this one binding.
+        const singleOrderSlug = (await discoverAnchoredAssemblies())
+            .find((a) => a.orders.length === 1)?.slug;
+        expect(singleOrderSlug, 'a single-order assembly is anchored (run populate-test-data)').toBeTruthy();
+
         // Mainnet semantics: a seller registers ONCE and persists. Walk the
         // wizard when this wallet isn't registered yet — or when its CURRENT
-        // profile predates the mandatory-assembly rule (no bindings): the
-        // wizard runs in update mode and the profile gains its binding.
+        // profile doesn't match the scenario premise (exactly the single-order
+        // binding): the wizard runs in update mode and repairs the bindings.
         const latestProfileURI = async (): Promise<string | undefined> => {
             const [registrations, updates] = await Promise.all([
                 publicClient.getContractEvents({
@@ -150,10 +169,11 @@ test.describe("seller registration wizard (devnet)", () => {
         if (uriBefore) {
             const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? "http://127.0.0.1:8080";
             const doc = await (await fetch(`${gateway}/ipfs/${uriBefore.slice("ipfs://".length)}`)).json();
-            conformant = ((doc.assemblyBindings ?? []) as unknown[]).length > 0;
+            const bindings = (doc.assemblyBindings ?? []) as Array<{ assemblySlug: string }>;
+            conformant = bindings.length === 1 && bindings[0].assemblySlug === singleOrderSlug;
         }
         if (!uriBefore || !conformant) {
-            await onboardViaWizard(page);
+            await onboardViaWizard(page, singleOrderSlug!);
         }
 
         // ── Anchored on SellerRegistry, profile URI on IPFS ─────────────────
