@@ -36,9 +36,15 @@
  *              full multi-stage ladder walk.
  *   resolve  → the buyer resolves ONCE: merchant net +1, courier net +1,
  *              buyer net −2, escrow back to baseline.
- *   audit    → financials, a line item for BOTH orders, the cash-flow log,
- *              and the clause evidence carrying every committed leaf and all
- *              EIGHT attested stages.
+ *   audit    → the full evidentiary record, permissionless-clause grade:
+ *              financials with a line item for BOTH orders; the cash-flow log
+ *              carrying EVERY kernel transfer (2 rows per commit, 2 per order
+ *              at resolve — 8 exactly); the clause evidence with every
+ *              committed leaf and all EIGHT attested stages; BOTH agreements
+ *              pinned to IPFS with the hash verifier recomputing each merkle
+ *              root to the on-chain agreementHash; the audit-bundle PDF
+ *              downloaded (real %PDF bytes) and the dispute panel's evidence
+ *              bundle pinned to IPFS, verified out-of-band.
  *
  * Cast (scenario labels only — the kernel sees ordinary wallets):
  *   author   anvil[0]  (any wallet designs; neither party here)
@@ -51,10 +57,12 @@
  *
  * Requires Anvil + ./scripts/deploy-local.sh + populate-test-data + Kubo + :3100.
  */
+import fs from 'fs';
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, parseAbi, parseEther, type Hex } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
 import {
+    assertPinnedInIpfs,
     discoverAnchoredAssemblies,
     readLocalDeploymentConfig,
     sellerProfileBindings,
@@ -423,5 +431,73 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
                 `the "${text}" evidence leaf surfaces in the audit`,
             ).toBeVisible({ timeout: 30000 });
         }
+
+        // ── EVERY MONEY EVENT: one cash-flow row per kernel ERC-20 transfer —
+        //    each commit pulls both deposits, the resolve refunds the buyer and
+        //    pays out the seller, per order: exactly 8 rows, 2 of each kind. ──
+        const cashflowRows = page.locator('[data-testid="financials-cashflow"] tbody tr');
+        await expect(cashflowRows, 'one cash-flow row per kernel transfer').toHaveCount(8, { timeout: 30000 });
+        for (const [kind, count] of [
+            ['commit-buyer-deposit', 2],
+            ['commit-seller-deposit', 2],
+            ['resolve-buyer-refund', 2],
+            ['resolve-seller-payout', 2],
+        ] as const) {
+            await expect(cashflowRows.filter({ hasText: kind }), `${count}× ${kind}`).toHaveCount(count);
+        }
+
+        // ── THE SIGNED CONTRACTS: each order's agreement is pinned to IPFS
+        //    (the network SSoT, not a local cache) and the audit's hash
+        //    verifier recomputes each merkle root over EVERY leaf to match the
+        //    agreementHash the kernel stored — for BOTH orders. ──
+        const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
+        for (const [event, label, expectedLeaves] of [
+            [merchantEvent, 'meal', ['figaro-commerce', 'figaro-topology', MERCHANT_CLAUSE, MODALITIES_CLAUSE]],
+            [courierEvent, 'delivery', ['figaro-commerce', 'figaro-topology', COURIER_CLAUSE]],
+        ] as const) {
+            const agreementHash = event.args.agreementHash as `0x${string}`;
+            const agreementUri = await page.evaluate(
+                (key) => window.localStorage.getItem(key),
+                `figaro:agreement-uri:${agreementHash}`,
+            );
+            expect(agreementUri, `the ${label} agreement has a network (IPFS) locator`).toMatch(/^ipfs:\/\//);
+            const agreementCid = agreementUri!.replace(/^ipfs:\/\//, '');
+            await assertPinnedInIpfs(agreementCid);
+            const agreementJson = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${agreementCid}`, { method: 'POST' })).text();
+            const agreement = JSON.parse(agreementJson) as { sections: { clause: string }[] };
+            expect(
+                agreement.sections.map((s) => s.clause),
+                `the ${label} merkle tree carries every committed leaf`,
+            ).toEqual(expect.arrayContaining([...expectedLeaves]));
+            await page.getByTestId('verify-mode-agreement').click();
+            await page.getByTestId('verify-agreement-input').fill(agreementJson);
+            await page.getByTestId('verify-agreement-expected').fill(agreementHash);
+            await expect(
+                page.getByTestId('verify-result-status'),
+                `the recomputed ${label} root matches the on-chain agreementHash`,
+            ).toHaveText(/Matches expected hash/, { timeout: 15000 });
+        }
+
+        // ── THE PDFs: (1) the audit-bundle PDF builds in-browser and
+        //    downloads — a real PDF carrying the document set; (2) the dispute
+        //    panel builds the same bundle and PINS it to IPFS — the
+        //    timestamped evidence hand-off for an off-chain forum, its pin
+        //    verified out-of-band. ──
+        const downloadPromise = page.waitForEvent('download');
+        await page.getByTestId('download-audit-bundle-button').click();
+        const download = await downloadPromise;
+        expect(download.suggestedFilename(), 'the audit bundle downloads as a process-named PDF')
+            .toBe(`audit-bundle-${processId.slice(0, 10)}.pdf`);
+        const pdfPath = await download.path();
+        const pdfBytes = fs.readFileSync(pdfPath!);
+        expect(pdfBytes.subarray(0, 5).toString(), 'the bundle is a real PDF').toBe('%PDF-');
+        expect(pdfBytes.length, 'the bundle carries the document set, not a stub').toBeGreaterThan(5_000);
+
+        await page.getByTestId('dispute-evidence-prepare').click();
+        const evidenceResult = page.getByTestId('dispute-evidence-result');
+        await evidenceResult.waitFor({ state: 'visible', timeout: 60000 });
+        const bundleUri = (await evidenceResult.locator('p').first().textContent())?.trim();
+        expect(bundleUri, 'the evidence bundle has an IPFS locator').toMatch(/^ipfs:\/\//);
+        await assertPinnedInIpfs(bundleUri!.replace(/^ipfs:\/\//, ''));
     });
 });
