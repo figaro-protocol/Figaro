@@ -9,7 +9,6 @@ import "../src/AttestationCoordinator.sol";
 import "../src/ClauseRegistry.sol";
 import "../src/SellerRegistry.sol";
 import "../src/fig/FigToken.sol";
-import "../src/ProcessOffsetReceipt.sol";
 
 /// @title DeployMainnet — Mainnet deployment of the full Figaro V5 protocol stack
 ///
@@ -47,7 +46,6 @@ contract DeployMainnet is Script {
     address internal _clauses;
     address internal _sellers;
     address internal _fig;
-    address internal _offsetReceipts;
 
     function run() external {
         uint256 privateKey = vm.envUint("PRIVATE_KEY");
@@ -114,19 +112,6 @@ contract DeployMainnet is Script {
         SellerRegistry sellers = new SellerRegistry(0.001 ether, 365 days);
         _sellers = address(sellers);
         console.log("SellerRegistry:       ", _sellers);
-
-        // Permissionless on-chain anchor for Path A carbon-offset receipts.
-        // Buyer calls record(processId, ...) after performing the off-protocol
-        // retirement at an aggregator (Klima KlimaInfinity, Toucan
-        // OffsetHelper); the contract verifies the caller is
-        // processes[processId].rootBuyer and emits ReceiptRecorded with the
-        // processId↔retirementTxHash binding. No state, no admin. Audit-bundle
-        // reader queries the event log by processId. Separate primitive per
-        // separation-of-concerns doctrine — receipts are not attestations
-        // (no agreement clause, no inclusion proof) and get their own anchor.
-        ProcessOffsetReceipt offsetReceipts = new ProcessOffsetReceipt(FigaroCore(_core));
-        _offsetReceipts = address(offsetReceipts);
-        console.log("ProcessOffsetReceipt:   ", _offsetReceipts);
     }
 
     // ── FIG token + genesis distribution ────────────────────────────
@@ -164,7 +149,6 @@ contract DeployMainnet is Script {
         console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=          ", _clauses);
         console.log("  NEXT_PUBLIC_SELLER_REGISTRY=        ", _sellers);
         console.log("  NEXT_PUBLIC_FIG_TOKEN_ADDRESS=        ", _fig);
-        console.log("  NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT=   ", _offsetReceipts);
         console.log("---");
     }
 }

@@ -91,7 +91,7 @@ is a choice, not an exploit.
 ## 4. No owner, no admin, no escape hatch — by design
 
 **Pattern**: FigaroCore, AttestationCoordinator, ClauseRegistry,
-SellerRegistry, AssemblyRegistry, and ProcessOffsetReceipt have no owner, no
+SellerRegistry, and AssemblyRegistry have no owner, no
 pause function, no upgrade path, and no admin recovery. FigToken has a one-shot
 deployer who registers minter contracts then renounces (`deployerMintRenounced`)
 — a bounded privileged actor, documented separately in `CONTRACTS.md`.

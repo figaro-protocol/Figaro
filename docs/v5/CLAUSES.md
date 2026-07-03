@@ -61,9 +61,9 @@ Lives off-chain as JSON at the `metadataURI` emitted by `ClauseRegistry`
 live at repo-root `clauses/` (the `ClauseRegistry` seed data); nothing bundles a
 copy — every consumer loads each spec from `ClauseRegistry` → IPFS at runtime.
 
-## The 17 protocol clauses
+## The 16 protocol clauses
 
-16 runtime-attestable clauses (content validated off-chain by Layer A; no
+15 runtime-attestable clauses (content validated off-chain by Layer A; no
 on-chain validator) plus 1 agreement-only clause (`figaro-topology`).
 
 | clauseId | What it carries | Attestation surface |
@@ -79,7 +79,6 @@ on-chain validator) plus 1 agreement-only clause (`figaro-topology`).
 | `figaro-handoff` | Hand-off point — where the physical exchange happens (proximity-policy nests under it) | Layer A (off-chain) |
 | `figaro-ghg` | GHG accounting methodology (free-form `standard` string) + scope (committed at signing) | Layer A (off-chain) |
 | `figaro-proximity-policy` | Required detection bands committed at agreement signing | Layer A (off-chain) |
-| `figaro-offset-policy` | Carbon-offset provider set committed at agreement signing | Layer A (off-chain) |
 | `figaro-merchant-process` | Merchant per-role event enum (sovereign log) | Layer A (off-chain) |
 | `figaro-courier-process` | Courier per-role event enum (sovereign log) | Layer A (off-chain) |
 | `figaro-arbitration-kleros` | Decentralized off-chain arbitration via Kleros (subcourt + minimum jurors). Provider-specific; sister `figaro-arbitration-<provider>` clauses would cover future ODR providers | Layer A (off-chain) |

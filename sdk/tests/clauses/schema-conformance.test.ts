@@ -20,8 +20,8 @@ const examplesDir = join(__dirname, "../../../clauses");
 const exampleFiles = readdirSync(examplesDir).filter((f) => f.endsWith(".json"));
 
 describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
-    it("ships at least the 17 canonical example clauses", () => {
-        expect(exampleFiles.length).toBeGreaterThanOrEqual(17);
+    it("ships at least the 16 canonical example clauses", () => {
+        expect(exampleFiles.length).toBeGreaterThanOrEqual(16);
     });
 
     it.each(exampleFiles)("%s validates against BOTH the published schema and the parser", (file) => {

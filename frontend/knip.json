@@ -2,7 +2,6 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "ignore": [
     "tests/e2e/fixtures/inject-ethereum-multi.js",
-    "lib/composition/useOffsetRetirement.ts",
     "lib/composition/useGHGDisclosure.ts",
     "lib/agent/useDidWeb.ts"
   ]

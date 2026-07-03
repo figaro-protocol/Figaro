@@ -76,19 +76,16 @@ signed agreement.
 
 **Dutch auction — DELETED 2026-07-02.** Competitive pricing was abandoned: a mid-chain order whose price or counterparty is unknown at signing is structurally incompatible with the kernel's exact-match cumulative accumulator, and the V3-style workaround (contract-as-seller + float-vault bond lending) is banned three ways. Pricing is a catalogue concern (e.g. rate × geohash distance).
 
-**`src/ProcessOffsetReceipt.sol`** — Permissionless on-chain anchor for Path A
-carbon-offset receipts. The buyer performs the offset retirement off-protocol
-at an external aggregator (Klima KlimaInfinity, Toucan OffsetHelper, etc.),
-then calls `record(processId, retirementTxHash, aggregator, tonsRetired,
-inputToken, inputAmount)` here to anchor the `processId ↔ retirementTxHash`
-binding on-chain. The contract verifies `processes[processId].rootBuyer ==
-msg.sender` via cross-call to `FigaroCore`, then emits `ReceiptRecorded` with
-three indexed fields (processId, buyer, retirementTxHash) so audit-bundle
-consumers can reconstruct receipts by any of the three. No state, no admin,
-no storage beyond the event log. **Receipts are a separate artifact family
-from attestations** per separation-of-concerns doctrine — they do not require
-a committed agreement clause or a merkle inclusion proof, so they can't be
-hosted under `AttestationCoordinator`.
+**Carbon-offset apparatus — DELETED 2026-07-03.** `ProcessOffsetReceipt.sol`,
+`MockOffsetAggregator.sol`, the aggregator bridge, and the
+`figaro-offset-policy` clause were removed: the deployment network (Ethereum
+Mainnet) has no live documented retirement router to compose with (Toucan is
+Polygon/Celo; Klima's aggregator is deprecated in favor of an off-network REST
+API; Moss has none), and a cross-chain retirement can't be verified from the
+process's chain without a trusted bridge. Emissions *disclosure*
+(`figaro-ghg` + attestations) survives — it never depended on a router. An
+offset re-enters, permissionlessly, as a new clause naming a mainnet router's
+interface when one exists.
 
 **`src/SwapAndCommitCoordinator.sol`** — Off-protocol executor letting a buyer
 and/or seller post their FigaroCore bond in a token other than the process bond
@@ -169,7 +166,6 @@ minted; the remaining 600M has no wired mint path. No settlement-anchored emissi
 
 - `src/mocks/MockERC20.sol` — the devnet payment/bond token. Plain ERC-20 with a permissionless `mint(to, amount)`; constructor takes `(name, symbol)`. Deployed by `Deploy.s.sol` as `NEXT_PUBLIC_TOKEN_ADDRESS` (minted 100k to anvil[0..19]) and used by the Foundry tests — one mock, not a per-file inline copy. (Mainnet uses a real ERC-20, e.g. USDC.e.)
 - `src/mocks/MockERC20FeeOnTransfer.sol`, `MockPermitToken.sol` — fee-on-transfer ERC-20 (Foundry tests only) and EIP-2612 permit ERC-20 (`Deploy.s.sol` deploys it as `NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS` for the `*WithPermit` flow).
-- `src/mocks/MockOffsetAggregator.sol` — devnet stand-in for Klima KlimaInfinity / Toucan OffsetHelper. Fixed `pricePerTon` constructor arg, pulls input token via `transferFrom`, emits `Retired`. Wired into `Deploy.s.sol` only — mainnet uses real aggregators.
 - `src/mocks/MockKlerosArbitrableProxy.sol`, `src/mocks/MockKlerosArbitrator.sol` — devnet stand-ins for the Kleros dispute-resolution flow; deployed via `script/DeployMockKleros.s.sol` (run from `./scripts/deploy-mock-kleros.sh`) on top of `./scripts/deploy-local.sh`. Mainnet uses the real Kleros contracts.
 - `src/mocks/MockPermit2.sol` — test stand-in for Uniswap Permit2 SignatureTransfer; implements `permitTransferFrom` (deadline + amount enforced, signature not verified), pulling the owner's input token under the standard one-time Permit2 approval. Test-only (`SwapAndCommitCoordinatorTest`); not wired into any deploy script — mainnet uses the canonical Permit2.
 - `src/mocks/MockUniversalRouter.sol` — test stand-in for a swap venue; `swap(tokenIn, tokenOut, amountIn, recipient)` at a settable rate, paying out of pre-funded liquidity. Test-only (`SwapAndCommitCoordinatorTest`); not wired into any deploy script — mainnet uses the real Uniswap Universal Router.

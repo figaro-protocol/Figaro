@@ -79,7 +79,7 @@ export function FieldControl({
     }
 
     // array-of-enum → MULTI-select. The spec models a SET (the values a merchant
-    // OFFERS — proximity bands, hand-off locations, accepted offset providers),
+    // OFFERS — proximity bands, hand-off locations),
     // narrowed to one at checkout by the party that fills it. Design-time
     // composition declares the whole set; stored as the array the field expects.
     if (field.type === "array" && field.items.type === "enum") {

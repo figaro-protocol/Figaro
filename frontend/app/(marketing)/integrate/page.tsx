@@ -139,7 +139,7 @@ const state = reconstruct(events);
                         Architectural example &mdash; carbon offset before settlement
                     </h3>
                     <p className="text-sm text-ink-body leading-relaxed mb-4">
-                        A delivery process runs through its normal lifecycle. Before the buyer calls <code>resolveProcess</code>, the GHG clause has fired an attestation declaring <em>X</em> grams CO<sub>2</sub>e emitted. The buyer commits a sub-order against an offset seller registered with the assembly, adding the offset purchase to the same process before closing. (The offset seller is whichever counterparty the assembly admits; integrators could register Klima DAO, Toucan, Moss, or any bonded seller.)
+                        A delivery process runs through its normal lifecycle. Before the buyer calls <code>resolveProcess</code>, the GHG clause has fired an attestation declaring <em>X</em> grams CO<sub>2</sub>e emitted. The buyer commits a sub-order against an offset seller registered with the assembly, adding the offset purchase to the same process before closing. (The offset seller is whichever counterparty the assembly admits &mdash; any bonded seller whose value-add is retirement.)
                     </p>
                     <ol className="space-y-3 text-sm text-ink-body leading-relaxed list-decimal pl-5">
                         <li><strong>UI surfaces the option.</strong> A live quote from a bonded offset seller registered against the assembly.</li>
@@ -159,7 +159,7 @@ const state = reconstruct(events);
                         <strong>Kleros, SIAC, ICC, courts.</strong> Parties&apos; agreement designates the forum; Figaro exports its evidence bundle there. Kernel does not adjudicate. Kleros wired today; other forums are off-chain referents named in the agreement. See <a href="/papers/on-chain-evidence" className="underline">On-Chain Evidence, Off-Chain Adjudication</a>.
                     </LabelledListRow>
                     <LabelledListRow label="Offsets" uppercase>
-                        <strong>Klima DAO, Toucan, Moss.</strong> Architectural slot for an offset seller that bonds as a seller. Walkthrough above.
+                        <strong>Any retirement provider that bonds as a seller.</strong> Architectural slot &mdash; the offset purchase is an ordinary bonded sub-order. Walkthrough above.
                     </LabelledListRow>
                     <LabelledListRow label="Prediction" uppercase>
                         <strong>Polymarket, Augur.</strong> Compositional target for outcome-resolution oracles that feed attestations gating a process.

@@ -247,30 +247,27 @@ The generic protocol lifecycle is:
 
 The protocol source of truth is the set of active submissions, not an off-chain summary artifact.
 
-## Offset Extension
+## Offset Procurement — Out Of Protocol Scope
 
-Carbon offset retirement is implemented as a process extension, separate from
-the disclosure graph itself: `ProcessOffsetReceipt.sol` anchors it on-chain, and
-the `figaro-offset-policy` clause carries the committed offset-provider set.
+Emissions disclosure (what happened) and offset procurement (what the buyer
+chose to do in response) are different things. The first is this
+specification's subject. The second was removed from the protocol surface
+on 2026-07-03: the deployment network (Ethereum Mainnet) has no live,
+documented on-network retirement router to compose with — Toucan's
+OffsetHelper lives on Polygon/Celo, Klima's aggregator is deprecated by its
+own docs in favor of an off-network REST API, and Moss has no retirement
+contract — and a cross-chain retirement cannot be verified from the process's
+chain without reintroducing a trusted bridge or oracle. The
+`figaro-offset-policy` clause, the `ProcessOffsetReceipt` anchor, and the
+aggregator bridge were deleted (`git log` has the artifacts).
 
-The shipped mechanism (Path A) is:
-
-1. the process accumulates attributable actual emissions across its required order-level disclosures
-2. the buyer performs the offset retirement off-protocol at an external aggregator (Klima, Toucan, etc.)
-3. the buyer calls `ProcessOffsetReceipt.record(processId, retirementTxHash, ...)` to anchor the `processId ↔ retirementTxHash` binding on-chain; the contract verifies the caller is the process's root buyer
-4. the receipt becomes part of the protocol-visible economic history (the `ReceiptRecorded` event)
-5. the GHG layer may then attach a disclosure or assurance artifact referencing the offset evidence
-
-Receipts are a separate artifact family from attestations — they carry no
-agreement clause and no merkle inclusion proof, so they are anchored by
-`ProcessOffsetReceipt`, not `AttestationCoordinator`.
-
-This keeps two different things separate:
-
-1. emissions disclosure, which states what happened
-2. offset procurement, which states what the buyer chose to do in response
-
-The first belongs in the disclosure graph. The second belongs in the process graph, anchored by its own receipt primitive, with optional disclosure artifacts attached.
+An offset can still enter a process today without protocol support: as an
+off-protocol act attested against the process (a retirement certificate or
+external transaction reference carried as attestation content), or as a
+bonded sub-order against a seller who performs the retirement. If a
+retirement router ever ships on the deployment network, a new clause naming
+its interface plus a composition handler restores first-class offsetting —
+permissionless, and foreclosing nothing.
 
 ## Invariants
 

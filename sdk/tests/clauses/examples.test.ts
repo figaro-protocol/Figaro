@@ -13,7 +13,6 @@ import arbitrationKlerosSpecRaw from "../../../clauses/figaro-arbitration-kleros
 import applicableLawSpecRaw from "../../../clauses/figaro-applicable-law.json" with { type: "json" };
 import ghgSpecRaw from "../../../clauses/figaro-ghg.json" with { type: "json" };
 import proximityPolicySpecRaw from "../../../clauses/figaro-proximity-policy.json" with { type: "json" };
-import offsetPolicySpecRaw from "../../../clauses/figaro-offset-policy.json" with { type: "json" };
 import merchantSpecRaw from "../../../clauses/figaro-merchant-process.json" with { type: "json" };
 import courierSpecRaw from "../../../clauses/figaro-courier-process.json" with { type: "json" };
 
@@ -388,34 +387,6 @@ describe("example clause specs — parse + validate sample content", () => {
             bands: ["contact-nfc"],
             nonce: "0x" + "ab".repeat(32),
         }, parsed.spec).ok).toBe(false);
-    });
-
-    // ── figaro-offset-policy-v1 ──
-
-    it("figaro-offset-policy-v1 accepts each declared provider", () => {
-        const parsed = parseClauseSpec(offsetPolicySpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        for (const provider of ["klima", "toucan", "moss", "custom"]) {
-            expect(validateContent({ providers: [provider] }, parsed.spec).ok).toBe(true);
-        }
-    });
-
-    it("figaro-offset-policy-v1 accepts multi-provider offers", () => {
-        const parsed = parseClauseSpec(offsetPolicySpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ providers: ["klima", "toucan"] }, parsed.spec).ok).toBe(true);
-    });
-
-    it("figaro-offset-policy-v1 rejects empty providers array", () => {
-        const parsed = parseClauseSpec(offsetPolicySpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ providers: [] }, parsed.spec).ok).toBe(false);
-    });
-
-    it("figaro-offset-policy-v1 rejects an unknown provider", () => {
-        const parsed = parseClauseSpec(offsetPolicySpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ providers: ["unicorn-tears"] }, parsed.spec).ok).toBe(false);
     });
 
     // ── figaro-merchant-process-v1 ──

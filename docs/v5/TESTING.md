@@ -6,8 +6,7 @@ CLAUDE.md keeps the run commands; this file is the full inventory of test files,
 
 `FigaroCoreTest`, `FigaroCoreRevertBranchTest`, `FigaroCoreEventEmissionTest`,
 `AttestationCoordinatorTest`, `ClauseRegistryTest`, `AssemblyRegistryTest`,
-`SellerRegistryTest`, `ProcessOffsetReceiptTest`,
-`PolygonOffsetForkTest`, `GasCeilingTest`, `SwapAndCommitCoordinatorTest`,
+`SellerRegistryTest`, `GasCeilingTest`, `SwapAndCommitCoordinatorTest`,
 `MockKlerosArbitratorTest`, `HalmosFigaroCore`, `fig/FigToken.t.sol`.
 
 ## Halmos (`test/`) — 1 harness, 7 properties
@@ -58,7 +57,7 @@ FigToken (`FigToken.tla` + `FigToken.cfg`): `Inv_MaxSupply`,
   preparation + stores, agreement, clause-spec source, discovery +
   catalogue pipeline, GHG disclosure, delivery/handoff attestation, dispute
   evidence, IPFS service, token conversion, geocode, and per-hook tests
-  (`useOrderCommitmentFlow`, `useOffsetRetirement`, `useTokenApproval`, …).
+  (`useOrderCommitmentFlow`, `useTokenApproval`, …).
 
 ## Playwright — devnet (e2e) + mobile (viewport) projects
 

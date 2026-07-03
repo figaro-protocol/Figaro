@@ -10,16 +10,13 @@ import "../src/ClauseRegistry.sol";
 import "../src/SellerRegistry.sol";
 import "../src/fig/FigToken.sol";
 import "../src/mocks/MockPermitToken.sol";
-import "../src/mocks/MockOffsetAggregator.sol";
 import "../src/mocks/MockERC20.sol";
 import "../src/AssemblyRegistry.sol";
-import "../src/ProcessOffsetReceipt.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @title Deploy — Full protocol stack to local Anvil
 /// @notice Deploys: FigaroCore, AttestationCoordinator, ClauseRegistry,
 ///         AssemblyRegistry, SellerRegistry, FigToken,
-///         ProcessOffsetReceipt, MockERC20, MockPermitToken, MockOffsetAggregator.
+///         MockERC20, MockPermitToken.
 ///         Clauses are populated post-deploy (populate-clauses.mjs). Mints test
 ///         tokens to Anvil accounts.
 ///
@@ -39,17 +36,6 @@ contract Deploy is Script {
 
         MockPermitToken permitToken = new MockPermitToken();
         console.log("MockPermitToken deployed at:", address(permitToken));
-
-        // ── MockOffsetAggregator ────────────────────────────────────
-        // Devnet stand-in for Klima's KlimaInfinity diamond / Toucan's
-        // OffsetHelper. Real aggregators are external contracts on Polygon
-        // (chainId 137); this mock stands at chainId 31337 (Anvil) so the
-        // bridge's four-step flow (approve → retire → attest → resolve)
-        // can be exercised end-to-end without a Polygon connection. Price
-        // is fixed at 0.01 MOCK per tonne — round number for hand-tracing
-        // bond + cost math during e2e.
-        MockOffsetAggregator offsetAggregator = new MockOffsetAggregator(IERC20(address(token)), 0.01 ether);
-        console.log("MockOffsetAggregator deployed at:", address(offsetAggregator));
 
         // ── Core ────────────────────────────────────────────────────
         FigaroCore core = new FigaroCore();
@@ -130,19 +116,6 @@ contract Deploy is Script {
         fig.renounceDeployerMint();
         console.log("Deployer mint renounced");
 
-        // ── ProcessOffsetReceipt ────────────────────────────────────
-        // Permissionless on-chain anchor for Path A carbon-offset receipts.
-        // Buyer calls record(processId, ...) after performing the off-protocol
-        // retirement at an aggregator (Klima / Toucan / mock on devnet); the
-        // contract verifies the caller is processes[processId].rootBuyer and
-        // emits ReceiptRecorded(processId, buyer, retirementTxHash, ...). No
-        // state, no admin. Audit-bundle reader queries the event log by
-        // processId. Separate primitive per separation-of-concerns doctrine —
-        // receipts are not attestations (no agreement clause, no inclusion
-        // proof) and get their own anchor.
-        ProcessOffsetReceipt offsetReceipts = new ProcessOffsetReceipt(core);
-        console.log("ProcessOffsetReceipt deployed at:", address(offsetReceipts));
-
         // ── Mint test tokens to Anvil accounts ──────────────────────
         // anvil[0..19] — all 20 accounts minted EXPLICITLY. The deployer is
         // a randomized throwaway key (deploy-local.sh), so no anvil account
@@ -189,7 +162,6 @@ contract Deploy is Script {
         console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=", address(clauses));
         console.log("  NEXT_PUBLIC_SELLER_REGISTRY=", address(sellers));
         console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=", address(assemblies));
-        console.log("  NEXT_PUBLIC_PROCESS_OFFSET_RECEIPT=", address(offsetReceipts));
         console.log("  NEXT_PUBLIC_FIG_TOKEN_ADDRESS=", address(fig));
     }
 }

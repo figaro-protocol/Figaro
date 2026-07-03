@@ -63,8 +63,10 @@ canonical across kernel + SDK + frontend (225 uses), rivals (`agreementId`/`Ref`
    `figaro-courier-process` are TWO clauses (byte-identical validator logic except `MAX_EVENT_INDEX`;
    different event vocabularies = different work lifecycles) — clause-bound, NOT party names.
 
-**Homonym (not a synonym):** `provider` = `OffsetProvider` (klima/toucan) · the wallet provider ·
-— distinct concepts, intentionally same word. (The `DutchAuction` `provider` sense retired with the contract, 2026-07-02.)
+**Homonym (not a synonym):** `provider` = the wallet provider · the arbitration/ODR provider (the
+`figaro-arbitration-<provider>` sister-clause pattern) — distinct concepts, intentionally same word.
+(The `DutchAuction` `provider` sense retired with the contract, 2026-07-02; the `OffsetProvider` sense
+with the offset apparatus, 2026-07-03.)
 
 Related: `CLAUDE.md` "Three-Tier Naming" + "Layered vocabulary"; `OPEN_WORLD.md` §1 (the projection
 distinction); `reference_layered_vocabulary` memory (the failure-mode "why").

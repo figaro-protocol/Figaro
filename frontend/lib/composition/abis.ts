@@ -5,7 +5,7 @@
  * Clause/Seller/Assembly registries + FIG) + the agnostic ERC-20 — those live
  * in `@figaro/core` and `lib/kernel/contracts.ts`, enforced by
  * `scripts/lint-core-contract-abis.sh`. Everything here is a contract the
- * protocol composes WITH (carbon-offset receipt, attestation),
+ * protocol composes WITH (attestation),
  * so its ABI carries no privilege and lives outside core.
  *
  * STEP-2 TARGET (open-world): the frontend should learn a composed contract's
@@ -39,17 +39,3 @@ export const ATTESTATION_COORDINATOR_ABI = parseAbi([
 export const EV_ATTESTATION = parseAbiItem(
     "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)",
 );
-
-
-// ── ProcessOffsetReceipt ─────────────────────────────────────────────────────
-export const PROCESS_OFFSET_RECEIPT_ABI = parseAbi([
-    "function core() view returns (address)",
-    "function record(bytes32 processId, bytes32 retirementTxHash, address aggregator, uint256 tonsRetired, address inputToken, uint256 inputAmount) external",
-    "event ReceiptRecorded(bytes32 indexed processId, address indexed buyer, bytes32 indexed retirementTxHash, address aggregator, uint256 tonsRetired, address inputToken, uint256 inputAmount)",
-    "error NotRootBuyer()",
-    "error ZeroRetirementTxHash()",
-    "error ZeroAggregator()",
-    "error ZeroTonsRetired()",
-    "error ZeroInputToken()",
-    "error ZeroInputAmount()",
-]);
