@@ -23,32 +23,18 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
+import { type Hex } from "viem";
+import { ZERO_BYTES32, clauseIdHash } from "@/lib/shared/evm";
 import {
-    decodeFunctionData,
-    type Hex,
-    type PublicClient,
-} from "viem";
-import { isEmptyHex, ZERO_BYTES32, clauseIdHash } from "@/lib/shared/evm";
-import { ATTESTATION_COORDINATOR_ABI } from "@/lib/composition/abis";
-import { DISCLOSURE_KIND } from "@/lib/composition/contracts";
-import {
+    DISCLOSURE_KIND,
     getAttestationsByProcessAndClause,
     getAttestationsByOrder,
+    parseAttestationLog,
+    type AttestationRecord,
     type IndexedAttestationLog,
 } from "@/lib/composition/indexer";
 import { getClauseSpec, listKnownClauseIds, describeAttestation } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-
-export type AttestationRecord = {
-    orderHash: string;
-    processId: string;
-    attester: string;
-    clauseId: string;
-    stage: number;
-    contentRef: string;
-    transactionHash: string | null;
-    blockNumber: number;
-};
 
 export type DisclosureTask = {
     orderHash: string;
@@ -80,58 +66,6 @@ function disclosureClauseIdHashes(): Hex[] {
     return listKnownClauseIds()
         .filter((clauseId) => getClauseSpec(clauseId)?.block?.article === "emissions")
         .map((clauseId) => clauseIdHash(clauseId, getClauseSpec(clauseId)?.version ?? 1));
-}
-
-// ── Pure utility functions ───────────────────────────────────────────────────
-
-/**
- * Fetch the `bytes content` argument the seller/buyer attestation was called
- * with. The on-chain `Attestation` event records `keccak256(content)`, not the
- * content itself, so any value-recovery (grams, addresses, structured data)
- * has to read transaction calldata.
- *
- * Returns `null` on missing tx, missing input, or a non-attestation function
- * call. Errors during fetch/decode swallow to `null` — callers that need
- * provenance should compare `keccak256(content)` against the event's contentRef.
- */
-export async function getAttestationContent(
-    client: PublicClient,
-    txHash: Hex,
-): Promise<Hex | null> {
-    try {
-        const tx = await client.getTransaction({ hash: txHash });
-        if (isEmptyHex(tx?.input)) return null;
-        const decoded = decodeFunctionData({
-            abi: ATTESTATION_COORDINATOR_ABI,
-            data: tx.input,
-        });
-        if (
-            decoded.functionName !== "attestAsSeller"
-            && decoded.functionName !== "attestAsBuyer"
-        ) {
-            return null;
-        }
-        const args = decoded.args ?? [];
-        const content = args[args.length - 1];
-        return typeof content === "string" && content.startsWith("0x")
-            ? (content as Hex)
-            : null;
-    } catch {
-        return null;
-    }
-}
-
-function parseAttestationLog(log: IndexedAttestationLog): AttestationRecord {
-    return {
-        orderHash: log.args?.orderHash ?? "",
-        processId: log.args?.processId ?? "",
-        attester: log.args?.attester ?? "",
-        clauseId: log.args?.clauseId ?? "",
-        stage: Number(log.args?.stage ?? 0),
-        contentRef: log.args?.contentRef ?? ZERO_BYTES32,
-        transactionHash: log.transactionHash ?? null,
-        blockNumber: Number(log.blockNumber ?? 0),
-    };
 }
 
 // ── Read hooks — event-sourced via cached indexer ────────────────────────────
@@ -166,20 +100,22 @@ export function useOrderDisclosureTasks(orderHash: string | undefined) {
                         typeof log.args?.clauseId === "string" && ghgHashes.has(log.args.clauseId)
                     ),
                 );
-                const result = ghgLogs.map((log) => {
-                    const rec = parseAttestationLog(log);
-                    const contentHex = rec.contentRef !== ZERO_BYTES32
-                        ? rec.contentRef as Hex : null;
-                    const task: DisclosureTask = {
-                        orderHash: rec.orderHash,
-                        stage: rec.stage,
-                        stageLabel: labelFor(rec.clauseId, rec.stage),
-                        contentRef: contentHex,
-                        attester: rec.attester,
-                        blockNumber: rec.blockNumber,
-                    };
-                    return task;
-                });
+                const result = ghgLogs
+                    .map(parseAttestationLog)
+                    .filter((rec): rec is AttestationRecord => rec !== null)
+                    .map((rec) => {
+                        const contentHex = rec.contentRef !== ZERO_BYTES32
+                            ? rec.contentRef as Hex : null;
+                        const task: DisclosureTask = {
+                            orderHash: rec.orderHash,
+                            stage: rec.stage,
+                            stageLabel: labelFor(rec.clauseId, rec.stage),
+                            contentRef: contentHex,
+                            attester: rec.attester,
+                            blockNumber: rec.blockNumber,
+                        };
+                        return task;
+                    });
                 if (!cancelled) setTasks(result);
             } catch (err) {
                 console.error("useOrderDisclosureTasks error:", err);
@@ -215,9 +151,9 @@ export function useProcessDisclosureSummary(processId: Hex | undefined) {
                     getAttestationsByProcessAndClause(publicClient, chainId, processId, h),
                 )).then((r) => r.flat());
                 if (cancelled) return;
-                const attestations = disclosureLogs.map(
-                    (log) => parseAttestationLog(log as IndexedAttestationLog),
-                );
+                const attestations = disclosureLogs
+                    .map((log) => parseAttestationLog(log as IndexedAttestationLog))
+                    .filter((rec): rec is AttestationRecord => rec !== null);
 
                 let commitmentCount = 0;
                 for (const a of attestations) {

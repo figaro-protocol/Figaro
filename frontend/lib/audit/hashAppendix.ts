@@ -22,7 +22,7 @@
 
 import { type Agreement, computeSectionLeaf } from "@figaro/core";
 import type { Order } from "@/lib/kernel/store";
-import type { AttestationRecord } from "@/lib/composition/useGHGDisclosure";
+import type { AttestationRecord } from "@/lib/composition/indexer";
 import type { ExtractedDocument } from "./types";
 import { truncateHex } from "@/lib/shared/formatHex";
 

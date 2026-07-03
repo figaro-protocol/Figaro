@@ -16,6 +16,7 @@ import type { Agreement } from "@figaro/core";
 import { getAllSellerRegistered } from "@/lib/protocol/sellerRegistryIndexer";
 import {
     getAttestationsByOrder,
+    parseAttestationLog,
     type IndexedAttestationLog,
 } from "@/lib/composition/indexer";
 import { buildAuditBundle, type AuditBundle } from "@/lib/audit/auditBundle";
@@ -26,7 +27,7 @@ import {
     projectFinancials,
     type FinancialsModel,
 } from "@/lib/audit/financialsProjection";
-import type { AttestationRecord } from "@/lib/composition/useGHGDisclosure";
+import type { AttestationRecord } from "@/lib/composition/indexer";
 import {
     buildProcessTimeline,
     type ProcessTimeline,
@@ -36,24 +37,6 @@ interface IndexedLog {
     args?: Record<string, unknown>;
     transactionHash?: string;
     blockNumber?: bigint | number;
-}
-
-export function toAttestationRecord(log: IndexedAttestationLog): AttestationRecord | null {
-    const args = log.args;
-    if (!args || !args.orderHash || !args.processId || !args.attester || !args.clauseId) {
-        return null;
-    }
-    const stage = args.stage === undefined ? 0 : Number(args.stage);
-    return {
-        orderHash: args.orderHash,
-        processId: args.processId,
-        attester: args.attester,
-        clauseId: args.clauseId,
-        stage,
-        contentRef: args.contentRef ?? "0x",
-        transactionHash: log.transactionHash ?? null,
-        blockNumber: log.blockNumber === undefined ? 0 : Number(log.blockNumber),
-    };
 }
 
 function toSellerRegistered(log: IndexedLog): SellerRegisteredEvent | null {
@@ -126,7 +109,7 @@ export async function buildAuditBundlePdfBlob(
             try {
                 const logs = await getAttestationsByOrder(publicClient, chainId, order.id);
                 attestations = (logs as IndexedAttestationLog[])
-                    .map(toAttestationRecord)
+                    .map(parseAttestationLog)
                     .filter((r): r is AttestationRecord => r !== null);
             } catch {
                 attestations = [];

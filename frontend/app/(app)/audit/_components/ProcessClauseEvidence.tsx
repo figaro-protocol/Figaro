@@ -4,13 +4,16 @@ import { useEffect, useMemo, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
-import { getAttestationsByOrder, type IndexedAttestationLog } from "@/lib/composition/indexer";
-import { toAttestationRecord } from "@/lib/audit/auditBundlePdf";
+import {
+    getAttestationsByOrder,
+    parseAttestationLog,
+    type AttestationRecord,
+    type IndexedAttestationLog,
+} from "@/lib/composition/indexer";
 import { extractClauseData } from "@/lib/audit/clauseDataExtract";
 import { extractProcessLogs } from "@/lib/audit/processLogsExtract";
 import { describeAttestation } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import type { AttestationRecord } from "@/lib/composition/useGHGDisclosure";
 
 /**
  * Clause evidence — the on-page rendering of the same `clauseData` +
@@ -55,7 +58,7 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
                 try {
                     const logs = await getAttestationsByOrder(publicClient, chainId, order.id);
                     next.set(order.id, (logs as IndexedAttestationLog[])
-                        .map(toAttestationRecord)
+                        .map(parseAttestationLog)
                         .filter((r): r is AttestationRecord => r !== null));
                 } catch {
                     next.set(order.id, []);

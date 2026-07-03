@@ -8,7 +8,7 @@
  * reverse). Reads are clause-agnostic — clauseId is DATA off the event, never
  * hardcoded.
  */
-import type { PublicClient } from "viem";
+import { decodeFunctionData, type Hex, type PublicClient } from "viem";
 import { cachedGetLogs } from "@/lib/kernel/eventCache";
 import {
     cachedGetLogsMulti,
@@ -19,8 +19,8 @@ import {
     type IndexedLog,
 } from "@/lib/kernel/indexer";
 import { getAllSellerRegistered } from "@/lib/protocol/sellerRegistryIndexer";
-import { hexEqual } from "@/lib/shared/evm";
-import { EV_ATTESTATION } from "@/lib/composition/abis";
+import { hexEqual, isEmptyHex, ZERO_BYTES32 } from "@/lib/shared/evm";
+import { ATTESTATION_COORDINATOR_ABI, EV_ATTESTATION } from "@/lib/composition/abis";
 import { COMPOSITION_CONTRACTS } from "@/lib/composition/contracts";
 
 // ── AttestationCoordinator ────────────────────────────────────────────────────
@@ -50,13 +50,101 @@ async function getAllAttestations(client: PublicClient, chainId: number): Promis
     );
 }
 
+/** One `Attestation` event flattened to its full record — the shape shared by
+ *  the disclosure hooks, the audit/evidence bundle, and (via the narrower
+ *  `RuntimeAttestation` view) the semantic model. clauseId is DATA off the
+ *  event, never hardcoded. */
+export type AttestationRecord = {
+    orderHash: string;
+    processId: string;
+    attester: string;
+    clauseId: string;
+    stage: number;
+    contentRef: string;
+    transactionHash: string | null;
+    blockNumber: number;
+};
+
+/** THE Attestation-log → record reducer — the one parse every consumer shares
+ *  (semantic model, disclosure hooks, evidence/audit bundle; the juror path
+ *  stays React-free). Returns null when the log lacks its identity args
+ *  (garbage or still-pending log) — callers filter. */
+export function parseAttestationLog(log: IndexedAttestationLog): AttestationRecord | null {
+    const args = log.args;
+    if (!args?.orderHash || !args.processId || !args.attester || !args.clauseId) return null;
+    return {
+        orderHash: args.orderHash,
+        processId: args.processId,
+        attester: args.attester,
+        clauseId: args.clauseId,
+        stage: args.stage === undefined ? 0 : Number(args.stage),
+        contentRef: args.contentRef ?? ZERO_BYTES32,
+        transactionHash: log.transactionHash ?? null,
+        blockNumber: log.blockNumber === undefined || log.blockNumber === null ? 0 : Number(log.blockNumber),
+    };
+}
+
+// ── GHG Disclosure stage encoding (AttestationCoordinator `stage` arg) ────────
+//   0 Commitment · 1 Inventory · 2 Restatement · 3 Verification
+//   (ISO 14064-1 / GHG Protocol). A composed-contract calling convention, not core.
+/** @public — consumed by the disclosure hooks (`useGHGDisclosure`, knip-ignored
+ *  pending their restored UI: the K2 panel registry + the measured-grams build). */
+export const DISCLOSURE_KIND = {
+    commitment: 0,
+    inventory: 1,
+    restatement: 2,
+    verification: 3,
+} as const;
+
+/**
+ * Fetch the `bytes content` argument the seller/buyer attestation was called
+ * with. The on-chain `Attestation` event records `keccak256(content)`, not the
+ * content itself, so any value-recovery (grams, addresses, structured data)
+ * has to read transaction calldata.
+ *
+ * Returns `null` on missing tx, missing input, or a non-attestation function
+ * call. Errors during fetch/decode swallow to `null` — callers that need
+ * provenance should compare `keccak256(content)` against the event's contentRef.
+ *
+ * @public — pending consumer: the measured-grams channel (attestation content
+ * against the committed ghg section) recovers grams through this.
+ */
+export async function getAttestationContent(
+    client: PublicClient,
+    txHash: Hex,
+): Promise<Hex | null> {
+    try {
+        const tx = await client.getTransaction({ hash: txHash });
+        if (isEmptyHex(tx?.input)) return null;
+        const decoded = decodeFunctionData({
+            abi: ATTESTATION_COORDINATOR_ABI,
+            data: tx.input,
+        });
+        if (
+            decoded.functionName !== "attestAsSeller"
+            && decoded.functionName !== "attestAsBuyer"
+        ) {
+            return null;
+        }
+        const args = decoded.args ?? [];
+        const content = args[args.length - 1];
+        return typeof content === "string" && content.startsWith("0x")
+            ? (content as Hex)
+            : null;
+    } catch {
+        return null;
+    }
+}
+
 /** Attestation logs filtered by orderHash. */
 export async function getAttestationsByOrder(client: PublicClient, chainId: number, orderHash: string) {
     const all = await getAllAttestations(client, chainId);
     return all.filter((log) => getStringArg(log, "orderHash") === orderHash);
 }
 
-/** Attestation logs filtered by processId AND clauseId. */
+/** Attestation logs filtered by processId AND clauseId.
+ *  @public — consumed by the disclosure hooks (`useGHGDisclosure`, knip-ignored
+ *  pending their restored UI: the K2 panel registry + the measured-grams build). */
 export async function getAttestationsByProcessAndClause(
     client: PublicClient,
     chainId: number,
@@ -91,16 +179,11 @@ export async function getAttestationsByProcess(
     const all = await getAllAttestations(client, chainId);
     return all
         .filter((log) => getStringArg(log, "processId") === processId)
-        .map((log) => {
-            const args = (log as { args?: Record<string, unknown> }).args ?? {};
-            return {
-                clauseId: getStringArg(log, "clauseId") ?? "",
-                orderHash: getStringArg(log, "orderHash") ?? "",
-                stage: Number(args.stage ?? 0),
-                attester: getStringArg(log, "attester") ?? "",
-                blockNumber: Number((log as { blockNumber?: unknown }).blockNumber ?? 0),
-            };
-        })
+        .map((log) => parseAttestationLog(log as IndexedAttestationLog))
+        .filter((r): r is AttestationRecord => r !== null)
+        .map(({ clauseId, orderHash, stage, attester, blockNumber }) => ({
+            clauseId, orderHash, stage, attester, blockNumber,
+        }))
         .sort((a, b) => a.blockNumber - b.blockNumber);
 }
 

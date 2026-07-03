@@ -25,13 +25,3 @@ function resolveAddress(addr: `0x${string}`): `0x${string}` | null {
 export function getAttestationCoordinator(): `0x${string}` | null {
     return resolveAddress(COMPOSITION_CONTRACTS.attestationCoordinator);
 }
-
-// ── GHG Disclosure stage encoding (AttestationCoordinator `stage` arg) ────────
-//   0 Commitment · 1 Inventory · 2 Restatement · 3 Verification
-//   (ISO 14064-1 / GHG Protocol). A composed-contract calling convention, not core.
-export const DISCLOSURE_KIND = {
-    commitment: 0,
-    inventory: 1,
-    restatement: 2,
-    verification: 3,
-} as const;
