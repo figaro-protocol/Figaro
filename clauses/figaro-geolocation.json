@@ -26,6 +26,9 @@
         }
     ],
     "block": {
-        "article": "coordination"
+        "article": "coordination",
+        "interaction": {
+            "interface": "ecdh-address-v1"
+        }
     }
 }

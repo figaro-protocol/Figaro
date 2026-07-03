@@ -56,6 +56,7 @@ import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, parseAbi, parseEther, type Hex } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
 import {
+    confirmAgreementPreviews,
     discoverAnchoredAssemblies,
     latestSellerProfileURI,
     readLocalDeploymentConfig,
@@ -274,15 +275,9 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         // The buyer signs ALL THREE orders through the SAME pre-sign gate every
         // order uses (no checkout bypass): the walk signs + relays each sub-order
         // to its bound seller first, the root last (its relay is the share panel).
-        for (const leg of ['first sub-order', 'second sub-order', 'root order']) {
-            const modal = page.getByTestId('agreement-preview-modal');
-            await modal.waitFor({ state: 'visible', timeout: 60000 });
-            await page.getByTestId('preview-confirm').click();
-            await modal.waitFor({ state: 'hidden', timeout: 30000 }).catch(() => {
-                throw new Error(`the ${leg} confirm did not close the preview gate`);
-            });
-        }
-        await page.getByTestId('buyer-share-panel').waitFor({ timeout: 60000 });
+        // One confirm per distinct displayed agreementHash — modal instances can
+        // replace each other faster than a hidden-state observation.
+        await confirmAgreementPreviews(page, 3);
         await page.getByTestId('send-commitment-xmtp').click();
         await expect(page.getByTestId('commitment-xmtp-status')).toBeVisible({ timeout: 30000 });
 

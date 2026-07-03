@@ -10,8 +10,9 @@
  *
  *   author   → the delivery scenario is WRITTEN on the designer canvas (a
  *              root order composing merchant-process + modalities=delivery;
- *              a drawn courier sub-order composing courier-process + the
- *              hand-off clause, face-to-face — drawn, never spawned) and
+ *              a drawn courier sub-order composing courier-process, the
+ *              hand-off clause (face-to-face), and geolocation with its
+ *              public geohash cells — drawn, never spawned) and
  *              published to the AssemblyRegistry. Idempotent: the
  *              composition is content-addressed, so a re-run discovers the
  *              anchored assembly by SHAPE and consumes it.
@@ -38,7 +39,13 @@
  *              interaction (block.interaction: qr-challenge-v1) mounts the
  *              QR order-identity panel on the courier's page — presented
  *              payload verified round-trip; no panel on the merchant's
- *              order, which declares none.
+ *              order, which declares none. The geolocation clause's declared
+ *              interaction (ecdh-address-v1) runs the PRIVATE-ADDRESS
+ *              ceremony: the courier requests, the buyer answers with the
+ *              ECDH-encrypted addressee block whose fingerprint anchors
+ *              on-chain (buyer attestation), the courier decrypts and the
+ *              panel verifies against the anchor — the chain never learns
+ *              the plaintext.
  *   resolve  → the buyer resolves ONCE: merchant net +1, courier net +1,
  *              buyer net −2, escrow back to baseline.
  *   audit    → the full evidentiary record, permissionless-clause grade:
@@ -68,12 +75,14 @@ import { createPublicClient, defineChain, http, parseAbi, parseEther, type Hex }
 import { mnemonicToAccount } from 'viem/accounts';
 import {
     assertPinnedInIpfs,
+    confirmAgreementPreviews,
     discoverAnchoredAssemblies,
     readLocalDeploymentConfig,
     sellerProfileBindings,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
+import { ATTESTATION_COORDINATOR_ABI } from '@/lib/composition/abis';
 import { calculateBonds, computeSectionLeaf, type AgreementSection } from '@figaro/core';
 import type { Page } from '@playwright/test';
 
@@ -95,6 +104,23 @@ const COURIER_CLAUSE = 'figaro-courier-process';
 const MERCHANT_CLAUSE = 'figaro-merchant-process';
 const MODALITIES_CLAUSE = 'figaro-modalities';
 const HANDOFF_CLAUSE = 'figaro-handoff';
+const GEO_CLAUSE = 'figaro-geolocation';
+
+// The committed PUBLIC half of where the delivery goes — coarse cells the
+// courier bonds on (the device-location affordance fills the origin from
+// these Playwright-set coordinates at authoring time).
+const DEVICE_LAT = 37.7749;
+const DEVICE_LON = -122.4194;
+const DESTINATION_GEOHASH = '9q8yyk8yu';
+
+// The PRIVATE half — the addressee block the buyer shares over the ECDH
+// channel. Never touches the chain in cleartext.
+const ADDRESSEE = {
+    name: 'Ada Liana',
+    street: '12 Rue du Marché',
+    unit: '3rd floor, door B',
+    instructions: 'Ring twice.',
+};
 
 // The two transfer ladders, stage labels straight from the registered specs
 // (`clauses/figaro-{merchant,courier}-process.json` valueLabels) — the story
@@ -121,7 +147,9 @@ async function findDeliveryAssembly(): Promise<string | undefined> {
         (t) => t.orders.length === 2
             && t.orders.some((o) => {
                 const clauses = Object.keys(o.clauses ?? {});
-                return clauses.includes(COURIER_CLAUSE) && clauses.includes(HANDOFF_CLAUSE);
+                return clauses.includes(COURIER_CLAUSE)
+                    && clauses.includes(HANDOFF_CLAUSE)
+                    && clauses.includes(GEO_CLAUSE);
             }),
     )?.slug;
 }
@@ -138,6 +166,11 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const balanceOf = (who: Hex) =>
             publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
+
+        // The device-location affordance (geolocation authoring + any runtime
+        // fill) reads the browser Geolocation API — pin the coordinates.
+        await page.context().grantPermissions(['geolocation']);
+        await page.context().setGeolocation({ latitude: DEVICE_LAT, longitude: DEVICE_LON });
 
         // ── AUTHOR (idempotent): write the scenario on the designer canvas.
         //    The composition is content-addressed (identical composition →
@@ -190,6 +223,15 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             await page.getByTestId(`drawer-registry-clause-${COURIER_CLAUSE}`).check();
             await page.getByTestId(`drawer-registry-clause-${HANDOFF_CLAUSE}`).check();
             await page.getByTestId(`drawer-field-${HANDOFF_CLAUSE}-handoff-face-to-face`).check();
+            // The geolocation clause: the PUBLIC half of where the delivery
+            // goes — origin filled from the DEVICE location (the format-declared
+            // affordance), destination typed. The clause also declares the
+            // private-address interaction the runtime exercises below.
+            await page.getByTestId(`drawer-registry-clause-${GEO_CLAUSE}`).check();
+            await page.getByTestId(`drawer-field-${GEO_CLAUSE}-originGeohash-device`).click();
+            await expect(page.getByTestId(`drawer-field-${GEO_CLAUSE}-originGeohash`))
+                .toHaveValue(/^[0-9b-hj-km-np-z]+$/, { timeout: 10000 });
+            await page.getByTestId(`drawer-field-${GEO_CLAUSE}-destinationGeohash`).fill(DESTINATION_GEOHASH);
 
             // Editorial identity + publish (pin template → AssemblyRegistered).
             await page.getByTestId('designer-name-input').fill('Local delivery');
@@ -292,15 +334,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         // The buyer signs BOTH orders through the same pre-sign gate every
         // order uses: the courier sub-order first (signed + auto-relayed to
         // the courier), the root last (relayed from the share panel).
-        for (const leg of ['courier sub-order', 'root order']) {
-            const modal = page.getByTestId('agreement-preview-modal');
-            await modal.waitFor({ state: 'visible', timeout: 60000 });
-            await page.getByTestId('preview-confirm').click();
-            await modal.waitFor({ state: 'hidden', timeout: 30000 }).catch(() => {
-                throw new Error(`the ${leg} confirm did not close the preview gate`);
-            });
-        }
-        await page.getByTestId('buyer-share-panel').waitFor({ timeout: 60000 });
+        await confirmAgreementPreviews(page, 2);
         await page.getByTestId('send-commitment-xmtp').click();
         await expect(page.getByTestId('commitment-xmtp-status')).toBeVisible({ timeout: 30000 });
 
@@ -419,6 +453,70 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             'a scanned matching payload verifies against this order',
         ).toBeVisible({ timeout: 10000 });
 
+        // ── THE PRIVATE-ADDRESS CEREMONY (block.interaction: ecdh-address-v1
+        //    on the geolocation clause): the agreement committed only the
+        //    geohash cells; the door-level ADDRESSEE BLOCK travels the ECDH
+        //    channel, and its fingerprint anchors on-chain as a buyer
+        //    attestation — the chain never learns the plaintext. Timing
+        //    mirrors courier practice: cell before accept (bonded on), exact
+        //    door after. ──
+        // The courier (still on its order page) requests the address.
+        await expect(
+            page.getByTestId('interaction-address-panel'),
+            "the geolocation clause's declared interaction mounts on the courier's page",
+        ).toBeVisible({ timeout: 15000 });
+        await page.getByTestId('interaction-address-request').click();
+
+        // The buyer answers: fills the addressee block, sends it encrypted,
+        // and the anchor lands on-chain (poll the Attestation event —
+        // chain truth, out-of-band).
+        const attestationsBefore = (await publicClient.getContractEvents({
+            address: config.attestationCoordinator as Hex, abi: ATTESTATION_COORDINATOR_ABI,
+            eventName: 'Attestation', args: { attester: BUYER }, fromBlock: 0n,
+        })).length;
+        await gotoAsWallet(page, BUYER, `/orders/${processId}?e2e=devnet`);
+        await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        await page.getByTestId('interaction-address-name').waitFor({ state: 'visible', timeout: 30000 });
+        await page.getByTestId('interaction-address-name').fill(ADDRESSEE.name);
+        await page.getByTestId('interaction-address-street').fill(ADDRESSEE.street);
+        await page.getByTestId('interaction-address-unit').fill(ADDRESSEE.unit);
+        await page.getByTestId('interaction-address-instructions').fill(ADDRESSEE.instructions);
+        await page.getByTestId('interaction-address-send').click();
+        await expect(
+            page.getByTestId('interaction-address-sent'),
+            'the buyer shared the address privately + anchored its fingerprint',
+        ).toBeVisible({ timeout: 60000 });
+        await expect.poll(async () => (await publicClient.getContractEvents({
+            address: config.attestationCoordinator as Hex, abi: ATTESTATION_COORDINATOR_ABI,
+            eventName: 'Attestation', args: { attester: BUYER }, fromBlock: 0n,
+        })).length, { timeout: 60000, message: "the buyer's anchor attestation lands on-chain" })
+            .toBe(attestationsBefore + 1);
+        const anchorEvents = await publicClient.getContractEvents({
+            address: config.attestationCoordinator as Hex, abi: ATTESTATION_COORDINATOR_ABI,
+            eventName: 'Attestation', args: { attester: BUYER }, fromBlock: 0n,
+        });
+        expect(
+            (anchorEvents.at(-1)!.args as { orderHash?: string }).orderHash?.toLowerCase(),
+            "the anchor binds the courier order's geolocation section",
+        ).toBe(courierEvent.args.orderHash!.toLowerCase());
+
+        // The courier decrypts and the panel verifies the received blob
+        // against the on-chain anchor — readable address, tamper-evident.
+        await gotoAsWallet(page, COURIER, `/orders/${processId}?e2e=devnet`);
+        await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        const addressDetail = page.getByTestId('interaction-address-detail');
+        await addressDetail.waitFor({ state: 'visible', timeout: 30000 });
+        await expect(addressDetail, 'the courier reads the decrypted addressee block')
+            .toContainText(ADDRESSEE.street);
+        await expect(addressDetail).toContainText(ADDRESSEE.name);
+        await expect(addressDetail).toContainText(ADDRESSEE.unit);
+        await expect(
+            page.getByTestId('interaction-address-verified'),
+            'the decrypted detail matches the on-chain anchor',
+        ).toBeVisible({ timeout: 30000 });
+
         // ── RESOLVE: buyer dominance — one signature settles both orders. ──
         const resolvedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
@@ -466,6 +564,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             'Order topology',
             'Modalities',
             'Hand-off point',
+            'Geolocation',
             'Merchant internal process events',
             'Courier internal process events',
             ...MERCHANT_STAGES,
@@ -499,7 +598,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         let deliverySections: AgreementSection[] = [];
         for (const [event, label, expectedLeaves] of [
             [merchantEvent, 'meal', ['figaro-commerce', 'figaro-topology', MERCHANT_CLAUSE, MODALITIES_CLAUSE]],
-            [courierEvent, 'delivery', ['figaro-commerce', 'figaro-topology', COURIER_CLAUSE, HANDOFF_CLAUSE]],
+            [courierEvent, 'delivery', ['figaro-commerce', 'figaro-topology', COURIER_CLAUSE, HANDOFF_CLAUSE, GEO_CLAUSE]],
         ] as const) {
             const agreementHash = event.args.agreementHash as `0x${string}`;
             const agreementUri = await page.evaluate(

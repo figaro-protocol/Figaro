@@ -97,9 +97,15 @@ Y", not as an open-ended build.)
   input component; tenant: `geohash` → `GeohashFieldInput`, device-location
   assisted) and `components/core/interactionSurfaces.tsx`
   (`block.interaction.interface` — the party↔party runtime interaction
-  standard, the sibling of `block.composes` — → order-page surface via
-  `OrderInteractionSurfaces`; tenant: `qr-challenge-v1` → `QrChallengePanel`,
-  order identity over the visual channel at a hand-off).
+  standard, the sibling of `block.composes` — → order-page surfaces via
+  `OrderInteractionSurfaces`, mounted on every order the wallet is a party
+  to; tenants: `qr-challenge-v1` → `QrChallengePanel` (order identity over
+  the visual channel at a hand-off) and `ecdh-address-v1` →
+  `AddressDetailPanel` (the private-address ceremony on the geolocation
+  clause: seller requests, buyer answers with the ECDH-encrypted addressee
+  block over the coordination channel — `lib/handoff/addressDetail.ts` —
+  its keccak anchored on-chain as a buyer attestation; the chain never
+  learns the plaintext)).
 - **Clause-composition UI** — `app/(builders)/builders/designer/_components/AgreementDrawer.tsx`
   (reads ClauseRegistry live; grouping word is `block.article`).
 - **On-chain write flow** — `lib/seller/usePublishSellerProfile.ts`

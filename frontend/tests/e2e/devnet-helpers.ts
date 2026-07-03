@@ -420,6 +420,37 @@ export async function sellerProfileBindings(
     }
 }
 
+/** Confirm the buyer's agreement-preview gate once per ORDER until the share
+ *  panel (the root's relay surface) appears. Every modal shares one testid
+ *  and the next can replace the last faster than a hidden-state observation
+ *  (the multi-order walk signs sub-orders back to back), so each confirm is
+ *  keyed on the DISPLAYED agreementHash — one confirm per distinct hash. */
+export async function confirmAgreementPreviews(
+    page: import('@playwright/test').Page,
+    expectedOrders: number,
+): Promise<void> {
+    const confirmed = new Set<string>();
+    for (let i = 0; i < 600; i++) {
+        if (await page.getByTestId('buyer-share-panel').isVisible().catch(() => false)) break;
+        const modal = page.getByTestId('agreement-preview-modal');
+        if (i === 0) await modal.waitFor({ state: 'visible', timeout: 60000 });
+        // Short-timeout read: between modals (or after the last one) there is
+        // nothing to read — an unbounded locator read would block the loop
+        // right past the share panel's arrival.
+        const hash = (await page.getByTestId('preview-agreement-hash')
+            .textContent({ timeout: 500 })
+            .catch(() => null))?.trim();
+        if (!hash || confirmed.has(hash)) continue; // same modal (or between modals) — poll on
+        expect(confirmed.size, 'the confirm gate never shows more modals than orders')
+            .toBeLessThan(expectedOrders);
+        confirmed.add(hash);
+        await page.getByTestId('preview-confirm').click();
+    }
+    await page.getByTestId('buyer-share-panel').waitFor({ timeout: 60000 });
+    expect(confirmed.size, `the buyer confirmed all ${expectedOrders} orders through the gate`)
+        .toBe(expectedOrders);
+}
+
 /** An anchored assembly with its template's order list resolved — enough for a
  *  spec to select an assembly by SHAPE (order count, clause ids) instead of a
  *  hardcoded slug. */

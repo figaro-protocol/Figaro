@@ -148,18 +148,26 @@ export function OrderTimelineView({ processId }: Props) {
                 />
             )}
 
-            {/* Declared interaction surfaces — for every clause on MY order
-                whose spec declares a block.interaction this frontend has a
-                registered surface for (e.g. a QR order-identity challenge at
-                a physical hand-off). Names no clause; the dispatch key is
-                the spec's own declaration. */}
-            {role !== "spectator" && myOrder && (
-                <OrderInteractionSurfaces
-                    processId={processId}
-                    orderHash={myOrder.orderId}
-                    agreementHash={myOrder.agreementHash}
-                />
-            )}
+            {/* Declared interaction surfaces — for every clause, on every order
+                this wallet is a PARTY to, whose spec declares a
+                block.interaction this frontend has a registered surface for
+                (a QR order-identity challenge at a hand-off, the private
+                address ceremony on a geolocation-committed order). The buyer
+                is a party to every order (kernel star shape); a seller to its
+                own. Names no clause; the dispatch key is the spec's own
+                declaration. */}
+            {role !== "spectator" && processModel.orders
+                .filter((order) => hexEqual(address, order.buyer) || hexEqual(address, order.seller))
+                .map((order) => (
+                    <OrderInteractionSurfaces
+                        key={order.orderId}
+                        processId={processId}
+                        orderHash={order.orderId}
+                        agreementHash={order.agreementHash}
+                        buyer={order.buyer}
+                        seller={order.seller}
+                    />
+                ))}
 
             {/* What you can do — every action the builder derived from the
                 agreement's clauses + attestation state. One execution path. */}

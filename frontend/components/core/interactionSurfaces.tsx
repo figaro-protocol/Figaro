@@ -19,19 +19,25 @@
  */
 import type { ComponentType } from "react";
 import { QrChallengePanel } from "@/components/core/QrChallengePanel";
+import { AddressDetailPanel } from "@/components/core/AddressDetailPanel";
 
 /** The contract an interaction surface satisfies: the order it mounts on,
- *  identified — nothing clause-specific crosses this boundary. */
+ *  identified — nothing clause-specific crosses this boundary. The order's
+ *  two parties are part of the order's identity (the kernel star shape):
+ *  a ceremony surface derives its own role from the connected wallet. */
 export interface InteractionSurfaceProps {
     processId: string;
     orderHash: string;
     /** The clause that declared the interaction — for display attribution
-     *  (title lookup), never for dispatch. */
+     *  and section anchoring, never for dispatch. */
     clauseId: string;
+    buyer: `0x${string}`;
+    seller: `0x${string}`;
 }
 
 const REGISTRY = new Map<string, ComponentType<InteractionSurfaceProps>>([
     ["qr-challenge-v1", QrChallengePanel],
+    ["ecdh-address-v1", AddressDetailPanel],
 ]);
 
 /** Register a surface for a declared interaction interface. Last write wins —

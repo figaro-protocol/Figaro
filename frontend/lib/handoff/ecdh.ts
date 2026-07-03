@@ -27,24 +27,34 @@ import { bytesToHex, hexToBytes } from "@/lib/shared/evm";
 
 
 /**
- * Derive a 32-byte shared secret via secp256k1 ECDH.
+ * Derive a 32-byte shared secret via secp256k1 ECDH — DIRECTION MATTERS.
  *
- * Call from either side:
- *   - Buyer:    deriveSharedSecret(buyerEphPrivHex, fulfillerEphPubHex)
- *   - Fulfiller: deriveSharedSecret(fulfillerEphPrivHex, buyerEphPubHex)
- *
- * Both produce the same 32-byte hex string.
- *
- * Internally uses eciesjs encapsulate/decapsulate which applies HKDF-SHA256
- * over the raw ECDH point, producing a uniformly random 256-bit key.
+ * eciesjs folds the SENDER's public key into the HKDF-SHA256 input, so the
+ * two sides call different halves of the pair (the file header's protocol):
+ *   - the SENDER (who will encrypt) encapsulates: own priv + receiver's pub
+ *   - the RECEIVER decapsulates: sender's pub + own priv
+ * Both produce the same 32-byte hex string. (A prior revision called
+ * `encapsulate` from both sides and claimed symmetry — the secrets never
+ * matched; caught by the first round-trip test when the lib gained its
+ * first consumer.)
  */
-function deriveSharedSecret(
+export function deriveSharedSecretAsSender(
     myPrivateKeyHex: string,
-    theirPublicKeyHex: string,
+    receiverPublicKeyHex: string,
 ): string {
     const priv = new PrivateKey(hexToBytes(myPrivateKeyHex));
-    const pub = new PublicKey(hexToBytes(theirPublicKeyHex));
+    const pub = new PublicKey(hexToBytes(receiverPublicKeyHex));
     const secret = priv.encapsulate(pub);
+    return bytesToHex(new Uint8Array(secret));
+}
+
+export function deriveSharedSecretAsReceiver(
+    senderPublicKeyHex: string,
+    myPrivateKeyHex: string,
+): string {
+    const priv = new PrivateKey(hexToBytes(myPrivateKeyHex));
+    const pub = new PublicKey(hexToBytes(senderPublicKeyHex));
+    const secret = pub.decapsulate(priv);
     return bytesToHex(new Uint8Array(secret));
 }
 
@@ -72,12 +82,13 @@ function b64UrlDecode(b64: string): Uint8Array {
 }
 
 /**
- * Wrap (encrypt) an AES handoff key using the ECDH-derived shared secret.
+ * Encrypt any string payload (an AES key, an addressee block, …) with the
+ * ECDH-derived shared secret.
  *
  * Produces a base64url blob: 12-byte IV || AES-256-GCM ciphertext.
  * Safe to transmit over any public channel.
  */
-async function wrapHandoffKey(
+export async function wrapWithSharedSecret(
     keyB64: string,
     sharedSecretHex: string,
 ): Promise<string> {
@@ -102,12 +113,12 @@ async function wrapHandoffKey(
 }
 
 /**
- * Unwrap (decrypt) an AES handoff key using the ECDH-derived shared secret.
+ * Decrypt a payload produced by `wrapWithSharedSecret`.
  *
- * Input is the base64url blob produced by `wrapHandoffKey`.
+ * Input is the base64url blob produced by `wrapWithSharedSecret`.
  * Returns the original base64url AES key.
  */
-async function unwrapHandoffKey(
+export async function unwrapWithSharedSecret(
     wrappedB64: string,
     sharedSecretHex: string,
 ): Promise<string> {
@@ -156,7 +167,7 @@ function ecdhStoreKey(address: string, orderId: string): string {
  * Idempotent: if a keypair already exists for this address+order, it is
  * returned. Otherwise a fresh keypair is generated and persisted.
  */
-function getOrCreateFulfillerEcdhKeypair(
+export function getOrCreateOrderEcdhKeypair(
     address: string,
     orderId: string,
 ): EphemeralKeypair {
@@ -171,7 +182,7 @@ function getOrCreateFulfillerEcdhKeypair(
 }
 
 /** Retrieve a previously stored fulfiller ECDH keypair (null if missing). */
-function getFulfillerEcdhKeypair(
+export function getOrderEcdhKeypair(
     address: string,
     orderId: string,
 ): EphemeralKeypair | null {
@@ -180,7 +191,7 @@ function getFulfillerEcdhKeypair(
 }
 
 /** Remove a fulfiller ECDH keypair (after handoff is complete). */
-export function removeFulfillerEcdhKeypair(
+export function removeOrderEcdhKeypair(
     address: string,
     orderId: string,
 ): void {

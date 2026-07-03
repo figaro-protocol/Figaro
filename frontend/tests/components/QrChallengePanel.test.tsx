@@ -27,7 +27,10 @@ describe("interactionSurfaces registry", () => {
 });
 
 describe("QrChallengePanel", () => {
-    const props = { processId: PROCESS_ID, orderHash: ORDER_HASH, clauseId: "figaro-handoff" };
+    const props = {
+        processId: PROCESS_ID, orderHash: ORDER_HASH, clauseId: "figaro-handoff",
+        buyer: ("0x" + "55".repeat(20)) as `0x${string}`, seller: ("0x" + "66".repeat(20)) as `0x${string}`,
+    };
 
     it("presents the order's public identity (payload + QR image)", async () => {
         render(<QrChallengePanel {...props} />);

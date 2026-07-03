@@ -123,10 +123,11 @@ export async function getAttestationContent(
     }
 }
 
-/** Attestation logs filtered by orderHash. */
+/** Attestation logs filtered by orderHash (hex case never matters). */
 export async function getAttestationsByOrder(client: PublicClient, chainId: number, orderHash: string) {
     const all = await getAllAttestations(client, chainId);
-    return all.filter((log) => getStringArg(log, "orderHash") === orderHash);
+    const wanted = orderHash.toLowerCase();
+    return all.filter((log) => getStringArg(log, "orderHash")?.toLowerCase() === wanted);
 }
 
 /** A process attestation flattened to the fields the runtime model needs:

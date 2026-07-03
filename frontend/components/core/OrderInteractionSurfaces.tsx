@@ -19,10 +19,14 @@ export function OrderInteractionSurfaces({
     processId,
     orderHash,
     agreementHash,
+    buyer,
+    seller,
 }: {
     processId: string;
     orderHash: string;
     agreementHash: `0x${string}`;
+    buyer: `0x${string}`;
+    seller: `0x${string}`;
 }) {
     const agreements = useProcessAgreements([agreementHash]);
     const agreement = agreements.get(agreementHash);
@@ -45,6 +49,8 @@ export function OrderInteractionSurfaces({
                     processId={processId}
                     orderHash={orderHash}
                     clauseId={clauseId}
+                    buyer={buyer}
+                    seller={seller}
                 />
             ))}
         </div>

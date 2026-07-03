@@ -229,11 +229,15 @@ export function createMockChannel(ownerAddress: string): CoordinationChannel {
         },
 
         onEcdhPubkey(orderId, callback) {
-            const existing = readPersistedMessages().find(
+            // Replay EVERY persisted message — both parties send a pubkey on
+            // the same orderId (a two-message exchange); replaying only the
+            // first starves a late subscriber of the counterparty's key.
+            // Mirrors XMTP's full-DM-history delivery.
+            const existing = readPersistedMessages().filter(
                 (message): message is StoredEcdhPubkeyMessage => isStoredEcdhPubkeyMessage(message) && message.orderId === orderId,
             );
-            if (existing) {
-                queueMicrotask(() => callback(existing.pubKeyHex, existing.senderIdentity));
+            for (const message of existing) {
+                queueMicrotask(() => callback(message.pubKeyHex, message.senderIdentity));
             }
             return subscribe("ECDH_PUBKEY", (pk, s) => callback(pk as string, s as string), orderId);
         },
@@ -252,11 +256,12 @@ export function createMockChannel(ownerAddress: string): CoordinationChannel {
         },
 
         onWrappedKey(orderId, callback) {
-            const existing = readPersistedMessages().find(
+            // Replay EVERY persisted message (see onEcdhPubkey).
+            const existing = readPersistedMessages().filter(
                 (message): message is StoredEcdhWrappedKeyMessage => isStoredEcdhWrappedKeyMessage(message) && message.orderId === orderId,
             );
-            if (existing) {
-                queueMicrotask(() => callback(existing.wrappedKeyB64, existing.senderIdentity));
+            for (const message of existing) {
+                queueMicrotask(() => callback(message.wrappedKeyB64, message.senderIdentity));
             }
             return subscribe("ECDH_WRAPPED_KEY", (wk, s) => callback(wk as string, s as string), orderId);
         },

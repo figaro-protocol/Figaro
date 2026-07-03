@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const decodeEventLogMock = vi.fn();
-const removeFulfillerEcdhKeypairMock = vi.fn();
+const removeOrderEcdhKeypairMock = vi.fn();
 
 vi.mock("viem", async (importOriginal) => {
     const actual = await importOriginal<typeof import("viem")>();
@@ -12,7 +12,7 @@ vi.mock("viem", async (importOriginal) => {
 });
 
 vi.mock("@/lib/handoff/ecdh", () => ({
-    removeFulfillerEcdhKeypair: (...args: unknown[]) => removeFulfillerEcdhKeypairMock(...args),
+    removeOrderEcdhKeypair: (...args: unknown[]) => removeOrderEcdhKeypairMock(...args),
 }));
 
 import {
@@ -29,7 +29,7 @@ describe("handoffPersistenceService", () => {
         sessionStorage.clear();
         localStorage.clear();
         decodeEventLogMock.mockReset();
-        removeFulfillerEcdhKeypairMock.mockReset();
+        removeOrderEcdhKeypairMock.mockReset();
         vi.restoreAllMocks();
     });
 
@@ -176,8 +176,8 @@ describe("handoffPersistenceService", () => {
         expect(
             DEFAULT_HANDOFF_PERSISTENCE_SERVICE.getHandoffKey("0xabc", "process-keep", "order-c"),
         ).toEqual(expect.objectContaining({ keyB64: "key-c" }));
-        expect(removeFulfillerEcdhKeypairMock).toHaveBeenCalledWith("0xabc", "order-a");
-        expect(removeFulfillerEcdhKeypairMock).toHaveBeenCalledWith("0xabc", "order-b");
+        expect(removeOrderEcdhKeypairMock).toHaveBeenCalledWith("0xabc", "order-a");
+        expect(removeOrderEcdhKeypairMock).toHaveBeenCalledWith("0xabc", "order-b");
     });
 
     it("queues deferred purges and sweeps them when due", () => {
