@@ -16,6 +16,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { usePublicClient, useWatchContractEvent } from "wagmi";
+import type { WatchContractEventOnLogsParameter } from "viem";
 import { CORE_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { Order, OrderState, useOrderStore } from "@/lib/kernel/store";
 import {
@@ -172,22 +173,33 @@ export function useProcessOrders(processId: string | null): Order[] {
     const realEnabled = !!contractAddr && !!processId;
     const realAddr = realEnabled ? (contractAddr as `0x${string}`) : undefined;
 
+    // Reference-stable onLogs: wagmi keys its watcher effect on the callback,
+    // so an inline arrow recreates the event filter every render and drops
+    // events that land between recreations (see walletProcessQueries.ts).
+    const onCommittedLogs = useCallback(
+        (logs: WatchContractEventOnLogsParameter<typeof CORE_ABI, "OrderCommitted">) => logs.forEach((l) =>
+            applyEvent("OrderCommitted", l.args as unknown as OrderCommittedArgs, typeof l.blockNumber === "bigint" ? Number(l.blockNumber) : undefined)
+        ),
+        [applyEvent],
+    );
+    const onResolvedLogs = useCallback(
+        (logs: WatchContractEventOnLogsParameter<typeof CORE_ABI, "OrderResolved">) => logs
+            .filter((l) => 'processId' in l.args && l.args.processId === processId)
+            .forEach((l) => applyEvent("OrderResolved", l.args as unknown as OrderResolvedArgs)),
+        [applyEvent, processId],
+    );
     useWatchContractEvent({
         address: realAddr,
         abi: CORE_ABI,
         eventName: "OrderCommitted",
-        onLogs: (logs) => logs.forEach((l) =>
-            applyEvent("OrderCommitted", l.args as unknown as OrderCommittedArgs, typeof l.blockNumber === "bigint" ? Number(l.blockNumber) : undefined)
-        ),
+        onLogs: onCommittedLogs,
         enabled: realEnabled,
     });
     useWatchContractEvent({
         address: realAddr,
         abi: CORE_ABI,
         eventName: "OrderResolved",
-        onLogs: (logs) => logs
-            .filter((l) => 'processId' in l.args && l.args.processId === processId)
-            .forEach((l) => applyEvent("OrderResolved", l.args as unknown as OrderResolvedArgs)),
+        onLogs: onResolvedLogs,
         enabled: realEnabled,
     });
 

@@ -125,16 +125,10 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
         // agreement sign-preview. Confirm it to counter-sign + broadcast (the commit).
         await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
         await page.getByTestId('preview-confirm').click();
-        // The committed order surfaces in the In-progress section of the same surface.
-        await expect(
-            page.locator('[data-testid^="order-row-"]').first(),
-            'the accepted order shows In progress on /orders',
-        ).toBeVisible({ timeout: 60000 });
-
-        // ── On-chain truth: exactly one NEW OrderCommitted for this seller ──
-        // The In-progress row can be a PRIOR run's order (re-runs accumulate), so the
-        // UI passing doesn't mean THIS commit landed yet — poll the chain for a new
-        // OrderCommitted for the buyer before reading it.
+        // ── On-chain truth FIRST: exactly one NEW OrderCommitted for the buyer.
+        // (Pattern 14: on a persisted devnet a generic row locator can match a
+        // PRIOR run's order — confirm the action by the chain event it lands,
+        // then assert THAT exact order's row in the UI.)
         const queryCommitted = () => publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'OrderCommitted',
             args: { buyer: BUYER }, fromBlock: 0n,
@@ -144,6 +138,20 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
         }).toBe(committedBefore.length + 1);
         const committedAfter = await queryCommitted();
         const event = committedAfter[committedAfter.length - 1];
+
+        // ── UI reaction: THIS order's row reaches In progress on /orders with NO
+        // reload — the live watcher path (regression guard: unstable onLogs refs
+        // recreated the wagmi event filter every render, so an in-page commit
+        // never surfaced and /orders sat on the empty state until a remount). ──
+        const processId = event.args.processId!;
+        await expect(
+            page.getByTestId(`order-row-${processId}`),
+            'the accepted order appears on /orders without a reload',
+        ).toBeVisible({ timeout: 30000 });
+        await expect(
+            page.getByTestId(`order-status-${processId}`),
+            'the accepted order shows In progress',
+        ).toHaveText('In progress', { timeout: 15000 });
         expect(event.args.seller?.toLowerCase(), 'committed against the bound seller')
             .toBe(SELLER.toLowerCase());
         const receipt = await publicClient.getTransactionReceipt({ hash: event.transactionHash });
@@ -165,7 +173,6 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
         expect(sellerBefore - sellerAfter, 'seller balance decreased by the seller bond').toBe(sellerBond);
         expect(coreAfter - coreBefore, 'FigaroCore escrow increased by both bonds').toBe(buyerBond + sellerBond);
 
-        const processId = event.args.processId!;
         const payment = event.args.payment!;
 
         // ── Buyer resolves the process (BUYER DOMINANCE — only the buyer can call

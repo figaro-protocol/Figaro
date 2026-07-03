@@ -18,7 +18,7 @@
  * row can render counterparty + payment without a second indexer call.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAccount, useChainId, usePublicClient, useWatchContractEvent } from "wagmi";
 import {
     getAllOrderCommitted,
@@ -154,19 +154,26 @@ export function useWalletProcessRows(role: PartyRole): {
     }, [address, publicClient, chainId, role, tick]);
 
     // Re-fetch on new commits / resolutions for the connected wallet.
+    // `onLogs` MUST be reference-stable: wagmi's useWatchContractEvent keys its
+    // effect on it, so an inline arrow tears down and recreates the event
+    // filter on every render — a filter created after the block that carried
+    // the event never reports it, and an instance torn down before its first
+    // poll reports nothing. That gap is exactly a commit performed on this
+    // page (accept on /orders): the row never appeared without a reload.
+    const bump = useCallback(() => setTick((t) => t + 1), []);
     const realEnabled = !!address && !!CONTRACTS.core;
     useWatchContractEvent({
         address: (CONTRACTS.core as `0x${string}` | undefined),
         abi: CORE_ABI,
         eventName: "OrderCommitted",
-        onLogs: () => setTick((t) => t + 1),
+        onLogs: bump,
         enabled: realEnabled,
     });
     useWatchContractEvent({
         address: (CONTRACTS.core as `0x${string}` | undefined),
         abi: CORE_ABI,
         eventName: "OrderResolved",
-        onLogs: () => setTick((t) => t + 1),
+        onLogs: bump,
         enabled: realEnabled,
     });
 

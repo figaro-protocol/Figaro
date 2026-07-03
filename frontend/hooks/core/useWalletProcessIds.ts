@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { usePublicClient, useWatchContractEvent } from "wagmi";
+import type { WatchContractEventOnLogsParameter } from "viem";
 import { calculateBonds } from "@figaro/core";
 import { CONTRACTS, CORE_ABI } from "@/lib/kernel/contracts";
 import { Order, OrderState, useOrderStore } from "@/lib/kernel/store";
@@ -194,11 +195,11 @@ export function useWalletProcessIds(address: string | undefined): ProcessSummary
     const realAddr = realEnabled ? (contractAddr as `0x${string}`) : undefined;
     const normalizedAddress = address?.toLowerCase();
 
-    useWatchContractEvent({
-        address: realAddr,
-        abi: CORE_ABI,
-        eventName: "OrderCommitted",
-        onLogs: (logs) => {
+    // Reference-stable onLogs: wagmi keys its watcher effect on the callback,
+    // so an inline arrow recreates the event filter every render and drops
+    // events that land between recreations (see walletProcessQueries.ts).
+    const onCommittedLogs = useCallback(
+        (logs: WatchContractEventOnLogsParameter<typeof CORE_ABI, "OrderCommitted">) => {
             if (!normalizedAddress) return;
             logs.forEach((l) => {
                 const buyer = ((l.args.buyer as string) ?? "").toLowerCase();
@@ -207,6 +208,13 @@ export function useWalletProcessIds(address: string | undefined): ProcessSummary
                 setSummaries((prev) => insertOrderIntoSummaries(prev, toOrder(l)));
             });
         },
+        [normalizedAddress],
+    );
+    useWatchContractEvent({
+        address: realAddr,
+        abi: CORE_ABI,
+        eventName: "OrderCommitted",
+        onLogs: onCommittedLogs,
         enabled: realEnabled && !!normalizedAddress,
     });
 
@@ -228,12 +236,16 @@ export function useWalletProcessIds(address: string | undefined): ProcessSummary
         []
     );
 
+    const onResolvedLogs = useCallback(
+        (logs: WatchContractEventOnLogsParameter<typeof CORE_ABI, "OrderResolved">) =>
+            logs.forEach((l) => applyStateChange(l.args.orderHash as string, OrderState.Resolved)),
+        [applyStateChange],
+    );
     useWatchContractEvent({
         address: realAddr,
         abi: CORE_ABI,
         eventName: "OrderResolved",
-        onLogs: (logs) =>
-            logs.forEach((l) => applyStateChange(l.args.orderHash as string, OrderState.Resolved)),
+        onLogs: onResolvedLogs,
         enabled: realEnabled,
     });
 
