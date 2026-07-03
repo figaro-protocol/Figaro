@@ -101,7 +101,7 @@ export async function populateClauses({ publicClient, walletClient, account, reg
         if (!clauseIdStr) throw new Error(`${file} has no clauseId`);
         const version = BigInt(spec.version ?? 1);
         // On-chain identity is keccak256(abi.encode(name, version)) — matches
-        // ClauseRegistry, the validators, the SDK, and the Rust prover.
+        // ClauseRegistry and the SDK.
         const clauseId = keccak256(encodeAbiParameters([{ type: 'string' }, { type: 'uint64' }], [clauseIdStr, version]));
 
         if (await publicClient.readContract({

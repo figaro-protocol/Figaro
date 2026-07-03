@@ -118,8 +118,8 @@ and clears the dedup guard once the lock period has elapsed). Three events:
 dedup-only (`_registered: address → bool`) plus the registration timestamp that
 backs the deposit-lock gate. **No `_active` flag, no role enum, no `deactivate`
 / `reactivate`**: seller availability is signal-by-availability off-chain, not
-registry state, and a seller's role is whatever their catalogue (referenced by
-`metadataURI`) declares through its archetype. The deposit and lock are
+registry state, and a seller's role is DERIVED from the orders it
+holds and the clauses they carry — never a stored field. The deposit and lock are
 spam-protection knobs only; profile updates do not require withdrawing. The
 kernel does not gate any operation on seller state — this registry is
 advisory metadata for off-chain discovery surfaces.
@@ -148,7 +148,7 @@ tests in `test/AssemblyRegistryTest.t.sol`.
 Reentrancy-guarded. Minter registry with `totalRegisteredCap` (sum of all registered
 caps enforced not to exceed MAX_SUPPLY). Deployer registers capped minters, then renounces.
 
-**`IFigMinter.sol`** — `mint(address, uint256)` interface implemented by FigToken.
+**`IFigMinter.sol`** — `mint(address, uint256)` interface a FIG minter module would implement. No implementation is wired (the proof-gated RPGF minter was removed in the teardown); `FigToken.registerMinter` is where a future implementation attaches.
 
 **FIG allocation (canonical, 1B total):**
 - **100M (10%) founders** — genesis mint, no vesting, no unlock

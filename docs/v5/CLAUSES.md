@@ -71,7 +71,7 @@ on-chain validator) plus 1 agreement-only clause (`figaro-topology`).
 | `figaro-topology` | DAG lineage (parent order hashes) | **Agreement-only** (no runtime attestation) |
 | `figaro-commerce` | Currency, payment, line items | Layer A (off-chain) |
 | `figaro-geolocation` | Origin / destination geohash — where an order originates/terminates (any modality, incl. virtual). Default-on | Layer A (off-chain) |
-| `figaro-cargo` | Physical shipment measure — mass + volume of the goods. Elective (hazmat / cold-chain / freight-class nest under it) | Layer A (off-chain) |
+| `figaro-cargo` | Physical shipment measure — mass + volume of the goods. Elective; hazmat / cold-chain / freight-class are co-equal sibling logistics clauses (no spec-level nesting) | Layer A (off-chain) |
 | `figaro-hazmat` | Dangerous-goods declaration anchored to the UN Recommendations (ADR / IMDG / IATA-DGR) — UN number, proper shipping name, hazard class, packing group. Elective; a co-equal logistics clause | Layer A (off-chain) |
 | `figaro-cold-chain` | Temperature-controlled handling anchored to GDP cold-chain classes — class + min/max °C window. Elective; a co-equal logistics clause | Layer A (off-chain) |
 | `figaro-freight-class` | Declared freight classification anchored to the NMFC (NMFTA) — the NMFC class (50–500) + optional item number. Elective; a co-equal logistics clause | Layer A (off-chain) |

@@ -17,9 +17,10 @@ pragma solidity 0.8.26;
 ///
 ///         The contract does NOT validate assembly-template content. It cannot —
 ///         the document lives off-chain; the contract only stores its
-///         hash and URI. Per-clause content validation happens at the
-///         per-clause layer when each order's clauses are attested at
-///         commit time.
+///         hash and URI. Clause content well-formedness is an off-chain
+///         concern (the Layer-A SDK at composition/sign time); on-chain,
+///         the AttestationCoordinator merkle-binds each attestation to
+///         the signed agreement without validating content shape.
 ///
 ///         The per-process gas ceiling (~1,240 orders, documented in
 ///         `FigaroCore.sol`) is a property of the kernel
@@ -128,8 +129,9 @@ contract AssemblyRegistry {
     /// @notice Register an assembly. Requires `registrationDeposit` ETH.
     ///         The contract anchors identity (slug → contentHash + URI).
     ///         Content validity is the publisher's responsibility
-    ///         off-chain; per-clause validity is the per-clause
-    ///         validator's responsibility at commit time.
+    ///         off-chain; clause content well-formedness is the off-chain
+    ///         Layer-A SDK's concern — there is no on-chain content
+    ///         validation.
     /// @param slug         Human-readable slug. Bound permanently.
     /// @param contentHash  keccak256 of the canonical off-chain assembly template.
     /// @param metadataURI  Off-chain assembly-template pointer (typically IPFS).

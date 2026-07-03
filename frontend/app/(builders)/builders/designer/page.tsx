@@ -57,7 +57,7 @@ export default function DesignerLanding() {
                     Your clauses
                 </h2>
                 <p className="text-sm text-ink-muted mb-6 max-w-2xl">
-                    Clauses you&apos;ve registered on the on-chain <code>ClauseRegistry</code>. Reconstructed from <code>ClauseRegistered</code> events filtered by your connected wallet. Clauses are first-write-wins and immutable once bound to an <code>IClauseValidator</code>.
+                    Clauses you&apos;ve registered on the on-chain <code>ClauseRegistry</code>. Reconstructed from <code>ClauseRegistered</code> events filtered by your connected wallet. Clauses are first-write-wins and immutable per <code>(name, version)</code> once registered.
                 </p>
                 <ClausesList />
             </section>

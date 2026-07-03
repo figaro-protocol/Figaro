@@ -19,11 +19,11 @@ pragma solidity 0.8.26;
 ///         registration timestamp (needed for the deposit lock).
 ///
 ///         The metadataURI JSON document is the seller's composability surface:
-///         it declares the seller's archetype, which clauses from ClauseRegistry
-///         the seller operates under, and the seller's catalogue. Role is not
-///         an on-chain field: a seller's role is whatever their catalogue
-///         expresses through its archetype. Sellers compose their own capability
-///         set rather than matching against protocol-defined templates.
+///         it declares which clauses from ClauseRegistry the seller operates
+///         under and the seller's catalogue. Role is not an on-chain field —
+///         and not a stored field at all: a seller's role is DERIVED from the
+///         orders it holds and the clauses they carry. Sellers compose their
+///         own capability set rather than matching protocol-defined templates.
 ///
 ///         The deposit + lock period exist for spam protection only — they do
 ///         not gate metadata edits. `updateProfile` lets a registered seller

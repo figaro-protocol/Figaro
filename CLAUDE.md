@@ -211,7 +211,7 @@ When in doubt, dispatch `figaro-separation-of-concerns-auditor` BEFORE recommend
 
 The recurring, weeks-costly failure is modeling a concern as a stored value when it is **derived** from the graph. The canonical case: **there is no "fulfilment" field and no "delivery" checkbox.**
 
-- **Fulfilment modality is DERIVED, never stored.** on-site / pickup / delivery is read from topology + which clauses are present: a second, co-equal **buyer↔courier order** carrying `figaro-courier-process` (+ proximity) IS delivery; a single node is on-site/pickup (tracked when it carries `merchant-process` + `proximity-policy`, bare when it does not). Do not add a modality field; do not add a checkbox that "spawns" a node.
+- **The requested modality is a CLAUSE; fulfilment reality is DERIVED.** `figaro-modalities` commits the buyer's request (consume-onsite/pickup/delivery/virtual) at signing; reality reads from topology + clauses — a second co-equal **buyer↔courier order** carrying `figaro-courier-process` IS delivery; one node = on-site/pickup. No stored fulfilment-status field; no node-spawning checkbox — delivery is a second drawn order.
 - **Coordination lives in the process clauses** — `merchant-process` on the merchant order, `courier-process` on the courier order — not in a fulfilment field.
 - **Coordination variants are separate assemblies.** seller-assigned / buyer-assigned are distinct assemblies (composed at the assembly level, like proximity), not a stored field. (Dutch-auction pricing abandoned 2026-07-02; pricing is a catalogue concern.)
 - **Nodes are co-equal** (kernel star-shape: buyer == rootBuyer on every order). The courier order is not a sub-order *owned* by the merchant; the DAG parent edge is value-topology, not dominance.
@@ -281,7 +281,7 @@ When a code change makes a doc statement stale, fix the doc in the same session.
 - `docs/v5/CONTRACTS.md`, `CLAUSES.md`, `FRONTEND.md`, `TESTING.md`, `LOCAL_DEV.md` — the inventories CLAUDE.md indexes
 - `sdk/README.md` — SDK entry points
 - `docs/v5/VERIFICATION_MAP.md` — invariant → test → formal layer map
-- User-facing clause surfaces in `frontend/app/`. The `/clauses` inventory renders from the `clauseCategories.ts` registry, so a newly registered clause appears there automatically. Pages that name clauses in prose still need a manual pass when a new clause lands — `grep -rl "<clauseId>" frontend/app/` finds them.
+- User-facing clause surfaces in `frontend/app/`. The `/clauses` inventory renders from the live `ClauseRegistry` grouped by `block.article`, so a newly registered clause appears automatically. Pages that name clauses in prose still need a manual pass when a new clause lands — `grep -rl "<clauseId>" frontend/app/` finds them.
 
 **`docs/v5/` whitelist (exhaustive).** Files not on this list are deletion candidates at every audit. Do not treat absence-from-whitelist as "ambiguous" — treat it as "delete unless restored by explicit user approval." See the Document Index at the bottom for the categorized list.
 

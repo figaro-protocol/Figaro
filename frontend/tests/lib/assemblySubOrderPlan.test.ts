@@ -8,7 +8,7 @@ import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
 import type { SellerCatalogue } from "@/lib/seller/types";
 
 // The kit-assembly diamond: A (lead, root) → B, A → C, B → D, C → D.
-// B + D carry proximity-policy, C carries ghg-measurement. Proximity is bound
+// B + D carry proximity-policy, C carries ghg. Proximity is bound
 // to [Swift, Mercato], so the per-clause cursor hands B→Swift, D→Mercato by
 // commit order. Structure + clauses come straight off the template orders —
 // no agreements, no baked payment.
@@ -17,7 +17,7 @@ const SWIFT = "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955" as const;
 const ROSSO = "0x976EA74026E726554dB657fA54763abd0C3a0aa9" as const;
 
 const PROX = "figaro-proximity-policy";
-const GHG = "figaro-ghg-measurement";
+const GHG = "figaro-ghg";
 
 const assembly = {
     slug: "kit-assembly",
