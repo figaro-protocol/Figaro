@@ -4,7 +4,7 @@ import { sectionByField } from "@/lib/kernel/agreementSections";
 import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 import type { ProcessSummary } from "@/lib/kernel/walletProcessQueries";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
-import { clauseIsStructural, clauseLadderField, labelEnumValue } from "@/lib/shared/clauseSpecSource";
+import { clauseIsProcessLog, clauseLadderField, labelEnumValue } from "@/lib/shared/clauseSpecSource";
 import { ZERO_BYTES32, hexEqual, clauseIdHash as clauseIdHashOf } from "@/lib/shared/evm";
 import {
     AttachmentModel,
@@ -102,16 +102,19 @@ function roleCapabilities(
     const orderIdStr = order.id.toString();
     const agreement = order.agreementHash ? agreements.get(order.agreementHash) : undefined;
 
-    // GENERIC runtime attestation: any non-structural clause with an enum
-    // ladder advances it, seller-side. No clause names — a permissionlessly-
-    // registered clause flows through this loop unchanged.
+    // GENERIC runtime attestation: any PROCESS-LOG clause (attestations
+    // article — the clause's own declared kind) advances its transfer ladder,
+    // seller-side. No clause names — a permissionlessly-registered process-log
+    // clause flows through this loop unchanged. Committed-choice enum clauses
+    // (coordination article, e.g. modalities) are content, not lifecycles —
+    // classifying by "has an enum" fabricated seller capabilities for them.
     if (agreement) {
         const orderAttestations = indexes.attestationsByOrder.get(orderIdStr) ?? [];
         for (const section of agreement.sections) {
             const clauseId = section.clause;
-            if (clauseIsStructural(clauseId)) continue;                // structural (commerce/topology) is content, not a lifecycle
+            if (!clauseIsProcessLog(clauseId)) continue;               // only attestations-article ladders are lifecycles
             const ladder = clauseLadderField(clauseId);
-            if (!ladder) continue;                                     // non-enum (e.g. ghg grams) → its own surface
+            if (!ladder) continue;                                     // process-log clause without a declared ladder yet → nothing to advance
             const clauseIdHash = clauseIdHashOf(clauseId, section.version).toLowerCase();
             const parties: Array<"seller" | "buyer"> = ["seller"];
 

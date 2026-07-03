@@ -194,7 +194,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // read-only here (edited on the browse page).
     const cartItems = items.filter((it) => it.sellerId === sellerCatalogue.id);
     // The assembly the buyer is ordering from attaches to the seller PROFILE. One
-    // bound assembly -> use it; several -> the chosen modality disambiguates which.
+    // bound assembly -> use it; several -> the buyer's selected slug disambiguates which.
     // Every order commits against a published assembly — there is no fallback.
     const pickedAssembly = boundAssemblies.length === 1
         ? boundAssemblies[0]

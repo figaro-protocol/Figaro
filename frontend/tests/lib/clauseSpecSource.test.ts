@@ -5,6 +5,7 @@ import {
     listKnownClauseIds,
     loadClauseSpec,
     setClauseSpecFetcher,
+    clauseIsProcessLog,
     clauseLadderField,
     labelEnumValue,
     _resetClauseSpecCache_TESTING_ONLY,
@@ -83,5 +84,31 @@ describe("clauseSpecSource — valueLabels humanize runtime enum codes (audit wo
         expect(labelEnumValue(ladder, "virtual")).toBe("Virtual");
         // Fallback: an unlabelled value renders as its raw token (never blank).
         expect(labelEnumValue(ladder, "unlabelled-code")).toBe("unlabelled-code");
+    });
+});
+
+describe("clauseIsProcessLog — classified by the attestations article, never by field shape", () => {
+    it("a process-log clause (attestations article) IS a lifecycle", async () => {
+        await primeClauseSpecs(["figaro-merchant-process", "figaro-courier-process"]);
+        expect(clauseIsProcessLog("figaro-merchant-process")).toBe(true);
+        expect(clauseIsProcessLog("figaro-courier-process")).toBe(true);
+    });
+
+    it("a committed-choice enum clause (coordination article) is NOT a lifecycle", async () => {
+        // Regression: "non-structural + has enum" misread modalities as a
+        // process-log — fabricated seller capabilities and skipped Layer-A
+        // validation at both sign points.
+        await primeClauseSpecs(["figaro-modalities"]);
+        expect(clauseLadderField("figaro-modalities")).not.toBeNull(); // it HAS an enum…
+        expect(clauseIsProcessLog("figaro-modalities")).toBe(false);   // …but declares coordination
+    });
+
+    it("a structural clause with an enum is NOT a lifecycle (the earlier collision)", async () => {
+        await primeClauseSpecs(["figaro-topology"]);
+        expect(clauseIsProcessLog("figaro-topology")).toBe(false);
+    });
+
+    it("an unknown clause is not a lifecycle (false while uncached)", () => {
+        expect(clauseIsProcessLog("never-seen-clause")).toBe(false);
     });
 });

@@ -222,9 +222,10 @@ export interface ProcessModel {
     processId: string;
     rootOrderId: string;
     currency?: `0x${string}`;
-    /** The root order's committed modality code (the modality
-     *  clause's `modalities[0]`), surfaced by the builder so the order page can show it
-     *  without reading a clause section itself. Null when uncommitted. */
+    /** The root order's committed modality code (the modality clause's
+     *  single-select `modality` value), surfaced by the builder so the order
+     *  page can show it without reading a clause section itself. Null when
+     *  uncommitted. */
     rootModality?: string | null;
     orders: OrderNodeModel[];
     stateSummary: string;

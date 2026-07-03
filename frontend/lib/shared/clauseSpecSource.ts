@@ -187,15 +187,17 @@ export function composesInterface(clauseId: string): string | undefined {
     return getClauseSpec(clauseId)?.block?.composes?.interface;
 }
 
-/** A PROCESS-LOG clause — the runtime enum-ladder runtime event log (not a
- *  companion proof) an order's seller advances. The generic marker for "this
- *  order runs a lifecycle"; resolved from the spec, never by name. */
+/** A PROCESS-LOG clause — a runtime TRANSFER ladder the responsible party
+ *  advances (merchant/courier today; a supply chain runs the same structure at
+ *  length — factory→truck→port→customs→…, every transfer attested onto the
+ *  timeline). Classified by the clause's OWN declared article — the semantic
+ *  axis — never by field shape: "has an enum" is NOT "is a lifecycle", because
+ *  every committed-choice clause (modalities, any bounded category) carries an
+ *  enum too. `coordination`-article clauses declare WHICH scenario everyone
+ *  runs; `attestations`-article clauses record the transfers that run it. A
+ *  never-seen process-log clause participates by declaring the article. */
 export function clauseIsProcessLog(clauseId: string): boolean {
-    // A STRUCTURAL clause may carry an enum but is NOT a runtime process-log —
-    // it is committed structural content, not a lifecycle the seller advances.
-    // Exclude it so it validates as content and never surfaces a runtime
-    // attestation capability.
-    return !clauseIsStructural(clauseId) && clauseLadderField(clauseId) !== null;
+    return getClauseSpec(clauseId)?.block?.article === "attestations";
 }
 
 /** Whether a clause's spec declares a top-level field named `fieldName`.

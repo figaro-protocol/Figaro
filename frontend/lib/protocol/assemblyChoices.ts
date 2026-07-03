@@ -13,7 +13,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { activeChain } from "@/lib/shared/wagmi";
-import { clauseDeclaresField, clauseIsProcessLog } from "@/lib/shared/clauseSpecSource";
+import { clauseIsProcessLog } from "@/lib/shared/clauseSpecSource";
 import { templateParentOrderHashes, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import {
@@ -210,33 +210,4 @@ export function useAssemblyChoices(
         });
     }, [events, assemblyTemplateState, chainId]);
     return { data, isLoading, refetch };
-}
-
-/** Read a single-select clause scalar from an order's clause set BY DECLARED
- *  FIELD, never by clause name (open-world). One reader for the
- *  modality/coordination-style scalars. */
-function readSingleSelectClauseField(
-    clauses: Record<string, unknown> | undefined,
-    fieldName: string,
-): string | undefined {
-    const data = Object.entries(clauses ?? {})
-        .find(([clauseId]) => clauseDeclaresField(clauseId, fieldName))?.[1] as
-        | Record<string, unknown>
-        | undefined;
-    const value = data?.[fieldName];
-    return typeof value === "string" ? value : undefined;
-}
-
-/** Extract the single-select modality value from an assemblyTemplate's root
- *  order agreement. The root order is the one with no topology parents — if a
- *  consumer needs a sub-order's modality, they walk the orders array
- *  themselves. */
-export function extractRootModality(
-    template: AssemblyTemplate,
-): { modality?: string } {
-    const rootOrder =
-        template.orders.find((o) => templateParentOrderHashes(o).length === 0) ?? template.orders[0];
-    return {
-        modality: readSingleSelectClauseField(rootOrder?.clauses, "modality"),
-    };
 }

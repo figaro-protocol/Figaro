@@ -21,7 +21,6 @@ import {
     useAllPublishedAssemblies,
     fetchAssemblyTemplate,
 } from "@/lib/protocol/useAssemblyRegistry";
-import { extractRootModality } from "@/lib/protocol/assemblyChoices";
 
 /** A seller's on-chain bound assembly, assemblyTemplate resolved. */
 export interface BoundAssembly {
@@ -42,10 +41,6 @@ export interface SellerBoundAssemblies {
      *  the buyer-facing choice set at checkout. Each bound assembly is
      *  one option the seller offers; the buyer picks one. */
     assemblies: BoundAssembly[];
-    /** Union of root-order modalities across the bound
-     *  assemblies. Derived from `assemblies` — kept for callers that
-     *  only need the flat modality set. */
-    modalities: string[];
     /** True while either the seller-profile or the assemblyTemplate fetches are in flight. */
     isLoading: boolean;
     /** True when at least one of the seller's bindings matched a published assembly. */
@@ -60,8 +55,7 @@ export interface SellerBoundAssemblies {
  *
  * When `hasOnChainBinding` is true, `assemblies` is the authoritative
  * buyer-facing choice set — the buyer picks one assembly at checkout —
- * and `modalities` is the flat union of their root-order
- * modalities. When false, the caller falls back to the catalogue.
+ * When false, the caller falls back to the catalogue.
  */
 export function useSellerBoundAssemblies(
     sellerAddress: `0x${string}` | undefined,
@@ -70,14 +64,13 @@ export function useSellerBoundAssemblies(
     const { data: publishedEvents, isLoading: eventsLoading } = useAllPublishedAssemblies();
     const [result, setResult] = useState<SellerBoundAssemblies>({
         assemblies: [],
-        modalities: [],
         isLoading: false,
         hasOnChainBinding: false,
     });
 
     useEffect(() => {
         if (!sellerAddress) {
-            setResult({ assemblies: [], modalities: [], isLoading: false, hasOnChainBinding: false });
+            setResult({ assemblies: [], isLoading: false, hasOnChainBinding: false });
             return;
         }
         if (registryLoading || eventsLoading) {
@@ -85,14 +78,14 @@ export function useSellerBoundAssemblies(
             return;
         }
         if (!registryData || !publishedEvents) {
-            setResult({ assemblies: [], modalities: [], isLoading: false, hasOnChainBinding: false });
+            setResult({ assemblies: [], isLoading: false, hasOnChainBinding: false });
             return;
         }
 
         const [metadataURI] = registryData;
         const url = resolveContentUri(metadataURI);
         if (!url) {
-            setResult({ assemblies: [], modalities: [], isLoading: false, hasOnChainBinding: false });
+            setResult({ assemblies: [], isLoading: false, hasOnChainBinding: false });
             return;
         }
 
@@ -107,14 +100,14 @@ export function useSellerBoundAssemblies(
                 const profile = tryParseSellerProfileDocument(doc);
                 if (cancelled) return;
                 if (!profile?.assemblyBindings || profile.assemblyBindings.length === 0) {
-                    setResult({ assemblies: [], modalities: [], isLoading: false, hasOnChainBinding: false });
+                    setResult({ assemblies: [], isLoading: false, hasOnChainBinding: false });
                     return;
                 }
 
                 const sellerSlugs = new Set(profile.assemblyBindings.map((b) => b.assemblySlug));
                 const matchedEvents = publishedEvents.filter((e) => sellerSlugs.has(e.slug));
                 if (matchedEvents.length === 0) {
-                    setResult({ assemblies: [], modalities: [], isLoading: false, hasOnChainBinding: false });
+                    setResult({ assemblies: [], isLoading: false, hasOnChainBinding: false });
                     return;
                 }
 
@@ -127,11 +120,9 @@ export function useSellerBoundAssemblies(
                 // over a .map preserves order). Pair them into BoundAssembly,
                 // dropping any assemblyTemplate that failed to fetch.
                 const assemblies: BoundAssembly[] = [];
-                const modalitySet = new Set<string>();
                 assemblyTemplates.forEach((m, i) => {
                     if (!m) return;
                     const slug = matchedEvents[i].slug;
-                    const { modality } = extractRootModality(m);
                     const binding = (profile.assemblyBindings ?? []).find(
                         (b) => b.assemblySlug === slug,
                     );
@@ -141,18 +132,16 @@ export function useSellerBoundAssemblies(
                         assemblyTemplate: m,
                         counterpartyBindings: binding?.counterpartyBindings ?? [],
                     });
-                    if (modality) modalitySet.add(modality);
                 });
 
                 setResult({
                     assemblies,
-                    modalities: Array.from(modalitySet),
                     isLoading: false,
                     hasOnChainBinding: true,
                 });
             } catch {
                 if (!cancelled) {
-                    setResult({ assemblies: [], modalities: [], isLoading: false, hasOnChainBinding: false });
+                    setResult({ assemblies: [], isLoading: false, hasOnChainBinding: false });
                 }
             }
         })();

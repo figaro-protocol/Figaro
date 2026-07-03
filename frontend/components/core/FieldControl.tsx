@@ -40,7 +40,7 @@ export function FieldControl({
     onChange: (next: unknown) => void;
     testId: string;
     /** Suppress the field's own name label when it duplicates a parent title
-     *  (e.g. the `modalities` field inside the "Modalities" clause). */
+     *  (e.g. the `modality` field inside the "Modalities" clause). */
     hideLabel?: boolean;
     /** Fill-vs-defer policy for scalar fields — see the file header. */
     mode?: FieldControlMode;

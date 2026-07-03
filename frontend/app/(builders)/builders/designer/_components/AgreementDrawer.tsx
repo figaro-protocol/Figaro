@@ -463,10 +463,11 @@ function ClauseControl({
                 <div className="ml-6 mt-2 space-y-3">
                     {spec.fields
                         .filter((field) => {
-                            // Gate an object sub-clause on a sibling enum field
-                            // that offers its name as a value (e.g. `delivery`
-                            // shows only when `modalities` has "delivery"
-                            // selected). Read from the spec — never hardcoded.
+                            // Gate an object sub-clause on a sibling
+                            // array-of-enum field that offers the object's name
+                            // as a value — the object shows only while its name
+                            // is selected. Read from the spec — never hardcoded.
+                            // (No current clause uses this; dormant, generic.)
                             if (field.type !== "object") return true;
                             const gate = spec.fields.find(
                                 (f) =>
