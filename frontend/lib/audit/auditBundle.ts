@@ -10,15 +10,14 @@
  * it lives in `lib/audit/financialsProjection.ts` and is composed
  * alongside the bundle by the consumer (the PDF renderer renders both).
  *
- * Bill-of-Lading discriminator: the BoL is a document genre that exists
- * only on carriage legs — orders where goods are entrusted to a
- * third-party carrier with intent to deliver to a non-party consignee.
- * In Figaro that maps STRUCTURALLY to sub-orders (topology declares
- * parents) that carry a runtime process log — derived from topology +
- * spec tier, never from a clause's name. Orders without that shape have
- * handoff/lifecycle/proximity data surfaced in their own documents
- * (proximity + processLogs) but no BoL page is emitted. See
- * `docs/v5/BOL_RESEARCH.md` for the full rationale.
+ * Document genres: the per-genre extractors (invoice / Bill of Lading /
+ * emissions / proximity) were retired with the open-world de-hardcode —
+ * `clauseData` renders EVERY committed clause generically from its spec,
+ * so no genre page is emitted today. If a genre document is rebuilt, it
+ * must be DERIVED from committed shape, never from a clause's name — e.g.
+ * the BoL discriminator: a sub-order (topology declares parents) carrying
+ * a runtime process log is a carriage leg. See `docs/v5/BOL_RESEARCH.md`
+ * for the full rationale.
  */
 
 import type { Agreement } from "@figaro/core";

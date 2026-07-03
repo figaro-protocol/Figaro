@@ -69,7 +69,7 @@ import {
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
-import { calculateBonds } from '@figaro/core';
+import { calculateBonds, computeSectionLeaf, type AgreementSection } from '@figaro/core';
 import type { Page } from '@playwright/test';
 
 const RPC_URL = 'http://127.0.0.1:8545';
@@ -451,6 +451,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         //    verifier recomputes each merkle root over EVERY leaf to match the
         //    agreementHash the kernel stored — for BOTH orders. ──
         const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
+        let deliverySections: AgreementSection[] = [];
         for (const [event, label, expectedLeaves] of [
             [merchantEvent, 'meal', ['figaro-commerce', 'figaro-topology', MERCHANT_CLAUSE, MODALITIES_CLAUSE]],
             [courierEvent, 'delivery', ['figaro-commerce', 'figaro-topology', COURIER_CLAUSE]],
@@ -464,7 +465,8 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             const agreementCid = agreementUri!.replace(/^ipfs:\/\//, '');
             await assertPinnedInIpfs(agreementCid);
             const agreementJson = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${agreementCid}`, { method: 'POST' })).text();
-            const agreement = JSON.parse(agreementJson) as { sections: { clause: string }[] };
+            const agreement = JSON.parse(agreementJson) as { sections: AgreementSection[] };
+            if (label === 'delivery') deliverySections = agreement.sections;
             expect(
                 agreement.sections.map((s) => s.clause),
                 `the ${label} merkle tree carries every committed leaf`,
@@ -477,6 +479,25 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
                 `the recomputed ${label} root matches the on-chain agreementHash`,
             ).toHaveText(/Matches expected hash/, { timeout: 15000 });
         }
+
+        // ── SELECTIVE DISCLOSURE (Mode B — the privacy model, post the
+        //    2026-07-02 cleartext ruling): a party reveals ONE section of a
+        //    signed agreement and proves it belongs to the on-chain commitment,
+        //    disclosing nothing else. Disclose only the delivery order's
+        //    commerce section: the verifier recomputes its leaf hash from the
+        //    pasted section alone and it matches the leaf the reference
+        //    implementation derives — the same leaf under the agreement root
+        //    already verified against the kernel above. No redaction artifact;
+        //    the merkle structure IS the disclosure control. ──
+        const disclosed = deliverySections.find((s) => s.clause === 'figaro-commerce');
+        expect(disclosed, 'the delivery agreement carries a commerce section to disclose').toBeTruthy();
+        await page.getByTestId('verify-mode-section').click();
+        await page.getByTestId('verify-section-input').fill(JSON.stringify(disclosed));
+        await page.getByTestId('verify-section-expected').fill(computeSectionLeaf(disclosed!));
+        await expect(
+            page.getByTestId('verify-result-status'),
+            'the disclosed section alone proves against its committed leaf',
+        ).toHaveText(/Matches expected hash/, { timeout: 15000 });
 
         // ── THE PDFs: (1) the audit-bundle PDF builds in-browser and
         //    downloads — a real PDF carrying the document set; (2) the dispute

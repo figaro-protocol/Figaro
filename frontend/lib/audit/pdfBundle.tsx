@@ -1,9 +1,9 @@
 /**
  * PDF renderer for the audit bundle (Phase D).
  *
- * Composes the four extractor outputs (Contract, Invoice, Bill of Lading,
- * Hash appendix) plus the financials projection into one
- * cryptographically-verifiable PDF. Every page footer carries the
+ * Composes the audit-bundle extracts (Contract, per-clause data, process
+ * logs, seller registry, Hash appendix) plus the financials projection into
+ * one cryptographically-verifiable PDF. Every page footer carries the
  * `agreementHash` (or `processId` for the financials page) so a reader
  * lands on each page already oriented to the on-chain anchor it derives
  * from.
@@ -20,8 +20,9 @@
  *   pre-rendered bundles.
  *
  * - For multi-order processes the bundle iterates orders, emitting
- *   per-order Contract / Invoice / BoL pages. The financials and hash
- *   appendix sections aggregate across the whole process.
+ *   per-order Contract / Clause-data / Process-logs / Seller-registry
+ *   pages. The financials and hash appendix sections aggregate across the
+ *   whole process.
  */
 import {
     Document,
