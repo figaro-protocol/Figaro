@@ -19,11 +19,22 @@ export type FieldType =
     | "array"
     | "object";
 
+/**
+ * String-field format. The named literals are the formats THIS validator
+ * enforces (and the encoder maps to ABI types); the open `string & {}` arm
+ * keeps the axis permissionless — a clause may declare any format
+ * (`"geohash"`, a never-seen one) and every consumer degrades gracefully:
+ * validation skips the format check (plain string), encoding falls to the
+ * `string` ABI type, and a frontend may map known formats to richer input
+ * components. A closed set here would make any third-party clause with a
+ * novel format unparseable everywhere — the closed-world failure.
+ */
 export type StringFormat =
     | "bytes32-hex"
     | "address-hex"
     | "bytes-hex"
-    | "iso-datetime";
+    | "iso-datetime"
+    | (string & {});
 
 export interface BaseFieldSpec {
     name: string;
@@ -136,10 +147,6 @@ const VALID_FIELD_TYPES: ReadonlySet<string> = new Set([
     "string", "integer", "bigint", "boolean", "enum", "array", "object",
 ]);
 
-const VALID_STRING_FORMATS: ReadonlySet<string> = new Set([
-    "bytes32-hex", "address-hex", "bytes-hex", "iso-datetime",
-]);
-
 function isObject(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -230,8 +237,11 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
         case "string": {
             const spec: StringFieldSpec = { ...base, type: "string" };
             if (raw.format !== undefined) {
-                if (typeof raw.format !== "string" || !VALID_STRING_FORMATS.has(raw.format)) {
-                    errors.push({ path: `${path}.format`, message: `format must be one of: ${[...VALID_STRING_FORMATS].join(", ")}` });
+                // The format AXIS is open (see StringFormat): any string is a
+                // valid declaration; only its SHAPE is checked here. Unknown
+                // formats validate as plain strings downstream.
+                if (typeof raw.format !== "string" || raw.format.length === 0) {
+                    errors.push({ path: `${path}.format`, message: "format must be a non-empty string" });
                     return null;
                 }
                 spec.format = raw.format as StringFormat;

@@ -41,7 +41,7 @@
                     "type": ["string", "number", "boolean", "array"],
                     "description": "Build/UI default (composition metadata; the ABI encoder ignores it). Shape must match the field type."
                 },
-                "format": { "enum": ["bytes32-hex", "address-hex", "bytes-hex", "iso-datetime"], "description": "string only." },
+                "format": { "type": "string", "minLength": 1, "description": "string only. An OPEN axis: any non-empty string is a valid declaration. Validators enforce the formats they know (bytes32-hex, address-hex, bytes-hex, iso-datetime) and treat the rest as plain strings; frontends may map known formats to richer inputs (e.g. geohash)." },
                 "minLength": { "type": "integer", "description": "string only." },
                 "maxLength": { "type": "integer", "description": "string only." },
                 "pattern": { "type": "string", "description": "string only (regex)." },

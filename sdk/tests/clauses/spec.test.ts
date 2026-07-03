@@ -38,18 +38,30 @@ describe("parseClauseSpec — meta-clause validation", () => {
         if (!result.ok) expect(result.errors[0].path).toBe("$.fields[0].type");
     });
 
-    it("validates string format values", () => {
-        const ok = parseClauseSpec({
+    it("accepts any string as a format — the axis is OPEN (a closed set would make a third-party clause with a novel format unparseable)", () => {
+        const known = parseClauseSpec({
             clauseId: "t-v1", version: 1, title: "T", description: "D",
             fields: [{ name: "addr", type: "string", required: true, format: "address-hex" }],
         });
-        expect(ok.ok).toBe(true);
+        expect(known.ok).toBe(true);
 
-        const bad = parseClauseSpec({
+        const novel = parseClauseSpec({
             clauseId: "t-v1", version: 1, title: "T", description: "D",
-            fields: [{ name: "x", type: "string", required: true, format: "ipv6" }],
+            fields: [{ name: "loc", type: "string", required: true, format: "geohash" }],
         });
-        expect(bad.ok).toBe(false);
+        expect(novel.ok).toBe(true);
+
+        // Only the SHAPE of the declaration is checked.
+        const malformed = parseClauseSpec({
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            fields: [{ name: "x", type: "string", required: true, format: 7 }],
+        });
+        expect(malformed.ok).toBe(false);
+        const empty = parseClauseSpec({
+            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            fields: [{ name: "x", type: "string", required: true, format: "" }],
+        });
+        expect(empty.ok).toBe(false);
     });
 
     it("recursively parses array.items", () => {

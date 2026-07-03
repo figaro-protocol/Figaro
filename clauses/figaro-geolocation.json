@@ -11,8 +11,8 @@
             "minLength": 1,
             "maxLength": 12,
             "pattern": "^[0123456789bcdefghjkmnpqrstuvwxyz]+$",
-            "default": "0",
-            "description": "Origin geohash (base32). 1–12 characters; longer = higher precision. Default \"0\" is the minimal valid placeholder (whole-region cell) pending a real value at commit time."
+            "format": "geohash",
+            "description": "Origin geohash (base32). 1–12 characters; longer = higher precision. A design-time commitment: the designer pins it when composing (a frontend may fill it from the device location)."
         },
         {
             "name": "destinationGeohash",
@@ -21,8 +21,8 @@
             "minLength": 1,
             "maxLength": 12,
             "pattern": "^[0123456789bcdefghjkmnpqrstuvwxyz]+$",
-            "default": "0",
-            "description": "Destination geohash (base32). 1–12 characters; longer = higher precision. Default \"0\" is the minimal valid placeholder (whole-region cell) pending a real value at commit time."
+            "format": "geohash",
+            "description": "Destination geohash (base32). 1–12 characters; longer = higher precision. A design-time commitment: the designer pins it when composing (a frontend may fill it from the device location)."
         }
     ],
     "block": {

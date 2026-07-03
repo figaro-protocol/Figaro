@@ -24,6 +24,7 @@
  */
 
 import type { FieldSpec } from "@figaro/core/clauses";
+import { getFieldFormatInput } from "@/components/core/fieldFormatInputs";
 
 export type FieldControlMode = "design" | "runtime";
 
@@ -170,6 +171,26 @@ export function FieldControl({
     if (isScalar && fillHere) {
         const numeric = field.type === "integer";
         const current = value === undefined || value === null ? "" : String(value);
+        // A string field's declared `format` may map to a richer input this
+        // frontend registered (e.g. "geohash" → device-location picker) — the
+        // open format axis. No mapping ⇒ the plain input below; the affordance
+        // is progressive enhancement, never a requirement.
+        if (field.type === "string") {
+            const FormatInput = getFieldFormatInput(field.format);
+            if (FormatInput) {
+                return (
+                    <div data-testid={`${testId}-field`}>
+                        {label && <div className="mb-1">{label}</div>}
+                        <FormatInput
+                            value={current}
+                            onChange={(next) => onChange(next)}
+                            testId={testId}
+                            pattern={field.pattern}
+                        />
+                    </div>
+                );
+            }
+        }
         return (
             <div data-testid={`${testId}-field`}>
                 {label && <div className="mb-1">{label}</div>}

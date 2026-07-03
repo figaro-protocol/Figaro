@@ -45,6 +45,15 @@ describe("validateContent — happy paths", () => {
         expect(validateContent({ a: "0x" + "0".repeat(39) }, spec).ok).toBe(false);
     });
 
+    it("an unknown (permissionlessly-declared) format validates as a plain string — the open format axis", () => {
+        const spec = specOf([
+            { name: "loc", type: "string", required: true, format: "geohash" },
+        ]);
+        expect(validateContent({ loc: "9q8yyk8yu" }, spec).ok).toBe(true);
+        // Non-strings still fail on TYPE, not format.
+        expect(validateContent({ loc: 42 }, spec).ok).toBe(false);
+    });
+
     it("validates bigint as decimal string", () => {
         const spec = specOf([
             { name: "amount", type: "bigint", required: true, min: "0", max: "1000000000000000000000" },

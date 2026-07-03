@@ -61,12 +61,15 @@ function validateString(value: unknown, spec: StringFieldSpec, path: string, err
         }
     }
     if (spec.format !== undefined) {
+        // Only the formats THIS validator knows are enforced; an unknown
+        // (permissionlessly-declared) format validates as a plain string —
+        // the open format axis (see StringFormat in spec.ts).
         const matches =
             spec.format === "bytes32-hex" ? BYTES32_HEX_RE.test(value) :
             spec.format === "address-hex" ? ADDRESS_HEX_RE.test(value) :
             spec.format === "bytes-hex" ? BYTES_HEX_RE.test(value) :
             spec.format === "iso-datetime" ? ISO_DATETIME_RE.test(value) :
-            false;
+            true;
         if (!matches) {
             errors.push({ path, message: `string does not match format ${spec.format}` });
         }

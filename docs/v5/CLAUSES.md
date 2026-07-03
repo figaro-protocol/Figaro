@@ -20,8 +20,12 @@ adding-a-clause checklist below.
 
 `@figaro/core/clauses` subpath:
 - `parseClauseSpec(json)` — meta-clause validator (closed subset of JSON Schema:
-  `string` with format `bytes32-hex`/`address-hex`/`bytes-hex`/`iso-datetime`,
-  `integer`, `bigint` (decimal string), `boolean`, `enum`, `array`, `object`).
+  `string`, `integer`, `bigint` (decimal string), `boolean`, `enum`, `array`,
+  `object`). A string field's `format` is an **open axis**: any non-empty string
+  is a valid declaration; the validator enforces the formats it knows
+  (`bytes32-hex`/`address-hex`/`bytes-hex`/`iso-datetime`) and treats the rest
+  as plain strings; a frontend may map known formats to richer inputs (e.g.
+  `geohash` → the device-location picker via `fieldFormatInputs`).
 - `validateContent(content, spec, { stage? })` — validates a JS object against
   a parsed spec. Closed clauses: rejects unknown fields. Per-stage overrides
   via `spec.stages[stage]`.

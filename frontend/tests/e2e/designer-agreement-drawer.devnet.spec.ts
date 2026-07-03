@@ -9,21 +9,30 @@
  *   1. /builders/designer/new?fresh=1 — blank canvas, one root order.
  *   2. Open the drawer → registry tab → compose figaro-geolocation (awaited into
  *      existence: checkboxes render once the spec cache warms chain→IPFS).
- *   3. Save; discover the assigned draft handle from the hub's drafts list and
+ *   3. The clause's REQUIRED geohash fields render as design-time inputs with
+ *      the format-declared affordance (`format: "geohash"` → the registered
+ *      device-location picker — the open format axis): the origin fills from
+ *      the DEVICE location (Playwright-set coordinates → encoded geohash),
+ *      the destination is typed by hand (typing stays first-class).
+ *   4. Save; discover the assigned draft handle from the hub's drafts list and
  *      reload via /builders/designer/edit/<slug> — the geolocation checkbox is
- *      STILL CHECKED.
- *   4. Uncheck it, save, reload — STILL UNCHECKED. Both directions of a
+ *      STILL CHECKED and both composed VALUES survived.
+ *   5. Uncheck it, save, reload — STILL UNCHECKED. Both directions of a
  *      user-driven clause edit persist.
- *
- * Geolocation is chosen for simplicity: a cross-checked graph-data clause with no
- * drawer-level required fields — a single checkbox.
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server.
  */
 import { test, expect } from './devnet-multi-test';
 import type { Page } from '@playwright/test';
+import { encodeGeohash } from '@/lib/shared/geohash';
 
 const GEO_CLAUSE_KEY = 'figaro-geolocation';
+
+// The coordinates Playwright feeds the browser's Geolocation API — the
+// device-location affordance must encode exactly this cell.
+const DEVICE_LAT = 37.7749;
+const DEVICE_LON = -122.4194;
+const DEVICE_GEOHASH = encodeGeohash(DEVICE_LAT, DEVICE_LON, 9);
 
 /** Open the (sole) root order's drawer on its registry tab and return the
  *  geo checkbox, awaited into existence (chain→IPFS spec warm). */
@@ -66,6 +75,11 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
     test.setTimeout(180_000);
 
     test('toggling the geo clause persists through save and reload — both directions', async ({ page }) => {
+        // The device-location affordance reads the browser's Geolocation API —
+        // grant it and pin the coordinates the test asserts against.
+        await page.context().grantPermissions(['geolocation']);
+        await page.context().setGeolocation({ latitude: DEVICE_LAT, longitude: DEVICE_LON });
+
         await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
         await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
@@ -74,11 +88,34 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         const geoToggle = await openGeoToggle(page);
         await expect(geoToggle, 'geo is NOT default-composed on a fresh order').not.toBeChecked();
         await geoToggle.check();
+
+        // ── The clause's REQUIRED geohash fields render as design-time inputs
+        //    with the format-declared affordance (the open format axis:
+        //    format:"geohash" → the registered device-location picker; no
+        //    clause is named in the dispatch). Fill the origin from the
+        //    DEVICE, type the destination by hand. ──
+        const origin = page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-originGeohash`);
+        await origin.waitFor({ state: 'visible', timeout: 10000 });
+        await page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-originGeohash-device`).click();
+        await expect(origin, "the device affordance encodes the browser's location into the field")
+            .toHaveValue(DEVICE_GEOHASH, { timeout: 10000 });
+        const destination = page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-destinationGeohash`);
+        await destination.fill('9q8yyk8yu');
+
         const slug = await saveDraft(page);
 
         await reopenDraft(page, slug);
         const geoAfterOn = await openGeoToggle(page);
         await expect(geoAfterOn, 'the composed geo clause survives save + reload').toBeChecked();
+        // The composed VALUES survive too — both fill paths.
+        await expect(
+            page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-originGeohash`),
+            'the device-filled origin survives save + reload',
+        ).toHaveValue(DEVICE_GEOHASH, { timeout: 10000 });
+        await expect(
+            page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-destinationGeohash`),
+            'the typed destination survives save + reload',
+        ).toHaveValue('9q8yyk8yu', { timeout: 10000 });
 
         // ── Toggle OFF, save, reload — the removal survives too ─────────────
         await geoAfterOn.uncheck();
