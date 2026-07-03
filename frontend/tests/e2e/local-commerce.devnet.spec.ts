@@ -10,10 +10,11 @@
  *
  *   author   → the delivery scenario is WRITTEN on the designer canvas (a
  *              root order composing merchant-process + modalities=delivery;
- *              a drawn courier sub-order composing courier-process — drawn,
- *              never spawned) and published to the AssemblyRegistry.
- *              Idempotent: the composition is content-addressed, so a re-run
- *              discovers the anchored assembly by SHAPE and consumes it.
+ *              a drawn courier sub-order composing courier-process + the
+ *              hand-off clause, face-to-face — drawn, never spawned) and
+ *              published to the AssemblyRegistry. Idempotent: the
+ *              composition is content-addressed, so a re-run discovers the
+ *              anchored assembly by SHAPE and consumes it.
  *   bind     → the merchant (Rosa's Kitchen, a pre-populated seller) pins the
  *              assembly to its profile through the seller-edit surface and
  *              DESIGNATES its courier (Cardinal Couriers); the courier pins
@@ -33,7 +34,11 @@
  *              Arrived at pickup → In transit → Arrived at drop-off →
  *              Completed) — each stage through the ONE generic capability
  *              rail, each event landing on the timeline. First coverage of a
- *              full multi-stage ladder walk.
+ *              full multi-stage ladder walk. The hand-off clause's DECLARED
+ *              interaction (block.interaction: qr-challenge-v1) mounts the
+ *              QR order-identity panel on the courier's page — presented
+ *              payload verified round-trip; no panel on the merchant's
+ *              order, which declares none.
  *   resolve  → the buyer resolves ONCE: merchant net +1, courier net +1,
  *              buyer net −2, escrow back to baseline.
  *   audit    → the full evidentiary record, permissionless-clause grade:
@@ -89,6 +94,7 @@ const COURIER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 8 }).address a
 const COURIER_CLAUSE = 'figaro-courier-process';
 const MERCHANT_CLAUSE = 'figaro-merchant-process';
 const MODALITIES_CLAUSE = 'figaro-modalities';
+const HANDOFF_CLAUSE = 'figaro-handoff';
 
 // The two transfer ladders, stage labels straight from the registered specs
 // (`clauses/figaro-{merchant,courier}-process.json` valueLabels) — the story
@@ -107,12 +113,16 @@ async function waitForConnected(page: Page) {
 
 /** The delivery assembly's SHAPE — how the spec recognizes it on-chain
  *  without a hardcoded slug: exactly two orders, the sub-order carrying the
- *  courier process clause. */
+ *  courier process clause AND the hand-off clause (the QR-interaction
+ *  declarer — a 2-order composition without it is an earlier scenario). */
 async function findDeliveryAssembly(): Promise<string | undefined> {
     const templates = await discoverAnchoredAssemblies();
     return templates.find(
         (t) => t.orders.length === 2
-            && t.orders.some((o) => Object.keys(o.clauses ?? {}).includes(COURIER_CLAUSE)),
+            && t.orders.some((o) => {
+                const clauses = Object.keys(o.clauses ?? {});
+                return clauses.includes(COURIER_CLAUSE) && clauses.includes(HANDOFF_CLAUSE);
+            }),
     )?.slug;
 }
 
@@ -170,12 +180,16 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
                 els.map((el) => el.getAttribute('data-testid')!.replace('order-node-', '')));
             const subId = nodeIds.find((id) => id !== rootId)!;
 
-            // Compose the courier's process ladder on the drawn order, via the
-            // drawer's node tab.
+            // Compose the courier's process ladder + the hand-off point on the
+            // drawn order, via the drawer's node tab. The hand-off clause
+            // declares the qr-challenge interaction (block.interaction) — its
+            // committed choice here is a face-to-face exchange.
             await page.getByTestId(`drawer-node-tab-${subId}`).click();
             await page.getByTestId('drawer-tab-registry').click();
             await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
             await page.getByTestId(`drawer-registry-clause-${COURIER_CLAUSE}`).check();
+            await page.getByTestId(`drawer-registry-clause-${HANDOFF_CLAUSE}`).check();
+            await page.getByTestId(`drawer-field-${HANDOFF_CLAUSE}-handoff-face-to-face`).check();
 
             // Editorial identity + publish (pin template → AssemblyRegistered).
             await page.getByTestId('designer-name-input').fill('Local delivery');
@@ -373,7 +387,37 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             ).toHaveCount(0, { timeout: 30000 });
         };
         await walkLadder(MERCHANT, MERCHANT_STAGES, 'the merchant');
+        // The merchant's own order composes no interaction-declaring clause —
+        // no surface mounts (the mount is DERIVED from the agreement's
+        // declarations, never a blanket panel).
+        await expect(
+            page.getByTestId('interaction-qr-panel'),
+            "no declared interaction on the merchant's order → no QR panel",
+        ).toHaveCount(0);
         await walkLadder(COURIER, COURIER_STAGES, 'the courier');
+
+        // ── DECLARED INTERACTION (block.interaction → registered surface):
+        //    the hand-off clause on the courier order declares the
+        //    qr-challenge standard, so the courier's own order page mounts
+        //    the QR panel — the order's public identity over the visual
+        //    channel at the physical hand-off. Verify the round-trip: the
+        //    presented payload identifies THIS order and scanning it back
+        //    confirms the match. ──
+        await expect(
+            page.getByTestId('interaction-qr-panel'),
+            "the hand-off clause's declared interaction mounts on the courier's order page",
+        ).toBeVisible({ timeout: 15000 });
+        await expect(page.getByTestId('interaction-qr-image'), 'the QR code renders').toBeVisible({ timeout: 15000 });
+        const qrPayload = (await page.getByTestId('interaction-qr-payload').textContent())?.trim();
+        const qrIdentity = JSON.parse(qrPayload!) as { processId: string; orderHash: string };
+        expect(qrIdentity.processId.toLowerCase(), 'the QR carries THIS process').toBe(processId.toLowerCase());
+        expect(qrIdentity.orderHash.toLowerCase(), "the QR carries the courier order's hash")
+            .toBe(courierEvent.args.orderHash!.toLowerCase());
+        await page.getByTestId('interaction-qr-scan-input').fill(qrPayload!);
+        await expect(
+            page.getByTestId('interaction-qr-match'),
+            'a scanned matching payload verifies against this order',
+        ).toBeVisible({ timeout: 10000 });
 
         // ── RESOLVE: buyer dominance — one signature settles both orders. ──
         const resolvedBefore = (await publicClient.getContractEvents({
@@ -421,6 +465,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             'Commerce terms',
             'Order topology',
             'Modalities',
+            'Hand-off point',
             'Merchant internal process events',
             'Courier internal process events',
             ...MERCHANT_STAGES,
@@ -454,7 +499,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         let deliverySections: AgreementSection[] = [];
         for (const [event, label, expectedLeaves] of [
             [merchantEvent, 'meal', ['figaro-commerce', 'figaro-topology', MERCHANT_CLAUSE, MODALITIES_CLAUSE]],
-            [courierEvent, 'delivery', ['figaro-commerce', 'figaro-topology', COURIER_CLAUSE]],
+            [courierEvent, 'delivery', ['figaro-commerce', 'figaro-topology', COURIER_CLAUSE, HANDOFF_CLAUSE]],
         ] as const) {
             const agreementHash = event.args.agreementHash as `0x${string}`;
             const agreementUri = await page.evaluate(

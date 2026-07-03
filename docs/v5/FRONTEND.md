@@ -90,6 +90,16 @@ Y", not as an open-ended build.)
 - **Runtime (phase-4) order surface** — `components/core/CapabilityRail.tsx`,
   driven by `deriveProcessModelFromRuntime` → `executeCapability`. The order
   page names NO clause (guard: `scripts/lint-no-hardcoded-clauses-in-runtime.sh`).
+- **Declared-semantic component registries** — richer UI mounts keyed on what
+  the clause SPEC declares, never a clause id / mechanism kind / component
+  name; no entry ⇒ graceful degradation (plain input / nothing). Two seams:
+  `components/core/fieldFormatInputs.tsx` (a string field's open `format` →
+  input component; tenant: `geohash` → `GeohashFieldInput`, device-location
+  assisted) and `components/core/interactionSurfaces.tsx`
+  (`block.interaction.interface` — the party↔party runtime interaction
+  standard, the sibling of `block.composes` — → order-page surface via
+  `OrderInteractionSurfaces`; tenant: `qr-challenge-v1` → `QrChallengePanel`,
+  order identity over the visual channel at a hand-off).
 - **Clause-composition UI** — `app/(builders)/builders/designer/_components/AgreementDrawer.tsx`
   (reads ClauseRegistry live; grouping word is `block.article`).
 - **On-chain write flow** — `lib/seller/usePublishSellerProfile.ts`

@@ -60,6 +60,18 @@ export interface ClauseBlockBinding {
         interface: string;
         forumUrl?: string;
     };
+    /** Interaction binding — the party↔party runtime interaction standard
+     *  this clause's tasks use (the sibling of `composes`, which names an
+     *  on-network contract interface). `interface` names a STANDARD
+     *  interaction (e.g. a QR order-identity challenge at a physical
+     *  hand-off) — read from the spec, never a bundled clause-id switch.
+     *  A frontend that registered a surface for the interface mounts it
+     *  (`interactionSurfaces`); one that didn't renders nothing extra — the
+     *  affordance is progressive enhancement, the protocol never depends on
+     *  it. Omit for clauses whose tasks need no dedicated interaction. */
+    interaction?: {
+        interface: string;
+    };
     /** Runtime inputs — the fields a party supplies at RUNTIME, distinct
      *  from the clause's content `fields` (which are committed into the agreement
      *  at signing). Rendered by ONE generic form; the surface reads no interface
@@ -120,6 +132,18 @@ export function parseBlockBinding(
             ...(raw.composes.forumUrl !== undefined && { forumUrl: raw.composes.forumUrl as string }),
         };
     }
+    let interaction: ClauseBlockBinding["interaction"];
+    if (raw.interaction !== undefined) {
+        if (!isObject(raw.interaction)) {
+            errors.push({ path: `${path}.interaction`, message: "interaction must be an object when present" });
+            return null;
+        }
+        if (typeof raw.interaction.interface !== "string" || raw.interaction.interface.length === 0) {
+            errors.push({ path: `${path}.interaction.interface`, message: "interaction.interface is required and must be a non-empty string" });
+            return null;
+        }
+        interaction = { interface: raw.interaction.interface };
+    }
     let fields: readonly FieldSpec[] | undefined;
     if (raw.fields !== undefined) {
         if (!Array.isArray(raw.fields)) {
@@ -140,6 +164,7 @@ export function parseBlockBinding(
         article: raw.article as ClauseArticle,
         ...(raw.nestsUnder !== undefined && { nestsUnder: raw.nestsUnder as string }),
         ...(composes !== undefined && { composes }),
+        ...(interaction !== undefined && { interaction }),
         ...(fields !== undefined && { fields }),
     };
 }

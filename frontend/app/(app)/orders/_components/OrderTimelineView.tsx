@@ -25,6 +25,7 @@ import { useMemo } from "react";
 import { useAccount } from "wagmi";
 import { SettlementProceedsPanel } from "@/components/core/SettlementProceedsPanel";
 import { CapabilityRail } from "@/components/core/CapabilityRail";
+import { OrderInteractionSurfaces } from "@/components/core/OrderInteractionSurfaces";
 import { useSemanticProcessWorkspace } from "@/hooks/core/useSemanticProcessWorkspace";
 import { useSellerListings } from "@/lib/seller/useSellerListings";
 import { findListingByAddress } from "@/lib/seller/sellerListing";
@@ -144,6 +145,19 @@ export function OrderTimelineView({ processId }: Props) {
                     isSeller={isSeller}
                     payment={myOrder.payment}
                     bondReturned={myOrder.settlementBreakdown.lockedBond.amount}
+                />
+            )}
+
+            {/* Declared interaction surfaces — for every clause on MY order
+                whose spec declares a block.interaction this frontend has a
+                registered surface for (e.g. a QR order-identity challenge at
+                a physical hand-off). Names no clause; the dispatch key is
+                the spec's own declaration. */}
+            {role !== "spectator" && myOrder && (
+                <OrderInteractionSurfaces
+                    processId={processId}
+                    orderHash={myOrder.orderId}
+                    agreementHash={myOrder.agreementHash}
                 />
             )}
 

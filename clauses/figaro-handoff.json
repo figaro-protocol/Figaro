@@ -22,6 +22,9 @@
         }
     ],
     "block": {
-        "article": "logistics"
+        "article": "logistics",
+        "interaction": {
+            "interface": "qr-challenge-v1"
+        }
     }
 }
