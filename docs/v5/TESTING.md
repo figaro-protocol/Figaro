@@ -79,14 +79,16 @@ iteration. In production builds, test-helper gating honors only the explicit
 `lib/shared/e2e.ts`); real deployments never set it, so their builds inline the
 hard-off (RA-5 intent preserved).
 
-**devnet (`*.devnet.spec.ts`)** — 14 specs on disk (`frontend/tests/e2e/`); see
+**devnet (`*.devnet.spec.ts`)** — 15 specs on disk (`frontend/tests/e2e/`); see
 the files. Every spec drives the real UI against Anvil + deployed contracts
 (action in the UI, reaction in the UI): commerce / checkout / order lifecycle
 (`seller-page`, `orders-accept` — the bilateral full-cycle spine;
 `assembly-chain` — the multi-order value-added chain: three sellers bound +
 designated through the UI, walk-order accepts with exact per-party bond
 deltas, runtime attestations, one atomic resolve paying every party, full
-audit), designer + assembly registry (`designer-save-draft`, `designer-view`,
+audit; `local-commerce` — the meal-delivery scenario authored on the designer
+canvas, pinned by both its sellers, run buyer→merchant→courier with BOTH full
+process ladders attested stage by stage), designer + assembly registry (`designer-save-draft`, `designer-view`,
 `designer-agreement-drawer`, `designer-drafts-delete`,
 `published-list-ui`), sellers (`sellers-onboarding`, `seller-edit-ui`,
 `seller-withdraw`), inventories (`assemblies-inventory`, `clauses-inventory`),

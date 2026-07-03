@@ -381,6 +381,45 @@ export async function discoverSellers(): Promise<DiscoveredSeller[]> {
 
 
 
+/** The latest profile URI a seller anchored on SellerRegistry (registration
+ *  or the most recent update), read from events — the out-of-band truth specs
+ *  verify gate effects against. */
+export async function latestSellerProfileURI(seller: `0x${string}`): Promise<string | undefined> {
+    const publicClient = localPublicClient();
+    const config = readLocalDeploymentConfig();
+    const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY ?? config.sellerRegistry) as `0x${string}`;
+    const [registrations, updates] = await Promise.all([
+        publicClient.getContractEvents({
+            address: sellerRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'SellerRegistered',
+            args: { seller }, fromBlock: 0n,
+        }),
+        publicClient.getContractEvents({
+            address: sellerRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'SellerProfileUpdated',
+            args: { seller }, fromBlock: 0n,
+        }),
+    ]);
+    return [...registrations, ...updates]
+        .sort((a, b) => Number(a.blockNumber - b.blockNumber))
+        .at(-1)?.args.metadataURI as string | undefined;
+}
+
+/** A seller's live assembly bindings, read from its latest pinned profile
+ *  (chain events → IPFS). Empty when unregistered or unresolvable. */
+export async function sellerProfileBindings(
+    seller: `0x${string}`,
+): Promise<DiscoveredSeller['assemblyBindings']> {
+    const uri = await latestSellerProfileURI(seller);
+    if (!uri) return [];
+    try {
+        const doc = await (await fetch(resolveIpfsURI(uri))).json() as {
+            assemblyBindings?: DiscoveredSeller['assemblyBindings'];
+        };
+        return doc.assemblyBindings ?? [];
+    } catch {
+        return [];
+    }
+}
+
 /** An anchored assembly with its template's order list resolved — enough for a
  *  spec to select an assembly by SHAPE (order count, clause ids) instead of a
  *  hardcoded slug. */

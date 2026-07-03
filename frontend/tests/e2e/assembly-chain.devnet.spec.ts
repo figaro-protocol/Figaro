@@ -55,7 +55,12 @@
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, parseAbi, parseEther, type Hex } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
-import { discoverAnchoredAssemblies, readLocalDeploymentConfig } from './devnet-helpers';
+import {
+    discoverAnchoredAssemblies,
+    latestSellerProfileURI,
+    readLocalDeploymentConfig,
+    sellerProfileBindings,
+} from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import { calculateBonds } from '@figaro/core';
@@ -70,10 +75,6 @@ const LOCAL_ANVIL = defineChain({
 });
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 
-const SELLER_REGISTRY_ABI = parseAbi([
-    'event SellerRegistered(address indexed seller, string metadataURI)',
-    'event SellerProfileUpdated(address indexed seller, string metadataURI)',
-]);
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
 const BUYER = ANVIL_ACCOUNTS[0] as Hex; // anvil[0] — the fixture's default buyer
@@ -108,18 +109,6 @@ async function waitForConnected(page: Page) {
     );
 }
 
-/** Fetch a JSON document from the local Kubo gateway by ipfs:// URI. */
-async function fetchIpfsJson(uri: string): Promise<Record<string, unknown> | null> {
-    const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080';
-    try {
-        const res = await fetch(`${gateway}/ipfs/${uri.replace(/^ipfs:\/\//, '')}`);
-        if (!res.ok) return null;
-        return await res.json() as Record<string, unknown>;
-    } catch {
-        return null;
-    }
-}
-
 test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve pays every party (devnet)', () => {
     test.setTimeout(420_000);
 
@@ -129,7 +118,6 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         const config = readLocalDeploymentConfig();
         const core = config.figaroCore as Hex;
         const token = config.tokenAddress as Hex;
-        const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY ?? config.sellerRegistry) as Hex;
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const balanceOf = (who: Hex) =>
             publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
@@ -154,27 +142,8 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         //    chain counterparties THROUGH THE WIZARD. Mainnet semantics: register
         //    once, persist — skip when the lead's latest profile already carries
         //    the conformant bindings. ──
-        const latestProfileURI = async (seller: Hex): Promise<string | undefined> => {
-            const [registrations, updates] = await Promise.all([
-                publicClient.getContractEvents({
-                    address: sellerRegistry, abi: SELLER_REGISTRY_ABI, eventName: 'SellerRegistered',
-                    args: { seller }, fromBlock: 0n,
-                }),
-                publicClient.getContractEvents({
-                    address: sellerRegistry, abi: SELLER_REGISTRY_ABI, eventName: 'SellerProfileUpdated',
-                    args: { seller }, fromBlock: 0n,
-                }),
-            ]);
-            return [...registrations, ...updates]
-                .sort((a, b) => Number(a.blockNumber - b.blockNumber))
-                .at(-1)?.args.metadataURI as string | undefined;
-        };
-        interface ProfileBinding {
-            assemblySlug: string;
-            counterpartyBindings?: Array<{ clauseId: string; addresses: string[] }>;
-        }
-        const isConformant = (doc: Record<string, unknown> | null): boolean => {
-            const bindings = (doc?.assemblyBindings ?? []) as ProfileBinding[];
+        type ProfileBindings = Awaited<ReturnType<typeof sellerProfileBindings>>;
+        const isConformant = (bindings: ProfileBindings): boolean => {
             const chainBinding = bindings.find((b) => b.assemblySlug === chainSlug);
             const designated = (clauseId: string, addr: Hex) =>
                 (chainBinding?.counterpartyBindings ?? []).some(
@@ -186,14 +155,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
                 && designated(COURIER_CLAUSE, COURIER)
                 && designated(SUPPLIER_CLAUSE, SUPPLIER);
         };
-        const profileBindings = async (seller: Hex): Promise<ProfileBinding[]> => {
-            const uri = await latestProfileURI(seller);
-            if (!uri) return [];
-            const doc = await fetchIpfsJson(uri);
-            return (doc?.assemblyBindings ?? []) as ProfileBinding[];
-        };
-        const uriBefore = await latestProfileURI(LEAD.address);
-        const conformant = uriBefore ? isConformant(await fetchIpfsJson(uriBefore)) : false;
+        const conformant = isConformant(await sellerProfileBindings(LEAD.address));
 
         if (!conformant) {
             await gotoAsWallet(page, LEAD.address, '/sellers');
@@ -239,10 +201,10 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
                 .toBeVisible({ timeout: 60000 });
 
             // The published profile — chain-verified out-of-band, not from the UI.
-            const uriAfter = await latestProfileURI(LEAD.address);
+            const uriAfter = await latestSellerProfileURI(LEAD.address);
             expect(uriAfter, 'the lead profile is anchored on SellerRegistry').toMatch(/^ipfs:\/\//);
             expect(
-                isConformant(await fetchIpfsJson(uriAfter!)),
+                isConformant(await sellerProfileBindings(LEAD.address)),
                 'the pinned profile carries both bindings + the chain counterparty designations',
             ).toBe(true);
         }
@@ -254,14 +216,14 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         //    binding — a participating seller binds the assembly it participates
         //    in. Verified out-of-band from the registry events + IPFS. ──
         const ensureBound = async (seller: Hex, label: string) => {
-            if ((await profileBindings(seller)).some((b) => b.assemblySlug === chainSlug)) return;
+            if ((await sellerProfileBindings(seller)).some((b) => b.assemblySlug === chainSlug)) return;
             await gotoAsWallet(page, seller, '/sellers/edit/assemblies?e2e=devnet');
             const row = page.getByTestId(`seller-assembly-row-${chainSlug}`);
             await row.waitFor({ state: 'visible', timeout: 30000 });
             await row.locator('input[type="checkbox"]').first().check();
             await page.getByRole('button', { name: 'Save changes' }).click();
             await expect.poll(async () =>
-                (await profileBindings(seller)).some((b) => b.assemblySlug === chainSlug), {
+                (await sellerProfileBindings(seller)).some((b) => b.assemblySlug === chainSlug), {
                 timeout: 60000, message: `${label}'s re-pinned profile carries the chain binding`,
             }).toBe(true);
         };
