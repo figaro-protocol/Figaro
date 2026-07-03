@@ -2,11 +2,13 @@
  * GHG module — V5 event-sourced via AttestationCoordinator.
  *
  * DISCLOSURE clauses (committed at signing) — every registered clause
- * declaring a `scope` field, resolved from the registry's specs (chain →
- * IPFS), never named in code. The accounting methodology is a free-form
- * `standard` value on the clause (not a per-standard clause id); the
- * committed `{standard, scope}` sectionData is the contract-signing-time
- * declaration ("seller reports under this methodology, scope 1").
+ * under the `emissions` article (`block.article`), resolved from the
+ * registry's specs (chain → IPFS), never named in code. The accounting
+ * methodology is a free-form `standard` value on the clause (not a
+ * per-standard clause id); the committed `{standard}` sectionData is the
+ * contract-signing-time declaration ("seller reports under this
+ * methodology"). No scope is stored — scope 1/2/3 is relative to a
+ * reporting entity's boundary, derived from its position in the topology.
  *
  * The runtime MEASUREMENT companion clause was retired (a consequence, not a
  * clause — operator ruling; re-affirmed 2026-07-02). The measured-grams
@@ -34,7 +36,7 @@ import {
     getAttestationsByOrder,
     type IndexedAttestationLog,
 } from "@/lib/composition/indexer";
-import { clauseDeclaresField, getClauseSpec, listKnownClauseIds, describeAttestation } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec, listKnownClauseIds, describeAttestation } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 
 export type AttestationRecord = {
@@ -70,10 +72,13 @@ export type ProcessDisclosureSummary = {
 // ── Spec-derived clause families ─────────────────────────────────────────────
 
 /** keccak256 event-topic hashes of every registered DISCLOSURE clause —
- *  the clauses declaring a `scope` field. Empty while the cache is cold. */
+ *  the clauses under the `emissions` article (`block.article`, the designed
+ *  grouping axis — the `clauseIsStructural` pattern). Any registered clause
+ *  declaring the article participates, including ones this codebase has
+ *  never seen. Empty while the cache is cold. */
 function disclosureClauseIdHashes(): Hex[] {
     return listKnownClauseIds()
-        .filter((clauseId) => clauseDeclaresField(clauseId, "scope"))
+        .filter((clauseId) => getClauseSpec(clauseId)?.block?.article === "emissions")
         .map((clauseId) => clauseIdHash(clauseId, getClauseSpec(clauseId)?.version ?? 1));
 }
 

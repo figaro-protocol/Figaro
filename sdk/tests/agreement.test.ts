@@ -26,12 +26,12 @@ const GEO: AgreementSection = {
     },
 };
 const GHG: AgreementSection = {
-    clause: "figaro-ghg-iso-14064",
+    clause: "figaro-ghg",
     version: 1,
-    // Standard identity lives in the clauseId; data carries only scope.
-    // cross-checked clauses use ABI encoding for sectionData — the clause values
-    // must be encoder-valid.
-    data: { scope: 1 },
+    // The methodology is a free-form `standard` value on the clause; no scope
+    // is stored (a reader derives it from topology). cross-checked clauses use
+    // ABI encoding for sectionData — the clause values must be encoder-valid.
+    data: { standard: "ISO 14064" },
 };
 const MODALITIES: AgreementSection = {
     clause: "figaro-modalities",
@@ -87,15 +87,15 @@ describe("computeAgreementHash", () => {
 
     it("changes when any section changes", () => {
         const h1 = computeAgreementHash(agreement([COMMERCE, GHG]));
-        const modified = { ...GHG, data: { ...GHG.data, scope: 2 } };
+        const modified = { ...GHG, data: { ...GHG.data, standard: "PAS 2050" } };
         const h2 = computeAgreementHash(agreement([COMMERCE, modified]));
         expect(h1).not.toBe(h2);
     });
 
     it("rejects agreements with duplicate clause keys", () => {
-        const dup = { ...GHG, data: { ...GHG.data, scope: 2 } };
+        const dup = { ...GHG, data: { ...GHG.data, standard: "PAS 2050" } };
         expect(() => computeAgreementHash(agreement([GHG, dup])))
-            .toThrow(/Duplicate clause keys.*figaro-ghg-iso-14064/);
+            .toThrow(/Duplicate clause keys.*figaro-ghg/);
     });
 });
 
@@ -145,7 +145,7 @@ describe("buildSectionInclusionProof + verifyInclusionProof", () => {
 
     it("throws when the section is absent", () => {
         const a = agreement([COMMERCE]);
-        expect(() => buildSectionInclusionProof(a, "figaro-ghg-iso-14064"))
+        expect(() => buildSectionInclusionProof(a, "figaro-ghg"))
             .toThrow(/Section not found/);
     });
 });

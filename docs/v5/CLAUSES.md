@@ -77,7 +77,7 @@ on-chain validator) plus 1 agreement-only clause (`figaro-topology`).
 | `figaro-freight-class` | Declared freight classification anchored to the NMFC (NMFTA) — the NMFC class (50–500) + optional item number. Elective; a co-equal logistics clause | Layer A (off-chain) |
 | `figaro-modalities` | The buyer's request — consume-onsite / pickup / delivery / virtual (single-select) | Layer A (off-chain) |
 | `figaro-handoff` | Hand-off point — where the physical exchange happens (proximity-policy nests under it) | Layer A (off-chain) |
-| `figaro-ghg` | GHG accounting methodology (free-form `standard` string) + scope (committed at signing) | Layer A (off-chain) |
+| `figaro-ghg` | GHG accounting methodology (free-form `standard` string, committed at signing) | Layer A (off-chain) |
 | `figaro-proximity-policy` | Required detection bands committed at agreement signing | Layer A (off-chain) |
 | `figaro-merchant-process` | Merchant per-role event enum (sovereign log) | Layer A (off-chain) |
 | `figaro-courier-process` | Courier per-role event enum (sovereign log) | Layer A (off-chain) |
@@ -88,8 +88,10 @@ on-chain validator) plus 1 agreement-only clause (`figaro-topology`).
 `figaro-ghg` is a single disclosure clause whose accounting methodology is
 a **free-form `standard` string** — any methodology, existing or future ("GHG
 Protocol Corporate Standard", "ISO 14064", "PAS 2050", "EN 16258", or a custom
-one); the protocol takes no closed list. Content shape is `(string standard,
-uint256 scope)`. Measured emissions (grams CO2e) are carried as a **runtime
+one); the protocol takes no closed list. Content shape is `(string standard)`
+— no scope is stored: scope 1/2/3 is relative to a reporting entity's boundary,
+and a reader derives it from its own position in the process topology. Measured
+emissions (grams CO2e) are carried as a **runtime
 attestation** on this clause, not a separate registered clause — a runtime
 witness is an attestation on the committed clause, so there is no
 `figaro-ghg-measurement` companion clause (the WHY is in "Composition and

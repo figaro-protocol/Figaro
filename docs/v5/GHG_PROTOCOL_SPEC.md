@@ -31,6 +31,17 @@ Under the common GHG Protocol and ESG reporting model:
 2. scope 2 means indirect emissions from purchased electricity, steam, heat, or cooling
 3. scope 3 means other indirect value-chain emissions
 
+**Scope is reader-derived, never stored.** No Figaro clause carries a scope
+field: scope classification is relative to a reporting entity's organizational
+boundary — the same emission is scope 1 for the seller who produced it and
+scope 3 for every buyer downstream — and Figaro has no firm boundary; the
+process graph is the value chain. Each seller discloses grams for fulfilling
+its own order, and a reporting entity computes its scope 1/2/3 inventory by
+walking the process topology relative to its own position. The terminology
+above is the vocabulary readers of the graph use, not protocol data. (The
+`figaro-ghg` clause once carried an optional stored scope integer; it encoded
+one methodology's taxonomy beside a free-form `standard` and was removed.)
+
 The phrase `scope 4` is not part of the canonical scope 1, 2, 3 taxonomy.
 
 In practice, `scope 4` is often used as shorthand for avoided emissions or comparative product-impact claims. Those claims are real, but they should not be modeled in this protocol as if they were a fourth standard inventory scope.

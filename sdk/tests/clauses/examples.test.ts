@@ -320,36 +320,35 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(validateContent({ applicableLaw: "U" }, parsed.spec).ok).toBe(false);
     });
 
-    // ── figaro-ghg (consolidated disclosure: free-form standard + scope) ──
+    // ── figaro-ghg (disclosure: free-form standard; no stored scope —
+    //    a reader derives scope from its position in the topology) ──
 
     it("figaro-ghg spec parses cleanly", () => {
         expect(parseClauseSpec(ghgSpecRaw).ok).toBe(true);
     });
 
-    it("figaro-ghg accepts each scope (1, 2, 3) under a named standard", () => {
+    it("figaro-ghg accepts a named standard", () => {
         const parsed = parseClauseSpec(ghgSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        for (const scope of [1, 2, 3]) {
-            expect(validateContent({ standard: "ISO 14064", scope }, parsed.spec).ok).toBe(true);
-        }
+        expect(validateContent({ standard: "ISO 14064" }, parsed.spec).ok).toBe(true);
     });
 
     it("figaro-ghg accepts ANY free-form standard (no closed taxonomy)", () => {
         const parsed = parseClauseSpec(ghgSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ standard: "My bespoke methodology v9", scope: 1 }, parsed.spec).ok).toBe(true);
+        expect(validateContent({ standard: "My bespoke methodology v9" }, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-ghg rejects scope 4", () => {
+    it("figaro-ghg declares no scope field (scope is reader-derived, never stored)", () => {
         const parsed = parseClauseSpec(ghgSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ standard: "ISO 14064", scope: 4 }, parsed.spec).ok).toBe(false);
+        expect(parsed.spec.fields.some((f) => f.name === "scope")).toBe(false);
     });
 
     it("figaro-ghg rejects an empty standard", () => {
         const parsed = parseClauseSpec(ghgSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ standard: "", scope: 1 }, parsed.spec).ok).toBe(false);
+        expect(validateContent({ standard: "" }, parsed.spec).ok).toBe(false);
     });
 
     // ── figaro-proximity-policy-v1 ──
