@@ -51,9 +51,8 @@ async function getAllAttestations(client: PublicClient, chainId: number): Promis
 }
 
 /** One `Attestation` event flattened to its full record — the shape shared by
- *  the disclosure hooks, the audit/evidence bundle, and (via the narrower
- *  `RuntimeAttestation` view) the semantic model. clauseId is DATA off the
- *  event, never hardcoded. */
+ *  the audit/evidence bundle and (via the narrower `RuntimeAttestation` view)
+ *  the semantic model. clauseId is DATA off the event, never hardcoded. */
 export type AttestationRecord = {
     orderHash: string;
     processId: string;
@@ -66,9 +65,9 @@ export type AttestationRecord = {
 };
 
 /** THE Attestation-log → record reducer — the one parse every consumer shares
- *  (semantic model, disclosure hooks, evidence/audit bundle; the juror path
- *  stays React-free). Returns null when the log lacks its identity args
- *  (garbage or still-pending log) — callers filter. */
+ *  (semantic model, evidence/audit bundle; the juror path stays React-free).
+ *  Returns null when the log lacks its identity args (garbage or
+ *  still-pending log) — callers filter. */
 export function parseAttestationLog(log: IndexedAttestationLog): AttestationRecord | null {
     const args = log.args;
     if (!args?.orderHash || !args.processId || !args.attester || !args.clauseId) return null;
@@ -83,18 +82,6 @@ export function parseAttestationLog(log: IndexedAttestationLog): AttestationReco
         blockNumber: log.blockNumber === undefined || log.blockNumber === null ? 0 : Number(log.blockNumber),
     };
 }
-
-// ── GHG Disclosure stage encoding (AttestationCoordinator `stage` arg) ────────
-//   0 Commitment · 1 Inventory · 2 Restatement · 3 Verification
-//   (ISO 14064-1 / GHG Protocol). A composed-contract calling convention, not core.
-/** @public — consumed by the disclosure hooks (`useGHGDisclosure`, knip-ignored
- *  pending their restored UI: the K2 panel registry + the measured-grams build). */
-export const DISCLOSURE_KIND = {
-    commitment: 0,
-    inventory: 1,
-    restatement: 2,
-    verification: 3,
-} as const;
 
 /**
  * Fetch the `bytes content` argument the seller/buyer attestation was called
@@ -140,21 +127,6 @@ export async function getAttestationContent(
 export async function getAttestationsByOrder(client: PublicClient, chainId: number, orderHash: string) {
     const all = await getAllAttestations(client, chainId);
     return all.filter((log) => getStringArg(log, "orderHash") === orderHash);
-}
-
-/** Attestation logs filtered by processId AND clauseId.
- *  @public — consumed by the disclosure hooks (`useGHGDisclosure`, knip-ignored
- *  pending their restored UI: the K2 panel registry + the measured-grams build). */
-export async function getAttestationsByProcessAndClause(
-    client: PublicClient,
-    chainId: number,
-    processId: string,
-    clauseId: string,
-) {
-    const all = await getAllAttestations(client, chainId);
-    return all.filter(
-        (log) => getStringArg(log, "processId") === processId && getStringArg(log, "clauseId") === clauseId,
-    );
 }
 
 /** A process attestation flattened to the fields the runtime model needs:
