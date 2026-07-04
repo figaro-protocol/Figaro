@@ -6,19 +6,12 @@
 #   1. IPFS (Kubo, Docker)   — agreement / branding pinning
 #   2. Anvil (:8545)         — the chain
 #   3. Figaro protocol stack — scripts/deploy-local.sh   (skipped if already deployed)
-#   4. Mock Kleros           — scripts/deploy-mock-kleros.sh
-#
-# Why both deploy scripts run here: Kleros is an EXTERNAL arbitration forum,
-# not a Figaro contract, so it lives in its own deploy script by design (the
-# protocol is provider-agnostic — see deploy-mock-kleros.sh). This wrapper
-# runs both so no one has to remember the second one.
 #
 # Does NOT start a dev server: Playwright's `devnet` project starts its own on
 # :3100, and a `npm run dev` on :3000 is yours to manage.
 #
 # Usage:
-#   ./scripts/devup.sh                      # full devnet (protocol + Kleros)
-#   SKIP_KLEROS=1 ./scripts/devup.sh        # protocol only
+#   ./scripts/devup.sh                      # full devnet
 #   FORCE_REDEPLOY=1 ./scripts/devup.sh     # redeploy protocol even if present
 
 set -euo pipefail
@@ -68,15 +61,7 @@ else
     DEPLOY_SKIPPED=0
 fi
 
-# ── 4. Mock Kleros (external arbitration forum) ──────────────────────────────
-if [[ "${SKIP_KLEROS:-0}" == "1" ]]; then
-    note "Mock Kleros — SKIPPED (SKIP_KLEROS=1)"
-else
-    note "Mock Kleros"
-    bash scripts/deploy-mock-kleros.sh
-fi
-
-# ── 5. Clauses — pin specs to IPFS + anchor on ClauseRegistry ────────────────
+# ── 4. Clauses — pin specs to IPFS + anchor on ClauseRegistry ────────────────
 # deploy-local.sh now populates clauses itself (the single clause-population path,
 # same script prod/testnet/mainnet use). This step is therefore only needed when the
 # deploy above was SKIPPED (already-deployed path) — it self-heals a registry whose

@@ -40,10 +40,9 @@ cd sdk && npm run build                  # tsc → dist/
 cd sdk && npm run lint                   # tsc --noEmit
 
 # --- Deploy to local Anvil ---
-./scripts/devup.sh                       # ⭐ one-shot, idempotent: ensures Anvil + IPFS, deploys protocol + Kleros
+./scripts/devup.sh                       # ⭐ one-shot, idempotent: ensures Anvil + IPFS, deploys the protocol
 # …or the individual steps it wraps:
 ./scripts/deploy-local.sh                # deploys the stack AND pins+anchors clauses (incl. structural commerce/topology) — self-sufficient
-./scripts/deploy-mock-kleros.sh          # run AFTER deploy-local.sh for the Kleros mock flow
 ```
 
 Full harness inventory (file lists, property names, rule counts) → `TESTING.md`.
@@ -54,7 +53,6 @@ Full harness inventory (file lists, property names, rule counts) → `TESTING.md
 
 - `script/Deploy.s.sol` — devnet (Anvil); uses mock verifier and mock tokens. The wrapper deploys from a RANDOMIZED throwaway deployer (funded from anvil[0]) so contract addresses are per-machine unique — the universal Anvil-default addresses trip MetaMask/Blockaid threat lists ("deceptive request" on the commit signature). Explicit `PRIVATE_KEY` env overrides (testnet/mainnet path). Mints MOCK/permit tokens to anvil[0..19] explicitly.
 - `script/DeployMainnet.s.sol` — mainnet; no mocks; reads all sensitive params from env. Deploys the kernel + protocol contracts + FigToken (400M founder/DAO genesis mint, then deployer-mint renounce). No proof/batch path — it was removed in the teardown.
-- `script/DeployMockKleros.s.sol` — devnet only; deploys `MockKlerosArbitrator` + `MockKlerosArbitrableProxy`. Run via `./scripts/deploy-mock-kleros.sh` after `./scripts/deploy-local.sh`.
 - `script/MintTokens.s.sol` — utility: mint test tokens to existing devnet accounts.
 
 `forge script` is harness-denied; deploy via the `.sh` wrappers, not by calling `forge script` directly.
@@ -91,11 +89,6 @@ NEXT_PUBLIC_ASSEMBLY_REGISTRY=0x...
 # FIG token
 NEXT_PUBLIC_FIG_TOKEN_ADDRESS=0x...
 
-# Dispute resolution (devnet Kleros mock — set via scripts/deploy-mock-kleros.sh)
-NEXT_PUBLIC_KLEROS_ARBITRABLE_PROXY=0x...
-NEXT_PUBLIC_KLEROS_ARBITRATOR_EXTRA_DATA=0x...
-NEXT_PUBLIC_KLEROS_MOCK_BANNER=true
-
 # Wallet + dev helpers
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=...
 NEXT_PUBLIC_ENABLE_TEST_HELPERS=true   # devnet only
@@ -104,3 +97,10 @@ NEXT_PUBLIC_ENABLE_TEST_HELPERS=true   # devnet only
 NEXT_PUBLIC_IPFS_API_URL=http://127.0.0.1:5001
 NEXT_PUBLIC_IPFS_GATEWAY_URL=http://127.0.0.1:8080
 ```
+
+One server-side (non-`NEXT_PUBLIC`) knob, set per deployment rather than in
+`.env.local`: `EVIDENCE_DISPLAY_FRAME_ANCESTORS` — the SPACE-SEPARATED list of
+forum origins (CSP source syntax) allowed to iframe `/evidence-display`, e.g.
+`'self' https://resolve.kleros.io https://*.kleros.io`. Unset, the route admits
+no third-party ancestor — a forum is deployment config, never a code default
+(`frontend/middleware.ts`).

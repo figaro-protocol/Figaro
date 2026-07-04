@@ -31,13 +31,17 @@ import type { NextRequest } from "next/server";
  * scope for the threat-model fixes.
  *
  * The `/evidence-display` route still gets its narrower `frame-ancestors`
- * override so Kleros jurors can iframe the page; everything else inherits
- * the global `frame-ancestors 'none'` from the base policy.
+ * override so arbitration-forum reviewers can iframe the page; everything
+ * else inherits the global `frame-ancestors 'none'` from the base policy.
  */
 
+// The forums allowed to iframe /evidence-display — a SPACE-SEPARATED list of
+// origins in CSP source syntax, one entry per forum a deployment recognizes
+// (e.g. "'self' https://resolve.kleros.io https://*.kleros.io"). The dispute
+// layer is provider-agnostic (a forum is deployment CONFIG, never a code
+// default), so the unconfigured default admits no third-party ancestor.
 const EVIDENCE_FRAME_ANCESTORS =
-    process.env.EVIDENCE_DISPLAY_FRAME_ANCESTORS ??
-    "'self' https://resolve.kleros.io https://*.kleros.io https://*.kleros.eth.limo";
+    process.env.EVIDENCE_DISPLAY_FRAME_ANCESTORS ?? "'self'";
 
 const isDev = process.env.NODE_ENV !== "production";
 
@@ -116,7 +120,7 @@ export function middleware(request: NextRequest) {
     response.headers.set("Content-Security-Policy", csp);
 
     if (request.nextUrl.pathname.startsWith("/evidence-display")) {
-        // Allow only the configured Kleros-style ancestors to iframe this route.
+        // Allow only the configured forum ancestors to iframe this route.
         // The CSP above already encodes the same allowlist via frame-ancestors;
         // dropping X-Frame-Options ensures the legacy header doesn't override.
         response.headers.delete("X-Frame-Options");

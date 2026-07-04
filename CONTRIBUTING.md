@@ -47,7 +47,7 @@ cd prover && cargo test
 ## Scripts layout
 
 Two distinct folders:
-- `script/` (singular, Foundry-reserved) — `.s.sol` deploy scripts (`Deploy.s.sol`, `DeployMainnet.s.sol`, `DeployMockKleros.s.sol`, `MintTokens.s.sol`).
+- `script/` (singular, Foundry-reserved) — `.s.sol` deploy scripts (`Deploy.s.sol`, `DeployMainnet.s.sol`, `MintTokens.s.sol`).
 - `scripts/` (plural) — shell automation (`deploy-*.sh`, `lint-*.sh`, `test-*.sh`, `mythril-docker.sh`, `coverage.sh`, `setup-local.sh`).
 
 When adding new tooling, pick the folder that matches the file type. Update `README.md` if you add a new entry-point command.

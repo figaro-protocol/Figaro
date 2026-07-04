@@ -136,7 +136,7 @@ forge test --via-ir
 cd sdk && npm test
 ```
 
-`script/` holds the Foundry deploy scripts (`Deploy.s.sol`, `DeployMainnet.s.sol`, `DeployMockKleros.s.sol`, `MintTokens.s.sol`).
+`script/` holds the Foundry deploy scripts (`Deploy.s.sol`, `DeployMainnet.s.sol`, `MintTokens.s.sol`).
 
 ---
 

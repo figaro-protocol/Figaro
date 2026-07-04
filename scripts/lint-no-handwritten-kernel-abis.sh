@@ -14,7 +14,7 @@
 # sanctioned secondary home, excluded below).
 #
 # Scope: frontend/tests/**/*.ts. Registry/mock surfaces the SDK does not
-# export (SellerRegistry, mock Kleros) are NOT banned — a single local
+# export (e.g. SellerRegistry) are NOT banned — a single local
 # declaration is their canonical home.
 #
 # Wired into the root package.json lint-staged block under
