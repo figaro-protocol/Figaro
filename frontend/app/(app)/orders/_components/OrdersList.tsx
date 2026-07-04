@@ -34,7 +34,7 @@ import { WalletGate } from "@/components/core/WalletGate";
 import { useWalletProcessRows, type ProcessRow } from "@/lib/kernel/walletProcessQueries";
 import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
 import { type CommitmentPayload } from "@/lib/kernel/signedCommitment";
-import { computeOrderHash, computeAgreementHash } from "@figaro/core";
+import { computeOrderHash } from "@figaro/core";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import {
@@ -224,18 +224,8 @@ export function OrdersList() {
     const handleAccept = useCallback(async (index: number) => {
         const payload = incoming[index];
         if (!payload) return;
-        // Layer A — never counter-sign an agreement that doesn't match the hash
-        // being signed. Recompute the relayed agreement's merkle root and confirm
-        // it equals the commitment's agreementHash before committing.
-        if (payload.agreement) {
-            const recomputed = computeAgreementHash(payload.agreement);
-            if (recomputed.toLowerCase() !== payload.commitment.agreementHash.toLowerCase()) {
-                setAcceptError(
-                    "This order isn't valid to commit: the agreement does not match its signed hash.",
-                );
-                return;
-            }
-        }
+        // Layer A (agreement-hash recompute) is enforced inside the flow's sign
+        // step — acceptOrder throws on mismatch and the catch below surfaces it.
         setAcceptingIndex(index);
         setAcceptError(null);
         try {

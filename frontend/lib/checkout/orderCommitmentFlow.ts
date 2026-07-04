@@ -26,6 +26,7 @@ import {
 import {
     COMMITMENT_TYPES,
     buildDomain,
+    computeAgreementHash,
     type Agreement,
     type Commitment,
     type Hex,
@@ -85,6 +86,16 @@ export function useOrderCommitmentFlow() {
         agreement: Agreement,
     ): Promise<Hex> => {
         assertSigningDomain(CONTRACTS.core, chainId);
+        // Layer A — never sign an agreement that doesn't match the hash being
+        // signed: recompute the agreement's merkle root and refuse on mismatch.
+        // Lives AT the sign step so no caller can bypass it — the /orders
+        // accept card, /sign, and the buyer's checkout sign all route through
+        // here.
+        if (!hexEqual(computeAgreementHash(agreement), commitment.agreementHash)) {
+            throw new Error(
+                "This order isn't valid to sign: the agreement does not match its signed hash.",
+            );
+        }
         const approved = await requestSignConfirmation(commitment, agreement);
         if (!approved) throw new Error("Signing cancelled by user.");
         const sig = await signTypedDataAsync({
