@@ -7,6 +7,12 @@
  * address, floor/door, special instructions — which cannot be derived at
  * order time and is nobody's business but the party who must navigate there.
  *
+ * SYMMETRIC over the order edge: either party may request and either may
+ * answer — a courier requests the buyer's drop-off door; in a private
+ * transaction the buyer requests the seller's precise pickup point (the
+ * profile address/geohash stay public by definition; the door-level detail
+ * is encrypted). The same per-order keypairs serve both directions.
+ *
  * The 2-message ceremony over the coordination channel (all channel data safe
  * to expose publicly — no transport-layer trust):
  *
@@ -79,65 +85,68 @@ export function addressDetailContentBytes(blobB64: string): `0x${string}` {
     return toHex(blobB64);
 }
 
-/** Step 1 — the SELLER requests the detail: per-order ephemeral keypair
- *  created (idempotent, sessionStorage) and its public key sent to the buyer.
- *  Returns the public key sent. */
+/** Step 1 — EITHER party requests the counterparty's detail: per-order
+ *  ephemeral keypair created (idempotent, sessionStorage) and its public key
+ *  sent across the order edge. The ceremony is symmetric — the courier
+ *  requests the drop-off door; in a pickup, the buyer requests the seller's
+ *  precise pickup point the same way. Returns the public key sent. */
 export async function requestAddressDetail(
     channel: CoordinationChannel,
-    params: { myAddress: string; buyerAddress: string; orderId: string },
+    params: { myAddress: string; recipientAddress: string; orderId: string },
 ): Promise<string> {
     const keypair = getOrCreateOrderEcdhKeypair(params.myAddress, params.orderId);
     await channel.sendEcdhPubkey({
-        recipientAddress: params.buyerAddress,
+        recipientAddress: params.recipientAddress,
         orderId: params.orderId,
         pubKeyHex: keypair.publicKeyHex,
     });
     return keypair.publicKeyHex;
 }
 
-/** Step 2 — the BUYER answers: encrypts the addressee block against the
- *  seller's public key and sends (own public key, blob) over the channel.
- *  Returns the blob so the caller can anchor its hash on-chain. */
+/** Step 2 — the answering party encrypts ITS addressee block against the
+ *  requester's public key and sends (own public key, blob) over the channel.
+ *  Returns the blob so the caller can anchor its hash on-chain (a buyer
+ *  answer anchors as a buyer attestation; a seller answer as a seller one). */
 export async function sendAddressDetail(
     channel: CoordinationChannel,
     params: {
         myAddress: string;
-        sellerAddress: string;
+        recipientAddress: string;
         orderId: string;
-        sellerPubKeyHex: string;
+        recipientPubKeyHex: string;
         block: AddresseeBlock;
     },
 ): Promise<{ blobB64: string }> {
     const keypair = getOrCreateOrderEcdhKeypair(params.myAddress, params.orderId);
-    // The buyer SENDS the encrypted payload → sender-side derivation.
-    const secret = deriveSharedSecretAsSender(keypair.privateKeyHex, params.sellerPubKeyHex);
+    // The answering party SENDS the encrypted payload → sender-side derivation.
+    const secret = deriveSharedSecretAsSender(keypair.privateKeyHex, params.recipientPubKeyHex);
     const blobB64 = await wrapWithSharedSecret(encodeAddresseeBlock(params.block), secret);
     await channel.sendEcdhPubkey({
-        recipientAddress: params.sellerAddress,
+        recipientAddress: params.recipientAddress,
         orderId: params.orderId,
         pubKeyHex: keypair.publicKeyHex,
     });
     await channel.sendWrappedKey({
-        recipientAddress: params.sellerAddress,
+        recipientAddress: params.recipientAddress,
         orderId: params.orderId,
         wrappedKeyB64: blobB64,
     });
     return { blobB64 };
 }
 
-/** Step 3 — the SELLER decrypts a received blob with the buyer's public key.
- *  Returns null when the blob doesn't decrypt or doesn't parse — a wrong-key
- *  or corrupted payload is absence, not an exception. */
+/** Step 3 — the receiving party decrypts a received blob with the SENDER's
+ *  public key. Returns null when the blob doesn't decrypt or doesn't parse —
+ *  a wrong-key or corrupted payload is absence, not an exception. */
 export async function decryptAddressDetail(params: {
     myAddress: string;
     orderId: string;
-    buyerPubKeyHex: string;
+    senderPubKeyHex: string;
     blobB64: string;
 }): Promise<AddresseeBlock | null> {
     const keypair = getOrCreateOrderEcdhKeypair(params.myAddress, params.orderId);
     try {
-        // The seller RECEIVES → receiver-side derivation against the buyer's (sender's) pubkey.
-        const secret = deriveSharedSecretAsReceiver(params.buyerPubKeyHex, keypair.privateKeyHex);
+        // Receiver-side derivation against the sender's pubkey.
+        const secret = deriveSharedSecretAsReceiver(params.senderPubKeyHex, keypair.privateKeyHex);
         const plain = await unwrapWithSharedSecret(params.blobB64, secret);
         return tryDecodeAddresseeBlock(plain);
     } catch {

@@ -55,13 +55,13 @@ describe("the private-address ceremony", () => {
         const { channel, sent } = recordingChannel();
 
         const sellerPub = await requestAddressDetail(channel, {
-            myAddress: SELLER, buyerAddress: BUYER, orderId: ORDER,
+            myAddress: SELLER, recipientAddress: BUYER, orderId: ORDER,
         });
         expect(sellerPub).toMatch(/^[0-9a-f]{66}$/i);
 
         const { blobB64 } = await sendAddressDetail(channel, {
-            myAddress: BUYER, sellerAddress: SELLER, orderId: ORDER,
-            sellerPubKeyHex: sellerPub, block: BLOCK,
+            myAddress: BUYER, recipientAddress: SELLER, orderId: ORDER,
+            recipientPubKeyHex: sellerPub, block: BLOCK,
         });
         const buyerPub = sent.find((m) => m.kind === "pubkey" && m.value !== sellerPub)!.value;
         expect(sent.find((m) => m.kind === "blob")!.value).toBe(blobB64);
@@ -69,7 +69,7 @@ describe("the private-address ceremony", () => {
         expect(blobB64).not.toContain("Rue du Marché");
 
         const decrypted = await decryptAddressDetail({
-            myAddress: SELLER, orderId: ORDER, buyerPubKeyHex: buyerPub, blobB64,
+            myAddress: SELLER, orderId: ORDER, senderPubKeyHex: buyerPub, blobB64,
         });
         expect(decrypted).toEqual(BLOCK);
     });
@@ -77,11 +77,11 @@ describe("the private-address ceremony", () => {
     it("the anchored hash binds exactly the transported blob", async () => {
         const { channel, sent } = recordingChannel();
         const sellerPub = await requestAddressDetail(channel, {
-            myAddress: SELLER, buyerAddress: BUYER, orderId: ORDER,
+            myAddress: SELLER, recipientAddress: BUYER, orderId: ORDER,
         });
         const { blobB64 } = await sendAddressDetail(channel, {
-            myAddress: BUYER, sellerAddress: SELLER, orderId: ORDER,
-            sellerPubKeyHex: sellerPub, block: BLOCK,
+            myAddress: BUYER, recipientAddress: SELLER, orderId: ORDER,
+            recipientPubKeyHex: sellerPub, block: BLOCK,
         });
         const received = sent.find((m) => m.kind === "blob")!.value;
         expect(addressDetailBlobHash(received)).toBe(addressDetailBlobHash(blobB64));
@@ -95,24 +95,49 @@ describe("the private-address ceremony", () => {
     it("a wrong key or corrupted blob decrypts to absence, never an exception", async () => {
         const { channel } = recordingChannel();
         const sellerPub = await requestAddressDetail(channel, {
-            myAddress: SELLER, buyerAddress: BUYER, orderId: ORDER,
+            myAddress: SELLER, recipientAddress: BUYER, orderId: ORDER,
         });
         const { blobB64 } = await sendAddressDetail(channel, {
-            myAddress: BUYER, sellerAddress: SELLER, orderId: ORDER,
-            sellerPubKeyHex: sellerPub, block: BLOCK,
+            myAddress: BUYER, recipientAddress: SELLER, orderId: ORDER,
+            recipientPubKeyHex: sellerPub, block: BLOCK,
         });
         // An eavesdropper (fresh keypair, different address) gets nothing.
         const eavesdropper = await decryptAddressDetail({
             myAddress: "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc", orderId: ORDER,
-            buyerPubKeyHex: sellerPub, blobB64,
+            senderPubKeyHex: sellerPub, blobB64,
         });
         expect(eavesdropper).toBeNull();
         // A corrupted blob is absence too.
         const corrupted = await decryptAddressDetail({
-            myAddress: SELLER, orderId: ORDER, buyerPubKeyHex: sellerPub,
+            myAddress: SELLER, orderId: ORDER, senderPubKeyHex: sellerPub,
             blobB64: blobB64.slice(0, -4) + "AAAA",
         });
         expect(corrupted).toBeNull();
+    });
+
+    it("the ceremony is SYMMETRIC — the seller answers the buyer with the same keypairs (private pickup point)", async () => {
+        const { channel, sent } = recordingChannel();
+        // Forward: seller requests, buyer answers (establishes both keypairs).
+        const sellerPub = await requestAddressDetail(channel, {
+            myAddress: SELLER, recipientAddress: BUYER, orderId: ORDER,
+        });
+        await sendAddressDetail(channel, {
+            myAddress: BUYER, recipientAddress: SELLER, orderId: ORDER,
+            recipientPubKeyHex: sellerPub, block: BLOCK,
+        });
+        const buyerPub = sent.find((m) => m.kind === "pubkey" && m.value !== sellerPub)!.value;
+        // Reverse: the SELLER shares its precise pickup point with the buyer.
+        const pickup: AddresseeBlock = { name: "Rosa's Kitchen", street: "4 Market Lane", unit: "rear door" };
+        const { blobB64: pickupBlob } = await sendAddressDetail(channel, {
+            myAddress: SELLER, recipientAddress: BUYER, orderId: ORDER,
+            recipientPubKeyHex: buyerPub, block: pickup,
+        });
+        const decrypted = await decryptAddressDetail({
+            myAddress: BUYER, orderId: ORDER, senderPubKeyHex: sellerPub, blobB64: pickupBlob,
+        });
+        expect(decrypted).toEqual(pickup);
+        // Directions do not cross: the buyer's inbound blob is not the seller's.
+        expect(pickupBlob).not.toBe(sent.find((m) => m.kind === "blob")!.value);
     });
 
     it("tryDecodeAddresseeBlock rejects non-blocks", () => {
