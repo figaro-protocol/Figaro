@@ -29,6 +29,10 @@ export function tryParseCatalogueItems(doc: unknown): CatalogueItemMetadata[] | 
             available: typeof item.available === 'boolean' ? item.available : true,
             massGrams: typeof item.massGrams === 'number' ? item.massGrams : undefined,
             volumeMl: typeof item.volumeMl === 'number' ? item.volumeMl : undefined,
+            pricingPolicy: item.pricingPolicy === 'rate' ? 'rate' as const
+                : item.pricingPolicy === 'fixed' ? 'fixed' as const : undefined,
+            rateUnit: typeof item.rateUnit === 'string' ? item.rateUnit : undefined,
+            rateQuantitySource: typeof item.rateQuantitySource === 'string' ? item.rateQuantitySource : undefined,
         }))
         .filter((item) => item.name.trim().length > 0);
 }

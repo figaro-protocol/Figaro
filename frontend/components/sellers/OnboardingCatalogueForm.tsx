@@ -33,8 +33,9 @@ import { hexEqual } from "@/lib/shared/evm";
  * `SellerCatalogueMetadata { subjectAddress, items, version }`.
  *
  * Each item: id (auto), name (required), price (required), category
- * (required), description (optional), image (optional, via IPFS
- * upload), available (default true). Pricing is denominated in the
+ * (optional), description (optional), image (optional, via IPFS
+ * upload), available (default true), pricing policy (fixed | rate —
+ * a rate prices per `rateUnit`, quantity from `rateQuantitySource`). Pricing is denominated in the
  * profile's `defaultTokenAddress` (set on step 2).
  *
  * Audit fix B7: every change is persisted to localStorage on the spot
@@ -56,6 +57,11 @@ interface FormItem {
     mass: string;
     /** Editor input — in the catalogue's `unitSystem`. Parsed to metric at save. */
     volume: string;
+    /** "fixed" (price = the item's price) or "rate" (price = a rate per
+     *  `rateUnit`; payment resolves at checkout via `rateQuantitySource`). */
+    pricingPolicy: "fixed" | "rate";
+    rateUnit: string;
+    rateQuantitySource: string;
 }
 
 function uid(): string {
@@ -73,6 +79,9 @@ function emptyItem(): FormItem {
         available: true,
         mass: "",
         volume: "",
+        pricingPolicy: "fixed",
+        rateUnit: "",
+        rateQuantitySource: "checkout-quantity",
     };
 }
 
@@ -87,6 +96,9 @@ function fromItem(item: CatalogueItemMetadata, unitSystem: UnitSystem): FormItem
         available: item.available,
         mass: gramsToInput(item.massGrams, unitSystem),
         volume: mlToInput(item.volumeMl, unitSystem),
+        pricingPolicy: item.pricingPolicy ?? "fixed",
+        rateUnit: item.rateUnit ?? "",
+        rateQuantitySource: item.rateQuantitySource ?? "checkout-quantity",
     };
 }
 
@@ -101,6 +113,13 @@ function toItem(form: FormItem, unitSystem: UnitSystem): CatalogueItemMetadata {
         available: form.available,
         massGrams: parseInputToGrams(form.mass, unitSystem),
         volumeMl: parseInputToMl(form.volume, unitSystem),
+        ...(form.pricingPolicy === "rate"
+            ? {
+                pricingPolicy: "rate" as const,
+                rateUnit: form.rateUnit.trim() || undefined,
+                rateQuantitySource: form.rateQuantitySource,
+            }
+            : {}),
     };
 }
 
@@ -365,7 +384,7 @@ export function OnboardingCatalogueForm({
                             {importErrors.map((e) => (<li key={e}>{e}</li>))}
                         </ul>
                         <p className="text-ink-faint">
-                            Expected header columns: <code>name, price, description, category, image, available, massGrams, volumeMl</code> (case-insensitive, any order; <code>name</code> + <code>price</code> required).
+                            Expected header columns: <code>name, price, description, category, image, available, massGrams, volumeMl, pricingPolicy, rateUnit, rateQuantitySource</code> (case-insensitive, any order; <code>name</code> + <code>price</code> required).
                         </p>
                     </div>
                 )}
@@ -468,6 +487,50 @@ function ItemRow({ item, index, priceSymbol, unitSystem, onChange, onRemove }: I
                     label="Upload item image"
                 />
             </FormField>
+
+            {/* Pricing policy: fixed (the price IS the item price) or a RATE per
+                unit — the payment resolves at checkout as rate × quantity, the
+                quantity read from the declared source (billed per started unit). */}
+            <div className="grid grid-cols-3 gap-4">
+                <FormField label="Pricing" inputId={`${idPrefix}-pricing-policy`}>
+                    <select
+                        id={`${idPrefix}-pricing-policy`}
+                        value={item.pricingPolicy}
+                        onChange={(e) => onChange("pricingPolicy", e.target.value as FormItem["pricingPolicy"])}
+                        className="w-full rounded border border-neutral-300 px-3 py-2 text-sm"
+                        data-testid={`${idPrefix}-pricing-policy`}
+                    >
+                        <option value="fixed">Fixed price</option>
+                        <option value="rate">Rate (price per unit)</option>
+                    </select>
+                </FormField>
+                {item.pricingPolicy === "rate" && (
+                    <>
+                        <FormField label="Per unit" inputId={`${idPrefix}-rate-unit`}>
+                            <Input
+                                id={`${idPrefix}-rate-unit`}
+                                type="text"
+                                placeholder="e.g. km, hour"
+                                value={item.rateUnit}
+                                onChange={(e) => onChange("rateUnit", e.target.value)}
+                                data-testid={`${idPrefix}-rate-unit`}
+                            />
+                        </FormField>
+                        <FormField label="Quantity from" inputId={`${idPrefix}-rate-source`}>
+                            <select
+                                id={`${idPrefix}-rate-source`}
+                                value={item.rateQuantitySource}
+                                onChange={(e) => onChange("rateQuantitySource", e.target.value)}
+                                className="w-full rounded border border-neutral-300 px-3 py-2 text-sm"
+                                data-testid={`${idPrefix}-rate-source`}
+                            >
+                                <option value="checkout-quantity">Entered at checkout</option>
+                                <option value="order-geodistance">Distance between the order&apos;s committed endpoints (km)</option>
+                            </select>
+                        </FormField>
+                    </>
+                )}
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
                 <FormField label={`Mass (${massUnitLabel(unitSystem)})`} inputId={`${idPrefix}-mass`}>

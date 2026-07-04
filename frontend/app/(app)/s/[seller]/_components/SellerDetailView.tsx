@@ -228,6 +228,9 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                                             <div className="flex items-center justify-between">
                                                                 <span className="font-semibold text-blue-700">
                                                                     {menuItem.price}{tokenSymbol ? ` ${tokenSymbol}` : ""}
+                                                                    {menuItem.pricingPolicy === "rate" && (
+                                                                        <span className="text-neutral-500 font-normal"> / {menuItem.rateUnit || "unit"}</span>
+                                                                    )}
                                                                 </span>
                                                                 {quantity === 0 ? (
                                                                     <button

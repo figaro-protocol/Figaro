@@ -20,6 +20,7 @@ import type { SellerCatalogue } from "@/lib/seller/types";
 import type { CatalogueItemMetadata } from "@/lib/seller/sellerCatalogueMetadata";
 import { hexEqual } from "@/lib/shared/evm";
 import { parseToken } from "@/lib/shared/utils";
+import { getRateQuantityResolver } from "@/lib/checkout/rateQuantitySources";
 
 /**
  * Topologically order an assembly's non-root orders and resolve each one's
@@ -59,42 +60,77 @@ export function planSubOrderSellers(
     });
 }
 
+/** A sub-order's full pricing statement — the ONE figure set both the cart
+ *  breakdown (display) and the checkout walk (commit) read, so they cannot
+ *  drift. `billedQuantity × unitPrice = payment` always holds, making the
+ *  committed line item replay the payment with no reference back to the
+ *  (mutable) catalogue. */
+export interface SubOrderPricing {
+    /** The catalogue item priced — the contributor's first available item;
+     *  null when the contributor publishes none. */
+    item: CatalogueItemMetadata | null;
+    /** The payment the buyer signs, in the currency's smallest unit. 0n when
+     *  unpriceable (no item, or a rate quantity that doesn't resolve). */
+    payment: bigint;
+    /** The committed line-item quantity: 1 for fixed items; for rate items
+     *  the billed count — per STARTED unit, max(1, ceil(resolvedUnits)). */
+    billedQuantity: number;
+    /** The committed line-item unitPrice: the full payment for fixed items;
+     *  the per-unit rate for rate items. */
+    unitPrice: bigint;
+    /** The raw resolved units before per-started-unit rounding (e.g. 4.2 km)
+     *  — display only; null for fixed items or when unresolvable. */
+    resolvedUnits: number | null;
+    /** Why the pricing is 0n, when it is. */
+    issue?: "no-item" | "unresolvable-quantity";
+}
+
 /**
- * Resolve a sub-order's payment as a bigint.
+ * Price a sub-order from its contributor's OWN catalogue — the lead included.
+ * The template carries no payment (it's a runtime value), so the figure is
+ * resolved LIVE from the pricing seller's catalogue — the same path the
+ * delivery leg uses, minus the picker. The item rule is the contributor's
+ * first available item (open refinement, kit-assembly: an itemId on the
+ * binding — catalogue categories are seller-authored free-form values, never
+ * a closed set this code may branch on).
  *
- * Every seller prices from its OWN catalogue — the lead included. The template
- * carries no payment (it's a runtime value), so the figure is resolved LIVE
- * from the pricing seller's catalogue (the published item price) — the same
- * path the delivery leg uses, minus the picker. Returns 0n when the seller
- * publishes no matching item.
- *
- * Open refinement (kit-assembly): the node→catalogue-item mapping is currently
- * the seller's first available item — catalogue categories are seller-authored
- * free-form values, never a closed set this code may branch on. A richer rule
- * (itemId on the binding) is the remaining decision.
+ * A `pricingPolicy: "rate"` item prices as rate × quantity, the quantity
+ * resolved through the rate-quantity-source registry from the order's OWN
+ * clause fields (e.g. committed geolocation endpoints) or the buyer's
+ * checkout-entered units — billed per started unit. An unresolvable quantity
+ * yields payment 0n + `issue`, and the surface refuses to commit (the
+ * commerce clause's `payment ≥ 1` would reject it at Layer A regardless).
  */
-export function resolveSubOrderPayment(args: {
+export function resolveSubOrderPricing(args: {
     node: AssemblyTemplateOrder;
     seller: `0x${string}`;
     sellerCatalogues: SellerCatalogue[];
     tokenDecimals: number;
-}): bigint {
-    const item = resolveSubOrderItem(args);
-    if (!item) return 0n;
-    return parseToken(item.price, args.tokenDecimals);
-}
-
-/**
- * Resolve the catalogue ITEM a sub-order buys from its contributor — the
- * single source `resolveSubOrderPayment` prices from, exposed so the commit
- * can also write it into the sub-order's commerce section as the line item
- * (the agreement's statement of WHAT the payment buys). Same rule as the
- * pricing: the contributor's first available item.
- */
-export function resolveSubOrderItem(args: {
-    seller: `0x${string}`;
-    sellerCatalogues: SellerCatalogue[];
-}): CatalogueItemMetadata | null {
+    /** The buyer's entered units for this node (the "checkout-quantity"
+     *  source's input), when the surface collected one. */
+    checkoutQuantity?: number;
+}): SubOrderPricing {
     const catalogue = args.sellerCatalogues.find((c) => hexEqual(c.address, args.seller));
-    return catalogue?.items.find((i) => i.available !== false) ?? null;
+    const item = catalogue?.items.find((i) => i.available !== false) ?? null;
+    if (!item) {
+        return { item: null, payment: 0n, billedQuantity: 1, unitPrice: 0n, resolvedUnits: null, issue: "no-item" };
+    }
+    if (item.pricingPolicy !== "rate") {
+        const payment = parseToken(item.price, args.tokenDecimals);
+        return { item, payment, billedQuantity: 1, unitPrice: payment, resolvedUnits: null };
+    }
+    const resolver = getRateQuantityResolver(item.rateQuantitySource);
+    const units = resolver?.({ clauses: args.node.clauses, checkoutQuantity: args.checkoutQuantity }) ?? null;
+    if (units === null) {
+        return { item, payment: 0n, billedQuantity: 1, unitPrice: 0n, resolvedUnits: null, issue: "unresolvable-quantity" };
+    }
+    const billedQuantity = Math.max(1, Math.ceil(units));
+    const unitPrice = parseToken(item.price, args.tokenDecimals);
+    return {
+        item,
+        payment: unitPrice * BigInt(billedQuantity),
+        billedQuantity,
+        unitPrice,
+        resolvedUnits: units,
+    };
 }

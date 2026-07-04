@@ -26,4 +26,6 @@ export {
     geohashesMatch,
     geohashCommonPrefix,
     haversineDistance,
+    decodeGeohash,
+    geohashCentroidDistanceKm,
 } from "./geo.js";

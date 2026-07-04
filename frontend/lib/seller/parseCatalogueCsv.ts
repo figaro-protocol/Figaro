@@ -16,11 +16,14 @@
  *   name           — required, non-empty after trim
  *   price          — required, non-empty after trim
  *   description    — optional
- *   category       — optional, defaults to "General"
+ *   category       — optional (absent when the seller authors none)
  *   image          — optional, IPFS or HTTP URI
  *   available      — optional, "true"/"false"/"1"/"0" (default true)
  *   massGrams      — optional, parsed as number
  *   volumeMl       — optional, parsed as number
+ *   pricingPolicy  — optional, "fixed" (default) or "rate"
+ *   rateUnit       — optional, a rate's editorial unit label ("km", "hour")
+ *   rateQuantitySource — optional, a rate's quantity-source registry key
  *
  * Any other columns are silently ignored. Rows missing a required
  * field land in `errors`; the caller can decide whether to surface
@@ -144,6 +147,9 @@ export function parseCatalogueCsv(text: string): CatalogueCsvParseResult {
     const availCol = idx("available");
     const massCol = idx("massgrams");
     const volCol = idx("volumeml");
+    const policyCol = idx("pricingpolicy");
+    const rateUnitCol = idx("rateunit");
+    const rateSourceCol = idx("ratequantitysource");
 
     const items: CatalogueItemMetadata[] = [];
     const errors: string[] = [];
@@ -172,6 +178,17 @@ export function parseCatalogueCsv(text: string): CatalogueCsvParseResult {
         if (mass !== undefined) item.massGrams = mass;
         const volume = parseNumber(get(volCol));
         if (volume !== undefined) item.volumeMl = volume;
+        const policy = get(policyCol).trim().toLowerCase();
+        if (policy === "rate") {
+            item.pricingPolicy = "rate";
+            const rateUnit = get(rateUnitCol).trim();
+            if (rateUnit) item.rateUnit = rateUnit;
+            const rateSource = get(rateSourceCol).trim();
+            if (rateSource) item.rateQuantitySource = rateSource;
+        } else if (policy && policy !== "fixed") {
+            errors.push(`Row ${r + 1}: pricingPolicy must be "fixed" or "rate" (got "${policy}").`);
+            continue;
+        }
         items.push(item);
     }
 

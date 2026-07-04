@@ -27,7 +27,7 @@ import { validateCommitmentAgreement } from "@/lib/kernel/orderAgreement";
 import type { DraftOrder } from "@/lib/checkout/draftOrders";
 import { commitmentOrderHash, commitmentProcessId, type CommitmentPayload } from "@/lib/kernel/signedCommitment";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
-import { planSubOrderSellers, resolveSubOrderItem, resolveSubOrderPayment } from "@/lib/checkout/assemblySubOrderPlan";
+import { planSubOrderSellers, resolveSubOrderPricing } from "@/lib/checkout/assemblySubOrderPlan";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { clauseDeclaresField } from "@/lib/shared/clauseSpecSource";
 import { parseToken } from "@/lib/shared/utils";
@@ -169,6 +169,10 @@ export async function executeAssemblyCheckout(
          *  runs alongside the order's normal commit. Interface-agnostic — the
          *  walk names no clause. */
         subOrderCompositions?: Record<string, { interface: string; fieldValues: Record<string, unknown> }>;
+        /** The buyer's checkout-entered units per template node id — the
+         *  "checkout-quantity" rate source's input (hours, seats, …). Only
+         *  read for a node whose contributor prices by such a rate. */
+        subOrderQuantities?: Record<string, number>;
     },
     deps: AssemblyCheckoutDeps,
 ): Promise<void> {
@@ -256,22 +260,38 @@ export async function executeAssemblyCheckout(
         const parentOrderHashes = templateParentOrderHashes(node)
             .map((pid) => realOrderHash.get(pid))
             .filter((h): h is `0x${string}` => !!h);
+        const pricing = selection
+            ? null
+            : resolveSubOrderPricing({
+                node, seller: subSeller, sellerCatalogues, tokenDecimals,
+                checkoutQuantity: params.subOrderQuantities?.[node.id],
+            });
+        if (pricing?.issue === "unresolvable-quantity") {
+            throw new Error(
+                `"${pricing.item?.name}" prices by rate but its quantity can't be resolved on this order — the quantity source ("${pricing.item?.rateQuantitySource}") found no value.`,
+            );
+        }
         const subPayment = selection
             ? parseToken(selection.price, tokenDecimals)
-            : resolveSubOrderPayment({
-                node, seller: subSeller, sellerCatalogues, tokenDecimals,
-            });
+            : pricing!.payment;
         cumulativeValue += subPayment;
         // The sub-order's commerce section states WHAT the payment buys: the
         // contributor's resolved catalogue item (the same item the payment was
         // priced from), or the buyer's picked item on the unbound path. The
         // commerce clause requires lineItems on EVERY order, subs included.
-        const subItem = selection
-            ? selection.item
-            : resolveSubOrderItem({ seller: subSeller, sellerCatalogues });
-        const subLineItems: AssemblyCheckoutLineItem[] | undefined = subItem
-            ? [{ itemId: subItem.id, name: subItem.name, quantity: 1, unitPrice: subPayment.toString() }]
-            : undefined;
+        // Rate items commit their derivation: quantity = billed units (per
+        // started unit), unitPrice = the rate — quantity × unitPrice replays
+        // the payment from the committed leaf alone.
+        const subLineItems: AssemblyCheckoutLineItem[] | undefined = selection
+            ? [{ itemId: selection.item.id, name: selection.item.name, quantity: 1, unitPrice: subPayment.toString() }]
+            : pricing!.item
+                ? [{
+                    itemId: pricing!.item.id,
+                    name: pricing!.item.name,
+                    quantity: pricing!.billedQuantity,
+                    unitPrice: pricing!.unitPrice.toString(),
+                }]
+                : undefined;
         const subClauses = fillCommerceSection(
             writeTopologySection({ ...node.clauses }, parentOrderHashes),
             currency, subPayment, subLineItems,

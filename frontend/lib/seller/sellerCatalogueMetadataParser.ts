@@ -24,6 +24,18 @@ import {
 } from "@/lib/seller/parseHelpers";
 
 const ALLOWED_UNIT_SYSTEMS = new Set<UnitSystem>(["metric", "imperial"]);
+const ALLOWED_PRICING_POLICIES = new Set<NonNullable<CatalogueItemMetadata["pricingPolicy"]>>([
+    "fixed",
+    "rate",
+]);
+
+function parseOptionalPricingPolicy(
+    value: unknown,
+    path: string,
+): CatalogueItemMetadata["pricingPolicy"] {
+    if (value === undefined) return undefined;
+    return asEnum(value, ALLOWED_PRICING_POLICIES, path);
+}
 
 
 function parseOptionalUnitSystem(value: unknown, path: string): UnitSystem | undefined {
@@ -44,6 +56,9 @@ function parseItem(value: unknown, path: string): CatalogueItemMetadata {
         available: asBoolean(record.available, `${path}.available`),
         massGrams: asOptionalNumber(record.massGrams, `${path}.massGrams`),
         volumeMl: asOptionalNumber(record.volumeMl, `${path}.volumeMl`),
+        pricingPolicy: parseOptionalPricingPolicy(record.pricingPolicy, `${path}.pricingPolicy`),
+        rateUnit: asOptionalString(record.rateUnit, `${path}.rateUnit`),
+        rateQuantitySource: asOptionalString(record.rateQuantitySource, `${path}.rateQuantitySource`),
     };
 }
 

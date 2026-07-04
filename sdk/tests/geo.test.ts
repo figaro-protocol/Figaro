@@ -3,6 +3,8 @@ import {
     geohashesMatch,
     geohashCommonPrefix,
     haversineDistance,
+    decodeGeohash,
+    geohashCentroidDistanceKm,
 } from "../src/extensions/geo.js";
 
 // ── geohashesMatch ──────────────────────────────────────────────────────────
@@ -73,5 +75,60 @@ describe("haversineDistance", () => {
         const d = haversineDistance(0, 0, 0, 180);
         expect(d).toBeGreaterThan(19900);
         expect(d).toBeLessThan(20100);
+    });
+});
+
+// ── decodeGeohash ───────────────────────────────────────────────────────────
+
+describe("decodeGeohash", () => {
+    it("decodes the canonical example to its centroid (u4pruydqqvj ≈ 57.64911, 10.40744)", () => {
+        const { lat, lng } = decodeGeohash("u4pruydqqvj");
+        expect(lat).toBeCloseTo(57.64911, 4);
+        expect(lng).toBeCloseTo(10.40744, 4);
+    });
+
+    it("decodes short hashes to coarser centroids (9q8yy ≈ San Francisco)", () => {
+        const { lat, lng } = decodeGeohash("9q8yy");
+        expect(lat).toBeGreaterThan(37.7);
+        expect(lat).toBeLessThan(37.8);
+        expect(lng).toBeGreaterThan(-122.5);
+        expect(lng).toBeLessThan(-122.3);
+    });
+
+    it("is case-insensitive", () => {
+        const a = decodeGeohash("U4PRUYDQQVJ");
+        const b = decodeGeohash("u4pruydqqvj");
+        expect(a.lat).toBe(b.lat);
+        expect(a.lng).toBe(b.lng);
+    });
+
+    it("throws on an empty hash", () => {
+        expect(() => decodeGeohash("")).toThrow(/empty/);
+    });
+
+    it("throws on characters outside the geohash alphabet (a, i, l, o)", () => {
+        expect(() => decodeGeohash("9q8ya")).toThrow(/invalid/);
+        expect(() => decodeGeohash("9q8yi")).toThrow(/invalid/);
+    });
+});
+
+// ── geohashCentroidDistanceKm ───────────────────────────────────────────────
+
+describe("geohashCentroidDistanceKm", () => {
+    it("zero for the same cell", () => {
+        expect(geohashCentroidDistanceKm("9q8yyk", "9q8yyk")).toBe(0);
+    });
+
+    it("SF to LA (~560 km) from precision-5 hashes", () => {
+        // 9q8yy ≈ San Francisco, 9q5ct ≈ Los Angeles
+        const d = geohashCentroidDistanceKm("9q8yy", "9q5ct");
+        expect(d).toBeGreaterThan(500);
+        expect(d).toBeLessThan(620);
+    });
+
+    it("adjacent precision-6 cells are sub-kilometre apart", () => {
+        const d = geohashCentroidDistanceKm("9q8yyk", "9q8yym");
+        expect(d).toBeGreaterThan(0);
+        expect(d).toBeLessThan(1.5);
     });
 });

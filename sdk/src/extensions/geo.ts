@@ -60,3 +60,57 @@ export function haversineDistance(
 
     return EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+
+// ── Geohash decoding ────────────────────────────────────────────────────────
+
+const BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz";
+
+/**
+ * Decode a geohash to its cell's centroid lat/lng.
+ *
+ * The inverse of the standard base32 interleaved encoding: walks the hash
+ * narrowing the lat/lng bounds, then returns the cell's midpoint. Centroid
+ * error is bounded by the cell size (precision 6 ≈ 1.2km × 0.6km), so the
+ * caller chooses precision by authoring longer or shorter hashes.
+ *
+ * Throws on an empty hash or a character outside the geohash base32
+ * alphabet — a malformed committed value must surface, never decode to junk.
+ */
+export function decodeGeohash(geohash: string): { lat: number; lng: number } {
+    if (!geohash) throw new Error("decodeGeohash: empty geohash");
+    let evenBit = true;
+    let minLat = -90,
+        maxLat = 90,
+        minLng = -180,
+        maxLng = 180;
+    for (const char of geohash.toLowerCase()) {
+        const idx = BASE32.indexOf(char);
+        if (idx === -1) throw new Error(`decodeGeohash: invalid geohash character "${char}"`);
+        for (let bit = 4; bit >= 0; bit--) {
+            const set = (idx >> bit) & 1;
+            if (evenBit) {
+                const midLng = (minLng + maxLng) / 2;
+                if (set) minLng = midLng;
+                else maxLng = midLng;
+            } else {
+                const midLat = (minLat + maxLat) / 2;
+                if (set) minLat = midLat;
+                else maxLat = midLat;
+            }
+            evenBit = !evenBit;
+        }
+    }
+    return { lat: (minLat + maxLat) / 2, lng: (minLng + maxLng) / 2 };
+}
+
+/**
+ * Great-circle (Haversine) distance between two geohash cell centroids, in
+ * kilometers. Crow-flies over centroids — the only distance derivable from
+ * two committed geohashes alone (routed road distance needs an external
+ * source, which is a composition concern, not geo math).
+ */
+export function geohashCentroidDistanceKm(geohash1: string, geohash2: string): number {
+    const a = decodeGeohash(geohash1);
+    const b = decodeGeohash(geohash2);
+    return haversineDistance(a.lat, a.lng, b.lat, b.lng);
+}

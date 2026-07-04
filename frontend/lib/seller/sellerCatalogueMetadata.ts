@@ -26,6 +26,29 @@ export interface CatalogueItemMetadata {
     massGrams?: number;
     /** Item volume in millilitres. Same convention as `massGrams`. */
     volumeMl?: number;
+    /**
+     * How `price` is read. Absent or "fixed": `price` is the item's price
+     * (today's behavior). "rate": `price` is a RATE per `rateUnit`, and the
+     * payment is rate × the quantity resolved at checkout from
+     * `rateQuantitySource` — billed per STARTED unit (quantity = ceil of the
+     * resolved units, min 1), so the committed line item alone replays the
+     * payment (quantity × unitPrice) with no reference back to this mutable
+     * catalogue.
+     */
+    pricingPolicy?: "fixed" | "rate";
+    /**
+     * Editorial unit label for a rate item — "km", "hour", "GB", … Free
+     * text like `category`, never a closed set; display-only.
+     */
+    rateUnit?: string;
+    /**
+     * Where a rate item's quantity comes from at checkout — a key into the
+     * rate-quantity resolver registry (an OPEN axis, same discipline as the
+     * field `format` registry): "checkout-quantity" (the buyer enters the
+     * units) or "order-geodistance" (derived from the order's committed
+     * geolocation endpoints). New sources register without touching checkout.
+     */
+    rateQuantitySource?: string;
 }
 
 

@@ -1,11 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+import { geohashCentroidDistanceKm } from "@figaro/core/extensions";
 import {
     planSubOrderSellers,
-    resolveSubOrderPayment,
+    resolveSubOrderPricing,
 } from "@/lib/checkout/assemblySubOrderPlan";
 import type { AssemblyTemplateOrder } from "@/lib/shared/assemblyTemplate";
 import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
 import type { SellerCatalogue } from "@/lib/seller/types";
+import { primeClauseSpecs } from "./primeClauseSpecs";
 
 // The kit-assembly diamond: A (lead, root) → B, A → C, B → D, C → D.
 // B + D carry proximity-policy, C carries ghg. Proximity is bound
@@ -92,29 +94,145 @@ describe("planSubOrderSellers", () => {
     });
 });
 
-describe("resolveSubOrderPayment", () => {
+describe("resolveSubOrderPricing — fixed items", () => {
     it("prices a contributor node live from its published catalogue price", () => {
-        expect(resolveSubOrderPayment(payArgs(orderById("B"), SWIFT))).toBe(600000000000000000n);
+        const p = resolveSubOrderPricing(payArgs(orderById("B"), SWIFT));
+        expect(p.payment).toBe(600000000000000000n);
+        // Fixed items commit as quantity 1 × the full payment.
+        expect(p.billedQuantity).toBe(1);
+        expect(p.unitPrice).toBe(p.payment);
+        expect(p.issue).toBeUndefined();
     });
 
     it("prices the lead's own node from the lead's own catalogue", () => {
-        expect(resolveSubOrderPayment(payArgs(orderById("D"), MERCATO))).toBe(250000000000000000n);
+        expect(resolveSubOrderPricing(payArgs(orderById("D"), MERCATO)).payment).toBe(250000000000000000n);
     });
 
-    it("returns 0 when the seller publishes no component item", () => {
-        expect(resolveSubOrderPayment({ ...payArgs(orderById("B"), SWIFT), sellerCatalogues: [] }))
-            .toBe(0n);
+    it("returns 0 + no-item when the seller publishes no component item", () => {
+        const p = resolveSubOrderPricing({ ...payArgs(orderById("B"), SWIFT), sellerCatalogues: [] });
+        expect(p.payment).toBe(0n);
+        expect(p.item).toBeNull();
+        expect(p.issue).toBe("no-item");
     });
 
     it("sums to the displayed total with bigint arithmetic (regression: no string-concat)", () => {
         const plan = planSubOrderSellers(assembly);
         const rootPayment = 1000000000000000000n; // product price on the lead/root
         const total = plan.reduce(
-            (sum, { node, seller }) => sum + resolveSubOrderPayment(payArgs(node, seller!)),
+            (sum, { node, seller }) => sum + resolveSubOrderPricing(payArgs(node, seller!)).payment,
             rootPayment,
         );
         // 1 + 0.6 (B/Swift) + 0.55 (C/Rosso) + 0.25 (D/Mercato) = 2.40. A
         // `bigint + string` regression would concatenate, not sum to this.
         expect(total).toBe(2400000000000000000n);
+    });
+});
+
+// ── Rate pricing: payment = rate × billed units (per started unit) ──────────
+
+const GEO = "figaro-geolocation";
+// 9q8yy ≈ San Francisco, 9q5ct ≈ Los Angeles — several hundred km apart.
+const SF = "9q8yy";
+const LA = "9q5ct";
+
+const rateCatalogue = (item: Record<string, unknown>): SellerCatalogue[] =>
+    [{ address: SWIFT, name: "Swift Courier", items: [item] }] as unknown as SellerCatalogue[];
+
+const nodeWithClauses = (clauses: Record<string, Record<string, unknown>>): AssemblyTemplateOrder =>
+    ({ id: "R", buyer: MERCATO, seller: SWIFT, parentOrderHashes: ["A"], clauses }) as unknown as AssemblyTemplateOrder;
+
+describe("resolveSubOrderPricing — rate items", () => {
+    beforeAll(async () => {
+        await primeClauseSpecs([GEO]);
+    });
+
+    it("checkout-quantity: payment = rate × the buyer's entered units", () => {
+        const p = resolveSubOrderPricing({
+            node: nodeWithClauses({}),
+            seller: SWIFT,
+            sellerCatalogues: rateCatalogue({
+                id: "consulting", name: "Consulting", price: "0.5", available: true,
+                pricingPolicy: "rate", rateUnit: "hour", rateQuantitySource: "checkout-quantity",
+            }),
+            tokenDecimals: 18,
+            checkoutQuantity: 16,
+        });
+        expect(p.billedQuantity).toBe(16);
+        expect(p.unitPrice).toBe(500000000000000000n);
+        expect(p.payment).toBe(8000000000000000000n); // 0.5 × 16 = 8
+        expect(p.payment).toBe(p.unitPrice * BigInt(p.billedQuantity)); // replayable
+    });
+
+    it("checkout-quantity without an entered value is unresolvable, never defaulted", () => {
+        const p = resolveSubOrderPricing({
+            node: nodeWithClauses({}),
+            seller: SWIFT,
+            sellerCatalogues: rateCatalogue({
+                id: "consulting", name: "Consulting", price: "0.5", available: true,
+                pricingPolicy: "rate", rateUnit: "hour", rateQuantitySource: "checkout-quantity",
+            }),
+            tokenDecimals: 18,
+        });
+        expect(p.payment).toBe(0n);
+        expect(p.issue).toBe("unresolvable-quantity");
+    });
+
+    it("order-geodistance: payment = rate × ceil(centroid km), from the order's own committed endpoints", () => {
+        const p = resolveSubOrderPricing({
+            node: nodeWithClauses({ [GEO]: { originGeohash: SF, destinationGeohash: LA } }),
+            seller: SWIFT,
+            sellerCatalogues: rateCatalogue({
+                id: "haul", name: "Haul", price: "0.01", available: true,
+                pricingPolicy: "rate", rateUnit: "km", rateQuantitySource: "order-geodistance",
+            }),
+            tokenDecimals: 18,
+        });
+        const km = geohashCentroidDistanceKm(SF, LA);
+        expect(p.resolvedUnits).toBeCloseTo(km, 6);
+        expect(p.billedQuantity).toBe(Math.ceil(km)); // per started unit
+        expect(p.unitPrice).toBe(10000000000000000n);
+        expect(p.payment).toBe(p.unitPrice * BigInt(p.billedQuantity)); // replayable
+    });
+
+    it("order-geodistance bills min 1 unit for a same-cell (zero-distance) order", () => {
+        const p = resolveSubOrderPricing({
+            node: nodeWithClauses({ [GEO]: { originGeohash: SF, destinationGeohash: SF } }),
+            seller: SWIFT,
+            sellerCatalogues: rateCatalogue({
+                id: "haul", name: "Haul", price: "0.01", available: true,
+                pricingPolicy: "rate", rateUnit: "km", rateQuantitySource: "order-geodistance",
+            }),
+            tokenDecimals: 18,
+        });
+        expect(p.billedQuantity).toBe(1);
+        expect(p.payment).toBe(10000000000000000n);
+    });
+
+    it("order-geodistance on an order without committed endpoints is unresolvable", () => {
+        const p = resolveSubOrderPricing({
+            node: nodeWithClauses({}),
+            seller: SWIFT,
+            sellerCatalogues: rateCatalogue({
+                id: "haul", name: "Haul", price: "0.01", available: true,
+                pricingPolicy: "rate", rateUnit: "km", rateQuantitySource: "order-geodistance",
+            }),
+            tokenDecimals: 18,
+        });
+        expect(p.payment).toBe(0n);
+        expect(p.issue).toBe("unresolvable-quantity");
+    });
+
+    it("an unregistered quantity source is unresolvable — never silently fixed-priced", () => {
+        const p = resolveSubOrderPricing({
+            node: nodeWithClauses({}),
+            seller: SWIFT,
+            sellerCatalogues: rateCatalogue({
+                id: "x", name: "X", price: "0.5", available: true,
+                pricingPolicy: "rate", rateUnit: "unit", rateQuantitySource: "never-seen-source",
+            }),
+            tokenDecimals: 18,
+        });
+        expect(p.payment).toBe(0n);
+        expect(p.issue).toBe("unresolvable-quantity");
     });
 });

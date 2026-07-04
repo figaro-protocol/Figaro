@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/Button";
 import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
-import { planSubOrderSellers, resolveSubOrderPayment } from "@/lib/checkout/assemblySubOrderPlan";
+import { planSubOrderSellers, resolveSubOrderPricing, type SubOrderPricing } from "@/lib/checkout/assemblySubOrderPlan";
 import { executeAssemblyCheckout } from "@/lib/checkout/assemblyCheckout";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { CommitmentSharePanel } from "@/components/core/CommitmentSharePanel";
@@ -154,6 +154,10 @@ export function CheckoutView({ sellerAddress }: Props) {
     // The buyer's checkout-time counterparty choice for a sub-order the
     // adopting seller's catalogue leaves unbound (the buyer assigns it).
     const [sellerSelection, setSellerSelection] = useState<SellerSelection | null>(null);
+    // Buyer-entered units per template node id — the "checkout-quantity" rate
+    // source's input (hours, seats, …). Read by the SAME pricing call the
+    // commit walk makes, so the shown figure equals what commits.
+    const [subOrderQuantities, setSubOrderQuantities] = useState<Record<string, number>>({});
     useEffect(() => { setSellerSelection(null); }, [selectedSlug]);
 
     // Auto-chain: when approval confirms, proceed to commit signing.
@@ -263,9 +267,13 @@ export function CheckoutView({ sellerAddress }: Props) {
 
     // Multi-order price transparency: the buyer pays the lead's cut plus every
     // contributor's cut, each priced LIVE from that contributor's own catalogue.
-    // Built from the SAME planSubOrderSellers + resolveSubOrderPayment the commit
-    // walks, so the shown total equals what commits.
-    const kitBreakdown = ((): { rows: Array<{ name: string; payment: bigint }>; total: bigint } | null => {
+    // Built from the SAME planSubOrderSellers + resolveSubOrderPricing the commit
+    // walks (same checkout-entered quantities included), so the shown figures —
+    // rate derivations and all — equal what commits.
+    const kitBreakdown = ((): {
+        rows: Array<{ name: string; payment: bigint; nodeId?: string; pricing?: SubOrderPricing }>;
+        total: bigint;
+    } | null => {
         const assembly = pickedAssembly;
         if (!assembly || assembly.assemblyTemplate.orders.length <= 1) return null;
         const lead = sellerCatalogue.address as `0x${string}`;
@@ -281,10 +289,11 @@ export function CheckoutView({ sellerAddress }: Props) {
             { name: nameOf(lead), payment: cartTotal },
             ...plan.map(({ node, seller }) => {
                 if (seller) {
-                    return {
-                        name: nameOf(seller),
-                        payment: resolveSubOrderPayment({ node, seller, sellerCatalogues, tokenDecimals }),
-                    };
+                    const pricing = resolveSubOrderPricing({
+                        node, seller, sellerCatalogues, tokenDecimals,
+                        checkoutQuantity: subOrderQuantities[node.id],
+                    });
+                    return { name: nameOf(seller), payment: pricing.payment, nodeId: node.id, pricing };
                 }
                 // Unbound node: the buyer's checkout-time choice fills it — the
                 // shown figure is the SAME selection the commit will use.
@@ -413,6 +422,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                             { interface: c.interface, fieldValues: compositionInputs[c.nodeId] ?? {} },
                         ]))
                         : undefined,
+                    subOrderQuantities,
                 },
                 {
                     chainId,
@@ -510,11 +520,59 @@ export function CheckoutView({ sellerAddress }: Props) {
                             {kitBreakdown ? (
                                 <div className="space-y-1" data-testid="cart-contributor-breakdown">
                                     {kitBreakdown.rows.map((row, i) => (
-                                        <div key={i} className="flex justify-between">
-                                            <span className="text-neutral-600">{row.name}</span>
-                                            <span className="text-neutral-900 tabular-nums">
-                                                {formatToken(row.payment, tokenDecimals)}
-                                            </span>
+                                        <div key={i}>
+                                            <div className="flex justify-between">
+                                                <span className="text-neutral-600">{row.name}</span>
+                                                <span className="text-neutral-900 tabular-nums">
+                                                    {formatToken(row.payment, tokenDecimals)}
+                                                </span>
+                                            </div>
+                                            {/* Rate derivation — the P&L shows HOW the figure was
+                                                priced before the buyer signs it. Billed per started
+                                                unit; the same numbers commit as the line item. */}
+                                            {row.pricing?.item?.pricingPolicy === "rate" && !row.pricing.issue && (
+                                                <div
+                                                    className="flex justify-between text-xs text-neutral-500"
+                                                    data-testid={`rate-derivation-${row.nodeId}`}
+                                                >
+                                                    <span>
+                                                        {row.pricing.resolvedUnits !== null && row.pricing.resolvedUnits !== row.pricing.billedQuantity
+                                                            ? `${row.pricing.resolvedUnits.toFixed(2)} ${row.pricing.item.rateUnit ?? "unit"} → billed ${row.pricing.billedQuantity}`
+                                                            : `billed ${row.pricing.billedQuantity} ${row.pricing.item.rateUnit ?? "unit"}`}
+                                                        {" × "}
+                                                        {formatToken(row.pricing.unitPrice, tokenDecimals)}
+                                                        {tokenSymbol ? ` ${tokenSymbol}` : ""}/{row.pricing.item.rateUnit ?? "unit"}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {row.pricing?.item?.rateQuantitySource === "checkout-quantity" && (
+                                                <label className="mt-1 flex items-center justify-between gap-2 text-xs text-neutral-600">
+                                                    <span>{row.pricing.item.rateUnit ?? "unit"}s</span>
+                                                    <input
+                                                        type="number"
+                                                        min={1}
+                                                        step={1}
+                                                        value={subOrderQuantities[row.nodeId!] ?? ""}
+                                                        placeholder="1"
+                                                        onChange={(e) => {
+                                                            const n = Number(e.target.value);
+                                                            setSubOrderQuantities((prev) => ({
+                                                                ...prev,
+                                                                [row.nodeId!]: Number.isFinite(n) && n > 0 ? n : 0,
+                                                            }));
+                                                        }}
+                                                        className="w-20 rounded border border-neutral-300 px-2 py-1 text-right text-sm"
+                                                        data-testid={`rate-quantity-input-${row.nodeId}`}
+                                                    />
+                                                </label>
+                                            )}
+                                            {row.pricing?.issue === "unresolvable-quantity" &&
+                                                row.pricing.item?.rateQuantitySource !== "checkout-quantity" && (
+                                                <p className="text-xs text-red-600" data-testid={`rate-unresolvable-${row.nodeId}`}>
+                                                    Priced by rate ({row.pricing.item?.rateUnit ?? "unit"}), but this order
+                                                    carries no value its quantity source can read.
+                                                </p>
+                                            )}
                                         </div>
                                     ))}
                                     <div className="flex justify-between border-t border-neutral-200 pt-1.5 font-medium">
