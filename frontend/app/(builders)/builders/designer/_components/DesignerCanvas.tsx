@@ -52,6 +52,7 @@ import { AgreementDrawer } from "./AgreementDrawer";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { maxCommitsLandableInOneBlock, maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { useChainId, usePublicClient } from "wagmi";
+import { formatRelative } from "@/lib/shared/formatTimestamp";
 
 export type DesignerSeed =
     | { kind: "fresh" }
@@ -692,13 +693,3 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     );
 }
 
-function formatRelative(ts: number): string {
-    const seconds = Math.floor((Date.now() - ts) / 1000);
-    if (seconds < 5) return "just now";
-    if (seconds < 60) return `${seconds}s ago`;
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    return new Date(ts).toLocaleString();
-}

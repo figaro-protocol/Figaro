@@ -20,6 +20,7 @@
 import { formatToken } from "@/lib/shared/utils";
 import type { Commitment, Agreement, AgreementSection } from "@figaro/core";
 import { truncateHex } from "@/lib/shared/formatHex";
+import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 import { ModalChrome } from "@/components/ui/ModalChrome";
 
 interface Props {
@@ -74,7 +75,6 @@ export function AgreementPreviewModal({ commitment, agreement, onConfirm, onCanc
     const lineItems = commerceLineItems(agreement);
     const otherSections = nonCommerceSections(agreement);
     const hasAgreement = agreement !== null;
-    const deadlineDate = new Date(Number(commitment.deadline) * 1000);
 
     return (
         <ModalChrome
@@ -130,7 +130,7 @@ export function AgreementPreviewModal({ commitment, agreement, onConfirm, onCanc
                             </dd>
                             <dt className="text-neutral-500">Deadline</dt>
                             <dd className="text-black">
-                                {deadlineDate.toLocaleString()} <span className="text-neutral-500 text-xs">(unix {commitment.deadline.toString()})</span>
+                                {formatBlockTimestamp(commitment.deadline)} <span className="text-neutral-500 text-xs">(unix {commitment.deadline.toString()})</span>
                             </dd>
                         </dl>
                     </section>

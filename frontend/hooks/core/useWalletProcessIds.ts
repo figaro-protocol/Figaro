@@ -43,8 +43,6 @@ function getBigIntArg(log: IndexedOrderLog, key: string): bigint {
 
 function toOrder(log: IndexedOrderLog): Order {
     const bn = typeof log.blockNumber === "bigint" ? Number(log.blockNumber) : 0;
-    const timestamp = getLogArgs(log).timestamp;
-    const ts = typeof timestamp === "bigint" ? Number(timestamp) : bn;
     const payment = getBigIntArg(log, "payment");
     const cumulativeValue = getBigIntArg(log, "cumulativeValue");
     // Destructured, NOT spread — calculateBonds also returns totalLocked, which
@@ -67,8 +65,11 @@ function toOrder(log: IndexedOrderLog): Order {
         buyerBond,
         salt: getBigIntArg(log, "salt"),
         deadline: getBigIntArg(log, "deadline"),
+        // OrderCommitted emits NO timestamp — block NUMBER is the ordering
+        // key. (A `timestamp` field once shadowed it here and rendered
+        // Jan-1970 dates downstream; chain time, when a surface needs it,
+        // comes from getBlock(blockNumber).timestamp in SECONDS.)
         blockNumber: bn,
-        timestamp: ts,
     };
 }
 
@@ -86,7 +87,7 @@ function summarise(orders: Order[]): ProcessSummary[] {
             processId,
             orderCount: ords.length,
             hasActive: ords.some((o) => o.state === OrderState.Active),
-            createdAt: Math.min(...ords.map((o) => o.blockNumber ?? o.timestamp ?? Number.MAX_SAFE_INTEGER)),
+            createdAt: Math.min(...ords.map((o) => o.blockNumber ?? Number.MAX_SAFE_INTEGER)),
             orders: sorted.map((o) => ({ id: o.id, state: o.state })),
         });
     });
@@ -107,7 +108,7 @@ function insertOrderIntoSummaries(prev: ProcessSummary[], order: Order): Process
             ...summary,
             orderCount: orders.length,
             hasActive: summary.hasActive || order.state === OrderState.Active,
-            createdAt: Math.min(summary.createdAt, order.blockNumber ?? order.timestamp ?? summary.createdAt),
+            createdAt: Math.min(summary.createdAt, order.blockNumber ?? summary.createdAt),
             orders,
         };
     });
@@ -117,7 +118,7 @@ function insertOrderIntoSummaries(prev: ProcessSummary[], order: Order): Process
             processId: order.processId,
             orderCount: 1,
             hasActive: order.state === OrderState.Active,
-            createdAt: order.blockNumber ?? order.timestamp ?? Date.now(),
+            createdAt: order.blockNumber ?? Date.now(),
             orders: [{ id: order.id, state: order.state }],
         });
     }

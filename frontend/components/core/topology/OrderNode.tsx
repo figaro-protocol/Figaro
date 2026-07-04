@@ -89,11 +89,7 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
             data-testid={`order-node-${data.id}`}
             data-order-id={data.id.toString()}
             data-order-state={STATE_LABELS[data.state].toLowerCase()}
-            title={
-                data.designerMode
-                    ? "Click to edit this order's clauses"
-                    : (data.timestamp ? new Date((data.timestamp > 1e12 ? data.timestamp : data.timestamp * 1000)).toLocaleString() : undefined)
-            }
+            title={data.designerMode ? "Click to edit this order's clauses" : undefined}
             className={nodeClassName}
         >
             <Handle

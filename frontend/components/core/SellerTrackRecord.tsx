@@ -14,6 +14,7 @@
 import { formatUnits } from "viem";
 import type { SellerTrackRecord as TrackRecord } from "@/lib/composition/indexer";
 import { truncateHex } from "@/lib/shared/formatHex";
+import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 
 interface Props {
     record: TrackRecord | null;
@@ -40,8 +41,7 @@ export function SellerTrackRecord({ record, isLoading }: Props) {
     if (!record) return null;
 
     const sinceLabel = record.operatingSinceTimestamp != null
-        ? new Date(Number(record.operatingSinceTimestamp) * 1000)
-            .toLocaleDateString(undefined, { year: "numeric", month: "short" })
+        ? formatBlockTimestamp(record.operatingSinceTimestamp, { year: "numeric", month: "short" })
         : "—";
     const hasHistory = record.ordersSold > 0 || record.ordersBought > 0;
 

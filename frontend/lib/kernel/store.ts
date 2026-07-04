@@ -34,9 +34,8 @@ export interface Order {
     salt: bigint;
     /** Deadline from the commitment (for full reconstruction at resolution). */
     deadline: bigint;
-    /** Block number when OrderCommitted was mined (real mode). Date.now() in mock mode. */
+    /** Block number when OrderCommitted was mined. */
     blockNumber?: number;
-    timestamp?: number; // kept for mock-mode ordering; in real mode blockNumber is used
     /** Event-derived: block.timestamp from OrderResolved (seconds). */
     resolvedAt?: number;
 }

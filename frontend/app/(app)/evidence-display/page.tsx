@@ -24,14 +24,16 @@ import { mockAwareHttp } from "@/lib/shared/mockTransport";
 import { buildProcessTimeline, type ProcessTimeline, type TimelineEvent } from "@/lib/audit/processTimeline";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Timeline entries carry block time as ISO — render via the one shared
+ *  chain-time formatter, seconds precision. */
 function formatTimestamp(iso: string): string {
-    const d = new Date(iso);
-    return d.toLocaleString(undefined, {
+    return formatBlockTimestamp(Date.parse(iso) / 1000, {
         year: "numeric",
         month: "short",
         day: "numeric",
