@@ -34,6 +34,7 @@
 import type { ReactNode } from "react";
 import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { useMounted } from "@/hooks/useMounted";
 
 export interface WalletGateProps {
     /** Short message explaining why a wallet is needed. */
@@ -78,8 +79,13 @@ export function WalletGate({
     "data-testid": testId,
 }: WalletGateProps) {
     const { address } = useAccount();
+    // Gate on mounted: the server always renders the connect prompt, so the
+    // first client render must too — wagmi restores the connection
+    // synchronously from storage, and branching on it during hydration is a
+    // React #418/#423/#425 mismatch. Children take over post-mount.
+    const mounted = useMounted();
 
-    if (address) return <>{children}</>;
+    if (mounted && address) return <>{children}</>;
 
     const wrapperClass = className ?? (variant === "standalone" ? STANDALONE_CLASS : INLINE_CLASS);
 

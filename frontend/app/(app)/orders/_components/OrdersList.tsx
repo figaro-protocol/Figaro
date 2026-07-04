@@ -46,6 +46,7 @@ import { useSellerListings } from "@/lib/seller/useSellerListings";
 import { displayNameForAddress } from "@/lib/seller/sellerListing";
 import type { Listing } from "@/lib/seller/sellerListing";
 import { isE2EMockSession } from "@/lib/shared/e2e";
+import { useMounted } from "@/hooks/useMounted";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 import useTokenApproval from "@/hooks/core/useTokenApproval";
 
@@ -197,6 +198,7 @@ function OrderRow({ row, listings }: { row: ProcessRow; listings: ReadonlyArray<
 
 export function OrdersList() {
     const { address, isConnected } = useAccount();
+    const mounted = useMounted();
     const chainId = useChainId();
     const buyer = useWalletProcessRows("buyer");
     const seller = useWalletProcessRows("seller");
@@ -273,7 +275,11 @@ export function OrdersList() {
                 </p>
             </header>
 
-            {!isConnected ? (
+            {/* Gate on mounted: the server renders the disconnected branch, so the
+                first client render must too (wagmi restores the connection
+                synchronously from storage — branching on it during hydration is
+                React #418/#423/#425). Real state takes over post-mount. */}
+            {!mounted || !isConnected ? (
                 <WalletGate hint="Connect a wallet to see your orders.">
                     <div className="rounded-lg border border-neutral-200 bg-white p-5 text-sm text-neutral-500">
                         Connect a wallet to see your orders.
