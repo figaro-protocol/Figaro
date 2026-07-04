@@ -21,8 +21,7 @@ import {
     type Listing,
 } from "@/lib/seller/sellerListing";
 import { getActiveSellers } from "@/lib/protocol/sellerRegistryIndexer";
-import { createUriFetcher } from "@/lib/seller/uriFetcher";
-import { tryParseSellerProfileDocument } from "@/lib/seller/sellerProfileMetadata";
+import { fetchSellerProfile } from "@/lib/seller/profileFetcher";
 import type { PublicClient } from "viem";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { usePublishedAssemblies } from "@/lib/protocol/useAssemblyRegistry";
@@ -30,15 +29,11 @@ import { usePublishedAssemblies } from "@/lib/protocol/useAssemblyRegistry";
 export interface UseSellerListingsResult {
     listings: Listing[];
     isLoading: boolean;
-    /** Provenance counters retained for transcript / surface compatibility.
-     *  `fixture` stays 0 in live mode; only `registry` is populated. */
-    source: { registry: number; fixture: number };
 }
 
 const EMPTY_RESULT: UseSellerListingsResult = {
     listings: [],
     isLoading: false,
-    source: { registry: 0, fixture: 0 },
 };
 
 function isRegistryConfigured(): boolean {
@@ -46,16 +41,12 @@ function isRegistryConfigured(): boolean {
         && CONTRACTS.sellerRegistry.length === 42;
 }
 
-const profileFetcher = createUriFetcher({
-    parse: (doc) => tryParseSellerProfileDocument(doc),
-});
-
 async function fetchProfileAsListing(
     address: string,
     metadataURI: string,
     publishedSlugs: Set<string>,
 ): Promise<Listing | null> {
-    const profile = await profileFetcher.fetch(metadataURI);
+    const profile = await fetchSellerProfile(metadataURI);
     if (!profile) return null;
     const listing = profileToListing(profile, address);
     // Cross-check the profile's CLAIMED bindings against the
@@ -110,7 +101,6 @@ export function useSellerListings(): UseSellerListingsResult {
                 setState({
                     listings: fromRegistry,
                     isLoading: false,
-                    source: { registry: fromRegistry.length, fixture: 0 },
                 });
             })
             .catch(() => {

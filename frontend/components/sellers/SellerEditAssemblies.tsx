@@ -24,8 +24,7 @@ import { useMounted } from "@/hooks/useMounted";
 import { useSellerProfile } from "@/lib/seller/useSellerRegistry";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
 import { useUpdateSellerProfile } from "@/lib/seller/useUpdateSellerProfile";
-import { resolveContentUri } from "@/lib/shared/ipfsService";
-import { tryParseSellerProfileDocument } from "@/lib/seller/sellerProfileMetadata";
+import { fetchSellerProfile } from "@/lib/seller/profileFetcher";
 import type { AssemblyBindingRecord, SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
 import { OnboardingAssembliesForm } from "@/components/sellers/OnboardingAssembliesForm";
 
@@ -54,19 +53,13 @@ export function SellerEditAssemblies() {
     useEffect(() => {
         if (!registryData) return;
         const [metadataURI] = registryData;
-        const url = resolveContentUri(metadataURI);
-        if (!url) {
-            setFetchError("Profile URI couldn't be resolved.");
-            return;
-        }
         let cancelled = false;
-        fetch(url)
-            .then((r) => r.json())
-            .then((doc) => {
+        // The ONE cached profile read path (lib/seller/profileFetcher).
+        fetchSellerProfile(metadataURI)
+            .then((parsed) => {
                 if (cancelled) return;
-                const parsed = tryParseSellerProfileDocument(doc);
                 if (parsed) setExistingProfile(parsed);
-                else setFetchError("Profile JSON didn't parse as an seller profile.");
+                else setFetchError("Couldn't fetch or parse the seller profile.");
             })
             .catch(() => {
                 if (!cancelled) setFetchError("Couldn't fetch profile from IPFS.");

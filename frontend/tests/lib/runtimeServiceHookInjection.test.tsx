@@ -124,7 +124,6 @@ const publicClient = {
     watchContractEvent: (...args: unknown[]) => watchContractEventMock(...args),
 };
 const fallbackRestaurant: SellerCatalogue = {
-    id: "fallback-1",
     name: "Fallback Merchant",
     description: "Fallback catalogue",
     specialty: "Test",
@@ -135,7 +134,6 @@ const fallbackRestaurant: SellerCatalogue = {
 };
 
 const injectedRestaurant: SellerCatalogue = {
-    id: "merchant-1",
     name: "Injected Merchant",
     description: "Injected discovery result",
     specialty: "Italian",

@@ -38,6 +38,7 @@ import { hexEqual, normalizeAddressParam } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatToken, parseToken } from "@/lib/shared/utils";
 import { useSellerBoundAssemblies } from "@/lib/seller/useSellerBoundAssemblies";
+import { displayNameForAddress } from "@/lib/seller/sellerListing";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
 import { getClauseSpec, clauseIsStructural } from "@/lib/shared/clauseSpecSource";
 import type { FieldSpec } from "@figaro/core/clauses";
@@ -196,7 +197,7 @@ export function CheckoutView({ sellerAddress }: Props) {
 
     // Filter cart to items from THIS merchant only — the buyer's line-item input,
     // read-only here (edited on the browse page).
-    const cartItems = items.filter((it) => it.sellerId === sellerCatalogue.id);
+    const cartItems = items.filter((it) => it.sellerId === sellerAddressLower);
     // The assembly the buyer is ordering from attaches to the seller PROFILE. One
     // bound assembly -> use it; several -> the buyer's selected slug disambiguates which.
     // Every order commits against a published assembly — there is no fallback.
@@ -277,8 +278,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         const assembly = pickedAssembly;
         if (!assembly || assembly.assemblyTemplate.orders.length <= 1) return null;
         const lead = sellerCatalogue.address as `0x${string}`;
-        const nameOf = (addr: `0x${string}`) =>
-            sellerCatalogues.find((c) => hexEqual(c.address, addr))?.name ?? truncateHex(addr);
+        const nameOf = (addr: `0x${string}`) => displayNameForAddress(sellerCatalogues, addr);
         let plan: ReturnType<typeof planSubOrderSellers>;
         try {
             plan = planSubOrderSellers(assembly);
@@ -322,8 +322,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         if (!pickedAssembly) return [];
         const orders = pickedAssembly.assemblyTemplate.orders;
         const lead = sellerCatalogue.address as `0x${string}`;
-        const nameOf = (addr: `0x${string}`) =>
-            sellerCatalogues.find((c) => hexEqual(c.address, addr))?.name ?? truncateHex(addr);
+        const nameOf = (addr: `0x${string}`) => displayNameForAddress(sellerCatalogues, addr);
         let plan: ReturnType<typeof planSubOrderSellers> = [];
         if (orders.length > 1) {
             try { plan = planSubOrderSellers(pickedAssembly); } catch { plan = []; }

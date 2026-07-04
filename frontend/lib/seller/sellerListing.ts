@@ -19,20 +19,7 @@ interface ListingBinding {
     assemblySlug: string;
 }
 
-interface ListingServiceArea {
-    geohashPrefix: string;
-    label?: string;
-}
-
 export interface Listing {
-    /**
-     * Source of this listing. Only `registry` is produced at runtime now —
-     * the fixture path was removed when reference data stopped shadowing
-     * real on-chain registrations. The discriminator stays on the type
-     * for transcript/log compatibility and possible future provenance
-     * tagging (e.g. "did-web" identities).
-     */
-    provenance: "registry";
     /** Seller wallet address. */
     address: string;
     /** Display name. */
@@ -47,8 +34,6 @@ export interface Listing {
     geohash?: string;
     /** Human-readable location text (e.g. "Lower Manhattan, NY"). */
     addressText?: string;
-    /** Service-area geohash prefixes (seller may serve a wider area than its home). */
-    serviceAreas: ListingServiceArea[];
     /** Tokens the seller accepts for settlement. */
     acceptedTokens: AcceptedTokenMetadata[];
     /** All assembly bindings this seller has. May be empty (browse-only —
@@ -63,8 +48,7 @@ function safeURI(uri: string | undefined): string | undefined {
 }
 
 /**
- * Project an on-chain-registered seller's profile into a `Listing` with
- * `provenance: "registry"`.
+ * Project an on-chain-registered seller's profile into a `Listing`.
  *
  * `assemblyBindings` from the profile JSON drives the `bindings` field —
  * the wizard writes these from `OnboardingState.assemblies`, so a
@@ -81,7 +65,6 @@ export function profileToListing(
     }));
 
     return {
-        provenance: "registry",
         address,
         name: profile.name,
         description: profile.description ?? "",
@@ -89,7 +72,6 @@ export function profileToListing(
         logoURI: safeURI(profile.branding?.logoURI),
         geohash: profile.location?.geohash,
         addressText: profile.location?.addressText,
-        serviceAreas: [],
         acceptedTokens: profile.acceptedTokens ?? [],
         bindings,
     };
@@ -98,21 +80,23 @@ export function profileToListing(
 
 import { truncateHex } from "@/lib/shared/formatHex";
 
-/** Find an seller listing by wallet address. Case-insensitive. */
-export function findListingByAddress(
-    listings: ReadonlyArray<Listing>,
+/** Find a seller listing by wallet address. Case-insensitive. Accepts any
+ *  {address}-keyed collection (Listing[], SellerCatalogue[], …). */
+export function findListingByAddress<T extends { address: string }>(
+    listings: ReadonlyArray<T>,
     address: string,
-): Listing | undefined {
+): T | undefined {
     if (!address) return undefined;
     return listings.find((l) => hexEqual(l.address, address));
 }
 
-/** Resolve an address to a human-readable display name using the loaded
- *  registry listings, falling back to the truncated address when the
- *  wallet isn't registered (or the listings haven't loaded yet). Used by
- *  every counterparty-name surface (orders list, order timeline). */
+/** Resolve an address to a human-readable display name from any loaded
+ *  {address, name} collection (registry listings, seller catalogues),
+ *  falling back to the truncated address when the wallet isn't in it (or
+ *  it hasn't loaded yet). The ONE counterparty-name resolver — orders
+ *  list, order timeline, checkout breakdown. */
 export function displayNameForAddress(
-    listings: ReadonlyArray<Listing>,
+    listings: ReadonlyArray<{ address: string; name: string }>,
     address: string,
 ): string {
     if (!address || !address.startsWith("0x")) return address ?? "";
@@ -122,19 +106,13 @@ export function displayNameForAddress(
 
 /**
  * Geohash prefix-overlap check for filtering listings against a viewer's
- * device geohash. An seller matches if any of its serviceArea prefixes is
- * a prefix of the viewer's geohash, or vice versa. Falls back to
- * seller's own geohash if it has no serviceAreas.
+ * device geohash: the seller's declared geohash and the viewer's overlap
+ * when either is a prefix of the other. A seller with no geo declaration
+ * always matches (e.g. remote/virtual).
  */
 export function listingMatchesGeohash(listing: Listing, viewerGeohash: string): boolean {
-    if (!viewerGeohash) return true;
-    const hashes = listing.serviceAreas.length > 0
-        ? listing.serviceAreas.map((a) => a.geohashPrefix)
-        : listing.geohash
-            ? [listing.geohash]
-            : [];
-    if (hashes.length === 0) return true; // seller has no geo declaration → always include (e.g. remote)
-    return hashes.some((h) => h.startsWith(viewerGeohash) || viewerGeohash.startsWith(h));
+    if (!viewerGeohash || !listing.geohash) return true;
+    return listing.geohash.startsWith(viewerGeohash) || viewerGeohash.startsWith(listing.geohash);
 }
 
 /**

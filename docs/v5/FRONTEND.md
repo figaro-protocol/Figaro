@@ -38,7 +38,7 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by `s
 - **`composition/`** — third-party on-network contract composition (the fifth noun): the generic dispatch (`compositionTarget.ts`, `useCompositionActions.ts`) + per-contract hooks/readers
 - **`designer/`** — assembly authoring: synthetic DAG session + autosave + fork + publish (`syntheticProcess.ts`, `syntheticDesignStore.ts`, `forkAssembly.ts`, `assemblyTemplateToDraft.ts`, `buildAssemblyTemplate.ts`, `publishAssembly.ts`)
 - **`handoff/`** — handoff-clause runtime: ECDH key exchange, coordination-messaging + handoff-persistence services (`coordinationMessagingService.ts`, `handoffPersistenceService.ts`)
-- **`seller/`** — seller profile + catalogue management, the discovery-service implementation (`discoveryService.ts`)
+- **`seller/`** — seller profile + catalogue management, the discovery-service implementation (`discoveryService.ts`); the ONE cached read path per document family (`profileFetcher.ts`, `catalogueFetcher.ts`, both on the `uriFetcher.ts` pipeline) and the ONE counterparty-name resolver (`sellerListing.ts` `displayNameForAddress`, over any `{address, name}` collection)
 - **`semantic/`** — runtime derivation from committed state: `deriveProcessModelFromRuntime.ts`, `processTopology.ts`, `processRecourse.ts`, `models.ts`, capability execution
 
 ## Designer tool surface (`frontend/`)

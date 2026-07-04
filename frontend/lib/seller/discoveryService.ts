@@ -13,7 +13,6 @@ import { safeJsonFromResponse } from '@/lib/shared/safeJson';
 
 interface DiscoveryResult {
     catalogues: SellerCatalogue[];
-    source: { ipfs: number; mock: number };
 }
 
 function profileToCatalogue(
@@ -26,7 +25,6 @@ function profileToCatalogue(
     const address = profile.subjectAddress ?? catalogue?.subjectAddress;
     if (!address) return null;
     return {
-        id: address.toLowerCase(),
         name: profile.name,
         address,
         description: profile.description ?? '',
@@ -126,7 +124,7 @@ export interface DiscoveryServiceOptions {
     fetchDocument?: (url: string) => Promise<Response>;
 }
 
-const EMPTY_RESULT: DiscoveryResult = { catalogues: [], source: { ipfs: 0, mock: 0 } };
+const EMPTY_RESULT: DiscoveryResult = { catalogues: [] };
 
 export function createDiscoveryService(
     options: DiscoveryServiceOptions = {},
@@ -170,7 +168,6 @@ export function createDiscoveryService(
                 const catalogues = results.filter((r): r is SellerCatalogue => r !== null);
                 return {
                     catalogues,
-                    source: { ipfs: catalogues.length, mock: 0 },
                 };
             } catch {
                 return EMPTY_RESULT;

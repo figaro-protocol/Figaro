@@ -25,11 +25,6 @@ import { usePublishedAssemblies } from "@/lib/protocol/useAssemblyRegistry";
 export interface UseRegisteredCataloguesResult {
     catalogues: SellerCatalogue[];
     isLoading: boolean;
-    /** Per-source provenance. `ipfs` = catalogues fetched from
-     *  SellerRegistry → IPFS. `mock` stays 0 in live mode; the field
-     *  remains on the type for callers that still surface a provenance
-     *  badge, but no longer carries fixture data. */
-    source: { ipfs: number; mock: number };
 }
 
 export interface UseRegisteredCataloguesOptions {
@@ -39,7 +34,6 @@ export interface UseRegisteredCataloguesOptions {
 const EMPTY_RESULT: UseRegisteredCataloguesResult = {
     catalogues: [],
     isLoading: false,
-    source: { ipfs: 0, mock: 0 },
 };
 
 export function useRegisteredCatalogues(
@@ -91,6 +85,5 @@ export function useRegisteredCatalogues(
     return {
         catalogues: discoveryResult.catalogues,
         isLoading,
-        source: discoveryResult.source,
     };
 }

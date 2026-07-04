@@ -105,7 +105,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
     const handleAddItem = (menuItem: CatalogueItemMetadata) => {
         addItem({
             menuItemId: menuItem.id,
-            sellerId: sellerCatalogue.id,
+            sellerId: sellerAddressLower,
             sellerAddress: sellerCatalogue.address,
             sellerName: sellerCatalogue.name,
             name: menuItem.name,
@@ -118,19 +118,19 @@ export function SellerDetailView({ sellerAddress }: Props) {
     };
 
     const handleRemoveItem = (menuItemId: string) => {
-        removeItem(menuItemId, sellerCatalogue.id);
+        removeItem(menuItemId, sellerAddressLower);
     };
 
     const getItemQuantity = (menuItemId: string) => {
         const cartItem = items.find(
-            (item) => item.menuItemId === menuItemId && item.sellerId === sellerCatalogue.id,
+            (item) => item.menuItemId === menuItemId && item.sellerId === sellerAddressLower,
         );
         return cartItem?.quantity || 0;
     };
 
     // The merchant-scoped cart — the basis for the "Review order" summary. The
     // bond math, method choice, and commit all live on the checkout surface.
-    const cartItems = items.filter((it) => it.sellerId === sellerCatalogue.id);
+    const cartItems = items.filter((it) => it.sellerId === sellerAddressLower);
     const cartCount = cartItems.reduce((sum, it) => sum + it.quantity, 0);
     const cartSubtotal = cartItems.reduce((sum, it) => sum + parseFloat(it.price || "0") * it.quantity, 0);
     const cartUnitSystem = sellerCatalogue.unitSystem ?? "metric";

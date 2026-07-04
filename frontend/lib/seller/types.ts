@@ -19,7 +19,6 @@ import type { SellerAgentServices } from "@/lib/seller/sellerProfileMetadata";
  * themselves.
  */
 export interface SellerCatalogue {
-    id: string;
     name: string;
     address: string;
     description: string;

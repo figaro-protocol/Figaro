@@ -52,8 +52,6 @@ describe('discoveryService', () => {
         const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
 
         expect(result.catalogues).toHaveLength(0);
-        expect(result.source.ipfs).toBe(0);
-        expect(result.source.mock).toBe(0);
     });
 
     it('maps a SellerCatalogueMetadata document into a discovery restaurant', async () => {
@@ -86,12 +84,8 @@ describe('discoveryService', () => {
         }));
 
         const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
-
-        expect(result.source.ipfs).toBe(1);
-        expect(result.source.mock).toBe(0);
         expect(result.catalogues).toHaveLength(1);
         expect(result.catalogues[0]).toEqual(expect.objectContaining({
-            id: '0x70997970c51812dc3a010c7d01b50e0d17dc79c8',
             name: 'Merchant A',
             specialty: 'Italian',
         }));
@@ -124,8 +118,6 @@ describe('discoveryService', () => {
         }));
 
         const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
-
-        expect(result.source.ipfs).toBe(1);
         expect(result.catalogues[0]).toEqual(expect.objectContaining({
             name: 'Street Tacos',
         }));
@@ -147,8 +139,6 @@ describe('discoveryService', () => {
         }));
 
         const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
-
-        expect(result.source.ipfs).toBe(1);
         expect(result.catalogues[0].name).toBe('Ghost Kitchen');
         expect(result.catalogues[0].items).toHaveLength(0);
         expect(fetchDocumentMock).toHaveBeenCalledTimes(1);
@@ -160,8 +150,6 @@ describe('discoveryService', () => {
         const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
 
         expect(result.catalogues).toHaveLength(0);
-        expect(result.source.ipfs).toBe(0);
-        expect(result.source.mock).toBe(0);
     });
 
     it('excludes sellers without an anchored assembly binding (surfacing rule, applied evenly)', async () => {
@@ -188,7 +176,6 @@ describe('discoveryService', () => {
         const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
 
         expect(result.catalogues).toHaveLength(0);
-        expect(result.source.ipfs).toBe(0);
     });
 
     it('excludes sellers whose documents cannot be fetched', async () => {
@@ -204,7 +191,5 @@ describe('discoveryService', () => {
         const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
 
         expect(result.catalogues).toHaveLength(0);
-        expect(result.source.ipfs).toBe(0);
-        expect(result.source.mock).toBe(0);
     });
 });

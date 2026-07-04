@@ -32,15 +32,14 @@ import { useMounted } from "@/hooks/useMounted";
 import { useSellerProfile } from "@/lib/seller/useSellerRegistry";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
 import { useUpdateSellerProfile } from "@/lib/seller/useUpdateSellerProfile";
+import { fetchSellerProfile } from "@/lib/seller/profileFetcher";
+import { fetchSellerCatalogue } from "@/lib/seller/catalogueFetcher";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { resolveContentUri } from "@/lib/shared/ipfsService";
-import { tryParseSellerProfileDocument } from "@/lib/seller/sellerProfileMetadata";
 import type {
     SellerCatalogueMetadata,
     UnitSystem,
     CatalogueItemMetadata,
 } from "@/lib/seller/sellerCatalogueMetadata";
-import { parseSellerCatalogueDocument } from "@/lib/seller/sellerCatalogueMetadataParser";
 import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
 import { publishSellerCatalogue } from "@/lib/seller/cataloguePublisher";
 import { OnboardingCatalogueForm } from "@/components/sellers/OnboardingCatalogueForm";
@@ -79,19 +78,14 @@ export function SellerEditCatalogue() {
     useEffect(() => {
         if (!registryData) return;
         const [profileURI] = registryData;
-        const url = resolveContentUri(profileURI);
-        if (!url) {
-            setFetchError("Profile URI couldn't be resolved.");
-            return;
-        }
         let cancelled = false;
         (async () => {
             try {
-                const profileDoc = await fetch(url).then((r) => r.json());
+                // The ONE cached profile read path (lib/seller/profileFetcher).
+                const profile = await fetchSellerProfile(profileURI);
                 if (cancelled) return;
-                const profile = tryParseSellerProfileDocument(profileDoc);
                 if (!profile) {
-                    setFetchError("Profile JSON didn't parse as an seller profile.");
+                    setFetchError("Couldn't fetch or parse the seller profile.");
                     return;
                 }
                 setExistingProfile(profile);
@@ -107,15 +101,11 @@ export function SellerEditCatalogue() {
                     return;
                 }
 
-                const catUrl = resolveContentUri(profile.catalogueURI);
-                if (!catUrl) {
-                    setFetchError("Catalogue URI couldn't be resolved.");
-                    return;
-                }
-                const catDoc = await fetch(catUrl).then((r) => r.json());
+                // The ONE cached catalogue read path (lib/seller/catalogueFetcher).
+                const catalogue = await fetchSellerCatalogue(profile.catalogueURI);
                 if (cancelled) return;
                 try {
-                    const catalogue = parseSellerCatalogueDocument(catDoc, "edit-catalogue");
+                    if (!catalogue) throw new Error("Couldn't fetch or parse the catalogue document.");
                     setExistingCatalogue(catalogue);
                 } catch (err) {
                     const detail = extractErrorMessage(err, "");
