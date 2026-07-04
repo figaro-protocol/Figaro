@@ -17,9 +17,11 @@ import type { Order } from "@/lib/kernel/store";
 import type { ExtractedDocument } from "./types";
 
 export interface ClauseDataDocument extends ExtractedDocument {
-    /** One description per committed clause that carries rendered data — its
-     *  spec title + each declared field's label + committed value(s). Clauses
-     *  whose committed data renders empty are omitted. */
+    /** One description per committed clause — its spec title + each declared
+     *  field's label + committed value(s). EVERY committed leaf surfaces, even
+     *  when its fields render no values (e.g. a root order's topology leaf with
+     *  empty parents): the audit's contract is completeness over the committed
+     *  tree, so omission would hide a leaf the merkle root provably carries. */
     clauses: ClauseDescription[];
 }
 
@@ -27,11 +29,9 @@ export function extractClauseData(
     order: Order,
     agreement: Agreement,
 ): ClauseDataDocument {
-    const clauses = agreement.sections
-        .map((section) =>
-            describeClause(section.clause, (section as { data?: Record<string, unknown> }).data),
-        )
-        .filter((c) => c.fields.length > 0);
+    const clauses = agreement.sections.map((section) =>
+        describeClause(section.clause, (section as { data?: Record<string, unknown> }).data),
+    );
     return {
         title: "Clause data",
         orderHash: order.id,

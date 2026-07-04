@@ -388,7 +388,10 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         await evidence.waitFor({ state: 'visible', timeout: 30000 });
         await expect(evidence.getByText('Commerce terms'), 'the commerce leaf value surfaces').toBeVisible({ timeout: 30000 });
         await expect(evidence.getByText('Order topology'), 'the topology leaf value surfaces').toBeVisible({ timeout: 15000 });
-        await expect(evidence.getByText(NOVEL_TITLE), 'the never-seen clause leaf surfaces by its spec title').toBeVisible({ timeout: 15000 });
+        await expect(
+            evidence.getByText(NOVEL_TITLE),
+            'the never-seen clause surfaces by its spec title — its committed data leaf AND its process-log timeline',
+        ).toHaveCount(2, { timeout: 15000 });
 
         // ATTESTATION — the lifecycle's runtime step must surface in the audit too,
         // read from the indexer's AttestationRecorded logs (getAttestationsByOrder),

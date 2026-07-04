@@ -110,14 +110,18 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
                                     {clauseData.clauses.map((clause) => (
                                         <div key={`data-${clause.clauseId}`} className="space-y-2">
                                             <h3 className="text-sm font-semibold text-ink-heading">{clause.title}</h3>
-                                            <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1 text-sm">
-                                                {clause.fields.map((field) => (
-                                                    <div key={field.name} className="contents">
-                                                        <dt className="text-ink-muted">{field.label}</dt>
-                                                        <dd className="text-ink-body">{field.values.join(", ")}</dd>
-                                                    </div>
-                                                ))}
-                                            </dl>
+                                            {clause.fields.length === 0 ? (
+                                                <p className="text-sm text-ink-muted">Committed with no field values.</p>
+                                            ) : (
+                                                <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1 text-sm">
+                                                    {clause.fields.map((field) => (
+                                                        <div key={field.name} className="contents">
+                                                            <dt className="text-ink-muted">{field.label}</dt>
+                                                            <dd className="text-ink-body">{field.values.join(", ")}</dd>
+                                                        </div>
+                                                    ))}
+                                                </dl>
+                                            )}
                                         </div>
                                     ))}
                                 </div>

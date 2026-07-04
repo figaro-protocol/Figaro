@@ -405,14 +405,18 @@ function ClauseDataPage({ doc }: { doc: AuditBundle["clauseData"] }) {
             {doc.clauses.map((clause) => (
                 <View key={clause.clauseId}>
                     <Text style={styles.h2}>{clause.title}</Text>
-                    <View style={styles.table}>
-                        {clause.fields.map((field) => (
-                            <View key={field.name} style={styles.tableRow}>
-                                <Text style={[styles.tCell, { flex: 2 }]}>{field.label}</Text>
-                                <Text style={[styles.tCell, { flex: 3 }]}>{field.values.join(", ")}</Text>
-                            </View>
-                        ))}
-                    </View>
+                    {clause.fields.length === 0 ? (
+                        <Text style={styles.sectionBody}>Committed with no field values.</Text>
+                    ) : (
+                        <View style={styles.table}>
+                            {clause.fields.map((field) => (
+                                <View key={field.name} style={styles.tableRow}>
+                                    <Text style={[styles.tCell, { flex: 2 }]}>{field.label}</Text>
+                                    <Text style={[styles.tCell, { flex: 3 }]}>{field.values.join(", ")}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    )}
                 </View>
             ))}
             {doc.clauses.length === 0 && (
