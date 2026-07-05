@@ -11,6 +11,7 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { ASSEMBLY_REGISTRY_ABI } from '@figaro/core';
+import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -451,12 +452,12 @@ export async function confirmAgreementPreviews(
         .toBe(expectedOrders);
 }
 
-/** An anchored assembly with its template's order list resolved — enough for a
- *  spec to select an assembly by SHAPE (order count, clause ids) instead of a
- *  hardcoded slug. */
+/** An anchored assembly with its template's agreement list resolved — enough
+ *  for a spec to select an assembly by SHAPE (agreement count, clause ids)
+ *  instead of a hardcoded slug. */
 export interface DiscoveredAssembly {
     slug: string;
-    orders: Array<{ id?: string; clauses?: Record<string, unknown> }>;
+    agreements: Array<{ id?: string; clauses?: Record<string, unknown> }>;
 }
 
 /** Every anchored assembly, discovered from chain → IPFS (AssemblyRegistered
@@ -473,12 +474,12 @@ export async function discoverAnchoredAssemblies(): Promise<DiscoveredAssembly[]
     });
     const out: DiscoveredAssembly[] = [];
     for (const ev of anchored) {
-        const { slug, metadataURI } = ev.args as { slug?: string; metadataURI?: string };
-        if (!slug || !metadataURI) continue;
+        const { compositionHash, contentURI } = ev.args as { compositionHash?: `0x${string}`; contentURI?: string };
+        if (!compositionHash || !contentURI) continue;
         try {
-            const doc = await (await fetch(resolveIpfsURI(metadataURI))).json() as { orders?: DiscoveredAssembly['orders'] };
-            if (Array.isArray(doc.orders) && doc.orders.length > 0) {
-                out.push({ slug, orders: doc.orders });
+            const doc = await (await fetch(resolveIpfsURI(contentURI))).json() as { agreements?: DiscoveredAssembly['agreements'] };
+            if (Array.isArray(doc.agreements) && doc.agreements.length > 0) {
+                out.push({ slug: deriveAssemblySlug(compositionHash), agreements: doc.agreements });
             }
         } catch {
             continue; // unresolvable / non-JSON template — not discoverable

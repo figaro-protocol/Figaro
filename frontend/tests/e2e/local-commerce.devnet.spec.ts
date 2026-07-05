@@ -144,8 +144,8 @@ async function waitForConnected(page: Page) {
 async function findDeliveryAssembly(): Promise<string | undefined> {
     const templates = await discoverAnchoredAssemblies();
     return templates.find(
-        (t) => t.orders.length === 2
-            && t.orders.some((o) => {
+        (t) => t.agreements.length === 2
+            && t.agreements.some((o) => {
                 const clauses = Object.keys(o.clauses ?? {});
                 return clauses.includes(COURIER_CLAUSE)
                     && clauses.includes(HANDOFF_CLAUSE)

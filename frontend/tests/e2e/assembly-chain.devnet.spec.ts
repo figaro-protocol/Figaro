@@ -130,11 +130,11 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         //    probe run could add another). ──
         const templates = await discoverAnchoredAssemblies();
         const chain = templates.find(
-            (t) => t.orders.length === 3
-                && t.orders.some((o) => Object.keys(o.clauses ?? {}).includes(COURIER_CLAUSE)),
+            (t) => t.agreements.length === 3
+                && t.agreements.some((o) => Object.keys(o.clauses ?? {}).includes(COURIER_CLAUSE)),
         );
         expect(chain, 'the seeded three-order chain assembly is anchored (run populate-test-data)').toBeTruthy();
-        const single = templates.find((t) => t.orders.length === 1);
+        const single = templates.find((t) => t.agreements.length === 1);
         expect(single, 'a single-order assembly is anchored (the seed)').toBeTruthy();
         const chainSlug = chain!.slug;
         const singleSlug = single!.slug;

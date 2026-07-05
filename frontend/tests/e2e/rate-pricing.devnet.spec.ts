@@ -72,8 +72,8 @@ async function waitForConnected(page: Page) {
 async function findRateAssembly(): Promise<string | undefined> {
     const templates = await discoverAnchoredAssemblies();
     return templates.find(
-        (t) => t.orders.length === 2
-            && t.orders.some((o) => {
+        (t) => t.agreements.length === 2
+            && t.agreements.some((o) => {
                 const geo = (o.clauses ?? {})[GEO_CLAUSE] as Record<string, unknown> | undefined;
                 return Object.keys(o.clauses ?? {}).includes(PROCESS_CLAUSE)
                     && geo?.originGeohash === ORIGIN_GEOHASH

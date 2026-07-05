@@ -143,7 +143,7 @@ test.describe("seller registration wizard (devnet)", () => {
         // template. This wallet's scenario premise is the bilateral flow —
         // exactly this one binding.
         const singleOrderSlug = (await discoverAnchoredAssemblies())
-            .find((a) => a.orders.length === 1)?.slug;
+            .find((a) => a.agreements.length === 1)?.slug;
         expect(singleOrderSlug, 'a single-order assembly is anchored (run populate-test-data)').toBeTruthy();
 
         // Mainnet semantics: a seller registers ONCE and persists. Walk the
