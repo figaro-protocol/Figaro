@@ -45,12 +45,15 @@ contract ClauseRegistry {
     ///                    indexers reconstruct the clauseId without a preimage table.
     /// @param version     Clause version number.
     /// @param contentHash keccak256 of the canonical off-chain spec JSON — integrity.
-    /// @param metadataURI Off-chain spec locator (IPFS, etc.). The pointer that lets
-    ///                    any reader FETCH the spec from chain state alone — the same
-    ///                    role `metadataURI` plays in SellerRegistry / AssemblyRegistry.
+    /// @param contentURI  Off-chain spec document URI (IPFS, etc.). The pointer that
+    ///                    lets any reader FETCH the spec from chain state alone —
+    ///                    the same role `contentURI` plays in AssemblyRegistry. (The
+    ///                    pinned document IS the content, hence not "metadataURI" —
+    ///                    SellerRegistry keeps that name because its mutable profile
+    ///                    genuinely is metadata about a wallet-keyed identity.)
     /// @param registrar   Address that registered the clause.
     event ClauseRegistered(
-        string clauseId, uint64 version, bytes32 contentHash, string metadataURI, address indexed registrar
+        string clauseId, uint64 version, bytes32 contentHash, string contentURI, address indexed registrar
     );
 
     /// @notice Emitted when a mechanism declares which clause it uses.
@@ -63,7 +66,7 @@ contract ClauseRegistry {
     error AlreadyRegistered(bytes32 clauseId);
     error NotRegistered(bytes32 clauseId);
     error EmptyClauseId();
-    error EmptyMetadataURI();
+    error EmptyContentURI();
     error ZeroContentHash();
 
     // ── Clause registration (permissionless) ────────────────────────
@@ -73,17 +76,17 @@ contract ClauseRegistry {
     ///                    The on-chain key is its keccak256 hash.
     /// @param version     Clause version number.
     /// @param contentHash keccak256 of the canonical spec JSON (integrity).
-    /// @param metadataURI Off-chain spec locator (IPFS) — readers FETCH the spec from it.
-    function registerClause(string calldata clauseId, uint64 version, bytes32 contentHash, string calldata metadataURI)
+    /// @param contentURI  Off-chain spec document URI (IPFS) — readers FETCH the spec from it.
+    function registerClause(string calldata clauseId, uint64 version, bytes32 contentHash, string calldata contentURI)
         external
     {
         if (bytes(clauseId).length == 0) revert EmptyClauseId();
-        if (bytes(metadataURI).length == 0) revert EmptyMetadataURI();
+        if (bytes(contentURI).length == 0) revert EmptyContentURI();
         if (contentHash == bytes32(0)) revert ZeroContentHash();
         bytes32 idHash = keccak256(abi.encode(clauseId, version));
         if (registered[idHash]) revert AlreadyRegistered(idHash);
         registered[idHash] = true;
-        emit ClauseRegistered(clauseId, version, contentHash, metadataURI, msg.sender);
+        emit ClauseRegistered(clauseId, version, contentHash, contentURI, msg.sender);
     }
 
     // ── Mechanism self-declaration (permissionless) ─────────────────

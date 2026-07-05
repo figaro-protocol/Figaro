@@ -9,11 +9,21 @@ pragma solidity 0.8.26;
 ///         (sellers) — each artifact family carries its own anchor per
 ///         the protocol's separation-of-concerns doctrine.
 ///
-///         An assembly is a composition template that USES clauses. The
-///         registry binds a slug to (contentHash, metadataURI): the slug
-///         is the human-readable identifier; contentHash is keccak256 of
-///         the canonical off-chain assembly template; metadataURI points to
-///         that document (typically IPFS).
+///         An assembly is a composition template that USES clauses. Its
+///         identity IS its composition: compositionHash is keccak256 of
+///         the canonical composition subset of the off-chain assembly
+///         template (the composed agreements — their clauses, values, and
+///         topology; editorial prose excluded, so renaming never forks
+///         identity). The registry keys bindings by compositionHash:
+///         identical compositions collapse to one binding, and no
+///         caller-chosen name exists on-chain to squat. The human-readable
+///         slug is presentation, derived off-chain as a pure function of
+///         compositionHash.
+///
+///         contentURI points at the full pinned template document
+///         (typically IPFS) — including the editorial prose the hash
+///         excludes. Readers fetch the document from contentURI and verify
+///         it by recomputing compositionHash from its composition subset.
 ///
 ///         The contract does NOT validate assembly-template content. It cannot —
 ///         the document lives off-chain; the contract only stores its
@@ -32,14 +42,21 @@ pragma solidity 0.8.26;
 ///         SPAM PROTECTION: registration requires an ETH deposit
 ///         (`registrationDeposit`, immutable at deploy). After the
 ///         lock period elapses, the author can call `withdrawDeposit`
-///         to reclaim their ETH. The slug binding is permanent — it
-///         is NOT cleared on withdraw, because buyers and sellers
-///         that reference the slug rely on its content staying
+///         to reclaim their ETH. The composition binding is permanent —
+///         it is NOT cleared on withdraw, because buyers and sellers
+///         that reference the assembly rely on its content staying
 ///         stable. The deposit is purely an upfront Sybil-resistance
 ///         tax with a refund path, not a fee.
 ///
-///         No owner, no admin, no fee extraction. Slug binding is
-///         first-write-wins and permanent — no transferAssembly,
+///         Authorship is first-write-wins on the compositionHash: whoever
+///         anchors a composition first is its author-of-record. Editorial
+///         prose is not identity, so a front-runner can anchor someone
+///         else's composition under their own prose — the same accepted
+///         squatting economics as ClauseRegistry name registration; the
+///         deposit is the cost floor.
+///
+///         No owner, no admin, no fee extraction. The composition binding
+///         is first-write-wins and permanent — no transferAssembly,
 ///         no removeAssembly.
 ///
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any
@@ -60,10 +77,10 @@ contract AssemblyRegistry {
     ///      register, withdraw, recycle the same ETH across many
     ///      identities — "1 ETH = N assemblies over time" — at the
     ///      cost of N transactions. The lock makes recycling expensive
-    ///      in TIME as well as capital. Permanence of the slug binding
-    ///      means a spam-published slug is permanently burned (cannot
-    ///      be re-registered), so each spam costs both deposit + lock
-    ///      + an irrevocable slug.
+    ///      in TIME as well as capital. Permanence of the composition
+    ///      binding means a spam-published composition is permanently
+    ///      burned (cannot be re-registered), so each spam costs both
+    ///      deposit + lock + an irrevocable binding.
     ///
     ///      Deploy-time choice. Devnet uses 3 years (1,095 days).
     ///      Mainnet duration should be set with explicit reasoning
@@ -75,39 +92,37 @@ contract AssemblyRegistry {
         uint64 registeredAt;
         // 8-byte register; packs into the first storage slot with author + bool.
         bool depositWithdrawn;
-        bytes32 contentHash;
-        string metadataURI;
+        string contentURI;
     }
 
-    /// @notice slugHash (keccak256 of slug bytes) → binding details.
+    /// @notice compositionHash (keccak256 of the canonical composition
+    ///         subset of the template) → binding details.
     mapping(bytes32 => AssemblyBinding) public bindings;
 
     // ── Events ──────────────────────────────────────────────────────────
 
     /// @notice Emitted when an assembly is registered.
-    /// @param slugHash     keccak256 of the slug.
-    /// @param author       Address that registered the assembly.
-    /// @param slug         Human-readable slug (full string).
-    /// @param contentHash  keccak256 of the canonical off-chain assembly template.
-    /// @param metadataURI  Off-chain assembly-template URI (typically IPFS).
-    event AssemblyRegistered(
-        bytes32 indexed slugHash, address indexed author, string slug, bytes32 contentHash, string metadataURI
-    );
+    /// @param compositionHash keccak256 of the canonical composition subset
+    ///                        of the off-chain assembly template — the
+    ///                        assembly's identity.
+    /// @param author          Address that registered the assembly.
+    /// @param contentURI      Full off-chain assembly-template document URI
+    ///                        (typically IPFS).
+    event AssemblyRegistered(bytes32 indexed compositionHash, address indexed author, string contentURI);
 
-    /// @notice Emitted when an author withdraws their deposit. The slug
-    ///         binding stays in place; only the deposit moves.
-    /// @param slugHash  keccak256 of the slug.
-    /// @param author    Address that withdrew.
-    /// @param amount    Deposit amount returned (always equals
-    ///                  `registrationDeposit`).
-    event DepositWithdrawn(bytes32 indexed slugHash, address indexed author, uint256 amount);
+    /// @notice Emitted when an author withdraws their deposit. The
+    ///         composition binding stays in place; only the deposit moves.
+    /// @param compositionHash The composition whose deposit was withdrawn.
+    /// @param author          Address that withdrew.
+    /// @param amount          Deposit amount returned (always equals
+    ///                        `registrationDeposit`).
+    event DepositWithdrawn(bytes32 indexed compositionHash, address indexed author, uint256 amount);
 
     // ── Errors ──────────────────────────────────────────────────────────
 
-    error EmptySlug();
-    error EmptyMetadataURI();
-    error EmptyContentHash();
-    error SlugAlreadyRegistered(string slug);
+    error EmptyContentURI();
+    error ZeroCompositionHash();
+    error CompositionAlreadyRegistered(bytes32 compositionHash);
     error WrongDeposit(uint256 provided, uint256 required);
     error NotRegistered();
     error NotAuthor(address caller, address author);
@@ -127,44 +142,38 @@ contract AssemblyRegistry {
     // ── Assembly registration (permissionless, first-write-wins) ────────
 
     /// @notice Register an assembly. Requires `registrationDeposit` ETH.
-    ///         The contract anchors identity (slug → contentHash + URI).
+    ///         The contract anchors identity (compositionHash → contentURI).
     ///         Content validity is the publisher's responsibility
     ///         off-chain; clause content well-formedness is the off-chain
     ///         Layer-A SDK's concern — there is no on-chain content
     ///         validation.
-    /// @param slug         Human-readable slug. Bound permanently.
-    /// @param contentHash  keccak256 of the canonical off-chain assembly template.
-    /// @param metadataURI  Off-chain assembly-template pointer (typically IPFS).
-    function registerAssembly(string calldata slug, bytes32 contentHash, string calldata metadataURI) external payable {
+    /// @param compositionHash keccak256 of the canonical composition subset
+    ///                        of the off-chain assembly template.
+    /// @param contentURI      Full off-chain assembly-template document
+    ///                        pointer (typically IPFS).
+    function registerAssembly(bytes32 compositionHash, string calldata contentURI) external payable {
         if (msg.value != registrationDeposit) revert WrongDeposit(msg.value, registrationDeposit);
-        if (bytes(slug).length == 0) revert EmptySlug();
-        if (bytes(metadataURI).length == 0) revert EmptyMetadataURI();
-        if (contentHash == bytes32(0)) revert EmptyContentHash();
+        if (compositionHash == bytes32(0)) revert ZeroCompositionHash();
+        if (bytes(contentURI).length == 0) revert EmptyContentURI();
 
-        bytes32 slugHash = keccak256(bytes(slug));
-        if (bindings[slugHash].registeredAt != 0) revert SlugAlreadyRegistered(slug);
+        if (bindings[compositionHash].registeredAt != 0) revert CompositionAlreadyRegistered(compositionHash);
 
-        bindings[slugHash] = AssemblyBinding({
-            author: msg.sender,
-            registeredAt: uint64(block.timestamp),
-            depositWithdrawn: false,
-            contentHash: contentHash,
-            metadataURI: metadataURI
+        bindings[compositionHash] = AssemblyBinding({
+            author: msg.sender, registeredAt: uint64(block.timestamp), depositWithdrawn: false, contentURI: contentURI
         });
 
-        emit AssemblyRegistered(slugHash, msg.sender, slug, contentHash, metadataURI);
+        emit AssemblyRegistered(compositionHash, msg.sender, contentURI);
     }
 
     // ── Deposit withdrawal (author-only, post-lock) ─────────────────────
 
     /// @notice Reclaim the registration deposit after the lock elapses.
-    ///         The slug binding is NOT cleared — only the deposit
+    ///         The composition binding is NOT cleared — only the deposit
     ///         moves. Callable only by the original author, and only
     ///         once per binding.
-    /// @param slug The slug whose deposit to withdraw.
-    function withdrawDeposit(string calldata slug) external {
-        bytes32 slugHash = keccak256(bytes(slug));
-        AssemblyBinding storage binding = bindings[slugHash];
+    /// @param compositionHash The composition whose deposit to withdraw.
+    function withdrawDeposit(bytes32 compositionHash) external {
+        AssemblyBinding storage binding = bindings[compositionHash];
         if (binding.registeredAt == 0) revert NotRegistered();
         if (msg.sender != binding.author) revert NotAuthor(msg.sender, binding.author);
         if (binding.depositWithdrawn) revert AlreadyWithdrawn();
@@ -174,7 +183,7 @@ contract AssemblyRegistry {
 
         // Checks-effects-interactions: flag THEN transfer.
         binding.depositWithdrawn = true;
-        emit DepositWithdrawn(slugHash, msg.sender, registrationDeposit);
+        emit DepositWithdrawn(compositionHash, msg.sender, registrationDeposit);
 
         (bool ok,) = msg.sender.call{value: registrationDeposit}("");
         if (!ok) revert TransferFailed();

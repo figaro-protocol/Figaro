@@ -9,7 +9,7 @@ contract ClauseRegistryTest is Test {
 
     // Each clause is its human-readable id (passed to registerClause) paired with
     // its keccak256 hash (the on-chain dedup key + the arg to registered() /
-    // setMechanismClause). metadataURI is the IPFS locator; contentHash the spec
+    // setMechanismClause). contentURI is the IPFS document pointer; contentHash the spec
     // integrity digest. Grouping is block.article in the off-chain spec — there is
     // no on-chain group field.
     string constant MODALITIES_ID = "figaro-modalities";
@@ -150,9 +150,9 @@ contract ClauseRegistryTest is Test {
         registry.registerClause(MODALITIES_ID, 1, bytes32(0), MODALITIES_URI);
     }
 
-    function test_registerClause_revertsEmptyMetadataURI() public {
+    function test_registerClause_revertsEmptyContentURI() public {
         vm.prank(alice);
-        vm.expectRevert(ClauseRegistry.EmptyMetadataURI.selector);
+        vm.expectRevert(ClauseRegistry.EmptyContentURI.selector);
         registry.registerClause(MODALITIES_ID, 1, MODALITIES_CONTENT, "");
     }
 

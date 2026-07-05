@@ -52,7 +52,7 @@ contract Deploy is Script {
         // Clauses are NOT registered here. They are pinned to IPFS + anchored
         // on ClauseRegistry by frontend/scripts/populate-clauses.mjs — the single
         // clause-population path for prod/testnet/mainnet, so each on-chain
-        // (contentHash, metadataURI) points at a REAL pinned spec (not a
+        // (contentHash, contentURI) points at a REAL pinned spec (not a
         // placeholder). Run it after deploy.
         //
         // There is NO on-chain clause-content validation: the chain binds an
@@ -73,8 +73,8 @@ contract Deploy is Script {
         //
         // Spam protection via reclaimable deposit + lock — same pattern
         // SellerRegistry uses but adapted: withdraw returns the ETH
-        // after the lock period, but the slug binding stays permanently
-        // because buyers and sellers rely on slug stability.
+        // after the lock period, but the composition binding stays
+        // permanently because buyers and sellers rely on content stability.
         //
         // Devnet values:
         //   - 0.001 ETH deposit so test wallets can register without

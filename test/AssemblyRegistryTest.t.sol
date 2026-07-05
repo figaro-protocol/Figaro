@@ -10,8 +10,8 @@ contract AssemblyRegistryTest is Test {
     address alice = address(0xA11CE);
     address bob = address(0xB0B);
 
-    bytes32 constant CONTENT_HASH = keccak256("some-canonical-content-bytes");
-    string constant METADATA_URI = "ipfs://QmCoffeeShop";
+    bytes32 constant COMPOSITION_HASH = keccak256("canonical-composition-subset");
+    string constant CONTENT_URI = "ipfs://QmCoffeeShop";
     uint256 constant DEPOSIT = 0.001 ether;
     uint256 constant LOCK_PERIOD = 1095 days; // 3 years
 
@@ -25,35 +25,28 @@ contract AssemblyRegistryTest is Test {
 
     function test_registerAssembly_happy() public {
         vm.prank(alice);
-        registry.registerAssembly{value: DEPOSIT}("my-coffee-shop", CONTENT_HASH, METADATA_URI);
+        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
 
-        bytes32 slugHash = keccak256(bytes("my-coffee-shop"));
         (
             address author,
             uint64 registeredAt,
             bool withdrawn,
-            bytes32 contentHash,
             string memory uri
-        ) = registry.bindings(slugHash);
+        ) = registry.bindings(COMPOSITION_HASH);
 
         assertEq(author, alice);
         assertGt(registeredAt, 0);
         assertEq(withdrawn, false);
-        assertEq(contentHash, CONTENT_HASH);
-        assertEq(uri, METADATA_URI);
+        assertEq(uri, CONTENT_URI);
         assertEq(address(registry).balance, DEPOSIT);
     }
 
     function test_registerAssembly_emitsEvent() public {
-        bytes32 slugHash = keccak256(bytes("my-coffee-shop"));
-
         vm.expectEmit(true, true, false, true, address(registry));
-        emit AssemblyRegistry.AssemblyRegistered(
-            slugHash, alice, "my-coffee-shop", CONTENT_HASH, METADATA_URI
-        );
+        emit AssemblyRegistry.AssemblyRegistered(COMPOSITION_HASH, alice, CONTENT_URI);
 
         vm.prank(alice);
-        registry.registerAssembly{value: DEPOSIT}("my-coffee-shop", CONTENT_HASH, METADATA_URI);
+        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
     }
 
     // ── Registration — deposit revert paths ─────────────────────────────
@@ -63,7 +56,7 @@ contract AssemblyRegistryTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(AssemblyRegistry.WrongDeposit.selector, DEPOSIT - 1, DEPOSIT)
         );
-        registry.registerAssembly{value: DEPOSIT - 1}("my-coffee-shop", CONTENT_HASH, METADATA_URI);
+        registry.registerAssembly{value: DEPOSIT - 1}(COMPOSITION_HASH, CONTENT_URI);
     }
 
     function test_registerAssembly_revertsOnOverpay() public {
@@ -71,7 +64,7 @@ contract AssemblyRegistryTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(AssemblyRegistry.WrongDeposit.selector, DEPOSIT + 1 wei, DEPOSIT)
         );
-        registry.registerAssembly{value: DEPOSIT + 1 wei}("my-coffee-shop", CONTENT_HASH, METADATA_URI);
+        registry.registerAssembly{value: DEPOSIT + 1 wei}(COMPOSITION_HASH, CONTENT_URI);
     }
 
     function test_registerAssembly_revertsOnZeroDeposit() public {
@@ -79,51 +72,52 @@ contract AssemblyRegistryTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(AssemblyRegistry.WrongDeposit.selector, 0, DEPOSIT)
         );
-        registry.registerAssembly("my-coffee-shop", CONTENT_HASH, METADATA_URI);
+        registry.registerAssembly(COMPOSITION_HASH, CONTENT_URI);
     }
 
     // ── Registration — content revert paths ──────────────────────────────
 
-    function test_registerAssembly_revertsOnDuplicateSlug() public {
+    function test_registerAssembly_revertsOnDuplicateComposition() public {
+        // Identity is the composition: the same compositionHash cannot anchor
+        // twice, regardless of who calls or which document URI they carry.
         vm.prank(alice);
-        registry.registerAssembly{value: DEPOSIT}("my-coffee-shop", CONTENT_HASH, "ipfs://A");
+        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, "ipfs://A");
 
         vm.expectRevert(
-            abi.encodeWithSelector(AssemblyRegistry.SlugAlreadyRegistered.selector, "my-coffee-shop")
+            abi.encodeWithSelector(
+                AssemblyRegistry.CompositionAlreadyRegistered.selector, COMPOSITION_HASH
+            )
         );
         vm.prank(bob);
-        registry.registerAssembly{value: DEPOSIT}("my-coffee-shop", CONTENT_HASH, "ipfs://B");
+        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, "ipfs://B");
     }
 
-    function test_registerAssembly_revertsOnEmptySlug() public {
+    function test_registerAssembly_revertsOnEmptyContentURI() public {
         vm.prank(alice);
-        vm.expectRevert(AssemblyRegistry.EmptySlug.selector);
-        registry.registerAssembly{value: DEPOSIT}("", CONTENT_HASH, METADATA_URI);
+        vm.expectRevert(AssemblyRegistry.EmptyContentURI.selector);
+        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, "");
     }
 
-    function test_registerAssembly_revertsOnEmptyMetadataURI() public {
+    function test_registerAssembly_revertsOnZeroCompositionHash() public {
         vm.prank(alice);
-        vm.expectRevert(AssemblyRegistry.EmptyMetadataURI.selector);
-        registry.registerAssembly{value: DEPOSIT}("my-coffee-shop", CONTENT_HASH, "");
-    }
-
-    function test_registerAssembly_revertsOnEmptyContentHash() public {
-        vm.prank(alice);
-        vm.expectRevert(AssemblyRegistry.EmptyContentHash.selector);
-        registry.registerAssembly{value: DEPOSIT}("my-coffee-shop", bytes32(0), METADATA_URI);
+        vm.expectRevert(AssemblyRegistry.ZeroCompositionHash.selector);
+        registry.registerAssembly{value: DEPOSIT}(bytes32(0), CONTENT_URI);
     }
 
     // ── Permissionless ───────────────────────────────────────────────────
 
     function test_registerAssembly_permissionless() public {
+        bytes32 aliceComposition = keccak256("alice-composition");
+        bytes32 bobComposition = keccak256("bob-composition");
+
         vm.prank(alice);
-        registry.registerAssembly{value: DEPOSIT}("alice-shop", CONTENT_HASH, "ipfs://A");
+        registry.registerAssembly{value: DEPOSIT}(aliceComposition, "ipfs://A");
 
         vm.prank(bob);
-        registry.registerAssembly{value: DEPOSIT}("bob-shop", CONTENT_HASH, "ipfs://B");
+        registry.registerAssembly{value: DEPOSIT}(bobComposition, "ipfs://B");
 
-        (address aliceAuthor,,,,) = registry.bindings(keccak256(bytes("alice-shop")));
-        (address bobAuthor,,,,) = registry.bindings(keccak256(bytes("bob-shop")));
+        (address aliceAuthor,,,) = registry.bindings(aliceComposition);
+        (address bobAuthor,,,) = registry.bindings(bobComposition);
         assertEq(aliceAuthor, alice);
         assertEq(bobAuthor, bob);
         assertEq(address(registry).balance, DEPOSIT * 2);
@@ -133,49 +127,45 @@ contract AssemblyRegistryTest is Test {
 
     function test_withdrawDeposit_happy() public {
         vm.prank(alice);
-        registry.registerAssembly{value: DEPOSIT}("my-coffee-shop", CONTENT_HASH, METADATA_URI);
+        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
 
         // Fast-forward past the lock.
         vm.warp(block.timestamp + LOCK_PERIOD);
 
         uint256 balanceBefore = alice.balance;
         vm.prank(alice);
-        registry.withdrawDeposit("my-coffee-shop");
+        registry.withdrawDeposit(COMPOSITION_HASH);
 
         assertEq(alice.balance, balanceBefore + DEPOSIT);
         assertEq(address(registry).balance, 0);
 
         // Binding stays — only the withdrawn flag flips.
-        bytes32 slugHash = keccak256(bytes("my-coffee-shop"));
         (
             address author,
             ,
             bool withdrawn,
-            bytes32 contentHash,
             string memory uri
-        ) = registry.bindings(slugHash);
+        ) = registry.bindings(COMPOSITION_HASH);
         assertEq(author, alice, "author preserved after withdraw");
         assertEq(withdrawn, true);
-        assertEq(contentHash, CONTENT_HASH, "contentHash preserved after withdraw");
-        assertEq(uri, METADATA_URI, "metadataURI preserved after withdraw");
+        assertEq(uri, CONTENT_URI, "contentURI preserved after withdraw");
     }
 
     function test_withdrawDeposit_emitsEvent() public {
         vm.prank(alice);
-        registry.registerAssembly{value: DEPOSIT}("my-coffee-shop", CONTENT_HASH, METADATA_URI);
+        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
         vm.warp(block.timestamp + LOCK_PERIOD);
 
-        bytes32 slugHash = keccak256(bytes("my-coffee-shop"));
         vm.expectEmit(true, true, false, true, address(registry));
-        emit AssemblyRegistry.DepositWithdrawn(slugHash, alice, DEPOSIT);
+        emit AssemblyRegistry.DepositWithdrawn(COMPOSITION_HASH, alice, DEPOSIT);
 
         vm.prank(alice);
-        registry.withdrawDeposit("my-coffee-shop");
+        registry.withdrawDeposit(COMPOSITION_HASH);
     }
 
     function test_withdrawDeposit_revertsBeforeLockElapses() public {
         vm.prank(alice);
-        registry.registerAssembly{value: DEPOSIT}("my-coffee-shop", CONTENT_HASH, METADATA_URI);
+        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
 
         uint64 unlocksAt = uint64(block.timestamp) + uint64(LOCK_PERIOD);
 
@@ -183,53 +173,55 @@ contract AssemblyRegistryTest is Test {
         vm.warp(unlocksAt - 1);
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(AssemblyRegistry.DepositLocked.selector, unlocksAt));
-        registry.withdrawDeposit("my-coffee-shop");
+        registry.withdrawDeposit(COMPOSITION_HASH);
     }
 
     function test_withdrawDeposit_revertsOnDoubleWithdraw() public {
         vm.prank(alice);
-        registry.registerAssembly{value: DEPOSIT}("my-coffee-shop", CONTENT_HASH, METADATA_URI);
+        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
         vm.warp(block.timestamp + LOCK_PERIOD);
 
         vm.prank(alice);
-        registry.withdrawDeposit("my-coffee-shop");
+        registry.withdrawDeposit(COMPOSITION_HASH);
 
         vm.prank(alice);
         vm.expectRevert(AssemblyRegistry.AlreadyWithdrawn.selector);
-        registry.withdrawDeposit("my-coffee-shop");
+        registry.withdrawDeposit(COMPOSITION_HASH);
     }
 
     function test_withdrawDeposit_revertsByNonAuthor() public {
         vm.prank(alice);
-        registry.registerAssembly{value: DEPOSIT}("my-coffee-shop", CONTENT_HASH, METADATA_URI);
+        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
         vm.warp(block.timestamp + LOCK_PERIOD);
 
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(AssemblyRegistry.NotAuthor.selector, bob, alice));
-        registry.withdrawDeposit("my-coffee-shop");
+        registry.withdrawDeposit(COMPOSITION_HASH);
     }
 
-    function test_withdrawDeposit_revertsOnUnknownSlug() public {
+    function test_withdrawDeposit_revertsOnUnknownComposition() public {
         vm.prank(alice);
         vm.expectRevert(AssemblyRegistry.NotRegistered.selector);
-        registry.withdrawDeposit("never-existed");
+        registry.withdrawDeposit(keccak256("never-existed"));
     }
 
     function test_withdrawDeposit_doesNotAllowReRegistration() public {
-        // Permanence guarantee: once a slug is bound, withdrawing the
-        // deposit does NOT release the slug for re-registration.
+        // Permanence guarantee: once a composition is bound, withdrawing the
+        // deposit does NOT release the binding for re-registration.
         vm.prank(alice);
-        registry.registerAssembly{value: DEPOSIT}("local-commerce", CONTENT_HASH, METADATA_URI);
+        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
         vm.warp(block.timestamp + LOCK_PERIOD);
 
         vm.prank(alice);
-        registry.withdrawDeposit("local-commerce");
+        registry.withdrawDeposit(COMPOSITION_HASH);
 
-        // Bob tries to take over the slug — must fail.
+        // Bob tries to take over the composition — must fail.
         vm.prank(bob);
         vm.expectRevert(
-            abi.encodeWithSelector(AssemblyRegistry.SlugAlreadyRegistered.selector, "local-commerce")
+            abi.encodeWithSelector(
+                AssemblyRegistry.CompositionAlreadyRegistered.selector, COMPOSITION_HASH
+            )
         );
-        registry.registerAssembly{value: DEPOSIT}("local-commerce", CONTENT_HASH, "ipfs://hijack");
+        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, "ipfs://hijack");
     }
 }
