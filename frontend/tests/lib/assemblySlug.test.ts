@@ -42,10 +42,25 @@ describe("content-derived assembly slug", () => {
         expect(JSON.parse(serializeAssemblyTemplate(titled).json).name).toBe("Direct Sale");
     });
 
-    // NOTE (version axis): a template's `clauses` map keys on the BARE
-    // clauseId — there is no version pin in the composition today, so a
-    // clause's (name, v1)→(name, v2) evolution cannot yet propagate into
-    // assembly identity. The clause side of the axis is covered in Foundry
-    // (ClauseRegistryTest.test_sameNameDifferentVersionIsDistinct); the
-    // template-side version pin is an open punch-list item, not a test gap.
+    // The version-as-evolution axis, propagated through assembly identity:
+    // a clause's identity is (name, version), and composing v2 IS composing a
+    // different clause — distinct compositionHash, distinct slug. (The clause
+    // side of the axis is covered in Foundry:
+    // ClauseRegistryTest.test_sameNameDifferentVersionIsDistinct.)
+    it("composing a clause's v2 → distinct composition identity", () => {
+        const onV2: AssemblyTemplate = {
+            agreements: [{ id: "order-0", clauses: { "figaro-commerce": { x: 1 } }, clauseVersions: { "figaro-commerce": 2 } }],
+        };
+        expect(slugOf(onV2)).not.toBe(slugOf(composition(1)));
+    });
+
+    // Normalization invariant: v1 pins are never serialized, so a v1-only
+    // template hashes identically to the pre-version-field form — no reseed,
+    // no slug churn. (The builder enforces the omission; this pins the hash.)
+    it("an explicit v1 map would fork the hash — which is why the builder omits it", () => {
+        const explicitV1 = {
+            agreements: [{ id: "order-0", clauses: { "figaro-commerce": { x: 1 } }, clauseVersions: { "figaro-commerce": 1 } }],
+        } as AssemblyTemplate;
+        expect(slugOf(explicitV1)).not.toBe(slugOf(composition(1)));
+    });
 });

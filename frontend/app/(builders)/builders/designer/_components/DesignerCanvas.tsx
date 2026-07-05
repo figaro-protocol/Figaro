@@ -67,6 +67,7 @@ interface InitialState {
     description: string;
     slug: string | null;
     clausesByOrderId: Record<string, Record<string, Record<string, unknown>>>;
+    clauseVersionsByOrderId: Record<string, Record<string, number>>;
 }
 
 function buildBlankInitial(): InitialState {
@@ -82,6 +83,7 @@ function buildBlankInitial(): InitialState {
         description: "",
         slug: null,
         clausesByOrderId: {},
+        clauseVersionsByOrderId: {},
     };
 }
 
@@ -99,6 +101,7 @@ function snapshotToInitial(snap: DesignSnapshot): InitialState {
         description: snap.description ?? "",
         slug: snap.slug || null,
         clausesByOrderId: snap.clausesByOrderId ?? {},
+        clauseVersionsByOrderId: snap.clauseVersionsByOrderId ?? {},
     };
 }
 
@@ -146,6 +149,11 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     const [clausesByOrderId, setClausesByOrderId] = useState<
         Record<string, Record<string, Record<string, unknown>>>
     >(() => initial.clausesByOrderId);
+    // clauseId → registered version picked, per order — sparse (non-1 only);
+    // part of the clause's identity, carried into the template's clauseVersions.
+    const [clauseVersionsByOrderId, setClauseVersionsByOrderId] = useState<
+        Record<string, Record<string, number>>
+    >(() => initial.clauseVersionsByOrderId);
     // Editorial metadata — the designer's own words (free-form, NOT a taxonomy).
     // Carried into the assembly template but EXCLUDED from the content hash, so
     // renaming never forks the slug. Blank = unnamed; display falls back to slug.
@@ -211,6 +219,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             setDescription(restored.description);
             setSlug(restored.slug);
             setClausesByOrderId(restored.clausesByOrderId);
+            setClauseVersionsByOrderId(restored.clauseVersionsByOrderId);
             setHydrated(true);
             return;
         }
@@ -225,6 +234,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             setDescription(init.description);
             setSlug(init.slug);
             setClausesByOrderId(init.clausesByOrderId);
+            setClauseVersionsByOrderId(init.clauseVersionsByOrderId);
         }
         setHydrated(true);
         // Mount-only; subsequent seed changes are ignored.
@@ -245,12 +255,13 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             nextSellerIndex: session.nextSellerIndex,
             orders,
             clausesByOrderId,
+            clauseVersionsByOrderId,
             createdAt: Date.now(),
             updatedAt: Date.now(),
         };
         saveCurrentSession(snap);
         setSavedAt(Date.now());
-    }, [hydrated, seedError, orders, clausesByOrderId, name, summary, description, slug, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
+    }, [hydrated, seedError, orders, clausesByOrderId, clauseVersionsByOrderId, name, summary, description, slug, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
 
     // Read both chain gas ceilings (each depends on the live block gas limit, so
     // it's a runtime read; recompute when the chain changes).
@@ -268,7 +279,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
 
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
-    const toggleClause = useCallback((orderId: string, clauseId: string, next: boolean) => {
+    const toggleClause = useCallback((orderId: string, clauseId: string, next: boolean, version?: number) => {
         setClausesByOrderId((prev) => {
             const order = { ...(prev[orderId] ?? {}) };
             if (next) {
@@ -276,6 +287,14 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             } else {
                 delete order[clauseId];
             }
+            return { ...prev, [orderId]: order };
+        });
+        // The picked registry row's version — part of the clause's identity.
+        // Sparse: only non-1 versions are recorded (mirrors the template).
+        setClauseVersionsByOrderId((prev) => {
+            const order = { ...(prev[orderId] ?? {}) };
+            if (next && version !== undefined && version !== 1) order[clauseId] = version;
+            else delete order[clauseId];
             return { ...prev, [orderId]: order };
         });
     }, []);
@@ -410,11 +429,12 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 nextSellerIndex: session.nextSellerIndex,
                 orders,
                 clausesByOrderId,
+                clauseVersionsByOrderId,
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
             },
         };
-    }, [slug, name, summary, description, orders, clausesByOrderId, session]);
+    }, [slug, name, summary, description, orders, clausesByOrderId, clauseVersionsByOrderId, session]);
 
     function explainSnapshotReason(_reason: "empty-composition"): string {
         return "Add at least one order before publishing.";
@@ -677,8 +697,8 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                     selectedClauseValues={
                         selectedOrderId ? (clausesByOrderId[selectedOrderId] ?? {}) : undefined
                     }
-                    onToggleClause={(clauseId, next) => {
-                        if (selectedOrderId) toggleClause(selectedOrderId, clauseId, next);
+                    onToggleClause={(clauseId, next, version) => {
+                        if (selectedOrderId) toggleClause(selectedOrderId, clauseId, next, version);
                     }}
                     onSetClauseField={(clauseId, field, value) => {
                         // No clause selection spawns a node — the designer draws nodes

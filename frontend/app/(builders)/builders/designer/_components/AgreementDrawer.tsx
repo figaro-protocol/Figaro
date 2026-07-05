@@ -47,7 +47,7 @@ interface Props {
      *  presence as a key = selected; the values are what the designer filled. */
     selectedClauseValues?: Record<string, Record<string, unknown>>;
     /** Toggle a clause on/off for the current order. */
-    onToggleClause?: (clauseId: string, next: boolean) => void;
+    onToggleClause?: (clauseId: string, next: boolean, version?: number) => void;
     /** Set one design-time field on a selected clause for the current order. */
     onSetClauseField?: (clauseId: string, field: string, value: unknown) => void;
 }
@@ -333,7 +333,7 @@ export function AgreementDrawer({
  */
 interface ClauseRegistryPanelProps {
     selectedClauseValues?: Record<string, Record<string, unknown>>;
-    onToggleClause?: (clauseId: string, next: boolean) => void;
+    onToggleClause?: (clauseId: string, next: boolean, version?: number) => void;
     onSetClauseField?: (clauseId: string, field: string, value: unknown) => void;
 }
 
@@ -357,15 +357,17 @@ function ClauseRegistryPanel({
     // THE single clause classification, shared with the /clauses inventory.
     const registryGroups = useMemo<{ article: string; entries: RegisteredClauseEvent[] }[] | null>(() => {
         if (registeredClauses === null) return null;
-        const eventByName = new Map<string, RegisteredClauseEvent>();
-        for (const e of registeredClauses) if (e.clauseName) eventByName.set(e.clauseName, e);
+        // Keyed by the FULL identity (name, version) — a clause is a clause;
+        // two live versions surface as two co-equal rows.
+        const eventByIdentity = new Map<string, RegisteredClauseEvent>();
+        for (const e of registeredClauses) if (e.clauseName) eventByIdentity.set(`${e.clauseName}#${e.version}`, e);
 
         const groups = groupClausesByArticle()
             .map((g) => ({
                 article: g.article,
                 entries: g.clauses
-                    .filter((c) => !clauseIsStructural(c.clauseId))
-                    .map((c) => eventByName.get(c.clauseId))
+                    .filter((c) => !clauseIsStructural(c.clauseId, c.version))
+                    .map((c) => eventByIdentity.get(`${c.clauseId}#${c.version}`))
                     .filter((e): e is RegisteredClauseEvent => e !== undefined),
             }))
             .filter((g) => g.entries.length > 0);
@@ -435,13 +437,13 @@ function ClauseControl({
     clause: RegisteredClauseEvent;
     registeredClauses: ReadonlyArray<RegisteredClauseEvent> | null | undefined;
     selectedClauseValues?: Record<string, Record<string, unknown>>;
-    onToggleClause?: (clauseKey: string, next: boolean) => void;
+    onToggleClause?: (clauseKey: string, next: boolean, version?: number) => void;
     onSetClauseField?: (clauseKey: string, field: string, value: unknown) => void;
 }) {
     const clauseKey = clause.clauseName ?? clause.clauseIdHash;
     const selected = selectedClauseValues ? clauseKey in selectedClauseValues : false;
     const values = selectedClauseValues?.[clauseKey] ?? {};
-    const spec = clause.clauseName ? getClauseSpec(clause.clauseName) : undefined;
+    const spec = clause.clauseName ? getClauseSpec(clause.clauseName, clause.version) : undefined;
     return (
         <div>
             <label className="flex items-center gap-2 text-xs text-neutral-700">
@@ -449,14 +451,15 @@ function ClauseControl({
                     type="checkbox"
                     className="h-3.5 w-3.5"
                     checked={selected}
-                    onChange={(e) => onToggleClause?.(clauseKey, e.target.checked)}
-                    data-testid={`drawer-registry-clause-${clauseKey}`}
+                    onChange={(e) => onToggleClause?.(clauseKey, e.target.checked, clause.version)}
+                    data-testid={`drawer-registry-clause-${clauseKey}${clause.version > 1 ? `-v${clause.version}` : ""}`}
                 />
                 <span
                     className={`text-xs text-neutral-800${spec?.description ? " cursor-help" : ""}`}
                     title={spec?.description}
                 >
                     {spec?.title ?? clause.clauseName ?? `${clause.clauseIdHash.slice(0, 10)}…`}
+                    {clause.version > 1 ? <span className="ml-1 font-mono text-[10px] text-ink-muted">v{clause.version}</span> : null}
                 </span>
             </label>
             {selected && spec && spec.fields.length > 0 && (

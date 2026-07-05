@@ -111,6 +111,9 @@ export interface DesignSnapshot {
      *  design-time field values the designer filled. Drives the assembly
      *  template's per-order `clauses`. */
     clausesByOrderId?: Record<string, Record<string, Record<string, unknown>>>;
+    /** orderId → clauseId → the registered version picked in the drawer, when
+     *  it isn't 1 (sparse — mirrors the template's `clauseVersions`). */
+    clauseVersionsByOrderId?: Record<string, Record<string, number>>;
     /** Unix ms. */
     createdAt: number;
     /** Unix ms. */

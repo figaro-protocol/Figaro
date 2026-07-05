@@ -26,6 +26,11 @@ import { safeJsonFromResponse } from "@/lib/shared/safeJson";
  *  frontend owns (`clauseBlockBinding`), parsed off the same spec JSON at load. */
 export type ClauseSpecWithBlock = ClauseSpec & { block?: ClauseBlockBinding };
 
+/** Internal composite cache key — a clause's identity is (clauseId, version),
+ *  matching the on-chain key keccak256(abi.encode(clauseId, version)). Names
+ *  stay bare; version is the evolution axis. Never serialized or rendered. */
+const specKey = (clauseId: string, version: number): string => `${clauseId}#${version}`;
+
 const SPEC_CACHE = new Map<string, ClauseSpecWithBlock>();
 const SPEC_LOAD_ERRORS = new Map<string, string>();
 
@@ -41,10 +46,11 @@ const SPEC_LOAD_ERRORS = new Map<string, string>();
  *  scalar. Enforced by scripts/lint-clause-nests-under-a-field.sh. */
 const NESTS_UNDER = new Map<string, string>();
 
-/** clauseId HASH (keccak256 of the clauseId string, as the on-chain Attestation
- *  event carries it) → clauseId. Populated as specs load; the runtime attestation
- *  log keys on the hash. */
-const HASH_TO_ID = new Map<string, string>();
+/** on-chain clause HASH (keccak256(abi.encode(clauseId, version)), as the
+ *  Attestation event carries it) → the loaded spec's identity. Populated as
+ *  specs load; the runtime attestation log keys on the hash, so a hash resolves
+ *  to its EXACT version — two live versions of one name never conflate. */
+const HASH_TO_ID = new Map<string, { clauseId: string; version: number }>();
 
 // ── Loading (chain → IPFS) ───────────────────────────────────────────────────
 
@@ -69,12 +75,14 @@ export function setClauseSpecFetcher(fetcher: ClauseSpecFetcher): void {
     activeFetcher = fetcher;
 }
 
-/** Register a loaded spec into the cache + the derived maps. */
+/** Register a loaded spec into the cache + the derived maps. Keyed by the full
+ *  identity (clauseId, version): two live versions of one clause coexist as
+ *  co-equal cache entries — a clause is a clause. */
 function cacheSpec(spec: ClauseSpecWithBlock): void {
-    SPEC_CACHE.set(spec.clauseId, spec);
-    HASH_TO_ID.set(clauseIdHash(spec.clauseId, spec.version).toLowerCase(), spec.clauseId);
+    SPEC_CACHE.set(specKey(spec.clauseId, spec.version), spec);
+    HASH_TO_ID.set(clauseIdHash(spec.clauseId, spec.version).toLowerCase(), { clauseId: spec.clauseId, version: spec.version });
     const nestsUnder = spec.block?.nestsUnder;
-    if (typeof nestsUnder === "string" && nestsUnder.length > 0) NESTS_UNDER.set(spec.clauseId, nestsUnder);
+    if (typeof nestsUnder === "string" && nestsUnder.length > 0) NESTS_UNDER.set(specKey(spec.clauseId, spec.version), nestsUnder);
 }
 
 /**
@@ -87,10 +95,11 @@ function cacheSpec(spec: ClauseSpecWithBlock): void {
  */
 export async function loadClauseSpec(
     clauseId: string,
+    version: number,
     uri: string,
     expectedContentHash?: `0x${string}`,
 ): Promise<ClauseSpecWithBlock> {
-    const cached = SPEC_CACHE.get(clauseId);
+    const cached = SPEC_CACHE.get(specKey(clauseId, version));
     if (cached !== undefined) return cached;
     const raw = await activeFetcher(uri);
     if (expectedContentHash) {
@@ -109,6 +118,9 @@ export async function loadClauseSpec(
     }
     if (parsed.spec.clauseId !== clauseId) {
         throw new Error(`Clause spec at ${uri} declares clauseId "${parsed.spec.clauseId}", expected "${clauseId}"`);
+    }
+    if (parsed.spec.version !== version) {
+        throw new Error(`Clause spec at ${uri} declares version ${parsed.spec.version}, expected ${version} (the registered version)`);
     }
     // Parse the `block` presentation slice off the SAME spec JSON (the SDK parser
     // ignores it — it's content-only). A malformed block is a hard parse failure,
@@ -140,9 +152,19 @@ export function _resetClauseSpecCache_TESTING_ONLY(): void {
 
 // ── Sync API (resolves against the loaded cache) ─────────────────────────────
 
-/** Synchronous lookup — returns a cached spec, or `undefined` if not loaded. */
-export function getClauseSpec(clauseId: string): ClauseSpecWithBlock | undefined {
-    return SPEC_CACHE.get(clauseId);
+/** Synchronous lookup — returns a cached spec, or `undefined` if not loaded.
+ *  With `version` the lookup is exact (the full identity). Without it, the
+ *  name resolves when unambiguous (one loaded version) and to the HIGHEST
+ *  loaded version otherwise — a display convenience; semantic callers reading
+ *  committed data pass the version that data carries. */
+export function getClauseSpec(clauseId: string, version?: number): ClauseSpecWithBlock | undefined {
+    if (version !== undefined) return SPEC_CACHE.get(specKey(clauseId, version));
+    let best: ClauseSpecWithBlock | undefined;
+    for (const spec of SPEC_CACHE.values()) {
+        if (spec.clauseId !== clauseId) continue;
+        if (best === undefined || spec.version > best.version) best = spec;
+    }
+    return best;
 }
 
 /** Resolve an on-chain clauseId HASH (keccak of name+version) back to its readable
@@ -151,7 +173,17 @@ export function getClauseSpec(clauseId: string): ClauseSpecWithBlock | undefined
  *  reads (`getClauseSpec` / `clauseIsProcessLog`) key on the readable id — callers
  *  holding a hash resolve it here first. */
 export function clauseIdForHash(clauseIdHashHex: string): string | undefined {
-    return HASH_TO_ID.get(clauseIdHashHex.toLowerCase());
+    return HASH_TO_ID.get(clauseIdHashHex.toLowerCase())?.clauseId;
+}
+
+/** Resolve an on-chain clause hash to its EXACT loaded spec — hash → identity
+ *  → cache. The version-precise sibling of `clauseIdForHash`; the runtime
+ *  attestation reader (`describeAttestation`) resolves through this so two
+ *  live versions never conflate. Internal — export when an outside reader
+ *  holds a raw hash. */
+function clauseSpecForHash(clauseIdHashHex: string): ClauseSpecWithBlock | undefined {
+    const id = HASH_TO_ID.get(clauseIdHashHex.toLowerCase());
+    return id ? SPEC_CACHE.get(specKey(id.clauseId, id.version)) : undefined;
 }
 
 /** Returns the load error for a clauseId, if any. */
@@ -159,14 +191,22 @@ export function getClauseSpecLoadError(clauseId: string): string | undefined {
     return SPEC_LOAD_ERRORS.get(clauseId);
 }
 
-/** Returns all currently-loaded clause IDs. */
+/** Returns all currently-loaded clause NAMES, deduped — two live versions of
+ *  one clause contribute one name. Version-blind by design; callers that need
+ *  the full identity list use `listKnownClauses`. */
 export function listKnownClauseIds(): readonly string[] {
-    return Array.from(SPEC_CACHE.keys());
+    return Array.from(new Set(Array.from(SPEC_CACHE.values(), (s) => s.clauseId)));
+}
+
+/** Every loaded spec identity, one entry per (clauseId, version). */
+export function listKnownClauses(): readonly { clauseId: string; version: number }[] {
+    return Array.from(SPEC_CACHE.values(), (s) => ({ clauseId: s.clauseId, version: s.version }));
 }
 
 /** The field name a clause nests under in the drawer, or null if top-level. */
-export function clauseNestsUnder(clauseId: string): string | null {
-    return NESTS_UNDER.get(clauseId) ?? null;
+export function clauseNestsUnder(clauseId: string, version?: number): string | null {
+    const spec = getClauseSpec(clauseId, version);
+    return spec ? (NESTS_UNDER.get(specKey(spec.clauseId, spec.version)) ?? null) : null;
 }
 
 /** True if a clause is STRUCTURAL — mandatory on every order, composed by the
@@ -175,8 +215,8 @@ export function clauseNestsUnder(clauseId: string): string | null {
  *  exclude structural clauses from selectable lists and fold them in
  *  automatically. ANY registered clause declaring `block.article: "structural"`
  *  participates — including one this codebase has never seen. */
-export function clauseIsStructural(clauseId: string): boolean {
-    return getClauseSpec(clauseId)?.block?.article === "structural";
+export function clauseIsStructural(clauseId: string, version?: number): boolean {
+    return getClauseSpec(clauseId, version)?.block?.article === "structural";
 }
 
 /** The deep-link to a composed provider's OWN web UI, read from the clause's
@@ -212,16 +252,16 @@ export function composesInterface(clauseId: string): string | undefined {
  *  enum too. `coordination`-article clauses declare WHICH scenario everyone
  *  runs; `attestations`-article clauses record the transfers that run it. A
  *  never-seen process-log clause participates by declaring the article. */
-export function clauseIsProcessLog(clauseId: string): boolean {
-    return getClauseSpec(clauseId)?.block?.article === "attestations";
+export function clauseIsProcessLog(clauseId: string, version?: number): boolean {
+    return getClauseSpec(clauseId, version)?.block?.article === "attestations";
 }
 
 /** Whether a clause's spec declares a top-level field named `fieldName`.
  *  Field names — not clause ids — are the binding vocabulary generic surfaces
  *  look things up by: ANY registered clause carrying the field participates,
  *  including clauses this codebase has never seen. False while uncached. */
-export function clauseDeclaresField(clauseId: string, fieldName: string): boolean {
-    return getClauseSpec(clauseId)?.fields.some((f) => f.name === fieldName) === true;
+export function clauseDeclaresField(clauseId: string, fieldName: string, version?: number): boolean {
+    return getClauseSpec(clauseId, version)?.fields.some((f) => f.name === fieldName) === true;
 }
 
 /** The first enum-type field of a clause — the runtime "stage ladder" (the
@@ -229,8 +269,8 @@ export function clauseDeclaresField(clauseId: string, fieldName: string): boolea
  *  Returns the field name + its ordered values, or null when the clause has no
  *  enum field. The generic runtime engine reads this to advance ANY
  *  runtime-attestable clause without naming it. */
-export function clauseLadderField(clauseId: string): { name: string; values: readonly string[]; valueLabels?: Readonly<Record<string, string>> } | null {
-    for (const field of getClauseSpec(clauseId)?.fields ?? []) {
+export function clauseLadderField(clauseId: string, version?: number): { name: string; values: readonly string[]; valueLabels?: Readonly<Record<string, string>> } | null {
+    for (const field of getClauseSpec(clauseId, version)?.fields ?? []) {
         if (field.type === "enum") return { name: field.name, values: field.values, valueLabels: field.valueLabels };
     }
     return null;
@@ -273,10 +313,10 @@ export function describeAttestation(
     clauseIdHash: string,
     stage: number,
 ): { clauseTitle: string; eventLabel: string; eventCode: string } {
-    // Accept EITHER the on-chain hash (resolve via the cache) or an already-readable
-    // id (use it directly) — process-log groups now carry the readable id.
-    const id = clauseIdForHash(clauseIdHash) ?? clauseIdHash;
-    const spec = getClauseSpec(id);
+    // Accept EITHER the on-chain hash (resolve via the cache to the EXACT
+    // version) or an already-readable id (use it directly — highest loaded) —
+    // process-log groups now carry the readable id.
+    const spec = clauseSpecForHash(clauseIdHash) ?? getClauseSpec(clauseIdHash);
     if (!spec) return { clauseTitle: `${clauseIdHash.slice(0, 10)}…`, eventLabel: `stage ${stage}`, eventCode: `stage-${stage}` };
     const ladder = firstEnumField(spec);
     const value = ladder?.values[stage];
@@ -312,6 +352,7 @@ export interface ClauseDescription {
     fields: ClauseFieldDescription[];
 }
 
+
 function renderFieldValues(field: FieldSpec, raw: unknown): string[] {
     const enumField = enumFieldOf(field);
     const label = (v: unknown) => labelEnumValue(enumField, String(v));
@@ -322,8 +363,8 @@ function renderFieldValues(field: FieldSpec, raw: unknown): string[] {
 
 /** Describe a composed clause from its spec + data — the one generic, identity-
  *  blind reader every display/analysis surface shares. */
-export function describeClause(clauseId: string, data: Record<string, unknown> | undefined): ClauseDescription {
-    const spec = getClauseSpec(clauseId);
+export function describeClause(clauseId: string, data: Record<string, unknown> | undefined, version?: number): ClauseDescription {
+    const spec = getClauseSpec(clauseId, version);
     const d = data ?? {};
     if (!spec) {
         return {
@@ -378,6 +419,7 @@ export function clauseEnumValues(clauseId: string, fieldPath: string): readonly 
 
 interface ClauseArticleEntry {
     clauseId: string;
+    version: number;
     title: string;
     description: string;
 }
@@ -400,7 +442,7 @@ export function groupClausesByArticle(): readonly ClauseArticleGroup[] {
     const byArticle = new Map<string, ClauseArticleEntry[]>();
     for (const spec of SPEC_CACHE.values()) {
         const article = spec.block?.article ?? "(unclassified)";
-        const entry = { clauseId: spec.clauseId, title: spec.title, description: spec.description };
+        const entry = { clauseId: spec.clauseId, version: spec.version, title: spec.title, description: spec.description };
         const bucket = byArticle.get(article);
         if (bucket) bucket.push(entry);
         else byArticle.set(article, [entry]);

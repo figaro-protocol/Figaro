@@ -42,9 +42,9 @@ export interface OrderAgreement {
 /** Fill fields the composing input omitted with the clause spec's OWN declared
  *  defaults (registry-sourced, never code-sourced). A process-log clause is an
  *  empty anchor at commit and stays untouched. */
-function withSpecDefaults(clause: string, data: Record<string, unknown>): Record<string, unknown> {
-    const spec = getClauseSpec(clause);
-    if (!spec || clauseIsProcessLog(clause)) return data;
+function withSpecDefaults(clause: string, data: Record<string, unknown>, version?: number): Record<string, unknown> {
+    const spec = getClauseSpec(clause, version);
+    if (!spec || clauseIsProcessLog(clause, version)) return data;
     let out = data;
     for (const field of spec.fields ?? []) {
         if (field.default !== undefined && out[field.name] === undefined) {
@@ -59,13 +59,20 @@ export function buildOrderAgreement(
     buyer: `0x${string}`,
     seller: `0x${string}`,
     clauses: ClauseFields,
+    /** clauseId → the registered version composed (template-sourced). Absent
+     *  entries fall back to the loaded spec's version — the non-template
+     *  compose paths, where whatever the registry surfaced is what was picked. */
+    clauseVersions?: Readonly<Record<string, number>>,
 ): OrderAgreement {
     const sections: AgreementSection[] = Object.keys(clauses)
-        .map((clause) => ({
-            clause,
-            version: getClauseSpec(clause)?.version ?? 1,
-            data: withSpecDefaults(clause, clauses[clause] ?? {}),
-        }))
+        .map((clause) => {
+            const version = clauseVersions?.[clause] ?? getClauseSpec(clause)?.version ?? 1;
+            return {
+                clause,
+                version,
+                data: withSpecDefaults(clause, clauses[clause] ?? {}, version),
+            };
+        })
         .sort((a, b) => (a.clause < b.clause ? -1 : a.clause > b.clause ? 1 : 0));
 
     const agreement: Agreement = { version: "a1", buyer, seller, sections };

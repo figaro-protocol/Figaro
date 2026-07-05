@@ -28,7 +28,7 @@ import type { DraftOrder } from "@/lib/checkout/draftOrders";
 import { commitmentOrderHash, commitmentProcessId, type CommitmentPayload } from "@/lib/kernel/signedCommitment";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { planSubOrderSellers, resolveSubOrderPricing } from "@/lib/checkout/assemblySubOrderPlan";
-import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
+import { templateClauseVersionMap, templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { clauseDeclaresField } from "@/lib/shared/clauseSpecSource";
 import { parseToken } from "@/lib/shared/utils";
 import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
@@ -209,7 +209,10 @@ export async function executeAssemblyCheckout(
     }
     rootClauses = fillCommerceSection(rootClauses, currency, payment, lineItems);
 
-    const rootDraft: DraftOrder = { buyer, seller: leadSellerAddress, currency, payment, clauses: rootClauses };
+    const rootDraft: DraftOrder = {
+        buyer, seller: leadSellerAddress, currency, payment, clauses: rootClauses,
+        clauseVersions: templateClauseVersionMap(root),
+    };
     const rootPreview = await buildOrderPreview(rootDraft);
     assertValidToSign(rootPreview, "This order");
 
@@ -299,6 +302,7 @@ export async function executeAssemblyCheckout(
         const subDraft: DraftOrder = {
             buyer, seller: subSeller, currency, payment: subPayment,
             clauses: subClauses, parentOrderHashes,
+            clauseVersions: templateClauseVersionMap(node),
         };
         const subPreview = await buildOrderPreview(subDraft, {
             processId,

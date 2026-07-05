@@ -21,6 +21,8 @@ export async function primeClauseSpecs(clauseIds?: readonly string[]): Promise<v
             .map((f) => f.replace(/\.json$/u, ""));
     setClauseSpecFetcher(async (uri) => JSON.parse(readFileSync(uri, "utf8")));
     for (const id of ids) {
-        await loadClauseSpec(id, path.join(EXAMPLES_DIR, `${id}.json`));
+        const file = path.join(EXAMPLES_DIR, `${id}.json`);
+        const version = Number((JSON.parse(readFileSync(file, "utf8")) as { version?: number }).version ?? 1);
+        await loadClauseSpec(id, version, file);
     }
 }

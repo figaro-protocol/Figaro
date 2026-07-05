@@ -50,8 +50,11 @@ export function buildAssemblyTemplate(args: {
     description?: string;
     orders: readonly Order[];
     clausesByOrderId: Readonly<Record<string, ClauseFields>>;
+    /** orderId → clauseId → the registered version the designer composed.
+     *  Optional; absent entries mean version 1. */
+    clauseVersionsByOrderId?: Readonly<Record<string, Readonly<Record<string, number>>>>;
 }): AssemblyTemplate {
-    const { name, summary, description, orders, clausesByOrderId } = args;
+    const { name, summary, description, orders, clausesByOrderId, clauseVersionsByOrderId } = args;
     const structuralIds = listKnownClauseIds().filter(clauseIsStructural);
     if (structuralIds.length === 0) {
         // Without the chain→IPFS spec cache the structural clauses cannot be
@@ -70,16 +73,32 @@ export function buildAssemblyTemplate(args: {
         ...(name ? { name } : {}),
         ...(summary ? { summary } : {}),
         ...(description ? { description } : {}),
-        agreements: orders.map((order, i) => ({
-            id: `order-${i}`,
-            clauses: {
+        agreements: orders.map((order, i) => {
+            const clauses = {
                 ...(clausesByOrderId[order.id] ?? {}),
                 ...composeStructuralClauses(
                     structuralIds,
                     (order.parentOrderHashes ?? []).map((p) => idToLocal.get(p) ?? p),
                 ),
-            },
-        })),
+            };
+            // Record each composed clause's registered version — the designer's
+            // pick for selected clauses, the loaded spec's version for the
+            // auto-folded structural ones. NORMALIZED SPARSE: v1 entries are
+            // dropped and an empty map is omitted, so templates composed
+            // entirely from v1 clauses hash identically to the pre-version form.
+            const versions: Record<string, number> = {};
+            for (const clauseId of Object.keys(clauses)) {
+                const v = clauseVersionsByOrderId?.[order.id]?.[clauseId]
+                    ?? getClauseSpec(clauseId)?.version
+                    ?? 1;
+                if (v !== 1) versions[clauseId] = v;
+            }
+            return {
+                id: `order-${i}`,
+                clauses,
+                ...(Object.keys(versions).length > 0 ? { clauseVersions: versions } : {}),
+            };
+        }),
     };
 }
 

@@ -9,8 +9,13 @@ Well-formedness is the SDK's job (honest authors) plus a read-time concern
 (downstream forums reject garbage). A never-seen clause is attestable with
 **zero per-clause on-chain code** — open-world by construction. (The on-chain
 per-clause validators, the Rust/SP1 prover mirror, and the batch verifier were
-deleted in the proof-apparatus teardown; what remains is Layer A + on-chain
-registration.)
+removed in the proof-apparatus teardown; what remains today is Layer A + on-chain
+registration. The removal is **DEFERRED, not permanent**: the validator and
+verifier are rebuilt before launch — papers and marketing pages that describe
+them describe the intended launch state, not drift; never "fix" that prose by
+stripping the validator/verifier concept. The rebuild must preserve the
+open-world property above — a never-seen clause stays attestable with zero
+per-clause code; `figaro-protocol-open-world-auditor` is the gate.)
 
 CLAUDE.md keeps the lockstep principle (spec ↔ SDK ↔ on-chain registration);
 this file owns the full clause table, the architectural detail, and the
@@ -197,8 +202,10 @@ design time and expensive to undo once `clauseId` is bound on chain.
 
 ## Adding a new clause — checklist
 
-There is **no on-chain validator and no Rust/prover mirror** — both were deleted in
-the proof-apparatus teardown. A new clause is a spec + off-chain encoder + registration.
+There is **no on-chain validator and no Rust/prover mirror today** — both were removed
+in the proof-apparatus teardown (deferred; rebuilt pre-launch — see the note at the top
+of this file). Until the rebuild lands, a new clause is a spec + off-chain encoder +
+registration.
 
 1. JSON spec in `clauses/<clause>.json` (the canonical Layer-A spec / `ClauseRegistry` seed data — nothing bundles a copy).
 2. `populate-clauses.mjs` pins it to IPFS + anchors `(clauseId, version, contentHash, contentURI)` on `ClauseRegistry`; the frontend loads it chain→IPFS via `clauseSpecSource` (no frontend copy, no preload).

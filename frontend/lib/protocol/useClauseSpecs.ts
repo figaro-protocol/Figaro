@@ -44,7 +44,7 @@ export function useClauseSpecs(): ClauseSpecsState {
         if (!events) return;
         let cancelled = false;
         const pending = events.filter((e) => e.contentURI && e.clauseName);
-        Promise.allSettled(pending.map((e) => loadClauseSpec(e.clauseName, e.contentURI, e.contentHash))).then((results) => {
+        Promise.allSettled(pending.map((e) => loadClauseSpec(e.clauseName, e.version, e.contentURI, e.contentHash))).then((results) => {
             if (cancelled) return;
             setErrors(results.flatMap((r) => (r.status === "rejected" ? [String(r.reason)] : [])));
             setVersion((v) => v + 1);

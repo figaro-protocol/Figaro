@@ -3,6 +3,7 @@ import {
     getClauseSpec,
     getClauseSpecLoadError,
     listKnownClauseIds,
+    listKnownClauses,
     loadClauseSpec,
     setClauseSpecFetcher,
     clauseIsProcessLog,
@@ -45,7 +46,7 @@ describe("clauseSpecSource — async loadClauseSpec via fetcher", () => {
                 { name: "x", type: "string", required: true },
             ],
         }));
-        const spec = await loadClauseSpec("test-remote-v1", "ipfs://fake");
+        const spec = await loadClauseSpec("test-remote-v1", 1, "ipfs://fake");
         expect(spec.clauseId).toBe("test-remote-v1");
         // Subsequent sync lookup should resolve to the cached entry
         expect(getClauseSpec("test-remote-v1")?.clauseId).toBe("test-remote-v1");
@@ -59,12 +60,12 @@ describe("clauseSpecSource — async loadClauseSpec via fetcher", () => {
             description: "Mismatched.",
             fields: [],
         }));
-        await expect(loadClauseSpec("expected-id-v1", "ipfs://fake")).rejects.toThrow(/declares clauseId/);
+        await expect(loadClauseSpec("expected-id-v1", 1, "ipfs://fake")).rejects.toThrow(/declares clauseId/);
     });
 
     it("rejects when the spec fails to parse", async () => {
         setClauseSpecFetcher(async () => ({ not: "a spec" }));
-        await expect(loadClauseSpec("malformed-v1", "ipfs://fake")).rejects.toThrow(/failed to parse/);
+        await expect(loadClauseSpec("malformed-v1", 1, "ipfs://fake")).rejects.toThrow(/failed to parse/);
     });
 });
 
@@ -110,5 +111,25 @@ describe("clauseIsProcessLog — classified by the attestations article, never b
 
     it("an unknown clause is not a lifecycle (false while uncached)", () => {
         expect(clauseIsProcessLog("never-seen-clause")).toBe(false);
+    });
+});
+
+describe("version coexistence — a clause is a clause", () => {
+    it("two live versions of one name coexist as co-equal cache entries", async () => {
+        setClauseSpecFetcher(async (uri) => (uri.includes("v2") ? { clauseId: "multi-v", version: 2, title: "Multi v2", description: "d", fields: [{ name: "x", type: "string", required: true }] } : { clauseId: "multi-v", version: 1, title: "Multi v1", description: "d", fields: [{ name: "x", type: "string", required: true }] }));
+        await loadClauseSpec("multi-v", 1, "ipfs://fake-v1");
+        await loadClauseSpec("multi-v", 2, "ipfs://fake-v2");
+        expect(getClauseSpec("multi-v", 1)?.title).toBe("Multi v1");
+        expect(getClauseSpec("multi-v", 2)?.title).toBe("Multi v2");
+        // Name-only resolves to the highest loaded — a display convenience.
+        expect(getClauseSpec("multi-v")?.version).toBe(2);
+        // The identity list carries both; the name list dedupes.
+        expect(listKnownClauses().filter((c) => c.clauseId === "multi-v")).toHaveLength(2);
+        expect(listKnownClauseIds().filter((id) => id === "multi-v")).toHaveLength(1);
+    });
+
+    it("rejects a spec whose declared version differs from the registered one", async () => {
+        setClauseSpecFetcher(async () => ({ clauseId: "multi-v", version: 1, title: "Multi v1", description: "d", fields: [{ name: "x", type: "string", required: true }] }));
+        await expect(loadClauseSpec("multi-v", 3, "ipfs://fake")).rejects.toThrow(/declares version 1, expected 3/);
     });
 });

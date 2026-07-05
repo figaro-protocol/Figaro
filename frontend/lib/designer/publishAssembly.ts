@@ -90,6 +90,7 @@ export function usePublishAssembly() {
             description: snapshot.description?.trim() || undefined,
             orders: snapshot.orders,
             clausesByOrderId: snapshot.clausesByOrderId ?? {},
+            clauseVersionsByOrderId: snapshot.clauseVersionsByOrderId,
         });
         const { json, compositionHash } = serializeAssemblyTemplate(template);
         // The slug is presentation, derived from the composition hash —

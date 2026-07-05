@@ -63,6 +63,7 @@ export async function buildOrderPreview(
         draft.buyer,
         draft.seller,
         draft.clauses,
+        draft.clauseVersions,
     );
     const commitment: Commitment = {
         processId: opts?.processId ?? ZERO_PROCESS_ID,

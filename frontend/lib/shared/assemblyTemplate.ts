@@ -37,6 +37,13 @@ export interface AssemblyTemplateAgreement {
      *  first-use, buyer at checkout). The topology is a clause here too: the
      *  structural topology clause carries `{ parentOrderHashes }` (root = []). */
     clauses: ClauseFields;
+    /** clauseId → the registered VERSION composed, when it isn't 1. A clause's
+     *  identity is (name, version) — two live versions are two clauses; this
+     *  records WHICH one this agreement composed. SPARSE by normalization:
+     *  version-1 entries are never serialized (the builder omits them), so a
+     *  template with only v1 clauses carries no map and hashes identically to
+     *  the pre-version-field form. Read via `templateClauseVersion`. */
+    clauseVersions?: Record<string, number>;
 }
 
 export interface AssemblyTemplate {
@@ -67,6 +74,24 @@ export function templateParentOrderHashes(agreement: AssemblyTemplateAgreement):
     );
     const ids = (entry as { parentOrderHashes?: unknown } | undefined)?.parentOrderHashes;
     return Array.isArray(ids) ? ids.filter((p): p is string => typeof p === "string") : [];
+}
+
+/** The registered version an agreement composed for a clause — 1 unless the
+ *  sparse `clauseVersions` map says otherwise (v1 pins are never serialized).
+ *  @public pending consumer: per-clause version display on the drawer/audit
+ *  read surfaces (the map form below is the checkout consumer). */
+export function templateClauseVersion(agreement: AssemblyTemplateAgreement, clauseId: string): number {
+    return agreement.clauseVersions?.[clauseId] ?? 1;
+}
+
+/** The COMPLETE clauseId → version map for a template agreement (absent = 1
+ *  made explicit). Checkout passes this into the agreement build so the
+ *  committed section versions come from the composition, never from whichever
+ *  spec versions happen to be loaded. */
+export function templateClauseVersionMap(agreement: AssemblyTemplateAgreement): Record<string, number> {
+    return Object.fromEntries(
+        Object.keys(agreement.clauses).map((c) => [c, templateClauseVersion(agreement, c)]),
+    );
 }
 
 /** The assembly's identity — keccak256 of the canonical COMPOSITION subset of
