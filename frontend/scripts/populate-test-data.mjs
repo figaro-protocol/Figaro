@@ -107,7 +107,7 @@ async function anchorAssembly({ publicClient, walletClient, account, registry, i
     // Composition hash over the COMPOSITION ONLY (editorial excluded) — mirrors
     // serializeAssemblyTemplate.ts; the slug is presentation, derived off-chain
     // (mirrors deriveAssemblySlug). The registry keys bindings by compositionHash.
-    const compositionHash = keccak256(toHex(canonicalize({ orders: template.orders })));
+    const compositionHash = keccak256(toHex(canonicalize({ agreements: template.agreements })));
     const slug = `asm-${compositionHash.slice(2, 18)}`;
 
     const anchored = await publicClient.getContractEvents({
@@ -133,21 +133,21 @@ async function anchorAssembly({ publicClient, walletClient, account, registry, i
     return slug;
 }
 
-/** The blank single-order composition: structural clauses only — the minimal
- *  bindable assembly the single-order specs run against. */
+/** The blank single-agreement composition: structural clauses only — the
+ *  minimal bindable assembly the single-order specs run against. */
 function seedTemplateBlank() {
     return {
         name: 'Devnet seed',
         summary: 'Pre-populated bindable assembly for the e2e suite.',
-        description: 'A blank single-order composition (structural clauses only), anchored by populate-test-data so sellers can bind before any spec runs.',
-        orders: [{ id: 'order-0', clauses: structuralClauseFold() }],
+        description: 'A blank single-agreement composition (structural clauses only), anchored by populate-test-data so sellers can bind before any spec runs.',
+        agreements: [{ id: 'order-0', clauses: structuralClauseFold() }],
     };
 }
 
 /** The multi-order value-added CHAIN — the externalized P&L the multi-order
- *  e2e runs end-to-end: a root meal order (merchant process, delivery
- *  modality) plus courier and supplier sub-orders. Which clauses compose
- *  which order is scenario DATA (a designed artifact this seed reproduces
+ *  e2e runs end-to-end: a root meal agreement (merchant process, delivery
+ *  modality) plus courier and supplier sub-agreements. Which clauses compose
+ *  which agreement is scenario DATA (a designed artifact this seed reproduces
  *  byte-for-byte), exactly like the seller roster above. Counterparties are
  *  NOT seeded — the lead binds + designates them through the real UI flow. */
 function seedTemplateChain() {
@@ -155,7 +155,7 @@ function seedTemplateChain() {
         name: 'Devnet delivery chain',
         summary: 'Three-order value-added chain: meal, courier, supplier.',
         description: 'A delivery chain for the multi-order e2e: the buyer sees the full decomposition at checkout, each contributor is bond-secured, and the single resolve pays every party.',
-        orders: [
+        agreements: [
             {
                 id: 'order-0',
                 clauses: {

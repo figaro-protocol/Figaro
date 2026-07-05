@@ -36,7 +36,7 @@ export function templateToOrders(template: AssemblyTemplate): Order[] {
     // a distinct synthetic seller per order. Real parties bind at
     // adoption/checkout, never from the template. Per-order build→hash→save→
     // assemble is the shared `buildSyntheticOrder`.
-    return template.orders.map((to, i) =>
+    return template.agreements.map((to, i) =>
         buildSyntheticOrder({
             orderId: to.id as `0x${string}`,
             processId: SYNTHETIC_PROCESS_ID,
@@ -65,7 +65,7 @@ export function assemblyTemplateToDraft(
         nextSellerIndex: orders.length + 1,
         orders,
         clausesByOrderId: Object.fromEntries(
-            template.orders.map((to) => [to.id, to.clauses]),
+            template.agreements.map((to) => [to.id, to.clauses]),
         ),
         createdAt: Date.now(),
         updatedAt: Date.now(),

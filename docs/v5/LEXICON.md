@@ -20,14 +20,20 @@ name at each tier* — these are PROJECTIONS, not synonyms. Translate across tie
 | ↳ clause lifecycle | — | uniform: every section is **merkle-bound** to `agreementHash` (the keccak cross-check — no per-clause verification tier) | derived in code, not stored: **agreement-only** (committed, never attested) vs **runtime-attested** (`clauseIsProcessLog` — empty anchor at commit) | `lint-architecture-lexicon` — retired: **`block.tier`** and its `cross-checked`/`runtime` tiers, `category-1/2`, `manifest-only` |
 | reusable composition | — | **assembly** | assembly | `lint-architecture-lexicon` |
 | ↳ serialized form | — | — | **`AssemblyTemplate`** (one name; `AssemblyDocument` retired → 0 occurrences) | — |
+| ↳ template node | — | — | **agreement** (`AssemblyTemplateAgreement`) — the design-time draft of one buyer↔seller relationship; its `id` names the kernel-order slot (`order-<i>`) it commits into at checkout | grep-verified canonical (template `orders` array retired 2026-07-05) |
+| ↳ assembly identity | — | **`compositionHash`** (AssemblyRegistry binding key; keccak of the canonical composition subset — editorial excluded) | slug = presentation, derived (`deriveAssemblySlug`) | grep-verified canonical (caller-chosen `slug`/`slugHash` retired 2026-07-05) |
 | deal instance | **order** → **process** · commitment | — | order · process | `lint-architecture-lexicon` (`order-received` banned) |
 | the agreement | **`agreementHash`** (the EIP-712 fingerprint field) | — | `Agreement` (off-chain JSON) · `agreementUri` (IPFS location) | grep-verified canonical |
 | evidence | — | **attestation** (`contentRef` = `keccak256(content)`) | attestation | `lint-architecture-lexicon` |
 | value | currency · payment | — | consumer copy via `vocab.ts` (deposit/place/complete) | — |
 
-**Distinct concepts that are NOT drift** (do not collapse): `contentHash` = the *assembly's*
-fingerprint (AssemblyRegistry) ≠ `agreementHash` (the *agreement's*); `agreementUri` = IPFS
-*location* ≠ a hash; `contentRef` = the *attestation's* fingerprint ≠ either.
+**Distinct concepts that are NOT drift** (do not collapse): `compositionHash` = the *assembly's*
+identity (AssemblyRegistry binding key) ≠ `contentHash` (the *clause spec's* integrity digest,
+ClauseRegistry) ≠ `agreementHash` (the *signed agreement's* EIP-712 fingerprint); `contentURI` =
+IPFS document *location* (Clause/Assembly registries; SellerRegistry keeps `metadataURI` — its
+mutable profile IS metadata) ≠ a hash; `contentRef` = the *attestation's* fingerprint ≠ any of
+them. Verify-after-fetch: readers recompute `contentHash`/`compositionHash` from the fetched
+document (`canonicalJson.ts` — one canonical form, sorted keys) — a mismatched pin is absence.
 **The clause's GROUP is `block.article`** (geo, coordination, emissions…) — ONE word, ONE home. The
 earlier `categories` array and on-chain `family` (`= keccak256(categories[0])`) were a closed-world
 duplicate of the same concept that drifted across clauses; both were removed 2026-06-26, leaving

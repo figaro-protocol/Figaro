@@ -128,16 +128,22 @@ advisory metadata for off-chain discovery surfaces.
 reclaimable ETH deposit. An assembly is a composition template that USES
 clauses; this registry is the assembly artifact family's anchor, parallel to
 `ClauseRegistry` (clauses) and `SellerRegistry` (sellers) per the
-separation-of-concerns doctrine. Two external functions: `registerAssembly(slug,
-contentHash, metadataURI)` (first-write-wins, requires the immutable
-`registrationDeposit`, emits `AssemblyRegistered`) and `withdrawDeposit(slug)`
-(author-only, callable once after `depositLockPeriod` elapses, emits
-`DepositWithdrawn`). State is one mapping `bindings: slugHash → AssemblyBinding`
-{author, registeredAt, depositWithdrawn, contentHash, metadataURI}. The slug
-binding is permanent — `withdrawDeposit` returns only the ETH and never clears
-the binding, because buyers and sellers that reference the slug rely on its
-content staying stable; the deposit is an upfront Sybil-resistance tax with a
-refund path, not a fee. No owner, no admin, no fee, no `transferAssembly`, no
+separation-of-concerns doctrine. Two external functions:
+`registerAssembly(compositionHash, contentURI)` (first-write-wins, requires the
+immutable `registrationDeposit`, emits `AssemblyRegistered`) and
+`withdrawDeposit(compositionHash)` (author-only, callable once after
+`depositLockPeriod` elapses, emits `DepositWithdrawn`). Identity IS the
+composition: `compositionHash` = keccak256 of the template's canonical
+composition subset (the composed agreements — clauses, values, topology;
+editorial prose excluded), so identical compositions collapse to one binding
+and no caller-chosen name exists on-chain to squat; the human-readable slug is
+presentation, derived off-chain as a pure function of the hash
+(`deriveAssemblySlug`). State is one mapping `bindings: compositionHash →
+AssemblyBinding` {author, registeredAt, depositWithdrawn, contentURI}. The
+composition binding is permanent — `withdrawDeposit` returns only the ETH and
+never clears the binding, because buyers and sellers that reference the
+assembly rely on its content staying stable; the deposit is an upfront
+Sybil-resistance tax with a refund path, not a fee. No owner, no admin, no fee, no `transferAssembly`, no
 `removeAssembly`. The contract does not validate content — well-formedness is an
 off-chain (Layer-A SDK + read-time) concern, never an on-chain check. Foundry
 tests in `test/AssemblyRegistryTest.t.sol`.

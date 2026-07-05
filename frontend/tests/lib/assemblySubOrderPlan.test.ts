@@ -4,7 +4,7 @@ import {
     planSubOrderSellers,
     resolveSubOrderPricing,
 } from "@/lib/checkout/assemblySubOrderPlan";
-import type { AssemblyTemplateOrder } from "@/lib/shared/assemblyTemplate";
+import type { AssemblyTemplateAgreement } from "@/lib/shared/assemblyTemplate";
 import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
 import type { SellerCatalogue } from "@/lib/seller/types";
 import { primeClauseSpecs } from "./primeClauseSpecs";
@@ -32,7 +32,7 @@ const assembly = {
     assemblyTemplate: {
         slug: "kit-assembly",
         name: "Kit",
-        orders: [
+        agreements: [
             { id: "A", buyer: MERCATO, seller: MERCATO, parentOrderHashes: [], clauses: {} },
             { id: "B", buyer: MERCATO, seller: SWIFT, parentOrderHashes: ["A"], clauses: { [PROX]: {} } },
             { id: "C", buyer: MERCATO, seller: ROSSO, parentOrderHashes: ["A"], clauses: { [GHG]: {} } },
@@ -70,9 +70,9 @@ const catalogues = [
     },
 ] as unknown as SellerCatalogue[];
 
-const orderById = (id: string): AssemblyTemplateOrder =>
-    assembly.assemblyTemplate.orders.find((o) => o.id === id)!;
-const payArgs = (node: AssemblyTemplateOrder, seller: `0x${string}`) => ({
+const orderById = (id: string): AssemblyTemplateAgreement =>
+    assembly.assemblyTemplate.agreements.find((o) => o.id === id)!;
+const payArgs = (node: AssemblyTemplateAgreement, seller: `0x${string}`) => ({
     node, seller, sellerCatalogues: catalogues, tokenDecimals: 18,
 });
 
@@ -138,8 +138,8 @@ const LA = "9q5ct";
 const rateCatalogue = (item: Record<string, unknown>): SellerCatalogue[] =>
     [{ address: SWIFT, name: "Swift Courier", items: [item] }] as unknown as SellerCatalogue[];
 
-const nodeWithClauses = (clauses: Record<string, Record<string, unknown>>): AssemblyTemplateOrder =>
-    ({ id: "R", buyer: MERCATO, seller: SWIFT, parentOrderHashes: ["A"], clauses }) as unknown as AssemblyTemplateOrder;
+const nodeWithClauses = (clauses: Record<string, Record<string, unknown>>): AssemblyTemplateAgreement =>
+    ({ id: "R", buyer: MERCATO, seller: SWIFT, parentOrderHashes: ["A"], clauses }) as unknown as AssemblyTemplateAgreement;
 
 describe("resolveSubOrderPricing — rate items", () => {
     beforeAll(async () => {

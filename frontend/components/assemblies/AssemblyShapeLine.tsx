@@ -39,10 +39,10 @@ export function AssemblyShapeLine({
             </p>
         );
     }
-    if (choice.state === "loaded" && choice.orderCount !== null && choice.clauses !== null) {
+    if (choice.state === "loaded" && choice.agreementCount !== null && choice.clauses !== null) {
         return (
             <p className={`${className} text-ink-body`} data-testid={testId} title={choice.clauses.join(", ")}>
-                {choice.orderCount} order{choice.orderCount === 1 ? "" : "s"}
+                {choice.agreementCount} agreement{choice.agreementCount === 1 ? "" : "s"}
                 {" · "}
                 {choice.clauses.length} clause{choice.clauses.length === 1 ? "" : "s"}
                 {choice.clauses.length > 0 && `: ${formatAssemblyClauseList(choice.clauses)}`}

@@ -183,10 +183,10 @@ export async function executeAssemblyCheckout(
     const { chainId, signRoot, signAndShare } = deps;
 
     // The root node carries the design-time clause choices, spread verbatim.
-    const root = assembly.assemblyTemplate.orders.find((o) => templateParentOrderHashes(o).length === 0)
-        ?? assembly.assemblyTemplate.orders[0];
+    const root = assembly.assemblyTemplate.agreements.find((o) => templateParentOrderHashes(o).length === 0)
+        ?? assembly.assemblyTemplate.agreements[0];
     if (!root) throw new Error("This assembly has no root order.");
-    const isMultiOrder = assembly.assemblyTemplate.orders.length > 1;
+    const isMultiOrder = assembly.assemblyTemplate.agreements.length > 1;
 
     // The root's clause map: template clauses, the cart's PHYSICAL attributes
     // collapsed into the cargo entry (found by its declared fields, never by

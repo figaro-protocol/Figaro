@@ -15,7 +15,8 @@ import { clauseIsStructural, getClauseSpec, listKnownClauseIds } from "@/lib/sha
 import { templateCompositionHash, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 
-/** Fold the MANDATORY structural clauses into an order's clause set. Each
+/** Fold the MANDATORY structural clauses into a template agreement's clause
+ *  set. Each
  *  structural clause (`block.article: "structural"`) draws the fields it declares
  *  from the design-time value bag — topology gets `{ parentOrderHashes }` (mode
  *  is DERIVED from the edges, never stored); commerce's currency/payment/lineItems are NOT design-time
@@ -40,8 +41,9 @@ function composeStructuralClauses(structuralIds: readonly string[], parents: str
 }
 
 /** Build the no-hash assembly template from the design's orders + the per-order
- *  clause selection. The MANDATORY structural clauses (commerce + topology) fold
- *  in automatically on every order — they are not designer choices. */
+ *  clause selection: one template AGREEMENT per canvas order. The MANDATORY
+ *  structural clauses (commerce + topology) fold in automatically on every
+ *  agreement — they are not designer choices. */
 export function buildAssemblyTemplate(args: {
     name?: string;
     summary?: string;
@@ -59,15 +61,16 @@ export function buildAssemblyTemplate(args: {
             "clause specs not loaded: no structural clauses in the cache — gate the surface on useClauseSpecs().loaded (or prime the spec cache in tests) before building templates",
         );
     }
-    // Re-label each design-time (synthetic) order id to a clean local label.
-    // The template carries no chain ids and no party addresses — only the
-    // clauses (the structural ones among them), keyed by these local labels.
+    // Re-label each design-time (synthetic) order id to a clean local label
+    // naming the future kernel-order slot. The template carries no chain ids
+    // and no party addresses — only the clauses (the structural ones among
+    // them), keyed by these local labels.
     const idToLocal = new Map(orders.map((o, i) => [o.id, `order-${i}`]));
     return {
         ...(name ? { name } : {}),
         ...(summary ? { summary } : {}),
         ...(description ? { description } : {}),
-        orders: orders.map((order, i) => ({
+        agreements: orders.map((order, i) => ({
             id: `order-${i}`,
             clauses: {
                 ...(clausesByOrderId[order.id] ?? {}),

@@ -7,14 +7,15 @@
  * `@/lib/protocol/assemblyChoices` — design is design; reading is everyone's.
  *
  * Publish flow:
- *   1. Build a full off-chain assemblyTemplate from the snapshot — topology
- *      (orders array), per-order agreement bodies (inlined), and prose.
+ *   1. Build a full off-chain assemblyTemplate from the snapshot — one
+ *      agreement per canvas order (clauses inlined, topology as a clause),
+ *      plus prose.
  *   2. Compute the canonical composition hash (keccak256 of the stable-JSON
  *      composition subset — the assembly's identity).
  *   3. Pin the assemblyTemplate to IPFS via DEFAULT_IPFS_SERVICE.
  *   4. Call AssemblyRegistry.registerAssembly(compositionHash, contentURI).
  *      Before the call, a CLIENT-SIDE publish guard checks
- *      that the node count (orders.length) fits the per-process gas
+ *      that the agreement count fits the per-process gas
  *      ceiling, derived at runtime from the active chain's block gas limit
  *      via `maxOrdersResolvablePerProcess` in `@/lib/shared/chainGasCeilings`.
  *      The count is not a contract parameter and is never stored on-chain.

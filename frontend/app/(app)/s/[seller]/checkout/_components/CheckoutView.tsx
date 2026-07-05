@@ -209,7 +209,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // (seller-assigned). The fill mechanism is DERIVED from binding state +
     // composition — there is no coordination field.
     const unboundSubOrders = (() => {
-        if (!pickedAssembly || pickedAssembly.assemblyTemplate.orders.length <= 1) return [];
+        if (!pickedAssembly || pickedAssembly.assemblyTemplate.agreements.length <= 1) return [];
         try {
             return planSubOrderSellers(pickedAssembly).filter((p) => !p.seller);
         } catch {
@@ -224,7 +224,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     const orderCompositions = ((): OrderComposition[] => {
         if (!pickedAssembly) return [];
         const out: OrderComposition[] = [];
-        for (const order of pickedAssembly.assemblyTemplate.orders) {
+        for (const order of pickedAssembly.assemblyTemplate.agreements) {
             for (const cid of Object.keys(order.clauses)) {
                 const block = getClauseSpec(cid)?.block;
                 if (block?.composes && block.fields && block.fields.length > 0) {
@@ -258,8 +258,8 @@ export function CheckoutView({ sellerAddress }: Props) {
     // order; the final per-order sign confirmation is the shared agreement-preview
     // gate (the same one the seller's accept uses).
     const pickedRoot = pickedAssembly
-        ? (pickedAssembly.assemblyTemplate.orders.find((o) => templateParentOrderHashes(o).length === 0)
-            ?? pickedAssembly.assemblyTemplate.orders[0])
+        ? (pickedAssembly.assemblyTemplate.agreements.find((o) => templateParentOrderHashes(o).length === 0)
+            ?? pickedAssembly.assemblyTemplate.agreements[0])
         : undefined;
     const cartTotal = cartItems.reduce(
         (sum, item) => sum + parseToken(item.price || "0", tokenDecimals) * BigInt(item.quantity),
@@ -276,7 +276,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         total: bigint;
     } | null => {
         const assembly = pickedAssembly;
-        if (!assembly || assembly.assemblyTemplate.orders.length <= 1) return null;
+        if (!assembly || assembly.assemblyTemplate.agreements.length <= 1) return null;
         const lead = sellerCatalogue.address as `0x${string}`;
         const nameOf = (addr: `0x${string}`) => displayNameForAddress(sellerCatalogues, addr);
         let plan: ReturnType<typeof planSubOrderSellers>;
@@ -320,7 +320,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // buyer-chosen terms; they stay out of the review.
     const agreementGroups = ((): Array<{ key: string; label: string; clauses: Array<{ clauseId: string; values: string }> }> => {
         if (!pickedAssembly) return [];
-        const orders = pickedAssembly.assemblyTemplate.orders;
+        const orders = pickedAssembly.assemblyTemplate.agreements;
         const lead = sellerCatalogue.address as `0x${string}`;
         const nameOf = (addr: `0x${string}`) => displayNameForAddress(sellerCatalogues, addr);
         let plan: ReturnType<typeof planSubOrderSellers> = [];

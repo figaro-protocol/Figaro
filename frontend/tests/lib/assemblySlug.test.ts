@@ -5,7 +5,7 @@ import { deriveAssemblySlug, type AssemblyTemplate } from "@/lib/shared/assembly
 // Construct templates directly (no spec cache needed) to test the
 // serialize → compositionHash → slug pipeline in isolation.
 const composition = (x: number): AssemblyTemplate => ({
-    orders: [{ id: "order-0", clauses: { "figaro-commerce": { x } } }],
+    agreements: [{ id: "order-0", clauses: { "figaro-commerce": { x } } }],
 });
 
 const slugOf = (t: AssemblyTemplate) => deriveAssemblySlug(serializeAssemblyTemplate(t).compositionHash);
@@ -20,8 +20,8 @@ describe("content-derived assembly slug", () => {
     });
 
     it("slug is stable under object-key reordering (canonicalization)", () => {
-        const ordered: AssemblyTemplate = { orders: [{ id: "order-0", clauses: { "figaro-commerce": { x: 1 } } }] };
-        const reordered = { orders: [{ clauses: { "figaro-commerce": { x: 1 } }, id: "order-0" }] } as AssemblyTemplate;
+        const ordered: AssemblyTemplate = { agreements: [{ id: "order-0", clauses: { "figaro-commerce": { x: 1 } } }] };
+        const reordered = { agreements: [{ clauses: { "figaro-commerce": { x: 1 } }, id: "order-0" }] } as AssemblyTemplate;
         expect(serializeAssemblyTemplate(ordered).compositionHash).toBe(serializeAssemblyTemplate(reordered).compositionHash);
     });
 
@@ -41,4 +41,11 @@ describe("content-derived assembly slug", () => {
         const titled: AssemblyTemplate = { ...composition(1), name: "Direct Sale" };
         expect(JSON.parse(serializeAssemblyTemplate(titled).json).name).toBe("Direct Sale");
     });
+
+    // NOTE (version axis): a template's `clauses` map keys on the BARE
+    // clauseId — there is no version pin in the composition today, so a
+    // clause's (name, v1)→(name, v2) evolution cannot yet propagate into
+    // assembly identity. The clause side of the axis is covered in Foundry
+    // (ClauseRegistryTest.test_sameNameDifferentVersionIsDistinct); the
+    // template-side version pin is an open punch-list item, not a test gap.
 });

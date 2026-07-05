@@ -3,7 +3,7 @@
  *
  * The enrichment layer over the on-chain `AssemblyRegistry` hooks
  * (`@/lib/protocol/useAssemblyRegistry`): every published assembly, enriched with
- * its lazily-fetched template (name, order count, clause set), projected into
+ * its lazily-fetched template (name, agreement count, clause set), projected into
  * the selectable/inspectable `AssemblyChoice` shape. Consumed by every
  * reading surface — the designer's published list, the seller-profile
  * assembly picker, the marketing `/assemblies` inventory. AUTHORING (build /
@@ -39,13 +39,13 @@ function chainIdToNetworkTarget(chainId: number): string {
     }
 }
 
-/** Walk the assemblyTemplate's inlined agreements and collect the unique set of
- *  clauses anchored across all orders. Sorted alphabetically for stable
+/** Walk the assemblyTemplate's agreements and collect the unique set of
+ *  clauses anchored across all of them. Sorted alphabetically for stable
  *  display order. */
 function collectAssemblyClauses(template: AssemblyTemplate): string[] {
     const set = new Set<string>();
-    for (const order of template.orders) {
-        for (const clauseId of Object.keys(order.clauses)) set.add(clauseId);
+    for (const agreement of template.agreements) {
+        for (const clauseId of Object.keys(agreement.clauses)) set.add(clauseId);
     }
     return Array.from(set).sort();
 }
@@ -68,9 +68,9 @@ function collectAssemblyClauses(template: AssemblyTemplate): string[] {
  *  checkout, not designated by the seller's profile. */
 export function requiredCounterpartyClauses(template: AssemblyTemplate): string[] {
     const clauses = new Set<string>();
-    for (const order of template.orders) {
-        if (templateParentOrderHashes(order).length === 0) continue; // root has no counterparty
-        for (const clauseId of Object.keys(order.clauses)) {
+    for (const agreement of template.agreements) {
+        if (templateParentOrderHashes(agreement).length === 0) continue; // root has no counterparty
+        for (const clauseId of Object.keys(agreement.clauses)) {
             if (clauseIsProcessLog(clauseId)) clauses.add(clauseId);
         }
     }
@@ -110,7 +110,7 @@ export interface AssemblyChoice {
     /** Display name from the assemblyTemplate; falls back to `slug` until loaded. */
     name: string;
     /** Available when state === "loaded". */
-    orderCount: number | null;
+    agreementCount: number | null;
     /** Available when state === "loaded". Sorted, deduped clauseIds. */
     clauses: readonly string[] | null;
     /** The full assembly template when state === "loaded". Avoids re-fetching
@@ -203,7 +203,7 @@ export function useAssemblyChoices(
                 // The editorial name from the pinned template once it loads;
                 // the content-derived slug is the fallback (and the identity).
                 name: assemblyTemplate?.name ?? event.slug,
-                orderCount: assemblyTemplate ? assemblyTemplate.orders.length : null,
+                agreementCount: assemblyTemplate ? assemblyTemplate.agreements.length : null,
                 clauses: assemblyTemplate ? collectAssemblyClauses(assemblyTemplate) : null,
                 assemblyTemplate,
             };
