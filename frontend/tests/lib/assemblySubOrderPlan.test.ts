@@ -12,14 +12,19 @@ import { primeClauseSpecs } from "./primeClauseSpecs";
 // The kit-assembly diamond: A (lead, root) → B, A → C, B → D, C → D.
 // B + D carry proximity-policy, C carries ghg. Proximity is bound
 // to [Swift, Mercato], so the per-clause cursor hands B→Swift, D→Mercato by
-// commit order. Structure + clauses come straight off the template orders —
-// no agreements, no baked payment.
+// commit order. Structure + clauses come straight off the template agreements —
+// party-agnostic, no baked payment. Parents live INSIDE the topology clause
+// (the real template shape — planSubOrderSellers reads them via
+// templateParentOrderHashes; a node-level parentOrderHashes field is the
+// retired pre-topology-clause shape and is never read).
 const MERCATO = "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f" as const;
 const SWIFT = "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955" as const;
 const ROSSO = "0x976EA74026E726554dB657fA54763abd0C3a0aa9" as const;
 
 const PROX = "figaro-proximity-policy";
 const GHG = "figaro-ghg";
+const TOPO = "figaro-topology";
+const parents = (ids: string[]) => ({ [TOPO]: { parentOrderHashes: ids } });
 
 const assembly = {
     slug: "kit-assembly",
@@ -33,10 +38,10 @@ const assembly = {
         slug: "kit-assembly",
         name: "Kit",
         agreements: [
-            { id: "A", buyer: MERCATO, seller: MERCATO, parentOrderHashes: [], clauses: {} },
-            { id: "B", buyer: MERCATO, seller: SWIFT, parentOrderHashes: ["A"], clauses: { [PROX]: {} } },
-            { id: "C", buyer: MERCATO, seller: ROSSO, parentOrderHashes: ["A"], clauses: { [GHG]: {} } },
-            { id: "D", buyer: MERCATO, seller: MERCATO, parentOrderHashes: ["B", "C"], clauses: { [PROX]: {} } },
+            { id: "A", clauses: { ...parents([]) } },
+            { id: "B", clauses: { [PROX]: {}, ...parents(["A"]) } },
+            { id: "C", clauses: { [GHG]: {}, ...parents(["A"]) } },
+            { id: "D", clauses: { [PROX]: {}, ...parents(["B", "C"]) } },
         ],
     },
 } as unknown as BoundAssembly;
@@ -139,7 +144,7 @@ const rateCatalogue = (item: Record<string, unknown>): SellerCatalogue[] =>
     [{ address: SWIFT, name: "Swift Courier", items: [item] }] as unknown as SellerCatalogue[];
 
 const nodeWithClauses = (clauses: Record<string, Record<string, unknown>>): AssemblyTemplateAgreement =>
-    ({ id: "R", buyer: MERCATO, seller: SWIFT, parentOrderHashes: ["A"], clauses }) as unknown as AssemblyTemplateAgreement;
+    ({ id: "R", clauses: { ...clauses, ...parents(["A"]) } }) as unknown as AssemblyTemplateAgreement;
 
 describe("resolveSubOrderPricing — rate items", () => {
     beforeAll(async () => {
