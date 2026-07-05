@@ -129,6 +129,10 @@ export function useRegisteredClausesByWallet(registrar: `0x${string}` | undefine
 export function useAllRegisteredClauses() {
     const [data, setData] = useState<RegisteredClauseEvent[] | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    /** True when the last registry read THREW — distinct from resolved-empty:
+     *  an empty registry is absence (render it); a failed read is unknown
+     *  (never report it as loaded). */
+    const [failed, setFailed] = useState(false);
     const [generation, setGeneration] = useState(0);
 
     useEffect(() => {
@@ -139,6 +143,7 @@ export function useAllRegisteredClauses() {
         }
         let cancelled = false;
         setIsLoading(true);
+        setFailed(false);
 
         publicClient
             .getContractEvents({
@@ -158,6 +163,7 @@ export function useAllRegisteredClauses() {
             .catch((err) => {
                 if (cancelled) return;
                 console.warn("[useAllRegisteredClauses] event read failed:", err);
+                setFailed(true);
                 setData([]);
                 setIsLoading(false);
             });
@@ -168,5 +174,5 @@ export function useAllRegisteredClauses() {
     }, [generation]);
 
     const refetch = useCallback(() => setGeneration((g) => g + 1), []);
-    return useMemo(() => ({ data, isLoading, refetch }), [data, isLoading, refetch]);
+    return useMemo(() => ({ data, isLoading, failed, refetch }), [data, isLoading, failed, refetch]);
 }

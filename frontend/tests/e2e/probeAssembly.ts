@@ -41,10 +41,10 @@ const CLAUSE_REGISTRY_ABI = parseAbi([
 
 /** A runtime-attestable lifecycle clause with one enum ladder — modelled on the
  *  SHAPE of merchant-process, but a name nothing in this repo knows. */
-export function makeProbeSpec(clauseId: string, title: string) {
+export function makeProbeSpec(clauseId: string, title: string, version: number = PROBE_VERSION) {
     return {
         clauseId,
-        version: PROBE_VERSION,
+        version,
         title,
         description:
             'A runtime-attestable lifecycle clause that no code in this repo knows — the open-world certification probe.',
@@ -72,11 +72,12 @@ export function makeProbeSpec(clauseId: string, title: string) {
 export async function registerProbeClause(
     clauseId: string,
     spec: ReturnType<typeof makeProbeSpec>,
+    version: number = PROBE_VERSION,
 ): Promise<void> {
     const cfg = readLocalDeploymentConfig();
     const registry = (process.env.NEXT_PUBLIC_CLAUSE_REGISTRY ?? cfg.clauseRegistry) as Hex;
     const pub = localPublicClient();
-    const idHash = clauseIdHash(clauseId, PROBE_VERSION);
+    const idHash = clauseIdHash(clauseId, version);
 
     const already = await pub.readContract({
         address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registered', args: [idHash],
@@ -92,7 +93,7 @@ export async function registerProbeClause(
     const { request } = await pub.simulateContract({
         account: registrar.address, address: registry, abi: CLAUSE_REGISTRY_ABI,
         functionName: 'registerClause',
-        args: [clauseId, BigInt(PROBE_VERSION), contentHash, uri],
+        args: [clauseId, BigInt(version), contentHash, uri],
     });
     await pub.waitForTransactionReceipt({ hash: await wallet.writeContract(request) });
 }

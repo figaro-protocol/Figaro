@@ -347,12 +347,15 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
             <button
                 type="button"
                 onClick={handleConfirmPublish}
-                disabled={confirming}
+                // Gated on the spec cache: the publish build folds the MANDATORY
+                // structural clauses from loaded specs — confirming before the
+                // chain→IPFS warm completes would throw "no structural clauses".
+                disabled={confirming || !clauseSpecsLoaded}
                 className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-ink-heading text-paper hover:bg-ink-primary font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
                 data-testid="review-confirm-publish"
                 title="Pin the assembly template to IPFS, lock the registration deposit, anchor the slug on-chain. Irreversible."
             >
-                {confirming ? "Publishing…" : "Confirm publish — irreversible"}
+                {confirming ? "Publishing…" : clauseSpecsLoaded ? "Confirm publish — irreversible" : "Loading clause specs…"}
             </button>
         </div>
     ) : resolved.kind === "draft" ? (

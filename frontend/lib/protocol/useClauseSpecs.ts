@@ -36,7 +36,7 @@ export interface ClauseSpecsState {
 }
 
 export function useClauseSpecs(): ClauseSpecsState {
-    const { data: events } = useAllRegisteredClauses();
+    const { data: events, failed: readFailed } = useAllRegisteredClauses();
     const [version, setVersion] = useState(0);
     const [errors, setErrors] = useState<string[]>([]);
 
@@ -57,8 +57,13 @@ export function useClauseSpecs(): ClauseSpecsState {
     return useMemo<ClauseSpecsState>(() => {
         const total = events?.length ?? null;
         const loadedCount = (events ?? []).filter((e) => getClauseSpec(e.clauseName) !== undefined).length;
+        const loaded = !readFailed && total !== null && loadedCount === total;
         return {
-            loaded: total !== null && loadedCount === total,
+            // A FAILED registry read is never "loaded" — total=0 from an error
+            // would make loadedCount === total vacuously true and let surfaces
+            // build from a cold cache. Resolved-empty (a genuinely empty
+            // registry) still counts as loaded: absence is a real state.
+            loaded,
             loadedCount,
             total,
             errors,
@@ -67,5 +72,5 @@ export function useClauseSpecs(): ClauseSpecsState {
         // `version` is intentionally a dep: it bumps after loads resolve so
         // `loadedCount` is recounted from the now-warm cache.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [events, errors, version]);
+    }, [events, readFailed, errors, version]);
 }

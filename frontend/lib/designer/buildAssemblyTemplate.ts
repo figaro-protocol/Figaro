@@ -55,7 +55,10 @@ export function buildAssemblyTemplate(args: {
     clauseVersionsByOrderId?: Readonly<Record<string, Readonly<Record<string, number>>>>;
 }): AssemblyTemplate {
     const { name, summary, description, orders, clausesByOrderId, clauseVersionsByOrderId } = args;
-    const structuralIds = listKnownClauseIds().filter(clauseIsStructural);
+    // NOT point-free: the predicate takes (clauseId, version?) and Array.filter
+    // would pass the element INDEX as the version — an exact-version miss for
+    // every clause (the version-axis e2e caught exactly this).
+    const structuralIds = listKnownClauseIds().filter((id) => clauseIsStructural(id));
     if (structuralIds.length === 0) {
         // Without the chain→IPFS spec cache the structural clauses cannot be
         // resolved — refuse loudly rather than emit a template missing them.
