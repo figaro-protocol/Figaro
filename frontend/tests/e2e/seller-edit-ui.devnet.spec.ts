@@ -36,6 +36,7 @@ import {
     seedRegisteredSeller,
 } from './devnet-helpers';
 import { ASSEMBLY_REGISTRY_ABI } from '@figaro/core';
+import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 import { ANVIL_KEYS } from '../anvilAccounts';
 
 const RPC_URL = 'http://127.0.0.1:8545';
@@ -256,7 +257,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
             fromBlock: 0n,
         });
         expect(registered.length, 'no anchored assemblies on this devnet — run the devnet-authoring project first').toBeGreaterThan(0);
-        const assemblySlug = registered[registered.length - 1].args.slug as string;
+        const assemblySlug = deriveAssemblySlug(registered[registered.length - 1].args.compositionHash as `0x${string}`);
 
         // 2. Register the seller (separate from the assembly author —
         //    same key here, fine). Seller starts with no bindings.

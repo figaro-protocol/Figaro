@@ -106,9 +106,9 @@ export const EV_ATTESTATION = parseAbiItem(
 
 export const CLAUSE_REGISTRY_ABI = parseAbi([
     "function registered(bytes32 clauseId) view returns (bool)",
-    "function registerClause(string clauseId, uint64 version, bytes32 contentHash, string metadataURI) external",
+    "function registerClause(string clauseId, uint64 version, bytes32 contentHash, string contentURI) external",
     "function setMechanismClause(bytes32 clauseId) external",
-    "event ClauseRegistered(string clauseId, uint64 version, bytes32 contentHash, string metadataURI, address indexed registrar)",
+    "event ClauseRegistered(string clauseId, uint64 version, bytes32 contentHash, string contentURI, address indexed registrar)",
     "event MechanismClauseSet(address indexed mechanism, bytes32 indexed clauseId)",
 ]);
 
@@ -141,17 +141,16 @@ export const SELLER_REGISTRY_ABI = parseAbi([
 // ── AssemblyRegistry ABI ──────────────────────────────────────────────────
 
 export const ASSEMBLY_REGISTRY_ABI = parseAbi([
-    "function registerAssembly(string slug, bytes32 contentHash, string metadataURI) external payable",
-    "function withdrawDeposit(string slug) external",
-    "function bindings(bytes32 slugHash) view returns (address author, uint64 registeredAt, bool depositWithdrawn, bytes32 contentHash, string metadataURI)",
+    "function registerAssembly(bytes32 compositionHash, string contentURI) external payable",
+    "function withdrawDeposit(bytes32 compositionHash) external",
+    "function bindings(bytes32 compositionHash) view returns (address author, uint64 registeredAt, bool depositWithdrawn, string contentURI)",
     "function registrationDeposit() view returns (uint256)",
     "function depositLockPeriod() view returns (uint256)",
-    "event AssemblyRegistered(bytes32 indexed slugHash, address indexed author, string slug, bytes32 contentHash, string metadataURI)",
-    "event DepositWithdrawn(bytes32 indexed slugHash, address indexed author, uint256 amount)",
-    "error EmptySlug()",
-    "error EmptyMetadataURI()",
-    "error EmptyContentHash()",
-    "error SlugAlreadyRegistered(string slug)",
+    "event AssemblyRegistered(bytes32 indexed compositionHash, address indexed author, string contentURI)",
+    "event DepositWithdrawn(bytes32 indexed compositionHash, address indexed author, uint256 amount)",
+    "error EmptyContentURI()",
+    "error ZeroCompositionHash()",
+    "error CompositionAlreadyRegistered(bytes32 compositionHash)",
     "error WrongDeposit(uint256 provided, uint256 required)",
     "error NotRegistered()",
     "error NotAuthor(address caller, address author)",

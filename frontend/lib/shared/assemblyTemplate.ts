@@ -18,6 +18,7 @@
  * parties fill the clause fields.
  */
 
+import { canonicalContentHash } from "@/lib/shared/canonicalJson";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 
 export interface AssemblyTemplateOrder {
@@ -57,12 +58,20 @@ export function templateParentOrderHashes(order: AssemblyTemplateOrder): string[
     return Array.isArray(ids) ? ids.filter((p): p is string => typeof p === "string") : [];
 }
 
-/** The published slug — a deterministic id derived from the composition's
- *  content hash (the clauses + their values + the topology). Identical compositions
- *  → identical slug (the registry's first-write-wins then dedups them); distinct
- *  compositions → distinct slug. There is no user-chosen name and no
- *  circularity: the slug is derived FROM the hash, never part of the hashed
- *  template. */
-export function deriveAssemblySlug(contentHash: `0x${string}`): string {
-    return `asm-${contentHash.slice(2, 18)}`;
+/** The assembly's identity — keccak256 of the canonical COMPOSITION subset of
+ *  the template (the composed orders: their clauses, values, and topology;
+ *  editorial prose excluded, so renaming never forks identity). This is the
+ *  hash `AssemblyRegistry` keys bindings on. Publishers anchor it; readers
+ *  recompute it from a fetched document to verify integrity. */
+export function templateCompositionHash(template: AssemblyTemplate): `0x${string}` {
+    return canonicalContentHash({ orders: template.orders });
+}
+
+/** The published slug — presentation only, a deterministic pure function of
+ *  the composition hash. Identical compositions → identical slug; distinct
+ *  compositions → distinct slug. The slug exists nowhere on-chain: the
+ *  registry keys bindings by `compositionHash`, and every reader derives the
+ *  slug from the event's hash. */
+export function deriveAssemblySlug(compositionHash: `0x${string}`): string {
+    return `asm-${compositionHash.slice(2, 18)}`;
 }

@@ -112,7 +112,7 @@ export function useSellerBoundAssemblies(
                 }
 
                 const assemblyTemplates = await Promise.all(
-                    matchedEvents.map((e) => fetchAssemblyTemplate(e.metadataURI)),
+                    matchedEvents.map((e) => fetchAssemblyTemplate(e.contentURI, e.compositionHash)),
                 );
                 if (cancelled) return;
 

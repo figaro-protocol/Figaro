@@ -26,6 +26,7 @@ import { test, expect } from '@playwright/test';
 import { createPublicClient, defineChain, http, type Hex } from 'viem';
 import { readLocalDeploymentConfig } from './devnet-helpers';
 import { ASSEMBLY_REGISTRY_ABI } from '@figaro/core';
+import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -60,7 +61,7 @@ test.describe('Assemblies marketing inventory (devnet)', () => {
             fromBlock: 0n,
         });
         expect(events.length, 'no anchored assemblies on this devnet — run the devnet-authoring project first').toBeGreaterThan(0);
-        const slug = events[events.length - 1].args.slug as string;
+        const slug = deriveAssemblySlug(events[events.length - 1].args.compositionHash as `0x${string}`);
 
         await page.goto('/assemblies');
 

@@ -83,8 +83,8 @@ export function ClausesList() {
                         <p className="text-[11px] text-ink-muted mt-1">
                             version {clause.version}
                             {" · "}
-                            <span title={clause.metadataURI} className="font-mono">
-                                {clause.metadataURI || "(no spec uri)"}
+                            <span title={clause.contentURI} className="font-mono">
+                                {clause.contentURI || "(no spec uri)"}
                             </span>
                             {" · block "}
                             {clause.blockNumber.toString()}

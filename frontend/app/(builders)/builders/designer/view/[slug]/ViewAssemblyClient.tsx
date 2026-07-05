@@ -7,7 +7,9 @@
  *   1. localStorage draft (loadNamedDraft) — work-in-progress in this
  *      browser.
  *   2. On-chain published assembly — AssemblyRegistered event filtered
- *      by slugHash, then the assemblyTemplate fetched from IPFS via metadataURI.
+ *      by its derived slug (a pure function of the indexed compositionHash),
+ *      then the assemblyTemplate fetched from IPFS via contentURI and verified
+ *      against the anchored compositionHash.
  *
  * If the slug exists in both places, the draft wins (it's more current
  * by definition; the on-chain one is the prior snapshot). If neither,
@@ -25,7 +27,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { keccak256, toBytes } from "viem";
 import { usePublicClient } from "wagmi";
 import { TopologyCanvas } from "@/components/core/TopologyCanvas";
 import { AgreementDrawer } from "../../_components/AgreementDrawer";
@@ -42,7 +43,7 @@ import {
 import { usePublishAssembly } from "@/lib/designer/publishAssembly";
 import { templateToOrders } from "@/lib/designer/assemblyTemplateToDraft";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
+import { deriveAssemblySlug, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
 import type { Order } from "@/lib/kernel/store";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
@@ -111,7 +112,6 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         // until the clause-spec cache is warm; `resolved` stays "loading".
         if (!clauseSpecsLoaded) return;
 
-        const slugHash = keccak256(toBytes(slug));
         let cancelled = false;
 
         // Backoff schedule for the post-publish indexer race. Single-shot
@@ -128,15 +128,20 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     if (cancelled) return;
                 }
                 try {
-                    const logs = await client.getContractEvents({
+                    // The slug is not on-chain — it is derived from the
+                    // indexed compositionHash, so resolution scans the event
+                    // log for the binding whose derived slug matches.
+                    const allLogs = await client.getContractEvents({
                         address: registry,
                         abi: ASSEMBLY_REGISTRY_ABI,
                         eventName: "AssemblyRegistered",
-                        args: { slugHash },
                         fromBlock: 0n,
                         toBlock: "latest",
                     });
                     if (cancelled) return;
+                    const logs = allLogs.filter(
+                        (l) => deriveAssemblySlug(l.args.compositionHash as `0x${string}`) === slug,
+                    );
                     if (logs.length === 0) {
                         // Last attempt — surface not-found. Earlier attempts
                         // fall through to the next backoff window.
@@ -149,14 +154,17 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         continue;
                     }
                     const log = logs[0];
-                    const metadataURI = (log.args.metadataURI ?? "") as string;
-                    const assemblyTemplate = await fetchAssemblyTemplate(metadataURI);
+                    const contentURI = (log.args.contentURI ?? "") as string;
+                    const assemblyTemplate = await fetchAssemblyTemplate(
+                        contentURI,
+                        log.args.compositionHash as `0x${string}`,
+                    );
                     if (cancelled) return;
                     if (!assemblyTemplate) {
                         setResolved({
                             kind: "error",
                             message:
-                                "Assembly content could not be fetched from IPFS. The on-chain identity is anchored regardless; the off-chain content is currently unreachable.",
+                                "Assembly content could not be fetched from IPFS (or failed integrity verification against the anchored composition hash). The on-chain identity is anchored regardless.",
                         });
                         return;
                     }

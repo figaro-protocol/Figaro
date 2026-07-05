@@ -9,18 +9,19 @@
  * Publish flow:
  *   1. Build a full off-chain assemblyTemplate from the snapshot — topology
  *      (orders array), per-order agreement bodies (inlined), and prose.
- *   2. Compute the canonical content hash (keccak256 of stable JSON).
+ *   2. Compute the canonical composition hash (keccak256 of the stable-JSON
+ *      composition subset — the assembly's identity).
  *   3. Pin the assemblyTemplate to IPFS via DEFAULT_IPFS_SERVICE.
- *   4. Call AssemblyRegistry.registerAssembly(slug, contentHash,
- *      metadataURI). Before the call, a CLIENT-SIDE publish guard checks
+ *   4. Call AssemblyRegistry.registerAssembly(compositionHash, contentURI).
+ *      Before the call, a CLIENT-SIDE publish guard checks
  *      that the node count (orders.length) fits the per-process gas
  *      ceiling, derived at runtime from the active chain's block gas limit
  *      via `maxOrdersResolvablePerProcess` in `@/lib/shared/chainGasCeilings`.
  *      The count is not a contract parameter and is never stored on-chain.
  *
  * No graceful retry, no optimistic UI — the publish is a single atomic
- * step from the user's POV: success means the slug is permanently bound
- * to (msg.sender, contentHash, ipfs URI).
+ * step from the user's POV: success means the composition is permanently
+ * bound to (msg.sender, ipfs URI).
  */
 
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
@@ -44,12 +45,12 @@ export function usePublishAssembly() {
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
     /** Build a assemblyTemplate from the snapshot, pin to IPFS, fetch the
-     *  registry's deposit amount, simulate to catch reverts (slug
-     *  collision, wrong deposit) BEFORE opening the wallet, send the
+     *  registry's deposit amount, simulate to catch reverts (composition
+     *  already anchored, wrong deposit) BEFORE opening the wallet, send the
      *  transaction, then wait for the receipt and verify status is
      *  `success`. Returns the transaction hash + IPFS URI on confirmed
      *  success. Throws on any failure — no wallet, IPFS down,
-     *  insufficient ETH, slug collision, on-chain revert, etc. */
+     *  insufficient ETH, composition collision, on-chain revert, etc. */
     async function publish(snapshot: DesignSnapshot): Promise<PublishOutcome> {
         const registry = getAssemblyRegistry();
         if (!registry) {
@@ -89,14 +90,14 @@ export function usePublishAssembly() {
             orders: snapshot.orders,
             clausesByOrderId: snapshot.clausesByOrderId ?? {},
         });
-        const { json, contentHash } = serializeAssemblyTemplate(template);
-        // The slug is content-derived: identical compositions collapse to one
-        // slug (the registry's first-write-wins dedups them); the user never
-        // names it.
-        const slug = deriveAssemblySlug(contentHash);
+        const { json, compositionHash } = serializeAssemblyTemplate(template);
+        // The slug is presentation, derived from the composition hash —
+        // identical compositions collapse to one on-chain binding (the
+        // registry's first-write-wins dedups them); the user never names it.
+        const slug = deriveAssemblySlug(compositionHash);
         const ipfs = await DEFAULT_IPFS_SERVICE.publishJSON(JSON.parse(json));
 
-        // Simulate before opening the wallet — catches slug collision /
+        // Simulate before opening the wallet — catches composition collision /
         // wrong-deposit reverts so the user sees a typed error instead of
         // a silent on-chain revert post-submission.
         try {
@@ -104,7 +105,7 @@ export function usePublishAssembly() {
                 address: registry,
                 abi: ASSEMBLY_REGISTRY_ABI,
                 functionName: "registerAssembly",
-                args: [slug, contentHash, ipfs.uri],
+                args: [compositionHash, ipfs.uri],
                 value: deposit,
                 account: address,
             });
@@ -116,7 +117,7 @@ export function usePublishAssembly() {
             address: registry,
             abi: ASSEMBLY_REGISTRY_ABI,
             functionName: "registerAssembly",
-            args: [slug, contentHash, ipfs.uri],
+            args: [compositionHash, ipfs.uri],
             value: deposit,
         });
 
@@ -127,7 +128,7 @@ export function usePublishAssembly() {
         const receipt = await client.waitForTransactionReceipt({ hash: txHash });
         if (receipt.status !== "success") {
             throw new Error(
-                `Publish transaction reverted on-chain (tx ${txHash}). The slug binding was not created.`,
+                `Publish transaction reverted on-chain (tx ${txHash}). The composition binding was not created.`,
             );
         }
 

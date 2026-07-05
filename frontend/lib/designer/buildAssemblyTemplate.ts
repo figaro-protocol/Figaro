@@ -9,10 +9,10 @@
  * checkout).
  */
 
-import { keccak256, toHex } from "viem";
+import { canonicalize } from "@/lib/shared/canonicalJson";
 import type { Order } from "@/lib/kernel/store";
 import { clauseIsStructural, getClauseSpec, listKnownClauseIds } from "@/lib/shared/clauseSpecSource";
-import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
+import { templateCompositionHash, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 
 /** Fold the MANDATORY structural clauses into an order's clause set. Each
@@ -80,30 +80,16 @@ export function buildAssemblyTemplate(args: {
     };
 }
 
-/** Stable JSON serialization — sorted object keys at every depth — and the
- *  keccak256 content hash anchored on-chain. The template carries no bigints. */
-function canonicalize(value: unknown): string {
-    return JSON.stringify(value, (_key, raw) => {
-        if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return raw;
-        const sorted: Record<string, unknown> = {};
-        for (const k of Object.keys(raw).sort()) sorted[k] = (raw as Record<string, unknown>)[k];
-        return sorted;
-    });
-}
-
 export function serializeAssemblyTemplate(template: AssemblyTemplate): {
     json: string;
-    contentHash: `0x${string}`;
+    compositionHash: `0x${string}`;
 } {
     // The pinned document carries everything — INCLUDING the editorial
-    // name/summary/description. But the content hash (→ slug + on-chain anchor)
-    // derives from the COMPOSITION ONLY (the orders), so editorial edits never
-    // fork identity: identical compositions collapse to one slug regardless of
-    // their prose.
+    // name/summary/description. But the composition hash (→ slug + on-chain
+    // anchor) derives from the COMPOSITION ONLY, so editorial edits never
+    // fork identity: identical compositions collapse to one binding regardless
+    // of their prose.
     const json = canonicalize(template);
-    const composition = {
-        orders: template.orders,
-    };
-    const contentHash = keccak256(toHex(canonicalize(composition)));
-    return { json, contentHash };
+    const compositionHash = templateCompositionHash(template);
+    return { json, compositionHash };
 }

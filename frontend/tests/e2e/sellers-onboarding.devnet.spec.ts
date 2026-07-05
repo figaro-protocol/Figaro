@@ -25,6 +25,7 @@ import { test, gotoAsWallet } from "./devnet-multi-test";
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from "viem";
 import { assertPinnedInIpfs, discoverAnchoredAssemblies, discoverSellers, readLocalDeploymentConfig } from "./devnet-helpers";
 import { ASSEMBLY_REGISTRY_ABI } from '@figaro/core';
+import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 
 const RPC_URL = "http://127.0.0.1:8545";
 const LOCAL_ANVIL = defineChain({
@@ -218,7 +219,7 @@ test.describe("seller registration wizard (devnet)", () => {
             }),
             discoverSellers(),
         ]);
-        const anchoredSlugs = new Set(published.map((e) => e.args.slug as string));
+        const anchoredSlugs = new Set(published.map((e) => deriveAssemblySlug(e.args.compositionHash as `0x${string}`)));
         const nonConformant = allSellers.filter(
             (s) => !s.assemblyBindings.some((b) => anchoredSlugs.has(b.assemblySlug)),
         );

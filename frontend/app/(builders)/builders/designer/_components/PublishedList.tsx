@@ -87,7 +87,7 @@ export function PublishedList() {
         <ul className="space-y-3" data-testid="published-list">
             {data.map((choice) => (
                 <li
-                    key={`${choice.contentHash}-${choice.blockNumber.toString()}`}
+                    key={`${choice.compositionHash}-${choice.blockNumber.toString()}`}
                     className="rounded-lg border border-default bg-paper px-5 py-3 flex items-start gap-4"
                     data-testid={`published-row-${choice.slug}`}
                 >
@@ -104,11 +104,11 @@ export function PublishedList() {
                             testId={`published-shape-${choice.slug}`}
                         />
                         <p className="font-mono text-[11px] text-ink-muted mt-1">
-                            content <span title={choice.contentHash}>{truncateHex(choice.contentHash, { head: 10, tail: 6 })}</span>
+                            content <span title={choice.compositionHash}>{truncateHex(choice.compositionHash, { head: 10, tail: 6 })}</span>
                             {" · block "}
                             {choice.blockNumber.toString()}
                         </p>
-                        <p className="text-[11px] text-ink-muted mt-0.5 break-all">{choice.metadataURI}</p>
+                        <p className="text-[11px] text-ink-muted mt-0.5 break-all">{choice.contentURI}</p>
                     </div>
                     <div className="flex flex-col gap-2 shrink-0">
                         <button

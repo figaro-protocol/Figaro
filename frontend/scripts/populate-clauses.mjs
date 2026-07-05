@@ -6,10 +6,10 @@
  * For each Layer-A clause spec in `clauses/*.json` (the canonical seed data,
  * the single origin pinned to IPFS and anchored on-chain):
  *   1. pin the spec JSON to IPFS (real CID), and
- *   2. `registerClause(clauseId, version, contentHash, metadataURI)` on
- *      ClauseRegistry — anchoring the IPFS LOCATOR (metadataURI) + the spec
- *      integrity digest (contentHash), so any reader fetches the spec from chain
- *      state alone (the shape SellerRegistry / AssemblyRegistry already use).
+ *   2. `registerClause(clauseId, version, contentHash, contentURI)` on
+ *      ClauseRegistry — anchoring the IPFS document pointer (contentURI) + the
+ *      spec integrity digest (contentHash), so any reader fetches the spec from
+ *      chain state alone (the shape SellerRegistry / AssemblyRegistry already use).
  *
  * This REPLACES the placeholder clause registration that used to live in the
  * deploy scripts (which anchored `keccak256("ipfs://figaro-x/v1")` — a hash of a
@@ -47,9 +47,19 @@ export const LOCAL_ANVIL = defineChain({
 });
 
 const CLAUSE_REGISTRY_ABI = parseAbi([
-    'function registerClause(string clauseId, uint64 version, bytes32 contentHash, string metadataURI) external',
+    'function registerClause(string clauseId, uint64 version, bytes32 contentHash, string contentURI) external',
     'function registered(bytes32) view returns (bool)',
 ]);
+
+/** Sorted-keys JSON at every depth — mirrors lib/shared/canonicalJson.ts. */
+function canonicalize(value) {
+    return JSON.stringify(value, (_key, raw) => {
+        if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return raw;
+        const sorted = {};
+        for (const k of Object.keys(raw).sort()) sorted[k] = raw[k];
+        return sorted;
+    });
+}
 
 /** Read frontend/.env.local into a flat key→value map. */
 export function readEnvLocal() {
@@ -111,10 +121,12 @@ export async function populateClauses({ publicClient, walletClient, account, reg
             continue;
         }
 
-        // Pin the spec to IPFS (the locator readers fetch from), and anchor its
-        // content digest (integrity) + that locator on-chain.
-        const canonical = JSON.stringify(spec);
-        const metadataURI = await pinJSON(ipfsApiUrl, canonical);
+        // Pin the spec to IPFS (the pointer readers fetch from), and anchor its
+        // content digest (integrity) + that pointer on-chain. The digest is over
+        // the CANONICAL form (sorted keys at every depth) — mirrors
+        // lib/shared/canonicalJson.ts, which readers use to verify after fetch.
+        const canonical = canonicalize(spec);
+        const contentURI = await pinJSON(ipfsApiUrl, canonical);
         const contentHash = keccak256(toHex(canonical));
 
         const { request } = await publicClient.simulateContract({
@@ -122,12 +134,12 @@ export async function populateClauses({ publicClient, walletClient, account, reg
             address: registry,
             abi: CLAUSE_REGISTRY_ABI,
             functionName: 'registerClause',
-            args: [clauseIdStr, version, contentHash, metadataURI],
+            args: [clauseIdStr, version, contentHash, contentURI],
         });
         const hash = await walletClient.writeContract(request);
         await publicClient.waitForTransactionReceipt({ hash });
         registered += 1;
-        log(`  ✓ ${clauseIdStr} v${version} — pinned ${metadataURI} (article ${spec.block?.article ?? '-'})`);
+        log(`  ✓ ${clauseIdStr} v${version} — pinned ${contentURI} (article ${spec.block?.article ?? '-'})`);
     }
     return registered;
 }

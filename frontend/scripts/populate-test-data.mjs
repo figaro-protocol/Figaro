@@ -40,9 +40,9 @@ const ERC20_VIEW_ABI = parseAbi([
     'function name() view returns (string)',
 ]);
 const ASSEMBLY_REGISTRY_ABI = parseAbi([
-    'function registerAssembly(string slug, bytes32 contentHash, string metadataURI) external payable',
+    'function registerAssembly(bytes32 compositionHash, string contentURI) external payable',
     'function registrationDeposit() view returns (uint256)',
-    'event AssemblyRegistered(bytes32 indexed slugHash, address indexed author, string slug, bytes32 contentHash, string metadataURI)',
+    'event AssemblyRegistered(bytes32 indexed compositionHash, address indexed author, string contentURI)',
 ]);
 
 // The test sellers. addressIndex ∈ [5,19] (disjoint from buyers anvil[0..4]).
@@ -104,31 +104,32 @@ function structuralClauseFold(parents = []) {
 }
 
 async function anchorAssembly({ publicClient, walletClient, account, registry, ipfsApiUrl, template }) {
-    // Content hash over the COMPOSITION ONLY (editorial excluded) — mirrors
-    // serializeAssemblyTemplate.ts; slug mirrors deriveAssemblySlug.
-    const contentHash = keccak256(toHex(canonicalize({ orders: template.orders })));
-    const slug = `asm-${contentHash.slice(2, 18)}`;
+    // Composition hash over the COMPOSITION ONLY (editorial excluded) — mirrors
+    // serializeAssemblyTemplate.ts; the slug is presentation, derived off-chain
+    // (mirrors deriveAssemblySlug). The registry keys bindings by compositionHash.
+    const compositionHash = keccak256(toHex(canonicalize({ orders: template.orders })));
+    const slug = `asm-${compositionHash.slice(2, 18)}`;
 
     const anchored = await publicClient.getContractEvents({
         address: registry, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered',
-        args: { slugHash: keccak256(toHex(slug)) }, fromBlock: 0n,
+        args: { compositionHash }, fromBlock: 0n,
     });
     if (anchored.length > 0) {
         console.log(`  · ${slug} — already anchored, skipped`);
         return slug;
     }
 
-    const metadataURI = await pinJSON(ipfsApiUrl, canonicalize(template));
+    const contentURI = await pinJSON(ipfsApiUrl, canonicalize(template));
     const deposit = await publicClient.readContract({
         address: registry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'registrationDeposit',
     });
     const { request } = await publicClient.simulateContract({
         account: account.address, address: registry, abi: ASSEMBLY_REGISTRY_ABI,
-        functionName: 'registerAssembly', args: [slug, contentHash, metadataURI], value: deposit,
+        functionName: 'registerAssembly', args: [compositionHash, contentURI], value: deposit,
     });
     const hash = await walletClient.writeContract(request);
     await publicClient.waitForTransactionReceipt({ hash });
-    console.log(`  ✓ ${slug} — anchored; template ${metadataURI}`);
+    console.log(`  ✓ ${slug} — anchored; template ${contentURI}`);
     return slug;
 }
 

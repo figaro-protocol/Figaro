@@ -349,7 +349,7 @@ function ClauseRegistryPanel({
     onSetClauseField,
 }: ClauseRegistryPanelProps) {
     // The clause set is network state — read live from `ClauseRegistry.ClauseRegistered`,
-    // each spec fetched from its on-chain `metadataURI` (chain → IPFS). `clauseSpecsVersion`
+    // each spec fetched from its on-chain `contentURI` (chain → IPFS). `clauseSpecsVersion`
     // bumps as specs resolve so the grouping recomputes against the warm cache.
     const { data: registeredClauses } = useAllRegisteredClauses();
     const { version: clauseSpecsVersion } = useClauseSpecs();

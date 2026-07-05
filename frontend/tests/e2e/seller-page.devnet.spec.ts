@@ -41,6 +41,7 @@ import {
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { ASSEMBLY_REGISTRY_ABI } from '@figaro/core';
+import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -69,7 +70,7 @@ async function discoverAnchoredAssemblySlug(): Promise<string> {
     if (events.length === 0) {
         throw new Error('no anchored assemblies on this devnet — run the devnet-authoring project first');
     }
-    return events[events.length - 1].args.slug as string;
+    return deriveAssemblySlug(events[events.length - 1].args.compositionHash as `0x${string}`);
 }
 
 const SELLER_KEY = ANVIL_KEYS[1];

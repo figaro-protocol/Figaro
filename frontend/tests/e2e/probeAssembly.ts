@@ -3,11 +3,12 @@
  * clause and publish an assembly carrying it, through the REAL designer canvas.
  *
  * Why a per-run nonce: devnet is a mainnet REHEARSAL — specs leave their state
- * on-chain and DON'T snapshot/revert (lint-no-devnet-revert). The published slug
- * is content-derived (`asm-<hash>`), and `AssemblyRegistry.registerAssembly`
- * reverts on a taken slug, so a FIXED composition would collide with a prior run.
+ * on-chain and DON'T snapshot/revert (lint-no-devnet-revert). Assembly identity
+ * is the compositionHash, and `AssemblyRegistry.registerAssembly` reverts on an
+ * anchored composition, so a FIXED composition would collide with a prior run.
  * The nonce lives in the clause id (`figaro-probe-attest-<Date.now()>`), so each
- * run composes a genuinely unique assembly → a fresh slug, no collision, no revert.
+ * run composes a genuinely unique assembly → a fresh compositionHash, no
+ * collision, no revert.
  * (A date-in-name is a TEST-only throwaway; production evolves a clause by bumping
  * its `version` — see the punch-list version-axis item.)
  *
@@ -15,7 +16,7 @@
  * specs share (permissionless-clause, designer-view, published-list-ui).
  */
 import {
-    createWalletClient, defineChain, http, keccak256, parseAbi, stringToHex, type Hex,
+    createWalletClient, defineChain, http, parseAbi, type Hex,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import type { Page } from '@playwright/test';
@@ -23,6 +24,7 @@ import { expect } from './devnet-multi-test';
 import { readLocalDeploymentConfig, pinJSONToIPFS, localPublicClient } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { clauseIdHash } from '@/lib/shared/evm';
+import { canonicalContentHash } from '@/lib/shared/canonicalJson';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -34,7 +36,7 @@ const LOCAL_ANVIL = defineChain({
 const PROBE_VERSION = 1;
 const CLAUSE_REGISTRY_ABI = parseAbi([
     'function registered(bytes32) view returns (bool)',
-    'function registerClause(string clauseId, uint64 version, bytes32 contentHash, string metadataURI) external',
+    'function registerClause(string clauseId, uint64 version, bytes32 contentHash, string contentURI) external',
 ]);
 
 /** A runtime-attestable lifecycle clause with one enum ladder — modelled on the
@@ -84,7 +86,9 @@ export async function registerProbeClause(
     const registrar = privateKeyToAccount(ANVIL_KEYS[0] as Hex);
     const wallet = createWalletClient({ account: registrar, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
     const { uri } = await pinJSONToIPFS(spec);
-    const contentHash = keccak256(stringToHex(JSON.stringify(spec)));
+    // Digest over the CANONICAL form — the same convention populate-clauses.mjs
+    // anchors and loadClauseSpec verifies after fetch.
+    const contentHash = canonicalContentHash(spec);
     const { request } = await pub.simulateContract({
         account: registrar.address, address: registry, abi: CLAUSE_REGISTRY_ABI,
         functionName: 'registerClause',

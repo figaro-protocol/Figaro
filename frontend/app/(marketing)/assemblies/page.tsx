@@ -39,7 +39,7 @@ export default function Assemblies() {
                 <p className="text-sm text-ink-body leading-relaxed">
                     Registration is permissionless. The slug binding is first-write-wins
                     and immutable: the tuple{" "}
-                    <code>(author, contentHash, metadataURI)</code> is permanent. To
+                    <code>(author, compositionHash, contentURI)</code> is permanent. To
                     change an assembly, register a new one under a new slug.
                 </p>
             </MarketingSection>

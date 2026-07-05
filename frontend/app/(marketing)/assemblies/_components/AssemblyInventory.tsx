@@ -48,7 +48,7 @@ export function AssemblyInventory() {
             <ul className="space-y-5">
                 {data.map((choice) => (
                     <li
-                        key={choice.contentHash}
+                        key={choice.compositionHash}
                         id={`assembly-${choice.slug}`}
                         className="flex flex-col gap-1 scroll-mt-24"
                     >

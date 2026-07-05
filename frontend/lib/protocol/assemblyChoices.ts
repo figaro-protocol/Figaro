@@ -102,8 +102,8 @@ type AssemblyTemplateFetchState = "loading" | "loaded" | "error";
 export interface AssemblyChoice {
     slug: string;
     author: `0x${string}`;
-    contentHash: `0x${string}`;
-    metadataURI: string;
+    compositionHash: `0x${string}`;
+    contentURI: string;
     blockNumber: bigint;
     networkTargets: readonly string[];
     state: AssemblyTemplateFetchState;
@@ -147,19 +147,19 @@ export function useAssemblyChoices(
     useEffect(() => {
         if (!events || events.length === 0) return;
         for (const event of events) {
-            if (inFlightRef.current.has(event.contentHash)) continue;
-            inFlightRef.current.add(event.contentHash);
+            if (inFlightRef.current.has(event.compositionHash)) continue;
+            inFlightRef.current.add(event.compositionHash);
             setAssemblyTemplateState((prev) => {
                 const next = new Map(prev);
-                next.set(event.contentHash, { state: "loading", assemblyTemplate: null });
+                next.set(event.compositionHash, { state: "loading", assemblyTemplate: null });
                 return next;
             });
-            fetchAssemblyTemplate(event.metadataURI).then(
+            fetchAssemblyTemplate(event.contentURI, event.compositionHash).then(
                 (assemblyTemplate) => {
                     setAssemblyTemplateState((prev) => {
                         const next = new Map(prev);
                         next.set(
-                            event.contentHash,
+                            event.compositionHash,
                             assemblyTemplate
                                 ? { state: "loaded", assemblyTemplate }
                                 : { state: "error", assemblyTemplate: null },
@@ -170,7 +170,7 @@ export function useAssemblyChoices(
                 () => {
                     setAssemblyTemplateState((prev) => {
                         const next = new Map(prev);
-                        next.set(event.contentHash, { state: "error", assemblyTemplate: null });
+                        next.set(event.compositionHash, { state: "error", assemblyTemplate: null });
                         return next;
                     });
                 },
@@ -189,14 +189,14 @@ export function useAssemblyChoices(
         if (!events) return null;
         const networkTarget = chainIdToNetworkTarget(chainId);
         return events.map((event) => {
-            const entry = assemblyTemplateState.get(event.contentHash);
+            const entry = assemblyTemplateState.get(event.compositionHash);
             const state = entry?.state ?? "loading";
             const assemblyTemplate = entry?.assemblyTemplate ?? null;
             return {
                 slug: event.slug,
                 author: event.author,
-                contentHash: event.contentHash,
-                metadataURI: event.metadataURI,
+                compositionHash: event.compositionHash,
+                contentURI: event.contentURI,
                 blockNumber: event.blockNumber,
                 networkTargets: [networkTarget],
                 state,

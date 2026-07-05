@@ -3,12 +3,12 @@ import { serializeAssemblyTemplate } from "@/lib/designer/buildAssemblyTemplate"
 import { deriveAssemblySlug, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 
 // Construct templates directly (no spec cache needed) to test the
-// serialize → contentHash → slug pipeline in isolation.
+// serialize → compositionHash → slug pipeline in isolation.
 const composition = (x: number): AssemblyTemplate => ({
     orders: [{ id: "order-0", clauses: { "figaro-commerce": { x } } }],
 });
 
-const slugOf = (t: AssemblyTemplate) => deriveAssemblySlug(serializeAssemblyTemplate(t).contentHash);
+const slugOf = (t: AssemblyTemplate) => deriveAssemblySlug(serializeAssemblyTemplate(t).compositionHash);
 
 describe("content-derived assembly slug", () => {
     it("identical compositions → identical slug (the dedup property)", () => {
@@ -22,7 +22,7 @@ describe("content-derived assembly slug", () => {
     it("slug is stable under object-key reordering (canonicalization)", () => {
         const ordered: AssemblyTemplate = { orders: [{ id: "order-0", clauses: { "figaro-commerce": { x: 1 } } }] };
         const reordered = { orders: [{ clauses: { "figaro-commerce": { x: 1 } }, id: "order-0" }] } as AssemblyTemplate;
-        expect(serializeAssemblyTemplate(ordered).contentHash).toBe(serializeAssemblyTemplate(reordered).contentHash);
+        expect(serializeAssemblyTemplate(ordered).compositionHash).toBe(serializeAssemblyTemplate(reordered).compositionHash);
     });
 
     it("format: asm- prefix + 16 hex", () => {

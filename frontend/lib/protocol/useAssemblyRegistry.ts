@@ -17,7 +17,11 @@ import { BaseError, ContractFunctionRevertedError } from "viem";
 import { publicClient } from "@/lib/shared/wagmi";
 import { ASSEMBLY_REGISTRY_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
-import { type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
+import {
+    deriveAssemblySlug,
+    templateCompositionHash,
+    type AssemblyTemplate,
+} from "@/lib/shared/assemblyTemplate";
 
 // Per-process gas ceiling moved to `@/lib/shared/chainGasCeilings`
 // (`maxOrdersResolvablePerProcess`) — the ceiling depends on the active
@@ -40,33 +44,33 @@ export interface PublishOutcome {
 
 /**
  * A single registered assembly, reconstructed from an `AssemblyRegistered`
- * event. The slug + metadataURI are non-indexed event-data fields;
- * slugHash and author come from indexed topics.
+ * event. compositionHash + author come from indexed topics; contentURI is
+ * event data. The slug exists nowhere on-chain — it is derived here as a
+ * pure function of compositionHash (`deriveAssemblySlug`).
  */
 interface PublishedAssembly {
     slug: string;
-    slugHash: `0x${string}`;
     author: `0x${string}`;
-    contentHash: `0x${string}`;
-    metadataURI: string;
+    compositionHash: `0x${string}`;
+    contentURI: string;
     blockNumber: bigint;
     transactionHash: `0x${string}`;
 }
 
 /** Map an `AssemblyRegistry` revert into a human-readable Error. Used by
- *  `publish()` to surface a specific cause (slug already taken, wrong
- *  deposit, empty fields) instead of viem's default "execution reverted"
- *  message. Falls through to the original error for anything we don't
- *  recognize. */
+ *  `publish()` to surface a specific cause (composition already anchored,
+ *  wrong deposit, empty fields) instead of viem's default "execution
+ *  reverted" message. Falls through to the original error for anything we
+ *  don't recognize. */
 export function translatePublishRevert(err: unknown, attemptedSlug: string): Error {
     if (err instanceof BaseError) {
         const revert = err.walk(
             (e) => e instanceof ContractFunctionRevertedError,
         ) as ContractFunctionRevertedError | undefined;
         const name = revert?.data?.errorName;
-        if (name === "SlugAlreadyRegistered") {
+        if (name === "CompositionAlreadyRegistered") {
             return new Error(
-                `This assembly is already published — an identical composition is registered on-chain as "${attemptedSlug}". The slug is content-derived, so the same composition always maps to it; adopt the existing one rather than re-publishing.`,
+                `This assembly is already published — an identical composition is anchored on-chain as "${attemptedSlug}". Identity is the composition, so the same composition always maps to one binding; adopt the existing one rather than re-publishing.`,
             );
         }
         if (name === "WrongDeposit") {
@@ -77,19 +81,18 @@ export function translatePublishRevert(err: unknown, attemptedSlug: string): Err
                 `Registration deposit mismatch (provided ${provided} wei, required ${required} wei). The deposit amount changed between the read and the send — retry.`,
             );
         }
-        if (name === "EmptySlug") return new Error("Cannot publish with an empty slug.");
-        if (name === "EmptyMetadataURI") return new Error("The IPFS pin returned an empty URI.");
-        if (name === "EmptyContentHash") return new Error("Computed an empty content hash — likely a assemblyTemplate-builder bug.");
+        if (name === "EmptyContentURI") return new Error("The IPFS pin returned an empty URI.");
+        if (name === "ZeroCompositionHash") return new Error("Computed an empty composition hash — likely a assemblyTemplate-builder bug.");
     }
     return toError(err);
 }
 
 /**
  * Reads `AssemblyRegistered` events from the registry, optionally filtered
- * to a specific author. Returns the deduped most-recent-first list — slug
- * binding is first-write-wins on-chain, so duplicates per slug shouldn't
- * occur, but if they do (e.g. a stale fork chain), the most-recent block
- * wins.
+ * to a specific author. Returns the most-recent-first list — the
+ * composition binding is first-write-wins on-chain, so duplicates per
+ * compositionHash shouldn't occur, but if they do (e.g. a stale fork
+ * chain), the most-recent block wins.
  *
  * No caching, no auto-refresh. To pick up a newly published assembly
  * after mount, call `refetch`.
@@ -125,11 +128,10 @@ export function usePublishedAssemblies(author: `0x${string}` | undefined) {
             .then((logs) => {
                 if (cancelled) return;
                 const items: PublishedAssembly[] = logs.map((log) => ({
-                    slug: log.args.slug ?? "",
-                    slugHash: log.args.slugHash as `0x${string}`,
+                    slug: deriveAssemblySlug(log.args.compositionHash as `0x${string}`),
                     author: log.args.author as `0x${string}`,
-                    contentHash: log.args.contentHash as `0x${string}`,
-                    metadataURI: log.args.metadataURI ?? "",
+                    compositionHash: log.args.compositionHash as `0x${string}`,
+                    contentURI: log.args.contentURI ?? "",
                     blockNumber: log.blockNumber ?? 0n,
                     transactionHash: log.transactionHash as `0x${string}`,
                 }));
@@ -163,21 +165,32 @@ export function useAllPublishedAssemblies() {
 }
 
 /**
- * Fetch the IPFS-pinned assemblyTemplate at `metadataURI`. Returns the parsed
- * JSON or null on failure (gateway unreachable, malformed JSON, etc.).
- * The on-chain binding's `contentHash` should match
- * `keccak256(canonicalize(assemblyTemplate))` — callers that need integrity
- * can verify after fetch.
+ * Fetch the IPFS-pinned assemblyTemplate at `contentURI` and VERIFY it
+ * against the anchored identity: the fetched document's recomputed
+ * composition hash must equal the on-chain `compositionHash`. A document
+ * that fails verification is treated exactly like an unreachable one —
+ * null, never rendered (a tampered or mismatched pin is absence, not
+ * content). Returns null on gateway failure, malformed JSON, or hash
+ * mismatch.
  */
 export async function fetchAssemblyTemplate(
-    metadataURI: string,
+    contentURI: string,
+    expectedCompositionHash: `0x${string}`,
 ): Promise<AssemblyTemplate | null> {
-    const url = DEFAULT_IPFS_SERVICE.resolveFetchUrl(metadataURI);
+    const url = DEFAULT_IPFS_SERVICE.resolveFetchUrl(contentURI);
     if (!url) return null;
     try {
         const response = await fetch(url);
         if (!response.ok) return null;
-        return (await response.json()) as AssemblyTemplate;
+        const template = (await response.json()) as AssemblyTemplate;
+        const recomputed = templateCompositionHash(template);
+        if (recomputed.toLowerCase() !== expectedCompositionHash.toLowerCase()) {
+            console.warn(
+                `[fetchAssemblyTemplate] integrity failure at ${contentURI}: document composition hashes to ${recomputed}, chain anchors ${expectedCompositionHash} — dropping`,
+            );
+            return null;
+        }
+        return template;
     } catch {
         return null;
     }

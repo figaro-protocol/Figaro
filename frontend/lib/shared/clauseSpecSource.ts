@@ -15,6 +15,7 @@
  */
 
 import { parseClauseSpec, type ClauseSpec, type FieldSpec, type EnumFieldSpec, type SpecParseError } from "@figaro/core/clauses";
+import { canonicalContentHash } from "@/lib/shared/canonicalJson";
 import { parseBlockBinding, type ClauseBlockBinding } from "@/lib/shared/clauseBlockBinding";
 import { clauseIdHash } from "@/lib/shared/evm";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
@@ -79,12 +80,27 @@ function cacheSpec(spec: ClauseSpecWithBlock): void {
 /**
  * Async load — fetch a spec from its IPFS locator, parse, cache, and return it.
  * Idempotent: a spec already cached resolves immediately. Throws on parse /
- * network failure / clauseId mismatch (no silent fallback).
+ * network failure / clauseId mismatch / integrity mismatch (no silent
+ * fallback). When `expectedContentHash` is provided (the `ClauseRegistered`
+ * event's digest), the fetched document is verified by recomputing the
+ * canonical content hash — a drifted or tampered pin never enters the cache.
  */
-export async function loadClauseSpec(clauseId: string, uri: string): Promise<ClauseSpecWithBlock> {
+export async function loadClauseSpec(
+    clauseId: string,
+    uri: string,
+    expectedContentHash?: `0x${string}`,
+): Promise<ClauseSpecWithBlock> {
     const cached = SPEC_CACHE.get(clauseId);
     if (cached !== undefined) return cached;
     const raw = await activeFetcher(uri);
+    if (expectedContentHash) {
+        const recomputed = canonicalContentHash(raw);
+        if (recomputed.toLowerCase() !== expectedContentHash.toLowerCase()) {
+            const detail = `spec at ${uri} hashes to ${recomputed}, chain anchors ${expectedContentHash}`;
+            SPEC_LOAD_ERRORS.set(clauseId, `integrity failure: ${detail}`);
+            throw new Error(`Clause spec integrity failure: ${detail}`);
+        }
+    }
     const parsed = parseClauseSpec(raw);
     if (!parsed.ok) {
         const detail = parsed.errors.map((e) => `${e.path}: ${e.message}`).join("; ");

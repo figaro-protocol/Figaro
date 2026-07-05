@@ -63,11 +63,12 @@ const ANVIL_MNEMONIC = 'test test test test test test test test test test test j
 //    clause, but never registered, never bundled.
 //
 //    The id + title carry a per-run nonce (minted INSIDE the test, below) so each
-//    run certifies a genuinely never-seen clause AND the run's content-addressed
-//    assembly slug (asm-<contentHash>) is unique. The test leaves its state on-
-//    chain (no revert — devnet is a mainnet rehearsal), so a FIXED id/content
-//    would collide with a prior run's first-write-wins registration on every
-//    re-run and every Playwright retry (registerAssembly reverts: slug taken). ──
+//    run certifies a genuinely never-seen clause AND the run's composition
+//    identity (compositionHash → asm-<hash> slug) is unique. The test leaves its
+//    state on-chain (no revert — devnet is a mainnet rehearsal), so a FIXED
+//    id/content would collide with a prior run's first-write-wins registration
+//    on every re-run and every Playwright retry (registerAssembly reverts:
+//    composition already anchored). ──
 const NOVEL_FIRST_STAGE_LABEL = 'Probe opened';
 
 // The probe clause spec + its permissionless registration are shared with the

@@ -4,7 +4,7 @@
  * useClauseSpecs — warms the clause-spec cache from chain → IPFS.
  *
  * Reads every `ClauseRegistered` event (`useAllRegisteredClauses`) and fetches
- * each clause's spec from its on-chain `metadataURI` into the module cache
+ * each clause's spec from its on-chain `contentURI` into the module cache
  * (`loadClauseSpec`). Once `loaded` is true, the synchronous reads in
  * `clauseSpecSource` (getClauseSpec / clauseEnumValues /
  * describeAttestation / groupClausesByArticle / clauseNestsUnder) resolve for every
@@ -43,8 +43,8 @@ export function useClauseSpecs(): ClauseSpecsState {
     useEffect(() => {
         if (!events) return;
         let cancelled = false;
-        const pending = events.filter((e) => e.metadataURI && e.clauseName);
-        Promise.allSettled(pending.map((e) => loadClauseSpec(e.clauseName, e.metadataURI))).then((results) => {
+        const pending = events.filter((e) => e.contentURI && e.clauseName);
+        Promise.allSettled(pending.map((e) => loadClauseSpec(e.clauseName, e.contentURI, e.contentHash))).then((results) => {
             if (cancelled) return;
             setErrors(results.flatMap((r) => (r.status === "rejected" ? [String(r.reason)] : [])));
             setVersion((v) => v + 1);
