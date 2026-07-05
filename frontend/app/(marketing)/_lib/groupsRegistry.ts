@@ -125,6 +125,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
             { title: "The Wallet as Legal Subject", href: "/papers/wallet-legal-subject" },
             { title: "Coercion as a Substrate Variable", href: "/papers/coercion-variable" },
             { title: "The Disclosure Asymmetry: Cryptoeconomic Mechanism Design and the Engineering of Consent", href: "/papers/the-disclosure-asymmetry" },
+            { title: "Code Is Constitution: The Entrenched Layer Beneath Enactment", href: "/papers/code-is-constitution" },
         ],
     },
     {
