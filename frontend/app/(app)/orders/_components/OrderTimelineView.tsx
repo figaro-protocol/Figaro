@@ -27,6 +27,7 @@ import { SettlementProceedsPanel } from "@/components/core/SettlementProceedsPan
 import { CapabilityRail } from "@/components/core/CapabilityRail";
 import { OrderInteractionSurfaces } from "@/components/core/OrderInteractionSurfaces";
 import { useSemanticProcessWorkspace } from "@/hooks/core/useSemanticProcessWorkspace";
+import useProcessResolveCapacity from "@/hooks/core/useProcessResolveCapacity";
 import { useSellerListings } from "@/lib/seller/useSellerListings";
 import { findListingByAddress } from "@/lib/seller/sellerListing";
 import { describeAttestation } from "@/lib/shared/clauseSpecSource";
@@ -51,6 +52,7 @@ export function OrderTimelineView({ processId }: Props) {
     const { address } = useAccount();
     const workspace = useSemanticProcessWorkspace({ processId });
     const { listings } = useSellerListings();
+    const resolveCapacity = useProcessResolveCapacity(processId as `0x${string}`);
 
     const processModel = workspace.processModel;
 
@@ -124,6 +126,19 @@ export function OrderTimelineView({ processId }: Props) {
                     // model, never a clause section or a frontend label map.
                     <p className="text-xs text-neutral-600" data-testid="order-modality">
                         Modality: <span className="font-medium text-black">{processModel.rootModality}</span>
+                    </p>
+                )}
+                {/* Resolve-ceiling position — depth vs the chain's atomic-resolve
+                    cap (chain-adaptive, read live; the same ceiling the designer
+                    canvas gates on). Active processes only; absence = no read. */}
+                {!isResolved && resolveCapacity && (
+                    <p className="text-xs text-neutral-600" data-testid="order-process-capacity">
+                        Process orders:{" "}
+                        <span className={resolveCapacity.remaining <= Math.max(1, Math.floor(resolveCapacity.cap / 20))
+                            ? "font-medium text-amber-700"
+                            : "font-medium text-black"}>
+                            {resolveCapacity.activeOrderCount} / {resolveCapacity.cap} resolvable in one settlement
+                        </span>
                     </p>
                 )}
                 <p className="text-xs text-neutral-500 font-mono">

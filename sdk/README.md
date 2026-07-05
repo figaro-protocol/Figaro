@@ -15,7 +15,8 @@ npm install @figaro/core
 
 ### `@figaro/core` — Protocol Primitives
 
-Event parsing, state reconstruction, EIP-712 commitments, bond calculations.
+Event parsing, state reconstruction, EIP-712 commitments, bond calculations,
+chain gas ceilings.
 
 ```ts
 import {
@@ -25,6 +26,7 @@ import {
   buildCommitment,
   buildDomain,
   ProcessGraph,
+  maxOrdersResolvablePerProcess,
 } from "@figaro/core";
 
 // Fetch all FigaroCore events from a block range
@@ -40,6 +42,10 @@ const active = graph.getActiveProcesses();
 // Calculate bond requirements
 const bonds = calculateBonds(cumulativeValue, payment);
 // → { buyerBond, sellerBond, buyerTotal, sellerTotal }
+
+// Per-process resolve ceiling on the active chain (a process grown past
+// this can NEVER settle — check before every commit; the kernel cannot)
+const cap = await maxOrdersResolvablePerProcess(client);
 
 // Build EIP-712 typed data for signing
 const domain = buildDomain(chainId, coreAddress);

@@ -1,6 +1,7 @@
 #!/bin/bash
 # lint-chain-gas.sh — Gate: the per-order gas constants in
-# frontend/lib/shared/chainGasCeilings.ts must byte-match the Foundry
+# sdk/src/gasCeilings.ts (the canonical TS home; the frontend's
+# chainGasCeilings.ts is a re-export) must byte-match the Foundry
 # anchor constants in test/GasCeilingTest.t.sol.
 #
 # Source of truth is the Foundry test — that's where the empirical
@@ -21,7 +22,7 @@
 
 set -u
 
-TS_FILE="frontend/lib/shared/chainGasCeilings.ts"
+TS_FILE="sdk/src/gasCeilings.ts"
 SOL_FILE="test/GasCeilingTest.t.sol"
 
 if [ ! -f "$TS_FILE" ]; then

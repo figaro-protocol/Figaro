@@ -24,6 +24,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { calculateBonds } from "@figaro/core";
 import { TokenApprovalFlow } from "@/components/core/TokenApprovalFlow";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
+import useProcessResolveCapacity from "@/hooks/core/useProcessResolveCapacity";
 import { formatToken } from "@/lib/shared/utils";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { fetchCommitmentPayloadJsonByCid } from "@/lib/checkout/orderPendingSellerSignature";
@@ -183,6 +184,8 @@ function SignPageContent() {
 
     const commitment = parsed?.commitment;
     const isRoot = commitment?.processId === ZERO_PROCESS_ID;
+    // Sub-orders only — the hook itself returns null for roots/zero ids.
+    const processCapacity = useProcessResolveCapacity(commitment?.processId);
     const hasBuyerSig = !!parsed?.buyerSig;
     const hasSellerSig = !!parsed?.sellerSig;
 
@@ -286,6 +289,20 @@ function SignPageContent() {
                                 <span>Process</span>
                                 <span className="font-mono">
                                     {truncateHex(commitment.processId, { head: 10, tail: 0 })}
+                                </span>
+                            </div>
+                        )}
+                        {/* Resolve-ceiling position — the countersigner sees how
+                            close the process is to the chain's atomic-resolve cap
+                            BEFORE bonding into it (commitment.expectedCumulativeValue
+                            shows value; this shows depth). Absence = no read. */}
+                        {!isRoot && processCapacity && (
+                            <div className="flex justify-between" data-testid="sign-process-capacity">
+                                <span>Process orders</span>
+                                <span className={processCapacity.remaining <= Math.max(1, Math.floor(processCapacity.cap / 20))
+                                    ? "text-amber-700 font-semibold"
+                                    : undefined}>
+                                    {processCapacity.activeOrderCount} / {processCapacity.cap} resolvable
                                 </span>
                             </div>
                         )}

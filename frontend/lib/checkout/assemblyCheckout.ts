@@ -50,6 +50,12 @@ export interface AssemblyCheckoutLineItem {
  *  which backs them with the order* commitment flow. */
 export interface AssemblyCheckoutDeps {
     chainId: number;
+    /** Read the chain's per-process resolve ceiling (`maxOrdersResolvablePerProcess`).
+     *  Checkout refuses a template that couldn't settle in one atomic
+     *  `resolveProcess` — the same ceiling the designer canvas and
+     *  `publishAssembly` enforce. This copy covers foreign hand-anchored
+     *  templates the permissionless registry admits. */
+    readResolveCap: () => Promise<number>;
     /** Sign the root and surface its payload to the share panel (no auto-relay). */
     signRoot: (preview: OrderPreview) => Promise<CommitmentPayload>;
     /** Sign + relay a sub-order to its bound seller in one step. */
@@ -187,6 +193,21 @@ export async function executeAssemblyCheckout(
         ?? assembly.assemblyTemplate.agreements[0];
     if (!root) throw new Error("This assembly has no root order.");
     const isMultiOrder = assembly.assemblyTemplate.agreements.length > 1;
+
+    // Resolve-ceiling refusal BEFORE any signature: a process grown past the
+    // chain's atomic-resolve cap can never settle, so the buyer must not bond
+    // into one. Publish-side already refuses over-cap templates authored here;
+    // this catches templates anchored by other clients (the registry is
+    // permissionless).
+    const orderCount = assembly.assemblyTemplate.agreements.length;
+    const resolveCap = await deps.readResolveCap();
+    if (orderCount > resolveCap) {
+        throw new Error(
+            `This assembly composes ${orderCount} orders; this chain settles at most ` +
+                `${resolveCap} in one atomic resolveProcess. It can never settle as one ` +
+                `process — the designer must compose multiple processes instead.`,
+        );
+    }
 
     // The root's clause map: template clauses, the cart's PHYSICAL attributes
     // collapsed into the cargo entry (found by its declared fields, never by

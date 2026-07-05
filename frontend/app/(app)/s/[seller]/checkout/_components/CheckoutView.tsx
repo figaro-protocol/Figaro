@@ -18,7 +18,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useChainId } from "wagmi";
+import { useChainId, usePublicClient } from "wagmi";
+import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { Button } from "@/components/ui/Button";
 import { useCommerce, useCheckout } from "@/lib/checkout";
@@ -77,6 +78,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     const { lower: sellerAddressLower, typed: sellerAddressTyped } = normalizeAddressParam(sellerAddress);
 
     const chainId = useChainId();
+    const publicClient = usePublicClient();
     const { compose } = useCompositionActions();
     const { catalogues: sellerCatalogues, isLoading: cataloguesLoading } = useRegisteredCatalogues();
 
@@ -425,6 +427,10 @@ export function CheckoutView({ sellerAddress }: Props) {
                 },
                 {
                     chainId,
+                    readResolveCap: async () => {
+                        if (!publicClient) throw new Error("No chain connection — cannot verify the resolve ceiling.");
+                        return maxOrdersResolvablePerProcess(publicClient);
+                    },
                     signRoot,
                     signAndShare,
                     compose,

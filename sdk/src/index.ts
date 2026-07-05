@@ -99,6 +99,19 @@ export {
     validateBonds,
 } from "./bonds.js";
 
+// Chain gas ceilings — per-process resolve cap + per-block commit landing rate.
+// A process grown past the resolve cap can never settle; every commit path
+// checks this client-side because the kernel cannot (the composed agreements are off-chain).
+export {
+    maxOrdersResolvableForGasLimit,
+    maxCommitsLandableForGasLimit,
+    maxOrdersResolvablePerProcess,
+    maxCommitsLandableInOneBlock,
+    readProcessResolveCapacity,
+    assertOrderFitsResolveCap,
+} from "./gasCeilings.js";
+export type { ProcessResolveCapacity } from "./gasCeilings.js";
+
 // Agreement + merkle root + inclusion proofs
 export {
     canonicalizeSectionData,

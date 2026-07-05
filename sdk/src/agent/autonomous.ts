@@ -15,6 +15,7 @@
 
 import type { WalletClient, PublicClient } from "viem";
 import { CORE_ABI, ATTESTATION_COORDINATOR_ABI } from "../abis.js";
+import { assertOrderFitsResolveCap } from "../gasCeilings.js";
 import type { Hex, Address, FigaroAddresses, Commitment } from "../types.js";
 import type { ProposedAction, ResolveProcessAction } from "./proposer.js";
 
@@ -30,14 +31,22 @@ export interface TxResult {
 /**
  * Submit a commitment to FigaroCore.commit.
  * Both signatures must be provided (obtained via signTypedData).
+ *
+ * Refuses a sub-order commit that would push the live process past the
+ * chain's resolve ceiling (`assertOrderFitsResolveCap`) — past it, every
+ * bond in the process is locked forever. The kernel cannot enforce the
+ * ceiling, so the write path does; an agent must never bond into an
+ * unresolvable process.
  */
 export async function commit(
     walletClient: WalletClient,
+    publicClient: PublicClient,
     coreAddress: Address,
     commitment: Commitment,
     buyerSig: Hex,
     sellerSig: Hex,
 ): Promise<TxResult> {
+    await assertOrderFitsResolveCap(publicClient, coreAddress, commitment.processId);
     const hash = await walletClient.writeContract({
         chain: walletClient.chain ?? null,
         account: walletClient.account!,
