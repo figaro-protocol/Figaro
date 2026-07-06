@@ -33,9 +33,9 @@ export default function Users() {
                         </Link>
                     </div>
                     <div>
-                        <h3 className="text-heading-h3 text-ink-heading">Join as an seller</h3>
+                        <h3 className="text-heading-h3 text-ink-heading">Join as a seller</h3>
                         <p className="text-base text-ink-body leading-relaxed mt-2 mb-4">
-                            Register an identity, declare a catalogue, set accepted tokens. As an seller you run a wallet that represents your real-world asset or service &mdash; a kitchen, a vehicle, your labour. Buyers find you through the registry; the wallet takes the seller role on every deal that comes through.
+                            Register an identity, declare a catalogue, set accepted tokens. As a seller you run a wallet that represents your real-world asset or service &mdash; a kitchen, a vehicle, your labour. Buyers find you through the registry; the wallet takes the seller role on every deal that comes through.
                         </p>
                         <Link href="/sellers" className="text-ink-heading font-medium hover:underline">
                             Seller onboarding &rarr;

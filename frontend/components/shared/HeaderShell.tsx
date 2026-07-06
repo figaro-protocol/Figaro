@@ -5,12 +5,12 @@ import { NavLinksRow } from "@/components/shared/NavLinksRow";
 import type { NavLink } from "@/components/shared/navLinks";
 
 interface HeaderShellProps {
-    /** Right cluster — varies by tier. Marketing uses `<DiscoverButton>`;
-     *  (app) uses `<YourTurnBadge>` + `<ConnectButton>`. Discover and
-     *  Connect Wallet never coexist. */
+    /** Right cluster — varies by tier. Marketing passes null (audience CTAs
+     *  live on the pages, not in the header); (app) uses `<YourTurnBadge>` +
+     *  `<ConnectButton>`. */
     right: ReactNode;
     /** Optional CTA pinned to the top of the mobile slide-out drawer.
-     *  MarketingHeader passes `<DiscoverButton>`; (app) Header omits it. */
+     *  No current tier passes one; the slot stays for a tier that does. */
     mobileTopCta?: ReactNode;
     /** Override the mobile drawer link list. Marketing tier uses the
      *  default (`NAV_LINKS`, the publication row); (app) tier passes

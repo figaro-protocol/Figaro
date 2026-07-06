@@ -11,9 +11,9 @@ interface BuildButtonProps {
 /**
  * Primary builder-tier CTA — routes to `/builders`. Renders on every header
  * except when already inside the builders surface (`pathname.startsWith
- * ("/builders")`). Parallel to `DiscoverButton`: Discover is the consumer
- * entry point; Build is the builder entry point. Both live on marketing
- * surfaces; neither appears on (app)-tier headers (per
+ * ("/builders")`). Parallel to `ReadButton` (protocol-reader entry) and the
+ * homepage's Participate link (consumer entry, `/users`). All live on
+ * marketing surfaces; none appears on (app)-tier headers (per
  * `feedback_header_buttons.md`).
  *
  * Outline-styled so it sits next to the filled Discover button without

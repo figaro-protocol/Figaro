@@ -164,18 +164,20 @@ export function SellerDiscovery() {
                 allListings.length === 0 ? (
                     <div className="text-center py-12 space-y-4">
                         <p className="text-base text-gray-700">
-                            No sellers have registered on this network yet.
+                            This registry opens with the network.
                         </p>
                         <p className="text-sm text-gray-500 max-w-md mx-auto">
-                            Every seller is a wallet that has self-registered in <code className="text-xs">SellerRegistry</code> with
-                            an identity, a catalogue, and one or more assembly bindings. Be the first.
+                            Figaro is not yet live on a public network. When it is, every seller
+                            listed here will be a wallet that registered itself &mdash; an identity,
+                            a catalogue, accepted tokens; no application, no approval, no one to
+                            say yes. You can be the first.
                         </p>
                         <a
                             href="/sellers"
                             className="inline-block text-sm px-4 py-2 rounded border border-black bg-black text-white hover:bg-neutral-800"
                             data-testid="discover-empty-cta"
                         >
-                            Register as an seller
+                            Register as a seller
                         </a>
                     </div>
                 ) : (

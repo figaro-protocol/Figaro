@@ -6,7 +6,7 @@ import { HeaderShell } from "@/components/shared/HeaderShell";
  * `useWalletConnected` so marketing pages don't pull the wallet provider
  * into their client bundle.
  *
- * Audience CTAs (`DiscoverButton`, `BuildButton`, `ReadButton`) live below
+ * Audience CTAs (`BuildButton`, `ReadButton`, the Participate link) live below
  * the three doorways on the homepage (`/`), not in the header — text
  * doesn't visually cue redirection. The header carries the publication-
  * row nav and the logo only.

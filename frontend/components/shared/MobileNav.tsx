@@ -11,8 +11,8 @@ interface MobileNavProps {
     links?: NavLink[];
     logo?: React.ReactNode;
     theme?: "light" | "dark";
-    /** Optional CTA pinned to the top of the slide-out drawer. Marketing
-     *  passes `<DiscoverButton>`; (app) omits it. */
+    /** Optional CTA pinned to the top of the slide-out drawer. No current
+     *  tier passes one; the slot stays for a tier that does. */
     topCta?: ReactNode;
 }
 
@@ -145,9 +145,9 @@ export function MobileNav({ links, logo, theme = "dark", topCta }: MobileNavProp
                             </button>
                         </div>
 
-                        {/* Optional top CTA — caller-controlled. MarketingHeader
-                             passes `<DiscoverButton>`; (app) Header omits it so
-                             the (app) drawer doesn't surface a marketing CTA. */}
+                        {/* Optional top CTA — caller-controlled; currently no
+                             tier passes one. (app) must never surface a
+                             marketing CTA here. */}
                         {topCta && (
                             <div className={`border-b p-4 ${headerBorderCls}`}>
                                 {topCta}

@@ -3,116 +3,107 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
     title: "Local Commerce — Figaro Protocol",
-    description: "An assembly composing a three-role bonded local-commerce process from protocol primitives. Generic across food, retail, and services.",
+    description: "One meal, three strangers, no platform: a delivered meal ordered, cooked, carried, and settled in one stroke. Generic across food, retail, and services.",
 };
 
+// The scene page: the canonical story (lockbox + delivered meal) told as a
+// lived deal. Protocol vocabulary and contract identifiers stay OFF this
+// page — the exact contracts, clauses, and event flow live at /spec.
 export default function LocalCommercePage() {
     return (
         <>
             <section className="container mx-auto px-6 pt-24 pb-12 max-w-3xl">
                 <h1 className="text-heading-h1 text-ink-heading mb-6">
-                    Three roles, one bonded process.
+                    One meal, three strangers, no platform.
                 </h1>
                 <p className="text-body-lead text-ink-body max-w-2xl">
-                    An assembly composing a local-commerce process from protocol primitives. A process is a transaction-scoped institution: it exists only for this order &mdash; from the first commit to the buyer&apos;s resolution &mdash; and dissolves at settlement. Three roles (buyer, merchant, courier), one root bonded commitment, one sub-order, atomic settlement. Generic across food, retail, and service verticals; the reference instance uses food delivery as the concrete shape.
+                    It is seven in the evening and you order dinner. A kitchen you have never dealt with accepts. A courier you have never met carries it. Twenty minutes later you confirm it arrived &mdash; and in that single stroke the kitchen is paid, the courier is paid, and every deposit goes home. No company sat in the middle. Nothing held the deal together but the deal itself.
                 </p>
             </section>
 
             <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-default pt-12">
                 <h2 className="text-heading-h2 text-ink-heading mb-6">
-                    Roles
+                    How the evening actually went
+                </h2>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    When you placed the order, you locked a deposit worth twice what you were paying &mdash; the payment itself, plus a stake of your own. The kitchen locked a matching stake to accept. When the courier took the delivery leg, they staked against the whole running value of the deal &mdash; food and delivery both &mdash; because by then they were carrying everyone&apos;s work, not just their own.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    That is the whole trick, repeated once per participant: every stake is bigger than anything its owner could gain by walking away. The kitchen wants the courier to succeed &mdash; its own stake rides on the delivery. The courier wants the kitchen to have cooked what you ordered &mdash; their stake rides on your confirmation. Nobody supervises anybody, and everybody is invested in everybody. A platform does this with dispatchers, ratings, and support tickets. Here the shape of the deal does it.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    You &mdash; the one paying &mdash; are the only person who can close the deal, and closing it settles everyone at once. That is not a privilege; your own doubled stake is locked until you do, so stalling costs you most of all. The deal ends when you say it ended, and the moment you do, it is as if the little institution that formed around your dinner had never existed. It did its work and dissolved.
+                </p>
+            </section>
+
+            <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-default pt-12">
+                <h2 className="text-heading-h2 text-ink-heading mb-6">
+                    Who is at the table
                 </h2>
                 <p className="text-base text-ink-body leading-relaxed mb-6">
-                    Each role is held by a wallet, and each wallet represents a real-world asset or service &mdash; the asset stays off-chain on its owner&apos;s books, the wallet is its on-chain handle, and an seller controls the signing key on the asset&apos;s behalf. The &ldquo;maps to&rdquo; line in each role below names that asset layer: the merchant&apos;s wallet represents a kitchen or a shop, the courier&apos;s wallet represents a delivery vehicle. A public-authority wallet &mdash; a municipal food-safety inspection, a road authority charging per-mile &mdash; is a participant on the same footing: a wallet representing a real-world service whose committed payment costs the buyer exactly the way any other commit does.
+                    Each participant is a wallet, and each wallet stands for something real &mdash; the asset stays off-chain on its owner&apos;s books; the wallet is its on-chain handle, and a seller controls the signing key on the asset&apos;s behalf. The kitchen&apos;s wallet stands for a kitchen or a shop; the courier&apos;s wallet for a bicycle, a car, or a pair of legs. A public authority &mdash; a municipal food-safety inspection, a road authority charging per mile &mdash; can sit at the same table on the same footing: one more wallet whose committed payment costs the buyer exactly the way any other does.
                 </p>
                 <dl className="space-y-4 text-sm">
                     <div>
-                        <dt className="text-base font-semibold text-ink-heading">Buyer</dt>
-                        <dd className="text-ink-body leading-relaxed mt-1">Root buyer of the process. Commits the root order to a merchant for goods, bonding 2× the goods payment. Commits a delivery sub-order to a courier (the seller&apos;s bound courier, or the buyer&apos;s checkout-time choice), bonding 2× the delivery payment. Triggers <code>resolveProcess</code> once delivery is confirmed; the kernel atomically settles the whole process.</dd>
+                        <dt className="text-base font-semibold text-ink-heading">You, the buyer</dt>
+                        <dd className="text-ink-body leading-relaxed mt-1">You start the deal, you stake double on every leg of it, and you alone close it. Everyone else&apos;s payday waits on your confirmation &mdash; which is exactly why the whole chain works to earn it.</dd>
                     </div>
                     <div>
-                        <dt className="text-base font-semibold text-ink-heading">Merchant</dt>
-                        <dd className="text-ink-body leading-relaxed mt-1">Counter-signs the buyer&apos;s root commitment as the seller of goods. Bonds 2× the goods value. The kernel enforces <code>buyer == rootBuyer</code> in every order, so the merchant doesn&apos;t itself commit sub-orders &mdash; the buyer&apos;s sub-order to the courier is a parallel commit in the same process. The merchant&apos;s bond is at risk across the whole process at atomic resolution; the merchant&apos;s operational obligation (packaging, declaring ready-for-pickup) carries direct economic interest in the courier completing the delivery. Maps to a restaurant in food, a retailer in retail, a service-provider in services.</dd>
+                        <dt className="text-base font-semibold text-ink-heading">The merchant</dt>
+                        <dd className="text-ink-body leading-relaxed mt-1">Accepts your order and stakes double the goods value to do so. In food it is a restaurant; in retail, a shop; in services, whoever does the work. The label changes by vertical &mdash; the position in the deal does not.</dd>
                     </div>
                     <div>
-                        <dt className="text-base font-semibold text-ink-heading">Courier</dt>
-                        <dd className="text-ink-body leading-relaxed mt-1">Counter-signs the buyer&apos;s delivery sub-order at their catalogue rate. Bonds 2× cumulative process value (goods + delivery) &mdash; cumulative upstream bonding in operation. Maps to a driver, cyclist, walker, drone, or any other delivery modality.</dd>
+                        <dt className="text-base font-semibold text-ink-heading">The courier</dt>
+                        <dd className="text-ink-body leading-relaxed mt-1">Takes the delivery leg at their own listed rate and stakes against the running value of the whole deal &mdash; goods plus delivery &mdash; because from pickup to hand-off they carry everyone&apos;s outcome. On a bicycle, in a car, on foot, or by drone; the deal does not care how the distance gets covered.</dd>
                     </div>
                 </dl>
             </section>
 
             <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-default pt-12">
                 <h2 className="text-heading-h2 text-ink-heading mb-6">
-                    Mechanisms in use
+                    What you never had to worry about
                 </h2>
-                <ul className="space-y-4">
-                    <li className="border-b border-default pb-3">
-                        <div className="text-ink-heading font-medium"><code>FigaroCore</code></div>
-                        <p className="text-sm text-ink-muted mt-0.5">Kernel. Holds bonds. <code>commit</code> establishes root + sub-orders; <code>resolveProcess</code> atomically settles the whole process.</p>
-                    </li>
-                    <li className="border-b border-default pb-3">
-                        <div className="text-ink-heading font-medium"><code>AttestationCoordinator</code></div>
-                        <p className="text-sm text-ink-muted mt-0.5">Runtime attestation surface for lifecycle, proximity, and GHG events. Every attestation carries a merkle inclusion proof against the signed agreement.</p>
-                    </li>
-                    <li className="border-b border-default pb-3">
-                        <div className="text-ink-heading font-medium"><code>SellerRegistry</code></div>
-                        <p className="text-sm text-ink-muted mt-0.5">Permissionless self-registration for merchants and couriers (across all local-commerce verticals) with a reclaimable ETH deposit. Event-sourced (metadataURI in <code>SellerRegistered</code>); on-chain state is dedup-only. No admin, no KYC, no profile-edit / deactivate / reactivate — switch metadata via withdraw + re-register.</p>
-                    </li>
-                </ul>
-            </section>
-
-            <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-default pt-12">
-                <h2 className="text-heading-h2 text-ink-heading mb-6">
-                    Privacy surface
-                </h2>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Your address was sealed so that only the courier could read it, and the key was thrown away when the deal settled &mdash; no standing middleman keeps a file of where you live. And the whole way through, the protocol quietly wrote down every step &mdash; when the kitchen accepted, when the food changed hands, when it arrived &mdash; each recorded the moment it happened, permanently, where no one can edit it afterward. If a deal ever does go wrong, the account of what happened is already there, and anyone can check it.
+                </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The delivery address is sealed per-order with ECDH key exchange over XMTP and AES-256-GCM; only the courier can decrypt it. Keys are discarded at settlement — no standing intermediary retains the address. GHG emissions data (grams CO₂e for goods preparation and delivery) is optional and declared via <code>figaro-ghg-measurement-v1</code> at runtime.
+                    The scene is dinner, but nothing in it is about food. The same three-sided shape carries a bookshop order, a tailor&apos;s alteration, a plumber&apos;s house call &mdash; any local deal where something is made, carried, and confirmed.
                 </p>
             </section>
 
             <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-default pt-12">
                 <h2 className="text-heading-h2 text-ink-heading mb-6">
-                    Where to go from here
+                    Under the hood
                 </h2>
-                <ul className="space-y-2 text-sm">
-                    <li>
-                        <Link href="/discover" data-testid="reference-runtime-link" className="text-ink-heading hover:underline">
-                            Try it live &rarr;
-                        </Link>
-                    </li>
-                    <li>
-                        <Link href="/builders" className="text-ink-heading hover:underline">
-                            Composition surface &rarr;
-                        </Link>
-                    </li>
-                    <li>
-                        <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="text-ink-heading hover:underline">
-                            Source &rarr;
-                        </a>
-                    </li>
-                </ul>
+                <p className="text-base text-ink-body leading-relaxed">
+                    Everything above has an exact, inspectable form: the kernel contract that holds the stakes, the registries the participants enrolled in, the clauses their agreement composed, and the event flow the evening left behind. The full catalogue is on <Link href="/spec" className="text-ink-heading font-medium hover:underline">the spec page</Link>; the mechanism itself is told in ten minutes on <Link href="/protocol" className="text-ink-heading font-medium hover:underline">Protocol</Link>.
+                </p>
             </section>
 
             <section className="container mx-auto px-6 pb-24 max-w-3xl border-t border-default pt-12">
                 <h2 className="text-heading-h2 text-ink-heading mb-6">
-                    More for builders
+                    Where to go from here
                 </h2>
                 <ul className="space-y-3 text-base">
                     <li>
-                        <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>
-                        <span className="text-ink-body"> &mdash; the five builder roles: contract authors, clause authors, assembly authors, token issuance, humans and agents.</span>
+                        <Link href="/discover" data-testid="reference-runtime-link" className="text-ink-heading font-medium hover:underline">
+                            Try it live
+                        </Link>
+                        <span className="text-ink-body"> &mdash; browse the sellers on the registry and place a bonded order.</span>
                     </li>
                     <li>
-                        <Link href="/assemblies" className="text-ink-heading font-medium hover:underline">Assemblies</Link>
-                        <span className="text-ink-body"> &mdash; composition templates wiring clauses into multi-order processes; anchored on AssemblyRegistry.</span>
+                        <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>
+                        <span className="text-ink-body"> &mdash; compose your own deal shapes: clauses, assemblies, tokens, agents.</span>
                     </li>
                     <li>
                         <Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>
-                        <span className="text-ink-body"> &mdash; the validation architecture, the seventeen reference clauses, and the authoring checklist.</span>
+                        <span className="text-ink-body"> &mdash; the validation architecture, the reference clauses, and the authoring checklist.</span>
                     </li>
                     <li>
-                        <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">Composability</Link>
-                        <span className="text-ink-body"> &mdash; the coordinator pattern, the three extension tiers, and the kernel-vs-author boundary.</span>
+                        <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="text-ink-heading font-medium hover:underline">
+                            Source
+                        </a>
+                        <span className="text-ink-body"> &mdash; the protocol is open; read the code the deal ran on.</span>
                     </li>
                 </ul>
             </section>
