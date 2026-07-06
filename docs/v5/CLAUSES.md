@@ -92,7 +92,7 @@ on-chain validator) plus 1 agreement-only clause (`figaro-topology`).
 | `figaro-courier-process` | Courier per-role event enum (sovereign log) | Layer A (off-chain) |
 | `figaro-arbitration-kleros` | Decentralized off-chain arbitration via Kleros (subcourt + minimum jurors). Provider-specific; sister `figaro-arbitration-<provider>` clauses would cover future ODR providers | Layer A (off-chain) |
 | `figaro-applicable-law` | State / ADR / traditional-jurisdiction recourse layer (applicable law + forum + language). Provider-agnostic. Composes with arbitration clauses | Layer A (off-chain) |
-| `figaro-consent` | Cryptographic acceptance of an off-chain document (hash + version + title) — supports beta consent, ToS acceptance, governance vote receipts, etc. (`consent` article) | Layer A (off-chain) |
+| `figaro-consent` | Cryptographic acceptance of an off-chain document (hash + version + title) — supports ToS acceptance, governance vote receipts, and other document-acceptance ceremonies (`consent` article) | Layer A (off-chain) |
 
 `figaro-ghg` is a single disclosure clause whose accounting methodology is
 a **free-form `standard` string** — any methodology, existing or future ("GHG

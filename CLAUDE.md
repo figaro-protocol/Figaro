@@ -33,7 +33,7 @@ first (below); agents keep mislabeling designed surfaces as silt.
 
 **A bonded commitment is a digital contract:** its **consideration** = the **Nash
 equilibrium** from the bonds; its **general T&Cs** = the **clauses**; its **specific
-T&Cs** = the **consents** a designer attaches (`/consent`, also the beta-tester consent).
+T&Cs** = the **consents** a designer attaches.
 Consent is a first-class agreement layer, NOT boilerplate.
 
 **Agents keep mislabeling these as silt — they are DESIGNED IN:** agents are first-class
