@@ -1,6 +1,6 @@
 # Roles: TradeLens replacement
 
-One factotum per role-bound wallet. The `factotum` reference at `agents/factotum/` is the runner; this file shows the per-role *policy* — the `shouldExecute` rule for autonomous mode, or the HITL prompts the operator sees.
+One factotum per role-bound wallet. The `factotum` reference at `sdk/factotum/` is the runner; this file shows the per-role *policy* — the `shouldExecute` rule for autonomous mode, or the HITL prompts the operator sees.
 
 The proposer infers role from process state: same factotum binary, different role per process membership. Wallet identity is the only configuration distinction.
 
@@ -112,7 +112,7 @@ Smaller variants of the same patterns:
 
 ## Cross-cutting: the security floor
 
-Every autonomous policy in this assembly inherits the factotum's default refuse-all behavior unless `shouldExecute` is explicitly written. A fresh fork running `POLICY=autonomous` with no rule does nothing on chain — that's the design. See `agents/factotum/src/policy.ts`.
+Every autonomous policy in this assembly inherits the factotum's default refuse-all behavior unless `shouldExecute` is explicitly written. A fresh fork running `POLICY=autonomous` with no rule does nothing on chain — that's the design. See `sdk/factotum/src/policy.ts`.
 
 ## Identity and discoverability
 

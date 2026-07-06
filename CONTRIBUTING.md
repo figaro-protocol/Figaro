@@ -94,40 +94,40 @@ These rely on the canonical `figaro-kernel-discipline` skill at `.claude/skills/
 
 Subagents do not chain directly. The clause-author returns to the main session, which then dispatches the kernel-reviewer and clause-lockstep in turn — review the verification report each subagent produces before merging.
 
-### Reference participation agent — `agents/factotum/`
+### Reference participation agent — `sdk/factotum/`
 
 `@figaro/factotum` is a fork-and-modify reference for any agent — human-driven or autonomous, AI or rule-based — that wants to *act* on the protocol. It wires `@figaro/core/agent` to a wallet, role binding (inferred from process state), and a pluggable policy. HITL is the default; autonomous mode ships with a refuse-all policy as the security floor.
 
 ```bash
-cd agents/factotum
+cd sdk/factotum
 npm install
 cp .env.example .env
 # Edit .env with a fresh test key and addresses from scripts/deploy-local.sh
 npm run dev
 ```
 
-See `agents/factotum/README.md` for architecture, the policy contract, LLM integration patterns, and ERC-8004 / `did:web` discoverability. The package is the operational form of Figaro's actor-neutrality claim: humans and agents interact with the kernel through the same primitives.
+See `sdk/factotum/README.md` for architecture, the policy contract, LLM integration patterns, and ERC-8004 / `did:web` discoverability. The package is the operational form of Figaro's actor-neutrality claim: humans and agents interact with the kernel through the same primitives.
 
-### Agent SDK package — `agents/sdk/`
+### Agent SDK package — `agent-sdk/`
 
 `@figaro/agent-sdk` parses the canonical `.claude/agents/*.md` files at runtime and exposes the subagents as structured `AgentDefinition` objects (name, description, tools, model, systemPrompt). Use it when you want the same security-first prompts in a runtime that isn't Claude Code — the Anthropic SDK directly, the Claude Agent SDK, OpenAI tool calling, or your own loop.
 
-The `.md` files remain the single source of truth; this package is a reader, not a duplicator. Property tests in `agents/sdk/tests/` run against the real `.md` files and catch drift (e.g., if anyone hands `Write` access to the read-only kernel-reviewer).
+The `.md` files remain the single source of truth; this package is a reader, not a duplicator. Property tests in `agent-sdk/tests/` run against the real `.md` files and catch drift (e.g., if anyone hands `Write` access to the read-only kernel-reviewer).
 
 ```bash
-cd agents/sdk
+cd agent-sdk
 npm install
 npm test    # property tests against the canonical .md files
 ```
 
-See `agents/sdk/README.md` for the API reference and an Anthropic SDK integration with prompt caching.
+See `agent-sdk/README.md` for the API reference and an Anthropic SDK integration with prompt caching.
 
-### Worked examples — `agents/examples/`
+### Worked examples — `sdk/factotum/examples/`
 
 End-to-end walkthroughs of how the contributor agents and the factotum compose to build and operate a real assembly. Doc-only — every prompt is runnable verbatim against the current agent set; every factotum policy snippet is plug-and-play. Two scenarios:
 
-- `agents/examples/tradelens-replacement/` — multi-party container shipping
-- `agents/examples/spirit-air-replacement/` — passenger-airline with cascading-delay coordination
+- `sdk/factotum/examples/tradelens-replacement/` — multi-party container shipping
+- `sdk/factotum/examples/spirit-air-replacement/` — passenger-airline with cascading-delay coordination
 
 Both surface the same structural gap: there is no `figaro-assembly-author` subagent yet — the assembly DAG is still human work on the designer canvas. The `assembly.md` files in each scenario are the spec for that future agent.
 

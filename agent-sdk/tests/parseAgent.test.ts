@@ -11,8 +11,8 @@ import {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// agents/sdk/tests/ → repo root is three levels up
-const REPO_ROOT = path.resolve(__dirname, "../../..");
+// agent-sdk/tests/ → repo root is three levels up
+const REPO_ROOT = path.resolve(__dirname, "../..");
 
 describe("parseAgent (unit)", () => {
   it("parses frontmatter and body correctly", () => {

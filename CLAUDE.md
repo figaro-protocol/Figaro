@@ -333,7 +333,9 @@ A clause's spec ships in two lockstep surfaces: **Layer A** (TypeScript, `@figar
 
 ### Agent SDK
 
-`@figaro/core` — TypeScript SDK for reading, analyzing, and proposing Figaro transactions. Single dependency: `viem ^2.0.0`. ESM, four subpath exports: `@figaro/core` (root: ABIs, events, state reconstruction, commitment/bond utilities, merkle airdrop builder), `@figaro/core/agent` (HITL action queue + autonomous tx + did:web identity), `@figaro/core/extensions` (clause-agnostic helpers: clause-ID derivation, attestation-event filtering, geo math), `@figaro/core/clauses` (the lockstep source-of-truth for clause spec + validation + content encoders). Full entry-point map + build/test commands → `sdk/README.md`.
+`@figaro/core` — TypeScript SDK for reading, analyzing, and proposing Figaro transactions. Single dependency: `viem ^2.0.0`. ESM; four subpath exports (root, `/agent`, `/extensions`, `/clauses` — the lockstep clause source-of-truth). Full entry-point map + build/test commands → `sdk/README.md`.
+
+**"Agent" = two worlds; pin the referent:** protocol PARTICIPANT (`@figaro/core/agent`; runnable reference `sdk/factotum/`) vs repo CONTRIBUTOR (`.claude/agents/`, packaged by `agent-sdk/` — not the protocol SDK). Full split → `docs/v5/AI_AGENT_COORDINATION.md`.
 
 ### Local Development
 

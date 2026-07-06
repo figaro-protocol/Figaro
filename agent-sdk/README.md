@@ -154,14 +154,14 @@ The agent expects the *Claude Code* tool semantics (Read returns file contents w
 If anyone edits the `.md` files in a way that breaks the contract — e.g., handing `Write` access to the kernel-reviewer — these tests fail. They are the lockstep verifier *for the agent definitions themselves*.
 
 ```bash
-cd agents/sdk && npm test
+cd agent-sdk && npm test
 ```
 
 ---
 
 ## See also
 
-- `agents/examples/` — worked scenarios showing verbatim runnable prompts for the clause-author against real assembly designs.
+- `sdk/factotum/examples/` — worked scenarios showing verbatim runnable prompts for the clause-author against real assembly designs.
 
 ## What this package is not
 

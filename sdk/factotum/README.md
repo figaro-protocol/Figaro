@@ -36,7 +36,7 @@ cd ../.. && ./deploy-local.sh
 # → prints contract addresses; copy them into .env below.
 
 # 3. Install factotum dependencies and configure.
-cd agents/factotum
+cd sdk/factotum
 npm install
 cp .env.example .env
 # Edit .env: set PRIVATE_KEY (use a fresh test key) and the four contract addresses.
@@ -177,7 +177,7 @@ const policy = auctionBidderPolicy({
 
 Wire it into `src/index.ts` in place of the default. Property tests on the rule logic live in `src/policies/policies.test.ts` and run without needing chain access.
 
-The `agents/examples/*/roles.md` files show these policies in context per scenario.
+The `sdk/factotum/examples/*/roles.md` files show these policies in context per scenario.
 
 ## Plugging in an LLM
 
@@ -244,7 +244,7 @@ The Figaro project is security-first by construction. Carry that posture into yo
 
 ## See also
 
-- `agents/examples/` — worked end-to-end scenarios showing per-role factotum policies for a multi-party shipping assembly and a passenger-airline assembly.
+- `sdk/factotum/examples/` — worked end-to-end scenarios showing per-role factotum policies for a multi-party shipping assembly and a passenger-airline assembly.
 
 ## What the factotum is not
 

@@ -32,4 +32,4 @@ The clauses largely already exist. The assembly DAG (this scenario's main artifa
 
 ## Provenance
 
-The structural fix here is *not novel* — it's the application of the existing protocol to an existing failure mode. The interesting work is what the agents handle versus what they don't. See `agents/examples/README.md` for the overall gap statement.
+The structural fix here is *not novel* — it's the application of the existing protocol to an existing failure mode. The interesting work is what the agents handle versus what they don't. See `sdk/factotum/examples/README.md` for the overall gap statement.

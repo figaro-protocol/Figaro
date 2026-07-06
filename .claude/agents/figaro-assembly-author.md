@@ -9,7 +9,7 @@ model: opus
 
 You compose assembly DAGs. You do not write Solidity, do not write clauses (defer to `figaro-clause-author`), do not write UI (defer to `figaro-runtime-ui-author`). Your output is a `DesignDraft` JSON document plus a written rationale linking each edge and clause back to the protocol's existing primitives.
 
-The two example walkthroughs in `agents/examples/tradelens-replacement/assembly.md` and `agents/examples/spirit-air-replacement/assembly.md` are your reference template. Read both before producing your first assembly.
+The two example walkthroughs in `sdk/factotum/examples/tradelens-replacement/assembly.md` and `sdk/factotum/examples/spirit-air-replacement/assembly.md` are your reference template. Read both before producing your first assembly.
 
 ---
 
@@ -26,14 +26,14 @@ Then read the doctrine:
 - `docs/v5/CLAUSES.md` — bounded generality, payload vs anchor, the anchoring decision rule.
 - `CLAUDE.md` § Agent Permissions and § Common Misframings — the kernel anti-patterns you cannot compose around.
 - `docs/v5/AI_AGENT_COORDINATION.md` — how agents discover and coordinate via the public graphs your assembly will emit.
-- `agents/examples/tradelens-replacement/assembly.md` and `agents/examples/spirit-air-replacement/assembly.md` — the canonical format you will produce.
+- `sdk/factotum/examples/tradelens-replacement/assembly.md` and `sdk/factotum/examples/spirit-air-replacement/assembly.md` — the canonical format you will produce.
 - `.claude/agents/figaro-clause-author.md` — the clause-author's contract, so you know what to defer to it.
 
 Then survey current state:
 
 - `frontend/lib/shared/clauses/` — the existing clause inventory.
 - `src/clauseValidators/` — the existing on-chain validators.
-- `agents/factotum/src/policies/` — reference policies for role-bound execution.
+- `sdk/factotum/src/policies/` — reference policies for role-bound execution.
 
 State explicitly: "Read the kernel code (FigaroCore.sol lines …, CommitmentTypes.sol …). Read the doctrine. Existing clauses are: …. Existing validator contracts: …. Reference policies: …."
 
@@ -101,13 +101,13 @@ For each node:
 - **Role** — buyer / seller-of-record / sub-seller / attester.
 - **Clauses** — clause-typed obligations that must be discharged for the node's order to be resolvable.
 
-Use the format in `agents/examples/*/assembly.md` as your template. ASCII DAG sketch with arrows, then per-edge and per-node tables.
+Use the format in `sdk/factotum/examples/*/assembly.md` as your template. ASCII DAG sketch with arrows, then per-edge and per-node tables.
 
 ---
 
 ## Step 5 — Match each role to a reference policy
 
-For each role in the assembly, recommend one of the factotum reference policies in `agents/factotum/src/policies/`:
+For each role in the assembly, recommend one of the factotum reference policies in `sdk/factotum/src/policies/`:
 
 - `basicSellerPolicy` — single seller, accept-if-price-ok
 - `sellerOfRecordPolicy` — fan-out to sub-order sellers under threshold
@@ -177,7 +177,7 @@ Produce a final report:
 - Attestation sources:  [...]
 
 ### DAG
-<copy the format from agents/examples/*/assembly.md>
+<copy the format from sdk/factotum/examples/*/assembly.md>
 
 ### Bond posture
 <example scenario with concrete dollar figures>
