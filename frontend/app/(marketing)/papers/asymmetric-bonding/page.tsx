@@ -385,7 +385,7 @@ export default function AsymmetricBondingPaper() {
 
             <PaperSection title="Acknowledgments">
                 <p className="text-sm text-ink-muted">
-                    I thank the Solidity team for the Safe Remote Purchase pattern, Fabrizio Romano Genovese for his contributions to Figaro, and the broader Ethereum community for the body of work in mechanism design, coordination economics, and applied cryptographic settlement that this paper builds on.
+                    I thank the Solidity team for the Safe Remote Purchase pattern, Fabrizio Romano Genovese for his contributions to Figaro, Vlad Zamfir for early conversations on consensus, and the broader Ethereum community for the body of work in mechanism design, coordination economics, and applied cryptographic settlement that this paper builds on.
                 </p>
             </PaperSection>
         </PaperLayout>
