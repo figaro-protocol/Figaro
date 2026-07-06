@@ -38,6 +38,12 @@ export interface RegisteredClauseEvent {
     registrar: `0x${string}`;
     blockNumber: bigint;
     transactionHash: `0x${string}`;
+    /** True when the registrar reclaimed the registration deposit (K4:
+     *  surfacing derives from the live stake — withdraw = de-surface for
+     *  NEW compositions). The binding is permanent: committed agreements
+     *  keep resolving the clause, so spec-loading NEVER filters on this;
+     *  only offering surfaces (drawer, inventory) do. */
+    stakeWithdrawn: boolean;
 }
 
 /** The subset of a decoded `ClauseRegistered` log both readers consume. */
@@ -48,8 +54,9 @@ interface ClauseRegisteredLog {
 }
 
 /** Map one decoded `ClauseRegistered` log to a `RegisteredClauseEvent`. Shared by
- *  both readers so the row shape can't drift between them. */
-function mapClauseRegisteredLog(log: ClauseRegisteredLog): RegisteredClauseEvent {
+ *  both readers so the row shape can't drift between them. `withdrawn` is the
+ *  fold of `DepositWithdrawn` events (by idHash). */
+function mapClauseRegisteredLog(log: ClauseRegisteredLog, withdrawn: Set<string>): RegisteredClauseEvent {
     const args = (log.args ?? {}) as Partial<{
         clauseId: string;
         version: bigint | number;
@@ -58,8 +65,9 @@ function mapClauseRegisteredLog(log: ClauseRegisteredLog): RegisteredClauseEvent
         registrar: `0x${string}`;
     }>;
     const clauseName = args.clauseId ?? "";
+    const idHash = clauseIdHash(clauseName, Number(args.version ?? 0));
     return {
-        clauseIdHash: clauseIdHash(clauseName, Number(args.version ?? 0)),
+        clauseIdHash: idHash,
         clauseName,
         version: Number(args.version ?? 0),
         contentHash: (args.contentHash ?? "0x") as `0x${string}`,
@@ -67,7 +75,26 @@ function mapClauseRegisteredLog(log: ClauseRegisteredLog): RegisteredClauseEvent
         registrar: (args.registrar ?? "0x") as `0x${string}`,
         blockNumber: log.blockNumber ?? 0n,
         transactionHash: (log.transactionHash ?? "0x") as `0x${string}`,
+        stakeWithdrawn: withdrawn.has(idHash.toLowerCase()),
     };
+}
+
+/** Read all `DepositWithdrawn` events and fold them into the set of withdrawn
+ *  clause keys (idHash, lowercased). Shared by both readers. */
+async function fetchWithdrawnClauseKeys(
+    client: { getContractEvents: typeof publicClient.getContractEvents },
+    addr: `0x${string}`,
+): Promise<Set<string>> {
+    const logs = await client.getContractEvents({
+        address: addr,
+        abi: CLAUSE_REGISTRY_ABI,
+        eventName: "DepositWithdrawn",
+        fromBlock: 0n,
+        toBlock: "latest",
+    });
+    return new Set(
+        logs.map((l) => ((l.args as { clauseId?: string }).clauseId ?? "").toLowerCase()),
+    );
 }
 
 /** Read all `ClauseRegistered` events filtered by registrar wallet. Sorts
@@ -87,18 +114,20 @@ export function useRegisteredClausesByWallet(registrar: `0x${string}` | undefine
         let cancelled = false;
         setIsLoading(true);
 
-        client
-            .getContractEvents({
+        Promise.all([
+            client.getContractEvents({
                 address: addr,
                 abi: CLAUSE_REGISTRY_ABI,
                 eventName: "ClauseRegistered",
                 args: { registrar },
                 fromBlock: 0n,
                 toBlock: "latest",
-            })
-            .then((logs) => {
+            }),
+            fetchWithdrawnClauseKeys(client, addr),
+        ])
+            .then(([logs, withdrawn]) => {
                 if (cancelled) return;
-                const items = logs.map(mapClauseRegisteredLog);
+                const items = logs.map((log) => mapClauseRegisteredLog(log, withdrawn));
                 items.sort((a, b) => Number(b.blockNumber - a.blockNumber));
                 setData(items);
                 setIsLoading(false);
@@ -145,17 +174,19 @@ export function useAllRegisteredClauses() {
         setIsLoading(true);
         setFailed(false);
 
-        publicClient
-            .getContractEvents({
+        Promise.all([
+            publicClient.getContractEvents({
                 address: addr,
                 abi: CLAUSE_REGISTRY_ABI,
                 eventName: "ClauseRegistered",
                 fromBlock: 0n,
                 toBlock: "latest",
-            })
-            .then((logs) => {
+            }),
+            fetchWithdrawnClauseKeys(publicClient, addr),
+        ])
+            .then(([logs, withdrawn]) => {
                 if (cancelled) return;
-                const items = logs.map(mapClauseRegisteredLog);
+                const items = logs.map((log) => mapClauseRegisteredLog(log, withdrawn));
                 items.sort((a, b) => Number(b.blockNumber - a.blockNumber));
                 setData(items);
                 setIsLoading(false);

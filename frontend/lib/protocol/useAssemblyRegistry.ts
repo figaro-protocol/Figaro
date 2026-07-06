@@ -55,6 +55,11 @@ interface PublishedAssembly {
     contentURI: string;
     blockNumber: bigint;
     transactionHash: `0x${string}`;
+    /** True when the author reclaimed the registration deposit (K4:
+     *  surfacing derives from the live stake — withdraw = de-surface).
+     *  The binding itself is permanent; committed processes are
+     *  unaffected. */
+    stakeWithdrawn: boolean;
 }
 
 /** Map an `AssemblyRegistry` revert into a human-readable Error. Used by
@@ -94,6 +99,13 @@ export function translatePublishRevert(err: unknown, attemptedSlug: string): Err
  * compositionHash shouldn't occur, but if they do (e.g. a stale fork
  * chain), the most-recent block wins.
  *
+ * SURFACING DERIVES FROM THE LIVE STAKE (K4): `DepositWithdrawn` events
+ * fold in as `stakeWithdrawn`. The network-wide read (author === undefined
+ * — every discovery/inventory/checkout surface) DROPS withdrawn
+ * assemblies: withdraw = de-surface. The author-scoped read keeps them,
+ * flagged — an author must still see (and reason about) their own
+ * withdrawn bindings.
+ *
  * No caching, no auto-refresh. To pick up a newly published assembly
  * after mount, call `refetch`.
  */
@@ -116,17 +128,28 @@ export function usePublishedAssemblies(author: `0x${string}` | undefined) {
         // which mounts no wallet provider. App-tier callers see no
         // behavioural change: the standalone client uses the same chain
         // config wagmi's provider is built from.
-        publicClient
-            .getContractEvents({
+        Promise.all([
+            publicClient.getContractEvents({
                 address: registry,
                 abi: ASSEMBLY_REGISTRY_ABI,
                 eventName: "AssemblyRegistered",
                 args: author ? { author } : undefined,
                 fromBlock: 0n,
                 toBlock: "latest",
-            })
-            .then((logs) => {
+            }),
+            publicClient.getContractEvents({
+                address: registry,
+                abi: ASSEMBLY_REGISTRY_ABI,
+                eventName: "DepositWithdrawn",
+                fromBlock: 0n,
+                toBlock: "latest",
+            }),
+        ])
+            .then(([logs, withdrawnLogs]) => {
                 if (cancelled) return;
+                const withdrawn = new Set(
+                    withdrawnLogs.map((l) => (l.args.compositionHash as string).toLowerCase()),
+                );
                 const items: PublishedAssembly[] = logs.map((log) => ({
                     slug: deriveAssemblySlug(log.args.compositionHash as `0x${string}`),
                     author: log.args.author as `0x${string}`,
@@ -134,9 +157,13 @@ export function usePublishedAssemblies(author: `0x${string}` | undefined) {
                     contentURI: log.args.contentURI ?? "",
                     blockNumber: log.blockNumber ?? 0n,
                     transactionHash: log.transactionHash as `0x${string}`,
+                    stakeWithdrawn: withdrawn.has((log.args.compositionHash as string).toLowerCase()),
                 }));
                 items.sort((a, b) => Number(b.blockNumber - a.blockNumber));
-                setData(items);
+                // Withdraw = de-surface: the network-wide read powers every
+                // surfacing path, so it drops withdrawn stakes; the author's
+                // own read keeps them, flagged.
+                setData(author ? items : items.filter((i) => !i.stakeWithdrawn));
                 setIsLoading(false);
             })
             .catch((err) => {

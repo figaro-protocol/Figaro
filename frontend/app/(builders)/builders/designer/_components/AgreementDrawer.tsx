@@ -351,7 +351,15 @@ function ClauseRegistryPanel({
     // The clause set is network state — read live from `ClauseRegistry.ClauseRegistered`,
     // each spec fetched from its on-chain `contentURI` (chain → IPFS). `clauseSpecsVersion`
     // bumps as specs resolve so the grouping recomputes against the warm cache.
-    const { data: registeredClauses } = useAllRegisteredClauses();
+    // Surfacing derives from the live stake (K4): the drawer OFFERS clauses
+    // for new compositions, so withdrawn-stake clauses drop here — while
+    // committed agreements elsewhere keep resolving them (spec-loading is
+    // unfiltered by design).
+    const { data: allRegisteredClauses } = useAllRegisteredClauses();
+    const registeredClauses = useMemo(
+        () => allRegisteredClauses?.filter((e) => !e.stakeWithdrawn) ?? null,
+        [allRegisteredClauses],
+    );
     const { version: clauseSpecsVersion } = useClauseSpecs();
 
     // THE single clause classification, shared with the /clauses inventory.

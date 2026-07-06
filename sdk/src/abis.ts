@@ -106,9 +106,13 @@ export const EV_ATTESTATION = parseAbiItem(
 
 export const CLAUSE_REGISTRY_ABI = parseAbi([
     "function registered(bytes32 clauseId) view returns (bool)",
-    "function registerClause(string clauseId, uint64 version, bytes32 contentHash, string contentURI) external",
+    "function registerClause(string clauseId, uint64 version, bytes32 contentHash, string contentURI) external payable",
+    "function withdrawDeposit(bytes32 idHash) external",
+    "function registrationDeposit() view returns (uint256)",
+    "function depositOf(bytes32 idHash) view returns (address registrar, bool withdrawn)",
     "function setMechanismClause(bytes32 clauseId) external",
     "event ClauseRegistered(string clauseId, uint64 version, bytes32 contentHash, string contentURI, address indexed registrar)",
+    "event DepositWithdrawn(bytes32 indexed clauseId, address indexed registrar, uint256 amount)",
     "event MechanismClauseSet(address indexed mechanism, bytes32 indexed clauseId)",
 ]);
 
@@ -132,7 +136,6 @@ export const SELLER_REGISTRY_ABI = parseAbi([
     "function updateProfile(string metadataURI) external",
     "function withdraw() external",
     "function registrationDeposit() view returns (uint256)",
-    "function depositLockPeriod() view returns (uint256)",
     "event SellerRegistered(address indexed seller, string metadataURI)",
     "event SellerProfileUpdated(address indexed seller, string metadataURI)",
     "event SellerWithdrawn(address indexed seller, uint256 deposit)",
@@ -145,7 +148,6 @@ export const ASSEMBLY_REGISTRY_ABI = parseAbi([
     "function withdrawDeposit(bytes32 compositionHash) external",
     "function bindings(bytes32 compositionHash) view returns (address author, uint64 registeredAt, bool depositWithdrawn, string contentURI)",
     "function registrationDeposit() view returns (uint256)",
-    "function depositLockPeriod() view returns (uint256)",
     "event AssemblyRegistered(bytes32 indexed compositionHash, address indexed author, string contentURI)",
     "event DepositWithdrawn(bytes32 indexed compositionHash, address indexed author, uint256 amount)",
     "error EmptyContentURI()",
@@ -154,7 +156,6 @@ export const ASSEMBLY_REGISTRY_ABI = parseAbi([
     "error WrongDeposit(uint256 provided, uint256 required)",
     "error NotRegistered()",
     "error NotAuthor(address caller, address author)",
-    "error DepositLocked(uint64 unlocksAt)",
     "error AlreadyWithdrawn()",
     "error TransferFailed()",
 ]);

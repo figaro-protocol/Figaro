@@ -47,8 +47,9 @@ export const LOCAL_ANVIL = defineChain({
 });
 
 const CLAUSE_REGISTRY_ABI = parseAbi([
-    'function registerClause(string clauseId, uint64 version, bytes32 contentHash, string contentURI) external',
+    'function registerClause(string clauseId, uint64 version, bytes32 contentHash, string contentURI) external payable',
     'function registered(bytes32) view returns (bool)',
+    'function registrationDeposit() view returns (uint256)',
 ]);
 
 /** Sorted-keys JSON at every depth — mirrors lib/shared/canonicalJson.ts. */
@@ -129,12 +130,19 @@ export async function populateClauses({ publicClient, walletClient, account, reg
         const contentURI = await pinJSON(ipfsApiUrl, canonical);
         const contentHash = keccak256(toHex(canonical));
 
+        // Registering = staked intent (K4): every registration posts the
+        // registry's deposit, reclaimable via withdrawDeposit (which
+        // de-surfaces the clause).
+        const deposit = await publicClient.readContract({
+            address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registrationDeposit',
+        });
         const { request } = await publicClient.simulateContract({
             account: account.address,
             address: registry,
             abi: CLAUSE_REGISTRY_ABI,
             functionName: 'registerClause',
             args: [clauseIdStr, version, contentHash, contentURI],
+            value: deposit,
         });
         const hash = await walletClient.writeContract(request);
         await publicClient.waitForTransactionReceipt({ hash });

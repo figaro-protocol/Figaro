@@ -19,7 +19,10 @@ import { ClausesByArticle } from "@/components/core/ClausesByArticle";
  * The page that embeds it stays a server component.
  */
 export function ClauseInventory() {
-    const { data } = useAllRegisteredClauses();
+    // Surfacing derives from the live stake (K4): the inventory offers the
+    // clause set to prospective composers, so withdrawn-stake clauses drop.
+    const { data: allData } = useAllRegisteredClauses();
+    const data = useMemo(() => allData?.filter((e) => !e.stakeWithdrawn) ?? null, [allData]);
     const { loadedCount, version } = useClauseSpecs();
 
     const inventory = useMemo(() => {

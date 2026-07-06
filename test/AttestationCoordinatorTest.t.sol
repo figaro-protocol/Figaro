@@ -62,7 +62,7 @@ contract AttestationCoordinatorTest is Test {
         }
 
         // ── ClauseRegistry: register all local-commerce clauses ────────
-        clauses = new ClauseRegistry();
+        clauses = new ClauseRegistry(0); // zero-deposit deploy keeps this suite focused on attestation
         bytes32 testContentHash = keccak256("spec-json");
         string memory testUri = "ipfs://figaro-test-uri";
         clauses.registerClause(LIFECYCLE_CLAUSE_ID, 1, testContentHash, testUri);

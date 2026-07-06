@@ -13,10 +13,9 @@ contract AssemblyRegistryTest is Test {
     bytes32 constant COMPOSITION_HASH = keccak256("canonical-composition-subset");
     string constant CONTENT_URI = "ipfs://QmCoffeeShop";
     uint256 constant DEPOSIT = 0.001 ether;
-    uint256 constant LOCK_PERIOD = 1095 days; // 3 years
 
     function setUp() public {
-        registry = new AssemblyRegistry(DEPOSIT, LOCK_PERIOD);
+        registry = new AssemblyRegistry(DEPOSIT);
         vm.deal(alice, 10 ether);
         vm.deal(bob, 10 ether);
     }
@@ -129,9 +128,6 @@ contract AssemblyRegistryTest is Test {
         vm.prank(alice);
         registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
 
-        // Fast-forward past the lock.
-        vm.warp(block.timestamp + LOCK_PERIOD);
-
         uint256 balanceBefore = alice.balance;
         vm.prank(alice);
         registry.withdrawDeposit(COMPOSITION_HASH);
@@ -154,7 +150,6 @@ contract AssemblyRegistryTest is Test {
     function test_withdrawDeposit_emitsEvent() public {
         vm.prank(alice);
         registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
-        vm.warp(block.timestamp + LOCK_PERIOD);
 
         vm.expectEmit(true, true, false, true, address(registry));
         emit AssemblyRegistry.DepositWithdrawn(COMPOSITION_HASH, alice, DEPOSIT);
@@ -163,23 +158,20 @@ contract AssemblyRegistryTest is Test {
         registry.withdrawDeposit(COMPOSITION_HASH);
     }
 
-    function test_withdrawDeposit_revertsBeforeLockElapses() public {
+    function test_withdrawDeposit_immediately() public {
+        // No time lock (K4): the stake is reclaimable at any time. The
+        // round-trip is priced off-chain — a withdrawn assembly
+        // de-surfaces from discovery (readers filter on the live stake).
         vm.prank(alice);
         registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
 
-        uint64 unlocksAt = uint64(block.timestamp) + uint64(LOCK_PERIOD);
-
-        // One second before unlock — still locked.
-        vm.warp(unlocksAt - 1);
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(AssemblyRegistry.DepositLocked.selector, unlocksAt));
         registry.withdrawDeposit(COMPOSITION_HASH);
     }
 
     function test_withdrawDeposit_revertsOnDoubleWithdraw() public {
         vm.prank(alice);
         registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
-        vm.warp(block.timestamp + LOCK_PERIOD);
 
         vm.prank(alice);
         registry.withdrawDeposit(COMPOSITION_HASH);
@@ -192,7 +184,6 @@ contract AssemblyRegistryTest is Test {
     function test_withdrawDeposit_revertsByNonAuthor() public {
         vm.prank(alice);
         registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
-        vm.warp(block.timestamp + LOCK_PERIOD);
 
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(AssemblyRegistry.NotAuthor.selector, bob, alice));
@@ -210,7 +201,6 @@ contract AssemblyRegistryTest is Test {
         // deposit does NOT release the binding for re-registration.
         vm.prank(alice);
         registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
-        vm.warp(block.timestamp + LOCK_PERIOD);
 
         vm.prank(alice);
         registry.withdrawDeposit(COMPOSITION_HASH);

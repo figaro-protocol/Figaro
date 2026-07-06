@@ -39,14 +39,25 @@ pragma solidity 0.8.26;
 ///         because that claim would be unenforceable against off-chain
 ///         content.
 ///
-///         SPAM PROTECTION: registration requires an ETH deposit
-///         (`registrationDeposit`, immutable at deploy). After the
-///         lock period elapses, the author can call `withdrawDeposit`
-///         to reclaim their ETH. The composition binding is permanent —
-///         it is NOT cleared on withdraw, because buyers and sellers
-///         that reference the assembly rely on its content staying
-///         stable. The deposit is purely an upfront Sybil-resistance
-///         tax with a refund path, not a fee.
+///         STAKED INTENT: registration requires an ETH deposit
+///         (`registrationDeposit`, immutable at deploy) — registering IS
+///         declaring intent to generate transactions. Surfacing derives
+///         from the live stake: readers hide assemblies whose deposit has
+///         been withdrawn (withdraw = de-surface), so polluting the
+///         registry costs deposit × time-surfaced. There is no time lock.
+///         The composition binding is permanent — it is NOT cleared on
+///         withdraw, because buyers and sellers that reference the
+///         assembly rely on its content staying stable; only the stake
+///         and the surfacing move.
+///
+///         WITHDRAW GATE (commits == resolves): an author should not
+///         withdraw while processes composed from the assembly are in
+///         flight. The usage count lives in the indexer — the same count
+///         the RPGF program pays on — so the gate is enforced at the
+///         protocol surface (SDK/frontend refuse while commits > resolves)
+///         and hardens on-chain when the RPGF proof apparatus returns.
+///         The contract itself cannot hold the count: the kernel is frozen
+///         and carries no composition provenance.
 ///
 ///         Authorship is first-write-wins on the compositionHash: whoever
 ///         anchors a composition first is its author-of-record. Editorial
@@ -65,27 +76,13 @@ pragma solidity 0.8.26;
 contract AssemblyRegistry {
     /// @notice Deposit amount in wei required at registration. Immutable
     ///         at deploy.
-    /// @dev Sybil-resistance mechanism, not a fee. The protocol does not
-    ///      redistribute it; no party has authority to seize it. After
-    ///      `depositLockPeriod` elapses, the author can withdraw the
-    ///      exact same amount via `withdrawDeposit`.
+    /// @dev Sybil-resistance stake, not a fee. The protocol does not
+    ///      redistribute it; no party has authority to seize it. The
+    ///      author reclaims the exact amount via `withdrawDeposit` —
+    ///      which de-surfaces the assembly (readers filter on the live
+    ///      stake), so spam costs deposit × time-surfaced plus an
+    ///      irrevocably burned composition binding. No time lock.
     uint256 public immutable registrationDeposit;
-
-    /// @notice Minimum lock duration before deposit can be withdrawn (seconds).
-    /// @dev Together with `registrationDeposit`, this is the Sybil-
-    ///      resistance knob. Without the lock, an attacker could
-    ///      register, withdraw, recycle the same ETH across many
-    ///      identities — "1 ETH = N assemblies over time" — at the
-    ///      cost of N transactions. The lock makes recycling expensive
-    ///      in TIME as well as capital. Permanence of the composition
-    ///      binding means a spam-published composition is permanently
-    ///      burned (cannot be re-registered), so each spam costs both
-    ///      deposit + lock + an irrevocable binding.
-    ///
-    ///      Deploy-time choice. Devnet uses 3 years (1,095 days).
-    ///      Mainnet duration should be set with explicit reasoning
-    ///      recorded in deployment notes.
-    uint256 public immutable depositLockPeriod;
 
     struct AssemblyBinding {
         address author;
@@ -126,17 +123,14 @@ contract AssemblyRegistry {
     error WrongDeposit(uint256 provided, uint256 required);
     error NotRegistered();
     error NotAuthor(address caller, address author);
-    error DepositLocked(uint64 unlocksAt);
     error AlreadyWithdrawn();
     error TransferFailed();
 
     // ── Constructor ─────────────────────────────────────────────────────
 
     /// @param _registrationDeposit  Required deposit per registration (wei).
-    /// @param _depositLockPeriod    Lock duration in seconds.
-    constructor(uint256 _registrationDeposit, uint256 _depositLockPeriod) {
+    constructor(uint256 _registrationDeposit) {
         registrationDeposit = _registrationDeposit;
-        depositLockPeriod = _depositLockPeriod;
     }
 
     // ── Assembly registration (permissionless, first-write-wins) ────────
@@ -167,19 +161,19 @@ contract AssemblyRegistry {
 
     // ── Deposit withdrawal (author-only, post-lock) ─────────────────────
 
-    /// @notice Reclaim the registration deposit after the lock elapses.
-    ///         The composition binding is NOT cleared — only the deposit
-    ///         moves. Callable only by the original author, and only
-    ///         once per binding.
+    /// @notice Reclaim the registration deposit. The composition binding
+    ///         is NOT cleared — only the deposit moves, and readers
+    ///         de-surface the assembly for new orders. Callable only by
+    ///         the original author, and only once per binding.
+    /// @dev The commits == resolves gate is protocol-surface (indexer
+    ///      count; see the contract notice) — the chain carries no
+    ///      composition provenance to enforce it here.
     /// @param compositionHash The composition whose deposit to withdraw.
     function withdrawDeposit(bytes32 compositionHash) external {
         AssemblyBinding storage binding = bindings[compositionHash];
         if (binding.registeredAt == 0) revert NotRegistered();
         if (msg.sender != binding.author) revert NotAuthor(msg.sender, binding.author);
         if (binding.depositWithdrawn) revert AlreadyWithdrawn();
-
-        uint64 unlocksAt = binding.registeredAt + uint64(depositLockPeriod);
-        if (block.timestamp < unlocksAt) revert DepositLocked(unlocksAt);
 
         // Checks-effects-interactions: flag THEN transfer.
         binding.depositWithdrawn = true;

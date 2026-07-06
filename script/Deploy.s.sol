@@ -46,7 +46,10 @@ contract Deploy is Script {
         console.log("AttestationCoordinator deployed at:", address(attestation));
 
         // ── ClauseRegistry ──────────────────────────────────────────
-        ClauseRegistry clauses = new ClauseRegistry();
+        // Deposit = staked intent (K4): registering costs 0.001 ETH,
+        // reclaimable via withdrawDeposit — which de-surfaces the clause.
+        // No time lock; pollution is priced by deposit × time-surfaced.
+        ClauseRegistry clauses = new ClauseRegistry(0.001 ether);
         console.log("ClauseRegistry deployed at:", address(clauses));
 
         // Clauses are NOT registered here. They are pinned to IPFS + anchored
@@ -71,31 +74,26 @@ contract Deploy is Script {
         // IPFS); per-clause validation runs at the per-clause layer
         // at attestation time.
         //
-        // Spam protection via reclaimable deposit + lock — same pattern
-        // SellerRegistry uses but adapted: withdraw returns the ETH
-        // after the lock period, but the composition binding stays
+        // Spam protection via reclaimable deposit — same pattern
+        // SellerRegistry uses but adapted: withdraw returns the ETH and
+        // de-surfaces the assembly, but the composition binding stays
         // permanently because buyers and sellers rely on content stability.
+        // No time lock (K4): pollution costs deposit × time-surfaced.
         //
-        // Devnet values:
-        //   - 0.001 ETH deposit so test wallets can register without
-        //     faucet drama;
-        //   - 3 years (1,095 days) lock to make recycling deposits
-        //     across spam registrations expensive in time as well as
-        //     capital.
-        // Mainnet picks its own values via DeployMainnet.s.sol — record
-        // the reasoning there.
-        AssemblyRegistry assemblies = new AssemblyRegistry(0.001 ether, 1095 days);
+        // Devnet value: 0.001 ETH deposit so test wallets can register
+        // without faucet drama. Mainnet picks its own value via
+        // DeployMainnet.s.sol — record the reasoning there.
+        AssemblyRegistry assemblies = new AssemblyRegistry(0.001 ether);
         console.log("AssemblyRegistry deployed at:", address(assemblies));
 
         // ── SellerRegistry ────────────────────────────────────────
-        // Deposit + lock chosen for devnet ergonomics:
-        //   - 0.001 ETH so test wallets can register without faucet drama;
-        //   - 365 days so the lock is non-trivial enough that local devs
-        //     experience the "switching role/metadata is irreversible for
-        //     a year" UX before real deploys.
-        // Mainnet picks its own values via DeployMainnet.s.sol — record
+        // Deposit chosen for devnet ergonomics: 0.001 ETH so test wallets
+        // can register without faucet drama. No time lock (K4): withdraw
+        // de-surfaces the seller, so recycling a deposit across identities
+        // costs surfacing time, not calendar time.
+        // Mainnet picks its own value via DeployMainnet.s.sol — record
         // the reasoning there.
-        SellerRegistry sellers = new SellerRegistry(0.001 ether, 365 days);
+        SellerRegistry sellers = new SellerRegistry(0.001 ether);
         console.log("SellerRegistry deployed at:", address(sellers));
 
         // ── FIG Token ───────────────────────────────────────────────

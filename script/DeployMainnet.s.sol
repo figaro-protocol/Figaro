@@ -80,7 +80,9 @@ contract DeployMainnet is Script {
         _attestation = address(attestation);
         console.log("AttestationCoordinator: ", _attestation);
 
-        ClauseRegistry clauses = new ClauseRegistry();
+        // PLACEHOLDER deposit — review before mainnet broadcast (the
+        // SellerRegistry reasoning below applies to clause stakes too).
+        ClauseRegistry clauses = new ClauseRegistry(0.001 ether);
         _clauses = address(clauses);
         console.log("ClauseRegistry:         ", _clauses);
 
@@ -93,23 +95,17 @@ contract DeployMainnet is Script {
         // validate content shape. Run populate-clauses.mjs after broadcast.
 
         // ── SellerRegistry ────────────────────────────────────────
-        // PLACEHOLDER VALUES — DO NOT SHIP TO MAINNET WITHOUT REVIEW.
-        // The deposit + lock pair is the Sybil-resistance knob (see
-        // SellerRegistry NatSpec on `depositLockPeriod`). Picking
-        // mainnet values needs explicit reasoning recorded here:
+        // PLACEHOLDER VALUE — DO NOT SHIP TO MAINNET WITHOUT REVIEW.
+        // The deposit is the Sybil-resistance stake (K4: no time lock —
+        // withdraw de-surfaces, so pollution costs deposit × time-surfaced).
+        // Picking the mainnet value needs explicit reasoning recorded here:
         //   - registrationDeposit: $X target in ETH at deploy-time price?
         //     Bonded participation cost is the floor of attacker
         //     discouragement. Too low → cheap Sybil farms; too high →
         //     locks out small sellers.
-        //   - depositLockPeriod: how long does an seller commit to a
-        //     given role/metadata before they can withdraw + reassert?
-        //     Every role/metadata change goes through withdraw +
-        //     re-register (web2-strip 2026-04-26). Too short →
-        //     deposits churn freely (Sybil mitigation weakens); too
-        //     long → exit friction discourages legitimate sellers.
-        // Devnet uses (0.001 ether, 365 days) as ergonomic defaults.
-        // Replace these before mainnet broadcast.
-        SellerRegistry sellers = new SellerRegistry(0.001 ether, 365 days);
+        // Devnet uses 0.001 ether as an ergonomic default.
+        // Replace this before mainnet broadcast.
+        SellerRegistry sellers = new SellerRegistry(0.001 ether);
         _sellers = address(sellers);
         console.log("SellerRegistry:       ", _sellers);
     }

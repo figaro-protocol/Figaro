@@ -12,7 +12,6 @@ import { useMounted } from "@/hooks/useMounted";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import {
-    useDepositLockPeriod,
     useSellerProfile,
     useRegistrationDeposit,
 } from "@/lib/seller/useSellerRegistry";
@@ -41,23 +40,6 @@ import { usePublishSellerProfile } from "@/lib/seller/usePublishSellerProfile";
 interface DraftSummary {
     /** Profile shape before the catalogueURI is pinned. Submit fills in `catalogueURI`. */
     profileTemplate: Omit<SellerProfileMetadata, "catalogueURI">;
-}
-
-/**
- * Render an on-chain `DEPOSIT_LOCK_PERIOD` (bigint seconds) as a
- * human-readable duration. The deployed value is one year on-chain
- * today, but we derive the rendering at runtime so a redeployed
- * contract with a different value still displays cleanly.
- */
-function formatLockPeriod(seconds: bigint): string {
-    const total = Number(seconds);
-    const days = Math.floor(total / 86400);
-    if (days >= 365) {
-        const years = Math.floor(days / 365);
-        return years === 1 ? "one-year" : `${years}-year`;
-    }
-    if (days >= 1) return days === 1 ? "one-day" : `${days}-day`;
-    return `${total}-second`;
 }
 
 function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], wallet: `0x${string}`): DraftSummary | { error: string } {
@@ -102,9 +84,7 @@ export function OnboardingReview() {
     const isRegistered = !!profileData;
 
     const { data: depositRaw } = useRegistrationDeposit();
-    const { data: lockPeriodRaw } = useDepositLockPeriod();
     const deposit = depositRaw as bigint | undefined;
-    const lockPeriod = lockPeriodRaw as bigint | undefined;
 
     const {
         publish,
@@ -390,7 +370,7 @@ export function OnboardingReview() {
                             Your wallet is already registered. Publishing here re-pins
                             the catalogue + profile JSON to IPFS and calls{" "}
                             <code>updateProfile</code> with the new URI. The deposit
-                            and lock period are unaffected.
+                            is unaffected.
                         </>
                     ) : (
                         <>
@@ -408,11 +388,9 @@ export function OnboardingReview() {
                         <span className="font-semibold text-ink-heading">
                             {formatToken(deposit)} ETH
                         </span>
-                        {lockPeriod !== undefined && (
-                            <>
-                                {" "}— reclaimable via <code>withdraw</code> after a {formatLockPeriod(lockPeriod)} lock. The lock starts on register; unaffected by <code>updateProfile</code>.
-                            </>
-                        )}
+                        {" "}— reclaimable via <code>withdraw</code> at any time.
+                        Withdrawing de-lists you from discovery; the stake is what
+                        keeps you surfaced.
                     </p>
                 )}
             </Card>

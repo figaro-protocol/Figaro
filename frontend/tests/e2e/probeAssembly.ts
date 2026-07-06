@@ -36,7 +36,8 @@ const LOCAL_ANVIL = defineChain({
 const PROBE_VERSION = 1;
 const CLAUSE_REGISTRY_ABI = parseAbi([
     'function registered(bytes32) view returns (bool)',
-    'function registerClause(string clauseId, uint64 version, bytes32 contentHash, string contentURI) external',
+    'function registerClause(string clauseId, uint64 version, bytes32 contentHash, string contentURI) external payable',
+    'function registrationDeposit() view returns (uint256)',
 ]);
 
 /** A runtime-attestable lifecycle clause with one enum ladder — modelled on the
@@ -90,10 +91,16 @@ export async function registerProbeClause(
     // Digest over the CANONICAL form — the same convention populate-clauses.mjs
     // anchors and loadClauseSpec verifies after fetch.
     const contentHash = canonicalContentHash(spec);
+    // Registering = staked intent (K4): the probe posts the registry's
+    // deposit like any registrar.
+    const deposit = await pub.readContract({
+        address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registrationDeposit',
+    });
     const { request } = await pub.simulateContract({
         account: registrar.address, address: registry, abi: CLAUSE_REGISTRY_ABI,
         functionName: 'registerClause',
         args: [clauseId, BigInt(version), contentHash, uri],
+        value: deposit,
     });
     await pub.waitForTransactionReceipt({ hash: await wallet.writeContract(request) });
 }

@@ -53,9 +53,18 @@ A mechanism contract adopting it must have its seller address implement
 `IRoleResolver.isAuthorized(orderHash, caller)`; the inclusion-proof gate fires
 before the resolver check.
 
-**`src/ClauseRegistry.sol`** — Permissionless event-only clause anchoring.
+**`src/ClauseRegistry.sol`** — Permissionless clause anchoring with a
+reclaimable ETH deposit (staked intent — K4).
 `clauseId` is the bare human-readable name; the on-chain dedup key is `keccak256(abi.encode(clauseId, version))` (details in CLAUSES.md). `uriHash` points at off-chain JSON spec.
-`registerClause` is first-write-wins and immutable; there is **no on-chain
+`registerClause` is first-write-wins, immutable, and `payable` (requires the
+immutable `registrationDeposit`); `withdrawDeposit(idHash)` (registrar-only,
+once, no time lock) returns the stake and emits `DepositWithdrawn` — the
+binding stays permanent, but readers DE-SURFACE the clause for new
+compositions (surfacing derives from the live stake; committed agreements
+keep resolving it). Version migration = withdraw the old version's stake +
+register the new. The commits == resolves withdraw gate is protocol-surface:
+the count lives in the indexer (the same count RPGF pays on) and hardens
+on-chain when the RPGF proof apparatus returns. There is **no on-chain
 clause-content validation** — registration anchors the spec locator (IPFS) +
 content hash, and well-formedness is the off-chain Layer-A SDK's job
 (`@figaro/core/clauses` `validate.ts`/`encode.ts`) plus a read-time concern.
@@ -109,18 +118,19 @@ bond currency (same as the base flow) plus a one-time `approve(Permit2, …)` fo
 the input token. EIP-7702 and ERC-4337 variants are out of scope.
 
 **`src/SellerRegistry.sol`** — Permissionless seller self-registration with
-reclaimable ETH deposit. Three external functions: `register(metadataURI)` (sets
-the dedup guard, consumes the deposit, emits `SellerRegistered`),
-`updateProfile(metadataURI)` (caller-only metadata replacement, no deposit
-movement, emits `SellerProfileUpdated`), and `withdraw()` (returns the deposit
-and clears the dedup guard once the lock period has elapsed). Three events:
-`SellerRegistered`, `SellerProfileUpdated`, `SellerWithdrawn`. State is
-dedup-only (`_registered: address → bool`) plus the registration timestamp that
-backs the deposit-lock gate. **No `_active` flag, no role enum, no `deactivate`
-/ `reactivate`**: seller availability is signal-by-availability off-chain, not
-registry state, and a seller's role is DERIVED from the orders it
-holds and the clauses they carry — never a stored field. The deposit and lock are
-spam-protection knobs only; profile updates do not require withdrawing. The
+reclaimable ETH deposit (staked intent — K4, no time lock). Three external
+functions: `register(metadataURI)` (sets the dedup guard, consumes the
+deposit, emits `SellerRegistered`), `updateProfile(metadataURI)` (caller-only
+metadata replacement, no deposit movement, emits `SellerProfileUpdated`), and
+`withdraw()` (returns the deposit and clears the dedup guard — allowed at any
+time; withdrawing DE-SURFACES the seller, so pollution costs deposit ×
+time-surfaced rather than calendar time). Three events: `SellerRegistered`,
+`SellerProfileUpdated`, `SellerWithdrawn`. State is dedup-only
+(`_registered: address → bool`). **No `_active` flag, no role enum, no
+`deactivate` / `reactivate`**: seller availability is signal-by-availability
+off-chain, not registry state, and a seller's role is DERIVED from the orders
+it holds and the clauses they carry — never a stored field. The deposit is a
+spam-protection knob only; profile updates do not require withdrawing. The
 kernel does not gate any operation on seller state — this registry is
 advisory metadata for off-chain discovery surfaces.
 
@@ -131,8 +141,9 @@ clauses; this registry is the assembly artifact family's anchor, parallel to
 separation-of-concerns doctrine. Two external functions:
 `registerAssembly(compositionHash, contentURI)` (first-write-wins, requires the
 immutable `registrationDeposit`, emits `AssemblyRegistered`) and
-`withdrawDeposit(compositionHash)` (author-only, callable once after
-`depositLockPeriod` elapses, emits `DepositWithdrawn`). Identity IS the
+`withdrawDeposit(compositionHash)` (author-only, callable once, no time lock —
+K4: withdrawing DE-SURFACES the assembly; the commits == resolves gate is
+protocol-surface against the indexer's count, emits `DepositWithdrawn`). Identity IS the
 composition: `compositionHash` = keccak256 of the template's canonical
 composition subset (the composed agreements — clauses, values, topology;
 editorial prose excluded), so identical compositions collapse to one binding
@@ -142,8 +153,9 @@ presentation, derived off-chain as a pure function of the hash
 AssemblyBinding` {author, registeredAt, depositWithdrawn, contentURI}. The
 composition binding is permanent — `withdrawDeposit` returns only the ETH and
 never clears the binding, because buyers and sellers that reference the
-assembly rely on its content staying stable; the deposit is an upfront
-Sybil-resistance tax with a refund path, not a fee. No owner, no admin, no fee, no `transferAssembly`, no
+assembly rely on its content staying stable; the deposit is a reclaimable
+Sybil-resistance stake, not a fee, and the surfacing readers derive
+visibility from it. No owner, no admin, no fee, no `transferAssembly`, no
 `removeAssembly`. The contract does not validate content — well-formedness is an
 off-chain (Layer-A SDK + read-time) concern, never an on-chain check. Foundry
 tests in `test/AssemblyRegistryTest.t.sol`.

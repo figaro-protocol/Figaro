@@ -11,10 +11,9 @@ contract SellerRegistryTest is Test {
     address bob = address(0xB0B);
 
     uint256 constant REG_DEPOSIT = 0.001 ether;
-    uint256 constant LOCK_PERIOD = 365 days;
 
     function setUp() public {
-        reg = new SellerRegistry(REG_DEPOSIT, LOCK_PERIOD);
+        reg = new SellerRegistry(REG_DEPOSIT);
         vm.deal(alice, 10 ether);
         vm.deal(bob, 10 ether);
     }
@@ -50,7 +49,7 @@ contract SellerRegistryTest is Test {
     }
 
     function test_register_works_with_zero_deposit() public {
-        SellerRegistry freeReg = new SellerRegistry(0, LOCK_PERIOD);
+        SellerRegistry freeReg = new SellerRegistry(0);
         vm.prank(alice);
         freeReg.register("ipfs://x");
     }
@@ -86,23 +85,6 @@ contract SellerRegistryTest is Test {
         reg.updateProfile("ipfs://malicious");
     }
 
-    function test_updateProfile_does_not_reset_lock() public {
-        vm.prank(alice);
-        reg.register{value: REG_DEPOSIT}("ipfs://v1");
-
-        // Advance most of the lock period
-        vm.warp(block.timestamp + LOCK_PERIOD - 1 hours);
-
-        // Update profile — must not push the lock forward
-        vm.prank(alice);
-        reg.updateProfile("ipfs://v2");
-
-        // Advance the remaining hour and confirm withdraw is permitted
-        vm.warp(block.timestamp + 1 hours);
-        vm.prank(alice);
-        reg.withdraw();
-    }
-
     function test_updateProfile_does_not_change_deposit() public {
         vm.prank(alice);
         reg.register{value: REG_DEPOSIT}("ipfs://v1");
@@ -126,9 +108,7 @@ contract SellerRegistryTest is Test {
         reg.register{value: REG_DEPOSIT}("ipfs://bob");
 
         // Alice's registration is independent of Bob's — alice can withdraw
-        // (after lock) without affecting bob's registered state.
-        vm.warp(block.timestamp + LOCK_PERIOD);
-
+        // without affecting bob's registered state.
         vm.prank(alice);
         reg.withdraw();
 
@@ -138,14 +118,11 @@ contract SellerRegistryTest is Test {
         reg.register{value: REG_DEPOSIT}("ipfs://bob-v2");
     }
 
-    // ── Deposit Withdrawal ──────────────────────────────────────────────
+    // ── Deposit Withdrawal (no time lock — K4: withdraw de-surfaces) ────
 
-    function test_withdraw_after_lock_period() public {
+    function test_withdraw_returns_deposit() public {
         vm.prank(alice);
         reg.register{value: REG_DEPOSIT}("ipfs://w");
-
-        // Advance past lock period
-        vm.warp(block.timestamp + LOCK_PERIOD);
 
         uint256 balBefore = alice.balance;
         vm.prank(alice);
@@ -153,27 +130,24 @@ contract SellerRegistryTest is Test {
         assertEq(alice.balance, balBefore + REG_DEPOSIT);
     }
 
+    function test_withdraw_immediately_after_register() public {
+        // No lock: the stake is reclaimable at any time. The cost of the
+        // round-trip is off-chain — a withdrawn seller de-surfaces from
+        // discovery (indexers fold SellerWithdrawn as invalidation).
+        vm.prank(alice);
+        reg.register{value: REG_DEPOSIT}("ipfs://now");
+
+        vm.prank(alice);
+        reg.withdraw();
+    }
+
     function test_withdraw_emits_event() public {
         vm.prank(alice);
         reg.register{value: REG_DEPOSIT}("ipfs://e");
 
-        vm.warp(block.timestamp + LOCK_PERIOD);
-
         vm.prank(alice);
         vm.expectEmit(true, false, false, true);
         emit SellerRegistry.SellerWithdrawn(alice, REG_DEPOSIT);
-        reg.withdraw();
-    }
-
-    function test_withdraw_reverts_deposit_locked() public {
-        vm.prank(alice);
-        reg.register{value: REG_DEPOSIT}("ipfs://l");
-
-        // One second before lock expires
-        vm.warp(block.timestamp + LOCK_PERIOD - 1);
-
-        vm.prank(alice);
-        vm.expectRevert(SellerRegistry.DepositLocked.selector);
         reg.withdraw();
     }
 
@@ -188,8 +162,7 @@ contract SellerRegistryTest is Test {
         vm.prank(alice);
         reg.register{value: REG_DEPOSIT}("ipfs://v1");
 
-        // Withdraw after lock
-        vm.warp(block.timestamp + LOCK_PERIOD);
+        // Withdraw
         vm.prank(alice);
         reg.withdraw();
 
@@ -199,32 +172,12 @@ contract SellerRegistryTest is Test {
     }
 
     function test_withdraw_zero_deposit_succeeds() public {
-        SellerRegistry freeReg = new SellerRegistry(0, LOCK_PERIOD);
+        SellerRegistry freeReg = new SellerRegistry(0);
 
         vm.prank(alice);
         freeReg.register("ipfs://f");
 
-        vm.warp(block.timestamp + LOCK_PERIOD);
-
         vm.prank(alice);
         freeReg.withdraw(); // no ETH to transfer, should still succeed
-    }
-
-    function test_reregistration_restarts_lock_period() public {
-        vm.prank(alice);
-        reg.register{value: REG_DEPOSIT}("ipfs://v1");
-
-        // Cycle through withdraw + re-register
-        vm.warp(block.timestamp + LOCK_PERIOD);
-        vm.prank(alice);
-        reg.withdraw();
-
-        vm.prank(alice);
-        reg.register{value: REG_DEPOSIT}("ipfs://v2");
-
-        // Fresh registration must wait its own lock period before withdraw
-        vm.prank(alice);
-        vm.expectRevert(SellerRegistry.DepositLocked.selector);
-        reg.withdraw();
     }
 }

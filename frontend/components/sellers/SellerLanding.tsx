@@ -24,7 +24,6 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/hooks/useMounted";
 import {
-    useDepositLockPeriod,
     useSellerProfile,
     useRegistrationDeposit,
     useWithdrawDeposit,
@@ -240,7 +239,6 @@ function ManageList({
             )}
             <WithdrawRow
                 deposit={deposit}
-                registeredBlock={registeredBlock}
                 onWithdrawn={onWithdrawn}
             />
         </ul>
@@ -249,67 +247,18 @@ function ManageList({
 
 function WithdrawRow({
     deposit,
-    registeredBlock,
     onWithdrawn,
 }: {
     deposit: bigint | undefined;
-    registeredBlock: bigint | null;
     onWithdrawn: () => void;
 }) {
     const { address } = useAccount();
     const client = usePublicClient();
-    const { data: lockPeriod } = useDepositLockPeriod();
     const { withdraw, isPending, isConfirming, isSuccess, hash, error } = useWithdrawDeposit();
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [confirming, setConfirming] = useState(false);
     const [receiptHash, setReceiptHash] = useState<`0x${string}` | null>(null);
     const isProcessing = isPending || isConfirming;
-
-    // Chain-anchored lock probe. _registeredAt is `internal` so we read it
-    // indirectly: take registeredBlock from the indexer-derived state, fetch
-    // that block's `timestamp`, add `depositLockPeriod`. The latest block's
-    // timestamp + wall-clock are used to compute a chain↔wall offset so a
-    // local 1s tick can render the countdown without per-second RPC chatter.
-    // The simulate gate inside handleWithdraw is the authoritative check;
-    // the countdown here is upfront UX to avoid a wasted wallet signature.
-    const [unlockAtSec, setUnlockAtSec] = useState<bigint | null>(null);
-    const [chainOffsetMs, setChainOffsetMs] = useState<number>(0);
-    const [probeReady, setProbeReady] = useState(false);
-    const [nowMs, setNowMs] = useState<number>(() => Date.now());
-
-    useEffect(() => {
-        if (!client || registeredBlock === null || lockPeriod === undefined) {
-            return;
-        }
-        let cancelled = false;
-        (async () => {
-            try {
-                const [regBlock, latestBlock] = await Promise.all([
-                    client.getBlock({ blockNumber: registeredBlock }),
-                    client.getBlock(),
-                ]);
-                if (cancelled) return;
-                setUnlockAtSec(regBlock.timestamp + (lockPeriod as bigint));
-                setChainOffsetMs(Number(latestBlock.timestamp) * 1000 - Date.now());
-            } finally {
-                if (!cancelled) setProbeReady(true);
-            }
-        })();
-        return () => {
-            cancelled = true;
-        };
-    }, [client, registeredBlock, lockPeriod]);
-
-    const unlockAtMs = unlockAtSec !== null ? Number(unlockAtSec) * 1000 : null;
-    const effectiveNowMs = nowMs + chainOffsetMs;
-    const remainingMs = unlockAtMs !== null ? unlockAtMs - effectiveNowMs : null;
-    const isLocked = remainingMs !== null && remainingMs > 0;
-
-    useEffect(() => {
-        if (!isLocked) return;
-        const id = setInterval(() => setNowMs(Date.now()), 1000);
-        return () => clearInterval(id);
-    }, [isLocked]);
 
     // Hold the receipt visible after success — let the seller dismiss
     // it explicitly. Only then does the parent refetch (which causes the
@@ -331,10 +280,10 @@ function WithdrawRow({
             setSubmitError("SellerRegistry not configured.");
             return;
         }
-        // Pre-flight simulate — catches `DepositLocked` as a typed error
+        // Pre-flight simulate — surfaces a typed revert (e.g. NotRegistered)
         // before opening the wallet, so the seller doesn't waste a
-        // signature on a tx that will revert. The contract enforces the
-        // one-year lock unconditionally.
+        // signature on a tx that will fail. No time lock exists (K4):
+        // withdraw is allowed at any time and de-surfaces the seller.
         try {
             await client.simulateContract({
                 address: registry,
@@ -343,12 +292,7 @@ function WithdrawRow({
                 account: address,
             });
         } catch (e: unknown) {
-            const msg = extractErrorMessage(e, String(e));
-            if (/depositlocked|deposit.*locked/i.test(msg)) {
-                setSubmitError("The one-year deposit lock hasn't elapsed yet. Try again later.");
-            } else {
-                setSubmitError(msg);
-            }
+            setSubmitError(extractErrorMessage(e, String(e)));
             return;
         }
         try {
@@ -386,41 +330,11 @@ function WithdrawRow({
 
     if (!confirming) {
         const depositLabel = deposit !== undefined ? `${formatEther(deposit)} ETH` : "deposit";
-        if (!probeReady) {
-            return (
-                <li className="flex items-baseline justify-between gap-4 py-3 border-b border-default text-ink-faint">
-                    <div>
-                        <span className="text-ink-body">Withdraw deposit</span>
-                        <span className="ml-2 text-xs">Checking lock status…</span>
-                    </div>
-                </li>
-            );
-        }
-        if (isLocked && remainingMs !== null) {
-            return (
-                <li className="flex items-baseline justify-between gap-4 py-3 border-b border-default text-ink-faint">
-                    <div>
-                        <span className="text-ink-body">Withdraw deposit</span>
-                        <span className="ml-2 text-xs">
-                            Reclaim {depositLabel} — available in {formatLockRemaining(remainingMs)}.
-                        </span>
-                    </div>
-                    <button
-                        type="button"
-                        disabled
-                        aria-disabled="true"
-                        className="text-xs text-ink-faint opacity-50 cursor-not-allowed"
-                    >
-                        Locked
-                    </button>
-                </li>
-            );
-        }
         return (
             <li className="flex items-baseline justify-between gap-4 py-3 border-b border-default text-ink-faint">
                 <div>
                     <span className="text-ink-body">Withdraw deposit</span>
-                    <span className="ml-2 text-xs">De-register and reclaim {depositLabel}.</span>
+                    <span className="ml-2 text-xs">De-register and reclaim {depositLabel}. Withdrawing de-lists you from discovery.</span>
                 </div>
                 <button
                     type="button"
@@ -436,7 +350,7 @@ function WithdrawRow({
     return (
         <li className="py-3 border-b border-default space-y-2 text-sm text-ink-body">
             <p className="text-xs">
-                Returns the {deposit !== undefined ? formatEther(deposit) : "…"} ETH deposit and clears the registration. The one-year lock is checked first; if it hasn&apos;t elapsed the call surfaces a typed error and no transaction is sent. Catalogue and profile pins on IPFS are not affected.
+                Returns the {deposit !== undefined ? formatEther(deposit) : "…"} ETH deposit and clears the registration. Withdrawing de-lists you from discovery — the stake is what keeps you surfaced. Catalogue and profile pins on IPFS are not affected.
             </p>
             <div className="flex items-center gap-3">
                 <Button variant="outline" size="sm" onClick={handleWithdraw} disabled={isProcessing}>
@@ -460,14 +374,3 @@ function WithdrawRow({
     );
 }
 
-function formatLockRemaining(ms: number): string {
-    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-    const days = Math.floor(totalSeconds / 86400);
-    const hours = Math.floor((totalSeconds % 86400) / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    if (days > 0) return `${days}d ${hours}h ${minutes}m`;
-    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
-    if (minutes > 0) return `${minutes}m ${seconds}s`;
-    return `${seconds}s`;
-}

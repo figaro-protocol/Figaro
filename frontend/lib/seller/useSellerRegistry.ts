@@ -240,14 +240,6 @@ export function useRegistrationDeposit() {
     });
 }
 
-export function useDepositLockPeriod() {
-    return useReadContract({
-        address: registry ?? undefined,
-        abi: SELLER_REGISTRY_ABI,
-        functionName: "depositLockPeriod",
-    });
-}
-
 // ── Agent service discovery hook ─────────────────────────────────────────────
 
 /**

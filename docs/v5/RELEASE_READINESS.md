@@ -55,15 +55,14 @@ Required output:
 
 ### Task 3: Resolve Mainnet Registry Parameters
 
-`script/DeployMainnet.s.sol:184` instantiates `SellerRegistry(0.001 ether, 365 days)` — the devnet defaults — with an explicit "PLACEHOLDER VALUES — DO NOT SHIP TO MAINNET WITHOUT REVIEW" comment at lines 168-183. The deposit + lock pair is the Sybil-resistance knob (see `src/SellerRegistry.sol:38-46` NatSpec).
+`script/DeployMainnet.s.sol` instantiates `SellerRegistry(0.001 ether)` and `ClauseRegistry(0.001 ether)` — the devnet defaults — with explicit "PLACEHOLDER VALUE — DO NOT SHIP TO MAINNET WITHOUT REVIEW" comments at the call sites. The deposit is the Sybil-resistance stake (K4: no time lock — withdraw de-surfaces the artifact, so pollution costs deposit × time-surfaced).
 
 Required output:
 
 1. mainnet `registrationDeposit` chosen against an explicit deploy-time ETH/USD anchor — bonded-participation cost is the floor of attacker discouragement; too low enables cheap Sybil farms, too high locks out small sellers
-2. mainnet `depositLockPeriod` chosen against an explicit Sybil-recycling-cost reasoning — long enough that "1 ETH = N identities over time" recycling is uneconomic relative to honest participation, short enough that legitimate exit stays practical
-3. reasoning recorded inline in `DeployMainnet.s.sol` at the constructor call site
-4. PLACEHOLDER comment removed from the script
-5. same exercise repeated for `AssemblyRegistry` if Task 4 lands a mainnet deployment for it (the asymmetry — slug binding is permanent on `AssemblyRegistry`, dedup guard clears on `SellerRegistry` withdraw — should be reflected in the lock-period choice)
+2. reasoning recorded inline in `DeployMainnet.s.sol` at the constructor call sites
+3. PLACEHOLDER comments removed from the script
+4. same exercise repeated for `AssemblyRegistry` and `ClauseRegistry` deposits if Task 4 lands mainnet deployments for them (the binding-permanence asymmetry — clause/assembly bindings are permanent, the SellerRegistry dedup guard clears on withdraw — should be reflected in the deposit choice)
 
 ### Task 4: AssemblyRegistry Mainnet-Parity Decision
 
@@ -223,8 +222,8 @@ external-audit gates above:
 
 - `FigToken.deployer` == the expected deployer EOA; `FigToken.deployerMintRenounced` == `true` after minter setup; `FigToken.totalSupply()` == the expected genesis allocation; every registered minter is an intended allocation contract.
 - `AttestationCoordinator.core` == the deployed `FigaroCore` address.
-- `SellerRegistry.registrationDeposit` and `SellerRegistry.depositLockPeriod` == the mainnet values picked per Task 3 (NOT the devnet `0.001 ether` / `365 days` placeholders).
-- `AssemblyRegistry.registrationDeposit` and `AssemblyRegistry.depositLockPeriod` == the mainnet values picked per Task 3 — if Task 4 disposition (1) is taken. If disposition (2) is taken, `AssemblyRegistry` is not deployed and this check does not apply.
+- `SellerRegistry.registrationDeposit` and `ClauseRegistry.registrationDeposit` == the mainnet values picked per Task 3 (NOT the devnet `0.001 ether` placeholder).
+- `AssemblyRegistry.registrationDeposit` == the mainnet value picked per Task 3 — if Task 4 disposition (1) is taken. If disposition (2) is taken, `AssemblyRegistry` is not deployed and this check does not apply.
 - All settlement tokens are non-rebasing and non-fee-on-transfer.
 - Kleros subcourt IDs in the deployed dispute config match the target chain on klerosboard.com (Gnosis subcourt IDs differ from Ethereum mainnet) — verify before the deployment is treated as live.
 - Agreement / assembly-template / profile content is pinned for durable retrieval per Task 6 — on mainnet via sovereign per-party pinning (Option 3), never only a single Kubo node — and is fetchable by CID across the 6-year (5 + 1) retrieval-availability floor.

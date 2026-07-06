@@ -4,10 +4,12 @@ pragma solidity 0.8.26;
 /// @title SellerRegistry — Seller self-declaration with reclaimable deposit
 /// @custom:security-contact security@figaro.org
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
-/// @notice Sellers register with a metadata URI and an ETH deposit. The
-///         deposit creates Sybil resistance. After a lock period (immutable,
-///         set at deploy), sellers may withdraw their deposit, which clears
-///         the registered guard and allows fresh re-registration.
+/// @notice Sellers register with a metadata URI and an ETH deposit — staked
+///         intent to generate transactions. Surfacing derives from the live
+///         stake: withdrawing clears the registered guard, de-surfaces the
+///         seller (discovery readers fold `SellerWithdrawn`), and allows
+///         fresh re-registration. Pollution costs deposit × time-surfaced;
+///         there is no time lock.
 ///         No owner, no admin, no fee extraction. No lifecycle flags — seller
 ///         availability is signal-by-availability (off-chain), not registry state.
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
@@ -15,8 +17,7 @@ pragma solidity 0.8.26;
 ///         This contract validates and emits — it does not aggregate. Profile
 ///         data and seller availability are derived off-chain from event logs
 ///         (`SellerRegistered`, `SellerProfileUpdated`, `SellerWithdrawn`).
-///         On-chain storage is limited to the dedup guard (`registered`) and the
-///         registration timestamp (needed for the deposit lock).
+///         On-chain storage is limited to the dedup guard (`registered`).
 ///
 ///         The metadataURI JSON document is the seller's composability surface:
 ///         it declares which clauses from ClauseRegistry the seller operates
@@ -25,42 +26,24 @@ pragma solidity 0.8.26;
 ///         orders it holds and the clauses they carry. Sellers compose their
 ///         own capability set rather than matching protocol-defined templates.
 ///
-///         The deposit + lock period exist for spam protection only — they do
-///         not gate metadata edits. `updateProfile` lets a registered seller
-///         publish a new metadataURI without disturbing the deposit or restarting
-///         the lock. Discovery indexers key off the most recent
-///         `SellerRegistered` or `SellerProfileUpdated` event for an address.
+///         The deposit exists for spam protection only — it does not gate
+///         metadata edits. `updateProfile` lets a registered seller publish
+///         a new metadataURI without disturbing the deposit. Discovery
+///         indexers key off the most recent `SellerRegistered` or
+///         `SellerProfileUpdated` event for an address.
 contract SellerRegistry {
     /// @notice Deposit amount in ETH. Immutable at deploy.
-    /// @dev Sybil-resistance mechanism, not a fee. The protocol does not
+    /// @dev Sybil-resistance stake, not a fee. The protocol does not
     ///      redistribute it; no party has authority to seize it. See
-    ///      `withdraw()` for the reclaim path.
+    ///      `withdraw()` for the reclaim path. Recycling one deposit across
+    ///      identities over time is priced by de-surfacing, not a lock: a
+    ///      withdrawn seller vanishes from discovery, so each identity
+    ///      costs deposit × time-surfaced.
     uint256 public immutable registrationDeposit;
-
-    /// @notice Minimum lock duration before deposit can be withdrawn (seconds).
-    /// @dev Together with `registrationDeposit`, this is the Sybil-resistance
-    ///      knob. Without the lock, an attacker could register, withdraw,
-    ///      re-register with the same ETH to maintain N identities at the
-    ///      cost of 1 deposit + N transactions. The lock makes
-    ///      "1 ETH = N identities over time" expensive in TIME as well as
-    ///      capital — bonded participation, time-extended.
-    ///
-    ///      Deploy-time choice (no derivation from a theorem). Devnet uses
-    ///      365 days as a placeholder; mainnet duration should be set with
-    ///      explicit reasoning recorded in deployment notes:
-    ///      - lower bound: long enough that recycling deposits across
-    ///        identities is uneconomic relative to honest participation;
-    ///      - upper bound: short enough that exit is practical for an
-    ///        seller who wants to move on. Metadata changes do not require
-    ///        withdrawal — they go through `updateProfile`.
-    uint256 public immutable depositLockPeriod;
 
     /// @dev Dedup guard — prevents double-registration for the same address.
     ///      Cleared on withdraw to allow fresh re-registration.
     mapping(address => bool) internal _registered;
-
-    /// @dev Registration timestamp per address — backs the deposit-lock gate.
-    mapping(address => uint256) internal _registeredAt;
 
     // ── Events ──────────────────────────────────────────────────────────
     event SellerRegistered(address indexed seller, string metadataURI);
@@ -71,31 +54,26 @@ contract SellerRegistry {
     error AlreadyRegistered();
     error NotRegistered();
     error InsufficientDeposit();
-    error DepositLocked();
     error TransferFailed();
 
     // ── Constructor ─────────────────────────────────────────────────────
 
     /// @param _registrationDeposit Minimum ETH required to register (wei).
-    /// @param _depositLockPeriod Lock duration in seconds before withdrawal.
-    constructor(uint256 _registrationDeposit, uint256 _depositLockPeriod) {
+    constructor(uint256 _registrationDeposit) {
         registrationDeposit = _registrationDeposit;
-        depositLockPeriod = _depositLockPeriod;
     }
 
     // ── Registration ────────────────────────────────────────────────────
 
-    /// @notice Register as an seller. Requires msg.value == registrationDeposit.
+    /// @notice Register as a seller. Requires msg.value == registrationDeposit.
     ///         Exact match prevents excess ETH from being trapped in the contract
-    ///         (no sweep function, no owner). Deposit is reclaimable after lock
-    ///         period via withdraw().
+    ///         (no sweep function, no owner). Deposit is reclaimable via withdraw().
     /// @param metadataURI  IPFS or HTTPS URI pointing to the seller's metadata JSON.
     function register(string calldata metadataURI) external payable {
         if (_registered[msg.sender]) revert AlreadyRegistered();
         if (msg.value != registrationDeposit) revert InsufficientDeposit();
 
         _registered[msg.sender] = true;
-        _registeredAt[msg.sender] = block.timestamp;
 
         emit SellerRegistered(msg.sender, metadataURI);
     }
@@ -118,18 +96,14 @@ contract SellerRegistry {
 
     // ── Deposit Withdrawal ──────────────────────────────────────────────
 
-    /// @notice Withdraw registration deposit after lock period expires.
-    ///         Clears the dedup guard so the address can re-register; lock
-    ///         period restarts on each fresh registration.
+    /// @notice Withdraw the registration deposit. Clears the dedup guard so
+    ///         the address can re-register. Withdrawing de-surfaces the
+    ///         seller — discovery folds `SellerWithdrawn` as invalidation.
     function withdraw() external {
         if (!_registered[msg.sender]) revert NotRegistered();
-        if (block.timestamp < _registeredAt[msg.sender] + depositLockPeriod) {
-            revert DepositLocked();
-        }
 
         // Clear state — enables clean re-registration
         delete _registered[msg.sender];
-        delete _registeredAt[msg.sender];
 
         uint256 amount = registrationDeposit;
         emit SellerWithdrawn(msg.sender, amount);

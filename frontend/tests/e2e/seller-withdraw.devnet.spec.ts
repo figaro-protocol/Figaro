@@ -1,17 +1,15 @@
 /**
  * seller-withdraw.devnet.spec.ts
  *
- * SellerRegistry.withdraw — the reclaim path on the deposit + lock
- * primitive. Subject to a 365-day lock from `_registeredAt` (devnet
- * deploy: `new SellerRegistry(0.001 ether, 365 days)`).
+ * SellerRegistry.withdraw — the reclaim path on the staked-intent
+ * deposit (devnet deploy: `new SellerRegistry(0.001 ether)`). No time
+ * lock (K4): withdraw is allowed at any time; the round-trip is priced
+ * by de-surfacing — a withdrawn seller vanishes from discovery.
  *
  * `sellers-onboarding.devnet.spec.ts` covers the register path; this
- * spec covers the matching withdraw path: register → time-travel past
- * lock → /sellers dashboard → click Begin → Confirm withdraw →
- * receipt rendered → registration cleared.
- *
- * Premature withdraw is also asserted (revert with DepositLocked) so we
- * catch any regression that drops the lock-period guard.
+ * spec covers the matching withdraw path: register → /sellers dashboard
+ * → click Begin → Confirm withdraw → receipt rendered → registration
+ * cleared.
  *
  * Requires: Anvil + ./deploy-local.sh
  *   NEXT_PUBLIC_SELLER_REGISTRY must be set in .env.local.
@@ -26,7 +24,6 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
-    evmIncreaseTime,
     readLocalDeploymentConfig,
     seedRegisteredSeller,
 } from './devnet-helpers';
@@ -48,13 +45,10 @@ const LOCAL_ANVIL = defineChain({
 const SELLER_KEY = ANVIL_KEYS[3];
 const SELLER_ADDR = ANVIL_ACCOUNTS[3];
 
-const LOCK_PERIOD_SECONDS = 365 * 24 * 60 * 60; // matches Deploy.s.sol
-
 const SELLER_REGISTRY_ABI = parseAbi([
     'function register(string metadataURI) external payable',
     'function withdraw() external',
     'function registrationDeposit() view returns (uint256)',
-    'function depositLockPeriod() view returns (uint64)',
     // SellerRegistry exposes NO read functions for registration state —
     // off-chain consumers reconstruct it from these three events. The
     // tests below count Registered − Withdrawn events for the address;
@@ -65,7 +59,6 @@ const SELLER_REGISTRY_ABI = parseAbi([
     'error AlreadyRegistered()',
     'error InsufficientDeposit()',
     'error NotRegistered()',
-    'error DepositLocked()',
 ]);
 
 function getRegistryAddress(): Hex {
@@ -105,11 +98,7 @@ async function isRegistered(): Promise<boolean> {
 
 test.describe('SellerRegistry.withdraw (devnet)', () => {
 
-    // The DepositLocked revert path is contract behavior, covered in Foundry
-    // (test/SellerRegistryTest.t.sol) — a viem-only revert assertion is not
-    // e2e (no UI action, no UI reaction), so it does not live here.
-
-    test('withdraw after lock elapses — UI clicks through, receipt renders, registration cleared', async ({ page }) => {
+    test('withdraw — UI clicks through, receipt renders, registration cleared', async ({ page }) => {
         // Canonical idempotent seeder: this wallet ends each run withdrawn,
         // so the helper's event-diff check (registrations vs withdrawals)
         // routes re-runs through `register`; a crashed run that left it
@@ -118,7 +107,6 @@ test.describe('SellerRegistry.withdraw (devnet)', () => {
             walletKey: SELLER_KEY,
             profile: { name: 'Withdraw Spec Seller' },
         });
-        await evmIncreaseTime(LOCK_PERIOD_SECONDS + 60);
 
         // Hit /sellers — RegisteredCard renders when profileOf().registeredAt > 0,
         // showing the seeded (IPFS-pinned) profile; the WithdrawRow renders
