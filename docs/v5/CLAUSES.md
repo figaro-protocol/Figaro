@@ -139,7 +139,7 @@ the proof-apparatus teardown; the group-weighting rationale survives in
 Separate two kinds of data:
 
 - **Per-instance payloads** — operational values attached to one order: a
-  specific delivery details, a sealed address, notes for a single fulfilment
+  specific delivery details, a sealed address, notes for a single delivery
   event. Often private, instance-specific, decoded by one app's client. These
   stay as order payload bytes; they do NOT get a clause.
 - **Shared reference semantics** — definitions whose meaning must hold across

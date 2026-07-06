@@ -144,12 +144,12 @@ graphs above). That skeleton is complete on its own.
 *by whom* — never the **physical or virtual flow** of the work: where a pickup
 happened, where a hand-off occurred, which zones a service covers, how goods and
 signals actually moved. That flow-map is not derivable from payment and topology;
-it must be *attested* by clauses that carry it — geolocation, proximity, hand-off,
-fulfilment. It is the Geo graph above, and nothing forces it into existence.
+it must be *attested* by clauses that carry it — geolocation, proximity, hand-off.
+It is the Geo graph above, and nothing forces it into existence.
 
 **So the protocol pays more for the clauses that draw the map.** To make the
 flow-graph exist, the substrate-broadening formula weights a **category of work** —
-the physical/virtual-flow article groups (logistics, coordination, fulfilment…) —
+the physical/virtual-flow article groups (logistics, coordination…) —
 above the rest (`w_category = 3.0`). The group key is derived as
 `keccak256(block.article)` from the contentHash-verified spec — nothing is stored
 on-chain (there is no `family` field; derive, don't store). The formula's on-chain

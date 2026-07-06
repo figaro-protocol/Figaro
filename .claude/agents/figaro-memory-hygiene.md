@@ -15,7 +15,7 @@ Audit memory files. Output a table. **Do not write narrative.** This agent exist
 
 | File class | Soft limit | Hard limit | Action at hard |
 |---|---|---|---|
-| `MEMORY.md` (index) | 80 lines | 120 lines | Index entries should be one-liners. Prune. |
+| `MEMORY.md` (index) | 18 KB | 20 KB | Operator ceiling 20 KB (2026-07-06); ignore the harness's ~17 KB compaction nudge. One-liner entries; prune only above 20 KB. |
 | `feedback_*.md` | 100 lines | 200 lines | Prune to the rule + why + how-to-apply only. |
 | `project_*.md` | 100 lines | 200 lines | Prune. Move history to git. Move audits to docs/. |
 
