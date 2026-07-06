@@ -84,6 +84,16 @@ export const EV_PROCESS_RESOLVED = parseAbiItem(
 );
 
 // ── AttestationCoordinator ABI ──────────────────────────────────────────────
+//
+// THE one home for this ABI (operator ruling 2026-07-06): the coordinator's
+// kernel reads are DESIGN, not a defect. `core.orderStatus` anchors every
+// attestation to a live committed order (without it, a merkle proof shows a
+// clause is in *some* agreement, not THE order's agreement) and
+// `core.DOMAIN_SEPARATOR` derives root processIds with no silent-drift risk.
+// Read-side role *display* is indexer-derived in the UI; write-side role
+// *verification* stays here — that is what makes the record evidence.
+// `attestViaResolver` (IRoleResolver) is the open extension path for
+// mechanism-contract sellers.
 
 export const ATTESTATION_COORDINATOR_ABI = parseAbi([
     "function core() view returns (address)",

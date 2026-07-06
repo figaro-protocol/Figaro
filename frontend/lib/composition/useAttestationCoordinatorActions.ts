@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { useAccount, usePublicClient, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { activeChain } from "@/lib/shared/chains";
 import type { Hex } from "viem";
-import { ATTESTATION_COORDINATOR_ABI } from "@/lib/composition/abis";
+import { ATTESTATION_COORDINATOR_ABI } from "@figaro/core";
 import { getAttestationCoordinator } from "@/lib/composition/contracts";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { fetchAgreement } from "@/lib/kernel/agreementFetch";

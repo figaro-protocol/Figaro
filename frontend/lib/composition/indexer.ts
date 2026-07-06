@@ -20,7 +20,7 @@ import {
 } from "@/lib/kernel/indexer";
 import { getAllSellerRegistered } from "@/lib/protocol/sellerRegistryIndexer";
 import { hexEqual, isEmptyHex, ZERO_BYTES32 } from "@/lib/shared/evm";
-import { ATTESTATION_COORDINATOR_ABI, EV_ATTESTATION } from "@/lib/composition/abis";
+import { ATTESTATION_COORDINATOR_ABI, EV_ATTESTATION } from "@figaro/core";
 import { getAttestationCoordinator } from "@/lib/composition/contracts";
 
 // ── AttestationCoordinator ────────────────────────────────────────────────────

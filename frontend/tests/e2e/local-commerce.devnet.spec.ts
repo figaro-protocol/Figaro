@@ -82,7 +82,7 @@ import {
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
-import { ATTESTATION_COORDINATOR_ABI } from '@/lib/composition/abis';
+import { ATTESTATION_COORDINATOR_ABI } from '@figaro/core';
 import { calculateBonds, computeSectionLeaf, type AgreementSection } from '@figaro/core';
 import type { Page } from '@playwright/test';
 
