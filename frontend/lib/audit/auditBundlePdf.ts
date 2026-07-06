@@ -2,10 +2,10 @@
  * Process-scoped audit-bundle PDF builder.
  *
  * Pure async helper consumed by both surfaces that emit the audit-bundle
- * PDF: `DownloadAuditBundleButton` (browser download) and the
- * `DisputeStatusPanel` Submit Evidence flow (IPFS pin + on-chain
- * evidence submission). Agreements are cleartext — there is no redacted
- * distribution form. The PDF includes a Process Timeline page when a
+ * PDF: `DownloadAuditBundleButton` (browser download) and `RecoursePanel`'s
+ * evidence-bundle action (IPFS pin; the party attaches the pinned URI as
+ * evidence on the recourse forum's own UI). Agreements are cleartext — there
+ * is no redacted distribution form. The PDF includes a Process Timeline page when a
  * `publicClient` is supplied, so the timeline doesn't need a separate
  * IPFS pin or evidence submission.
  */

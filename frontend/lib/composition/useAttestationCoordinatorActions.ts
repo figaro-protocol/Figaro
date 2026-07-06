@@ -5,7 +5,7 @@ import { useAccount, usePublicClient, useWaitForTransactionReceipt, useWriteCont
 import { activeChain } from "@/lib/shared/chains";
 import type { Hex } from "viem";
 import { ATTESTATION_COORDINATOR_ABI } from "@/lib/composition/abis";
-import { COMPOSITION_CONTRACTS } from "@/lib/composition/contracts";
+import { getAttestationCoordinator } from "@/lib/composition/contracts";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { fetchAgreement } from "@/lib/kernel/agreementFetch";
 import { getAllOrderCommitted, getStringArg } from "@/lib/kernel/indexer";
@@ -51,20 +51,20 @@ export function useAttestationCoordinatorActions() {
     const { address } = useAccount();
     const publicClient = usePublicClient();
     const chain = activeChain;
-    const coordinator = COMPOSITION_CONTRACTS.attestationCoordinator;
-    const hasCoordinator = !!coordinator && coordinator.length === 42;
+    const coordinator = getAttestationCoordinator();
+    const hasCoordinator = !!coordinator;
     const { writeContractAsync, data: hash, isPending } = useWriteContract();
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
     const [error, setError] = useState("");
 
     const ensureCoordinatorAccess = useCallback(() => {
-        if (!hasCoordinator || !address) {
+        if (!coordinator || !address) {
             const message = "Attestation coordinator unavailable for this wallet or network.";
             setError(message);
             throw new Error(message);
         }
         return { account: address, coordinator };
-    }, [hasCoordinator, address, coordinator]);
+    }, [coordinator, address]);
 
     const loadCommitment = useCallback(async (orderHash: Hex) => {
         if (!publicClient) {

@@ -20,7 +20,7 @@
 import type { PublicClient } from "viem";
 import { CORE_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { ATTESTATION_COORDINATOR_ABI } from "@/lib/composition/abis";
-import { COMPOSITION_CONTRACTS } from "@/lib/composition/contracts";
+import { getAttestationCoordinator } from "@/lib/composition/contracts";
 import { describeAttestation } from "@/lib/shared/clauseSpecSource";
 
 // ---------------------------------------------------------------------------
@@ -217,8 +217,8 @@ export async function buildProcessTimeline(
     // clause falls back to a short hash + stage (describeAttestation handles
     // it). The event's `contentRef = keccak256(content)` is a verification
     // digest, not an off-chain pointer.
-    const coordinatorAddr = COMPOSITION_CONTRACTS.attestationCoordinator;
-    if (coordinatorAddr && coordinatorAddr.length === 42) {
+    const coordinatorAddr = getAttestationCoordinator();
+    if (coordinatorAddr) {
         const attestLogs = await client.getContractEvents({
             address: coordinatorAddr,
             abi: ATTESTATION_COORDINATOR_ABI,

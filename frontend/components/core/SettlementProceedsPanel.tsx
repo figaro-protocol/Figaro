@@ -30,6 +30,15 @@ interface Props {
  * full. The amounts are read from the protocol-derived process model — the same
  * 2×payment / 2×cumulative-value bond the kernel locked and returned.
  *
+ * Kernel-core, NOT a clause surface. Settlement is the kernel's own proceeds —
+ * clause-less by construction — so this mounts by symbol on the process-detail
+ * page, a peer of CapabilityRail and the timeline. It is deliberately NOT a
+ * candidate for the declared-semantic component registries (fieldFormatInputs /
+ * interactionSurfaces / rateQuantitySources): those key on a semantic the clause
+ * SPEC declares, and there is no clause here to key on. "Re-homing" it under a
+ * registry would build a one-tenant registry for a permanent kernel singleton —
+ * ceremony that buys none of the open-world extension the registries exist for.
+ *
  * TODO(Tier-B): Add provenance certification via AttestationCoordinator.
  */
 export function SettlementProceedsPanel({

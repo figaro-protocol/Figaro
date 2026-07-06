@@ -13,7 +13,7 @@ import { ProcessAuditClient } from "./ProcessAuditClient";
  *   - Hash verification (three modes — agreement / section / search;
  *     search runs against the wallet's visible orders, including this
  *     process)
- *   - Dispute escalation: a process-scoped `<DisputeStatusPanel>` mounted
+ *   - Dispute escalation: a process-scoped `<RecoursePanel>` mounted
  *     here — the end-of-process step where the audit bundle becomes the
  *     evidence exported to an off-chain forum
  *

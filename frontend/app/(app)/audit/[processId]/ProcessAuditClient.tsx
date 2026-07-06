@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { ProcessFinancialsView } from "../_components/ProcessFinancialsView";
 import { ProcessClauseEvidence } from "../_components/ProcessClauseEvidence";
 import { HashVerifier } from "../_components/HashVerifier";
-import { DisputeStatusPanel } from "@/components/core/DisputeStatusPanel";
+import { RecoursePanel } from "@/components/core/RecoursePanel";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
 import { deriveProcessRecourse } from "@/lib/semantic/processRecourse";
@@ -32,7 +32,7 @@ function ProcessDisputeSection({ processId }: { processId: string }) {
 
     return (
         <div data-testid="audit-dispute-section">
-            <DisputeStatusPanel
+            <RecoursePanel
                 processId={processId as `0x${string}`}
                 recourses={recourses}
                 orders={orders}

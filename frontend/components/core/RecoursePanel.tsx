@@ -32,7 +32,7 @@ import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
 import { describeClause, composesForumUrl } from "@/lib/shared/clauseSpecSource";
 import type { RecourseClause } from "@/lib/semantic/processRecourse";
 
-interface DisputeStatusPanelProps {
+interface RecoursePanelProps {
     processId: `0x${string}`;
     /** The dispute-resolution clause(s) the assembly authored, resolved
      *  generically by article (any ADR/applicable-law clause, present or
@@ -44,11 +44,11 @@ interface DisputeStatusPanelProps {
     orders?: readonly Order[];
 }
 
-export function DisputeStatusPanel({
+export function RecoursePanel({
     processId,
     recourses,
     orders,
-}: DisputeStatusPanelProps) {
+}: RecoursePanelProps) {
     const mounted = useMounted();
     const publicClient = usePublicClient();
     const chainId = useChainId();

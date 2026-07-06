@@ -12,7 +12,7 @@
  */
 import { isValidAddress } from "@/lib/shared/evm";
 
-export const COMPOSITION_CONTRACTS = {
+const COMPOSITION_CONTRACTS = {
     attestationCoordinator: (process.env.NEXT_PUBLIC_ATTESTATION_COORDINATOR || "") as `0x${string}`,
 };
 
@@ -20,8 +20,11 @@ function resolveAddress(addr: `0x${string}`): `0x${string}` | null {
     return isValidAddress(addr) ? addr : null;
 }
 
-/** @public — composition resolver, pending consumer: the K2 clauseId→surface
- *  registry mounts the attestation surface from this. */
+/** The single canonical resolver for the AttestationCoordinator address. Every
+ *  reader (the attestation action hook, the indexer, the audit timeline)
+ *  resolves it here, so its validity is defined in one place. Returns null when
+ *  unset or malformed — resolved-empty means the coordinator is unavailable,
+ *  never a bad address handed to a contract call. */
 export function getAttestationCoordinator(): `0x${string}` | null {
     return resolveAddress(COMPOSITION_CONTRACTS.attestationCoordinator);
 }

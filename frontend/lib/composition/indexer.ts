@@ -21,7 +21,7 @@ import {
 import { getAllSellerRegistered } from "@/lib/protocol/sellerRegistryIndexer";
 import { hexEqual, isEmptyHex, ZERO_BYTES32 } from "@/lib/shared/evm";
 import { ATTESTATION_COORDINATOR_ABI, EV_ATTESTATION } from "@/lib/composition/abis";
-import { COMPOSITION_CONTRACTS } from "@/lib/composition/contracts";
+import { getAttestationCoordinator } from "@/lib/composition/contracts";
 
 // ── AttestationCoordinator ────────────────────────────────────────────────────
 
@@ -41,11 +41,12 @@ export type IndexedAttestationLog = {
 };
 
 async function getAllAttestations(client: PublicClient, chainId: number): Promise<IndexedLog[]> {
-    if (!COMPOSITION_CONTRACTS.attestationCoordinator) return [];
+    const coordinator = getAttestationCoordinator();
+    if (!coordinator) return [];
     return cachedGetLogsMulti(
         client,
         chainId,
-        [COMPOSITION_CONTRACTS.attestationCoordinator],
+        [coordinator],
         { event: EV_ATTESTATION, eventName: "Attestation" },
     );
 }
