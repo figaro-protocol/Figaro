@@ -294,13 +294,13 @@ separately rule transferability out:
    cannot be a `transferBuyer` or `transferSeller` function without
    changing what an `orderHash` means.
 
-3. **No escape hatches** (Theorem 4.7, Paper A). A transfer mechanism
+3. **No escape hatches** (the Escape-Hatch Weakness theorem, /papers/asymmetric-bonding §4.3). A transfer mechanism
    requires authorization for the substitution. In TradeTrust this is
    the holder's `transferBeneficiary` endorsement; in CargoX it is the
    holder's signature on the ERC-721 transfer. In Figaro terms, the
    authorizer is a third party J ∉ {B, S} relative to the *new*
    bilateral relationship between the new buyer and the existing seller
-   — exactly the unbonded actor Theorem 4.7 forbids. Even if J equals
+   — exactly the unbonded actor the Escape-Hatch Weakness theorem forbids. Even if J equals
    the original buyer, J's incentive structure no longer binds the new
    relationship.
 

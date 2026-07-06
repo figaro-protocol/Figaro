@@ -465,17 +465,23 @@ protocol design. The project would not exist without that collaboration.
 
 ### Origin
 
-Figaro's bonding mechanism descends from Vitalik Buterin's **Safe Remote
-Purchase** contract — a minimal escrow where buyer and seller each lock 2×
+Figaro's bonding mechanism descends from the **Safe Remote Purchase**
+contract in the Solidity documentation (chriseth / the Solidity team, first
+imported 2015) — a minimal escrow where buyer and seller each lock 2×
 payment, creating mutual assured destruction that makes cooperation dominant.
-Figaro generalizes this insight from a 2-party escrow into an N-party
-coordination protocol: cumulative upstream bonding scales the equilibrium
-across processes, atomic resolution binds the DAG into a single game, and
-the augmentation layers (auctions, lifecycle coordinators, disclosure modules)
-turn the bare mechanism into composable institutions.
+The mechanism itself predates Ethereum: Satoshi proposed the one-sided
+hostage escrow on Bitcointalk in August 2010 ("takes the profit out of
+cheating"), and in the same thread aceat64 and ribuck stated the two-sided
+double-deposit form; NashX ran it live (2013) and BitHalo (Zimbeck, 2014)
+gave it a whitepaper and implementation. Figaro generalizes the insight from
+a 2-party escrow into an N-party coordination protocol: cumulative upstream
+bonding scales the equilibrium across processes, atomic resolution binds the
+DAG into a single game, and the augmentation layers turn the bare mechanism
+into composable institutions.
 
-The intellectual debt is real and worth stating: without the Safe Remote
-Purchase primitive, the rest of this system does not exist.
+The intellectual debt is real and worth stating: without the double-deposit
+lineage that culminated in the Safe Remote Purchase primitive, the rest of
+this system does not exist.
 
 ---
 

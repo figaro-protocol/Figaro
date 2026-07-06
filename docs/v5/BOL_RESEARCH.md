@@ -103,7 +103,7 @@ mechanism in the kernel to nominate a new buyer or seller for an existing
 order; the only way to change a party is a new commitment, which is a new
 order. (See `CLAUDE.md` § "What Figaro Is Not" and `docs/v5/THEORY.md`.)
 
-**No escape hatches** (Theorem 4.7, Paper A). Any unilateral exit path
+**No escape hatches** (the Escape-Hatch Weakness theorem, /papers/asymmetric-bonding §4.3). Any unilateral exit path
 weakens the Nash equilibrium. An exit that requires a third party J ∉ {B,
 S} whose incentives are not bond-constrained — including arbitrator,
 escrow, mediator, or governance vote — is forbidden at the kernel layer.
@@ -302,7 +302,7 @@ kernel properties each separately rule it out:
    authorizer is a third party J ∉ {B, S} relative to the *new*
    bonded commitment between the new buyer and the existing seller —
    exactly the "third party J ∉ {B, S} whose incentives aren't
-   bond-constrained" that Theorem 4.7 forbids. Even if J = the original
+   bond-constrained" that the Escape-Hatch Weakness theorem forbids. Even if J = the original
    buyer, J's incentive structure no longer binds the new bilateral
    relationship.
 
@@ -311,7 +311,7 @@ kernel invariants.** Filling it would require either (a) changing the
 single-buyer invariant — invalidating the asymmetric-bonding
 derivation, since the cumulative-value calculation
 depends on a fixed buyer at the root — or (b) introducing a J ∉ {B, S}
-authorization path — invalidating Theorem 4.7's no-escape-hatches
+authorization path — invalidating the Escape-Hatch Weakness theorem's no-escape-hatches
 property and weakening the Nash equilibrium. Neither is acceptable. The
 kernel invariants are load-bearing for the protocol's central claim that
 cooperation is the dominant strategy without any third party.
