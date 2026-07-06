@@ -157,7 +157,7 @@ async function findDeliveryAssembly(): Promise<string | undefined> {
 test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → attest → one resolve pays both (devnet)', () => {
     test.setTimeout(480_000);
 
-    test('the delivery scenario is authored on the canvas, pinned by its sellers, and run to a fully-attested settlement', async ({ page }) => {
+    test('the delivery scenario is authored on the canvas, pinned by its sellers, and run to a fully-attested settlement', async ({ page, browser }) => {
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
 
         const config = readLocalDeploymentConfig();
@@ -664,5 +664,39 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         const bundleUri = (await evidenceResult.locator('p').first().textContent())?.trim();
         expect(bundleUri, 'the evidence bundle has an IPFS locator').toMatch(/^ipfs:\/\//);
         await assertPinnedInIpfs(bundleUri!.replace(/^ipfs:\/\//, ''));
+
+        // ── SPECTATOR: outside-legibility. The same audit record, read with NO
+        //    wallet — a fresh context with no injected provider (window.ethereum
+        //    is undefined; the multi-account init script never ran here). Every
+        //    CHAIN-derived surface renders for the walletless reader: the
+        //    financials, both line items, all eight cash-flow rows. Agreement
+        //    BODIES are correctly absent — the chain stores only the fingerprint
+        //    and the witnessed-URI pointer is party knowledge (agreementFetch:
+        //    "you can't fetch a body you were never pointed at"); a party shares
+        //    the pinned bundle to hand a forum the cleartext. Read = no account,
+        //    no connection, just the process ID. ──
+        const spectator = await browser.newContext({
+            baseURL: test.info().project.use.baseURL,
+        });
+        const spectatorPage = await spectator.newPage();
+        await spectatorPage.goto(`/audit/${processId}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        expect(
+            await spectatorPage.evaluate(() => (window as { ethereum?: unknown }).ethereum === undefined),
+            'the spectator context has NO wallet provider at all',
+        ).toBe(true);
+        await spectatorPage.getByTestId('audit-page').waitFor({ timeout: 30000 });
+        await expect(
+            spectatorPage.getByTestId('financials-view'),
+            'the process financials render for a walletless reader',
+        ).toBeVisible({ timeout: 30000 });
+        await expect(
+            spectatorPage.locator('[data-testid^="line-item-"]'),
+            'both orders surface as line items for a walletless reader',
+        ).toHaveCount(2, { timeout: 30000 });
+        await expect(
+            spectatorPage.locator('[data-testid="financials-cashflow"] tbody tr'),
+            'every kernel transfer renders for a walletless reader',
+        ).toHaveCount(8, { timeout: 30000 });
+        await spectator.close();
     });
 });

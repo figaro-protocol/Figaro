@@ -161,6 +161,12 @@ export default function Specifications() {
                         </Link>
                         <span className="text-ink-body"> &mdash; the eight disciplines that read the substrate, organized along the Voshmgir &amp; Zargham taxonomy, and the papers along each.</span>
                     </li>
+                    <li>
+                        <Link href="/audit" className="text-ink-heading font-medium hover:underline">
+                            Audit
+                        </Link>
+                        <span className="text-ink-body"> &mdash; the live verification surface: verify any deal yourself &mdash; a process&apos;s record and its hashes, readable by anyone, no wallet required.</span>
+                    </li>
                 </ul>
             </MarketingSection>
         </>

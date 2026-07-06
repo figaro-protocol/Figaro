@@ -42,6 +42,7 @@ export const NAV_LINKS: NavLink[] = [
 export const NAV_LINKS_APP_PRIMARY: NavLink[] = [
     { href: "/orders", label: "Orders" },
     { href: "/sellers", label: "Sellers" },
+    { href: "/audit", label: "Audit" },
 ];
 
 export const NAV_LINKS_APP_DRAWER: NavLink[] = [
@@ -50,4 +51,5 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
     { isSectionHeader: true, label: "App", href: "" },
     { href: "/orders", label: "Orders" },
     { href: "/sellers", label: "Sellers" },
+    { href: "/audit", label: "Audit" },
 ];

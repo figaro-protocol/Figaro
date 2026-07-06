@@ -72,8 +72,11 @@ export default function Security() {
                     <li>&mdash; <strong className="text-ink-heading font-medium">Echidna</strong>: property-based fuzzing of the kernel and the FIG token.</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">Mythril</strong>: symbolic execution for common vulnerability classes.</li>
                 </ul>
-                <p className="text-base text-ink-body leading-relaxed">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
                     Verification is not a substitute for external audit. It is a precondition. The protocol&apos;s position is that an audit should examine a surface that has already been pushed against from this many directions &mdash; not a surface arriving to it raw. The current contract inventory and verification map are at <Link href="/spec" className="text-ink-heading font-medium hover:underline">spec</Link>.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    The same legibility extends to every live deal. A process&apos;s full record &mdash; its timeline, financials, clause evidence, and the hashes that bind them to the signed agreements &mdash; is readable by anyone who holds the process ID, connected wallet or none. <Link href="/audit" className="text-ink-heading font-medium hover:underline">Verify any deal yourself</Link>.
                 </p>
             </MarketingSection>
 
