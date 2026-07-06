@@ -4,7 +4,6 @@ import {
     PaperSection,
     PaperSubsection,
     PaperRun,
-    PaperRemark,
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
@@ -35,10 +34,13 @@ export default function VerifiedSettlementKernelPaper() {
             abstract={
                 <>
                     <p>
-                        We describe a reference implementation of the two-mechanism bonded commitment settlement primitive &mdash; <em>asymmetric bonding</em> (each party locks <Math>{"2\\times"}</Math> collateral, with the seller bonding against cumulative upstream value) and <em>buyer dominance with atomic resolution</em> (only the root buyer may extend or resolve, and resolution settles every active order in the process simultaneously or not at all) &mdash; together with the formal-verification methodology used to audit it. The kernel is <strong>ownerless, fee-less, and admin-less</strong>: two external entry points, a minimal storage footprint, no upgrade path, no escape hatch from the bonded state. Verification is layered: exhaustive model checking explores the full reachable state space under bounded parameters; property-based fuzzing exercises the deployed bytecode against randomized adversarial call sequences; symbolic execution discharges the kernel safety properties over all inputs in the modeled traces; and SMT-based specification checking proves method-quantified rules across the kernel, the attestation surface, and a token-operations conservation surface covering every value-transfer call site. The properties established are token conservation, contract solvency, the asymmetric-bonding amounts, monotonic cumulative value, buyer-dominant atomic resolution, and the no-state-change guarantee on the attestation surface.
+                        We describe a reference implementation of the two-mechanism bonded commitment settlement primitive &mdash; <em>asymmetric bonding</em> (each party locks <Math>{"2\\times"}</Math> collateral, with the seller bonding against cumulative upstream value) and <em>buyer dominance with atomic resolution</em> (only the root buyer may extend or resolve, and resolution settles every active order in the process simultaneously or not at all) &mdash; together with the formal-verification methodology used to audit it. The kernel is <strong>ownerless, fee-less, and admin-less</strong>: two external entry points, a minimal storage footprint, no upgrade path, no escape hatch from the bonded state.
                     </p>
                     <p>
-                        The implementation also realizes a <em>coordinator pattern</em>: an extension discipline under which external mechanisms (a descending-price auction, a clause-typed attestation coordinator, clause and seller registries) compose with the kernel without weakening the bonding equilibrium. We give the four sufficient conditions and three concrete instances. Finally, we describe the three-layer enforcement architecture &mdash; economic (bonding), coordinational (atomic resolution), evidentiary (immutable log) &mdash; and the threat model under which the layers compose.
+                        Verification is layered: exhaustive model checking explores the full reachable state space under bounded parameters; property-based fuzzing exercises the deployed bytecode against randomized adversarial call sequences; symbolic execution discharges the kernel safety properties over all inputs in the modeled traces; and SMT-based specification checking proves method-quantified rules across the kernel, the attestation surface, and a token-operations conservation surface covering every value-transfer call site. The properties established are token conservation, contract solvency, the asymmetric-bonding amounts, monotonic cumulative value, buyer-dominant atomic resolution, and the no-state-change guarantee on the attestation surface.
+                    </p>
+                    <p>
+                        The implementation also realizes a <em>coordinator pattern</em>: an extension discipline under which external mechanisms (a clause-typed attestation coordinator, and clause and seller registries) compose with the kernel without weakening the bonding equilibrium. We give the four sufficient conditions and two concrete instances. Finally, we describe the three-layer enforcement architecture &mdash; economic (bonding), coordinational (atomic resolution), evidentiary (immutable log) &mdash; and the threat model under which the layers compose.
                     </p>
                 </>
             }
@@ -52,13 +54,13 @@ export default function VerifiedSettlementKernelPaper() {
         >
             <PaperSection title="1. Introduction">
                 <p>
-                    The bonded commitment settlement primitive composes two mechanisms. <em>Asymmetric bonding</em>: for an order with payment <Math>{"P"}</Math> and cumulative upstream value <Math>{"G \\geq P"}</Math>, the buyer locks <Math>{"2P"}</Math> and the seller locks <Math>{"2G"}</Math>, so cooperation is the weakly dominant strategy at every position in an <Math>{"N"}</Math>-party process chain and the cooperative profile is the unique outcome surviving iterated elimination of weakly dominated strategies. <em>Buyer dominance with atomic resolution</em>: only the root buyer may extend or resolve a process, and resolution settles every active order in the process simultaneously or not at all, inducing a weakest-link subgame among co-sellers under which cooperation pressure propagates without explicit communication.
+                    The bonded commitment settlement primitive composes two mechanisms. <em>Asymmetric bonding</em>: for an order with payment <Math>{"P"}</Math> and cumulative upstream value <Math>{"G \\geq P"}</Math>, the buyer locks <Math>{"2P"}</Math> and the seller locks <Math>{"2G"}</Math>, so cooperation is the weakly dominant strategy at every position in an <Math>{"N"}</Math>-party process chain and cooperation is the unique surviving strategy profile. <em>Buyer dominance with atomic resolution</em>: only the root buyer may extend or resolve a process, and resolution settles every active order in the process simultaneously or not at all, inducing a weakest-link subgame among co-sellers under which cooperation pressure propagates without explicit communication.
                 </p>
                 <p>
                     The mechanism is settlement-substrate-agnostic; it admits realisation on any state machine that maintains a monotonic cumulative-value accumulator and authenticates buyer signatures. This paper presents <em>one</em> such realisation &mdash; the Figaro kernel, a smart contract on a general-purpose blockchain &mdash; and the verification methodology applied to it. The core property the verification is asked to deliver is precisely the gap between mechanism and code: the equilibrium analysis assumes the settlement layer enforces (i) the asymmetric bond formula <Math>{"C_b = 2P"}</Math>, <Math>{"C_s = 2G"}</Math> on commitment with a monotonic accumulator, and (ii) buyer dominance with atomic resolution on process resolution. The code must <em>actually</em> enforce those, in every reachable path, against all reasonable adversaries.
                 </p>
                 <PaperRun title="What verification does and does not deliver.">
-                    A distinction worth naming up front: the equilibrium argument is a property of rational play over a payoff structure &mdash; cooperation weakly dominates defection at every position in an <Math>{"N"}</Math>-party process chain, under specified rationality assumptions &mdash; and it is not a property of code. The four verification tools we apply do not verify the equilibrium itself; they verify the <em>structural preconditions</em> that the equilibrium assumes (asymmetric bond formula, monotonic accumulation, buyer dominance, atomic resolution, conservation of value). What we verify is that the code implements the payoff structure faithfully in every reachable path. Claims that some external mechanism &ldquo;preserves the kernel&rsquo;s bonding equilibrium&rdquo; invoke the equilibrium argument (which holds by rational play) and not the verification claim made here (which holds by code inspection). Keeping the two claims distinct matters for any reader who wants to know exactly which property is backed by which evidence.
+                    A distinction worth naming up front: the equilibrium argument is a property of rational play over a payoff structure, not a property of code. The four verification tools we apply do not verify the equilibrium itself; they verify the <em>structural preconditions</em> that the equilibrium assumes (asymmetric bond formula, monotonic accumulation, buyer dominance, atomic resolution, conservation of value) &mdash; that the code implements the payoff structure faithfully in every reachable path. Claims that some external mechanism &ldquo;preserves the kernel&rsquo;s bonding equilibrium&rdquo; invoke the equilibrium argument (which holds by rational play) and not the verification claim made here (which holds by code inspection).
                 </PaperRun>
                 <PaperRun title="Brief recap of the settlement primitive.">
                     The two mechanisms together yield: for each committed order, the buyer locks <Math>{"2P"}</Math> and the seller locks <Math>{"2G"}</Math>; only the root buyer can trigger resolution; on resolution the buyer recovers <Math>{"P"}</Math> and each seller recovers <Math>{"2G_i + P_i"}</Math>, with every order in the process settling simultaneously or none. This is the full state-machine surface that the kernel must enforce; the game-theoretic derivation is mechanism-design content and lies outside the scope of the present paper.
@@ -111,12 +113,12 @@ export default function VerifiedSettlementKernelPaper() {
                 </PaperSubsection>
             </PaperSection>
 
-            <PaperSection title="3. Design Non-Decisions">
+            <PaperSection title="3. Deliberate Omissions">
                 <p>The following features are deliberately absent. Each absence preserves a mechanism-design property of the bonded commitment primitive (asymmetric bonding, buyer dominance, atomic resolution, or the no-escape-hatch security constraint).</p>
                 <ol className="space-y-2 list-decimal pl-6 text-sm">
                     <li><strong>No owner, admin, or upgrade.</strong> There is no pause, upgrade, or ownership-transfer authority. The kernel is ownerless from deployment. Adding any of these would introduce an unbonded actor (the owner) into the resolution path, which the escape-hatch impossibility theorem rules out.</li>
-                    <li><strong>No protocol fee.</strong> Settlement distributes the full bond amount to the parties. A fee at <Math>{"k = 2"}</Math> would shift the buyer&rsquo;s net cooperation payoff above the defection payoff only by <Math>{"P - \\text{fee}"}</Math>, narrowing the dominance margin and &mdash; if the fee approaches <Math>{"P"}</Math> &mdash; collapsing the equilibrium.</li>
-                    <li><strong>No timeout.</strong> An active order remains active indefinitely. Per the escape-hatch impossibility theorem, any timeout with recovery fraction <Math>{"\\alpha \\geq \\tfrac{1}{2}"}</Math> destroys weak dominance for the buyer.</li>
+                    <li><strong>No protocol fee.</strong> Settlement distributes the full bond amount to the parties; the absence preserves the buyer&rsquo;s full dominance margin (established by the bonding-equilibrium result).</li>
+                    <li><strong>No timeout.</strong> An active order remains active indefinitely; the absence preserves weak dominance for the buyer (established by the escape-hatch result).</li>
                     <li><strong>No partial resolution.</strong> Resolution requires the full active order list and reverts otherwise. This enforces atomicity, on which the weakest-link coordination pressure depends.</li>
                     <li><strong>No internal ledger.</strong> Payouts are direct transfers, not balance increments to be withdrawn later. This eliminates withdrawal-pattern reentrancy surface and removes a class of accounting drift bugs.</li>
                     <li><strong>No restriction on buyer&ndash;seller equality.</strong> The kernel does not forbid <Math>{"B = S"}</Math>. If a single address signs both sides of a commitment, that address deposits both bonds and receives both payouts at resolution; the bond math is self-cancelling and no third party is exposed. The equilibrium analysis treats <Math>{"B \\neq S"}</Math> as the standard case but the kernel permits the degenerate case rather than introducing a guard whose effect would be cosmetic.</li>
@@ -131,13 +133,13 @@ export default function VerifiedSettlementKernelPaper() {
             <PaperSection title="4. Formal Verification Methodology">
                 <p>We use four verification techniques, each chosen for what it covers that the others do not.</p>
                 <PaperRun title="Exhaustive model checking.">
-                    Captures the full state machine as a single transition system whose invariants are propositional safety properties. A model checker explores all reachable states under bounded parameters, exhibiting either an invariant violation with a minimal trace or exhaustive coverage of the bounded space. Strength: high-level state-machine reasoning; abstracts cryptography and token mechanics to expose accounting errors. Weakness: bounded by parameters; gives no guarantee for unbounded state.
+                    Captures the full state machine as a single transition system whose invariants are propositional safety properties (Lamport, 2002). A model checker explores all reachable states under bounded parameters, exhibiting either an invariant violation with a minimal trace or exhaustive coverage of the bounded space. Strength: high-level state-machine reasoning; abstracts cryptography and token mechanics to expose accounting errors. Weakness: bounded by parameters; gives no guarantee for unbounded state.
                 </PaperRun>
                 <PaperRun title="Property-based fuzzing.">
                     Runs randomized call sequences against the deployed bytecode, with EIP-712 signing performed in the test harness. Strength: exercises real bytecode against concrete adversaries, including combinations of operations the model abstracts. Weakness: random sampling; finds bugs but does not prove their absence.
                 </PaperRun>
                 <PaperRun title="Symbolic execution.">
-                    Encodes call traces as SMT formulas and asks the solver whether any concrete input satisfies the negation of an invariant. Strength: when it returns <em>verified</em>, the property holds for <em>all</em> inputs in the modeled trace, complementing the bounded random sampling of fuzzing with symbolic coverage of the commit/resolve state machine. Weakness: symbolic complexity blows up with control-flow depth; tractable on bounded path lengths.
+                    Encodes call traces as SMT formulas and asks the solver (de Moura &amp; Bj&oslash;rner, 2008) whether any concrete input satisfies the negation of an invariant. Strength: when it returns <em>verified</em>, the property holds for <em>all</em> inputs in the modeled trace, complementing the bounded random sampling of fuzzing with symbolic coverage of the commit/resolve state machine. Weakness: symbolic complexity blows up with control-flow depth; tractable on bounded path lengths.
                 </PaperRun>
                 <PaperRun title="SMT-based specification checking.">
                     SMT-based proving of declarative rules against the bytecode. Strength: rules can quantify over methods, allowing universal statements like &ldquo;no method modifies <Math>{"X"}</Math>&rdquo;. Weakness: rule encoding is non-trivial.
@@ -148,64 +150,36 @@ export default function VerifiedSettlementKernelPaper() {
             </PaperSection>
 
             <PaperSection title="5. Verification Results">
-                <p>The four techniques converge on the same body of kernel safety properties, each within the bounds it explores. We state below what is established, organized by technique; the configuration parameters (invariants, model bounds, property set) are the stable artifact, while incidental run-time figures are not.</p>
-                <PaperSubsection title="5.1 Exhaustive Model Checking">
+                <p>The four techniques converge on the same body of kernel safety properties, each within the bounds it explores: model checking establishes a property exhaustively over the bounded reachable state space with no violation; fuzzing checks it after every randomized call sequence on the deployed bytecode with no counterexample produced; symbolic execution discharges it for all inputs in the modeled trace; specification checking proves it as a method-quantified rule against the bytecode. The configuration parameters (invariants, model bounds, property set) are the stable artifact, while incidental run-time figures are not.</p>
+                <PaperSubsection title="5.1 Properties Established">
+                    <ol className="space-y-2 list-decimal pl-6 text-sm">
+                        <li><strong>Token conservation</strong>: the sum of wallet balances plus the contract balance equals the total supply under all commit/resolve sequences &mdash; exhaustive within the model bounds; on bytecode under fuzzing; symbolically after commitment; and as exact per-call-site conservation rules under specification checking.</li>
+                        <li><strong>Contract solvency</strong>: the contract balance is non-negative, at least the sum of outstanding bonds, and sufficient to resolve every active process in full &mdash; exhaustive within the model bounds (including the resolution-always-possible form); on bytecode under fuzzing; symbolically after commitment.</li>
+                        <li><strong>Bond correctness</strong>: <Math>{"C_b = 2P"}</Math> and <Math>{"C_s = 2G"}</Math> &mdash; symbolically for all <Math>{"P"}</Math>; under specification checking, each commitment moves exactly the buyer&rsquo;s, the seller&rsquo;s, and the contract&rsquo;s balance by the expected delta, with no allowance over-draw.</li>
+                        <li><strong>Payout correctness</strong>: <Math>{"\\pi_s = 2G + P"}</Math> and <Math>{"\\pi_b = P"}</Math> at resolution &mdash; symbolically for all <Math>{"P"}</Math>; under specification checking, each single-order resolution pays out exactly and conserves value.</li>
+                        <li><strong>Order-status monotonicity</strong>: status moves only <Math>{"0 \\to 1 \\to 2"}</Math>, never backwards &mdash; fuzzing, symbolic execution, and specification checking.</li>
+                        <li><strong>Cumulative-value integrity and monotonicity</strong>: per process, <Math>{"G"}</Math> equals the sum of all order payments and never decreases &mdash; all four techniques (integrity within the model bounds and under fuzzing; monotonicity symbolically across sub-order commitments and as a specification rule).</li>
+                        <li><strong>Buyer dominance</strong>: any non-buyer caller of resolution reverts &mdash; fuzzing, symbolic execution, and specification checking; the model configuration includes a second buyer so the guard is exercised by an attacker.</li>
+                        <li><strong>Atomic resolution</strong>: an incomplete active-order list always reverts &mdash; fuzzing; the model resolves processes only in full.</li>
+                        <li><strong>Commitment integrity</strong>: no double commitment is admitted; commitment increments the active-order count and the stored count matches the actual count; the root buyer and the process denomination are immutable once set &mdash; specification checking, with count correctness also within the model bounds and under fuzzing.</li>
+                    </ol>
+                </PaperSubsection>
+                <PaperSubsection title="5.2 Model Configuration">
                     <p>
-                        The kernel is modeled as a transition system whose state comprises the process records, order statuses, order records, process-to-order membership, the contract balance, and participant wallet balances, with three actions: root commitment, sub-order commitment, and process resolution. The model abstracts signatures (assumed correct given valid commitments), token mechanics (modeled as integer balances), and timing (deadlines are orthogonal to the bonding equilibrium and are exercised by regression testing instead). The bounded configuration uses two buyers and two sellers, several concurrent processes, and several sub-orders per process; two buyers rather than one are required so that the non-buyer-resolution guard is exercised by an attacker buyer.
+                        The kernel is modeled as a transition system whose state comprises the process records, order statuses, order records, process-to-order membership, the contract balance, and participant wallet balances, with three actions: root commitment, sub-order commitment, and process resolution. The model abstracts signatures (assumed correct given valid commitments), token mechanics (modeled as integer balances), and timing (deadlines are orthogonal to the bonding equilibrium and are exercised by regression testing instead). The bounded configuration uses two buyers and two sellers, several concurrent processes, and several sub-orders per process. Type well-formedness of all state variables and wallet non-negativity are additionally verified within the same bounds.
                     </p>
-                    <p>The following safety invariants are verified exhaustively over the bounded reachable state space, with no violation:</p>
-                    <ol className="space-y-1 list-decimal pl-6 text-sm">
-                        <li><strong>Type well-formedness</strong> of all state variables.</li>
-                        <li><strong>Token conservation</strong>: the sum of wallet balances plus the contract balance equals the total supply.</li>
-                        <li><strong>Contract solvency</strong>: the contract balance is non-negative.</li>
-                        <li><strong>Wallet non-negativity</strong>: all participant balances are non-negative.</li>
-                        <li><strong>Cumulative integrity</strong>: per process, <Math>{"G"}</Math> equals the sum of all order payments.</li>
-                        <li><strong>Active-count correctness</strong>: the stored active-order count matches the count of committed orders.</li>
-                        <li><strong>Resolution always possible</strong>: for every active process, the contract holds sufficient funds to resolve all orders.</li>
-                    </ol>
                 </PaperSubsection>
-                <PaperSubsection title="5.2 Property-Based Fuzzing">
-                    <p>The following property invariants are checked after every randomized call sequence, and hold across the campaign with no counterexample produced:</p>
-                    <ol className="space-y-1 list-decimal pl-6 text-sm">
-                        <li><strong>Solvency</strong>: token balance is at least the sum of outstanding bonds.</li>
-                        <li><strong>Active-count consistency</strong>: the stored count equals the actual count.</li>
-                        <li><strong>Cumulative accounting</strong>: the accumulator equals the sum of payments.</li>
-                        <li><strong>State monotonicity</strong>: orders never transition backwards (0 → 1 → 2, never reverse).</li>
-                        <li><strong>Token conservation</strong>: total supply is constant under all commit/resolve sequences.</li>
-                        <li><strong>Buyer dominance</strong>: a non-buyer resolution attempt always reverts.</li>
-                        <li><strong>Atomic resolution</strong>: an incomplete order list always reverts.</li>
-                    </ol>
+                <PaperSubsection title="5.3 Extension Surfaces">
+                    <p>
+                        Two verified surfaces sit beyond the kernel entry points, both under specification checking. On the <strong>attestation surface</strong>, a non-buyer cannot attest as the buyer, and a successful buyer attestation implies the caller is the buyer; quantified over every public entry point on the coordinator, the attestation surface <em>cannot change kernel state</em> &mdash; neither order status nor process state &mdash; which is the headline guarantee for the coordinator. The clause-section bindings established at registration are first-write-wins and isolated from one another. On the <strong>token-operations surface</strong>, the conservation rules are gated so that every value-transfer call site in the kernel is covered by a rule before any check is dispatched; a new transfer call site without a matching rule fails the gate.
+                    </p>
                 </PaperSubsection>
-                <PaperSubsection title="5.3 Symbolic Execution">
-                    <p>The following kernel properties are discharged under symbolic-input quantification, holding for all inputs in the modeled trace:</p>
-                    <ol className="space-y-1 list-decimal pl-6 text-sm">
-                        <li>Token conservation after commitment.</li>
-                        <li>Contract solvency after commitment.</li>
-                        <li>Correct bond amounts: <Math>{"C_b = 2P"}</Math> and <Math>{"C_s = 2G"}</Math> for all symbolic <Math>{"P"}</Math>.</li>
-                        <li>Resolution payouts: <Math>{"\\pi_s = 2G + P"}</Math> and <Math>{"\\pi_b = P"}</Math> for all symbolic <Math>{"P"}</Math>.</li>
-                        <li>Order-status transition: status moves only <Math>{"0 \\to 1 \\to 2"}</Math>.</li>
-                        <li>Buyer dominance: any non-buyer caller of resolution reverts.</li>
-                        <li>Cumulative-value monotonicity: across two symbolic sub-order commitments, <Math>{"G"}</Math> never decreases.</li>
-                    </ol>
-                </PaperSubsection>
-                <PaperSubsection title="5.4 SMT-Based Specification Checking">
-                    <p>The method-quantified specification establishes three groups of properties bearing on the kernel claim.</p>
-                    <PaperRun title="Kernel.">
-                        Order status never decreases and transitions only validly; commitment increases the active count; only the buyer can resolve; no double commitment is admitted; cumulative value is monotonic; and the root buyer and the process denomination are immutable once set.
-                    </PaperRun>
-                    <PaperRun title="Attestation surface.">
-                        A non-buyer cannot attest as the buyer, and a successful buyer attestation implies the caller is the buyer. Quantified over every public entry point on the coordinator, the attestation surface <em>cannot change kernel state</em> &mdash; neither order status nor process state &mdash; which is the headline guarantee for the coordinator. The clause-section bindings established at registration are first-write-wins and isolated from one another.
-                    </PaperRun>
-                    <PaperRun title="Token-operations conservation.">
-                        Each commitment moves exactly the buyer&rsquo;s, the seller&rsquo;s, and the contract&rsquo;s balance by the expected delta, with no allowance over-draw and exact conservation; each single-order resolution pays out exactly and conserves value. This surface is gated so that every value-transfer call site in the kernel is covered by a conservation rule before any check is dispatched; a new transfer call site without a matching rule fails the gate.
-                    </PaperRun>
-                </PaperSubsection>
-                <PaperSubsection title="5.5 Regression Spine">
+                <PaperSubsection title="5.4 Regression Spine">
                     <p>
                         The regression suite targets every named revert listed in Section 3; asserts typed-data-digest parity between the off-chain hash derivation and the on-chain implementation; and asserts that every event field encodes as readers expect. Counts of files and tests are deliberately not stated; they evolve with the test surface.
                     </p>
                 </PaperSubsection>
-                <PaperSubsection title="5.6 Scope of the Verification Claim">
+                <PaperSubsection title="5.5 Scope of the Verification Claim">
                     <p>What this verification establishes: the Solidity source at the snapshot commit has been audited by four different methodological approaches, and each finds the source satisfies its named properties within the bounds it explores. What it does <em>not</em> establish:</p>
                     <ul className="space-y-2 list-disc pl-6 text-sm">
                         <li><strong>That the specification is the right specification.</strong> Verification checks code against a spec; it does not check whether the spec captures what the author meant or what users expect.</li>
@@ -213,7 +187,7 @@ export default function VerifiedSettlementKernelPaper() {
                         <li><strong>That the denomination token behaves.</strong> The kernel takes an arbitrary fungible token. If the chosen token&rsquo;s issuer exercises blocklist, freeze, upgrade, or pause authority over a party&rsquo;s bonded balance, the &ldquo;no escape hatch&rdquo; property is vacuously violated &mdash; the bond is still locked from the kernel&rsquo;s perspective but unreachable from the world&rsquo;s. The choice of denomination token is a selection of whose escape hatches to accept, not an avoidance of escape hatches in aggregate.</li>
                         <li><strong>That chain liveness and key custody persist.</strong> If the host chain halts, censors, or reorgs past finality, and if either party loses or has compromised their signing key, the kernel has no recovery mechanism. These are operational-security dependencies above the verified surface.</li>
                     </ul>
-                    <p>Verification reduces one class of risk (specification&ndash;implementation gap within the verified bounds) and displaces several others (specification correctness, deployment chain of custody, token-issuer authority, host-chain liveness, key custody) onto layers the paper does not itself verify. A practitioner or legal reader should treat these claims as input to due diligence, not as a substitute for it.</p>
+                    <p>A practitioner or legal reader should treat these claims as input to due diligence, not as a substitute for it.</p>
                 </PaperSubsection>
             </PaperSection>
 
@@ -233,7 +207,7 @@ export default function VerifiedSettlementKernelPaper() {
                         Overstating cumulative value is strictly dominated under the bond formula <Math>{"C_s = 2G'"}</Math>: a seller who reports <Math>{"G' > G_{\\text{true}}"}</Math> posts a larger bond for the same payment recovery <Math>{"P"}</Math>, leaving expected utility strictly decreasing in the reported value (the mechanism&rsquo;s cumulative-value reporting honesty result). Understating is prevented by the monotonic accumulator check, which reverts on a cumulative-value mismatch.
                     </PaperRun>
                     <PaperRun title="Reentrancy.">
-                        The kernel carries a reentrancy mutex on both external entry points. The guard is load-bearing because the resolution loop performs two transfers per iteration before writing the order&rsquo;s resolved status: under a token whose transfer hooks call back into the caller (a callback-bearing token standard), the callback could otherwise re-enter resolution on the same process. The mutex blocks this by reverting the nested call before any half-resolved state can be observed.
+                        The kernel carries a reentrancy mutex on both external entry points. The guard is load-bearing because the resolution loop performs two transfers per iteration before writing the order&rsquo;s resolved status: under a token whose transfer hooks call back into the caller (a callback-bearing token standard), the callback could otherwise re-enter resolution on the same process. The mutex blocks this by reverting the nested call before any half-resolved state can be observed. The attestation surface adds no further vector: it invokes no external per-clause code &mdash; it verifies a merkle inclusion proof of the attested clause section against the signed agreement hash and content-hashes the evidence, calling nothing it does not control &mdash; so no untrusted callee exists that could attempt to re-enter the kernel during attestation, and the mutex would block any nested call into the settlement entry points regardless.
                     </PaperRun>
                     <PaperRun title="ECDSA signature malleability.">
                         The kernel uses a signature-recovery facility that rejects high-<Math>{"s"}</Math> signatures (the secp256k1 malleability class) and rejects <Math>{"v"}</Math> values outside <Math>{"\\{27, 28\\}"}</Math>. A duplicate commitment cannot be constructed by malleating a valid signature; combined with the duplicate-commitment guard on order status, the kernel is immune to the malleability replay class.
@@ -247,20 +221,11 @@ export default function VerifiedSettlementKernelPaper() {
                     <PaperRun title="Signature replay across forks.">
                         The EIP-712 domain separator binds the digest to chain id and verifying contract, and is recomputed when the chain id changes, so a chain split that updates the chain id on one fork invalidates pre-fork signatures on that fork. A split that does <em>not</em> update the chain id leaves both forks sharing the domain separator (a property of the chain identification scheme, addressed at the deployment layer).
                     </PaperRun>
-                    <PaperRun title="Cross-contract reentrancy via the attestation surface.">
-                        The attestation surface invokes no external per-clause code: it verifies a merkle inclusion proof of the attested clause section against the signed agreement hash and content-hashes the evidence, calling nothing it does not control. There is therefore no untrusted callee that could attempt to re-enter the kernel during attestation; the state-corruption vector that an external, attacker-supplied validator would introduce is structurally absent. Independently, the kernel&rsquo;s reentrancy mutex would block any nested call into the settlement entry points regardless.
-                    </PaperRun>
                 </PaperSubsection>
                 <PaperSubsection title="6.2 Liveness">
-                    <FormalBlock label="Theorem 6.1 (Liveness Under Rationality).">
-                        <p>Let <Math>{"B"}</Math> be a buyer with time-discounted utility <Math>{"U_B = \\sum_{t=0}^{\\infty} \\delta^t \\cdot u_t"}</Math> where <Math>{"\\delta \\in (0, 1)"}</Math> is the discount factor and <Math>{"u_t"}</Math> the per-period payoff. If all sellers have cooperated (the buyer has received the agreed goods), then the buyer resolves in finite time.</p>
-                    </FormalBlock>
-                    <PaperRun title="Proof.">
-                        The buyer&rsquo;s payoff under <em>resolve at</em> <Math>{"t^*"}</Math> is <Math>{"\\delta^{t^*} \\sum_i P_i"}</Math>; under <em>never resolve</em> is <Math>{"0"}</Math>. Since <Math>{"\\delta \\in (0,1)"}</Math> and <Math>{"P_i > 0"}</Math>, every finite <Math>{"t^*"}</Math> strictly dominates non-resolution; the optimum is <Math>{"t^* = 0"}</Math>.
-                    </PaperRun>
-                    <PaperRemark title="Limitations.">
-                        Theorem 6.1 assumes (i) the buyer received satisfactory performance, (ii) <Math>{"\\delta < 1"}</Math>, and (iii) no spite. Condition (iii) is the hardest to guarantee; when it fails, the residual case is addressed by Layer 3 (legal deterrence via immutable on-chain evidence). The theorem additionally assumes the resolve transaction can be admitted (no permanent censorship, no sequencer outage), that the resolution loop fits within the block-gas limit, that the buyer retains control of the signing key, and that the process denomination is itself live (transfers do not revert under blocklist or freeze).
-                    </PaperRemark>
+                    <p>
+                        Liveness &mdash; that a buyer who has received satisfactory performance resolves in finite time &mdash; holds under the rational-buyer assumptions established by the bonding-equilibrium results; it is not re-derived here. The implementation adds only operational preconditions: the resolve transaction must be admissible (no permanent censorship, no sequencer outage), the resolution loop must fit within the block-gas limit, the buyer must retain control of the signing key, and the process denomination must itself be live (transfers do not revert under blocklist or freeze). The residual non-rational case &mdash; a spiteful buyer who refuses to resolve &mdash; is addressed by Layer 3, legal deterrence via the immutable on-chain evidence.
+                    </p>
                 </PaperSubsection>
                 <PaperSubsection title="6.3 The Three-Layer Enforcement Architecture">
                     <div className="my-4 overflow-x-auto">
@@ -297,7 +262,7 @@ export default function VerifiedSettlementKernelPaper() {
                         <em>Liveness under non-rational failure.</em> Catastrophic non-rational failure (lost keys, hardware failure, participant death) imposes losses on co-sellers via atomic resolution regardless of incentive alignment. The coordination-pressure result assumes payoffs depend on co-sellers&rsquo; <em>choices</em>; failure is not a choice. Operational reliability under such failure depends on participant-continuity practices (key management, multisig, delegated signing) that sit above the kernel.
                     </p>
                     <p>
-                        <em>Capital opportunity cost.</em> At prevailing risk-free rate <Math>{"r"}</Math> over process duration <Math>{"t"}</Math>, the buyer and seller forgo <Math>{"rPt"}</Math> and <Math>{"2rGt"}</Math> respectively. Dominance is preserved at any <Math>{"rt > 0"}</Math>, but the operational margin narrows; the <Math>{"2\\times"}</Math> multiplier is sufficient as a matter of game-theoretic derivation, while practical applicability favors processes short relative to the prevailing risk-free horizon.
+                        <em>Capital opportunity cost.</em> Locked bonds forgo the prevailing risk-free return for the process duration. Dominance is preserved at any positive opportunity cost (established by the bonding-equilibrium result), but the operational margin narrows; practical applicability favors processes short relative to the prevailing risk-free horizon.
                     </p>
                 </PaperSubsection>
             </PaperSection>
@@ -317,11 +282,8 @@ export default function VerifiedSettlementKernelPaper() {
                     The second clause of (iv) closes a counterexample worth naming: a mechanism <Math>{"M"}</Math> that custodies its own off-chain collateral and promises parties a side-payment indexed to the kernel&rsquo;s resolved state would satisfy (i)&ndash;(iii) and the first clause of (iv) &mdash; it touches no kernel bonds and never bypasses the kernel state machine &mdash; yet would reintroduce an unbonded actor (the side-payment custodian) into the parties&rsquo; decision calculus. The on-chain bond ratio would no longer be the marginal economic signal, and the equilibrium argument that licenses the proposition would degrade. Excluding off-kernel side-payments explicitly is therefore necessary for the proposition to bear on the equilibrium and not only on the kernel state machine.
                 </p>
                 <p>
-                    Proposition 7.1 is sufficient, not necessary; mechanisms that violate one of (i)&ndash;(iv) may still preserve the equilibrium under additional per-mechanism argument. The four conditions are currently checked by inspection per extension rather than by a parametric specification rule that quantifies over arbitrary <Math>{"M"}</Math> &mdash; a parametric rule of the form &ldquo;<Math>{"M"}</Math> does not commit&rdquo; for arbitrary <Math>{"M"}</Math> has not yet been authored. The present coverage is by-construction review of each named extension below. We exhibit three instances.
+                    Proposition 7.1 is sufficient, not necessary; mechanisms that violate one of (i)&ndash;(iv) may still preserve the equilibrium under additional per-mechanism argument. We exhibit two instances.
                 </p>
-                <PaperRun title="Descending-price auction.">
-                    A descending-price coordination primitive that performs role allocation: who may become the seller for a given root commitment. The auction holds no tokens, custodies no bonds, and never commits. The winner subsequently signs an EIP-712 commitment off-chain and the parties commit themselves. Conditions (i)&ndash;(iv) hold by construction.
-                </PaperRun>
                 <PaperRun title="Attestation coordinator.">
                     A unified zero-storage attestation surface keyed by clause type. Each attestation verifies role membership against the process&rsquo;s root buyer (or a role-resolver for the third-party path), verifies a merkle inclusion proof of the attested clause section against the signed agreement hash, content-hashes the evidence into an attestation event, and invokes no external per-clause code. The coordinator never modifies kernel state &mdash; this is its headline verified guarantee, established for both order status and process state. It is the cleanest example of an event-only extension.
                 </PaperRun>
