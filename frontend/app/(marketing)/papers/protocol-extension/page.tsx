@@ -26,7 +26,7 @@ function FormalBlock({ label, children }: { label: string; children: React.React
 const CATALOGUE: [string, string][] = [
     ["Commerce", "currency, payment, line items"],
     ["Geolocation", "origin / destination geohash"],
-    ["Fulfilment", "fulfilment modalities, courier coordinations, and handoff points"],
+    ["Modalities", "requested modality: on-site, pickup, delivery, or virtual"],
     ["Topology", "agreement-only clause; no runtime attestation"],
     ["Courier process", "courier per-role event log"],
     ["Merchant process", "merchant per-role event log"],
@@ -130,7 +130,7 @@ export default function ProtocolExtensionPaper() {
                 </PaperSubsection>
                 <PaperSubsection title="3.3 Per-instance payloads versus shared reference semantics">
                     <p>
-                        The discipline turns on a load-bearing distinction between <em>per-instance payloads</em> and <em>shared reference semantics</em>. Per-instance payloads are operational data values: specific delivery details, sealed address data, notes for a particular fulfilment event. These are typically private, mutable at the business level, or specific to one workflow instance; they do not deserve a protocol-level anchor and live as instance data on the order or process that carries them. Shared reference semantics are definitions whose interpretation must remain stable across counterparties, tools, or time: a disclosure clause, a bill-of-lading clause family, a certification framework reference, a quality-assurance reference standard. These may justify a protocol-level anchor under the anchored artifact pattern.
+                        The discipline turns on a load-bearing distinction between <em>per-instance payloads</em> and <em>shared reference semantics</em>. Per-instance payloads are operational data values: specific delivery details, sealed address data, notes for a particular delivery event. These are typically private, mutable at the business level, or specific to one workflow instance; they do not deserve a protocol-level anchor and live as instance data on the order or process that carries them. Shared reference semantics are definitions whose interpretation must remain stable across counterparties, tools, or time: a disclosure clause, a bill-of-lading clause family, a certification framework reference, a quality-assurance reference standard. These may justify a protocol-level anchor under the anchored artifact pattern.
                     </p>
                 </PaperSubsection>
                 <PaperSubsection title="3.4 The decision rule">
@@ -306,7 +306,7 @@ export default function ProtocolExtensionPaper() {
                 </PaperSubsection>
                 <PaperSubsection title="6.5 The designer canvas">
                     <p>
-                        A specialized runtime surface deserves separate treatment: the assembly designer, which wraps a process-graph renderer for topology and an agreement drawer for per-node clause binding. The designer is a composition surface where assembly authors fork an existing reference assembly or start from blank, modify the bonded-process graph, bind clauses to nodes through a side drawer, and save drafts. The canvas is not a wizard, not a recommendation engine, not a generative-AI interface; it is a structural editor for assemblies: the runtime&rsquo;s primitives (commerce commitments, proximity-proof handoff attestations, fulfilment clauses, and so on) come onto the canvas as draggable elements, and the author composes them into the shape the institutional context requires.
+                        A specialized runtime surface deserves separate treatment: the assembly designer, which wraps a process-graph renderer for topology and an agreement drawer for per-node clause binding. The designer is a composition surface where assembly authors fork an existing reference assembly or start from blank, modify the bonded-process graph, bind clauses to nodes through a side drawer, and save drafts. The canvas is not a wizard, not a recommendation engine, not a generative-AI interface; it is a structural editor for assemblies: the runtime&rsquo;s primitives (commerce commitments, proximity-proof handoff attestations, delivery-modality clauses, and so on) come onto the canvas as draggable elements, and the author composes them into the shape the institutional context requires.
                     </p>
                     <p>
                         The discipline the canvas enforces is structural: an assembly that violates the runtime&rsquo;s composition rules cannot be saved. A fan-out node lacking a corresponding mechanism package, an attestation node referencing an unbound clauseId, mismatched mechanism packages, dangling sub-orders, and topology shapes the runtime does not admit are all surfaced before the draft can be persisted. An author who saves an assembly through the canvas has by construction produced one that satisfies the runtime&rsquo;s structural integrity.
