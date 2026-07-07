@@ -11,10 +11,11 @@
  *
  * `CommitmentPayload` is the envelope (canonical home — the frontend's identical
  * shape should import from here). `CoordinationChannel` is the transport
- * abstraction; `InProcessChannel` is a test transport that both agents share in
- * one process. A real transport (XMTP, or an A2A/MCP endpoint a seller publishes
- * via did:web) implements the same interface — provider-agnostic by doctrine,
- * like dispute resolution is not Kleros.
+ * abstraction; `InProcessChannel` (below) is a test transport that both agents
+ * share in one process, and `HttpChannel` (`./httpChannel.ts`) is the shipped
+ * real, off-process transport. Any other medium (XMTP, an A2A/MCP endpoint a
+ * seller publishes via did:web) implements the same interface — provider-agnostic
+ * by doctrine, like dispute resolution is not Kleros.
  */
 
 import type { Hex, Commitment } from "../types.js";
