@@ -76,7 +76,10 @@ export class FigaroContext {
      */
     async sync(): Promise<SyncResult> {
         const fromBlock = this.lastSyncedBlock > 0n ? this.lastSyncedBlock + 1n : 0n;
-        const currentBlock = await this.client.getBlockNumber();
+        // cacheTime:0 — viem caches getBlockNumber for ~pollingInterval, so an
+        // agent that syncs right after its own write would see a stale head and
+        // skip its just-emitted event. sync() must always read the true head.
+        const currentBlock = await this.client.getBlockNumber({ cacheTime: 0 });
 
         if (currentBlock < fromBlock) {
             return {
