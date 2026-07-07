@@ -21,8 +21,9 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 export type { DIDDocument };
 
 /**
- * @public — agent-integration surface (pending consumer). Resolve a did:web
- * identifier to its DID Document. Returns `{ document, error, isLoading }`.
+ * @public — agent-integration surface. Resolve a did:web identifier to its DID
+ * Document. Returns `{ document, error, isLoading }`. Consumed by
+ * `useDidVerification` (and available directly for other resolution surfaces).
  */
 export function useDidDocument(did: string | undefined) {
     const [document, setDocument] = useState<DIDDocument | null>(null);
@@ -58,9 +59,9 @@ export function useDidDocument(did: string | undefined) {
 }
 
 /**
- * @public — agent-integration surface (pending consumer). Resolve a did:web
- * identifier and verify it contains a verification method matching `address` on
- * the current chain. Returns `{ document, verified, error, isLoading }`.
+ * Resolve a did:web identifier and verify it contains a verification method
+ * matching `address` on the current chain. Returns
+ * `{ document, verified, error, isLoading }`. Consumed by `SellerAgentIdentity`.
  */
 export function useDidVerification(
     did: string | undefined,

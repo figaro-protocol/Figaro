@@ -20,6 +20,7 @@ import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
 import { ContentImage } from "@/components/shared/ContentImage";
 import { SellerLogo } from "@/components/modules/SellerBrandingModule";
+import { SellerAgentIdentity } from "@/components/sellers/SellerAgentIdentity";
 import { useCommerce } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
@@ -176,6 +177,9 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                     </span>
                                 )}
                             </div>
+                            {/* Agent identity — the seller's published did:web / service
+                                endpoints, with the did:web verified against this wallet. */}
+                            <SellerAgentIdentity sellerAddress={sellerAddressTyped} />
                         </div>
                     </div>
                 </header>
