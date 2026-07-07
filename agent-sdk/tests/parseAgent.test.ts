@@ -5,6 +5,7 @@ import {
   parseAgent,
   loadAgent,
   loadAllAgents,
+  findRepoRoot,
   resolveModelId,
   FIGARO_AGENT_FILES,
 } from "../src/index.js";
@@ -71,7 +72,7 @@ describe("loadAgent (canonical .md files)", () => {
   // changed in a way that breaks the contract — investigate before merging.
 
   it("loads figaro-kernel-reviewer as a read-only opus agent", () => {
-    const a = loadAgent(REPO_ROOT, "figaro-kernel-reviewer");
+    const a = loadAgent("figaro-kernel-reviewer", REPO_ROOT);
     expect(a.name).toBe("figaro-kernel-reviewer");
     expect(a.tools).toContain("Read");
     expect(a.tools).not.toContain("Edit");
@@ -82,7 +83,7 @@ describe("loadAgent (canonical .md files)", () => {
   });
 
   it("loads figaro-clause-lockstep as a read-only verifier", () => {
-    const a = loadAgent(REPO_ROOT, "figaro-clause-lockstep");
+    const a = loadAgent("figaro-clause-lockstep", REPO_ROOT);
     expect(a.name).toBe("figaro-clause-lockstep");
     expect(a.tools).not.toContain("Edit");
     expect(a.tools).not.toContain("Write");
@@ -90,7 +91,7 @@ describe("loadAgent (canonical .md files)", () => {
   });
 
   it("loads figaro-clause-author with write capability and opus", () => {
-    const a = loadAgent(REPO_ROOT, "figaro-clause-author");
+    const a = loadAgent("figaro-clause-author", REPO_ROOT);
     expect(a.name).toBe("figaro-clause-author");
     expect(a.tools).toContain("Edit");
     expect(a.tools).toContain("Write");
@@ -99,7 +100,7 @@ describe("loadAgent (canonical .md files)", () => {
   });
 
   it("loads figaro-runtime-ui-author as a writer agent for the runtime tier", () => {
-    const a = loadAgent(REPO_ROOT, "figaro-runtime-ui-author");
+    const a = loadAgent("figaro-runtime-ui-author", REPO_ROOT);
     expect(a.name).toBe("figaro-runtime-ui-author");
     expect(a.tools).toContain("Edit");
     expect(a.tools).toContain("Write");
@@ -108,7 +109,7 @@ describe("loadAgent (canonical .md files)", () => {
   });
 
   it("loads figaro-assembly-author as a writer agent that defers clause work", () => {
-    const a = loadAgent(REPO_ROOT, "figaro-assembly-author");
+    const a = loadAgent("figaro-assembly-author", REPO_ROOT);
     expect(a.name).toBe("figaro-assembly-author");
     expect(a.tools).toContain("Edit");
     expect(a.tools).toContain("Write");
@@ -118,7 +119,7 @@ describe("loadAgent (canonical .md files)", () => {
   });
 
   it("loads figaro-paper-reviewer as a read-only verifier", () => {
-    const a = loadAgent(REPO_ROOT, "figaro-paper-reviewer");
+    const a = loadAgent("figaro-paper-reviewer", REPO_ROOT);
     expect(a.name).toBe("figaro-paper-reviewer");
     expect(a.tools).toContain("Read");
     expect(a.tools).not.toContain("Edit");
@@ -128,7 +129,7 @@ describe("loadAgent (canonical .md files)", () => {
   });
 
   it("loads figaro-memory-hygiene as a terse table-output auditor", () => {
-    const a = loadAgent(REPO_ROOT, "figaro-memory-hygiene");
+    const a = loadAgent("figaro-memory-hygiene", REPO_ROOT);
     expect(a.name).toBe("figaro-memory-hygiene");
     expect(a.tools).not.toContain("Edit");
     expect(a.tools).not.toContain("Write");
@@ -136,7 +137,7 @@ describe("loadAgent (canonical .md files)", () => {
   });
 
   it("loads figaro-deploy-runner with read + bash for orchestration", () => {
-    const a = loadAgent(REPO_ROOT, "figaro-deploy-runner");
+    const a = loadAgent("figaro-deploy-runner", REPO_ROOT);
     expect(a.name).toBe("figaro-deploy-runner");
     expect(a.tools).toContain("Bash");
     expect(a.tools).toContain("Read");
@@ -146,7 +147,7 @@ describe("loadAgent (canonical .md files)", () => {
   });
 
   it("loads figaro-feedback-triage as a read-only classifier", () => {
-    const a = loadAgent(REPO_ROOT, "figaro-feedback-triage");
+    const a = loadAgent("figaro-feedback-triage", REPO_ROOT);
     expect(a.name).toBe("figaro-feedback-triage");
     expect(a.tools).not.toContain("Edit");
     expect(a.tools).not.toContain("Write");
@@ -154,7 +155,7 @@ describe("loadAgent (canonical .md files)", () => {
   });
 
   it("loads figaro-marketing-author with refusal discipline", () => {
-    const a = loadAgent(REPO_ROOT, "figaro-marketing-author");
+    const a = loadAgent("figaro-marketing-author", REPO_ROOT);
     expect(a.name).toBe("figaro-marketing-author");
     expect(a.tools).toContain("Edit");
     expect(a.tools).toContain("Write");
@@ -164,7 +165,7 @@ describe("loadAgent (canonical .md files)", () => {
   });
 
   it("loads figaro-site-ia as a read-only IA recommender", () => {
-    const a = loadAgent(REPO_ROOT, "figaro-site-ia");
+    const a = loadAgent("figaro-site-ia", REPO_ROOT);
     expect(a.name).toBe("figaro-site-ia");
     expect(a.tools).not.toContain("Edit");
     expect(a.tools).not.toContain("Write");
@@ -172,7 +173,7 @@ describe("loadAgent (canonical .md files)", () => {
   });
 
   it("loads figaro-visual-design with design-system scope", () => {
-    const a = loadAgent(REPO_ROOT, "figaro-visual-design");
+    const a = loadAgent("figaro-visual-design", REPO_ROOT);
     expect(a.name).toBe("figaro-visual-design");
     expect(a.tools).toContain("Edit");
     expect(a.tools).toContain("Write");
@@ -197,6 +198,16 @@ describe("loadAgent (canonical .md files)", () => {
       "figaro-runtime-ui-author",      "figaro-site-ia",
       "figaro-visual-design",
     ]);
+  });
+
+  it("findRepoRoot discovers the checkout by walking up to .claude/agents/", () => {
+    expect(findRepoRoot(__dirname)).toBe(REPO_ROOT);
+    // and it makes repoRoot optional: loadAgent works with just the discovered root
+    expect(loadAgent("figaro-kernel-reviewer", findRepoRoot(__dirname)).name).toBe("figaro-kernel-reviewer");
+  });
+
+  it("findRepoRoot throws outside a Figaro checkout", () => {
+    expect(() => findRepoRoot("/")).toThrow(/repo-coupled|no \.claude\/agents/i);
   });
 
   it("FIGARO_AGENT_FILES map has stable keys", () => {

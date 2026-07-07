@@ -19,15 +19,25 @@ Figaro's contributor agents encode the project's security posture: the six kerne
 
 ---
 
-## Install
+## Use (from a Figaro checkout)
 
-```bash
-npm install @figaro/agent-sdk
-# or, in this monorepo:
-# "dependencies": { "@figaro/agent-sdk": "file:../sdk" }
+**This package is repo-internal, not published** (`private: true`). It reads the
+`.claude/agents/*.md` files by path at runtime — and the contributor agents are
+*repo-coupled*: their prompts cite `src/FigaroCore.sol`, `docs/v5/`, the validator
+pattern, and their `Read`/`Grep`/`Bash` tools operate on the tree. So they only
+function against a Figaro checkout; distributing the prompt text alone would hand a
+consumer instructions pointing at files they don't have. Run it in-repo:
+
+```ts
+import { loadAgent, findRepoRoot } from "@figaro/agent-sdk";
+
+// findRepoRoot() walks up from cwd to the .claude/agents/ dir — no path to pass.
+const agent = loadAgent("figaro-kernel-reviewer");
+// or pin the root explicitly: loadAgent("figaro-kernel-reviewer", "/path/to/figaro")
 ```
 
-Single dependency: nothing. Just Node built-ins (`fs`, `path`).
+It's a workspace member (`workspaces: ["agent-sdk"]`), so other packages in this repo
+import it directly. Single dependency: nothing — just Node built-ins (`fs`, `path`).
 
 ---
 
@@ -49,13 +59,17 @@ interface AgentDefinition {
 
 Pure parser. Takes the raw content of a `.md` file and returns the structured definition. Throws if frontmatter is missing or malformed.
 
-### `loadAgent(repoRoot: string, name: FigaroAgentName): AgentDefinition`
+### `loadAgent(name: FigaroAgentName, repoRoot?: string): AgentDefinition`
 
-Reads `.claude/agents/<name>.md` from `repoRoot` and parses it. `name` is a typed enum: `"figaro-kernel-reviewer" | "figaro-clause-lockstep" | "figaro-clause-author"`.
+Reads `.claude/agents/<name>.md` from `repoRoot` and parses it. `name` is a typed enum over the canonical agents. `repoRoot` defaults to `findRepoRoot()`.
 
-### `loadAllAgents(repoRoot: string): Record<FigaroAgentName, AgentDefinition>`
+### `loadAllAgents(repoRoot?: string): Record<FigaroAgentName, AgentDefinition>`
 
-Loads all three at once.
+Loads them all at once. `repoRoot` defaults to `findRepoRoot()`.
+
+### `findRepoRoot(startDir?: string): string`
+
+Walks up from `startDir` (default `process.cwd()`) to the directory containing `.claude/agents/`. Throws when run outside a Figaro checkout — the contributor agents are repo-coupled.
 
 ### `resolveModelId(alias?: string): string`
 
@@ -72,7 +86,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { loadAgent, resolveModelId } from "@figaro/agent-sdk";
 
 const client = new Anthropic();
-const agent = loadAgent(process.env.FIGARO_REPO_ROOT!, "figaro-kernel-reviewer");
+const agent = loadAgent("figaro-kernel-reviewer"); // repoRoot auto-discovered
 
 const response = await client.messages.create({
   model: resolveModelId(agent.model),

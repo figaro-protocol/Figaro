@@ -34,13 +34,33 @@ export function resolveModelId(modelAlias?: string): string {
   return modelAlias; // already a fully-qualified ID
 }
 
+// Find the Figaro repo root by walking up from `startDir` until a
+// `.claude/agents/` directory is found. The contributor agents are repo-coupled
+// (they read src/, docs/v5/, the clause validators), so they only run against a
+// checkout — this saves callers hand-passing `repoRoot`. Throws with a clear
+// message when run outside a checkout.
+export function findRepoRoot(startDir: string = process.cwd()): string {
+  let dir = path.resolve(startDir);
+  for (;;) {
+    if (fs.existsSync(path.join(dir, ".claude", "agents"))) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) break; // reached the filesystem root
+    dir = parent;
+  }
+  throw new Error(
+    `findRepoRoot: no .claude/agents/ found walking up from ${startDir}. ` +
+      `The Figaro contributor agents are repo-coupled — run from a Figaro checkout, ` +
+      `or pass repoRoot explicitly.`,
+  );
+}
+
 // Load and parse a canonical Figaro agent from disk.
 //
-// `repoRoot` is the absolute path to the Figaro repo root. The .md
-// file is resolved relative to it via FIGARO_AGENT_FILES. The .md file in
-// .claude/agents/ remains the single source of truth — this loader is a
-// reader, not a duplicator.
-export function loadAgent(repoRoot: string, name: FigaroAgentName): AgentDefinition {
+// `repoRoot` is the absolute path to the Figaro repo root (default: discovered
+// via `findRepoRoot()`). The .md file is resolved relative to it via
+// FIGARO_AGENT_FILES. The .md file in .claude/agents/ remains the single source
+// of truth — this loader is a reader, not a duplicator.
+export function loadAgent(name: FigaroAgentName, repoRoot: string = findRepoRoot()): AgentDefinition {
   const filePath = path.join(repoRoot, FIGARO_AGENT_FILES[name]);
   if (!fs.existsSync(filePath)) {
     throw new Error(
@@ -52,10 +72,10 @@ export function loadAgent(repoRoot: string, name: FigaroAgentName): AgentDefinit
   return parseAgent(content);
 }
 
-export function loadAllAgents(repoRoot: string): Record<FigaroAgentName, AgentDefinition> {
+export function loadAllAgents(repoRoot: string = findRepoRoot()): Record<FigaroAgentName, AgentDefinition> {
   const result = {} as Record<FigaroAgentName, AgentDefinition>;
   for (const name of Object.keys(FIGARO_AGENT_FILES) as FigaroAgentName[]) {
-    result[name] = loadAgent(repoRoot, name);
+    result[name] = loadAgent(name, repoRoot);
   }
   return result;
 }
