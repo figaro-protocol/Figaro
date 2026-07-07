@@ -19,21 +19,22 @@ that any agent can read, analyze, and act on.
 
 ---
 
-## "Agent" names three worlds — pin the referent before reasoning
+## "Agent" names two worlds — pin the referent before reasoning
 
-Pre-defined agents are **operator-private by default**; "public" is the exception, only when explicitly designed for it. The public exceptions act for a **user's wallet** and **never touch the repo**.
+Pre-defined agents are **operator-private by default**; "public" is the exception, only when explicitly designed for it.
 
-- **Public participant agents — transacting** (this document's subject; any wallet acting on Figaro): the machinery is `@figaro/core/agent`; `sdk/factotum/` is the runnable reference participant — fork it, give it a wallet, it acts for whoever holds the key (buyer, seller, auditor). Worked walkthroughs: `sdk/factotum/examples/`.
-- **Public ecosystem agents — authoring** (any user contributing to the network): `sdk/ecosystem-agents/` — `figaro-clause-author`, `figaro-assembly-author`. They help a user author or **fork** a clause/assembly and register it on the permissionless registries (spec/`DesignDraft` → IPFS → `ClauseRegistry`/`AssemblyRegistry`, under the **user's** key). The artifact belongs to the user (RPGF rewards it). **Never** the repo, the kernel, or this frontend.
-- **Operator-private repo agents** (the Claude Code subagents that build THIS repo, for the operator only): definitions live in `.claude/agents/*.md`; `agent-sdk/` (`@figaro/agent-sdk`) packages **those** for non-Claude runtimes. Not the protocol SDK — never touches the chain; nothing in this document applies to it.
+- **Public ecosystem agents** (this document's subject; any user, acting for their own wallet, never the repo) all live in `sdk/ecosystem-agents/`:
+  - **Transacting** — `@figaro/core/agent` is the machinery; `transactor/` (`@figaro/transactor`) is the runnable reference — fork it, give it a wallet, it acts for whoever holds the key (buyer, seller, auditor). Worked walkthroughs: `sdk/ecosystem-agents/transactor/examples/`.
+  - **Authoring** — `figaro-clause-author`, `figaro-assembly-author`: help a user author or **fork** a clause/assembly and register it on the permissionless registries (spec/`DesignDraft` → IPFS → `ClauseRegistry`/`AssemblyRegistry`, under the **user's** key). The artifact belongs to the user (RPGF rewards it).
+- **Operator-private repo agents** (the Claude Code subagents that build THIS repo, for the operator only): definitions live in `.claude/agents/*.md`. They touch the repo (that is their job); nothing in this document applies to them.
 
 ---
 
 ## Reference Implementation
 
-`sdk/factotum/` ships a runnable reference participation agent: a fork-and-modify TypeScript starting point that wires `@figaro/core/agent` to a wallet, role binding (inferred from process state), and a pluggable policy. Treat the doctrine in this document as the *what*; the factotum is the *how*. See `sdk/factotum/README.md` for architecture, the policy contract, LLM integration patterns, and ERC-8004 / `did:web` discoverability.
+`sdk/ecosystem-agents/transactor/` ships a runnable reference participation agent: a fork-and-modify TypeScript starting point that wires `@figaro/core/agent` to a wallet, role binding (inferred from process state), and a pluggable policy. Treat the doctrine in this document as the *what*; the transactor is the *how*. See `sdk/ecosystem-agents/transactor/README.md` for architecture, the policy contract, LLM integration patterns, and ERC-8004 / `did:web` discoverability.
 
-The factotum is intentionally minimal — it is not a strategy or a production system. It is the concrete demonstration that humans and autonomous agents interact with the kernel through the same primitives (a wallet, EIP-712 signatures, on-chain commitments). Re-implementations in other languages are expected; the protocol does not care which runtime you use.
+The transactor is intentionally minimal — it is not a strategy or a production system. It is the concrete demonstration that humans and autonomous agents interact with the kernel through the same primitives (a wallet, EIP-712 signatures, on-chain commitments). Re-implementations in other languages are expected; the protocol does not care which runtime you use.
 
 ---
 

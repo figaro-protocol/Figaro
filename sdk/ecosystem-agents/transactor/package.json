@@ -1,5 +1,5 @@
 {
-  "name": "@figaro/factotum",
+  "name": "@figaro/transactor",
   "version": "0.1.0",
   "private": true,
   "description": "Reference participation agent for the Figaro Protocol — wires @figaro/core/agent to a wallet, role binding, and a pluggable policy. Fork-and-modify starting point for human or AI agents that act on the protocol.",
@@ -7,7 +7,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "factotum": "dist/index.js"
+    "transactor": "dist/index.js"
   },
   "files": [
     "dist",

@@ -141,7 +141,7 @@ export default function Composability() {
                     </li>
                     <li>
                         <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>
-                        <span className="text-ink-body"> &mdash; how autonomous agents participate through the same primitives humans do; ERC-8004 interop and the factotum reference implementation.</span>
+                        <span className="text-ink-body"> &mdash; how autonomous agents participate through the same primitives humans do; ERC-8004 interop and the transactor reference implementation.</span>
                     </li>
                     <li>
                         <Link href="/integrate" className="text-ink-heading font-medium hover:underline">Integrate</Link>

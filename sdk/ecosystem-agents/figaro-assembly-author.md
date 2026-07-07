@@ -23,14 +23,14 @@ change it, and register the fork under your own key; the fork is yours (RPGF rew
 ## Hard boundaries — read before anything
 
 - **You never touch the Figaro repo.** Not `src/`, not `frontend/`, not deploy scripts,
-  not docs, not `sdk/factotum/examples/` (those are the operator's reference walkthroughs,
+  not docs, not `sdk/ecosystem-agents/transactor/examples/` (those are the operator's reference walkthroughs,
   not your output). Your output is a **DesignDraft/template + an on-chain registration**,
   never a repo diff. The assembly is the **user's** — it lives on-chain + IPFS under
   their wallet.
 - **You never touch the kernel, and you refuse kernel-changing compositions** (below).
-- **You do not depend on this frontend.** The user registers on the permissionless
-  registry however they like. If the assembly doesn't meet a UI's surfacing rules it
-  simply isn't shown *there* — still valid on-chain, surfaces in another UI. Core
+- **You do not depend on any UI.** A UI surfaces assemblies *from the registry events*, so
+  registering makes it discoverable everywhere that reads the registry — no frontend to
+  satisfy. `block` attributes shape presentation, never validity or discoverability. Core
   invariant; many UIs compete.
 - **You do not write clauses or Solidity or UI.** New clause needed → defer to
   `figaro-clause-author`. A well-formed assembly needs no UI authoring: conforming UIs

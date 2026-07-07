@@ -57,12 +57,12 @@ export default function Agents() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="The factotum — reference implementation.">
+            <MarketingSection title="The transactor — reference implementation.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    <code>sdk/factotum/</code> ships a runnable participation agent: a TypeScript starting point that wires <code>@figaro/core/agent</code> to a wallet, infers role binding from process state, and exposes a pluggable policy. Fork and modify is the intended path; re-implementations in other languages are expected. The protocol does not care which runtime an agent uses.
+                    <code>sdk/ecosystem-agents/transactor/</code> ships a runnable participation agent: a TypeScript starting point that wires <code>@figaro/core/agent</code> to a wallet, infers role binding from process state, and exposes a pluggable policy. Fork and modify is the intended path; re-implementations in other languages are expected. The protocol does not care which runtime an agent uses.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The factotum is intentionally minimal &mdash; not a strategy, not a production system. It is the concrete demonstration that an autonomous agent and a human interact with the kernel through the same primitives: a wallet, EIP-712 signatures, on-chain commitments. Treat the doctrine on this page as the <em>what</em>; the factotum is the <em>how</em>.
+                    The transactor is intentionally minimal &mdash; not a strategy, not a production system. It is the concrete demonstration that an autonomous agent and a human interact with the kernel through the same primitives: a wallet, EIP-712 signatures, on-chain commitments. Treat the doctrine on this page as the <em>what</em>; the transactor is the <em>how</em>.
                 </p>
             </MarketingSection>
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import "dotenv/config";
 import type { ProposedAction } from "@figaro/core/agent";
-import { runFactotum, type ApprovalContext } from "./factotum.js";
+import { runTransactor, type ApprovalContext } from "./transactor.js";
 import {
   makeHitlPolicy,
   makeAutonomousPolicy,
@@ -29,16 +29,16 @@ const config = {
   policy,
 };
 
-runFactotum(config).catch((err) => {
-  console.error("[factotum] fatal:", err);
+runTransactor(config).catch((err) => {
+  console.error("[transactor] fatal:", err);
   process.exit(1);
 });
 
 function requireEnv(name: string): string {
   const v = process.env[name];
   if (!v || v === "0x") {
-    console.error(`[factotum] missing or unset env var: ${name}`);
-    console.error(`[factotum] copy .env.example to .env and fill in real values.`);
+    console.error(`[transactor] missing or unset env var: ${name}`);
+    console.error(`[transactor] copy .env.example to .env and fill in real values.`);
     process.exit(1);
   }
   return v;

@@ -108,7 +108,7 @@ An agent acting for wallet `W` may write:
 
 - W's own off-chain metadata (seller-registry entries, ENS/`did:web` documents, agent service descriptions).
 - Assemblies where W is `rootBuyer` or seller-of-record.
-- New artifacts W is authoring — new clauses, new validator contracts, new factotum forks, new frontend pages.
+- New artifacts W is authoring — new clauses, new assemblies, new `transactor` forks, W's own UI.
 
 An agent may NOT:
 
@@ -335,7 +335,7 @@ A clause's spec ships in two lockstep surfaces: **Layer A** (TypeScript, `@figar
 
 `@figaro/core` — TypeScript SDK for reading, analyzing, and proposing Figaro transactions. Single dependency: `viem ^2.0.0`. ESM; four subpath exports (root, `/agent`, `/extensions`, `/clauses` — the lockstep clause source-of-truth). Full entry-point map + build/test commands → `sdk/README.md`.
 
-**"Agent" = three worlds; pin the referent.** Default = OPERATOR-PRIVATE (`.claude/agents/`, via `agent-sdk/`). Public exceptions act for a USER's wallet, NEVER the repo: PARTICIPANT (`@figaro/core/agent`; `sdk/factotum/`) and ECOSYSTEM authoring (`sdk/ecosystem-agents/`). Full split → `docs/v5/AI_AGENT_COORDINATION.md` + the agent-seam memory.
+**"Agent" = two worlds; pin the referent.** Default = OPERATOR-PRIVATE (`.claude/agents/`, the operator's repo tools; no SDK). The exception: PUBLIC ECOSYSTEM agents (`sdk/ecosystem-agents/`) acting for a USER's wallet, NEVER the repo — clause/assembly authors + `transactor` (runnable). Full split → `docs/v5/AI_AGENT_COORDINATION.md` + the agent-seam memory.
 
 ### Local Development
 

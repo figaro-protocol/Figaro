@@ -16,11 +16,9 @@ one interpretation of a fact across counterparties and over time. Concretely it 
 a **Layer-A spec** (a closed JSON-Schema-subset document) → its **contentHash** →
 **pinned to IPFS** → **registered in `ClauseRegistry`** (permissionless, pays a deposit,
 first-write-wins; the on-chain id is `keccak256(abi.encode(clauseId, version))`, the
-`clauseId` a bare human name). That is the whole clause. Attestation is **merkle-only** —
-a never-seen clause is attestable with **zero per-clause on-chain code**. There is **no
-per-clause validator contract** (that model was torn down; well-formedness is an
-off-chain, read-time concern). Consumers load the clause from `ClauseRegistry → IPFS` at
-runtime.
+`clauseId` a bare human name). That is the whole clause: **you write no on-chain code —
+no validator contract, no Solidity.** Well-formedness is validated off-chain (Layer-A) at
+author time; consumers load the clause from `ClauseRegistry → IPFS` at runtime.
 
 ## Hard boundaries — read before anything
 
@@ -32,10 +30,11 @@ runtime.
   the user's own spec document, in the user's own workspace — never the protocol repo.
 - **You never touch the kernel.** `FigaroCore.sol` / `CommitmentTypes.sol` are invariant.
   If a request needs a kernel change, it is not a clause — refuse and explain.
-- **You do not depend on this frontend.** The registries are permissionless: the user
-  registers however they like. If the clause doesn't meet a given UI's surfacing rules
-  (e.g. this frontend groups by `block.article`), it simply isn't shown *there* — it is
-  still valid on-chain and surfaces in another UI. Core invariant; many UIs compete.
+- **You do not depend on any UI.** Registration is the whole act: a UI surfaces clauses
+  *from the registry events*, so registering makes the clause discoverable everywhere that
+  reads the registry — no frontend to satisfy. `block` attributes shape how a UI *presents*
+  it (grouping, labels), never its validity or discoverability. Core invariant; many UIs
+  compete.
 - **You do not commit or push.** You produce the artifact and register it (or hand the
   user the transaction to sign). The user owns the result.
 
@@ -65,9 +64,9 @@ belongs to, or argue for a new one.
 A closed JSON-Schema-subset per `sdk/src/clauses/spec.ts` (`parseClauseSpec`): field
 types `string` (formats `bytes32-hex` / `address-hex` / `bytes-hex` / `iso-datetime`),
 `integer`, `bigint`, `boolean`, `enum`, `array`, `object`; per-stage overrides via
-`spec.stages[stage]`. The `block` attributes (e.g. `block.article`) are how UIs choose to
-surface it — set them thoughtfully, but their absence only affects surfacing, never
-validity. Write the spec as the **user's** document (their workspace).
+`spec.stages[stage]`. The `block` attributes (e.g. `block.article`) shape how a UI
+*presents* the clause — set them thoughtfully; their absence affects only presentation,
+never validity or discoverability. Write the spec as the **user's** document (their workspace).
 
 ## Step 4 — Validate off-chain
 
@@ -94,8 +93,7 @@ check. A malformed spec is caught here, at author time.
 - contentURI:   ipfs://…
 - on-chain id:  keccak256(abi.encode("<clauseId>", <version>))
 - tx:           0x…  (registrar = <user wallet>)
-- Surfacing note: valid on-chain now; this frontend surfaces it if <block.article set / …>,
-  otherwise it surfaces in any UI that reads the registry.
+- Discoverable now in any UI that reads the registry; `block` attributes shape presentation.
 ```
 
 ## Refuse, and teach, on these (closed-world tells)

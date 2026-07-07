@@ -24,7 +24,7 @@ The organizational consequence: each process assembles a temporary institution o
 - **SP1 prover** — Rust workspace: kernel library, guest program, batch sequencer
 - **Formal verification** — TLA+ safety invariants, Echidna fuzzing, Halmos symbolic proofs, Certora CVL rules
 - **Paper** — Academic paper in `paper/`
-- **Three agent worlds, one clean seam.** *(1) Operator-private repo agents* — `.claude/agents/` ships sixteen Claude Code subagents for building Figaro itself: reviews (kernel-reviewer, clause-lockstep), runtime UI (runtime-ui-author), audits (assumption-auditor, audit-commitment-checker, literalness-auditor, separation-of-concerns-auditor, open-world auditors), operations (memory-hygiene, deploy-runner, feedback-triage), communications (marketing-author, site-ia, visual-design), paper-reviewer — the operator's own tools, packaged by `agent-sdk/` for non-Claude-Code runtimes. *(2) Public participant agents* — `@figaro/core/agent` + `sdk/factotum/`, a runnable buyer/seller reference. *(3) Public ecosystem agents* — `sdk/ecosystem-agents/` (clause-author, assembly-author): help any user author or fork a clause/assembly and register it on the permissionless registries under their own wallet — **never the repo**. See [CONTRIBUTING.md](CONTRIBUTING.md) and `sdk/ecosystem-agents/README.md`.
+- **Two agent worlds, one clean seam.** *(1) Operator-private repo agents* — `.claude/agents/` ships sixteen Claude Code subagents for building Figaro itself: reviews (kernel-reviewer, clause-lockstep), runtime UI (runtime-ui-author), audits (assumption-auditor, audit-commitment-checker, literalness-auditor, separation-of-concerns-auditor, open-world auditors), operations (memory-hygiene, deploy-runner, feedback-triage), communications (marketing-author, site-ia, visual-design), paper-reviewer — the operator's own tools. *(2) Public ecosystem agents* — `sdk/ecosystem-agents/`, all acting for a user's own wallet, never the repo: `transactor` (the runnable buyer/seller/originate reference) plus `figaro-clause-author` and `figaro-assembly-author`, which help any user author or fork a clause/assembly and register it on the permissionless registries. See [CONTRIBUTING.md](CONTRIBUTING.md) and `sdk/ecosystem-agents/README.md`.
 
 Start with [docs/v5/CURRENT_STATE.md](docs/v5/CURRENT_STATE.md) for the reading path.
 
@@ -51,8 +51,9 @@ src/                        Solidity contracts (0.8.26, Foundry)
 
 sdk/                        TypeScript SDK (@figaro/core)
   src/                      Event parsing, state reconstruction, agent coordination
-  factotum/                 Runnable participation agent (buyer/seller) + worked examples
-  ecosystem-agents/         Public authoring agents — clause-author, assembly-author (act for a user's wallet, never the repo)
+  ecosystem-agents/         Public agents (act for a user's wallet, never the repo)
+    transactor/             Runnable buyer/seller/originate reference (@figaro/transactor) + examples
+    figaro-clause-author.md, figaro-assembly-author.md   Authoring-agent prompts
   test/                     Vitest tests
 
 frontend/                   Next.js 14 runtime
@@ -72,7 +73,6 @@ prover/                     Rust SP1 workspace
   rpgf-script/              SP1 RPGF prove script
   clause/                   Generic clause validator (mirrors Layer A)
 
-agent-sdk/                  @figaro/agent-sdk — packages the operator's .claude/agents for non-Claude-Code runtimes
 .claude/                    Operator-private tooling (building Figaro itself)
   agents/                   Repo subagents (kernel-reviewer, clause-lockstep, runtime-ui-author, marketing-author, …)
   skills/                   figaro-kernel-discipline (canonical kernel rules)

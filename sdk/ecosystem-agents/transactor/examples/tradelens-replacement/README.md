@@ -28,8 +28,8 @@ The clauses largely already exist. The assembly DAG (this scenario's main artifa
 
 - **Clauses to author**: roughly 1–2 new clauses (see `clauses.md`). Most existing clauses (`geo-v1`, `handoff-v1`, `jurisdiction-v1`, `commerce-v1`, GHG family) cover the primitives.
 - **Assembly DAG**: 6–8 process nodes from origin to consignee — human work on the designer canvas, or scaffolded by the `figaro-assembly-author` subagent. See `assembly.md`.
-- **Factotums**: one per role-bound wallet — shipper, forwarder, carrier, ports (origin + destination), customs broker, last-mile trucking, consignee. See `roles.md`.
+- **Transactors**: one per role-bound wallet — shipper, forwarder, carrier, ports (origin + destination), customs broker, last-mile trucking, consignee. See `roles.md`.
 
 ## Provenance
 
-The structural fix here is *not novel* — it's the application of the existing protocol to an existing failure mode. The interesting work is what the agents handle versus what they don't. See `sdk/factotum/examples/README.md` for the overall gap statement.
+The structural fix here is *not novel* — it's the application of the existing protocol to an existing failure mode. The interesting work is what the agents handle versus what they don't. See `sdk/ecosystem-agents/transactor/examples/README.md` for the overall gap statement.

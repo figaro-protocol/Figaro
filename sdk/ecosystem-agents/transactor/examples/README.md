@@ -1,8 +1,8 @@
 # Figaro agent integration examples
 
-Worked walkthroughs of how the public **ecosystem** agents (`figaro-assembly-author` + `figaro-clause-author`, in `sdk/ecosystem-agents/`) and the `factotum` participation reference compose to let a **user** build and operate a real assembly — the user's own contribution, registered on the permissionless registries under their wallet, never in this repo.
+Worked walkthroughs of how the public **ecosystem** agents (`figaro-assembly-author` + `figaro-clause-author`, in `sdk/ecosystem-agents/`) and the `transactor` participation reference compose to let a **user** build and operate a real assembly — the user's own contribution, registered on the permissionless registries under their wallet, never in this repo.
 
-These are **doc-only**. Every factotum config snippet is plug-and-play. Nothing is implemented in code — the assemblies themselves haven't been built. The point is to surface what the agents *would do* and where the user-with-canvas takes over.
+These are **doc-only**. Every transactor config snippet is plug-and-play. Nothing is implemented in code — the assemblies themselves haven't been built. The point is to surface what the agents *would do* and where the user-with-canvas takes over.
 
 ## Scenarios
 
@@ -21,7 +21,7 @@ Each scenario has four files:
 | `README.md` | Scenario, what the existing thing got wrong, the Figaro structural fix |
 | `clauses.md` | Which clauses exist; which to author; verbatim prompts for `figaro-clause-author` |
 | `assembly.md` | DAG sketch, per-edge mechanism, per-node clauses, authoring note |
-| `roles.md` | `factotum` policy snippet per role |
+| `roles.md` | `transactor` policy snippet per role |
 
 ## Authoring the assembly DAG
 

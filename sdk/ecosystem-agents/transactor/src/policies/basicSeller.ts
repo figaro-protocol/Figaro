@@ -12,7 +12,7 @@ export interface BasicSellerConfig {
 
 // basicSellerPolicy — a single seller that accepts inbound commits
 // if value falls within configured bounds. Routine attestations execute
-// autonomously; resolutions stay HITL (handled by a separate factotum or
+// autonomously; resolutions stay HITL (handled by a separate transactor or
 // escalation channel).
 //
 // Use for: small sellers offering a fixed catalogue at known prices, where

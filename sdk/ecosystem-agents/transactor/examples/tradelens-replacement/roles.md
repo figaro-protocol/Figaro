@@ -1,15 +1,15 @@
 # Roles: TradeLens replacement
 
-One factotum per role-bound wallet. The `factotum` reference at `sdk/factotum/` is the runner; this file shows the per-role *policy* — the `shouldExecute` rule for autonomous mode, or the HITL prompts the operator sees.
+One transactor per role-bound wallet. The `transactor` reference at `sdk/ecosystem-agents/transactor/` is the runner; this file shows the per-role *policy* — the `shouldExecute` rule for autonomous mode, or the HITL prompts the operator sees.
 
-The proposer infers role from process state: same factotum binary, different role per process membership. Wallet identity is the only configuration distinction.
+The proposer infers role from process state: same transactor binary, different role per process membership. Wallet identity is the only configuration distinction.
 
 ## Shipper
 
 The shipment originator. Rare actions (one process per shipment), high stakes (whole-cargo value). HITL by default.
 
 ```ts
-import { makeHitlPolicy } from "@figaro/factotum/policy";
+import { makeHitlPolicy } from "@figaro/transactor/policy";
 
 export const shipperPolicy = makeHitlPolicy<ProposedAction, { processId: string }>();
 ```
@@ -21,7 +21,7 @@ Operator reviews each proposed action — `commit-sub-order` to the forwarder, `
 Pass-through actor. Receives cargo from shipper, hands off to carrier. Volume-driven business; threshold-and-whitelist autonomous.
 
 ```ts
-import { makeAutonomousPolicy } from "@figaro/factotum/policy";
+import { makeAutonomousPolicy } from "@figaro/transactor/policy";
 
 const FORWARDER_MAX_BOND = 50_000_000_000n; // $50K in 6-decimal stablecoin
 const TRUSTED_CARRIERS: Set<`0x${string}`> = new Set([
@@ -51,7 +51,7 @@ Demonstrates the threshold + whitelist pattern for medium-trust autonomous opera
 
 ## Ocean carrier
 
-The most complex factotum. Acts as seller-of-record to forwarder AND as buyer of terminal-services, fueling, etc. at sub-processes. Most actions are routine attestations (vessel-position every 4 hours, handoff-v1 at each port); a few are high-value commitments.
+The most complex transactor. Acts as seller-of-record to forwarder AND as buyer of terminal-services, fueling, etc. at sub-processes. Most actions are routine attestations (vessel-position every 4 hours, handoff-v1 at each port); a few are high-value commitments.
 
 Recommended structure: a *split policy* — autonomous for attestations and routine sub-procurement under threshold, HITL for resolutions and exceptional sub-procurement.
 
@@ -70,7 +70,7 @@ export const carrierPolicy = makeAutonomousPolicy<ProposedAction, { processId: s
 );
 ```
 
-Pair with a HITL fallback factotum for the rejected actions.
+Pair with a HITL fallback transactor for the rejected actions.
 
 ## Port-of-loading / port-of-discharge
 
@@ -112,11 +112,11 @@ Smaller variants of the same patterns:
 
 ## Cross-cutting: the security floor
 
-Every autonomous policy in this assembly inherits the factotum's default refuse-all behavior unless `shouldExecute` is explicitly written. A fresh fork running `POLICY=autonomous` with no rule does nothing on chain — that's the design. See `sdk/factotum/src/policy.ts`.
+Every autonomous policy in this assembly inherits the transactor's default refuse-all behavior unless `shouldExecute` is explicitly written. A fresh fork running `POLICY=autonomous` with no rule does nothing on chain — that's the design. See `sdk/ecosystem-agents/transactor/src/policy.ts`.
 
 ## Identity and discoverability
 
-Each factotum's wallet should register an `SellerRegistry` entry with `services` keys per `docs/v5/AI_AGENT_COORDINATION.md` (ERC-8004 / `did:web` interop):
+Each transactor's wallet should register an `SellerRegistry` entry with `services` keys per `docs/v5/AI_AGENT_COORDINATION.md` (ERC-8004 / `did:web` interop):
 
 - Carriers should declare `services.mcp` and `services.a2a` for inbound bookings.
 - Ports should declare `capabilities: ["container-handling", "rail-connection", ...]`.

@@ -1,8 +1,8 @@
-# @figaro/factotum
+# @figaro/transactor
 
 Reference participation agent for the Figaro Protocol.
 
-A factotum is a fork-and-modify starting point for any agent — human-driven or autonomous, AI or rule-based — that wants to act on Figaro. It wires `@figaro/core/agent` to a wallet, a role binding (inferred from process state), and a pluggable policy.
+A transactor is a fork-and-modify starting point for any agent — human-driven or autonomous, AI or rule-based — that wants to act on Figaro. It wires `@figaro/core/agent` to a wallet, a role binding (inferred from process state), and a pluggable policy.
 
 This is the **operational** form of Figaro's actor-neutrality claim. The protocol does not distinguish between human and AI participants; both interact through the same kernel primitives — a wallet, EIP-712 signatures, and on-chain commitments. This package shows what that looks like in code.
 
@@ -21,22 +21,22 @@ sync → propose → policy → execute
 3. **Policy** — a pluggable decision layer. Default: human-in-the-loop (HITL) — every action prompts. Alternative: autonomous, with a rule function you write.
 4. **Execute** — `executeAction(walletClient, publicClient, addresses, action, inputs?)` builds and submits the transaction. `resolve-process` is self-contained (a buyer resolves autonomously); `commit`/`attest`/`initiate` take signed `inputs` — the SDK never fabricates a counterparty signature. Sequential, never parallel.
 
-The factotum loops on a polling interval. For production, replace polling with a WebSocket subscription to relevant events.
+The transactor loops on a polling interval. For production, replace polling with a WebSocket subscription to relevant events.
 
 ---
 
 ## Quickstart (local Anvil)
 
 ```bash
-# 1. Build the SDK first — the factotum imports from @figaro/core's compiled dist/.
+# 1. Build the SDK first — the transactor imports from @figaro/core's compiled dist/.
 cd ../../sdk && npm install && npm run build
 
 # 2. From the repo root, deploy contracts to local Anvil.
 cd ../.. && ./deploy-local.sh
 # → prints contract addresses; copy them into .env below.
 
-# 3. Install factotum dependencies and configure.
-cd sdk/factotum
+# 3. Install transactor dependencies and configure.
+cd sdk/ecosystem-agents/transactor
 npm install
 cp .env.example .env
 # Edit .env: set PRIVATE_KEY (use a fresh test key) and the five contract addresses.
@@ -45,7 +45,7 @@ cp .env.example .env
 npm run dev
 ```
 
-The factotum will print its address, sync the chain, and prompt for approval each time it has a proposed action.
+The transactor will print its address, sync the chain, and prompt for approval each time it has a proposed action.
 
 To act as a different role, fund a different test address and use that key. The proposer will surface buyer / seller / auditor actions automatically based on process membership.
 
@@ -58,9 +58,9 @@ What you'll actually see, running against local Anvil with a buyer wallet that j
 ```text
 $ npm run dev
 
-[factotum] address 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
-[factotum] policy hitl
-[factotum] polling every 15000ms
+[transactor] address 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
+[transactor] policy hitl
+[transactor] polling every 15000ms
 ```
 
 The first three lines are the agent identifying itself: which wallet, which policy, how often it syncs. Address-only — no name, no service descriptor, because the protocol does not care.
@@ -68,9 +68,9 @@ The first three lines are the agent identifying itself: which wallet, which poli
 After ~15 seconds the loop ticks. The proposer reconstructs every active process the wallet is a party to (and the discoverable assembly catalogue) and surfaces the actions available right now:
 
 ```text
-[factotum] 1 proposed action(s): 1 process(es), 0 assembly(ies) discoverable
+[transactor] 1 proposed action(s): 1 process(es), 0 assembly(ies) discoverable
 
-[factotum/hitl] proposed action:
+[transactor/hitl] proposed action:
 {
   "type": "commit-sub-order",
   "description": "Commit a sub-order to process 0x4e9b... as buyer",
@@ -79,8 +79,8 @@ After ~15 seconds the loop ticks. The proposer reconstructs every active process
   "currentCumulativeValue": "1500000",
   "currency": "0x5FbDB..."
 }
-[factotum/hitl] context: { processId: '0x4e9b...' }
-[factotum/hitl] approve? (y/N)
+[transactor/hitl] context: { processId: '0x4e9b...' }
+[transactor/hitl] approve? (y/N)
 ```
 
 The action is the canonical kernel call — buyer commits to a sub-order, locking 2× payment as bond. Read the description and the typed fields. Verify the `processId` matches the order you placed. Verify `currentCumulativeValue` matches what you expect (the executor will round-trip it through your signed commitment, so any mismatch reverts the on-chain call rather than executing the wrong amount).
@@ -90,8 +90,8 @@ If anything looks off, type `n` and the action is rejected. The proposer will se
 If everything looks right, type `y`:
 
 ```text
-[factotum/hitl] approve? (y/N) y
-[factotum] executed: commit-sub-order → 0x8c7e3a...
+[transactor/hitl] approve? (y/N) y
+[transactor] executed: commit-sub-order → 0x8c7e3a...
 ```
 
 Bonds locked, on-chain. The transaction hash is your audit trail.
@@ -99,9 +99,9 @@ Bonds locked, on-chain. The transaction hash is your audit trail.
 A few minutes later the seller has done their attestation work (e.g. a handoff) and the process is ready to resolve. The next tick:
 
 ```text
-[factotum] 1 proposed action(s): 1 process(es), 0 assembly(ies) discoverable
+[transactor] 1 proposed action(s): 1 process(es), 0 assembly(ies) discoverable
 
-[factotum/hitl] proposed action:
+[transactor/hitl] proposed action:
 {
   "type": "resolve-process",
   "description": "Resolve process 0x4e9b... — release bonds, settle payment",
@@ -110,20 +110,20 @@ A few minutes later the seller has done their attestation work (e.g. a handoff) 
   "totalBuyerPayout": "200000",
   "totalSellerPayout": "1300000"
 }
-[factotum/hitl] context: { processId: '0x4e9b...' }
-[factotum/hitl] approve? (y/N) y
-[factotum] executed: resolve-process → 0x2d4f8b...
+[transactor/hitl] context: { processId: '0x4e9b...' }
+[transactor/hitl] approve? (y/N) y
+[transactor] executed: resolve-process → 0x2d4f8b...
 ```
 
-Bonds return, payment settles, the process closes. The factotum loops on, waiting for the next process this wallet becomes a party to.
+Bonds return, payment settles, the process closes. The transactor loops on, waiting for the next process this wallet becomes a party to.
 
-That's the whole loop. The same code path serves any role — buyer, seller, auditor — because the proposer infers role from process state, not from configuration. Fund a different test address with a different role, run the same factotum, get different actions.
+That's the whole loop. The same code path serves any role — buyer, seller, auditor — because the proposer infers role from process state, not from configuration. Fund a different test address with a different role, run the same transactor, get different actions.
 
 ---
 
 ## Policy: the most important file you'll change
 
-`src/policy.ts` defines the contract between the factotum and the rest of the world. Everything that decides "should this transaction actually be sent?" lives here.
+`src/policy.ts` defines the contract between the transactor and the rest of the world. Everything that decides "should this transaction actually be sent?" lives here.
 
 Two policies ship by default:
 
@@ -166,7 +166,7 @@ Five named policies cover common roles. Import and configure rather than writing
 Each is a factory that takes config and returns a `Policy<ProposedAction, TContext>`:
 
 ```ts
-import { buyerWithBudgetPolicy } from "@figaro/factotum/policies";
+import { buyerWithBudgetPolicy } from "@figaro/transactor/policies";
 
 const policy = buyerWithBudgetPolicy({
   perCommitLimit: 5000n,   // reject any single commit above this
@@ -176,7 +176,7 @@ const policy = buyerWithBudgetPolicy({
 
 Wire it into `src/index.ts` in place of the default. Property tests on the rule logic live in `src/policies/policies.test.ts` and run without needing chain access.
 
-The `sdk/factotum/examples/*/roles.md` files show these policies in context per scenario.
+The `sdk/ecosystem-agents/transactor/examples/*/roles.md` files show these policies in context per scenario.
 
 ## Autonomous origination — the two-party handshake
 
@@ -217,7 +217,7 @@ interface. A worked, no-human, two-agent proof runs against a live devnet:
 
 ## Plugging in an LLM
 
-The factotum is LLM-agnostic. The policy interface is a synchronous-or-async function over actions; what's behind it is up to you.
+The transactor is LLM-agnostic. The policy interface is a synchronous-or-async function over actions; what's behind it is up to you.
 
 To use an LLM for non-trivial decisions (e.g., "is this multi-stop batch worth the deviation?"), wrap your LLM call inside `shouldExecute`:
 
@@ -280,20 +280,20 @@ The Figaro project is security-first by construction. Carry that posture into yo
 
 ## See also
 
-- `sdk/factotum/examples/` — worked end-to-end scenarios showing per-role factotum policies for a multi-party shipping assembly and a passenger-airline assembly.
+- `sdk/ecosystem-agents/transactor/examples/` — worked end-to-end scenarios showing per-role transactor policies for a multi-party shipping assembly and a passenger-airline assembly.
 
-## What the factotum is not
+## What the transactor is not
 
 - **Not production-ready.** It's a reference, not a finished product. There's no retry/backoff, no pending-tx tracking, no nonce management beyond what viem does, no metrics, no health checks. Add what you need.
 - **Not a strategy.** It will execute what the proposer suggests; it does not decide which markets to enter, which prices are profitable, or which counterparties to trust. That's your policy.
-- **Not the only way.** The factotum is one wiring of `@figaro/core/agent`. If you have a different runtime (Python, Rust, Go), the protocol doesn't care — re-implement the loop in your language. The only requirements are: a wallet, EIP-712 signing, and event-derived state.
+- **Not the only way.** The transactor is one wiring of `@figaro/core/agent`. If you have a different runtime (Python, Rust, Go), the protocol doesn't care — re-implement the loop in your language. The only requirements are: a wallet, EIP-712 signing, and event-derived state.
 
 ---
 
 ## Files
 
 - `src/index.ts` — CLI entry, env loading, policy selection.
-- `src/factotum.ts` — main loop: sync → propose → policy → execute.
+- `src/transactor.ts` — main loop: sync → propose → policy → execute.
 - `src/policy.ts` — pluggable decision layer (HITL + autonomous).
 - `src/policy.test.ts` — independent unit tests for the policy abstraction.
 - `.env.example` — environment variables; copy to `.env` before running.

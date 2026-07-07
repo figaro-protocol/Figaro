@@ -1,49 +1,52 @@
 # Figaro ecosystem agents
 
-**Public, wallet-acting agents that help a user contribute to the permissionless
-network — never to this repo.**
+**Public, wallet-acting agents that help a user participate in — and contribute to — the
+permissionless network. Never to this repo.**
 
 Figaro is an open-world innovation with a steep comprehension cost: adopting it means
 rewiring closed-world priors. These agents are the answer — they already know the
-open-world rules and produce a correct, **user-owned** contribution on the user's behalf,
-so a newcomer doesn't have to internalize the whole model first. The agent is the
-onboarding, encoded.
+open-world rules and act correctly on a **user's** behalf, so a newcomer doesn't have to
+internalize the whole model first. The agent is the onboarding, encoded.
 
-## The two agents
+## The agents
 
-- **`figaro-clause-author`** — author (or version) a clause: a Layer-A spec → IPFS → a
-  permissionless `ClauseRegistry` registration under the **user's** wallet. Merkle-only —
-  no per-clause validator contract, no repo file.
-- **`figaro-assembly-author`** — compose a new assembly, or **fork** an existing one: a
-  `DesignDraft`/template → IPFS → a permissionless `AssemblyRegistry` registration under
-  the **user's** wallet. Defers new-clause needs to `figaro-clause-author`.
+- **`figaro-clause-author`** (prompt) — author (or version) a clause: a Layer-A spec →
+  IPFS → a permissionless `ClauseRegistry` registration under the **user's** wallet. No
+  on-chain code — no validator contract, no repo file.
+- **`figaro-assembly-author`** (prompt) — compose a new assembly, or **fork** an existing
+  one: a `DesignDraft`/template → IPFS → a permissionless `AssemblyRegistry` registration
+  under the **user's** wallet. Defers new-clause needs to `figaro-clause-author`.
+- **`transactor/`** (`@figaro/transactor`, runnable) — the reference agent a user forks to
+  *transact*: buy, sell, originate, resolve, attest. Wires `@figaro/core/agent` to a
+  wallet + a pluggable policy (HITL by default; autonomous ships refuse-all).
 
-Both act for a user's key via `@figaro/core` and the registries. The artifact belongs to
-the user (RPGF rewards it as theirs). Forks are first-class.
+All act for a **user's key** via `@figaro/core` and the registries. Authored artifacts
+belong to the user (RPGF rewards them); forks are first-class.
 
-## The seam — do not blur it
+## The seam — two worlds, do not blur them
 
-| Agents | Home | For | Touch the repo? |
+Pre-defined agents are **operator-private by default**; "public" is the exception, only
+when explicitly designed for it — the three above are those exceptions.
+
+| World | Home | For | Touch the repo? |
 |---|---|---|---|
-| kernel-reviewer, clause-lockstep, marketing, visual-design, site-ia, runtime-ui-author, the auditors, memory-hygiene, deploy-runner, feedback-triage, paper-reviewer | `.claude/agents/` | **the operator only** — building Figaro itself | yes (that's their job) |
-| `figaro-clause-author`, `figaro-assembly-author` | **`sdk/ecosystem-agents/`** | **any user** — contributing to the network | **never** |
-| `@figaro/core/agent` + `sdk/factotum/` | `sdk/` | any user — transacting (buyer/seller) | never |
+| **Operator-private** — build Figaro itself (kernel-reviewer, clause-lockstep, marketing, visual-design, site-ia, runtime-ui-author, the auditors, memory-hygiene, deploy-runner, feedback-triage, paper-reviewer) | `.claude/agents/` | **the operator only** | yes (that's their job) |
+| **Public ecosystem** — participate + contribute (clause-author, assembly-author, transactor) | **`sdk/ecosystem-agents/`** | **any user**, acting for their own wallet | **never** |
 
-**Pre-defined agents are operator-private by default; "public" is the exception, only
-when explicitly designed for it** — these two, and the participant agents, are those
-exceptions. An ecosystem agent that writes a repo file has crossed the line: it re-imposes
-the permission barrier (repo access + a merge) the open world exists to remove.
+An ecosystem agent that writes a repo file has crossed the line: it re-imposes the
+permission barrier (repo access + a merge) the open world exists to remove.
 
-## Not bound to this frontend
+## No UI to satisfy
 
-The registries are permissionless: the user registers however they like. If an artifact
-doesn't meet a given UI's surfacing rules (this frontend groups clauses by `block.article`,
-etc.), it simply isn't shown *there* — it is still valid on-chain and surfaces in any other
-UI that reads the registry. The core is invariant (unless forked); many UIs compete.
+Registration is the whole act. A UI surfaces clauses and assemblies *from the registry
+events*, so registering makes an artifact discoverable everywhere that reads the registry —
+there is no frontend binding to meet. `block` attributes shape how a UI *presents* an
+artifact, never its validity or discoverability. The core is invariant (unless forked);
+many UIs compete — that is what permissionless and decentralized mean.
 
-## Using them outside Claude Code
+## Using the prompts outside Claude Code
 
-These are prompt definitions. Load them into your own runtime the same way `agent-sdk/`
-loads the operator's `.claude/agents/` — parse the frontmatter + body, drop the
-`systemPrompt` into your agent loop. (`agent-sdk` itself packages only the operator's
-repo-building agents; these live here, on the participant side.)
+`clause-author` and `assembly-author` are prompt definitions (frontmatter + body). To run
+one in another runtime, parse the file and drop its body into your agent loop as the system
+prompt — the same shape any Claude Code subagent uses. The `transactor` is ordinary
+TypeScript; fork it.

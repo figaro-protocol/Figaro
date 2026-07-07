@@ -28,12 +28,12 @@ export function makeHitlPolicy<TAction, TContext = unknown>(): Policy<TAction, T
 
       try {
         for (const entry of entries) {
-          console.log("\n[factotum/hitl] proposed action:");
+          console.log("\n[transactor/hitl] proposed action:");
           console.log(JSON.stringify(entry.action, null, 2));
           if (entry.approvalContext !== undefined) {
-            console.log("[factotum/hitl] context:", entry.approvalContext);
+            console.log("[transactor/hitl] context:", entry.approvalContext);
           }
-          const ans = (await ask("[factotum/hitl] approve? (y/N) ")).trim().toLowerCase();
+          const ans = (await ask("[transactor/hitl] approve? (y/N) ")).trim().toLowerCase();
           const approved = ans === "y" || ans === "yes";
           decisions.push({
             entry,
@@ -68,7 +68,7 @@ export function makeAutonomousPolicy<TAction, TContext = unknown>(
 }
 
 // The shipped autonomous policy refuses every action.
-// This is the security floor: a fresh clone of the factotum running in autonomous
+// This is the security floor: a fresh clone of the transactor running in autonomous
 // mode without code changes does nothing on chain. Replace this function with your
 // own rules — bond thresholds, geohash radius, current-vs-floor price, etc.
 //

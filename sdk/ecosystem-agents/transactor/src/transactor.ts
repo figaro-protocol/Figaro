@@ -12,7 +12,7 @@ import {
 } from "@figaro/core/agent";
 import type { Policy, PolicyEntry } from "./policy.js";
 
-export interface FactotumAddresses {
+export interface TransactorAddresses {
   core: `0x${string}`;
   clauseRegistry: `0x${string}`;
   attestationCoordinator: `0x${string}`;
@@ -20,10 +20,10 @@ export interface FactotumAddresses {
   assemblyRegistry: `0x${string}`;
 }
 
-export interface FactotumConfig {
+export interface TransactorConfig {
   rpcUrl: string;
   privateKey: `0x${string}`;
-  addresses: FactotumAddresses;
+  addresses: TransactorAddresses;
   pollIntervalMs: number;
   policy: Policy<ProposedAction, ApprovalContext>;
 }
@@ -32,22 +32,22 @@ export interface ApprovalContext {
   processId: string;
 }
 
-export async function runFactotum(config: FactotumConfig): Promise<void> {
+export async function runTransactor(config: TransactorConfig): Promise<void> {
   const account = privateKeyToAccount(config.privateKey);
   const publicClient = createPublicClient({ transport: http(config.rpcUrl) });
   const walletClient = createWalletClient({ account, transport: http(config.rpcUrl) });
 
   const ctx = new FigaroContext(publicClient, config.addresses);
 
-  console.log(`[factotum] address ${account.address}`);
-  console.log(`[factotum] policy ${config.policy.name}`);
-  console.log(`[factotum] polling every ${config.pollIntervalMs}ms`);
+  console.log(`[transactor] address ${account.address}`);
+  console.log(`[transactor] policy ${config.policy.name}`);
+  console.log(`[transactor] polling every ${config.pollIntervalMs}ms`);
 
   // Main loop: sync → propose → policy → execute.
   // Replace polling with a websocket subscription for production use.
   let stop = false;
   process.on("SIGINT", () => {
-    console.log("\n[factotum] shutting down");
+    console.log("\n[transactor] shutting down");
     stop = true;
   });
 
@@ -55,7 +55,7 @@ export async function runFactotum(config: FactotumConfig): Promise<void> {
     try {
       await tick(ctx, walletClient, account.address, config);
     } catch (err) {
-      console.error("[factotum] tick error:", err);
+      console.error("[transactor] tick error:", err);
     }
     await sleep(config.pollIntervalMs);
   }
@@ -65,14 +65,14 @@ async function tick(
   ctx: FigaroContext,
   walletClient: ReturnType<typeof createWalletClient>,
   myAddress: `0x${string}`,
-  config: FactotumConfig,
+  config: TransactorConfig,
 ): Promise<void> {
   await ctx.sync();
 
   const entries: PolicyEntry<ProposedAction, ApprovalContext>[] = [];
 
   // Process-scoped actions. The proposer infers role from process state + my
-  // address — same factotum, different role per process (buyer in one, seller in
+  // address — same transactor, different role per process (buyer in one, seller in
   // another). The role is read from state, never hard-coded; this is what
   // actor-neutrality looks like in code.
   const myProcesses = ctx.getMyProcesses(myAddress);
@@ -95,7 +95,7 @@ async function tick(
   if (entries.length === 0) return;
 
   console.log(
-    `[factotum] ${entries.length} proposed action(s): ` +
+    `[transactor] ${entries.length} proposed action(s): ` +
     `${myProcesses.length} process(es), ${ctx.getAssemblies().length} assembly(ies) discoverable`,
   );
 
@@ -110,14 +110,14 @@ async function tick(
         // inputs a coordination channel supplies — those throw here until wired.
         const result = await executeAction(walletClient, ctx.client, config.addresses, decision.entry.action);
         console.log(
-          `[factotum] executed: ${decision.entry.action.type} → ${result.hash}`,
+          `[transactor] executed: ${decision.entry.action.type} → ${result.hash}`,
         );
       } catch (err) {
-        console.error(`[factotum] execution failed for ${decision.entry.action.type}:`, err);
+        console.error(`[transactor] execution failed for ${decision.entry.action.type}:`, err);
       }
     } else {
       console.log(
-        `[factotum] rejected: ${decision.entry.action.type} — ${decision.reason ?? "no reason"}`,
+        `[transactor] rejected: ${decision.entry.action.type} — ${decision.reason ?? "no reason"}`,
       );
     }
   }

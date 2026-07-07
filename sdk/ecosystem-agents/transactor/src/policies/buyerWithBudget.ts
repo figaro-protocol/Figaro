@@ -21,7 +21,7 @@ export interface BuyerWithBudgetConfig {
 //
 // Note: maintains mutable state via the budgetSpent tracker. For production
 // use, persist budgetSpent across restarts. The default in-memory tracker
-// resets on every factotum restart.
+// resets on every transactor restart.
 export function buyerWithBudgetPolicy<TContext = unknown>(
   config: BuyerWithBudgetConfig,
 ): Policy<ProposedAction, TContext> {

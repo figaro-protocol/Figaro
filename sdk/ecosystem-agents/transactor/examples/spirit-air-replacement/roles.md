@@ -1,13 +1,13 @@
 # Roles: Spirit Air replacement
 
-One factotum per role-bound wallet, same shape as the TradeLens example. Per-role policies reflect the operational tempo: passenger does one thing rarely, airline does many things constantly.
+One transactor per role-bound wallet, same shape as the TradeLens example. Per-role policies reflect the operational tempo: passenger does one thing rarely, airline does many things constantly.
 
 ## Passenger
 
-Single ticket, infrequent, bounded stakes (full ticket value at risk). Default to HITL — passengers are humans and will use the runtime UI for this. The factotum is the *autonomous fallback* for the rare passenger-as-agent case (e.g., a corporate booking agent acting on behalf of frequent travelers).
+Single ticket, infrequent, bounded stakes (full ticket value at risk). Default to HITL — passengers are humans and will use the runtime UI for this. The transactor is the *autonomous fallback* for the rare passenger-as-agent case (e.g., a corporate booking agent acting on behalf of frequent travelers).
 
 ```ts
-import { makeHitlPolicy } from "@figaro/factotum/policy";
+import { makeHitlPolicy } from "@figaro/transactor/policy";
 
 export const passengerPolicy = makeHitlPolicy<ProposedAction, { processId: string }>();
 ```
@@ -38,7 +38,7 @@ export const corporatePassengerPolicy = makeAutonomousPolicy<ProposedAction, { p
 
 ## Airline
 
-The fan-out actor. Acts as seller to passengers AND buyer at every sub-procurement. By volume, this is the busiest factotum in the assembly.
+The fan-out actor. Acts as seller to passengers AND buyer at every sub-procurement. By volume, this is the busiest transactor in the assembly.
 
 Recommended structure: a *split policy* — autonomous for routine procurement under threshold and routine attestations; HITL for resolutions and exceptional sub-procurement.
 
@@ -111,7 +111,7 @@ This is the design intent: routine sub-procurement is autonomous, but performanc
 
 ## Identity
 
-Each factotum's wallet should register an `SellerRegistry` entry per `docs/v5/AI_AGENT_COORDINATION.md`. Capabilities and service descriptors per role:
+Each transactor's wallet should register an `SellerRegistry` entry per `docs/v5/AI_AGENT_COORDINATION.md`. Capabilities and service descriptors per role:
 
 - **Airline**: `capabilities: ["scheduled-passenger-air"]`, `services.mcp` (for inbound bookings via MCP).
 - **Sub-suppliers**: `capabilities` describing the sub-service (`"fuel-jet-a"`, `"gate-ops-domestic"`, etc.) plus jurisdiction(s).
