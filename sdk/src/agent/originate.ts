@@ -20,7 +20,7 @@
 
 import type { WalletClient, PublicClient } from "viem";
 import { verifyTypedData } from "viem";
-import { buildCommitment, buildDomain, ZERO_PROCESS_ID, COMMITMENT_TYPES } from "../commitments.js";
+import { buildCommitment, buildDomain, ZERO_PROCESS_ID, COMMITMENT_TYPES, computeCommitmentProcessId, computeOrderHash } from "../commitments.js";
 import { computeAgreementHash, type Agreement, type AgreementSection } from "../agreement.js";
 import { ERC20_ABI } from "../abis.js";
 import { commit, type TxResult } from "./autonomous.js";
@@ -69,12 +69,24 @@ export interface InstantiateParams {
 export function instantiateRootAgreement(template: AssemblyTemplate, params: InstantiateParams): Agreement {
     const root = template.agreements.find(isRootAgreement) ?? template.agreements[0];
     if (!root) throw new Error("assembly template has no agreements to instantiate");
-    const sections: AgreementSection[] = Object.entries(root.clauses).map(([clauseId, data]) => ({
+    return agreementFromClauses(root.clauses, params.buyer, params.seller, params.clauseVersion, params.overrides);
+}
+
+/** Build an Agreement from a clause bag: each clauseId → a section, buyer
+ *  overrides merged in. Shared by root and multi-order instantiation. */
+function agreementFromClauses(
+    clauses: Record<string, Record<string, unknown>>,
+    buyer: Address,
+    seller: Address,
+    clauseVersion: (clauseId: string) => number,
+    overrides?: Record<string, Record<string, unknown>>,
+): Agreement {
+    const sections: AgreementSection[] = Object.entries(clauses).map(([clauseId, data]) => ({
         clause: clauseId,
-        version: params.clauseVersion(clauseId),
-        data: { ...data, ...(params.overrides?.[clauseId] ?? {}) },
+        version: clauseVersion(clauseId),
+        data: { ...data, ...(overrides?.[clauseId] ?? {}) },
     }));
-    return { version: "a1", buyer: params.buyer, seller: params.seller, sections };
+    return { version: "a1", buyer, seller, sections };
 }
 
 // ── Buyer side: build + sign the offer ────────────────────────────────────────
@@ -260,4 +272,190 @@ export function makeSellerOfferHandler(
         }
         return signed;
     };
+}
+
+// ── Multi-order origination (the value-added chain) ───────────────────────────
+//
+// A DAG of orders under one root. The kernel sees a LINEAR sequence of commits
+// updating a monotonic cumulative-value accumulator; DAG topology is off-chain
+// (each order's parents recorded in its topology section). Beyond the root case:
+//   - parents: a sub-order's topology field carries its parents' REAL EIP-712
+//     order hashes, not the template-local ids — so orders are built in
+//     dependency order and each order's hash is fed to its children.
+//   - cumulative value: each order commits against the running total (root's
+//     payment, then + each sub's), which the kernel matches exactly — so commits
+//     are SUBMITTED in that same order (root first).
+//   - N counterparties: each order's own seller counter-signs its own order.
+// The frontend `assemblyCheckout` is the reference for this walk.
+
+export interface ChainNodeSpec {
+    /** Template node id (matches `template.agreements[].id`). */
+    nodeId: string;
+    /** The seller for this node — the buyer's counterparty choice (distinct per
+     *  node; a single seller across multiple nodes would need additive bond
+     *  approval, not yet handled). */
+    seller: Address;
+    /** This node's payment (the value it adds). */
+    payment: bigint;
+    /** Per-clause overrides for this node (e.g. its commerce lineItems). */
+    overrides?: Record<string, Record<string, unknown>>;
+}
+
+export interface BuildChainParams {
+    template: AssemblyTemplate;
+    currency: Address;
+    chainId: number;
+    core: Address;
+    clauseVersion: (clauseId: string) => number;
+    /** One spec per template agreement (root + subs). */
+    nodes: ChainNodeSpec[];
+    /** Optional deterministic salt per node (testing). */
+    salt?: (nodeId: string) => bigint | undefined;
+    deadline?: bigint;
+}
+
+/** A buyer-signed offer for one node, in commit order. */
+export interface ChainOffer {
+    nodeId: string;
+    seller: Address;
+    offer: CommitmentPayload;
+}
+
+/** The template-local parent ids a node declares (the topology field, matched by
+ *  name not clause id). */
+function templateParentIds(node: TemplateAgreement): string[] {
+    for (const data of Object.values(node.clauses)) {
+        const p = (data as { parentOrderHashes?: unknown }).parentOrderHashes;
+        if (Array.isArray(p)) return p as string[];
+    }
+    return [];
+}
+
+/** Order agreements so every node's parents precede it (root first). Throws on a
+ *  cyclic or dangling parent reference. */
+function topoSort(agreements: TemplateAgreement[]): TemplateAgreement[] {
+    const placed = new Set<string>();
+    const out: TemplateAgreement[] = [];
+    const remaining = [...agreements];
+    while (remaining.length > 0) {
+        const i = remaining.findIndex((a) => templateParentIds(a).every((pid) => placed.has(pid)));
+        if (i < 0) throw new Error("assembly template has a cyclic or dangling parent reference");
+        placed.add(remaining[i].id);
+        out.push(remaining[i]);
+        remaining.splice(i, 1);
+    }
+    return out;
+}
+
+/** Replace a node's template-local parent ids with the REAL order hashes built
+ *  for those nodes. Root (empty parents) passes through unchanged. */
+function withRealParents(clauses: Record<string, Record<string, unknown>>, realHash: Map<string, Hex>): Record<string, Record<string, unknown>> {
+    const out: Record<string, Record<string, unknown>> = { ...clauses };
+    for (const [cid, data] of Object.entries(clauses)) {
+        const p = (data as { parentOrderHashes?: unknown }).parentOrderHashes;
+        if (Array.isArray(p) && p.length > 0) {
+            out[cid] = {
+                ...data,
+                parentOrderHashes: (p as string[]).map((localId) => {
+                    const h = realHash.get(localId);
+                    if (!h) throw new Error(`parent "${localId}" was not built before its child (bad topo order)`);
+                    return h;
+                }),
+            };
+        }
+    }
+    return out;
+}
+
+/**
+ * Build the whole chain's buyer-signed offers, in commit order. Walks the
+ * template in dependency order: the root signs `processId = 0`; sub-orders name
+ * the root's derived processId, carry their parents' real order hashes, and
+ * commit against the running cumulative value. Every order is signed by the
+ * buyer here; each seller counter-signs its own via the channel.
+ */
+export async function buildChainOffers(wallet: WalletClient, params: BuildChainParams): Promise<ChainOffer[]> {
+    const account = wallet.account;
+    if (!account) throw new Error("buildChainOffers: wallet has no account");
+    const buyer = account.address;
+    const specByNode = new Map(params.nodes.map((n) => [n.nodeId, n]));
+    const ordered = topoSort(params.template.agreements);
+    const domain = buildDomain(params.chainId, params.core);
+
+    const realHash = new Map<string, Hex>();
+    let rootProcessId: Hex | null = null;
+    let cumulative = 0n;
+    const out: ChainOffer[] = [];
+
+    for (let i = 0; i < ordered.length; i++) {
+        const node = ordered[i];
+        const spec = specByNode.get(node.id);
+        if (!spec) throw new Error(`no seller/payment spec for template node "${node.id}"`);
+        const isRoot = i === 0;
+        if (!isRoot && rootProcessId === null) throw new Error("template has a sub-order but no root");
+
+        cumulative += spec.payment;
+        const clauses = withRealParents(node.clauses, realHash);
+        const agreement = agreementFromClauses(clauses, buyer, spec.seller, params.clauseVersion, spec.overrides);
+        const { commitment, typedData } = buildCommitment({
+            processId: isRoot ? ZERO_PROCESS_ID : rootProcessId!,
+            buyer, seller: spec.seller, currency: params.currency,
+            payment: spec.payment, expectedCumulativeValue: cumulative,
+            agreementHash: computeAgreementHash(agreement),
+            salt: params.salt?.(node.id), deadline: params.deadline,
+        }, domain);
+        const buyerSig = await wallet.signTypedData({ account, ...typedData });
+
+        if (isRoot) rootProcessId = computeCommitmentProcessId(commitment, params.chainId, params.core);
+        realHash.set(node.id, computeOrderHash(commitment, params.chainId, params.core));
+        out.push({ nodeId: node.id, seller: spec.seller, offer: { commitment, agreement, buyerSig } });
+    }
+    return out;
+}
+
+export interface OriginateChainParams extends BuildChainParams {
+    channel: CoordinationChannel;
+    /** Approve the buyer's 2× total-payment bond before committing (default true). */
+    approveBond?: boolean;
+}
+
+/**
+ * BUYER LOOP (multi-order) — originate a value-added chain end-to-end: build
+ * every order (buyer-signed), send each as an offer to its seller, and — once ALL
+ * counter-sign — approve the buyer's total bond and submit the commits root-first
+ * in cumulative order (each awaited so the kernel sees a consistent running
+ * total). Any seller declining aborts before any commit, so nothing lands
+ * half-built. Returns the ordered tx hashes, or `null` if aborted.
+ */
+export async function originateChain(
+    wallet: WalletClient,
+    publicClient: PublicClient,
+    addresses: FigaroAddresses,
+    params: OriginateChainParams,
+): Promise<{ hashes: Hex[] } | null> {
+    const offers = await buildChainOffers(wallet, params);
+
+    // N handshakes — one offer per node to its seller. A single decline aborts.
+    const signed: CommitmentPayload[] = [];
+    for (const o of offers) {
+        const s = await params.channel.sendOffer(o.seller, o.offer);
+        if (!s?.sellerSig) return null;
+        signed.push(s);
+    }
+
+    if (params.approveBond !== false) {
+        const total = params.nodes.reduce((sum, n) => sum + n.payment, 0n);
+        await approveBond(wallet, publicClient, addresses.core, params.currency, 2n * total);
+    }
+
+    // Ordered commit: root first, subs in cumulative order (== offers order).
+    // Each awaited so the next sub commits against the confirmed cumulative value.
+    const hashes: Hex[] = [];
+    for (const s of signed) {
+        const { commitment, buyerSig, sellerSig } = offerToExecutionInputs(s);
+        const { hash } = await commit(wallet, publicClient, addresses.core, commitment, buyerSig, sellerSig);
+        await publicClient.waitForTransactionReceipt({ hash });
+        hashes.push(hash);
+    }
+    return { hashes };
 }

@@ -81,6 +81,8 @@ export {
     offerToExecutionInputs,
     originateProcess,
     makeSellerOfferHandler,
+    buildChainOffers,
+    originateChain,
 } from "./originate.js";
 export type {
     AssemblyTemplate,
@@ -90,6 +92,10 @@ export type {
     OfferCheck,
     OriginateParams,
     SellerOfferHandlerOpts,
+    ChainNodeSpec,
+    BuildChainParams,
+    ChainOffer,
+    OriginateChainParams,
 } from "./originate.js";
 
 // did:web identity — agents bind their on-chain address to a resolvable DID
