@@ -67,7 +67,7 @@ export const airlinePolicy = makeAutonomousPolicy<ProposedAction, { processId: s
 
 ## Sub-suppliers (gate-ops, fuel, crew, catering, maintenance)
 
-Common shape: bidder on Dutch auctions or fixed-price commitment partner; routine attestations. A typical sub-supplier policy:
+Common shape: profitability-gated acceptance of an offered commit, or fixed-price commitment partner; routine attestations. A typical sub-supplier policy — accept the airline's offered sub-order only if it clears cost plus margin:
 
 ```ts
 function estimateMyCost(action: CommitSubOrderAction): bigint {
@@ -95,7 +95,7 @@ export const subSupplierPolicy = makeAutonomousPolicy<ProposedAction, { processI
 
 Per-sub-supplier specializations:
 
-- **Fuel**: cost is a function of jet-fuel index + airport delivery margin. Fast-moving market; price the auction in real time.
+- **Fuel**: cost is a function of jet-fuel index + airport delivery margin. Fast-moving market; price each offered commit against the fuel index in real time.
 - **Gate-ops**: cost is a function of slot allocation + contracted rate. Low-frequency; commit per flight.
 - **Crew agency**: cost is a function of crew availability + dispatch + certification overhead. Medium-frequency.
 - **Catering**: cost is a function of meal count + airline-specified menu. Per-flight bilateral.

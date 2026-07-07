@@ -7,7 +7,6 @@ Most existing clauses cover the primitives. One new clause is the airline-specif
 | Clause | Use in this assembly |
 |---|---|
 | `figaro-commerce-v1` | Ticket commitment (passenger ↔ airline); sub-procurement commitments (airline ↔ gate-ops / fuel / crew / catering / maintenance) |
-| `figaro-fulfilment-v1` | Boarding completion, deplane completion |
 | `figaro-courier-process-v1` | Boarding-flow stages (check-in → security → gate → boarding → cabin closed → pushback → takeoff → cruise → landing → arrival → deplane) |
 | `figaro-geolocation` | Departure airport / arrival airport (ICAO or geohash) |
 | `figaro-cargo` | Cargo mass + volume |

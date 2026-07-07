@@ -28,13 +28,13 @@ The defining feature of this assembly is the airline as a *fan-out seller-of-rec
 |---|---|---|
 | passenger → airline | bilateral commit (commerce-v1) + scheduled-departure-v1 clause | Fixed price, schedule-bound |
 | airline → gate-ops | bilateral commit | Per-flight gate access fee |
-| airline → fuel | Dutch auction (fuel suppliers compete) OR bilateral with the airport's incumbent | Choose based on market structure at the airport |
+| airline → fuel | bilateral commit (rate-based: jet-fuel index × volume) | Priced against the fuel index at commit time |
 | airline → crew agency | bilateral commit | Per-flight crew dispatch |
 | airline → catering | bilateral commit | Per-flight catering load |
 | airline → maintenance | bilateral commit | Pre-flight inspection / sign-off |
 | gate-ops → airline (handoff) | handoff-v1 attestation | "boarding complete" |
 | crew → airline (handoff) | handoff-v1 attestation | "crew on board" |
-| airline → passenger (delivery) | fulfilment-v1 attestation at deplane | "passenger arrived" |
+| airline → passenger (arrival) | handoff-v1 attestation at deplane | "passenger arrived" |
 
 ## Per-node clauses
 

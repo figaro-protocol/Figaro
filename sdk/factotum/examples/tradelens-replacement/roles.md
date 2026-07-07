@@ -74,7 +74,7 @@ Pair with a HITL fallback factotum for the rejected actions.
 
 ## Port-of-loading / port-of-discharge
 
-Terminal operators. Bidders on Dutch auctions surfaced by the carrier; attesters for handoffs and seal events.
+Terminal operators. Accept the carrier's offered commit when it clears cost plus margin; attesters for handoffs and seal events.
 
 ```ts
 const MIN_PROFITABILITY_BPS = 500n; // 5% margin minimum
@@ -100,14 +100,14 @@ export const portPolicy = makeAutonomousPolicy<ProposedAction, { processId: stri
 );
 ```
 
-Ports compete on Dutch auctions. Whoever's `myCost` is lowest at the current price clears.
+Ports compete on price: the operator whose `myCost` clears the carrier's offered rate accepts; higher-cost operators decline and the carrier procures elsewhere.
 
 ## Customs broker, trucking, consignee
 
 Smaller variants of the same patterns:
 
 - **Customs broker**: HITL for the commit (consignee-side) — these are infrequent and clearance failures are expensive. Attestations autonomous (jurisdiction-v1 reflects what the customs authority told the broker; the broker just records it).
-- **Trucking**: Same shape as port — Dutch auction claim with margin threshold. Last-mile is competitive.
+- **Trucking**: Same shape as port — accept an offered commit above the margin threshold. Last-mile is competitive.
 - **Consignee**: HITL — final receipt and resolution authority sits with the buyer; this is the protocol's buyer-dominance invariant in operational form.
 
 ## Cross-cutting: the security floor
