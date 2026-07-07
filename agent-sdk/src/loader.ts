@@ -23,8 +23,8 @@ export type FigaroAgentName = keyof typeof FIGARO_AGENT_FILES;
 // concrete Anthropic model ID. Update when models advance — and update the
 // frontmatter `model:` lines in lockstep if the aliases change meaning.
 const MODEL_IDS: Record<string, string> = {
-  opus: "claude-opus-4-7",
-  sonnet: "claude-sonnet-4-6",
+  opus: "claude-opus-4-8",
+  sonnet: "claude-sonnet-5",
   haiku: "claude-haiku-4-5-20251001",
 };
 

@@ -17,11 +17,12 @@
  * badge reflects reachability: verified / unverified / could-not-resolve.
  */
 
-import { useSellerAgentServices } from "@/lib/seller/useSellerAgentServices";
+import { useAgentServices } from "@/lib/seller/useSellerRegistry";
 import { useDidVerification } from "@/lib/agent/useDidWeb";
 
 export function SellerAgentIdentity({ sellerAddress }: { sellerAddress: `0x${string}` | undefined }) {
-    const { services } = useSellerAgentServices(sellerAddress);
+    const { data } = useAgentServices(sellerAddress);
+    const services = data?.services;
     const did = services?.did;
     const { verified, isLoading: verifying, error } = useDidVerification(did, sellerAddress);
 

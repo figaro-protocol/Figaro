@@ -247,7 +247,7 @@ export function useRegistrationDeposit() {
  * agent service endpoints if present. Returns { isAgent: false } for
  * human-operated participants (no services key in metadata).
  */
-function useAgentServices(address: `0x${string}` | undefined) {
+export function useAgentServices(address: `0x${string}` | undefined) {
     const client = usePublicClient();
     const chainId = useChainId();
     const [data, setData] = useState<AgentServiceInfo | undefined>(undefined);
