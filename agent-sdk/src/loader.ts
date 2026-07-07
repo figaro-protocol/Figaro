@@ -2,12 +2,14 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { parseAgent, type AgentDefinition } from "./parseAgent.js";
 
+// The OPERATOR-PRIVATE repo-building agents only. The public ecosystem agents
+// (figaro-clause-author, figaro-assembly-author) are NOT here — they live in
+// sdk/ecosystem-agents/, act for a user's wallet, and never touch the repo. This
+// package packages the operator's own tools for non-Claude-Code runtimes.
 export const FIGARO_AGENT_FILES = {
   "figaro-kernel-reviewer": ".claude/agents/figaro-kernel-reviewer.md",
   "figaro-clause-lockstep": ".claude/agents/figaro-clause-lockstep.md",
-  "figaro-clause-author": ".claude/agents/figaro-clause-author.md",
   "figaro-runtime-ui-author": ".claude/agents/figaro-runtime-ui-author.md",
-  "figaro-assembly-author": ".claude/agents/figaro-assembly-author.md",
   "figaro-paper-reviewer": ".claude/agents/figaro-paper-reviewer.md",
   "figaro-memory-hygiene": ".claude/agents/figaro-memory-hygiene.md",
   "figaro-deploy-runner": ".claude/agents/figaro-deploy-runner.md",

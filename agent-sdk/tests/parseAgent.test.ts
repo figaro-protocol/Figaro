@@ -90,15 +90,6 @@ describe("loadAgent (canonical .md files)", () => {
     expect(a.systemPrompt).toMatch(/lockstep|surface/i);
   });
 
-  it("loads figaro-clause-author with write capability and opus", () => {
-    const a = loadAgent("figaro-clause-author", REPO_ROOT);
-    expect(a.name).toBe("figaro-clause-author");
-    expect(a.tools).toContain("Edit");
-    expect(a.tools).toContain("Write");
-    expect(a.model).toBe("opus");
-    expect(a.systemPrompt).toMatch(/CLAUSES\.md|validator-contract/);
-  });
-
   it("loads figaro-runtime-ui-author as a writer agent for the runtime tier", () => {
     const a = loadAgent("figaro-runtime-ui-author", REPO_ROOT);
     expect(a.name).toBe("figaro-runtime-ui-author");
@@ -108,14 +99,12 @@ describe("loadAgent (canonical .md files)", () => {
     expect(a.systemPrompt).toMatch(/lens|frontend|runtime/i);
   });
 
-  it("loads figaro-assembly-author as a writer agent that defers clause work", () => {
-    const a = loadAgent("figaro-assembly-author", REPO_ROOT);
-    expect(a.name).toBe("figaro-assembly-author");
-    expect(a.tools).toContain("Edit");
-    expect(a.tools).toContain("Write");
-    expect(a.model).toBe("opus");
-    expect(a.systemPrompt).toMatch(/DesignDraft|assembly|DAG/i);
-    expect(a.systemPrompt).toMatch(/CLAUSES\.md/);
+  it("does NOT expose the public ecosystem agents — they are not operator-private repo agents", () => {
+    // figaro-clause-author / figaro-assembly-author live in sdk/ecosystem-agents/,
+    // act for a user's wallet, and never touch the repo. This package packages only
+    // the operator's own repo-building agents.
+    expect(Object.keys(FIGARO_AGENT_FILES)).not.toContain("figaro-clause-author");
+    expect(Object.keys(FIGARO_AGENT_FILES)).not.toContain("figaro-assembly-author");
   });
 
   it("loads figaro-paper-reviewer as a read-only verifier", () => {
@@ -181,13 +170,9 @@ describe("loadAgent (canonical .md files)", () => {
     expect(a.systemPrompt).toMatch(/WCAG|ARIA|a11y|accessibility/i);
   });
 
-  it("loadAllAgents returns exactly the twelve canonical agents", () => {
+  it("loadAllAgents returns exactly the ten operator-private repo agents", () => {
     const all = loadAllAgents(REPO_ROOT);
     expect(Object.keys(all).sort()).toEqual([
-      "figaro-assembly-author",
-
-      "figaro-clause-author",
-
       "figaro-clause-lockstep",
       "figaro-deploy-runner",
       "figaro-feedback-triage",
@@ -195,7 +180,8 @@ describe("loadAgent (canonical .md files)", () => {
       "figaro-marketing-author",
       "figaro-memory-hygiene",
       "figaro-paper-reviewer",
-      "figaro-runtime-ui-author",      "figaro-site-ia",
+      "figaro-runtime-ui-author",
+      "figaro-site-ia",
       "figaro-visual-design",
     ]);
   });
@@ -212,10 +198,6 @@ describe("loadAgent (canonical .md files)", () => {
 
   it("FIGARO_AGENT_FILES map has stable keys", () => {
     expect(Object.keys(FIGARO_AGENT_FILES).sort()).toEqual([
-      "figaro-assembly-author",
-
-      "figaro-clause-author",
-
       "figaro-clause-lockstep",
       "figaro-deploy-runner",
       "figaro-feedback-triage",
@@ -223,7 +205,8 @@ describe("loadAgent (canonical .md files)", () => {
       "figaro-marketing-author",
       "figaro-memory-hygiene",
       "figaro-paper-reviewer",
-      "figaro-runtime-ui-author",      "figaro-site-ia",
+      "figaro-runtime-ui-author",
+      "figaro-site-ia",
       "figaro-visual-design",
     ]);
   });

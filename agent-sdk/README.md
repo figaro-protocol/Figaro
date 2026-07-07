@@ -1,8 +1,10 @@
 # @figaro/agent-sdk
 
-Programmatic access to the Figaro contributor agents (`figaro-kernel-reviewer`, `figaro-clause-lockstep`, `figaro-clause-author`) for non-Claude-Code runtimes.
+Programmatic access to the **operator's repo-building agents** (`figaro-kernel-reviewer`, `figaro-clause-lockstep`, `figaro-marketing-author`, …) for non-Claude-Code runtimes.
 
-The canonical agent definitions live in `.claude/agents/*.md` — Claude Code reads them directly. This package reads the same files at runtime, parses the frontmatter + body, and exposes structured `AgentDefinition` objects so any agent runtime (the Anthropic SDK, the Claude Agent SDK, OpenAI's tool calling, your own loop) can use the same security-first prompts.
+These are the operator's own tools for building Figaro itself — private by default, repo-coupled. This package packages **only** them. It does **not** include the public ecosystem agents (`figaro-clause-author`, `figaro-assembly-author`); those live in `sdk/ecosystem-agents/`, act for a user's wallet, and never touch the repo (see that directory's README and the agent-seam memory).
+
+The canonical definitions live in `.claude/agents/*.md` — Claude Code reads them directly. This package reads the same files at runtime, parses the frontmatter + body, and exposes structured `AgentDefinition` objects so any agent runtime (the Anthropic SDK, the Claude Agent SDK, OpenAI's tool calling, your own loop) can use the same security-first prompts.
 
 **Single source of truth: the `.md` files.** This package is a reader, not a duplicator. Editing the `.md` file updates both the Claude Code subagent and the SDK consumer in one stroke — drift is impossible.
 
@@ -10,7 +12,7 @@ The canonical agent definitions live in `.claude/agents/*.md` — Claude Code re
 
 ## Why
 
-Figaro's contributor agents encode the project's security posture: the six kernel invariants, the protocol-extension doctrine, the validator-contract pattern, the four-surface lockstep. Claude Code subagents are one delivery surface. This package exists so the same prompts are usable from:
+The operator's repo-building agents encode the project's security posture: the six kernel invariants, the extension doctrine, the four-surface clause lockstep, the open-world auditors. Claude Code subagents are one delivery surface. This package exists so the same prompts are usable from:
 
 - **Anthropic SDK** — drop the system prompt into `client.messages.create({ system: ... })` and run a custom tool loop.
 - **The Claude Agent SDK** — pass the agent definition into the SDK's agent runner.
@@ -22,9 +24,9 @@ Figaro's contributor agents encode the project's security posture: the six kerne
 ## Use (from a Figaro checkout)
 
 **This package is repo-internal, not published** (`private: true`). It reads the
-`.claude/agents/*.md` files by path at runtime — and the contributor agents are
-*repo-coupled*: their prompts cite `src/FigaroCore.sol`, `docs/v5/`, the validator
-pattern, and their `Read`/`Grep`/`Bash` tools operate on the tree. So they only
+`.claude/agents/*.md` files by path at runtime — and the operator's repo agents are
+*repo-coupled*: their prompts cite `src/FigaroCore.sol`, `docs/v5/`, and their
+`Read`/`Grep`/`Bash` tools operate on the tree. So they only
 function against a Figaro checkout; distributing the prompt text alone would hand a
 consumer instructions pointing at files they don't have. Run it in-repo:
 
@@ -69,7 +71,7 @@ Loads them all at once. `repoRoot` defaults to `findRepoRoot()`.
 
 ### `findRepoRoot(startDir?: string): string`
 
-Walks up from `startDir` (default `process.cwd()`) to the directory containing `.claude/agents/`. Throws when run outside a Figaro checkout — the contributor agents are repo-coupled.
+Walks up from `startDir` (default `process.cwd()`) to the directory containing `.claude/agents/`. Throws when run outside a Figaro checkout — the operator's repo agents are repo-coupled.
 
 ### `resolveModelId(alias?: string): string`
 
@@ -117,7 +119,7 @@ The kernel-reviewer's system prompt is ~7KB. After the first call within a 5-min
 
 ## Example: tool loop (full agent execution)
 
-The `.md` files declare which tools the agent expects — `tools: Read, Grep, Glob, Bash` for read-only agents, plus `Edit, Write` for the clause-author. To run the agent end-to-end (not just a single response), you need to provide tool implementations and run a multi-turn loop.
+The `.md` files declare which tools the agent expects — `tools: Read, Grep, Glob, Bash` for read-only agents, plus `Edit, Write` for the writer agents (e.g. `figaro-runtime-ui-author`). To run the agent end-to-end (not just a single response), you need to provide tool implementations and run a multi-turn loop.
 
 The Claude Agent SDK ([anthropic-ai/claude-agent-sdk-python](https://github.com/anthropics/claude-agent-sdk-python), and the TypeScript equivalent) is the recommended runner — it handles tool dispatching for you. Pass the `agent.systemPrompt` and `agent.tools` into its agent constructor.
 
@@ -161,7 +163,7 @@ The agent expects the *Claude Code* tool semantics (Read returns file contents w
 
 - `figaro-kernel-reviewer` has `Read` but not `Edit`/`Write` (read-only enforcement).
 - `figaro-clause-lockstep` has no `Edit`/`Write` (read-only verifier).
-- `figaro-clause-author` has both `Edit` and `Write` (writer agent).
+- `figaro-runtime-ui-author` has both `Edit` and `Write` (writer agent).
 - All three carry their expected model alias.
 - System prompts are non-empty and contain canonical phrases ("kernel", "lockstep", "CLAUSES.md").
 
@@ -175,7 +177,7 @@ cd agent-sdk && npm test
 
 ## See also
 
-- `sdk/factotum/examples/` — worked scenarios showing verbatim runnable prompts for the clause-author against real assembly designs.
+- `sdk/ecosystem-agents/` — the public clause/assembly authoring agents (a different world: user-wallet, never the repo).
 
 ## What this package is not
 

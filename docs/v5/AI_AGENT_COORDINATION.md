@@ -19,10 +19,13 @@ that any agent can read, analyze, and act on.
 
 ---
 
-## "Agent" names two different worlds — pin the referent before reasoning
+## "Agent" names three worlds — pin the referent before reasoning
 
-- **Protocol participants** (this document's subject — any wallet acting on Figaro): the machinery is `@figaro/core/agent`; `sdk/factotum/` is the runnable reference participant — fork it, give it a wallet, it acts for whoever holds the key (buyer, seller, or author side). Worked scenario walkthroughs: `sdk/factotum/examples/`.
-- **Development contributors** (the Claude Code subagents building THIS repo): definitions live in `.claude/agents/*.md`; `agent-sdk/` (`@figaro/agent-sdk`) packages those same definitions for non-Claude runtimes. It is NOT the protocol SDK — it never touches the chain, and nothing in this document applies to it.
+Pre-defined agents are **operator-private by default**; "public" is the exception, only when explicitly designed for it. The public exceptions act for a **user's wallet** and **never touch the repo**.
+
+- **Public participant agents — transacting** (this document's subject; any wallet acting on Figaro): the machinery is `@figaro/core/agent`; `sdk/factotum/` is the runnable reference participant — fork it, give it a wallet, it acts for whoever holds the key (buyer, seller, auditor). Worked walkthroughs: `sdk/factotum/examples/`.
+- **Public ecosystem agents — authoring** (any user contributing to the network): `sdk/ecosystem-agents/` — `figaro-clause-author`, `figaro-assembly-author`. They help a user author or **fork** a clause/assembly and register it on the permissionless registries (spec/`DesignDraft` → IPFS → `ClauseRegistry`/`AssemblyRegistry`, under the **user's** key). The artifact belongs to the user (RPGF rewards it). **Never** the repo, the kernel, or this frontend.
+- **Operator-private repo agents** (the Claude Code subagents that build THIS repo, for the operator only): definitions live in `.claude/agents/*.md`; `agent-sdk/` (`@figaro/agent-sdk`) packages **those** for non-Claude runtimes. Not the protocol SDK — never touches the chain; nothing in this document applies to it.
 
 ---
 

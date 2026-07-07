@@ -69,9 +69,7 @@ The project ships agent-shaped tooling — usable by humans, AI assistants, or a
 
 - **`figaro-kernel-reviewer`** — read-only review of any diff that touches `src/FigaroCore.sol`, `src/CommitmentTypes.sol`, or kernel storage. Returns findings cited to the six invariants and the canonical anti-pattern list. Invoke before merging anything kernel-adjacent.
 - **`figaro-clause-lockstep`** — verifies a new or changed clause is in sync across all required surfaces (Layer A spec, TS encoder, on-chain validator contract, `ClauseRegistry` registration, listing pages). Invoke after authoring a clause.
-- **`figaro-clause-author`** — authors new clauses + their `IClauseValidator` contracts with the protocol-extension doctrine and validator-contract pattern baked in. Never auto-commits; always shows the diff and waits for human approval. Invoke when proposing a new artifact family.
 - **`figaro-runtime-ui-author`** — authors runtime-tier UI for new clauses and assemblies (lens panels, attestation forms, per-role routes). Stays strictly within `frontend/`. Halts for marketing-expert review on user-facing pages. Invoke when a new clause or assembly needs a UI surface.
-- **`figaro-assembly-author`** — composes assembly DAGs as `DesignDraft` JSON with per-edge mechanism, per-node clauses, and bond posture. Refuses kernel-changing compositions. Defers clause authoring to `figaro-clause-author`. Invoke when scaffolding an end-to-end scenario.
 - **`figaro-paper-reviewer`** — read-only verifier for academic-paper claims against the canonical code. Catches drift between `paper/*.tex` and `src/` / `formal/`. Cites both paper passages and source line numbers. Invoke when reviewing paper edits, when the kernel changes, or before publication.
 - **`figaro-memory-hygiene`** — periodic audit of memory files (`~/.claude/projects/<project>/memory/`). Flags oversized files, drift, orphans. Output is a table — explicitly resists narrative. Invoke monthly or when memory bloat is suspected.
 - **`figaro-deploy-runner`** — walks through `cloudflare/README.md`'s deployment runbook with confirmation gates before destructive actions (KV creation, container push, Worker deploy, contract deployment). Coordinator, not authority. Invoke when deploying or making infra changes.
@@ -84,7 +82,9 @@ The project ships agent-shaped tooling — usable by humans, AI assistants, or a
 - **`figaro-literalness-auditor`** — read-only gate that audits proposed audits, migration plans, and architectural framings for literal-state-as-design errors (treating one shipped artifact as design intent, ignoring trajectory, inflating an outlier into a rule). Invoke BEFORE presenting any audit that names a "limit", "constraint", or "missing capability".
 - **`figaro-separation-of-concerns-auditor`** — read-only gate that audits architectural proposals for layer-boundary collapse — specifically, proposals that reuse an existing registry/primitive to host an artifact family that should have its own parallel primitive. Invoke BEFORE recommending an anchoring or registry-reuse choice.
 
-These rely on the canonical `figaro-kernel-discipline` skill at `.claude/skills/` and the `kernel-warn.sh` hook at `.claude/hooks/`. The skill is the single source of truth for kernel rules; the subagents are tool-constrained executors.
+These are the **operator's** repo-building subagents — private tools for developing Figaro itself. They rely on the canonical `figaro-kernel-discipline` skill at `.claude/skills/` and the `kernel-warn.sh` hook at `.claude/hooks/`. The skill is the single source of truth for kernel rules; the subagents are tool-constrained executors.
+
+> **Contributing a clause or assembly to the *network* (not this repo)?** That is a permissionless, on-chain act — see the public **ecosystem agents** at `sdk/ecosystem-agents/`, which help a user author or fork a clause/assembly and register it under their own wallet. They never touch this repo.
 
 **How to invoke a subagent.** In Claude Code, three paths work:
 
@@ -92,7 +92,7 @@ These rely on the canonical `figaro-kernel-discipline` skill at `.claude/skills/
 2. *Naming* — explicitly delegate by name: "use the `figaro-clause-lockstep` agent to verify the figaro-foo-v1 surfaces."
 3. *`/agents`* — slash command to list, view, or manage available subagents in the current session.
 
-Subagents do not chain directly. The clause-author returns to the main session, which then dispatches the kernel-reviewer and clause-lockstep in turn — review the verification report each subagent produces before merging.
+Subagents do not chain directly. The runtime-ui-author returns to the main session, which then dispatches the kernel-reviewer and clause-lockstep in turn — review the verification report each subagent produces before merging.
 
 ### Reference participation agent — `sdk/factotum/`
 
@@ -124,12 +124,12 @@ See `agent-sdk/README.md` for the API reference and an Anthropic SDK integration
 
 ### Worked examples — `sdk/factotum/examples/`
 
-End-to-end walkthroughs of how the contributor agents and the factotum compose to build and operate a real assembly. Doc-only — every prompt is runnable verbatim against the current agent set; every factotum policy snippet is plug-and-play. Two scenarios:
+End-to-end walkthroughs of how the public **ecosystem** agents (`figaro-assembly-author`, `figaro-clause-author` in `sdk/ecosystem-agents/`) and the `factotum` participation reference compose to build and operate a real assembly — a user's contribution, registered on the permissionless registries, never in this repo. Doc-only; every factotum policy snippet is plug-and-play. Two scenarios:
 
 - `sdk/factotum/examples/tradelens-replacement/` — multi-party container shipping
 - `sdk/factotum/examples/spirit-air-replacement/` — passenger-airline with cascading-delay coordination
 
-Both surface the same structural gap: there is no `figaro-assembly-author` subagent yet — the assembly DAG is still human work on the designer canvas. The `assembly.md` files in each scenario are the spec for that future agent.
+Each scenario's `assembly.md` is a reference target for `figaro-assembly-author`; its `clauses.md` lists the clauses to author (via `figaro-clause-author`) or reuse.
 
 ### Conventions for new agents
 

@@ -97,7 +97,7 @@ These compose without the kernel needing to know about the structure beyond the 
 
 ## Authoring this DAG
 
-Draw it on the designer canvas at `/builders/designer/new`, or have the `figaro-assembly-author` subagent emit it as `DesignDraft` JSON. The subagent is newer and less battle-tested than the clause-author — treat its output as a draft to review against this file.
+Draw it on the designer canvas at `/builders/designer/new`, or have the `figaro-assembly-author` ecosystem agent emit it as `DesignDraft` JSON and register it under your wallet. Treat its output as a draft to review against this file.
 
 What the subagent does:
 

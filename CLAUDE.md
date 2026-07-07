@@ -335,7 +335,7 @@ A clause's spec ships in two lockstep surfaces: **Layer A** (TypeScript, `@figar
 
 `@figaro/core` — TypeScript SDK for reading, analyzing, and proposing Figaro transactions. Single dependency: `viem ^2.0.0`. ESM; four subpath exports (root, `/agent`, `/extensions`, `/clauses` — the lockstep clause source-of-truth). Full entry-point map + build/test commands → `sdk/README.md`.
 
-**"Agent" = two worlds; pin the referent:** protocol PARTICIPANT (`@figaro/core/agent`; runnable reference `sdk/factotum/`) vs repo CONTRIBUTOR (`.claude/agents/`, packaged by `agent-sdk/` — not the protocol SDK). Full split → `docs/v5/AI_AGENT_COORDINATION.md`.
+**"Agent" = three worlds; pin the referent.** Default = OPERATOR-PRIVATE (`.claude/agents/`, via `agent-sdk/`). Public exceptions act for a USER's wallet, NEVER the repo: PARTICIPANT (`@figaro/core/agent`; `sdk/factotum/`) and ECOSYSTEM authoring (`sdk/ecosystem-agents/`). Full split → `docs/v5/AI_AGENT_COORDINATION.md` + the agent-seam memory.
 
 ### Local Development
 

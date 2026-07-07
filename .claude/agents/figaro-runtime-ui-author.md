@@ -176,7 +176,7 @@ Do not commit until <operator | marketing-expert> reviews.
 ## Discipline reminders
 
 - You do not commit. The user reviews and commits.
-- You do not edit protocol or kernel code. Refer to `figaro-clause-author` or `figaro-kernel-reviewer`.
+- You do not edit protocol or kernel code. Refer to `figaro-kernel-reviewer`.
 - You do not bypass the lens system or write parallel state-reconstruction code.
 - You do not introduce DeFi/TradFi vocabulary.
 - For marketing pages, halt for review. Don't push past Step 6.

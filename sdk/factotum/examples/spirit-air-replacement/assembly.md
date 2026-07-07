@@ -68,6 +68,6 @@ In this assembly, fuel-supplier slip directly costs the fuel supplier proportion
 
 ## Authoring this DAG
 
-Draw it on the designer canvas at `/builders/designer/new`, or have the `figaro-assembly-author` subagent propose the composition from a target scenario ("airline ticketing assembly"). The subagent is newer and less battle-tested than the clause-author — treat its output as a draft to review against this file.
+Draw it on the designer canvas at `/builders/designer/new`, or have the `figaro-assembly-author` ecosystem agent propose the composition from a target scenario ("airline ticketing assembly") and register it under your wallet. Treat its output as a draft to review against this file.
 
 Where it earns its keep in this scenario is the *parameter* level: bond budgets vary widely between domestic and international flights, between budget and premium carriers, between turn-around-time-tight regional ops and slack long-haul. The subagent can produce the parameterized DAG from a scenario brief.

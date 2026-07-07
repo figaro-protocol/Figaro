@@ -1,8 +1,8 @@
 # Figaro agent integration examples
 
-Worked walkthroughs of how the contributor agents (`figaro-clause-author`, `figaro-kernel-reviewer`, `figaro-clause-lockstep`, plus the `factotum` participation reference) compose to build and operate a real assembly.
+Worked walkthroughs of how the public **ecosystem** agents (`figaro-assembly-author` + `figaro-clause-author`, in `sdk/ecosystem-agents/`) and the `factotum` participation reference compose to let a **user** build and operate a real assembly — the user's own contribution, registered on the permissionless registries under their wallet, never in this repo.
 
-These are **doc-only**. Every prompt here is runnable verbatim against the current agent set; every factotum config snippet is plug-and-play. Nothing is implemented in code — the assemblies themselves haven't been built. The point is to surface what the agents *would do*, where the human-with-canvas takes over, and what tooling gaps the next round of agent work should close.
+These are **doc-only**. Every factotum config snippet is plug-and-play. Nothing is implemented in code — the assemblies themselves haven't been built. The point is to surface what the agents *would do* and where the user-with-canvas takes over.
 
 ## Scenarios
 
@@ -25,6 +25,6 @@ Each scenario has four files:
 
 ## Authoring the assembly DAG
 
-Composing the assembly DAG is the designer's act. Two ways to produce it: draw it on the designer canvas at `/builders/designer/new` (producing a `DesignDraft` — DAG + per-edge mechanism + per-node clauses, persisted in `localStorage` per `project_designer_persistence.md`), or have the **`figaro-assembly-author`** subagent scaffold the `DesignDraft` JSON directly, with the same security-first posture as the clause-author. The `assembly.md` files in this directory are its reference targets — the worked compositions it aims at and is checked against.
+Composing the assembly DAG is the designer's act. Two ways to produce it: draw it on the designer canvas at `/builders/designer/new` (producing a `DesignDraft` — DAG + per-edge mechanism + per-node clauses, persisted in `localStorage` per `project_designer_persistence.md`), or have the **`figaro-assembly-author`** ecosystem agent (`sdk/ecosystem-agents/`) scaffold the `DesignDraft` and register it under the user's wallet. The `assembly.md` files in this directory are its reference targets — the worked compositions it aims at and is checked against.
 
-**Robustness caveat:** `figaro-assembly-author` is newer and less battle-tested than the clause-author, kernel-reviewer, and clause-lockstep verifier. Treat its output as a draft to review — against these `assembly.md` files and the validator / lockstep checks — not a finished artifact.
+**Robustness caveat:** `figaro-assembly-author` is newer and less battle-tested than the participant tooling. Treat its output as a draft to review against these `assembly.md` files, not a finished artifact.
