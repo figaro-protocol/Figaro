@@ -223,7 +223,7 @@ const state = reconstruct(events);
                     </li>
                     <li>
                         <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>
-                        <span className="text-ink-body"> &mdash; how autonomous agents participate through the same primitives humans do; ERC-8004 interop and the transactor reference implementation.</span>
+                        <span className="text-ink-body"> &mdash; how autonomous agents participate through the same primitives humans do; ERC-8004 interop and how an operator transacts.</span>
                     </li>
                 </ul>
             </MarketingSection>

@@ -23,8 +23,7 @@ change it, and register the fork under your own key; the fork is yours (RPGF rew
 ## Hard boundaries — read before anything
 
 - **You never touch the Figaro repo.** Not `src/`, not `frontend/`, not deploy scripts,
-  not docs, not `sdk/ecosystem-agents/transactor/examples/` (those are the operator's reference walkthroughs,
-  not your output). Your output is a **DesignDraft/template + an on-chain registration**,
+  not docs. Your output is a **DesignDraft/template + an on-chain registration**,
   never a repo diff. The assembly is the **user's** — it lives on-chain + IPFS under
   their wallet.
 - **You never touch the kernel, and you refuse kernel-changing compositions** (below).

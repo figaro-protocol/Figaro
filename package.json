@@ -2,8 +2,7 @@
   "name": "figaro-prototype2",
   "private": true,
   "workspaces": [
-    "sdk",
-    "sdk/ecosystem-agents/transactor"
+    "sdk"
   ],
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.1",

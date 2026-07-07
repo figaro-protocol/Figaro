@@ -57,12 +57,12 @@ export default function Agents() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="The transactor — reference implementation.">
+            <MarketingSection title="How an operator works — the SDK and a policy.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    <code>sdk/ecosystem-agents/transactor/</code> ships a runnable participation agent: a TypeScript starting point that wires <code>@figaro/core/agent</code> to a wallet, infers role binding from process state, and exposes a pluggable policy. Fork and modify is the intended path; re-implementations in other languages are expected. The protocol does not care which runtime an agent uses.
+                    An operator drives <code>@figaro/core/agent</code> for one wallet: sync the chain, see the actions available to that wallet (accept, resolve, originate, attest &mdash; role inferred from process state), apply the owner&apos;s policy, sign and submit. The SDK is the whole toolkit; nothing else is installed. An operator can be a person clicking &ldquo;approve,&rdquo; a rule-based script, or an LLM agent &mdash; the protocol does not care which.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The transactor is intentionally minimal &mdash; not a strategy, not a production system. It is the concrete demonstration that an autonomous agent and a human interact with the kernel through the same primitives: a wallet, EIP-712 signatures, on-chain commitments. Treat the doctrine on this page as the <em>what</em>; the transactor is the <em>how</em>.
+                    Autonomy is a policy choice, never structural. The default is human-in-the-loop: the owner approves each action. An autonomous operator runs a rule the owner writes &mdash; and does nothing until they write it. Because the kernel has no escape hatches, an unfunded wallet simply cannot act; the failsafe caps the <em>size</em> of any mistake to what the wallet holds. Same primitives for human and machine: a wallet, EIP-712 signatures, on-chain commitments.
                 </p>
             </MarketingSection>
 

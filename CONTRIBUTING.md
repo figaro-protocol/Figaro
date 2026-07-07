@@ -84,7 +84,7 @@ The project ships agent-shaped tooling — usable by humans, AI assistants, or a
 
 These are the **operator's** repo-building subagents — private tools for developing Figaro itself. They rely on the canonical `figaro-kernel-discipline` skill at `.claude/skills/` and the `kernel-warn.sh` hook at `.claude/hooks/`. The skill is the single source of truth for kernel rules; the subagents are tool-constrained executors.
 
-> **Contributing a clause or assembly to the *network* (not this repo)?** That is a permissionless, on-chain act — see the public **ecosystem agents** at `sdk/ecosystem-agents/`, which help a user author or fork a clause/assembly and register it under their own wallet. They never touch this repo.
+> **Contributing a clause or assembly to the *network* (not this repo)?** That is a permissionless, on-chain act — see the public **ecosystem agents** at `ecosystem-agents/`, which help a user author or fork a clause/assembly and register it under their own wallet. They never touch this repo.
 
 **How to invoke a subagent.** In Claude Code, three paths work:
 
@@ -94,33 +94,19 @@ These are the **operator's** repo-building subagents — private tools for devel
 
 Subagents do not chain directly. The runtime-ui-author returns to the main session, which then dispatches the kernel-reviewer and clause-lockstep in turn — review the verification report each subagent produces before merging.
 
-### Reference participation agent — `sdk/ecosystem-agents/transactor/`
+### Public ecosystem agents — `ecosystem-agents/`
 
-`@figaro/transactor` is a fork-and-modify reference for any agent — human-driven or autonomous, AI or rule-based — that wants to *act* on the protocol. It wires `@figaro/core/agent` to a wallet, role binding (inferred from process state), and a pluggable policy. HITL is the default; autonomous mode ships with a refuse-all policy as the security floor.
+Three prompt definitions that act for a **user's** wallet on the permissionless network, never on this repo — one per capacity:
 
-```bash
-cd sdk/ecosystem-agents/transactor
-npm install
-cp .env.example .env
-# Edit .env with a fresh test key and addresses from scripts/deploy-local.sh
-npm run dev
-```
+- **`figaro-operator`** — operate a wallet: sign every transaction on the owner's behalf (accept, resolve, originate, attest) via `@figaro/core/agent`, under the owner's policy (HITL default; refuse-all floor).
+- **`figaro-clause-author`** — author or version a clause → `ClauseRegistry`.
+- **`figaro-assembly-author`** — compose or fork an assembly → `AssemblyRegistry`.
 
-See `sdk/ecosystem-agents/transactor/README.md` for architecture, the policy contract, LLM integration patterns, and ERC-8004 / `did:web` discoverability. The package is the operational form of Figaro's actor-neutrality claim: humans and agents interact with the kernel through the same primitives.
-
-### Worked examples — `sdk/ecosystem-agents/transactor/examples/`
-
-End-to-end walkthroughs of how the public **ecosystem** agents (`figaro-assembly-author`, `figaro-clause-author` in `sdk/ecosystem-agents/`) and the `transactor` participation reference compose to build and operate a real assembly — a user's contribution, registered on the permissionless registries, never in this repo. Doc-only; every transactor policy snippet is plug-and-play. Two scenarios:
-
-- `sdk/ecosystem-agents/transactor/examples/tradelens-replacement/` — multi-party container shipping
-- `sdk/ecosystem-agents/transactor/examples/spirit-air-replacement/` — passenger-airline with cascading-delay coordination
-
-Each scenario's `assembly.md` is a reference target for `figaro-assembly-author`; its `clauses.md` lists the clauses to author (via `figaro-clause-author`) or reuse.
+They are the public counterpart to the operator-private subagents above. See `ecosystem-agents/README.md`.
 
 ### Conventions for new agents
 
-- New Claude Code subagents go in `.claude/agents/<name>.md` with frontmatter (`name`, `description`, `tools`, `model`). Read-only agents declare `tools: Read, Grep, Glob, Bash` to make the constraint explicit.
-- New runnable agents go under `agents/<name>/` as standalone packages depending on `@figaro/core` via `file:../../sdk`.
+- New operator-private subagents go in `.claude/agents/<name>.md`; new public ecosystem agents go in `ecosystem-agents/<name>.md`. Both are prompts with frontmatter (`name`, `description`, `tools`, `model`); read-only agents declare `tools: Read, Grep, Glob, Bash` to make the constraint explicit.
 - Agent prompts must cite canonical sources (papers, `docs/v5/`, `CLAUDE.md`) — not paraphrase. Drift between an agent's rules and the publications is a bug.
 
 ## Documentation discipline

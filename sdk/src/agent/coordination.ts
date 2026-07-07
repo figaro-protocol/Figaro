@@ -71,7 +71,7 @@ export type OfferHandler = (offer: CommitmentPayload) => Promise<CommitmentPaylo
 /**
  * In-process test channel: seller-agents register an `OfferHandler` by address,
  * and `sendOffer` routes to it directly (no network). This is the transport the
- * two-transactor autonomous-origination test runs on; it is NOT a mock of the
+ * two-operator autonomous-origination test runs on; it is NOT a mock of the
  * handshake — both parties run their real sign/validate logic, only the wire is
  * elided. An offer to an unregistered seller resolves to `null` (absence).
  */

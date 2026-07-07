@@ -23,18 +23,16 @@ that any agent can read, analyze, and act on.
 
 Pre-defined agents are **operator-private by default**; "public" is the exception, only when explicitly designed for it.
 
-- **Public ecosystem agents** (this document's subject; any user, acting for their own wallet, never the repo) all live in `sdk/ecosystem-agents/`:
-  - **Transacting** — `@figaro/core/agent` is the machinery; `transactor/` (`@figaro/transactor`) is the runnable reference — fork it, give it a wallet, it acts for whoever holds the key (buyer, seller, auditor). Worked walkthroughs: `sdk/ecosystem-agents/transactor/examples/`.
-  - **Authoring** — `figaro-clause-author`, `figaro-assembly-author`: help a user author or **fork** a clause/assembly and register it on the permissionless registries (spec/`DesignDraft` → IPFS → `ClauseRegistry`/`AssemblyRegistry`, under the **user's** key). The artifact belongs to the user (RPGF rewards it).
+- **Public ecosystem agents** (this document's subject; any user, acting for their own wallet, never the repo) are prompt definitions in `ecosystem-agents/`, one per capacity:
+  - **`figaro-operator`** — *operate* a wallet: sign every transaction on the owner's behalf (accept, resolve, originate, attest) using `@figaro/core/agent`, guided by the owner's policy (HITL by default; refuse-all until a rule is set). Role is read from process state, so the same operator is buyer in one process and seller in another.
+  - **`figaro-clause-author` / `figaro-assembly-author`** — author or **fork** a clause/assembly and register it on the permissionless registries (spec/`DesignDraft` → IPFS → `ClauseRegistry`/`AssemblyRegistry`, under the **user's** key). The artifact belongs to the user (RPGF rewards it).
 - **Operator-private repo agents** (the Claude Code subagents that build THIS repo, for the operator only): definitions live in `.claude/agents/*.md`. They touch the repo (that is their job); nothing in this document applies to them.
 
 ---
 
-## Reference Implementation
+## The operator — how an agent transacts
 
-`sdk/ecosystem-agents/transactor/` ships a runnable reference participation agent: a fork-and-modify TypeScript starting point that wires `@figaro/core/agent` to a wallet, role binding (inferred from process state), and a pluggable policy. Treat the doctrine in this document as the *what*; the transactor is the *how*. See `sdk/ecosystem-agents/transactor/README.md` for architecture, the policy contract, LLM integration patterns, and ERC-8004 / `did:web` discoverability.
-
-The transactor is intentionally minimal — it is not a strategy or a production system. It is the concrete demonstration that humans and autonomous agents interact with the kernel through the same primitives (a wallet, EIP-712 signatures, on-chain commitments). Re-implementations in other languages are expected; the protocol does not care which runtime you use.
+The `figaro-operator` prompt (`ecosystem-agents/figaro-operator.md`) is the *how* to this document's *what*: it directs an agent to wire `@figaro/core/agent` to a wallet, infer role binding from process state, and act under the owner's policy (HITL by default; a refuse-all floor). The same primitives serve a human at a keyboard and an autonomous agent — a wallet, EIP-712 signatures, on-chain commitments. Any runtime works; the protocol does not care which. Autonomous-vs-HITL is a policy choice, never structural.
 
 ---
 
