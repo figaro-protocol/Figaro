@@ -196,13 +196,21 @@ export function offerToExecutionInputs(offer: CommitmentPayload): { commitment: 
 
 // ── Bond approval ─────────────────────────────────────────────────────────────
 
-/** Approve `core` to pull `amount` of `currency` — a party's bond. Awaits the
- *  receipt so the allowance is on chain before the counterparty's `commit`. */
+/** Approve `core` to pull `amount` of `currency` — a party's bond. ADDITIVE: a
+ *  seller on multiple nodes of one chain approves each bond in turn (all
+ *  handshakes precede any commit), and plain `approve()` OVERWRITES — only the
+ *  last node's allowance would survive. Reads the current allowance and approves
+ *  `current + amount`, so it covers every bond (over-approval is harmless).
+ *  Awaits the receipt so the allowance is on chain before the counterparty's
+ *  `commit`. */
 async function approveBond(wallet: WalletClient, publicClient: PublicClient, core: Address, currency: Address, amount: bigint): Promise<void> {
     const account = wallet.account;
     if (!account) throw new Error("approveBond: wallet has no account");
+    const current = await publicClient.readContract({
+        address: currency, abi: ERC20_ABI, functionName: "allowance", args: [account.address, core],
+    });
     const hash = await wallet.writeContract({
-        chain: wallet.chain ?? null, account, address: currency, abi: ERC20_ABI, functionName: "approve", args: [core, amount],
+        chain: wallet.chain ?? null, account, address: currency, abi: ERC20_ABI, functionName: "approve", args: [core, current + amount],
     });
     await publicClient.waitForTransactionReceipt({ hash });
 }
@@ -291,9 +299,8 @@ export function makeSellerOfferHandler(
 export interface ChainNodeSpec {
     /** Template node id (matches `template.agreements[].id`). */
     nodeId: string;
-    /** The seller for this node — the buyer's counterparty choice (distinct per
-     *  node; a single seller across multiple nodes would need additive bond
-     *  approval, not yet handled). */
+    /** The seller for this node — the buyer's counterparty choice. A single
+     *  seller across multiple nodes is fine: bond approval is additive. */
     seller: Address;
     /** This node's payment (the value it adds). */
     payment: bigint;
