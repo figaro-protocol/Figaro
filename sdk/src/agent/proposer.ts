@@ -12,13 +12,15 @@
  * The agent (human or autonomous) decides which to execute.
  */
 
-import type { Hex, Address, Process, Order, Commitment, BondBreakdown, SettlementBreakdown } from "../types.js";
+import type { Hex, Address, Process, Order, Commitment, BondBreakdown, SettlementBreakdown, RegisteredAssembly } from "../types.js";
 import { OrderState } from "../types.js";
 import { calculateBonds, calculateSettlement } from "../bonds.js";
+import { orderToCommitment, ZERO_PROCESS_ID } from "../commitments.js";
 
 // ── Action types ────────────────────────────────────────────────────────────
 
 export type ActionType =
+    | "initiate-process"
     | "resolve-process"
     | "commit-sub-order"
     | "attest-as-seller"
@@ -30,6 +32,19 @@ export interface BaseAction {
     description: string;
     /** Process this action operates on. */
     processId: Hex;
+}
+
+export interface InitiateProcessAction extends BaseAction {
+    type: "initiate-process";
+    /** The buyer that would originate — the agent's own address. */
+    buyer: Address;
+    /** The discovered assembly template being instantiated. Identity IS the hash. */
+    compositionHash: Hex;
+    /** Pointer to the assembly document; the agent hydrates it (off-SDK) to
+     *  build the agreement(s) the parties sign. */
+    contentURI: string;
+    /** Author-of-record of the assembly. */
+    author: Address;
 }
 
 export interface ResolveProcessAction extends BaseAction {
@@ -70,11 +85,12 @@ export interface AttestAction extends BaseAction {
     /** Orders this address can attest against. */
     orderHashes: Hex[];
     /**
-     * Optional clauseId for the attestation. When omitted, the executor picks
-     * a role-appropriate default (e.g. `figaro-courier-process` for a
-     * sub-order carrying that clause). Must correspond to a clause committed in the
-     * target's signed agreement — otherwise the coordinator's inclusion-proof
-     * gate rejects the call.
+     * clauseId for the attestation. The proposer does not choose one — an
+     * attestation names a specific clause committed in the target's signed
+     * agreement, and only the agent (which holds the hydrated agreement) knows
+     * which. It is supplied at execution time via `ActionExecutionInputs`; a
+     * clauseId absent from the target's agreement makes the coordinator's
+     * inclusion-proof gate reject the call.
      */
     clauseId?: Hex;
     /** Optional stage; executor default is 1. */
@@ -88,6 +104,7 @@ export interface AttestAction extends BaseAction {
 }
 
 export type ProposedAction =
+    | InitiateProcessAction
     | ResolveProcessAction
     | CommitSubOrderAction
     | AttestAction;
@@ -97,10 +114,12 @@ export type ProposedAction =
 /**
  * Analyze a process and propose all valid actions for the given address.
  *
- * Note: resolveProcess requires the original Commitment structs. Since the
- * ProcessGraph only stores event data (not original commitments), the caller
- * must supply commitments separately when executing a ResolveProcessAction.
- * The proposer sets commitments to an empty array as a placeholder.
+ * `resolveProcess` requires the original Commitment structs. `Order` carries
+ * every Commitment field, so the proposer reconstructs them here (via
+ * `orderToCommitment`) — no separate supply needed. A ROOT order's rebuilt
+ * commitment still carries the DERIVED processId; the executor restores the
+ * signed `processId = 0` at submission (it needs chain context the proposer,
+ * being pure, does not have).
  *
  * @param process   The process to analyze.
  * @param myAddress The address we're proposing for.
@@ -144,7 +163,9 @@ export function proposeActions(process: Process, myAddress: Address): ProposedAc
                 `You receive ${totalBuyerPayout} back; sellers receive ${totalSellerPayout} total.`,
             processId: process.processId,
             caller: process.rootBuyer,
-            commitments: [], // Must be supplied by caller at execution time
+            // Reconstructed from the active orders; the executor restores each
+            // root's signed processId=0 before submitting.
+            commitments: activeOrders.map(orderToCommitment),
             settlements,
             totalBuyerPayout,
             totalSellerPayout,
@@ -191,6 +212,37 @@ export function proposeActions(process: Process, myAddress: Address): ProposedAc
     }
 
     return actions;
+}
+
+/**
+ * Propose origination actions from the discovered assembly catalogue — the
+ * cold-start "act" verb. `proposeActions` reasons about processes the agent is
+ * already IN; this reasons about processes it could START, one per live-staked
+ * assembly. Pure over discovery output (`FigaroContext.getAssemblies()`).
+ *
+ * These are OPPORTUNITIES, not executable-from-nothing: originating a process
+ * is a two-party commit, so executing one still needs the counterparty's
+ * signature (gathered off-SDK via a coordination channel) supplied at execution.
+ *
+ * @param assemblies The live assemblies to consider (typically all discovered).
+ * @param myAddress  The prospective buyer — the agent's own address.
+ */
+export function proposeInitiations(
+    assemblies: RegisteredAssembly[],
+    myAddress: Address,
+): InitiateProcessAction[] {
+    return assemblies.map((a) => ({
+        type: "initiate-process",
+        description:
+            `Initiate a new process from assembly ${a.compositionHash}. ` +
+            `You would be the root buyer; sellers co-sign from the assembly's roles.`,
+        // No process exists yet — the kernel derives the id at root commit.
+        processId: ZERO_PROCESS_ID,
+        buyer: myAddress,
+        compositionHash: a.compositionHash,
+        contentURI: a.contentURI,
+        author: a.author,
+    }));
 }
 
 /**

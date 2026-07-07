@@ -25,6 +25,7 @@ import type {
     Hex,
     Address,
     Commitment,
+    Order,
     EIP712Domain,
     FigaroAddresses,
 } from "./types.js";
@@ -62,7 +63,9 @@ export function buildDomain(chainId: number, coreAddress: Address): EIP712Domain
 // encoding are DERIVED from COMMITMENT_TYPES above, so they can never drift from
 // the type the parties sign. Frontends import these — they do not re-implement.
 
-const ZERO_PROCESS_ID = `0x${"0".repeat(64)}` as Hex;
+/** The kernel's zero processId — what a ROOT commitment signs before the kernel
+ *  derives the real id. Exported so reconstruction callers can restore it. */
+export const ZERO_PROCESS_ID = `0x${"0".repeat(64)}` as Hex;
 
 /** The EIP-712 type string, derived from COMMITMENT_TYPES (single source). */
 const COMMITMENT_TYPE_STRING =
@@ -111,6 +114,49 @@ export function computeOrderHash(c: Commitment, chainId: number, coreAddress: Ad
             [computeCommitmentProcessId(c, chainId, coreAddress), hashCommitmentStruct(c)],
         ),
     );
+}
+
+/**
+ * Rebuild the Commitment struct from an event-derived Order. `Order` carries
+ * every Commitment field (the OrderCommitted event emits all of them), so an
+ * agent can reconstruct what to pass to `resolveProcess` without having stored
+ * the original structs. `expectedCumulativeValue` is the order's committed
+ * `cumulativeValue`.
+ *
+ * NOTE: a ROOT order's `processId` here is the DERIVED id (what the event
+ * carries), not the `0` the party signed. Pass the result through
+ * `restoreSignedProcessId` before hashing/submitting, or the kernel's recomputed
+ * orderHash will miss. This function stays chain-free so it can be pure.
+ */
+export function orderToCommitment(order: Order): Commitment {
+    return {
+        processId: order.processId,
+        buyer: order.buyer,
+        seller: order.seller,
+        currency: order.currency,
+        payment: order.payment,
+        expectedCumulativeValue: order.cumulativeValue,
+        agreementHash: order.agreementHash,
+        salt: order.salt,
+        deadline: order.deadline,
+    };
+}
+
+/**
+ * Recover the SIGNED commitment from an event-derived one. A ROOT order was
+ * signed with `processId = 0`; the kernel derives the real id as the root's
+ * EIP-712 digest and emits THAT. Every path that recomputes an order's hash
+ * (`resolveProcess`, the attestation coordinator) needs the signed struct, so
+ * the root must carry `processId = 0`. If treating the commitment as a root
+ * reproduces its own processId, it WAS a root → return it with `processId = 0`;
+ * otherwise it is a sub-order and is returned unchanged. Mirrors the frontend's
+ * `restoreSignedProcessId` — the SDK-native home so agents don't reimplement it.
+ */
+export function restoreSignedProcessId(c: Commitment, chainId: number, coreAddress: Address): Commitment {
+    const asRoot: Commitment = { ...c, processId: ZERO_PROCESS_ID };
+    return computeCommitmentProcessId(asRoot, chainId, coreAddress).toLowerCase() === c.processId.toLowerCase()
+        ? asRoot
+        : c;
 }
 
 // ── Salt generation ─────────────────────────────────────────────────────────

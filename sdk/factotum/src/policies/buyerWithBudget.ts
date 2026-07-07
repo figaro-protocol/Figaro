@@ -41,8 +41,16 @@ export function buyerWithBudgetPolicy<TContext = unknown>(
     }
     if (action.type === "resolve-process") {
       // Buyer dominance: holding the resolution key is the buyer's
-      // operational responsibility. Auto-resolve when proposer surfaces it.
+      // operational responsibility. Auto-resolve when proposer surfaces it —
+      // the one action this policy completes end-to-end with no further input.
       return { execute: true };
+    }
+    if (action.type === "initiate-process") {
+      // Origination is a discovered opportunity, not an autonomously executable
+      // action: starting a process needs the seller's counter-signature, which
+      // this reference policy has no channel to gather. Decline cleanly; a real
+      // buyer policy wires a coordination channel and supplies signed inputs.
+      return { execute: false, reason: "origination needs a coordination channel (not wired in this reference policy)" };
     }
     return { execute: false, reason: "unhandled action type" };
   });

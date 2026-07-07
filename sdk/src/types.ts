@@ -94,6 +94,101 @@ export interface AttestationEvent {
     blockNumber: number;
 }
 
+// ── Discovery: registry events (the three artifact families) ─────────────────
+//
+// Parallel to the core process events above. A cold-start agent folds these to
+// learn what clauses, sellers, and assemblies EXIST — the registries are the
+// network's catalogue. Every event carries `logIndex` because seller liveness
+// is order-dependent within a block (see DiscoveryGraph), unlike the core
+// process events whose block-ordering suffices.
+
+/** ClauseRegistry `ClauseRegistered`. `clauseId` is the bare human name; the
+ *  on-chain key is `keccak256(abi.encode(clauseId, version))` (ClauseRegistry.sol:146). */
+export interface ClauseRegisteredEvent {
+    clauseId: string;
+    version: number;
+    contentHash: Hex;
+    contentURI: string;
+    registrar: Address;
+    blockNumber: number;
+    logIndex: number;
+}
+
+/** ClauseRegistry `DepositWithdrawn`. `idHash` is the clause key, NOT the bare
+ *  name — the withdraw path keys on `keccak256(abi.encode(clauseId, version))`. */
+export interface ClauseWithdrawnEvent {
+    idHash: Hex;
+    registrar: Address;
+    blockNumber: number;
+    logIndex: number;
+}
+
+/** SellerRegistry `SellerRegistered` OR `SellerProfileUpdated` — one shape, the
+ *  `updated` flag distinguishing them. Current metadataURI = most-recent of the
+ *  two for an address (SellerRegistry.sol:87-90). */
+export interface SellerRegisteredEvent {
+    seller: Address;
+    metadataURI: string;
+    /** false = SellerRegistered; true = SellerProfileUpdated. */
+    updated: boolean;
+    blockNumber: number;
+    logIndex: number;
+}
+
+/** SellerRegistry `SellerWithdrawn`. Withdraw clears the dedup guard and
+ *  de-surfaces the seller; a later re-registration re-surfaces it. */
+export interface SellerWithdrawnEvent {
+    seller: Address;
+    blockNumber: number;
+    logIndex: number;
+}
+
+/** AssemblyRegistry `AssemblyRegistered`. Identity IS `compositionHash`; the
+ *  human slug is derived off-chain (AssemblyRegistry.sol:16-21). */
+export interface AssemblyRegisteredEvent {
+    compositionHash: Hex;
+    author: Address;
+    contentURI: string;
+    blockNumber: number;
+    logIndex: number;
+}
+
+/** AssemblyRegistry `DepositWithdrawn` — keyed by `compositionHash` directly. */
+export interface AssemblyWithdrawnEvent {
+    compositionHash: Hex;
+    author: Address;
+    blockNumber: number;
+    logIndex: number;
+}
+
+// ── Discovery: live views (deposit-withdrawn artifacts filtered out) ─────────
+//
+// What `getClauses/getSellers/getAssemblies` return: the LIVE-staked set, each
+// a pointer (contentURI/metadataURI) the consumer hydrates from IPFS itself —
+// the SDK stays viem-only and never fetches off-chain documents.
+
+export interface RegisteredClause {
+    clauseId: string;
+    version: number;
+    /** `keccak256(abi.encode(clauseId, version))` — the on-chain key. */
+    idHash: Hex;
+    contentHash: Hex;
+    contentURI: string;
+    registrar: Address;
+}
+
+export interface RegisteredSeller {
+    seller: Address;
+    /** Current metadataURI — most-recent `SellerRegistered`/`SellerProfileUpdated`. */
+    metadataURI: string;
+}
+
+export interface RegisteredAssembly {
+    compositionHash: Hex;
+    author: Address;
+    contentURI: string;
+}
+
 
 
 // ── EIP-712 commitment type (unified — matches CommitmentTypes.sol) ─────────
@@ -124,6 +219,8 @@ export interface FigaroAddresses {
     token?: Address;
     attestationCoordinator?: Address;
     clauseRegistry?: Address;
+    sellerRegistry?: Address;
+    assemblyRegistry?: Address;
 }
 
 // ── Bond breakdown ──────────────────────────────────────────────────────────

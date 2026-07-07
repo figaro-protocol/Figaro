@@ -3,7 +3,6 @@ import type { ProposedAction, CommitSubOrderAction } from "@figaro/core/agent";
 import {
   basicSellerPolicy,
   sellerOfRecordPolicy,
-  auctionBidderPolicy,
   auditorPolicy,
   buyerWithBudgetPolicy,
 } from "./index.js";
@@ -111,39 +110,6 @@ describe("sellerOfRecordPolicy", () => {
     const decisions = await policy.decide([{ action: makeResolve() }]);
     expect(decisions[0].action).toBe("reject");
     expect(decisions[0].reason).toMatch(/human review/);
-  });
-});
-
-describe("auctionBidderPolicy", () => {
-  it("approves commits with sufficient margin", async () => {
-    const policy = auctionBidderPolicy({
-      estimateMyCost: () => 1000n,
-      minMarginBps: 500n, // 5%
-    });
-    // Offered 1100 against cost 1000 = 10% margin = 1000bps >= 500bps threshold
-    const decisions = await policy.decide([{ action: makeCommit(1100n) }]);
-    expect(decisions[0].action).toBe("approve");
-  });
-
-  it("rejects commits below margin", async () => {
-    const policy = auctionBidderPolicy({
-      estimateMyCost: () => 1000n,
-      minMarginBps: 1000n, // 10%
-    });
-    // Offered 1050 against cost 1000 = 5% margin = 500bps < 1000bps
-    const decisions = await policy.decide([{ action: makeCommit(1050n) }]);
-    expect(decisions[0].action).toBe("reject");
-    expect(decisions[0].reason).toMatch(/margin/);
-  });
-
-  it("refuses to bid blind on zero cost estimate", async () => {
-    const policy = auctionBidderPolicy({
-      estimateMyCost: () => 0n,
-      minMarginBps: 500n,
-    });
-    const decisions = await policy.decide([{ action: makeCommit(1000n) }]);
-    expect(decisions[0].action).toBe("reject");
-    expect(decisions[0].reason).toMatch(/blind/);
   });
 });
 

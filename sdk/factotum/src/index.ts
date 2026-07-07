@@ -23,6 +23,7 @@ const config = {
     clauseRegistry: requireEnv("CLAUSE_REGISTRY_ADDRESS") as `0x${string}`,
     attestationCoordinator: requireEnv("ATTESTATION_COORDINATOR_ADDRESS") as `0x${string}`,
     sellerRegistry: requireEnv("SELLER_REGISTRY_ADDRESS") as `0x${string}`,
+    assemblyRegistry: requireEnv("ASSEMBLY_REGISTRY_ADDRESS") as `0x${string}`,
   },
   pollIntervalMs: Number(process.env.POLL_INTERVAL_MS ?? 15_000),
   policy,

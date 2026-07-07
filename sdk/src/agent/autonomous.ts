@@ -16,6 +16,7 @@
 import type { WalletClient, PublicClient } from "viem";
 import { CORE_ABI, ATTESTATION_COORDINATOR_ABI } from "../abis.js";
 import { assertOrderFitsResolveCap } from "../gasCeilings.js";
+import { restoreSignedProcessId } from "../commitments.js";
 import type { Hex, Address, FigaroAddresses, Commitment } from "../types.js";
 import type { ProposedAction, ResolveProcessAction } from "./proposer.js";
 
@@ -155,29 +156,109 @@ export async function attestAsBuyer(
 // ── Action-based execution ──────────────────────────────────────────────────
 
 /**
- * Execute a ProposedAction. Only supports actions that don't require
- * additional parameters beyond what's in the action itself.
+ * Extra inputs an action needs at execution time that the (pure) proposer
+ * cannot produce. The SDK executes GIVEN these; it never fabricates a signature.
+ */
+export interface ActionExecutionInputs {
+    /** resolve-process: the Commitment structs for the process's active orders.
+     *  Defaults to the action's own reconstructed `commitments`; supply only to
+     *  override. Each is passed through `restoreSignedProcessId` before submit. */
+    commitments?: Commitment[];
+    /** commit-sub-order / initiate-process: the fully-formed commitment and BOTH
+     *  signatures. The seller's signature comes from a coordination handshake —
+     *  the SDK never fabricates it. */
+    commitment?: Commitment;
+    buyerSig?: Hex;
+    sellerSig?: Hex;
+    /** attest-as-seller / attest-as-buyer: the merkle-bound payload the agent
+     *  builds from its hydrated agreement (proof + content + section bytes). */
+    attestation?: {
+        /** seller-attest only: distinct role commitment for cross-order
+         *  attestation; omit for same-order (role = target). */
+        role?: Commitment;
+        target: Commitment;
+        clauseId: Hex;
+        stage: number;
+        sectionData: Hex;
+        proof: readonly Hex[];
+        content: Hex;
+    };
+}
+
+/**
+ * Execute a ProposedAction — the single dispatch point for every action the
+ * proposer can surface. What each needs:
  *
- * Currently supports:
- *   - resolve-process: calls resolveProcess with the stored commitments
+ *   - resolve-process — self-contained: the action carries the reconstructed
+ *     commitments; the executor restores each root's signed processId and submits.
+ *     An agent (buyer) resolves autonomously with no further input.
+ *   - initiate-process / commit-sub-order — a two-party commit: pass
+ *     `{ commitment, buyerSig, sellerSig }`. The counterparty signature is
+ *     gathered off-SDK; without it this throws rather than fabricate one.
+ *   - attest-as-seller / attest-as-buyer — pass `inputs.attestation` (the
+ *     merkle-bound payload built from the hydrated agreement).
  *
- * Actions that require additional input (commit, attest) must use
- * the direct functions above.
+ * Throws a clear, typed error when a chosen action's inputs are absent.
  */
 export async function executeAction(
     walletClient: WalletClient,
+    publicClient: PublicClient,
     addresses: FigaroAddresses,
     action: ProposedAction,
+    inputs: ActionExecutionInputs = {},
 ): Promise<TxResult> {
     switch (action.type) {
         case "resolve-process": {
             const a = action as ResolveProcessAction;
-            return resolveProcess(walletClient, addresses.core, a.processId, a.commitments);
+            const raw = inputs.commitments ?? a.commitments;
+            if (!raw || raw.length === 0) {
+                throw new Error(
+                    "resolve-process: no commitments to resolve. The proposer reconstructs " +
+                    "them from the process's active orders — pass a populated action or inputs.commitments.",
+                );
+            }
+            const chainId = await publicClient.getChainId();
+            const commitments = raw.map((c) => restoreSignedProcessId(c, chainId, addresses.core));
+            return resolveProcess(walletClient, addresses.core, a.processId, commitments);
+        }
+        case "initiate-process":
+        case "commit-sub-order": {
+            if (!inputs.commitment || !inputs.buyerSig || !inputs.sellerSig) {
+                throw new Error(
+                    `${action.type}: requires a signed commitment plus BOTH buyer and seller ` +
+                    `signatures. Originating or extending a process is a two-party handshake — gather ` +
+                    `the counterparty signature via a coordination channel and pass ` +
+                    `{ commitment, buyerSig, sellerSig }. The SDK will not fabricate a signature.`,
+                );
+            }
+            return commit(
+                walletClient, publicClient, addresses.core,
+                inputs.commitment, inputs.buyerSig, inputs.sellerSig,
+            );
+        }
+        case "attest-as-seller":
+        case "attest-as-buyer": {
+            const at = inputs.attestation;
+            if (!at) {
+                throw new Error(
+                    `${action.type}: requires inputs.attestation ` +
+                    `{ target, clauseId, stage, sectionData, proof, content } built from the hydrated agreement.`,
+                );
+            }
+            if (!addresses.attestationCoordinator) {
+                throw new Error(`${action.type}: addresses.attestationCoordinator is not configured.`);
+            }
+            return action.type === "attest-as-seller"
+                ? attestAsSeller(
+                    walletClient, addresses.attestationCoordinator,
+                    at.role ?? at.target, at.target, at.clauseId, at.stage, at.sectionData, at.proof, at.content,
+                )
+                : attestAsBuyer(
+                    walletClient, addresses.attestationCoordinator,
+                    at.target, at.clauseId, at.stage, at.sectionData, at.proof, at.content,
+                );
         }
         default:
-            throw new Error(
-                `Cannot auto-execute action type "${action.type}". ` +
-                `Use the direct functions (commit, attestAsSeller, etc.) instead.`,
-            );
+            throw new Error(`Cannot execute unknown action type "${(action as { type: string }).type}".`);
     }
 }

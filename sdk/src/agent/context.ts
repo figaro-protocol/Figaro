@@ -11,16 +11,32 @@
  */
 
 import type { PublicClient } from "viem";
-import type { Hex, Address, FigaroAddresses, AgentProcessContext, Process, Order } from "../types.js";
+import type {
+    Hex,
+    Address,
+    FigaroAddresses,
+    AgentProcessContext,
+    Process,
+    Order,
+    RegisteredClause,
+    RegisteredSeller,
+    RegisteredAssembly,
+} from "../types.js";
 import { ProcessGraph } from "../state.js";
-import type { CoreEvents } from "../state.js";
 import { fetchCoreEvents } from "../events.js";
+import { DiscoveryGraph, fetchDiscoveryEvents } from "../discovery.js";
 
 export interface SyncResult {
     /** Number of new OrderCommitted events ingested. */
     newCommits: number;
     /** Number of new OrderResolved events ingested. */
     newResolutions: number;
+    /** Number of new ClauseRegistered events ingested. */
+    newClauses: number;
+    /** Number of new SellerRegistered/SellerProfileUpdated events ingested. */
+    newSellers: number;
+    /** Number of new AssemblyRegistered events ingested. */
+    newAssemblies: number;
     /** Block number synced up to. */
     syncedToBlock: bigint;
 }
@@ -30,7 +46,12 @@ export interface SyncResult {
  * Wraps ProcessGraph with chain sync capabilities.
  */
 export class FigaroContext {
+    /** The processes this agent is in — reconstructed from FigaroCore events. */
     readonly graph: ProcessGraph;
+    /** What EXISTS on the network — the live clause/seller/assembly catalogue.
+     *  A parallel family (registries have no on-chain edges to the kernel), so
+     *  a distinct reducer, never folded into `graph`. */
+    readonly discovery: DiscoveryGraph;
     readonly client: PublicClient;
     readonly addresses: FigaroAddresses;
 
@@ -44,33 +65,45 @@ export class FigaroContext {
         this.client = client;
         this.addresses = addresses;
         this.graph = new ProcessGraph();
+        this.discovery = new DiscoveryGraph();
     }
 
     /**
-     * Sync all events from chain. First call fetches from genesis;
-     * subsequent calls fetch only new blocks (incremental).
+     * Sync all events from chain — both the agent's processes AND the network
+     * catalogue (the registries). First call fetches from genesis; subsequent
+     * calls fetch only new blocks (incremental). Registry families whose address
+     * is unconfigured simply contribute nothing.
      */
     async sync(): Promise<SyncResult> {
         const fromBlock = this.lastSyncedBlock > 0n ? this.lastSyncedBlock + 1n : 0n;
         const currentBlock = await this.client.getBlockNumber();
 
         if (currentBlock < fromBlock) {
-            return { newCommits: 0, newResolutions: 0, syncedToBlock: this.lastSyncedBlock };
+            return {
+                newCommits: 0,
+                newResolutions: 0,
+                newClauses: 0,
+                newSellers: 0,
+                newAssemblies: 0,
+                syncedToBlock: this.lastSyncedBlock,
+            };
         }
 
-        const events = await fetchCoreEvents(
-            this.client,
-            this.addresses,
-            fromBlock,
-            currentBlock,
-        );
+        const [events, discoveryEvents] = await Promise.all([
+            fetchCoreEvents(this.client, this.addresses, fromBlock, currentBlock),
+            fetchDiscoveryEvents(this.client, this.addresses, fromBlock, currentBlock),
+        ]);
 
         this.graph.applyEvents(events);
+        this.discovery.applyEvents(discoveryEvents);
         this.lastSyncedBlock = currentBlock;
 
         return {
             newCommits: events.orderCommitted.length,
             newResolutions: events.orderResolved.length,
+            newClauses: discoveryEvents.clauseRegistered.length,
+            newSellers: discoveryEvents.sellerRegistered.length,
+            newAssemblies: discoveryEvents.assemblyRegistered.length,
             syncedToBlock: currentBlock,
         };
     }
@@ -118,6 +151,24 @@ export class FigaroContext {
             }
             return false;
         });
+    }
+
+    // ── Discovery (the cold-start catalogue) ─────────────────────────────────
+
+    /** All live-staked clauses on the network. */
+    getClauses(): RegisteredClause[] {
+        return this.discovery.getClauses();
+    }
+
+    /** All live-staked sellers on the network. */
+    getSellers(): RegisteredSeller[] {
+        return this.discovery.getSellers();
+    }
+
+    /** All live-staked assemblies on the network — the templates an agent can
+     *  instantiate from a cold start. */
+    getAssemblies(): RegisteredAssembly[] {
+        return this.discovery.getAssemblies();
     }
 
     /**

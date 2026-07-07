@@ -24,8 +24,8 @@
  * })));
  * const approved = queue.approve(1);
  *
- * // 4. Execute
- * const result = await executeAction(walletClient, addresses, approved.action);
+ * // 4. Execute (resolve-process is self-contained; commit/attest take inputs)
+ * const result = await executeAction(walletClient, publicClient, addresses, approved.action);
  * queue.markExecuted(1, result.hash);
  * ```
  */
@@ -35,10 +35,11 @@ export { FigaroContext } from "./context.js";
 export type { SyncResult } from "./context.js";
 
 // Action proposer
-export { proposeActions, filterActions } from "./proposer.js";
+export { proposeActions, proposeInitiations, filterActions } from "./proposer.js";
 export type {
     ActionType,
     ProposedAction,
+    InitiateProcessAction,
     ResolveProcessAction,
     CommitSubOrderAction,
     AttestAction,
@@ -61,7 +62,7 @@ export {
     attestAsBuyer,
     executeAction,
 } from "./autonomous.js";
-export type { TxResult } from "./autonomous.js";
+export type { TxResult, ActionExecutionInputs } from "./autonomous.js";
 
 // did:web identity — agents bind their on-chain address to a resolvable DID
 export {

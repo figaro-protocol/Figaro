@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { proposeActions, filterActions } from "../src/agent/proposer.js";
-import type { Process, Order } from "../src/types.js";
+import { proposeActions, proposeInitiations, filterActions } from "../src/agent/proposer.js";
+import type { Process, Order, RegisteredAssembly } from "../src/types.js";
 import { OrderState } from "../src/types.js";
 import type { Hex, Address } from "../src/types.js";
 
@@ -62,8 +62,12 @@ describe("proposeActions", () => {
 
         expect(resolve.type).toBe("resolve-process");
         if (resolve.type === "resolve-process") {
-            // Commitments placeholder is empty (must be supplied at execution)
-            expect(resolve.commitments).toEqual([]);
+            // Commitments are reconstructed from the active orders (the executor
+            // restores each root's signed processId at submission).
+            expect(resolve.commitments).toHaveLength(1);
+            expect(resolve.commitments[0].seller).toBe(SELLER);
+            expect(resolve.commitments[0].payment).toBe(100n);
+            expect(resolve.commitments[0].expectedCumulativeValue).toBe(100n);
             expect(resolve.settlements).toHaveLength(1);
             // payment=100, sellerBond=2*100=200, buyerBond=2*100=200
             // sellerPayout = 100+200 = 300, buyerPayout = 200-100 = 100
@@ -113,7 +117,7 @@ describe("proposeActions", () => {
         const actions = proposeActions(process, BUYER);
         const resolve = actions.find((a) => a.type === "resolve-process")!;
         if (resolve.type === "resolve-process") {
-            expect(resolve.commitments).toEqual([]);
+            expect(resolve.commitments).toHaveLength(2);
             expect(resolve.settlements).toHaveLength(2);
         }
     });
@@ -131,6 +135,29 @@ describe("proposeActions", () => {
             expect(commit.currentCumulativeValue).toBe(100n);
             expect(commit.currency).toBe(TOKEN);
         }
+    });
+});
+
+describe("proposeInitiations", () => {
+    const COMP = "0x00000000000000000000000000000000000000000000000000000000000000ab" as Hex;
+    const AUTHOR = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" as Address;
+
+    it("proposes one initiate-process per discovered assembly, buyer = me", () => {
+        const assemblies: RegisteredAssembly[] = [
+            { compositionHash: COMP, author: AUTHOR, contentURI: "ipfs://asm" },
+        ];
+        const inits = proposeInitiations(assemblies, BUYER);
+        expect(inits).toHaveLength(1);
+        expect(inits[0].type).toBe("initiate-process");
+        expect(inits[0].buyer).toBe(BUYER);
+        expect(inits[0].compositionHash).toBe(COMP);
+        expect(inits[0].contentURI).toBe("ipfs://asm");
+        // No process exists yet — the kernel derives the id at root commit.
+        expect(inits[0].processId).toBe(`0x${"0".repeat(64)}`);
+    });
+
+    it("proposes nothing when no assemblies are discovered", () => {
+        expect(proposeInitiations([], BUYER)).toEqual([]);
     });
 });
 

@@ -58,6 +58,15 @@ export type {
     SettlementBreakdown,
     AgentProcessContext,
     AgentOrderContext,
+    ClauseRegisteredEvent,
+    ClauseWithdrawnEvent,
+    SellerRegisteredEvent,
+    SellerWithdrawnEvent,
+    AssemblyRegisteredEvent,
+    AssemblyWithdrawnEvent,
+    RegisteredClause,
+    RegisteredSeller,
+    RegisteredAssembly,
 } from "./types.js";
 export { OrderState } from "./types.js";
 
@@ -74,6 +83,23 @@ export {
 export { reconstruct, ProcessGraph } from "./state.js";
 export type { CoreEvents } from "./state.js";
 
+// Discovery — the cold-start catalogue (clauses, sellers, assemblies)
+export {
+    computeClauseKey,
+    parseClauseRegistryLogs,
+    parseSellerRegistryLogs,
+    parseAssemblyRegistryLogs,
+    fetchDiscoveryEvents,
+    reconstructDiscovery,
+    DiscoveryGraph,
+} from "./discovery.js";
+export type {
+    DiscoveryEvents,
+    ClauseRegistryEvents,
+    SellerRegistryEvents,
+    AssemblyRegistryEvents,
+} from "./discovery.js";
+
 // Commitment builder
 export {
     COMMITMENT_TYPES,
@@ -87,6 +113,9 @@ export {
     hashCommitmentStruct,
     computeCommitmentProcessId,
     computeOrderHash,
+    orderToCommitment,
+    restoreSignedProcessId,
+    ZERO_PROCESS_ID,
 } from "./commitments.js";
 export type { CommitmentParams } from "./commitments.js";
 

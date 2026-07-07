@@ -6,6 +6,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import {
   FigaroContext,
   proposeActions,
+  proposeInitiations,
   executeAction,
   type ProposedAction,
 } from "@figaro/core/agent";
@@ -16,6 +17,7 @@ export interface FactotumAddresses {
   clauseRegistry: `0x${string}`;
   attestationCoordinator: `0x${string}`;
   sellerRegistry: `0x${string}`;
+  assemblyRegistry: `0x${string}`;
 }
 
 export interface FactotumConfig {
@@ -67,24 +69,34 @@ async function tick(
 ): Promise<void> {
   await ctx.sync();
 
-  // The proposer infers role from process state + my address.
-  // Same factotum, different role per process — buyer in one, seller in another.
-  // The role is read from state, never hard-coded; this is what actor-neutrality
-  // looks like in code.
-  const myProcesses = ctx.getMyProcesses(myAddress);
-  if (myProcesses.length === 0) return;
-
   const entries: PolicyEntry<ProposedAction, ApprovalContext>[] = [];
+
+  // Process-scoped actions. The proposer infers role from process state + my
+  // address — same factotum, different role per process (buyer in one, seller in
+  // another). The role is read from state, never hard-coded; this is what
+  // actor-neutrality looks like in code.
+  const myProcesses = ctx.getMyProcesses(myAddress);
   for (const process of myProcesses) {
-    const actions = proposeActions(process, myAddress);
-    for (const action of actions) {
+    for (const action of proposeActions(process, myAddress)) {
       entries.push({ action, approvalContext: { processId: process.processId } });
     }
   }
+
+  // Cold-start origination. A fresh-key agent is in NO process, but the
+  // discovered assembly catalogue lets it propose starting one — so it is no
+  // longer inert. Executing an approved initiation still needs the counterparty
+  // signature (a coordination-channel concern), which the reference loop does
+  // not gather; the default refuse-all policy declines these, and a real buyer
+  // policy filters to the assemblies it cares about.
+  for (const action of proposeInitiations(ctx.getAssemblies(), myAddress)) {
+    entries.push({ action, approvalContext: { processId: action.processId } });
+  }
+
   if (entries.length === 0) return;
 
   console.log(
-    `[factotum] ${entries.length} proposed action(s) across ${myProcesses.length} process(es)`,
+    `[factotum] ${entries.length} proposed action(s): ` +
+    `${myProcesses.length} process(es), ${ctx.getAssemblies().length} assembly(ies) discoverable`,
   );
 
   const decisions = await config.policy.decide(entries);
@@ -94,7 +106,9 @@ async function tick(
   for (const decision of decisions) {
     if (decision.action === "approve") {
       try {
-        const result = await executeAction(walletClient, config.addresses, decision.entry.action);
+        // resolve-process is self-contained; commit/attest/initiate need signed
+        // inputs a coordination channel supplies — those throw here until wired.
+        const result = await executeAction(walletClient, ctx.client, config.addresses, decision.entry.action);
         console.log(
           `[factotum] executed: ${decision.entry.action.type} → ${result.hash}`,
         );

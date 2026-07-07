@@ -65,19 +65,24 @@ const { commitment, typedData } = buildCommitment(
 
 ### `@figaro/core/agent` — Agent Coordination
 
-Context sync, action proposer, human-in-the-loop queue, autonomous execution,
-did:web identity.
+Context sync, network discovery, action proposer, human-in-the-loop queue,
+autonomous execution, did:web identity.
 
 ```ts
-import { FigaroContext, proposeActions, ActionQueue } from "@figaro/core/agent";
+import { FigaroContext, proposeActions, proposeInitiations, ActionQueue } from "@figaro/core/agent";
 import { commit, executeAction } from "@figaro/core/agent";
 
-// Sync on-chain state into a live context
+// Sync on-chain state into a live context — the agent's own processes AND the
+// live-staked network catalogue (clauses, sellers, assemblies).
 const ctx = new FigaroContext(client, addresses);
 await ctx.sync();
 
-// Propose actions for a process
-const actions = proposeActions(ctx.getProcessBriefing(processId), myAddress);
+// Discover what exists (cold start): getAssemblies() / getSellers() / getClauses()
+const assemblies = ctx.getAssemblies();
+
+// Propose actions on a process the agent is in, and originations from discovery
+const actions = proposeActions(ctx.getProcess(processId)!, myAddress);
+const initiations = proposeInitiations(assemblies, myAddress);
 
 // Human-in-the-loop: queue actions for approval with optional review context
 type ApprovalContext = {
@@ -100,9 +105,10 @@ const approved = queue.approve(1);
 console.log(approved.approvalContext?.runtimeSummary);
 
 // Autonomous: submit transactions directly after collecting both EIP-712 signatures
-const result = await commit(walletClient, coreAddress, commitment, buyerSig, sellerSig);
-// Or dispatch from a proposed action:
-const result = await executeAction(walletClient, addresses, approvedAction);
+const result = await commit(walletClient, publicClient, coreAddress, commitment, buyerSig, sellerSig);
+// Or dispatch from a proposed action. resolve-process is self-contained; commit/
+// attest/initiate take signed `inputs` — the SDK never fabricates a signature.
+const result = await executeAction(walletClient, publicClient, addresses, approvedAction);
 
 // did:web: an agent resolves a counterparty's DID Document and verifies the
 // on-chain address it binds (build your own with buildSellerDidDocument).

@@ -16,10 +16,10 @@ This is the **operational** form of Figaro's actor-neutrality claim. The protoco
 sync → propose → policy → execute
 ```
 
-1. **Sync** — `FigaroContext` reconstructs every process from on-chain events. No subgraph, no indexer, no API.
-2. **Propose** — `proposeActions(briefing, myAddress)` returns the actions available to this address given current process state. Role is inferred (buyer / seller / auditor) from the process graph, not configured.
+1. **Sync** — `FigaroContext` reconstructs both the processes this agent is in AND the network catalogue (clauses, sellers, assemblies) from on-chain events. No subgraph, no indexer, no API. A fresh-key agent still discovers what exists — `getAssemblies()`/`getSellers()`/`getClauses()` return the live-staked set.
+2. **Propose** — `proposeActions(process, myAddress)` returns the actions available on a process the agent is IN (role inferred — buyer / seller / auditor — from the graph, not configured). `proposeInitiations(getAssemblies(), myAddress)` returns the processes it could START — the cold-start "act" verb.
 3. **Policy** — a pluggable decision layer. Default: human-in-the-loop (HITL) — every action prompts. Alternative: autonomous, with a rule function you write.
-4. **Execute** — `executeAction(walletClient, addresses, action)` builds and submits the transaction. Sequential, never parallel.
+4. **Execute** — `executeAction(walletClient, publicClient, addresses, action, inputs?)` builds and submits the transaction. `resolve-process` is self-contained (a buyer resolves autonomously); `commit`/`attest`/`initiate` take signed `inputs` — the SDK never fabricates a counterparty signature. Sequential, never parallel.
 
 The factotum loops on a polling interval. For production, replace polling with a WebSocket subscription to relevant events.
 
@@ -39,7 +39,7 @@ cd ../.. && ./deploy-local.sh
 cd sdk/factotum
 npm install
 cp .env.example .env
-# Edit .env: set PRIVATE_KEY (use a fresh test key) and the four contract addresses.
+# Edit .env: set PRIVATE_KEY (use a fresh test key) and the five contract addresses.
 
 # 4. Run in HITL mode.
 npm run dev
@@ -65,10 +65,10 @@ $ npm run dev
 
 The first three lines are the agent identifying itself: which wallet, which policy, how often it syncs. Address-only — no name, no service descriptor, because the protocol does not care.
 
-After ~15 seconds the loop ticks. The proposer reconstructs every active process the wallet is a party to and surfaces the actions available right now:
+After ~15 seconds the loop ticks. The proposer reconstructs every active process the wallet is a party to (and the discoverable assembly catalogue) and surfaces the actions available right now:
 
 ```text
-[factotum] 1 proposed action(s) across 1 process(es)
+[factotum] 1 proposed action(s): 1 process(es), 0 assembly(ies) discoverable
 
 [factotum/hitl] proposed action:
 {
@@ -96,10 +96,10 @@ If everything looks right, type `y`:
 
 Bonds locked, on-chain. The transaction hash is your audit trail.
 
-A few minutes later the seller has done their attestation work (handoff, fulfilment) and the process is ready to resolve. The next tick:
+A few minutes later the seller has done their attestation work (e.g. a handoff) and the process is ready to resolve. The next tick:
 
 ```text
-[factotum] 1 proposed action(s) across 1 process(es)
+[factotum] 1 proposed action(s): 1 process(es), 0 assembly(ies) discoverable
 
 [factotum/hitl] proposed action:
 {
@@ -160,18 +160,17 @@ Five named policies cover common roles. Import and configure rather than writing
 |---|---|
 | `basicSellerPolicy` | Single seller accepting commits within configured bounds |
 | `sellerOfRecordPolicy` | Fan-out actor (airline, ocean carrier) — seller to buyer, buyer to sub-order sellers |
-| `auctionBidderPolicy` | Dutch auction bidder with margin gate (any seller earning by claiming auctions) |
 | `auditorPolicy` | Passive observer — attestations only, no commits or resolutions |
 | `buyerWithBudgetPolicy` | Buyer-side variant with per-commit and total-budget caps |
 
 Each is a factory that takes config and returns a `Policy<ProposedAction, TContext>`:
 
 ```ts
-import { auctionBidderPolicy } from "@figaro/factotum/policies";
+import { buyerWithBudgetPolicy } from "@figaro/factotum/policies";
 
-const policy = auctionBidderPolicy({
-  estimateMyCost: (action, ctx) => /* seller-specific */ 0n,
-  minMarginBps: 500n, // 5% minimum margin
+const policy = buyerWithBudgetPolicy({
+  perCommitLimit: 5000n,   // reject any single commit above this
+  totalBudget: 100000n,    // reject once cumulative spend would exceed this
 });
 ```
 
