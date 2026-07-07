@@ -72,6 +72,19 @@ export {
 } from "./coordination.js";
 export type { CommitmentPayload, CoordinationChannel, OfferHandler } from "./coordination.js";
 
+// HTTP transport — the first real (off-process) CoordinationChannel
+export {
+    HttpChannel,
+    makeHttpOfferResponder,
+    didWebEndpointResolver,
+} from "./httpChannel.js";
+export type {
+    EndpointResolver,
+    HttpChannelOptions,
+    HttpOfferResponse,
+    DidWebResolverOptions,
+} from "./httpChannel.js";
+
 // Assembly instantiation + origination handshake + the two loops
 export {
     instantiateRootAgreement,

@@ -203,8 +203,10 @@ cd sdk && npm test
 ```
 
 Autonomous-origination proofs (against a live devnet — `./scripts/devup.sh` first, then
-`npm run build`): `node scripts/verify-origination.devnet.mjs` (single order) and
-`node scripts/verify-origination-chain.devnet.mjs` (multi-order chain).
+`npm run build`): `node scripts/verify-origination.devnet.mjs` (single order),
+`node scripts/verify-origination-chain.devnet.mjs` (multi-order chain), and
+`node scripts/verify-origination-http.devnet.mjs` (the two agents talk over a real HTTP
+socket via `HttpChannel`, not the in-process channel).
 
 ## License
 

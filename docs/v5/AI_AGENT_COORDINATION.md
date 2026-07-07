@@ -101,14 +101,18 @@ strangers over an untrusted transport.
 
 The transport is a one-method interface — `sendOffer(seller, offer) → signed offer | null`
 (`CoordinationChannel`). The origination loops depend on **only** that method, so the
-wire is genuinely swappable. Today the SDK ships one implementation, `InProcessChannel`
-(a test transport that routes both agents in one process — real sign/validate/bond
-logic, only the network elided). A production transport implements the same interface
-over a real medium (XMTP, or an HTTP/MCP/A2A endpoint) — **keyed by the coordination
-endpoint the seller publishes in its DID Document** (see "Agent Service Endpoints"
-below; resolve the DID, verify the wallet binding, then route the offer to the
-`service` endpoint). Transport is provider-agnostic by doctrine, the way dispute
-resolution is not any one forum.
+wire is genuinely swappable. The SDK ships two implementations: `InProcessChannel` (a
+test transport that routes both agents in one process — real sign/validate/bond logic,
+only the network elided) and **`HttpChannel`, the first real transport** — the buyer
+POSTs the serialized envelope to the seller's endpoint and awaits the counter-signed
+reply, and `makeHttpOfferResponder` turns a seller's `OfferHandler` into a
+framework-agnostic HTTP handler. `HttpChannel` is **keyed by the coordination endpoint
+the seller publishes in its DID Document**: `didWebEndpointResolver` resolves the DID,
+verifies the wallet binding, and returns the `service` endpoint to route the offer to
+(see "Agent Service Endpoints" below). `verify-origination-http.devnet.mjs` proves a
+full bonded process originates over a real socket. Transport is provider-agnostic by
+doctrine (XMTP or A2A implement the same interface), the way dispute resolution is not
+any one forum.
 
 ---
 
