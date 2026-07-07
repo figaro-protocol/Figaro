@@ -5,6 +5,7 @@ import {
     validateDidDocument,
     resolveDidWeb,
     extractEthereumAddresses,
+    extractServiceEndpoints,
     didDocumentMatchesAddress,
     buildSellerDidDocument,
 } from "../src/agent/did.js";
@@ -159,6 +160,76 @@ describe("validateDidDocument", () => {
         ).toBe(
             "Each verificationMethod must have id, type, and controller",
         );
+    });
+
+    it("accepts a well-formed service entry", () => {
+        expect(
+            validateDidDocument({
+                ...validDoc,
+                service: [{
+                    id: "did:web:example.com#mcp",
+                    type: "MCPEndpoint",
+                    serviceEndpoint: "https://example.com/mcp",
+                }],
+            }),
+        ).toBeNull();
+    });
+
+    it("rejects non-array service", () => {
+        expect(
+            validateDidDocument({ ...validDoc, service: "not-an-array" }),
+        ).toBe("'service' must be an array");
+    });
+
+    it("rejects service entry missing required fields", () => {
+        expect(
+            validateDidDocument({
+                ...validDoc,
+                service: [{ id: "did:web:example.com#mcp", type: "MCPEndpoint" }],
+            }),
+        ).toBe("Each service must have id, type, and serviceEndpoint");
+    });
+});
+
+// ── extractServiceEndpoints ─────────────────────────────────────────────────
+
+describe("extractServiceEndpoints", () => {
+    const doc: DIDDocument = {
+        "@context": "https://www.w3.org/ns/did/v1",
+        id: "did:web:agent-42.example.com",
+        service: [
+            { id: "#mcp", type: "MCPEndpoint", serviceEndpoint: "https://agent-42.example.com/mcp" },
+            { id: "#a2a", type: "A2AEndpoint", serviceEndpoint: "https://agent-42.example.com/a2a" },
+        ],
+    };
+
+    it("returns all service endpoints when no type filter is given", () => {
+        expect(extractServiceEndpoints(doc)).toHaveLength(2);
+    });
+
+    it("filters by endpoint type", () => {
+        const mcp = extractServiceEndpoints(doc, "MCPEndpoint");
+        expect(mcp).toHaveLength(1);
+        expect(mcp[0].serviceEndpoint).toBe("https://agent-42.example.com/mcp");
+    });
+
+    it("returns empty for an unknown type", () => {
+        expect(extractServiceEndpoints(doc, "RESTEndpoint")).toHaveLength(0);
+    });
+
+    it("returns empty when the document has no service array", () => {
+        expect(extractServiceEndpoints({ ...doc, service: undefined })).toHaveLength(0);
+    });
+
+    it("round-trips a coordination endpoint built by buildSellerDidDocument", () => {
+        const built = buildSellerDidDocument(
+            "did:web:agent-42.example.com",
+            "0x89a932207c485f85226d86f7cd486a89a24fcc12",
+            1,
+            [{ id: "did:web:agent-42.example.com#mcp", type: "MCPEndpoint", serviceEndpoint: "https://agent-42.example.com/mcp" }],
+        );
+        const [ep] = extractServiceEndpoints(built, "MCPEndpoint");
+        expect(ep.serviceEndpoint).toBe("https://agent-42.example.com/mcp");
     });
 });
 

@@ -116,11 +116,13 @@ import { originateProcess, makeSellerOfferHandler, InProcessChannel } from "@fig
 channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, addresses));
 const tx = await originateProcess(buyerWallet, publicClient, addresses, { channel, template, seller, currency, payment, chainId, core, clauseVersion, overrides });
 
-// did:web: an agent resolves a counterparty's DID Document and verifies the
-// on-chain address it binds (build your own with buildSellerDidDocument).
-import { resolveDidWeb, didDocumentMatchesAddress } from "@figaro/core/agent";
+// did:web: an agent resolves a counterparty's DID Document, verifies the on-chain
+// address it binds, and reads the coordination endpoint to route an offer to
+// (build your own with buildSellerDidDocument).
+import { resolveDidWeb, didDocumentMatchesAddress, extractServiceEndpoints } from "@figaro/core/agent";
 const { document } = await resolveDidWeb("did:web:seller.example.com");
 const bound = document ? didDocumentMatchesAddress(document, "0xSeller...", 1) : false;
+const [endpoint] = document ? extractServiceEndpoints(document, "MCPEndpoint") : [];
 ```
 
 ### `@figaro/core/extensions` — Protocol Extensions
@@ -199,6 +201,10 @@ format `bytes32-hex` / `address-hex` / `bytes-hex` / `iso-datetime`),
 ```bash
 cd sdk && npm test
 ```
+
+Autonomous-origination proofs (against a live devnet — `./scripts/devup.sh` first, then
+`npm run build`): `node scripts/verify-origination.devnet.mjs` (single order) and
+`node scripts/verify-origination-chain.devnet.mjs` (multi-order chain).
 
 ## License
 

@@ -105,6 +105,7 @@ export {
     validateDidDocument,
     resolveDidWeb,
     extractEthereumAddresses,
+    extractServiceEndpoints,
     didDocumentMatchesAddress,
     buildSellerDidDocument,
 } from "./did.js";

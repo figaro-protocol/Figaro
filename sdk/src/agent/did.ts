@@ -155,6 +155,23 @@ export function validateDidDocument(
         }
     }
 
+    // service entries must have id, type, serviceEndpoint (so a resolver can
+    // route to the endpoint an agent publishes — see extractServiceEndpoints)
+    if (d.service) {
+        if (!Array.isArray(d.service)) {
+            return "'service' must be an array";
+        }
+        for (const svc of d.service as unknown[]) {
+            if (!svc || typeof svc !== "object") {
+                return "Each service must be an object";
+            }
+            const s = svc as Record<string, unknown>;
+            if (!s.id || !s.type || !s.serviceEndpoint) {
+                return "Each service must have id, type, and serviceEndpoint";
+            }
+        }
+    }
+
     return null;
 }
 
@@ -273,6 +290,35 @@ export function didDocumentMatchesAddress(
             e.address === normalizedAddress &&
             (chainId === undefined || e.chainId === chainId),
     );
+}
+
+// ── Service Endpoint Extraction ─────────────────────────────────────────────
+
+/**
+ * Extract service endpoints from a DID Document, optionally filtered by `type`.
+ *
+ * The counterpart to {@link extractEthereumAddresses}: that reads the wallet a
+ * DID binds; this reads WHERE to reach the agent behind it. A seller/agent
+ * publishes a coordination endpoint as a `service` entry (e.g.
+ * `type: "MCPEndpoint" | "A2AEndpoint"`, see AI_AGENT_COORDINATION.md); a buyer
+ * resolves the DID, verifies the wallet binding with
+ * {@link didDocumentMatchesAddress}, then routes an offer to the endpoint this
+ * returns. No Figaro-specific `type` is minted — the caller picks whichever
+ * transport it speaks by passing that endpoint `type`.
+ *
+ * @example
+ * ```ts
+ * const { document } = await resolveDidWeb("did:web:agent-42.example.com");
+ * const [mcp] = document ? extractServiceEndpoints(document, "MCPEndpoint") : [];
+ * // → { id, type: "MCPEndpoint", serviceEndpoint: "https://agent-42.example.com/mcp" }
+ * ```
+ */
+export function extractServiceEndpoints(
+    doc: DIDDocument,
+    type?: string,
+): DIDService[] {
+    if (!doc.service) return [];
+    return type ? doc.service.filter((s) => s.type === type) : doc.service;
 }
 
 // ── DID Document Builder ────────────────────────────────────────────────────

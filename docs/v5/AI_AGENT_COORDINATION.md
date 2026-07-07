@@ -36,6 +36,82 @@ The `figaro-operator` prompt (`ecosystem-agents/figaro-operator.md`) is the *how
 
 ---
 
+## The origination handshake — a transport-agnostic wire protocol
+
+Discovery (below) tells an agent *what exists* and *where to reach* a counterparty.
+Starting a bonded process together is a second thing: a two-party exchange with a
+defined message, defined validation, and a defined transport seam — **a wire
+protocol, not a library**. `@figaro/core/agent` is one implementation of it
+(`sdk/src/agent/coordination.ts`, `originate.ts`); any runtime that speaks the same
+envelope and the same rules interoperates without importing it — the same way a
+contract integrates through a wire ABI, not a shared codebase.
+
+### The offer envelope
+
+Originating a process is a two-party commit: the buyer builds a commitment and signs
+it; the seller must counter-sign the **same** EIP-712 struct before it can land. The
+message that carries this is the offer envelope (`CommitmentPayload`):
+
+```jsonc
+{
+  "commitment": { /* the EIP-712 Commitment: buyer, seller, currency, payment,
+                     expectedCumulativeValue, agreementHash, salt, deadline */ },
+  "agreement":  { /* the full off-chain agreement whose merkle root == agreementHash,
+                     pinned inline so the recipient hydrates everything from one message */ },
+  "buyerSig":   "0x…",   // filled by the buyer
+  "sellerSig":  "0x…"    // filled by the seller on accept; absent until then
+}
+```
+
+It serializes to compact JSON (bigints → hex). The envelope is the entire wire
+payload — there is no side channel.
+
+### The exchange
+
+1. **Buyer** instantiates a discovered assembly's root order (merges its own terms
+   onto the template's clause bag), signs its half, and sends the envelope to the
+   seller over a coordination channel.
+2. **Seller** runs the anti-tamper gate (below), applies its accept policy, and — if
+   accepting — approves its 2× cumulative-value bond and returns the envelope with
+   `sellerSig` filled. Declining returns nothing.
+3. **Buyer** approves its 2× payment bond and submits the two-party commit. No
+   counter-signature ⇒ no commit — **the protocol never fabricates the counterparty's
+   signature, it carries it.**
+
+A value-added chain is N handshakes (one per node, each to that node's own seller);
+any single decline aborts before any commit lands, and commits submit root-first in
+cumulative order so the kernel sees a consistent running total.
+
+### The anti-tamper gate (what a seller MUST check before counter-signing)
+
+A seller counter-signs only an offer that is internally consistent, and **throws** —
+never silently declines — on a tampered one:
+
+- the buyer signature is present, and **cryptographically recovers to the named buyer**;
+- the named seller is *me*;
+- the agreement **hashes to the committed `agreementHash`** (a buyer cannot sign one
+  agreement and pin another);
+- the agreement's parties match the commitment.
+
+A clean offer the *policy* rejects returns "declined" (no signature); only a malformed
+or forged one throws. This gate is the whole reason the handshake is safe between
+strangers over an untrusted transport.
+
+### The transport seam
+
+The transport is a one-method interface — `sendOffer(seller, offer) → signed offer | null`
+(`CoordinationChannel`). The origination loops depend on **only** that method, so the
+wire is genuinely swappable. Today the SDK ships one implementation, `InProcessChannel`
+(a test transport that routes both agents in one process — real sign/validate/bond
+logic, only the network elided). A production transport implements the same interface
+over a real medium (XMTP, or an HTTP/MCP/A2A endpoint) — **keyed by the coordination
+endpoint the seller publishes in its DID Document** (see "Agent Service Endpoints"
+below; resolve the DID, verify the wallet binding, then route the offer to the
+`service` endpoint). Transport is provider-agnostic by doctrine, the way dispute
+resolution is not any one forum.
+
+---
+
 ## How Agents Use Each Graph
 
 ### Process Graph → Work Discovery
@@ -240,10 +316,13 @@ the on-chain seller address.
 }
 ```
 
-The SDK provides `resolveDidWeb()`, `didDocumentMatchesAddress()`, and
-`buildSellerDidDocument()` in `@figaro/core/agent` (did:web is an agent-identity
-concern). The frontend
-provides the `useDidVerification()` hook in
+The SDK provides `resolveDidWeb()`, `didDocumentMatchesAddress()`,
+`extractServiceEndpoints()`, and `buildSellerDidDocument()` in `@figaro/core/agent`
+(did:web is an agent-identity concern). Together these close the discovery→handshake
+loop: resolve the DID, verify the wallet binding with `didDocumentMatchesAddress()`,
+then pull the coordination endpoint with `extractServiceEndpoints(doc, "MCPEndpoint")`
+(or whichever transport type the caller speaks) — that endpoint is where the
+origination offer is routed. The frontend provides the `useDidVerification()` hook in
 `lib/agent/useDidWeb.ts`.
 
 ### Trust Model Difference
