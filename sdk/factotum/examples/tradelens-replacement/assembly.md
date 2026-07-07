@@ -1,6 +1,6 @@
 # Assembly: TradeLens replacement
 
-The DAG of bonded commitments that makes this a shipping protocol rather than a generic Figaro deployment. **This is the human work.** The clause-author handles individual clauses; no agent today produces this DAG. See the gap statement at the end.
+The DAG of bonded commitments that makes this a shipping protocol rather than a generic Figaro deployment. Composed on the designer canvas by a human, or scaffolded by the `figaro-assembly-author` subagent — see the authoring note at the end.
 
 ## DAG
 
@@ -95,16 +95,16 @@ For a $20K shipment with $5K terminal handling at each port and $1K customs clea
 
 These compose without the kernel needing to know about the structure beyond the local bilateral. That's the point of the primitive.
 
-## The gap
+## Authoring this DAG
 
-This DAG is currently **human work on the designer canvas at `/builders/designer/new`**. There is no `figaro-assembly-author` agent that would emit this as a `DesignDraft` JSON.
+Draw it on the designer canvas at `/builders/designer/new`, or have the `figaro-assembly-author` subagent emit it as `DesignDraft` JSON. The subagent is newer and less battle-tested than the clause-author — treat its output as a draft to review against this file.
 
-A future agent would need to:
+What the subagent does:
 
-1. Read the protocol's existing clauses and propose composition.
-2. Emit a DAG with typed edges and clauses.
-3. Produce sample bond budgets given a parameterized shipment value.
-4. Refuse to compose anything that requires a kernel change (no multi-currency cross-leg, no centralized resolution).
-5. Cite `CLAUSES.md` for any new clauses it identifies as needed; defer their authorship to `figaro-clause-author`.
+1. Reads the protocol's existing clauses and proposes a composition.
+2. Emits a DAG with typed edges and clauses.
+3. Produces sample bond budgets given a parameterized shipment value.
+4. Refuses to compose anything that requires a kernel change (no multi-currency cross-leg, no centralized resolution).
+5. Cites `CLAUSES.md` for any new clauses it identifies as needed; defers their authorship to `figaro-clause-author`.
 
-Treat this `assembly.md` file as the spec for that agent.
+This `assembly.md` file is a reference target for it.

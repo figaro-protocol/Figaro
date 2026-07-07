@@ -1,6 +1,6 @@
 # Assembly: Spirit Air replacement
 
-The DAG of bonded commitments. Like the TradeLens example, **this is the human work** — no `figaro-assembly-author` agent today. See the gap.
+The DAG of bonded commitments. Composed on the designer canvas by a human, or scaffolded by the `figaro-assembly-author` subagent — see the authoring note at the end.
 
 ## DAG
 
@@ -66,8 +66,8 @@ In a non-Figaro airline, when fuel slips, the airline absorbs the schedule slip 
 
 In this assembly, fuel-supplier slip directly costs the fuel supplier proportional bond. Airline slip directly costs the airline proportional bond. Passenger captures damages at point of resolution, automatically, without litigation. Operational improvement is incentivized at the unit causing the slip, not blanket-distributed.
 
-## The gap
+## Authoring this DAG
 
-Same as the TradeLens example: there is no `figaro-assembly-author` agent. The DAG above is human work on the designer canvas at `/builders/designer/new`. A future agent would propose this composition given a target scenario ("airline ticketing assembly"); today, you draw it.
+Draw it on the designer canvas at `/builders/designer/new`, or have the `figaro-assembly-author` subagent propose the composition from a target scenario ("airline ticketing assembly"). The subagent is newer and less battle-tested than the clause-author — treat its output as a draft to review against this file.
 
-The interesting agent work in this scenario specifically would be at the *parameter* level: bond budgets vary widely between domestic and international flights, between budget and premium carriers, between turn-around-time-tight regional ops and slack long-haul. An assembly-author agent could produce the parameterized DAG from a scenario brief.
+Where it earns its keep in this scenario is the *parameter* level: bond budgets vary widely between domestic and international flights, between budget and premium carriers, between turn-around-time-tight regional ops and slack long-haul. The subagent can produce the parameterized DAG from a scenario brief.

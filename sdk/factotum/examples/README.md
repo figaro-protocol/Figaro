@@ -20,13 +20,11 @@ Each scenario has four files:
 |---|---|
 | `README.md` | Scenario, what the existing thing got wrong, the Figaro structural fix |
 | `clauses.md` | Which clauses exist; which to author; verbatim prompts for `figaro-clause-author` |
-| `assembly.md` | DAG sketch, per-edge mechanism, per-node clauses, **the gap** |
+| `assembly.md` | DAG sketch, per-edge mechanism, per-node clauses, authoring note |
 | `roles.md` | `factotum` policy snippet per role |
 
-## The gap both scenarios surface
+## Authoring the assembly DAG
 
-Both walkthroughs hit the same structural limitation: **there is no `figaro-assembly-author` subagent**. The clause-author writes clauses; the kernel-reviewer reviews kernel diffs; the clause-lockstep verifier checks multi-surface consistency; the factotum executes role-bound actions on chain. None of them produces the assembly DAG itself.
+Composing the assembly DAG is the designer's act. Two ways to produce it: draw it on the designer canvas at `/builders/designer/new` (producing a `DesignDraft` — DAG + per-edge mechanism + per-node clauses, persisted in `localStorage` per `project_designer_persistence.md`), or have the **`figaro-assembly-author`** subagent scaffold the `DesignDraft` JSON directly, with the same security-first posture as the clause-author. The `assembly.md` files in this directory are its reference targets — the worked compositions it aims at and is checked against.
 
-For now, the assembly DAG is human work — drawn on the designer canvas at `/builders/designer/new`, producing a `DesignDraft` (DAG + per-edge mechanism + per-node clauses, persisted in `localStorage` per `project_designer_persistence.md`). These walkthroughs document where that boundary sits.
-
-A future `figaro-assembly-author` agent would output `DesignDraft` JSON directly with the same security-first posture as the clause-author. Treat the `assembly.md` files in this directory as the spec for that future agent.
+**Robustness caveat:** `figaro-assembly-author` is newer and less battle-tested than the clause-author, kernel-reviewer, and clause-lockstep verifier. Treat its output as a draft to review — against these `assembly.md` files and the validator / lockstep checks — not a finished artifact.

@@ -27,7 +27,7 @@ The clauses largely already exist. The assembly DAG (this scenario's main artifa
 ## What you'd build
 
 - **Clauses to author**: roughly 1–2 new clauses (see `clauses.md`). Most existing clauses (`geo-v1`, `handoff-v1`, `jurisdiction-v1`, `commerce-v1`, GHG family) cover the primitives.
-- **Assembly DAG**: 6–8 process nodes from origin to consignee, currently human work on the designer canvas. See `assembly.md`.
+- **Assembly DAG**: 6–8 process nodes from origin to consignee — human work on the designer canvas, or scaffolded by the `figaro-assembly-author` subagent. See `assembly.md`.
 - **Factotums**: one per role-bound wallet — shipper, forwarder, carrier, ports (origin + destination), customs broker, last-mile trucking, consignee. See `roles.md`.
 
 ## Provenance

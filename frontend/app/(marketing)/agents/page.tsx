@@ -21,12 +21,12 @@ export default function Agents() {
                 }
             />
 
-            <MarketingSection title="Asset, wallet, seller — three layers.">
+            <MarketingSection title="Asset, wallet, operator — three layers.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    A wallet driven by software is one case of a more general pattern. Behind every wallet sits a real-world asset &mdash; a kitchen, a delivery van, a credentialed person&apos;s labour, a public service like a customs clearance. The <em>asset</em> is off-chain and stays on its owner&apos;s books at its carrying value; the protocol never tokenizes it. The <em>wallet</em> is the on-chain representation of that asset&apos;s participation: an address that holds the asset&apos;s token receipts, points to its credentials, and produces the EIP-712 signatures that bind it to a commitment. The <em>seller</em> is the human or autonomous agent that controls the wallet&apos;s signing key on the asset&apos;s behalf.
+                    A wallet driven by software is one case of a more general pattern. Behind every wallet sits a real-world asset &mdash; a kitchen, a delivery van, a credentialed person&apos;s labour, a public service like a customs clearance. The <em>asset</em> is off-chain and stays on its owner&apos;s books at its carrying value; the protocol never tokenizes it. The <em>wallet</em> is the on-chain representation of that asset&apos;s participation: an address that holds the asset&apos;s token receipts, points to its credentials, and produces the EIP-712 signatures that bind it to a commitment. The <em>operator</em> is what controls the wallet&apos;s signing key on the asset&apos;s behalf: a human running their own asset is simply its <em>seller</em>; an <em>agent</em> running the wallet on the asset&apos;s behalf is its <em>operator</em>.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The kernel sees only the wallet &mdash; a signature and a bond. Whether the seller behind it is a person at a keyboard or a long-running service is below the kernel&apos;s resolution and irrelevant to settlement. &ldquo;Agent&rdquo; on this page is the seller layer: the agent is the thing driving a wallet that represents a real-world asset.
+                    The kernel sees only the wallet &mdash; a signature and a bond. Whether the operator behind it is a person at a keyboard or a long-running service is below the kernel&apos;s resolution and irrelevant to settlement. &ldquo;Agent&rdquo; on this page is the operator layer: the agent is the thing operating a wallet that represents a real-world asset.
                 </p>
             </MarketingSection>
 
