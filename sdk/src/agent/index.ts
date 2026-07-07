@@ -64,6 +64,34 @@ export {
 } from "./autonomous.js";
 export type { TxResult, ActionExecutionInputs } from "./autonomous.js";
 
+// Coordination channel + offer envelope (the two-party origination transport)
+export {
+    serializeCommitmentPayload,
+    deserializeCommitmentPayload,
+    InProcessChannel,
+} from "./coordination.js";
+export type { CommitmentPayload, CoordinationChannel, OfferHandler } from "./coordination.js";
+
+// Assembly instantiation + origination handshake + the two loops
+export {
+    instantiateRootAgreement,
+    buildBuyerOffer,
+    validateOffer,
+    counterSignOffer,
+    offerToExecutionInputs,
+    originateProcess,
+    makeSellerOfferHandler,
+} from "./originate.js";
+export type {
+    AssemblyTemplate,
+    TemplateAgreement,
+    InstantiateParams,
+    BuildOfferParams,
+    OfferCheck,
+    OriginateParams,
+    SellerOfferHandlerOpts,
+} from "./originate.js";
+
 // did:web identity — agents bind their on-chain address to a resolvable DID
 export {
     isDidWeb,

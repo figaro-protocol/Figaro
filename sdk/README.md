@@ -110,6 +110,12 @@ const result = await commit(walletClient, publicClient, coreAddress, commitment,
 // attest/initiate take signed `inputs` — the SDK never fabricates a signature.
 const result = await executeAction(walletClient, publicClient, addresses, approvedAction);
 
+// Autonomous origination — the two-party handshake over a coordination channel:
+// buyer instantiates a discovered assembly + signs; seller validates + counter-signs.
+import { originateProcess, makeSellerOfferHandler, InProcessChannel } from "@figaro/core/agent";
+channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, addresses));
+const tx = await originateProcess(buyerWallet, publicClient, addresses, { channel, template, seller, currency, payment, chainId, core, clauseVersion, overrides });
+
 // did:web: an agent resolves a counterparty's DID Document and verifies the
 // on-chain address it binds (build your own with buildSellerDidDocument).
 import { resolveDidWeb, didDocumentMatchesAddress } from "@figaro/core/agent";

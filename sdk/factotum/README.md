@@ -178,6 +178,43 @@ Wire it into `src/index.ts` in place of the default. Property tests on the rule 
 
 The `sdk/factotum/examples/*/roles.md` files show these policies in context per scenario.
 
+## Autonomous origination — the two-party handshake
+
+Resolving and attesting act on a process the agent is already in. *Starting* one is a
+two-party commit: the buyer builds and signs a commitment, and the seller must
+counter-sign the same struct before it lands. Between two agents that is a message
+exchange — an **offer** — and `@figaro/core/agent` provides both ends. The SDK never
+fabricates the counterparty signature; it carries it.
+
+- **Buyer loop** — `originateProcess(wallet, publicClient, addresses, params)`: instantiate
+  a discovered assembly's root order (`buildBuyerOffer` → `instantiateRootAgreement`), send
+  the offer over a `CoordinationChannel`, and — once the seller counter-signs — approve the
+  buyer's bond and submit the commit. Returns `null` if the seller declined.
+- **Seller loop** — `makeSellerOfferHandler(wallet, publicClient, addresses, { accept })`:
+  an `OfferHandler` to register on a channel. It runs the **anti-tamper gate**
+  (`validateOffer` + buyer-signature recovery — the seller never counter-signs a mutated or
+  bogus commitment), applies your `accept` policy, then bonds and counter-signs.
+
+```ts
+// seller-agent: answer offers on a channel
+channel.register(myAddress, makeSellerOfferHandler(wallet, pub, addresses, {
+  accept: (offer) => offer.commitment.payment <= MY_MAX, // your terms
+}));
+
+// buyer-agent: originate against a discovered assembly + chosen seller
+const tx = await originateProcess(wallet, pub, addresses, {
+  channel, template, seller, currency, payment, chainId, core: addresses.core,
+  clauseVersion: (id) => ctx.getClauses().find((c) => c.clauseId === id)?.version ?? 1,
+  overrides: { [commerceClauseId]: { currency, payment: String(payment), lineItems: [...] } },
+});
+```
+
+**The channel is the injected, transport-agnostic seam.** `InProcessChannel` (both agents
+in one process) is the test transport; a real transport — XMTP, or an A2A/MCP endpoint a
+seller publishes via `did:web` (see below) — implements the same `CoordinationChannel`
+interface. A worked, no-human, two-agent proof runs against a live devnet:
+`sdk/scripts/verify-origination.devnet.mjs`.
+
 ## Plugging in an LLM
 
 The factotum is LLM-agnostic. The policy interface is a synchronous-or-async function over actions; what's behind it is up to you.
