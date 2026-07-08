@@ -122,11 +122,11 @@ This section tracks features that are not protocol invariants but are significan
 | **DID:web identity** | `frontend/lib/agent/useDidWeb.ts` | `@figaro/core/agent`: `resolveDidWeb`, `didWebToUrl`, `didDocumentMatchesAddress`, `buildSellerDidDocument` | `/builders` → Seller identity | `DidVerificationBadge` (component) | — |
 | **Kleros dispute / evidence** | `frontend/lib/audit/` + `frontend/lib/semantic/processRecourse.ts` | — (frontend-local; SDK carries no Kleros helpers) | `/builders` → Kleros integration | `/evidence-display` (full rendering for jurors) | — |
 | **Agent SDK** | `sdk/` (3 subpath exports) | Self-referential (166 tests) | `/builders` → Agent SDK section | — | — |
-| **Semantic derivation** | `frontend/lib/semantic/` (7 files) | — | `/builders` → How the runtime renders institutions | `/workbench` → SemanticProcessWorkspacePanel | — |
+| **Semantic derivation** | `frontend/lib/semantic/` (5 files) | — | `/builders` → How the runtime renders institutions | `TopologyCanvas` in the design canvas (`/builders/designer/*`); `CapabilityRail` + `RecoursePanel` at runtime | — |
 | **Institution assembly** | `frontend/lib/designer/`; `src/AssemblyRegistry.sol` | — | `/builders` → Level 1 assembly config; `/local-commerce` → "Fork Local Commerce" | `/builders/designer/new`, `/builders/designer/edit/[slug]`, `/builders/designer/view/[slug]` | — |
 | **Agreement publication** | `frontend/lib/kernel/agreementFetch.ts`, `orderAgreement.ts` | — | `/builders` → Agreement publication | — | — |
 | **Commerce checkout** | `frontend/lib/checkout/` | — | — | `CartModule` (interactive) | — |
-| **Process topology** | `frontend/lib/semantic/processTopology.ts` | SDK: `reconstruct()`, `ProcessGraph` | `/workbench` → process graph | `OrderGraph`, `ProcessTopologyPanel`, `ProcessGraphModule` | — |
+| **Process topology** | `frontend/lib/semantic/processTopology.ts` | SDK: `reconstruct()`, `ProcessGraph` | `/builders` → Composability (the graph above the kernel) | `TopologyCanvas` (`/builders/designer/new`, `/builders/designer/view/[slug]`) | — |
 | **Bond calculator** | `frontend/components/core/BondCalculator.tsx` | SDK: `calculateBonds`, `calculateSettlement` | `/builders` → bond math formulas | `BondCalculator`, `BondApprovalPanel`, `OrderBondInfo` | — |
 | **EIP-2612 permit** | removed (permit path deleted 2026-07-02; approve-only) | — | `/builders` → Gasless token approvals | `PermitControl` component | — |
 | **Single-currency binding** | `src/FigaroCore.sol` | — | `/builders` → Composability → Single-Currency Binding | — | — |
