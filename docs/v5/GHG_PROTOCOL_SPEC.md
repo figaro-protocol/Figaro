@@ -145,7 +145,7 @@ If we need production-grade governance, the next generic step should be:
 
 1. preserve append-only clause identity
 2. add explicit activate and deactivate operations
-3. prefer new-version registration over in-place mutation
+3. on a live chain, register new behavior under a fresh key rather than overwriting a deployed one (device-repo specs are edited in place)
 4. keep historical submissions bound to the clause version they were filed under
 5. avoid putting mutable business semantics directly on-chain
 

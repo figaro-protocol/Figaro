@@ -51,8 +51,10 @@ Two on-chain touch points remain:
   — permissionless, first-write-wins, immutable. `clauseId` is the **bare
   human-readable name** (a string, e.g. `figaro-ghg`) and `version` is a separate
   `uint64`; the on-chain identity/dedup key is `keccak256(abi.encode(clauseId, version))`,
-  so the same name at a new version is a distinct registration (version is the
-  evolution axis). It anchors the clauseId, the spec's IPFS locator, and the spec's
+  so `name`+`version` together form the key. (On a live chain that registration is
+  first-write-wins immutable — but this repo is **device-only**: specs in `clauses/`
+  are edited **in place** and re-seeded fresh each `devup`. Do not bump `version` or
+  mint a `-v2` to change a clause.) It anchors the clauseId, the spec's IPFS locator, and the spec's
   content hash (identity + integrity only — no group field; grouping is `block.article`
   in the spec JSON). No validator is registered or bound; a registered clause is
   immediately attestable.

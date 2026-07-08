@@ -37,9 +37,9 @@ Required surfaces per clauseId:
   - User-facing surface: at least one frontend/app/ page references the clauseId
 
 Drift between encoder and validator is silent off-chain and lethal
-on-chain. The validator-contract pattern is 1:1 with clauseId, ABI-encoded
-content, first-write-wins. New behavior = new clauseId, never an in-place
-edit of an existing one.
+on-chain — so a clause change must land on EVERY surface together. This repo is
+device-only: edit the clause spec in place (no `-v2`, no version bump) and make
+sure the same change reaches every surface above.
 EOF
     ;;
 esac

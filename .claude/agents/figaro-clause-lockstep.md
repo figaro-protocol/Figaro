@@ -80,7 +80,7 @@ If invoked on a diff (`git diff <range>`), check the *symmetry* of the change:
 
 - Did the diff touch Layer A but not the TS encoder?
 - Did it touch the on-chain validator but not the listing pages?
-- Did it bump the version in one surface but not another?
+- Did it change the clause content (spec field-shape) in one surface but not another?
 
 A clause change that touches only one surface is almost always wrong — flag it.
 
