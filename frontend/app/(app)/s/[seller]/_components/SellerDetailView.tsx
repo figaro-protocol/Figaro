@@ -103,32 +103,32 @@ export function SellerDetailView({ sellerAddress }: Props) {
         );
     }
 
-    const handleAddItem = (menuItem: CatalogueItemMetadata) => {
+    const handleAddItem = (catalogueItem: CatalogueItemMetadata) => {
         addItem({
-            menuItemId: menuItem.id,
+            catalogueItemId: catalogueItem.id,
             sellerId: sellerAddressLower,
             sellerAddress: sellerCatalogue.address,
             sellerName: sellerCatalogue.name,
-            name: menuItem.name,
-            price: menuItem.price,
+            name: catalogueItem.name,
+            price: catalogueItem.price,
             quantity: 1,
-            imageURI: menuItem.image || undefined,
-            massGrams: menuItem.massGrams,
-            volumeMl: menuItem.volumeMl,
-            lengthMm: menuItem.lengthMm,
-            widthMm: menuItem.widthMm,
-            heightMm: menuItem.heightMm,
-            clauseValues: menuItem.clauseValues,
+            imageURI: catalogueItem.image || undefined,
+            massGrams: catalogueItem.massGrams,
+            volumeMl: catalogueItem.volumeMl,
+            lengthMm: catalogueItem.lengthMm,
+            widthMm: catalogueItem.widthMm,
+            heightMm: catalogueItem.heightMm,
+            clauseValues: catalogueItem.clauseValues,
         });
     };
 
-    const handleRemoveItem = (menuItemId: string) => {
-        removeItem(menuItemId, sellerAddressLower);
+    const handleRemoveItem = (catalogueItemId: string) => {
+        removeItem(catalogueItemId, sellerAddressLower);
     };
 
-    const getItemQuantity = (menuItemId: string) => {
+    const getItemQuantity = (catalogueItemId: string) => {
         const cartItem = items.find(
-            (item) => item.menuItemId === menuItemId && item.sellerId === sellerAddressLower,
+            (item) => item.catalogueItemId === catalogueItemId && item.sellerId === sellerAddressLower,
         );
         return cartItem?.quantity || 0;
     };
@@ -194,59 +194,59 @@ export function SellerDetailView({ sellerAddress }: Props) {
 
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr,360px] gap-8 items-start">
                     {/* Menu */}
-                    <section className="space-y-8" data-testid="seller-menu">
-                        <p className="text-xs font-semibold text-neutral-500">Menu</p>
+                    <section className="space-y-8" data-testid="seller-catalogue">
+                        <p className="text-xs font-semibold text-neutral-500">Catalogue</p>
                         {categories.map((category) => (
                             <div key={category}>
                                 <h2 className="text-lg font-semibold text-black mb-3">{category}</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {sellerCatalogue.items
                                         .filter((item) => item.category === category)
-                                        .map((menuItem) => {
-                                            const quantity = getItemQuantity(menuItem.id);
+                                        .map((catalogueItem) => {
+                                            const quantity = getItemQuantity(catalogueItem.id);
                                             return (
                                                 <div
-                                                    key={menuItem.id}
+                                                    key={catalogueItem.id}
                                                     className="bg-white border border-neutral-200 rounded-lg p-4 hover:border-blue-400 transition-all shadow-sm"
-                                                    data-testid={`menu-item-${menuItem.id}`}
+                                                    data-testid={`catalogue-item-${catalogueItem.id}`}
                                                 >
                                                     <div className="flex items-start gap-3">
                                                         <ContentImage
-                                                            src={menuItem.image ?? ""}
-                                                            alt={menuItem.name}
+                                                            src={catalogueItem.image ?? ""}
+                                                            alt={catalogueItem.name}
                                                             className="w-12 h-12 rounded object-cover text-3xl flex items-center justify-center"
                                                             fallback={
                                                                 <div className="w-12 h-12 rounded shrink-0 bg-neutral-100 border border-neutral-200 flex items-center justify-center text-xs font-semibold text-neutral-600" aria-hidden="true">
-                                                                    {menuItem.name.slice(0, 2).toUpperCase()}
+                                                                    {catalogueItem.name.slice(0, 2).toUpperCase()}
                                                                 </div>
                                                             }
                                                         />
                                                         <div className="flex-1">
-                                                            <h3 className="font-semibold text-black mb-1">{menuItem.name}</h3>
-                                                            <p className="text-sm text-neutral-500 mb-2">{menuItem.description}</p>
-                                                            {(menuItem.massGrams || menuItem.volumeMl) && (
+                                                            <h3 className="font-semibold text-black mb-1">{catalogueItem.name}</h3>
+                                                            <p className="text-sm text-neutral-500 mb-2">{catalogueItem.description}</p>
+                                                            {(catalogueItem.massGrams || catalogueItem.volumeMl) && (
                                                                 <p
                                                                     className="text-[11px] text-neutral-500 mb-2 flex flex-wrap gap-x-2"
-                                                                    data-testid={`menu-item-logistics-${menuItem.id}`}
+                                                                    data-testid={`catalogue-item-logistics-${catalogueItem.id}`}
                                                                 >
-                                                                    {menuItem.massGrams ? <span>{formatMass(menuItem.massGrams, cartUnitSystem)}</span> : null}
-                                                                    {menuItem.volumeMl ? <span>· {formatVolume(menuItem.volumeMl, cartUnitSystem)}</span> : null}
+                                                                    {catalogueItem.massGrams ? <span>{formatMass(catalogueItem.massGrams, cartUnitSystem)}</span> : null}
+                                                                    {catalogueItem.volumeMl ? <span>· {formatVolume(catalogueItem.volumeMl, cartUnitSystem)}</span> : null}
                                                                 </p>
                                                             )}
                                                             <div className="flex items-center justify-between">
                                                                 <span className="font-semibold text-blue-700">
-                                                                    {menuItem.price}{tokenSymbol ? ` ${tokenSymbol}` : ""}
-                                                                    {menuItem.pricingPolicy === "rate" && (
-                                                                        <span className="text-neutral-500 font-normal"> / {menuItem.rateUnit || "unit"}</span>
+                                                                    {catalogueItem.price}{tokenSymbol ? ` ${tokenSymbol}` : ""}
+                                                                    {catalogueItem.pricingPolicy === "rate" && (
+                                                                        <span className="text-neutral-500 font-normal"> / {catalogueItem.rateUnit || "unit"}</span>
                                                                     )}
                                                                 </span>
                                                                 {quantity === 0 ? (
                                                                     <button
                                                                         type="button"
-                                                                        onClick={() => handleAddItem(menuItem)}
-                                                                        disabled={!menuItem.available}
+                                                                        onClick={() => handleAddItem(catalogueItem)}
+                                                                        disabled={!catalogueItem.available}
                                                                         className="rounded border border-black px-3 py-1.5 text-sm font-semibold text-black hover:bg-neutral-100 disabled:opacity-40"
-                                                                        data-testid={`btn-add-${menuItem.id}`}
+                                                                        data-testid={`btn-add-${catalogueItem.id}`}
                                                                     >
                                                                         Add
                                                                     </button>
@@ -254,18 +254,18 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                                                     <div className="flex items-center gap-2">
                                                                         <button
                                                                             type="button"
-                                                                            onClick={() => handleRemoveItem(menuItem.id)}
+                                                                            onClick={() => handleRemoveItem(catalogueItem.id)}
                                                                             className="w-8 h-8 rounded border border-neutral-300 bg-white text-black hover:bg-neutral-100"
-                                                                            aria-label={`Remove one ${menuItem.name}`}
+                                                                            aria-label={`Remove one ${catalogueItem.name}`}
                                                                         >
                                                                             −
                                                                         </button>
                                                                         <span className="w-6 text-center text-black font-semibold">{quantity}</span>
                                                                         <button
                                                                             type="button"
-                                                                            onClick={() => handleAddItem(menuItem)}
+                                                                            onClick={() => handleAddItem(catalogueItem)}
                                                                             className="w-8 h-8 rounded border border-black bg-black text-white hover:bg-neutral-800"
-                                                                            aria-label={`Add another ${menuItem.name}`}
+                                                                            aria-label={`Add another ${catalogueItem.name}`}
                                                                         >
                                                                             +
                                                                         </button>
@@ -290,7 +290,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                         <p className="text-xs font-semibold text-neutral-500">Order</p>
                         {cartItems.length === 0 ? (
                             <p className="text-sm text-neutral-500">
-                                Your cart is empty. Add items from the menu to start an order with{" "}
+                                Your cart is empty. Add items from the catalogue to start an order with{" "}
                                 <span className="font-semibold text-black">{sellerCatalogue.name}</span>.
                             </p>
                         ) : (
@@ -298,9 +298,9 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                 <ul className="space-y-2 text-sm">
                                     {cartItems.map((item) => (
                                         <li
-                                            key={item.menuItemId}
+                                            key={item.catalogueItemId}
                                             className="flex items-baseline justify-between gap-2"
-                                            data-testid={`cart-line-${item.menuItemId}`}
+                                            data-testid={`cart-line-${item.catalogueItemId}`}
                                         >
                                             <span className="flex-1 min-w-0 text-black font-medium truncate">
                                                 {item.name} <span className="text-neutral-400">× {item.quantity}</span>

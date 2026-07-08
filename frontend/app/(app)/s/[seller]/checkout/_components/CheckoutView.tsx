@@ -345,14 +345,14 @@ export function CheckoutView({ sellerAddress }: Props) {
 
     const cartUnitSystem = sellerCatalogue.unitSystem ?? "metric";
     const cartMassGrams = cartItems.reduce((sum, cartItem) => {
-        const menuItem = sellerCatalogue.items.find((m) => m.id === cartItem.menuItemId);
-        if (!menuItem?.massGrams) return sum;
-        return sum + menuItem.massGrams * cartItem.quantity;
+        const catalogueItem = sellerCatalogue.items.find((m) => m.id === cartItem.catalogueItemId);
+        if (!catalogueItem?.massGrams) return sum;
+        return sum + catalogueItem.massGrams * cartItem.quantity;
     }, 0);
     const cartVolumeMl = cartItems.reduce((sum, cartItem) => {
-        const menuItem = sellerCatalogue.items.find((m) => m.id === cartItem.menuItemId);
-        if (!menuItem?.volumeMl) return sum;
-        return sum + menuItem.volumeMl * cartItem.quantity;
+        const catalogueItem = sellerCatalogue.items.find((m) => m.id === cartItem.catalogueItemId);
+        if (!catalogueItem?.volumeMl) return sum;
+        return sum + catalogueItem.volumeMl * cartItem.quantity;
     }, 0);
 
     const executeCheckout = async () => {
@@ -397,7 +397,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                     currency,
                     payment: cartTotal,
                     lineItems: cartItems.map((item) => ({
-                        itemId: item.menuItemId,
+                        itemId: item.catalogueItemId,
                         name: item.name,
                         quantity: item.quantity,
                         unitPrice: parseToken(item.price, tokenDecimals).toString(),
@@ -511,9 +511,9 @@ export function CheckoutView({ sellerAddress }: Props) {
                         <ul className="space-y-2 text-sm">
                             {cartItems.map((item) => (
                                 <li
-                                    key={item.menuItemId}
+                                    key={item.catalogueItemId}
                                     className="flex items-baseline justify-between gap-2"
-                                    data-testid={`cart-line-${item.menuItemId}`}
+                                    data-testid={`cart-line-${item.catalogueItemId}`}
                                 >
                                     <span className="flex-1 min-w-0 text-black font-medium truncate">
                                         {item.name} <span className="text-neutral-400">× {item.quantity}</span>

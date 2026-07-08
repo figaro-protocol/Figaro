@@ -157,17 +157,17 @@ test.describe('/s/[seller] (devnet)', () => {
 
         await expect(detailView).toHaveAttribute('data-seller-address', seeded.address.toLowerCase());
 
-        const menuItem = page.getByTestId(`menu-item-${seeded.itemId}`);
+        const catalogueItem = page.getByTestId(`catalogue-item-${seeded.itemId}`);
         try {
-            await menuItem.waitFor({ state: 'visible', timeout: 15000 });
+            await catalogueItem.waitFor({ state: 'visible', timeout: 15000 });
         } catch {
             // Catalogue fetch lagged behind the detail-view mount; one
             // more reload to give the discovery loop a fresh attempt.
             await page.reload({ waitUntil: 'domcontentloaded' });
             await detailView.waitFor({ state: 'visible', timeout: 30000 });
-            await menuItem.waitFor({ state: 'visible', timeout: 30000 });
+            await catalogueItem.waitFor({ state: 'visible', timeout: 30000 });
         }
-        await expect(menuItem).toContainText(seeded.itemName);
+        await expect(catalogueItem).toContainText(seeded.itemName);
 
         // Cart starts empty; clicking the Add button lands a cart line
         // for the seeded item.

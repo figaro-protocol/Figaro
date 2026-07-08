@@ -5,7 +5,7 @@ import { persist } from "zustand/middleware";
  *  Internal to the store; consumers receive it structurally via `useCartStore`
  *  (they pass object literals to `addItem`, never the named type). */
 interface CartItem {
-    menuItemId: string;
+    catalogueItemId: string;
     sellerId: string;
     sellerAddress: string;
     sellerName: string;
@@ -35,13 +35,13 @@ interface CartStore {
      * Decrement an item's quantity by 1, removing the line entirely if the
      * decrement reaches zero.
      */
-    removeItem: (menuItemId: string, sellerId: string) => void;
+    removeItem: (catalogueItemId: string, sellerId: string) => void;
     /**
      * Remove a cart line entirely regardless of quantity. Used by cart-aside
      * "remove" buttons where the user wants to drop a whole line in one click
      * rather than tapping the decrement button N times.
      */
-    removeLine: (menuItemId: string, sellerId: string) => void;
+    removeLine: (catalogueItemId: string, sellerId: string) => void;
     clearCart: () => void;
     getTotalPrice: () => string;
     getItemCount: () => number;
@@ -56,7 +56,7 @@ export const useCartStore = create<CartStore>()(
                 set((state) => {
                     const existingIndex = state.items.findIndex(
                         (item) =>
-                            item.menuItemId === newItem.menuItemId &&
+                            item.catalogueItemId === newItem.catalogueItemId &&
                             item.sellerId === newItem.sellerId
                     );
                     if (existingIndex >= 0) {
@@ -70,11 +70,11 @@ export const useCartStore = create<CartStore>()(
                     return { items: [...state.items, newItem] };
                 }),
 
-            removeItem: (menuItemId, sellerId) =>
+            removeItem: (catalogueItemId, sellerId) =>
                 set((state) => {
                     const existingIndex = state.items.findIndex(
                         (item) =>
-                            item.menuItemId === menuItemId &&
+                            item.catalogueItemId === catalogueItemId &&
                             item.sellerId === sellerId
                     );
                     if (existingIndex < 0) return state;
@@ -90,11 +90,11 @@ export const useCartStore = create<CartStore>()(
                     return { items: updated };
                 }),
 
-            removeLine: (menuItemId, sellerId) =>
+            removeLine: (catalogueItemId, sellerId) =>
                 set((state) => ({
                     items: state.items.filter(
                         (item) =>
-                            !(item.menuItemId === menuItemId && item.sellerId === sellerId),
+                            !(item.catalogueItemId === catalogueItemId && item.sellerId === sellerId),
                     ),
                 })),
 
