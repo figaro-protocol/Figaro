@@ -136,7 +136,7 @@ export interface OrderLineItem {
 }
 
 export interface FinancialsModel {
-    scope: "order" | "process";
+    scope: "order" | "seller" | "process";
     scopeId: string;
     /** Distinct currencies seen in scope; lowercase. Iteration order = first-seen order. */
     currencies: readonly CurrencyKey[];
@@ -278,13 +278,14 @@ function projectOrder(
  * @param orders   The order set to project. Caller controls scope by filtering
  *                 (e.g. all orders sharing a `processId`, a single `orderHash`,
  *                 or all orders for an assembly).
- * @param scope    Display label — "order" for a single-order view,
- *                 "process" for a multi-order consolidation.
+ * @param scope    Display label — "order" for a single-order view, "seller" for
+ *                 one seller's individual statement, "process" for the assembly
+ *                 consolidation.
  * @param scopeId  The id this projection is keyed by (orderHash or processId).
  */
 export function projectFinancials(
     orders: readonly Order[],
-    scope: "order" | "process",
+    scope: "order" | "seller" | "process",
     scopeId: string,
 ): FinancialsModel {
     const balanceSheet: Record<CurrencyKey, BalanceSheetEntry> = {};
@@ -321,6 +322,24 @@ export function projectFinancials(
         lineItems,
         orderIds,
     };
+}
+
+/**
+ * One financial projection PER SELLER — the individual statements alongside the
+ * consolidated (process) one, exactly as traditional finance draws individual +
+ * consolidated. Groups the process's orders by seller and projects each group as
+ * its own statement (scope "seller", keyed by seller address). The consolidated
+ * view is `projectFinancials(orders, "process", processId)`. Pure; input order of
+ * sellers is first-seen.
+ */
+export function projectSellerFinancials(orders: readonly Order[]): FinancialsModel[] {
+    const bySeller = new Map<string, Order[]>();
+    for (const order of orders) {
+        const group = bySeller.get(order.seller);
+        if (group) group.push(order);
+        else bySeller.set(order.seller, [order]);
+    }
+    return Array.from(bySeller, ([seller, sellerOrders]) => projectFinancials(sellerOrders, "seller", seller));
 }
 
 /**

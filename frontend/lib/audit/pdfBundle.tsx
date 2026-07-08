@@ -547,11 +547,16 @@ function SellerRegistryPage({ doc }: { doc: AuditBundle["sellerRegistry"] }) {
 // ── Financials page ─────────────────────────────────────────────────────────
 
 function FinancialsPage({ model }: { model: FinancialsModel }) {
+    const title = model.scope === "seller"
+        ? `Seller statement · ${shortHex(model.scopeId, 8, 6)}`
+        : model.scope === "order"
+            ? "Order statement"
+            : "Process consolidated statement";
     return (
         <Page size="A4" style={styles.page}>
             <View style={styles.header}>
-                <Text style={styles.label}>Financials</Text>
-                <Text style={styles.h1}>Process consolidated statement</Text>
+                <Text style={styles.label}>Financials · {model.scope === "seller" ? "individual" : "consolidated"}</Text>
+                <Text style={styles.h1}>{title}</Text>
             </View>
             <Text style={styles.note}>
                 Cash-basis projection of on-chain commit + resolve events. Bond
@@ -831,7 +836,9 @@ interface AuditBundlePdfData {
     /** Recognizable trade documents, projected from declared templates over the
      *  committed record by the generic engine — one generic page each. */
     documents: readonly RenderedDocument[];
-    /** Process-level financials projection (consolidated). */
+    /** One financial statement PER SELLER (individual register). */
+    sellerFinancials: readonly FinancialsModel[];
+    /** Process-level financials projection (consolidated across sellers). */
     financials: FinancialsModel;
     /**
      * FigaroCore lifecycle timeline for the process. When present, the PDF
@@ -936,6 +943,10 @@ export function AuditBundlePdf({ data }: { data: AuditBundlePdfData }) {
                 from declared templates. No genre code. */}
             {data.documents.map((document, i) => (
                 <DocumentPage key={`document-${document.genre}-${i}`} document={document} />
+            ))}
+            {/* Financials: one individual statement per seller, then the consolidation. */}
+            {data.sellerFinancials.map((model) => (
+                <FinancialsPage key={`financials-seller-${model.scopeId}`} model={model} />
             ))}
             <FinancialsPage model={data.financials} />
             {data.perOrderBundles.map((bundle) => (

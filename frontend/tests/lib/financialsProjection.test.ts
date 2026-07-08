@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
     projectFinancials,
+    projectSellerFinancials,
     checkBalanceSheetIdentity,
 } from "@/lib/audit/financialsProjection";
 import { calculateBonds } from "@figaro/core";
@@ -300,5 +301,38 @@ describe("projectFinancials — line items expose per-order detail", () => {
         for (const li of model.lineItems) {
             expect(li.agreementHash).toMatch(/^0x/);
         }
+    });
+});
+
+// ── Per-seller (individual) vs consolidated (assembly) ─────────────────────────
+
+describe("projectSellerFinancials — one statement per seller + consolidation", () => {
+    const orders = [
+        makeOrder({ id: "0xA", seller: SELLER1, payment: 100n, cumulativeValue: 100n }),
+        makeOrder({ id: "0xB", seller: SELLER1, payment: 25n, cumulativeValue: 125n }),
+        makeOrder({ id: "0xC", seller: SELLER2, payment: 40n, cumulativeValue: 165n }),
+    ];
+
+    it("emits one financial statement per SELLER, keyed by seller, scoped 'seller'", () => {
+        const perSeller = projectSellerFinancials(orders);
+        expect(perSeller).toHaveLength(2); // two sellers — not one process blob
+        const s1 = perSeller.find((m) => m.scopeId === SELLER1)!;
+        const s2 = perSeller.find((m) => m.scopeId === SELLER2)!;
+        expect(s1.scope).toBe("seller");
+        expect(s1.orderIds).toEqual(["0xA", "0xB"]);
+        expect(s2.orderIds).toEqual(["0xC"]);
+        // SELLER1's individual income = its two orders' sales.
+        expect(s1.incomeStatement[TOKEN_A.toLowerCase()].sales).toBe(125n);
+        expect(s2.incomeStatement[TOKEN_A.toLowerCase()].sales).toBe(40n);
+    });
+
+    it("the consolidation sums every seller (individual + consolidated agree)", () => {
+        const perSeller = projectSellerFinancials(orders);
+        const consolidated = projectFinancials(orders, "process", "0xPROCESS1");
+        const perSellerTotal = perSeller.reduce(
+            (sum, m) => sum + m.incomeStatement[TOKEN_A.toLowerCase()].sales, 0n,
+        );
+        expect(perSellerTotal).toBe(consolidated.incomeStatement[TOKEN_A.toLowerCase()].sales); // 165
+        expect(consolidated.scope).toBe("process");
     });
 });

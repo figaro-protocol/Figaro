@@ -25,6 +25,7 @@ import type {
 } from "@/lib/audit/sellerRegistryExtract";
 import {
     projectFinancials,
+    projectSellerFinancials,
     type FinancialsModel,
 } from "@/lib/audit/financialsProjection";
 import { projectDocuments } from "@/lib/audit/documentProjection";
@@ -126,6 +127,8 @@ export async function buildAuditBundlePdfBlob(
     }
 
     const financials: FinancialsModel = projectFinancials(orders, "process", processId);
+    // Individual statements — one per seller — beside the consolidated one above.
+    const sellerFinancials = projectSellerFinancials(orders);
     // Recognizable documents (invoice per seller, BoL per carriage leg, …) from
     // declared templates over the same committed record — generic engine, no genre code.
     const documents = projectDocuments(DOCUMENT_TEMPLATES, orders, agreements);
@@ -149,6 +152,7 @@ export async function buildAuditBundlePdfBlob(
             buyer,
             perOrderBundles,
             documents,
+            sellerFinancials,
             financials,
             timeline,
             generatedAt: new Date(),
