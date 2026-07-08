@@ -72,10 +72,12 @@ Lives off-chain as JSON at the `contentURI` emitted by `ClauseRegistry`
 live at repo-root `clauses/` (the `ClauseRegistry` seed data); nothing bundles a
 copy — every consumer loads each spec from `ClauseRegistry` → IPFS at runtime.
 
-## The 16 protocol clauses
+## The protocol clauses
 
-15 runtime-attestable clauses (content validated off-chain by Layer A; no
-on-chain validator) plus 1 agreement-only clause (`figaro-topology`).
+The clause set is the specs in `clauses/` — the count is **derived, never
+stored** (`ls clauses/*.json | wc -l`). All are runtime-attestable (content
+validated off-chain by Layer A; no on-chain validator) except `figaro-topology`,
+which is agreement-only — so runtime-attestable = that count minus one.
 
 | clauseId | What it carries | Attestation surface |
 |---|---|---|
