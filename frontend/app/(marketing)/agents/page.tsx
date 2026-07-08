@@ -95,7 +95,7 @@ export default function Agents() {
                     </li>
                     <li>
                         <Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>
-                        <span className="text-ink-body"> &mdash; the validation architecture, the seventeen reference clauses, and the authoring checklist.</span>
+                        <span className="text-ink-body"> &mdash; the validation architecture, the reference clauses, and the authoring checklist.</span>
                     </li>
                 </ul>
             </MarketingSection>

@@ -12,9 +12,9 @@
  * inventory is the reaction. The failure mode it catches is the
  * marketing-tier event read breaking — either stuck on
  * "Reading the registry…" or rendering an empty state on a deploy that
- * registers all 17 reference clauses.
+ * registers the reference clauses.
  *
- * Requires Anvil + ./deploy-local.sh (which registers the 17 reference
+ * Requires Anvil + ./deploy-local.sh (which registers the reference
  * clauses via `Deploy.s.sol`).
  */
 import { test, expect } from '@playwright/test';

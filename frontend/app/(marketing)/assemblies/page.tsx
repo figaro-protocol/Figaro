@@ -70,7 +70,7 @@ export default function Assemblies() {
                     </li>
                     <li>
                         <Link href="/clauses" className="text-ink-heading font-medium hover:underline">Clauses</Link>
-                        <span className="text-ink-body"> &mdash; the validation architecture, the seventeen reference clauses, and the authoring checklist.</span>
+                        <span className="text-ink-body"> &mdash; the validation architecture, the reference clauses, and the authoring checklist.</span>
                     </li>
                     <li>
                         <Link href="/local-commerce" className="text-ink-heading font-medium hover:underline">Local Commerce</Link>
