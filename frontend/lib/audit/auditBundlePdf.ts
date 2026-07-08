@@ -27,6 +27,8 @@ import {
     projectFinancials,
     type FinancialsModel,
 } from "@/lib/audit/financialsProjection";
+import { projectDocuments } from "@/lib/audit/documentProjection";
+import { DOCUMENT_TEMPLATES } from "@/lib/audit/documentTemplates";
 import type { AttestationRecord } from "@/lib/composition/indexer";
 import {
     buildProcessTimeline,
@@ -124,6 +126,9 @@ export async function buildAuditBundlePdfBlob(
     }
 
     const financials: FinancialsModel = projectFinancials(orders, "process", processId);
+    // Recognizable documents (invoice per seller, BoL per carriage leg, …) from
+    // declared templates over the same committed record — generic engine, no genre code.
+    const documents = projectDocuments(DOCUMENT_TEMPLATES, orders, agreements);
     const buyer = orders[0]?.buyer;
 
     let timeline: ProcessTimeline | null = null;
@@ -143,6 +148,7 @@ export async function buildAuditBundlePdfBlob(
             processId,
             buyer,
             perOrderBundles,
+            documents,
             financials,
             timeline,
             generatedAt: new Date(),

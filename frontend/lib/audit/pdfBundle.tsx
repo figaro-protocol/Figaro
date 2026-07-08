@@ -33,6 +33,7 @@ import {
 } from "@react-pdf/renderer";
 import { formatToken } from "@/lib/shared/utils";
 import type { AuditBundle } from "./auditBundle";
+import type { RenderedDocument } from "./documentProjection";
 import type {
     BalanceSheetEntry,
     FinancialsModel,
@@ -827,6 +828,9 @@ interface AuditBundlePdfData {
     buyer?: string;
     /** Per-order extractor outputs. One entry per order in the process. */
     perOrderBundles: AuditBundle[];
+    /** Recognizable trade documents, projected from declared templates over the
+     *  committed record by the generic engine — one generic page each. */
+    documents: readonly RenderedDocument[];
     /** Process-level financials projection (consolidated). */
     financials: FinancialsModel;
     /**
@@ -837,6 +841,71 @@ interface AuditBundlePdfData {
     timeline?: ProcessTimeline | null;
     /** Generation timestamp (UTC). */
     generatedAt: Date;
+}
+
+/**
+ * ONE generic renderer for EVERY recognizable document. It knows no genre — it
+ * draws whatever the generic engine produced from a declared template (header
+ * rows, an optional line table with a total, generic whole-leaf sections, a
+ * note). A new document genre (invoice, BoL, packing list, …) is a new template
+ * in `documentTemplates.ts`; this renderer never changes.
+ */
+function DocumentPage({ document }: { document: RenderedDocument }) {
+    return (
+        <Page size="A4" style={styles.page}>
+            <View style={styles.header}>
+                <Text style={styles.label}>Document</Text>
+                <Text style={styles.h1}>{document.title}</Text>
+            </View>
+            <View style={styles.section}>
+                {document.header.map((r) => (
+                    <View key={r.label} style={styles.metadataRow}>
+                        <Text style={styles.metadataKey}>{r.label}</Text>
+                        <Text style={[styles.metadataValue, styles.mono]}>{r.value}</Text>
+                    </View>
+                ))}
+            </View>
+            {document.lines && (
+                <>
+                    <Text style={styles.h2}>Lines</Text>
+                    <View style={styles.table}>
+                        <View style={[styles.tableRow, styles.tableHeader]}>
+                            {document.lines.columns.map((c, i) => (
+                                <Text key={c} style={i === document.lines!.columns.length - 1 ? styles.tCellRight : styles.tCell}>{c}</Text>
+                            ))}
+                        </View>
+                        {document.lines.rows.map((row, ri) => (
+                            <View key={ri} style={styles.tableRow}>
+                                {row.map((cell, ci) => (
+                                    <Text key={ci} style={ci === row.length - 1 ? styles.tCellRight : (ci === 0 ? styles.tCellMono : styles.tCell)}>{cell || "—"}</Text>
+                                ))}
+                            </View>
+                        ))}
+                    </View>
+                    {document.lines.total && (
+                        <View style={styles.metadataRow}>
+                            <Text style={styles.metadataKey}>{document.lines.total.label}</Text>
+                            <Text style={styles.metadataValue}>{document.lines.total.value}</Text>
+                        </View>
+                    )}
+                </>
+            )}
+            {document.leafSections?.map((s) => (
+                <View key={s.label}>
+                    <Text style={styles.h2}>{s.label}</Text>
+                    <View style={styles.section}>
+                        {s.entries.map((e) => (
+                            <View key={e.key} style={styles.metadataRow}>
+                                <Text style={styles.metadataKey}>{e.key}</Text>
+                                <Text style={styles.metadataValue}>{e.value}</Text>
+                            </View>
+                        ))}
+                    </View>
+                </View>
+            ))}
+            {document.note && <Text style={styles.note}>{document.note}</Text>}
+        </Page>
+    );
 }
 
 /** @public — consumed via namespace access (`import * as pdfBundle` →
@@ -862,6 +931,11 @@ export function AuditBundlePdf({ data }: { data: AuditBundlePdfData }) {
             ))}
             {data.perOrderBundles.map((bundle) => (
                 <SellerRegistryPage key={`opreg-${bundle.sellerRegistry.orderHash}`} doc={bundle.sellerRegistry} />
+            ))}
+            {/* Recognizable documents — one generic page per projected document,
+                from declared templates. No genre code. */}
+            {data.documents.map((document, i) => (
+                <DocumentPage key={`document-${document.genre}-${i}`} document={document} />
             ))}
             <FinancialsPage model={data.financials} />
             {data.perOrderBundles.map((bundle) => (
