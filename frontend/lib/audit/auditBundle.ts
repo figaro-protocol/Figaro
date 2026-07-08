@@ -10,14 +10,15 @@
  * it lives in `lib/audit/financialsProjection.ts` and is composed
  * alongside the bundle by the consumer (the PDF renderer renders both).
  *
- * Document genres: the per-genre extractors (invoice / Bill of Lading /
- * emissions / proximity) were retired with the open-world de-hardcode —
- * `clauseData` renders EVERY committed clause generically from its spec,
- * so no genre page is emitted today. If a genre document is rebuilt, it
- * must be DERIVED from committed shape, never from a clause's name — e.g.
- * the BoL discriminator: a sub-order (topology declares parents) carrying
- * a runtime process log is a carriage leg. See `docs/v5/BOL_RESEARCH.md`
- * for the full rationale.
+ * Document genres: the old per-genre EXTRACTORS (invoice / Bill of Lading /
+ * emissions / proximity) were retired with the open-world de-hardcode because
+ * they named clauses directly. `clauseData` renders EVERY committed clause
+ * generically. A genre document is only rebuilt as a DERIVED read-only
+ * PROJECTION over committed leaves that names no clause — e.g. the
+ * non-negotiable BoL below, whose carriage-leg discriminator is a sub-order
+ * (topology declares parents) carrying a runtime process log. See
+ * `docs/v5/BOL_RESEARCH.md` for the full rationale (and why a NEGOTIABLE BoL is
+ * structurally impossible here).
  */
 
 import type { Agreement } from "@figaro/core";
@@ -32,6 +33,7 @@ import {
     type SellerRegisteredEvent,
 } from "./sellerRegistryExtract";
 import { buildHashAppendix, type HashAppendixDocument } from "./hashAppendix";
+import { projectBillOfLading, type BillOfLadingProjection } from "./billOfLadingProjection";
 
 export interface AuditBundle {
     contract: ContractDocument;
@@ -41,6 +43,10 @@ export interface AuditBundle {
     clauseData: ClauseDataDocument;
     sellerRegistry: SellerRegistryDocument;
     hashAppendix: HashAppendixDocument;
+    /** The non-negotiable Bill of Lading, derived read-only from this order's
+     *  committed leaves — present only when the order is a carriage leg, null
+     *  otherwise (most orders). Never a document of title. */
+    billOfLading: BillOfLadingProjection | null;
 }
 
 export interface AuditBundleInputs {
@@ -66,5 +72,6 @@ export function buildAuditBundle(
             inputs.sellerRegistrationEvents ?? [],
         ),
         hashAppendix: buildHashAppendix(order, agreement, attestations),
+        billOfLading: projectBillOfLading(order, agreement),
     };
 }
