@@ -10,44 +10,28 @@ This document settles whether Figaro can or should accommodate the BoL
 patterns established by CargoX, TradeTrust, the UNCITRAL Model Law on
 Electronic Transferable Records (MLETR), and the TradeLens consortium. It
 does not propose code changes; it settles the conceptual question so that
-subsequent code changes (a focused BoL extractor and view, possibly a new
-clause) can be made on solid ground.
+subsequent code changes (a non-negotiable BoL projection derived from committed
+leaves, and its view) can be made on solid ground.
 
-> **Status note (2026-04-28, post-publication)**: §5 ("The transferability
-> question") and §6 ("What this leaves expressible — and what is closed
-> off") carry a protocol-layer framing that was flagged as incomplete
-> after this document landed. The **kernel-layer** impossibility analysis
-> stands — a single bonded order's parties cannot be substituted (single-
-> buyer invariant + parties-fixed-at-commit + no-escape-hatches each
-> separately rule it out). The **protocol-layer** "out of scope by
-> design" claim was rejected on economic grounds: any "early
-> `resolveProcess` + new process commit" pattern doubles DAG cost,
-> because the original buyer pays unperformed downstream sellers their
-> full bonds at early-resolve while the new buyer independently commits
-> new sellers for the same downstream work.
+> **Canonical finding — do not re-open (restored 2026-07-08).** The central
+> question this document settles is **transferability**: can a supply chain be
+> interrupted so the goods — a barrel of oil in transit — are resold to a *new*
+> buyer mid-flight? **FigaroCore forbids it** (§5). A bonded order's parties are
+> fixed at `commit`, the process has one buyer at the root, and there are no
+> escape hatches — each invariant *independently* rules out substituting a
+> party. This is a **structural property of the kernel, not a gap to fill or a
+> mechanism to design.**
 >
-> **Working hypothesis (2026-04-28 late session)**: protocol-layer
-> transferability is expressible via the **CancellableSeller wrapper +
-> counter-process pattern**. Buyer commits a parallel `P_cancel` process
-> where each sub-order pays a small cancellation fee back via a
-> CancellableSeller wrapper that programmatically signs the
-> acknowledgment under a pre-agreed fee schedule. Net cash flow across
-> P1 + P_cancel = just the cancellation fees, not the full downstream
-> payments. The "partial DAG resolve" effect emerges from arithmetic
-> netting across two processes; the kernel never sees a partial resolve;
-> all three kernel invariants survive intact (same buyer at root of both
-> processes; parties fixed at each commit; cancellation acknowledgments
-> are bilateral signatures encoded in the wrapper's code, not third-
-> party authorizations). New buyer's side is a separate `P2` process
-> committed independently. **Status: parked pending full mechanism
-> design**; five open design points (resolution-timing coordination, fee
-> schedule conventions, re-routing of in-progress sub-orders, EOA-seller
-> cancellation, CancellableSeller standardization) listed inline above.
->
-> The BoL-transferability question is tracked in the punch-list
-> (FORKS / open questions). V3 reference material at
-> `archive-v3/src/composability/` + `docs/archive/COMPOSABILITY.md`.
-> Do not act on §5/§6 alone without reading those first.
+> Earlier revisions accreted a "parked pending protocol-layer mechanism design"
+> hedge and a "CancellableSeller wrapper + counter-process" workaround that
+> tried to make the forbidden thing expressible after all. That was closed-world
+> drift — the base-model reflex to *build a feature* rather than accept that the
+> kernel says no — and it has been removed. What Figaro **can** express is a
+> **non-negotiable** BoL: the consignee is fixed at signing and the document is
+> a read-only projection over committed leaves (§6.1), never a transferable
+> document of title. The resale/negotiability limitation is recorded in
+> `DESIGN_DECISIONS.md`. This file's canonical question + answer is guarded by
+> the `reference_bol_research_canonical` memory — read it before editing here.
 
 ## 1. Handoff is not a Bill of Lading
 
@@ -73,13 +57,16 @@ merchant and delivers to the buyer has handoff *and* a (non-negotiable) BoL
 — a carrier was involved, but the consignee was committed at the order's
 inception.
 
-Today's `lib/audit/billOfLadingExtract.ts` does not draw this line. It
-runs on every order in the bundle and emits a "Bill of Lading" page even
-for buyer↔merchant orders where no carrier exists. That is a bug, not a
-research question, and the fix is a discriminator predicate at the bundle
-level (presence of `figaro-courier-process`, or presence of
-`figaro-courier-process` *with* a non-buyer non-merchant seller —
-exact predicate to be settled at code-change time).
+A Figaro BoL is therefore always the **non-negotiable** kind (§5–§6): the
+consignee is a party committed at order signing, and the document is a
+**read-only projection** derived from the order's committed leaves (handoff /
+proximity + cargo + geolocation + the addressee block) — never a transferable
+document of title. Which order is a carriage leg is derived **open-world** from
+the graph — a sub-order (its topology declares parents) whose seller advances a
+runtime process-log ladder is carrying goods that originated upstream — never by
+naming a specific clause. (The earlier `billOfLadingExtract.ts`, which emitted a
+BoL on every order regardless, leaned on closed-world clause knowledge and has
+been deleted.)
 
 The rest of this document concerns the BoL document genre, not the handoff
 primitive.
@@ -264,12 +251,6 @@ where Figaro structurally diverges. The next section is about that.
 
 ## 5. The transferability question
 
-> **See the status note in the document header** — this section's
-> protocol-layer "out of scope by design" framing was flagged as
-> incomplete and is parked pending mechanism design. The kernel-layer
-> impossibility analysis below stands; the protocol-layer interpretation
-> does not. Do not act on this section alone.
-
 This is the central research question. The other three projects all
 implement transferability — that is, *the right party at delivery is not
 necessarily the same party that signed at issuance*. CargoX does it via
@@ -325,14 +306,6 @@ that Bitcoin doesn't, by design, because reversibility requires a trusted
 third party with discretionary power.
 
 ## 6. What this leaves expressible — and what it closes off
-
-> **See the status note in the document header** — §6.2's "closed off
-> by design" enumeration follows from §5's protocol-layer framing,
-> which is parked pending mechanism design. The non-negotiable BoL case
-> in §6.1 is unaffected and remains correct as written. The "what is
-> closed off" claims in §6.2 should be read as "closed off at the
-> kernel layer" only; whether protocol-layer composition can express
-> the same economic events is open.
 
 ### 6.1 Expressible in Figaro today
 
@@ -442,16 +415,16 @@ of them.
 
 ## 8. Recommendation
 
-**8.1 Code.** Implement the BoL extractor discriminator. Today
-`buildAuditBundle` in `frontend/lib/audit/auditBundle.ts` runs
-`extractBillOfLading` on every order indiscriminately. The discriminator
-should be: emit a BoL document only when the order is a carriage leg —
-concretely, when the agreement carries `figaro-courier-process` (or
-when the seller's role is courier as expressed on the order). Orders that
-have handoff data but no carrier role get their handoff/proximity data
-surfaced as a different document genre — a "Proof of Handoff" page, name
-TBD — not as a "Bill of Lading". This is a small code change against
-existing extractors; no new clause is required.
+**8.1 Code.** Derive the non-negotiable BoL as a **read-only projection** from
+an order's committed leaves — the same shape as the invoice projection
+(`frontend/lib/audit/invoiceProjection.ts`), never a stored or separately-authored
+document. It emits only for a **carriage leg**, discriminated **open-world** from
+the graph — a sub-order whose topology declares parents and whose seller advances
+a runtime process-log ladder (carrying goods that originated upstream) — naming no
+clause. An order with handoff data but no carriage is a lesser, distinct genre (a
+proof-of-handoff view), not a BoL. No new clause is required; the view assembles
+from the existing committed leaves. (The prior `extractBillOfLading`, which ran on
+every order and named clauses directly, was closed-world and has been deleted.)
 
 **8.2 No `figaro-bol` clause for now.** The non-negotiable BoL view is
 fully assemblable from the existing clauses. Adding a new clause would be
@@ -528,14 +501,10 @@ architecture.
 
 ## 10. Open follow-on questions
 
-Items the research surfaced but did not settle. Each can become its own
-backlog item.
+Items the research surfaced but did not settle. (Transferability is **not**
+among them — §5 settles it: the kernel forbids it. It is not a parked mechanism
+to design.)
 
-- **The exact discriminator predicate for "this order is a carriage
-  leg".** Likely: presence of `figaro-courier-process` on the seller
-  side, or presence of `figaro-courier-process` with a
-  non-buyer-non-merchant seller role. Final form: a small predicate in
-  `auditBundle.ts`.
 - **Naming for the "Proof of Handoff" document genre.** Distinct from
   "Bill of Lading"; needs to be precise about scope (any custody-change
   event, regardless of whether a carrier was involved).
@@ -543,20 +512,11 @@ backlog item.
   field.** In supply-chain assemblies the merchant-as-tenderer is
   conceptually distinct from the carrier-as-tenderee; surfacing both on
   the handoff record may matter for evidentiary completeness.
-- **Hazmat / dangerous-goods clause decision.** Defer until the
-  supply-chain assembly demands it; revisit then.
-- ~~**`docs/v5/DESIGN_DECISIONS.md` entry for the negotiability
-  limitation.**~~ ✅ Shipped as entry #12 in the same session as this
-  document. Scoped to the kernel layer only; protocol-layer claim
-  parked (see status note at document header).
-- **🔬 BoL transferability mechanism design (parked, 2026-04-28)**.
-  The protocol-layer composition question — whether a DAG fork in an
-  existing process or a V5 reincarnation of the V3 "conditional
-  contract for combining processes" pattern can express MLETR-style
-  transferability without doubling DAG cost — is open. Tracked in the
-  punch-list (FORKS / open questions). Reference material
-  for restart: `archive-v3/src/composability/` +
-  `docs/archive/COMPOSABILITY.md`.
+- **Hazmat / dangerous-goods and packaging clause decisions.** Largely
+  addressed since — `figaro-hazmat`, `figaro-cold-chain`, `figaro-freight-class`,
+  and `figaro-cargo` (gross/net mass, packaged dimensions, packaging type/count,
+  marks) now exist. Any remaining per-field call follows the adding-a-clause
+  checklist when the supply-chain assembly enters build.
 
 ## 11. Sources
 
@@ -579,6 +539,6 @@ backlog item.
 - `docs/v5/THEORY.md` — game-theoretic derivation of the kernel invariants
 - `docs/v5/DESIGN_DECISIONS.md` — 12 intentional patterns that look like vulnerabilities but are correct by design (entry #12 captures the MLETR-non-implementability finding from this research)
 - `docs/v5/CLAUSES.md` — the clause validation architecture and anchoring doctrine governing any future clause additions
-- `frontend/lib/audit/billOfLadingExtract.ts` — the extractor that needs the discriminator
-- `frontend/lib/audit/auditBundle.ts` — where the discriminator gates the BoL emission
+- `frontend/lib/audit/invoiceProjection.ts` — the derived-document pattern a non-negotiable BoL projection follows (read-only over committed leaves)
+- `frontend/lib/audit/auditBundle.ts` — the per-order audit bundle the BoL/handoff projections compose into
 - the clause specs in `clauses/` referenced in §7
