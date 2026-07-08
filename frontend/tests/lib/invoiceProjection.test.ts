@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { projectInvoice } from "@/lib/audit/invoiceProjection";
+import { projectInvoice, projectSellerInvoices } from "@/lib/audit/invoiceProjection";
 import { OrderState, type Order } from "@/lib/kernel/store";
 import type { Agreement } from "@figaro/core";
 import { _resetClauseSpecCache_TESTING_ONLY } from "@/lib/shared/clauseSpecSource";
@@ -22,8 +22,8 @@ const mkOrder = (o: Partial<Order> & Pick<Order, "id" | "seller" | "payment">): 
 const commerceAgreement = (lineItems: { name: string; quantity: number }[]): Agreement =>
     ({ sections: [{ clause: "figaro-commerce", data: { lineItems }, version: 1 }] } as unknown as Agreement);
 
-describe("projectInvoice — EN 16931 core, derived from committed leaves", () => {
-    it("maps orders to invoice lines and sums the net total (§7 BG-25 / BT-106)", async () => {
+describe("projectSellerInvoices — one invoice PER SELLER (EN 16931 single supplier)", () => {
+    it("splits a multi-seller process into one single-supplier invoice each", async () => {
         await primeClauseSpecs(["figaro-commerce"]);
         const orders = [
             mkOrder({ id: "0xA", seller: "0xMERCHANT", payment: 100n, agreementHash: "0xhA" }),
@@ -33,37 +33,53 @@ describe("projectInvoice — EN 16931 core, derived from committed leaves", () =
             ["0xhA", commerceAgreement([{ name: "Margherita", quantity: 1 }])],
             ["0xhB", commerceAgreement([{ name: "Delivery", quantity: 1 }])],
         ]);
-        const inv = projectInvoice(orders, agreements, "0xPROC");
+        const invoices = projectSellerInvoices(orders, agreements);
 
-        expect(inv.invoiceNumber).toBe("0xPROC");
-        expect(inv.typeCode).toBe("380");
-        expect(inv.currency).toBe("0xtoken"); // lowercased
-        expect(inv.buyer).toBe("0xBUYER");
-        expect(inv.netTotal).toBe(140n);
-        expect(inv.lines).toHaveLength(2);
-        expect(inv.lines[0]).toMatchObject({ orderId: "0xA", seller: "0xMERCHANT", lineNetAmount: 100n, description: "Margherita" });
-        expect(inv.lines[1]).toMatchObject({ orderId: "0xB", seller: "0xCOURIER", lineNetAmount: 40n, description: "Delivery" });
+        expect(invoices).toHaveLength(2); // one per seller, NOT one per process
+        const merchant = invoices.find((i) => i.seller === "0xMERCHANT")!;
+        const courier = invoices.find((i) => i.seller === "0xCOURIER")!;
+        expect(merchant).toMatchObject({ invoiceNumber: "0xA", buyer: "0xBUYER", currency: "0xtoken", netTotal: 100n });
+        expect(merchant.lines).toEqual([{ orderId: "0xA", lineNetAmount: 100n, description: "Margherita" }]);
+        expect(courier).toMatchObject({ seller: "0xCOURIER", netTotal: 40n });
     });
 
-    it("shows quantity in the line description when > 1", async () => {
+    it("groups a seller's multiple orders into one invoice, summing the net total", async () => {
+        await primeClauseSpecs(["figaro-commerce"]);
+        const orders = [
+            mkOrder({ id: "0xA", seller: "0xS", payment: 100n, agreementHash: "0xhA" }),
+            mkOrder({ id: "0xB", seller: "0xS", payment: 25n, agreementHash: "0xhB" }),
+        ];
+        const agreements = new Map<string, Agreement>([
+            ["0xhA", commerceAgreement([{ name: "Coffee", quantity: 3 }])],
+            ["0xhB", commerceAgreement([{ name: "Pastry", quantity: 1 }])],
+        ]);
+        const invoices = projectSellerInvoices(orders, agreements);
+        expect(invoices).toHaveLength(1);
+        expect(invoices[0].netTotal).toBe(125n);
+        expect(invoices[0].lines.map((l) => l.description)).toEqual(["Coffee ×3", "Pastry"]);
+    });
+});
+
+describe("projectInvoice — a single seller's EN 16931 core invoice", () => {
+    it("names the supplier at the document level, type 380, lowercased currency", async () => {
         await primeClauseSpecs(["figaro-commerce"]);
         const inv = projectInvoice(
-            [mkOrder({ id: "0xA", seller: "0xS", payment: 50n, agreementHash: "0xh" })],
-            new Map([["0xh", commerceAgreement([{ name: "Coffee", quantity: 3 }])]]),
-            "0xPROC",
+            [mkOrder({ id: "0xA", seller: "0xMERCHANT", payment: 100n, agreementHash: "0xh" })],
+            new Map([["0xh", commerceAgreement([{ name: "Margherita", quantity: 1 }])]]),
+            "0xMERCHANT",
         );
-        expect(inv.lines[0].description).toBe("Coffee ×3");
+        expect(inv).toMatchObject({ seller: "0xMERCHANT", typeCode: "380", currency: "0xtoken", buyer: "0xBUYER", netTotal: 100n });
     });
 
     it("carries no issue date until the process resolves; takes the resolution timestamp when it does", async () => {
         await primeClauseSpecs(["figaro-commerce"]);
-        const active = projectInvoice([mkOrder({ id: "0xA", seller: "0xS", payment: 10n })], new Map(), "0xP");
+        const active = projectInvoice([mkOrder({ id: "0xA", seller: "0xS", payment: 10n })], new Map(), "0xS");
         expect(active.issueDate).toBeUndefined();
 
         const resolved = projectInvoice(
             [mkOrder({ id: "0xA", seller: "0xS", payment: 10n, state: OrderState.Resolved, resolvedAt: 1_700_000_000 })],
             new Map(),
-            "0xP",
+            "0xS",
         );
         expect(resolved.issueDate).toBe(1_700_000_000);
     });
@@ -73,7 +89,7 @@ describe("projectInvoice — EN 16931 core, derived from committed leaves", () =
         const inv = projectInvoice(
             [mkOrder({ id: "0xA", seller: "0xS", payment: 10n, agreementHash: "0xh" })],
             new Map([["0xh", { sections: [{ clause: "figaro-topology", data: {}, version: 1 }] } as unknown as Agreement]]),
-            "0xP",
+            "0xS",
         );
         expect(inv.lines[0].description).toBe("");
     });
