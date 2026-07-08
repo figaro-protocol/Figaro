@@ -21,6 +21,8 @@ import type { UnitSystem } from "@/lib/seller/sellerCatalogueMetadata";
 const GRAMS_PER_OUNCE = 28.349523125;
 /** 1 US fluid ounce = 29.5735295625 millilitres. */
 const ML_PER_FLOZ = 29.5735295625;
+/** 1 inch = 25.4 millimetres (international inch). */
+const MM_PER_INCH = 25.4;
 
 // ── Editor input parsing (seller-typed string → metric number) ─────────────
 
@@ -45,6 +47,18 @@ export function parseInputToMl(input: string, system: UnitSystem): number | unde
     const value = parseFloat(input.trim());
     if (!Number.isFinite(value) || value <= 0) return undefined;
     return system === "imperial" ? value * ML_PER_FLOZ : value;
+}
+
+/**
+ * Parse a number the seller typed in the editor into millimetres — one
+ * parcel dimension (length/width/height). When the catalogue's
+ * `unitSystem` is "imperial", the input is interpreted as inches.
+ * Returns `undefined` per `parseInputToGrams`.
+ */
+export function parseInputToMm(input: string, system: UnitSystem): number | undefined {
+    const value = parseFloat(input.trim());
+    if (!Number.isFinite(value) || value <= 0) return undefined;
+    return system === "imperial" ? value * MM_PER_INCH : value;
 }
 
 // ── Stored value → editor input (metric → seller's unit) ──────────────────
@@ -75,6 +89,19 @@ export function mlToInput(ml: number | undefined, system: UnitSystem): string {
     return String(ml);
 }
 
+/**
+ * Convert a stored millimetre dimension into a number the seller's
+ * editor can display. Returns "" for missing values. For imperial,
+ * returns inches formatted to two decimals.
+ */
+export function mmToInput(mm: number | undefined, system: UnitSystem): string {
+    if (mm === undefined || mm <= 0) return "";
+    if (system === "imperial") {
+        return (mm / MM_PER_INCH).toFixed(2);
+    }
+    return String(mm);
+}
+
 // ── Display formatting (metric → human-readable string) ─────────────────────
 
 /** Display unit-system labels — used by editor labels and display badges. */
@@ -84,6 +111,10 @@ export function massUnitLabel(system: UnitSystem): string {
 
 export function volumeUnitLabel(system: UnitSystem): string {
     return system === "imperial" ? "fl oz" : "ml";
+}
+
+export function lengthUnitLabel(system: UnitSystem): string {
+    return system === "imperial" ? "in" : "mm";
 }
 
 /**

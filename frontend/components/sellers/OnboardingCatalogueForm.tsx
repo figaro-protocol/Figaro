@@ -19,10 +19,13 @@ import type {
 } from "@/lib/seller/sellerCatalogueMetadata";
 import {
     gramsToInput,
+    lengthUnitLabel,
     massUnitLabel,
     mlToInput,
+    mmToInput,
     parseInputToGrams,
     parseInputToMl,
+    parseInputToMm,
     volumeUnitLabel,
 } from "@/lib/seller/unitConversion";
 import { hexEqual } from "@/lib/shared/evm";
@@ -57,6 +60,11 @@ interface FormItem {
     mass: string;
     /** Editor input — in the catalogue's `unitSystem`. Parsed to metric at save. */
     volume: string;
+    /** Parcel dimensions — editor input in the catalogue's `unitSystem`
+     *  (mm metric / inches imperial). Parsed to metric mm at save. */
+    length: string;
+    width: string;
+    height: string;
     /** "fixed" (price = the item's price) or "rate" (price = a rate per
      *  `rateUnit`; payment resolves at checkout via `rateQuantitySource`). */
     pricingPolicy: "fixed" | "rate";
@@ -79,6 +87,9 @@ function emptyItem(): FormItem {
         available: true,
         mass: "",
         volume: "",
+        length: "",
+        width: "",
+        height: "",
         pricingPolicy: "fixed",
         rateUnit: "",
         rateQuantitySource: "checkout-quantity",
@@ -96,6 +107,9 @@ function fromItem(item: CatalogueItemMetadata, unitSystem: UnitSystem): FormItem
         available: item.available,
         mass: gramsToInput(item.massGrams, unitSystem),
         volume: mlToInput(item.volumeMl, unitSystem),
+        length: mmToInput(item.lengthMm, unitSystem),
+        width: mmToInput(item.widthMm, unitSystem),
+        height: mmToInput(item.heightMm, unitSystem),
         pricingPolicy: item.pricingPolicy ?? "fixed",
         rateUnit: item.rateUnit ?? "",
         rateQuantitySource: item.rateQuantitySource ?? "checkout-quantity",
@@ -113,6 +127,9 @@ function toItem(form: FormItem, unitSystem: UnitSystem): CatalogueItemMetadata {
         available: form.available,
         massGrams: parseInputToGrams(form.mass, unitSystem),
         volumeMl: parseInputToMl(form.volume, unitSystem),
+        lengthMm: parseInputToMm(form.length, unitSystem),
+        widthMm: parseInputToMm(form.width, unitSystem),
+        heightMm: parseInputToMm(form.height, unitSystem),
         ...(form.pricingPolicy === "rate"
             ? {
                 pricingPolicy: "rate" as const,
@@ -384,7 +401,7 @@ export function OnboardingCatalogueForm({
                             {importErrors.map((e) => (<li key={e}>{e}</li>))}
                         </ul>
                         <p className="text-ink-faint">
-                            Expected header columns: <code>name, price, description, category, image, available, massGrams, volumeMl, pricingPolicy, rateUnit, rateQuantitySource</code> (case-insensitive, any order; <code>name</code> + <code>price</code> required).
+                            Expected header columns: <code>name, price, description, category, image, available, massGrams, volumeMl, lengthMm, widthMm, heightMm, pricingPolicy, rateUnit, rateQuantitySource</code> (case-insensitive, any order; <code>name</code> + <code>price</code> required).
                         </p>
                     </div>
                 )}
@@ -555,6 +572,28 @@ function ItemRow({ item, index, priceSymbol, unitSystem, onChange, onRemove }: I
                         data-testid={`${idPrefix}-volume`}
                     />
                 </FormField>
+            </div>
+
+            {/* Parcel dimensions (L/W/D) — optional, shipping only. Feeds
+                dimensional-weight derivation; volume derives from these when set. */}
+            <div className="grid grid-cols-3 gap-4">
+                {(["length", "width", "height"] as const).map((dim) => (
+                    <FormField
+                        key={dim}
+                        label={`${dim[0].toUpperCase()}${dim.slice(1)} (${lengthUnitLabel(unitSystem)})`}
+                        inputId={`${idPrefix}-${dim}`}
+                    >
+                        <Input
+                            id={`${idPrefix}-${dim}`}
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="0"
+                            value={item[dim]}
+                            onChange={(e) => onChange(dim, e.target.value)}
+                            data-testid={`${idPrefix}-${dim}`}
+                        />
+                    </FormField>
+                ))}
             </div>
 
             <label className="flex items-center gap-2 text-sm text-ink-body cursor-pointer">

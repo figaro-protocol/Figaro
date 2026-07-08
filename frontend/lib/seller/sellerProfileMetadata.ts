@@ -27,6 +27,7 @@ import {
     asAddress,
     asEnum,
     asOptionalAddress,
+    asOptionalNumber,
     asOptionalString,
     asRecord,
     asString,
@@ -133,6 +134,15 @@ export interface SellerProfileMetadata {
      * commits in via Uniswap quote at commit time.
      */
     defaultTokenAddress?: `0x${string}`;
+    /**
+     * Dimensional-weight divisor for parcel billing — the seller's shipping
+     * convention (carrier-specific; e.g. ~5000 metric, ~139 imperial).
+     * Optional and logistics-only. `figaro-dimweight` reads it at checkout to
+     * derive billed weight = max(actual mass, volume ÷ divisor); the exact
+     * units and per-dimension rounding live in that clause. Absent for
+     * non-shipping sellers.
+     */
+    dimWeightDivisor?: number;
     /**
      * Assembly bindings — one entry per assembly the wallet
      * participates in. Counterparty wallet designations live inside
@@ -286,6 +296,7 @@ export function parseSellerProfileDocument(
         assets: parseAssetsField(record.assets, `${sourceLabel}.assets`),
         acceptedTokens: parseAcceptedTokens(record.acceptedTokens, `${sourceLabel}.acceptedTokens`),
         defaultTokenAddress: asOptionalAddress(record.defaultTokenAddress, `${sourceLabel}.defaultTokenAddress`),
+        dimWeightDivisor: asOptionalNumber(record.dimWeightDivisor, `${sourceLabel}.dimWeightDivisor`),
         assemblyBindings: parseAssemblyBindings(record.assemblyBindings, `${sourceLabel}.assemblyBindings`),
         services: parseAgentServicesField(record.services, `${sourceLabel}.services`),
         catalogueURI: asOptionalString(record.catalogueURI, `${sourceLabel}.catalogueURI`),

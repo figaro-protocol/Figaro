@@ -54,6 +54,22 @@ describe("parseCatalogueCsv", () => {
         expect(items[1].massGrams).toBeUndefined();
     });
 
+    it("parses optional parcel dimensions (L/W/D) as numbers", () => {
+        const csv = "name,price,lengthMm,widthMm,heightMm\nBox,5,300,200,150\nDrink,2,,,";
+        const { items, errors } = parseCatalogueCsv(csv);
+        expect(errors).toEqual([]);
+        expect(items[0]).toMatchObject({
+            name: "Box",
+            lengthMm: 300,
+            widthMm: 200,
+            heightMm: 150,
+        });
+        // Non-parcel item leaves the dimensions absent (not coerced to 0).
+        expect(items[1].lengthMm).toBeUndefined();
+        expect(items[1].widthMm).toBeUndefined();
+        expect(items[1].heightMm).toBeUndefined();
+    });
+
     it("flags rows missing required fields and skips them", () => {
         const csv = "name,price\nA,1\n,2\nC,";
         const { items, errors } = parseCatalogueCsv(csv);

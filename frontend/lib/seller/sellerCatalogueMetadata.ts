@@ -24,8 +24,23 @@ export interface CatalogueItemMetadata {
      * annotated can omit it.
      */
     massGrams?: number;
-    /** Item volume in millilitres. Same convention as `massGrams`. */
+    /** Item volume in millilitres. Same convention as `massGrams`. Kept for
+     *  non-parcel items (a drink, a bulk liquid) that have a volume but no
+     *  shippable box; for a parcel with L/W/D below, volume is derivable
+     *  (`lengthMm × widthMm × heightMm`) and need not be authored. */
     volumeMl?: number;
+    /**
+     * Parcel dimensions in whole millimetres. Storage canonical: always metric
+     * (same convention as `massGrams`/`volumeMl`; the editor converts imperial
+     * input). **Parcel-only** — a shippable box carries all three; a service or
+     * a non-parcel item omits them. The individual dimensions are load-bearing:
+     * dimensional weight rounds each dimension before multiplying and oversize
+     * rules read the longest side, neither of which a single `volumeMl` can
+     * reproduce. Consumed by `figaro-dimweight` / `figaro-cargo` at checkout.
+     */
+    lengthMm?: number;
+    widthMm?: number;
+    heightMm?: number;
     /**
      * How `price` is read. Absent or "fixed": `price` is the item's price
      * (today's behavior). "rate": `price` is a RATE per `rateUnit`, and the

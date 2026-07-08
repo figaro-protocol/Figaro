@@ -21,6 +21,9 @@
  *   available      — optional, "true"/"false"/"1"/"0" (default true)
  *   massGrams      — optional, parsed as number
  *   volumeMl       — optional, parsed as number
+ *   lengthMm       — optional, parsed as number (parcel dimension)
+ *   widthMm        — optional, parsed as number (parcel dimension)
+ *   heightMm       — optional, parsed as number (parcel dimension)
  *   pricingPolicy  — optional, "fixed" (default) or "rate"
  *   rateUnit       — optional, a rate's editorial unit label ("km", "hour")
  *   rateQuantitySource — optional, a rate's quantity-source registry key
@@ -147,6 +150,9 @@ export function parseCatalogueCsv(text: string): CatalogueCsvParseResult {
     const availCol = idx("available");
     const massCol = idx("massgrams");
     const volCol = idx("volumeml");
+    const lengthCol = idx("lengthmm");
+    const widthCol = idx("widthmm");
+    const heightCol = idx("heightmm");
     const policyCol = idx("pricingpolicy");
     const rateUnitCol = idx("rateunit");
     const rateSourceCol = idx("ratequantitysource");
@@ -178,6 +184,12 @@ export function parseCatalogueCsv(text: string): CatalogueCsvParseResult {
         if (mass !== undefined) item.massGrams = mass;
         const volume = parseNumber(get(volCol));
         if (volume !== undefined) item.volumeMl = volume;
+        const length = parseNumber(get(lengthCol));
+        if (length !== undefined) item.lengthMm = length;
+        const width = parseNumber(get(widthCol));
+        if (width !== undefined) item.widthMm = width;
+        const height = parseNumber(get(heightCol));
+        if (height !== undefined) item.heightMm = height;
         const policy = get(policyCol).trim().toLowerCase();
         if (policy === "rate") {
             item.pricingPolicy = "rate";

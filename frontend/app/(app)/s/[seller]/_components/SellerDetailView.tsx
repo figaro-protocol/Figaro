@@ -115,6 +115,9 @@ export function SellerDetailView({ sellerAddress }: Props) {
             imageURI: menuItem.image || undefined,
             massGrams: menuItem.massGrams,
             volumeMl: menuItem.volumeMl,
+            lengthMm: menuItem.lengthMm,
+            widthMm: menuItem.widthMm,
+            heightMm: menuItem.heightMm,
         });
     };
 

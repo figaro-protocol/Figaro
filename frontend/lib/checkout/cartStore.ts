@@ -14,10 +14,14 @@ interface CartItem {
     quantity: number;
     imageURI?: string;
     /** Physical attributes copied from the catalogue item at add-to-cart —
-     *  checkout collapses them into the order's geo section (mass/volume
-     *  sums). Optional: virtual or un-annotated items omit them. */
+     *  checkout folds them onto the order's cargo leaf (`figaro-cargo`).
+     *  Optional: virtual, service, or un-annotated items omit them. Parcel
+     *  dimensions (L/W/D) ride along for dimensional-weight derivation. */
     massGrams?: number;
     volumeMl?: number;
+    lengthMm?: number;
+    widthMm?: number;
+    heightMm?: number;
 }
 
 interface CartStore {
