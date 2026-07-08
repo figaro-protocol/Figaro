@@ -27,6 +27,7 @@ import {
     projectFinancials,
     type FinancialsModel,
 } from "@/lib/audit/financialsProjection";
+import { projectSellerInvoices } from "@/lib/audit/invoiceProjection";
 import type { AttestationRecord } from "@/lib/composition/indexer";
 import {
     buildProcessTimeline,
@@ -124,6 +125,10 @@ export async function buildAuditBundlePdfBlob(
     }
 
     const financials: FinancialsModel = projectFinancials(orders, "process", processId);
+    // One commercial invoice per seller (EN 16931 core), derived from the same
+    // committed record — the individual register alongside the consolidated
+    // financials.
+    const sellerInvoices = projectSellerInvoices(orders, agreements);
     const buyer = orders[0]?.buyer;
 
     let timeline: ProcessTimeline | null = null;
@@ -143,6 +148,7 @@ export async function buildAuditBundlePdfBlob(
             processId,
             buyer,
             perOrderBundles,
+            sellerInvoices,
             financials,
             timeline,
             generatedAt: new Date(),
