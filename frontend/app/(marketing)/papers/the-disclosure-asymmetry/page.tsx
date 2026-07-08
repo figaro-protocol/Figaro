@@ -51,7 +51,7 @@ export default function DisclosureAsymmetryPaper() {
                     <li>Lippmann, W. <em>Public Opinion</em>. Harcourt, Brace, New York, 1922.</li>
                     <li>Maskin, E. S. Mechanism Design: How to Implement Social Goals. <em>American Economic Review</em>, 98(3):567&ndash;576, 2008.</li>
                     <li>Myerson, R. B. Incentive Compatibility and the Bargaining Problem. <em>Econometrica</em>, 47(1):61&ndash;73, 1979.</li>
-                    <li>Viljoen, S., Goldenfein, J., &amp; McGuigan, L. Design Choices: Mechanism Design and Platform Capitalism. <em>Big Data &amp; Society</em>, 8(2):1&ndash;13, 2021.</li>
+                    <li>Viljoen, S., Goldenfein, J., &amp; McGuigan, L. Design Choices: Mechanism Design and Platform Capitalism. <em>Big Data &amp; Society</em>, 8(2), 2021. DOI: 10.1177/20539517211034312.</li>
                     <li>Weber, M. <em>Economy and Society: An Outline of Interpretive Sociology</em>. Ed. G. Roth &amp; C. Wittich. University of California Press, Berkeley, 1978 (orig. 1922).</li>
                     <li>Werbach, K. <em>The Blockchain and the New Architecture of Trust</em>. MIT Press, Cambridge, MA, 2018.</li>
                 </>
