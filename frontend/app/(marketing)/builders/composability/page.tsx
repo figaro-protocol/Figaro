@@ -60,7 +60,7 @@ export default function Composability() {
                     <div id="tier-2" className="border-l-2 border-default-strong pl-6 scroll-mt-24">
                         <dt className="text-base font-semibold text-ink-heading mb-1">Tier 2 — Add a typed clause</dt>
                         <dd className="text-ink-body leading-relaxed">
-                            Register a new <code>clauseId</code> and ship its validation layers in lockstep &mdash; TypeScript and Solidity today; SP1 Rust mirror pending. The settlement substrate is unchanged; the attestation surface extends. The kernel still gates every attestation through the validator; the new clause author owns the validator&apos;s correctness.
+                            Register a new <code>clauseId</code> and ship its validation layers in lockstep &mdash; TypeScript today; the on-chain Solidity validator and SP1 Rust mirror rebuild pre-launch. The settlement substrate is unchanged; the attestation surface extends. At launch the kernel gates every attestation through the validator; today the chain merkle-binds each attestation and validates no content shape &mdash; the new clause author owns the validator&apos;s correctness.
                         </dd>
                     </div>
                     <div id="tier-3" className="border-l-2 border-ink-heading pl-6 scroll-mt-24">
@@ -87,7 +87,7 @@ export default function Composability() {
                             <li>Cumulative upstream bonding across sub-orders</li>
                             <li>Buyer-dominant atomic resolution</li>
                             <li>Merkle-bound attestation receipts against the signed agreement</li>
-                            <li>Validator-gated attestation dispatch</li>
+                            <li>Validator-gated attestation dispatch (rebuilds pre-launch)</li>
                             <li>Token conservation (Certora + Halmos + TLA⁺ verified)</li>
                         </ul>
                     </div>
@@ -96,7 +96,7 @@ export default function Composability() {
                         <ul className="space-y-2 text-sm text-ink-body leading-relaxed list-disc pl-5">
                             <li>Assembly correctness &mdash; the kernel records the declared structure; it does not verify the workflow is well-formed for its purpose.</li>
                             <li>Custom mechanism contracts &mdash; new failure modes belong to the contract, not the kernel.</li>
-                            <li>Custom clause content &mdash; the validator enforces the declared shape; semantic correctness is the clause author&apos;s.</li>
+                            <li>Custom clause content &mdash; the off-chain validator enforces the declared shape; semantic correctness is the clause author&apos;s.</li>
                             <li>Role filling and identity &mdash; the kernel has no KYC. Participation gating is an assembly concern.</li>
                             <li>UI claims &mdash; representing protocol-level guarantees for properties the assembly does not enforce.</li>
                         </ul>

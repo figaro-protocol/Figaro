@@ -50,7 +50,7 @@ export default function BuildersPage() {
                 <div>
                     <dt className="font-semibold text-ink-heading">Clause authors</dt>
                     <dd className="text-ink-body leading-relaxed mt-1">
-                        Define new attestation content types &mdash; what a deal contains, what counts as delivered, what a disclosure must include. Each clause is registered permissionlessly: write it, bind a validator, it is live. Sixty percent of the FIG supply (600 million) is reserved for this group, distributed by a fixed formula that measures real adoption across distinct counterparty pairs.
+                        Define new attestation content types &mdash; what a deal contains, what counts as delivered, what a disclosure must include. Each clause is registered permissionlessly: write it, register it, it is live. Sixty percent of the FIG supply (600 million) is reserved for this group, distributed by a fixed formula that measures real adoption across distinct counterparty pairs.
                     </dd>
                 </div>
                 <div>
@@ -73,7 +73,7 @@ export default function BuildersPage() {
                 </div>
             </dl>
             <p className="text-base text-ink-body leading-relaxed mb-12">
-                Be clear-eyed about the stage. Figaro is a working protocol, still in development &mdash; not yet on a public network, <Link href="/security#verification" className="text-ink-heading font-medium hover:underline">not yet independently audited</Link>. The reward tranches unlock at years two, five, and nine &mdash; built to reward durable contribution, not a quick flip. What you can do today is read the code, write a clause against the live validator stack, and watch the whole thing settle a deal end to end on a local network.
+                Be clear-eyed about the stage. Figaro is a working protocol, still in development &mdash; not yet on a public network, <Link href="/security#verification" className="text-ink-heading font-medium hover:underline">not yet independently audited</Link>. The reward tranches unlock at years two, five, and nine &mdash; built to reward durable contribution, not a quick flip. What you can do today is read the code, write a clause against the live off-chain validator, and watch the whole thing settle a deal end to end on a local network.
             </p>
             <h2 className="text-base font-semibold text-ink-heading mb-4">
                 Where to start
@@ -107,7 +107,7 @@ export default function BuildersPage() {
                     <Link href="/security#builders-registries" className="text-ink-heading font-medium hover:underline">
                         Security posture for authors
                     </Link>
-                    <span className="text-ink-body"> &mdash; first-write-wins registry binding, immutable validators, three-tier anti-spam posture, and what an immutable v1 means for how you ship.</span>
+                    <span className="text-ink-body"> &mdash; first-write-wins registry binding, merkle-bound attestations, three-tier anti-spam posture, and what an immutable v1 means for how you ship.</span>
                 </li>
                 <li>
                     <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">

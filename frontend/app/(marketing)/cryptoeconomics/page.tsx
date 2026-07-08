@@ -34,7 +34,7 @@ const COMPOSITION_GROUPS: CompositionGroup[] = [
         name: "Clause authoring",
         tier: "Tier 2",
         charter:
-            "Authors new clauses — content-type design plus the validator-implementation work that ships in lockstep across TypeScript and on-chain Solidity (with an SP1 Rust mirror pending). Cross-cuts disciplines: validator implementation pulls from Computer Science and Cryptography; content definition pulls from whichever discipline the clause's domain belongs to.",
+            "Authors new clauses — content-type design plus the validator-implementation work that ships in lockstep across TypeScript and on-chain Solidity (the on-chain validator and its SP1 Rust mirror rebuild pre-launch). Cross-cuts disciplines: validator implementation pulls from Computer Science and Cryptography; content definition pulls from whichever discipline the clause's domain belongs to.",
         references: [
             { label: "Composability — Tier 2", href: "/builders/composability" },
             { label: "Clauses — architecture and inventory", href: "/clauses" },
