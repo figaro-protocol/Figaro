@@ -26,13 +26,26 @@ export function tryParseCatalogueItems(doc: unknown): CatalogueItemMetadata[] | 
             description: typeof item.description === 'string' ? item.description : undefined,
             price: typeof item.price === 'string' ? item.price : '0',
             category: typeof item.category === 'string' ? item.category : undefined,
+            image: typeof item.image === 'string' ? item.image : undefined,
             available: typeof item.available === 'boolean' ? item.available : true,
+            // Physical measures fold onto the cargo leaf at checkout (mass/volume
+            // sum × quantity; packaged dimensions written for a single parcel).
+            // Drop any one here and it silently vanishes from the committed leaf —
+            // keep this symmetric with the canonical parser (sellerCatalogueMetadataParser).
             massGrams: typeof item.massGrams === 'number' ? item.massGrams : undefined,
             volumeMl: typeof item.volumeMl === 'number' ? item.volumeMl : undefined,
+            lengthMm: typeof item.lengthMm === 'number' ? item.lengthMm : undefined,
+            widthMm: typeof item.widthMm === 'number' ? item.widthMm : undefined,
+            heightMm: typeof item.heightMm === 'number' ? item.heightMm : undefined,
             pricingPolicy: item.pricingPolicy === 'rate' ? 'rate' as const
                 : item.pricingPolicy === 'fixed' ? 'fixed' as const : undefined,
             rateUnit: typeof item.rateUnit === 'string' ? item.rateUnit : undefined,
             rateQuantitySource: typeof item.rateQuantitySource === 'string' ? item.rateQuantitySource : undefined,
+            // Catalogue-sourced clause values (freight class, hazmat, cold-chain, …)
+            // fold onto their own leaves; pass the record through structurally.
+            clauseValues: item.clauseValues && typeof item.clauseValues === 'object' && !Array.isArray(item.clauseValues)
+                ? (item.clauseValues as CatalogueItemMetadata['clauseValues'])
+                : undefined,
         }))
         .filter((item) => item.name.trim().length > 0);
 }
