@@ -91,7 +91,7 @@ describe('discoveryService', () => {
         }));
     });
 
-    it('maps an seller profile document into a discovery restaurant and follows catalogueURI', async () => {
+    it('maps a seller profile document into a discovery restaurant and follows catalogueURI', async () => {
         getActiveSellersMock.mockResolvedValueOnce([
             {
                 address: '0xaabbccddaabbccddaabbccddaabbccddaabbccdd',
@@ -125,7 +125,7 @@ describe('discoveryService', () => {
         expect(result.catalogues[0].items[0].name).toBe('Al Pastor');
     });
 
-    it('maps an seller profile without a catalogueURI into a restaurant with an empty menu', async () => {
+    it('maps a seller profile without a catalogueURI into a restaurant with an empty menu', async () => {
         getActiveSellersMock.mockResolvedValueOnce([
             {
                 address: '0xaabbccddaabbccddaabbccddaabbccddaabbccdd',

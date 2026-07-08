@@ -93,7 +93,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                 </p>
                 <div className="flex items-center gap-3 pt-2">
                     <Link href="/sellers" className="inline-block text-sm px-3 py-1.5 rounded border border-black bg-black text-white hover:bg-neutral-800">
-                        Register as an seller
+                        Register as a seller
                     </Link>
                     <Link href="/discover" className="inline-block underline text-sm text-black hover:text-neutral-600">
                         ← Back to discover

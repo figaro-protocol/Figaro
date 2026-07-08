@@ -87,7 +87,7 @@ describe('getSellerState', () => {
         cachedGetLogsMock.mockReset();
     });
 
-    it('returns null for an seller that has never registered', async () => {
+    it('returns null for a seller that has never registered', async () => {
         mockEvents({ registered: [] });
 
         const result = await getSellerState(CLIENT, CHAIN_ID, SELLER);

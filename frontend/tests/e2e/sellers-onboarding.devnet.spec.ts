@@ -56,7 +56,7 @@ async function waitForSellersReady(page: import("@playwright/test").Page) {
         () => {
             const bodyText = document.body.textContent || "";
             if (bodyText.includes("Loading…")) return false;
-            return bodyText.includes("Register as an seller.")
+            return bodyText.includes("Register as a seller.")
                 || bodyText.includes("View public profile");
         },
         null,

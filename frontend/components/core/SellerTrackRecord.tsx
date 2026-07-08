@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * SellerTrackRecord — renders an seller's public-graph track record:
+ * SellerTrackRecord — renders a seller's public-graph track record:
  * the settlement + coordination history reconstructed from on-chain events
  * (PUBLIC_GRAPH_MODEL.md §"Reputation derivation"). Pure render — the
  * caller supplies the record via useSellerTrackRecord.
  *
- * Every figure is recomputed from events, never a stored score. An seller
+ * Every figure is recomputed from events, never a stored score. A seller
  * with no history renders as "no on-chain history" rather than a fabricated
  * rating — the honest absence of a track record is itself the signal.
  */

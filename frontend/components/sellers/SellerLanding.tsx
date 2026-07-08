@@ -42,10 +42,10 @@ function WelcomeView() {
     return (
         <OnboardingShell
             stepId="welcome"
-            title="Register as an seller."
+            title="Register as a seller."
             description={
                 <p>
-                    As an seller you register a wallet that represents your real-world asset or service. Register a wallet in <code>SellerRegistry</code> and pin a profile + catalogue to IPFS. Six steps. The deposit is 0.001 ETH on devnet, reclaimable after a one-year lock — Sybil-resistance, not a fee.
+                    As a seller you register a wallet that represents your real-world asset or service. Register a wallet in <code>SellerRegistry</code> and pin a profile + catalogue to IPFS. Six steps. The deposit is 0.001 ETH on devnet, reclaimable after a one-year lock — Sybil-resistance, not a fee.
                 </p>
             }
         >
@@ -126,7 +126,7 @@ function RegisteredCard({
                 if (parsed) {
                     setProfile(parsed);
                 } else {
-                    setProfileError("Profile JSON didn't parse as an seller profile.");
+                    setProfileError("Profile JSON didn't parse as a seller profile.");
                 }
             })
             .catch(() => {

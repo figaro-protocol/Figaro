@@ -243,7 +243,7 @@ export function useRegistrationDeposit() {
 // ── Agent service discovery hook ─────────────────────────────────────────────
 
 /**
- * Fetches an seller's metadataURI and parses ERC-8004-compatible
+ * Fetches a seller's metadataURI and parses ERC-8004-compatible
  * agent service endpoints if present. Returns { isAgent: false } for
  * human-operated participants (no services key in metadata).
  */

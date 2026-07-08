@@ -16,7 +16,7 @@ export default function EditAssembliesPage() {
                     Edit assemblies.
                 </h1>
                 <p className="text-body-lead text-ink-body">
-                    Toggle which assemblies your wallet participates in. Saving re-pins the profile JSON with the updated bindings and dispatches <code>updateProfile</code>. An seller with no bindings is still on-chain registered — the assemblies just don&apos;t surface to assembly-scoped discovery.
+                    Toggle which assemblies your wallet participates in. Saving re-pins the profile JSON with the updated bindings and dispatches <code>updateProfile</code>. A seller with no bindings is still on-chain registered — the assemblies just don&apos;t surface to assembly-scoped discovery.
                 </p>
             </div>
             <SellerEditAssemblies />

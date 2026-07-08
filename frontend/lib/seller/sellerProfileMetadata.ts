@@ -306,7 +306,7 @@ export function parseSellerProfileDocument(
 /**
  * Lenient parse — returns null instead of throwing. Use in discovery
  * paths where a malformed seller should be silently dropped from the
- * surface (e.g. `discoveryService` building an seller-catalogue list).
+ * surface (e.g. `discoveryService` building a seller-catalogue list).
  */
 export function tryParseSellerProfileDocument(
     value: unknown,

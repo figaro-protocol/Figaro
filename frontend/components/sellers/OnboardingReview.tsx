@@ -192,7 +192,7 @@ export function OnboardingReview() {
                     <p className="text-sm text-ink-body">
                         {isRegistered
                             ? "Your seller profile has been re-pinned to IPFS and the new metadataURI is on-chain."
-                            : "Your wallet is now an seller on this network. The deposit is reclaimable via withdraw after the one-year lock."}
+                            : "Your wallet is now a seller on this network. The deposit is reclaimable via withdraw after the one-year lock."}
                     </p>
                     <dl className="text-xs text-ink-body space-y-2 pt-2 border-t border-default">
                         <div>

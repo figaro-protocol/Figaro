@@ -11,7 +11,7 @@
  * Removing an assembly (un-checking it in the multi-select) is
  * handled by the form's existing toggle. Whole-assemblies clearing
  * isn't a separate destructive affordance — it's implicit when the
- * user un-checks every assembly. An seller with zero bindings is
+ * user un-checks every assembly. A seller with zero bindings is
  * still on-chain registered; the assemblies just don't surface to
  * assembly-scoped discovery.
  */

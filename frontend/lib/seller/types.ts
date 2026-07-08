@@ -3,7 +3,7 @@ import type { AcceptedTokenMetadata } from "@/lib/seller/acceptedTokenMetadata";
 import type { SellerAgentServices } from "@/lib/seller/sellerProfileMetadata";
 
 /**
- * Buyer-side projection of an seller's profile + catalogue.
+ * Buyer-side projection of a seller's profile + catalogue.
  *
  * Sources:
  *  - profile (`SellerProfileMetadata`): name, slug, description,

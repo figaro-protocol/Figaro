@@ -9,7 +9,7 @@ import { hexEqual } from "@/lib/shared/evm";
  * a `Listing` is the projection of (subject + bindings + optional metadata)
  * into a shape the `SellerCard` can render across any assembly. An
  * seller with zero bindings still produces a `Listing`; clicking any
- * listing routes to its `/s/<address>` detail page. An seller with
+ * listing routes to its `/s/<address>` detail page. A seller with
  * multiple bindings carries them all
  * so the card can display assembly badges and the click-through can pick
  * the primary.
@@ -118,7 +118,7 @@ export function listingMatchesGeohash(listing: Listing, viewerGeohash: string): 
 /**
  * The destination URL for a listing card click: the per-seller detail
  * page. The /s page reads the seller's catalogue and bindings; assembly
- * disambiguation happens inside that page. An seller with no bindings
+ * disambiguation happens inside that page. A seller with no bindings
  * still has a /m page — it surfaces the catalogue without a modality path.
  */
 export function listingClickThroughHref(listing: Listing): string {
