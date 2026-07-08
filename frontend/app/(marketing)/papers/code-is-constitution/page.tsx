@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function CodeIsConstitutionPaper() {
     return (
-        <PaperLayout
+        <PaperLayout slug="code-is-constitution"
             title="Code Is Constitution"
             subtitle="The Entrenched Layer Beneath Enactment"
             author="Alessandro Daliana"

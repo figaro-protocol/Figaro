@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default function WalletLegalSubjectPaper() {
     return (
-        <PaperLayout
+        <PaperLayout slug="wallet-legal-subject"
             title="The Wallet as Legal Subject"
             subtitle="Subordination, Property, and the Dissolution of the Employee–Contractor Line"
             author="Alessandro Daliana"

@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function DisclosureAsymmetryPaper() {
     return (
-        <PaperLayout
+        <PaperLayout slug="the-disclosure-asymmetry"
             title="The Disclosure Asymmetry"
             subtitle="Cryptoeconomic Mechanism Design and the Engineering of Consent"
             author="Alessandro Daliana"

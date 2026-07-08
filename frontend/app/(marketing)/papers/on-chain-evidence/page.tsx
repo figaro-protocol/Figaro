@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function OnChainEvidencePaper() {
     return (
-        <PaperLayout
+        <PaperLayout slug="on-chain-evidence"
             title="On-Chain Evidence, Off-Chain Adjudication"
             subtitle="A Layered Approach to Smart-Contract Dispute Resolution"
             author="Alessandro Daliana"

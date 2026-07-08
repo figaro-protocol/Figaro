@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 export default function SubordinationVariablePaper() {
     return (
-        <PaperLayout
+        <PaperLayout slug="subordination-variable"
             title="The Subordination Variable"
             subtitle="Why a Single Coordination Substrate Admits Both the Associated-Producer and the Frictionless-Market Reading"
             author="Alessandro Daliana"

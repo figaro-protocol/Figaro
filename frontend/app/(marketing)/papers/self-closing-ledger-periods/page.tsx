@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function SelfClosingLedgerPeriodsPaper() {
     return (
-        <PaperLayout
+        <PaperLayout slug="self-closing-ledger-periods"
             title="Bookkeeping as Protocol Byproduct"
             subtitle="Self-Closing Ledger Periods in the Figaro Settlement Primitive"
             author="Alessandro Daliana"

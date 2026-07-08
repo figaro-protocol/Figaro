@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 export default function TransactionScopedInstitutionsPaper() {
     return (
-        <PaperLayout
+        <PaperLayout slug="transaction-scoped-institutions"
             title="From Firms to Transaction-Scoped Institutions"
             subtitle="A Coasean Re-Examination Under Costless Bilateral Enforcement"
             author="Alessandro Daliana"

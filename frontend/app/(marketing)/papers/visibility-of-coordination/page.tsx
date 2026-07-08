@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 export default function VisibilityOfCoordinationPaper() {
     return (
-        <PaperLayout
+        <PaperLayout slug="visibility-of-coordination"
             title="The Visibility of Coordination"
             subtitle="A Gramscian Reading of the Platform Economy and Its Successor"
             author="Alessandro Daliana"

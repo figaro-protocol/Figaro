@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default function CorridorsWithoutAHegemonPaper() {
     return (
-        <PaperLayout
+        <PaperLayout slug="corridors-without-a-hegemon"
             title="Corridors Without a Hegemon"
             subtitle="Bonded Settlement as Common Infrastructure Beneath Rival Trade Corridors"
             author="Alessandro Daliana"

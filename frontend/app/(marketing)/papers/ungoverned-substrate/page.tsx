@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default function UngovernedSubstratePaper() {
     return (
-        <PaperLayout
+        <PaperLayout slug="ungoverned-substrate"
             title="The Ungoverned Substrate"
             subtitle="Network States, Blockchain Governance, and the Option Both Programs Presuppose Away"
             author="Alessandro Daliana"

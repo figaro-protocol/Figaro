@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function ActorNeutralCoordinationPaper() {
     return (
-        <PaperLayout
+        <PaperLayout slug="actor-neutral-coordination"
             title="Actor-Neutral Coordination over Bonded Commitments"
             subtitle="An AI-and-Control-Theory Reading"
             author="Alessandro Daliana"

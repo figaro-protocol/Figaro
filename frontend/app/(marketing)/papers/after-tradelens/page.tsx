@@ -63,7 +63,7 @@ function CodeBlock({ children }: { children: string }) {
 
 export default function AfterTradeLensPaper() {
     return (
-        <PaperLayout
+        <PaperLayout slug="after-tradelens"
             title="After TradeLens"
             subtitle="A Permissionless Bonded Replacement"
             author="Alessandro Daliana"

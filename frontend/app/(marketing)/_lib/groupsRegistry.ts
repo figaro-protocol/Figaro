@@ -178,3 +178,34 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
     },
 ];
 
+/** Where a paper page sits in the registry — its discipline plus its
+ *  neighbours within that discipline. Drives the `PaperLayout` breadcrumb
+ *  (Papers › Discipline › this paper) and the prev/next-in-discipline nav.
+ *  `null` when the slug is not registered (no chrome is rendered). */
+export interface PaperNavigation {
+    discipline: { name: string; disciplineIndex: DisciplineIndex; anchor: string };
+    prev: PaperRef | null;
+    next: PaperRef | null;
+}
+
+/** Resolve a `/papers/<slug>` page's position from the registry. Papers are
+ *  ordered within each discipline's `papers[]`; prev/next never cross a
+ *  discipline boundary (the first paper has no prev, the last no next). */
+export function getPaperNavigation(slug: string): PaperNavigation | null {
+    const href = `/papers/${slug}`;
+    for (const group of GROUPS_REGISTRY) {
+        const i = group.papers.findIndex((p) => p.href === href);
+        if (i === -1) continue;
+        return {
+            discipline: {
+                name: group.name,
+                disciplineIndex: group.disciplineIndex,
+                anchor: `/cryptoeconomics#discipline-${group.disciplineIndex}`,
+            },
+            prev: i > 0 ? group.papers[i - 1] : null,
+            next: i < group.papers.length - 1 ? group.papers[i + 1] : null,
+        };
+    }
+    return null;
+}
+

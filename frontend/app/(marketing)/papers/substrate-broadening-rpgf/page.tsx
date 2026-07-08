@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 export default function SubstrateBroadeningRpgfPaper() {
     return (
-        <PaperLayout
+        <PaperLayout slug="substrate-broadening-rpgf"
             title="Substrate-Broadening Retroactive Public-Goods Funding"
             subtitle="A Verifiable Allocation Mechanism for Protocol Clause Authors"
             author="Alessandro Daliana"

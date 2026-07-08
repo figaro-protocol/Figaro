@@ -42,7 +42,7 @@ const CATALOGUE: [string, string][] = [
 
 export default function ProtocolExtensionPaper() {
     return (
-        <PaperLayout
+        <PaperLayout slug="protocol-extension"
             title="Protocol Extension and Runtime Composition"
             subtitle="Clause Design, the Coordinator Pattern, and the Software Architecture Above the Kernel"
             author="Alessandro Daliana"

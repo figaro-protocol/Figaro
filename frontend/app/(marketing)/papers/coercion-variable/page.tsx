@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function CoercionVariablePaper() {
     return (
-        <PaperLayout
+        <PaperLayout slug="coercion-variable"
             title="The Coercion Variable"
             subtitle="On the Boundary Between What the Sovereign Must Do and What the Bond Can Do"
             author="Alessandro Daliana"

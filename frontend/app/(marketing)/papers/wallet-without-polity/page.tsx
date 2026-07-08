@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function WalletWithoutPolityPaper() {
     return (
-        <PaperLayout
+        <PaperLayout slug="wallet-without-polity"
             title="The Wallet Without a Polity"
             subtitle="Displaced and Stateless Subjects under a Bonded Settlement Primitive"
             author="Alessandro Daliana"

@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function AirServiceCoordinationPaper() {
     return (
-        <PaperLayout
+        <PaperLayout slug="air-service-coordination"
             title="Air Service as Coordinated Resource Markets"
             subtitle="An Industrial-Engineering Reading of the Bonded Architecture"
             author="Alessandro Daliana"

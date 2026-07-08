@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function BehavioralGameTheoryPaper() {
     return (
-        <PaperLayout
+        <PaperLayout slug="behavioral-game-theory"
             title="Behavioral Game Theory of the Two-Mechanism Bonded Commitment"
             subtitle="Loss Aversion, Coordination, Peer Pressure, and Incentive Legibility"
             author="Alessandro Daliana"

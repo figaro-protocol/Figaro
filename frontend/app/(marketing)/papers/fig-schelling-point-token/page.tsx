@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default function FigSchellingPointTokenPaper() {
     return (
-        <PaperLayout
+        <PaperLayout slug="fig-schelling-point-token"
             title="FIG: A Schelling-Point Token"
             subtitle="for the Figaro Coordination Ecosystem"
             author="Alessandro Daliana"

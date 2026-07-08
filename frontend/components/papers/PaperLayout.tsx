@@ -1,9 +1,14 @@
 import "katex/dist/katex.min.css";
 import type { ReactNode } from "react";
+import Link from "next/link";
+import { getPaperNavigation } from "@/app/(marketing)/_lib/groupsRegistry";
 import { PrintButton } from "./PrintButton";
 import { BackToTop } from "./BackToTop";
 
 interface PaperLayoutProps {
+    /** `/papers/<slug>` folder name — resolves the paper's discipline and
+     *  neighbours from the registry for the breadcrumb + prev/next nav. */
+    slug: string;
     title: string;
     subtitle?: string;
     author: string;
@@ -27,6 +32,7 @@ interface PaperLayoutProps {
  * no committed `.pdf`.
  */
 export function PaperLayout({
+    slug,
     title,
     subtitle,
     author,
@@ -38,11 +44,30 @@ export function PaperLayout({
     children,
     references,
 }: PaperLayoutProps) {
+    const nav = getPaperNavigation(slug);
     return (
         <article className="container mx-auto px-6 pt-16 pb-24 max-w-[46rem]">
             <div aria-hidden className="paper-watermark">
                 {watermark}
             </div>
+
+            {nav && (
+                <nav aria-label="Breadcrumb" className="print:hidden mb-4 text-sm text-ink-faint">
+                    <Link href="/papers" className="hover:text-ink-body hover:underline">
+                        Papers
+                    </Link>
+                    <span className="mx-2" aria-hidden>
+                        ›
+                    </span>
+                    <Link href={nav.discipline.anchor} className="hover:text-ink-body hover:underline">
+                        {nav.discipline.name}
+                    </Link>
+                    <span className="mx-2" aria-hidden>
+                        ›
+                    </span>
+                    <span className="text-ink-muted">{title}</span>
+                </nav>
+            )}
 
             <div className="print:hidden mb-8 flex justify-end">
                 <PrintButton />
@@ -82,6 +107,33 @@ export function PaperLayout({
                     {references}
                 </ol>
             </section>
+
+            {nav && (nav.prev || nav.next) && (
+                <nav
+                    aria-label="More in this discipline"
+                    className="print:hidden mt-12 pt-8 border-t border-default grid grid-cols-2 gap-6 text-sm"
+                >
+                    {nav.prev ? (
+                        <Link href={nav.prev.href} className="group text-ink-muted hover:text-ink-body">
+                            <span className="block text-xs text-ink-faint mb-1">← Previous</span>
+                            <span className="block group-hover:underline">{nav.prev.title}</span>
+                        </Link>
+                    ) : (
+                        <span />
+                    )}
+                    {nav.next ? (
+                        <Link
+                            href={nav.next.href}
+                            className="group text-right text-ink-muted hover:text-ink-body"
+                        >
+                            <span className="block text-xs text-ink-faint mb-1">Next →</span>
+                            <span className="block group-hover:underline">{nav.next.title}</span>
+                        </Link>
+                    ) : (
+                        <span />
+                    )}
+                </nav>
+            )}
 
             <BackToTop />
         </article>

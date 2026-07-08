@@ -24,7 +24,7 @@ function FormalBlock({ label, children }: { label: string; children: React.React
 
 export default function VerifiedSettlementKernelPaper() {
     return (
-        <PaperLayout
+        <PaperLayout slug="verified-settlement-kernel"
             title="Asymmetric Bonding and Buyer Dominance"
             subtitle="A Verified Settlement Kernel"
             author="Alessandro Daliana"

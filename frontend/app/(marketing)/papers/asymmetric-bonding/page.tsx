@@ -36,7 +36,7 @@ function Proof({ children }: { children: React.ReactNode }) {
 
 export default function AsymmetricBondingPaper() {
     return (
-        <PaperLayout
+        <PaperLayout slug="asymmetric-bonding"
             title="Asymmetric Bonding and Buyer Dominance"
             subtitle="Two Composing Mechanisms for Self-Enforcing N-Party Coordination"
             author="Alessandro Daliana"
