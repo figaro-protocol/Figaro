@@ -10,9 +10,10 @@
  * code. Every reference resolves by DECLARED FIELD, never by clause id, so a
  * template projects identically over an assembly this codebase has never seen.
  *
- * The templates live in `documentTemplates.ts` as a declared catalogue today;
- * they can graduate to a permissionless registry (the fifth-noun path) without
- * touching this engine — the engine only knows templates + committed data.
+ * The templates are a hardcoded array in `documentTemplates.ts`. Per operator
+ * decision (2026-07-08) they stay there — NO on-chain document registry at this
+ * time. The engine only knows templates + committed data, so this is open-world
+ * regardless: no template carries clause-specific knowledge.
  */
 
 import { calculateSettlement } from "@figaro/core";

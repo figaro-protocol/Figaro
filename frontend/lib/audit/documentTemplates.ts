@@ -3,12 +3,18 @@
  * dispute bundle surfaces, as DATA. Each is a composition over committed leaves;
  * the generic engine (`documentProjection.ts`) produces them and one generic
  * renderer draws them. A new genre (packing list, certificate of origin, …) is a
- * new entry here — zero engine or renderer code.
+ * new entry in the `DOCUMENT_TEMPLATES` array below — zero engine or renderer code.
  *
  * Every reference resolves by DECLARED FIELD, never by clause id, so a template
- * projects identically over an assembly this codebase has never seen. This is a
- * declared catalogue today; it can graduate to a permissionless registry (the
- * fifth-noun composition path) without touching the engine.
+ * projects identically over an assembly this codebase has never seen. That is what
+ * makes this open-world: the templates are hardcoded here, but they carry no
+ * clause-specific knowledge — they read whatever fields the committed leaves declare.
+ *
+ * DECISION (operator, 2026-07-08): these templates are a hardcoded array in this
+ * file. They are NOT moved to an on-chain registry — no on-chain document registry
+ * at this time. Do NOT "graduate" this to a registry, and do NOT call it a
+ * "catalogue" (that word is the SELLER'S catalogue — a different object entirely).
+ * It is a list of document-template objects. Leave it here.
  */
 
 import type { DocumentTemplate } from "@/lib/audit/documentProjection";
@@ -64,8 +70,8 @@ const BILL_OF_LADING: DocumentTemplate = {
     note: "NON-NEGOTIABLE — not a document of title. The consignee is fixed at signing; FigaroCore forbids substituting a bonded order's parties mid-flight. The precise addressee is party-private (ECDH channel); only the public geohash is committed.",
 };
 
-/** The declared catalogue the audit bundle projects. Add a genre by adding a
- *  template — the engine and renderer are generic. */
+/** The document templates the audit bundle projects. Add a genre by adding a
+ *  template object to this array — the engine and renderer are generic. */
 export const DOCUMENT_TEMPLATES: readonly DocumentTemplate[] = [
     COMMERCIAL_INVOICE,
     BILL_OF_LADING,
