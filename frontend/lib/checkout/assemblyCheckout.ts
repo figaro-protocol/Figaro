@@ -29,7 +29,7 @@ import { commitmentOrderHash, commitmentProcessId, type CommitmentPayload } from
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { planSubOrderSellers, resolveSubOrderPricing } from "@/lib/checkout/assemblySubOrderPlan";
 import { templateClauseVersionMap, templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
-import { clauseDeclaresField } from "@/lib/shared/clauseSpecSource";
+import { clauseDeclaresField, clauseIsCatalogueSourced } from "@/lib/shared/clauseSpecSource";
 import { parseToken } from "@/lib/shared/utils";
 import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
 import type { SellerCatalogue } from "@/lib/seller/types";
@@ -40,10 +40,18 @@ export interface AssemblyCheckoutLineItem {
     quantity: number;
     /** Decimal string, smallest unit (matches the commerce clause's bigint field). */
     unitPrice: string;
-    /** Physical attributes from the cart — collapsed into the root order's
-     *  cargo section at checkout (mass/volume sums × quantity). */
+    /** Physical attributes from the catalogue item — folded onto THIS order's
+     *  cargo leaf at checkout (mass/volume sum × quantity; packaged dimensions
+     *  only when the order is a single parcel — dims don't sum). Optional:
+     *  services / un-annotated items omit them. */
     massGrams?: number;
     volumeMl?: number;
+    lengthMm?: number;
+    widthMm?: number;
+    heightMm?: number;
+    /** Catalogue-sourced clause values (freight class / hazmat / cold-chain, …)
+     *  folded onto their leaves. Keyed by clauseId → field values. */
+    clauseValues?: Record<string, Record<string, unknown>>;
 }
 
 /** The signing capabilities the algorithm drives — provided by `useCheckout`,
@@ -133,6 +141,96 @@ function writeTopologySection(
     };
 }
 
+/**
+ * Fold the order's physical measure onto its cargo leaf, found by its declared
+ * `massGrams` field (never by clause id; skipped when no cargo clause is
+ * composed — services have no cargo, G7). Mass and volume SUM across the order's
+ * lines (× quantity — both additive). Packaged dimensions do NOT sum (packing),
+ * so they are written only when the order is a single parcel (one line, quantity
+ * 1) — a multi-line order's packaged dimension is a per-order input this fold
+ * does not fabricate; dimensional weight then falls back to actual mass.
+ */
+export function fillCargoSection(clauses: ClauseFields, lines: AssemblyCheckoutLineItem[]): ClauseFields {
+    const cargoId = Object.keys(clauses).find((id) => clauseDeclaresField(id, "massGrams"));
+    if (!cargoId) return clauses;
+    const massGrams = lines.reduce((s, li) => s + (li.massGrams ?? 0) * li.quantity, 0);
+    const volumeMl = lines.reduce((s, li) => s + (li.volumeMl ?? 0) * li.quantity, 0);
+    const single = lines.length === 1 && lines[0].quantity === 1 ? lines[0] : undefined;
+    const dims = single && single.lengthMm && single.widthMm && single.heightMm
+        ? { lengthMm: single.lengthMm, widthMm: single.widthMm, heightMm: single.heightMm }
+        : {};
+    return {
+        ...clauses,
+        [cargoId]: {
+            ...clauses[cargoId],
+            ...(massGrams > 0 ? { massGrams } : {}),
+            ...(volumeMl > 0 ? { volumeMl } : {}),
+            ...dims,
+        },
+    };
+}
+
+/**
+ * Fold the catalogue-authored class values onto their leaves. For each
+ * catalogue-sourced clause the order composes (freight-class / hazmat /
+ * cold-chain, …, discovered by `block.catalogueSourced`, never by name), write
+ * the first line's authored values — a homogeneous-order assumption (mixed
+ * classes are a multi-ORDER concern per the aggregate model). Absent when no
+ * line carries values for that clause.
+ */
+export function fillClassSections(clauses: ClauseFields, lines: AssemblyCheckoutLineItem[]): ClauseFields {
+    let out = clauses;
+    for (const clauseId of Object.keys(clauses)) {
+        if (!clauseIsCatalogueSourced(clauseId)) continue;
+        const line = lines.find(
+            (li) => li.clauseValues?.[clauseId] && Object.keys(li.clauseValues[clauseId]).length > 0,
+        );
+        if (!line) continue;
+        out = { ...out, [clauseId]: { ...out[clauseId], ...line.clauseValues![clauseId] } };
+    }
+    return out;
+}
+
+/**
+ * Compute the dimensional (billed) weight onto the dimweight leaf, found by its
+ * declared `billedMassGrams` field. DERIVED, not authored: billed = max(gross
+ * mass, volumetric), volumetric = packaged volume ÷ divisor with each packaged
+ * dimension rounded up to the next whole centimetre first (carriers round per
+ * dimension). Reads the cargo leaf just filled; skipped when the order composes
+ * no dimweight clause, has no packaged dimensions, or the seller declares no
+ * divisor — dimensional weight then simply does not apply.
+ */
+export function fillDimweightSection(clauses: ClauseFields, divisor?: number): ClauseFields {
+    const dimId = Object.keys(clauses).find((id) => clauseDeclaresField(id, "billedMassGrams"));
+    if (!dimId || !divisor || divisor <= 0) return clauses;
+    const cargoId = Object.keys(clauses).find((id) => clauseDeclaresField(id, "massGrams"));
+    const cargo = cargoId ? clauses[cargoId] : undefined;
+    const l = Number(cargo?.lengthMm ?? 0), w = Number(cargo?.widthMm ?? 0), h = Number(cargo?.heightMm ?? 0);
+    if (!(l > 0 && w > 0 && h > 0)) return clauses;
+    const gross = Number(cargo?.massGrams ?? 0);
+    const roundCm = (mm: number) => Math.ceil(mm / 10) * 10;
+    const volMm3 = roundCm(l) * roundCm(w) * roundCm(h);
+    const volumetric = Math.ceil(volMm3 / divisor);
+    return { ...clauses, [dimId]: { ...clauses[dimId], billedMassGrams: Math.max(gross, volumetric), divisor } };
+}
+
+/**
+ * Fill every derivable LOGISTICS section on an order, wherever composed — cargo
+ * (physical measure), the class leaves (catalogue-sourced), then the derived
+ * dimweight (reads the cargo it just wrote). Each fill is a no-op when its
+ * clause isn't composed, so the same call serves the root and every sub-order.
+ */
+function fillDerivedSections(clauses: ClauseFields, lines: AssemblyCheckoutLineItem[], divisor?: number): ClauseFields {
+    return fillDimweightSection(fillClassSections(fillCargoSection(clauses, lines), lines), divisor);
+}
+
+/** The seller's dimensional-weight divisor, looked up by the order's seller
+ *  address from the checkout's catalogue projections. Undefined when the seller
+ *  declares none — dimweight then does not apply. */
+function divisorFor(seller: `0x${string}`, catalogues: SellerCatalogue[]): number | undefined {
+    return catalogues.find((c) => c.address.toLowerCase() === seller.toLowerCase())?.dimWeightDivisor;
+}
+
 /** Layer A — the buyer does not sign an invalid agreement. */
 function assertValidToSign(preview: OrderPreview, label: string): void {
     const check = validateCommitmentAgreement(preview.agreement, preview.agreementHash);
@@ -209,26 +307,17 @@ export async function executeAssemblyCheckout(
         );
     }
 
-    // The root's clause map: template clauses, the cart's PHYSICAL attributes
-    // collapsed into the cargo entry (found by its declared fields, never by
-    // clause name; mass/volume sum across items × quantity), then the
-    // settlement terms written into the commerce section.
-    let rootClauses: ClauseFields = { ...root.clauses };
-    const cargoClauseId = Object.keys(rootClauses).find(
-        (clauseId) => clauseDeclaresField(clauseId, "massGrams"),
+    // The root's clause map: template clauses, then the derived LOGISTICS
+    // sections (cargo / class leaves / dimweight) filled from the cart — wherever
+    // composed, by declared field, never by clause name — then the settlement
+    // terms. `currency` is the ONE process currency (a single value used for
+    // every order below), never a per-order input: the kernel enforces
+    // single-denomination (FigaroCore CurrencyMismatch), so the agreement must
+    // not even express a second token.
+    const rootClauses = fillCommerceSection(
+        fillDerivedSections({ ...root.clauses }, lineItems, divisorFor(leadSellerAddress, sellerCatalogues)),
+        currency, payment, lineItems,
     );
-    if (cargoClauseId) {
-        const massGrams = lineItems.reduce(
-            (sum, li) => sum + (li.massGrams ?? 0) * li.quantity, 0);
-        const volumeMl = lineItems.reduce(
-            (sum, li) => sum + (li.volumeMl ?? 0) * li.quantity, 0);
-        rootClauses[cargoClauseId] = {
-            ...rootClauses[cargoClauseId],
-            ...(massGrams > 0 ? { massGrams } : {}),
-            ...(volumeMl > 0 ? { volumeMl } : {}),
-        };
-    }
-    rootClauses = fillCommerceSection(rootClauses, currency, payment, lineItems);
 
     const rootDraft: DraftOrder = {
         buyer, seller: leadSellerAddress, currency, payment, clauses: rootClauses,
@@ -314,10 +403,23 @@ export async function executeAssemblyCheckout(
                     name: pricing!.item.name,
                     quantity: pricing!.billedQuantity,
                     unitPrice: pricing!.unitPrice.toString(),
+                    massGrams: pricing!.item.massGrams,
+                    volumeMl: pricing!.item.volumeMl,
+                    lengthMm: pricing!.item.lengthMm,
+                    widthMm: pricing!.item.widthMm,
+                    heightMm: pricing!.item.heightMm,
+                    clauseValues: pricing!.item.clauseValues,
                 }]
                 : undefined;
+        // Same fill-where-composed as the root: this sub-order's own logistics
+        // leaves (cargo / class / dimweight) from its own catalogue item + its
+        // own seller's divisor. A no-op for orders composing none (e.g. a
+        // service leg) → G7 absence.
         const subClauses = fillCommerceSection(
-            writeTopologySection({ ...node.clauses }, parentOrderHashes),
+            writeTopologySection(
+                fillDerivedSections({ ...node.clauses }, subLineItems ?? [], divisorFor(subSeller, sellerCatalogues)),
+                parentOrderHashes,
+            ),
             currency, subPayment, subLineItems,
         );
         const subDraft: DraftOrder = {

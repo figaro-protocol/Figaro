@@ -40,6 +40,7 @@ function profileToCatalogue(
         items: catalogue?.items ?? [],
         acceptedTokens: profile.acceptedTokens,
         defaultTokenAddress: profile.defaultTokenAddress,
+        dimWeightDivisor: profile.dimWeightDivisor,
         agentServices: profile.services,
         unitSystem: catalogue?.unitSystem,
     };

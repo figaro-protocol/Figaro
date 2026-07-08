@@ -36,6 +36,9 @@ export interface SellerCatalogue {
     acceptedTokens?: AcceptedTokenMetadata[];
     /** The token catalogue prices are denominated in (one of `acceptedTokens`). */
     defaultTokenAddress?: `0x${string}`;
+    /** The seller's dimensional-weight divisor (shipping convention), when
+     *  declared — the checkout reads it to derive a parcel's billed weight. */
+    dimWeightDivisor?: number;
     /** ERC-8004-compatible service endpoints (optional, for agent-driven sellers). */
     agentServices?: SellerAgentServices;
     /** Seller's preferred display unit system for mass / volume. Storage
