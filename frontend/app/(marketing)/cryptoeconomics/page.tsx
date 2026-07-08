@@ -168,13 +168,13 @@ export default function Cryptoeconomics() {
 
             <MarketingSection title="Local &amp; international">
                 <p className="text-base text-ink-body leading-relaxed">
-                    Working groups self-organize across jurisdictions: local meetups, international correspondences, async pull requests against <code>frontend/lib/shared/groupsRegistry.ts</code>. Cadence and geography are whatever contributors decide. The taxonomy stays fixed; the activity inside it does not.
+                    Working groups self-organize across jurisdictions: local meetups, international correspondences, async pull requests against <code>frontend/app/(marketing)/_lib/groupsRegistry.ts</code>. Cadence and geography are whatever contributors decide. The taxonomy stays fixed; the activity inside it does not.
                 </p>
             </MarketingSection>
 
             <MarketingSection title="Contributing">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    To declare current work, surface a received grant, publish a contributor handle, or amend a group&apos;s charter, open a pull request against <code>frontend/lib/shared/groupsRegistry.ts</code>. PRs are reviewed at merge time; conversation about scope happens on Telegram before codification.
+                    To declare current work, surface a received grant, publish a contributor handle, or amend a group&apos;s charter, open a pull request against <code>frontend/app/(marketing)/_lib/groupsRegistry.ts</code>. PRs are reviewed at merge time; conversation about scope happens on Telegram before codification.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed">
                     The disciplinary list tracks Voshmgir &amp; Zargham, <em>Foundations of Cryptoeconomic Systems</em>. The composability tiers track the extension doctrine on <Link href="/builders/composability" className="underline">composability</Link>. If either upstream taxonomy converges on a different shape, this page will follow.
