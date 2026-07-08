@@ -2,7 +2,7 @@
     "clauseId": "figaro-cargo",
     "version": 1,
     "title": "Cargo",
-    "description": "Physical shipment measure — the agreed mass and volume of the goods. Elective and NEVER default-on: composed only when an order moves physical goods. Density (mass ÷ volume) informs freight classification and handoff logistics; the declared NMFC class itself lives in the elective figaro-freight-class clause.",
+    "description": "Physical shipment measure — the LOGISTIC-UNIT description of the goods as shipped (the package/shipment level, distinct from the per-item TRADE-ITEM measures a seller authors on its catalogue): gross/net mass, volume, packaged dimensions, and the kind / number / marks of the packages. Elective and NEVER default-on: composed only when an order moves physical goods. Density (mass ÷ volume) informs freight classification (declared NMFC class lives in figaro-freight-class); the packaged dimensions drive dimensional (billed) weight (figaro-dimweight).",
     "fields": [
         {
             "name": "massGrams",
@@ -11,7 +11,15 @@
             "min": 1,
             "max": 4294967295,
             "default": 1,
-            "description": "Shipment mass in whole grams. Must be at least 1 g; capped at uint32 max (≈4.29 million kg)."
+            "description": "Shipment GROSS mass in whole grams (contents + packaging — the physical weight carriers bill against). Must be at least 1 g; capped at uint32 max (≈4.29 million kg)."
+        },
+        {
+            "name": "netMassGrams",
+            "type": "integer",
+            "required": false,
+            "min": 1,
+            "max": 4294967295,
+            "description": "NET mass in whole grams (contents only, excluding packaging). Optional — declared when gross and net differ materially (customs / duty). GDSN net weight."
         },
         {
             "name": "volumeMl",
@@ -20,7 +28,55 @@
             "min": 1,
             "max": 4294967295,
             "default": 1,
-            "description": "Shipment volume in whole millilitres. Must be at least 1 ml; capped at uint32 max (≈4.29 million L)."
+            "description": "Shipment volume in whole millilitres. Must be at least 1 ml; capped at uint32 max (≈4.29 million L). Derivable from the packaged dimensions below when those are present."
+        },
+        {
+            "name": "lengthMm",
+            "type": "integer",
+            "required": false,
+            "min": 1,
+            "max": 4294967295,
+            "description": "Packaged LENGTH in whole millimetres — the logistic-unit dimension (the shipped package, not the trade item). Optional; drives dimensional weight and oversize/girth rules, which read each dimension separately (a single volume cannot reproduce per-dimension rounding or longest-side surcharges)."
+        },
+        {
+            "name": "widthMm",
+            "type": "integer",
+            "required": false,
+            "min": 1,
+            "max": 4294967295,
+            "description": "Packaged WIDTH in whole millimetres. See lengthMm."
+        },
+        {
+            "name": "heightMm",
+            "type": "integer",
+            "required": false,
+            "min": 1,
+            "max": 4294967295,
+            "description": "Packaged HEIGHT in whole millimetres. See lengthMm."
+        },
+        {
+            "name": "packagingType",
+            "type": "string",
+            "required": false,
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Kind of package — e.g. carton / pallet / crate / drum / bag. Free text referencing the UN/CEFACT Recommendation 21 package-type codes; the external standard is the source of truth. GDSN packaging type."
+        },
+        {
+            "name": "packageCount",
+            "type": "integer",
+            "required": false,
+            "min": 1,
+            "max": 4294967295,
+            "description": "Number of packages in the shipment (e.g. 10 cartons). The 'number and kind of packages' a bill of lading enumerates, paired with packagingType."
+        },
+        {
+            "name": "marks",
+            "type": "string",
+            "required": false,
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "Shipping marks & numbers — the identifiers and handling marks on the package(s) (consignee marks, order references, handling symbols). Free text; the 'Marks & Numbers' column on a bill of lading / packing list."
         }
     ],
     "block": {
