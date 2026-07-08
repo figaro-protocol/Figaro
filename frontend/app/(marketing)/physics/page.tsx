@@ -78,7 +78,7 @@ export default function Physics() {
                         </li>
                     </ul>
                     <p>
-                        Anything already on-chain composes too &mdash; a token, an item held in a wallet, another contract that prices or matches or settles. The core never had to be taught about any of it: if a wallet holds it, an assembly can compose it. The core exposes one honest boundary, and the world composes against it. That openness isn&apos;t a list of features Figaro ships &mdash; it is what having a boundary instead of a platform means.
+                        Anything already on-chain composes too &mdash; a token, an item held in a wallet, another contract that prices or matches or settles. The core never had to be taught about any of it: if a wallet holds it, an assembly can compose it. The core exposes one honest boundary, and the world composes against it. That openness was never something Figaro had to build &mdash; it is what having a boundary instead of a platform means.
                     </p>
                 </div>
             </MarketingSection>
@@ -107,13 +107,13 @@ export default function Physics() {
             <MarketingSection title="Who gets to act.">
                 <div className="space-y-4 text-base text-ink-body leading-relaxed max-w-prose">
                     <p>
-                        Start with who <em>governs</em> &mdash; and the answer is no one. The rules are math; no party sets them, and no party can quietly change them. That settles a different question than who is allowed to <em>act</em>, and the answer there is the surprising one: anyone, or anything. The core can&apos;t tell a person from a program. The one thing it reads is a signature, and a signature carries no clue to what made it. So a piece of software can be a full participant in a deal: it can take a role, lock a bond, deliver, and settle, on exactly the terms a human does.
+                        Start with who <em>governs</em> &mdash; and the answer is no one. The rules are math; no party sets them, and no party can quietly change them. That settles a different question than who is allowed to <em>act</em>, and the answer there is the surprising one: anyone, or anything. The core can&apos;t tell a person from a program. The one thing it reads is a signature, and a signature carries no clue to what made it. So a piece of software can be a full participant in a deal: it can take a role, lock a bond, deliver, and settle, on exactly the terms a human does &mdash; and it can open the deal in the first place, standing as the buyer that starts a whole chain of work with no person in it.
                     </p>
                     <p>
                         On the internet we have, an automated actor has to be let in. A platform grants it a key to an interface. An authority issues it an identity. A custodian agrees to hold its money. Every one of those is a permission, handed down by someone in the middle &mdash; and a permission can always be withdrawn.
                     </p>
                     <p>
-                        Here there is no one to ask. An agent needs only a wallet to sign with, a bond to put at stake, and the public record to read &mdash; and all three it can get for itself. Nothing is granted to it; nothing can be revoked from it. The same boundary that lets two strangers deal without a middleman is what lets software deal without a keeper. This isn&apos;t a feature added for agents. It is the same boundary the whole protocol rests on &mdash; and agents are simply the first actors who could never have existed without it. There is more on how they{" "}
+                        Here there is no one to ask. An agent needs only a wallet to sign with, a bond to put at stake, and the public record to read &mdash; and all three it can get for itself. Nothing is granted to it; nothing can be revoked from it. The same boundary that lets two strangers deal without a middleman is what lets software deal without a keeper. None of this was built for agents. It is the same boundary the whole protocol rests on &mdash; and agents are the first actors who could never have existed without it. There is more on how they{" "}
                         <Link href="/agents" className="text-ink-heading font-medium hover:underline">
                             participate
                         </Link>
