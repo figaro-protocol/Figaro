@@ -28,7 +28,7 @@ export type ClauseSpecWithBlock = ClauseSpec & { block?: ClauseBlockBinding };
 
 /** Internal composite cache key — a clause's identity is (clauseId, version),
  *  matching the on-chain key keccak256(abi.encode(clauseId, version)). Names
- *  stay bare; version is the evolution axis. Never serialized or rendered. */
+ *  stay bare; `version` is a static field in the id. Never serialized or rendered. */
 const specKey = (clauseId: string, version: number): string => `${clauseId}#${version}`;
 
 const SPEC_CACHE = new Map<string, ClauseSpecWithBlock>();
@@ -217,6 +217,25 @@ export function clauseNestsUnder(clauseId: string, version?: number): string | n
  *  participates — including one this codebase has never seen. */
 export function clauseIsStructural(clauseId: string, version?: number): boolean {
     return getClauseSpec(clauseId, version)?.block?.article === "structural";
+}
+
+/** True if a clause is CATALOGUE-SOURCED — its content values are authored
+ *  per-item on the seller's catalogue (product master data: freight class,
+ *  hazmat, cold-chain), classified by its own `block.catalogueSourced` marker.
+ *  Generic surfaces render a spec-driven authoring section per such clause on
+ *  the catalogue item and fold the stored values onto the matching leaf at
+ *  checkout. ANY registered clause declaring the marker participates —
+ *  including one this codebase has never seen. */
+export function clauseIsCatalogueSourced(clauseId: string, version?: number): boolean {
+    return getClauseSpec(clauseId, version)?.block?.catalogueSourced === true;
+}
+
+/** Every loaded catalogue-sourced clause identity — the set a catalogue item's
+ *  authoring section iterates. Derived from the live registry cache, never a
+ *  bundled list; a newly registered product-property clause appears here with
+ *  zero code change. */
+export function listCatalogueSourcedClauses(): readonly { clauseId: string; version: number }[] {
+    return listKnownClauses().filter((c) => clauseIsCatalogueSourced(c.clauseId, c.version));
 }
 
 /** The deep-link to a composed provider's OWN web UI, read from the clause's

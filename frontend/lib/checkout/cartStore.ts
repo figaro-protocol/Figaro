@@ -22,6 +22,10 @@ interface CartItem {
     lengthMm?: number;
     widthMm?: number;
     heightMm?: number;
+    /** Catalogue-sourced clause values (freight class, hazmat, cold-chain, …),
+     *  copied from the catalogue item — the checkout fold lands them on the
+     *  matching clause leaves. Keyed by clauseId → field values. */
+    clauseValues?: Record<string, Record<string, unknown>>;
 }
 
 interface CartStore {

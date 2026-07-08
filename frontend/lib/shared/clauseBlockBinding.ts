@@ -72,6 +72,14 @@ export interface ClauseBlockBinding {
     interaction?: {
         interface: string;
     };
+    /** Catalogue-sourced — this clause's content values are authored per-item on
+     *  the seller's CATALOGUE (product master data: freight class, hazmat,
+     *  cold-chain), not composed at design time. Generic surfaces read this to
+     *  render a spec-driven authoring section on the catalogue item and to fold
+     *  the stored values onto the matching leaf at checkout. ANY registered
+     *  clause opts in by declaring it — including one this codebase has never
+     *  seen. Omit (falsy) for clauses whose values come from composition/topology. */
+    catalogueSourced?: boolean;
     /** Runtime inputs — the fields a party supplies at RUNTIME, distinct
      *  from the clause's content `fields` (which are committed into the agreement
      *  at signing). Rendered by ONE generic form; the surface reads no interface
@@ -132,6 +140,10 @@ export function parseBlockBinding(
             ...(raw.composes.forumUrl !== undefined && { forumUrl: raw.composes.forumUrl as string }),
         };
     }
+    if (raw.catalogueSourced !== undefined && typeof raw.catalogueSourced !== "boolean") {
+        errors.push({ path: `${path}.catalogueSourced`, message: "catalogueSourced must be a boolean when present" });
+        return null;
+    }
     let interaction: ClauseBlockBinding["interaction"];
     if (raw.interaction !== undefined) {
         if (!isObject(raw.interaction)) {
@@ -163,6 +175,7 @@ export function parseBlockBinding(
     return {
         article: raw.article as ClauseArticle,
         ...(raw.nestsUnder !== undefined && { nestsUnder: raw.nestsUnder as string }),
+        ...(raw.catalogueSourced !== undefined && { catalogueSourced: raw.catalogueSourced as boolean }),
         ...(composes !== undefined && { composes }),
         ...(interaction !== undefined && { interaction }),
         ...(fields !== undefined && { fields }),

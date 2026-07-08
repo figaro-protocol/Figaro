@@ -56,10 +56,34 @@ function parseItem(value: unknown, path: string): CatalogueItemMetadata {
         available: asBoolean(record.available, `${path}.available`),
         massGrams: asOptionalNumber(record.massGrams, `${path}.massGrams`),
         volumeMl: asOptionalNumber(record.volumeMl, `${path}.volumeMl`),
+        lengthMm: asOptionalNumber(record.lengthMm, `${path}.lengthMm`),
+        widthMm: asOptionalNumber(record.widthMm, `${path}.widthMm`),
+        heightMm: asOptionalNumber(record.heightMm, `${path}.heightMm`),
         pricingPolicy: parseOptionalPricingPolicy(record.pricingPolicy, `${path}.pricingPolicy`),
         rateUnit: asOptionalString(record.rateUnit, `${path}.rateUnit`),
         rateQuantitySource: asOptionalString(record.rateQuantitySource, `${path}.rateQuantitySource`),
+        clauseValues: parseClauseValues(record.clauseValues, `${path}.clauseValues`),
     };
+}
+
+/**
+ * Parse the catalogue-sourced clause-value map — a `Record<clauseId, Record<field, unknown>>`.
+ * Structural only: the outer shape is a record of records; the inner field
+ * values are validated against each clause's registered spec (Layer A) at
+ * authoring / read time, not here (this parser has no spec cache). Field
+ * values pass through as `unknown`.
+ */
+function parseClauseValues(
+    value: unknown,
+    path: string,
+): CatalogueItemMetadata["clauseValues"] {
+    if (value === undefined) return undefined;
+    const record = asRecord(value, path);
+    const out: Record<string, Record<string, unknown>> = {};
+    for (const [clauseId, data] of Object.entries(record)) {
+        out[clauseId] = asRecord(data, `${path}.${clauseId}`);
+    }
+    return out;
 }
 
 function parseItems(value: unknown, path: string): CatalogueItemMetadata[] {

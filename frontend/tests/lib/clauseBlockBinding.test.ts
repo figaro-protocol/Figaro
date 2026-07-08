@@ -40,6 +40,22 @@ describe("parseBlockBinding — clause block-binding (frontend presentation slic
         expect(block?.article).toBe("coordination");
     });
 
+    it("preserves catalogueSourced (the product-property marker)", () => {
+        const { block } = parse({ article: "logistics", catalogueSourced: true });
+        expect(block?.catalogueSourced).toBe(true);
+    });
+
+    it("omits catalogueSourced when absent (not coerced to false)", () => {
+        const { block } = parse({ article: "logistics" });
+        expect(block?.catalogueSourced).toBeUndefined();
+    });
+
+    it("rejects a non-boolean catalogueSourced", () => {
+        const { block, errors } = parse({ article: "logistics", catalogueSourced: "yes" });
+        expect(block).toBeNull();
+        expect(errors.some((e) => e.path === "$.block.catalogueSourced")).toBe(true);
+    });
+
     // The drawer's cross-clause nesting (e.g. a proximity policy under the hand-off
     // clause's `handoff` field) is read from block.nestsUnder — it MUST round-trip.
     it("preserves nestsUnder", () => {

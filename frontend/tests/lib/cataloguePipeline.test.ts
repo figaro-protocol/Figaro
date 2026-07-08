@@ -6,6 +6,7 @@ import {
 } from "@/lib/seller/catalogueFetcher";
 import { publishSellerCatalogue } from "@/lib/seller/cataloguePublisher";
 import { createCatalogueService } from "@/lib/seller/catalogueService";
+import { parseSellerCatalogueDocument } from "@/lib/seller/sellerCatalogueMetadataParser";
 import type { SellerCatalogueMetadata } from "@/lib/seller/sellerCatalogueMetadata";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -225,5 +226,33 @@ describe("SellerCatalogueMetadata shape", () => {
         expect(item.price).toBeDefined();
         expect(item.category).toBeDefined();
         expect(typeof item.available).toBe("boolean");
+    });
+});
+
+describe("catalogue parser — physical dims + clauseValues survive the round-trip", () => {
+    const subjectAddress = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
+
+    it("carries lengthMm/widthMm/heightMm through a parse (P1 dimensions floor)", () => {
+        const parsed = parseSellerCatalogueDocument({
+            subjectAddress,
+            version: "1",
+            items: [{
+                id: "i1", name: "Box", price: "1", available: true,
+                massGrams: 500, volumeMl: 1000, lengthMm: 300, widthMm: 200, heightMm: 150,
+            }],
+        });
+        expect(parsed.items[0]).toMatchObject({ lengthMm: 300, widthMm: 200, heightMm: 150 });
+    });
+
+    it("carries the catalogue-sourced clauseValues map through a parse", () => {
+        const clauseValues = {
+            "figaro-hazmat": { unNumber: "UN1203", properShippingName: "Petrol", hazardClass: "3" },
+        };
+        const parsed = parseSellerCatalogueDocument({
+            subjectAddress,
+            version: "1",
+            items: [{ id: "i1", name: "Drum", price: "1", available: true, clauseValues }],
+        });
+        expect(parsed.items[0].clauseValues).toEqual(clauseValues);
     });
 });

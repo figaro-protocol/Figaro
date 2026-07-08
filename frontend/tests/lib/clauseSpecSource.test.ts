@@ -7,6 +7,8 @@ import {
     loadClauseSpec,
     setClauseSpecFetcher,
     clauseIsProcessLog,
+    clauseIsCatalogueSourced,
+    listCatalogueSourcedClauses,
     clauseLadderField,
     labelEnumValue,
     _resetClauseSpecCache_TESTING_ONLY,
@@ -32,6 +34,29 @@ describe("clauseSpecSource — chain-only cache", () => {
     it("returns undefined for an unknown clauseId without throwing", () => {
         expect(getClauseSpec("does-not-exist-v1")).toBeUndefined();
         expect(getClauseSpecLoadError("does-not-exist-v1")).toBeUndefined();
+    });
+});
+
+describe("clauseSpecSource — catalogue-sourced clauses (derive, not hardcode)", () => {
+    it("reads block.catalogueSourced; the set is derived from the registry", async () => {
+        await primeClauseSpecs();
+        // The three product-property clauses declare the marker.
+        expect(clauseIsCatalogueSourced("figaro-freight-class")).toBe(true);
+        expect(clauseIsCatalogueSourced("figaro-hazmat")).toBe(true);
+        expect(clauseIsCatalogueSourced("figaro-cold-chain")).toBe(true);
+        // A commerce / coordination clause does not.
+        expect(clauseIsCatalogueSourced("figaro-commerce")).toBe(false);
+        expect(clauseIsCatalogueSourced("figaro-geolocation")).toBe(false);
+        expect(listCatalogueSourcedClauses().map((c) => c.clauseId).sort()).toEqual([
+            "figaro-cold-chain",
+            "figaro-freight-class",
+            "figaro-hazmat",
+        ]);
+    });
+
+    it("an unloaded clause is not catalogue-sourced; the empty cache derives an empty set", () => {
+        expect(clauseIsCatalogueSourced("figaro-never-seen")).toBe(false);
+        expect(listCatalogueSourcedClauses()).toEqual([]);
     });
 });
 

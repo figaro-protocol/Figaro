@@ -57,6 +57,7 @@
         }
     ],
     "block": {
-        "article": "logistics"
+        "article": "logistics",
+        "catalogueSourced": true
     }
 }

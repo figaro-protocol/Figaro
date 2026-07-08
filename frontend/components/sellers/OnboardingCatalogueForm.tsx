@@ -29,6 +29,10 @@ import {
     volumeUnitLabel,
 } from "@/lib/seller/unitConversion";
 import { hexEqual } from "@/lib/shared/evm";
+import { FieldControl } from "@/components/core/FieldControl";
+import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { getClauseSpec, listCatalogueSourcedClauses } from "@/lib/shared/clauseSpecSource";
+import { validateCatalogueClauseValues } from "@/lib/seller/catalogueClauseValues";
 
 /**
  * Step 3 of the onboarding wizard. Collects the catalogue items —
@@ -65,6 +69,10 @@ interface FormItem {
     length: string;
     width: string;
     height: string;
+    /** Catalogue-sourced clause values (freight class, hazmat, cold-chain, …),
+     *  keyed by clauseId → field values. Authored via spec-driven controls;
+     *  empty entries stripped at save. */
+    clauseValues: Record<string, Record<string, unknown>>;
     /** "fixed" (price = the item's price) or "rate" (price = a rate per
      *  `rateUnit`; payment resolves at checkout via `rateQuantitySource`). */
     pricingPolicy: "fixed" | "rate";
@@ -90,6 +98,7 @@ function emptyItem(): FormItem {
         length: "",
         width: "",
         height: "",
+        clauseValues: {},
         pricingPolicy: "fixed",
         rateUnit: "",
         rateQuantitySource: "checkout-quantity",
@@ -110,13 +119,30 @@ function fromItem(item: CatalogueItemMetadata, unitSystem: UnitSystem): FormItem
         length: mmToInput(item.lengthMm, unitSystem),
         width: mmToInput(item.widthMm, unitSystem),
         height: mmToInput(item.heightMm, unitSystem),
+        clauseValues: item.clauseValues ?? {},
         pricingPolicy: item.pricingPolicy ?? "fixed",
         rateUnit: item.rateUnit ?? "",
         rateQuantitySource: item.rateQuantitySource ?? "checkout-quantity",
     };
 }
 
+/** Strip empty field-values and empty clauses; return undefined when nothing
+ *  is authored (so the item omits the key rather than storing `{}`). */
+function clauseValuesForSave(
+    values: Record<string, Record<string, unknown>>,
+): Record<string, Record<string, unknown>> | undefined {
+    const out: Record<string, Record<string, unknown>> = {};
+    for (const [clauseId, data] of Object.entries(values)) {
+        const kept = Object.fromEntries(
+            Object.entries(data).filter(([, v]) => v !== undefined && v !== "" && !(Array.isArray(v) && v.length === 0)),
+        );
+        if (Object.keys(kept).length) out[clauseId] = kept;
+    }
+    return Object.keys(out).length ? out : undefined;
+}
+
 function toItem(form: FormItem, unitSystem: UnitSystem): CatalogueItemMetadata {
+    const clauseValues = clauseValuesForSave(form.clauseValues);
     return {
         id: form.id,
         name: form.name.trim(),
@@ -130,6 +156,7 @@ function toItem(form: FormItem, unitSystem: UnitSystem): CatalogueItemMetadata {
         lengthMm: parseInputToMm(form.length, unitSystem),
         widthMm: parseInputToMm(form.width, unitSystem),
         heightMm: parseInputToMm(form.height, unitSystem),
+        ...(clauseValues && { clauseValues }),
         ...(form.pricingPolicy === "rate"
             ? {
                 pricingPolicy: "rate" as const,
@@ -186,6 +213,16 @@ export function OnboardingCatalogueForm({
     const [hydrated, setHydrated] = useState(false);
     const [importErrors, setImportErrors] = useState<string[]>([]);
     const [importedCount, setImportedCount] = useState<number | null>(null);
+
+    // Catalogue-sourced clauses (freight class, hazmat, cold-chain, …) — derived
+    // live from the registry, never a bundled list. A newly registered
+    // product-property clause surfaces an authoring section with zero change here.
+    const { version: clauseSpecsVersion } = useClauseSpecs();
+    const catalogueClauses = useMemo(
+        () => listCatalogueSourcedClauses(),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [clauseSpecsVersion],
+    );
 
     // Hydrate once the wallet-keyed state has actually been read from
     // localStorage (`loaded === true`). Gating on `state.catalogue`
@@ -268,11 +305,19 @@ export function OnboardingCatalogueForm({
             setSubmitError("Add at least one item with a name and a price.");
             return;
         }
+        const savedItems = completeItems.map((it) => toItem(it, unitSystem));
+        // Layer-A gate: catalogue-sourced clause values must conform to each
+        // clause's registered spec before publish (reuses the sign/attest validator).
+        const clauseErrors = savedItems.flatMap(validateCatalogueClauseValues);
+        if (clauseErrors.length > 0) {
+            setSubmitError(`Fix the logistics classifications — ${clauseErrors.join("; ")}`);
+            return;
+        }
         setSubmitError(null);
         if (onSave) {
             // Edit mode: caller pins the catalogue + chases with
             // updateProfile. The wizard navigation is suppressed.
-            onSave(completeItems.map((it) => toItem(it, unitSystem)), unitSystem).catch(() => {
+            onSave(savedItems, unitSystem).catch(() => {
                 // The caller surfaces failures via `externalError`.
             });
             return;
@@ -362,6 +407,7 @@ export function OnboardingCatalogueForm({
                         index={index}
                         priceSymbol={defaultTokenSymbol}
                         unitSystem={unitSystem}
+                        catalogueClauses={catalogueClauses}
                         onChange={(key, value) => setItemField(index, key, value)}
                         onRemove={items.length > 1 || isItemComplete(item) ? () => removeItem(index) : undefined}
                     />
@@ -434,11 +480,14 @@ interface ItemRowProps {
     index: number;
     priceSymbol: string;
     unitSystem: UnitSystem;
+    /** Catalogue-sourced clauses to author on this item (freight class, hazmat,
+     *  cold-chain, …), derived live from the registry by the parent. */
+    catalogueClauses: readonly { clauseId: string; version: number }[];
     onChange: <K extends keyof FormItem>(key: K, value: FormItem[K]) => void;
     onRemove?: () => void;
 }
 
-function ItemRow({ item, index, priceSymbol, unitSystem, onChange, onRemove }: ItemRowProps) {
+function ItemRow({ item, index, priceSymbol, unitSystem, catalogueClauses, onChange, onRemove }: ItemRowProps) {
     const idPrefix = `item-${item.id}`;
     return (
         <Card className="p-5 space-y-4">
@@ -595,6 +644,46 @@ function ItemRow({ item, index, priceSymbol, unitSystem, onChange, onRemove }: I
                     </FormField>
                 ))}
             </div>
+
+            {/* Catalogue-sourced clause values (freight class / hazmat / cold-chain
+                / any registered product-property clause) — one spec-driven group
+                per clause, rendered from the registry, never hardcoded. Optional:
+                a shippable/regulated item authors them; everything else leaves
+                them blank. */}
+            {catalogueClauses.length > 0 && (
+                <div className="space-y-4 border-t border-neutral-200 pt-3" data-testid={`${idPrefix}-clauses`}>
+                    <p className="text-xs text-ink-muted">Logistics classifications (optional — for shippable / regulated goods)</p>
+                    {catalogueClauses.map(({ clauseId }) => {
+                        const spec = getClauseSpec(clauseId);
+                        if (!spec) return null;
+                        const data = item.clauseValues[clauseId] ?? {};
+                        const setField = (fieldName: string, next: unknown) => {
+                            const nextData = { ...data };
+                            if (next === undefined) delete nextData[fieldName];
+                            else nextData[fieldName] = next;
+                            const nextMap = { ...item.clauseValues };
+                            if (Object.keys(nextData).length) nextMap[clauseId] = nextData;
+                            else delete nextMap[clauseId];
+                            onChange("clauseValues", nextMap);
+                        };
+                        return (
+                            <div key={clauseId} className="space-y-2" data-testid={`${idPrefix}-clause-${clauseId}`}>
+                                <p className="text-xs font-medium text-ink-body">{spec.title}</p>
+                                {spec.fields.map((field) => (
+                                    <FieldControl
+                                        key={field.name}
+                                        field={field}
+                                        value={data[field.name]}
+                                        mode="runtime"
+                                        testId={`${idPrefix}-clause-${clauseId}-${field.name}`}
+                                        onChange={(next) => setField(field.name, next)}
+                                    />
+                                ))}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
 
             <label className="flex items-center gap-2 text-sm text-ink-body cursor-pointer">
                 <input

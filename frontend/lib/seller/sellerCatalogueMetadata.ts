@@ -64,6 +64,18 @@ export interface CatalogueItemMetadata {
      * geolocation endpoints). New sources register without touching checkout.
      */
     rateQuantitySource?: string;
+    /**
+     * Catalogue-sourced clause values — product master data authored per item
+     * for clauses that declare `block.catalogueSourced` (freight class, hazmat,
+     * cold-chain, …). Keyed by clauseId → the clause's content field values
+     * (the same `{clause, data}` shape as an agreement section's `data`).
+     * Generic and open-world: no clause is named here; the authoring form and
+     * the checkout fold both derive from the registered clause specs, so a new
+     * product-property clause participates with zero change to this type.
+     * Absent for non-physical / unannotated items. Validated against each
+     * clause's registered spec (Layer A) before publish.
+     */
+    clauseValues?: Record<string, Record<string, unknown>>;
 }
 
 
