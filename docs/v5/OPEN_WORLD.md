@@ -30,8 +30,8 @@ prohibition-only frame leaves a vacuum the base model fills with its default.
    are an UNBOUNDED set defined by the network — read from ClauseRegistry /
    SellerRegistry / AssemblyRegistry via the indexer, fetched chain→IPFS; code
    operates on the spec it fetched, never on identity. *Test:* would this still hold
-   if a never-seen clause dropped into the registry now? *Tell:* "the 17 clauses", a
-   fixed list treated as the world.
+   if a never-seen clause dropped into the registry now? *Tell:* naming a fixed clause
+   count ("the 17 clauses"), a fixed list treated as the world.
 
 3. **It's protocol infrastructure; the frontend is a SURFACE.** The TCP/IP of trade;
    surfaces compose the `lib/` catalogues and render indexer state; lifecycle =
