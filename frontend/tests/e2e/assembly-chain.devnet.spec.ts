@@ -416,23 +416,26 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         expect(supplierF - supplier0, 'supplier net earned exactly its payment').toBe(parseEther('1'));
         expect(coreF, 'FigaroCore escrow returned to its baseline').toBe(core0);
 
-        // ── AUDIT: the package renders the FULL process — financials, a line
-        //    item for ALL THREE orders, the cash-flow log, and the evidence
-        //    documents (the committed clause leaves of the chain). ──
+        // ── AUDIT: the package renders the FULL process — a financial statement
+        //    per seller (all THREE), the consolidation, the cash-flow log, and the
+        //    evidence documents (the committed clause leaves of the chain). ──
         await page.goto(`/audit/${processId}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
         await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         await expect(page.getByTestId('financials-view'), 'the audit renders the process financials')
             .toBeVisible({ timeout: 30000 });
-        for (const [event, label] of [[rootEvent, 'root'], [courierEvent, 'courier'], [supplierEvent, 'supplier']] as const) {
-            await expect(
-                page.getByTestId(`line-item-${event.args.orderHash}`),
-                `the ${label} order surfaces as its own line item`,
-            ).toBeVisible({ timeout: 30000 });
-        }
-        await expect(page.locator('[data-testid^="line-item-"]'), 'exactly one line item per order').toHaveCount(3);
-        await expect(page.getByTestId('financials-cashflow'), 'the on-chain events surface in the cash-flow log')
-            .toBeVisible({ timeout: 30000 });
+        await expect(
+            page.locator('[data-testid="document-financial-statements-seller"]'),
+            'one financial-statements document per seller (lead, courier, supplier)',
+        ).toHaveCount(3, { timeout: 30000 });
+        await expect(
+            page.getByTestId('document-financial-statements-process'),
+            'the consolidated statement renders',
+        ).toBeVisible({ timeout: 30000 });
+        await expect(
+            page.locator('[data-testid="document-lines-financial-statements-process"] tbody tr').first(),
+            'the on-chain events surface in the cash-flow log',
+        ).toBeVisible({ timeout: 30000 });
 
         // Evidence documents: the chain's committed clause leaves surface by
         // their registered spec titles — the structural leaves, the coordination

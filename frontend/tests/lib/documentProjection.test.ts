@@ -110,3 +110,44 @@ describe("projectDocuments — generic engine over declared templates", () => {
         expect(docs[0].lines!.rows).toEqual([["Widget ×2"]]);
     });
 });
+
+// ── Financial statements as documents ──────────────────────────────────────────
+
+import { projectFinancialStatements, projectAllFinancialStatements } from "@/lib/audit/documentProjection";
+import { calculateBonds } from "@figaro/core";
+
+const withBonds = (o: Partial<Order> & Pick<Order, "id" | "seller">): Order => {
+    const base = mkOrder({ payment: 100n, cumulativeValue: 100n, ...o });
+    const { buyerBond, sellerBond } = calculateBonds(base.cumulativeValue, base.payment);
+    return { ...base, buyerBond, sellerBond };
+};
+
+describe("projectFinancialStatements — the 3 statements AS a document (no duplicate invoice)", () => {
+    it("emits balance sheet + income statement sections and a cash-flow table; identity holds", () => {
+        const doc = projectFinancialStatements(
+            [withBonds({ id: "0xA", seller: "0xS", payment: 100n, cumulativeValue: 100n })],
+            "process", "0xPROC",
+        );
+        const c = "0xtoken";
+        const bs = doc.leafSections!.find((s) => s.label === `Balance sheet · ${c}`)!;
+        const val = (k: string) => BigInt(bs.entries.find((e) => e.key.startsWith(k))!.value);
+        // assets (custody) = liabilities (refunds) + retained earnings
+        expect(val("Buyer custody") + val("Seller custody"))
+            .toBe(val("Refund owed to buyer") + val("Refund owed to seller") + val("Retained earnings"));
+        // cash flow: 2 commit events for one active order
+        expect(doc.lines!.rows).toHaveLength(2);
+        expect(doc.lines!.columns).toEqual(["kind", "order", "party", "amount"]);
+        // NO invoice/line-item concept in the financial statements
+        expect((doc as unknown as { lineItems?: unknown }).lineItems).toBeUndefined();
+    });
+
+    it("projectAllFinancialStatements: one per seller + one consolidated", () => {
+        const orders = [
+            withBonds({ id: "0xA", seller: "0xS1", payment: 100n, cumulativeValue: 100n }),
+            withBonds({ id: "0xB", seller: "0xS2", payment: 40n, cumulativeValue: 140n }),
+        ];
+        const docs = projectAllFinancialStatements(orders, "0xPROC");
+        expect(docs.filter((d) => d.genre === "financial-statements-seller")).toHaveLength(2);
+        expect(docs.filter((d) => d.genre === "financial-statements-process")).toHaveLength(1);
+    });
+});

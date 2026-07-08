@@ -15,10 +15,12 @@
  * touching this engine — the engine only knows templates + committed data.
  */
 
+import { calculateSettlement } from "@figaro/core";
 import type { Agreement } from "@figaro/core";
 import type { Order } from "@/lib/kernel/store";
 import { OrderState } from "@/lib/kernel/store";
 import { clauseDeclaresField, clauseIsProcessLog } from "@/lib/shared/clauseSpecSource";
+import { ZERO_ADDRESS } from "@/lib/shared/evm";
 
 // ── Template DSL (declared data) ───────────────────────────────────────────────
 
@@ -184,4 +186,104 @@ export function projectDocuments(
         }
     }
     return out;
+}
+
+// ── Financial statements as DOCUMENTS ──────────────────────────────────────────
+// The balance sheet, income statement, and cash flow — derived purely from commit
+// + resolve — are documents too, so they emit the SAME RenderedDocument shape the
+// invoice/BoL use and the ONE generic renderer draws them. This replaces the
+// deleted financialsProjection.ts, whose per-order "invoice-style" line items were
+// a duplicate of the invoice document and are gone. Per-currency throughout
+// (multi-currency arithmetic is unsafe). The kernel math is never re-implemented:
+// bonds are READ from the order, settlement from the SDK's calculateSettlement.
+
+interface CurrencyAgg {
+    buyerCustody: bigint; sellerCustody: bigint;
+    refundOwedToBuyer: bigint; refundOwedToSeller: bigint; retainedEarnings: bigint;
+    sales: bigint; cost: bigint;
+}
+
+/**
+ * The balance sheet + income statement + cash flow for a set of orders, as ONE
+ * "Financial statements" document (RenderedDocument). Pure. `scope` = "seller"
+ * for one seller's individual statement, "process" for the assembly consolidation.
+ * @public
+ */
+export function projectFinancialStatements(
+    orders: readonly Order[],
+    scope: "seller" | "process",
+    scopeId: string,
+): RenderedDocument {
+    const byCurrency = new Map<string, CurrencyAgg>();
+    const cashFlow: string[][] = [];
+    const agg = (c: string): CurrencyAgg => {
+        let a = byCurrency.get(c);
+        if (!a) {
+            a = { buyerCustody: 0n, sellerCustody: 0n, refundOwedToBuyer: 0n, refundOwedToSeller: 0n, retainedEarnings: 0n, sales: 0n, cost: 0n };
+            byCurrency.set(c, a);
+        }
+        return a;
+    };
+    for (const o of orders) {
+        const c = (o.currency ?? ZERO_ADDRESS).toLowerCase();
+        const a = agg(c);
+        const active = o.state === OrderState.Active;
+        if (active) {
+            a.buyerCustody += o.buyerBond;         // 2P
+            a.sellerCustody += o.sellerBond;       // 2G
+            a.refundOwedToBuyer += o.payment;      // P
+            a.refundOwedToSeller += o.sellerBond;  // 2G
+            a.retainedEarnings += o.payment;       // P
+        }
+        a.sales += o.payment;                      // recognized at commit
+        if (!active) a.cost += o.payment;          // recognized at resolve
+        cashFlow.push(["commit-buyer-deposit", o.id, o.buyer, o.buyerBond.toString()]);
+        cashFlow.push(["commit-seller-deposit", o.id, o.seller, o.sellerBond.toString()]);
+        if (o.state === OrderState.Resolved) {
+            const s = calculateSettlement(o.payment, o.sellerBond, o.buyerBond);
+            cashFlow.push(["resolve-buyer-refund", o.id, o.buyer, s.buyerPayout.toString()]);
+            cashFlow.push(["resolve-seller-payout", o.id, o.seller, s.sellerPayout.toString()]);
+        }
+    }
+    const leafSections: { label: string; entries: { key: string; value: string }[] }[] = [];
+    for (const [c, a] of byCurrency) {
+        leafSections.push({ label: `Balance sheet · ${c}`, entries: [
+            { key: "Buyer custody (Σ2P)", value: a.buyerCustody.toString() },
+            { key: "Seller custody (Σ2G)", value: a.sellerCustody.toString() },
+            { key: "Refund owed to buyer (ΣP)", value: a.refundOwedToBuyer.toString() },
+            { key: "Refund owed to seller (Σ2G)", value: a.refundOwedToSeller.toString() },
+            { key: "Retained earnings (ΣP)", value: a.retainedEarnings.toString() },
+        ] });
+        leafSections.push({ label: `Income statement · ${c}`, entries: [
+            { key: "Sales (ΣP)", value: a.sales.toString() },
+            { key: "Cost (ΣP resolved)", value: a.cost.toString() },
+            { key: "Net income", value: (a.sales - a.cost).toString() },
+        ] });
+    }
+    return {
+        genre: `financial-statements-${scope}`,
+        title: scope === "seller" ? "Financial statements · individual" : "Financial statements · consolidated",
+        header: [
+            { label: "Scope", value: scope === "seller" ? "seller" : "process (consolidated)" },
+            { label: scope === "seller" ? "Seller" : "Process", value: scopeId },
+        ],
+        ...(cashFlow.length > 0 && { lines: { columns: ["kind", "order", "party", "amount"], rows: cashFlow } }),
+        leafSections,
+        note: "Cash-basis projection of on-chain commit + resolve. Assets (custody) = liabilities (refunds) + retained earnings at every block, by construction. Amounts in the currency's smallest unit.",
+    };
+}
+
+/**
+ * One financial-statements document PER SELLER (individual) plus one consolidated
+ * (assembly) — the individual + consolidated register, exactly as finance draws it.
+ * @public
+ */
+export function projectAllFinancialStatements(orders: readonly Order[], processId: string): RenderedDocument[] {
+    const bySeller = new Map<string, Order[]>();
+    for (const o of orders) {
+        const g = bySeller.get(o.seller);
+        if (g) g.push(o); else bySeller.set(o.seller, [o]);
+    }
+    const perSeller = Array.from(bySeller, ([seller, sellerOrders]) => projectFinancialStatements(sellerOrders, "seller", seller));
+    return [...perSeller, projectFinancialStatements(orders, "process", processId)];
 }

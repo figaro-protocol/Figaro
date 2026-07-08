@@ -203,9 +203,9 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
         expect(coreFinal, 'FigaroCore escrow returned to its baseline').toBe(coreBefore);
 
         // ── Conclude the true Figaro cycle: the audit package surfaces the DOCUMENTS
-        //    and the EVENTS for the (now resolved) process — its agreement documents
-        //    (process financials / per-order line item) and the on-chain events (the
-        //    cash-flow log of commit + resolve transfers). ──
+        //    and the EVENTS for the (now resolved) process — its financial statements
+        //    (per seller + consolidated) and the on-chain events (the cash-flow log
+        //    of commit + resolve transfers, carried in the consolidated statement). ──
         await page.goto(`/audit/${processId}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
         await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
         await waitForConnected(page);
@@ -214,11 +214,11 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
             'the audit package renders the process financials',
         ).toBeVisible({ timeout: 30000 });
         await expect(
-            page.locator('[data-testid^="line-item-"]').first(),
-            'the agreement document surfaces as a per-order line item',
+            page.getByTestId('document-financial-statements-process'),
+            'the consolidated financial statement renders',
         ).toBeVisible({ timeout: 30000 });
         await expect(
-            page.getByTestId('financials-cashflow'),
+            page.locator('[data-testid="document-lines-financial-statements-process"] tbody tr').first(),
             'the on-chain events surface in the cash-flow log',
         ).toBeVisible({ timeout: 30000 });
     });

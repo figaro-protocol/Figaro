@@ -49,7 +49,7 @@
  *   resolve  → the buyer resolves ONCE: merchant net +1, courier net +1,
  *              buyer net −2, escrow back to baseline.
  *   audit    → the full evidentiary record, permissionless-clause grade:
- *              financials with a line item for BOTH orders; the cash-flow log
+ *              a financial statement per seller + the consolidation; the cash-flow log
  *              carrying EVERY kernel transfer (2 rows per commit, 2 per order
  *              at resolve — 8 exactly); the clause evidence with every
  *              committed leaf and all EIGHT attested stages; BOTH agreements
@@ -541,21 +541,26 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         expect(courierF - courier0, 'courier net earned exactly the delivery price').toBe(parseEther('1'));
         expect(coreF, 'FigaroCore escrow returned to its baseline').toBe(core0);
 
-        // ── AUDIT: the full evidentiary record — financials, BOTH line items,
-        //    the cash-flow log, every committed leaf, and all EIGHT attested
-        //    stages, read from network state. ──
+        // ── AUDIT: the full evidentiary record — the financial statements
+        //    (one per seller + the consolidation), the cash-flow log, every
+        //    committed leaf, and all EIGHT attested stages, read from network
+        //    state. The statements are documents drawn by the one generic
+        //    renderer — no bespoke financials layout, no per-order "line item"
+        //    breakdown (that is the invoice, carried in the audit bundle). ──
         await page.goto(`/audit/${processId}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
         await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         await expect(page.getByTestId('financials-view')).toBeVisible({ timeout: 30000 });
-        for (const [event, label] of [[merchantEvent, 'meal'], [courierEvent, 'delivery']] as const) {
-            await expect(
-                page.getByTestId(`line-item-${event.args.orderHash}`),
-                `the ${label} order surfaces as its own line item`,
-            ).toBeVisible({ timeout: 30000 });
-        }
-        await expect(page.locator('[data-testid^="line-item-"]'), 'exactly one line item per order').toHaveCount(2);
-        await expect(page.getByTestId('financials-cashflow')).toBeVisible({ timeout: 30000 });
+        // One individual statement per seller (merchant + courier) …
+        await expect(
+            page.locator('[data-testid="document-financial-statements-seller"]'),
+            'one financial-statements document per seller',
+        ).toHaveCount(2, { timeout: 30000 });
+        // … plus the assembly consolidation, carrying a balance sheet + income statement.
+        const consolidated = page.getByTestId('document-financial-statements-process');
+        await expect(consolidated, 'the consolidated statement renders').toBeVisible({ timeout: 30000 });
+        await expect(consolidated.getByText(/^Balance sheet ·/).first()).toBeVisible();
+        await expect(consolidated.getByText(/^Income statement ·/).first()).toBeVisible();
 
         const evidence = page.getByTestId('audit-clause-evidence');
         await evidence.waitFor({ state: 'visible', timeout: 30000 });
@@ -578,8 +583,9 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
 
         // ── EVERY MONEY EVENT: one cash-flow row per kernel ERC-20 transfer —
         //    each commit pulls both deposits, the resolve refunds the buyer and
-        //    pays out the seller, per order: exactly 8 rows, 2 of each kind. ──
-        const cashflowRows = page.locator('[data-testid="financials-cashflow"] tbody tr');
+        //    pays out the seller, per order: exactly 8 rows, 2 of each kind. The
+        //    cash flow is the consolidated statement's line table. ──
+        const cashflowRows = page.locator('[data-testid="document-lines-financial-statements-process"] tbody tr');
         await expect(cashflowRows, 'one cash-flow row per kernel transfer').toHaveCount(8, { timeout: 30000 });
         for (const [kind, count] of [
             ['commit-buyer-deposit', 2],
@@ -669,7 +675,8 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         //    wallet — a fresh context with no injected provider (window.ethereum
         //    is undefined; the multi-account init script never ran here). Every
         //    CHAIN-derived surface renders for the walletless reader: the
-        //    financials, both line items, all eight cash-flow rows. Agreement
+        //    financial statements (per seller + consolidated), all eight
+        //    cash-flow rows. Agreement
         //    BODIES are correctly absent — the chain stores only the fingerprint
         //    and the witnessed-URI pointer is party knowledge (agreementFetch:
         //    "you can't fetch a body you were never pointed at"); a party shares
@@ -690,11 +697,11 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             'the process financials render for a walletless reader',
         ).toBeVisible({ timeout: 30000 });
         await expect(
-            spectatorPage.locator('[data-testid^="line-item-"]'),
-            'both orders surface as line items for a walletless reader',
+            spectatorPage.locator('[data-testid="document-financial-statements-seller"]'),
+            'both sellers surface an individual statement for a walletless reader',
         ).toHaveCount(2, { timeout: 30000 });
         await expect(
-            spectatorPage.locator('[data-testid="financials-cashflow"] tbody tr'),
+            spectatorPage.locator('[data-testid="document-lines-financial-statements-process"] tbody tr'),
             'every kernel transfer renders for a walletless reader',
         ).toHaveCount(8, { timeout: 30000 });
         await spectator.close();

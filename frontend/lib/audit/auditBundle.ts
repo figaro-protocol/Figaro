@@ -6,9 +6,11 @@
  * reads it (or a subset) to drive recomputation of each hash against
  * user-supplied content.
  *
- * The financial-statements panel is not part of this bundle directly —
- * it lives in `lib/audit/financialsProjection.ts` and is composed
- * alongside the bundle by the consumer (the PDF renderer renders both).
+ * The financial statements are not part of this bundle directly — they are
+ * projected documents (`projectAllFinancialStatements` in
+ * `lib/audit/documentProjection.ts`, the SAME generic engine that projects the
+ * invoice and bill of lading) and composed alongside the bundle by the consumer
+ * (the PDF renderer draws them through its one generic document page).
  *
  * Document genres: there are NONE, and there must not be. The per-genre
  * extractors (invoice / Bill of Lading / emissions / proximity) were retired

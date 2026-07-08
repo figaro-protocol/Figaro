@@ -23,12 +23,7 @@ import { buildAuditBundle, type AuditBundle } from "@/lib/audit/auditBundle";
 import type {
     SellerRegisteredEvent,
 } from "@/lib/audit/sellerRegistryExtract";
-import {
-    projectFinancials,
-    projectSellerFinancials,
-    type FinancialsModel,
-} from "@/lib/audit/financialsProjection";
-import { projectDocuments } from "@/lib/audit/documentProjection";
+import { projectDocuments, projectAllFinancialStatements } from "@/lib/audit/documentProjection";
 import { DOCUMENT_TEMPLATES } from "@/lib/audit/documentTemplates";
 import type { AttestationRecord } from "@/lib/composition/indexer";
 import {
@@ -126,12 +121,13 @@ export async function buildAuditBundlePdfBlob(
         );
     }
 
-    const financials: FinancialsModel = projectFinancials(orders, "process", processId);
-    // Individual statements — one per seller — beside the consolidated one above.
-    const sellerFinancials = projectSellerFinancials(orders);
-    // Recognizable documents (invoice per seller, BoL per carriage leg, …) from
-    // declared templates over the same committed record — generic engine, no genre code.
-    const documents = projectDocuments(DOCUMENT_TEMPLATES, orders, agreements);
+    // Every document — invoice per seller, BoL per carriage leg, financial
+    // statements per seller + consolidated — is the SAME RenderedDocument shape
+    // from the SAME generic engine. No genre code, no bespoke financials page.
+    const documents = [
+        ...projectDocuments(DOCUMENT_TEMPLATES, orders, agreements),
+        ...projectAllFinancialStatements(orders, processId),
+    ];
     const buyer = orders[0]?.buyer;
 
     let timeline: ProcessTimeline | null = null;
@@ -152,8 +148,6 @@ export async function buildAuditBundlePdfBlob(
             buyer,
             perOrderBundles,
             documents,
-            sellerFinancials,
-            financials,
             timeline,
             generatedAt: new Date(),
         },

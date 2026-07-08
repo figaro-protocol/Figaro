@@ -2,11 +2,11 @@
  * PDF renderer for the audit bundle (Phase D).
  *
  * Composes the audit-bundle extracts (Contract, per-clause data, process
- * logs, seller registry, Hash appendix) plus the financials projection into
- * one cryptographically-verifiable PDF. Every page footer carries the
- * `agreementHash` (or `processId` for the financials page) so a reader
- * lands on each page already oriented to the on-chain anchor it derives
- * from.
+ * logs, seller registry, Hash appendix) plus every projected document —
+ * invoice, bill of lading, financial statements — into one
+ * cryptographically-verifiable PDF. Every page footer carries the
+ * `agreementHash` (or `processId`) so a reader lands on each page already
+ * oriented to the on-chain anchor it derives from.
  *
  * Implementation notes:
  *
@@ -21,8 +21,8 @@
  *
  * - For multi-order processes the bundle iterates orders, emitting
  *   per-order Contract / Clause-data / Process-logs / Seller-registry
- *   pages. The financials and hash appendix sections aggregate across the
- *   whole process.
+ *   pages. The documents (invoice, BoL, financial statements) and hash
+ *   appendix aggregate across the whole process.
  */
 import {
     Document,
@@ -34,12 +34,6 @@ import {
 import { formatToken } from "@/lib/shared/utils";
 import type { AuditBundle } from "./auditBundle";
 import type { RenderedDocument } from "./documentProjection";
-import type {
-    BalanceSheetEntry,
-    FinancialsModel,
-    OrderLineItem,
-} from "@/lib/audit/financialsProjection";
-import { OrderState } from "@/lib/kernel/store";
 import type { ProcessTimeline, TimelineEvent } from "@/lib/audit/processTimeline";
 import { truncateHex } from "@/lib/shared/formatHex";
 
@@ -252,7 +246,8 @@ function CoverPage({ processId, buyer, generatedAt }: {
                 whole process). Then per order, repeated: Contract · Clause
                 data (every committed clause, rendered from its spec) ·
                 Process logs · Seller registry. Then once for the whole
-                process: Financials (consolidated) · Hash appendix.
+                process: Documents (invoice, bill of lading, financial
+                statements) · Hash appendix.
             </Text>
             <PageFooter processId={processId} />
         </Page>
@@ -544,134 +539,6 @@ function SellerRegistryPage({ doc }: { doc: AuditBundle["sellerRegistry"] }) {
     );
 }
 
-// ── Financials page ─────────────────────────────────────────────────────────
-
-function FinancialsPage({ model }: { model: FinancialsModel }) {
-    const title = model.scope === "seller"
-        ? `Seller statement · ${shortHex(model.scopeId, 8, 6)}`
-        : model.scope === "order"
-            ? "Order statement"
-            : "Process consolidated statement";
-    return (
-        <Page size="A4" style={styles.page}>
-            <View style={styles.header}>
-                <Text style={styles.label}>Financials · {model.scope === "seller" ? "individual" : "consolidated"}</Text>
-                <Text style={styles.h1}>{title}</Text>
-            </View>
-            <Text style={styles.note}>
-                Cash-basis projection of on-chain commit + resolve events. Bond
-                deposits = assets; refund obligations = liabilities; payment =
-                retained earnings. Identity assets = liabilities + retained
-                earnings holds at every block by construction (Paper G §5.1).
-                Amounts in 18-decimal display units.
-            </Text>
-
-            {model.currencies.length === 0 ? (
-                <Text style={styles.sectionBody}>No orders found for this process.</Text>
-            ) : (
-                model.currencies.map((currency) => (
-                    <CurrencyBlock key={currency} currency={currency} model={model} />
-                ))
-            )}
-            <PageFooter processId={model.scopeId} />
-        </Page>
-    );
-}
-
-function CurrencyBlock({ currency, model }: { currency: string; model: FinancialsModel }) {
-    const bs = model.balanceSheet[currency];
-    const ist = model.incomeStatement[currency];
-    const lineItems = model.lineItems.filter((li) => li.currency === currency);
-    const identityHolds = bs.buyerCustody + bs.sellerCustody === bs.refundOwedToBuyer + bs.refundOwedToSeller + bs.retainedEarnings;
-    return (
-        <View>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 10, marginBottom: 4 }}>
-                <Text style={styles.h2}>Currency {shortAddr(currency)}</Text>
-                <Text style={[styles.badge, identityHolds ? styles.badgeOk : styles.badgeBad]}>
-                    {identityHolds ? "books reconcile" : "books DRIFT"}
-                </Text>
-            </View>
-
-            <BalanceSheetBlock entry={bs} />
-            <IncomeStatementBlock sales={ist.sales} cost={ist.cost} netIncome={ist.netIncome} />
-            <LineItemsTable items={lineItems} />
-        </View>
-    );
-}
-
-function BalanceSheetBlock({ entry }: { entry: BalanceSheetEntry }) {
-    return (
-        <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Balance sheet</Text>
-            <Row label="Asset: buyer deposit (custody)" amount={entry.buyerCustody} />
-            <Row label="Asset: seller deposit (custody)" amount={entry.sellerCustody} />
-            <Row label="Total assets" amount={entry.buyerCustody + entry.sellerCustody} bold />
-            <Row label="Liability: refund owed to buyer" amount={entry.refundOwedToBuyer} />
-            <Row label="Liability: refund owed to seller" amount={entry.refundOwedToSeller} />
-            <Row label="Total liabilities" amount={entry.refundOwedToBuyer + entry.refundOwedToSeller} bold />
-            <Row label="Retained earnings (payment in custody)" amount={entry.retainedEarnings} bold />
-        </View>
-    );
-}
-
-function IncomeStatementBlock({ sales, cost, netIncome }: {
-    sales: bigint; cost: bigint; netIncome: bigint;
-}) {
-    return (
-        <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Income statement</Text>
-            <Row label="Sales (commit-time)" amount={sales} />
-            <Row label="Cost (resolve-time)" amount={cost} />
-            <Row label="Net income" amount={netIncome} bold />
-        </View>
-    );
-}
-
-function LineItemsTable({ items }: { items: OrderLineItem[] }) {
-    return (
-        <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Line items ({items.length})</Text>
-            <View style={styles.table}>
-                <View style={[styles.tableRow, styles.tableHeader]}>
-                    <Text style={[styles.tCellMono, { flex: 2 }]}>Order</Text>
-                    <Text style={[styles.tCellMono, { flex: 2 }]}>Seller</Text>
-                    <Text style={[styles.tCellRight, { flex: 1.2 }]}>Payment</Text>
-                    <Text style={[styles.tCellRight, { flex: 1.2 }]}>Cumulative</Text>
-                    <Text style={[styles.tCellRight, { flex: 1 }]}>Sales</Text>
-                    <Text style={[styles.tCellRight, { flex: 1 }]}>Cost</Text>
-                    <Text style={[styles.tCell, { flex: 1 }]}>State</Text>
-                </View>
-                {items.map((li) => (
-                    <View key={li.orderId} style={styles.tableRow}>
-                        <Text style={[styles.tCellMono, { flex: 2 }]}>{shortHex(li.orderId, 8, 4)}</Text>
-                        <Text style={[styles.tCellMono, { flex: 2 }]}>{shortAddr(li.seller)}</Text>
-                        <Text style={[styles.tCellRight, { flex: 1.2 }]}>{fmt(li.payment)}</Text>
-                        <Text style={[styles.tCellRight, { flex: 1.2 }]}>{fmt(li.cumulativeValue)}</Text>
-                        <Text style={[styles.tCellRight, { flex: 1 }]}>{fmt(li.salesContribution)}</Text>
-                        <Text style={[styles.tCellRight, { flex: 1 }]}>{fmt(li.costContribution)}</Text>
-                        <Text style={[styles.tCell, { flex: 1 }, li.state === OrderState.Active ? styles.badgeBad : styles.badgeOk]}>
-                            {li.state === OrderState.Active ? "Active" : "Resolved"}
-                        </Text>
-                    </View>
-                ))}
-            </View>
-        </View>
-    );
-}
-
-function Row({ label, amount, bold }: { label: string; amount: bigint; bold?: boolean }) {
-    return (
-        <View style={styles.metadataRow}>
-            <Text style={[styles.metadataKey, { flex: 2 }, bold ? { fontWeight: 700, color: "#111111" } : {}]}>
-                {label}
-            </Text>
-            <Text style={[styles.metadataValue, { textAlign: "right", fontFamily: "Courier" }, bold ? { fontWeight: 700 } : {}]}>
-                {fmt(amount)}
-            </Text>
-        </View>
-    );
-}
-
 // ── Timeline page ───────────────────────────────────────────────────────────
 
 function shortDetails(ev: TimelineEvent): string {
@@ -833,13 +700,10 @@ interface AuditBundlePdfData {
     buyer?: string;
     /** Per-order extractor outputs. One entry per order in the process. */
     perOrderBundles: AuditBundle[];
-    /** Recognizable trade documents, projected from declared templates over the
-     *  committed record by the generic engine — one generic page each. */
+    /** Every recognizable document — invoice, BoL, financial statements — projected
+     *  from declared templates / statement projectors over the committed record by
+     *  the generic engine. One generic page each; no genre code. */
     documents: readonly RenderedDocument[];
-    /** One financial statement PER SELLER (individual register). */
-    sellerFinancials: readonly FinancialsModel[];
-    /** Process-level financials projection (consolidated across sellers). */
-    financials: FinancialsModel;
     /**
      * FigaroCore lifecycle timeline for the process. When present, the PDF
      * renders a Process Timeline page right after the cover. When omitted
@@ -939,16 +803,12 @@ export function AuditBundlePdf({ data }: { data: AuditBundlePdfData }) {
             {data.perOrderBundles.map((bundle) => (
                 <SellerRegistryPage key={`opreg-${bundle.sellerRegistry.orderHash}`} doc={bundle.sellerRegistry} />
             ))}
-            {/* Recognizable documents — one generic page per projected document,
-                from declared templates. No genre code. */}
+            {/* Every recognizable document — invoice per seller, BoL per carriage
+                leg, financial statements per seller + consolidated — one generic
+                page each, from declared templates / statement projectors. No genre code. */}
             {data.documents.map((document, i) => (
                 <DocumentPage key={`document-${document.genre}-${i}`} document={document} />
             ))}
-            {/* Financials: one individual statement per seller, then the consolidation. */}
-            {data.sellerFinancials.map((model) => (
-                <FinancialsPage key={`financials-seller-${model.scopeId}`} model={model} />
-            ))}
-            <FinancialsPage model={data.financials} />
             {data.perOrderBundles.map((bundle) => (
                 <HashAppendixPage key={`appendix-${bundle.hashAppendix.orderHash}`} appendix={bundle.hashAppendix} />
             ))}
