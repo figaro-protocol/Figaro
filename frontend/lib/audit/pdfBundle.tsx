@@ -33,8 +33,6 @@ import {
 } from "@react-pdf/renderer";
 import { formatToken } from "@/lib/shared/utils";
 import type { AuditBundle } from "./auditBundle";
-import type { InvoiceModel } from "./invoiceProjection";
-import type { BillOfLadingProjection } from "./billOfLadingProjection";
 import type {
     BalanceSheetEntry,
     FinancialsModel,
@@ -829,10 +827,6 @@ interface AuditBundlePdfData {
     buyer?: string;
     /** Per-order extractor outputs. One entry per order in the process. */
     perOrderBundles: AuditBundle[];
-    /** One commercial invoice PER SELLER (EN 16931 core), derived from the
-     *  committed record — the individual register alongside the consolidated
-     *  financials below. */
-    sellerInvoices: readonly InvoiceModel[];
     /** Process-level financials projection (consolidated). */
     financials: FinancialsModel;
     /**
@@ -843,91 +837,6 @@ interface AuditBundlePdfData {
     timeline?: ProcessTimeline | null;
     /** Generation timestamp (UTC). */
     generatedAt: Date;
-}
-
-/**
- * Per-seller commercial invoice — EN 16931 core, DERIVED from the committed
- * record (not separately authored). One per supplier, as the norm mandates.
- */
-function InvoicePage({ invoice }: { invoice: InvoiceModel }) {
-    const issue = invoice.issueDate !== undefined
-        ? new Date(invoice.issueDate * 1000).toISOString().slice(0, 10)
-        : "— (unsettled)";
-    return (
-        <Page size="A4" style={styles.page}>
-            <View style={styles.header}>
-                <Text style={styles.label}>Commercial invoice · EN 16931 core</Text>
-                <Text style={styles.h1}>Invoice {shortHex(invoice.invoiceNumber, 10, 6)}</Text>
-            </View>
-            <View style={styles.section}>
-                <View style={styles.metadataRow}><Text style={styles.metadataKey}>invoice no. (BT-1)</Text><Text style={[styles.metadataValue, styles.mono]}>{invoice.invoiceNumber}</Text></View>
-                <View style={styles.metadataRow}><Text style={styles.metadataKey}>issue date (BT-2)</Text><Text style={styles.metadataValue}>{issue}</Text></View>
-                <View style={styles.metadataRow}><Text style={styles.metadataKey}>type (BT-3)</Text><Text style={styles.metadataValue}>{invoice.typeCode} — commercial invoice</Text></View>
-                <View style={styles.metadataRow}><Text style={styles.metadataKey}>seller (BG-4)</Text><Text style={[styles.metadataValue, styles.mono]}>{invoice.seller}</Text></View>
-                <View style={styles.metadataRow}><Text style={styles.metadataKey}>buyer (BG-7)</Text><Text style={[styles.metadataValue, styles.mono]}>{invoice.buyer}</Text></View>
-                <View style={styles.metadataRow}><Text style={styles.metadataKey}>currency (BT-5)</Text><Text style={[styles.metadataValue, styles.mono]}>{invoice.currency}</Text></View>
-            </View>
-            <Text style={styles.h2}>Lines</Text>
-            <View style={styles.table}>
-                <View style={[styles.tableRow, styles.tableHeader]}>
-                    <Text style={styles.tCell}>order</Text>
-                    <Text style={styles.tCell}>description</Text>
-                    <Text style={styles.tCellRight}>net amount</Text>
-                </View>
-                {invoice.lines.map((l) => (
-                    <View key={l.orderId} style={styles.tableRow}>
-                        <Text style={styles.tCellMono}>{shortHex(l.orderId, 8, 4)}</Text>
-                        <Text style={styles.tCell}>{l.description || "—"}</Text>
-                        <Text style={styles.tCellRight}>{fmt(l.lineNetAmount)}</Text>
-                    </View>
-                ))}
-            </View>
-            <View style={styles.metadataRow}><Text style={styles.metadataKey}>net total (BT-106)</Text><Text style={styles.metadataValue}>{fmt(invoice.netTotal)}</Text></View>
-            <Text style={styles.note}>Derived from the committed record — not separately authored. The interpretive VAT class is jurisdiction/graph-supplied and absent from this core projection.</Text>
-        </Page>
-    );
-}
-
-/**
- * Non-negotiable Bill of Lading — DERIVED read-only from a carriage leg's
- * committed leaves. Never a document of title (FigaroCore forbids party
- * substitution mid-flight — see docs/v5/BOL_RESEARCH.md).
- */
-function BillOfLadingPage({ bol }: { bol: BillOfLadingProjection }) {
-    const detailRows = (label: string, data: Record<string, unknown>) => (
-        <>
-            <Text style={styles.h2}>{label}</Text>
-            <View style={styles.section}>
-                {Object.entries(data).map(([k, v]) => (
-                    <View key={k} style={styles.metadataRow}>
-                        <Text style={styles.metadataKey}>{k}</Text>
-                        <Text style={styles.metadataValue}>{String(v)}</Text>
-                    </View>
-                ))}
-            </View>
-        </>
-    );
-    return (
-        <Page size="A4" style={styles.page}>
-            <View style={styles.header}>
-                <Text style={styles.label}>Bill of Lading · non-negotiable</Text>
-                <Text style={styles.h1}>BoL {shortHex(bol.bolNumber, 10, 6)}</Text>
-            </View>
-            <View style={styles.section}>
-                <View style={styles.metadataRow}><Text style={styles.metadataKey}>BoL no.</Text><Text style={[styles.metadataValue, styles.mono]}>{bol.bolNumber}</Text></View>
-                <View style={styles.metadataRow}><Text style={styles.metadataKey}>carrier</Text><Text style={[styles.metadataValue, styles.mono]}>{bol.carrier}</Text></View>
-                <View style={styles.metadataRow}><Text style={styles.metadataKey}>shipper / consignor</Text><Text style={[styles.metadataValue, styles.mono]}>{bol.shipper}</Text></View>
-                <View style={styles.metadataRow}><Text style={styles.metadataKey}>consignee</Text><Text style={[styles.metadataValue, styles.mono]}>{bol.consignee}</Text></View>
-                {bol.origin && <View style={styles.metadataRow}><Text style={styles.metadataKey}>origin (geohash)</Text><Text style={[styles.metadataValue, styles.mono]}>{bol.origin}</Text></View>}
-                {bol.destination && <View style={styles.metadataRow}><Text style={styles.metadataKey}>destination (geohash)</Text><Text style={[styles.metadataValue, styles.mono]}>{bol.destination}</Text></View>}
-                {bol.freight && <View style={styles.metadataRow}><Text style={styles.metadataKey}>freight</Text><Text style={styles.metadataValue}>{fmt(BigInt(bol.freight.payment))} · {shortHex(bol.freight.currency, 8, 4)}</Text></View>}
-            </View>
-            {bol.mode && detailRows("Mode of carriage", bol.mode)}
-            {bol.cargo && detailRows("Cargo", bol.cargo)}
-            {bol.freightClass && detailRows("Freight class", bol.freightClass)}
-            <Text style={styles.note}>NON-NEGOTIABLE — not a document of title. The consignee is fixed at signing; FigaroCore forbids substituting a bonded order&apos;s parties mid-flight. The precise addressee is party-private (ECDH channel); only the public geohash is committed here.</Text>
-        </Page>
-    );
 }
 
 /** @public — consumed via namespace access (`import * as pdfBundle` →
@@ -954,17 +863,6 @@ export function AuditBundlePdf({ data }: { data: AuditBundlePdfData }) {
             {data.perOrderBundles.map((bundle) => (
                 <SellerRegistryPage key={`opreg-${bundle.sellerRegistry.orderHash}`} doc={bundle.sellerRegistry} />
             ))}
-            {/* Derived business documents — the recognizable record a reviewer or
-                dispute forum expects: one invoice per seller, a BoL per carriage leg. */}
-            {data.sellerInvoices.map((invoice) => (
-                <InvoicePage key={`invoice-${invoice.invoiceNumber}`} invoice={invoice} />
-            ))}
-            {data.perOrderBundles
-                .map((bundle) => bundle.billOfLading)
-                .filter((bol): bol is BillOfLadingProjection => bol !== null)
-                .map((bol) => (
-                    <BillOfLadingPage key={`bol-${bol.bolNumber}`} bol={bol} />
-                ))}
             <FinancialsPage model={data.financials} />
             {data.perOrderBundles.map((bundle) => (
                 <HashAppendixPage key={`appendix-${bundle.hashAppendix.orderHash}`} appendix={bundle.hashAppendix} />

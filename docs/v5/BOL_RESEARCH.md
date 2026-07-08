@@ -415,16 +415,19 @@ of them.
 
 ## 8. Recommendation
 
-**8.1 Code.** Derive the non-negotiable BoL as a **read-only projection** from
-an order's committed leaves — the same shape as the invoice projection
-(`frontend/lib/audit/invoiceProjection.ts`), never a stored or separately-authored
-document. It emits only for a **carriage leg**, discriminated **open-world** from
-the graph — a sub-order whose topology declares parents and whose seller advances
-a runtime process-log ladder (carrying goods that originated upstream) — naming no
-clause. An order with handoff data but no carriage is a lesser, distinct genre (a
-proof-of-handoff view), not a BoL. No new clause is required; the view assembles
-from the existing committed leaves. (The prior `extractBillOfLading`, which ran on
-every order and named clauses directly, was closed-world and has been deleted.)
+**8.1 Code — no genre code.** The audit bundle is GENERIC: `clauseData`
+(`extractClauseData` / `describeClause`) already surfaces every committed leaf
+from its spec — a cargo leaf, a geolocation leaf, a courier-process ladder, or a
+clause this codebase has never seen — hash-verified against the on-chain
+`agreementHash`. So the facts a bill of lading states are already in the bundle,
+generically, with zero BoL code. A *recognizable* BoL form (the familiar layout)
+is a projection over those same committed leaves; if it is ever built it must be a
+DECLARED / generic composition (a document template a generic engine renders),
+never a hand-rolled `projectBillOfLading` + a bespoke PDF page. A first attempt at
+hand-rolled invoice/BoL projections was written and then deleted 2026-07-08 for
+exactly this reason — genre code is the closed-world reflex. (The old
+`extractBillOfLading`, which ran on every order and named clauses directly, was
+deleted earlier for the same reason.)
 
 **8.2 No `figaro-bol` clause for now.** The non-negotiable BoL view is
 fully assemblable from the existing clauses. Adding a new clause would be
@@ -539,6 +542,6 @@ to design.)
 - `docs/v5/THEORY.md` — game-theoretic derivation of the kernel invariants
 - `docs/v5/DESIGN_DECISIONS.md` — 12 intentional patterns that look like vulnerabilities but are correct by design (entry #12 captures the MLETR-non-implementability finding from this research)
 - `docs/v5/CLAUSES.md` — the clause validation architecture and anchoring doctrine governing any future clause additions
-- `frontend/lib/audit/invoiceProjection.ts` — the derived-document pattern a non-negotiable BoL projection follows (read-only over committed leaves)
-- `frontend/lib/audit/auditBundle.ts` — the per-order audit bundle the BoL/handoff projections compose into
+- `frontend/lib/audit/clauseDataExtract.ts` — the GENERIC per-clause view (`describeClause`) that already surfaces every committed leaf from its spec; the audit bundle carries no genre document
+- `frontend/lib/audit/auditBundle.ts` — the per-order audit bundle (generic; no per-genre extractor)
 - the clause specs in `clauses/` referenced in §7

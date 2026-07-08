@@ -10,15 +10,15 @@
  * it lives in `lib/audit/financialsProjection.ts` and is composed
  * alongside the bundle by the consumer (the PDF renderer renders both).
  *
- * Document genres: the old per-genre EXTRACTORS (invoice / Bill of Lading /
- * emissions / proximity) were retired with the open-world de-hardcode because
- * they named clauses directly. `clauseData` renders EVERY committed clause
- * generically. A genre document is only rebuilt as a DERIVED read-only
- * PROJECTION over committed leaves that names no clause — e.g. the
- * non-negotiable BoL below, whose carriage-leg discriminator is a sub-order
- * (topology declares parents) carrying a runtime process log. See
- * `docs/v5/BOL_RESEARCH.md` for the full rationale (and why a NEGOTIABLE BoL is
- * structurally impossible here).
+ * Document genres: there are NONE, and there must not be. The per-genre
+ * extractors (invoice / Bill of Lading / emissions / proximity) were retired
+ * with the open-world de-hardcode because they named clauses directly.
+ * `clauseData` renders EVERY committed clause generically from its spec, so the
+ * bundle certifies any committed leaf — including a clause this codebase has
+ * never seen — with zero genre code. A recognizable document (an invoice, a
+ * BoL) is a projection over those same committed leaves; if ever built, it must
+ * be a DECLARED / generic composition, never a hand-rolled genre. See
+ * `docs/v5/BOL_RESEARCH.md` for why a NEGOTIABLE BoL is structurally impossible.
  */
 
 import type { Agreement } from "@figaro/core";
@@ -33,20 +33,17 @@ import {
     type SellerRegisteredEvent,
 } from "./sellerRegistryExtract";
 import { buildHashAppendix, type HashAppendixDocument } from "./hashAppendix";
-import { projectBillOfLading, type BillOfLadingProjection } from "./billOfLadingProjection";
 
 export interface AuditBundle {
     contract: ContractDocument;
     processLogs: ProcessLogsDocument;
     /** Every committed clause's data, rendered generically from its spec — the
-     *  open-world per-clause view (names no clause, assumes no field). */
+     *  open-world per-clause view (names no clause, assumes no field). This is
+     *  where a cargo leaf, a freight-class leaf, or a never-seen clause all
+     *  surface — no genre document required. */
     clauseData: ClauseDataDocument;
     sellerRegistry: SellerRegistryDocument;
     hashAppendix: HashAppendixDocument;
-    /** The non-negotiable Bill of Lading, derived read-only from this order's
-     *  committed leaves — present only when the order is a carriage leg, null
-     *  otherwise (most orders). Never a document of title. */
-    billOfLading: BillOfLadingProjection | null;
 }
 
 export interface AuditBundleInputs {
@@ -72,6 +69,5 @@ export function buildAuditBundle(
             inputs.sellerRegistrationEvents ?? [],
         ),
         hashAppendix: buildHashAppendix(order, agreement, attestations),
-        billOfLading: projectBillOfLading(order, agreement),
     };
 }
