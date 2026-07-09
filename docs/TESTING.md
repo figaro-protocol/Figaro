@@ -112,7 +112,11 @@ process ladders attested stage by stage), designer + assembly registry (`designe
 `published-list-ui`), sellers (`sellers-onboarding`, `seller-edit-ui`,
 `seller-withdraw`), inventories (`assemblies-inventory`, `clauses-inventory`),
 and the open-world proof (`permissionless-clause`
-— a never-seen clause attestable with zero per-clause on-chain code).
+— a never-seen clause attestable with zero per-clause on-chain code;
+`clause-coverage` — the same harness iterated, one rung per protocol clause
+no other e2e drives: drawer → encode → commit → attest → audit through the
+generic pipeline, values authored via design-time drawer fills, the wizard's
+catalogue clause-values editor, or the nested sub-clause tree).
 
 **mobile (`*.mobile.spec.ts`, 1 spec)** — responsive/viewport chrome jsdom
 can't render: `navigation.mobile.spec.ts` (Pixel 5 / Chromium).
