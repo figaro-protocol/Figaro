@@ -16,6 +16,11 @@ bash scripts/lint-clause-nests-under-a-field.sh
 # The incentive's RATIONALE survives in docs/PUBLIC_GRAPH_MODEL.md; reinstate
 # the guard alongside any rebuilt RPGF distribution that re-homes the weight.
 bash scripts/lint-chain-gas.sh
+# SDK dist freshness: the frontend EXECUTES sdk/dist, and tsc never deletes
+# outputs of deleted sources — a stale dist ships deleted APIs into builds and
+# poisons audits. Whole-tree: certifies every dist artifact traces to a live
+# source. Clean-rebuild: npm --prefix sdk run build (devup does it every run).
+bash scripts/lint-sdk-dist-freshness.sh
 # Open-world floor: no fabricated network state (?? CONTRACTS / coined emoji),
 # swept over the WHOLE tracked tree, not just the staged diff — the structural
 # fix for guards that only policed diffs and so never certified repo state.

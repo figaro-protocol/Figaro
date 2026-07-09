@@ -32,7 +32,8 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc",
+        "build": "rm -rf dist && tsc",
+        "prepare": "npm run build",
         "test": "vitest run",
         "test:watch": "vitest",
         "lint": "tsc --noEmit"

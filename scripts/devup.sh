@@ -23,6 +23,15 @@ RPC_URL="${RPC_URL:-http://127.0.0.1:8545}"
 
 note() { printf '\n\033[1m▸ %s\033[0m\n' "$1"; }
 
+# ── 0. SDK dist ─────────────────────────────────────────────────────────────
+# The frontend executes sdk/dist (file:../sdk + exports map), and tsc never
+# deletes outputs of deleted sources — a stale dist silently ships deleted
+# APIs into every build and poisons audits that read it. Clean-rebuild every
+# devup (the build script rm -rfs dist first; ~seconds, idempotent).
+note "SDK (@figaro/core dist)"
+npm --prefix "$REPO_ROOT/sdk" run build --silent
+echo "  rebuilt sdk/dist from src"
+
 # ── 1. IPFS (Kubo via Docker) ───────────────────────────────────────────────
 note "IPFS (Kubo)"
 if nc -z 127.0.0.1 5001 2>/dev/null; then

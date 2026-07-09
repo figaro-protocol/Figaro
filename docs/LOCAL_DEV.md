@@ -40,7 +40,7 @@ cd sdk && npm run build                  # tsc → dist/
 cd sdk && npm run lint                   # tsc --noEmit
 
 # --- Deploy to local Anvil ---
-./scripts/devup.sh                       # ⭐ one-shot, idempotent: ensures Anvil + IPFS, deploys the protocol
+./scripts/devup.sh                       # ⭐ one-shot, idempotent: clean-rebuilds sdk/dist, ensures Anvil + IPFS, deploys the protocol
 # …or the individual steps it wraps:
 ./scripts/deploy-local.sh                # deploys the stack AND pins+anchors clauses (incl. structural commerce/topology) — self-sufficient
 ```
