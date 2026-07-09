@@ -8,6 +8,34 @@ load-bearing for the protocol have been moved to local-only archives
 and `archive-v4/` (pre-promotion V4 snapshot); the live V5 code is in
 `src/`.
 
+## Ownership Map — one owner per concept
+
+Every concept has exactly ONE owning statement; every other surface (CLAUDE.md, other
+docs, agent prompts, skills, memories, marketing prose) states it only as a summary plus
+a pointer to its owner. When the owner changes, sweep the pointers — never fork the
+content. (This is the instruction-system form of "derive, don't store.")
+
+| Concept | Owner |
+|---|---|
+| The system: 2 kernel mechanisms + 5 nouns | `CLAUDE.md` (top section) |
+| Open-world lens, composition model, semantic layer | `OPEN_WORLD.md` §1–§3 |
+| Game-theoretic derivation, six properties | `THEORY.md` |
+| Vision, post-firm economy, lineage | `VISION.md` |
+| Intentional vulnerability-lookalike patterns | `DESIGN_DECISIONS.md` |
+| Teardown state: deferred vs permanent, what does NOT exist | `CONTRACTS.md` § What Does NOT Exist |
+| Contract inventory | `CONTRACTS.md` |
+| Clause table, validation architecture, adding-a-clause | `CLAUSES.md` |
+| Route catalogue, lib map, designer surface | `FRONTEND.md` |
+| Test-harness inventory, layer boundaries | `TESTING.md` |
+| Commands, env vars, services, deploy scripts | `LOCAL_DEV.md` |
+| Canonical names per tier | `LEXICON.md` |
+| FIG token, allocations | `FIG_TOKEN.md` |
+| Batch-scaling design (deferred) | `SCALING_STRATEGY.md` |
+| Release gates, frozen audit surface | `RELEASE_READINESS.md` |
+| Public-graph / RPGF incentive rationale | `PUBLIC_GRAPH_MODEL.md` |
+| Operator preferences, incidents, rulings | memory dir (`MEMORY.md` index) |
+| Open work | the punch-list (memory dir) |
+
 ## Start Here
 
 1. `VISION.md` — protocol vision (post-firm economy, bonded commitment, FIG)

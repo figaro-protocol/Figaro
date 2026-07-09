@@ -204,3 +204,36 @@ Also absent: `FigaroFactory.sol`, `FigaroRouter.sol`, `governance/`, `compliance
 `ProximityTypes.sol`, `IRoleResolverV4.sol` (renamed to `IRoleResolver.sol`),
 upgradeable proxy, protocol fee, owner, or admin surface.
 FIG is not a governance token.
+
+### Deferred vs permanent — the canonical two-tense ruling
+
+This subsection is the OWNER of teardown state (per the ownership map in `README.md`).
+Every other surface — docs, marketing pages, agent prompts, memories — states this only
+as a summary plus a pointer here.
+
+**DEFERRED — removed 2026-06-25, coming back; describe as the intended design, never as
+eliminated:**
+
+- **On-chain clause-content validation** (the per-clause validators) — rebuilt **before
+  launch** (operator ruling 2026-07-05). Until then, the on-chain integrity mechanism is
+  the `AttestationCoordinator` merkle binding alone; Layer-A (SDK) is the only content
+  validation.
+- **The batch prover / verifier / sequencer** (SP1 batch settlement) — rebuilt after the
+  RPGF mechanism, before launch. Design baseline retained in `SCALING_STRATEGY.md`.
+- **The RPGF distribution mechanism** — returns, but the 2026-07-09 redesign REVISES this
+  leg: recipients widen to clause authors + assembly designers of record, the zk-proved
+  minter is replaced by an optimistic posted-window + challenge-recompute design, and
+  whether the minter gates launch (vs shipping before the year-2 tranche) is an OPEN
+  operator fork. `FIG_TOKEN.md` carries the allocation; `PUBLIC_GRAPH_MODEL.md` the
+  incentive rationale.
+
+**PERMANENT — a property, not an artifact absence:** a never-seen clause must remain
+attestable permissionlessly, and the merkle binding stays the integrity floor. The
+rebuilt validator/verifier must preserve this; the property constrains the rebuild's
+design — it does not forbid the rebuild.
+
+**Reading rule (both directions):** launch-state literature (papers, `/builders`,
+`/cryptoeconomics`) describing validators/proofs is CORRECT BY DESIGN and carries the
+"rebuild pre-launch" marker — do not file it as stale. Present-state surfaces must state
+merkle-only reality. Deleting launch-state prose as drift, and describing merkle-only as
+the end state, are the same misclassification in opposite directions.
