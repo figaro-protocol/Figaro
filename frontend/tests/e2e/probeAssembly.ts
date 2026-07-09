@@ -120,6 +120,19 @@ export interface PublishedProbe {
     clauseId: string;
 }
 
+export interface PublishProbeOptions {
+    /** Extra drawer work while the agreement drawer is open on the root node —
+     *  tick further registry clauses and fill their fields. Runs AFTER the
+     *  probe clause is checked, so the composition always carries the per-run
+     *  probe (whose nonce-bearing id keeps the compositionHash unique on the
+     *  persistent devnet — editorial name alone never forks the hash). */
+    compose?: (page: Page) => Promise<void>;
+    /** Editorial overrides (excluded from the composition hash). */
+    name?: string;
+    summary?: string;
+    description?: string;
+}
+
 /**
  * Register a per-run-unique probe clause, then author + publish a single-node
  * assembly carrying it through the REAL canvas (select node → drawer → check the
@@ -127,10 +140,10 @@ export interface PublishedProbe {
  * slug, the editorial name, and the clause id. No snapshot/revert — the nonce
  * guarantees a fresh slug.
  */
-export async function publishProbeAssembly(page: Page): Promise<PublishedProbe> {
+export async function publishProbeAssembly(page: Page, opts: PublishProbeOptions = {}): Promise<PublishedProbe> {
     const nonce = `${Date.now()}`;
     const clauseId = `figaro-probe-attest-${nonce}`;
-    const name = `Probe assembly ${nonce}`;
+    const name = opts.name ?? `Probe assembly ${nonce}`;
     await registerProbeClause(clauseId, makeProbeSpec(clauseId, `Probe attestation ${nonce}`));
 
     await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
@@ -146,10 +159,11 @@ export async function publishProbeAssembly(page: Page): Promise<PublishedProbe> 
     const novel = page.getByTestId(`drawer-registry-clause-${clauseId}`);
     await expect(novel, 'the drawer surfaces the just-registered probe clause').toHaveCount(1, { timeout: 20000 });
     await novel.check();
+    if (opts.compose) await opts.compose(page);
 
     await page.getByTestId('designer-name-input').fill(name);
-    await page.getByTestId('designer-summary-input').fill('Publish-flow coverage: a unique probe assembly.');
-    await page.getByTestId('designer-description-input').fill('Single-node assembly carrying a per-run probe clause.');
+    await page.getByTestId('designer-summary-input').fill(opts.summary ?? 'Publish-flow coverage: a unique probe assembly.');
+    await page.getByTestId('designer-description-input').fill(opts.description ?? 'Single-node assembly carrying a per-run probe clause.');
     await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
     await page.getByTestId('designer-review').click();
 

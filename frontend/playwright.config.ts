@@ -106,7 +106,7 @@ export default defineConfig({
             // onboard their own seller). They share NO seeded state and depend on
             // NOTHING — so they must NOT pull the devnet-authoring gate.
             name: 'devnet-standalone',
-            testMatch: /permissionless-clause\.devnet\.spec\.ts$/,
+            testMatch: /(permissionless-clause|clause-coverage)\.devnet\.spec\.ts$/,
             fullyParallel: false,
             workers: 1,
             use: { ...devices['Desktop Chrome'] },
@@ -114,7 +114,7 @@ export default defineConfig({
         {
             name: 'devnet',
             testMatch: /\.devnet\.spec\.ts$/,
-            testIgnore: /(sellers-onboarding|permissionless-clause)\.devnet\.spec\.ts$/,
+            testIgnore: /(sellers-onboarding|permissionless-clause|clause-coverage)\.devnet\.spec\.ts$/,
             dependencies: ['devnet-authoring'],
             fullyParallel: false,
             workers: 1,
