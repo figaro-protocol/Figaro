@@ -49,6 +49,10 @@ export interface OnboardingProfileDraft {
     assets?: SellerAssetReferences;
     acceptedTokens?: AcceptedTokenMetadata[];
     defaultTokenAddress?: `0x${string}`;
+    /** Dimensional-weight divisor (shipping convention) — checkout derives
+     *  billed weight = max(actual mass, volume ÷ divisor) onto a composed
+     *  dimweight leaf. Absent for non-shipping sellers. */
+    dimWeightDivisor?: number;
 }
 
 interface OnboardingCatalogueDraft {

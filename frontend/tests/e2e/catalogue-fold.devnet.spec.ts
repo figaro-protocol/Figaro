@@ -33,17 +33,22 @@
  * three onto the leaf.
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server (:3100).
- * STATUS: written against the permissionless-clause / local-commerce patterns but
- * NOT YET RUN (devnet was unavailable when authored) — needs one live devnet pass
- * to confirm selectors/timing.
+ * The composition includes a per-run probe clause (nonce-bearing id) so each
+ * run's compositionHash is unique on the persistent devnet — the assembly NAME
+ * is excluded from the hash by design (editorial renames never fork identity),
+ * so a name nonce alone cannot prevent the first-write-wins publish collision.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { createPublicClient, defineChain, http, type Hex } from 'viem';
+import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
 import { readLocalDeploymentConfig, assertPinnedInIpfs } from './devnet-helpers';
+import { makeProbeSpec, registerProbeClause } from './probeAssembly';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
+import { calculateBonds } from '@figaro/core';
 import type { Page } from '@playwright/test';
+
+const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -84,8 +89,16 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
 
         const config = readLocalDeploymentConfig();
         const core = config.figaroCore as Hex;
+        const token = config.tokenAddress as Hex;
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+        const balanceOf = (who: Hex) =>
+            publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
         const runNonce = `${Date.now()}`;
+
+        // Per-run probe clause: varies the COMPOSITION (not just the name) so
+        // re-runs against the same deployment never collide at registerAssembly.
+        const probeClauseId = `figaro-probe-attest-${runNonce}`;
+        await registerProbeClause(probeClauseId, makeProbeSpec(probeClauseId, `Probe attestation ${runNonce}`));
 
         // ── COMPOSE: author a single-node assembly carrying figaro-cargo on the REAL
         //    canvas. The clause appears because the drawer read it from the live
@@ -108,6 +121,10 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
         await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
         // figaro-cargo — a protocol clause; composed exactly like any other.
         await page.getByTestId('drawer-registry-clause-figaro-cargo').check();
+        // The per-run probe rides along for composition uniqueness (see header).
+        const probeCheckbox = page.getByTestId(`drawer-registry-clause-${probeClauseId}`);
+        await expect(probeCheckbox, 'the drawer surfaces the just-registered probe clause').toHaveCount(1, { timeout: 20000 });
+        await probeCheckbox.check();
 
         const assemblyName = `Cargo fold ${runNonce}`;
         await page.getByTestId('designer-name-input').fill(assemblyName);
@@ -169,6 +186,11 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
         const committedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: BUYER }, fromBlock: 0n,
         })).length;
+        // Bond-escrow baseline in the payment token — the money leg is asserted
+        // as deltas after the commit (robust to persistent-devnet residue).
+        const [buyerBefore, sellerBefore, coreBefore] = await Promise.all([
+            balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
+        ]);
         await gotoAsWallet(page, BUYER, `/s/${SELLER}?e2e=devnet`);
         await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
@@ -206,6 +228,16 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
         expect(event.args.seller?.toLowerCase(), 'committed against the cargo seller').toBe(SELLER.toLowerCase());
         const processId = event.args.processId!;
         const agreementHash = event.args.agreementHash as `0x${string}`;
+
+        // ── Funds actually moved: buyer↓ buyerBond, seller↓ sellerBond, escrow↑
+        //    both — read from the token contract, not the UI. ──
+        const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, event.args.payment!);
+        const [buyerAfter, sellerAfter, coreAfter] = await Promise.all([
+            balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
+        ]);
+        expect(buyerBefore - buyerAfter, 'buyer balance decreased by the buyer bond').toBe(buyerBond);
+        expect(sellerBefore - sellerAfter, 'seller balance decreased by the seller bond').toBe(sellerBond);
+        expect(coreAfter - coreBefore, 'FigaroCore escrow increased by both bonds').toBe(buyerBond + sellerBond);
 
         // ── THE FOLD, PROVEN OUT-OF-BAND: fetch the committed agreement from IPFS (the
         //    network SSoT, not a local cache) and assert the cargo leaf carries the

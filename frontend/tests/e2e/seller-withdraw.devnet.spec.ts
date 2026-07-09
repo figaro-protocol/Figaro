@@ -122,6 +122,17 @@ test.describe('SellerRegistry.withdraw (devnet)', () => {
         const beginBtn = page.getByRole('button', { name: /^Begin$/ });
         await beginBtn.click();
 
+        // Balance baseline: the registry escrows the deposit in ETH — the
+        // withdraw must move exactly `registrationDeposit()` out of it. The
+        // registry side is gas-free, so the delta is exact; the seller's own
+        // ETH delta is deposit − gas, so it is not asserted.
+        const registry = getRegistryAddress();
+        const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+        const deposit = await publicClient.readContract({
+            address: registry, abi: SELLER_REGISTRY_ABI, functionName: 'registrationDeposit',
+        }) as bigint;
+        const registryBefore = await publicClient.getBalance({ address: registry });
+
         // Confirm withdraw button appears.
         const confirmBtn = page.getByRole('button', { name: /^Confirm withdraw$/ });
         await confirmBtn.waitFor({ timeout: 10000 });
@@ -133,5 +144,9 @@ test.describe('SellerRegistry.withdraw (devnet)', () => {
 
         // On-chain: registration cleared (registeredAt === 0).
         expect(await isRegistered()).toBe(false);
+
+        // On-chain: the deposit actually left the registry's escrow.
+        const registryAfter = await publicClient.getBalance({ address: registry });
+        expect(registryBefore - registryAfter, 'registry escrow decreased by exactly the deposit').toBe(deposit);
     });
 });

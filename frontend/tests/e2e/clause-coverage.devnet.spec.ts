@@ -34,19 +34,20 @@
  *    surface: the drawer defers object-arrays to checkout, checkout has no
  *    clause-content form, and no affix surface exists — the Layer-A sign gate
  *    blocks any checkout composing it. Uncommittable through the UI today.
- *  - the dimweight DERIVATION (seller `dimWeightDivisor` has no UI producer;
- *    the rung commits designer-authored values through the drawer instead).
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server (:3100).
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { createPublicClient, defineChain, http, type Hex } from 'viem';
+import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
 import { readLocalDeploymentConfig, assertPinnedInIpfs } from './devnet-helpers';
 import { publishProbeAssembly } from './probeAssembly';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
+import { calculateBonds } from '@figaro/core';
 import type { Page } from '@playwright/test';
+
+const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -74,12 +75,15 @@ interface ClauseRung {
     clauseId: string;
     /** Extra drawer work after ticking the target clause (design-time fills). */
     design?: (page: Page) => Promise<void>;
-    /** Tick these host clauses BEFORE the target (nesting hosts). */
+    /** Tick these host clauses BEFORE the target (nesting hosts, fold inputs). */
     composeFirst?: string[];
     /** The target's checkbox lives inside this nested container instead of the
      *  top-level registry list (`drawer-nested-<hostField>-<clauseId>`). */
     nestedUnder?: string;
-    /** Catalogue clause-values editor fills on the wizard's first item. */
+    /** Wizard identity-step fills (profile-level fields, e.g. the divisor). */
+    profile?: (page: Page) => Promise<void>;
+    /** Catalogue-step fills on the wizard's first item (clause values and
+     *  physical facts — the item's own master data). */
     catalogue?: (page: Page) => Promise<void>;
     /** Spec-derived texts that must surface in the audit clause evidence. */
     auditTexts: string[];
@@ -107,11 +111,12 @@ const all = (...steps: Array<(page: Page) => Promise<unknown>>) =>
 const RUNGS: ClauseRung[] = [
     {
         clauseId: 'figaro-applicable-law',
-        // The spec constrains applicableLaw to a short jurisdiction code
-        // (pattern ^[A-Za-z][A-Za-z0-9-]{1,15}$) — prose fails the Layer-A gate.
-        design: drawerFill('figaro-applicable-law', 'applicableLaw', 'new-york'),
-        auditTexts: ['Applicable law and forum', 'new-york'],
-        leaf: (data) => expect(data.applicableLaw).toBe('new-york'),
+        // The spec constrains applicableLaw to a shaped jurisdiction token
+        // (pattern ^[A-Za-z][A-Za-z0-9-]{1,15}$; prose fails the Layer-A gate);
+        // convention per the field description is ISO 3166-2 — 'US-NY'.
+        design: drawerFill('figaro-applicable-law', 'applicableLaw', 'US-NY'),
+        auditTexts: ['Applicable law and forum', 'US-NY'],
+        leaf: (data) => expect(data.applicableLaw).toBe('US-NY'),
     },
     {
         clauseId: 'figaro-arbitration-kleros',
@@ -142,14 +147,21 @@ const RUNGS: ClauseRung[] = [
         },
     },
     {
-        // The derivation path (seller dimWeightDivisor → checkout fold) has no
-        // UI producer yet — this rung commits designer-authored values through
-        // the drawer's required-scalar inputs (see the header finding).
+        // The DERIVATION path, end to end: the seller declares a dim-weight
+        // divisor on the profile and physical facts on the catalogue item;
+        // checkout derives billed = max(gross 500 g, volumetric
+        // ceil(300×200×150 mm³ ÷ 5000) = 1800 g) onto the composed dimweight
+        // leaf — nothing is authored at design time.
         clauseId: 'figaro-dimweight',
-        design: all(
-            drawerFill('figaro-dimweight', 'billedMassGrams', '1800'),
-            drawerFill('figaro-dimweight', 'divisor', '5000'),
-        ),
+        composeFirst: ['figaro-cargo'],
+        profile: async (page) => page.locator('#profile-dimweight-divisor').fill('5000'),
+        catalogue: async (page) => {
+            await page.locator('[id^="item-"][id$="-mass"]').first().fill('500');
+            await page.locator('[id^="item-"][id$="-volume"]').first().fill('1000');
+            await page.locator('[id^="item-"][id$="-length"]').first().fill('300');
+            await page.locator('[id^="item-"][id$="-width"]').first().fill('200');
+            await page.locator('[id^="item-"][id$="-height"]').first().fill('150');
+        },
         auditTexts: ['Dimensional weight', '1800'],
         leaf: (data) => {
             expect(data.billedMassGrams).toBe(1800);
@@ -219,7 +231,10 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
 
             const config = readLocalDeploymentConfig();
             const core = config.figaroCore as Hex;
+            const token = config.tokenAddress as Hex;
             const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+            const balanceOf = (who: Hex) =>
+                publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
 
             // ── DRAWER + ENCODE: author the rung's assembly on the REAL canvas —
             //    the per-run probe (uniqueness + the runtime leg) plus the TARGET
@@ -262,6 +277,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             await page.locator('#profile-name').fill('Coverage Seller');
             await page.locator('#profile-specialty').fill('per-clause coverage');
             await page.locator('#profile-geohash').fill('9q8yyk8yu');
+            if (rung.profile) await rung.profile(page);
             await page.getByRole('button', { name: /\+ MOCK$/ }).click();
             await page.locator('input[name="defaultTokenAddress"]').first().check();
             await page.getByRole('button', { name: /^Next/ }).click();
@@ -291,6 +307,13 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             const committedBefore = (await publicClient.getContractEvents({
                 address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: BUYER }, fromBlock: 0n,
             })).length;
+            // Bond-escrow baseline in the payment token, BEFORE the commit
+            // pulls bonds. Deltas (not absolutes) are asserted, so this is
+            // robust to whatever residue prior rungs left on the persistent
+            // devnet. This is the money leg: the chain is the point.
+            const [buyerBefore, sellerBefore, coreBefore] = await Promise.all([
+                balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
+            ]);
             await gotoAsWallet(page, BUYER, `/s/${SELLER}?e2e=devnet`);
             await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
             await waitForConnected(page);
@@ -328,6 +351,19 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             const processId = event.args.processId!;
             const receipt = await publicClient.getTransactionReceipt({ hash: event.transactionHash });
             expect(receipt.status, 'the commit transaction succeeded').toBe('success');
+
+            // ── Funds actually moved: buyer↓ buyerBond, seller↓ sellerBond,
+            //    FigaroCore escrow↑ both — the asymmetric-bonding mechanism,
+            //    read from the token contract, not the UI. (Rungs don't
+            //    resolve — full-cycle settlement is permissionless-clause's
+            //    assertion; the lock IS the commit's on-chain effect.) ──
+            const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, event.args.payment!);
+            const [buyerAfter, sellerAfter, coreAfter] = await Promise.all([
+                balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
+            ]);
+            expect(buyerBefore - buyerAfter, 'buyer balance decreased by the buyer bond').toBe(buyerBond);
+            expect(sellerBefore - sellerAfter, 'seller balance decreased by the seller bond').toBe(sellerBond);
+            expect(coreAfter - coreBefore, 'FigaroCore escrow increased by both bonds').toBe(buyerBond + sellerBond);
 
             // ── ATTEST (runtime leg): the seller advances the probe's ladder
             //    through the ONE generic capability rail. ──
