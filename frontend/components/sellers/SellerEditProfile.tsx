@@ -102,7 +102,7 @@ export function SellerEditProfile() {
         setSeeded(true);
     }, [seeded, loaded, existingProfile, update]);
 
-    const updater = useUpdateSellerProfile(existingProfile);
+    const updater = useUpdateSellerProfile(existingProfile, registryData?.[0] ?? null);
 
     // Redirect back to /sellers on a confirmed update. No refetch here:
     // `useSellerProfile` is per-call-site local state, so refetching this

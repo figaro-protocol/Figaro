@@ -17,6 +17,10 @@
  *   5. Call `updateProfile(newURI)` on the registry. Deposit and
  *      lock period are not touched (`updateProfile` is the
  *      caller-only metadata-only path, by contract design).
+ *   6. After the supersede confirms, best-effort unpin the prior
+ *      profile CID and any authored artifact the successor no longer
+ *      references (author pins → author erases; the erasure never
+ *      fails a confirmed save).
  *
  * Hook returns a `save(partial)` function plus progress state. The
  * caller is responsible for redirect / success UI; the hook only
@@ -27,6 +31,7 @@
 import { useEffect, useState } from "react";
 import { toError } from "@/lib/shared/errors";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
+import { unpinSupersededProfileArtifacts } from "@/lib/seller/profileErasure";
 import {
     parseSellerProfileDocument,
     type SellerProfileMetadata,
@@ -69,6 +74,10 @@ export interface UseUpdateSellerProfileResult {
 
 export function useUpdateSellerProfile(
     existingProfile: SellerProfileMetadata | null,
+    /** The registry metadataURI the save supersedes — its CID (and any
+     *  authored artifact the successor drops) is unpinned after the
+     *  on-chain update confirms. Omit when unknown; erasure is skipped. */
+    priorProfileUri?: string | null,
 ): UseUpdateSellerProfileResult {
     const {
         updateProfile,
@@ -132,6 +141,14 @@ export function useUpdateSellerProfile(
             setPinError(e);
             throw e;
         }
+
+        // The supersede confirmed — erase what it replaced. Never throws.
+        await unpinSupersededProfileArtifacts({
+            ipfs: DEFAULT_IPFS_SERVICE,
+            priorProfileUri,
+            priorProfile: existingProfile,
+            nextProfile: merged,
+        });
     }
 
     const error = pinError ?? (writeError as Error | null) ?? null;

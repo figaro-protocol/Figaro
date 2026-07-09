@@ -84,7 +84,7 @@ export function SellerEditAgents() {
         setSeeded(true);
     }, [seeded, loaded, existingProfile, update]);
 
-    const updater = useUpdateSellerProfile(existingProfile);
+    const updater = useUpdateSellerProfile(existingProfile, registryData?.[0] ?? null);
 
     useEffect(() => {
         if (updater.isSuccess) {

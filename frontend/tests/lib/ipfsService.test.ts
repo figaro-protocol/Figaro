@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_IPFS_SERVICE, ipfsTimeoutForBytes, resolveContentUri } from "@/lib/shared/ipfsService";
+import { DEFAULT_IPFS_SERVICE, extractIpfsCid, ipfsTimeoutForBytes, resolveContentUri } from "@/lib/shared/ipfsService";
 
 describe("ipfsService", () => {
     const originalFetch = globalThis.fetch;
@@ -166,6 +166,66 @@ describe("ipfsService", () => {
             // pinBlob has no size cap — anything past the ceiling stays clamped.
             expect(ipfsTimeoutForBytes(50 * MB)).toBe(capped);
             expect(ipfsTimeoutForBytes(500 * MB)).toBe(capped);
+        });
+    });
+
+    describe("unpin (the erasure half of pin)", () => {
+        it("POSTs pin/rm for the CID", async () => {
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                status: 200,
+                statusText: "OK",
+                json: async () => ({ Pins: ["QmGone"] }),
+                text: async () => JSON.stringify({ Pins: ["QmGone"] }),
+            });
+
+            await DEFAULT_IPFS_SERVICE.unpin("QmGone");
+
+            const [url, init] = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [string, RequestInit];
+            expect(url).toBe("http://127.0.0.1:5001/api/v0/pin/rm?arg=QmGone");
+            expect(init.method).toBe("POST");
+        });
+
+        it("treats an already-absent pin as success (erasing an absence is absence)", async () => {
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 500,
+                statusText: "Internal Server Error",
+                json: async () => ({ Message: "not pinned or pinned indirectly" }),
+                text: async () => JSON.stringify({ Message: "not pinned or pinned indirectly" }),
+            });
+
+            await expect(DEFAULT_IPFS_SERVICE.unpin("QmAbsent")).resolves.toBeUndefined();
+        });
+
+        it("throws on any other node failure", async () => {
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 500,
+                statusText: "Internal Server Error",
+                json: async () => ({ Message: "some other failure" }),
+                text: async () => JSON.stringify({ Message: "some other failure" }),
+            });
+
+            await expect(DEFAULT_IPFS_SERVICE.unpin("QmBroken")).rejects.toThrow("IPFS unpin failed");
+        });
+    });
+
+    describe("extractIpfsCid (the erasure path's admission check)", () => {
+        it("extracts the bare CID from every IPFS URI shape", () => {
+            expect(extractIpfsCid("ipfs://QmAbc123")).toBe("QmAbc123");
+            expect(extractIpfsCid("ipfs://QmAbc123/logo.png")).toBe("QmAbc123");
+            expect(extractIpfsCid("/ipfs/bafyAbc")).toBe("bafyAbc");
+            expect(extractIpfsCid("QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG")).toBe(
+                "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG",
+            );
+        });
+
+        it("returns null for http(s) and unrecognised schemes — only IPFS content is unpinnable", () => {
+            expect(extractIpfsCid("https://example.com/file.json")).toBeNull();
+            expect(extractIpfsCid("data:image/png;base64,abc")).toBeNull();
+            expect(extractIpfsCid("")).toBeNull();
+            expect(extractIpfsCid("not-a-uri")).toBeNull();
         });
     });
 

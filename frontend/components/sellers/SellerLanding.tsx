@@ -30,7 +30,8 @@ import {
 } from "@/lib/seller/useSellerRegistry";
 import { getSellerRegistry } from "@/lib/kernel/contracts";
 import { SELLER_REGISTRY_ABI } from "@figaro/core";
-import { resolveContentUri } from "@/lib/shared/ipfsService";
+import { DEFAULT_IPFS_SERVICE, resolveContentUri } from "@/lib/shared/ipfsService";
+import { unpinSupersededProfileArtifacts } from "@/lib/seller/profileErasure";
 import { tryParseSellerProfileDocument } from "@/lib/seller/sellerProfileMetadata";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
@@ -161,6 +162,8 @@ function RegisteredCard({
                 deposit={deposit}
                 registeredBlock={registeredBlock}
                 onWithdrawn={onWithdrawn}
+                metadataURI={metadataURI}
+                profile={profile}
             />
 
             {/* Both calls stay visible (user rule 2026-06-12): the profile
@@ -196,10 +199,14 @@ function ManageList({
     deposit,
     registeredBlock,
     onWithdrawn,
+    metadataURI,
+    profile,
 }: {
     deposit: bigint | undefined;
     registeredBlock: bigint | null;
     onWithdrawn: () => void;
+    metadataURI: string;
+    profile: SellerProfileMetadata | null;
 }) {
     const items: Array<{ label: string; description: string; href: string | null }> = [
         { label: "Identity", description: "Name, description, tokens, location.", href: "/sellers/edit/identity" },
@@ -240,6 +247,8 @@ function ManageList({
             <WithdrawRow
                 deposit={deposit}
                 onWithdrawn={onWithdrawn}
+                metadataURI={metadataURI}
+                profile={profile}
             />
         </ul>
     );
@@ -248,9 +257,13 @@ function ManageList({
 function WithdrawRow({
     deposit,
     onWithdrawn,
+    metadataURI,
+    profile,
 }: {
     deposit: bigint | undefined;
     onWithdrawn: () => void;
+    metadataURI: string;
+    profile: SellerProfileMetadata | null;
 }) {
     const { address } = useAccount();
     const client = usePublicClient();
@@ -298,6 +311,15 @@ function WithdrawRow({
         try {
             await withdraw();
             setConfirming(false);
+            // De-surfaced on-chain — complete the erasure locally: unpin the
+            // profile document and everything it referenced (nothing
+            // survives a withdraw). Best-effort; never fails the withdraw.
+            await unpinSupersededProfileArtifacts({
+                ipfs: DEFAULT_IPFS_SERVICE,
+                priorProfileUri: metadataURI,
+                priorProfile: profile,
+                nextProfile: null,
+            });
         } catch (e: unknown) {
             setSubmitError(extractErrorMessage(e, String(e)));
         }

@@ -67,11 +67,15 @@ export function RecoursePanel({
 
     // Build the process-scoped audit bundle in-browser, pin it to IPFS.
     // Agreements are cleartext — no redacted distribution form. The pinned
-    // CID is the evidence a party attaches on the forum's own UI.
+    // CID is the evidence a party attaches on the forum's own UI. The
+    // bundle carries per-seller financials, so its pin is erasable: a
+    // rebuild unpins the superseded bundle, and the party can unpin
+    // explicitly once the dispute no longer needs it.
     const handlePrepareBundle = useCallback(async () => {
         if (!orders || orders.length === 0) return;
         setLoading(true);
         setError(null);
+        const priorCID = bundleCID;
         try {
             const blob = await buildAuditBundlePdfBlob(
                 processId,
@@ -83,12 +87,29 @@ export function RecoursePanel({
             const cid = await evidenceTransport.pinBlob(blob);
             setPdfBlob(blob);
             setBundleCID(cid);
+            if (priorCID && priorCID !== cid) {
+                // Best-effort: a superseded bundle must not outlive its successor.
+                await evidenceTransport.unpin(priorCID).catch(() => undefined);
+            }
         } catch (e: unknown) {
             setError(extractErrorMessage(e, "Failed to build the evidence bundle"));
         } finally {
             setLoading(false);
         }
-    }, [orders, processId, publicClient, chainId, agreements, evidenceTransport]);
+    }, [orders, processId, publicClient, chainId, agreements, evidenceTransport, bundleCID]);
+
+    // Erase the pinned bundle (the PDF stays downloadable locally until the
+    // panel unmounts) — the party who pinned the evidence erases it.
+    const handleUnpin = useCallback(async () => {
+        if (!bundleCID) return;
+        setError(null);
+        try {
+            await evidenceTransport.unpin(bundleCID);
+            setBundleCID(null);
+        } catch (e: unknown) {
+            setError(extractErrorMessage(e, "Failed to unpin the evidence bundle"));
+        }
+    }, [bundleCID, evidenceTransport]);
 
     const handleDownload = useCallback(() => {
         if (!pdfBlob) return;
@@ -198,6 +219,13 @@ export function RecoursePanel({
                                 className="text-xs text-blue-600 hover:text-blue-800 underline"
                             >
                                 Download evidence bundle (PDF)
+                            </button>
+                            <button
+                                onClick={() => void handleUnpin()}
+                                data-testid="dispute-evidence-unpin"
+                                className="ml-3 text-xs text-neutral-500 hover:text-neutral-700 underline"
+                            >
+                                Unpin from IPFS
                             </button>
                         </div>
                     )}

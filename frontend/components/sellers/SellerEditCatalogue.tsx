@@ -149,7 +149,7 @@ export function SellerEditCatalogue() {
         setSeeded(true);
     }, [seeded, loaded, existingProfile, existingCatalogue, update]);
 
-    const updater = useUpdateSellerProfile(existingProfile);
+    const updater = useUpdateSellerProfile(existingProfile, registryData?.[0] ?? null);
 
     // Redirect back to /sellers on a confirmed update.
     useEffect(() => {

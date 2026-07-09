@@ -5,7 +5,7 @@
  * resolution so runtime surfaces do not duplicate Kubo HTTP wiring.
  */
 
-import { safeJsonFromResponse } from "@/lib/shared/safeJson";
+import { safeJsonFromResponse, safeJsonParse } from "@/lib/shared/safeJson";
 
 const IPFS_API_URL =
     process.env.NEXT_PUBLIC_IPFS_API_URL ?? "http://127.0.0.1:5001";
@@ -30,6 +30,19 @@ export function resolveContentUri(uri: string, gatewayUrl: string = IPFS_GATEWAY
     // Bare CIDv0 (Qm…) / CIDv1 (bafy…) fallback.
     if (/^Qm[1-9A-HJ-NP-Za-km-z]{44}/.test(uri) || /^bafy/.test(uri)) return `${gatewayUrl}/ipfs/${uri}`;
     // RA-2: reject unrecognised schemes.
+    return null;
+}
+
+/**
+ * Extract the bare CID from an `ipfs://CID`, `/ipfs/CID` path, or bare CID.
+ * Returns `null` for http(s) and unrecognised schemes — only IPFS content is
+ * unpinnable, so this is the erasure path's admission check.
+ */
+export function extractIpfsCid(uri: string): string | null {
+    if (!uri) return null;
+    if (uri.startsWith("ipfs://")) return uri.slice("ipfs://".length).split("/")[0] || null;
+    if (uri.startsWith("/ipfs/")) return uri.slice("/ipfs/".length).split("/")[0] || null;
+    if (/^Qm[1-9A-HJ-NP-Za-km-z]{44}/.test(uri) || /^bafy/.test(uri)) return uri.split("/")[0];
     return null;
 }
 
@@ -85,6 +98,10 @@ export interface IpfsService {
     pinBlob(blob: Blob): Promise<string>;
     publishJSON(data: unknown): Promise<IpfsPublishResult>;
     uploadFile(file: File): Promise<IpfsPublishResult>;
+    /** Remove the pin for a CID on the configured node — the erasure half of
+     *  pinJSON/pinBlob (author pins → author erases). Resolves silently when
+     *  the CID is already unpinned: erasing an absence is absence. */
+    unpin(cid: string): Promise<void>;
     buildURI(cid: string): string;
     buildPath(cid: string): string;
     buildGatewayUrl(cid: string): string;
@@ -137,6 +154,30 @@ class DefaultIpfsService implements IpfsService {
         form.append("file", file);
         const cid = await this.add(form, "IPFS upload failed", "IPFS upload returned no CID", ipfsTimeoutForBytes(file.size));
         return buildPublishResult(this, cid);
+    }
+
+    async unpin(cid: string): Promise<void> {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), IPFS_REQUEST_TIMEOUT_MS);
+        let res: Response;
+        try {
+            res = await fetch(`${this.apiUrl}/api/v0/pin/rm?arg=${encodeURIComponent(cid)}`, {
+                method: "POST",
+                signal: controller.signal,
+            });
+        } finally {
+            clearTimeout(timer);
+        }
+
+        if (!res.ok) {
+            // Kubo answers 500 with a typed message when the pin is already
+            // absent — that is the state unpin exists to reach, not an error.
+            // (safeJsonFromResponse nulls on !ok, so parse the body directly.)
+            const body = safeJsonParse<{ Message?: unknown }>(await res.text().catch(() => ""));
+            const message = typeof body?.Message === "string" ? body.Message : "";
+            if (message.includes("not pinned")) return;
+            throw new Error(`IPFS unpin failed: ${res.status} ${res.statusText}${message ? ` — ${message}` : ""}`);
+        }
     }
 
     buildURI(cid: string): string {
