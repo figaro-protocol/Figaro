@@ -3,9 +3,33 @@ import {
     geohashesMatch,
     geohashCommonPrefix,
     haversineDistance,
+    encodeGeohash,
     decodeGeohash,
     geohashCentroidDistanceKm,
 } from "../src/extensions/geo.js";
+
+// ── encodeGeohash ───────────────────────────────────────────────────────────
+
+describe("encodeGeohash", () => {
+    it("encodes a known point to its canonical hash", () => {
+        // San Francisco — the reference cell the matching tests use.
+        expect(encodeGeohash(37.7749, -122.4194, 6)).toBe("9q8yyk");
+    });
+
+    it("round-trips through decodeGeohash within the cell error", () => {
+        const lat = 48.8584, lng = 2.2945;
+        const hash = encodeGeohash(lat, lng, 9);
+        const { lat: dLat, lng: dLng } = decodeGeohash(hash);
+        expect(Math.abs(dLat - lat)).toBeLessThan(0.0001);
+        expect(Math.abs(dLng - lng)).toBeLessThan(0.0001);
+    });
+
+    it("a shorter precision is a prefix of the longer encoding", () => {
+        const full = encodeGeohash(37.7749, -122.4194, 12);
+        expect(full.startsWith(encodeGeohash(37.7749, -122.4194, 6))).toBe(true);
+        expect(full).toHaveLength(12);
+    });
+});
 
 // ── geohashesMatch ──────────────────────────────────────────────────────────
 

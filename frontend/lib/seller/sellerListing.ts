@@ -1,3 +1,4 @@
+import { geohashCommonPrefix } from "@figaro/core/extensions";
 import type { AcceptedTokenMetadata } from "@/lib/seller/acceptedTokenMetadata";
 import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
 import { hexEqual } from "@/lib/shared/evm";
@@ -112,7 +113,12 @@ export function displayNameForAddress(
  */
 export function listingMatchesGeohash(listing: Listing, viewerGeohash: string): boolean {
     if (!viewerGeohash || !listing.geohash) return true;
-    return listing.geohash.startsWith(viewerGeohash) || viewerGeohash.startsWith(listing.geohash);
+    // Overlap = one is a prefix of the other: the common prefix runs the
+    // full length of the shorter hash (SDK geo math is the single home).
+    return (
+        geohashCommonPrefix(listing.geohash, viewerGeohash) ===
+        Math.min(listing.geohash.length, viewerGeohash.length)
+    );
 }
 
 /**

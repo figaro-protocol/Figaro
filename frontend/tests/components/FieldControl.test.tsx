@@ -12,7 +12,8 @@ import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { FieldSpec } from "@figaro/core/clauses";
 import { FieldControl } from "@/components/core/FieldControl";
-import { encodeGeohash } from "@/lib/shared/geohash";
+import { encodeGeohash } from "@figaro/core/extensions";
+import { PUBLIC_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
 
 const geohashField: FieldSpec = {
     name: "originGeohash",
@@ -61,7 +62,9 @@ describe("FieldControl format dispatch", () => {
         await userEvent.click(screen.getByTestId("f-geo-device"));
         await waitFor(() => expect(onChange).toHaveBeenCalled());
         const committed = onChange.mock.calls.at(-1)![0] as string;
-        expect(committed).toBe(encodeGeohash(lat, lon, 9));
+        // Device fill respects the public-surface cap — the field lands in
+        // a pinned agreement, so it is neighborhood-grade.
+        expect(committed).toBe(encodeGeohash(lat, lon, PUBLIC_GEOHASH_MAX_PRECISION));
         expect(committed).toMatch(/^[0123456789bcdefghjkmnpqrstuvwxyz]+$/);
     });
 

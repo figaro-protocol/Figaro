@@ -1,51 +1,22 @@
 /**
- * Figaro handoff geohash utility.
+ * Public-surface geohash policy.
  *
- * Self-contained geohash encode. Used by the physical-handoff surfaces
- * (delivery-location capture, courier proximity, seller service areas).
+ * Geohash encode/decode is generic geo math and lives in the SDK
+ * (`@figaro/core/extensions`). This module owns the frontend's PUBLIC
+ * precision cap: a geohash that lands on a public artifact — a pinned
+ * seller profile, an agreement clause field — is neighborhood-grade,
+ * never door-grade. Door-level detail travels only inside the per-order
+ * ECDH addressee envelope (`lib/handoff/addressDetail.ts`), where it
+ * stays deletable (EDPB 02/2025: minimise location data on pinned /
+ * immutable media).
  */
 
-// ---------------------------------------------------------------------------
-// Geohash encoding (self-contained, no external dependency)
-// ---------------------------------------------------------------------------
-const BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz";
+/** 6 chars ≈ 1.2 km × 0.6 km — the neighborhood cell. */
+export const PUBLIC_GEOHASH_MAX_PRECISION = 6;
 
-export function encodeGeohash(lat: number, lon: number, precision = 6): string {
-    let idx = 0;
-    let bit = 0;
-    let evenBit = true;
-    let hash = "";
-    let minLat = -90,
-        maxLat = 90,
-        minLon = -180,
-        maxLon = 180;
-
-    while (hash.length < precision) {
-        if (evenBit) {
-            const midLon = (minLon + maxLon) / 2;
-            if (lon >= midLon) {
-                idx = (idx << 1) | 1;
-                minLon = midLon;
-            } else {
-                idx = idx << 1;
-                maxLon = midLon;
-            }
-        } else {
-            const midLat = (minLat + maxLat) / 2;
-            if (lat >= midLat) {
-                idx = (idx << 1) | 1;
-                minLat = midLat;
-            } else {
-                idx = idx << 1;
-                maxLat = midLat;
-            }
-        }
-        evenBit = !evenBit;
-        if (++bit === 5) {
-            hash += BASE32[idx];
-            bit = 0;
-            idx = 0;
-        }
-    }
-    return hash;
+/** Clamp a geohash to the public-surface precision cap. Applied wherever a
+ *  geohash enters a public artifact; a finer hash a party typed or a device
+ *  produced is truncated, never round-tripped through coordinates. */
+export function clampPublicGeohash(geohash: string): string {
+    return geohash.slice(0, PUBLIC_GEOHASH_MAX_PRECISION);
 }

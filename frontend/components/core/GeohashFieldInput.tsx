@@ -16,12 +16,9 @@
  */
 import { useState } from "react";
 import { getDeviceLocation } from "@/lib/seller/geocode";
-import { encodeGeohash } from "@/lib/shared/geohash";
+import { encodeGeohash } from "@figaro/core/extensions";
+import { clampPublicGeohash, PUBLIC_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
 import type { FieldFormatInputProps } from "@/components/core/fieldFormatInputs";
-
-/** Commit-grade default precision — ~±0.06 km cell, the profile form's
- *  finest preset. The party can type any coarser/finer hash by hand. */
-const DEVICE_PRECISION = 9;
 
 export function GeohashFieldInput({ value, onChange, testId, pattern }: FieldFormatInputProps) {
     const [locating, setLocating] = useState(false);
@@ -36,7 +33,8 @@ export function GeohashFieldInput({ value, onChange, testId, pattern }: FieldFor
                 setError("Couldn't read device location. Permission denied or unavailable.");
                 return;
             }
-            onChange(encodeGeohash(position.lat, position.lon, DEVICE_PRECISION));
+            // Public-surface cap: the field lands in a pinned agreement.
+            onChange(encodeGeohash(position.lat, position.lon, PUBLIC_GEOHASH_MAX_PRECISION));
         } finally {
             setLocating(false);
         }
@@ -52,10 +50,13 @@ export function GeohashFieldInput({ value, onChange, testId, pattern }: FieldFor
                     type="text"
                     value={value}
                     onChange={(e) => {
+                        // Typed hashes are clamped too — the cap is about
+                        // where the value lands (a public artifact), not how
+                        // it was produced.
                         const raw = e.target.value;
-                        onChange(raw === "" ? undefined : raw);
+                        onChange(raw === "" ? undefined : clampPublicGeohash(raw));
                     }}
-                    placeholder="geohash (base32)"
+                    placeholder={`geohash (base32, ≤${PUBLIC_GEOHASH_MAX_PRECISION} chars)`}
                     data-testid={testId}
                     className={`w-full rounded border bg-white px-2 py-1 text-xs font-mono text-black focus:outline-none focus:ring-1 focus:ring-accent ${
                         shapeOk ? "border-neutral-300" : "border-red-400"

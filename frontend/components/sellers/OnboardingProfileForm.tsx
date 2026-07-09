@@ -24,7 +24,8 @@ import type {
     OnboardingProfileDraft,
 } from "@/lib/seller/onboardingState";
 import type { AcceptedTokenMetadata } from "@/lib/seller/acceptedTokenMetadata";
-import { encodeGeohash } from "@/lib/shared/geohash";
+import { encodeGeohash } from "@figaro/core/extensions";
+import { clampPublicGeohash, PUBLIC_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
 import { geocodeAddress, getDeviceLocation, type GeocodeFailureReason } from "@/lib/seller/geocode";
 import { getCommonTokens, type CommonToken } from "@/lib/seller/commonTokens";
 import { hexEqual } from "@/lib/shared/evm";
@@ -45,7 +46,7 @@ interface FormState {
     specialty: string;
     geohash: string;
     addressText: string;
-    geohashPrecision: 9 | 10 | 11 | 12;
+    geohashPrecision: 4 | 5 | 6;
     logoURI: string;
     acceptedTokens: Array<{ address: string; symbol: string }>;
     defaultTokenAddress: string;
@@ -57,17 +58,19 @@ const EMPTY_FORM: FormState = {
     specialty: "",
     geohash: "",
     addressText: "",
-    geohashPrecision: 10,
+    geohashPrecision: PUBLIC_GEOHASH_MAX_PRECISION,
     logoURI: "",
     acceptedTokens: [{ address: "", symbol: "" }],
     defaultTokenAddress: "",
 };
 
+// Public-surface cap (lib/shared/geohash.ts): the profile is pinned to IPFS,
+// so its geohash is neighborhood-grade, never door-grade — door-level detail
+// travels per-order inside the ECDH addressee envelope.
 const PRECISION_LABELS: Record<FormState["geohashPrecision"], string> = {
-    9: "9 chars (~4.8 m)",
-    10: "10 chars (~1.2 m — default)",
-    11: "11 chars (~15 cm)",
-    12: "12 chars (~3.7 cm)",
+    4: "4 chars (~39 km — city)",
+    5: "5 chars (~4.9 km — district)",
+    6: "6 chars (~1.2 km — neighborhood, default)",
 };
 
 function geocodeErrorMessage(reason: GeocodeFailureReason): string {
@@ -92,11 +95,12 @@ function fromDraft(draft: OnboardingProfileDraft | undefined): FormState {
         name: draft.name ?? "",
         description: draft.description ?? "",
         specialty: draft.specialty ?? "",
-        geohash: storedGeohash,
+        // A pre-cap draft may carry a finer hash — clamp on the way in.
+        geohash: clampPublicGeohash(storedGeohash),
         addressText: draft.location?.addressText ?? "",
-        geohashPrecision: (storedGeohash.length >= 9 && storedGeohash.length <= 12)
+        geohashPrecision: (storedGeohash.length >= 4 && storedGeohash.length < PUBLIC_GEOHASH_MAX_PRECISION)
             ? (storedGeohash.length as FormState["geohashPrecision"])
-            : 10,
+            : PUBLIC_GEOHASH_MAX_PRECISION,
         logoURI: draft.branding?.logoURI ?? "",
         acceptedTokens: draft.acceptedTokens && draft.acceptedTokens.length > 0
             ? draft.acceptedTokens.map((t) => ({ address: t.address, symbol: t.symbol }))
@@ -471,11 +475,12 @@ export function OnboardingProfileForm({
             >
                 <h3 id="profile-heading-location" className="text-heading-h3 text-ink-heading">Location</h3>
                 <p className="text-sm text-ink-body">
-                    Optional, public. The geohash anchors your handoff point
-                    for proximity-proof attestations; metres-to-centimetres
-                    precision is what those attestations expect. The
-                    human-readable address is shown verbatim on your{" "}
-                    <code>/m/&lt;address&gt;</code> page.
+                    Optional, public. The geohash anchors your service area at
+                    neighborhood precision — the profile is pinned publicly, so
+                    it never carries a door-level location; precise pickup
+                    points are shared per-order, encrypted to that order&apos;s
+                    counterparty alone. The human-readable address is shown
+                    verbatim on your <code>/m/&lt;address&gt;</code> page.
                 </p>
                 <FormField label="Address" inputId="profile-address">
                     <Input
@@ -496,12 +501,12 @@ export function OnboardingProfileForm({
                         value={form.geohashPrecision}
                         onChange={(e) => setField("geohashPrecision", Number(e.target.value) as FormState["geohashPrecision"])}
                     >
-                        {([9, 10, 11, 12] as const).map((p) => (
+                        {([4, 5, 6] as const).map((p) => (
                             <option key={p} value={p}>{PRECISION_LABELS[p]}</option>
                         ))}
                     </Select>
                     <p className="text-xs text-ink-faint mt-1">
-                        Higher precision anchors your location to within metres or centimetres — the resolution proximity-proof attestations need at handoff time. 10 chars (~1.2 m) is the default; 12 chars (~3.7 cm) gets you GPS-grade resolution.
+                        Neighborhood precision (6 chars, ~1.2 km) is the finest a public profile carries. Door-level detail is never published — it travels encrypted, per order, to the counterparty who needs it.
                     </p>
                 </FormField>
 
@@ -510,9 +515,9 @@ export function OnboardingProfileForm({
                         <Input
                             id="profile-geohash"
                             type="text"
-                            placeholder="e.g. dr5regw3pp"
+                            placeholder="e.g. dr5reg"
                             value={form.geohash}
-                            onChange={(e) => setField("geohash", e.target.value)}
+                            onChange={(e) => setField("geohash", clampPublicGeohash(e.target.value))}
                         />
                         <div className="flex flex-wrap gap-2">
                             <Button

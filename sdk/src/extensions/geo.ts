@@ -61,9 +61,55 @@ export function haversineDistance(
     return EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// ── Geohash decoding ────────────────────────────────────────────────────────
+// ── Geohash encoding / decoding ─────────────────────────────────────────────
 
 const BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz";
+
+/**
+ * Encode a lat/lng to a geohash of the given precision — the standard base32
+ * interleaved encoding (the inverse of `decodeGeohash`).
+ *
+ * Default precision: 6 characters (~1.2km × 0.6km).
+ */
+export function encodeGeohash(lat: number, lng: number, precision: number = 6): string {
+    let idx = 0;
+    let bit = 0;
+    let evenBit = true;
+    let hash = "";
+    let minLat = -90,
+        maxLat = 90,
+        minLng = -180,
+        maxLng = 180;
+
+    while (hash.length < precision) {
+        if (evenBit) {
+            const midLng = (minLng + maxLng) / 2;
+            if (lng >= midLng) {
+                idx = (idx << 1) | 1;
+                minLng = midLng;
+            } else {
+                idx = idx << 1;
+                maxLng = midLng;
+            }
+        } else {
+            const midLat = (minLat + maxLat) / 2;
+            if (lat >= midLat) {
+                idx = (idx << 1) | 1;
+                minLat = midLat;
+            } else {
+                idx = idx << 1;
+                maxLat = midLat;
+            }
+        }
+        evenBit = !evenBit;
+        if (++bit === 5) {
+            hash += BASE32[idx];
+            bit = 0;
+            idx = 0;
+        }
+    }
+    return hash;
+}
 
 /**
  * Decode a geohash to its cell's centroid lat/lng.

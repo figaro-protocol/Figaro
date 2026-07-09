@@ -24,15 +24,17 @@
  */
 import { test, expect } from './devnet-multi-test';
 import type { Page } from '@playwright/test';
-import { encodeGeohash } from '@/lib/shared/geohash';
+import { encodeGeohash } from '@figaro/core/extensions';
+import { PUBLIC_GEOHASH_MAX_PRECISION } from '@/lib/shared/geohash';
 
 const GEO_CLAUSE_KEY = 'figaro-geolocation';
 
 // The coordinates Playwright feeds the browser's Geolocation API — the
-// device-location affordance must encode exactly this cell.
+// device-location affordance must encode exactly this cell, at the
+// public-surface precision cap (the field lands in a pinned agreement).
 const DEVICE_LAT = 37.7749;
 const DEVICE_LON = -122.4194;
-const DEVICE_GEOHASH = encodeGeohash(DEVICE_LAT, DEVICE_LON, 9);
+const DEVICE_GEOHASH = encodeGeohash(DEVICE_LAT, DEVICE_LON, PUBLIC_GEOHASH_MAX_PRECISION);
 
 /** Open the (sole) root order's drawer on its registry tab and return the
  *  geo checkbox, awaited into existence (chain→IPFS spec warm). */

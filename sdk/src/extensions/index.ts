@@ -7,7 +7,7 @@
  *
  * Modules:
  * - Attestation: clause-ID derivation, clause-agnostic event filtering
- * - Geo math: geohash prefix matching, Haversine distance
+ * - Geo math: geohash encode/decode, prefix matching, Haversine distance
  */
 
 // ── Clause ID & Attestation filtering ──────────────────────────────────────
@@ -26,6 +26,7 @@ export {
     geohashesMatch,
     geohashCommonPrefix,
     haversineDistance,
+    encodeGeohash,
     decodeGeohash,
     geohashCentroidDistanceKm,
 } from "./geo.js";
