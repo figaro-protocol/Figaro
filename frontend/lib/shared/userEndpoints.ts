@@ -20,6 +20,11 @@ export interface UserEndpointOverrides {
     ipfsApiUrl?: string;
     /** IPFS gateway content is read through. */
     ipfsGatewayUrl?: string;
+    /** Nominatim-compatible search endpoint typed addresses resolve
+     *  through — called directly from the browser (no operator server in
+     *  between); OpenStreetMap's public instance by default, the user's
+     *  own instance if set. */
+    geocodeUrl?: string;
 }
 
 function sanitize(value: unknown): string | undefined {
@@ -37,6 +42,7 @@ export function readUserEndpoints(): UserEndpointOverrides {
         rpcUrl: sanitize(raw.rpcUrl),
         ipfsApiUrl: sanitize(raw.ipfsApiUrl),
         ipfsGatewayUrl: sanitize(raw.ipfsGatewayUrl),
+        geocodeUrl: sanitize(raw.geocodeUrl),
     };
 }
 
@@ -45,5 +51,6 @@ export function writeUserEndpoints(next: UserEndpointOverrides): void {
         rpcUrl: sanitize(next.rpcUrl),
         ipfsApiUrl: sanitize(next.ipfsApiUrl),
         ipfsGatewayUrl: sanitize(next.ipfsGatewayUrl),
+        geocodeUrl: sanitize(next.geocodeUrl),
     });
 }

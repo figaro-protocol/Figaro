@@ -26,8 +26,32 @@ describe("geocodeAddress", () => {
 
         expect(out).toEqual({ ok: true, result: { lat: 40.7177933, lon: -73.9954856 } });
         expect(fetchMock).toHaveBeenCalledOnce();
+        // Straight from the browser to the third-party geocoder — no
+        // operator proxy in between (the /api/geocode route is retired).
         const url = (fetchMock.mock.calls[0]?.[0] ?? "") as string;
-        expect(url).toBe("/api/geocode?q=100%20Bowery%2C%20New%20York");
+        expect(url).toBe(
+            "https://nominatim.openstreetmap.org/search?q=100%20Bowery%2C%20New%20York&format=json&limit=1",
+        );
+    });
+
+    it("resolves through the user's geocoder override when one is set", async () => {
+        installFetch();
+        window.localStorage.setItem(
+            "figaro.user-endpoints",
+            JSON.stringify({ geocodeUrl: "https://geo.example.com/search" }),
+        );
+        try {
+            fetchMock.mockResolvedValueOnce({
+                ok: true,
+                json: async () => [{ lat: "48.8584", lon: "2.2945" }],
+            });
+            const out = await geocodeAddress("Champ de Mars");
+            expect(out.ok).toBe(true);
+            const url = (fetchMock.mock.calls[0]?.[0] ?? "") as string;
+            expect(url).toBe("https://geo.example.com/search?q=Champ%20de%20Mars&format=json&limit=1");
+        } finally {
+            window.localStorage.removeItem("figaro.user-endpoints");
+        }
     });
 
     it("rejects empty queries before hitting the network", async () => {

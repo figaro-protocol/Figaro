@@ -31,6 +31,7 @@ export default function SettingsPage() {
         rpcUrl: "",
         ipfsApiUrl: "",
         ipfsGatewayUrl: "",
+        geocodeUrl: "",
     });
     const [saved, setSaved] = useState(false);
 
@@ -41,6 +42,7 @@ export default function SettingsPage() {
             rpcUrl: current.rpcUrl ?? "",
             ipfsApiUrl: current.ipfsApiUrl ?? "",
             ipfsGatewayUrl: current.ipfsGatewayUrl ?? "",
+            geocodeUrl: current.geocodeUrl ?? "",
         });
     }, [mounted]);
 
@@ -111,6 +113,22 @@ export default function SettingsPage() {
                     />
                     <p className="text-xs text-ink-faint mt-1">
                         Where pinned content is read from. Applies immediately.
+                    </p>
+                </FormField>
+
+                <FormField label="Geocoder" inputId="settings-geocode-url">
+                    <Input
+                        id="settings-geocode-url"
+                        type="text"
+                        placeholder="https://nominatim.openstreetmap.org/search"
+                        value={form.geocodeUrl}
+                        onChange={(e) => setField("geocodeUrl", e.target.value)}
+                        data-testid="settings-geocode-url"
+                    />
+                    <p className="text-xs text-ink-faint mt-1">
+                        Nominatim-compatible search endpoint typed addresses resolve
+                        through — called directly from your browser, only when you use
+                        &ldquo;From address&rdquo;. Applies immediately.
                     </p>
                 </FormField>
 

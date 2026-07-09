@@ -1,19 +1,29 @@
 /**
- * lib/shared/geocode.ts
+ * lib/seller/geocode.ts
  *
- * Free-form address-text → lat/lon resolution. Calls the
- * `/api/geocode` server-side proxy, which forwards to OpenStreetMap
- * Nominatim with a project-identifying User-Agent. Routing through
- * our own origin avoids browser extensions (uBlock Origin, Privacy
- * Badger, Brave Shields) that block direct calls to Nominatim as a
- * tracker.
+ * Free-form address-text → lat/lon resolution, straight from the
+ * browser to a Nominatim-compatible geocoder — OpenStreetMap's public
+ * instance by default, the user's own via the /settings override
+ * (`lib/shared/userEndpoints`). There is no server in between: the
+ * former `/api/geocode` proxy was retired (no-PP/ToS ruling,
+ * 2026-07-09) so the typed address travels from the user's browser to
+ * the third party and nowhere else — only on an explicit action,
+ * disclosed at the input.
+ *
+ * Trade-off carried knowingly: some privacy extensions (uBlock
+ * Origin, Privacy Badger, Brave Shields) block Nominatim as a
+ * tracker. That failure surfaces as `network-error` and the form's
+ * message names extensions as the likely cause; pointing the
+ * geocoder override at another Nominatim-compatible endpoint is the
+ * user-custody remedy.
  *
  * Returns a discriminated outcome — callers can distinguish
- * "no match for this query" from "we couldn't reach the proxy" and
+ * "no match for this query" from "we couldn't reach the geocoder" and
  * surface a useful message.
  */
 
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { readUserEndpoints } from "@/lib/shared/userEndpoints";
 
 export interface GeocodeResult {
     lat: number;
@@ -36,7 +46,13 @@ export type GeocodeOutcome =
     | { ok: true; result: GeocodeResult }
     | { ok: false; reason: GeocodeFailureReason; detail?: string };
 
-const PROXY_URL = "/api/geocode";
+const DEFAULT_GEOCODER_URL = "https://nominatim.openstreetmap.org/search";
+
+/** The Nominatim-compatible search endpoint at call time — the user's
+ *  /settings override, else OpenStreetMap's public instance. */
+function activeGeocoderUrl(): string {
+    return readUserEndpoints().geocodeUrl ?? DEFAULT_GEOCODER_URL;
+}
 
 /**
  * Resolve an address string to lat/lon. Returns a structured outcome;
@@ -48,7 +64,7 @@ export async function geocodeAddress(query: string): Promise<GeocodeOutcome> {
 
     let res: Response;
     try {
-        const url = `${PROXY_URL}?q=${encodeURIComponent(trimmed)}`;
+        const url = `${activeGeocoderUrl()}?q=${encodeURIComponent(trimmed)}&format=json&limit=1`;
         res = await fetch(url, {
             headers: { Accept: "application/json" },
         });
