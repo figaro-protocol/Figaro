@@ -26,12 +26,12 @@ import {
 import {
     COMMITMENT_TYPES,
     buildDomain,
-    computeAgreementHash,
     type Agreement,
     type Commitment,
     type Hex,
 } from "@figaro/core";
 import { CONTRACTS } from "@/lib/kernel/contracts";
+import { assertAgreementSignable } from "@/lib/kernel/orderAgreement";
 import { useFigaroActions } from "@/lib/kernel/useFigaroActions";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { hexEqual, isValidAddress, ZERO_ADDRESS } from "@/lib/shared/evm";
@@ -86,16 +86,12 @@ export function useOrderCommitmentFlow() {
         agreement: Agreement,
     ): Promise<Hex> => {
         assertSigningDomain(CONTRACTS.core, chainId);
-        // Layer A — never sign an agreement that doesn't match the hash being
-        // signed: recompute the agreement's merkle root and refuse on mismatch.
-        // Lives AT the sign step so no caller can bypass it — the /orders
+        // Layer A — the FULL gate at the sign step, so no caller can bypass
+        // it: every section conforms to its clause spec AND the agreement's
+        // recomputed merkle root equals the hash being signed. The /orders
         // accept card, /sign, and the buyer's checkout sign all route through
-        // here.
-        if (!hexEqual(computeAgreementHash(agreement), commitment.agreementHash)) {
-            throw new Error(
-                "This order isn't valid to sign: the agreement does not match its signed hash.",
-            );
-        }
+        // here — both sides of the bilateral commit get the same check.
+        assertAgreementSignable(agreement, commitment.agreementHash);
         const approved = await requestSignConfirmation(commitment, agreement);
         if (!approved) throw new Error("Signing cancelled by user.");
         const sig = await signTypedDataAsync({

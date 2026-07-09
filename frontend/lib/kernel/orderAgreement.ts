@@ -137,3 +137,24 @@ export function validateCommitmentAgreement(
 
     return { ok: issues.length === 0, issues };
 }
+
+/**
+ * The ONE Layer-A thrower every signature routes through — buyer sign, seller
+ * counter-sign (`signAs`), and the checkout's early pre-wallet check all call
+ * this, so no path signs an agreement whose sections violate their clause
+ * specs or whose hash doesn't match its recomputed merkle root.
+ */
+export function assertAgreementSignable(
+    agreement: Agreement,
+    expectedHash: `0x${string}`,
+    label = "This order",
+): void {
+    const check = validateCommitmentAgreement(agreement, expectedHash);
+    if (!check.ok) {
+        throw new Error(
+            `${label} isn't valid to sign yet: ${check.issues
+                .map((i) => `${i.clause} ${i.path}: ${i.message}`)
+                .join("; ")}`,
+        );
+    }
+}

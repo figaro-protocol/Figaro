@@ -23,7 +23,7 @@
 
 
 import { buildOrderPreview, type OrderPreview } from "@/lib/checkout/orderPreview";
-import { validateCommitmentAgreement } from "@/lib/kernel/orderAgreement";
+import { assertAgreementSignable } from "@/lib/kernel/orderAgreement";
 import type { DraftOrder } from "@/lib/checkout/draftOrders";
 import { commitmentOrderHash, commitmentProcessId, type CommitmentPayload } from "@/lib/kernel/signedCommitment";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
@@ -231,16 +231,11 @@ function divisorFor(seller: `0x${string}`, catalogues: SellerCatalogue[]): numbe
     return catalogues.find((c) => c.address.toLowerCase() === seller.toLowerCase())?.dimWeightDivisor;
 }
 
-/** Layer A — the buyer does not sign an invalid agreement. */
+/** Layer A, early: surface an invalid agreement BEFORE the wallet opens. The
+ *  sign step itself (`signAs`) runs the same gate — this call is the UX
+ *  courtesy, not the enforcement. */
 function assertValidToSign(preview: OrderPreview, label: string): void {
-    const check = validateCommitmentAgreement(preview.agreement, preview.agreementHash);
-    if (!check.ok) {
-        throw new Error(
-            `${label} isn't valid to sign yet: ${check.issues
-                .map((i) => `${i.clause} ${i.path}: ${i.message}`)
-                .join("; ")}`,
-        );
-    }
+    assertAgreementSignable(preview.agreement, preview.agreementHash, label);
 }
 
 export async function executeAssemblyCheckout(

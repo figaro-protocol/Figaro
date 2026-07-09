@@ -33,16 +33,19 @@
  * three onto the leaf.
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server (:3100).
- * The composition includes a per-run probe clause (nonce-bearing id) so each
- * run's compositionHash is unique on the persistent devnet — the assembly NAME
- * is excluded from the hash by design (editorial renames never fork identity),
- * so a name nonce alone cannot prevent the first-write-wins publish collision.
+ * figaro-cargo is a KNOWN, pre-populated clause, so this spec's composition is
+ * FIXED — and assembly identity IS the composition (editorial names are
+ * excluded from the compositionHash). On the persistent devnet the first run
+ * against a deployment ANCHORS the assembly; every later run ADOPTS it: the
+ * publish leg accepts either the fresh receipt or the registry's
+ * "already published" refusal naming the same content-derived slug
+ * (first-write-wins — the protocol-correct behavior), then binds and orders
+ * against that slug.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
 import { readLocalDeploymentConfig, assertPinnedInIpfs } from './devnet-helpers';
-import { makeProbeSpec, registerProbeClause } from './probeAssembly';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import { calculateBonds } from '@figaro/core';
@@ -93,12 +96,6 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const balanceOf = (who: Hex) =>
             publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
-        const runNonce = `${Date.now()}`;
-
-        // Per-run probe clause: varies the COMPOSITION (not just the name) so
-        // re-runs against the same deployment never collide at registerAssembly.
-        const probeClauseId = `figaro-probe-attest-${runNonce}`;
-        await registerProbeClause(probeClauseId, makeProbeSpec(probeClauseId, `Probe attestation ${runNonce}`));
 
         // ── COMPOSE: author a single-node assembly carrying figaro-cargo on the REAL
         //    canvas. The clause appears because the drawer read it from the live
@@ -121,12 +118,9 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
         await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
         // figaro-cargo — a protocol clause; composed exactly like any other.
         await page.getByTestId('drawer-registry-clause-figaro-cargo').check();
-        // The per-run probe rides along for composition uniqueness (see header).
-        const probeCheckbox = page.getByTestId(`drawer-registry-clause-${probeClauseId}`);
-        await expect(probeCheckbox, 'the drawer surfaces the just-registered probe clause').toHaveCount(1, { timeout: 20000 });
-        await probeCheckbox.check();
 
-        const assemblyName = `Cargo fold ${runNonce}`;
+        // Stable editorial name: identity is the composition, not the name.
+        const assemblyName = 'Cargo fold';
         await page.getByTestId('designer-name-input').fill(assemblyName);
         await page.getByTestId('designer-summary-input').fill('Catalogue→leaf fold: authored physical data lands on the cargo leaf.');
         await page.getByTestId('designer-description-input').fill('Single-node assembly carrying figaro-cargo — the fold derives mass/volume/dimensions from the catalogue.');
@@ -136,14 +130,31 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
         await page.waitForURL(/\/builders\/designer\/view\/asm-/, { timeout: 15000 });
         const handle = page.url().match(/\/view\/(asm-[a-z0-9-]+)/)?.[1];
         expect(handle, 'review navigated to a draft handle').toBeTruthy();
+
+        // Publish or ADOPT: fresh deployment → the receipt names the content
+        // slug; re-run → the registry refuses the identical composition
+        // (first-write-wins) and its refusal NAMES the anchored slug. Either
+        // way the slug comes from the network's answer.
         await page.goto(`/builders/designer/view/${handle}?intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         const confirmBtn = page.getByTestId('review-confirm-publish');
         await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
         await waitForConnected(page);
         await confirmBtn.click();
-        await page.getByTestId('assembly-publish-receipt').waitFor({ timeout: 60000 });
-        const slug = (await page.getByTestId('receipt-slug').textContent())?.trim();
-        expect(slug, 'publish receipt shows the content slug').toMatch(/^asm-/);
+        const receipt = page.getByTestId('assembly-publish-receipt');
+        const publishError = page.getByTestId('publish-error');
+        await expect(receipt.or(publishError)).toBeVisible({ timeout: 60000 });
+        let slug: string;
+        if (await publishError.isVisible()) {
+            await expect(
+                publishError,
+                'the registry refuses the identical composition (adopt path)',
+            ).toContainText(/already published/);
+            slug = (await publishError.textContent())?.match(/"(asm-[a-z0-9-]+)"/)?.[1] ?? '';
+            expect(slug, 'the refusal names the anchored content slug').toMatch(/^asm-/);
+        } else {
+            slug = (await page.getByTestId('receipt-slug').textContent())?.trim() ?? '';
+            expect(slug, 'publish receipt shows the content slug').toMatch(/^asm-/);
+        }
 
         // ── CATALOGUE: onboard anvil[15] and author an item carrying mass, volume,
         //    and packaged dimensions through the REAL catalogue form (the P1 floor
@@ -171,9 +182,9 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
         await page.getByRole('button', { name: /^Next/ }).click();
         await expect(page).toHaveURL(/\/sellers\/assemblies/);
 
-        const myRow = page.locator('[data-testid^="seller-assembly-row-"]').filter({ hasText: assemblyName });
-        await myRow.first().waitFor({ state: 'visible', timeout: 30000 });
-        await myRow.first().locator('input[type="checkbox"]').first().check();
+        const myRow = page.getByTestId(`seller-assembly-row-${slug}`);
+        await myRow.waitFor({ state: 'visible', timeout: 30000 });
+        await myRow.locator('input[type="checkbox"]').first().check();
         await page.getByRole('button', { name: /^Next/ }).click();
         await expect(page).toHaveURL(/\/sellers\/agents/);
         await page.getByRole('button', { name: /^Next/ }).click();

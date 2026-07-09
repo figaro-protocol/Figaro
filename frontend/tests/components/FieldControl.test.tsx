@@ -77,3 +77,53 @@ describe("FieldControl format dispatch", () => {
         expect(onChange).toHaveBeenLastCalledWith("9");
     });
 });
+
+// Spec-declared constraints surface AT the input (display-only guidance —
+// the Layer-A sign gate stays the enforcement), and the field's own
+// description is visible at the design-time authoring moment. All read from
+// the spec; no clause is named.
+describe("FieldControl constraint guidance", () => {
+    const lawField: FieldSpec = {
+        name: "applicableLaw",
+        type: "string",
+        required: true,
+        pattern: "^[A-Za-z][A-Za-z0-9-]{1,15}$",
+        maxLength: 16,
+        minLength: 2,
+        description: "Conventionally an ISO 3166-1 alpha-2 country code.",
+    };
+
+    it("a pattern-violating value shows the constraint error as the party types", () => {
+        // Within the length bounds but violating the pattern (spaces + '!').
+        render(
+            <FieldControl field={lawField} value="New York!!" onChange={() => {}} testId="f-law" />,
+        );
+        const alert = screen.getByTestId("f-law-constraint");
+        expect(alert.textContent).toMatch(/required format/);
+    });
+
+    it("a conforming value shows no constraint error", () => {
+        render(<FieldControl field={lawField} value="US-NY" onChange={() => {}} testId="f-law2" />);
+        expect(screen.queryByTestId("f-law2-constraint")).toBeNull();
+    });
+
+    it("an empty value shows no constraint error (required-ness is the sign gate's concern)", () => {
+        render(<FieldControl field={lawField} value={undefined} onChange={() => {}} testId="f-law3" />);
+        expect(screen.queryByTestId("f-law3-constraint")).toBeNull();
+    });
+
+    it("length bounds are reported", () => {
+        render(<FieldControl field={lawField} value="X" onChange={() => {}} testId="f-law4" />);
+        expect(screen.getByTestId("f-law4-constraint").textContent).toMatch(/at least 2/);
+    });
+
+    it("the spec's description is visible at design time and absent at runtime", () => {
+        render(<FieldControl field={lawField} value="US-NY" onChange={() => {}} testId="f-law5" />);
+        expect(screen.getByText(/ISO 3166-1/)).toBeTruthy();
+        cleanup();
+        render(
+            <FieldControl field={lawField} value="US-NY" onChange={() => {}} testId="f-law6" mode="runtime" />,
+        );
+        expect(screen.queryByText(/ISO 3166-1/)).toBeNull();
+    });
+});

@@ -28,6 +28,29 @@ import { getFieldFormatInput } from "@/components/core/fieldFormatInputs";
 
 export type FieldControlMode = "design" | "runtime";
 
+/** Spec-declared string constraints (pattern / minLength / maxLength), checked
+ *  as the party types — display-only guidance so a violation surfaces at the
+ *  keyboard, not first at the checkout sign gate. Enforcement stays Layer A. */
+function scalarConstraintIssue(field: FieldSpec, raw: string): string | null {
+    if (field.type !== "string" || raw === "") return null;
+    if (field.minLength !== undefined && raw.length < field.minLength) {
+        return `Must be at least ${field.minLength} characters.`;
+    }
+    if (field.maxLength !== undefined && raw.length > field.maxLength) {
+        return `Must be at most ${field.maxLength} characters.`;
+    }
+    if (field.pattern) {
+        try {
+            if (!new RegExp(field.pattern).test(raw)) {
+                return `Doesn't match the spec's required format (${field.pattern}).`;
+            }
+        } catch {
+            // An unparseable spec pattern is the validator's finding, not the input's.
+        }
+    }
+    return null;
+}
+
 export function FieldControl({
     field,
     value,
@@ -171,6 +194,22 @@ export function FieldControl({
     if (isScalar && fillHere) {
         const numeric = field.type === "integer";
         const current = value === undefined || value === null ? "" : String(value);
+        const issue = scalarConstraintIssue(field, current);
+        // The spec's own guidance, visible at the authoring moment (design
+        // mode); constraint violations surface as the party types, in BOTH
+        // modes. Display-only — the Layer-A sign gate stays the enforcement.
+        const guidance = (
+            <>
+                {issue && (
+                    <p className="mt-1 text-xs text-red-600" role="alert" data-testid={`${testId}-constraint`}>
+                        {issue}
+                    </p>
+                )}
+                {mode === "design" && field.description && (
+                    <p className="mt-1 text-xs text-ink-faint">{field.description}</p>
+                )}
+            </>
+        );
         // A string field's declared `format` may map to a richer input this
         // frontend registered (e.g. "geohash" → device-location picker) — the
         // open format axis. No mapping ⇒ the plain input below; the affordance
@@ -187,6 +226,7 @@ export function FieldControl({
                             testId={testId}
                             pattern={field.pattern}
                         />
+                        {guidance}
                     </div>
                 );
             }
@@ -205,6 +245,7 @@ export function FieldControl({
                     data-testid={testId}
                     className="w-full rounded border border-neutral-300 bg-white px-2 py-1 text-xs text-black focus:outline-none focus:ring-1 focus:ring-accent"
                 />
+                {guidance}
             </div>
         );
     }
