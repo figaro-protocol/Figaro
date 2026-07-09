@@ -31,11 +31,11 @@ If the input is clean, say so in one line.
 
 Before auditing, read these (they are short):
 
-- `~/.claude/projects/-Users-adaliana-Figaro/memory/feedback_protocol_not_product_app.md` — web2-drift / product-app trap
-- `~/.claude/projects/-Users-adaliana-Figaro/memory/feedback_network_is_ssot.md` — (marketing)/(app) is a wallet-scope split, not audience tangling; no synthesized fallbacks
+- `CLAUDE.md` § "Read this first" — web2-drift / product-app trap
+- `docs/OPEN_WORLD.md` §1 (patterns 2 + 7 and the SSoT-violation calibration) — (marketing)/(app) is a wallet-scope split, not audience tangling; no synthesized fallbacks
 - `~/.claude/projects/-Users-adaliana-Figaro/memory/feedback_two_navs_allowed.md` — the two-audience nav architecture
 - `~/.claude/projects/-Users-adaliana-Figaro/memory/feedback_protocol_surface_inventories_not_audience_bound.md` — inventories don't nest under an audience
-- `~/.claude/projects/-Users-adaliana-Figaro/memory/feedback_dont_entrench_product_vocabulary.md` — product-vocabulary drift
+- `docs/LEXICON.md` (the grid + the new-term admission rule) — product-vocabulary drift
 - `~/.claude/projects/-Users-adaliana-Figaro/memory/feedback_no_marketing_hero_eyebrow.md` — decorative claims / eyebrows
 - `~/.claude/projects/-Users-adaliana-Figaro/memory/feedback_give_complete_information.md` — completeness / detail discipline
 - `~/.claude/projects/-Users-adaliana-Figaro/memory/reference_paper_corpus_organization.md` — the Zargham discipline taxonomy

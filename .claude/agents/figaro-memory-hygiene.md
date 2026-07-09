@@ -45,7 +45,7 @@ Total files: <N>     Total lines: <M>     Last reviewed: <today>
 | File                              | Lines | Type     | Status               |
 |-----------------------------------|-------|----------|----------------------|
 | MEMORY.md                         | 58    | index    | OK                   |
-| feedback_network_is_ssot.md       | 42    | feedback | OK                   |
+| feedback_no_superficial_work.md   | 42    | feedback | OK                   |
 | project_punchlist.md              | 38    | project  | OK                   |
 | project_<example>.md              | 245   | project  | PRUNE (over 200)     |
 | feedback_<example>.md             | 158   | feedback | flagged (>100 soft)  |

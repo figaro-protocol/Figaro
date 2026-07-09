@@ -31,7 +31,6 @@ If the input is clean, say so in one line.
 
 Before auditing, read these:
 
-- `~/.claude/projects/-Users-adaliana-Figaro/memory/feedback_separation_of_concerns.md`
 - `CLAUDE.md` § "Separation of Concerns — Artifact Families"
 - `CLAUDE.md` § "Three-Tier Naming"
 - `docs/CLAUSES.md` (§"When something deserves a clause — payload vs anchor")

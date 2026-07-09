@@ -61,7 +61,7 @@ These are not stylistic preferences; each one breaks the project's framing or im
 | "Token launch" / "ICO" / "presale" / "buy FIG" | FIG is retroactive public-goods funding; there is no buy-side token surface |
 | "Kill Uber" / "kill the firm" / "platform-tax destroyer" | Defines Figaro by elimination; the mechanism replaces firms structurally, not as combat |
 | "Trustless" without context | Figaro is *bonded*, which is stronger and more specific. Use "bonded" |
-| "Subscribe" / "Get started" / "Sign up" CTAs | Per `feedback_protocol_not_product_app.md` — UI is a publication, not a product site |
+| "Subscribe" / "Get started" / "Sign up" CTAs | Per `CLAUDE.md` § "Read this first" — UI is a publication, not a product site |
 | Decorative claims with no source | Every claim traces to a theorem, proposition, or spec |
 | "Revolutionary," "disruptive," "game-changing" superlatives | Math, not adjectives |
 | "Web3-native," "blockchain-powered," buzzword stacking | Compounds wrong-paradigm imports |

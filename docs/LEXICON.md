@@ -2,7 +2,7 @@
 
 The **documented half** of the architecture lexicon. The *enforced* half is the guards
 (below); this file is the grid they enforce against and the anchor the synonym-audit agent
-checks code drift against. Promoted from the `reference_layered_vocabulary` memory (2026-06-22)
+checks code drift against. Promoted from the memory tier (2026-06-22)
 so the canonical names live in the committed, verified tier — read this, don't reconstruct it.
 
 **The rule:** one canonical name per concept. The *same entity* wears a *different correct
