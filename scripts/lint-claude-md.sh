@@ -66,23 +66,52 @@ fi
 # Extract backticked tokens; keep only those that look like in-repo paths
 # (known top-level prefix + a recognised extension), tolerate an optional
 # `:LINE` or `:LINE-RANGE` suffix used for source citations.
-paths=$(grep -oE '`[^`]+`' "$CLAUDE_MD" \
-    | sed 's/^`//; s/`$//' \
-    | grep -E '^(src|script|scripts|frontend|docs/v5|paper|prover|sdk|\.github|\.claude|test|formal|certora|\./)[A-Za-z0-9_./-]+\.(sol|ts|tsx|json|md|tex|rs|sh|yaml|yml)(:[0-9-]+)?$' \
-    | sed 's/:[0-9-]*$//' \
-    | sort -u)
+#
+# Extended (2026-07-09) beyond CLAUDE.md to docs/v5/*.md and .claude/agents/*.md
+# — the audits showed instruction-bearing files are the main dangling-path
+# carriers, and agent prompts become subagent system prompts.
+#
+# HISTORICAL_ALLOW: deleted paths that whitelisted docs may cite AS deleted
+# (e.g. CONTRACTS.md's "What Does NOT Exist" inventory). Adding here is a
+# deliberate edit, mirroring MIRROR_DENYLIST. SCALING_STRATEGY.md is excluded
+# wholesale: its charter is describing the removed batch-scaling prototype.
+HISTORICAL_ALLOW=(
+    "src/interfaces/ISP1Verifier.sol"
+    "src/fig/RpgfMinter.sol"
+    "frontend/scripts/seed-devnet.mjs"
+)
 
-missing=()
-while IFS= read -r p; do
-    [[ -z "$p" ]] && continue
-    [[ -e "$p" ]] || missing+=("$p")
-done <<< "$paths"
+PATH_CHECK_FILES=("$CLAUDE_MD")
+for f in docs/v5/*.md .claude/agents/*.md; do
+    [[ -f "$f" ]] || continue
+    [[ "$f" == "docs/v5/SCALING_STRATEGY.md" ]] && continue
+    PATH_CHECK_FILES+=("$f")
+done
 
-if (( ${#missing[@]} > 0 )); then
-    echo "[claude-md] paths referenced in CLAUDE.md that don't exist on disk:"
-    printf '    %s\n' "${missing[@]}"
-    violations=$((violations + ${#missing[@]}))
-fi
+for doc in "${PATH_CHECK_FILES[@]}"; do
+    paths=$(grep -oE '`[^`]+`' "$doc" \
+        | sed 's/^`//; s/`$//' \
+        | grep -E '^(src|script|scripts|frontend|docs/v5|paper|prover|sdk|clauses|ecosystem-agents|\.github|\.claude|test|formal|certora|\./)[A-Za-z0-9_./-]+\.(sol|ts|tsx|json|md|tex|rs|sh|yaml|yml|mjs)(:[0-9-]+)?$' \
+        | sed 's/:[0-9-]*$//' \
+        | sort -u)
+
+    missing=()
+    while IFS= read -r p; do
+        [[ -z "$p" ]] && continue
+        allow=0
+        for a in "${HISTORICAL_ALLOW[@]}"; do
+            [[ "$p" == "$a" ]] && allow=1 && break
+        done
+        (( allow )) && continue
+        [[ -e "$p" ]] || missing+=("$p")
+    done <<< "$paths"
+
+    if (( ${#missing[@]} > 0 )); then
+        echo "[claude-md] paths referenced in $doc that don't exist on disk:"
+        printf '    %s\n' "${missing[@]}"
+        violations=$((violations + ${#missing[@]}))
+    fi
+done
 
 # --- Check 2: ENV VARS ---
 ENV_FILE="frontend/.env.local"

@@ -22,13 +22,13 @@ Before writing or reviewing any copy, read these in full:
 - **`.claude/skills/figaro-kernel-discipline/SKILL.md`** — the six invariants and the 12 anti-patterns. Marketing copy that contradicts the SKILL is wrong copy.
 - **`docs/v5/AI_AGENT_COORDINATION.md`** — the coordination doctrine. Useful for framing what Figaro enables.
 - The relevant papers in `paper/` if the copy makes a specific theoretical claim. Cite them.
-- **Voshmgir & Zargham, *Foundations of Cryptoeconomic Systems* (8-discipline taxonomy)** — the audience-segmentation scheme that organizes marketing pages, working groups, and reading paths. Canonical list cited in `frontend/lib/shared/groupsRegistry.ts` and the `/groups` page. Disciplines: (1) Economics & Game Theory; (2) Industrial & Systems Engineering; (3) CS & Cryptography; (4) Philosophy, Law & Ethics; (5) Political Science & Governance; (6) Operations Research & Management Science; (7) AI, Optimization & Control; (8) Psychology & Decisions Science. **One discipline-page per discipline.** Multiple papers in the same discipline share one companion page — do not create new top-level routes for additional papers in already-covered disciplines.
+- **Voshmgir & Zargham, *Foundations of Cryptoeconomic Systems* (8-discipline taxonomy)** — the audience-segmentation scheme that organizes marketing pages, working groups, and reading paths. Canonical list cited in `frontend/app/(marketing)/_lib/groupsRegistry.ts` (derive the current paper→discipline mapping from it every run). Disciplines: (1) Economics & Game Theory; (2) Industrial & Systems Engineering; (3) CS & Cryptography; (4) Philosophy, Law & Ethics; (5) Political Science & Governance; (6) Operations Research & Management Science; (7) AI, Optimization & Control; (8) Psychology & Decisions Science. **One discipline-page per discipline.** Multiple papers in the same discipline share one companion page — do not create new top-level routes for additional papers in already-covered disciplines.
 - **Page shape: many short horizontal, not long vertical.** Figaro is a paradigm shift; readers get overwhelmed by long vertical pages with hero → progressive-detail → CTA (the web2 default). Default to many short single-concept pages navigated laterally. One concept per page. Do NOT reflexively reach for the hero / "what this means" / mechanism / boundary / "what this is not" / PDF-download stack — that template is wrong by default. When a long page feels natural, that is the wrong instinct: split it.
 
 Then sample existing copy:
 
 - 2–3 pages from `frontend/app/(marketing)/` to learn current voice and conventions.
-- The consent agreement at `frontend/lib/shared/consentDocument.ts` for the protocol's own self-description.
+- The consent layer: `clauses/figaro-consent.json` (document-hash consent as a first-class clause) for the protocol's own self-description.
 - The README.md for top-level project framing.
 
 State what you read and what conventions you extracted.

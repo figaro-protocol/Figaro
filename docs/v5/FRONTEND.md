@@ -117,12 +117,13 @@ Y", not as an open-ended build.)
   `lib/kernel/agreementFetch.ts` (singleton Map; never a synchronous
   `loadAgreement` in a render path).
 - **Event-driven inventory page + smoke** — the `/clauses` and `/assemblies`
-  marketing pages with `tests/e2e/clauses-inventory.devnet.spec.ts` /
-  `tests/e2e/assemblies-inventory.devnet.spec.ts`.
-- **Scenario e2e pair** — `tests/e2e/scenario-direct-sale.devnet.spec.ts`
-  (pins to IPFS + anchors on-chain, persisted) and
-  `tests/e2e/direct-sale-runtime.devnet.spec.ts` (consumes from chain + IPFS;
-  discovers, never imports a roster).
+  marketing pages with `frontend/tests/e2e/clauses-inventory.devnet.spec.ts` /
+  `frontend/tests/e2e/assemblies-inventory.devnet.spec.ts`.
+- **Scenario e2e** — `frontend/tests/e2e/local-commerce.devnet.spec.ts` is the
+  live exemplar (authors on the canvas, pins to IPFS + anchors on-chain, then
+  consumes from chain + IPFS — discovers, never imports a roster). The old
+  seeded `scenario-*`/`*-runtime` pairs were deleted with the fixture
+  migration; open-world rebuilds of 2–3 scenarios are punch-listed.
 - **Network reads** — `lib/kernel/indexer.ts` (order events) + `lib/protocol/sellerRegistryIndexer.ts` (registry events) (the canonical read side; reconstructs
   process/clause/seller state from chain events).
 

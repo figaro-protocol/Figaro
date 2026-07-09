@@ -127,7 +127,7 @@ This section tracks features that are not protocol invariants but are significan
 | **Agreement publication** | `frontend/lib/kernel/agreementFetch.ts`, `orderAgreement.ts` | — | `/builders` → Agreement publication | — | — |
 | **Commerce checkout** | `frontend/lib/checkout/` | — | — | `CartModule` (interactive) | — |
 | **Process topology** | `frontend/lib/semantic/processTopology.ts` | SDK: `reconstruct()`, `ProcessGraph` | `/builders` → Composability (the graph above the kernel) | `TopologyCanvas` (`/builders/designer/new`, `/builders/designer/view/[slug]`) | — |
-| **Bond calculator** | `frontend/components/core/BondCalculator.tsx` | SDK: `calculateBonds`, `calculateSettlement` | `/builders` → bond math formulas | `BondCalculator`, `BondApprovalPanel`, `OrderBondInfo` | — |
+| **Bond math** | `sdk/src/bonds.ts` | SDK: `calculateBonds`, `calculateSettlement` | `/builders` → bond math formulas | checkout/order surfaces render via the SDK (the dedicated `BondCalculator` component was deleted) | — |
 | **EIP-2612 permit** | removed (permit path deleted 2026-07-02; approve-only) | — | `/builders` → Gasless token approvals | `PermitControl` component | — |
 | **Single-currency binding** | `src/FigaroCore.sol` | — | `/builders` → Composability → Single-Currency Binding | — | — |
 | **Fee-on-transfer rejection** | `src/FigaroCore.sol` `_pullExact()` | — | `/builders` → Composability → Fee-on-Transfer Guard | — | — |

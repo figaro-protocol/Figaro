@@ -81,12 +81,12 @@ Either way: reflect the chosen disposition in `docs/v5/CONTRACTS.md` and `CLAUDE
 `frontend/scripts/seed-devnet.mjs` was **deleted** — the devnet no longer
 direct-call-registers assemblies or sellers. Both devnet and mainnet now rely on
 permissionless on-chain publication: assemblies are authored through the designer
-UI (the `scenario-*` specs) and sellers onboarded through the registration wizard
-(`sellers-onboarding`, driven by `SELLER_ROSTER`), exactly as a real participant
+UI (the `local-commerce` e2e is the live exemplar) and sellers onboarded through
+the registration wizard (`sellers-onboarding`), exactly as a real participant
 would — no seed path diverges from the mainnet path. `script/DeployMainnet.s.sol`
 seeds no assemblies. Assemblies are permissionless, so no-seed is the chosen
-disposition for both surfaces. The per-scenario migration off the old seeded
-fixtures is tracked in `frontend/tests/e2e/SCENARIOS.md`.
+disposition for both surfaces. The migration off the old seeded fixtures is
+complete; the deleted `scenario-*` specs' open-world rebuilds are punch-listed.
 
 Remaining output:
 
