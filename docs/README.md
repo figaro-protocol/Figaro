@@ -4,7 +4,7 @@ The canonical home for live Figaro V5 documentation. Single-purpose
 notes, shipped-plan documents, and per-archetype specs that aren't
 load-bearing for the protocol have been moved to local-only archives
 (see `git log` for prior versions). Historical material lives in
-`docs/archive/` (legacy v4 docs), `archive-v3/` (V3 contracts/tests),
+`archive-v5/` (legacy v4 docs), `archive-v3/` (V3 contracts/tests),
 and `archive-v4/` (pre-promotion V4 snapshot); the live V5 code is in
 `src/`.
 

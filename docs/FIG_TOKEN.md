@@ -92,7 +92,7 @@ settlement-anchored emission replaces it.
 
 The rationale for the allocation — the substrate-broadening / category formula
 and why the geo/coordination weight exists — survives in
-`docs/v5/PUBLIC_GRAPH_MODEL.md` § "Why the substrate-broadening weight exists".
+`docs/PUBLIC_GRAPH_MODEL.md` § "Why the substrate-broadening weight exists".
 Re-home the formula and any rebuilt distribution mechanism alongside it.
 
 ### Rationale
@@ -180,7 +180,7 @@ All resolved. Each item is a **decision**, not an open question.
 4. **No emission contract, no settlement-anchored minting.**
 5. **No on-chain RPGF distribution.** The proof-gated minter was removed in the
    proof-apparatus teardown; the 600M clause-author allocation has no wired mint
-   path. The allocation intent survives in `docs/v5/PUBLIC_GRAPH_MODEL.md`.
+   path. The allocation intent survives in `docs/PUBLIC_GRAPH_MODEL.md`.
 6. **Immutability.** Once deployed, no contract in the FIG stack can be
    upgraded, paused, or reconfigured. If any contract is wrong, a new one
    is deployed and the community migrates. There is no admin.

@@ -63,7 +63,7 @@ When adding new tooling, pick the folder that matches the file type. Update `REA
 
 ## Contributor agents
 
-The project ships agent-shaped tooling — usable by humans, AI assistants, or autonomous protocol participants — to make the security-first posture transferable. Every agent traces back to canonical sources (the six invariants, `docs/v5/DESIGN_DECISIONS.md`, `docs/v5/CLAUSES.md`); they are the executable form of what the publications already prove.
+The project ships agent-shaped tooling — usable by humans, AI assistants, or autonomous protocol participants — to make the security-first posture transferable. Every agent traces back to canonical sources (the six invariants, `docs/DESIGN_DECISIONS.md`, `docs/CLAUSES.md`); they are the executable form of what the publications already prove.
 
 ### Claude Code subagents — `.claude/agents/`
 
@@ -107,16 +107,16 @@ They are the public counterpart to the operator-private subagents above. See `ec
 ### Conventions for new agents
 
 - New operator-private subagents go in `.claude/agents/<name>.md`; new public ecosystem agents go in `ecosystem-agents/<name>.md`. Both are prompts with frontmatter (`name`, `description`, `tools`, `model`); read-only agents declare `tools: Read, Grep, Glob, Bash` to make the constraint explicit.
-- Agent prompts must cite canonical sources (papers, `docs/v5/`, `CLAUDE.md`) — not paraphrase. Drift between an agent's rules and the publications is a bug.
+- Agent prompts must cite canonical sources (papers, `docs/`, `CLAUDE.md`) — not paraphrase. Drift between an agent's rules and the publications is a bug.
 
 ## Documentation discipline
 
 Per repository policy, when a code change makes an existing doc statement stale, update the affected docs in the same change. Key files to keep in sync include:
 
 - `CLAUDE.md`
-- `docs/v5/CONTRACTS.md`, `docs/v5/CLAUSES.md`, `docs/v5/FRONTEND.md`, `docs/v5/TESTING.md` — the inventories CLAUDE.md indexes
+- `docs/CONTRACTS.md`, `docs/CLAUSES.md`, `docs/FRONTEND.md`, `docs/TESTING.md` — the inventories CLAUDE.md indexes
 - `sdk/README.md`
-- `docs/v5/` design docs referenced by the code you change
+- `docs/` design docs referenced by the code you change
 
 `scripts/lint-claude-md.sh` runs in pre-commit and fails on mechanically-detectable drift (broken backticked paths, env-var diff vs `frontend/.env.local`, missing entries in the mocks / deploy-scripts inventories).
 

@@ -78,7 +78,7 @@ For each flagged framing, gather evidence from at least three of these axes:
 
 4. **Project documentation.**
    - `CLAUDE.md` for doctrine on the area.
-   - `docs/v5/` for design docs.
+   - `docs/` for design docs.
    - Paper directory if the framing is theory-adjacent.
 
 5. **Test fixtures.** What do the tests already exercise?
@@ -95,7 +95,7 @@ For each flagged framing, classify:
 3. **Gap-as-strategy-question** — a strategy question is generated from the gap between current state and a not-yet-shipped piece, when that gap is just unfinished work, not a decision. MAJOR.
 4. **Trajectory-blindness** — the framing ignores 5+ recent commits clearly converging on the opposite framing. BLOCKER.
 5. **In-progress-blindness** — the framing ignores a file the operator started in a recent session that explicitly implements the framing's "missing" capability. BLOCKER.
-6. **Doctrine-contradiction** — the framing contradicts CLAUDE.md, docs/v5/, or memory entries. MAJOR.
+6. **Doctrine-contradiction** — the framing contradicts CLAUDE.md, docs/, or memory entries. MAJOR.
 
 ---
 

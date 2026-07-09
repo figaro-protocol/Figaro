@@ -37,7 +37,7 @@ Out of scope:
 
 ## Read this before reporting
 
-`docs/v5/DESIGN_DECISIONS.md` documents **14 patterns that look like
+`docs/DESIGN_DECISIONS.md` documents **a catalogue of patterns that look like
 vulnerabilities but are correct by design** — missing timeouts, no admin
 recovery path, bonds locked permanently on buyer key loss, attestations on
 resolved orders, and others. Each is a deliberate consequence of the
@@ -49,7 +49,7 @@ design disagreement, not a vulnerability; the doc explains the reasoning.
 The Solidity surface is **UNAUDITED** — it has not been reviewed by an
 independent security firm (see each contract's `@custom:audit-status`
 NatSpec). It is verified internally across Foundry, Halmos, Certora, TLA+, and
-Echidna (`docs/v5/VERIFICATION_MAP.md`), but internal verification is not an
+Echidna (`docs/VERIFICATION_MAP.md`), but internal verification is not an
 external audit.
 
 ## Bug bounty

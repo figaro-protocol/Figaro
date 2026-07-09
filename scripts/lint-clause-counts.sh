@@ -29,7 +29,7 @@ fi
 
 # Docs that must NOT store a clause count, and the digit-bearing phrasings that
 # would be one. Kept pattern-explicit (semantic prose parsing is out of scope).
-TRACKED=("CLAUDE.md" "docs/v5/CLAUSES.md" "docs/v5/FRONTEND.md")
+TRACKED=("CLAUDE.md" "docs/CLAUSES.md" "docs/FRONTEND.md")
 PATTERNS=('[0-9]+ protocol clauses' '[0-9]+ runtime-attestable')
 
 declare -a failures

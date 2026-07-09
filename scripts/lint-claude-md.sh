@@ -6,25 +6,25 @@
 # codebase. Memories advise; this guard enforces.
 #
 # Four checks. CLAUDE.md is pure discipline + pointers; the inventories it
-# used to inline now live in the docs/v5/ files that own them, so each check
+# used to inline now live in the docs/ files that own them, so each check
 # reads from that owner doc:
 #
 #   1. PATH EXISTENCE — every backticked path-like string in CLAUDE.md
 #      (src/*.sol, script/*.sol, scripts/*.sh, frontend/**/*.{ts,tsx,json},
-#      docs/v5/*.md, paper/**/*.tex, prover/**/*.rs, sdk/**/*.ts,
+#      docs/*.md, paper/**/*.tex, prover/**/*.rs, sdk/**/*.ts,
 #      .github/**, .claude/**, test/**, formal/**, certora/**) must
 #      exist on disk. Optional :LINE or :LINE-RANGE suffixes are tolerated.
 #
-#   2. ENV VARS — the set of NEXT_PUBLIC_* keys in docs/v5/LOCAL_DEV.md must
+#   2. ENV VARS — the set of NEXT_PUBLIC_* keys in docs/LOCAL_DEV.md must
 #      equal the set in frontend/.env.local (when present). Missing-in-doc and
 #      orphan-in-doc both fail. Skipped silently when .env.local absent
 #      (e.g. fresh clone before deploy-local.sh has run).
 #
 #   3. MOCKS INVENTORY — every src/mocks/Mock*.sol must be named in
-#      docs/v5/CONTRACTS.md.
+#      docs/CONTRACTS.md.
 #
 #   4. DEPLOY SCRIPTS — every script/*.s.sol must be named in
-#      docs/v5/LOCAL_DEV.md.
+#      docs/LOCAL_DEV.md.
 #
 #   5. NO MIRROR FILES — CLAUDE.md is the single source of agent
 #      instructions. We standardized on Claude; parallel agent-instruction
@@ -36,7 +36,7 @@
 #   6. SIZE TRIPWIRE — CLAUDE.md must stay under MAX_BYTES. Above Claude Code's
 #      documented ~40,000-char threshold, instruction adherence degrades (the file
 #      is NOT truncated); this fails the commit first, forcing a move-to-owning-doc
-#      decision (inventories -> docs/v5/*)
+#      decision (inventories -> docs/*)
 #      rather than a silent overflow. The file holds discipline + pointers;
 #      lists live in the indexed docs.
 #
@@ -67,7 +67,7 @@ fi
 # (known top-level prefix + a recognised extension), tolerate an optional
 # `:LINE` or `:LINE-RANGE` suffix used for source citations.
 #
-# Extended (2026-07-09) beyond CLAUDE.md to docs/v5/*.md and .claude/agents/*.md
+# Extended (2026-07-09) beyond CLAUDE.md to docs/*.md and .claude/agents/*.md
 # — the audits showed instruction-bearing files are the main dangling-path
 # carriers, and agent prompts become subagent system prompts.
 #
@@ -82,16 +82,16 @@ HISTORICAL_ALLOW=(
 )
 
 PATH_CHECK_FILES=("$CLAUDE_MD")
-for f in docs/v5/*.md .claude/agents/*.md; do
+for f in docs/*.md .claude/agents/*.md; do
     [[ -f "$f" ]] || continue
-    [[ "$f" == "docs/v5/SCALING_STRATEGY.md" ]] && continue
+    [[ "$f" == "docs/SCALING_STRATEGY.md" ]] && continue
     PATH_CHECK_FILES+=("$f")
 done
 
 for doc in "${PATH_CHECK_FILES[@]}"; do
     paths=$(grep -oE '`[^`]+`' "$doc" \
         | sed 's/^`//; s/`$//' \
-        | grep -E '^(src|script|scripts|frontend|docs/v5|paper|prover|sdk|clauses|ecosystem-agents|\.github|\.claude|test|formal|certora|\./)[A-Za-z0-9_./-]+\.(sol|ts|tsx|json|md|tex|rs|sh|yaml|yml|mjs)(:[0-9-]+)?$' \
+        | grep -E '^(src|script|scripts|frontend|docs|paper|prover|sdk|clauses|ecosystem-agents|\.github|\.claude|test|formal|certora|\./)[A-Za-z0-9_./-]+\.(sol|ts|tsx|json|md|tex|rs|sh|yaml|yml|mjs)(:[0-9-]+)?$' \
         | sed 's/:[0-9-]*$//' \
         | sort -u)
 
@@ -115,7 +115,7 @@ done
 
 # --- Check 2: ENV VARS ---
 ENV_FILE="frontend/.env.local"
-ENV_DOC="docs/v5/LOCAL_DEV.md"
+ENV_DOC="docs/LOCAL_DEV.md"
 if [[ -f "$ENV_FILE" && -f "$ENV_DOC" ]]; then
     doc_vars=$(grep -oE 'NEXT_PUBLIC_[A-Z0-9_]+' "$ENV_DOC" | sort -u)
     env_vars=$(grep -oE '^NEXT_PUBLIC_[A-Z0-9_]+' "$ENV_FILE" | sort -u)
@@ -137,7 +137,7 @@ fi
 
 # --- Check 3: MOCKS INVENTORY ---
 MOCKS_DIR="src/mocks"
-MOCKS_DOC="docs/v5/CONTRACTS.md"
+MOCKS_DOC="docs/CONTRACTS.md"
 if [[ -d "$MOCKS_DIR" && -f "$MOCKS_DOC" ]]; then
     actual_mocks=$(ls "$MOCKS_DIR" 2>/dev/null | grep -E '\.sol$' | sort -u)
     doc_mocks=$(grep -oE '\bMock[A-Za-z0-9]+\.sol\b' "$MOCKS_DOC" | sort -u)
@@ -152,7 +152,7 @@ fi
 
 # --- Check 4: DEPLOY SCRIPTS ---
 SCRIPT_DIR="script"
-SCRIPT_DOC="docs/v5/LOCAL_DEV.md"
+SCRIPT_DOC="docs/LOCAL_DEV.md"
 if [[ -d "$SCRIPT_DIR" && -f "$SCRIPT_DOC" ]]; then
     actual_scripts=$(ls "$SCRIPT_DIR"/*.s.sol 2>/dev/null | xargs -n1 basename | sort -u)
     doc_scripts=$(grep -oE '\b[A-Za-z][A-Za-z0-9]*\.s\.sol\b' "$SCRIPT_DOC" | sort -u)
@@ -197,7 +197,7 @@ MAX_BYTES=40000   # Claude Code's documented soft threshold is 40,000 chars (~40
 size=$(wc -c < "$CLAUDE_MD" | tr -d ' ')
 if (( size > MAX_BYTES )); then
     echo "[claude-md] $CLAUDE_MD is ${size} bytes (limit ${MAX_BYTES})."
-    echo "    Move inventory/command/exposition content into the owning docs/v5/ file"
+    echo "    Move inventory/command/exposition content into the owning docs/ file"
     echo "    and leave a pointer. CLAUDE.md holds discipline + pointers, not lists."
     violations=$((violations + 1))
 fi

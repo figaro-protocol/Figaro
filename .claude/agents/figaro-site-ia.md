@@ -17,7 +17,7 @@ The deeper challenge: the project is a paradigm shift. Visitors arrive without p
 
 ## Step 0 — Read the canon
 
-- **`docs/archive/v5/ETHICS.md`** — what the project IS, in full. Without this, IA recommendations risk treating Figaro as a typical web3 project.
+- **`archive-v5/v5/ETHICS.md`** — what the project IS, in full. Without this, IA recommendations risk treating Figaro as a typical web3 project.
 - **`CLAUDE.md`** — for the protocol-vs-runtime tier distinction; IA respects tier boundaries.
 - `frontend/app/(marketing)/` and `frontend/app/(app)/` — the actual route structure.
 

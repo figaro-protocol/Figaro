@@ -26,7 +26,7 @@ The organizational consequence: each process assembles a temporary institution o
 - **Paper** — Academic paper in `paper/`
 - **Two agent worlds, one clean seam.** *(1) Operator-private repo agents* — `.claude/agents/` ships sixteen Claude Code subagents for building Figaro itself: reviews (kernel-reviewer, clause-lockstep), runtime UI (runtime-ui-author), audits (assumption-auditor, audit-commitment-checker, literalness-auditor, separation-of-concerns-auditor, open-world auditors), operations (memory-hygiene, deploy-runner, feedback-triage), communications (marketing-author, site-ia, visual-design), paper-reviewer — the operator's own tools. *(2) Public ecosystem agents* — `ecosystem-agents/`, three prompts that act for a user's own wallet, never the repo: `figaro-operator` (operate a wallet — sign every transaction on the owner's behalf via `@figaro/core/agent`), `figaro-clause-author`, and `figaro-assembly-author` (author or fork a clause/assembly and register it on the permissionless registries). See [CONTRIBUTING.md](CONTRIBUTING.md) and `ecosystem-agents/README.md`.
 
-Start with [docs/v5/CURRENT_STATE.md](docs/v5/CURRENT_STATE.md) for the reading path.
+Start with [docs/README.md](docs/README.md) for the doc map + reading path.
 
 ---
 
@@ -84,7 +84,7 @@ prover/                     Rust SP1 workspace
 test/                       Foundry tests
 formal/                     TLA+ specs + TLC config
 paper/                      Academic paper (LaTeX)
-docs/v5/                    Active design documents
+docs/                    Active design documents
 ```
 
 ---
@@ -97,7 +97,7 @@ docs/v5/                    Active design documents
 4. Buyer resolves the process. Bonds return, payment settles, the institution dissolves.
 
 If either party defaults, their bond is forfeit. The Nash equilibrium is
-cooperation. See [docs/v5/THEORY.md](docs/v5/THEORY.md) for the game-theoretic
+cooperation. See [docs/THEORY.md](docs/THEORY.md) for the game-theoretic
 derivation.
 
 ---
@@ -170,24 +170,24 @@ See [formal/README.md](formal/README.md) and [CLAUDE.md](CLAUDE.md#testing) for 
 
 ## Design Documents
 
-All active docs live in `docs/v5/`. Start with [CURRENT_STATE.md](docs/v5/CURRENT_STATE.md) for the reading path.
+All active docs live in `docs/`. Start with [README.md](docs/README.md) for the doc map + reading path.
 
 Inventories indexed by CLAUDE.md:
 
-- [CONTRACTS.md](docs/v5/CONTRACTS.md) — Smart-contract inventory
-- [CLAUSES.md](docs/v5/CLAUSES.md) — Clause validation architecture + per-clause table
-- [FRONTEND.md](docs/v5/FRONTEND.md) — Route catalogue, lib map, designer surface
-- [TESTING.md](docs/v5/TESTING.md) — Foundry / Halmos / Certora / Echidna / TLA+ / Vitest / Playwright / Rust harness inventory
+- [CONTRACTS.md](docs/CONTRACTS.md) — Smart-contract inventory
+- [CLAUSES.md](docs/CLAUSES.md) — Clause validation architecture + per-clause table
+- [FRONTEND.md](docs/FRONTEND.md) — Route catalogue, lib map, designer surface
+- [TESTING.md](docs/TESTING.md) — Foundry / Halmos / Certora / Echidna / TLA+ / Vitest / Playwright / Rust harness inventory
 
 Core theory + design:
 
-- [VISION.md](docs/v5/VISION.md) — Post-firm economy, Coasean collapse, token denomination
-- [THEORY.md](docs/v5/THEORY.md) — Game-theoretic derivation of six protocol properties
-- [FIG_TOKEN.md](docs/v5/FIG_TOKEN.md) — Token design: allocation, RPGF emission, time-locks
-- [SCALING_STRATEGY.md](docs/v5/SCALING_STRATEGY.md) — Proof-based batching, SP1
-- [RUNTIME.md](docs/v5/RUNTIME.md) — Why this is a runtime, not just contracts (thesis + frontend model + semantic layer)
-- [DESIGN_DECISIONS.md](docs/v5/DESIGN_DECISIONS.md) — 14 intentional patterns that look like vulnerabilities (read before auditing)
-- [VERIFICATION_MAP.md](docs/v5/VERIFICATION_MAP.md) — Every invariant → code → test → formal layer
+- [VISION.md](docs/VISION.md) — Post-firm economy, Coasean collapse, token denomination
+- [THEORY.md](docs/THEORY.md) — Game-theoretic derivation of six protocol properties
+- [FIG_TOKEN.md](docs/FIG_TOKEN.md) — Token design: allocation, RPGF emission, time-locks
+- [SCALING_STRATEGY.md](docs/SCALING_STRATEGY.md) — Proof-based batching, SP1
+- [RUNTIME.md](docs/RUNTIME.md) — Why this is a runtime, not just contracts (thesis + frontend model + semantic layer)
+- [DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md) — 14 intentional patterns that look like vulnerabilities (read before auditing)
+- [VERIFICATION_MAP.md](docs/VERIFICATION_MAP.md) — Every invariant → code → test → formal layer
 
 ## License
 

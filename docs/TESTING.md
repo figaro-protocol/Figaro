@@ -67,6 +67,11 @@ assembly + sellers; seeding is pre-population, never a test) → run) and
 Config: `playwright.config.ts`. The retired `mock` project is gone — Playwright
 is e2e-only.
 
+**One smoke per event-driven inventory page** (`/clauses`, `/assemblies`, …):
+navigate → assert the resolved-state count line + a few row ids. A marketing
+inventory has no user action — the navigation IS the read — so a smoke, not a
+scenario; it catches the read path breaking or silently reverting to bundled data.
+
 **e2e means end-to-end: action → reaction, both in the UI** (the canonical
 definition — CLAUDE.md points here). A genuine e2e test performs an action
 *through the UI*; the action travels the full real stack (UI → contract → chain

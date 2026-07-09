@@ -20,7 +20,7 @@ Every piece of feedback falls into exactly one primary category. If a submission
 | Category | Definition | Routing |
 |---|---|---|
 | **Bug** | Unexpected behavior, error, broken UI, type mismatch, broken state. The "I clicked X and Y didn't happen" class. | Linear issue, project's bug board. |
-| **Composable-protection gap** | "I expected an insurance/dispute/floor-price/escalation pattern and it wasn't there." Per `docs/archive/v5/ETHICS.md`, these are the most valuable feedback type. | Architecture discussion. May spawn a new clause or template work item. |
+| **Composable-protection gap** | "I expected an insurance/dispute/floor-price/escalation pattern and it wasn't there." Per `archive-v5/v5/ETHICS.md`, these are the most valuable feedback type. | Architecture discussion. May spawn a new clause or template work item. |
 | **Framing observation** | Participant reached for or observed framing language that didn't match the project's intent ("this feels like DeFi," "I described it as a startup to a friend"). Per the "constructive engagement" clause of the consent agreement (§3.2). | Framing review with the operator; may inform marketing copy or onboarding modal. |
 | **General / question / suggestion** | Anything that doesn't fit the above three. Includes feature requests, UX preferences, "have you considered…" | Acknowledge; route to discussion if substantive, archive if cosmetic. |
 
@@ -55,7 +55,7 @@ These are the **highest-value feedback type** per `feedback_figaro_high_stakes.m
 
 - Quote the participant's words verbatim in the triage report.
 - Note which composable protection they reached for (insurance / floor-price / dispute escalation / treasury / collective bargaining / something else).
-- Note whether the protection is already designed (in `docs/archive/v5/ETHICS.md`'s §"What the Protocol Cannot Control") or new.
+- Note whether the protection is already designed (in `archive-v5/v5/ETHICS.md`'s §"What the Protocol Cannot Control") or new.
 - Flag if multiple participants converge on the same gap — that's a strong signal for ecosystem priority.
 
 ---

@@ -1,6 +1,6 @@
 ---
 name: figaro-clause-lockstep
-description: Read-only verifier for the Figaro multi-surface clause-lockstep contract. Invoke when a clause is added, renamed, or changed — to check that every surface that must move together has actually moved together. Surfaces tracked — canonical spec JSON in `clauses/`, the generic Layer-A parse/validate/encode round-trip in `@figaro/core/clauses`, `ClauseRegistry` seeding, and user-facing prose in `frontend/app/`. The on-chain validator and Rust prover mirror are DEFERRED surfaces (docs/v5/CONTRACTS.md § "Deferred vs permanent" is the owner) — absence is NOT drift until the rebuild lands. Returns a per-clause coverage matrix with drift findings. Does not edit files.
+description: Read-only verifier for the Figaro multi-surface clause-lockstep contract. Invoke when a clause is added, renamed, or changed — to check that every surface that must move together has actually moved together. Surfaces tracked — canonical spec JSON in `clauses/`, the generic Layer-A parse/validate/encode round-trip in `@figaro/core/clauses`, `ClauseRegistry` seeding, and user-facing prose in `frontend/app/`. The on-chain validator and Rust prover mirror are DEFERRED surfaces (docs/CONTRACTS.md § "Deferred vs permanent" is the owner) — absence is NOT drift until the rebuild lands. Returns a per-clause coverage matrix with drift findings. Does not edit files.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -11,8 +11,8 @@ You verify that the multi-surface clause contract is in sync. A clause is canoni
 its meaning is identical across every surface that consumes it. You do not edit files.
 You return a coverage matrix and a drift list.
 
-Read first: `docs/v5/CLAUSES.md` (owns the clause table + adding-a-clause checklist) and
-`docs/v5/CONTRACTS.md` § "Deferred vs permanent" (owns which surfaces exist today).
+Read first: `docs/CLAUSES.md` (owns the clause table + adding-a-clause checklist) and
+`docs/CONTRACTS.md` § "Deferred vs permanent" (owns which surfaces exist today).
 
 ## The surfaces (discover per run; never trust remembered counts)
 

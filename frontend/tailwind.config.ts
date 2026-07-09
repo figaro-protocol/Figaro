@@ -12,7 +12,7 @@ const config: Config = {
     darkMode: 'class',
     theme: {
         extend: {
-            // Per docs/v5/DESIGN_TOKENS.md §1 (Color tokens).
+            // Per docs/DESIGN_TOKENS.md §1 (Color tokens).
             // The `bg./text./border.` namespacing in the spec is dropped because
             // Tailwind class generation uses role names directly (`bg-canvas`,
             // `text-muted`, `border-default`). Note the deliberate rename of
@@ -52,7 +52,7 @@ const config: Config = {
                 error: '#9c4a3c',
                 info: '#857c6e',
             },
-            // Per docs/v5/DESIGN_TOKENS.md §3 (Spacing tokens).
+            // Per docs/DESIGN_TOKENS.md §3 (Spacing tokens).
             // Six-step scale aliasing the muji-* values; named `xs..2xl` so
             // utilities read as `p-md`, `gap-lg`, `mt-2xl`. Container side-padding
             // (1.5rem / sm:2.5rem) already lives in `space.lg` / `space.xl`.
@@ -64,7 +64,7 @@ const config: Config = {
                 xl: '2.5rem',
                 '2xl': '3.5rem',
             },
-            // Per docs/v5/DESIGN_TOKENS.md §4 (Radius tokens).
+            // Per docs/DESIGN_TOKENS.md §4 (Radius tokens).
             // Spec ties `link`, `button`, `input` all to 0.75rem; deduplicated
             // here to a single `tile` key. `section`, `invariant`, `glyph`
             // keep their distinct roles.
@@ -74,7 +74,7 @@ const config: Config = {
                 tile: '0.75rem',   // shared by .muji-links a, button, input
                 glyph: '0.25rem',
             },
-            // Per docs/v5/DESIGN_TOKENS.md §2 (Typography tokens — Font stack).
+            // Per docs/DESIGN_TOKENS.md §2 (Typography tokens — Font stack).
             // Fonts are loaded via `next/font/google` in `app/layout.tsx` and
             // exposed as CSS variables so the Tailwind stacks resolve to the
             // actually-fetched files at runtime. The default `sans` and `mono`
@@ -110,7 +110,7 @@ const config: Config = {
                     'monospace',
                 ],
             },
-            // Per docs/v5/DESIGN_TOKENS.md §2 (Type scale).
+            // Per docs/DESIGN_TOKENS.md §2 (Type scale).
             // Each entry is [size, { lineHeight, letterSpacing, fontWeight }]
             // so a single utility (e.g. `text-heading-h1`) carries the full
             // metric set without needing a chain of utilities.
@@ -120,7 +120,7 @@ const config: Config = {
                 'heading-h3': ['1.125rem', { lineHeight: '1.4', letterSpacing: '0.005em', fontWeight: '600' }],
                 'body-lead': ['1.125rem', { lineHeight: '1.6', letterSpacing: '0.005em', fontWeight: '400' }],
             },
-            // Per docs/v5/DESIGN_TOKENS.md §5 (Shadow tokens).
+            // Per docs/DESIGN_TOKENS.md §5 (Shadow tokens).
             // Only the section-card shadow is named; link and invariant cards
             // are explicitly shadow-less and use Tailwind's existing `shadow-none`.
             boxShadow: {

@@ -11,7 +11,7 @@
 # ONE runner, MANY inspectors (SoC): the auditor's *rulebook* is per-room (frontend /
 # protocol), but the headless-run *harness* is single-sourced here — no copy-pasted second
 # script. Call it once per room from .husky/pre-commit. Every inspector shares one
-# definition of open-world: docs/v5/OPEN_WORLD.md §1.
+# definition of open-world: docs/OPEN_WORLD.md §1.
 #
 # USAGE: semantic-precommit-audit.sh <label> <staged-file-regex> <agent-md-path>
 #   frontend: '^frontend/.*\.tsx?$'            .claude/agents/figaro-open-world-auditor.md

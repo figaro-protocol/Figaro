@@ -7,5 +7,5 @@ contact_links:
     url: https://github.com/figaro-protocol/Figaro/blob/main/SUPPORT.md
     about: Where to look and how to ask a non-bug question.
   - name: Design decisions — read before filing a "kernel bug"
-    url: https://github.com/figaro-protocol/Figaro/blob/main/docs/v5/DESIGN_DECISIONS.md
+    url: https://github.com/figaro-protocol/Figaro/blob/main/docs/DESIGN_DECISIONS.md
     about: 14 patterns that look like vulnerabilities but are correct by design.

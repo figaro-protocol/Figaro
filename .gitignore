@@ -75,7 +75,7 @@ archive-v3/
 archive-v4/
 archive-frontend/
 formal/archive-v3/
-docs/archive/
+archive-v5
 
 # Echidna / Formal Verification
 echidna_output.txt

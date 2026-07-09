@@ -6,11 +6,11 @@ look and how to ask.
 ## Before asking
 
 - **`README.md`** — what the repository contains and how it is laid out.
-- **`docs/v5/`** — the canonical documentation. Start at `docs/v5/README.md`;
-  `docs/v5/CURRENT_STATE.md` is the reading path.
+- **`docs/`** — the canonical documentation. Start at `docs/README.md`
+  (the doc map + ownership map + reading path).
 - **`CONTRIBUTING.md`** — local setup, the test commands, repository conventions.
-- **`docs/v5/DESIGN_DECISIONS.md`** — read this before reporting anything that
-  looks like a kernel bug; 14 deliberate patterns are catalogued there.
+- **`docs/DESIGN_DECISIONS.md`** — read this before reporting anything that
+  looks like a kernel bug; the deliberate patterns are catalogued there.
 
 ## Asking
 

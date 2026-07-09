@@ -88,7 +88,7 @@ at the moment `FigaroCore.commit` lands on chain. After commit, neither
 party can be substituted without invalidating the bond. There is no
 mechanism in the kernel to nominate a new buyer or seller for an existing
 order; the only way to change a party is a new commitment, which is a new
-order. (See `CLAUDE.md` § "What Figaro Is Not" and `docs/v5/THEORY.md`.)
+order. (See `CLAUDE.md` § "What Figaro Is Not" and `docs/THEORY.md`.)
 
 **No escape hatches** (the Escape-Hatch Weakness theorem, /papers/asymmetric-bonding §4.3). Any unilateral exit path
 weakens the Nash equilibrium. An exit that requires a third party J ∉ {B,
@@ -435,7 +435,7 @@ ceremonial. Defer this decision until a real supply-chain customer
 demands a feature the existing clauses can't express.
 
 **8.3 Document the negotiability limitation explicitly.** ✅ Shipped as
-entry #12 in `docs/v5/DESIGN_DECISIONS.md`: "No MLETR-style transferable
+entry #12 in `docs/DESIGN_DECISIONS.md`: "No MLETR-style transferable
 records — by design." Captures the three-invariant rejection
 (single-buyer + parties-fixed-at-commit + no-escape-hatches) and
 references this document for the full comparison. A reviewer
@@ -539,9 +539,9 @@ to design.)
 
 **Cross-references inside the repo**:
 - `CLAUDE.md` § "What Figaro Is", § "What Figaro Is Not", § "Common Misframings — Do Not Propose"
-- `docs/v5/THEORY.md` — game-theoretic derivation of the kernel invariants
-- `docs/v5/DESIGN_DECISIONS.md` — 12 intentional patterns that look like vulnerabilities but are correct by design (entry #12 captures the MLETR-non-implementability finding from this research)
-- `docs/v5/CLAUSES.md` — the clause validation architecture and anchoring doctrine governing any future clause additions
+- `docs/THEORY.md` — game-theoretic derivation of the kernel invariants
+- `docs/DESIGN_DECISIONS.md` — 12 intentional patterns that look like vulnerabilities but are correct by design (entry #12 captures the MLETR-non-implementability finding from this research)
+- `docs/CLAUSES.md` — the clause validation architecture and anchoring doctrine governing any future clause additions
 - `frontend/lib/audit/clauseDataExtract.ts` — the GENERIC per-clause view (`describeClause`) that already surfaces every committed leaf from its spec; the audit bundle carries no genre document
 - `frontend/lib/audit/auditBundle.ts` — the per-order audit bundle (generic; no per-genre extractor)
 - the clause specs in `clauses/` referenced in §7

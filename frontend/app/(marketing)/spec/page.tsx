@@ -127,7 +127,7 @@ export default function Specifications() {
                 </div>
                 <p className="text-xs text-ink-muted mt-4">
                     Kernel surface is frozen for external audit. See{" "}
-                    <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/v5/RELEASE_READINESS.md" target="_blank" rel="noopener noreferrer" className="underline">RELEASE_READINESS.md</a>{" "}
+                    <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/RELEASE_READINESS.md" target="_blank" rel="noopener noreferrer" className="underline">RELEASE_READINESS.md</a>{" "}
                     for gate criteria, the frozen-surface declaration, and the hardening completion record.
                 </p>
             </MarketingSection>
@@ -135,7 +135,7 @@ export default function Specifications() {
             <MarketingSection title="Extension">
                 <p className="text-sm text-ink-body leading-relaxed">
                     Mechanisms, clauses, and role models extend the protocol without altering the kernel. The kernel invariants the Extension doctrine protects are catalogued on <Link href="/protocol" className="underline">Protocol</Link>; the academic frame for why the kernel is narrow is on <Link href="/cryptoeconomics" className="underline">Cryptoeconomics</Link>. See{" "}
-                    <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/v5/CLAUSES.md" target="_blank" rel="noopener noreferrer" className="underline">CLAUSES.md</a>{" "}
+                    <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/CLAUSES.md" target="_blank" rel="noopener noreferrer" className="underline">CLAUSES.md</a>{" "}
                     for the clause validation architecture and the anchoring doctrine, and the{" "}
                     <Link href="/builders" className="underline">Builders</Link> surface for composition tools.
                 </p>

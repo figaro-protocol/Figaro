@@ -28,7 +28,7 @@ fee**, **no escape hatches**. These are not simplifications. Every feature
 *absent* from the kernel is absent because adding it would weaken the Nash
 equilibrium.
 
-Authoritative reference: `docs/v5/DESIGN_DECISIONS.md` — the catalogue of
+Authoritative reference: `docs/DESIGN_DECISIONS.md` — the catalogue of
 intentional patterns that look like vulnerabilities but are correct by design
 (count it there; never quote a remembered number).
 
@@ -110,8 +110,8 @@ belongs there, or discarding it entirely if it does not.
 
 ## Reference Files (Read Before Acting)
 
-- `docs/v5/DESIGN_DECISIONS.md` — the false-positive-pattern catalogue, authoritative
+- `docs/DESIGN_DECISIONS.md` — the false-positive-pattern catalogue, authoritative
 - `/papers/asymmetric-bonding` page — game-theoretic proofs (mechanism paper)
-- `docs/v5/VERIFICATION_MAP.md` — invariant → code → test → formal layer
-- `docs/v5/THEORY.md` — derivation of the six properties
+- `docs/VERIFICATION_MAP.md` — invariant → code → test → formal layer
+- `docs/THEORY.md` — derivation of the six properties
 - `CLAUDE.md` — working inventory and naming conventions

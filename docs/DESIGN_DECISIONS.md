@@ -319,7 +319,7 @@ cargo needs to carry rights — in trade finance with bank-as-temporary-
 holder, cargo resale in transit, negotiable warehouse receipts — Figaro
 is the wrong tool, by design.
 
-See `docs/v5/BOL_RESEARCH.md` for the full comparison against CargoX,
+See `docs/BOL_RESEARCH.md` for the full comparison against CargoX,
 TradeTrust, MLETR, and TradeLens, including the field-level mapping of
 what *is* expressible (non-negotiable BoLs in any DAG the buyer commits
 upfront, including multi-leg supply-chain carriage) and what is closed
@@ -357,7 +357,7 @@ off.
 > tracked in the punch-list (FORKS / open questions); the full sketch and
 > open design points are in `BOL_RESEARCH.md` §5/§6 and its status header.
 > V3 reference material at `archive-v3/src/composability/` +
-> `docs/archive/COMPOSABILITY.md`.
+> `archive-v5/COMPOSABILITY.md`.
 
 ---
 

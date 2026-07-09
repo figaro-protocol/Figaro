@@ -108,9 +108,9 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
         ],
         references: [
             { label: "Specifications", href: "/spec", note: "the frozen on-chain surface" },
-            { label: "Release readiness + freeze notice", href: "https://github.com/figaro-protocol/Figaro/blob/main/docs/v5/RELEASE_READINESS.md" },
-            { label: "Design decisions", href: "https://github.com/figaro-protocol/Figaro/blob/main/docs/v5/DESIGN_DECISIONS.md", note: "fourteen patterns that look like bugs but are correct" },
-            { label: "Audit report", href: "https://github.com/figaro-protocol/Figaro/blob/main/docs/v5/AUDIT_REPORT.md" },
+            { label: "Release readiness + freeze notice", href: "https://github.com/figaro-protocol/Figaro/blob/main/docs/RELEASE_READINESS.md" },
+            { label: "Design decisions", href: "https://github.com/figaro-protocol/Figaro/blob/main/docs/DESIGN_DECISIONS.md", note: "fourteen patterns that look like bugs but are correct" },
+            { label: "Audit report", href: "https://github.com/figaro-protocol/Figaro/blob/main/docs/AUDIT_REPORT.md" },
             { label: "Builders", href: "/builders", note: "implementation work — clauses, contracts, assemblies, frontend" },
         ],
     },

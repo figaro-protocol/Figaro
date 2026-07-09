@@ -73,7 +73,7 @@ Required output (one of):
 1. add `AssemblyRegistry` to `script/DeployMainnet.s.sol` with reasoned constructor values per Task 3; add `NEXT_PUBLIC_ASSEMBLY_REGISTRY` to the deployer log and to the Pre-Mainnet Deployment Verification checks below; OR
 2. document an explicit deferral with the runtime consequence — assemblies cannot be published or referenced on the mainnet runtime until a later deploy — and the planned timeline for closing the gap
 
-Either way: reflect the chosen disposition in `docs/v5/CONTRACTS.md` and `CLAUDE.md` so the mainnet contract inventory is unambiguous.
+Either way: reflect the chosen disposition in `docs/CONTRACTS.md` and `CLAUDE.md` so the mainnet contract inventory is unambiguous.
 
 ### Task 5: Launch Scenario — Assembly Seeding Decision
 
@@ -98,7 +98,7 @@ The chain stores only the agreement fingerprint (`agreementHash` / assembly `con
 
 Required output:
 
-1. **Testnet — managed pinning service (Option 1).** Pin every published agreement, assembly template, and profile to a managed multi-node pinning service (Pinata / Filebase / Storacha) so content survives the loss of the dev node. The pin path (`frontend/lib/shared/ipfsService.ts`) targets the service API; add the service endpoint/key as env vars in `docs/v5/LOCAL_DEV.md` + `frontend/.env.local`.
+1. **Testnet — managed pinning service (Option 1).** Pin every published agreement, assembly template, and profile to a managed multi-node pinning service (Pinata / Filebase / Storacha) so content survives the loss of the dev node. The pin path (`frontend/lib/shared/ipfsService.ts`) targets the service API; add the service endpoint/key as env vars in `docs/LOCAL_DEV.md` + `frontend/.env.local`.
 2. **Mainnet — sovereign per-party pinning (Option 3).** Shift durability to the parties: each publishing wallet's client pins what it authors, so no single operator is the custodian of availability — matching the ownerless / permissionless doctrine. No central pinning dependency in the mainnet trust model.
 3. **Retrieval-availability floor: 6 years, user-extensible.** An agreement must stay fetchable by its CID for the longest plausible dispute/audit window, anchored to the tax-audit horizon: most administrations can audit ~5 years back, plus 1 year because a year's transactions are declared the following year → a **6-year minimum**. The window varies by jurisdiction and shifts over time, so 6 years is a floor, not a fixed term — each agreement carries a per-party option to extend (longer retention for higher-stakes or longer-tail commitments).
 
@@ -267,10 +267,10 @@ Expected output: empty.
 
 | Document | Purpose |
 |---|---|
-| `docs/v5/DESIGN_DECISIONS.md` | 14 intentional patterns that look like vulnerabilities (read first) |
-| `docs/v5/VERIFICATION_MAP.md` | Every invariant → code → test → formal layer |
-| `docs/v5/RELEASE_READINESS.md` (this file) | Gate criteria, remaining tasks, frozen scope |
-| `docs/v5/SCALING_STRATEGY.md` | Proof-based scaling, batch sequencer architecture, and what the sequencer is trusted for (consolidated from former `BATCH_SEQUENCER.md` + `SEQUENCER_TRUST_MODEL.md`) |
+| `docs/DESIGN_DECISIONS.md` | 14 intentional patterns that look like vulnerabilities (read first) |
+| `docs/VERIFICATION_MAP.md` | Every invariant → code → test → formal layer |
+| `docs/RELEASE_READINESS.md` (this file) | Gate criteria, remaining tasks, frozen scope |
+| `docs/SCALING_STRATEGY.md` | Proof-based scaling, batch sequencer architecture, and what the sequencer is trusted for (consolidated from former `BATCH_SEQUENCER.md` + `SEQUENCER_TRUST_MODEL.md`) |
 
 The AI-audit history is provided for context only. The external auditor
 should form their own independent findings.

@@ -139,7 +139,7 @@ formula, when rebuilt, derives a clause's group key as
 `keccak256(block.article)` from the contentHash-verified spec
 (derive, don't store). (The on-chain RPGF distribution mechanism was removed in
 the proof-apparatus teardown; the group-weighting rationale survives in
-`docs/v5/PUBLIC_GRAPH_MODEL.md`.)
+`docs/PUBLIC_GRAPH_MODEL.md`.)
 
 Separate two kinds of data:
 

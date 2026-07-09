@@ -57,7 +57,7 @@ So deep in base training it ships as a role taxonomy or onboarding funnel *befor
 the frontend are *replaceable* presentation.
 *"Am I building a product feature?"* → *"which side of the seam?"* — a `block`-driven surface is
 designed presentation, **not silt**; a hardcoded list or stored taxonomy is drift. Compose from
-`lib/`; whole stack → `docs/v5/ARCHITECTURE.md`.
+`lib/`; whole stack → `docs/ARCHITECTURE.md`.
 
 ### What open-world looks like — the positive target
 
@@ -65,24 +65,24 @@ Every "do not" here has a positive form; **lead with it** (prohibition-only rout
 base model back to closed-world). The positive rubric — role + surface named, live
 chain→IPFS registry not a bundled list, derived-not-stored, any-relationship,
 spec-routed-not-name, reads-at-edge (resolved-empty = absence). Full statement:
-`docs/v5/OPEN_WORLD.md` §1.
+`docs/OPEN_WORLD.md` §1.
 
 ---
 
 This file is the authoritative reference for AI-assisted work in this repo. It
-holds the **discipline**; the indexed `docs/v5/` files hold the **lists** (the
+holds the **discipline**; the indexed `docs/` files hold the **lists** (the
 inventories, tables, and command catalogues). Keep it that way: when a section
 starts accumulating an inventory or a command block, that content belongs in the
 owning doc, not here.
 
 **Do not reference any contract or file not listed here or in the indexed
-`docs/v5/` files** (full Document Index at the bottom). Primary inventories:
+`docs/` files** (full Document Index at the bottom). Primary inventories:
 
-- **`docs/v5/CONTRACTS.md`** — smart-contract inventory: kernel, attestation, clause, mechanism modules, FIG token, mocks, "what does NOT exist".
-- **`docs/v5/CLAUSES.md`** — clause validation architecture, the clause table, the adding-a-clause checklist.
-- **`docs/v5/FRONTEND.md`** — frontend route catalogue, lib map, designer surface, wallet-provider scope rules.
-- **`docs/v5/TESTING.md`** — Foundry / Halmos / Certora / Echidna / TLA+ / Vitest / Playwright harness inventory.
-- **`docs/v5/LOCAL_DEV.md`** — commands, env vars, Docker-hosted services, deployment scripts.
+- **`docs/CONTRACTS.md`** — smart-contract inventory: kernel, attestation, clause, mechanism modules, FIG token, mocks, "what does NOT exist".
+- **`docs/CLAUSES.md`** — clause validation architecture, the clause table, the adding-a-clause checklist.
+- **`docs/FRONTEND.md`** — frontend route catalogue, lib map, designer surface, wallet-provider scope rules.
+- **`docs/TESTING.md`** — Foundry / Halmos / Certora / Echidna / TLA+ / Vitest / Playwright harness inventory.
+- **`docs/LOCAL_DEV.md`** — commands, env vars, Docker-hosted services, deployment scripts.
 
 ---
 
@@ -212,11 +212,11 @@ The recurring, weeks-costly failure is modeling a concern as a stored value when
 - **Nodes are co-equal** (kernel star-shape: buyer == rootBuyer on every order). The courier order is not a sub-order *owned* by the merchant; the DAG parent edge is value-topology, not dominance.
 - **Clauses are a nestable hierarchy: article → clause → sub-clause → …** Articles = `block.article` in the clause JSON (surfaced by the existing grouping component — do not rebuild it). Sub-clauses are logically placed (e.g. the proximity bands `zone-wifi`/`nearby-ble`/`contact-nfc` nest under `figaro-proximity-policy`; the process clauses have none). **Add sub-clauses to the clause JSON spec, emit the event, and reconstruct the nesting OFF-CHAIN in the drawer (rendered recursively from the spec) — NEVER hardcode the sub-clause tree into the UI.**
 
-Full treatment → memory `feedback_fulfilment_retired_modality_derived`; clause-spec detail → `docs/v5/CLAUSES.md`.
+Full treatment → memory `feedback_fulfilment_retired_modality_derived`; clause-spec detail → `docs/CLAUSES.md`.
 
 Mechanically enforced: `scripts/lint-no-closed-world-vocab.sh` (pre-commit, lint-staged) fails any commit reintroducing a stored role/archetype/category identifier in code (`roleKind`, `archetypeId`, `clauseCategories`, `documentKind`) and warns on retired `fulfilment` vocabulary until the de-hardcoding migration lands — then the warn list promotes to fail.
 
-**The `w_category` substrate-broadening weight** (the RPGF geo·coordination boost) is a *category-of-work* incentive, not author-favoritism — retiring it as "a privileged category breaks neutrality" is the **neutrality ≠ flat-weighting error**. Rationale + rebuild notes → `docs/v5/PUBLIC_GRAPH_MODEL.md` (the owner); teardown status → `CONTRACTS.md` § "Deferred vs permanent".
+**The `w_category` substrate-broadening weight** (the RPGF geo·coordination boost) is a *category-of-work* incentive, not author-favoritism — retiring it as "a privileged category breaks neutrality" is the **neutrality ≠ flat-weighting error**. Rationale + rebuild notes → `docs/PUBLIC_GRAPH_MODEL.md` (the owner); teardown status → `CONTRACTS.md` § "Deferred vs permanent".
 
 ### Dispute Resolution — Three Layers
 
@@ -242,7 +242,7 @@ Adapted from `andrej-karpathy-skills` CLAUDE.md, minus its YAGNI bullets (which 
 
 **Goal-driven execution.** Convert vague tasks into verifiable success criteria before starting — "fix the bug" becomes "write a failing test that reproduces it, then make it pass". For multi-step work, state a brief plan with a verify step per item; the harnesses in `TESTING.md` are the verification layer.
 
-**Finish a concept across every surface.** A rename or collapse is done only when the old term is gone from **all** of: code identifiers, comments, doc files (`docs/v5/`, CLAUDE.md), tests (incl. describe/it strings + fixtures), CSS (class names, `@layer` names, custom properties), user-facing copy, and **clause IDs** — verified by an *exhaustive* grep that returns empty (minus an enumerated, stated allowlist), shown before the word "done." "It compiles / tests pass" is the compiler's bar, not the finish line. Phasing a concept into "identifiers now, the rest later" is how the same files get re-touched five times — don't.
+**Finish a concept across every surface.** A rename or collapse is done only when the old term is gone from **all** of: code identifiers, comments, doc files (`docs/`, CLAUDE.md), tests (incl. describe/it strings + fixtures), CSS (class names, `@layer` names, custom properties), user-facing copy, and **clause IDs** — verified by an *exhaustive* grep that returns empty (minus an enumerated, stated allowlist), shown before the word "done." "It compiles / tests pass" is the compiler's bar, not the finish line. Phasing a concept into "identifiers now, the rest later" is how the same files get re-touched five times — don't.
 
 **Delete dead code; never rename it.** When a feature was removed, its orphaned remnants (consumers with no producer, vestigial plumbing) get **deleted**, not swept into the new vocabulary. Renaming dead code makes it look intentional and deepens the confusion a clarity pass is meant to remove. Before renaming a thing, confirm it's live (has a producer/caller); if it's a corpse, bury it.
 
@@ -264,29 +264,29 @@ If yes, adding on-chain state, role checks, or lifecycle flags is a web2 pattern
 
 `frontend/lib/` is runtime infrastructure — the abstraction IS the deliverable; catalogues (`shared/clauseSpecSource.ts`, mechanism packages, `lib/semantic/`) land ahead of their UI consumers **by design**. **YAGNI does not apply**: "no readers today / one implementation / no consumer" are the expected state, not findings — bring UI down to the catalogue, don't shrink the catalogue to today's UI. (Composition model: `OPEN_WORLD.md` §3; doctrine: `feedback_runtime_abstractions_are_deliverable` memory.)
 
-**Check before you build — no new rows of corn.** Before adding ANY frontend artifact (component, hook, helper, type, util, taxonomy, constant, style), `grep`/`glob` for an existing one and **reuse or extend it** — the bar for a net-new symbol is "no equivalent exists, *shown by a search*," never "I didn't happen to see one." Re-implementing what exists is the single most repeated failure here. A new catalogue that duplicates an existing one is still a finding (the no-new-helpers case, not the abstraction-ahead-of-UI case). When a genuinely new surface is warranted, start from the canonical exemplar of its surface-type (`docs/v5/FRONTEND.md` § "Canonical exemplars — copy these shapes") and copy its shape — never generate the shape from scratch.
+**Check before you build — no new rows of corn.** Before adding ANY frontend artifact (component, hook, helper, type, util, taxonomy, constant, style), `grep`/`glob` for an existing one and **reuse or extend it** — the bar for a net-new symbol is "no equivalent exists, *shown by a search*," never "I didn't happen to see one." Re-implementing what exists is the single most repeated failure here. A new catalogue that duplicates an existing one is still a finding (the no-new-helpers case, not the abstraction-ahead-of-UI case). When a genuinely new surface is warranted, start from the canonical exemplar of its surface-type (`docs/FRONTEND.md` § "Canonical exemplars — copy these shapes") and copy its shape — never generate the shape from scratch.
 
 The `(marketing)`/`(app)` split is wallet-scope, not data-freshness; hardcoded/bundled lists are web2 drift.
 
 ### Documentation Discipline
 
-When a code change makes a doc statement stale, fix the doc in the same session. `scripts/lint-claude-md.sh` runs in pre-commit and fails on mechanically-detectable drift: broken backticked paths in `CLAUDE.md`; the env-var set in `docs/v5/LOCAL_DEV.md` vs `frontend/.env.local`; the mock inventory in `docs/v5/CONTRACTS.md`; the deploy-script inventory in `docs/v5/LOCAL_DEV.md`.
+When a code change makes a doc statement stale, fix the doc in the same session. `scripts/lint-claude-md.sh` runs in pre-commit and fails on mechanically-detectable drift: broken backticked paths in `CLAUDE.md`; the env-var set in `docs/LOCAL_DEV.md` vs `frontend/.env.local`; the mock inventory in `docs/CONTRACTS.md`; the deploy-script inventory in `docs/LOCAL_DEV.md`.
 
 **Authoritative docs that must stay in sync** (when code changes, update these):
 
 - `CLAUDE.md` — this file
-- `docs/v5/CONTRACTS.md`, `CLAUSES.md`, `FRONTEND.md`, `TESTING.md`, `LOCAL_DEV.md` — the inventories CLAUDE.md indexes
+- `docs/CONTRACTS.md`, `CLAUSES.md`, `FRONTEND.md`, `TESTING.md`, `LOCAL_DEV.md` — the inventories CLAUDE.md indexes
 - `sdk/README.md` — SDK entry points
-- `docs/v5/VERIFICATION_MAP.md` — invariant → test → formal layer map
+- `docs/VERIFICATION_MAP.md` — invariant → test → formal layer map
 - User-facing clause surfaces in `frontend/app/`. The `/clauses` inventory renders from the live `ClauseRegistry` grouped by `block.article`, so a newly registered clause appears automatically. Pages that name clauses in prose still need a manual pass when a new clause lands — `grep -rl "<clauseId>" frontend/app/` finds them.
 
-**`docs/v5/` whitelist (exhaustive).** Files not on this list are deletion candidates at every audit. Do not treat absence-from-whitelist as "ambiguous" — treat it as "delete unless restored by explicit user approval." See the Document Index at the bottom for the categorized list.
+**`docs/` whitelist (exhaustive).** Files not on this list are deletion candidates at every audit. Do not treat absence-from-whitelist as "ambiguous" — treat it as "delete unless restored by explicit user approval." See the Document Index at the bottom for the categorized list.
 
-**Delete on completion.** When a strategy/plan/audit/punch-list doc's work is closed, **delete the file**. Do not move it to `docs/archive/` (that path is for legacy v4 docs only, not v5 cleanups). Do not mark items done in place. Use git history to retrieve. The same rule that governs the punch-list applies to docs.
+**Delete on completion.** When a strategy/plan/audit/punch-list doc's work is closed, **delete the file**. Do not move it to `archive-v5/` (that path is for legacy v4 docs only, not v5 cleanups). Do not mark items done in place. Use git history to retrieve. The same rule that governs the punch-list applies to docs.
 
-**One punch-list; no audit-findings docs.** Open work — engineering tasks, audit findings, punch-list items, papers, research — is tracked in exactly one place: the punch-list at `~/.claude/projects/-Users-adaliana-Figaro/memory/project_punchlist.md` (a TODO list, not a journal — items + their why/how, never a session log). An audit produces punch-list items, not a doc. There are no `AUDIT_FINDINGS_*.md` files and no punch-list docs in `docs/v5/`; closed work is recovered from `git log`. Verification *coverage* (live test counts, harness inventory) lives in `VERIFICATION_MAP.md` / `TESTING.md`; accepted risks and release-gate criteria in `DESIGN_DECISIONS.md` / `RELEASE_READINESS.md`.
+**One punch-list; no audit-findings docs.** Open work — engineering tasks, audit findings, punch-list items, papers, research — is tracked in exactly one place: the punch-list at `~/.claude/projects/-Users-adaliana-Figaro/memory/project_punchlist.md` (a TODO list, not a journal — items + their why/how, never a session log). An audit produces punch-list items, not a doc. There are no `AUDIT_FINDINGS_*.md` files and no punch-list docs in `docs/`; closed work is recovered from `git log`. Verification *coverage* (live test counts, harness inventory) lives in `VERIFICATION_MAP.md` / `TESTING.md`; accepted risks and release-gate criteria in `DESIGN_DECISIONS.md` / `RELEASE_READINESS.md`.
 
-**No new top-level docs without destination.** Agents creating new files in `docs/v5/` must either edit a whitelisted doc or get explicit user approval to extend the whitelist — there is no auto-allowed new-file pattern. New strategy/plan/notes files require approval before creation — write them as sections in the relevant whitelisted doc, or as backlog items.
+**No new top-level docs without destination.** Agents creating new files in `docs/` must either edit a whitelisted doc or get explicit user approval to extend the whitelist — there is no auto-allowed new-file pattern. New strategy/plan/notes files require approval before creation — write them as sections in the relevant whitelisted doc, or as backlog items.
 
 ### Paper Authorship Discipline
 
@@ -332,7 +332,7 @@ The protocol clauses are the specs in `clauses/` (the canonical Layer-A specs / 
 
 `@figaro/core` — TypeScript SDK for reading, analyzing, and proposing Figaro transactions. Single dependency: `viem ^2.0.0`. ESM; four subpath exports (root, `/agent`, `/extensions`, `/clauses` — the lockstep clause source-of-truth). Full entry-point map + build/test commands → `sdk/README.md`.
 
-**"Agent" = two worlds; pin the referent.** Default = OPERATOR-PRIVATE (`.claude/agents/`, the operator's repo tools; no SDK). The exception: PUBLIC ECOSYSTEM agents (`ecosystem-agents/`) act for a USER's wallet, NEVER the repo — `figaro-operator` (operate a wallet) + `figaro-clause-author`/`figaro-assembly-author`. Full split → `docs/v5/AI_AGENT_COORDINATION.md` + the agent-seam memory.
+**"Agent" = two worlds; pin the referent.** Default = OPERATOR-PRIVATE (`.claude/agents/`, the operator's repo tools; no SDK). The exception: PUBLIC ECOSYSTEM agents (`ecosystem-agents/`) act for a USER's wallet, NEVER the repo — `figaro-operator` (operate a wallet) + `figaro-clause-author`/`figaro-assembly-author`. Full split → `docs/AI_AGENT_COORDINATION.md` + the agent-seam memory.
 
 ### Local Development
 
@@ -340,7 +340,7 @@ Commands (Foundry / Halmos / Echidna / TLA+ / Certora / frontend / SDK), environ
 
 ---
 
-## Document Index (`docs/v5/`)
+## Document Index (`docs/`)
 
 This is the exhaustive whitelist. Files not listed are deletion candidates at every audit.
 

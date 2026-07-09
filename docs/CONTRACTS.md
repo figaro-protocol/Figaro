@@ -12,7 +12,7 @@ This file is the canonical inventory. CLAUDE.md indexes it; agents must not refe
 - 2 external functions: `commit` (unified dual-signed), `resolveProcess`
 - 3 mappings: `processes` (ProcessState), `orderStatus` (uint8), `orderProcessId` (bytes32)
 - EIP-712 dual-signed commitments; asymmetric bonding; direct transfer at resolution
-- Covered by Foundry unit tests, 7 Echidna properties (EchidnaFuzzer), 7 Halmos symbolic proofs (HalmosFigaroCore), and 4 Certora CVL specs across the protocol (FigaroCore, AttestationCoordinator, TokenOpsVerification, FigToken — see `docs/v5/VERIFICATION_MAP.md` for the current per-contract verification coverage)
+- Covered by Foundry unit tests, 7 Echidna properties (EchidnaFuzzer), 7 Halmos symbolic proofs (HalmosFigaroCore), and 4 Certora CVL specs across the protocol (FigaroCore, AttestationCoordinator, TokenOpsVerification, FigToken — see `docs/VERIFICATION_MAP.md` for the current per-contract verification coverage)
 
 **`src/CommitmentTypes.sol`** — EIP-712 typed structs and hash functions.
 Single `Commitment` struct for both root and sub-orders; `processId` zero for root.
@@ -174,7 +174,7 @@ caps enforced not to exceed MAX_SUPPLY). Deployer registers capped minters, then
 - **600M (60%) clause-author RPGF** — the proof-gated distribution (an `RpgfMinter`
   staged behind an SP1 prover) was **removed in the proof-apparatus teardown**, so this
   600M of the cap currently has **no wired mint path**. The RPGF rationale survives in
-  `docs/v5/PUBLIC_GRAPH_MODEL.md`; re-home a distribution mechanism there if one is rebuilt.
+  `docs/PUBLIC_GRAPH_MODEL.md`; re-home a distribution mechanism there if one is rebuilt.
 
 Deploy flow: deployer registers itself as a one-shot genesis minter with cap 400M,
 mints 100M+300M to the founder/DAO wallets, then renounces. Only the 400M genesis is

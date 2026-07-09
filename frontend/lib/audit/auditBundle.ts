@@ -20,7 +20,7 @@
  * never seen — with zero genre code. A recognizable document (an invoice, a
  * BoL) is a projection over those same committed leaves; if ever built, it must
  * be a DECLARED / generic composition, never a hand-rolled genre. See
- * `docs/v5/BOL_RESEARCH.md` for why a NEGOTIABLE BoL is structurally impossible.
+ * `docs/BOL_RESEARCH.md` for why a NEGOTIABLE BoL is structurally impossible.
  */
 
 import type { Agreement } from "@figaro/core";

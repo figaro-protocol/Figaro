@@ -34,10 +34,10 @@ Before auditing, read these:
 - `~/.claude/projects/-Users-adaliana-Figaro/memory/feedback_separation_of_concerns.md`
 - `CLAUDE.md` § "Separation of Concerns — Artifact Families"
 - `CLAUDE.md` § "Three-Tier Naming"
-- `docs/v5/CLAUSES.md` (§"When something deserves a clause — payload vs anchor")
+- `docs/CLAUSES.md` (§"When something deserves a clause — payload vs anchor")
 
 The existing parallel families (all three anchored on-chain, K4 staked-intent model):
-1. **Clauses** — `src/ClauseRegistry.sol` (spec anchoring; the per-clause on-chain validators are a DEFERRED surface — `docs/v5/CONTRACTS.md` § "Deferred vs permanent").
+1. **Clauses** — `src/ClauseRegistry.sol` (spec anchoring; the per-clause on-chain validators are a DEFERRED surface — `docs/CONTRACTS.md` § "Deferred vs permanent").
 2. **Sellers** — `src/SellerRegistry.sol` (seller entity + IPFS metadata).
 3. **Assemblies** — `src/AssemblyRegistry.sol` (composition templates; use clauses; parallel to (1) and (2), not subordinate).
 

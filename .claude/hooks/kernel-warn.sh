@@ -13,7 +13,7 @@ case "$file_path" in
     cat <<EOF
 ⚠ KERNEL EDIT: $file_path
 
-The kernel is FROZEN. Verify 3× against docs/v5/DESIGN_DECISIONS.md before
+The kernel is FROZEN. Verify 3× against docs/DESIGN_DECISIONS.md before
 proposing changes.
 
 Anti-patterns to reject on sight:

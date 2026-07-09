@@ -73,9 +73,9 @@ for file in "$@"; do
     # mechanism is 'asymmetric bonding'.
     check "$file" FAIL "[\"']order-received[\"']" "" "" \
         "'order-received' is not a clause event — the kernel commit IS arrival + acceptance (core-owned)."
-    check "$file" FAIL "process tree" '(^|/)(CLAUDE\.md|docs/v5/LEXICON\.md)$' "" \
+    check "$file" FAIL "process tree" '(^|/)(CLAUDE\.md|docs/LEXICON\.md)$' "" \
         "retired: use 'process chain' (kernel, linear) or 'DAG' (off-chain topology)."
-    check "$file" FAIL "progressive[ -]collateral" '(^|/)(docs/v5/LEXICON\.md)$' "" \
+    check "$file" FAIL "progressive[ -]collateral" '(^|/)(docs/LEXICON\.md)$' "" \
         "retired: 'asymmetric bonding' is the mechanism; its N-party scaling face is 'cumulative upstream bonding' (each seller bonds against cumulative upstream value)."
 
     # ── clause vocabulary (cross-tier) ─────────────────────────────
@@ -87,7 +87,7 @@ for file in "$@"; do
     # Carve-out: a *.schema.json artifact (and its conformance test) IS an IETF
     # JSON Schema — the published format definition of a clause spec — a homonym
     # of the retired Figaro 'schema' (the clause artifact family), not drift.
-    check "$file" FAIL "\\bschema" '(^|/)(CLAUDE\.md|docs/v5/LEXICON\.md)$|\.schema\.json$|schema-conformance\.test' \
+    check "$file" FAIL "\\bschema" '(^|/)(CLAUDE\.md|docs/LEXICON\.md)$|\.schema\.json$|schema-conformance\.test' \
         'json[ -]schema|commitment schema|schema version|schema\.org' \
         "retired: the protocol artifact family is the 'clause' (ClauseRegistry / clauseId), not the 'schema'."
 
@@ -104,10 +104,10 @@ for file in "$@"; do
     # (manifestation / will|would manifest), and the FROZEN kernel
     # (src/FigaroCore.sol keeps its original comments untouched).
     check "$file" FAIL "category-1\\b|category-2\\b|manifest-only|manifestOnly" \
-        '(^|/)docs/v5/LEXICON\.md$' "" \
+        '(^|/)docs/LEXICON\.md$' "" \
         "retired clause tier: block.tier is dead — clauses are uniformly merkle-committed; lifecycle (agreement-only vs runtime-attested) is derived in code, not a stored tier."
     check "$file" FAIL "\\bmanifest" \
-        '(^|/)(docs/v5/LEXICON\.md|src/FigaroCore\.sol)$' \
+        '(^|/)(docs/LEXICON\.md|src/FigaroCore\.sol)$' \
         'CARGO_MANIFEST|--manifest-path|manifestation|will manifest|would manifest' \
         "retired: 'manifest' is dead — use 'off-chain agreement' / 'pinned content' / 'sealed payload'."
 done

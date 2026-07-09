@@ -18,8 +18,8 @@ The MAD equilibrium is fragile. Any single escape hatch degrades it. The safest 
 Read these files directly from disk. They are authoritative; do not paraphrase from memory.
 
 - `.claude/skills/figaro-kernel-discipline/SKILL.md` — the rules you enforce. Read in full.
-- `docs/v5/DESIGN_DECISIONS.md` — patterns that look like vulnerabilities but are correct by design. Read in full before flagging anything as a vulnerability.
-- `docs/v5/VERIFICATION_MAP.md` — invariant → code → test → formal-layer mapping. Use to cite which formal layer would catch a regression.
+- `docs/DESIGN_DECISIONS.md` — patterns that look like vulnerabilities but are correct by design. Read in full before flagging anything as a vulnerability.
+- `docs/VERIFICATION_MAP.md` — invariant → code → test → formal-layer mapping. Use to cite which formal layer would catch a regression.
 - `CLAUDE.md` — working inventory and the "What Figaro Is Not" list. Use offset/limit; the file is ~45KB.
 
 You will cite specific line numbers from these files in your findings.
@@ -33,7 +33,7 @@ If the user pointed you at a diff, run it (`git diff <range>`). If a file, read 
 State the tier explicitly. Rules differ across tiers:
 
 - **Kernel** = `src/FigaroCore.sol`, `src/CommitmentTypes.sol`, kernel storage mappings (`processes`, `orderStatus`, `orderProcessId`), bonding math. Frozen. Verify 3× before approving any change.
-- **Protocol** = extension contracts (`ClauseRegistry.sol`, `AttestationCoordinator.sol`, `SellerRegistry.sol`, `AssemblyRegistry.sol`). Extension doctrine in `docs/v5/CLAUSES.md` applies.
+- **Protocol** = extension contracts (`ClauseRegistry.sol`, `AttestationCoordinator.sol`, `SellerRegistry.sol`, `AssemblyRegistry.sol`). Extension doctrine in `docs/CLAUSES.md` applies.
 - **Runtime** = `frontend/`, semantic layer, builder surfaces, UI. Most patterns are fine here.
 
 A pattern that is an anti-pattern at the kernel tier may be acceptable at runtime. **Always state the tier in your findings.**

@@ -14,7 +14,7 @@ This document ties every protocol property to its enforcement across five layers
 - **Certora** — what is formally verified via SMT-based proving (state-machine rules)
 - **UI** — where the feature is explained or rendered for users (pages, sections)
 
-The V3 map (archived at `docs/archive/V3_VERIFICATION_MAP.md`) covered Theory → Code → Tests → TLA+ only. This V5 map adds the UI column to prevent feature presentation gaps — features that exist in code but are invisible to users.
+The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → Code → Tests → TLA+ only. This V5 map adds the UI column to prevent feature presentation gaps — features that exist in code but are invisible to users.
 
 ---
 

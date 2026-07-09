@@ -5,7 +5,7 @@
 # The canonical specs live at repo-root clauses/*.json; the SDK's generic
 # parse/validate/encode engine is the only Layer-A code (no per-clause code
 # exists — finding any is itself drift). The on-chain validator surface is
-# DEFERRED (docs/v5/CONTRACTS.md § "Deferred vs permanent").
+# DEFERRED (docs/CONTRACTS.md § "Deferred vs permanent").
 set -euo pipefail
 
 file_path=$(jq -r '.tool_input.file_path // empty')
@@ -26,7 +26,7 @@ Other surfaces must move together. Before committing, invoke the
 figaro-clause-lockstep subagent on the diff to verify all required
 surfaces are in sync.
 
-Required surfaces per clauseId (docs/v5/CLAUSES.md owns the checklist):
+Required surfaces per clauseId (docs/CLAUSES.md owns the checklist):
   - Canonical spec:      clauses/<id>.json (bare id — version is a hashed
                          field, never a name suffix)
   - Generic Layer A:     the spec must parse + round-trip through
@@ -35,7 +35,7 @@ Required surfaces per clauseId (docs/v5/CLAUSES.md owns the checklist):
   - Registry seeding:    ClauseRegistry registration in the deploy path
   - User-facing prose:   grep -rl "<id>" frontend/app/ on rename/remove
   (On-chain validator + prover mirror: DEFERRED surfaces — absence is not
-   drift; see docs/v5/CONTRACTS.md § "Deferred vs permanent".)
+   drift; see docs/CONTRACTS.md § "Deferred vs permanent".)
 
 This repo is device-only: edit the clause spec in place (no -v2, no version
 bump) and make sure the same change reaches every live surface above.

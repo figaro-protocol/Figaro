@@ -13,7 +13,7 @@ bash scripts/lint-clause-nests-under-a-field.sh
 # NOTE: the RPGF substrate-broadening-weight guard was retired in the proof-
 # apparatus teardown — its protected files (prover/rpgf/src/formula.rs +
 # sdk/scripts/rpgf-simulator/formula.ts) were deleted with the RPGF prover.
-# The incentive's RATIONALE survives in docs/v5/PUBLIC_GRAPH_MODEL.md; reinstate
+# The incentive's RATIONALE survives in docs/PUBLIC_GRAPH_MODEL.md; reinstate
 # the guard alongside any rebuilt RPGF distribution that re-homes the weight.
 bash scripts/lint-chain-gas.sh
 # Open-world floor: no fabricated network state (?? CONTRACTS / coined emoji),
@@ -29,7 +29,7 @@ bash scripts/lint-no-network-fallbacks.sh
 # PRIOR-KNOWLEDGE-OF-THE-REGISTRIES that grep structurally cannot see (field-name+
 # meaning couplings). ONE runner, TWO inspectors (SoC): the frontend rulebook watches
 # the screens; the protocol rulebook watches the validators + prover. Both share one
-# definition of open-world (docs/v5/OPEN_WORLD.md §1). Heaviest check, runs last;
+# definition of open-world (docs/OPEN_WORLD.md §1). Heaviest check, runs last;
 # fail-open so it never bricks a commit on infra. Override: git commit --no-verify.
 bash scripts/semantic-precommit-audit.sh frontend '^frontend/.*\.tsx?$' .claude/agents/figaro-open-world-auditor.md
 bash scripts/semantic-precommit-audit.sh protocol '^(src/.*\.sol|prover/.*\.rs)$' .claude/agents/figaro-protocol-open-world-auditor.md

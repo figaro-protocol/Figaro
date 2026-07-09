@@ -18,7 +18,7 @@
 #   certora/RpgfMinter.spec             — three-stage RPGF minter (12 rules)
 #
 # (The StagedMerkleAirdrop spec was retired alongside the contract;
-# RpgfMinter.spec is its successor — see docs/v5/AUDIT_REPORT.md for the
+# RpgfMinter.spec is its successor — see docs/AUDIT_REPORT.md for the
 # retirement record and verification continuity note.)
 #
 # Conf flag note:
