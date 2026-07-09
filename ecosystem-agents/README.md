@@ -32,7 +32,7 @@ explicitly designed for it — these three are those exceptions.
 
 | World | Home | For | Touches the repo? |
 |---|---|---|---|
-| **Operator-private** — build Figaro itself (kernel-reviewer, clause-lockstep, marketing, visual-design, site-ia, runtime-ui-author, the auditors, memory-hygiene, deploy-runner, feedback-triage, paper-reviewer) | `.claude/agents/` | **the operator only** | yes (that's their job) |
+| **Operator-private** — build Figaro itself (kernel-reviewer, clause-lockstep, marketing, visual-design, site-ia, runtime-ui-author, the auditors, memory-hygiene, feedback-triage, paper-reviewer) | `.claude/agents/` | **the operator only** | yes (that's their job) |
 | **Public ecosystem** — operate / author / fork (`figaro-operator`, `figaro-clause-author`, `figaro-assembly-author`) | **`ecosystem-agents/`** | **any user**, acting for their own wallet | **never** |
 
 A public ecosystem agent that writes a repo file has crossed the line: it re-imposes the

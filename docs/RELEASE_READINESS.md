@@ -2,7 +2,7 @@
 
 Status: canonical release gate note for the live V5 kernel, protocol, and runtime.
 
-Last updated: 2026-06-25 (proof-apparatus teardown: the SP1 prover, `FigaroBatchVerifier`, and `RpgfMinter` were deleted — Task 8 is VOID; Task 7 testnet/Cloudflare remains).
+Last updated: 2026-07-09 (no-beta ruling: the `cloudflare/` closed-beta apparatus was deleted — Task 7 is a plain testnet rehearsal now. 2026-06-25 proof-apparatus teardown: the SP1 prover, `FigaroBatchVerifier`, and `RpgfMinter` were deleted — Task 8 is VOID).
 
 This note is the current answer to a simple question: what is ready now, what is still open, and what must happen before a public release is treated as complete.
 
@@ -102,17 +102,21 @@ Required output:
 2. **Mainnet — sovereign per-party pinning (Option 3).** Shift durability to the parties: each publishing wallet's client pins what it authors, so no single operator is the custodian of availability — matching the ownerless / permissionless doctrine. No central pinning dependency in the mainnet trust model.
 3. **Retrieval-availability floor: 6 years, user-extensible.** An agreement must stay fetchable by its CID for the longest plausible dispute/audit window, anchored to the tax-audit horizon: most administrations can audit ~5 years back, plus 1 year because a year's transactions are declared the following year → a **6-year minimum**. The window varies by jurisdiction and shifts over time, so 6 years is a floor, not a fixed term — each agreement carries a per-party option to extend (longer retention for higher-stakes or longer-tail commitments).
 
-### Task 7: Testnet / Cloudflare Deployment Rehearsal (PAUSED)
+### Task 7: Testnet Deployment Rehearsal (PAUSED)
 
-**Paused — the repo is device-only.** Resume when the deploy decision flips. Order:
-deploy-script audits → CF provisioning → Sepolia smoke-test → flip the
-device-only deployment-context line in the punch-list and `CLAUDE.md`.
+**Paused — the repo is device-only.** Resume when the deploy decision flips.
+(The Cloudflare closed-beta apparatus — gate Worker + access codes, rpc-proxy
+allowlist, beta Anvil container, `cloudflare/` runbook — was deleted 2026-07-09
+with the no-beta ruling; there is no beta phase, so the rehearsal targets an
+ordinary public deployment. Hosting is chosen at deploy time; the frontend is a
+static-exportable protocol surface with user-owned RPC/IPFS endpoints, so no
+edge middleware is presumed.) Order: deploy-script audits → Sepolia smoke-test
+→ flip the device-only deployment-context line in the punch-list and `CLAUDE.md`.
 
 Required output:
 
 1. Audit `script/Deploy.s.sol` + `script/DeployMainnet.s.sol` — confirm the env-var contract, no mocks, and that the atomic clause-validator binding composes on Sepolia.
-2. Cloudflare runbook (`cloudflare/README.md` step 5 still carries Anvil framing) — scrub for Sepolia.
-3. CF infra — KV namespaces (`CODES` / `SESSIONS` / `CONTRACT_ALLOWLIST`); rpc-proxy Worker → Sepolia; contract-address allowlist; `wrangler.toml` placeholders; WS `eth_subscribe` forwarding.
+2. Sepolia smoke-test of the deployed stack through the UI (the devnet e2e pattern against a public testnet).
 
 (Kleros subcourt-ID verification and IPFS content durability for this path are already covered by the Pre-Mainnet Deployment Verification checks and Task 6 above.)
 

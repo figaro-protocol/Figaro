@@ -119,7 +119,7 @@ If a claim doesn't fit any class with a real source, refuse and rewrite. **Marke
 - There is no beta phase (operator ruling 2026-07-09). Until mainnet, any hosted participant environment is testnet — marketing copy describing what participants do *today* must say "testnet" explicitly.
 - "Live" / "production" / "available" / "shipped" imply mainnet. Only use when literally true.
 - The mock Kleros stack is testnet-only. Never imply real arbitration is happening on testnet.
-- The CF deployment runbook is documented; the actual deployment hasn't happened. "Deployed on Cloudflare" is not yet true.
+- No hosted deployment exists (device-only repo). "Deployed on X" / "live at" claims are not yet true for any host.
 - When the operator authorizes mainnet release, the testnet/mainnet distinction in copy can collapse for surfaces that go live then. Until then, distinguish.
 
 ---
