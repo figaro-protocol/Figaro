@@ -55,19 +55,7 @@ export interface CommitmentSignatureMessage {
     ts: number;
 }
 
-/** Handoff address: the buyer sends the human-readable delivery address to
- *  the assigned courier. The geohash on the courier order's geo clause
- *  section is the on-agreement location commitment; this carries the
- *  street-level detail (apartment, entry notes) the courier needs. */
-export interface HandoffAddressMessage {
-    type: "HANDOFF_ADDRESS";
-    orderId: string;
-    /** Human-readable delivery address / handoff notes. */
-    deliveryAddress: string;
-    ts: number;
-}
-
-export type ChannelMessage = HandoffKeyMessage | EcdhPubkeyMessage | EcdhWrappedKeyMessage | CommitmentSignatureMessage | HandoffAddressMessage;
+export type ChannelMessage = HandoffKeyMessage | EcdhPubkeyMessage | EcdhWrappedKeyMessage | CommitmentSignatureMessage;
 
 // ── Channel interface ──────────────────────────────────────────
 
@@ -160,24 +148,6 @@ export interface CoordinationChannel {
      */
     onAnyCommitmentPayload(
         callback: (payloadCid: string, orderId: string) => void,
-    ): () => void;
-
-    // ── Handoff address ───────────────────────────────────────
-
-    /** Send the human-readable delivery address to the assigned courier. */
-    sendHandoffAddress(params: {
-        recipientAddress: string;
-        orderId: string;
-        deliveryAddress: string;
-    }): Promise<void>;
-
-    /**
-     * Subscribe to the delivery address for a specific order.
-     * Returns an unsubscribe function.
-     */
-    onHandoffAddress(
-        orderId: string,
-        callback: (deliveryAddress: string, senderIdentity: string) => void,
     ): () => void;
 
     /** Tear down the channel (close XMTP client, etc.). */

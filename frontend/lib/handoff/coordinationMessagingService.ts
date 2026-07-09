@@ -71,19 +71,6 @@ export interface CoordinationMessagingService {
             callback: (payloadCid: string, orderId: string) => void;
         },
     ): Promise<() => void>;
-    sendHandoffAddress(
-        params: CoordinationMessagingContext & {
-            recipientAddress: string;
-            orderId: string;
-            deliveryAddress: string;
-        },
-    ): Promise<void>;
-    subscribeHandoffAddress(
-        params: CoordinationMessagingContext & {
-            orderId: string;
-            callback: (deliveryAddress: string, senderIdentity: string) => void;
-        },
-    ): Promise<() => void>;
 }
 
 function resolveWalletMessageSigner(walletClient?: WalletMessageSignerSource | null) {
@@ -174,22 +161,6 @@ class DefaultCoordinationMessagingService implements CoordinationMessagingServic
         return channel.onAnyCommitmentPayload(callback);
     }
 
-    async sendHandoffAddress({ recipientAddress, orderId, deliveryAddress, ...context }: CoordinationMessagingContext & {
-        recipientAddress: string;
-        orderId: string;
-        deliveryAddress: string;
-    }): Promise<void> {
-        const channel = await this.getChannel(context);
-        await channel.sendHandoffAddress({ recipientAddress, orderId, deliveryAddress });
-    }
-
-    async subscribeHandoffAddress({ orderId, callback, ...context }: CoordinationMessagingContext & {
-        orderId: string;
-        callback: (deliveryAddress: string, senderIdentity: string) => void;
-    }): Promise<() => void> {
-        const channel = await this.getChannel(context);
-        return channel.onHandoffAddress(orderId, callback);
-    }
 }
 
 export const DEFAULT_COORDINATION_MESSAGING_SERVICE: CoordinationMessagingService =
