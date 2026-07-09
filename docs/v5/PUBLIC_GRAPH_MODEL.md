@@ -130,7 +130,10 @@ participants that other agents learn from, without centralized orchestration.
 This section is load-bearing. Without it, the RPGF `w_category` weight
 (`FIG_TOKEN.md`) reads as an unexplained category privilege in a
 neutrality-preaching system, is mistaken for closed-world cruft, and is removed.
-It is not cruft. Guard: `scripts/lint-substrate-broadening-weight.sh`.
+It is not cruft. (The `lint-substrate-broadening-weight.sh` guard was retired with
+the RPGF prover in the proof-apparatus teardown — its protected files were deleted;
+see the note in `.husky/pre-commit`. Reinstate the guard alongside any rebuilt RPGF
+distribution that re-homes the weight.)
 
 **The must-haves see value, not place.** Every Figaro agreement composes the core
 protocol plus two clauses present in essentially all of them: **topology** (the
