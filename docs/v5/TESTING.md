@@ -67,6 +67,17 @@ assembly + sellers; seeding is pre-population, never a test) → run) and
 Config: `playwright.config.ts`. The retired `mock` project is gone — Playwright
 is e2e-only.
 
+**e2e means end-to-end: action → reaction, both in the UI** (the canonical
+definition — CLAUDE.md points here). A genuine e2e test performs an action
+*through the UI*; the action travels the full real stack (UI → contract → chain
+→ indexer); the reaction returns and is asserted *in the UI*. Driving a
+participant via a viem helper breaks the action end; asserting only on-chain
+events breaks the reaction end — either break and it is not e2e. A Playwright
+spec that drives contracts via viem and never touches the UI is a contract test
+misfiled; it belongs in Foundry. A mock-backed test cannot be e2e — the
+reaction is fabricated. The `mock` Playwright project was retired 2026-05-20;
+do not recreate it.
+
 The webServer is a **production build** by default (`next build` + `next start`
 on :3100, ~90 s build): the dev server degrades after ~25 min of
 compile-on-demand (the seller-track-record tail-position flake, 2026-06-11),

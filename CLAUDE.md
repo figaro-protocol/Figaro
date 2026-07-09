@@ -170,11 +170,7 @@ Verify 3× before suggesting any change to kernel invariants. The MAD equilibriu
 
 ### Why the Name
 
-**Figaro** is the factotum of the city — Rossini's *Il Barbiere di Siviglia* (1816), the "Largo al factotum" aria: running errands, brokering favors, mediating between parties of incommensurable standing, making commerce of the whole household work without owning any of it. The kernel is named for what it does — the coordinator of everything without being the owner of anything. Lineage → `VISION.md` "Appendix: Project Lineage". The metaphor is the thesis, not decoration.
-
-**FIG** is a speech-act identifier, the way ETH, BTC, USDC, and USD are. "Send me 10 FIG" works in speech the way "send me 10 ETH" does — evaluate FIG by speech-register fit, not Fortune-500 brand logic.
-
-When an agent surfaces naming questions or writes user-facing copy: apply these framings. Do not apply Web2 consumer-brand evaluation to a Web3 protocol; do not introduce alternative metaphors (no "the Uber-killer", no "like Stripe but decentralized", no "Web3 e-commerce rails"). The factotum-of-the-network framing is canonical.
+**Figaro** is Rossini's factotum of the city — the coordinator of everything without being the owner of anything. The metaphor is the thesis, not decoration; lineage → `VISION.md` "Appendix: Project Lineage". **FIG** is a speech-act identifier like ETH or USD — evaluate it by speech-register fit, not Fortune-500 brand logic. Never introduce alternative metaphors (no "Uber-killer", no "Stripe but decentralized"); the factotum framing is canonical.
 
 ### Framing Discipline
 
@@ -220,7 +216,7 @@ Full treatment → memory `feedback_fulfilment_retired_modality_derived`; clause
 
 Mechanically enforced: `scripts/lint-no-closed-world-vocab.sh` (pre-commit, lint-staged) fails any commit reintroducing a stored role/archetype/category identifier in code (`roleKind`, `archetypeId`, `clauseCategories`, `documentKind`) and warns on retired `fulfilment` vocabulary until the de-hardcoding migration lands — then the warn list promotes to fail.
 
-**The `w_category` substrate-broadening weight** (the RPGF geo·coordination group boost) is a *category-of-work* incentive for the physical/virtual-flow graph the must-haves can't produce, not author-favoritism — retiring such a weight as "a privileged category breaks neutrality" is the **neutrality ≠ flat-weighting error**. Its implementation was removed with the RPGF prover in the proof-apparatus teardown; the rationale survives in `docs/v5/PUBLIC_GRAPH_MODEL.md`. When rebuilt, the weight keys on the clause group derived as `keccak256(block.article)` (derive, don't store — there is no on-chain group field) — re-home it (and any guard) alongside the rebuilt RPGF distribution.
+**The `w_category` substrate-broadening weight** (the RPGF geo·coordination boost) is a *category-of-work* incentive, not author-favoritism — retiring it as "a privileged category breaks neutrality" is the **neutrality ≠ flat-weighting error**. Rationale + rebuild notes → `docs/v5/PUBLIC_GRAPH_MODEL.md` (the owner); teardown status → `CONTRACTS.md` § "Deferred vs permanent".
 
 ### Dispute Resolution — Three Layers
 
@@ -312,7 +308,7 @@ One test layer per concern. These boundaries are hard; respect them when writing
 
 - Layers: **Foundry** (contract behavior — the only home) · **Vitest** (UI logic / validation / pure-client, no chain or browser) · **Playwright `devnet`** (the e2e suite, and the only one) · **Playwright `mobile`** (responsive / CSS chrome jsdom can't test). Per-layer detail → `TESTING.md`.
 
-**e2e means end-to-end: action → reaction, both in the UI.** A genuine e2e test performs an action *through the UI*; the action travels the full real stack (UI → contract → chain → indexer); the reaction returns and is asserted *in the UI*. Driving a participant via a viem helper breaks the action end; asserting only on-chain events breaks the reaction end — either break and it is not e2e. A Playwright spec that drives contracts via viem and never touches the UI is a contract test misfiled; it belongs in Foundry. A mock-backed test cannot be e2e — the reaction is fabricated. The `mock` Playwright project was retired 2026-05-20; do not recreate it.
+**e2e means end-to-end: action → reaction, both in the UI** — either end broken (viem-driven action, chain-only assertion, mock-backed reaction) and it is not e2e. Canonical definition → `TESTING.md` § Playwright.
 
 ---
 
@@ -324,7 +320,7 @@ All contracts live in `src/` (Solidity 0.8.26, Foundry); V3 in `archive-v3/`. No
 
 ### Clause Validation
 
-A clause's spec ships in two lockstep surfaces: **Layer A** (TypeScript, `@figaro/core/clauses`) — the off-chain spec + content encoders + the well-formedness validator — and **on-chain registration** (`ClauseRegistry.registerClause` — permissionless, first-write-wins, immutable). **There is no on-chain clause-content validation today** — the teardown removed validators/prover/verifier; **DEFERRED, rebuilt pre-launch** (papers/marketing describing them = launch state): the `AttestationCoordinator` merkle-binds each attestation to its signed agreement and content-hashes the evidence — well-formedness is an off-chain SDK + read-time concern. So a never-seen clause is attestable with **zero per-clause on-chain code** — open-world by construction.
+A clause's spec ships in two lockstep surfaces: **Layer A** (TypeScript, `@figaro/core/clauses`) — the off-chain spec + content encoders + the well-formedness validator — and **on-chain registration** (`ClauseRegistry.registerClause` — permissionless, first-write-wins, immutable). **There is no on-chain clause-content validation today** — validators/prover/verifier are DEFERRED (`CONTRACTS.md` § "Deferred vs permanent" is the owner, incl. the two-tense reading rule for papers/marketing): the `AttestationCoordinator` merkle-binds each attestation to its signed agreement and content-hashes the evidence — well-formedness is an off-chain SDK + read-time concern. So a never-seen clause is attestable with **zero per-clause on-chain code** — open-world by construction.
 
 The protocol clauses are the specs in `clauses/` (the canonical Layer-A specs / `ClauseRegistry` seed data; nothing bundles a copy — every consumer loads them from ClauseRegistry → IPFS at runtime). **The count is derived, never stored** — `ls clauses/*.json | wc -l`; all are runtime-attestable except `figaro-topology` (agreement-only), so runtime-attestable = that count minus one. The full clause table, the **adding-a-new-clause checklist**, and registration discipline → `CLAUSES.md`.
 
@@ -348,13 +344,13 @@ Commands (Foundry / Halmos / Echidna / TLA+ / Certora / frontend / SDK), environ
 
 This is the exhaustive whitelist. Files not listed are deletion candidates at every audit.
 
-**Entry points:** `README.md` (V5 doc map, reading path, and archive boundaries).
+**Entry points:** `README.md` (V5 doc map + the **Ownership Map** — one owner per concept; every other surface summarizes + points; when the owner changes, sweep the pointers, never fork the content).
 
 **Inventories (CLAUDE.md indexes these):** `CONTRACTS.md`, `CLAUSES.md`, `FRONTEND.md`, `TESTING.md`, `LOCAL_DEV.md`.
 
 **Core theory:** `VISION.md` (post-firm economy, Coasean collapse, token denomination), `THEORY.md` (game-theoretic derivation of the six protocol properties).
 
-**Security & verification:** `DESIGN_DECISIONS.md` (13 intentional patterns that look like vulnerabilities — **read before auditing**), `VERIFICATION_MAP.md` (invariant → code → test → formal layer), `RELEASE_READINESS.md` (gate criteria, frozen Solidity surface for external audit), `SCALING_STRATEGY.md` (proof-based scaling — a deferred FUTURE development path; the prototype was removed in the teardown, the design is retained as the baseline).
+**Security & verification:** `DESIGN_DECISIONS.md` (the catalogue of intentional patterns that look like vulnerabilities — **read before auditing**; count it there, never quote a remembered number), `VERIFICATION_MAP.md` (invariant → code → test → formal layer), `RELEASE_READINESS.md` (gate criteria, frozen Solidity surface for external audit), `SCALING_STRATEGY.md` (proof-based scaling — a deferred FUTURE development path; the prototype was removed in the teardown, the design is retained as the baseline).
 
 **Architecture:** `ARCHITECTURE.md` (whole-system stack + the `clause.block` seam), `OPEN_WORLD.md` (open-world paradigm + composition model + semantic layer), `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md`, `LEXICON.md` (canonical-name-per-tier grid; documented half of the lexicon, enforced by `scripts/lint-architecture-lexicon.sh`).
 
