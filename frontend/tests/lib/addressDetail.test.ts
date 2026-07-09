@@ -9,8 +9,8 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+    addressDetailAnchorRef,
     addressDetailBlobHash,
-    addressDetailContentBytes,
     decryptAddressDetail,
     requestAddressDetail,
     sendAddressDetail,
@@ -85,8 +85,10 @@ describe("the private-address ceremony", () => {
         });
         const received = sent.find((m) => m.kind === "blob")!.value;
         expect(addressDetailBlobHash(received)).toBe(addressDetailBlobHash(blobB64));
-        // content bytes → keccak equals the anchor (what the coordinator binds).
-        expect(keccak256(addressDetailContentBytes(received))).toBe(addressDetailBlobHash(blobB64));
+        // The anchored CONTENT is the 32-byte hash — never the ciphertext —
+        // and the event's contentRef is keccak of it (hash-only anchoring).
+        expect(addressDetailBlobHash(received)).toHaveLength(66);
+        expect(keccak256(addressDetailBlobHash(received))).toBe(addressDetailAnchorRef(blobB64));
         // One byte of tampering breaks the bind.
         const tampered = received.slice(0, -1) + (received.endsWith("A") ? "B" : "A");
         expect(addressDetailBlobHash(tampered)).not.toBe(addressDetailBlobHash(blobB64));

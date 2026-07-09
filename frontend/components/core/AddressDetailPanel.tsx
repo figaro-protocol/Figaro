@@ -23,8 +23,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useAccount, useChainId, usePublicClient } from "wagmi";
 import { getCoordinationChannel, type CoordinationChannel } from "@/lib/handoff/channel";
 import {
+    addressDetailAnchorRef,
     addressDetailBlobHash,
-    addressDetailContentBytes,
     decryptAddressDetail,
     requestAddressDetail,
     sendAddressDetail,
@@ -89,15 +89,16 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
     }, [address, role, orderHash]);
 
     // Decrypt the counterparty's blob once both halves arrived, then verify
-    // against the on-chain anchor (the attestation whose contentRef is the
-    // blob's hash). The anchor tx can confirm AFTER the channel messages
+    // against the on-chain anchor (the attestation whose contentRef is
+    // keccak256 of the anchored blob hash — hash-only, the chain never
+    // carries the ciphertext). The anchor tx can confirm AFTER the channel messages
     // arrive, so the verification POLLS until it lands (the event cache
     // makes re-reads cheap). Symmetric: either side receives this way.
     useEffect(() => {
         if (!role || !address || !peerPubKey || !blob) return;
         let cancelled = false;
         let timer: ReturnType<typeof setTimeout> | undefined;
-        const expected = addressDetailBlobHash(blob).toLowerCase();
+        const expected = addressDetailAnchorRef(blob).toLowerCase();
         const checkAnchor = async () => {
             if (!publicClient || cancelled) return;
             const logs = await getAttestationsByOrder(publicClient, chainId, orderHash);
@@ -153,15 +154,16 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
                 myAddress: address, recipientAddress: counterparty, orderId: orderHash,
                 recipientPubKeyHex: peerPubKey, block,
             });
-            // Anchor keccak256(blob) on-chain as THIS party's attestation on
-            // the declaring clause's committed section — the coordinator
-            // merkle-binds the section and hash-binds the content.
+            // Anchor keccak256(blob) on-chain AS the attestation content —
+            // hash-only, so the ciphertext never reaches calldata and stays
+            // deletable on the channel; the coordinator merkle-binds the
+            // section and hash-binds the content.
             const spec = getClauseSpec(clauseId);
             const anchorArgs = {
                 orderHash: orderHash as `0x${string}`,
                 clauseId: clauseIdHash(clauseId, spec?.version ?? 1),
                 stage: 0,
-                content: addressDetailContentBytes(blobB64),
+                content: addressDetailBlobHash(blobB64),
                 failureMessage: "Anchoring the address detail failed",
             };
             if (role === "buyer") await attestationActions.submitBuyerAttestation(anchorArgs);

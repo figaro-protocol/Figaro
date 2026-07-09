@@ -23,11 +23,14 @@
  *      derives the ECDH shared secret, AES-GCM-encrypts the addressee block,
  *      and sends their public key + the encrypted blob back. The buyer also
  *      anchors keccak256(blob) on-chain as a buyer attestation on the
- *      geolocation section (the AttestationCoordinator's content-hash
- *      binding) — tamper-evidence for disputes; a corrected address is a
- *      superseding attestation.
+ *      geolocation section — the HASH is the attestation content, so the
+ *      chain (event AND calldata) never carries the ciphertext; the channel
+ *      is its only carrier and it stays deletable after key purge
+ *      (crypto-shredding survives the anchor). Tamper-evidence for disputes;
+ *      a corrected address is a superseding attestation.
  *   3. The seller derives the same secret and decrypts. Verification =
- *      keccak256(received blob) equals the anchored contentHash.
+ *      the event's contentRef (keccak256 of the anchored content) equals
+ *      keccak256(keccak256(received blob)).
  *
  * This timing mirrors courier practice: the geohash cell is known BEFORE
  * accepting (it is bonded on); the exact door AFTER.
@@ -72,17 +75,20 @@ export function tryDecodeAddresseeBlock(raw: string): AddresseeBlock | null {
     }
 }
 
-/** keccak256 over the encrypted blob's base64url text — the value the buyer
- *  anchors on-chain and the seller verifies the received blob against. */
+/** keccak256 over the encrypted blob's base64url text — the 32-byte value the
+ *  answering party anchors on-chain AS the attestation content. Hash-only by
+ *  design: the ciphertext must never reach the chain (not even calldata), so
+ *  the channel stays its only carrier and the blob remains deletable. */
 export function addressDetailBlobHash(blobB64: string): `0x${string}` {
     return keccak256(toHex(blobB64));
 }
 
-/** The blob as attestation-content bytes (hex) — what `attestAsBuyer` takes;
- *  the coordinator hash-binds it, and the indexer can recover it from the
- *  event so the channel is a convenience, not a dependency. */
-export function addressDetailContentBytes(blobB64: string): `0x${string}` {
-    return toHex(blobB64);
+/** What the Attestation event's contentRef equals for a hash-only anchor:
+ *  the coordinator records keccak256(content), and the content IS the blob
+ *  hash — so the receiving party verifies the event's contentRef against
+ *  this double hash of the received blob. */
+export function addressDetailAnchorRef(blobB64: string): `0x${string}` {
+    return keccak256(addressDetailBlobHash(blobB64));
 }
 
 /** Step 1 — EITHER party requests the counterparty's detail: per-order
