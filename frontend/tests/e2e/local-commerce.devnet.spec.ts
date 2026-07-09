@@ -45,7 +45,11 @@
  *              ECDH-encrypted addressee block whose fingerprint anchors
  *              on-chain (buyer attestation), the courier decrypts and the
  *              panel verifies against the anchor — the chain never learns
- *              the plaintext.
+ *              the plaintext. The same ceremony then runs in REVERSE
+ *              (driving role swapped): the courier shares its precise
+ *              pickup point over the same per-order keypairs, anchored as
+ *              a SELLER attestation; the buyer decrypts and verifies —
+ *              one role-neutral panel, both directions.
  *   resolve  → the buyer resolves ONCE: merchant net +1, courier net +1,
  *              buyer net −2, escrow back to baseline.
  *   audit    → the full evidentiary record, permissionless-clause grade:
@@ -120,6 +124,15 @@ const ADDRESSEE = {
     street: '12 Rue du Marché',
     unit: '3rd floor, door B',
     instructions: 'Ring twice.',
+};
+
+// The REVERSE direction of the same ceremony — the courier's precise pickup
+// point, shared buyer-ward over the same per-order keypairs (a SELLER answer,
+// anchored as a seller attestation).
+const PICKUP = {
+    name: 'Cardinal Couriers depot',
+    street: '4 Market Lane',
+    unit: 'rear door',
 };
 
 // The two transfer ladders, stage labels straight from the registered specs
@@ -515,6 +528,56 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         await expect(
             page.getByTestId('interaction-address-verified'),
             'the decrypted detail matches the on-chain anchor',
+        ).toBeVisible({ timeout: 30000 });
+
+        // ── THE REVERSE DRIVING ROLE — same interaction, wallets swapped:
+        //    the ceremony is SYMMETRIC over the order edge. The buyer's
+        //    ephemeral pubkey is already on the channel (it rode the answer),
+        //    so the COURIER — this order's SELLER — shares ITS precise pickup
+        //    point, encrypted to the buyer, its fingerprint anchored as a
+        //    SELLER attestation on the same geolocation section. One
+        //    role-neutral panel drives both directions. ──
+        const sellerAnchorsBefore = (await publicClient.getContractEvents({
+            address: config.attestationCoordinator as Hex, abi: ATTESTATION_COORDINATOR_ABI,
+            eventName: 'Attestation', args: { attester: COURIER }, fromBlock: 0n,
+        })).length;
+        await page.getByTestId('interaction-address-name').fill(PICKUP.name);
+        await page.getByTestId('interaction-address-street').fill(PICKUP.street);
+        await page.getByTestId('interaction-address-unit').fill(PICKUP.unit);
+        await page.getByTestId('interaction-address-send').click();
+        await expect(
+            page.getByTestId('interaction-address-sent'),
+            'the courier shared its pickup point privately + anchored its fingerprint',
+        ).toBeVisible({ timeout: 60000 });
+        await expect.poll(async () => (await publicClient.getContractEvents({
+            address: config.attestationCoordinator as Hex, abi: ATTESTATION_COORDINATOR_ABI,
+            eventName: 'Attestation', args: { attester: COURIER }, fromBlock: 0n,
+        })).length, { timeout: 60000, message: "the courier's anchor lands as a SELLER attestation" })
+            .toBe(sellerAnchorsBefore + 1);
+        const sellerAnchorEvents = await publicClient.getContractEvents({
+            address: config.attestationCoordinator as Hex, abi: ATTESTATION_COORDINATOR_ABI,
+            eventName: 'Attestation', args: { attester: COURIER }, fromBlock: 0n,
+        });
+        expect(
+            (sellerAnchorEvents.at(-1)!.args as { orderHash?: string }).orderHash?.toLowerCase(),
+            "the seller anchor binds the same courier order's geolocation section",
+        ).toBe(courierEvent.args.orderHash!.toLowerCase());
+
+        // The BUYER decrypts the pickup point and the panel verifies it
+        // against the courier's on-chain anchor — the receiving seat this
+        // time, same tamper-evidence.
+        await gotoAsWallet(page, BUYER, `/orders/${processId}?e2e=devnet`);
+        await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        const pickupDetail = page.getByTestId('interaction-address-detail');
+        await pickupDetail.waitFor({ state: 'visible', timeout: 30000 });
+        await expect(pickupDetail, 'the buyer reads the decrypted pickup point')
+            .toContainText(PICKUP.street);
+        await expect(pickupDetail).toContainText(PICKUP.name);
+        await expect(pickupDetail).toContainText(PICKUP.unit);
+        await expect(
+            page.getByTestId('interaction-address-verified'),
+            "the pickup point matches the courier's on-chain anchor",
         ).toBeVisible({ timeout: 30000 });
 
         // ── RESOLVE: buyer dominance — one signature settles both orders. ──
