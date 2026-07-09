@@ -24,14 +24,20 @@ prohibition-only frame leaves a vacuum the base model fills with its default.
    (`/builders/designer`), SELLER binds published assemblies (profile array), BUYER
    selects + fills at checkout, the order's SELLER attests at runtime, SPECTATOR
    reads. Say which role and where. *Tell:* "the buyer does X", "the user", a
-   singular "participant", roles merged ("buyer composes").
+   singular "participant", roles merged ("buyer composes"). The subtle collapse:
+   "anyone may design" (true — permissionless) does NOT mean anyone composes *while*
+   binding or buying — one wallet may play all three roles, but composition happens
+   only on the designer surface, never mid-checkout or mid-profile-edit (guard:
+   `lint-composition-is-designer-only.sh`).
 
 2. **The SET is the live registry, read at runtime.** Clauses/sellers/assemblies
    are an UNBOUNDED set defined by the network — read from ClauseRegistry /
    SellerRegistry / AssemblyRegistry via the indexer, fetched chain→IPFS; code
    operates on the spec it fetched, never on identity. *Test:* would this still hold
    if a never-seen clause dropped into the registry now? *Tell:* naming a fixed clause
-   count ("the 17 clauses"), a fixed list treated as the world.
+   count ("the 17 clauses"), a fixed list treated as the world, or citing a fixture /
+   scenario spec as the authority — a scenario (direct-sale, local-commerce, …) is one
+   set of drawer selections, an *output* of the live registry, never its definition.
 
 3. **It's protocol infrastructure; the frontend is a SURFACE.** The TCP/IP of trade;
    surfaces compose the `lib/` catalogues and render indexer state; lifecycle =
@@ -43,6 +49,15 @@ prohibition-only frame leaves a vacuum the base model fills with its default.
    indexer; what a node/role/modality/category IS gets DERIVED at render time from
    the composed clauses + topology + attestation state. *Tell:* "the X field", a
    stored role/modality/category label, a checkbox that records meaning.
+   Calibration for identity: a **closed taxonomy a party picks from**
+   (`archetypeId`, `role`, `businessType`, `serviceType`, `documentKind`) is
+   forbidden; a party's **free-form self-prose** (`name`, `specialty`,
+   `description`) is fine — genuinely-open editorial content is not the
+   anti-pattern, the closed picklist is. Discriminate document/actor kind by
+   STRUCTURE (does it parse as the shape?) or a declared clauseId, never a nominal
+   `type` tag; a clause names a PROVISION ("hand-off proven by proximity"), never
+   a role — "what does this seller do" is a clause/event lookup, not an identifier
+   name.
 
 5. **A clause encodes ANY relationship.** A clause is a composable buyer↔seller /
    seller↔seller relationship; the SAME kernel serves a market-liberal, cooperative,
@@ -59,6 +74,32 @@ prohibition-only frame leaves a vacuum the base model fills with its default.
 7. **The surface READS network state at the edge.** The indexer is the read path,
    registries + IPFS are the source; resolved-empty = ABSENCE (never a fabricated
    default or coined label). *Tell:* the UI as custodian/source/the-thing-in-the-middle.
+
+### Calibration — the SSoT violation predicate (patterns 2 + 7)
+
+A surface violates the network-is-SSoT rule when it **renders a collection, count,
+or status of network state from a bundled array, static const, or JSON** — maps
+over a bundled list, prints a hardcoded count, filters a static roster. Merely
+*mentioning* a chain artifact in authored editorial prose is not a violation. The
+`(marketing)`/`(app)` split doesn't matter — reading needs an RPC, not a wallet, so
+marketing pages are event-driven too.
+
+Three legitimately bundled categories (do NOT flag):
+
+1. **Deployment config** — contract addresses from `NEXT_PUBLIC_*` env vars; you
+   can't read an address event-driven without already knowing one.
+2. **Constructor-set protocol constants** — immutable values set at construction
+   (the kernel's 2× bond ratio, a token's max supply); bundle the constant, read
+   live state for the variable part.
+3. **Off-chain content the chain commits only a hash/URI of** — clause specs,
+   agreements, profiles/catalogues. Fetching the pre-image of an on-chain
+   commitment is the pattern, not a copy. The SET stays event-driven; the per-item
+   CONTENT resolves from the committed pointer.
+
+**No fallbacks — absence is the representation.** A fallback *fabricates* network
+state: no `?? SOME_DEFAULT` on a network-derived render path, no coined stand-in
+pill/badge for an empty result. A resolved-empty read renders as absence; a
+*pending* fetch may show a loading state — loading is not absence.
 
 ---
 

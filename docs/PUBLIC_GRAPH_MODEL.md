@@ -38,7 +38,15 @@ delivery drop-off zones, and service areas. This data is public by design
 autonomous agents (human or AI) to discover, filter, and route work.
 
 **Contents:** Pickup geohashes, drop-off geohashes, off-chain metadata,
-cuisine/category tags.
+free-form specialty tags.
+
+**Analytics clauses composed by default are intentional incentive design, not
+noise.** The RPGF weighting (below) pays clauses that feed the public analytics
+graphs — geo, value, topology — so `figaro-geolocation` staying on assemblies
+like direct-sale even when a consume-onsite sale ships nothing is deliberate:
+geo is graph data locating the exchange, not delivery metadata. Optionality
+lives at assembly-composition level — a seller who won't track geo doesn't bind
+a geo-bearing assembly. Do not flag default-on analytics clauses as drift.
 
 **Truth boundary:** Institution-declared. The runtime encodes this data; the
 protocol does not validate geographic accuracy. Economic pressure (bonding)

@@ -71,6 +71,30 @@ Lives off-chain as JSON at the `contentURI` emitted by `ClauseRegistry`
 (content integrity is the event's `contentHash`). The canonical Layer-A specs
 live at repo-root `clauses/` (the `ClauseRegistry` seed data); nothing bundles a
 copy — every consumer loads each spec from `ClauseRegistry` → IPFS at runtime.
+The spec's `block` object is frontend/composition metadata (nothing on-chain or
+in the SDK reads it) — its live field set is `ClauseBlockBinding`
+(`frontend/lib/shared/clauseBlockBinding.ts`); derive the list from that type,
+don't quote a remembered one.
+
+**`block.article` is the SEMANTIC classifier axis** — it states what KIND of
+thing a clause is; never infer kind from field shape ("has an enum" ≠ "is a
+lifecycle"; every committed-choice clause carries a bounded enum):
+
+- **`structural`** — mandatory committed content on every order (commerce,
+  topology). `clauseIsStructural` reads exactly this article, and the template
+  build folds structural clauses in generically (`composeStructuralClauses`).
+- **`attestations`** — runtime TRANSFER ladders the responsible party advances
+  (merchant-process, courier-process; a supply chain runs the same structure at
+  length — each transfer attested, each intermediary paid at resolve).
+  `clauseIsProcessLog` = `block.article === "attestations"` — ruled 2026-07-03,
+  replacing a field-shape heuristic ("non-structural ∧ has enum") that misread
+  committed-choice clauses as lifecycles.
+- **`coordination`** — committed declarations of WHICH scenario everyone runs
+  (modalities). Committed content, not a runtime lifecycle — topology carries an
+  enum but never surfaces an attestation capability.
+
+Other articles (geo, logistics, emissions, recourse, consent, …) group the
+drawer/inventory; classification always reads the article, never the shape.
 
 ## The protocol clauses
 
@@ -116,7 +140,12 @@ proximity-detection bands a hand-off will accept. The runtime
 proof that a hand-off actually occurred within an accepted band is carried as a
 **runtime attestation**, not a separate registered clause — an earlier
 `figaro-proximity-proof` clause modelled that witness as its own clause and was
-retired for the same reason.
+retired for the same reason. The primitive is **counterparty-pair-agnostic**:
+buyer↔merchant pickup, merchant↔courier pickup, buyer↔courier drop-off all
+compose the same policy clause onto the relevant order — a new hand-off pair is
+composition, never a new clause (only a genuinely different witness model —
+multi-witness, on-chain device-sig verification — clears the bar for a new
+primitive).
 
 `figaro-topology` is the one **agreement-only** clause — committed at
 agreement-signing time, never re-asserted as a runtime attestation. It is
@@ -198,12 +227,29 @@ reason (the runtime witness is an attestation, not a registered clause — see
 above). So do not split a clause to separate its committed band from its runtime
 proof; carry the proof as an attestation on the committed clause.
 
+**Split when a generic-named clause carries provider-specific fields.** A clause
+whose NAME is generic but whose fields name one provider's internals
+(`klerosCourt`, `klerosMinJurors` inside a generic "jurisdiction" clause) is a
+design smell — the tell is an "at least one of A or B" cross-field invariant
+gluing two independently-composable concerns. Split along the provider seam:
+`figaro-arbitration-kleros` (provider-specific) beside `figaro-applicable-law`
+(provider-agnostic), with future `figaro-arbitration-<provider>` sisters
+registering symmetrically. The clauseId is committed in the agreement hash, so
+which-provider is an immutable term, not a payload value; a combined clause
+forces either a closed enum (kills permissionless extension) or an open string
+(kills committing which provider was named). Note the boundary against the merge
+rule above: `figaro-ghg` keeps its methodology as a free-form field because a
+methodology is a *label on one disclosure concern*, not a provider whose
+internals shape the fields.
+
 **The diagnostic.** Before adding a clause, ask: (a) does an existing clause
 already cover this concept with a different enum value? If yes, extend the
 existing clause's fields, do not add a new one. (b) Does the concept need a
 runtime proof of a committed policy? Carry the proof as a runtime attestation on
-the clause — do not add a separate proof clause. Both checks are cheap to do at
-design time and expensive to undo once `clauseId` is bound on chain.
+the clause — do not add a separate proof clause. (c) Do the field values name a
+specific provider's internals? Split along the provider seam. All three checks
+are cheap at design time and expensive to undo once `clauseId` is bound on
+chain.
 
 ## Adding a new clause — checklist
 

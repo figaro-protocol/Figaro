@@ -25,7 +25,7 @@ Audit by `ls app/(marketing)/ app/(app)/ app/(builders)/`. Source of truth is th
 - Sellers: `/orders` (the "Your turn" section — incoming to accept, then in-progress + completed) → `/orders/[processId]` (fire merchant-process events).
 - Builders: `/builders/designer/view/[slug]` (assembly inspector). The prior `/i/[slug]` route was deleted; its inbound bookmarks redirect to `/discover`.
 
-The `/builders/designer` tool is a DAG editor (`TopologyCanvas` + `AgreementDrawer`); the palette/canvas/inspector three-column shape was rejected as "wrong-direction" during this project's evolution.
+The `/builders/designer` tool is a composition surface (`TopologyCanvas` + `AgreementDrawer`) — it composes BOTH the DAG of orders AND each order's clauses; "just a DAG editor" under-states it. The palette/canvas/inspector three-column shape was rejected as "wrong-direction" during this project's evolution.
 
 ## Key Library Areas (`lib/`)
 
@@ -55,7 +55,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 
 **Components (`app/(builders)/builders/designer/_components/`):**
 - `DesignerCanvas.tsx` — the shared editor surface used by `/new` and `/edit/[slug]`. Hosts the toolbar (← Assemblies | name | saved hint | Save | Publish | Reset), the DAG canvas, the agreement drawer, and the autosave loop.
-- `AgreementDrawer.tsx` — per-node clause composer. Two tabs: Parties (buyer / seller / DAG position) and a network-driven **Registry** tab listing every clause registered on `ClauseRegistry` (grouped by `block.article`), each a checkbox that expands to single-select design-time field choices. Checked clauses + their values are captured into the no-hash assembly template (`clausesByOrderId` → `buildAssemblyTemplate`). No hardcoded clause roster.
+- `AgreementDrawer.tsx` — per-node clause composer. Two tabs: Parties (buyer / seller / DAG position) and a network-driven **Registry** tab listing every clause registered on `ClauseRegistry` (grouped by `block.article`), each a checkbox that expands to single-select design-time field choices. Checked clauses + their values are captured into the no-hash assembly template (`clausesByOrderId` → `buildAssemblyTemplate`). No hardcoded clause roster. The drawer is **per-order**: a concern that resolves once per PROCESS (resolve, audit bundle, a process-wide declaration) belongs at the process-detail layer, never as a drawer clause group; a genuinely process-scoped declaration anchors on the **root order's** agreement, edited from process-level controls rather than the per-order drawer.
 - `DraftsList.tsx` — saved-drafts list on the landing.
 - `PublishedList.tsx` — published-assemblies list for the connected wallet.
 - `ClausesList.tsx` — clauses catalogue on the landing.
@@ -63,10 +63,10 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 
 **State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `mergeSyntheticParent`, `editSyntheticAgreement`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage). Bridge: `lib/designer/forkAssembly.ts` + `lib/designer/assemblyTemplateToDraft.ts` (fork a published assembly's template into an editable draft).
 
+**The agreement build (composition rules).** The published **template is the faithful record** of what the designer composed; `buildOrderAgreement` is a **pure, deterministic projection** of it — the composed clauses, plus the spec-declared structural defaults and companions, and nothing more. It synthesizes no meaning the template + specs don't determine and reads no clause by name: structural clauses (`block.article: "structural"` — commerce, topology) auto-fold into every draft generically (`composeStructuralClauses` iterates the loaded spec set, so a never-seen structural clause folds in with zero code), and a clause whose spec names a `block.sisterClauseId` gets its companion paired at build. Never a hardcoded clause→clause map, a named-clause branch, or a checkout-time guess; and no clause auto-spawns a DAG node — nodes are the designer's, drawn on the canvas.
+
 ## Clause validation in the frontend
 
-- `useClauseValidator(clauseId)` hook (`hooks/core/`) — binds `validateContent`
-  to a form value. `{ isReady, validate, loadError }`.
 - `clauseSpecSource.ts` — the module spec cache. No bundled copy and no
   preload: `useClauseSpecs` warms it chain→IPFS via `loadClauseSpec(id, uri)`
   from `ClauseRegistered` events (the seed clauses in `clauses/` on the devnet —
@@ -92,6 +92,11 @@ Y", not as an open-ended build.)
 - **Runtime (phase-4) order surface** — `components/core/CapabilityRail.tsx`,
   driven by `deriveProcessModelFromRuntime` → `executeCapability`. The order
   page names NO clause (guard: `scripts/lint-no-hardcoded-clauses-in-runtime.sh`).
+  Order ARRIVAL + acceptance + resolution are CORE (the `OrderCommitted` event +
+  the bell notification, `lib/kernel/useNotifications.ts`) — never a clause
+  lifecycle stage or a capability; clause state/labels surface from the clause
+  DATA via the spec's `valueLabels` (`describeAttestation`), never a frontend
+  label enum.
 - **Declared-semantic component registries** — richer UI mounts keyed on what
   the clause SPEC declares, never a clause id / mechanism kind / component
   name; no entry ⇒ graceful degradation (plain input / nothing). Two seams:

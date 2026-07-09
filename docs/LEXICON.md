@@ -74,5 +74,15 @@ canonical across kernel + SDK + frontend (225 uses), rivals (`agreementId`/`Ref`
 (The `DutchAuction` `provider` sense retired with the contract, 2026-07-02; the `OffsetProvider` sense
 with the offset apparatus, 2026-07-03.)
 
-Related: `CLAUDE.md` "Three-Tier Naming" + "Layered vocabulary"; `OPEN_WORLD.md` §1 (the projection
-distinction); `reference_layered_vocabulary` memory (the failure-mode "why").
+**New-term admission rule.** A product-flavored term — a named vertical ("eats"), a
+platform role ("driver", "restaurant"), a closed category ("archetype", "role",
+"businessType") — must not enter a hard-to-change surface (clauseId, ABI field,
+contract name, route segment) until the operator has confirmed it. Use a
+protocol-neutral term, or a working name in a soft surface (local variable, draft),
+first. The V3–V5 history of expensive de-product-ification renames (`figaro-eats` →
+`local-commerce`, `driver` → `courier`, `roleKind`/`archetypeId` deleted) is the
+why; on a live chain a registered clauseId makes such a rename unrecoverable, not
+just costly.
+
+Related: `CLAUDE.md` "Three-Tier Naming"; `OPEN_WORLD.md` §1 (the projection
+distinction).
