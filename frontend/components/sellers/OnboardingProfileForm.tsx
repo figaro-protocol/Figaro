@@ -545,6 +545,12 @@ export function OnboardingProfileForm({
                         <p className="text-xs text-ink-faint">
                             Auto-fill from the address (geocoded via OpenStreetMap) or your device&apos;s location. You can also paste a geohash from any tool — the encoding is standard base32.
                         </p>
+                        <p className="text-xs text-ink-faint">
+                            Geocoding sends the typed address to OpenStreetMap&apos;s
+                            Nominatim service (a third party) — and only when you press
+                            &ldquo;From address above&rdquo;. Device location never
+                            leaves this browser: it is encoded to a geohash locally.
+                        </p>
                     </div>
                 </FormField>
             </section>
