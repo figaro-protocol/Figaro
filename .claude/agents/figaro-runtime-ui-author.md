@@ -40,7 +40,7 @@ Two sub-cases. Discriminate by what you're being asked to build:
 
 ### Clause UI
 
-A new clause (e.g., `figaro-container-seal-v1`) typically needs:
+A new clause (e.g., `figaro-container-seal` — ids are bare; version is a hashed field, never a name suffix) typically needs:
 
 1. **Lens panel** — read-only display of attestations of this clause in the process graph. Goes in `frontend/components/` following the lens pattern.
 2. **Input form** — submits attestations of this clause. Calls existing hooks, never duplicates transaction logic.

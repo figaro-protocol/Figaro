@@ -63,8 +63,9 @@ These are the literalness triggers. Audit each one.
 For each flagged framing, gather evidence from at least three of these axes:
 
 1. **Reference artifacts.** What examples already exist in the codebase?
-   - `frontend/lib/shared/assemblies/*.reference.json` — what shape do the 6 references have?
-   - `frontend/lib/shared/clauses/*.json` — what shape do the 18 clauses have?
+   - `clauses/*.json` — what shape do the canonical clause specs have? (Count is derived
+     via `ls`, never quoted from memory.)
+   - Published assemblies — discovered from the live `AssemblyRegistry`, not a bundled dir.
    - Any other directory of canonical examples relevant to the framing.
 
 2. **Recent commit history.** Where is the trajectory pointed?

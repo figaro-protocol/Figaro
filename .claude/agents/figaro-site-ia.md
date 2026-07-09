@@ -35,10 +35,10 @@ These are the constraints the project's framing imposes on IA decisions. Differe
 |---|---|
 | **Publication, not product** | No funnel. No "Get started" CTA at the top of the homepage. Reading paths, not conversion paths. Per `feedback_protocol_not_product_app.md`. |
 | **Curriculum, not catalog** | Visitors don't know what to read first. The homepage's primary job is to surface a reading order, not to list all destinations. The `/research` and `/publications` pages should anchor a path. |
-| **Zargham 8-discipline organization** | Marketing pages organize by Voshmgir & Zargham, *Foundations of Cryptoeconomic Systems*: Economics & Game Theory, Industrial & Systems Engineering, CS & Cryptography, Philosophy/Law/Ethics, Political Science & Governance, Operations Research & Management Science, AI/Optimization/Control, Psychology & Decisions Science. **One discipline-page per discipline.** Existing mapping: Economics & Game Theory → `/economics` + `/mechanism` + `/fig/design`; CS & Crypto → `/verification`; Phil/Law/Ethics → `/legal` + `/labor-law` + `/displaced`; Political Science & Governance → `/sovereign-commerce`; Ops Research → `/accounting`. New papers go on the EXISTING discipline page, not a new top-level route. New top-level routes only when a paper opens a new discipline-audience. Reference `frontend/lib/shared/groupsRegistry.ts` + `/groups/page.tsx` for the canonical taxonomy. |
+| **Zargham 8-discipline organization** | Papers organize by Voshmgir & Zargham, *Foundations of Cryptoeconomic Systems* (8 disciplines). The canonical taxonomy + paper→discipline mapping is `frontend/app/(marketing)/_lib/groupsRegistry.ts` — DERIVE the current mapping from it every run; never quote a remembered route list (the old per-discipline routes were consolidated and now 308-redirect). New papers join the registry, not a new top-level route. |
 | **Many short horizontal pages, not long vertical scrolls** | Figaro is a paradigm shift; long vertical pages overwhelm readers and force massive repetition. Default to many short single-concept pages with lateral navigation between them. The hero → "what this means" → mechanism → boundary → "what this is not" → PDF-download vertical template is the web2 default and is wrong by default. When recommending IA, prefer lateral nav primitives (tabs, prev/next, card grids) over scroll-deep pages. |
 | **Tier-respecting navigation** | Marketing pages live under `(marketing)/`; transactional surfaces under `(app)/`. The route-group split is structural — don't merge them in nav. Per `frontend/app/(app)/layout.tsx` (wagmi-loaded) vs `frontend/app/(marketing)/layout.tsx` (no wagmi). |
-| **Cross-link transactional surfaces** | `/terminal` (initiator) → `/sign` (counter-party); `/operators` → `<OperatorOnboarding>`; `/console` → /verify, /evidence-display. The audit found these surfaces mutually unaware. |
+| **Cross-link transactional surfaces** | The `(app)` surfaces must be mutually aware (initiator → counter-party sign; discovery → checkout; process detail → audit/evidence). Enumerate the live set with `ls "frontend/app/(app)/"` — the directory listing is the source of truth, never a remembered route list. |
 | **Breadcrumbs on depth ≥ 2** | `/builders/designer/new`, `/financials/[processId]` — visitor needs to know where they are. |
 | **No segment routers** | Per `feedback_protocol_not_product_app.md` — don't ask "are you a buyer / seller / developer?" The protocol is actor-neutral. |
 | **No badges next to names** | No "Reference Archetype" labels in nav. |
@@ -83,10 +83,11 @@ The hardest IA problem for Figaro: **what should a first-time visitor read, in w
 Propose a default reading path. Each step is 1 page. The path should:
 
 1. Frame what Figaro is (1 page — likely the homepage).
-2. Explain the mechanism in plain words (1 page — `/mechanism`).
-3. Surface a worked example (1 page — `/local-commerce` or similar reference assembly).
-4. Show the math is real (1 page — `/research` or `/publications`).
-5. Surface what to do next (1 page — `/builders` or `/groups`).
+2. Explain the mechanism in plain words (1 page — `/physics` or `/why`).
+3. Surface a worked example (1 page — `/local-commerce` or similar use-case page).
+4. Show the math is real (1 page — `/papers`).
+5. Surface what to do next (1 page — `/builders`).
+(Verify each against the live tree before recommending — routes consolidate over time.)
 
 Five pages, in order. The path should be visible on every marketing page (e.g., a footer "What to read next: [N] of 5"). Not as a funnel — as a curriculum.
 

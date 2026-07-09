@@ -22,9 +22,9 @@ Read these directly. Cite line numbers from them in your findings.
 - **`formal/FigaroCore.tla`** — the invariants in TLA+ form.
 - **`src/AttestationCoordinator.sol`** — protocol-tier attestation pipeline.
 - **`src/ClauseRegistry.sol`** — clause admission.
-- Any clause validator (`src/clauseValidators/Figaro<Name>V1Validator.sol`) referenced by the paper.
+- **`docs/v5/CONTRACTS.md` § "Deferred vs permanent"** — the OWNER of teardown state. Papers describing validators/proofs may be LAUNCH-STATE BY DESIGN (the two-tense rule lives there) — read it before filing any "claims deleted code" finding; that misclassification has happened and been retracted.
 - **`docs/v5/DESIGN_DECISIONS.md`** — documented intentional patterns; helps disambiguate "does the paper claim X because the code does X, or because we wanted X?"
-- **`.claude/skills/figaro-kernel-discipline/SKILL.md`** — the canonical six invariants and 12 anti-patterns the papers reference.
+- **`.claude/skills/figaro-kernel-discipline/SKILL.md`** — the canonical six invariants and anti-pattern catalogue the papers reference.
 
 If the paper page cites a specific theorem name or invariant, also locate it on the page — the `FormalBlock` carrying that theorem — and cross-reference any code-level claim it makes.
 
@@ -41,10 +41,10 @@ Walk the paper. Surface every claim that touches code. Categories to look for:
 | **Storage / mapping** | "Three mappings: processes, orderStatus, orderProcessId" | Verify against `FigaroCore.sol` storage section |
 | **Invariant name** | "TokenConservation, ContractSolvency, …" | Verify against `formal/FigaroCore.tla` |
 | **Theorem name** | "Theorem (Two-Party Nash Equilibrium)" | Verify the theorem text matches what the code enforces |
-| **Clause claim** | "16 runtime-attestable clauses" | Count `src/clauseValidators/*.sol` |
+| **Clause claim** | "N runtime-attestable clauses" | Derive from `ls clauses/*.json` (all runtime-attestable except `figaro-topology`) — never a stored count |
 | **Mechanism claim** | "Kernel runs two mechanisms: asymmetric bonding + buyer dominance" | Verify against the actual mechanism implementation |
 | **Anti-pattern claim** | "No admin, no escape hatch" | Verify by grep — no admin functions, no upgradeability |
-| **Token allocation** | "10% founder, 30% DAO, 60% airdrop" | Match against `src/fig/FigToken.sol` minter caps + airdrop |
+| **Token allocation** | "10% founder, 30% DAO, 60% RPGF" | Match against `docs/v5/FIG_TOKEN.md` + `src/fig/FigToken.sol` (genesis mints only; the RPGF reserve has NO wired minter — the distribution mechanism is deferred/under redesign) |
 | **Numerical bound** | "MAX_SUPPLY = 1B FIG" | Match against the constant |
 
 Don't try to verify every adjective. Verify every *quantitative* or *named* claim.
@@ -109,7 +109,7 @@ If atomic resolution is claimed across the parties but the structure is multi-pr
 
 Several papers reference clause counts, invariant counts, validator counts. These drift quietly when new clauses land. Check:
 
-- "N runtime-attestable clauses" — count `src/clauseValidators/*.sol` (excluding agreement-only). The current canonical count is in `CLAUDE.md`'s "The N protocol clauses" table; keep them in lockstep.
+- "N runtime-attestable clauses" — derive from `ls clauses/*.json` minus the agreement-only `figaro-topology`. The count is DERIVED, never stored anywhere (per `docs/v5/CLAUSES.md`); a paper hardcoding it should cite it as an of-this-writing figure.
 - "N invariants in TLA+" — count properties in `formal/FigaroCore.tla`.
 - "N theorems in the paper" — count the `FormalBlock` theorem statements on the page.
 

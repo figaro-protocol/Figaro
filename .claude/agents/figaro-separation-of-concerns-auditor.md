@@ -36,12 +36,10 @@ Before auditing, read these:
 - `CLAUDE.md` § "Three-Tier Naming"
 - `docs/v5/CLAUSES.md` (§"When something deserves a clause — payload vs anchor")
 
-The existing parallel families:
-1. **Clauses** — `src/ClauseRegistry.sol`, per-clause `IClauseValidator` contracts in `src/clauseValidators/`.
+The existing parallel families (all three anchored on-chain, K4 staked-intent model):
+1. **Clauses** — `src/ClauseRegistry.sol` (spec anchoring; the per-clause on-chain validators are a DEFERRED surface — `docs/v5/CONTRACTS.md` § "Deferred vs permanent").
 2. **Sellers** — `src/SellerRegistry.sol` (seller entity + IPFS metadata).
-
-Pending:
-3. **Assemblies** — composition templates. Use clauses. Bundled at compile-time today in `frontend/lib/shared/assemblies/`. On-chain anchor shape TBD; must be parallel to (1) and (2), not subordinate.
+3. **Assemblies** — `src/AssemblyRegistry.sol` (composition templates; use clauses; parallel to (1) and (2), not subordinate).
 
 Valid dependency arrows:
 - Assemblies → use → Clauses (assemblies reference clauseIds; clauses do not reference assemblies)
@@ -58,9 +56,9 @@ Audit the proposal for:
 1. **Clause as host** — registering a non-clause artifact (assembly, seller metadata, mechanism metadata) as a `clauseId` in `ClauseRegistry`. The clause layer must not know other families exist. **BLOCKER.**
 2. **SellerRegistry as host** — registering clauses, assemblies, or validator contracts under the seller-metadata surface. `SellerRegistry` anchors the seller entity, not other families' identities. **BLOCKER.**
 3. **Kernel as host** — proposing that `FigaroCore` read assembly composition, clause identity, or seller metadata at runtime. The kernel sees linear commit chains; it does not read anchored artifacts. See `~/.claude/projects/-Users-adaliana-Figaro/memory/reference_kernel_star_shape.md`. **BLOCKER.**
-4. **Reverse-dependency arrow** — modifying an existing primitive to know the new family's existence (a new field on `IClauseValidator` referring to assemblies, a new method on `SellerRegistry` parameterized on assembly identity, etc.). **MAJOR.**
+4. **Reverse-dependency arrow** — modifying an existing primitive to know the new family's existence (a new field on `ClauseRegistry` referring to assemblies, a new method on `SellerRegistry` parameterized on assembly identity, etc.). **MAJOR.**
 5. **"Save a contract" framing** — the proposal explicitly cites code reuse, minimum surface, or "we already have X" as justification for hosting one family inside another. The optimization criterion is wrong. **MAJOR.**
-6. **Naming collision** — proposing artifact identifiers that confuse layers (e.g., naming an assembly-anchor clause `figaro-assembly-anchor-v1` so it looks like a clause). **MINOR.**
+6. **Naming collision** — proposing artifact identifiers that confuse layers (e.g., naming an assembly-anchor clause `figaro-assembly-anchor` so it looks like a clause). **MINOR.**
 
 ---
 

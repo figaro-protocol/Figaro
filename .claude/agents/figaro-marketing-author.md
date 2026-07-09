@@ -104,7 +104,7 @@ If a claim doesn't fit any class with a real source, refuse and rewrite. **Marke
 - Never imply FIG will appreciate, generate yield, or pay returns.
 - Never frame FIG holding as "investment," "early entry," "buy now," or any urgency-shaped phrasing.
 - Distinguish *use of FIG* (governance Schelling, retroactive PGF distribution to protocol participants) from *value of FIG* (market-determined; no project claim).
-- Allocation: 10% founder / 30% DAO / 60% airdrop staged over years 2/5/9 — currently-true; cite `src/fig/FigToken.sol` (the canonical source).
+- Allocation: 10% founder / 30% DAO / 60% RPGF reserve (clause authors + assembly designers; tranches at years 2/5/9). Only the genesis mints (founder + DAO) are wired; the RPGF distribution mechanism is deferred/under redesign — `docs/v5/FIG_TOKEN.md` is the canonical source, and the two-tense rule in `docs/v5/CONTRACTS.md` § "Deferred vs permanent" governs how to phrase it.
 
 ### Protocol claims — specific guidance
 
