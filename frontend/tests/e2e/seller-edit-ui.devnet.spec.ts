@@ -83,12 +83,21 @@ function getAssemblyRegistry(): Hex {
  */
 async function waitForOneUpdateEvent(
     seller: Hex,
-    fromBlock: bigint,
+    blockBefore: bigint,
     initialURI: string,
     timeoutMs = 60_000,
 ): Promise<{ metadataURI: string }> {
     const registry = getSellerRegistry();
     const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    // eth_getLogs is fromBlock-INCLUSIVE, and `blockBefore` (the pre-test
+    // head) is usually the exact block carrying the PREVIOUS test's or
+    // repeat-iteration's update event. Including it let a foreign distinct
+    // event satisfy the exactly-one check instantly (a false pass) — or,
+    // when this test's own tx mined before the first poll, push the count
+    // to two and deadlock the poll into its timeout (the assemblies-toggle
+    // flake, root-caused 2026-07-09 from the persisted chain's block
+    // timestamps). This test's events all mine strictly after blockBefore.
+    const fromBlock = blockBefore + 1n;
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
         const events = await publicClient.getContractEvents({
@@ -103,6 +112,13 @@ async function waitForOneUpdateEvent(
         const uiUpdates = events.filter((e) => e.args.metadataURI !== initialURI);
         if (uiUpdates.length === 1) {
             return { metadataURI: uiUpdates[0].args.metadataURI as string };
+        }
+        if (uiUpdates.length > 1) {
+            // A genuine double-fire is a failure NOW, not a poll condition —
+            // waiting can never un-emit an event.
+            throw new Error(
+                `Expected exactly one SellerProfileUpdated distinct from ${initialURI}, found ${uiUpdates.length}`,
+            );
         }
         await new Promise((r) => setTimeout(r, 1000));
     }

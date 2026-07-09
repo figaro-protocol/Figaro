@@ -58,9 +58,16 @@ export function SellerEditCatalogue() {
     const [pinningCatalogue, setPinningCatalogue] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
 
-    // Redirect unregistered wallets to onboarding.
+    const updater = useUpdateSellerProfile(existingProfile, registryData?.[0] ?? null);
+    const saveInFlight = updater.isPending || updater.isConfirming || pinningCatalogue;
+
+    // Redirect unregistered wallets to onboarding — but only on SETTLED
+    // state (`!registryLoading && !registryData` = a completed scan found
+    // nothing; isLoading starts true in useSellerProfile), and never
+    // mid-save: the redirect unmounts the form and kills the in-flight
+    // pin/tx (2026-07-09 e2e flake).
     useEffect(() => {
-        if (!mounted) return;
+        if (!mounted || saveInFlight) return;
         if (!isConnected) {
             router.replace("/sellers");
             return;
@@ -68,7 +75,7 @@ export function SellerEditCatalogue() {
         if (!registryLoading && !registryData) {
             router.replace("/sellers");
         }
-    }, [mounted, isConnected, registryLoading, registryData, router]);
+    }, [mounted, saveInFlight, isConnected, registryLoading, registryData, router]);
 
     // Fetch the on-chain profile JSON, then the catalogue JSON it
     // references via `catalogueURI`. Both are needed before we can
@@ -148,8 +155,6 @@ export function SellerEditCatalogue() {
         });
         setSeeded(true);
     }, [seeded, loaded, existingProfile, existingCatalogue, update]);
-
-    const updater = useUpdateSellerProfile(existingProfile, registryData?.[0] ?? null);
 
     // Redirect back to /sellers on a confirmed update.
     useEffect(() => {

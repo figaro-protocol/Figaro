@@ -45,9 +45,16 @@ export function SellerEditProfile() {
     const [fetchError, setFetchError] = useState<string | null>(null);
     const [seeded, setSeeded] = useState(false);
 
-    // Redirect unregistered wallets to onboarding.
+    const updater = useUpdateSellerProfile(existingProfile, registryData?.[0] ?? null);
+    const saveInFlight = updater.isPending || updater.isConfirming;
+
+    // Redirect unregistered wallets to onboarding — but only on SETTLED
+    // state (`!registryLoading && !registryData` = a completed scan found
+    // nothing; isLoading starts true in useSellerProfile), and never
+    // mid-save: the redirect unmounts the form and kills the in-flight
+    // pin/tx (2026-07-09 e2e flake).
     useEffect(() => {
-        if (!mounted) return;
+        if (!mounted || saveInFlight) return;
         if (!isConnected) {
             router.replace("/sellers");
             return;
@@ -55,7 +62,7 @@ export function SellerEditProfile() {
         if (!registryLoading && !registryData) {
             router.replace("/sellers");
         }
-    }, [mounted, isConnected, registryLoading, registryData, router]);
+    }, [mounted, saveInFlight, isConnected, registryLoading, registryData, router]);
 
     // Fetch the on-chain profile JSON.
     useEffect(() => {
@@ -101,8 +108,6 @@ export function SellerEditProfile() {
         update({ profile: draft });
         setSeeded(true);
     }, [seeded, loaded, existingProfile, update]);
-
-    const updater = useUpdateSellerProfile(existingProfile, registryData?.[0] ?? null);
 
     // Redirect back to /sellers on a confirmed update. No refetch here:
     // `useSellerProfile` is per-call-site local state, so refetching this

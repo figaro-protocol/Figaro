@@ -39,8 +39,18 @@ export function SellerEditAssemblies() {
     const [fetchError, setFetchError] = useState<string | null>(null);
     const [seeded, setSeeded] = useState(false);
 
+    const updater = useUpdateSellerProfile(existingProfile, registryData?.[0] ?? null);
+    const saveInFlight = updater.isPending || updater.isConfirming;
+
+    // Redirect unregistered wallets to onboarding — but only on SETTLED
+    // state: `!registryLoading && !registryData` is a completed scan that
+    // found nothing (isLoading starts true in useSellerProfile), never a
+    // still-hydrating window. And never navigate away mid-save — the
+    // redirect unmounts the form and kills the in-flight pin/tx (the
+    // 2026-07-09 e2e flake fired on exactly this, between Save and the
+    // transaction dispatch).
     useEffect(() => {
-        if (!mounted) return;
+        if (!mounted || saveInFlight) return;
         if (!isConnected) {
             router.replace("/sellers");
             return;
@@ -48,7 +58,7 @@ export function SellerEditAssemblies() {
         if (!registryLoading && !registryData) {
             router.replace("/sellers");
         }
-    }, [mounted, isConnected, registryLoading, registryData, router]);
+    }, [mounted, saveInFlight, isConnected, registryLoading, registryData, router]);
 
     useEffect(() => {
         if (!registryData) return;
@@ -76,8 +86,6 @@ export function SellerEditAssemblies() {
         update({ assemblies: existingProfile.assemblyBindings ?? [] });
         setSeeded(true);
     }, [seeded, loaded, existingProfile, update]);
-
-    const updater = useUpdateSellerProfile(existingProfile, registryData?.[0] ?? null);
 
     useEffect(() => {
         if (updater.isSuccess) {

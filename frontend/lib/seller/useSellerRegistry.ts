@@ -60,7 +60,14 @@ export function useSellerProfile(address: `0x${string}` | undefined) {
     const client = usePublicClient();
     const chainId = useChainId();
     const [data, setData] = useState<SellerProfileData | undefined>(undefined);
-    const [isLoading, setIsLoading] = useState(false);
+    // "Not scanned yet" must not read as "scanned and absent": isLoading
+    // starts TRUE and settles false only when a scan completes. The prior
+    // false start left commit windows (wagmi client/address still hydrating
+    // → the effect's early return) where consumers saw
+    // {data: undefined, isLoading: false} and treated an unscanned wallet
+    // as unregistered — the /sellers/edit/* guards redirected mid-session
+    // on exactly that window, killing in-flight saves (e2e flake 2026-07-09).
+    const [isLoading, setIsLoading] = useState(true);
     const [generation, setGeneration] = useState(0);
 
     useEffect(() => {
