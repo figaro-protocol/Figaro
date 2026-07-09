@@ -43,6 +43,9 @@ export const NAV_LINKS_APP_PRIMARY: NavLink[] = [
     { href: "/orders", label: "Orders" },
     { href: "/sellers", label: "Sellers" },
     { href: "/audit", label: "Audit" },
+    // The wallet's own runtime infrastructure (RPC provider, IPFS node) —
+    // actor-neutral, no operator service in the middle.
+    { href: "/settings", label: "Endpoints" },
 ];
 
 export const NAV_LINKS_APP_DRAWER: NavLink[] = [
@@ -52,4 +55,5 @@ export const NAV_LINKS_APP_DRAWER: NavLink[] = [
     { href: "/orders", label: "Orders" },
     { href: "/sellers", label: "Sellers" },
     { href: "/audit", label: "Audit" },
+    { href: "/settings", label: "Endpoints" },
 ];

@@ -6,6 +6,7 @@ import { TEST_HELPERS_ENABLED, windowSafe } from "@/lib/shared/testHelpers";
 import { useOrderStore } from "@/lib/kernel/store";
 import { calculateBonds } from "@figaro/core";
 import { textToBytes32 } from "@/lib/shared/evm";
+import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 
 type MockStoredOrder = {
     id: string;
@@ -126,18 +127,11 @@ export default function ClientInit() {
             if (_win && typeof _win.__FIGARO_MOCK_API__ === 'object') return;
 
             async function tryIpfsAdd(json: unknown) {
+                // Through the one IPFS seam (endpoint config included) — a
+                // failed pin degrades to null, same as before.
                 try {
-                    const body = new FormData();
-                    const blob = new Blob([JSON.stringify(json)], { type: 'application/json' });
-                    body.append('file', blob, 'order.json');
-                    const res = await fetch('http://127.0.0.1:5001/api/v0/add', { method: 'POST', body });
-                    if (!res.ok) return null;
-                    const text = await res.text();
-                    const lines = text.trim().split('\n').filter(Boolean);
-                    const last = lines[lines.length - 1];
-                    const parsed = JSON.parse(last);
-                    return parsed?.Hash || null;
-                } catch (e) {
+                    return await DEFAULT_IPFS_SERVICE.pinJSON(json);
+                } catch {
                     return null;
                 }
             }

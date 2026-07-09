@@ -10,6 +10,7 @@ import { createPublicClient } from "viem";
 import { localAnvil, hardhat, activeChain, chains } from "./chains";
 import { connectors } from "./connectors";
 import { mockAwareHttp } from "./mockTransport";
+import { readUserEndpoints } from "./userEndpoints";
 import {
     attachDebugClient,
     attachDevProvider,
@@ -25,9 +26,13 @@ export {   activeChain,  };
 // ---------------------------------------------------------------------------
 
 // In development the Next.js dev server proxies /rpc → local Anvil (same-origin,
-// no CORS). In production builds set NEXT_PUBLIC_RPC_URL to a real provider
-// endpoint (Alchemy, Infura, etc).
+// no CORS). In production builds NEXT_PUBLIC_RPC_URL is only the DEFAULT —
+// the user's runtime override (their own provider key, /settings) wins, so a
+// hosted deploy never bills every visitor's reads to the operator's key.
+// wagmi's config is created once at module load, so an override change
+// applies on the next reload.
 const rpcUrl =
+    readUserEndpoints().rpcUrl ??
     process.env.NEXT_PUBLIC_RPC_URL ??
     (process.env.NODE_ENV === "production" ? activeChain.rpcUrls.default.http[0] : "/rpc");
 

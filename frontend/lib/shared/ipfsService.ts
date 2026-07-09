@@ -6,14 +6,25 @@
  */
 
 import { safeJsonFromResponse, safeJsonParse } from "@/lib/shared/safeJson";
+import { readUserEndpoints } from "@/lib/shared/userEndpoints";
 
+// Build-baked DEFAULTS only — a user's runtime endpoint override (their own
+// node: they pay, they erase) wins at call time via the accessors below.
 const IPFS_API_URL =
     process.env.NEXT_PUBLIC_IPFS_API_URL ?? "http://127.0.0.1:5001";
 
-/** Canonical Kubo gateway base URL — the single source for IPFS gateway
- *  resolution. */
 const IPFS_GATEWAY_URL =
     process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? "http://127.0.0.1:8080";
+
+function activeIpfsApiUrl(): string {
+    return readUserEndpoints().ipfsApiUrl ?? IPFS_API_URL;
+}
+
+/** Canonical Kubo gateway base URL at call time — the single source for
+ *  IPFS gateway resolution (user override, else the build default). */
+function activeIpfsGatewayUrl(): string {
+    return readUserEndpoints().ipfsGatewayUrl ?? IPFS_GATEWAY_URL;
+}
 
 /**
  * The single resolver from a content URI to a gateway HTTP URL. Handles
@@ -22,7 +33,7 @@ const IPFS_GATEWAY_URL =
  * blob:, …). The `IpfsService.resolveFetchUrl` method delegates here; free
  * callers import this directly.
  */
-export function resolveContentUri(uri: string, gatewayUrl: string = IPFS_GATEWAY_URL): string | null {
+export function resolveContentUri(uri: string, gatewayUrl: string = activeIpfsGatewayUrl()): string | null {
     if (!uri) return null;
     if (uri.startsWith("ipfs://")) return `${gatewayUrl}/ipfs/${uri.slice("ipfs://".length)}`;
     if (uri.startsWith("/ipfs/")) return `${gatewayUrl}${uri}`;
@@ -128,8 +139,15 @@ function validateUploadableFile(file: File): void {
 }
 
 class DefaultIpfsService implements IpfsService {
-    private readonly apiUrl = IPFS_API_URL;
-    private readonly gatewayUrl = IPFS_GATEWAY_URL.replace(/\/$/, "");
+    // Resolved per call, not at construction — a runtime endpoint override
+    // must apply without a rebuild or reload.
+    private get apiUrl(): string {
+        return activeIpfsApiUrl();
+    }
+
+    private get gatewayUrl(): string {
+        return activeIpfsGatewayUrl().replace(/\/$/, "");
+    }
 
     async pinJSON(data: unknown): Promise<string> {
         const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
