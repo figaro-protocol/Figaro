@@ -61,11 +61,16 @@ Full harness inventory (file lists, property names, rule counts) → `TESTING.md
 
 ## Docker-hosted services
 
-Four project tools run in Docker, not natively on the host. **Convention: the
-agent runs `docker run` / `exec` / `compose` / `restart`; the user keeps Docker
-Desktop alive.** Caveat: containers started via `run_in_background` may be reaped
-by the harness — long-lived services (IPFS daemon, graph-node) should be started
-by the user in their own terminal, same convention as Anvil.
+Four project tools run in Docker, not natively on the host. **Convention
+(re-ruled 2026-07-09): the agent runs the testing stack end to end — Anvil,
+Kubo, and the frontend server included — starting/stopping/restarting as
+testing needs; the user keeps Docker Desktop alive.** The agent's duty is
+transparency: report what it started, on which port, and how to take it down.
+Mechanism caveat: processes started via `run_in_background` may be reaped by
+the harness — start long-lived services detached through the repo's own
+scripts (`devup.sh` starts Anvil detached → `/tmp/figaro-anvil.log`) or as
+Docker containers (which outlive the spawning shell), never as opaque
+one-off daemons.
 
 - **IPFS (Kubo).** Pins seller profiles, catalogues, agreements, uploaded media via `lib/shared/ipfsService.ts`. Endpoint `http://127.0.0.1:5001`; image `ipfs/kubo:v0.42.0` (pinned — `latest` at 0.40.1 segfaulted in its DHT reprovider; upgrade deliberately, container `figaro-ipfs` runs with `--restart unless-stopped`). Kubo's default CORS needs the dev origin allowlisted + a restart before pinning works.
 - **Mythril.** Symbolic execution via `scripts/mythril-docker.sh` (image `mythril/myth`). Opportunistic, not in the standard test loop.
