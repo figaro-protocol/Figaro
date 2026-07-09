@@ -102,7 +102,12 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         await expect(origin, "the device affordance encodes the browser's location into the field")
             .toHaveValue(DEVICE_GEOHASH, { timeout: 10000 });
         const destination = page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-destinationGeohash`);
-        await destination.fill('9q8yyk8yu');
+        // Typing a door-grade (9-char) hash exercises the public-surface cap:
+        // the field clamps to neighborhood precision (6 chars) — agreement
+        // fields are pinned publicly, door-level rides the ECDH envelope.
+        await destination.fill('9q8yy78yu');
+        await expect(destination, 'typed input clamps to the public precision cap')
+            .toHaveValue('9q8yy7');
 
         const slug = await saveDraft(page);
 
@@ -116,8 +121,8 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         ).toHaveValue(DEVICE_GEOHASH, { timeout: 10000 });
         await expect(
             page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-destinationGeohash`),
-            'the typed destination survives save + reload',
-        ).toHaveValue('9q8yyk8yu', { timeout: 10000 });
+            'the typed (clamped) destination survives save + reload',
+        ).toHaveValue('9q8yy7', { timeout: 10000 });
 
         // ── Toggle OFF, save, reload — the removal survives too ─────────────
         await geoAfterOn.uncheck();

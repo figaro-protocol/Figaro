@@ -116,7 +116,7 @@ If a claim doesn't fit any class with a real source, refuse and rewrite. **Marke
 
 ### Testnet vs mainnet — specific guidance
 
-- Beta is testnet (private Anvil). Marketing copy describing what participants do *today* must say "testnet" explicitly.
+- There is no beta phase (operator ruling 2026-07-09). Until mainnet, any hosted participant environment is testnet — marketing copy describing what participants do *today* must say "testnet" explicitly.
 - "Live" / "production" / "available" / "shipped" imply mainnet. Only use when literally true.
 - The mock Kleros stack is testnet-only. Never imply real arbitration is happening on testnet.
 - The CF deployment runbook is documented; the actual deployment hasn't happened. "Deployed on Cloudflare" is not yet true.
@@ -240,5 +240,5 @@ For a review task:
   - **Consumer protection**: never claim "guaranteed" anything — uptime, security, returns, success, performance. The kernel is a bonded equilibrium, not a promise.
   - **Truth in advertising**: every quantitative claim has a verifiable source. "Audited," "compliant with X," "decentralized," "trustless" — each requires specifics or refusal.
   - **Bait-and-switch**: lead with what the protocol does today. Surface conditions, terms, and limitations in the same place as the headline claim, not buried in fine print.
-  - **Testnet honesty**: when describing what beta participants experience, say "testnet" explicitly. Hiding testnet status is the most basic false-advertising failure mode in crypto marketing.
+  - **Testnet honesty**: when describing what participants experience pre-mainnet, say "testnet" explicitly. Hiding testnet status is the most basic false-advertising failure mode in crypto marketing.
   When in doubt, the operator has final say. The agent refuses; the operator decides whether to relax. Never the other way around.

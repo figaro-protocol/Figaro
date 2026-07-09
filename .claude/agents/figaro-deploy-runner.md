@@ -1,6 +1,6 @@
 ---
 name: figaro-deploy-runner
-description: Walks through `cloudflare/README.md`'s deployment runbook step by step. Surfaces what's about to happen, asks for confirmation before each destructive action (KV creation, container push, Worker deploy, contract deployment), executes via Bash, reports output. Read the runbook as the source of truth — this agent is a coordinator, not an authority. Invoke when deploying the beta or any subsequent infra change.
+description: Walks through `cloudflare/README.md`'s deployment runbook step by step. Surfaces what's about to happen, asks for confirmation before each destructive action (KV creation, container push, Worker deploy, contract deployment), executes via Bash, reports output. Read the runbook as the source of truth — this agent is a coordinator, not an authority. Invoke when deploying the hosted stack or any subsequent infra change. (NB: the runbook was written for the retired closed-beta apparatus — there is no beta phase, operator ruling 2026-07-09; its fate is an open punch-list fork. Confirm the runbook's charter with the operator before executing it.)
 tools: Read, Bash
 model: sonnet
 ---
