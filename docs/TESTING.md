@@ -47,15 +47,17 @@ FigToken (`FigToken.tla` + `FigToken.cfg`): `Inv_MaxSupply`,
 `Inv_CapBelowMaxSupply`, `Inv_SupplyEqualsSumMinted`, `Inv_NonNegative`,
 `Inv_NoMintToZero`, `Inv_BalancesSumToSupply`.
 
-## Frontend Vitest (`frontend/tests/`) — 2 tiers, 64 files
+## Frontend Vitest (`frontend/tests/`) — 2 tiers
 
 `npx vitest run`. UI logic that needs neither a chain nor a real browser.
+The census is the directory listing (`ls frontend/tests/{components,lib}` —
+derived, never a stored count).
 
-- **Component tier** (`tests/components/`, 8 files) — React Testing Library:
+- **Component tier** (`tests/components/`) — React Testing Library:
   `Header`, `MobileNav`, `CapabilityRail`, `OnboardingWelcome`,
   `SellerTrackRecord`, `TokenAddressInput`, `TokenApprovalFlow`,
-  `TokenDecimalDisplayFlows`.
-- **Lib tier** (`tests/lib/`, 56 files) — pure-client unit tests: commitment
+  `TokenDecimalDisplayFlows`, …
+- **Lib tier** (`tests/lib/`) — pure-client unit tests: commitment
   preparation + stores, agreement, clause-spec source, discovery +
   catalogue pipeline, emissions disclosure, delivery/handoff attestation, dispute
   evidence, IPFS service, token conversion, geocode, and per-hook tests

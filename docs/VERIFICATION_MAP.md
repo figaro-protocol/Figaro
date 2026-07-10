@@ -74,7 +74,7 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 
 | ID | Statement | Code enforcement | Tests | TLA+ | Echidna | UI presentation |
 |---|---|---|---|---|---|---|
-| K-1 | Buyer bond = $2 \times payment$; seller bond = $2 \times cumulativeValue$ | `_pullExact(token, buyer, payment * 2)` and `_pullExact(token, seller, cumVal * 2)` in `commit()` | `FigaroCoreTest`: 21 tests covering bond amounts; `ParityVectors`: EIP-712 ↔ Solidity parity | `BondFormulaCorrectV3` — verified across 6M+ states | `echidna_solvency` — core holds ≥ sum of active bonds | `/cryptoeconomics` → /papers/asymmetric-bonding (mechanism); `/local-commerce` → Why deposits work; `/builders` → Security boundary |
+| K-1 | Buyer bond = $2 \times payment$; seller bond = $2 \times cumulativeValue$ | `_pullExact(token, buyer, payment * 2)` and `_pullExact(token, seller, cumVal * 2)` in `commit()` | `FigaroCoreTest`: bond-amount coverage; `ParityVectors`: EIP-712 ↔ Solidity parity | `BondFormulaCorrectV3` — verified across 6M+ states | `echidna_solvency` — core holds ≥ sum of active bonds | `/cryptoeconomics` → /papers/asymmetric-bonding (mechanism); `/local-commerce` → Why deposits work; `/builders` → Security boundary |
 | K-2 | Only root buyer can call `resolveProcess` | `if (msg.sender != ps.rootBuyer) revert NotProcessBuyer()` in `resolveProcess()` | `FigaroCoreTest`: buyer-only paths; `FigaroCoreRevertBranchTest`: 16 revert tests | `ResolveProcess` constrains resolver to root buyer | `echidna_buyer_dominance` — non-buyer resolve always fails | `/cryptoeconomics` → /papers/asymmetric-bonding; `/builders` → Security boundary |
 | K-3 | Must resolve all active orders (anti-cherry-picking) | `if (commitments.length != ps.activeOrderCount) revert IncompleteOrderList()` + per-order status check | `FigaroCoreTest`: multi-order arrays; `FigaroCoreRevertBranchTest`: incomplete list reverts | `ResolveProcess` uses `ActiveOrdersInProcess` + count check | `echidna_atomic_resolution` — incomplete lists always fail | `/cryptoeconomics` → /papers/asymmetric-bonding (atomic resolution); `/builders` → Enforcement, in three layers |
 | K-4 | No timeout, no admin exit from Active state | No timeout action exists; only `resolveProcess` transitions Active→Resolved; no owner, no admin functions | `FigaroCoreRevertBranchTest`: no alternate exit paths | Model has no timeout action; only Committed→Resolved via buyer | `echidna_state_monotonicity` — status only moves forward (0→1→2) | `/cryptoeconomics` → /papers/asymmetric-bonding (the Escape-Hatch Weakness theorem); `/security` → "no admin, no owner, no pause function" |
@@ -104,10 +104,10 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 
 | ID | Statement | Code enforcement | Tests | UI presentation |
 |---|---|---|---|---|
-| E-1 | Only verified role-holder can attest | `attestAsSeller`: verifies seller via commitment orderHash lookup; `attestAsBuyer`: verifies via ProcessState.rootBuyer; `attestViaResolver`: delegates to IRoleResolver | `AttestationCoordinatorTest`: 20 tests covering all 3 paths + cross-order same-process | `/papers/on-chain-evidence` → evidentiary properties; `/local-commerce` → Attestation Coordinator; `/builders` → Clause validation |
-| E-2 | Registered clauses cannot be overwritten | `registerClause`: event-only anchoring (no storage to overwrite); dedup guard on re-registration | `ClauseRegistryTest`: 12 tests including dedup | `/builders` → Clause validation; `/local-commerce` → clause-typed events |
-| E-4 | Seller deposit lock — withdraw only after `registeredAt + lockPeriod` | `withdraw()`: requires `_registered[msg.sender]` + `block.timestamp >= registeredAt + lockPeriod`; clears the dedup guard so the same address can re-register with the lock restarting. `updateProfile()` is a separate caller-only path that emits a new `SellerProfileUpdated` event without touching the deposit or restarting the lock | `SellerRegistryTest`: 18 tests covering register, deposit-bound match, dedup, withdraw flow, lock-period gate, re-registration restarts the lock, plus updateProfile (only-self, no deposit movement, no lock reset) | `/local-commerce` → Seller Registry; `/sellers`; `/builders` → Seller identity |
-| E-6 | FIG supply cap: $\leq$ 1B on every mint | `mint()`: `if (totalSupply() + amount > MAX_SUPPLY) revert SupplyCapExceeded()` + reentrancy guard | `FigToken.t.sol`: ~22 tests covering cap enforcement, multi-minter, renounce | `/papers/fig-schelling-point-token` → supply integrity |
+| E-1 | Only verified role-holder can attest | `attestAsSeller`: verifies seller via commitment orderHash lookup; `attestAsBuyer`: verifies via ProcessState.rootBuyer; `attestViaResolver`: delegates to IRoleResolver | `AttestationCoordinatorTest`: all 3 paths + cross-order same-process | `/papers/on-chain-evidence` → evidentiary properties; `/local-commerce` → Attestation Coordinator; `/builders` → Clause validation |
+| E-2 | Registered clauses cannot be overwritten | `registerClause`: event-only anchoring (no storage to overwrite); dedup guard on re-registration | `ClauseRegistryTest`: registration, dedup, deposit + withdraw paths | `/builders` → Clause validation; `/local-commerce` → clause-typed events |
+| E-4 | Seller deposit = staked intent (K4): withdraw allowed at ANY time (no lock), returns the deposit and clears the dedup guard — de-surfacing is the price; re-registration allowed after | `register()`: deposit-bound match + dedup guard; `withdraw()`: requires registered, pays back the deposit, clears the guard. `updateProfile()` is a separate caller-only path that emits `SellerProfileUpdated` without touching the deposit | `SellerRegistryTest`: register, deposit-bound match, dedup, withdraw-any-time, re-registration, updateProfile (only-self, no deposit movement); e2e `seller-withdraw` (UI round-trip + exact registry ETH delta) | `/local-commerce` → Seller Registry; `/sellers`; `/builders` → Seller identity |
+| E-6 | FIG supply cap: $\leq$ 1B on every mint | `mint()`: `if (totalSupply() + amount > MAX_SUPPLY) revert SupplyCapExceeded()` + reentrancy guard | `FigToken.t.sol`: cap enforcement, multi-minter, renounce | `/papers/fig-schelling-point-token` → supply integrity |
 
 ---
 
@@ -117,12 +117,12 @@ This section tracks features that are not protocol invariants but are significan
 
 | Feature | Code location | SDK coverage | UI explainer pages | UI functional surfaces | Gap? |
 |---|---|---|---|---|---|
-| **Handoff encryption (ECDH)** | `frontend/lib/handoff/` (13 files) | — | `/local-commerce` → Handoff Encryption | `HandoffKeyExchangeModule`, `HandoffTrackerModule`, `HandoffDetailsModule` | — |
+| **Handoff encryption (ECDH)** | `frontend/lib/handoff/` | — | `/local-commerce` → Handoff Encryption | `HandoffKeyExchangeModule`, `HandoffTrackerModule`, `HandoffDetailsModule` | — |
 | **Delivery attestation (4 modes)** | removed (proximity proofs live in the handoff clause runtime, `frontend/lib/handoff/`) | `@figaro/sdk/extensions`: `geohashesMatch`, `haversineDistance` | `/local-commerce` → Proximity Proofs; `/builders` → attestation modes | `DeliveryAttestationPanel`, `/evidence-display` | — |
 | **DID:web identity** | `frontend/lib/agent/useDidWeb.ts` | `@figaro/sdk/agent`: `resolveDidWeb`, `didWebToUrl`, `didDocumentMatchesAddress`, `buildSellerDidDocument` | `/builders` → Seller identity | `DidVerificationBadge` (component) | — |
 | **Kleros dispute / evidence** | `frontend/lib/audit/` + `frontend/lib/semantic/processRecourse.ts` | — (frontend-local; SDK carries no Kleros helpers) | `/builders` → Kleros integration | `/evidence-display` (full rendering for jurors) | — |
-| **Agent SDK** | `sdk/` (3 subpath exports) | Self-referential (166 tests) | `/builders` → Agent SDK section | — | — |
-| **Semantic derivation** | `frontend/lib/semantic/` (5 files) | — | `/builders` → How the runtime renders institutions | `TopologyCanvas` in the design canvas (`/builders/designer/*`); `CapabilityRail` + `RecoursePanel` at runtime | — |
+| **Agent SDK** | `sdk/` (root + `/agent`, `/extensions`, `/clauses`) | Self-referential (`npx vitest run` in `sdk/` is the census) | `/builders` → Agent SDK section | — | — |
+| **Semantic derivation** | `frontend/lib/semantic/` | — | `/builders` → How the runtime renders institutions | `TopologyCanvas` in the design canvas (`/builders/designer/*`); `CapabilityRail` + `RecoursePanel` at runtime | — |
 | **Institution assembly** | `frontend/lib/designer/`; `src/AssemblyRegistry.sol` | — | `/builders` → Level 1 assembly config; `/local-commerce` → "Fork Local Commerce" | `/builders/designer/new`, `/builders/designer/edit/[slug]`, `/builders/designer/view/[slug]` | — |
 | **Agreement publication** | `frontend/lib/kernel/agreementFetch.ts`, `orderAgreement.ts` | — | `/builders` → Agreement publication | — | — |
 | **Commerce checkout** | `frontend/lib/checkout/` | — | — | `CartModule` (interactive) | — |
@@ -345,22 +345,27 @@ export CERTORAKEY=<your-key>
 
 ## 12) Test inventory summary
 
+Counts are point-in-time snapshots (last refreshed 2026-07-10) — derive the
+current numbers, never trust these: `forge test` · `npx vitest run` (in `sdk/`
+and `frontend/`) · `npx playwright test --list` · `./scripts/test-tla.sh` ·
+`./scripts/test-echidna.sh`.
+
 | Layer | Files | Test count | What it covers |
 |---|---|---|---|
 | **TLA+ model checking** | 2 models | 15 invariants (FigaroCore: 7 across 6,087,113 states / 4m 8s; FigToken: 8 across 160,844 states / 9s — all via `./scripts/test-tla.sh`) | Kernel safety (conservation, solvency, bonding, atomicity, resolution) + FIG token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, renounce-monotonicity, deployer-cannot-mint-after-renounce) |
 | **Halmos symbolic testing** | 1 file | 7 properties | FigaroCore (7): token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. |
 | **Certora formal verification** | 4 specs | 25 declared rules (8 + 4 + 7 + 6) | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability (merkle-only — no content-shape validation). TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. FigToken: supply cap + minter registry preservation. |
 | **Echidna fuzzing** | 2 harnesses | 15 properties (kernel 7 + FigToken 8) | `EchidnaFuzzer` Kernel (7): solvency, monotonicity, buyer dominance, atomicity, cumulative accounting, conservation, active-count consistency. `EchidnaFigToken` (8): FigToken supply/minter fuzzing. (`EchidnaToken` is the kernel harness's support ERC-20, not a harness.) |
-| **Foundry unit tests** | 14 suites | 225 tests | Core lifecycle, revert branches, mechanisms, gas, FIG, parity vectors |
-| **SDK Vitest** | 16 files | 166 tests | Event parsing, state reconstruction, bond math, commitments, extensions, clauses |
-| **Frontend Vitest** | 84 files | 560 tests | Components, hooks, semantic derivation, assembly, runtime identity |
-| **Playwright** | 38 specs | 169 tests | UI rendering, content regression, devnet integration |
+| **Foundry unit tests** | 10 suites | 166 tests | Core lifecycle, revert branches, mechanisms, gas, FIG, parity vectors |
+| **SDK Vitest** | 22 files | 336 tests | Event parsing, state reconstruction, bond math, commitments, discovery, clauses, agent origination |
+| **Frontend Vitest** | 47 files | 359 tests | Components, hooks, semantic derivation, assembly, runtime identity |
+| **Playwright** | 22 spec files | 37 tests | Devnet e2e (UI action → UI reaction against the live chain) + the mobile viewport spec |
 
 ---
 
 ## 13) How to run verification (repeatable)
 
-### Foundry (14 suites, 225 tests)
+### Foundry (the suite/test census is `forge test`'s own summary line)
 
 ```bash
 forge test --via-ir
@@ -381,7 +386,7 @@ export CERTORAKEY=<key from certora.com/signup>
 certoraRun certora/FigaroCore.conf --disable_local_typechecking
 ```
 
-### Echidna (7 properties)
+### Echidna (2 harnesses, 15 properties: kernel 7 + FigToken 8)
 
 ```bash
 ./scripts/test-echidna.sh

@@ -337,8 +337,8 @@ architecture is correct only if it serves an unbounded, ever-growing
 clause population. "Is there enough demand to justify it" is a product
 question and has no place here.
 
-The SP1 guest currently compiles in the 16 canonical specs
-(`prover/clause/src/embedded.rs` — `include_str!` of the Layer A JSONs)
+The SP1 guest design compiled in the canonical specs (the `clauses/` set;
+`prover/clause/src/embedded.rs` — `include_str!` of the Layer A JSONs)
 and per-clause ABI encoders (`encode.rs` — a `match clauseId` dispatch).
 Adding a clause changes the guest ELF → the program verification key → a
 `FigaroBatchVerifier` redeploy. **Measured against the axiom, that is

@@ -20,7 +20,7 @@ const examplesDir = join(__dirname, "../../../clauses");
 const exampleFiles = readdirSync(examplesDir).filter((f) => f.endsWith(".json"));
 
 describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
-    it("ships at least the 16 canonical example clauses", () => {
+    it("the canonical clause set is present (floor guard, not a census — `ls clauses/` derives the count)", () => {
         expect(exampleFiles.length).toBeGreaterThanOrEqual(16);
     });
 
