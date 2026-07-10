@@ -70,7 +70,7 @@ export function buildHashAppendix(
     anchors.push({
         kind: "order-hash",
         label: "Order hash",
-        hash: order.id,
+        hash: order.orderHash,
         sourceLocation: "FigaroCore.orderStatus[orderHash] / OrderCommitted.orderHash",
     });
 
@@ -95,7 +95,7 @@ export function buildHashAppendix(
 
     // 4. Lifecycle attestation contentRefs (scoped to this order).
     for (const att of attestations) {
-        if (att.orderHash !== order.id) continue;
+        if (att.orderHash !== order.orderHash) continue;
         anchors.push({
             kind: "attestation-content-ref",
             label: `Attestation contentRef — ${att.clauseId} stage ${att.stage}`,
@@ -107,7 +107,7 @@ export function buildHashAppendix(
 
     return {
         title: "Hash appendix — verification anchors",
-        orderHash: order.id,
+        orderHash: order.orderHash,
         processId: order.processId,
         agreementHash: order.agreementHash ?? "0x",
         buyer: order.buyer,

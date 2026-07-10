@@ -47,7 +47,7 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
 
     // The process's attestation log, fetched per order and read clause-agnostically
     // (the same indexer read the PDF builder uses). Keyed by order id.
-    const ordersKey = useMemo(() => orders.map((o) => o.id).join(","), [orders]);
+    const ordersKey = useMemo(() => orders.map((o) => o.orderHash).join(","), [orders]);
     const [attestationsByOrder, setAttestationsByOrder] = useState<Map<string, AttestationRecord[]>>(new Map());
     useEffect(() => {
         if (!publicClient || !chainId || orders.length === 0) {
@@ -59,12 +59,12 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
             const next = new Map<string, AttestationRecord[]>();
             await Promise.all(orders.map(async (order) => {
                 try {
-                    const logs = await getAttestationsByOrder(publicClient, chainId, order.id);
-                    next.set(order.id, (logs as IndexedAttestationLog[])
+                    const logs = await getAttestationsByOrder(publicClient, chainId, order.orderHash);
+                    next.set(order.orderHash, (logs as IndexedAttestationLog[])
                         .map(parseAttestationLog)
                         .filter((r): r is AttestationRecord => r !== null));
                 } catch {
-                    next.set(order.id, []);
+                    next.set(order.orderHash, []);
                 }
             }));
             if (!cancelled) setAttestationsByOrder(next);
@@ -120,7 +120,7 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
         return orders.map((order) => {
             const agreement = order.agreementHash ? agreements.get(order.agreementHash) : undefined;
             const clauseData = agreement ? extractClauseData(order, agreement) : null;
-            const processLogs = extractProcessLogs(order, attestationsByOrder.get(order.id) ?? []);
+            const processLogs = extractProcessLogs(order, attestationsByOrder.get(order.orderHash) ?? []);
             return { order, clauseData, processLogs };
         }).filter(({ clauseData, processLogs }) =>
             (clauseData && clauseData.clauses.length > 0) || processLogs.logs.length > 0,
@@ -145,8 +145,8 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
             ) : (
                 <div className="space-y-8">
                     {perOrder.map(({ order, clauseData, processLogs }) => (
-                        <div key={order.id} className="space-y-5 border border-default rounded-section p-5">
-                            <p className="text-xs font-mono text-ink-muted break-all">order {order.id}</p>
+                        <div key={order.orderHash} className="space-y-5 border border-default rounded-section p-5">
+                            <p className="text-xs font-mono text-ink-muted break-all">order {order.orderHash}</p>
 
                             {clauseData && clauseData.clauses.length > 0 && (
                                 <div className="space-y-4">

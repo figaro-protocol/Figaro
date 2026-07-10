@@ -61,7 +61,7 @@ export function extractProcessLogs(
     const groups = new Map<string, ProcessLogGroup>();
 
     for (const att of attestations) {
-        if (att.orderHash !== order.id) continue;
+        if (att.orderHash !== order.orderHash) continue;
         // Attestation events carry the clauseId HASH; the spec reads key on the
         // readable id, so resolve it first (falls back to the raw value when already
         // readable or the spec isn't cached). Without this, every attestation is
@@ -94,7 +94,7 @@ export function extractProcessLogs(
 
     return {
         title: "Sovereign process logs",
-        orderHash: order.id,
+        orderHash: order.orderHash,
         processId: order.processId,
         agreementHash: order.agreementHash ?? "0x",
         buyer: order.buyer,

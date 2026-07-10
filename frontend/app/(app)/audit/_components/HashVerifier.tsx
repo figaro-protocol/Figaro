@@ -270,11 +270,11 @@ function SearchMode() {
 
         const found: HashHit[] = [];
         for (const order of orders) {
-            if (hexEqual(order.id, target)) {
+            if (hexEqual(order.orderHash, target)) {
                 found.push({
                     kind: "orderHash",
                     label: `Order hash for buyer ${order.buyer} ↔ seller ${order.seller}`,
-                    location: `OrderCommitted.orderHash on FigaroCore (orderStatus[${order.id}] = ${order.state})`,
+                    location: `OrderCommitted.orderHash on FigaroCore (orderStatus[${order.orderHash}] = ${order.state})`,
                 });
             }
             if (hexEqual(order.processId, target)) {
@@ -287,7 +287,7 @@ function SearchMode() {
             if (hexEqual(order.agreementHash, target)) {
                 found.push({
                     kind: "agreementHash",
-                    label: `Agreement merkle root (order ${order.id})`,
+                    label: `Agreement merkle root (order ${order.orderHash})`,
                     location: `OrderCommitted.agreementHash event field`,
                 });
             }
@@ -301,7 +301,7 @@ function SearchMode() {
                         found.push({
                             kind: "section-leaf",
                             label: `Section leaf — ${section.clause}`,
-                            location: `Merkle leaf under agreementHash ${order.agreementHash} (order ${order.id})`,
+                            location: `Merkle leaf under agreementHash ${order.agreementHash} (order ${order.orderHash})`,
                         });
                     }
                 }

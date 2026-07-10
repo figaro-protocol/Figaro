@@ -10,12 +10,13 @@
 // browser. Always use process.env.NEXT_PUBLIC_... directly.
 
 // The frontend imports these from here (the allowlisted core-ABI home). The
-// other core ABIs (SELLER_REGISTRY_ABI, FIG_TOKEN_ABI) are equally canonical but
-// currently imported straight from `@figaro/core` by their few consumers — they
-// re-enter this barrel the moment a frontend surface needs them from here.
+// other core ABIs (FIG_TOKEN_ABI) are equally canonical but currently imported
+// straight from `@figaro/core` by their few consumers — they re-enter this
+// barrel the moment a frontend surface needs them from here.
 export {
     CORE_ABI,
     CLAUSE_REGISTRY_ABI,
+    SELLER_REGISTRY_ABI,
     ASSEMBLY_REGISTRY_ABI,
     // Generic ERC-20 standard — the core contracts are ERC-20-agnostic, so the
     // token interface lives here too. Not a Figaro contract.

@@ -71,14 +71,14 @@ export function buildAssemblyTemplate(args: {
     // naming the future kernel-order slot. The template carries no chain ids
     // and no party addresses — only the clauses (the structural ones among
     // them), keyed by these local labels.
-    const idToLocal = new Map(orders.map((o, i) => [o.id, `order-${i}`]));
+    const idToLocal = new Map(orders.map((o, i) => [o.orderHash, `order-${i}`]));
     return {
         ...(name ? { name } : {}),
         ...(summary ? { summary } : {}),
         ...(description ? { description } : {}),
         agreements: orders.map((order, i) => {
             const clauses = {
-                ...(clausesByOrderId[order.id] ?? {}),
+                ...(clausesByOrderId[order.orderHash] ?? {}),
                 ...composeStructuralClauses(
                     structuralIds,
                     (order.parentOrderHashes ?? []).map((p) => idToLocal.get(p) ?? p),
@@ -91,7 +91,7 @@ export function buildAssemblyTemplate(args: {
             // entirely from v1 clauses hash identically to the pre-version form.
             const versions: Record<string, number> = {};
             for (const clauseId of Object.keys(clauses)) {
-                const v = clauseVersionsByOrderId?.[order.id]?.[clauseId]
+                const v = clauseVersionsByOrderId?.[order.orderHash]?.[clauseId]
                     ?? getClauseSpec(clauseId)?.version
                     ?? 1;
                 if (v !== 1) versions[clauseId] = v;

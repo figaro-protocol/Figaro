@@ -83,7 +83,7 @@ export function AgreementDrawer({
     // Auto-open Parties on each new order.
     useEffect(() => {
         if (order) setOpenSection("identity");
-    }, [order?.id]);
+    }, [order?.orderHash]);
 
     if (!order) {
         if (!embedded) return null;
@@ -105,7 +105,7 @@ export function AgreementDrawer({
         );
     }
 
-    const orderIndex = orders ? orders.findIndex((o) => o.id === order.id) : -1;
+    const orderIndex = orders ? orders.findIndex((o) => o.orderHash === order.orderHash) : -1;
     const orderNumber = orderIndex >= 0 ? orderIndex + 1 : 1;
     // Topology is first-class on the order (the topology clause's data), read
     // directly — never recovered from the agreement. Forking a live assembly
@@ -180,7 +180,7 @@ export function AgreementDrawer({
                     <p
                         className="text-sm font-semibold text-black mt-0.5 truncate"
                         data-testid="drawer-selected-order-id"
-                        title={order.id}
+                        title={order.orderHash}
                     >
                         Order {orderNumber}
                     </p>
@@ -214,15 +214,15 @@ export function AgreementDrawer({
                     className="flex flex-row gap-1 px-3 py-2 border-b border-neutral-200 overflow-x-auto"
                 >
                     {orders.map((node, index) => {
-                        const isActive = node.id === order.id;
+                        const isActive = node.orderHash === order.orderHash;
                         return (
                             <button
-                                key={node.id}
+                                key={node.orderHash}
                                 type="button"
-                                onClick={() => onSelectOrder(node.id)}
-                                data-testid={`drawer-node-tab-${node.id}`}
+                                onClick={() => onSelectOrder(node.orderHash)}
+                                data-testid={`drawer-node-tab-${node.orderHash}`}
                                 aria-pressed={isActive}
-                                title={node.id}
+                                title={node.orderHash}
                                 className={`shrink-0 rounded border px-3 py-1 text-xs ${
                                     isActive
                                         ? "border-black bg-black text-white"
@@ -368,7 +368,7 @@ function ClauseRegistryPanel({
         // Keyed by the FULL identity (name, version) — a clause is a clause;
         // two live versions surface as two co-equal rows.
         const eventByIdentity = new Map<string, RegisteredClauseEvent>();
-        for (const e of registeredClauses) if (e.clauseName) eventByIdentity.set(`${e.clauseName}#${e.version}`, e);
+        for (const e of registeredClauses) if (e.clauseId) eventByIdentity.set(`${e.clauseId}#${e.version}`, e);
 
         const groups = groupClausesByArticle()
             .map((g) => ({
@@ -410,7 +410,7 @@ function ClauseRegistryPanel({
                                     sections={(registryGroups ?? []).map((g) => ({
                                         article: g.article,
                                         items: g.entries.filter(
-                                            (c) => !(c.clauseName && clauseNestsUnder(c.clauseName)),
+                                            (c) => !(c.clauseId && clauseNestsUnder(c.clauseId)),
                                         ),
                                     }))}
                                     rootTestId="drawer-registry-list"
@@ -419,7 +419,7 @@ function ClauseRegistryPanel({
                                     headingClassName="text-sm font-medium text-ink-heading mb-2"
                                     sectionTestId={(article) => `drawer-registry-group-${article}`}
                                     renderClause={(clause, i) => (
-                                        <li key={`${clause.clauseIdHash}-${i}`}>
+                                        <li key={`${clause.idHash}-${i}`}>
                                             <ClauseControl
                                                 clause={clause}
                                                 registeredClauses={registeredClauses}
@@ -448,10 +448,10 @@ function ClauseControl({
     onToggleClause?: (clauseKey: string, next: boolean, version?: number) => void;
     onSetClauseField?: (clauseKey: string, field: string, value: unknown) => void;
 }) {
-    const clauseKey = clause.clauseName ?? clause.clauseIdHash;
+    const clauseKey = clause.clauseId ?? clause.idHash;
     const selected = selectedClauseValues ? clauseKey in selectedClauseValues : false;
     const values = selectedClauseValues?.[clauseKey] ?? {};
-    const spec = clause.clauseName ? getClauseSpec(clause.clauseName, clause.version) : undefined;
+    const spec = clause.clauseId ? getClauseSpec(clause.clauseId, clause.version) : undefined;
     return (
         <div>
             <label className="flex items-center gap-2 text-xs text-neutral-700">
@@ -466,7 +466,7 @@ function ClauseControl({
                     className={`text-xs text-neutral-800${spec?.description ? " cursor-help" : ""}`}
                     title={spec?.description}
                 >
-                    {spec?.title ?? clause.clauseName ?? `${clause.clauseIdHash.slice(0, 10)}…`}
+                    {spec?.title ?? clause.clauseId ?? `${clause.idHash.slice(0, 10)}…`}
                     {clause.version > 1 ? <span className="ml-1 font-mono text-[10px] text-ink-muted">v{clause.version}</span> : null}
                 </span>
             </label>
@@ -492,7 +492,7 @@ function ClauseControl({
                         })
                         .map((field) => {
                             const nested = (registeredClauses ?? []).filter(
-                                (c) => c.clauseName != null && clauseNestsUnder(c.clauseName) === field.name,
+                                (c) => c.clauseId != null && clauseNestsUnder(c.clauseId) === field.name,
                             );
                             return (
                                 <div key={field.name}>
@@ -505,9 +505,9 @@ function ClauseControl({
                                     />
                                     {nested.map((nc) => (
                                         <div
-                                            key={nc.clauseIdHash}
+                                            key={nc.idHash}
                                             className="mt-2 ml-3 border-l border-neutral-200 pl-3"
-                                            data-testid={`drawer-nested-${field.name}-${nc.clauseName ?? nc.clauseIdHash}`}
+                                            data-testid={`drawer-nested-${field.name}-${nc.clauseId ?? nc.idHash}`}
                                         >
                                             <ClauseControl
                                                 clause={nc}

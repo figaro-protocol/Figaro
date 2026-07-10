@@ -142,7 +142,7 @@ export function extractContract(
 
     return {
         title: "Bonded commitment",
-        orderHash: order.id,
+        orderHash: order.orderHash,
         processId: order.processId,
         agreementHash: order.agreementHash ?? "0x",
         buyer: order.buyer,

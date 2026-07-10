@@ -168,9 +168,9 @@ export function TopologyCanvas({
         const depthMap = deriveOrderDepths(orders, topology);
         const depthBuckets = new Map<number, string[]>();
         orders.forEach(o => {
-            const d = depthMap.get(o.id) ?? 0;
+            const d = depthMap.get(o.orderHash) ?? 0;
             const bucket = depthBuckets.get(d) ?? [];
-            bucket.push(o.id);
+            bucket.push(o.orderHash);
             depthBuckets.set(d, bucket);
         });
         const posMap = new Map<string, { x: number; y: number }>();
@@ -185,43 +185,43 @@ export function TopologyCanvas({
             });
         });
 
-        const knownOrderIds = new Set(orders.map((o) => o.id));
+        const knownOrderIds = new Set(orders.map((o) => o.orderHash));
 
         const newNodes: Node[] = orders.map((order, orderIndex) => {
             const isBuyer = walletAddress ? hexEqual(walletAddress, order.buyer) : false;
             const isSeller = walletAddress ? hexEqual(walletAddress, order.seller) : false;
 
-            const knownParents = (topology.get(order.id) ?? []).filter(
-                (pid) => pid !== order.id && knownOrderIds.has(pid),
+            const knownParents = (topology.get(order.orderHash) ?? []).filter(
+                (pid) => pid !== order.orderHash && knownOrderIds.has(pid),
             );
             const isRoot = knownParents.length === 0;
             // Add-parent picker options: every other order not already a
             // parent. Labelled "Order N" to match the drawer's node tabs.
             const candidateParents = onAddParent
                 ? orders
-                    .filter((o) => o.id !== order.id && !knownParents.includes(o.id))
-                    .map((o) => ({ id: o.id, label: `Order ${orders.findIndex((x) => x.id === o.id) + 1}` }))
+                    .filter((o) => o.orderHash !== order.orderHash && !knownParents.includes(o.orderHash))
+                    .map((o) => ({ id: o.orderHash, label: `Order ${orders.findIndex((x) => x.orderHash === o.orderHash) + 1}` }))
                 : undefined;
 
             return {
-                id: order.id,
+                id: order.orderHash,
                 type: "order",
-                position: posMap.get(order.id) ?? { x: 0, y: 0 },
-                data: { ...order, decimals, isBuyer, isSeller, orderNumber: orderIndex + 1, onDelete: onDeleteNode, isRoot, designerMode, designerClauseValues: clauseValuesByOrderId?.[order.id], onAddSubOrderClick: onAddSubOrder, onAddParentClick: onAddParent, candidateParents } satisfies OrderNodeData,
+                position: posMap.get(order.orderHash) ?? { x: 0, y: 0 },
+                data: { ...order, decimals, isBuyer, isSeller, orderNumber: orderIndex + 1, onDelete: onDeleteNode, isRoot, designerMode, designerClauseValues: clauseValuesByOrderId?.[order.orderHash], onAddSubOrderClick: onAddSubOrder, onAddParentClick: onAddParent, candidateParents } satisfies OrderNodeData,
             };
         });
 
         const newEdges: Edge[] = [];
         orders.forEach((order) => {
-            const parentOrderHashes = (topology.get(order.id) ?? []).filter(
-                (parentOrderId) => parentOrderId !== order.id && knownOrderIds.has(parentOrderId),
+            const parentOrderHashes = (topology.get(order.orderHash) ?? []).filter(
+                (parentOrderId) => parentOrderId !== order.orderHash && knownOrderIds.has(parentOrderId),
             );
 
             parentOrderHashes.forEach((parentOrderId) => {
                 newEdges.push({
-                    id: `${parentOrderId}-${order.id}`,
+                    id: `${parentOrderId}-${order.orderHash}`,
                     source: parentOrderId,
-                    target: order.id,
+                    target: order.orderHash,
                     animated: order.state === OrderState.Active,
                     markerEnd: { type: MarkerType.ArrowClosed, color: "#555" },
                     style: {

@@ -10,7 +10,8 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { fetchAgreement } from "@/lib/kernel/agreementFetch";
 import { getAllOrderCommitted, getStringArg } from "@/lib/kernel/indexer";
 import { restoreSignedProcessId } from "@/lib/kernel/signedCommitment";
-import { hexEqual, clauseIdHash } from "@/lib/shared/evm";
+import { computeClauseKey } from "@figaro/core";
+import { hexEqual } from "@/lib/shared/evm";
 import { buildSectionInclusionProof, getSectionDataBytes, type Commitment } from "@figaro/core";
 
 type SellerAttestationInput = {
@@ -115,7 +116,7 @@ export function useAttestationCoordinatorActions() {
         }
         // The clauseId here is a runtime value (the clause being attested), not a
         // hardcoded literal — find its section by matching the on-chain id.
-        const section = agreement.sections.find((s) => hexEqual(clauseIdHash(s.clause, s.version), clauseId));
+        const section = agreement.sections.find((s) => hexEqual(computeClauseKey(s.clause, s.version), clauseId));
         if (!section) {
             const message = `Clause ${clauseId.slice(0, 10)}… not committed in the signed agreement`;
             setError(message);

@@ -105,7 +105,7 @@ export async function buildAuditBundlePdfBlob(
         let attestations: readonly AttestationRecord[] = [];
         if (publicClient) {
             try {
-                const logs = await getAttestationsByOrder(publicClient, chainId, order.id);
+                const logs = await getAttestationsByOrder(publicClient, chainId, order.orderHash);
                 attestations = (logs as IndexedAttestationLog[])
                     .map(parseAttestationLog)
                     .filter((r): r is AttestationRecord => r !== null);

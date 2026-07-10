@@ -20,7 +20,9 @@ vi.mock('@/lib/kernel/eventCache', () => ({
 
 // Provide a non-null sellerRegistry so the event fetchers don't short-circuit.
 // The indexer reads it from core's CONTRACTS (core/ never imports mechanisms/).
-vi.mock('@/lib/kernel/contracts', () => ({
+// Everything else (SELLER_REGISTRY_ABI) passes through from the real barrel.
+vi.mock('@/lib/kernel/contracts', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@/lib/kernel/contracts')>()),
     CONTRACTS: {
         sellerRegistry: '0x1111111111111111111111111111111111111111',
     },

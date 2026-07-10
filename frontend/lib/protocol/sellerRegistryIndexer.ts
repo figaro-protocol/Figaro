@@ -14,20 +14,15 @@
  */
 
 import type { PublicClient } from "viem";
-import { parseAbiItem } from "viem";
+import { getAbiItem } from "viem";
 import { hexEqual } from "@/lib/shared/evm";
-import { CONTRACTS } from "@/lib/kernel/contracts";
+import { CONTRACTS, SELLER_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import { cachedGetLogsMulti, getStringArg, type IndexedLog } from "@/lib/kernel/indexer";
 
-const EV_SELLER_REGISTERED = parseAbiItem(
-    "event SellerRegistered(address indexed seller, string metadataURI)",
-);
-const EV_SELLER_PROFILE_UPDATED = parseAbiItem(
-    "event SellerProfileUpdated(address indexed seller, string metadataURI)",
-);
-const EV_SELLER_WITHDRAWN = parseAbiItem(
-    "event SellerWithdrawn(address indexed seller, uint256 deposit)",
-);
+// Event defs come from the canonical SDK ABI, like the clause/assembly readers.
+const EV_SELLER_REGISTERED = getAbiItem({ abi: SELLER_REGISTRY_ABI, name: "SellerRegistered" });
+const EV_SELLER_PROFILE_UPDATED = getAbiItem({ abi: SELLER_REGISTRY_ABI, name: "SellerProfileUpdated" });
+const EV_SELLER_WITHDRAWN = getAbiItem({ abi: SELLER_REGISTRY_ABI, name: "SellerWithdrawn" });
 
 export async function getAllSellerRegistered(client: PublicClient, chainId: number) {
     if (!CONTRACTS.sellerRegistry) return [];

@@ -34,7 +34,8 @@ import { getOrderEcdhKeypair } from "@/lib/handoff/ecdh";
 import { getAttestationsByOrder, parseAttestationLog } from "@/lib/composition/indexer";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { clauseIdHash, hexEqual } from "@/lib/shared/evm";
+import { computeClauseKey } from "@figaro/core";
+import { hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { InteractionSurfaceProps } from "@/components/core/interactionSurfaces";
 
@@ -161,7 +162,7 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
             const spec = getClauseSpec(clauseId);
             const anchorArgs = {
                 orderHash: orderHash as `0x${string}`,
-                clauseId: clauseIdHash(clauseId, spec?.version ?? 1),
+                clauseId: computeClauseKey(clauseId, spec?.version ?? 1),
                 stage: 0,
                 content: addressDetailBlobHash(blobB64),
                 failureMessage: "Anchoring the address detail failed",

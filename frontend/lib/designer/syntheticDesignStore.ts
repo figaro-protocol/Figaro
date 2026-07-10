@@ -24,7 +24,7 @@ const DRAFT_INDEX_KEY = "figaro:designer:drafts";
 // ── Serialization (bigint round-trip) ───────────────────────────────────────
 
 interface SerializedOrder {
-    id: string;
+    orderHash: string;
     processId: string;
     buyer: string;
     seller: string;

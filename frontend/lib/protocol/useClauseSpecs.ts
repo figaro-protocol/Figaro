@@ -43,8 +43,8 @@ export function useClauseSpecs(): ClauseSpecsState {
     useEffect(() => {
         if (!events) return;
         let cancelled = false;
-        const pending = events.filter((e) => e.contentURI && e.clauseName);
-        Promise.allSettled(pending.map((e) => loadClauseSpec(e.clauseName, e.version, e.contentURI, e.contentHash))).then((results) => {
+        const pending = events.filter((e) => e.contentURI && e.clauseId);
+        Promise.allSettled(pending.map((e) => loadClauseSpec(e.clauseId, e.version, e.contentURI, e.contentHash))).then((results) => {
             if (cancelled) return;
             setErrors(results.flatMap((r) => (r.status === "rejected" ? [String(r.reason)] : [])));
             setVersion((v) => v + 1);
@@ -56,7 +56,7 @@ export function useClauseSpecs(): ClauseSpecsState {
 
     return useMemo<ClauseSpecsState>(() => {
         const total = events?.length ?? null;
-        const loadedCount = (events ?? []).filter((e) => getClauseSpec(e.clauseName) !== undefined).length;
+        const loadedCount = (events ?? []).filter((e) => getClauseSpec(e.clauseId) !== undefined).length;
         const loaded = !readFailed && total !== null && loadedCount === total;
         return {
             // A FAILED registry read is never "loaded" — total=0 from an error

@@ -23,7 +23,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { CapabilityActionDescriptor, CapabilityExecutionInput, CapabilityModel } from "@/lib/semantic/models";
 import { executeTransactionCapabilityAction } from "@/lib/semantic/executeTransactionCapability";
 import { type Hex } from "viem";
-import { clauseIdHash } from "@/lib/shared/evm";
+import { computeClauseKey } from "@figaro/core";
 
 function collectRuntimeCapabilities(capabilities: CapabilityModel[]): CapabilityModel[] {
     const seen = new Set<string>();
@@ -119,7 +119,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
             orderCount: processOrders.length,
             hasActive: processOrders.some((order) => order.state === OrderState.Active),
             createdAt: 0,
-            orders: processOrders.map((order) => ({ id: order.id, state: order.state })),
+            orders: processOrders.map((order) => ({ id: order.orderHash, state: order.state })),
         }
         : null;
     const effectiveSummary = selectedSummary ?? fallbackSummary;
@@ -270,7 +270,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                     }
                     const args = {
                         orderHash: action.orderHash as Hex,
-                        clauseId: clauseIdHash(action.clauseId, spec.version),
+                        clauseId: computeClauseKey(action.clauseId, spec.version),
                         stage: action.stage,
                         content,
                         failureMessage: `${action.clauseId} ${action.eventCode ?? `stage-${action.stage}`} attestation failed`,
@@ -289,7 +289,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                     // capability (with its form) carries the choice instead.
                     let lastTx = txHash;
                     if (isLadder && clauseHandoffStages(action.clauseId).includes(action.eventCode!)) {
-                        const order = processOrders.find((o) => o.id.toString() === action.orderHash);
+                        const order = processOrders.find((o) => o.orderHash.toString() === action.orderHash);
                         const agreement = order?.agreementHash ? processAgreements.get(order.agreementHash) : undefined;
                         for (const section of agreement?.sections ?? []) {
                             const witnessSpec = getClauseSpec(section.clause, section.version);
@@ -307,7 +307,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                                 await waitForTransactionConfirmation(lastTx as Hex | undefined);
                                 lastTx = await submit({
                                     orderHash: action.orderHash as Hex,
-                                    clauseId: clauseIdHash(section.clause, witnessSpec.version),
+                                    clauseId: computeClauseKey(section.clause, witnessSpec.version),
                                     stage: witness.stage,
                                     content: encodeContentFromSpec(witnessSpec, derived, { stage: witness.stage }),
                                     failureMessage: `${section.clause} stage-${witness.stage} paired witness failed`,

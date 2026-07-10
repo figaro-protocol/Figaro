@@ -18,18 +18,19 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { clauseIdHash } from "@/lib/shared/evm";
+import { computeClauseKey } from "@figaro/core";
 import { usePublicClient } from "wagmi";
 import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import { publicClient } from "@/lib/shared/wagmi";
 
 export interface RegisteredClauseEvent {
-    /** keccak256 of the human-readable clauseId string — the on-chain key the
-     *  Attestation log and the validator binding use. */
-    clauseIdHash: `0x${string}`;
-    /** The human-readable clauseId, read straight from the event (e.g.
-     *  "figaro-merchant-process"). */
-    clauseName: string;
+    /** `keccak256(abi.encode(clauseId, version))` — the on-chain key the
+     *  Attestation log and the withdraw fold use. SDK vocabulary
+     *  (`RegisteredClause.idHash`). */
+    idHash: `0x${string}`;
+    /** The bare human-readable clause name, read straight from the event (e.g.
+     *  "figaro-merchant-process"). SDK vocabulary (`RegisteredClause.clauseId`). */
+    clauseId: string;
     version: number;
     /** keccak256 of the canonical spec JSON — integrity digest. */
     contentHash: `0x${string}`;
@@ -64,11 +65,11 @@ function mapClauseRegisteredLog(log: ClauseRegisteredLog, withdrawn: Set<string>
         contentURI: string;
         registrar: `0x${string}`;
     }>;
-    const clauseName = args.clauseId ?? "";
-    const idHash = clauseIdHash(clauseName, Number(args.version ?? 0));
+    const clauseId = args.clauseId ?? "";
+    const idHash = computeClauseKey(clauseId, Number(args.version ?? 0));
     return {
-        clauseIdHash: idHash,
-        clauseName,
+        idHash,
+        clauseId,
         version: Number(args.version ?? 0),
         contentHash: (args.contentHash ?? "0x") as `0x${string}`,
         contentURI: args.contentURI ?? "",

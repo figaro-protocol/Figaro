@@ -14,9 +14,9 @@
  *  (`parentOrderHashes` — the canvas is the origin of the topology clause's
  *  data, pre-commit), so draft topology never touches an agreement. */
 export function draftOrderTopology(
-    orders: readonly { id: string; parentOrderHashes?: string[] }[],
+    orders: readonly { orderHash: string; parentOrderHashes?: string[] }[],
 ): Map<string, string[]> {
-    return new Map(orders.map((o) => [o.id, o.parentOrderHashes ?? []]));
+    return new Map(orders.map((o) => [o.orderHash, o.parentOrderHashes ?? []]));
 }
 
 /**
@@ -54,11 +54,11 @@ export function topologicalOrder(
 
 /** Depth per order id — root = 0, child = max(parent depths) + 1. */
 export function deriveOrderDepths(
-    orders: readonly { id: string }[],
+    orders: readonly { orderHash: string }[],
     topology: Map<string, string[]>,
 ): Map<string, number> {
     const order = topologicalOrder(
-        orders.map((o) => o.id),
+        orders.map((o) => o.orderHash),
         (id) => topology.get(id) ?? [],
         "break",
     );

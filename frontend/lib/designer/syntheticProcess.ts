@@ -107,7 +107,7 @@ export function buildSyntheticOrder(params: {
     // (writeJson swallows the throw, so the draft silently never persists).
     const { sellerBond, buyerBond } = calculateBonds(params.cumulativeValue, params.payment);
     const order: Order = {
-        id: params.orderId,
+        orderHash: params.orderId,
         processId: params.processId,
         buyer: params.buyer,
         seller: params.seller,
@@ -180,7 +180,7 @@ export function createSyntheticSubOrder(
         cumulativeValue: priorPayments + payment,
         salt: BigInt(orderIndex + 1),
         clauseFields: { ...defaultNodeClauseFields(), ...clauseFieldOverrides },
-        parentOrderHashes: [parent.id],
+        parentOrderHashes: [parent.orderHash],
     });
 }
 
@@ -208,7 +208,7 @@ export function mergeSyntheticParent(
     newParentId: string,
     allOrders: Order[],
 ): MergeResult {
-    if (newParentId === child.id) return { ok: false, reason: "self-loop" };
+    if (newParentId === child.orderHash) return { ok: false, reason: "self-loop" };
 
     const existingParents = child.parentOrderHashes ?? [];
 
@@ -220,18 +220,18 @@ export function mergeSyntheticParent(
     // making newParentId a parent of child would create a cycle.
     const topology = draftOrderTopology(allOrders);
     const visited = new Set<string>();
-    const stack = [child.id];
+    const stack = [child.orderHash];
     while (stack.length > 0) {
         const current = stack.pop()!;
         if (visited.has(current)) continue;
         visited.add(current);
         for (const order of allOrders) {
-            const parents = topology.get(order.id) ?? [];
+            const parents = topology.get(order.orderHash) ?? [];
             if (parents.includes(current)) {
-                if (order.id === newParentId) {
+                if (order.orderHash === newParentId) {
                     return { ok: false, reason: "would-create-cycle" };
                 }
-                stack.push(order.id);
+                stack.push(order.orderHash);
             }
         }
     }
@@ -275,10 +275,10 @@ export function collectDescendants(rootId: string, orders: Order[]): Set<string>
         const next: string[] = [];
         for (const id of frontier) {
             for (const order of orders) {
-                const parents = topology.get(order.id) ?? [];
-                if (parents.includes(id) && !collected.has(order.id)) {
-                    collected.add(order.id);
-                    next.push(order.id);
+                const parents = topology.get(order.orderHash) ?? [];
+                if (parents.includes(id) && !collected.has(order.orderHash)) {
+                    collected.add(order.orderHash);
+                    next.push(order.orderHash);
                 }
             }
         }

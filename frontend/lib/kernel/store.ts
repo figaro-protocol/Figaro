@@ -8,9 +8,12 @@ export { OrderState };
 // Domain types (exported for use in hooks, components, tests)
 // ---------------------------------------------------------------------------
 
+// The UI projection of the SDK `Order` (@figaro/core): same field names,
+// deliberately looser types (plain strings; optionals for designer drafts)
+// plus UI-derived fields (bonds, topology edges, resolvedAt).
 export interface Order {
     /** bytes32 commitment hash (content-addressed from EIP-712 struct). */
-    id: string;
+    orderHash: string;
     processId: string; // bytes32 from contract
     buyer: string;
     seller: string;

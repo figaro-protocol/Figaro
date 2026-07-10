@@ -17,7 +17,7 @@
 import { parseClauseSpec, type ClauseSpec, type FieldSpec, type EnumFieldSpec, type SpecParseError } from "@figaro/core/clauses";
 import { canonicalContentHash } from "@/lib/shared/canonicalJson";
 import { parseBlockBinding, type ClauseBlockBinding } from "@/lib/shared/clauseBlockBinding";
-import { clauseIdHash } from "@/lib/shared/evm";
+import { computeClauseKey } from "@figaro/core";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 
@@ -80,7 +80,7 @@ export function setClauseSpecFetcher(fetcher: ClauseSpecFetcher): void {
  *  co-equal cache entries — a clause is a clause. */
 function cacheSpec(spec: ClauseSpecWithBlock): void {
     SPEC_CACHE.set(specKey(spec.clauseId, spec.version), spec);
-    HASH_TO_ID.set(clauseIdHash(spec.clauseId, spec.version).toLowerCase(), { clauseId: spec.clauseId, version: spec.version });
+    HASH_TO_ID.set(computeClauseKey(spec.clauseId, spec.version).toLowerCase(), { clauseId: spec.clauseId, version: spec.version });
     const nestsUnder = spec.block?.nestsUnder;
     if (typeof nestsUnder === "string" && nestsUnder.length > 0) NESTS_UNDER.set(specKey(spec.clauseId, spec.version), nestsUnder);
 }
@@ -168,7 +168,7 @@ export function getClauseSpec(clauseId: string, version?: number): ClauseSpecWit
 }
 
 /** Resolve an on-chain clauseId HASH (keccak of name+version) back to its readable
- *  registry id, via the warmed cache. The inverse of `clauseIdHash`. Undefined
+ *  registry id, via the warmed cache. The inverse of `computeClauseKey`. Undefined
  *  until the spec is loaded. Attestation events carry the HASH, while the spec
  *  reads (`getClauseSpec` / `clauseIsProcessLog`) key on the readable id — callers
  *  holding a hash resolve it here first. */

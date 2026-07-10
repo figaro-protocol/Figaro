@@ -56,7 +56,7 @@ describe("syntheticDesignStore round-trip", () => {
         expect(loaded!.orders).toHaveLength(2);
         expect(loaded!.orders[0].sellerBond).toBe(root.order.sellerBond);
         expect(loaded!.orders[1].cumulativeValue).toBe(sub.order.cumulativeValue);
-        expect(loaded!.orders[1].parentOrderHashes).toEqual([root.order.id]);
+        expect(loaded!.orders[1].parentOrderHashes).toEqual([root.order.orderHash]);
     });
 
     it("every field the canvas puts on an Order is JSON-serializable after bigint conversion", () => {

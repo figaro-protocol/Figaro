@@ -332,7 +332,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 setTimeout(() => setMergeNotice(null), 5000);
                 return;
             }
-            const parent = orders.find((o) => o.id === parentOrderId);
+            const parent = orders.find((o) => o.orderHash === parentOrderId);
             if (!parent) return;
             const sub = createSyntheticSubOrder(session, parent, orders);
             setOrders((prev) => [...prev, sub.order]);
@@ -343,7 +343,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     const handleDeleteNode = useCallback(
         (orderId: string) => {
             setOrders((prev) => {
-                const target = prev.find((o) => o.id === orderId);
+                const target = prev.find((o) => o.orderHash === orderId);
                 if (!target) return prev;
                 if (isRootOrder(orderId, prev)) {
                     setMergeNotice("Root orders can't be deleted from the canvas. Use \"Reset\" to clear the design.");
@@ -362,7 +362,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 if (selectedOrderId && toRemove.has(selectedOrderId)) {
                     setSelectedOrderId(null);
                 }
-                return prev.filter((o) => !toRemove.has(o.id));
+                return prev.filter((o) => !toRemove.has(o.orderHash));
             });
         },
         [selectedOrderId],
@@ -370,7 +370,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
 
     const handleAddParent = useCallback((childOrderId: string, parentOrderId: string) => {
         setOrders((prev) => {
-            const child = prev.find((o) => o.id === childOrderId);
+            const child = prev.find((o) => o.orderHash === childOrderId);
             if (!child) return prev;
             const result = mergeSyntheticParent(child, parentOrderId, prev);
             if (!result.ok) {
@@ -384,7 +384,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 return prev;
             }
             setMergeNotice(null);
-            return prev.map((o) => (o.id === childOrderId ? result.child : o));
+            return prev.map((o) => (o.orderHash === childOrderId ? result.child : o));
         });
     }, []);
 
@@ -690,7 +690,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                     </div>
                 </div>
                 <AgreementDrawer
-                    order={selectedOrderId ? (orders.find((o) => o.id === selectedOrderId) ?? null) : null}
+                    order={selectedOrderId ? (orders.find((o) => o.orderHash === selectedOrderId) ?? null) : null}
                     orders={orders}
                     onSelectOrder={setSelectedOrderId}
                     onClose={() => setSelectedOrderId(null)}

@@ -86,8 +86,8 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
 
     return (
         <div
-            data-testid={`order-node-${data.id}`}
-            data-order-id={data.id.toString()}
+            data-testid={`order-node-${data.orderHash}`}
+            data-order-id={data.orderHash.toString()}
             data-order-state={STATE_LABELS[data.state].toLowerCase()}
             title={data.designerMode ? "Click to edit this order's clauses" : undefined}
             className={nodeClassName}
@@ -99,10 +99,10 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
             />
             <div className="flex items-center justify-between mb-1.5">
                 <span className="flex items-center gap-1.5">
-                    <span className={`${data.designerMode ? "text-[10px]" : "text-xs"} font-semibold text-black`} title={data.id}>
+                    <span className={`${data.designerMode ? "text-[10px]" : "text-xs"} font-semibold text-black`} title={data.orderHash}>
                         {data.designerMode
                             ? `Order ${data.orderNumber}`
-                            : `Order #${data.id.toString().slice(0, 8)}`}
+                            : `Order #${data.orderHash.toString().slice(0, 8)}`}
                     </span>
                     {!data.designerMode && (data.isBuyer || data.isSeller) && (
                         <span
@@ -126,10 +126,10 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                             type="button"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                data.onAddSubOrderClick?.(data.id);
+                                data.onAddSubOrderClick?.(data.orderHash);
                             }}
-                            data-testid={`btn-add-suborder-${data.id}`}
-                            aria-label={`Add a sub-order under order ${data.id.slice(0, 8)}`}
+                            data-testid={`btn-add-suborder-${data.orderHash}`}
+                            aria-label={`Add a sub-order under order ${data.orderHash.slice(0, 8)}`}
                             title="Add a sub-order (child) of this order"
                             className="nodrag w-3.5 h-3.5 rounded-full border border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 hover:border-neutral-500 text-[10px] leading-none flex items-center justify-center"
                         >
@@ -141,10 +141,10 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                             type="button"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                data.onDelete?.(data.id);
+                                data.onDelete?.(data.orderHash);
                             }}
-                            data-testid={`order-node-${data.id}-delete`}
-                            aria-label={`Delete order ${data.id.slice(0, 8)}`}
+                            data-testid={`order-node-${data.orderHash}-delete`}
+                            aria-label={`Delete order ${data.orderHash.slice(0, 8)}`}
                             title="Delete this order (and any descendants)"
                             className="nodrag w-3.5 h-3.5 rounded-full border border-red-300 bg-white text-red-600 hover:bg-red-50 hover:border-red-500 text-[10px] leading-none flex items-center justify-center"
                         >
@@ -180,7 +180,7 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                 {/* Designer mode: the node's composed terms, derived per clause —
                     so "what this order does" is legible without opening the drawer. */}
                 {data.designerMode && (designerChips.length > 0 ? (
-                    <div className="flex flex-wrap gap-1 pt-1 border-t border-neutral-100" data-testid={`node-clauses-${data.id}`}>
+                    <div className="flex flex-wrap gap-1 pt-1 border-t border-neutral-100" data-testid={`node-clauses-${data.orderHash}`}>
                         {designerChips.map((c) => (
                             <span
                                 key={c.clauseId}
@@ -192,7 +192,7 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                         ))}
                     </div>
                 ) : (
-                    <p className="pt-1 text-[10px] italic text-neutral-400" data-testid={`node-clauses-empty-${data.id}`}>
+                    <p className="pt-1 text-[10px] italic text-neutral-400" data-testid={`node-clauses-empty-${data.orderHash}`}>
                         No terms yet — click to compose
                     </p>
                 ))}
@@ -201,15 +201,15 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
             {data.designerMode && data.onAddParentClick && data.candidateParents && data.candidateParents.length > 0 && (
                 <div className="nodrag mt-1.5 pt-1.5 border-t border-neutral-100">
                     <select
-                        data-testid={`select-add-parent-${data.id}`}
-                        aria-label={`Add a parent to order ${data.id.slice(0, 8)}`}
+                        data-testid={`select-add-parent-${data.orderHash}`}
+                        aria-label={`Add a parent to order ${data.orderHash.slice(0, 8)}`}
                         title="Add an existing order as a parent (creates a join)"
                         defaultValue=""
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => {
                             const parentId = e.target.value;
                             e.currentTarget.value = "";
-                            if (parentId) data.onAddParentClick?.(data.id, parentId);
+                            if (parentId) data.onAddParentClick?.(data.orderHash, parentId);
                         }}
                         className="nodrag w-full rounded border border-neutral-300 bg-white text-[10px] text-neutral-600 px-1 py-0.5"
                     >

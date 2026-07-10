@@ -379,7 +379,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     );
 
     const selectedOrder = selectedOrderId
-        ? (orders.find((o) => o.id === selectedOrderId) ?? null)
+        ? (orders.find((o) => o.orderHash === selectedOrderId) ?? null)
         : null;
 
     return (

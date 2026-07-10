@@ -63,21 +63,21 @@ export function ClausesList() {
         <ul className="space-y-3" data-testid="clauses-list">
             {data.map((clause) => (
                 <li
-                    key={`${clause.clauseIdHash}-${clause.blockNumber.toString()}`}
+                    key={`${clause.idHash}-${clause.blockNumber.toString()}`}
                     className="rounded-lg border border-default bg-paper px-5 py-3 flex items-start gap-4"
-                    data-testid={`clause-row-${clause.clauseIdHash}`}
+                    data-testid={`clause-row-${clause.idHash}`}
                 >
                     <div className="flex-1 min-w-0">
                         <p className="text-base font-semibold text-ink-heading truncate">
-                            {clause.clauseName ?? <span className="font-mono">{truncateHex(clause.clauseIdHash, { head: 10, tail: 6 })}</span>}
+                            {clause.clauseId ?? <span className="font-mono">{truncateHex(clause.idHash, { head: 10, tail: 6 })}</span>}
                         </p>
-                        {clause.clauseName && (
+                        {clause.clauseId && (
                             <p
                                 className="font-mono text-[11px] text-ink-muted mt-0.5"
-                                title={clause.clauseIdHash}
-                                data-testid={`clause-hash-${clause.clauseIdHash}`}
+                                title={clause.idHash}
+                                data-testid={`clause-hash-${clause.idHash}`}
                             >
-                                {truncateHex(clause.clauseIdHash, { head: 10, tail: 6 })}
+                                {truncateHex(clause.idHash, { head: 10, tail: 6 })}
                             </p>
                         )}
                         <p className="text-[11px] text-ink-muted mt-1">

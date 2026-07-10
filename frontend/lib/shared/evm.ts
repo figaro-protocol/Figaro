@@ -1,8 +1,9 @@
-import { keccak256, encodeAbiParameters, isAddress, getAddress, type Address, type Hex } from "viem";
+import { isAddress, getAddress, type Address, type Hex } from "viem";
 
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
 export const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex;
-export const ZERO_PROCESS_ID = ZERO_BYTES32;
+// The kernel's root-commitment sentinel — single home is the SDK.
+export { ZERO_PROCESS_ID } from "@figaro/core";
 
 /**
  * Case-insensitive equality for any 0x-hex value: addresses (which
@@ -99,18 +100,6 @@ export function hexToBytes(hex: string): Uint8Array {
         bytes[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
     }
     return bytes;
-}
-
-/**
- * Canonical clause identity: keccak256(abi.encode(name, version)) — the on-chain
- * bytes32 key shared by ClauseRegistry, every IClauseValidator, the SDK, and the
- * Rust prover. The clause name carries no version suffix; the version is a
- * distinct field, so a new version is a distinct key under the same name.
- */
-export function clauseIdHash(name: string, version: number): Hex {
-    return keccak256(
-        encodeAbiParameters([{ type: "string" }, { type: "uint64" }], [name, BigInt(version)]),
-    );
 }
 
 /**

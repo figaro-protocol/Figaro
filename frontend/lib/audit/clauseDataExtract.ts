@@ -34,7 +34,7 @@ export function extractClauseData(
     );
     return {
         title: "Clause data",
-        orderHash: order.id,
+        orderHash: order.orderHash,
         processId: order.processId,
         agreementHash: order.agreementHash ?? "0x",
         buyer: order.buyer,

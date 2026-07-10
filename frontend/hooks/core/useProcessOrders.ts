@@ -56,7 +56,7 @@ function orderFromCommittedArgs(args: OrderCommittedArgs, blockNumber?: number):
     const cumulativeValue = BigInt(args.cumulativeValue ?? 0);
     const bonds = calculateBonds(cumulativeValue, payment);
     return {
-        id: args.orderHash as string,
+        orderHash: args.orderHash as string,
         processId: args.processId as string,
         buyer: args.buyer ?? "",
         seller: args.seller ?? "",
@@ -83,13 +83,13 @@ function applyLogToOrders(
     if (eventName === "OrderCommitted") {
         const order = orderFromCommittedArgs(args as OrderCommittedArgs, blockNumber);
         if (processIdFilter && order.processId !== processIdFilter) return prev;
-        if (prev.some((o) => o.id === order.id)) return prev; // idempotent
+        if (prev.some((o) => o.orderHash === order.orderHash)) return prev; // idempotent
         return [...prev, order];
     }
 
     const orderHash = args.orderHash as string;
     return prev.map((o) => {
-        if (o.id !== orderHash) return o;
+        if (o.orderHash !== orderHash) return o;
         if (eventName === "OrderResolved") return { ...o, state: OrderState.Resolved };
         return o;
     });

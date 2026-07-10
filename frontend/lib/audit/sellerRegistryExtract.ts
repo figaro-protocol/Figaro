@@ -62,7 +62,7 @@ export function extractSellerRegistry(
 ): SellerRegistryDocument {
     const base = {
         title: "Seller registry record",
-        orderHash: order.id,
+        orderHash: order.orderHash,
         processId: order.processId,
         agreementHash: order.agreementHash ?? "0x",
         buyer: order.buyer,

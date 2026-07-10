@@ -49,7 +49,7 @@ function toOrder(log: IndexedOrderLog): Order {
     // must not ride along as an extra bigint field on the Order.
     const { sellerBond, buyerBond } = calculateBonds(cumulativeValue, payment);
     return {
-        id: getStringArg(log, "orderHash"),
+        orderHash: getStringArg(log, "orderHash"),
         processId: getStringArg(log, "processId"),
         buyer: getStringArg(log, "buyer"),
         seller: getStringArg(log, "seller"),
@@ -82,13 +82,13 @@ function summarise(orders: Order[]): ProcessSummary[] {
     }
     const summaries: ProcessSummary[] = [];
     map.forEach((ords, processId) => {
-        const sorted = ords.slice().sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+        const sorted = ords.slice().sort((a, b) => (a.orderHash < b.orderHash ? -1 : a.orderHash > b.orderHash ? 1 : 0));
         summaries.push({
             processId,
             orderCount: ords.length,
             hasActive: ords.some((o) => o.state === OrderState.Active),
             createdAt: Math.min(...ords.map((o) => o.blockNumber ?? Number.MAX_SAFE_INTEGER)),
-            orders: sorted.map((o) => ({ id: o.id, state: o.state })),
+            orders: sorted.map((o) => ({ id: o.orderHash, state: o.state })),
         });
     });
     return summaries.sort((a, b) => b.createdAt - a.createdAt);
@@ -99,9 +99,9 @@ function insertOrderIntoSummaries(prev: ProcessSummary[], order: Order): Process
     const next = prev.map((summary) => {
         if (summary.processId !== order.processId) return summary;
         found = true;
-        if (summary.orders.some((stub) => stub.id === order.id)) return summary;
+        if (summary.orders.some((stub) => stub.id === order.orderHash)) return summary;
 
-        const orders = [...summary.orders, { id: order.id, state: order.state }]
+        const orders = [...summary.orders, { id: order.orderHash, state: order.state }]
             .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
         return {
@@ -119,7 +119,7 @@ function insertOrderIntoSummaries(prev: ProcessSummary[], order: Order): Process
             orderCount: 1,
             hasActive: order.state === OrderState.Active,
             createdAt: order.blockNumber ?? Date.now(),
-            orders: [{ id: order.id, state: order.state }],
+            orders: [{ id: order.orderHash, state: order.state }],
         });
     }
 
@@ -154,8 +154,8 @@ export function useWalletProcessIds(address: string | undefined): ProcessSummary
                 const seen = new Set<string>();
                 const combined: Order[] = [];
                 for (const o of [...buyerOrders, ...sellerOrders]) {
-                    if (!seen.has(o.id)) {
-                        seen.add(o.id);
+                    if (!seen.has(o.orderHash)) {
+                        seen.add(o.orderHash);
                         combined.push(o);
                     }
                 }
@@ -178,7 +178,7 @@ export function useWalletProcessIds(address: string | undefined): ProcessSummary
                 }
 
                 const withState = combined.map((o) => {
-                    const s = stateMap.get(o.id);
+                    const s = stateMap.get(o.orderHash);
                     return s !== undefined ? { ...o, state: s } : o;
                 });
 

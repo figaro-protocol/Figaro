@@ -15,7 +15,7 @@ const ALL = [
     "figaro-geolocation", "figaro-cargo", "figaro-freight-class", "figaro-handoff",
 ];
 
-const mkOrder = (o: Partial<Order> & Pick<Order, "id" | "seller">): Order => ({
+const mkOrder = (o: Partial<Order> & Pick<Order, "orderHash" | "seller">): Order => ({
     processId: "0xPROC", buyer: "0xBUYER", currency: "0xToKeN",
     cumulativeValue: 0n, payment: 0n, state: OrderState.Active,
     sellerBond: 0n, buyerBond: 0n, salt: 0n, deadline: 0n, ...o,
@@ -33,8 +33,8 @@ describe("projectDocuments — generic engine over declared templates", () => {
     it("commercial-invoice: one per SELLER, applies where a commerce leaf exists", async () => {
         await primeClauseSpecs(ALL);
         const orders = [
-            mkOrder({ id: "0xA", seller: "0xMERCHANT", payment: 100n, agreementHash: "0xhA" }),
-            mkOrder({ id: "0xB", seller: "0xCOURIER", payment: 40n, agreementHash: "0xhB" }),
+            mkOrder({ orderHash: "0xA", seller: "0xMERCHANT", payment: 100n, agreementHash: "0xhA" }),
+            mkOrder({ orderHash: "0xB", seller: "0xCOURIER", payment: 40n, agreementHash: "0xhB" }),
         ];
         const agreements = new Map<string, Agreement>([
             ["0xhA", agreement([commerce([{ name: "Margherita", quantity: 1 }])])],
@@ -63,7 +63,7 @@ describe("projectDocuments — generic engine over declared templates", () => {
         ]);
         const docs = projectDocuments(
             DOCUMENT_TEMPLATES,
-            [mkOrder({ id: "0xC", seller: "0xCOURIER", payment: 40n, agreementHash: "0xh" })],
+            [mkOrder({ orderHash: "0xC", seller: "0xCOURIER", payment: 40n, agreementHash: "0xh" })],
             new Map([["0xh", carriage]]),
         );
         const bols = doc(docs, "bill-of-lading");
@@ -85,7 +85,7 @@ describe("projectDocuments — generic engine over declared templates", () => {
         await primeClauseSpecs(ALL);
         const docs = projectDocuments(
             DOCUMENT_TEMPLATES,
-            [mkOrder({ id: "0xA", seller: "0xS", payment: 10n, agreementHash: "0xh" })],
+            [mkOrder({ orderHash: "0xA", seller: "0xS", payment: 10n, agreementHash: "0xh" })],
             new Map([["0xh", agreement([commerce([{ name: "Item", quantity: 1 }])])]]),
         );
         expect(doc(docs, "bill-of-lading")).toHaveLength(0);
@@ -102,7 +102,7 @@ describe("projectDocuments — generic engine over declared templates", () => {
         };
         const docs = projectDocuments(
             [packingList],
-            [mkOrder({ id: "0xA", seller: "0xS", agreementHash: "0xh" })],
+            [mkOrder({ orderHash: "0xA", seller: "0xS", agreementHash: "0xh" })],
             new Map([["0xh", agreement([commerce([{ name: "Widget", quantity: 2 }])])]]),
         );
         expect(docs).toHaveLength(1);
@@ -116,7 +116,7 @@ describe("projectDocuments — generic engine over declared templates", () => {
 import { projectFinancialStatements, projectAllFinancialStatements } from "@/lib/audit/documentProjection";
 import { calculateBonds } from "@figaro/core";
 
-const withBonds = (o: Partial<Order> & Pick<Order, "id" | "seller">): Order => {
+const withBonds = (o: Partial<Order> & Pick<Order, "orderHash" | "seller">): Order => {
     const base = mkOrder({ payment: 100n, cumulativeValue: 100n, ...o });
     const { buyerBond, sellerBond } = calculateBonds(base.cumulativeValue, base.payment);
     return { ...base, buyerBond, sellerBond };
@@ -125,7 +125,7 @@ const withBonds = (o: Partial<Order> & Pick<Order, "id" | "seller">): Order => {
 describe("projectFinancialStatements — the 3 statements AS a document (no duplicate invoice)", () => {
     it("emits balance sheet + income statement sections and a cash-flow table; identity holds", () => {
         const doc = projectFinancialStatements(
-            [withBonds({ id: "0xA", seller: "0xS", payment: 100n, cumulativeValue: 100n })],
+            [withBonds({ orderHash: "0xA", seller: "0xS", payment: 100n, cumulativeValue: 100n })],
             "process", "0xPROC",
         );
         const c = "0xtoken";
@@ -143,8 +143,8 @@ describe("projectFinancialStatements — the 3 statements AS a document (no dupl
 
     it("projectAllFinancialStatements: one per seller + one consolidated", () => {
         const orders = [
-            withBonds({ id: "0xA", seller: "0xS1", payment: 100n, cumulativeValue: 100n }),
-            withBonds({ id: "0xB", seller: "0xS2", payment: 40n, cumulativeValue: 140n }),
+            withBonds({ orderHash: "0xA", seller: "0xS1", payment: 100n, cumulativeValue: 100n }),
+            withBonds({ orderHash: "0xB", seller: "0xS2", payment: 40n, cumulativeValue: 140n }),
         ];
         const docs = projectAllFinancialStatements(orders, "0xPROC");
         expect(docs.filter((d) => d.genre === "financial-statements-seller")).toHaveLength(2);

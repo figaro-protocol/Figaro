@@ -93,7 +93,7 @@ import {
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
-import { clauseIdHash } from '@/lib/shared/evm';
+import { computeClauseKey } from '@figaro/core';
 import { ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI } from '@figaro/core';
 import { calculateBonds, computeSectionLeaf, type AgreementSection } from '@figaro/core';
 import type { Page } from '@playwright/test';
@@ -405,7 +405,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         // (clauseId, stage) is the on-chain discriminator: the courier LADDER's
         // arrived-pickup is ALSO ordinal 1, so the witness filter must pin the
         // proximity clause's id hash, not the stage alone.
-        const proximityIdHash = clauseIdHash(PROXIMITY_CLAUSE, 1).toLowerCase();
+        const proximityIdHash = computeClauseKey(PROXIMITY_CLAUSE, 1).toLowerCase();
         const proximityWitnessEvents = async () => (await publicClient.getContractEvents({
             address: config.attestationCoordinator as Hex, abi: ATTESTATION_COORDINATOR_ABI,
             eventName: 'Attestation', args: { processId }, fromBlock: 0n,

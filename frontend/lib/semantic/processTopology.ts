@@ -44,11 +44,11 @@ export function deriveOrderTopology(
     const topology = new Map<string, string[]>();
     for (const order of orders) {
         if (order.parentOrderHashes !== undefined) {
-            topology.set(order.id, order.parentOrderHashes);
+            topology.set(order.orderHash, order.parentOrderHashes);
             continue;
         }
         const agreement = order.agreementHash ? (agreements.get(order.agreementHash) ?? null) : null;
-        topology.set(order.id, topologyParentOrderHashes(agreement) ?? []);
+        topology.set(order.orderHash, topologyParentOrderHashes(agreement) ?? []);
     }
     return topology;
 }

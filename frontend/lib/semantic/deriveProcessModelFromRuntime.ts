@@ -5,7 +5,8 @@ import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 import type { ProcessSummary } from "@/lib/kernel/walletProcessQueries";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
 import { clauseIsProcessLog, clauseLadderField, clauseWitnessStages, getClauseSpec, labelEnumValue } from "@/lib/shared/clauseSpecSource";
-import { ZERO_BYTES32, hexEqual, clauseIdHash as clauseIdHashOf } from "@/lib/shared/evm";
+import { computeClauseKey } from "@figaro/core";
+import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
 import {
     AttachmentModel,
     CapabilityModel,
@@ -64,8 +65,8 @@ function buildRuntimeIndexes(
     const childrenByOrder = new Map<string, string[]>();
     const parentsByOrder = new Map<string, string[]>();
     for (const order of processOrders) {
-        const id = order.id.toString();
-        const parents = topology.get(order.id) ?? [];
+        const id = order.orderHash.toString();
+        const parents = topology.get(order.orderHash) ?? [];
         parentsByOrder.set(id, parents);
         for (const parent of parents) {
             const children = childrenByOrder.get(parent);
@@ -99,7 +100,7 @@ function roleCapabilities(
     // Lifecycle / handoff capabilities, gated on the clauses the agreement
     // carries AND the attestation state. Labels are the clause's own event
     // codes (one source — the clause), never frontend copy.
-    const orderIdStr = order.id.toString();
+    const orderIdStr = order.orderHash.toString();
     const agreement = order.agreementHash ? agreements.get(order.agreementHash) : undefined;
 
     // GENERIC runtime attestation: any PROCESS-LOG clause (attestations
@@ -115,7 +116,7 @@ function roleCapabilities(
             if (!clauseIsProcessLog(clauseId)) continue;               // only attestations-article ladders are lifecycles
             const ladder = clauseLadderField(clauseId);
             if (!ladder) continue;                                     // process-log clause without a declared ladder yet → nothing to advance
-            const clauseIdHash = clauseIdHashOf(clauseId, section.version).toLowerCase();
+            const clauseIdHash = computeClauseKey(clauseId, section.version).toLowerCase();
             const parties: Array<"seller" | "buyer"> = ["seller"];
 
             for (const party of parties) {
@@ -263,7 +264,7 @@ function deriveSettlementBreakdown(order: Order, parentOrderHashes: string[], ad
         source: {
             truthClass: "protocol-derived",
             sourceLabel: "order payment field",
-            referenceId: `${order.processId}:${order.id.toString()}:payment`,
+            referenceId: `${order.processId}:${order.orderHash.toString()}:payment`,
         },
     });
 
@@ -274,7 +275,7 @@ function deriveSettlementBreakdown(order: Order, parentOrderHashes: string[], ad
             source: {
                 truthClass: "protocol-derived",
                 sourceLabel: "2x payment buyer bond rule",
-                referenceId: `${order.processId}:${order.id.toString()}:buyer-bond`,
+                referenceId: `${order.processId}:${order.orderHash.toString()}:buyer-bond`,
             },
         });
     }
@@ -286,21 +287,21 @@ function deriveSettlementBreakdown(order: Order, parentOrderHashes: string[], ad
             source: {
                 truthClass: "protocol-derived",
                 sourceLabel: "2x cumulative value seller bond rule",
-                referenceId: `${order.processId}:${order.id.toString()}:seller-bond`,
+                referenceId: `${order.processId}:${order.orderHash.toString()}:seller-bond`,
             },
         });
     }
 
     return {
         scopeType: "order",
-        scopeId: order.id.toString(),
+        scopeId: order.orderHash.toString(),
         lockedBond: {
             label: isBuyer ? "Buyer bond" : "Seller bond",
             amount: isBuyer ? order.buyerBond : order.sellerBond,
             source: {
                 truthClass: "protocol-derived",
                 sourceLabel: "order-derived bond obligation",
-                referenceId: `${order.processId}:${order.id.toString()}:locked-bond`,
+                referenceId: `${order.processId}:${order.orderHash.toString()}:locked-bond`,
             },
         },
         typedOutputs,
@@ -311,7 +312,7 @@ function deriveSettlementBreakdown(order: Order, parentOrderHashes: string[], ad
                 source: {
                     truthClass: "protocol-derived",
                     sourceLabel: "sub-order payment references upstream process value",
-                    referenceId: `${order.processId}:${order.id.toString()}:downstream-reference`,
+                    referenceId: `${order.processId}:${order.orderHash.toString()}:downstream-reference`,
                 },
             }
             : undefined,
@@ -337,7 +338,7 @@ function deriveProcessEconomicSummary(
         0n
     );
     const downstreamReferenced = orders
-        .filter((order) => (topology.get(order.id) ?? []).length > 0)
+        .filter((order) => (topology.get(order.orderHash) ?? []).length > 0)
         .reduce((sum, order) => sum + order.payment, 0n);
     const lockedBondAmount = actorBuyerBond + actorSellerBond;
 
@@ -400,7 +401,7 @@ function deriveProcessEconomicSummary(
 
 function deriveOrderAttachments(order: Order, parentOrderHashes: string[], address?: string): AttachmentModel[] {
     const attachments: AttachmentModel[] = [];
-    const orderId = order.id.toString();
+    const orderId = order.orderHash.toString();
     const normalized = address?.toLowerCase();
 
     if (parentOrderHashes.length === 0) {
@@ -519,7 +520,7 @@ function deriveProcessAttachments(
     }
 
     const activeCount = orders.filter((order) => order.state === OrderState.Active).length;
-    const descendantCount = orders.filter((order) => order.id.toString() !== rootOrderId).length;
+    const descendantCount = orders.filter((order) => order.orderHash.toString() !== rootOrderId).length;
 
     attachments.push({
         id: `${processId}:state-summary`,
@@ -596,11 +597,11 @@ function deriveOrderNodeModelFromOrder(
     address?: string,
     isE2EMock = false,
 ): OrderNodeModel {
-    const parentOrderHashes = topology.get(order.id) ?? [];
+    const parentOrderHashes = topology.get(order.orderHash) ?? [];
     const attachments = deriveOrderAttachments(order, parentOrderHashes, address);
 
     return {
-        orderId: order.id.toString(),
+        orderId: order.orderHash.toString(),
         processId: order.processId,
         buyer: order.buyer as `0x${string}`,
         seller: order.seller as `0x${string}`,
@@ -626,14 +627,14 @@ export function deriveProcessModelFromRuntime(
 ): ProcessModel {
     const processOrders = orders
         .filter((order) => order.processId === summary.processId)
-        .sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0));
+        .sort((left, right) => (left.orderHash < right.orderHash ? -1 : left.orderHash > right.orderHash ? 1 : 0));
     const topology = deriveOrderTopology(processOrders, agreements);
     // Built ONCE per derivation — the per-order loop reads these maps so the
     // whole model stays O(orders + attestations) at the resolve ceiling.
     const indexes = buildRuntimeIndexes(processOrders, topology, agreements, attestations);
     const semanticOrders = processOrders.map((order) => deriveOrderNodeModelFromOrder(order, topology, agreements, indexes, address, isE2EMock));
     const rootOrderId = semanticOrders.find((order) => order.parentOrderHashes.length === 0)?.orderId ?? semanticOrders[0]?.orderId ?? "";
-    const rootOrder = processOrders.find((order) => order.id.toString() === rootOrderId);
+    const rootOrder = processOrders.find((order) => order.orderHash.toString() === rootOrderId);
     const rootAgreement = rootOrder?.agreementHash ? agreements.get(rootOrder.agreementHash) : undefined;
     // The modality section is found by its declared field, never by name.
     // Single-select: one scalar value per order.

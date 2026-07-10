@@ -96,7 +96,7 @@ function agreementOf(order: Order, agreements: ReadonlyMap<string, Agreement>): 
 
 function resolve(ref: ValueRef, order: Order, unit: Unit): string {
     if ("const" in ref) return ref.const;
-    if ("orderHash" in ref) return order.id;
+    if ("orderHash" in ref) return order.orderHash;
     if ("party" in ref) return ref.party === "seller" ? order.seller : order.buyer;
     if ("payment" in ref) return order.payment.toString();
     if ("resolvedDate" in ref) {
@@ -238,12 +238,12 @@ export function projectFinancialStatements(
         }
         a.sales += o.payment;                      // recognized at commit
         if (!active) a.cost += o.payment;          // recognized at resolve
-        cashFlow.push(["commit-buyer-deposit", o.id, o.buyer, o.buyerBond.toString()]);
-        cashFlow.push(["commit-seller-deposit", o.id, o.seller, o.sellerBond.toString()]);
+        cashFlow.push(["commit-buyer-deposit", o.orderHash, o.buyer, o.buyerBond.toString()]);
+        cashFlow.push(["commit-seller-deposit", o.orderHash, o.seller, o.sellerBond.toString()]);
         if (o.state === OrderState.Resolved) {
             const s = calculateSettlement(o.payment, o.sellerBond, o.buyerBond);
-            cashFlow.push(["resolve-buyer-refund", o.id, o.buyer, s.buyerPayout.toString()]);
-            cashFlow.push(["resolve-seller-payout", o.id, o.seller, s.sellerPayout.toString()]);
+            cashFlow.push(["resolve-buyer-refund", o.orderHash, o.buyer, s.buyerPayout.toString()]);
+            cashFlow.push(["resolve-seller-payout", o.orderHash, o.seller, s.sellerPayout.toString()]);
         }
     }
     const leafSections: { label: string; entries: { key: string; value: string }[] }[] = [];
