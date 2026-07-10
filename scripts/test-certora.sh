@@ -36,10 +36,13 @@
 # Usage:
 #   ./scripts/test-certora.sh                          # run all specs
 #   ./scripts/test-certora.sh FigaroCore               # run only FigaroCore.conf
+#   CERTORA_WAIT=1 ./scripts/test-certora.sh <spec>    # block until the cloud verdict
 #
 # Exit codes:
-#   0  — all invocations dispatched successfully (cloud verification may still be pending)
-#   >0 — a spec invocation failed locally OR the environment is misconfigured
+#   0  — all invocations dispatched successfully (cloud verification may still be
+#        pending; with CERTORA_WAIT=1, 0 means every rule VERIFIED)
+#   >0 — a spec invocation failed locally, the environment is misconfigured, or
+#        (with CERTORA_WAIT=1) the prover reported a violated rule
 
 set -e
 
@@ -82,7 +85,7 @@ for spec in "${SPECS[@]}"; do
         continue
     fi
     echo "▶ Dispatching $spec ($conf)"
-    certoraRun "$conf" --disable_local_typechecking
+    certoraRun "$conf" --disable_local_typechecking ${CERTORA_WAIT:+--wait_for_results all}
     echo ""
 done
 
