@@ -7,7 +7,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 export const metadata: Metadata = {
     title: "Integrate — Figaro Protocol",
     description:
-        "@figaro/core: ABIs, event parsers, deterministic state reconstruction, commitment builders, action queue, clause encoders. Four subpath exports. The chain is the primary record; no separate gateway, indexer, or subgraph required.",
+        "@figaro/sdk: ABIs, event parsers, deterministic state reconstruction, commitment builders, action queue, clause encoders. Four subpath exports. The chain is the primary record; no separate gateway, indexer, or subgraph required.",
 };
 
 export default function Integrate() {
@@ -17,7 +17,7 @@ export default function Integrate() {
                 title="SDK and composition surface."
                 lead={
                     <>
-                        <code>@figaro/core</code> ships ABIs, event parsers, deterministic state reconstruction, commitment builders, an action queue, and clause encoders. The chain is the primary record &mdash; no separate Figaro gateway, indexer, or subgraph required.
+                        <code>@figaro/sdk</code> ships ABIs, event parsers, deterministic state reconstruction, commitment builders, an action queue, and clause encoders. The chain is the primary record &mdash; no separate Figaro gateway, indexer, or subgraph required.
                     </>
                 }
             >
@@ -28,22 +28,22 @@ export default function Integrate() {
 
             <MarketingSection title="Agents participate as bonded counterparties.">
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    Nothing in the kernel distinguishes a human signer from an agent &mdash; an EIP-712 signature is an EIP-712 signature. <code>@figaro/core/agent</code> ships <code>FigaroContext</code>, <code>proposeActions</code>, and <code>ActionQueue</code>: an agent receives kernel state, returns the set of valid actions, and submits via a wallet client. The queue runs in two modes &mdash; human-in-the-loop approval, or fully autonomous submission &mdash; without changes to the underlying call sites.
+                    Nothing in the kernel distinguishes a human signer from an agent &mdash; an EIP-712 signature is an EIP-712 signature. <code>@figaro/sdk/agent</code> ships <code>FigaroContext</code>, <code>proposeActions</code>, and <code>ActionQueue</code>: an agent receives kernel state, returns the set of valid actions, and submits via a wallet client. The queue runs in two modes &mdash; human-in-the-loop approval, or fully autonomous submission &mdash; without changes to the underlying call sites.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
                     What this enables: agents that hold roles in a process (a courier-bot bonded against cumulative value, an offset-burning seller settling under the same atomic-resolution rule, an audit agent reading reconstructed state and posting attestations). Bonding makes the agent legible to its counterparty &mdash; cooperation is dominant for the agent on the same arithmetic that makes it dominant for a human (Paper A, Theorem 4.3).
                 </p>
                 <p className="text-sm text-ink-muted">
-                    Subpath: <code>@figaro/core/agent</code>. Full subpath table below.
+                    Subpath: <code>@figaro/sdk/agent</code>. Full subpath table below.
                 </p>
             </MarketingSection>
 
             <MarketingSection title="Read, reconstruct, propose.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
-                    <code>@figaro/core</code> is a TypeScript SDK with a single runtime dependency (<code>viem</code>). ESM, four subpath exports. Used from React frontends, server-side indexers, and headless agents.
+                    <code>@figaro/sdk</code> is a TypeScript SDK with a single runtime dependency (<code>viem</code>). ESM, four subpath exports. Used from React frontends, server-side indexers, and headless agents.
                 </p>
                 <ul className="space-y-4">
-                    <LabelledListRow label="@figaro/core" labelWidth="narrow" uppercase>
+                    <LabelledListRow label="@figaro/sdk" labelWidth="narrow" uppercase>
                         <strong>ABIs, event parsers, state reconstruction.</strong> <code>reconstruct()</code> one-shot state; <code>ProcessGraph</code> class for incremental replay; <code>fetchCoreEvents</code> bulk fetch. <code>buildCommitment</code>, <code>buildCommitmentSafe</code>, <code>buildDomain</code> for constructing commitments off-chain. <code>calculateBonds</code>, <code>calculateSettlement</code>, <code>validateBonds</code> for bond arithmetic.
                     </LabelledListRow>
                     <LabelledListRow label="/agent" labelWidth="narrow" uppercase>
@@ -95,13 +95,13 @@ export default function Integrate() {
                     tabIndex={0}
                     className="font-mono text-xs bg-subtle border border-default rounded px-3 py-2 mb-3 overflow-x-auto whitespace-pre"
                 >
-                    <code>npm install @figaro/core viem</code>
+                    <code>npm install @figaro/sdk viem</code>
                 </pre>
                 <pre
                     tabIndex={0}
                     className="font-mono text-xs bg-subtle border border-default rounded px-3 py-3 overflow-x-auto whitespace-pre"
                 >
-                    <code>{`import { fetchCoreEvents, reconstruct } from "@figaro/core";
+                    <code>{`import { fetchCoreEvents, reconstruct } from "@figaro/sdk";
 import { createPublicClient, http } from "viem";
 
 const client = createPublicClient({
@@ -193,7 +193,7 @@ const state = reconstruct(events);
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
                     <li><strong>Repository:</strong> <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="underline">github.com/figaro-protocol/Figaro</a>. SDK lives at <code>sdk/</code>.</li>
                     <li><strong>SDK README:</strong> <code>sdk/README.md</code> in the repo. Covers every subpath export and the test-harness conventions.</li>
-                    <li><strong>ABIs:</strong> <code>CORE_ABI</code>, <code>ATTESTATION_COORDINATOR_ABI</code>, <code>CLAUSE_REGISTRY_ABI</code>, <code>ERC20_ABI</code>, <code>SELLER_REGISTRY_ABI</code>, <code>FIG_TOKEN_ABI</code>. All exported from <code>@figaro/core</code>; canonical contract surface at <Link href="/spec" className="underline">/spec</Link>.</li>
+                    <li><strong>ABIs:</strong> <code>CORE_ABI</code>, <code>ATTESTATION_COORDINATOR_ABI</code>, <code>CLAUSE_REGISTRY_ABI</code>, <code>ERC20_ABI</code>, <code>SELLER_REGISTRY_ABI</code>, <code>FIG_TOKEN_ABI</code>. All exported from <code>@figaro/sdk</code>; canonical contract surface at <Link href="/spec" className="underline">/spec</Link>.</li>
                     <li><strong>Tests as documentation:</strong> <code>sdk/tests/</code> includes round-trip tests of every exported primitive. If the README is ambiguous, read the tests.</li>
                 </ul>
                 <p className="mt-8 text-sm text-ink-muted leading-relaxed">

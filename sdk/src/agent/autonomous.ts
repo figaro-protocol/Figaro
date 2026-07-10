@@ -1,5 +1,5 @@
 /**
- * @figaro/core/agent — Autonomous Gateway
+ * @figaro/sdk/agent — Autonomous Gateway
  *
  * Direct execution module for agents that hold their own keys.
  * Signs and submits transactions via a viem WalletClient.
@@ -104,7 +104,7 @@ export async function resolveProcess(
  *               Use `canonicalizeSectionData(section.data)` + encode to Hex.
  * @param proof  Merkle inclusion proof produced by `buildSectionInclusionProof`.
  * @param content ABI-encoded content per the clause's encoding (use the
- *                encoders in `@figaro/core/clauses`).
+ *                encoders in `@figaro/sdk/clauses`).
  */
 export async function attestAsSeller(
     walletClient: WalletClient,

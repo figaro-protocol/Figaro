@@ -2,7 +2,7 @@
  * Public-surface geohash policy.
  *
  * Geohash encode/decode is generic geo math and lives in the SDK
- * (`@figaro/core/extensions`). This module owns the frontend's PUBLIC
+ * (`@figaro/sdk/extensions`). This module owns the frontend's PUBLIC
  * precision cap: a geohash that lands on a public artifact — a pinned
  * seller profile, an agreement clause field — is neighborhood-grade,
  * never door-grade. Door-level detail travels only inside the per-order

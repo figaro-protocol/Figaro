@@ -1,5 +1,5 @@
 /**
- * @figaro/core/extensions — Attestation filtering
+ * @figaro/sdk/extensions — Attestation filtering
  *
  * Clause-agnostic attestation-event filtering. Carries no knowledge of any
  * specific clause: the stage, contentRef shape, and meaning of an attestation

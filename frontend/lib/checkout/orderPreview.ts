@@ -18,7 +18,7 @@ import {
     type Agreement,
     type Commitment,
     type Hex,
-} from "@figaro/core";
+} from "@figaro/sdk";
 import { publicClient } from "@/lib/shared/wagmi";
 import { ZERO_PROCESS_ID } from "@/lib/shared/evm";
 import { buildOrderAgreement } from "@/lib/kernel/orderAgreement";

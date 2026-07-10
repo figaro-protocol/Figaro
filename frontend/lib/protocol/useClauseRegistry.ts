@@ -19,7 +19,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Log } from "viem";
-import { computeClauseKey, parseClauseRegistryLogs } from "@figaro/core";
+import { computeClauseKey, parseClauseRegistryLogs } from "@figaro/sdk";
 import { usePublicClient } from "wagmi";
 import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import { publicClient } from "@/lib/shared/wagmi";

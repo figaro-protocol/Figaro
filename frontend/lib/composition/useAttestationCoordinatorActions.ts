@@ -4,15 +4,15 @@ import { useCallback, useState } from "react";
 import { useAccount, usePublicClient, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { activeChain } from "@/lib/shared/chains";
 import type { Hex } from "viem";
-import { ATTESTATION_COORDINATOR_ABI } from "@figaro/core";
+import { ATTESTATION_COORDINATOR_ABI } from "@figaro/sdk";
 import { getAttestationCoordinator } from "@/lib/composition/contracts";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { fetchAgreement } from "@/lib/kernel/agreementFetch";
 import { getAllOrderCommitted, getStringArg } from "@/lib/kernel/indexer";
 import { restoreSignedProcessId } from "@/lib/kernel/signedCommitment";
-import { computeClauseKey } from "@figaro/core";
+import { computeClauseKey } from "@figaro/sdk";
 import { hexEqual } from "@/lib/shared/evm";
-import { buildSectionInclusionProof, getSectionDataBytes, type Commitment } from "@figaro/core";
+import { buildSectionInclusionProof, getSectionDataBytes, type Commitment } from "@figaro/sdk";
 
 type SellerAttestationInput = {
     /** The order being attested — its `agreementHash` anchors the inclusion proof. */

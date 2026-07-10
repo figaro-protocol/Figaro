@@ -29,7 +29,7 @@ import {
     sellerProfileBindings,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
-import { geohashCentroidDistanceKm } from '@figaro/core/extensions';
+import { geohashCentroidDistanceKm } from '@figaro/sdk/extensions';
 import type { Page } from '@playwright/test';
 
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';

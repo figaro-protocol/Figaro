@@ -15,7 +15,7 @@
  * correct: you can't fetch a body you were never pointed at.
  */
 import type { Hex } from "viem";
-import { computeAgreementHash, type Agreement } from "@figaro/core";
+import { computeAgreementHash, type Agreement } from "@figaro/sdk";
 import { DEFAULT_IPFS_SERVICE, type IpfsService } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { hexEqual } from "@/lib/shared/evm";

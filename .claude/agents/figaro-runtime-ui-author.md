@@ -101,7 +101,7 @@ When writing clause UI:
 
 - Lens panels render content read-only; they do not initiate transactions.
 - Input forms call the relevant hook (`useFigaroActions`, `useCommitmentFlow`); do not duplicate that logic.
-- Clause decoders come from `@figaro/core/clauses`. Do not parse content yourself.
+- Clause decoders come from `@figaro/sdk/clauses`. Do not parse content yourself.
 - Reuse UI primitives in `frontend/components/ui/`. Do not reinvent.
 
 When writing assembly UI:

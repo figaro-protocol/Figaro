@@ -12,7 +12,7 @@
 
 import type { PublicClient } from "viem";
 import type { Order } from "@/lib/kernel/store";
-import type { Agreement } from "@figaro/core";
+import type { Agreement } from "@figaro/sdk";
 import { getAllSellerRegistered } from "@/lib/protocol/sellerRegistryIndexer";
 import {
     getAttestationsByOrder,

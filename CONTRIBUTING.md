@@ -97,7 +97,7 @@ Subagents do not chain directly. The runtime-ui-author returns to the main sessi
 
 Three prompt definitions that act for a **user's** wallet on the permissionless network, never on this repo — one per capacity:
 
-- **`figaro-operator`** — operate a wallet: sign every transaction on the owner's behalf (accept, resolve, originate, attest) via `@figaro/core/agent`, under the owner's policy (HITL default; refuse-all floor).
+- **`figaro-operator`** — operate a wallet: sign every transaction on the owner's behalf (accept, resolve, originate, attest) via `@figaro/sdk/agent`, under the owner's policy (HITL default; refuse-all floor).
 - **`figaro-clause-author`** — author or version a clause → `ClauseRegistry`.
 - **`figaro-assembly-author`** — compose or fork an assembly → `AssemblyRegistry`.
 

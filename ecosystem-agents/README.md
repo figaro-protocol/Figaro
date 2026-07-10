@@ -13,7 +13,7 @@ the whole model first.
 
 - **`figaro-operator`** — *operate* a buyer/seller wallet: sign every transaction on the
   owner's behalf (accept an order, resolve a process, originate a chain, attest), using
-  `@figaro/core/agent`, guided by the owner's policy (HITL by default; refuse-all until a
+  `@figaro/sdk/agent`, guided by the owner's policy (HITL by default; refuse-all until a
   rule is set).
 - **`figaro-clause-author`** — author (or version) a clause: a spec → IPFS → a permissionless
   `ClauseRegistry` registration under the user's wallet. No on-chain code.
@@ -21,7 +21,7 @@ the whole model first.
   `DesignDraft`/template → IPFS → a permissionless `AssemblyRegistry` registration under the
   user's wallet.
 
-All three are **prompts** (frontmatter + body). They drive `@figaro/core` (the SDK), act for
+All three are **prompts** (frontmatter + body). They drive `@figaro/sdk` (the SDK), act for
 a user's key, and never touch this repo. Authored artifacts belong to the user (RPGF rewards
 them); forks are first-class.
 
@@ -50,4 +50,4 @@ UIs compete — that is what permissionless and decentralized mean.
 
 These are prompt definitions. To run one in another runtime, parse the file and drop its body
 into your agent loop as the system prompt — the same shape any Claude Code subagent uses. The
-agent then drives `@figaro/core` for the wallet it holds.
+agent then drives `@figaro/sdk` for the wallet it holds.

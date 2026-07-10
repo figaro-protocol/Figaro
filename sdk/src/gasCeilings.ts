@@ -1,5 +1,5 @@
 /**
- * @figaro/core — Chain gas ceilings
+ * @figaro/sdk — Chain gas ceilings
  *
  * Chain-aware per-process and per-block ceilings derived from the live
  * block gas limit + empirical per-order gas costs measured by

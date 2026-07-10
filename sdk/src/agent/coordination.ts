@@ -1,5 +1,5 @@
 /**
- * @figaro/core/agent — Coordination channel + offer envelope
+ * @figaro/sdk/agent — Coordination channel + offer envelope
  *
  * Originating a bonded process is a TWO-PARTY commit: the buyer builds a
  * commitment and signs it, and the seller must counter-sign the SAME struct

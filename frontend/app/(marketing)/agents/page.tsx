@@ -53,13 +53,13 @@ export default function Agents() {
                     Autonomous agents that want cross-protocol discoverability declare ERC-8004-compatible service endpoints in their <code>SellerRegistry.metadataURI</code> JSON. The clause can be anchored as <code>erc8004-agent-services-v1</code> in <Link href="/clauses" className="underline">ClauseRegistry</Link> for reference integrity. No new contract is needed; the registry already supports arbitrary metadata.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    An agent&apos;s <code>did:web</code> identifier resolves to a DID Document whose verification methods bind the agent&apos;s on-chain Ethereum address in CAIP-10 form. The SDK ships <code>resolveDidWeb</code>, <code>didDocumentMatchesAddress</code>, and <code>buildSellerDidDocument</code> in <code>@figaro/core/agent</code> for the round-trip.
+                    An agent&apos;s <code>did:web</code> identifier resolves to a DID Document whose verification methods bind the agent&apos;s on-chain Ethereum address in CAIP-10 form. The SDK ships <code>resolveDidWeb</code>, <code>didDocumentMatchesAddress</code>, and <code>buildSellerDidDocument</code> in <code>@figaro/sdk/agent</code> for the round-trip.
                 </p>
             </MarketingSection>
 
             <MarketingSection title="How an operator works — the SDK and a policy.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    An operator drives <code>@figaro/core/agent</code> for one wallet: sync the chain, see the actions available to that wallet (accept, resolve, originate, attest &mdash; role inferred from process state), apply the owner&apos;s policy, sign and submit. The SDK is the whole toolkit; nothing else is installed. An operator can be a person clicking &ldquo;approve,&rdquo; a rule-based script, or an LLM agent &mdash; the protocol does not care which.
+                    An operator drives <code>@figaro/sdk/agent</code> for one wallet: sync the chain, see the actions available to that wallet (accept, resolve, originate, attest &mdash; role inferred from process state), apply the owner&apos;s policy, sign and submit. The SDK is the whole toolkit; nothing else is installed. An operator can be a person clicking &ldquo;approve,&rdquo; a rule-based script, or an LLM agent &mdash; the protocol does not care which.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     Autonomy is a policy choice, never structural. The default is human-in-the-loop: the owner approves each action. An autonomous operator runs a rule the owner writes &mdash; and does nothing until they write it. Because the kernel has no escape hatches, an unfunded wallet simply cannot act; the failsafe caps the <em>size</em> of any mistake to what the wallet holds. Same primitives for human and machine: a wallet, EIP-712 signatures, on-chain commitments.
@@ -70,7 +70,7 @@ export default function Agents() {
                 <ul className="space-y-3 text-base">
                     <li>
                         <Link href="/integrate" className="text-ink-heading font-medium hover:underline">The SDK</Link>
-                        <span className="text-ink-body"> &mdash; <code>@figaro/core/agent</code>: HITL action queue, autonomous tx submission, role inference, <code>did:web</code> identity.</span>
+                        <span className="text-ink-body"> &mdash; <code>@figaro/sdk/agent</code>: HITL action queue, autonomous tx submission, role inference, <code>did:web</code> identity.</span>
                     </li>
                     <li>
                         <Link href="/sellers" className="text-ink-heading font-medium hover:underline">Sellers</Link>

@@ -39,7 +39,7 @@ import type {
     UnitSystem,
 } from "@/lib/seller/sellerCatalogueMetadata";
 import { getSellerRegistry } from "@/lib/kernel/contracts";
-import { SELLER_REGISTRY_ABI } from "@figaro/core";
+import { SELLER_REGISTRY_ABI } from "@figaro/sdk";
 
 export interface PublishSellerInput {
     /** Profile fields collected by the wizard, MINUS the catalogueURI

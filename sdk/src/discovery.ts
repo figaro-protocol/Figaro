@@ -1,5 +1,5 @@
 /**
- * @figaro/core — Discovery Reconstructor
+ * @figaro/sdk — Discovery Reconstructor
  *
  * The cold-start half of an agent's state. Where `state.ts`/`ProcessGraph`
  * reconstructs the processes an agent is ALREADY in, this module reconstructs

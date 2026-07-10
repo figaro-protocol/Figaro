@@ -9,7 +9,7 @@
  *   1. projects each clause into an agreement section — `{ clause, version, data }`,
  *   2. assembles the canonical Agreement,
  *   3. returns it with its `agreementHash` = the merkle root over the section
- *      leaves, computed by the ONE builder in `@figaro/core`.
+ *      leaves, computed by the ONE builder in `@figaro/sdk`.
  *
  * It names no clause, special-cases nothing, and re-implements no hashing.
  * Commerce and topology are leaves like any other. The ONE spec-driven step:
@@ -21,8 +21,8 @@ import {
     computeAgreementHash,
     type Agreement,
     type AgreementSection,
-} from "@figaro/core";
-import { validateContent } from "@figaro/core/clauses";
+} from "@figaro/sdk";
+import { validateContent } from "@figaro/sdk/clauses";
 import { getClauseSpec, clauseIsProcessLog } from "@/lib/shared/clauseSpecSource";
 import { hexEqual } from "@/lib/shared/evm";
 import type { ClauseFields } from "@/lib/shared/clauseFields";

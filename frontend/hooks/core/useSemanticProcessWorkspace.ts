@@ -13,7 +13,7 @@ import { useFigaroActions } from "@/lib/kernel/useFigaroActions";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { clauseHandoffStages, clauseWitnessStages, deriveStageValuesFromCommitted, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { encodeContentFromSpec, validateContent } from "@figaro/core/clauses";
+import { encodeContentFromSpec, validateContent } from "@figaro/sdk/clauses";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
 import { useRegisterSeller, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/seller/useSellerRegistry";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
@@ -23,7 +23,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { CapabilityActionDescriptor, CapabilityExecutionInput, CapabilityModel } from "@/lib/semantic/models";
 import { executeTransactionCapabilityAction } from "@/lib/semantic/executeTransactionCapability";
 import { type Hex } from "viem";
-import { computeClauseKey } from "@figaro/core";
+import { computeClauseKey } from "@figaro/sdk";
 
 function collectRuntimeCapabilities(capabilities: CapabilityModel[]): CapabilityModel[] {
     const seen = new Set<string>();

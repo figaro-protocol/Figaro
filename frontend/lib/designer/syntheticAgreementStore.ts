@@ -10,7 +10,7 @@
  * This is authoring state, NOT a runtime cache: committed agreements are fetched
  * from the network via `lib/kernel/agreementFetch`, never read from here.
  */
-import { computeAgreementHash, type Agreement } from "@figaro/core";
+import { computeAgreementHash, type Agreement } from "@figaro/sdk";
 
 const PREFIX = "figaro:agreement:";
 const key = (h: string) => PREFIX + h;

@@ -12,7 +12,7 @@
  */
 
 import type { Hex } from "viem";
-import { calculateBonds } from "@figaro/core";
+import { calculateBonds } from "@figaro/sdk";
 import { Order, OrderState } from "@/lib/kernel/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ClauseFields } from "@/lib/shared/clauseFields";

@@ -35,7 +35,7 @@ import {
     readLocalDeploymentConfig,
     seedRegisteredSeller,
 } from './devnet-helpers';
-import { ASSEMBLY_REGISTRY_ABI } from '@figaro/core';
+import { ASSEMBLY_REGISTRY_ABI } from '@figaro/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 import { ANVIL_KEYS } from '../anvilAccounts';
 

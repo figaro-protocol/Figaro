@@ -1,5 +1,5 @@
 /**
- * @figaro/core — Event Parser
+ * @figaro/sdk — Event Parser
  *
  * Decodes raw EVM logs into typed Figaro event objects.
  * Stateless — takes logs in, returns structured data out.

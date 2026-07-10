@@ -95,7 +95,7 @@ export default function BuildersPage() {
                     <Link href="/integrate" className="text-ink-heading font-medium hover:underline">
                         The SDK
                     </Link>
-                    <span className="text-ink-body"> &mdash; <code>@figaro/core</code>: ABIs, event parsers, content encoders, commitment builders.</span>
+                    <span className="text-ink-body"> &mdash; <code>@figaro/sdk</code>: ABIs, event parsers, content encoders, commitment builders.</span>
                 </li>
                 <li>
                     <Link href="/spec" className="text-ink-heading font-medium hover:underline">

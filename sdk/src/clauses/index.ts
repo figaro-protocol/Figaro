@@ -1,5 +1,5 @@
 /**
- * @figaro/core/clauses — clause-spec format + content validator + encoder.
+ * @figaro/sdk/clauses — clause-spec format + content validator + encoder.
  *
  * The single off-chain source of truth for clause-content validation and ABI
  * encoding. Fully generic: it parses the spec JSON (fetched from

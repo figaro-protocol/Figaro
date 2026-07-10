@@ -1,5 +1,5 @@
 /**
- * @figaro/core — Agent SDK for Figaro Protocol
+ * @figaro/sdk — Agent SDK for Figaro Protocol
  *
  * Standalone TypeScript SDK for reading, analyzing, and proposing
  * Figaro transactions. Works with any signing method — human wallets,
@@ -7,7 +7,7 @@
  *
  * @example
  * ```ts
- * import { fetchCoreEvents, reconstruct, buildCommitment, calculateBonds } from "@figaro/core";
+ * import { fetchCoreEvents, reconstruct, buildCommitment, calculateBonds } from "@figaro/sdk";
  *
  * // 1. Fetch events
  * const events = await fetchCoreEvents(client, addresses, 0n);

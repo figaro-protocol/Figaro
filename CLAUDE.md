@@ -320,7 +320,7 @@ All contracts live in `src/` (Solidity 0.8.26, Foundry); V3 in `archive-v3/`. No
 
 ### Clause Validation
 
-A clause's spec ships in two lockstep surfaces: **Layer A** (TypeScript, `@figaro/core/clauses`) — the off-chain spec + content encoders + the well-formedness validator — and **on-chain registration** (`ClauseRegistry.registerClause` — permissionless, first-write-wins, immutable). **There is no on-chain clause-content validation today** — validators/prover/verifier are DEFERRED (`CONTRACTS.md` § "Deferred vs permanent" is the owner, incl. the two-tense reading rule for papers/marketing): the `AttestationCoordinator` merkle-binds each attestation to its signed agreement and content-hashes the evidence — well-formedness is an off-chain SDK + read-time concern. So a never-seen clause is attestable with **zero per-clause on-chain code** — open-world by construction.
+A clause's spec ships in two lockstep surfaces: **Layer A** (TypeScript, `@figaro/sdk/clauses`) — the off-chain spec + content encoders + the well-formedness validator — and **on-chain registration** (`ClauseRegistry.registerClause` — permissionless, first-write-wins, immutable). **There is no on-chain clause-content validation today** — validators/prover/verifier are DEFERRED (`CONTRACTS.md` § "Deferred vs permanent" is the owner, incl. the two-tense reading rule for papers/marketing): the `AttestationCoordinator` merkle-binds each attestation to its signed agreement and content-hashes the evidence — well-formedness is an off-chain SDK + read-time concern. So a never-seen clause is attestable with **zero per-clause on-chain code** — open-world by construction.
 
 The protocol clauses are the specs in `clauses/` (the canonical Layer-A specs / `ClauseRegistry` seed data; nothing bundles a copy — every consumer loads them from ClauseRegistry → IPFS at runtime). **The count is derived, never stored** — `ls clauses/*.json | wc -l`; all are runtime-attestable except `figaro-topology` (agreement-only), so runtime-attestable = that count minus one. The full clause table, the **adding-a-new-clause checklist**, and registration discipline → `CLAUSES.md`.
 
@@ -330,7 +330,7 @@ The protocol clauses are the specs in `clauses/` (the canonical Layer-A specs / 
 
 ### Agent SDK
 
-`@figaro/core` — TypeScript SDK for reading, analyzing, and proposing Figaro transactions. Single dependency: `viem ^2.0.0`. ESM; four subpath exports (root, `/agent`, `/extensions`, `/clauses` — the lockstep clause source-of-truth). Full entry-point map + build/test commands → `sdk/README.md`.
+`@figaro/sdk` — TypeScript SDK for reading, analyzing, and proposing Figaro transactions. Single dependency: `viem ^2.0.0`. ESM; four subpath exports (root, `/agent`, `/extensions`, `/clauses` — the lockstep clause source-of-truth). Full entry-point map + build/test commands → `sdk/README.md`.
 
 **"Agent" = two worlds; pin the referent.** Default = OPERATOR-PRIVATE (`.claude/agents/`, the operator's repo tools; no SDK). The exception: PUBLIC ECOSYSTEM agents (`ecosystem-agents/`) act for a USER's wallet, NEVER the repo — `figaro-operator` (operate a wallet) + `figaro-clause-author`/`figaro-assembly-author`. Full split → `docs/AI_AGENT_COORDINATION.md` + the agent-seam memory.
 

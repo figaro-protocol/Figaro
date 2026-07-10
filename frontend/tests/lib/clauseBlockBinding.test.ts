@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { SpecParseError } from "@figaro/core/clauses";
+import type { SpecParseError } from "@figaro/sdk/clauses";
 import { parseBlockBinding, type ClauseBlockBinding } from "@/lib/shared/clauseBlockBinding";
 
 /**

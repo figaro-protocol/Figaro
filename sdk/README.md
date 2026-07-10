@@ -1,4 +1,4 @@
-# @figaro/core
+# @figaro/sdk
 
 TypeScript SDK for the Figaro Protocol — self-enforcing agreements between strangers.
 
@@ -8,12 +8,12 @@ agent coordination, and protocol extension utilities. Single dependency: `viem`.
 ## Install
 
 ```bash
-npm install @figaro/core
+npm install @figaro/sdk
 ```
 
 ## Four Entry Points
 
-### `@figaro/core` — Protocol Primitives
+### `@figaro/sdk` — Protocol Primitives
 
 Event parsing, state reconstruction, EIP-712 commitments, bond calculations,
 chain gas ceilings.
@@ -27,7 +27,7 @@ import {
   buildDomain,
   ProcessGraph,
   maxOrdersResolvablePerProcess,
-} from "@figaro/core";
+} from "@figaro/sdk";
 
 // Fetch all FigaroCore events from a block range
 const events = await fetchCoreEvents(client, addresses, 0n);
@@ -63,14 +63,14 @@ const { commitment, typedData } = buildCommitment(
 );
 ```
 
-### `@figaro/core/agent` — Agent Coordination
+### `@figaro/sdk/agent` — Agent Coordination
 
 Context sync, network discovery, action proposer, human-in-the-loop queue,
 autonomous execution, did:web identity.
 
 ```ts
-import { FigaroContext, proposeActions, proposeInitiations, ActionQueue } from "@figaro/core/agent";
-import { commit, executeAction } from "@figaro/core/agent";
+import { FigaroContext, proposeActions, proposeInitiations, ActionQueue } from "@figaro/sdk/agent";
+import { commit, executeAction } from "@figaro/sdk/agent";
 
 // Sync on-chain state into a live context — the agent's own processes AND the
 // live-staked network catalogue (clauses, sellers, assemblies).
@@ -112,30 +112,30 @@ const result = await executeAction(walletClient, publicClient, addresses, approv
 
 // Autonomous origination — the two-party handshake over a coordination channel:
 // buyer instantiates a discovered assembly + signs; seller validates + counter-signs.
-import { originateProcess, makeSellerOfferHandler, InProcessChannel } from "@figaro/core/agent";
+import { originateProcess, makeSellerOfferHandler, InProcessChannel } from "@figaro/sdk/agent";
 channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, addresses));
 const tx = await originateProcess(buyerWallet, publicClient, addresses, { channel, template, seller, currency, payment, chainId, core, overrides });
 
 // did:web: an agent resolves a counterparty's DID Document, verifies the on-chain
 // address it binds, and reads the coordination endpoint to route an offer to
 // (build your own with buildSellerDidDocument).
-import { resolveDidWeb, didDocumentMatchesAddress, extractServiceEndpoints } from "@figaro/core/agent";
+import { resolveDidWeb, didDocumentMatchesAddress, extractServiceEndpoints } from "@figaro/sdk/agent";
 const { document } = await resolveDidWeb("did:web:seller.example.com");
 const bound = document ? didDocumentMatchesAddress(document, "0xSeller...", 1) : false;
 const [endpoint] = document ? extractServiceEndpoints(document, "MCPEndpoint") : [];
 ```
 
-### `@figaro/core/extensions` — Protocol Extensions
+### `@figaro/sdk/extensions` — Protocol Extensions
 
 Clause-agnostic attestation filtering and geo math.
 
 ```ts
-import { computeClauseKey } from "@figaro/core";
+import { computeClauseKey } from "@figaro/sdk";
 import {
   filterByClause,
   haversineDistance,
   geohashesMatch,
-} from "@figaro/core/extensions";
+} from "@figaro/sdk/extensions";
 
 // Attestations: derive the on-chain clause key (name, version), then filter
 // events for it. The SDK knows no specific clause — the stage/contentRef
@@ -148,7 +148,7 @@ const close = geohashesMatch("dr5ru7", "dr5ru8", 5); // true (5-char prefix matc
 const km = haversineDistance(40.71, -74.00, 34.05, -118.24); // ~3944 km
 ```
 
-### `@figaro/core/clauses` — Clause-Spec Format + Content Validation
+### `@figaro/sdk/clauses` — Clause-Spec Format + Content Validation
 
 Single source of truth that all three Figaro validation layers parse
 identically: client (this module), SP1 prover (Rust mirror, pending),
@@ -164,7 +164,7 @@ import {
   encodeCommerceContent,
   // ... encoders for the 9 runtime-attestable local-commerce clauses
   // (topology is agreement-only and has no ABI encoder)
-} from "@figaro/core/clauses";
+} from "@figaro/sdk/clauses";
 
 // 1. Parse a clause spec (typically fetched from IPFS)
 const parsed = parseClauseSpec(specJson);

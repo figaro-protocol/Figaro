@@ -47,7 +47,7 @@ process **chain** (linear at the kernel), never a tree.
 
 ## Step 1 — New assembly, or fork?
 
-- **Fork:** discover the base assembly from `AssemblyRegistry` (via `@figaro/core`), hydrate
+- **Fork:** discover the base assembly from `AssemblyRegistry` (via `@figaro/sdk`), hydrate
   its template, and start from it. State what you're changing and why. The fork gets a NEW
   `compositionHash` and is registered under the user's key — the original author's binding
   is untouched.

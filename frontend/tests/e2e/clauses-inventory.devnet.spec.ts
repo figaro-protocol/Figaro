@@ -18,7 +18,7 @@
  * clauses via `Deploy.s.sol`).
  */
 import { test, expect } from '@playwright/test';
-import { CLAUSE_REGISTRY_ABI } from '@figaro/core';
+import { CLAUSE_REGISTRY_ABI } from '@figaro/sdk';
 import { localPublicClient, readLocalDeploymentConfig } from './devnet-helpers';
 
 test.describe('Clauses marketing inventory (devnet)', () => {

@@ -9,7 +9,7 @@
  * whose spec isn't loaded is skipped (resolved-empty), never failed.
  */
 
-import { validateContent } from "@figaro/core/clauses";
+import { validateContent } from "@figaro/sdk/clauses";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import type { CatalogueItemMetadata } from "@/lib/seller/sellerCatalogueMetadata";
 

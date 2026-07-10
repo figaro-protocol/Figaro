@@ -145,7 +145,7 @@ export default function Composability() {
                     </li>
                     <li>
                         <Link href="/integrate" className="text-ink-heading font-medium hover:underline">Integrate</Link>
-                        <span className="text-ink-body"> &mdash; <code>@figaro/core</code>: ABIs, event parsers, content encoders, commitment builders.</span>
+                        <span className="text-ink-body"> &mdash; <code>@figaro/sdk</code>: ABIs, event parsers, content encoders, commitment builders.</span>
                     </li>
                 </ul>
             </MarketingSection>

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { projectDocuments, type DocumentTemplate } from "@/lib/audit/documentProjection";
 import { DOCUMENT_TEMPLATES } from "@/lib/audit/documentTemplates";
 import { OrderState, type Order } from "@/lib/kernel/store";
-import type { Agreement } from "@figaro/core";
+import type { Agreement } from "@figaro/sdk";
 import { _resetClauseSpecCache_TESTING_ONLY } from "@/lib/shared/clauseSpecSource";
 import { primeClauseSpecs } from "./primeClauseSpecs";
 
@@ -114,7 +114,7 @@ describe("projectDocuments — generic engine over declared templates", () => {
 // ── Financial statements as documents ──────────────────────────────────────────
 
 import { projectFinancialStatements, projectAllFinancialStatements } from "@/lib/audit/documentProjection";
-import { calculateBonds } from "@figaro/core";
+import { calculateBonds } from "@figaro/sdk";
 
 const withBonds = (o: Partial<Order> & Pick<Order, "orderHash" | "seller">): Order => {
     const base = mkOrder({ payment: 100n, cumulativeValue: 100n, ...o });

@@ -48,7 +48,7 @@ import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
 import { readLocalDeploymentConfig, assertPinnedInIpfs } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
-import { calculateBonds } from '@figaro/core';
+import { calculateBonds } from '@figaro/sdk';
 import type { Page } from '@playwright/test';
 
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);

@@ -33,7 +33,7 @@ import { SellerCataloguePicker, type SellerSelection } from "@/components/core/S
 import { useCompositionActions } from "@/lib/composition/useCompositionActions";
 import { FieldControl } from "@/components/core/FieldControl";
 import { useTokenSymbol } from "@/components/sellers/TokenAddressInput";
-import { calculateBonds } from "@figaro/core";
+import { calculateBonds } from "@figaro/sdk";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual, normalizeAddressParam } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -42,7 +42,7 @@ import { useSellerBoundAssemblies } from "@/lib/seller/useSellerBoundAssemblies"
 import { displayNameForAddress } from "@/lib/seller/sellerListing";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
 import { getClauseSpec, clauseIsStructural } from "@/lib/shared/clauseSpecSource";
-import type { FieldSpec } from "@figaro/core/clauses";
+import type { FieldSpec } from "@figaro/sdk/clauses";
 
 interface Props {
     sellerAddress: string;

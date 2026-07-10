@@ -12,7 +12,7 @@
  * A deliberately tiny, open-world-clean island: the runtime/audit consumers that
  * still need auditing can lean on it without blessing their own internals.
  */
-import type { Agreement, AgreementSection } from "@figaro/core";
+import type { Agreement, AgreementSection } from "@figaro/sdk";
 import { clauseDeclaresField, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 
 /** @public — the by-field catalogue's many-result reader, pending consumer

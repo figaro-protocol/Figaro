@@ -8,8 +8,8 @@
  *
  * `commit` is injected (useFigaroActions) so this stays a pure, testable step.
  */
-import { assertOrderFitsResolveCap } from "@figaro/core";
-import type { Commitment, Hex } from "@figaro/core";
+import { assertOrderFitsResolveCap } from "@figaro/sdk";
+import type { Commitment, Hex } from "@figaro/sdk";
 import type { CommitmentPayload } from "@/lib/kernel/signedCommitment";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 

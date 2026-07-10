@@ -7,7 +7,7 @@
  * noun).
  *
  * It lives in the FRONTEND, not the protocol SDK: nothing on-chain reads it, and
- * nothing in `@figaro/core` reads it either. The SDK `ClauseSpec` is content-only
+ * nothing in `@figaro/sdk` reads it either. The SDK `ClauseSpec` is content-only
  * (`fields` / `stages`); the frontend parses this `block` slice off the SAME spec
  * JSON at its spec-loading boundary (`clauseSpecSource.loadClauseSpec`) and
  * attaches it as `ClauseSpecWithBlock.block`. Keeping it here is the clause.block
@@ -19,7 +19,7 @@
  * block errors into the same "spec failed to parse" report.
  */
 
-import { parseFieldSpec, type SpecParseError, type FieldSpec } from "@figaro/core/clauses";
+import { parseFieldSpec, type SpecParseError, type FieldSpec } from "@figaro/sdk/clauses";
 
 /** Drawer article a clause composes into on the designer canvas. A free-form
  *  string read straight from the spec — the set of articles and their grouping

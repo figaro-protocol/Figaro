@@ -1,7 +1,7 @@
 # Clause Validation Architecture
 
 Figaro validates clause content in ONE place: an off-chain TypeScript layer
-(`@figaro/core/clauses`, "Layer A") that parses the canonical JSON spec and
+(`@figaro/sdk/clauses`, "Layer A") that parses the canonical JSON spec and
 checks content against it. There is **no on-chain content validation** — the
 chain merkle-binds each attestation to its signed agreement and content-hashes
 the evidence (`AttestationCoordinator`), but validates no content shape.
@@ -23,7 +23,7 @@ adding-a-clause checklist below.
 
 ## Layer A — the off-chain validation layer (TypeScript)
 
-`@figaro/core/clauses` subpath:
+`@figaro/sdk/clauses` subpath:
 - `parseClauseSpec(json)` — meta-clause validator (closed subset of JSON Schema:
   `string`, `integer`, `bigint` (decimal string), `boolean`, `enum`, `array`,
   `object`). A string field's `format` is an **open axis**: any non-empty string
@@ -186,7 +186,7 @@ agreement-signing time, never re-asserted as a runtime attestation. It is
 *not* off-chain-only, though. Like every agreement section, an agreement-only
 section is a merkle leaf under the on-chain `agreementHash`,
 inclusion-provable via OpenZeppelin `MerkleProof` (`computeSectionLeaf` /
-`buildSectionInclusionProof` in `sdk/src/agreement.ts` (@figaro/core)). "No
+`buildSectionInclusionProof` in `sdk/src/agreement.ts` (@figaro/sdk)). "No
 runtime attestation" is not "no on-chain verification": the DAG is
 reconstructed off-chain by indexers reading topology sections from the signed
 agreement.

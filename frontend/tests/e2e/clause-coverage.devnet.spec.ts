@@ -59,7 +59,7 @@ import { readLocalDeploymentConfig, assertPinnedInIpfs } from './devnet-helpers'
 import { keccak256 } from 'viem';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
-import { calculateBonds, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI } from '@figaro/core';
+import { calculateBonds, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI } from '@figaro/sdk';
 import type { Page } from '@playwright/test';
 
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);

@@ -15,7 +15,7 @@ import { extractClauseData } from "@/lib/audit/clauseDataExtract";
 import { extractProcessLogs } from "@/lib/audit/processLogsExtract";
 import { clauseIdForHash, clauseWitnessStages, describeAttestation, describeWitness, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { decodeContentFromSpec } from "@figaro/core/clauses";
+import { decodeContentFromSpec } from "@figaro/sdk/clauses";
 import type { Hex } from "viem";
 
 /**

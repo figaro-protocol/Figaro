@@ -9,7 +9,7 @@
 # and a working flow read as red for hours (diagnosed as a product bug).
 # A fabricated ABI never errors; it just sees nothing. The canonical
 # sources are `CORE_ABI` / `ATTESTATION_COORDINATOR_ABI` /
-# `CLAUSE_REGISTRY_ABI` from `@figaro/core`, and the test-tier view export
+# `CLAUSE_REGISTRY_ABI` from `@figaro/sdk`, and the test-tier view export
 # `CORE_PROCESS_VIEW_ABI` in `tests/e2e/devnet-helpers.ts` (the one
 # sanctioned secondary home, excluded below).
 #
@@ -51,7 +51,7 @@ if (( violations > 0 )); then
     echo ""
     echo "[no-handwritten-abis] $violations violation(s). A fabricated ABI never errors —"
     echo "                      it just sees nothing. Import CORE_ABI /"
-    echo "                      ATTESTATION_COORDINATOR_ABI from @figaro/core, or"
+    echo "                      ATTESTATION_COORDINATOR_ABI from @figaro/sdk, or"
     echo "                      CORE_PROCESS_VIEW_ABI from tests/e2e/devnet-helpers."
     exit 1
 fi

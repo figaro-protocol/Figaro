@@ -14,7 +14,7 @@
 import { useCallback, useState, useEffect } from "react";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId, useReadContract } from "wagmi";
 import { getSellerRegistry } from "@/lib/kernel/contracts";
-import { SELLER_REGISTRY_ABI } from "@figaro/core";
+import { SELLER_REGISTRY_ABI } from "@figaro/sdk";
 import { getSellerState, getSellerMetadataURI } from "@/lib/protocol/sellerRegistryIndexer";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { resolveContentUri } from "@/lib/shared/ipfsService";

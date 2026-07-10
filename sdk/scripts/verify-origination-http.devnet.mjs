@@ -23,7 +23,7 @@ import { dirname, resolve } from "node:path";
 import {
     FigaroContext, originateProcess, makeSellerOfferHandler,
     HttpChannel, makeHttpOfferResponder,
-} from "@figaro/core/agent";
+} from "@figaro/sdk/agent";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const env = Object.fromEntries(

@@ -29,7 +29,7 @@ import {
     type Agreement,
     type Commitment,
     type Hex,
-} from "@figaro/core";
+} from "@figaro/sdk";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { assertAgreementSignable } from "@/lib/kernel/orderAgreement";
 import { useFigaroActions } from "@/lib/kernel/useFigaroActions";

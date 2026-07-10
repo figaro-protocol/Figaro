@@ -16,8 +16,8 @@
  * regardless: no template carries clause-specific knowledge.
  */
 
-import { calculateSettlement } from "@figaro/core";
-import type { Agreement } from "@figaro/core";
+import { calculateSettlement } from "@figaro/sdk";
+import type { Agreement } from "@figaro/sdk";
 import type { Order } from "@/lib/kernel/store";
 import { OrderState } from "@/lib/kernel/store";
 import { clauseDeclaresField, clauseIsProcessLog } from "@/lib/shared/clauseSpecSource";

@@ -11,7 +11,7 @@ import {
     parseEther,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { ASSEMBLY_REGISTRY_ABI } from '@figaro/core';
+import { ASSEMBLY_REGISTRY_ABI } from '@figaro/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 
 const RPC_URL = 'http://127.0.0.1:8545';

@@ -34,7 +34,7 @@ import { getOrderEcdhKeypair } from "@/lib/handoff/ecdh";
 import { getAttestationsByOrder, parseAttestationLog } from "@/lib/composition/indexer";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { computeClauseKey } from "@figaro/core";
+import { computeClauseKey } from "@figaro/sdk";
 import { hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { InteractionSurfaceProps } from "@/components/core/interactionSurfaces";

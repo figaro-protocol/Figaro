@@ -1,5 +1,5 @@
 /**
- * @figaro/core/agent — HITL (Human-in-the-Loop) Gateway
+ * @figaro/sdk/agent — HITL (Human-in-the-Loop) Gateway
  *
  * Typed action queue for the "agent proposes, human approves" pattern.
  * The agent enqueues proposed actions; the human reviews and approves/rejects.

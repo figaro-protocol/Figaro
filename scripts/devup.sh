@@ -28,7 +28,7 @@ note() { printf '\n\033[1m▸ %s\033[0m\n' "$1"; }
 # deletes outputs of deleted sources — a stale dist silently ships deleted
 # APIs into every build and poisons audits that read it. Clean-rebuild every
 # devup (the build script rm -rfs dist first; ~seconds, idempotent).
-note "SDK (@figaro/core dist)"
+note "SDK (@figaro/sdk dist)"
 npm --prefix "$REPO_ROOT/sdk" run build --silent
 echo "  rebuilt sdk/dist from src"
 

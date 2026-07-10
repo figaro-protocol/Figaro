@@ -7,7 +7,7 @@ import {
     _resetSignPreviewStore_TESTING_ONLY,
     _setSignPreviewMode_TESTING_ONLY,
 } from "@/lib/checkout/orderPreview";
-import type { Commitment, Agreement } from "@figaro/core";
+import type { Commitment, Agreement } from "@figaro/sdk";
 
 const COMMITMENT: Commitment = {
     processId: "0x" + "00".repeat(32) as `0x${string}`,

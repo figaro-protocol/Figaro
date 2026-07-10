@@ -69,7 +69,7 @@ the count lives in the indexer (the same count RPGF pays on) and hardens
 on-chain when the RPGF proof apparatus returns. There is **no on-chain
 clause-content validation** — registration anchors the spec locator (IPFS) +
 content hash, and well-formedness is the off-chain Layer-A SDK's job
-(`@figaro/core/clauses` `validate.ts`/`encode.ts`) plus a read-time concern.
+(`@figaro/sdk/clauses` `validate.ts`/`encode.ts`) plus a read-time concern.
 
 Note: `figaro-topology` is an **agreement-only clause** — parties commit to
 it at contract-signing time inside the off-chain agreement, and it's

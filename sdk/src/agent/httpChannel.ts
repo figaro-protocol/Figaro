@@ -1,5 +1,5 @@
 /**
- * @figaro/core/agent — HTTP coordination transport
+ * @figaro/sdk/agent — HTTP coordination transport
  *
  * The first REAL `CoordinationChannel` (the sibling of the in-process test
  * transport): it carries the origination offer envelope over an actual socket.

@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { toError } from "@/lib/shared/errors";
 import { BaseError, ContractFunctionRevertedError } from "viem";
-import { parseAssemblyRegistryLogs } from "@figaro/core";
+import { parseAssemblyRegistryLogs } from "@figaro/sdk";
 import { publicClient } from "@/lib/shared/wagmi";
 import { ASSEMBLY_REGISTRY_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";

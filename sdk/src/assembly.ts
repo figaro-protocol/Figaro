@@ -1,5 +1,5 @@
 /**
- * @figaro/core — Assembly identity
+ * @figaro/sdk — Assembly identity
  *
  * The AssemblyRegistry keys bindings by `compositionHash`, exactly as the
  * ClauseRegistry keys clauses by `keccak256(abi.encode(name, version))`

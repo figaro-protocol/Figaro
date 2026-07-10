@@ -18,7 +18,7 @@ import {
     type Agreement,
     type Commitment,
     type Hex,
-} from "@figaro/core";
+} from "@figaro/sdk";
 import { strippingReviver } from "@/lib/shared/safeJson";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 

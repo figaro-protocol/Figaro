@@ -29,7 +29,7 @@
  */
 
 import { useRef } from "react";
-import type { FieldSpec } from "@figaro/core/clauses";
+import type { FieldSpec } from "@figaro/sdk/clauses";
 import { getFieldFormatInput } from "@/components/core/fieldFormatInputs";
 
 export type FieldControlMode = "design" | "runtime";

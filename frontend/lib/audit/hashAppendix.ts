@@ -20,7 +20,7 @@
  * each step independently.
  */
 
-import { type Agreement, computeSectionLeaf } from "@figaro/core";
+import { type Agreement, computeSectionLeaf } from "@figaro/sdk";
 import type { Order } from "@/lib/kernel/store";
 import type { AttestationRecord } from "@/lib/composition/indexer";
 import type { ExtractedDocument } from "./types";

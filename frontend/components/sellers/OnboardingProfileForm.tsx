@@ -24,7 +24,7 @@ import type {
     OnboardingProfileDraft,
 } from "@/lib/seller/onboardingState";
 import type { AcceptedTokenMetadata } from "@/lib/seller/acceptedTokenMetadata";
-import { encodeGeohash } from "@figaro/core/extensions";
+import { encodeGeohash } from "@figaro/sdk/extensions";
 import { clampPublicGeohash, PUBLIC_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
 import { geocodeAddress, getDeviceLocation, type GeocodeFailureReason } from "@/lib/seller/geocode";
 import { getCommonTokens, type CommonToken } from "@/lib/seller/commonTokens";

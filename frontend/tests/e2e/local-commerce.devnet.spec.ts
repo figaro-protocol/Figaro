@@ -93,9 +93,9 @@ import {
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
-import { computeClauseKey } from '@figaro/core';
-import { ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI } from '@figaro/core';
-import { calculateBonds, computeSectionLeaf, type AgreementSection } from '@figaro/core';
+import { computeClauseKey } from '@figaro/sdk';
+import { ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI } from '@figaro/sdk';
+import { calculateBonds, computeSectionLeaf, type AgreementSection } from '@figaro/sdk';
 import type { Page } from '@playwright/test';
 
 const RPC_URL = 'http://127.0.0.1:8545';

@@ -21,7 +21,7 @@
  *    booking-window clause deriving hours (fill-where-composed).
  */
 
-import { geohashCentroidDistanceKm } from "@figaro/core/extensions";
+import { geohashCentroidDistanceKm } from "@figaro/sdk/extensions";
 import { clauseDeclaresField } from "@/lib/shared/clauseSpecSource";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 

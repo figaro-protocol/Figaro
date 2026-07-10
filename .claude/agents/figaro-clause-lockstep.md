@@ -1,6 +1,6 @@
 ---
 name: figaro-clause-lockstep
-description: Read-only verifier for the Figaro multi-surface clause-lockstep contract. Invoke when a clause is added, renamed, or changed — to check that every surface that must move together has actually moved together. Surfaces tracked — canonical spec JSON in `clauses/`, the generic Layer-A parse/validate/encode round-trip in `@figaro/core/clauses`, `ClauseRegistry` seeding, and user-facing prose in `frontend/app/`. The on-chain validator and Rust prover mirror are DEFERRED surfaces (docs/CONTRACTS.md § "Deferred vs permanent" is the owner) — absence is NOT drift until the rebuild lands. Returns a per-clause coverage matrix with drift findings. Does not edit files.
+description: Read-only verifier for the Figaro multi-surface clause-lockstep contract. Invoke when a clause is added, renamed, or changed — to check that every surface that must move together has actually moved together. Surfaces tracked — canonical spec JSON in `clauses/`, the generic Layer-A parse/validate/encode round-trip in `@figaro/sdk/clauses`, `ClauseRegistry` seeding, and user-facing prose in `frontend/app/`. The on-chain validator and Rust prover mirror are DEFERRED surfaces (docs/CONTRACTS.md § "Deferred vs permanent" is the owner) — absence is NOT drift until the rebuild lands. Returns a per-clause coverage matrix with drift findings. Does not edit files.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { commitSignedOrder } from "@/lib/kernel/orderCommitted";
 import type { CommitmentPayload } from "@/lib/kernel/signedCommitment";
-import type { Commitment } from "@figaro/core";
+import type { Commitment } from "@figaro/sdk";
 import { ZERO_PROCESS_ID } from "@/lib/shared/evm";
 
 const PROCESS_ID = `0x${"ab".repeat(32)}` as `0x${string}`;

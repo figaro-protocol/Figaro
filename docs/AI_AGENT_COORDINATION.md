@@ -24,7 +24,7 @@ that any agent can read, analyze, and act on.
 Pre-defined agents are **operator-private by default**; "public" is the exception, only when explicitly designed for it.
 
 - **Public ecosystem agents** (this document's subject; any user, acting for their own wallet, never the repo) are prompt definitions in `ecosystem-agents/`, one per capacity:
-  - **`figaro-operator`** — *operate* a wallet: sign every transaction on the owner's behalf (accept, resolve, originate, attest) using `@figaro/core/agent`, guided by the owner's policy (HITL by default; refuse-all until a rule is set). Role is read from process state, so the same operator is buyer in one process and seller in another.
+  - **`figaro-operator`** — *operate* a wallet: sign every transaction on the owner's behalf (accept, resolve, originate, attest) using `@figaro/sdk/agent`, guided by the owner's policy (HITL by default; refuse-all until a rule is set). Role is read from process state, so the same operator is buyer in one process and seller in another.
   - **`figaro-clause-author` / `figaro-assembly-author`** — author or **fork** a clause/assembly and register it on the permissionless registries (spec/`DesignDraft` → IPFS → `ClauseRegistry`/`AssemblyRegistry`, under the **user's** key). The artifact belongs to the user (RPGF rewards it).
 - **Operator-private repo agents** (the Claude Code subagents that build THIS repo, for the operator only): definitions live in `.claude/agents/*.md`. They touch the repo (that is their job); nothing in this document applies to them.
 
@@ -32,7 +32,7 @@ Pre-defined agents are **operator-private by default**; "public" is the exceptio
 
 ## The operator — how an agent transacts
 
-The `figaro-operator` prompt (`ecosystem-agents/figaro-operator.md`) is the *how* to this document's *what*: it directs an agent to wire `@figaro/core/agent` to a wallet, infer role binding from process state, and act under the owner's policy (HITL by default; a refuse-all floor). The same primitives serve a human at a keyboard and an autonomous agent — a wallet, EIP-712 signatures, on-chain commitments. Any runtime works; the protocol does not care which. Autonomous-vs-HITL is a policy choice, never structural.
+The `figaro-operator` prompt (`ecosystem-agents/figaro-operator.md`) is the *how* to this document's *what*: it directs an agent to wire `@figaro/sdk/agent` to a wallet, infer role binding from process state, and act under the owner's policy (HITL by default; a refuse-all floor). The same primitives serve a human at a keyboard and an autonomous agent — a wallet, EIP-712 signatures, on-chain commitments. Any runtime works; the protocol does not care which. Autonomous-vs-HITL is a policy choice, never structural.
 
 ---
 
@@ -41,7 +41,7 @@ The `figaro-operator` prompt (`ecosystem-agents/figaro-operator.md`) is the *how
 Discovery (below) tells an agent *what exists* and *where to reach* a counterparty.
 Starting a bonded process together is a second thing: a two-party exchange with a
 defined message, defined validation, and a defined transport seam — **a wire
-protocol, not a library**. `@figaro/core/agent` is one implementation of it
+protocol, not a library**. `@figaro/sdk/agent` is one implementation of it
 (`sdk/src/agent/coordination.ts`, `originate.ts`); any runtime that speaks the same
 envelope and the same rules interoperates without importing it — the same way a
 contract integrates through a wire ABI, not a shared codebase.
@@ -321,7 +321,7 @@ the on-chain seller address.
 ```
 
 The SDK provides `resolveDidWeb()`, `didDocumentMatchesAddress()`,
-`extractServiceEndpoints()`, and `buildSellerDidDocument()` in `@figaro/core/agent`
+`extractServiceEndpoints()`, and `buildSellerDidDocument()` in `@figaro/sdk/agent`
 (did:web is an agent-identity concern). Together these close the discovery→handshake
 loop: resolve the DID, verify the wallet binding with `didDocumentMatchesAddress()`,
 then pull the coordination endpoint with `extractServiceEndpoints(doc, "MCPEndpoint")`

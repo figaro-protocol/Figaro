@@ -21,7 +21,7 @@ import {
 } from "@/lib/kernel/signedCommitment";
 import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { calculateBonds } from "@figaro/core";
+import { calculateBonds } from "@figaro/sdk";
 import { TokenApprovalFlow } from "@/components/core/TokenApprovalFlow";
 import useTokenDecimals from "@/hooks/core/useTokenDecimals";
 import useProcessResolveCapacity from "@/hooks/core/useProcessResolveCapacity";

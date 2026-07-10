@@ -19,7 +19,7 @@
 
 import type { PublicClient } from "viem";
 import { CORE_ABI, CONTRACTS } from "@/lib/kernel/contracts";
-import { ATTESTATION_COORDINATOR_ABI } from "@figaro/core";
+import { ATTESTATION_COORDINATOR_ABI } from "@figaro/sdk";
 import { getAttestationCoordinator } from "@/lib/composition/contracts";
 import { describeAttestation } from "@/lib/shared/clauseSpecSource";
 

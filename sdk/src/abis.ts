@@ -1,5 +1,5 @@
 /**
- * @figaro/core — ABIs
+ * @figaro/sdk — ABIs
  *
  * Canonical ABI definitions for all Figaro contracts.
  * These are the source of truth — the frontend should eventually import from here.

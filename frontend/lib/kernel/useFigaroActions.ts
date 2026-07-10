@@ -4,7 +4,7 @@ import { useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId,
 import { CORE_ABI, ERC20_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { TEST_HELPERS_ENABLED, windowSafe } from '@/lib/shared/testHelpers';
 import { activeChain } from "@/lib/shared/chains";
-import type { Commitment } from "@figaro/core";
+import type { Commitment } from "@figaro/sdk";
 
 // Re-export for existing consumers
 export type { Commitment };

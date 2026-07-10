@@ -71,7 +71,7 @@ never validity or discoverability. Write the spec as the **user's** document (th
 ## Step 4 — Validate off-chain
 
 Run the Layer-A validator (`parseClauseSpec`) and the content encoder round-trip from
-`@figaro/core/clauses`. Well-formedness is the only gate — there is no on-chain content
+`@figaro/sdk/clauses`. Well-formedness is the only gate — there is no on-chain content
 check. A malformed spec is caught here, at author time.
 
 ## Step 5 — Pin + register (the user's wallet)

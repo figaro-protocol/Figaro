@@ -1,5 +1,5 @@
 /**
- * @figaro/core — State Reconstructor
+ * @figaro/sdk — State Reconstructor
  *
  * Builds a typed in-memory process graph from parsed events.
  * Stateless by default — call reconstruct() with events, get state out.

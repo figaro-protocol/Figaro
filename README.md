@@ -19,12 +19,12 @@ The organizational consequence: each process assembles a temporary institution o
 - **Kernel** — `FigaroCore.sol`: 2 external functions, 3 mappings, no owner
 - **Mechanism modules** — attestation, clause registry, Dutch auction, seller registry
 - **FIG token** — 1B fixed supply, 10/30/60 split (founders / DAO / clause-author RPGF), time-locks, SP1-proved per-tranche minting
-- **SDK** — `@figaro/core`: TypeScript, event-sourced state, agent coordination
+- **SDK** — `@figaro/sdk`: TypeScript, event-sourced state, agent coordination
 - **Runtime frontend** — Next.js 14, institution assembly, builder surfaces, reference assemblies
 - **SP1 prover** — Rust workspace: kernel library, guest program, batch sequencer
 - **Formal verification** — TLA+ safety invariants, Echidna fuzzing, Halmos symbolic proofs, Certora CVL rules
 - **Paper** — Academic paper in `paper/`
-- **Two agent worlds, one clean seam.** *(1) Operator-private repo agents* — `.claude/agents/` ships fifteen Claude Code subagents for building Figaro itself: reviews (kernel-reviewer, clause-lockstep), runtime UI (runtime-ui-author), audits (assumption-auditor, audit-commitment-checker, literalness-auditor, separation-of-concerns-auditor, open-world auditors), operations (memory-hygiene, feedback-triage), communications (marketing-author, site-ia, visual-design), paper-reviewer — the operator's own tools. *(2) Public ecosystem agents* — `ecosystem-agents/`, three prompts that act for a user's own wallet, never the repo: `figaro-operator` (operate a wallet — sign every transaction on the owner's behalf via `@figaro/core/agent`), `figaro-clause-author`, and `figaro-assembly-author` (author or fork a clause/assembly and register it on the permissionless registries). See [CONTRIBUTING.md](CONTRIBUTING.md) and `ecosystem-agents/README.md`.
+- **Two agent worlds, one clean seam.** *(1) Operator-private repo agents* — `.claude/agents/` ships fifteen Claude Code subagents for building Figaro itself: reviews (kernel-reviewer, clause-lockstep), runtime UI (runtime-ui-author), audits (assumption-auditor, audit-commitment-checker, literalness-auditor, separation-of-concerns-auditor, open-world auditors), operations (memory-hygiene, feedback-triage), communications (marketing-author, site-ia, visual-design), paper-reviewer — the operator's own tools. *(2) Public ecosystem agents* — `ecosystem-agents/`, three prompts that act for a user's own wallet, never the repo: `figaro-operator` (operate a wallet — sign every transaction on the owner's behalf via `@figaro/sdk/agent`), `figaro-clause-author`, and `figaro-assembly-author` (author or fork a clause/assembly and register it on the permissionless registries). See [CONTRIBUTING.md](CONTRIBUTING.md) and `ecosystem-agents/README.md`.
 
 Start with [docs/README.md](docs/README.md) for the doc map + reading path.
 
@@ -49,7 +49,7 @@ src/                        Solidity contracts (0.8.26, Foundry)
   interfaces/               ISP1Verifier, IRoleResolverV4
   mocks/                    Test tokens, mock verifier
 
-sdk/                        TypeScript SDK (@figaro/core)
+sdk/                        TypeScript SDK (@figaro/sdk)
   src/                      Event parsing, state reconstruction, agent coordination
   test/                     Vitest tests
 

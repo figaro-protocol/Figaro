@@ -14,7 +14,7 @@
  * The agreements Map is supplied by the caller (render path:
  * `useProcessAgreements`); this module never fetches.
  */
-import type { Agreement } from "@figaro/core";
+import type { Agreement } from "@figaro/sdk";
 import type { Order } from "@/lib/kernel/store";
 import { sectionByField } from "@/lib/kernel/agreementSections";
 

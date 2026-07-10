@@ -12,7 +12,7 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { keccak256, stringToBytes } from "viem";
-import type { FieldSpec } from "@figaro/core/clauses";
+import type { FieldSpec } from "@figaro/sdk/clauses";
 import { ContentAnchorFieldInput } from "@/components/core/ContentAnchorFieldInput";
 import { FieldControl } from "@/components/core/FieldControl";
 

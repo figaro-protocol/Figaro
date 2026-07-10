@@ -1,5 +1,5 @@
 /**
- * @figaro/core — Types
+ * @figaro/sdk — Types
  *
  * Domain types for the Figaro protocol. No runtime dependencies — pure type definitions.
  */

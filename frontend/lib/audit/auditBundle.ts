@@ -23,7 +23,7 @@
  * `docs/BOL_RESEARCH.md` for why a NEGOTIABLE BoL is structurally impossible.
  */
 
-import type { Agreement } from "@figaro/core";
+import type { Agreement } from "@figaro/sdk";
 import type { Order } from "@/lib/kernel/store";
 import type { AttestationRecord } from "@/lib/composition/indexer";
 import { extractContract, type ContractDocument } from "./contractExtract";

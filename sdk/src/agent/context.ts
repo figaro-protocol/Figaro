@@ -1,5 +1,5 @@
 /**
- * @figaro/core/agent — Context Provider
+ * @figaro/sdk/agent — Context Provider
  *
  * Stateful wrapper around ProcessGraph + PublicClient.
  * Handles sync, incremental updates, and structured briefings.

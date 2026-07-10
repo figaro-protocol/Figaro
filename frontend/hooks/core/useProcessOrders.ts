@@ -23,7 +23,7 @@ import {
     getAllOrderCommitted,
     getAllOrderResolved,
 } from "@/lib/kernel/indexer";
-import { calculateBonds } from "@figaro/core";
+import { calculateBonds } from "@figaro/sdk";
 
 // ---------------------------------------------------------------------------
 // Event arg types (match CORE_ABI event signatures)

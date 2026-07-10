@@ -29,7 +29,7 @@ import {
     useWithdrawDeposit,
 } from "@/lib/seller/useSellerRegistry";
 import { getSellerRegistry } from "@/lib/kernel/contracts";
-import { SELLER_REGISTRY_ABI } from "@figaro/core";
+import { SELLER_REGISTRY_ABI } from "@figaro/sdk";
 import { DEFAULT_IPFS_SERVICE, resolveContentUri } from "@/lib/shared/ipfsService";
 import { unpinSupersededProfileArtifacts } from "@/lib/seller/profileErasure";
 import { tryParseSellerProfileDocument } from "@/lib/seller/sellerProfileMetadata";

@@ -31,7 +31,7 @@ import {
     computeSectionLeaf,
     type Agreement,
     type AgreementSection,
-} from "@figaro/core";
+} from "@figaro/sdk";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
 import { extractErrorMessage } from "@/lib/shared/errors";

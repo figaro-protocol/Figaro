@@ -25,7 +25,7 @@ import {
     EV_ORDER_COMMITTED,
     EV_ORDER_SELLER,
     EV_ORDER_RESOLVED,
-} from "@figaro/core";
+} from "@figaro/sdk";
 
 export type IndexedLog = Awaited<ReturnType<typeof cachedGetLogs>>[number];
 type IndexedLogWithArgs = IndexedLog & { args?: Record<string, unknown> };

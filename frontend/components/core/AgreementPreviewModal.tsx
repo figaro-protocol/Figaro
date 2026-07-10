@@ -18,7 +18,7 @@
  */
 
 import { formatToken } from "@/lib/shared/utils";
-import type { Commitment, Agreement, AgreementSection } from "@figaro/core";
+import type { Commitment, Agreement, AgreementSection } from "@figaro/sdk";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 import { ModalChrome } from "@/components/ui/ModalChrome";

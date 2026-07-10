@@ -19,7 +19,7 @@
 
 import type { Log, PublicClient } from "viem";
 import { getAbiItem } from "viem";
-import { parseSellerRegistryLogs, type SellerRegisteredEvent, type SellerWithdrawnEvent } from "@figaro/core";
+import { parseSellerRegistryLogs, type SellerRegisteredEvent, type SellerWithdrawnEvent } from "@figaro/sdk";
 import { hexEqual } from "@/lib/shared/evm";
 import { CONTRACTS, SELLER_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import { cachedGetLogsMulti } from "@/lib/kernel/indexer";
