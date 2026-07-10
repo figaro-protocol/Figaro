@@ -6,14 +6,14 @@
  * Import via: `import { ... } from "@figaro/core/extensions"`
  *
  * Modules:
- * - Attestation: clause-ID derivation, clause-agnostic event filtering
+ * - Attestation: clause-agnostic event filtering (clause-key derivation is
+ *   `computeClauseKey`, a root export)
  * - Geo math: geohash encode/decode, prefix matching, Haversine distance
  */
 
-// ── Clause ID & Attestation filtering ──────────────────────────────────────
+// ── Attestation filtering ───────────────────────────────────────────────────
 
 export {
-    computeClauseId,
     filterByClause,
     filterByProcess,
     filterByOrder,

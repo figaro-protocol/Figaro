@@ -16,7 +16,8 @@
  * `MerkleProof.verify`.
  */
 
-import { keccak256, toHex, concat, encodeAbiParameters, type Hex } from "viem";
+import { keccak256, toHex, concat, type Hex } from "viem";
+import { computeClauseKey } from "./discovery.js";
 
 // ── Core types ──────────────────────────────────────────────────────────────
 
@@ -69,10 +70,6 @@ export function canonicalizeSectionData(data: Record<string, unknown>): string {
 
 const ZERO_HASH = `0x${"0".repeat(64)}` as Hex;
 
-function clauseIdOf(clauseKey: string, version: number): Hex {
-    return keccak256(encodeAbiParameters([{ type: "string" }, { type: "uint64" }], [clauseKey, BigInt(version)]));
-}
-
 /**
  * Return the on-chain `sectionData` bytes for an agreement section: the
  * canonical JSON of the section data. The chain merkle-binds `sectionData`
@@ -93,7 +90,7 @@ export function getSectionDataBytes(section: AgreementSection): Hex {
  */
 export function computeSectionLeaf(section: AgreementSection): Hex {
     return keccak256(
-        concat([clauseIdOf(section.clause, section.version), keccak256(getSectionDataBytes(section))]),
+        concat([computeClauseKey(section.clause, section.version), keccak256(getSectionDataBytes(section))]),
     );
 }
 

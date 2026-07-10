@@ -130,17 +130,17 @@ const [endpoint] = document ? extractServiceEndpoints(document, "MCPEndpoint") :
 Clause-agnostic attestation filtering and geo math.
 
 ```ts
+import { computeClauseKey } from "@figaro/core";
 import {
-  computeClauseId,
   filterByClause,
   haversineDistance,
   geohashesMatch,
 } from "@figaro/core/extensions";
 
-// Attestations: derive a clause ID (name, version), then filter events for it.
-// The SDK knows no specific clause — the stage/contentRef meaning is clause-spec
-// data read at the edge, never baked in here.
-const clauseId = computeClauseId("figaro-ghg", 1);
+// Attestations: derive the on-chain clause key (name, version), then filter
+// events for it. The SDK knows no specific clause — the stage/contentRef
+// meaning is clause-spec data read at the edge, never baked in here.
+const clauseId = computeClauseKey("figaro-ghg", 1);
 const forClause = filterByClause(attestations, clauseId);
 
 // Geo: check delivery proximity

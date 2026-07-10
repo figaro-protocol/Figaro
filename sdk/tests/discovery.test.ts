@@ -31,6 +31,22 @@ function mkEvents(overrides: Partial<DiscoveryEvents> = {}): DiscoveryEvents {
     };
 }
 
+describe("computeClauseKey", () => {
+    it("matches keccak256(abi.encode(name, version))", () => {
+        expect(computeClauseKey("clause-a", 1)).toBe(
+            keccak256(encodeAbiParameters([{ type: "string" }, { type: "uint64" }], ["clause-a", 1n])),
+        );
+    });
+
+    it("different names produce different keys", () => {
+        expect(computeClauseKey("key-a", 1)).not.toBe(computeClauseKey("key-b", 1));
+    });
+
+    it("different versions produce different keys", () => {
+        expect(computeClauseKey("clause-a", 1)).not.toBe(computeClauseKey("clause-a", 2));
+    });
+});
+
 describe("DiscoveryGraph — clauses", () => {
     it("surfaces a registered clause with its derived on-chain key", () => {
         const g = reconstructDiscovery(mkEvents({

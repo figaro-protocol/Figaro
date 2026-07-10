@@ -1,33 +1,13 @@
 /**
- * @figaro/core/extensions — Clause ID & Attestation filtering
+ * @figaro/core/extensions — Attestation filtering
  *
- * Clause-ID derivation (matching `ClauseRegistry`) and clause-agnostic
- * attestation-event filtering. Carries no knowledge of any specific clause:
- * the stage, contentRef shape, and meaning of an attestation are clause-spec
- * data read at the edge, never baked in here.
+ * Clause-agnostic attestation-event filtering. Carries no knowledge of any
+ * specific clause: the stage, contentRef shape, and meaning of an attestation
+ * are clause-spec data read at the edge, never baked in here. Clause-key
+ * derivation is `computeClauseKey` (root export).
  */
 
-import { keccak256, encodeAbiParameters } from "viem";
 import type { Hex, AttestationEvent } from "../types.js";
-
-// ── Clause ID derivation ────────────────────────────────────────────────────
-
-/**
- * Compute a clause ID from a string key.
- * This is the canonical way to derive clause IDs.
- *
- * Identity is the (name, version) pair: keccak256(abi.encode(name, version)),
- * matching `ClauseRegistry`. The name carries no version suffix; the version
- * is a distinct argument.
- *
- * @example
- * ```ts
- * const clauseId = computeClauseId("figaro-emissions", 1);
- * ```
- */
-export function computeClauseId(name: string, version: number): Hex {
-    return keccak256(encodeAbiParameters([{ type: "string" }, { type: "uint64" }], [name, BigInt(version)]));
-}
 
 // ── Attestation event filtering ─────────────────────────────────────────────
 

@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import {
-    computeClauseId,
     filterByClause,
     filterByProcess,
     filterByOrder,
@@ -32,25 +31,6 @@ function makeAttestation(overrides: Partial<AttestationEvent> = {}): Attestation
         ...overrides,
     };
 }
-
-// ── computeClauseId ─────────────────────────────────────────────────────────
-
-describe("computeClauseId", () => {
-    it("matches keccak256(abi.encode(name, version))", () => {
-        const id = computeClauseId("clause-a", 1);
-        expect(id).toBe(CLAUSE_A_ID);
-    });
-
-    it("different keys produce different IDs", () => {
-        const a = computeClauseId("key-a", 1);
-        const b = computeClauseId("key-b", 1);
-        expect(a).not.toBe(b);
-    });
-
-    it("different versions produce different IDs", () => {
-        expect(computeClauseId("clause-a", 1)).not.toBe(computeClauseId("clause-a", 2));
-    });
-});
 
 // ── Attestation event filtering ─────────────────────────────────────────────
 
