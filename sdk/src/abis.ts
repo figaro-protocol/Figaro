@@ -134,6 +134,8 @@ export const ERC20_ABI = parseAbi([
     "function approve(address spender, uint256 amount) external returns (bool)",
     "function allowance(address owner, address spender) view returns (uint256)",
     "function name() view returns (string)",
+    "function symbol() view returns (string)",
+    "function decimals() view returns (uint8)",
     "function nonces(address owner) view returns (uint256)",
     "function DOMAIN_SEPARATOR() view returns (bytes32)",
     "function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external",
@@ -149,6 +151,10 @@ export const SELLER_REGISTRY_ABI = parseAbi([
     "event SellerRegistered(address indexed seller, string metadataURI)",
     "event SellerProfileUpdated(address indexed seller, string metadataURI)",
     "event SellerWithdrawn(address indexed seller, uint256 deposit)",
+    "error AlreadyRegistered()",
+    "error NotRegistered()",
+    "error InsufficientDeposit()",
+    "error TransferFailed()",
 ]);
 
 // ── AssemblyRegistry ABI ──────────────────────────────────────────────────

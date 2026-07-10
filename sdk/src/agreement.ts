@@ -59,11 +59,30 @@ function sortedReplacer(_key: string, value: unknown): unknown {
 }
 
 /**
- * Deterministic JSON serialization: sorted object keys, preserved array order.
+ * Deterministic JSON serialization: sorted object keys at every depth,
+ * preserved array order, no whitespace. THE one canonical-JSON convention —
+ * agreement sections, clause specs (`ClauseRegistry.contentHash`), and
+ * assembly compositions (`AssemblyRegistry.compositionHash`) all hash this
+ * form, so any reader verifies a fetched document by re-canonicalizing the
+ * parsed JSON. The serialized value must carry no bigints.
+ */
+export function canonicalize(value: unknown): string {
+    return JSON.stringify(value, sortedReplacer);
+}
+
+/**
+ * Deterministic JSON serialization of one agreement section's data.
  * Used by both parties so the same logical data always produces the same hash.
  */
 export function canonicalizeSectionData(data: Record<string, unknown>): string {
-    return JSON.stringify(data, sortedReplacer);
+    return canonicalize(data);
+}
+
+/** keccak256 over the canonical serialization — the digest the registries
+ *  anchor (`contentHash` for clause specs, `compositionHash` for assembly
+ *  compositions). Publishers hash with it; readers verify with it after fetch. */
+export function canonicalContentHash(value: unknown): Hex {
+    return keccak256(toHex(canonicalize(value)));
 }
 
 // ── Merkle primitives ───────────────────────────────────────────────────────

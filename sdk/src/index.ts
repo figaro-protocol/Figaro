@@ -141,8 +141,10 @@ export {
 } from "./gasCeilings.js";
 export type { ProcessResolveCapacity } from "./gasCeilings.js";
 
-// Agreement + merkle root + inclusion proofs
+// Agreement + merkle root + inclusion proofs + the canonical-JSON convention
 export {
+    canonicalize,
+    canonicalContentHash,
     canonicalizeSectionData,
     computeSectionLeaf,
     computeAgreementHash,
@@ -151,3 +153,6 @@ export {
     getSectionDataBytes,
 } from "./agreement.js";
 export type { Agreement, AgreementSection } from "./agreement.js";
+
+// Assembly identity (the AssemblyRegistry key + derived slug)
+export { templateCompositionHash, deriveAssemblySlug } from "./assembly.js";
