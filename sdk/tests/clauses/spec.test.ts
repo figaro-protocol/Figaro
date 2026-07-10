@@ -197,4 +197,18 @@ describe("parseClauseSpec — meta-clause validation", () => {
         });
         expect(result.ok).toBe(false);
     });
+
+    it("rejects an adversarially deep-nested field spec instead of overflowing the stack", () => {
+        // A permissionlessly-registered spec nested thousands deep must parse-reject
+        // (bounded), never RangeError. Build ~5000-deep object.fields.
+        let leaf: Record<string, unknown> = { name: "leaf", type: "string", required: true };
+        for (let i = 0; i < 5000; i++) {
+            leaf = { name: `n${i}`, type: "object", required: true, fields: [leaf] };
+        }
+        const result = parseClauseSpec({
+            clauseId: "deep-v1", version: 1, title: "Deep", description: "Adversarial nesting.",
+            fields: [leaf],
+        });
+        expect(result.ok).toBe(false);
+    });
 });

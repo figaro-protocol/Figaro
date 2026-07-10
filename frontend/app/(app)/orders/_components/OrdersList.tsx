@@ -133,6 +133,7 @@ function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listings }: {
 // ── Outbound pending row: I signed and relayed, awaiting the counterparty ──
 function AwaitingAcceptanceRow({ payload, listings }: { payload: CommitmentPayload; listings: ReadonlyArray<Listing> }) {
     const { commitment } = payload;
+    const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     const counterpartyName = displayNameForAddress(listings, commitment.seller);
     return (
         <div className="block rounded-lg border border-neutral-200 bg-white p-4" data-testid="order-pending-row">
@@ -151,7 +152,7 @@ function AwaitingAcceptanceRow({ payload, listings }: { payload: CommitmentPaylo
                 </div>
                 <div className="text-right shrink-0">
                     <p className="text-xs text-neutral-500">Order value</p>
-                    <p className="text-sm font-semibold text-black">{formatToken(commitment.payment)}</p>
+                    <p className="text-sm font-semibold text-black">{formatToken(commitment.payment, decimals)}</p>
                 </div>
             </div>
         </div>
@@ -160,6 +161,7 @@ function AwaitingAcceptanceRow({ payload, listings }: { payload: CommitmentPaylo
 
 // ── On-chain process row (the wallet is buyer or seller on it) ──
 function OrderRow({ row, listings }: { row: ProcessRow; listings: ReadonlyArray<Listing> }) {
+    const { decimals } = useTokenDecimals(row.currency as `0x${string}` | undefined);
     return (
         <Link
             href={`/orders/${row.processId}`}
@@ -189,7 +191,7 @@ function OrderRow({ row, listings }: { row: ProcessRow; listings: ReadonlyArray<
                 </div>
                 <div className="text-right shrink-0">
                     <p className="text-xs text-neutral-500">Order value</p>
-                    <p className="text-sm font-semibold text-black">{formatToken(row.payment)}</p>
+                    <p className="text-sm font-semibold text-black">{formatToken(row.payment, decimals)}</p>
                 </div>
             </div>
         </Link>

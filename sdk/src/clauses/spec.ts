@@ -182,8 +182,19 @@ function defaultMatchesField(spec: FieldSpec, value: unknown): boolean {
  *  that live outside a clause's content — e.g. the frontend's `block.fields`
  *  (a composition's runtime-input fields). Pushes `SpecParseError`s on `errors`
  *  and returns null on any malformed field. */
-export function parseFieldSpec(raw: unknown, path: string, errors: SpecParseError[]): FieldSpec | null {
-    const spec = parseFieldSpecCore(raw, path, errors);
+/** Max field-spec nesting depth. A real clause field nests a handful deep
+ *  (object → array → object); this ceiling exists only to turn an adversarial
+ *  permissionlessly-registered spec (thousands-deep `object.fields` / `array.items`)
+ *  into a clean parse rejection instead of a `RangeError: Maximum call stack`
+ *  that could crash a consuming agent or clause surface. */
+const MAX_FIELD_DEPTH = 16;
+
+export function parseFieldSpec(raw: unknown, path: string, errors: SpecParseError[], depth = 0): FieldSpec | null {
+    if (depth > MAX_FIELD_DEPTH) {
+        errors.push({ path, message: `field nesting exceeds the maximum depth of ${MAX_FIELD_DEPTH}` });
+        return null;
+    }
+    const spec = parseFieldSpecCore(raw, path, errors, depth);
     if (spec === null) return null;
     const rawDefault = (raw as Record<string, unknown>).default;
     if (rawDefault !== undefined) {
@@ -196,7 +207,7 @@ export function parseFieldSpec(raw: unknown, path: string, errors: SpecParseErro
     return spec;
 }
 
-function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]): FieldSpec | null {
+function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[], depth: number): FieldSpec | null {
     if (!isObject(raw)) {
         errors.push({ path, message: "field spec must be an object" });
         return null;
@@ -357,7 +368,7 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
                 errors.push({ path: `${path}.items`, message: "array requires an items field spec" });
                 return null;
             }
-            const items = parseFieldSpec({ ...raw.items, name: "*", required: true }, `${path}.items`, errors);
+            const items = parseFieldSpec({ ...raw.items, name: "*", required: true }, `${path}.items`, errors, depth + 1);
             if (items === null) return null;
             const spec: ArrayFieldSpec = { ...base, type: "array", items };
             if (raw.minItems !== undefined) {
@@ -383,7 +394,7 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
             }
             const fields: FieldSpec[] = [];
             for (let i = 0; i < raw.fields.length; i++) {
-                const child = parseFieldSpec(raw.fields[i], `${path}.fields[${i}]`, errors);
+                const child = parseFieldSpec(raw.fields[i], `${path}.fields[${i}]`, errors, depth + 1);
                 if (child !== null) fields.push(child);
             }
             return { ...base, type: "object", fields };

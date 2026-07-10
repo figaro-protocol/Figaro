@@ -99,6 +99,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         ?? "";
     const {
         decimals: tokenDecimals,
+        decimalsReady,
         balance: tokenBalance,
         needsAuthorization: needsApproval,
         authorize: approve,
@@ -253,6 +254,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // and every composition's runtime inputs are complete.
     const orderReady = !!pickedAssembly
         && !!currency
+        && decimalsReady
         && (!buyerChoosesCounterparty || !!sellerSelection)
         && compositionsReady;
     // The root order carries the design-time clauses the buyer is bonding to.

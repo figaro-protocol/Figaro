@@ -18,6 +18,7 @@
  */
 
 import { formatToken } from "@/lib/shared/utils";
+import useTokenDecimals from "@/hooks/useTokenDecimals";
 import type { Commitment, Agreement, AgreementSection } from "@figaro/sdk";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
@@ -32,15 +33,15 @@ interface Props {
     onCancel: () => void;
 }
 
-function formatPayment(commitment: Commitment): string {
-    // Heuristic: if currency is the well-known USDC address pattern, scale by 6;
-    // otherwise scale by 18 (ETH / FIG / most ERC-20s). This is for display
-    // only — the bytes signed are the bigint exactly.
+function formatPayment(payment: bigint, decimals: number): string {
+    // Display only — the bytes signed are the bigint exactly. Decimals are the
+    // token's on-chain `decimals()` (read on the connected chain), NOT an
+    // 18-default: this is the verify-before-sign surface, so a wrong magnitude
+    // here defeats the modal's whole purpose for a non-18-decimal token.
     try {
-        // If it doesn't fit the typical 18-decimal path we fall back to raw.
-        return formatToken(commitment.payment);
+        return formatToken(payment, decimals);
     } catch {
-        return commitment.payment.toString();
+        return payment.toString();
     }
 }
 
@@ -94,6 +95,7 @@ function ConsentValueToken({ token }: { token: string }) {
 }
 
 export function AgreementPreviewModal({ commitment, agreement, onConfirm, onCancel }: Props) {
+    const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     const lineItems = commerceLineItems(agreement);
     const otherSections = nonCommerceSections(agreement);
     const consented = consentSections(agreement);
@@ -149,7 +151,7 @@ export function AgreementPreviewModal({ commitment, agreement, onConfirm, onCanc
                             <dd className="font-mono text-xs text-black">{commitment.currency}</dd>
                             <dt className="text-neutral-500">Amount</dt>
                             <dd className="text-black" data-testid="preview-payment">
-                                {formatPayment(commitment)} <span className="text-neutral-500 text-xs">(raw: {commitment.payment.toString()})</span>
+                                {formatPayment(commitment.payment, decimals)} <span className="text-neutral-500 text-xs">(raw: {commitment.payment.toString()})</span>
                             </dd>
                             <dt className="text-neutral-500">Deadline</dt>
                             <dd className="text-black">

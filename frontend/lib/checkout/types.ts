@@ -47,6 +47,9 @@ export interface CheckoutHandle {
     // Token state
     balance: bigint | undefined;
     decimals: number;
+    /** True once the token's on-chain `decimals()` has resolved — false while
+     *  `decimals` is still the 18-default fallback. Gate pricing on this. */
+    decimalsReady: boolean;
 
     // Authorization
     needsAuthorization: (amount: bigint) => boolean;
