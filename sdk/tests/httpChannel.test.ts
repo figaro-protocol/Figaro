@@ -37,7 +37,7 @@ async function buildOffer(): Promise<CommitmentPayload> {
 }
 
 /** A pure seller handler: verifies the buyer sig and counter-signs (no chain). */
-const sellerHandler: OfferHandler = (offer) => counterSignOffer(sellerW, offer, { chainId: CHAIN_ID, core: CORE });
+const sellerHandler: OfferHandler = (offer) => counterSignOffer(sellerW, offer, { chainId: CHAIN_ID, core: CORE }, () => true);
 
 /** Stand up a real node:http server running `responder`; returns its URL + a stop. */
 async function startSellerServer(

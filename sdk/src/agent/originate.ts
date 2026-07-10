@@ -148,8 +148,14 @@ export function validateOffer(offer: CommitmentPayload, expectedSeller: Address)
  * Seller validates an inbound offer and counter-signs, or declines. `wallet` is
  * the seller. A malformed offer (fails `validateOffer`, or a buyer signature
  * that does not recover to the named buyer) THROWS — the seller must never
- * counter-sign a tampered or bogus commitment. `accept` is the policy gate: a
- * clean offer the policy rejects returns `null` (declined), not a throw.
+ * counter-sign a tampered or bogus commitment.
+ *
+ * REFUSE-ALL FLOOR (operator ruling 2026-07-07, binds the SDK): `accept` is the
+ * policy gate, and its DEFAULT is refuse. A clean offer counter-signs ONLY when
+ * an explicit `accept` policy returns true; omit `accept` (or return false) and
+ * the offer is declined (`null`). A seller must never auto-sign a stranger's
+ * offer by default — counter-signing bonds the seller against attacker-chosen
+ * `expectedCumulativeValue`/`currency`, so autonomy is opt-IN, never the floor.
  */
 export async function counterSignOffer(
     wallet: WalletClient,
@@ -172,7 +178,8 @@ export async function counterSignOffer(
     });
     if (!buyerSigValid) throw new Error("counterSignOffer: buyer signature does not recover to the named buyer");
 
-    if (accept && !accept(offer)) return null;
+    // Refuse-all floor: no policy, or a policy that says no, declines.
+    if (!accept || !accept(offer)) return null;
 
     const sellerSig = await wallet.signTypedData({
         account, domain, types: COMMITMENT_TYPES, primaryType: "Commitment", message: offer.commitment,
@@ -243,8 +250,10 @@ export async function originateProcess(
 }
 
 export interface SellerOfferHandlerOpts {
-    /** Policy gate: return false to decline a clean offer. Omit to accept all
-     *  well-formed offers. */
+    /** Policy gate (the refuse-all floor): the handler counter-signs ONLY when
+     *  this returns true. OMIT it and the handler declines every offer — a fresh
+     *  integration is autonomous-inert by default; enabling autonomy means
+     *  writing this rule (operator ruling 2026-07-07). */
     accept?: (offer: CommitmentPayload) => boolean;
     /** Approve the seller's 2× cumulative-value bond before returning the signed
      *  offer, so the allowance is on chain before the buyer commits (default true). */
@@ -255,8 +264,9 @@ export interface SellerOfferHandlerOpts {
  * SELLER LOOP — build an `OfferHandler` to register on a channel. On an inbound
  * offer it validates (the anti-tamper gate), applies the accept policy, and — if
  * accepting — approves its bond then counter-signs. A declined offer returns
- * `null`; a malformed offer throws (the seller must never counter-sign a tampered
- * commitment). The bond is approved only when accepting.
+ * `null` (and does NOT approve the bond); a malformed offer throws. With no
+ * `accept` policy the handler declines everything (refuse-all floor) — so
+ * registering it bare never auto-signs a stranger's offer.
  */
 export function makeSellerOfferHandler(
     wallet: WalletClient,

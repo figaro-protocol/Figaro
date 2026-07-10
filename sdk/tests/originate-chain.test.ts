@@ -77,9 +77,9 @@ describe("buildChainOffers — the value-added chain walk", () => {
 describe("originateChain — abort on any decline (nothing commits)", () => {
     it("returns null and touches no chain when a mid-chain seller declines", async () => {
         const channel = new InProcessChannel();
-        channel.register(S0.address, (o) => counterSignOffer(w(S0), o, { chainId: CHAIN, core: CORE }));
+        channel.register(S0.address, (o) => counterSignOffer(w(S0), o, { chainId: CHAIN, core: CORE }, () => true));
         channel.register(S1.address, async () => null); // courier declines
-        channel.register(S2.address, (o) => counterSignOffer(w(S2), o, { chainId: CHAIN, core: CORE }));
+        channel.register(S2.address, (o) => counterSignOffer(w(S2), o, { chainId: CHAIN, core: CORE }, () => true));
         // A PublicClient that throws if used — proves abort happens before any chain call.
         const explodingPub = { getChainId: () => { throw new Error("chain must not be touched on abort"); } } as unknown as PublicClient;
         const result = await originateChain(buyerW, explodingPub, { core: CORE }, { ...params, channel });

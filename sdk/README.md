@@ -113,7 +113,13 @@ const result = await executeAction(walletClient, publicClient, addresses, approv
 // Autonomous origination — the two-party handshake over a coordination channel:
 // buyer instantiates a discovered assembly + signs; seller validates + counter-signs.
 import { originateProcess, makeSellerOfferHandler, InProcessChannel } from "@figaro/sdk/agent";
-channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, addresses));
+// REFUSE-ALL FLOOR: without an `accept` policy the handler declines EVERY offer.
+// Autonomy is opt-in — the policy is where you bound currency/amount before the
+// seller bonds against them. (A `() => true` accept-all is possible but unsafe.)
+channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, addresses, {
+    accept: (offer) => offer.commitment.currency === myAcceptedToken
+        && offer.commitment.expectedCumulativeValue <= myMaxBond,
+}));
 const tx = await originateProcess(buyerWallet, publicClient, addresses, { channel, template, seller, currency, payment, chainId, core, overrides });
 
 // did:web: an agent resolves a counterparty's DID Document, verifies the on-chain

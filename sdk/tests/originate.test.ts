@@ -76,14 +76,20 @@ describe("origination handshake (real signatures, no chain)", () => {
         expect(validateOffer(offer, SELLER.address).ok).toBe(true);
     });
 
-    it("seller counter-signs a clean offer; result yields both execution inputs", async () => {
+    it("seller counter-signs a clean offer WHEN the policy accepts; yields both execution inputs", async () => {
         const offer = await buildBuyerOffer(buyerW, offerParams());
-        const signed = await counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE });
+        const signed = await counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE }, () => true);
         expect(signed).not.toBeNull();
         const inputs = offerToExecutionInputs(signed!);
         expect(inputs.buyerSig).toBeDefined();
         expect(inputs.sellerSig).toBeDefined();
         expect(inputs.commitment).toBe(offer.commitment);
+    });
+
+    it("REFUSE-ALL FLOOR: a clean offer with NO accept policy is declined (null), not signed", async () => {
+        const offer = await buildBuyerOffer(buyerW, offerParams());
+        const signed = await counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE });
+        expect(signed).toBeNull();
     });
 
     it("policy decline returns null (not a throw) on a clean offer", async () => {
@@ -119,7 +125,7 @@ describe("origination handshake — the anti-tamper gate (security)", () => {
 describe("InProcessChannel", () => {
     it("routes an offer to the registered seller handler; unregistered → null", async () => {
         const channel = new InProcessChannel();
-        channel.register(SELLER.address, (o) => counterSignOffer(sellerW, o, { chainId: CHAIN, core: CORE }));
+        channel.register(SELLER.address, (o) => counterSignOffer(sellerW, o, { chainId: CHAIN, core: CORE }, () => true));
         const offer = await buildBuyerOffer(buyerW, offerParams());
         const signed = await channel.sendOffer(SELLER.address, offer);
         expect(signed?.sellerSig).toBeDefined();
