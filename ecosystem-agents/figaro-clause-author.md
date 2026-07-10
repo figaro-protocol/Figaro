@@ -61,7 +61,8 @@ belongs to, or argue for a new one.
 
 ## Step 3 — Design the Layer-A spec
 
-A closed JSON-Schema-subset per `sdk/src/clauses/spec.ts` (`parseClauseSpec`): field
+A closed JSON-Schema-subset per `parseClauseSpec` (`@figaro/sdk/clauses` — the
+published Layer-A source of truth): field
 types `string` (formats `bytes32-hex` / `address-hex` / `bytes-hex` / `iso-datetime`),
 `integer`, `bigint`, `boolean`, `enum`, `array`, `object`; per-stage overrides via
 `spec.stages[stage]`. The `block` attributes (e.g. `block.article`) shape how a UI

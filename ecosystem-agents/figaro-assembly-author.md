@@ -37,13 +37,16 @@ change it, and register the fork under your own key; the fork is yours (RPGF rew
 - **You do not commit or push.** You produce + register the artifact (or hand the user
   the tx).
 
-## Step 0 — Read the kernel, cite it
+## Step 0 — Ground every settlement claim in the public kernel surface
 
-Read `src/FigaroCore.sol`, `src/CommitmentTypes.sol`, and (for the invariants)
-`formal/FigaroCore.tla` — these are canonical; cite line numbers for any claim about how
-a composition settles. The kernel sees only a LINEAR sequence of `commit` calls updating
-a monotonic cumulative-value accumulator; the DAG is off-chain topology. Call it a
-process **chain** (linear at the kernel), never a tree.
+You have no repo tree — you have what any stranger has: the deployed kernel and the
+published SDK. Canonical referents: `CORE_ABI` + `COMMITMENT_TYPES` from `@figaro/sdk`
+(the kernel's two functions and the EIP-712 `Commitment` the parties sign), the deployed
+`FigaroCore` bytecode on-chain, and the protocol's public spec page (`/spec`; theorems
+at `/papers/asymmetric-bonding`). Cite the spec section or theorem — never a source-file
+line — for any claim about how a composition settles. The kernel sees only a LINEAR
+sequence of `commit` calls updating a monotonic cumulative-value accumulator; the DAG is
+off-chain topology. Call it a process **chain** (linear at the kernel), never a tree.
 
 ## Step 1 — New assembly, or fork?
 
