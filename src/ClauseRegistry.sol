@@ -30,7 +30,7 @@ pragma solidity 0.8.26;
 ///         Clauses anchor the off-chain vocabulary used by agreementHash
 ///         pre-images, AttestationCoordinator attestations, and mechanism
 ///         modules. The clauseId is the human-readable name (e.g.
-///         "figaro-courier-process", "figaro-ghg"); the on-chain key is
+///         "figaro-courier-process", "figaro-emissions"); the on-chain key is
 ///         keccak256(abi.encode(clauseId, version)).
 ///
 ///         Registration is permissionless — anyone can register a clause.

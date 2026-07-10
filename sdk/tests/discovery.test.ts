@@ -48,10 +48,10 @@ describe("DiscoveryGraph — clauses", () => {
     });
 
     it("de-surfaces a clause once its deposit is withdrawn (withdraw keys on the idHash)", () => {
-        const idHash = computeClauseKey("figaro-ghg", 2);
+        const idHash = computeClauseKey("figaro-emissions", 2);
         const g = reconstructDiscovery(mkEvents({
             clauseRegistered: [{
-                clauseId: "figaro-ghg", version: 2,
+                clauseId: "figaro-emissions", version: 2,
                 contentHash: CONTENT_HASH, contentURI: "ipfs://ghg", registrar: REGISTRAR,
                 blockNumber: 1, logIndex: 0,
             }],

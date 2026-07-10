@@ -184,8 +184,8 @@ const RUNGS: ClauseRung[] = [
         leaf: (data) => expect(data.nmfcClass).toBe('70'),
     },
     {
-        clauseId: 'figaro-ghg',
-        design: drawerFill('figaro-ghg', 'standard', 'GHG Protocol Product Standard'),
+        clauseId: 'figaro-emissions',
+        design: drawerFill('figaro-emissions', 'standard', 'GHG Protocol Product Standard'),
         auditTexts: ['GHG emissions disclosure', 'GHG Protocol Product Standard'],
         leaf: (data) => expect(data.standard).toBe('GHG Protocol Product Standard'),
     },

@@ -88,6 +88,13 @@ export interface ClauseBlockBinding {
      *  attestation's witness. Same `FieldSpec` shape as content fields — one
      *  parser, one renderer. Omit for clauses with no runtime input. */
     fields?: readonly FieldSpec[];
+    /** Hand-off stages — for a process-log (ladder) clause, the eventType
+     *  values at which a PHYSICAL hand-off occurs. Executing one of these
+     *  ladder stages pairs the witness stage of any co-composed clause nesting
+     *  under `handoff` (proximity) on the same order — one action, two
+     *  attestations. Read from the spec, never a hardcoded stage list; omit
+     *  for clauses with no hand-off semantics. */
+    handoffStages?: readonly string[];
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -156,6 +163,14 @@ export function parseBlockBinding(
         }
         interaction = { interface: raw.interaction.interface };
     }
+    let handoffStages: readonly string[] | undefined;
+    if (raw.handoffStages !== undefined) {
+        if (!Array.isArray(raw.handoffStages) || raw.handoffStages.some((s) => typeof s !== "string" || s.length === 0)) {
+            errors.push({ path: `${path}.handoffStages`, message: "handoffStages must be an array of non-empty strings when present" });
+            return null;
+        }
+        handoffStages = raw.handoffStages as string[];
+    }
     let fields: readonly FieldSpec[] | undefined;
     if (raw.fields !== undefined) {
         if (!Array.isArray(raw.fields)) {
@@ -179,5 +194,6 @@ export function parseBlockBinding(
         ...(composes !== undefined && { composes }),
         ...(interaction !== undefined && { interaction }),
         ...(fields !== undefined && { fields }),
+        ...(handoffStages !== undefined && { handoffStages }),
     };
 }

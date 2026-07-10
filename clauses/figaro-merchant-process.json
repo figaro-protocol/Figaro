@@ -30,6 +30,7 @@
         }
     ],
     "block": {
-        "article": "attestations"
+        "article": "attestations",
+        "handoffStages": ["handed-off"]
     }
 }

@@ -6,7 +6,7 @@
 # whose variation is a bounded, spec-declared option set; extend by clause VERSIONING — never
 # a free-form field for a choice.
 #
-# Why this guard exists: the GHG consolidation shipped `figaro-ghg.standard` as a free-form
+# Why this guard exists: the emissions consolidation shipped `figaro-emissions.standard` as a free-form
 # `string`, so it rendered a TEXT BOX instead of a dropdown (the user's dismay, 2026-06-17).
 # A bounded enum is validatable (Layer-C membership check), deterministically encodable (the
 # generic encoder maps value→0-based ordinal — position-as-index, which a free string cannot
@@ -31,7 +31,7 @@ FREE_CONTENT='^(currency|nonce|.*[Ss]ig|.*[Uu]ri|.*[Hh]ash|.*[Gg]eohash|descript
 # Known violations pending conversion to enums (tracked in the backlog UI/UX audit). Allowed
 # for now so the guard doesn't block existing work; REMOVE each as it becomes an enum — then
 # the guard FAILS if it ever regresses.
-KNOWN_PENDING='^(figaro-ghg\.standard|figaro-applicable-law\.applicableLaw)$'
+KNOWN_PENDING='^(figaro-emissions\.standard|figaro-applicable-law\.applicableLaw)$'
 
 violations=0
 for file in "$@"; do

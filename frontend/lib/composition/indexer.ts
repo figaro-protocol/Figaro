@@ -95,7 +95,7 @@ export function parseAttestationLog(log: IndexedAttestationLog): AttestationReco
  * provenance should compare `keccak256(content)` against the event's contentRef.
  *
  * @public — pending consumer: the measured-grams channel (attestation content
- * against the committed ghg section) recovers grams through this.
+ * against the committed emissions section) recovers grams through this.
  */
 export async function getAttestationContent(
     client: PublicClient,

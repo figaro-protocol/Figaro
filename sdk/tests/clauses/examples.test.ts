@@ -11,7 +11,7 @@ import coldChainSpecRaw from "../../../clauses/figaro-cold-chain.json" with { ty
 import freightClassSpecRaw from "../../../clauses/figaro-freight-class.json" with { type: "json" };
 import arbitrationKlerosSpecRaw from "../../../clauses/figaro-arbitration-kleros.json" with { type: "json" };
 import applicableLawSpecRaw from "../../../clauses/figaro-applicable-law.json" with { type: "json" };
-import ghgSpecRaw from "../../../clauses/figaro-ghg.json" with { type: "json" };
+import emissionsSpecRaw from "../../../clauses/figaro-emissions.json" with { type: "json" };
 import proximityPolicySpecRaw from "../../../clauses/figaro-proximity-policy.json" with { type: "json" };
 import merchantSpecRaw from "../../../clauses/figaro-merchant-process.json" with { type: "json" };
 import courierSpecRaw from "../../../clauses/figaro-courier-process.json" with { type: "json" };
@@ -169,13 +169,26 @@ describe("example clause specs — parse + validate sample content", () => {
 
     // ── figaro-cold-chain (GDP cold-chain) ──
 
-    it("figaro-cold-chain accepts a valid temperature window", () => {
+    it("figaro-cold-chain accepts a valid temperature window + recording interval", () => {
         const parsed = parseClauseSpec(coldChainSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
             tempClass: "refrigerated",
             tempMinC: 2,
             tempMaxC: 8,
+            recordingIntervalSeconds: 900,
+        }, parsed.spec).ok).toBe(true);
+    });
+
+    it("figaro-cold-chain accepts a free-form monitoring standard (no closed list)", () => {
+        const parsed = parseClauseSpec(coldChainSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({
+            tempClass: "frozen",
+            tempMinC: -25,
+            tempMaxC: -18,
+            recordingIntervalSeconds: 300,
+            monitoringStandard: "EN 12830",
         }, parsed.spec).ok).toBe(true);
     });
 
@@ -186,6 +199,17 @@ describe("example clause specs — parse + validate sample content", () => {
             tempClass: "warm",
             tempMinC: 20,
             tempMaxC: 25,
+            recordingIntervalSeconds: 900,
+        }, parsed.spec).ok).toBe(false);
+    });
+
+    it("figaro-cold-chain rejects a missing recording interval (the periodicity is a committed term)", () => {
+        const parsed = parseClauseSpec(coldChainSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({
+            tempClass: "frozen",
+            tempMinC: -25,
+            tempMaxC: -18,
         }, parsed.spec).ok).toBe(false);
     });
 
@@ -195,7 +219,26 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(validateContent({
             tempClass: "frozen",
             tempMinC: -25,
+            recordingIntervalSeconds: 900,
         }, parsed.spec).ok).toBe(false);
+    });
+
+    it("figaro-cold-chain stage-1 witness carries the period record (excursion derived, never stored)", () => {
+        const parsed = parseClauseSpec(coldChainSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        const record = {
+            periodStart: "2026-07-10T08:00:00Z",
+            periodEnd: "2026-07-10T12:00:00Z",
+            observedMinC: 3,
+            observedMaxC: 7,
+        };
+        expect(validateContent(record, parsed.spec, { stage: 1 }).ok).toBe(true);
+        // The committed fields do NOT validate at the witness stage…
+        expect(validateContent({
+            tempClass: "refrigerated", tempMinC: 2, tempMaxC: 8, recordingIntervalSeconds: 900,
+        }, parsed.spec, { stage: 1 }).ok).toBe(false);
+        // …and the witness does not validate against the committed fields.
+        expect(validateContent(record, parsed.spec).ok).toBe(false);
     });
 
     // ── figaro-freight-class (NMFC) ──
@@ -320,35 +363,46 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(validateContent({ applicableLaw: "U" }, parsed.spec).ok).toBe(false);
     });
 
-    // ── figaro-ghg (disclosure: free-form standard; no stored scope —
+    // ── figaro-emissions (disclosure: free-form standard; no stored scope —
     //    a reader derives scope from its position in the topology) ──
 
-    it("figaro-ghg spec parses cleanly", () => {
-        expect(parseClauseSpec(ghgSpecRaw).ok).toBe(true);
+    it("figaro-emissions spec parses cleanly", () => {
+        expect(parseClauseSpec(emissionsSpecRaw).ok).toBe(true);
     });
 
-    it("figaro-ghg accepts a named standard", () => {
-        const parsed = parseClauseSpec(ghgSpecRaw);
+    it("figaro-emissions accepts a named standard", () => {
+        const parsed = parseClauseSpec(emissionsSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ standard: "ISO 14064" }, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-ghg accepts ANY free-form standard (no closed taxonomy)", () => {
-        const parsed = parseClauseSpec(ghgSpecRaw);
+    it("figaro-emissions accepts ANY free-form standard (no closed taxonomy)", () => {
+        const parsed = parseClauseSpec(emissionsSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ standard: "My bespoke methodology v9" }, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-ghg declares no scope field (scope is reader-derived, never stored)", () => {
-        const parsed = parseClauseSpec(ghgSpecRaw);
+    it("figaro-emissions declares no scope field (scope is reader-derived, never stored)", () => {
+        const parsed = parseClauseSpec(emissionsSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(parsed.spec.fields.some((f) => f.name === "scope")).toBe(false);
     });
 
-    it("figaro-ghg rejects an empty standard", () => {
-        const parsed = parseClauseSpec(ghgSpecRaw);
+    it("figaro-emissions rejects an empty standard", () => {
+        const parsed = parseClauseSpec(emissionsSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ standard: "" }, parsed.spec).ok).toBe(false);
+    });
+
+    it("figaro-emissions stage-1 witness carries measured grams (no sister measurement clause)", () => {
+        const parsed = parseClauseSpec(emissionsSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ gramsCO2e: 1200 }, parsed.spec, { stage: 1 }).ok).toBe(true);
+        expect(validateContent({ gramsCO2e: -1 }, parsed.spec, { stage: 1 }).ok).toBe(false);
+        // The committed disclosure does not validate at the witness stage…
+        expect(validateContent({ standard: "ISO 14064" }, parsed.spec, { stage: 1 }).ok).toBe(false);
+        // …and grams do not validate as committed content.
+        expect(validateContent({ gramsCO2e: 1200 }, parsed.spec).ok).toBe(false);
     });
 
     // ── figaro-proximity-policy-v1 ──
@@ -379,13 +433,26 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(validateContent({ bands: ["psychic"] }, parsed.spec).ok).toBe(false);
     });
 
-    it("figaro-proximity-policy-v1 rejects unknown fields (closed clause — proof fields land in sister clause)", () => {
+    it("figaro-proximity-policy-v1 rejects unknown fields (closed clause — the proof lives in the witness stage)", () => {
         const parsed = parseClauseSpec(proximityPolicySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
             bands: ["contact-nfc"],
             nonce: "0x" + "ab".repeat(32),
         }, parsed.spec).ok).toBe(false);
+    });
+
+    it("figaro-proximity-policy stage-1 witness carries the detected band (sufficiency read-time-derived)", () => {
+        const parsed = parseClauseSpec(proximityPolicySpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ band: "zone-wifi" }, parsed.spec, { stage: 1 }).ok).toBe(true);
+        expect(validateContent(
+            { band: "zone-wifi", evidenceUri: "ipfs://bafy.../bssid-artifact" },
+            parsed.spec, { stage: 1 },
+        ).ok).toBe(true);
+        expect(validateContent({ band: "psychic" }, parsed.spec, { stage: 1 }).ok).toBe(false);
+        // The committed policy shape does not validate at the witness stage.
+        expect(validateContent({ bands: ["zone-wifi"] }, parsed.spec, { stage: 1 }).ok).toBe(false);
     });
 
     // ── figaro-merchant-process-v1 ──

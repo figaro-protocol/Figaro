@@ -10,7 +10,7 @@ import type { SellerCatalogue } from "@/lib/seller/types";
 import { primeClauseSpecs } from "./primeClauseSpecs";
 
 // The kit-assembly diamond: A (lead, root) → B, A → C, B → D, C → D.
-// B + D carry proximity-policy, C carries ghg. Proximity is bound
+// B + D carry proximity-policy, C carries emissions. Proximity is bound
 // to [Swift, Mercato], so the per-clause cursor hands B→Swift, D→Mercato by
 // commit order. Structure + clauses come straight off the template agreements —
 // party-agnostic, no baked payment. Parents live INSIDE the topology clause
@@ -22,7 +22,7 @@ const SWIFT = "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955" as const;
 const ROSSO = "0x976EA74026E726554dB657fA54763abd0C3a0aa9" as const;
 
 const PROX = "figaro-proximity-policy";
-const GHG = "figaro-ghg";
+const EMISSIONS = "figaro-emissions";
 const TOPO = "figaro-topology";
 const parents = (ids: string[]) => ({ [TOPO]: { parentOrderHashes: ids } });
 
@@ -32,7 +32,7 @@ const assembly = {
     canonicalMethod: null,
     counterpartyBindings: [
         { clauseId: PROX, addresses: [SWIFT, MERCATO] },
-        { clauseId: GHG, addresses: [ROSSO] },
+        { clauseId: EMISSIONS, addresses: [ROSSO] },
     ],
     assemblyTemplate: {
         slug: "kit-assembly",
@@ -40,7 +40,7 @@ const assembly = {
         agreements: [
             { id: "A", clauses: { ...parents([]) } },
             { id: "B", clauses: { [PROX]: {}, ...parents(["A"]) } },
-            { id: "C", clauses: { [GHG]: {}, ...parents(["A"]) } },
+            { id: "C", clauses: { [EMISSIONS]: {}, ...parents(["A"]) } },
             { id: "D", clauses: { [PROX]: {}, ...parents(["B", "C"]) } },
         ],
     },
@@ -89,7 +89,7 @@ describe("planSubOrderSellers", () => {
     it("assigns sellers by binding, drawing shared-clause siblings by commit order", () => {
         const plan = planSubOrderSellers(assembly);
         expect(plan.find((p) => p.node.id === "B")!.seller).toBe(SWIFT); // proximity cursor 0
-        expect(plan.find((p) => p.node.id === "C")!.seller).toBe(ROSSO); // ghg
+        expect(plan.find((p) => p.node.id === "C")!.seller).toBe(ROSSO); // emissions
         expect(plan.find((p) => p.node.id === "D")!.seller).toBe(MERCATO); // proximity cursor 1
     });
 

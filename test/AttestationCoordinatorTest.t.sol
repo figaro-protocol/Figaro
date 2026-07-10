@@ -34,13 +34,13 @@ contract AttestationCoordinatorTest is Test {
     uint256 constant INITIAL_BALANCE = 10_000 ether;
 
     string constant LIFECYCLE_CLAUSE_ID = "figaro-courier-process";
-    string constant GHG_CLAUSE_ID = "figaro-ghg-iso-14064";
+    string constant EMISSIONS_CLAUSE_ID = "figaro-emissions-iso-14064";
     string constant PROXIMITY_CLAUSE_ID = "figaro-proximity-proof";
     string constant COMMERCE_CLAUSE_ID = "figaro-commerce";
     string constant MODALITIES_CLAUSE_ID = "figaro-modalities";
 
     bytes32 constant LIFECYCLE_CLAUSE = keccak256(abi.encode("figaro-courier-process", uint64(1)));
-    bytes32 constant GHG_CLAUSE = keccak256(abi.encode("figaro-ghg-iso-14064", uint64(1)));
+    bytes32 constant EMISSIONS_CLAUSE = keccak256(abi.encode("figaro-emissions-iso-14064", uint64(1)));
     bytes32 constant PROXIMITY_CLAUSE = keccak256(abi.encode("figaro-proximity-proof", uint64(1)));
     bytes32 constant COMMERCE_CLAUSE = keccak256(abi.encode("figaro-commerce", uint64(1)));
     bytes32 constant MODALITIES_CLAUSE = keccak256(abi.encode("figaro-modalities", uint64(1)));
@@ -66,7 +66,7 @@ contract AttestationCoordinatorTest is Test {
         bytes32 testContentHash = keccak256("spec-json");
         string memory testUri = "ipfs://figaro-test-uri";
         clauses.registerClause(LIFECYCLE_CLAUSE_ID, 1, testContentHash, testUri);
-        clauses.registerClause(GHG_CLAUSE_ID, 1, testContentHash, testUri);
+        clauses.registerClause(EMISSIONS_CLAUSE_ID, 1, testContentHash, testUri);
         clauses.registerClause(PROXIMITY_CLAUSE_ID, 1, testContentHash, testUri);
         clauses.registerClause(COMMERCE_CLAUSE_ID, 1, testContentHash, testUri);
         clauses.registerClause(MODALITIES_CLAUSE_ID, 1, testContentHash, testUri);
@@ -81,7 +81,7 @@ contract AttestationCoordinatorTest is Test {
         // in tests we use vm.prank to simulate the coordinator calling setMechanismClause.
         vm.startPrank(address(coordinator));
         clauses.setMechanismClause(LIFECYCLE_CLAUSE);
-        clauses.setMechanismClause(GHG_CLAUSE);
+        clauses.setMechanismClause(EMISSIONS_CLAUSE);
         clauses.setMechanismClause(PROXIMITY_CLAUSE);
         vm.stopPrank();
     }
@@ -234,16 +234,16 @@ contract AttestationCoordinatorTest is Test {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // TEST 2: Seller attests GHG disclosure (different clause)
+    // TEST 2: Seller attests emissions disclosure (different clause)
     // ═══════════════════════════════════════════════════════════════
 
-    function test_sellerAttestation_ghgDisclosure() public {
-        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, GHG_CLAUSE, "");
+    function test_sellerAttestation_emissionsDisclosure() public {
+        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, EMISSIONS_CLAUSE, "");
 
         bytes memory ipfsCidContent = "QmSomeIpfsCid";
 
         vm.prank(seller1);
-        coordinator.attestAsSeller(c, c, GHG_CLAUSE, 2, "", _emptyProof(), ipfsCidContent);
+        coordinator.attestAsSeller(c, c, EMISSIONS_CLAUSE, 2, "", _emptyProof(), ipfsCidContent);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -397,14 +397,14 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_contentRef_emitted() public {
-        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, GHG_CLAUSE, "");
+        (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, EMISSIONS_CLAUSE, "");
 
         bytes memory ipfsContent = "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi";
         bytes32 ipfsRef = keccak256(ipfsContent);
 
         vm.recordLogs();
         vm.prank(seller1);
-        coordinator.attestAsSeller(c, c, GHG_CLAUSE, 1, "", _emptyProof(), ipfsContent);
+        coordinator.attestAsSeller(c, c, EMISSIONS_CLAUSE, 1, "", _emptyProof(), ipfsContent);
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
         bytes32 attSig = keccak256("Attestation(bytes32,bytes32,address,bytes32,uint8,bytes32)");
@@ -606,7 +606,7 @@ contract AttestationCoordinatorTest is Test {
         // ── Clause registry invariants ────────────────────────────
         assertTrue(clauses.registered(LIFECYCLE_CLAUSE), "lifecycle clause registered");
         assertTrue(clauses.registered(PROXIMITY_CLAUSE), "proximity clause registered");
-        assertTrue(clauses.registered(GHG_CLAUSE), "ghg clause registered");
+        assertTrue(clauses.registered(EMISSIONS_CLAUSE), "emissions clause registered");
         assertTrue(clauses.registered(COMMERCE_CLAUSE), "commerce clause registered");
         assertTrue(clauses.registered(MODALITIES_CLAUSE), "modalities clause registered");
 

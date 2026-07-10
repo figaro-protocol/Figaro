@@ -2,7 +2,7 @@
     "clauseId": "figaro-proximity-policy",
     "version": 1,
     "title": "Proximity-verification policy",
-    "description": "The proximity-detection bands accepted for verifying a physical hand-off on this order, committed at agreement signing. Each band corresponds to a standard short-range detection technology — Wi-Fi presence, Bluetooth Low Energy, ultra-wideband ranging, or NFC contact. Multi-valued: the designer commits the set the assembly accepts; an order carrying no proximity-policy clause requires no proximity verification. The runtime proof that a hand-off actually occurred within an accepted band is a separate attestation concern, produced at hand-off time — not part of this agreement-time policy.",
+    "description": "The proximity-detection bands accepted for verifying a physical hand-off on this order, committed at agreement signing. Each band corresponds to a standard short-range detection technology — Wi-Fi presence, Bluetooth Low Energy, ultra-wideband ranging, or NFC contact. Multi-valued: the designer commits the set the assembly accepts; an order carrying no proximity-policy clause requires no proximity verification. The runtime proof that a hand-off actually occurred within an accepted band is filed as a runtime attestation at stage 1 — by either party (a counterparty may be absent, e.g. a dead drop: the attester carries the device/network identifier as evidence in lieu of the counterparty). Sufficiency of witnessing is derived at read time against the committed bands, never enforced by the protocol.",
     "fields": [
         {
             "name": "bands",
@@ -28,6 +28,38 @@
             "description": "The proximity-detection technologies the assembly accepts, ordered loosest to closest. zone-wifi = same Wi-Fi network (presence within an access point's coverage). nearby-ble = Bluetooth Low Energy proximity (~metres). precise-uwb = ultra-wideband ranging (IEEE 802.15.4z / FiRa; decimetre-accurate distance at range). contact-nfc = NFC tap (near-contact, ~centimetres). At least one must be set when this clause is present."
         }
     ],
+    "stages": {
+        "1": [
+            {
+                "name": "band",
+                "type": "enum",
+                "required": true,
+                "values": [
+                    "zone-wifi",
+                    "nearby-ble",
+                    "precise-uwb",
+                    "contact-nfc"
+                ],
+                "valueLabels": {
+                    "zone-wifi": "Zone (Wi-Fi)",
+                    "nearby-ble": "Nearby (Bluetooth LE)",
+                    "precise-uwb": "Precise (UWB)",
+                    "contact-nfc": "Contact (NFC)"
+                },
+                "label": "Detected band",
+                "description": "The band the hand-off was witnessed within. Must be one of the committed bands — checked at read time, like every content/policy comparison."
+            },
+            {
+                "name": "evidenceUri",
+                "type": "string",
+                "required": false,
+                "minLength": 0,
+                "maxLength": 512,
+                "label": "Witness evidence",
+                "description": "Optional reference to the detection artifact — Wi-Fi BSSID, BLE beacon id, UWB ranging report, NFC tap payload, or a counterparty co-signature."
+            }
+        ]
+    },
     "block": {
         "article": "logistics",
         "nestsUnder": "handoff"

@@ -34,6 +34,7 @@
         }
     ],
     "block": {
-        "article": "attestations"
+        "article": "attestations",
+        "handoffStages": ["arrived-pickup", "arrived-dropoff"]
     }
 }

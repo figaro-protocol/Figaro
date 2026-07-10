@@ -26,7 +26,7 @@ const GEO: AgreementSection = {
     },
 };
 const GHG: AgreementSection = {
-    clause: "figaro-ghg",
+    clause: "figaro-emissions",
     version: 1,
     // The methodology is a free-form `standard` value on the clause; no scope
     // is stored (a reader derives it from topology). cross-checked clauses use
@@ -95,7 +95,7 @@ describe("computeAgreementHash", () => {
     it("rejects agreements with duplicate clause keys", () => {
         const dup = { ...GHG, data: { ...GHG.data, standard: "PAS 2050" } };
         expect(() => computeAgreementHash(agreement([GHG, dup])))
-            .toThrow(/Duplicate clause keys.*figaro-ghg/);
+            .toThrow(/Duplicate clause keys.*figaro-emissions/);
     });
 });
 
@@ -145,7 +145,7 @@ describe("buildSectionInclusionProof + verifyInclusionProof", () => {
 
     it("throws when the section is absent", () => {
         const a = agreement([COMMERCE]);
-        expect(() => buildSectionInclusionProof(a, "figaro-ghg"))
+        expect(() => buildSectionInclusionProof(a, "figaro-emissions"))
             .toThrow(/Section not found/);
     });
 });

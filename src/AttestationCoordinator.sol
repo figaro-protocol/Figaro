@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 /// @custom:security-contact security@figaro.org
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 /// @notice Zero-storage, role-gated, merkle-gated attestation coordinator.
-///         Emits clause-typed attestation events for lifecycle, GHG, proximity,
+///         Emits clause-typed attestation events for lifecycle, emissions, proximity,
 ///         and any future attestation domain.
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
 ///
@@ -40,8 +40,8 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 /// @dev Agreement binding (mandatory):
 ///      Every `attest*` call carries an inclusion proof showing the attestation's
 ///      clause and clause data are leaves of the order's signed `agreementHash`
-///      merkle root. A seller who signed a clause of "ISO 14064-1 GHG" at commit
-///      time cannot fire a runtime GHG attestation under a different standard —
+///      merkle root. A seller who signed an emissions clause naming "ISO 14064-1" at commit
+///      time cannot fire a runtime emissions attestation under a different standard —
 ///      the inclusion proof won't open. This closes the drift where runtime
 ///      declarations could contradict the signed contract.
 ///

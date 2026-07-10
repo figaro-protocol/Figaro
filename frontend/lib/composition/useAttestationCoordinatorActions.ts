@@ -22,7 +22,7 @@ type SellerAttestationInput = {
      * ABI-encoded content per the clause's encoding. Omit to default to the
      * committed `sectionData` — correct when the attestation RE-ASSERTS the
      * committed section (content == sectionData; e.g. handoff, geo, modality,
-     * ghg-disclosure). Supply an explicit value when the runtime witness DIFFERS
+     * emissions-disclosure). Supply an explicit value when the runtime witness DIFFERS
      * from the committed section (merchant-process / courier-process ladders,
      * proximity proof, measurement). Either way the attestation is merkle-bound
      * to the committed clause under `agreementHash` — that binding is the check,

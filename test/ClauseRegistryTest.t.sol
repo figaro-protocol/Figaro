@@ -17,10 +17,10 @@ contract ClauseRegistryTest is Test {
     string constant MODALITIES_URI = "ipfs://figaro-modalities/v1";
     bytes32 constant MODALITIES_CONTENT = keccak256("figaro-modalities-v1-spec");
 
-    string constant GHG_ID = "figaro-ghg-iso-14064";
-    bytes32 constant GHG_HASH = keccak256(abi.encode("figaro-ghg-iso-14064", uint64(1)));
-    string constant GHG_URI = "ipfs://figaro-ghg/v1";
-    bytes32 constant GHG_CONTENT = keccak256("figaro-ghg-iso-14064-v1-spec");
+    string constant EMISSIONS_ID = "figaro-emissions-iso-14064";
+    bytes32 constant EMISSIONS_HASH = keccak256(abi.encode("figaro-emissions-iso-14064", uint64(1)));
+    string constant EMISSIONS_URI = "ipfs://figaro-emissions/v1";
+    bytes32 constant EMISSIONS_CONTENT = keccak256("figaro-emissions-iso-14064-v1-spec");
 
     string constant LIFECYCLE_ID = "figaro-courier-process";
     bytes32 constant LIFECYCLE_HASH = keccak256(abi.encode("figaro-courier-process", uint64(1)));
@@ -58,10 +58,10 @@ contract ClauseRegistryTest is Test {
         registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
 
         vm.prank(bob);
-        registry.registerClause{value: DEPOSIT}(GHG_ID, 1, GHG_CONTENT, GHG_URI);
+        registry.registerClause{value: DEPOSIT}(EMISSIONS_ID, 1, EMISSIONS_CONTENT, EMISSIONS_URI);
 
         assertTrue(registry.registered(MODALITIES_HASH));
-        assertTrue(registry.registered(GHG_HASH));
+        assertTrue(registry.registered(EMISSIONS_HASH));
     }
 
     function test_registerClause_revertsOnDuplicate() public {
@@ -192,8 +192,8 @@ contract ClauseRegistryTest is Test {
     function test_emitsClauseRegistered_withRegistrar() public {
         vm.prank(alice);
         vm.expectEmit(true, true, true, true);
-        emit ClauseRegistry.ClauseRegistered(GHG_ID, 1, GHG_CONTENT, GHG_URI, alice);
-        registry.registerClause{value: DEPOSIT}(GHG_ID, 1, GHG_CONTENT, GHG_URI);
+        emit ClauseRegistry.ClauseRegistered(EMISSIONS_ID, 1, EMISSIONS_CONTENT, EMISSIONS_URI, alice);
+        registry.registerClause{value: DEPOSIT}(EMISSIONS_ID, 1, EMISSIONS_CONTENT, EMISSIONS_URI);
     }
 
     // ── Mechanism self-declaration ───────────────────────────────────
@@ -223,11 +223,11 @@ contract ClauseRegistryTest is Test {
 
     function test_mechanismCanDeclareMultipleClauses() public {
         registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
-        registry.registerClause{value: DEPOSIT}(GHG_ID, 1, GHG_CONTENT, GHG_URI);
+        registry.registerClause{value: DEPOSIT}(EMISSIONS_ID, 1, EMISSIONS_CONTENT, EMISSIONS_URI);
 
         vm.startPrank(mechanism);
         registry.setMechanismClause(MODALITIES_HASH);
-        registry.setMechanismClause(GHG_HASH);
+        registry.setMechanismClause(EMISSIONS_HASH);
         vm.stopPrank();
         // Both calls succeed — no storage conflict, just events.
     }
@@ -236,11 +236,11 @@ contract ClauseRegistryTest is Test {
 
     function test_registerThreeClauses() public {
         registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
-        registry.registerClause{value: DEPOSIT}(GHG_ID, 1, GHG_CONTENT, GHG_URI);
+        registry.registerClause{value: DEPOSIT}(EMISSIONS_ID, 1, EMISSIONS_CONTENT, EMISSIONS_URI);
         registry.registerClause{value: DEPOSIT}(LIFECYCLE_ID, 1, LIFECYCLE_CONTENT, LIFECYCLE_URI);
 
         assertTrue(registry.registered(MODALITIES_HASH));
-        assertTrue(registry.registered(GHG_HASH));
+        assertTrue(registry.registered(EMISSIONS_HASH));
         assertTrue(registry.registered(LIFECYCLE_HASH));
     }
 

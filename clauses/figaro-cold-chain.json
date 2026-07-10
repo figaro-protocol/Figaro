@@ -2,7 +2,7 @@
     "clauseId": "figaro-cold-chain",
     "version": 1,
     "title": "Cold chain",
-    "description": "Temperature-controlled handling requirement anchored to Good Distribution Practice (GDP) cold-chain classes. Elective and NEVER default-on: composed only when the goods require temperature control. Carries the cold-chain class plus the agreed temperature window in whole degrees Celsius. The external standard is the source of truth; this clause references it.",
+    "description": "Temperature-controlled handling requirement anchored to Good Distribution Practice (GDP) cold-chain classes. Elective and NEVER default-on: composed only when the goods require temperature control. Commits the cold-chain class, the agreed temperature window in whole degrees Celsius, and the agreed recording interval — no external standard mandates a single interval (GDP says continuous, EU 37/2005 says frequent and regular, WHO PQS allows 1–15 min), so the interval is a term the parties commit. The external standard is the source of truth; this clause references it. The temperature RECORD produced during custody is filed as a runtime attestation at stage 1 (one attestation per reporting period); excursion and MKT are derived at read time from the witnessed range against the committed window, never stored.",
     "fields": [
         {
             "name": "tempClass",
@@ -35,8 +35,71 @@
             "max": 100,
             "label": "Max temperature (°C)",
             "description": "Maximum allowable temperature in whole degrees Celsius. Must be ≥ tempMinC (checked off-chain at read time)."
+        },
+        {
+            "name": "recordingIntervalSeconds",
+            "type": "integer",
+            "required": true,
+            "min": 1,
+            "label": "Recording interval (seconds)",
+            "description": "The agreed temperature-recording interval in seconds. Fit-for-purpose per the referenced standard (data loggers commonly record every 300–900 s); compliance of the filed record against this interval is derived at read time."
+        },
+        {
+            "name": "monitoringStandard",
+            "type": "string",
+            "required": false,
+            "minLength": 1,
+            "label": "Monitoring standard",
+            "description": "Free-form reference to the recording/monitoring standard the parties follow (e.g. \"EN 12830\", \"USP <1079>\", \"WHO PQS E006\") — any standard, existing or future; the protocol takes no closed list."
         }
     ],
+    "stages": {
+        "1": [
+            {
+                "name": "periodStart",
+                "type": "string",
+                "format": "iso-datetime",
+                "required": true,
+                "label": "Period start",
+                "description": "Start of the reporting period this record covers."
+            },
+            {
+                "name": "periodEnd",
+                "type": "string",
+                "format": "iso-datetime",
+                "required": true,
+                "label": "Period end",
+                "description": "End of the reporting period this record covers."
+            },
+            {
+                "name": "observedMinC",
+                "type": "integer",
+                "required": true,
+                "min": -273,
+                "max": 100,
+                "label": "Observed min (°C)",
+                "description": "Lowest temperature recorded over the period, whole degrees Celsius."
+            },
+            {
+                "name": "observedMaxC",
+                "type": "integer",
+                "required": true,
+                "min": -273,
+                "max": 100,
+                "label": "Observed max (°C)",
+                "description": "Highest temperature recorded over the period, whole degrees Celsius."
+            },
+            {
+                "name": "evidenceUri",
+                "type": "string",
+                "required": false,
+                "minLength": 0,
+                "maxLength": 512,
+                "label": "Record evidence",
+                "description": "Optional reference to the full off-chain logger record (time series, excursion report, MKT calculation)."
+            }
+        ]
+    },
     "block": {
         "article": "logistics",
         "catalogueSourced": true

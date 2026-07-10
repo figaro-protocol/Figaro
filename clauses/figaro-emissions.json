@@ -1,0 +1,40 @@
+{
+    "clauseId": "figaro-emissions",
+    "version": 1,
+    "title": "Emissions disclosure",
+    "description": "Disclosure that the seller will report greenhouse-gas emissions for fulfilling this order under a named accounting methodology. The methodology is FREE-FORM — any standard, existing or future (e.g. \"GHG Protocol Corporate Standard\", \"ISO 14064\", \"PAS 2050\", \"EN 16258\", or a custom methodology). The protocol takes no closed list of standards. The clause stores no scope classification: scope 1/2/3 is relative to a reporting entity's boundary, and a reader derives it from its own position in the process topology. The measured emissions value is filed as a runtime attestation at stage 1; a correction is simply a later attestation at the same stage, weighed by readers. Offset procurement (retirement via a carbon router) is out of protocol scope — it composes as a separate on-network contract when one exists.",
+    "fields": [
+        {
+            "name": "standard",
+            "type": "string",
+            "required": true,
+            "minLength": 1,
+            "label": "Accounting methodology",
+            "description": "The accounting methodology the seller reports under. Free-form — any methodology name, existing or future (e.g. \"ISO 14064\")."
+        }
+    ],
+    "stages": {
+        "1": [
+            {
+                "name": "gramsCO2e",
+                "type": "integer",
+                "required": true,
+                "min": 0,
+                "label": "Measured emissions (g CO2e)",
+                "description": "Measured emissions for fulfilling this order, in grams of CO2-equivalent under the committed methodology."
+            },
+            {
+                "name": "evidenceUri",
+                "type": "string",
+                "required": false,
+                "minLength": 0,
+                "maxLength": 512,
+                "label": "Measurement evidence",
+                "description": "Optional reference to the off-chain measurement artifact (calculation sheet, meter export, assurance report)."
+            }
+        ]
+    },
+    "block": {
+        "article": "emissions"
+    }
+}

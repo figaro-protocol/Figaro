@@ -12,7 +12,7 @@
  * The cache is module-level + singleton: every call to `useProcessAgreements`
  * shares the same Map. Each render subscribes to mutations; when any
  * instance finishes hydration, every consumer re-renders. This eliminates
- * the multi-instance race — `OrderTimelineView` and a nested `GHGWorkflowPanel`
+ * the multi-instance race — `OrderTimelineView` and a nested workflow panel
  * (both call `useSemanticProcessWorkspace`) used to each maintain their own
  * `useState<Map>`, hydrating independently, with the panel often rendering
  * empty because its own Map hadn't populated yet even though the workspace

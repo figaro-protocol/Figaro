@@ -22,7 +22,7 @@ import type { Hex, AttestationEvent } from "../types.js";
  *
  * @example
  * ```ts
- * const clauseId = computeClauseId("figaro-ghg", 1);
+ * const clauseId = computeClauseId("figaro-emissions", 1);
  * ```
  */
 export function computeClauseId(name: string, version: number): Hex {

@@ -21,7 +21,7 @@ describe("validateCatalogueClauseValues — Layer-A gate, reused validator", () 
         await primeClauseSpecs(["figaro-freight-class", "figaro-cold-chain"]);
         const errors = validateCatalogueClauseValues(baseItem({
             "figaro-freight-class": { nmfcClass: "100" },
-            "figaro-cold-chain": { tempClass: "refrigerated", tempMinC: 2, tempMaxC: 8 },
+            "figaro-cold-chain": { tempClass: "refrigerated", tempMinC: 2, tempMaxC: 8, recordingIntervalSeconds: 900 },
         }));
         expect(errors).toEqual([]);
     });
