@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import "./FigaroCore.sol";
 import "./CommitmentTypes.sol";
 import "./IRoleResolver.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+
+/// @notice Minimal FigaroCore surface the coordinator reads.
+interface IFigaroCore {
+    function orderStatus(bytes32 orderHash) external view returns (uint8);
+    function DOMAIN_SEPARATOR() external view returns (bytes32);
+}
 
 /// @title AttestationCoordinator — Merkle-gated stateless attestation
 /// @custom:security-contact security@figaro.org
@@ -59,7 +64,7 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 contract AttestationCoordinator {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
-    FigaroCore public immutable core;
+    IFigaroCore public immutable core;
 
     // ── Events ──────────────────────────────────────────────────────
 
@@ -86,7 +91,7 @@ contract AttestationCoordinator {
 
     constructor(address _core) {
         require(_core != address(0), "ZeroAddress");
-        core = FigaroCore(_core);
+        core = IFigaroCore(_core);
     }
 
     // ── Seller attestations ─────────────────────────────────────────

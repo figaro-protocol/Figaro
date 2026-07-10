@@ -109,13 +109,13 @@ permissionless contract.
 The copyable shape:
 
 1. **Bind through a minimal, immutable surface.** Declare only the kernel functions you
-   actually call and bind at construction — `SwapAndCommitCoordinator.sol` declares a
-   local `interface IFigaroCore { commit(…) }` and holds it `immutable`. The local-minimal
-   interface *is* the pattern for external composers: a third party composing the deployed
-   kernel cannot import this repo's files, only its ABI. (`AttestationCoordinator.sol`
-   predates this statement and imports concrete `FigaroCore`; its coupling —
-   `core.orderStatus`, `core.DOMAIN_SEPARATOR()` — is the same read-only composition.
-   `CommitmentTypes` is the shared struct/hashing library both import.)
+   actually call and bind at construction — each coordinator declares its own local
+   `interface IFigaroCore` naming exactly the surface it uses (`commit` in
+   `SwapAndCommitCoordinator.sol`; `orderStatus` + `DOMAIN_SEPARATOR` in
+   `AttestationCoordinator.sol`) and holds it `immutable`. The local-minimal interface
+   *is* the pattern for external composers: a third party composing the deployed kernel
+   cannot import this repo's files, only its ABI. (`CommitmentTypes` is the shared
+   struct/hashing library both import.)
 2. **Read kernel state as the single source of truth; never re-implement kernel logic.**
    A coordinator may read (`orderStatus`, `DOMAIN_SEPARATOR`), call (`commit`), and — when
    it cannot import a constant from the frozen kernel — mirror one with a comment pinning
