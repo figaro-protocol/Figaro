@@ -87,8 +87,16 @@
       "Bash(rm -rf /Users/adaliana/Figaro/frontend/scripts*)",
       "Edit(src/FigaroCore.sol)",
       "Write(src/FigaroCore.sol)",
+      "Edit(/Users/adaliana/Figaro/src/FigaroCore.sol)",
+      "Write(/Users/adaliana/Figaro/src/FigaroCore.sol)",
+      "Edit(**/src/FigaroCore.sol)",
+      "Write(**/src/FigaroCore.sol)",
       "Edit(src/CommitmentTypes.sol)",
-      "Write(src/CommitmentTypes.sol)"
+      "Write(src/CommitmentTypes.sol)",
+      "Edit(/Users/adaliana/Figaro/src/CommitmentTypes.sol)",
+      "Write(/Users/adaliana/Figaro/src/CommitmentTypes.sol)",
+      "Edit(**/src/CommitmentTypes.sol)",
+      "Write(**/src/CommitmentTypes.sol)"
     ]
   },
   "hooks": {
