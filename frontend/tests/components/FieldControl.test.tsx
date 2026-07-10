@@ -11,7 +11,7 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { FieldSpec } from "@figaro/sdk/clauses";
-import { FieldControl } from "@/components/core/FieldControl";
+import { FieldControl } from "@/components/runtime/FieldControl";
 import { encodeGeohash } from "@figaro/sdk/extensions";
 import { PUBLIC_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
 

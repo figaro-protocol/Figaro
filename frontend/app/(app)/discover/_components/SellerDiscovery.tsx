@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { SellerCard } from "./SellerCard";
-import { useDeviceLocation } from "@/hooks/core/useDeviceLocation";
+import { useDeviceLocation } from "./useDeviceLocation";
 import {
     listingMatchesGeohash,
     type Listing,

@@ -14,7 +14,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { AgreementPreviewModal } from "@/components/core/AgreementPreviewModal";
+import { AgreementPreviewModal } from "@/components/runtime/AgreementPreviewModal";
 import {
     cancelPendingSign,
     confirmPendingSign,

@@ -37,7 +37,7 @@ import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { computeClauseKey } from "@figaro/sdk";
 import { hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import type { InteractionSurfaceProps } from "@/components/core/interactionSurfaces";
+import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";
 
 export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, seller }: InteractionSurfaceProps) {
     const { address } = useAccount();

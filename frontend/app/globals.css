@@ -124,7 +124,7 @@
 
 /* Neutralize ReactFlow's built-in role-coloring so the kernel doesn't paint
    buyer/seller nodes with default green/blue. Node-specific colors are
-   set via inline style props in components/core/TopologyCanvas.tsx. */
+   set via inline style props in components/runtime/TopologyCanvas.tsx. */
 .react-flow__node,
 .react-flow__node.buyer,
 .react-flow__node.seller,

@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useAllRegisteredClauses } from "@/lib/protocol/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { groupClausesByArticle } from "@/lib/shared/clauseSpecSource";
-import { ClausesByArticle } from "@/components/core/ClausesByArticle";
+import { ClausesByArticle } from "@/components/runtime/ClausesByArticle";
 
 /**
  * The `/clauses` inventory, read live from `ClauseRegistry` → IPFS.

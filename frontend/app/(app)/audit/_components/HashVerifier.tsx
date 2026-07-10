@@ -32,8 +32,8 @@ import {
     type Agreement,
     type AgreementSection,
 } from "@figaro/sdk";
-import { useProcessOrders } from "@/hooks/core/useProcessOrders";
-import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
+import { useProcessOrders } from "@/hooks/useProcessOrders";
+import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual } from "@/lib/shared/evm";
 

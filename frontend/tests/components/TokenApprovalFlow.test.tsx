@@ -25,7 +25,7 @@ vi.mock("wagmi", () => ({
     },
 }));
 
-vi.mock("@/hooks/core/useTokenApproval", () => ({
+vi.mock("@/hooks/useTokenApproval", () => ({
     __esModule: true,
     default: () => ({
         allowance: mocks.allowance,
@@ -36,7 +36,7 @@ vi.mock("@/hooks/core/useTokenApproval", () => ({
     }),
 }));
 
-vi.mock("@/hooks/core/useTokenDecimals", () => ({
+vi.mock("@/hooks/useTokenDecimals", () => ({
     __esModule: true,
     default: () => ({
         decimals: mocks.decimals,
@@ -44,7 +44,7 @@ vi.mock("@/hooks/core/useTokenDecimals", () => ({
     }),
 }));
 
-import { TokenApprovalFlow } from "@/components/core/TokenApprovalFlow";
+import { TokenApprovalFlow } from "@/components/runtime/TokenApprovalFlow";
 
 describe("TokenApprovalFlow", () => {
     beforeEach(() => {

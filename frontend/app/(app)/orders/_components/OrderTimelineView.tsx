@@ -23,11 +23,11 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { useAccount } from "wagmi";
-import { SettlementProceedsPanel } from "@/components/core/SettlementProceedsPanel";
-import { CapabilityRail } from "@/components/core/CapabilityRail";
-import { OrderInteractionSurfaces } from "@/components/core/OrderInteractionSurfaces";
-import { useSemanticProcessWorkspace } from "@/hooks/core/useSemanticProcessWorkspace";
-import useProcessResolveCapacity from "@/hooks/core/useProcessResolveCapacity";
+import { SettlementProceedsPanel } from "@/components/runtime/SettlementProceedsPanel";
+import { CapabilityRail } from "@/components/runtime/CapabilityRail";
+import { OrderInteractionSurfaces } from "@/components/runtime/OrderInteractionSurfaces";
+import { useSemanticProcessWorkspace } from "@/hooks/useSemanticProcessWorkspace";
+import useProcessResolveCapacity from "@/hooks/useProcessResolveCapacity";
 import { useSellerListings } from "@/lib/seller/useSellerListings";
 import { findListingByAddress } from "@/lib/seller/sellerListing";
 import { describeAttestation } from "@/lib/shared/clauseSpecSource";

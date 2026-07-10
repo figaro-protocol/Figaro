@@ -17,8 +17,8 @@
  * never-seen format degrades to text.
  */
 import type { ComponentType } from "react";
-import { GeohashFieldInput } from "@/components/core/GeohashFieldInput";
-import { ContentAnchorFieldInput } from "@/components/core/ContentAnchorFieldInput";
+import { GeohashFieldInput } from "@/components/runtime/GeohashFieldInput";
+import { ContentAnchorFieldInput } from "@/components/runtime/ContentAnchorFieldInput";
 
 /** The contract a format input satisfies — the same props FieldControl's
  *  plain scalar input serves. */

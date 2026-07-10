@@ -19,7 +19,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
-import type { InteractionSurfaceProps } from "@/components/core/interactionSurfaces";
+import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";
 
 interface QrOrderIdentity {
     processId: string;

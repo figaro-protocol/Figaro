@@ -30,7 +30,7 @@ import { formatToken } from "@/lib/shared/utils";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { Button } from "@/components/ui/Button";
-import { WalletGate } from "@/components/core/WalletGate";
+import { WalletGate } from "@/components/runtime/WalletGate";
 import { useWalletProcessRows, type ProcessRow } from "@/lib/kernel/walletProcessQueries";
 import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
 import { type CommitmentPayload } from "@/lib/kernel/signedCommitment";
@@ -47,8 +47,8 @@ import { displayNameForAddress } from "@/lib/seller/sellerListing";
 import type { Listing } from "@/lib/seller/sellerListing";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { useMounted } from "@/hooks/useMounted";
-import useTokenDecimals from "@/hooks/core/useTokenDecimals";
-import useTokenApproval from "@/hooks/core/useTokenApproval";
+import useTokenDecimals from "@/hooks/useTokenDecimals";
+import useTokenApproval from "@/hooks/useTokenApproval";
 
 // ── Your-turn card: an incoming order awaiting my counter-signature ──
 function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listings }: {

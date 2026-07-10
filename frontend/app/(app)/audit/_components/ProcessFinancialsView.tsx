@@ -15,9 +15,9 @@
  * Used by `/audit/[processId]`.
  */
 
-import { useProcessOrders } from "@/hooks/core/useProcessOrders";
+import { useProcessOrders } from "@/hooks/useProcessOrders";
 import { projectAllFinancialStatements } from "@/lib/audit/documentProjection";
-import { DownloadAuditBundleButton } from "@/components/core/DownloadAuditBundleButton";
+import { DownloadAuditBundleButton } from "@/components/runtime/DownloadAuditBundleButton";
 import { DocumentView } from "./DocumentView";
 
 interface Props {

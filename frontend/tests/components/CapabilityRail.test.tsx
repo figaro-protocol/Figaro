@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { CapabilityRail } from "@/components/core/CapabilityRail";
+import { CapabilityRail } from "@/components/runtime/CapabilityRail";
 import type { CapabilityModel } from "@/lib/semantic/models";
 
 // The rail renders only id/label/actionKind/eventCode/preconditions; cast a

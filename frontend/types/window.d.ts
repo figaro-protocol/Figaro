@@ -5,7 +5,7 @@
  *   - `lib/shared/devShims.ts`        (NEXT_PUBLIC_DEV_ADDRESS / TEST_SIGNER)
  *   - `lib/kernel/testHelpers.ts`       (TEST_HELPERS_ENABLED)
  *   - `app/(app)/terminal/page.tsx`   (E2E mock harness)
- *   - `components/core/ClientInit.tsx` (E2E mock-API setup)
+ *   - `components/runtime/ClientInit.tsx` (E2E mock-API setup)
  *
  * Production code paths must guard property access with the appropriate
  * gate (`TEST_HELPERS_ENABLED`, `process.env.NODE_ENV !== "production"`,
@@ -49,7 +49,7 @@ declare global {
         __figaro_fetch_wrapped?: boolean;
         __viem_wallet_client?: unknown;
 
-        // E2E mock harness (lib/kernel/testHelpers.ts, components/core/ClientInit.tsx,
+        // E2E mock harness (lib/kernel/testHelpers.ts, components/runtime/ClientInit.tsx,
         // app/(app)/terminal/page.tsx)
         __FIGARO_MOCK__?: unknown;
         __FIGARO_MOCK_API__?: unknown;

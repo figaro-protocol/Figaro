@@ -28,7 +28,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { usePublicClient } from "wagmi";
-import { TopologyCanvas } from "@/components/core/TopologyCanvas";
+import { TopologyCanvas } from "@/components/runtime/TopologyCanvas";
 import { AgreementDrawer } from "../../_components/AgreementDrawer";
 import {
     deleteNamedDraft,

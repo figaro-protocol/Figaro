@@ -1,6 +1,6 @@
 import { vi, describe, it, expect } from "vitest";
 import { render, act } from "@testing-library/react";
-import useTokenApproval from "@/hooks/core/useTokenApproval";
+import useTokenApproval from "@/hooks/useTokenApproval";
 
 // Valid 65-byte signature: r (32 bytes) + s (32 bytes) + v (1 byte = 0x1b = 27)
 const fakeSignature = "0x" + "a".repeat(128) + "1b";

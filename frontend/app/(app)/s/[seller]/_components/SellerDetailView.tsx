@@ -24,7 +24,7 @@ import { SellerAgentIdentity } from "@/components/sellers/SellerAgentIdentity";
 import { useCommerce } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
-import { SellerTrackRecord } from "@/components/core/SellerTrackRecord";
+import { SellerTrackRecord } from "@/components/runtime/SellerTrackRecord";
 import { useSellerTrackRecord } from "@/lib/seller/useSellerTrackRecord";
 import { useTokenSymbol } from "@/components/sellers/TokenAddressInput";
 import { hexEqual, normalizeAddressParam } from "@/lib/shared/evm";

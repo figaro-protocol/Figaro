@@ -13,8 +13,8 @@ import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { keccak256, stringToBytes } from "viem";
 import type { FieldSpec } from "@figaro/sdk/clauses";
-import { ContentAnchorFieldInput } from "@/components/core/ContentAnchorFieldInput";
-import { FieldControl } from "@/components/core/FieldControl";
+import { ContentAnchorFieldInput } from "@/components/runtime/ContentAnchorFieldInput";
+import { FieldControl } from "@/components/runtime/FieldControl";
 
 const uploadFile = vi.fn();
 vi.mock("@/lib/shared/ipfsService", async (importOriginal) => {

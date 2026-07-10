@@ -1,7 +1,7 @@
 import "katex/dist/katex.min.css";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { getPaperNavigation } from "@/app/(marketing)/_lib/groupsRegistry";
+import { getPaperNavigation } from "@/app/(marketing)/_lib/paperGroups";
 import { PrintButton } from "./PrintButton";
 import { BackToTop } from "./BackToTop";
 

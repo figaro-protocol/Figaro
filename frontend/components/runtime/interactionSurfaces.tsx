@@ -18,8 +18,8 @@
  * interaction degrades to nothing.
  */
 import type { ComponentType } from "react";
-import { QrChallengePanel } from "@/components/core/QrChallengePanel";
-import { AddressDetailPanel } from "@/components/core/AddressDetailPanel";
+import { QrChallengePanel } from "@/components/runtime/QrChallengePanel";
+import { AddressDetailPanel } from "@/components/runtime/AddressDetailPanel";
 
 /** The contract an interaction surface satisfies: the order it mounts on,
  *  identified — nothing clause-specific crosses this boundary. The order's

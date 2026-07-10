@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePublicClient } from "wagmi";
-import { useProcessOrders } from "@/hooks/core/useProcessOrders";
-import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
+import { useProcessOrders } from "@/hooks/useProcessOrders";
+import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import {
     getAttestationContent,
     getAttestationsByOrder,

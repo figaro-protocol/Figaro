@@ -6,8 +6,8 @@ import { useState, useEffect } from "react";
 import { useAccount, useReadContract } from "wagmi";
 import { ERC20_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { handleOrderSurfaceFailure } from "@/lib/shared/orderSurfaceActions";
-import useTokenApproval from "@/hooks/core/useTokenApproval";
-import useTokenDecimals from "@/hooks/core/useTokenDecimals";
+import useTokenApproval from "@/hooks/useTokenApproval";
+import useTokenDecimals from "@/hooks/useTokenDecimals";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { formatToken } from "@/lib/shared/utils";
 

@@ -14,7 +14,7 @@
  *   All styling goes through `StyleSheet.create`.
  *
  * - The PDF is rendered client-side on user click — see
- *   `components/core/DownloadAuditBundleButton.tsx`. No server round-trip;
+ *   `components/runtime/DownloadAuditBundleButton.tsx`. No server round-trip;
  *   the user's data stays in their browser. SSR-side generation is also
  *   possible with the same component if a backend ever needs to ship
  *   pre-rendered bundles.

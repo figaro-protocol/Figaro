@@ -8,8 +8,8 @@
 import { describe, expect, it, afterEach } from "vitest";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QrChallengePanel } from "@/components/core/QrChallengePanel";
-import { getInteractionSurface } from "@/components/core/interactionSurfaces";
+import { QrChallengePanel } from "@/components/runtime/QrChallengePanel";
+import { getInteractionSurface } from "@/components/runtime/interactionSurfaces";
 
 const PROCESS_ID = "0x" + "11".repeat(32);
 const ORDER_HASH = "0x" + "22".repeat(32);

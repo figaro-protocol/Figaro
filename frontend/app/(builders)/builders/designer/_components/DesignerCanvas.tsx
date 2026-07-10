@@ -27,7 +27,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { TopologyCanvas } from "@/components/core/TopologyCanvas";
+import { TopologyCanvas } from "@/components/runtime/TopologyCanvas";
 import type { Order } from "@/lib/kernel/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import {

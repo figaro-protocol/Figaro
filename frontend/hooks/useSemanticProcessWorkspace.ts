@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, usePublicClient, useWaitForTransactionReceipt } from "wagmi";
-import { useWalletProcessIds } from "@/hooks/core/useWalletProcessIds";
+import { useWalletProcessIds } from "@/hooks/useWalletProcessIds";
 import type { ProcessSummary } from "@/lib/kernel/walletProcessQueries";
-import { useProcessOrders } from "@/hooks/core/useProcessOrders";
-import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
-import useTokenApproval from "@/hooks/core/useTokenApproval";
+import { useProcessOrders } from "@/hooks/useProcessOrders";
+import { useProcessAgreements } from "@/hooks/useProcessAgreements";
+import useTokenApproval from "@/hooks/useTokenApproval";
 import { CONTRACTS, CORE_ABI } from "@/lib/kernel/contracts";
 import { OrderState, useOrderStore } from "@/lib/kernel/store";
 import { useFigaroActions } from "@/lib/kernel/useFigaroActions";

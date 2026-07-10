@@ -29,7 +29,7 @@ import {
     volumeUnitLabel,
 } from "@/lib/seller/unitConversion";
 import { hexEqual } from "@/lib/shared/evm";
-import { FieldControl } from "@/components/core/FieldControl";
+import { FieldControl } from "@/components/runtime/FieldControl";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { getClauseSpec, listCatalogueSourcedClauses } from "@/lib/shared/clauseSpecSource";
 import { validateCatalogueClauseValues } from "@/lib/seller/catalogueClauseValues";

@@ -13,7 +13,7 @@ import { useMemo, useState } from "react";
 import { useChainId, usePublicClient } from "wagmi";
 import type { Order } from "@/lib/kernel/store";
 import { buildAuditBundlePdfBlob } from "@/lib/audit/auditBundlePdf";
-import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
+import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
 interface DownloadAuditBundleButtonProps {

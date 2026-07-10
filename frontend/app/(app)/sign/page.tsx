@@ -22,9 +22,9 @@ import {
 import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { calculateBonds } from "@figaro/sdk";
-import { TokenApprovalFlow } from "@/components/core/TokenApprovalFlow";
-import useTokenDecimals from "@/hooks/core/useTokenDecimals";
-import useProcessResolveCapacity from "@/hooks/core/useProcessResolveCapacity";
+import { TokenApprovalFlow } from "@/components/runtime/TokenApprovalFlow";
+import useTokenDecimals from "@/hooks/useTokenDecimals";
+import useProcessResolveCapacity from "@/hooks/useProcessResolveCapacity";
 import { formatToken } from "@/lib/shared/utils";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { fetchCommitmentPayloadJsonByCid } from "@/lib/checkout/orderPendingSellerSignature";

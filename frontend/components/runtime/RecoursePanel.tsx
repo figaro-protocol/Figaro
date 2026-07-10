@@ -28,7 +28,7 @@ import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { Order } from "@/lib/kernel/store";
 import { buildAuditBundlePdfBlob } from "@/lib/audit/auditBundlePdf";
-import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
+import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import { describeClause, composesForumUrl } from "@/lib/shared/clauseSpecSource";
 import type { RecourseClause } from "@/lib/semantic/processRecourse";
 

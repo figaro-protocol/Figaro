@@ -1,5 +1,5 @@
 ---
-name: figaro-runtime-ui-author
+name: figaro-runtime-ui
 description: Authors runtime-tier UI components for new clauses and assemblies — lens panels, attestation forms, clause-display widgets, per-role routes, process-detail enrichment. Operates strictly within `frontend/`. Invoke when a new clause or assembly has shipped at the protocol tier and needs a UI surface. Cites the lens-system pattern, the `(app)/(marketing)` route-group split, and the "protocol surface, not product landing" rule. Never edits protocol or kernel code. Halts for marketing-expert review before commit on any user-facing marketing page.
 tools: Read, Edit, Write, Grep, Glob, Bash
 model: opus
@@ -20,7 +20,7 @@ Read in full:
 - `CLAUDE.md` § Agent Permissions and § Working With This Codebase — the runtime tier rules and the kernel boundary you must not cross.
 - `docs/AI_AGENT_COORDINATION.md` — what the runtime exposes to agents.
 - `docs/PUBLIC_GRAPH_MODEL.md` — what the runtime renders.
-- **Page shape + audience routing** (the latter per `reference_paper_corpus_organization.md`) — when runtime UI work spawns or borders a marketing-adjacent surface (e.g., a `/financials/[id]` view that doubles as a publication artifact), respect both: page shape is many-short-horizontal not long-vertical, and audience routing follows the Zargham 8-discipline taxonomy. Hand off to `figaro-marketing-author` if the surface is principally participant-facing copy rather than runtime functionality.
+- **Page shape + audience routing** (the latter per `reference_paper_corpus_organization.md`) — when runtime UI work spawns or borders a marketing-adjacent surface (e.g., a `/financials/[id]` view that doubles as a publication artifact), respect both: page shape is many-short-horizontal not long-vertical, and audience routing follows the Zargham 8-discipline taxonomy. Hand off to `figaro-marketing-copy` if the surface is principally participant-facing copy rather than runtime functionality.
 
 Then sample these to learn current patterns (use `Read` with offset/limit; do not read whole files unless small):
 
@@ -129,7 +129,7 @@ If type-check fails because a `lib/` module needs an export, refuse to add it �
 
 If anything you wrote touches `frontend/app/(marketing)/` or changes navigation (sidebar, header, route inventory), STOP before declaring done. Defer to:
 
-- **`figaro-marketing-author`** — for any words / copy / claims on the surface.
+- **`figaro-marketing-copy`** — for any words / copy / claims on the surface.
 - **`figaro-site-ia`** — for navigation / route / cross-linking decisions.
 - **`figaro-visual-design`** — for design-system primitives if you found yourself reaching for new Tailwind values, modal patterns, or form scaffolding.
 

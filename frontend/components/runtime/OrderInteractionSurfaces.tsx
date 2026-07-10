@@ -11,9 +11,9 @@
  * a never-seen clause declaring a known interaction surfaces here with zero
  * code changes; an unknown interaction renders nothing.
  */
-import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
+import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { getInteractionSurface } from "@/components/core/interactionSurfaces";
+import { getInteractionSurface } from "@/components/runtime/interactionSurfaces";
 
 export function OrderInteractionSurfaces({
     processId,

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { SellerTrackRecord } from "@/components/core/SellerTrackRecord";
+import { SellerTrackRecord } from "@/components/runtime/SellerTrackRecord";
 import type { SellerTrackRecord as TrackRecord } from "@/lib/composition/indexer";
 
 const WITH_HISTORY: TrackRecord = {

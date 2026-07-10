@@ -23,7 +23,7 @@ import { useRef, useState } from "react";
 import { keccak256 } from "viem";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import type { FieldFormatInputProps } from "@/components/core/fieldFormatInputs";
+import type { FieldFormatInputProps } from "@/components/runtime/fieldFormatInputs";
 
 export function ContentAnchorFieldInput({ value, onChange, testId, onCompanion }: FieldFormatInputProps) {
     const fileRef = useRef<HTMLInputElement>(null);

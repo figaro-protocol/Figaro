@@ -1,7 +1,7 @@
 import type { DisciplineIndex } from "@/components/shared/DisciplineGlyph";
 
 /**
- * Disciplinary registry — Voshmgir & Zargham, "Foundations of Cryptoeconomic
+ * Disciplinary grouping ("registry" was a tier-word homograph; the on-chain registries are the protocol anchors) — Voshmgir & Zargham, "Foundations of Cryptoeconomic
  * Systems" (2024, Figure 1). Eight disciplines, fixed. Each discipline is a
  * stable lens for reading the substrate; the list cannot grow or shrink
  * without departing from the taxonomy.
@@ -16,7 +16,7 @@ import type { DisciplineIndex } from "@/components/shared/DisciplineGlyph";
  * today; PRs against this file are the canonical contribution path.
  *
  * To amend an entry, open a PR against this file. PRs are reviewed at
- * merge time like any other; the registry shape is the contract, not
+ * merge time like any other; the group shape is the contract, not
  * the merge process.
  */
 
@@ -34,7 +34,7 @@ interface ReferenceLink {
     note?: string;
 }
 
-export interface GroupRegistryEntry {
+export interface PaperGroup {
     /** URL slug (stable). Used for `#discipline-N`-style anchors. */
     slug: string;
     /** 1–8 — drives the `<DisciplineGlyph>` and the per-discipline anchor. */
@@ -63,7 +63,7 @@ export interface GroupRegistryEntry {
     contributors?: string[];
 }
 
-export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
+export const PAPER_GROUPS: PaperGroup[] = [
     {
         slug: "economics-game-theory",
         disciplineIndex: 1,
@@ -178,7 +178,7 @@ export const GROUPS_REGISTRY: GroupRegistryEntry[] = [
     },
 ];
 
-/** Where a paper page sits in the registry — its discipline plus its
+/** Where a paper page sits in the corpus grouping — its discipline plus its
  *  neighbours within that discipline. Drives the `PaperLayout` breadcrumb
  *  (Papers › Discipline › this paper) and the prev/next-in-discipline nav.
  *  `null` when the slug is not registered (no chrome is rendered). */
@@ -193,7 +193,7 @@ export interface PaperNavigation {
  *  discipline boundary (the first paper has no prev, the last no next). */
 export function getPaperNavigation(slug: string): PaperNavigation | null {
     const href = `/papers/${slug}`;
-    for (const group of GROUPS_REGISTRY) {
+    for (const group of PAPER_GROUPS) {
         const i = group.papers.findIndex((p) => p.href === href);
         if (i === -1) continue;
         return {

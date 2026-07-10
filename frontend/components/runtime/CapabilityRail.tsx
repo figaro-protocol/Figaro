@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { FieldControl } from "@/components/core/FieldControl";
+import { FieldControl } from "@/components/runtime/FieldControl";
 import { CapabilityExecutionInput, CapabilityModel } from "@/lib/semantic/models";
 
 interface Props {

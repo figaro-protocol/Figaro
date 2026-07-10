@@ -28,7 +28,7 @@ import type { Address } from "viem";
 import { Order, OrderState } from "@/lib/kernel/store";
 import { hexEqual } from "@/lib/shared/evm";
 import { Card } from "@/components/ui/Card";
-import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
+import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 import { deriveOrderDepths } from "@/lib/shared/orderTopology";
 import { truncateHex } from "@/lib/shared/formatHex";

@@ -12,8 +12,8 @@ type TruthClass =
 
 type MechanismRiskClass =
     | "read-only-inherited"
-    | "low-risk-coordinator"
-    | "medium-risk-extension"
+    | "low-risk-coordination"
+    | "medium-risk-composition"
     | "high-risk-economic";
 
 type ScopeType = "assembly" | "process" | "order" | "mechanism";

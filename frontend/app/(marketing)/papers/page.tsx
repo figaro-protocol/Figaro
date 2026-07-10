@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
-import { GROUPS_REGISTRY } from "@/app/(marketing)/_lib/groupsRegistry";
+import { PAPER_GROUPS } from "@/app/(marketing)/_lib/paperGroups";
 
 export const metadata: Metadata = {
     title: "Papers — Figaro Protocol",
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default function Papers() {
-    const groups = GROUPS_REGISTRY.filter((g) => g.papers.length > 0);
+    const groups = PAPER_GROUPS.filter((g) => g.papers.length > 0);
 
     return (
         <>

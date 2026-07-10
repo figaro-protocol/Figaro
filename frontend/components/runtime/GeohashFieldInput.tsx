@@ -18,7 +18,7 @@ import { useState } from "react";
 import { getDeviceLocation } from "@/lib/seller/geocode";
 import { encodeGeohash } from "@figaro/sdk/extensions";
 import { clampPublicGeohash, PUBLIC_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
-import type { FieldFormatInputProps } from "@/components/core/fieldFormatInputs";
+import type { FieldFormatInputProps } from "@/components/runtime/fieldFormatInputs";
 
 export function GeohashFieldInput({ value, onChange, testId, pattern }: FieldFormatInputProps) {
     const [locating, setLocating] = useState(false);

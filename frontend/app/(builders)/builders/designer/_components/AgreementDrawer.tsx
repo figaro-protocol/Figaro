@@ -27,8 +27,8 @@ import type { Order } from "@/lib/kernel/store";
 import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/protocol/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsStructural } from "@/lib/shared/clauseSpecSource";
-import { ClausesByArticle } from "@/components/core/ClausesByArticle";
-import { FieldControl } from "@/components/core/FieldControl";
+import { ClausesByArticle } from "@/components/runtime/ClausesByArticle";
+import { FieldControl } from "@/components/runtime/FieldControl";
 
 interface Props {
     /** Currently-selected order. May be null in `embedded` mode (renders an

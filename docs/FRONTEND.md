@@ -59,7 +59,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 - `DraftsList.tsx` — saved-drafts list on the landing.
 - `PublishedList.tsx` — published-assemblies list for the connected wallet.
 - `ClausesList.tsx` — clauses catalogue on the landing.
-- Shared DAG canvas: `components/core/TopologyCanvas.tsx` (drag green handle to spawn sub-orders; drag onto another node to merge fan-in).
+- Shared DAG canvas: `components/runtime/TopologyCanvas.tsx` (drag green handle to spawn sub-orders; drag onto another node to merge fan-in).
 
 **State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `mergeSyntheticParent`, `editSyntheticAgreement`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage). Bridge: `lib/designer/forkAssembly.ts` + `lib/designer/assemblyTemplateToDraft.ts` (fork a published assembly's template into an editable draft).
 
@@ -89,7 +89,7 @@ scratch. (The base-model default shape is a closed-world product app; the
 nearest exemplar in this repo beats it. Commission work as "make X work like
 Y", not as an open-ended build.)
 
-- **Runtime (phase-4) order surface** — `components/core/CapabilityRail.tsx`,
+- **Runtime (phase-4) order surface** — `components/runtime/CapabilityRail.tsx`,
   driven by `deriveProcessModelFromRuntime` → `executeCapability`. The order
   page names NO clause (guard: `scripts/lint-no-hardcoded-clauses-in-runtime.sh`).
   Two derived capability shapes: process-log LADDERS (attestations article →
@@ -105,13 +105,13 @@ Y", not as an open-ended build.)
 - **Declared-semantic component registries** — richer UI mounts keyed on what
   the clause SPEC declares, never a clause id / mechanism kind / component
   name; no entry ⇒ graceful degradation (plain input / nothing). Two seams:
-  `components/core/fieldFormatInputs.tsx` (a string field's open `format` →
+  `components/runtime/fieldFormatInputs.tsx` (a string field's open `format` →
   input component; tenants: `geohash` → `GeohashFieldInput`, device-location
   assisted; `bytes32-hex` → `ContentAnchorFieldInput`, the AFFIX — pick a
   file, pin it, keccak256 fills the field, and the pinned locator rides the
   companion channel to the first sibling declaring `format: "uri"`; pasting
   raw hex is used nowhere as a content fill, ruled 2026-07-10) and
-  `components/core/interactionSurfaces.tsx`
+  `components/runtime/interactionSurfaces.tsx`
   (`block.interaction.interface` — the party↔party runtime interaction
   standard, the sibling of `block.composes` — → order-page surfaces via
   `OrderInteractionSurfaces`, mounted on every order the wallet is a party
@@ -127,7 +127,7 @@ Y", not as an open-ended build.)
 - **On-chain write flow** — `lib/seller/usePublishSellerProfile.ts`
   (`simulateContract` → write → `waitForTransactionReceipt` → verify
   `status === "success"` before navigating).
-- **IPFS-hydrated reads** — `hooks/core/useProcessAgreements.ts` over
+- **IPFS-hydrated reads** — `hooks/useProcessAgreements.ts` over
   `lib/kernel/agreementFetch.ts` (singleton Map; never a synchronous
   `loadAgreement` in a render path).
 - **Event-driven inventory page + smoke** — the `/clauses` and `/assemblies`
