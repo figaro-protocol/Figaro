@@ -79,6 +79,7 @@ contract AttestationCoordinator {
     error NotAuthorized();
     error ProcessMismatch();
     error UnknownOrder();
+    error OrderResolved();
     error InvalidInclusionProof(bytes32 agreementHash, bytes32 clauseId);
 
     // ── Constructor ─────────────────────────────────────────────────
@@ -187,7 +188,13 @@ contract AttestationCoordinator {
         return keccak256(content);
     }
 
-    /// @dev Recompute orderHash from commitment, verify it exists in Core.
+    /// @dev Recompute orderHash from commitment, verify it is ACTIVE
+    ///      (committed, unresolved) in Core. Attestation is runtime evidence
+    ///      within an open process; `resolveProcess` dissolves the
+    ///      transaction-scoped institution, so the evidence window closes with
+    ///      it — a post-resolve attestation would dilute the finality the
+    ///      resolve mechanism is designed to produce. Resolution is
+    ///      process-atomic, so this gate is uniform across role and target.
     function _requireKnownCommitment(CommitmentTypes.Commitment calldata c)
         internal
         view
@@ -198,7 +205,9 @@ contract AttestationCoordinator {
         bytes32 structHash = c.hashStruct();
         orderHash = keccak256(abi.encodePacked(processId, structHash));
 
-        if (core.orderStatus(orderHash) == 0) revert UnknownOrder();
+        uint8 status = core.orderStatus(orderHash);
+        if (status == 0) revert UnknownOrder();
+        if (status != 1) revert OrderResolved();
     }
 
     /// @dev Compute the EIP-712 digest for a root commitment (processId derivation).

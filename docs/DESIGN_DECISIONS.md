@@ -150,21 +150,24 @@ separate agreements between the same parties with the same terms.
 
 ---
 
-## 7. Attestations are permitted on resolved orders
+## 7. Attestations are confined to active orders — the evidence window closes at resolve
 
-**Pattern**: `AttestationCoordinator._requireKnownCommitment` accepts orders
-with `orderStatus == 2` (resolved), not just `orderStatus == 1` (committed).
+**Pattern**: `AttestationCoordinator._requireKnownCommitment` reverts with
+`OrderResolved` for orders with `orderStatus == 2` (resolved); only
+`orderStatus == 1` (committed, active) orders are attestable.
 
-**Why it looks wrong**: Attesting against a resolved order looks like operating
-on stale state.
+**Why it looks wrong**: Post-settlement evidence (a warranty claim, a late
+temperature-record download) looks legitimate, so rejecting it looks like
+data loss.
 
-**Why it is correct**: Post-resolution attestations are an intended use case.
-Lifecycle events (delivery confirmation, GHG disclosure summary, handoff
-completion) may legitimately be recorded after the financial settlement has
-occurred. Blocking attestations on resolved orders would prevent this.
-
-The attestation event records the current block and the attester; indexers
-can determine whether the attestation predates or postdates resolution.
+**Why it is correct**: A bonded process is a transaction-scoped institution
+and `resolveProcess` dissolves it. Attestation is runtime evidence *within*
+that open institution — letting the merkle-bound evidence stream continue
+after atomic settlement would dilute the finality the resolve mechanism is
+designed to produce. Post-settlement claims belong to off-chain forums, which
+receive the resolved process's complete, closed evidentiary record as input.
+(An earlier revision permitted post-resolve attestation; that was closed-world
+residue — closed by operator ruling, 2026-07-10.)
 
 ---
 
@@ -398,7 +401,7 @@ Questioned and ruled KEEP 2026-07-02.
 | 4 | No owner/admin/pause | No incident response | Admin = trusted third party = breaks mechanism |
 | 5 | Buyer key loss is terminal | No stuck-fund recovery | Timeout = escape hatch = breaks MAD equilibrium |
 | 6 | No prevrandao salt | Missing on-chain entropy | Validators predict prevrandao; party-chosen salt sufficient |
-| 7 | Attestations on resolved orders | Operating on stale state | Post-resolution lifecycle events are valid |
+| 7 | Attestation reverts on resolved orders | Rejecting legitimate late evidence | Evidence window closes with the institution; forums get the closed record |
 | 8 | Permissionless clause registry | Namespace squatting | Content-addressed IDs; governance is off-chain |
 | 9 | RETIRED (DutchAuction deleted 2026-07-02) | — | Competitive pricing abandoned; see §9 |
 | 10 | Strict token compatibility rejection | Overly restrictive | Bond math requires exact amounts; wrapping is the solution |

@@ -428,10 +428,10 @@ contract AttestationCoordinatorTest is Test {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // TEST 13: Seller attestation on resolved order still works
+    // TEST 13: Seller attestation on resolved order reverts
     // ═══════════════════════════════════════════════════════════════
 
-    function test_sellerAttestation_resolvedOrder() public {
+    function test_sellerAttestation_resolvedOrder_reverts() public {
         (bytes32 processId, , CommitmentTypes.Commitment memory c) =
             _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
 
@@ -441,16 +441,17 @@ contract AttestationCoordinatorTest is Test {
         vm.prank(buyer);
         core.resolveProcess(processId, cs);
 
-        // Seller can still attest after resolution (orderStatus == 2 != 0)
+        // The evidence window closes at resolve (orderStatus == 2)
         vm.prank(seller1);
+        vm.expectRevert(AttestationCoordinator.OrderResolved.selector);
         coordinator.attestAsSeller(c, c, LIFECYCLE_CLAUSE, 10, "", _emptyProof(), "");
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // TEST 14: Buyer attestation on resolved order still works
+    // TEST 14: Buyer attestation on resolved order reverts
     // ═══════════════════════════════════════════════════════════════
 
-    function test_buyerAttestation_resolvedOrder() public {
+    function test_buyerAttestation_resolvedOrder_reverts() public {
         (bytes32 processId, , CommitmentTypes.Commitment memory c) =
             _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
 
@@ -460,6 +461,7 @@ contract AttestationCoordinatorTest is Test {
         core.resolveProcess(processId, cs);
 
         vm.prank(buyer);
+        vm.expectRevert(AttestationCoordinator.OrderResolved.selector);
         coordinator.attestAsBuyer(c, LIFECYCLE_CLAUSE, 10, "", _emptyProof(), "");
     }
 
