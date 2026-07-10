@@ -45,14 +45,16 @@ function mkProcess(overrides: Partial<Process> = {}): Process {
 }
 
 describe("proposeActions", () => {
-    it("proposes resolve + sub-order + attest for buyer with active orders", () => {
+    it("proposes resolve + attest for buyer with active orders — and NO runtime compose verb", () => {
         const process = mkProcess();
         const actions = proposeActions(process, BUYER);
 
-        expect(actions.length).toBe(3);
+        // Composition is the designer's act: the buyer resolves and attests,
+        // never extends a live process ad hoc (the commit-sub-order arm was
+        // an authority violation, deleted 2026-07-10).
+        expect(actions.length).toBe(2);
         expect(actions[0].type).toBe("resolve-process");
-        expect(actions[1].type).toBe("commit-sub-order");
-        expect(actions[2].type).toBe("attest-as-buyer");
+        expect(actions[1].type).toBe("attest-as-buyer");
     });
 
     it("resolve action includes correct settlement math", () => {
@@ -122,20 +124,6 @@ describe("proposeActions", () => {
         }
     });
 
-    it("commit-sub-order includes current cumulative value", () => {
-        const process = mkProcess();
-        process.orders.set(OH2, mkOrder({
-            orderHash: OH2,
-            blockNumber: 5,
-        }));
-
-        const actions = proposeActions(process, BUYER);
-        const commit = actions.find((a) => a.type === "commit-sub-order")!;
-        if (commit.type === "commit-sub-order") {
-            expect(commit.currentCumulativeValue).toBe(100n);
-            expect(commit.currency).toBe(TOKEN);
-        }
-    });
 });
 
 describe("proposeInitiations", () => {

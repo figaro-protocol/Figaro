@@ -41,7 +41,6 @@ export type {
     ProposedAction,
     InitiateProcessAction,
     ResolveProcessAction,
-    CommitSubOrderAction,
     AttestAction,
 } from "./proposer.js";
 

@@ -22,7 +22,6 @@ import { orderToCommitment, ZERO_PROCESS_ID } from "../commitments.js";
 export type ActionType =
     | "initiate-process"
     | "resolve-process"
-    | "commit-sub-order"
     | "attest-as-seller"
     | "attest-as-buyer";
 
@@ -68,16 +67,6 @@ export interface ResolveProcessAction extends BaseAction {
     totalSellerPayout: bigint;
 }
 
-export interface CommitSubOrderAction extends BaseAction {
-    type: "commit-sub-order";
-    /** The root buyer who must co-sign. */
-    buyer: Address;
-    /** Current cumulative value (for expectedCumulativeValue computation). */
-    currentCumulativeValue: bigint;
-    /** Currency inherited from the process. */
-    currency: Address;
-}
-
 export interface AttestAction extends BaseAction {
     type: "attest-as-seller" | "attest-as-buyer";
     /** The address that should submit the attestation. */
@@ -106,7 +95,6 @@ export interface AttestAction extends BaseAction {
 export type ProposedAction =
     | InitiateProcessAction
     | ResolveProcessAction
-    | CommitSubOrderAction
     | AttestAction;
 
 // ── Proposer ────────────────────────────────────────────────────────────────
@@ -171,18 +159,13 @@ export function proposeActions(process: Process, myAddress: Address): ProposedAc
             totalSellerPayout,
         });
 
-        // 2. Commit sub-order (buyer can always extend the process)
-        actions.push({
-            type: "commit-sub-order",
-            description: `Add a sub-order to this process. Current cumulative value: ${process.cumulativeValue}. ` +
-                `You will co-sign with a new seller.`,
-            processId: process.processId,
-            buyer: process.rootBuyer,
-            currentCumulativeValue: process.cumulativeValue,
-            currency: process.currency,
-        });
+        // NO runtime compose verb: composition is the DESIGNER's act — the
+        // buyer selects an assembly and originates from its template
+        // (`originateChain`), never extends a live process ad hoc. A
+        // "commit-sub-order" arm here was the SDK-native reincarnation of the
+        // retired open-sub-order-composer; deleted 2026-07-10.
 
-        // 3. Attest as buyer
+        // 2. Attest as buyer
         actions.push({
             type: "attest-as-buyer",
             description: `Submit an attestation for ${activeOrders.length} order(s) as the buyer.`,

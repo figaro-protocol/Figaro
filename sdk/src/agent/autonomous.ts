@@ -164,9 +164,9 @@ export interface ActionExecutionInputs {
      *  Defaults to the action's own reconstructed `commitments`; supply only to
      *  override. Each is passed through `restoreSignedProcessId` before submit. */
     commitments?: Commitment[];
-    /** commit-sub-order / initiate-process: the fully-formed commitment and BOTH
-     *  signatures. The seller's signature comes from a coordination handshake —
-     *  the SDK never fabricates it. */
+    /** initiate-process: the fully-formed commitment and BOTH signatures.
+     *  The seller's signature comes from a coordination handshake — the SDK
+     *  never fabricates it. */
     commitment?: Commitment;
     buyerSig?: Hex;
     sellerSig?: Hex;
@@ -192,9 +192,12 @@ export interface ActionExecutionInputs {
  *   - resolve-process — self-contained: the action carries the reconstructed
  *     commitments; the executor restores each root's signed processId and submits.
  *     An agent (buyer) resolves autonomously with no further input.
- *   - initiate-process / commit-sub-order — a two-party commit: pass
+ *   - initiate-process — a two-party commit: pass
  *     `{ commitment, buyerSig, sellerSig }`. The counterparty signature is
  *     gathered off-SDK; without it this throws rather than fabricate one.
+ *     (There is NO runtime compose verb — extending a live process ad hoc was
+ *     the deleted commit-sub-order arm; multi-order processes originate from
+ *     an assembly template.)
  *   - attest-as-seller / attest-as-buyer — pass `inputs.attestation` (the
  *     merkle-bound payload built from the hydrated agreement).
  *
@@ -221,12 +224,11 @@ export async function executeAction(
             const commitments = raw.map((c) => restoreSignedProcessId(c, chainId, addresses.core));
             return resolveProcess(walletClient, addresses.core, a.processId, commitments);
         }
-        case "initiate-process":
-        case "commit-sub-order": {
+        case "initiate-process": {
             if (!inputs.commitment || !inputs.buyerSig || !inputs.sellerSig) {
                 throw new Error(
                     `${action.type}: requires a signed commitment plus BOTH buyer and seller ` +
-                    `signatures. Originating or extending a process is a two-party handshake — gather ` +
+                    `signatures. Originating a process is a two-party handshake — gather ` +
                     `the counterparty signature via a coordination channel and pass ` +
                     `{ commitment, buyerSig, sellerSig }. The SDK will not fabricate a signature.`,
                 );
