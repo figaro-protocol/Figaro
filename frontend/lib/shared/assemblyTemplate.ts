@@ -27,41 +27,17 @@
 // one shape, one nested-type name (`TemplateAgreement`). `clauses` is the same
 // per-order bag `ClauseFields` names (`Record<string, Record<string, unknown>>`).
 export type { AssemblyTemplate, TemplateAgreement } from "@figaro/core";
-import type { TemplateAgreement } from "@figaro/core";
 
-/** Read a template agreement's parent ids — the data of its topology clause.
- *  The topology is a clause like any other; this is the one accessor for it.
- *  The entry is found by its DATA KEY (`parentOrderHashes` — named for what
- *  the committed clause holds at runtime: the parent orders' kernel order
- *  hashes; at design time the values are sibling `order-<i>` labels), so
- *  reading needs no spec cache and tolerates any registry-defined topology
- *  clause. */
-export function templateParentOrderHashes(agreement: TemplateAgreement): string[] {
-    const entry = Object.values(agreement.clauses).find(
-        (fields) => Array.isArray((fields as { parentOrderHashes?: unknown } | undefined)?.parentOrderHashes),
-    );
-    const ids = (entry as { parentOrderHashes?: unknown } | undefined)?.parentOrderHashes;
-    return Array.isArray(ids) ? ids.filter((p): p is string => typeof p === "string") : [];
-}
-
-/** The registered version an agreement composed for a clause — 1 unless the
- *  sparse `clauseVersions` map says otherwise (v1 pins are never serialized).
- *  @public pending consumer: per-clause version display on the drawer/audit
- *  read surfaces (the map form below is the checkout consumer). */
-export function templateClauseVersion(agreement: TemplateAgreement, clauseId: string): number {
-    return agreement.clauseVersions?.[clauseId] ?? 1;
-}
-
-/** The COMPLETE clauseId → version map for a template agreement (absent = 1
- *  made explicit). Checkout passes this into the agreement build so the
- *  committed section versions come from the composition, never from whichever
- *  spec versions happen to be loaded. */
-export function templateClauseVersionMap(agreement: TemplateAgreement): Record<string, number> {
-    return Object.fromEntries(
-        Object.keys(agreement.clauses).map((c) => [c, templateClauseVersion(agreement, c)]),
-    );
-}
-
-// The assembly's identity (the AssemblyRegistry key) and its derived slug —
+// The shape's accessors (topology parents, composed clause versions), the
+// assembly's identity (the AssemblyRegistry key), and its derived slug —
 // single home is the SDK; re-exported here for the designer/registry surfaces.
-export { templateCompositionHash, deriveAssemblySlug } from "@figaro/core";
+export {
+    templateParentOrderHashes,
+    templateClauseVersionMap,
+    templateCompositionHash,
+    deriveAssemblySlug,
+} from "@figaro/core";
+
+/** @public pending consumer: per-clause version display on the drawer/audit
+ *  read surfaces (the map form above is the checkout consumer). */
+export { templateClauseVersion } from "@figaro/core";

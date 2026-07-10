@@ -114,7 +114,7 @@ const result = await executeAction(walletClient, publicClient, addresses, approv
 // buyer instantiates a discovered assembly + signs; seller validates + counter-signs.
 import { originateProcess, makeSellerOfferHandler, InProcessChannel } from "@figaro/core/agent";
 channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, addresses));
-const tx = await originateProcess(buyerWallet, publicClient, addresses, { channel, template, seller, currency, payment, chainId, core, clauseVersion, overrides });
+const tx = await originateProcess(buyerWallet, publicClient, addresses, { channel, template, seller, currency, payment, chainId, core, overrides });
 
 // did:web: an agent resolves a counterparty's DID Document, verifies the on-chain
 // address it binds, and reads the coordination endpoint to route an offer to

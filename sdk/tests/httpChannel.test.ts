@@ -31,7 +31,7 @@ const template: AssemblyTemplate = {
 
 async function buildOffer(): Promise<CommitmentPayload> {
     return buildBuyerOffer(buyerW, {
-        template, buyer: BUYER.address, seller: SELLER.address, clauseVersion: () => 1,
+        template, buyer: BUYER.address, seller: SELLER.address,
         currency: CURRENCY, payment: PAYMENT, chainId: CHAIN_ID, core: CORE, salt: 1n, deadline: 0n,
     });
 }

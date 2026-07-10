@@ -44,6 +44,37 @@ export interface AssemblyTemplate {
     agreements: TemplateAgreement[];
 }
 
+/** Read a template agreement's parent ids — the data of its topology clause.
+ *  The topology is a clause like any other; this is the one accessor for it.
+ *  The entry is found by its DATA KEY (`parentOrderHashes` — named for what
+ *  the committed clause holds at runtime: the parent orders' kernel order
+ *  hashes; at design time the values are sibling `order-<i>` labels), so
+ *  reading needs no spec cache and tolerates any registry-defined topology
+ *  clause. */
+export function templateParentOrderHashes(agreement: TemplateAgreement): string[] {
+    const entry = Object.values(agreement.clauses).find(
+        (fields) => Array.isArray((fields as { parentOrderHashes?: unknown } | undefined)?.parentOrderHashes),
+    );
+    const ids = (entry as { parentOrderHashes?: unknown } | undefined)?.parentOrderHashes;
+    return Array.isArray(ids) ? ids.filter((p): p is string => typeof p === "string") : [];
+}
+
+/** The registered version an agreement composed for a clause — 1 unless the
+ *  sparse `clauseVersions` map says otherwise (v1 pins are never serialized).
+ *  The committed section versions come from the COMPOSITION, never from
+ *  whichever spec versions a registry read happens to resolve. */
+export function templateClauseVersion(agreement: TemplateAgreement, clauseId: string): number {
+    return agreement.clauseVersions?.[clauseId] ?? 1;
+}
+
+/** The COMPLETE clauseId → version map for a template agreement (absent = 1
+ *  made explicit). */
+export function templateClauseVersionMap(agreement: TemplateAgreement): Record<string, number> {
+    return Object.fromEntries(
+        Object.keys(agreement.clauses).map((c) => [c, templateClauseVersion(agreement, c)]),
+    );
+}
+
 /** The assembly's identity — keccak256 of the canonical COMPOSITION subset of
  *  the template (the composed agreements: their clauses, values, and topology;
  *  editorial prose excluded, so renaming never forks identity). This is the

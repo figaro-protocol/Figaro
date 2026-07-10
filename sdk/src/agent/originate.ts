@@ -26,6 +26,7 @@ import { ERC20_ABI } from "../abis.js";
 import { commit, type TxResult } from "./autonomous.js";
 import type { Hex, Address, Commitment, FigaroAddresses } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, OfferHandler } from "./coordination.js";
+import { templateClauseVersion, templateParentOrderHashes } from "../assembly.js";
 import type { AssemblyTemplate, TemplateAgreement } from "../assembly.js";
 
 // ── Assembly template (the pinned document, hydrated off-SDK) ─────────────────
@@ -38,18 +39,12 @@ export type { AssemblyTemplate, TemplateAgreement };
  *  `parentOrderHashes` — the structural topology field, matched by name not by
  *  clause id (open-world). */
 function isRootAgreement(a: TemplateAgreement): boolean {
-    return !Object.values(a.clauses).some(
-        (data) => Array.isArray((data as { parentOrderHashes?: unknown }).parentOrderHashes)
-            && ((data as { parentOrderHashes: unknown[] }).parentOrderHashes.length > 0),
-    );
+    return templateParentOrderHashes(a).length === 0;
 }
 
 export interface InstantiateParams {
     buyer: Address;
     seller: Address;
-    /** Resolve each template clauseId → its registered version (e.g. via
-     *  `FigaroContext.getClauses()`). */
-    clauseVersion: (clauseId: string) => number;
     /** Per-clause field overrides merged onto the template's clause data — the
      *  buyer supplies its terms (typically the commerce clause's
      *  `{ currency, payment, lineItems }`). Keyed by clauseId; the SDK names none. */
@@ -64,21 +59,24 @@ export interface InstantiateParams {
 export function instantiateRootAgreement(template: AssemblyTemplate, params: InstantiateParams): Agreement {
     const root = template.agreements.find(isRootAgreement) ?? template.agreements[0];
     if (!root) throw new Error("assembly template has no agreements to instantiate");
-    return agreementFromClauses(root.clauses, params.buyer, params.seller, params.clauseVersion, params.overrides);
+    return agreementFromClauses(root.clauses, root, params.buyer, params.seller, params.overrides);
 }
 
 /** Build an Agreement from a clause bag: each clauseId → a section, buyer
- *  overrides merged in. Shared by root and multi-order instantiation. */
+ *  overrides merged in. Shared by root and multi-order instantiation. Section
+ *  versions come from the COMPOSITION (`node.clauseVersions`, sparse — absent
+ *  = 1), never from a registry read: the template pinned WHICH clause it
+ *  composed, and two live versions are two clauses. */
 function agreementFromClauses(
     clauses: Record<string, Record<string, unknown>>,
+    node: TemplateAgreement,
     buyer: Address,
     seller: Address,
-    clauseVersion: (clauseId: string) => number,
     overrides?: Record<string, Record<string, unknown>>,
 ): Agreement {
     const sections: AgreementSection[] = Object.entries(clauses).map(([clauseId, data]) => ({
         clause: clauseId,
-        version: clauseVersion(clauseId),
+        version: templateClauseVersion(node, clauseId),
         data: { ...data, ...(overrides?.[clauseId] ?? {}) },
     }));
     return { version: "a1", buyer, seller, sections };
@@ -107,7 +105,7 @@ export async function buildBuyerOffer(wallet: WalletClient, params: BuildOfferPa
     if (!account) throw new Error("buildBuyerOffer: wallet has no account");
     const buyer = account.address;
     const agreement = instantiateRootAgreement(params.template, {
-        buyer, seller: params.seller, clauseVersion: params.clauseVersion, overrides: params.overrides,
+        buyer, seller: params.seller, overrides: params.overrides,
     });
     const agreementHash = computeAgreementHash(agreement);
     const domain = buildDomain(params.chainId, params.core);
@@ -308,7 +306,6 @@ export interface BuildChainParams {
     currency: Address;
     chainId: number;
     core: Address;
-    clauseVersion: (clauseId: string) => number;
     /** One spec per template agreement (root + subs). */
     nodes: ChainNodeSpec[];
     /** Optional deterministic salt per node (testing). */
@@ -323,24 +320,15 @@ export interface ChainOffer {
     offer: CommitmentPayload;
 }
 
-/** The template-local parent ids a node declares (the topology field, matched by
- *  name not clause id). */
-function templateParentIds(node: TemplateAgreement): string[] {
-    for (const data of Object.values(node.clauses)) {
-        const p = (data as { parentOrderHashes?: unknown }).parentOrderHashes;
-        if (Array.isArray(p)) return p as string[];
-    }
-    return [];
-}
-
 /** Order agreements so every node's parents precede it (root first). Throws on a
- *  cyclic or dangling parent reference. */
+ *  cyclic or dangling parent reference. Parents read via the one topology
+ *  accessor (`templateParentOrderHashes`). */
 function topoSort(agreements: TemplateAgreement[]): TemplateAgreement[] {
     const placed = new Set<string>();
     const out: TemplateAgreement[] = [];
     const remaining = [...agreements];
     while (remaining.length > 0) {
-        const i = remaining.findIndex((a) => templateParentIds(a).every((pid) => placed.has(pid)));
+        const i = remaining.findIndex((a) => templateParentOrderHashes(a).every((pid) => placed.has(pid)));
         if (i < 0) throw new Error("assembly template has a cyclic or dangling parent reference");
         placed.add(remaining[i].id);
         out.push(remaining[i]);
@@ -398,7 +386,7 @@ export async function buildChainOffers(wallet: WalletClient, params: BuildChainP
 
         cumulative += spec.payment;
         const clauses = withRealParents(node.clauses, realHash);
-        const agreement = agreementFromClauses(clauses, buyer, spec.seller, params.clauseVersion, spec.overrides);
+        const agreement = agreementFromClauses(clauses, node, buyer, spec.seller, spec.overrides);
         const { commitment, typedData } = buildCommitment({
             processId: isRoot ? ZERO_PROCESS_ID : rootProcessId!,
             buyer, seller: spec.seller, currency: params.currency,

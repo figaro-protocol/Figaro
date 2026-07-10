@@ -154,6 +154,13 @@ export {
 } from "./agreement.js";
 export type { Agreement, AgreementSection } from "./agreement.js";
 
-// Assembly identity (the AssemblyRegistry key + derived slug) + the template shape
-export { templateCompositionHash, deriveAssemblySlug } from "./assembly.js";
+// Assembly identity (the AssemblyRegistry key + derived slug) + the template
+// shape and its accessors (topology parents, composed clause versions)
+export {
+    templateCompositionHash,
+    deriveAssemblySlug,
+    templateParentOrderHashes,
+    templateClauseVersion,
+    templateClauseVersionMap,
+} from "./assembly.js";
 export type { AssemblyTemplate, TemplateAgreement } from "./assembly.js";

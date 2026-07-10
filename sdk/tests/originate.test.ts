@@ -26,16 +26,15 @@ const sellerW = createWalletClient({ account: SELLER, transport: http("http://lo
 const template: AssemblyTemplate = {
     agreements: [{ id: "order-0", clauses: { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: [] } } }],
 };
-const clauseVersion = () => 1;
 const overrides = { "figaro-commerce": { currency: CURRENCY, payment: "1000", lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: "1000" }] } };
 
 function offerParams() {
-    return { template, seller: SELLER.address, currency: CURRENCY, payment: 1000n, chainId: CHAIN, core: CORE, clauseVersion, overrides };
+    return { template, seller: SELLER.address, currency: CURRENCY, payment: 1000n, chainId: CHAIN, core: CORE, overrides };
 }
 
 describe("instantiateRootAgreement", () => {
     it("merges overrides onto the template's root clause bag", () => {
-        const a = instantiateRootAgreement(template, { buyer: BUYER.address, seller: SELLER.address, clauseVersion, overrides });
+        const a = instantiateRootAgreement(template, { buyer: BUYER.address, seller: SELLER.address, overrides });
         const commerce = a.sections.find((s) => s.clause === "figaro-commerce");
         expect(commerce?.data.payment).toBe("1000");
         expect(commerce?.data.currency).toBe(CURRENCY);
@@ -50,8 +49,21 @@ describe("instantiateRootAgreement", () => {
                 { id: "order-0", clauses: { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: [] } } },
             ],
         };
-        const a = instantiateRootAgreement(multi, { buyer: BUYER.address, seller: SELLER.address, clauseVersion });
+        const a = instantiateRootAgreement(multi, { buyer: BUYER.address, seller: SELLER.address });
         expect(a.sections.some((s) => s.clause === "figaro-commerce")).toBe(true);
+    });
+
+    it("section versions come from the composed clauseVersions map, defaulting to 1", () => {
+        const pinned: AssemblyTemplate = {
+            agreements: [{
+                id: "order-0",
+                clauses: { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: [] } },
+                clauseVersions: { "figaro-commerce": 2 },
+            }],
+        };
+        const a = instantiateRootAgreement(pinned, { buyer: BUYER.address, seller: SELLER.address });
+        expect(a.sections.find((s) => s.clause === "figaro-commerce")?.version).toBe(2);
+        expect(a.sections.find((s) => s.clause === "figaro-topology")?.version).toBe(1);
     });
 });
 

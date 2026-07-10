@@ -32,7 +32,7 @@ const nodes: ChainNodeSpec[] = [
     { nodeId: "order-1", seller: S1.address, payment: 500n },
     { nodeId: "order-2", seller: S2.address, payment: 300n },
 ];
-const params = { template, currency: CURRENCY, chainId: CHAIN, core: CORE, clauseVersion: () => 1, nodes, salt: () => 42n };
+const params = { template, currency: CURRENCY, chainId: CHAIN, core: CORE, nodes, salt: () => 42n };
 
 function topologyParents(offer: { agreement: { sections: { clause: string; data: Record<string, unknown> }[] } }): unknown {
     return offer.agreement.sections.find((s) => s.clause === "figaro-topology")?.data.parentOrderHashes;
