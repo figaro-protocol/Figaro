@@ -1,16 +1,14 @@
 "use client";
 
 import { useReadContract } from "wagmi";
-import { parseAbi } from "viem";
 import { isValidAddress } from "@/lib/shared/evm";
-
-const SYMBOL_ABI = parseAbi(["function symbol() view returns (string)"]);
+import { ERC20_ABI } from "@/lib/kernel/contracts";
 
 export function useTokenSymbol(address: string) {
     const addr = isValidAddress(address) ? (address as `0x${string}`) : undefined;
     return useReadContract({
         address: addr,
-        abi: SYMBOL_ABI,
+        abi: ERC20_ABI,
         functionName: "symbol",
         query: { enabled: !!addr },
     });

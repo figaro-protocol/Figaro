@@ -23,7 +23,6 @@
  * clause fields.
  */
 
-import { canonicalContentHash } from "@/lib/shared/canonicalJson";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 
 export interface AssemblyTemplateAgreement {
@@ -94,20 +93,6 @@ export function templateClauseVersionMap(agreement: AssemblyTemplateAgreement): 
     );
 }
 
-/** The assembly's identity — keccak256 of the canonical COMPOSITION subset of
- *  the template (the composed agreements: their clauses, values, and topology;
- *  editorial prose excluded, so renaming never forks identity). This is the
- *  hash `AssemblyRegistry` keys bindings on. Publishers anchor it; readers
- *  recompute it from a fetched document to verify integrity. */
-export function templateCompositionHash(template: AssemblyTemplate): `0x${string}` {
-    return canonicalContentHash({ agreements: template.agreements });
-}
-
-/** The published slug — presentation only, a deterministic pure function of
- *  the composition hash. Identical compositions → identical slug; distinct
- *  compositions → distinct slug. The slug exists nowhere on-chain: the
- *  registry keys bindings by `compositionHash`, and every reader derives the
- *  slug from the event's hash. */
-export function deriveAssemblySlug(compositionHash: `0x${string}`): string {
-    return `asm-${compositionHash.slice(2, 18)}`;
-}
+// The assembly's identity (the AssemblyRegistry key) and its derived slug —
+// single home is the SDK; re-exported here for the designer/registry surfaces.
+export { templateCompositionHash, deriveAssemblySlug } from "@figaro/core";

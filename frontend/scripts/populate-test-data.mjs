@@ -20,8 +20,15 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { createPublicClient, createWalletClient, http, keccak256, parseAbi, toHex } from 'viem';
+import { createPublicClient, createWalletClient, http } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
+// Protocol canonicals come from the SDK (@figaro/core, file:../sdk): the
+// registry + ERC-20 ABIs, the canonical-JSON convention, and the assembly
+// identity (compositionHash + slug). Nothing is re-implemented here.
+import {
+    SELLER_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, ERC20_ABI,
+    canonicalize, templateCompositionHash, deriveAssemblySlug,
+} from '@figaro/core';
 import {
     CLAUSES_DIR, LOCAL_ANVIL, pinJSON, populateClauses, readEnvLocal, registrarAccount,
 } from './populate-clauses.mjs';
@@ -29,21 +36,6 @@ import {
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545';
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 const REGISTRATION_DEPOSIT = 1_000_000_000_000_000n; // 0.001 ETH
-
-const SELLER_REGISTRY_ABI = parseAbi([
-    'function register(string metadataURI) external payable',
-    'function updateProfile(string metadataURI) external',
-    'error AlreadyRegistered()',
-]);
-const ERC20_VIEW_ABI = parseAbi([
-    'function symbol() view returns (string)',
-    'function name() view returns (string)',
-]);
-const ASSEMBLY_REGISTRY_ABI = parseAbi([
-    'function registerAssembly(bytes32 compositionHash, string contentURI) external payable',
-    'function registrationDeposit() view returns (uint256)',
-    'event AssemblyRegistered(bytes32 indexed compositionHash, address indexed author, string contentURI)',
-]);
 
 // The test sellers. addressIndex ∈ [5,19] (disjoint from buyers anvil[0..4]).
 // Addresses derive from the anvil mnemonic below — nothing hardcoded.
@@ -69,19 +61,10 @@ const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Er
 // PRE-POPULATION, exactly like clauses and sellers above — never a test
 // (operator ruling 2026-07-02; the scenario-era build-order coupling is the
 // cautionary tale). The template reproduces the designer's emission byte for
-// byte — sources of truth: `lib/designer/buildAssemblyTemplate.ts` (structural
-// fold), `lib/shared/assemblyTemplate.ts` (slug derivation) — so the anchored
-// document is indistinguishable from a designer-published one.
-
-/** Sorted-keys JSON at every depth — mirrors buildAssemblyTemplate.ts. */
-function canonicalize(value) {
-    return JSON.stringify(value, (_key, raw) => {
-        if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return raw;
-        const sorted = {};
-        for (const k of Object.keys(raw).sort()) sorted[k] = raw[k];
-        return sorted;
-    });
-}
+// byte: identity (compositionHash + slug) and canonical JSON come from the
+// SDK; the structural fold mirrors `lib/designer/buildAssemblyTemplate.ts`
+// (composeStructuralClauses) — so the anchored document is indistinguishable
+// from a designer-published one.
 
 /** Fold the MANDATORY structural clauses (block.article === "structural",
  *  read from the canonical Layer-A specs — derived, never named) onto an
@@ -104,11 +87,11 @@ function structuralClauseFold(parents = []) {
 }
 
 async function anchorAssembly({ publicClient, walletClient, account, registry, ipfsApiUrl, template }) {
-    // Composition hash over the COMPOSITION ONLY (editorial excluded) — mirrors
-    // serializeAssemblyTemplate.ts; the slug is presentation, derived off-chain
-    // (mirrors deriveAssemblySlug). The registry keys bindings by compositionHash.
-    const compositionHash = keccak256(toHex(canonicalize({ agreements: template.agreements })));
-    const slug = `asm-${compositionHash.slice(2, 18)}`;
+    // Composition hash over the COMPOSITION ONLY (editorial excluded); the slug
+    // is presentation, derived off-chain. Both from the SDK single home — the
+    // registry keys bindings by compositionHash.
+    const compositionHash = templateCompositionHash(template);
+    const slug = deriveAssemblySlug(compositionHash);
 
     const anchored = await publicClient.getContractEvents({
         address: registry, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered',
@@ -210,8 +193,8 @@ async function main() {
 
     // ── 2. Sellers (catalogue → profile → register, all pinned + anchored) ──
     const [tokenSymbol, tokenName] = await Promise.all([
-        publicClient.readContract({ address: mockErc20, abi: ERC20_VIEW_ABI, functionName: 'symbol' }),
-        publicClient.readContract({ address: mockErc20, abi: ERC20_VIEW_ABI, functionName: 'name' }),
+        publicClient.readContract({ address: mockErc20, abi: ERC20_ABI, functionName: 'symbol' }),
+        publicClient.readContract({ address: mockErc20, abi: ERC20_ABI, functionName: 'name' }),
     ]);
 
     console.log('\nSellers:');

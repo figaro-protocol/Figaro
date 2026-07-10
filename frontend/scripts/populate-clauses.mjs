@@ -28,9 +28,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-    createPublicClient, createWalletClient, defineChain, http, keccak256, parseAbi, toHex, encodeAbiParameters,
+    createPublicClient, createWalletClient, defineChain, http,
 } from 'viem';
 import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
+// Protocol canonicals come from the SDK (@figaro/core, file:../sdk — the
+// compiled dist resolves from plain node ESM): the registry ABI, the clause
+// key, and the canonical-JSON convention. Nothing is re-implemented here.
+import { CLAUSE_REGISTRY_ABI, computeClauseKey, canonicalize, canonicalContentHash } from '@figaro/core';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Canonical Layer-A specs / ClauseRegistry seed data — the single origin,
@@ -45,22 +49,6 @@ export const LOCAL_ANVIL = defineChain({
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
     rpcUrls: { default: { http: [RPC_URL] } },
 });
-
-const CLAUSE_REGISTRY_ABI = parseAbi([
-    'function registerClause(string clauseId, uint64 version, bytes32 contentHash, string contentURI) external payable',
-    'function registered(bytes32) view returns (bool)',
-    'function registrationDeposit() view returns (uint256)',
-]);
-
-/** Sorted-keys JSON at every depth — mirrors lib/shared/canonicalJson.ts. */
-function canonicalize(value) {
-    return JSON.stringify(value, (_key, raw) => {
-        if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return raw;
-        const sorted = {};
-        for (const k of Object.keys(raw).sort()) sorted[k] = raw[k];
-        return sorted;
-    });
-}
 
 /** Read frontend/.env.local into a flat key→value map. */
 export function readEnvLocal() {
@@ -77,7 +65,10 @@ export function readEnvLocal() {
     return out;
 }
 
-/** Pin an already-serialized JSON string to Kubo; return the ipfs:// URI. */
+/** Pin an already-serialized JSON string to Kubo; return the ipfs:// URI.
+ *  Mirror-by-necessity of the browser pin path (`lib/shared/ipfsService.ts`):
+ *  the SDK is viem-only (no IPFS surface, by doctrine) and .mjs cannot import
+ *  frontend TS — keep the two in lockstep when the add-endpoint shape changes. */
 export async function pinJSON(apiUrl, json) {
     const form = new FormData();
     form.append('file', new Blob([json], { type: 'application/json' }), 'doc.json');
@@ -111,9 +102,8 @@ export async function populateClauses({ publicClient, walletClient, account, reg
         const clauseIdStr = spec.clauseId;
         if (!clauseIdStr) throw new Error(`${file} has no clauseId`);
         const version = BigInt(spec.version ?? 1);
-        // On-chain identity is keccak256(abi.encode(name, version)) — matches
-        // ClauseRegistry and the SDK.
-        const clauseId = keccak256(encodeAbiParameters([{ type: 'string' }, { type: 'uint64' }], [clauseIdStr, version]));
+        // On-chain identity is keccak256(abi.encode(name, version)).
+        const clauseId = computeClauseKey(clauseIdStr, version);
 
         if (await publicClient.readContract({
             address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registered', args: [clauseId],
@@ -124,11 +114,11 @@ export async function populateClauses({ publicClient, walletClient, account, reg
 
         // Pin the spec to IPFS (the pointer readers fetch from), and anchor its
         // content digest (integrity) + that pointer on-chain. The digest is over
-        // the CANONICAL form (sorted keys at every depth) — mirrors
-        // lib/shared/canonicalJson.ts, which readers use to verify after fetch.
+        // the CANONICAL form (sorted keys at every depth) — the SDK's
+        // canonical-JSON convention, which readers use to verify after fetch.
         const canonical = canonicalize(spec);
         const contentURI = await pinJSON(ipfsApiUrl, canonical);
-        const contentHash = keccak256(toHex(canonical));
+        const contentHash = canonicalContentHash(spec);
 
         // Registering = staked intent (K4): every registration posts the
         // registry's deposit, reclaimable via withdrawDeposit (which
