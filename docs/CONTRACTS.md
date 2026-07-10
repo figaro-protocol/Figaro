@@ -92,7 +92,7 @@ Mainnet) has no live documented retirement router to compose with (Toucan is
 Polygon/Celo; Klima's aggregator is deprecated in favor of an off-network REST
 API; Moss has none), and a cross-chain retirement can't be verified from the
 process's chain without a trusted bridge. Emissions *disclosure*
-(`figaro-ghg` + attestations) survives — it never depended on a router. An
+(`figaro-emissions` + attestations) survives — it never depended on a router. An
 offset re-enters, permissionlessly, as a new clause naming a mainnet router's
 interface when one exists.
 

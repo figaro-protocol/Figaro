@@ -47,7 +47,7 @@ content. (This is the instruction-system form of "derive, don't store.")
 - **Protocol and framing**: `VISION.md`, `THEORY.md`, `FIG_TOKEN.md`
 - **Runtime and frontend**: `OPEN_WORLD.md` (the open-world paradigm + runtime composition model + semantic-derivation layer), `FRONTEND.md` (route + lib catalogue), `DESIGN_TOKENS.md` (MUJI theme spec), `AI_AGENT_COORDINATION.md`
 - **Inventories**: `CONTRACTS.md`, `CLAUSES.md`, `FRONTEND.md`, `TESTING.md` — the four split-out inventory docs (contracts / clauses / frontend / tests; `CLAUSES.md` also carries the anchoring doctrine)
-- **Extension and disclosure**: `PUBLIC_GRAPH_MODEL.md`, `GHG_PROTOCOL_SPEC.md`
+- **Extension and disclosure**: `PUBLIC_GRAPH_MODEL.md` (the emissions clause + witness-stage disclosure channel is owned by `CLAUSES.md`; the aspirational GHG protocol spec was deleted 2026-07-10 — its two load-bearing rulings, reader-derived scope and offset-out-of-scope, live in `CLAUSES.md`)
 - **Scaling**: `SCALING_STRATEGY.md` (carries the batch-sequencer architecture + sequencer trust model)
 - **Status and readiness**: `RELEASE_READINESS.md` (carries the hardening-completion record + the freeze notice for the audited Solidity surface)
 - **Audit / verification**: `DESIGN_DECISIONS.md`, `VERIFICATION_MAP.md`

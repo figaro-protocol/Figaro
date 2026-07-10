@@ -36,9 +36,34 @@ adding-a-clause checklist below.
   via `spec.stages[stage]`.
 - A single **generic `encodeContentFromSpec`** (`sdk/src/clauses/encode.ts`) — the one
   spec-driven content encoder, reading the field-to-position mapping FROM the parsed spec
-  for ANY clause. The former per-clause encoders (`encodeCommerceContent`, `encodeGeoContent`,
-  … one per clause) were **DELETED** — encoding is generic, not per-clause. Topology has no
-  encoder — it is agreement-only, with no runtime attestation.
+  for ANY clause, with the same `{ stage? }` selection as the validator. Its inverse,
+  `decodeContentFromSpec`, recovers a witness's structured values from calldata for
+  readers (audit, timeline). The former per-clause encoders (`encodeCommerceContent`,
+  `encodeGeoContent`, … one per clause) were **DELETED** — encoding is generic, not
+  per-clause. Topology has no encoder — it is agreement-only, with no runtime attestation.
+
+**Witness stages — the runtime feedback loop, declared in the spec.** A clause
+whose runtime witness carries *different content* from its committed policy (a
+temperature record, measured grams, a detected band) declares that content as
+`spec.stages[N]` — a per-stage field set keyed by the on-chain `uint8 stage`.
+Declaration IS the signal, end to end: the capability rail derives a repeatable
+witness capability for any composed clause declaring stages (offered to BOTH
+parties — who must witness is never engine policy; a dead-drop seller attests
+with a device identifier in lieu of the buyer, and sufficiency is derived at
+read time against the committed policy), renders the form from the declared
+fields, validates and encodes at the stage, and files through
+`AttestationCoordinator`; readers decode the recovered calldata against the
+same declaration. A never-seen clause's feedback loop participates with zero
+per-clause code — certified by the witness probe in
+`permissionless-clause.devnet.spec.ts`. The evidence window closes at resolve
+(`DESIGN_DECISIONS.md` §7): attestation is runtime evidence within an open
+process, on-chain and in the derivation both. Process-log LADDERS
+(`attestations` article) are the other runtime-evidence shape — their stage is
+the enum ordinal, no `stages` key needed; a ladder stage listed in the clause's
+`block.handoffStages` additionally PAIRS the witness stage of a co-composed
+clause nesting under `handoff` when the witness's required values derive
+unambiguously from the committed content (a single committed band) — one
+action, two attestations.
 
 Frontend wiring: `clauseSpecSource.ts` loads each spec live from `ClauseRegistry`
 → IPFS (no bundled copy); form gates and previews validate against the parsed spec.
@@ -49,7 +74,7 @@ Two on-chain touch points remain:
 
 - **`ClauseRegistry.registerClause(clauseId, version, contentHash, contentURI)`**
   — permissionless, first-write-wins, immutable. `clauseId` is the **bare
-  human-readable name** (a string, e.g. `figaro-ghg`) and `version` is a separate
+  human-readable name** (a string, e.g. `figaro-emissions`) and `version` is a separate
   `uint64`; the on-chain identity/dedup key is `keccak256(abi.encode(clauseId, version))`,
   so `name`+`version` together form the key. (On a live chain that registration is
   first-write-wins immutable — but this repo is **device-only**: specs in `clauses/`
@@ -111,41 +136,48 @@ which is agreement-only — so runtime-attestable = that count minus one.
 | `figaro-cargo` | Physical shipment measure at the GDSN LOGISTIC-UNIT level (distinct from per-item trade-item measures on the catalogue) — gross/net mass, volume, packaged L×W×H, and packaging type/count/marks. Elective; hazmat / cold-chain / freight-class / dimweight are co-equal sibling logistics clauses (no spec-level nesting) | Layer A (off-chain) |
 | `figaro-dimweight` | Dimensional (billed) weight for a PARCEL — a DERIVED leaf the checkout computes: billed = max(gross mass, volume ÷ divisor), divisor from the seller profile. Carries billedMassGrams + divisor (reproducible from the cargo dimensions). Elective; a co-equal logistics clause | Layer A (off-chain) |
 | `figaro-hazmat` | Dangerous-goods declaration anchored to the UN Recommendations (ADR / IMDG / IATA-DGR) — UN number, proper shipping name, hazard class, packing group. Elective; a co-equal logistics clause | Layer A (off-chain) |
-| `figaro-cold-chain` | Temperature-controlled handling anchored to GDP cold-chain classes — class + min/max °C window. Elective; a co-equal logistics clause | Layer A (off-chain) |
+| `figaro-cold-chain` | Temperature-controlled handling anchored to GDP cold-chain classes — class + min/max °C window + the committed recording interval (no external standard mandates one) + free-form monitoring standard; the period record (observed range + evidence) is the `stages[1]` witness. Elective; a co-equal logistics clause | Layer A (off-chain) |
 | `figaro-freight-class` | Declared freight classification anchored to the NMFC (NMFTA) — the NMFC class (50–500) + optional item number. Elective; a co-equal logistics clause | Layer A (off-chain) |
 | `figaro-modalities` | The buyer's request — consume-onsite / pickup / delivery / virtual (single-select) | Layer A (off-chain) |
 | `figaro-handoff` | Hand-off point — where the physical exchange happens (proximity-policy nests under it) | Layer A (off-chain) |
-| `figaro-ghg` | GHG accounting methodology (free-form `standard` string, committed at signing) | Layer A (off-chain) |
-| `figaro-proximity-policy` | Required detection bands committed at agreement signing | Layer A (off-chain) |
+| `figaro-emissions` | Accounting methodology (free-form `standard` string, committed at signing) + the measured-grams witness at `stages[1]` | Layer A (off-chain) |
+| `figaro-proximity-policy` | Required detection bands committed at agreement signing; the hand-off witness (detected band + evidence) is the `stages[1]` witness, paired by hand-off ladder stages or filed standalone by either party | Layer A (off-chain) |
 | `figaro-merchant-process` | Merchant per-role event enum (sovereign log) | Layer A (off-chain) |
 | `figaro-courier-process` | Courier per-role event enum (sovereign log) | Layer A (off-chain) |
 | `figaro-arbitration-kleros` | Decentralized off-chain arbitration via Kleros (subcourt + minimum jurors). Provider-specific; sister `figaro-arbitration-<provider>` clauses would cover future ODR providers | Layer A (off-chain) |
 | `figaro-applicable-law` | State / ADR / traditional-jurisdiction recourse layer (applicable law + forum + language). Provider-agnostic. Composes with arbitration clauses | Layer A (off-chain) |
 | `figaro-consent` | Cryptographic acceptance of an off-chain document (hash + version + title) — supports ToS acceptance, governance vote receipts, and other document-acceptance ceremonies (`consent` article) | Layer A (off-chain) |
 
-`figaro-ghg` is a single disclosure clause whose accounting methodology is
-a **free-form `standard` string** — any methodology, existing or future ("GHG
-Protocol Corporate Standard", "ISO 14064", "PAS 2050", "EN 16258", or a custom
-one); the protocol takes no closed list. Content shape is `(string standard)`
-— no scope is stored: scope 1/2/3 is relative to a reporting entity's boundary,
-and a reader derives it from its own position in the process topology. Measured
-emissions (grams CO2e) are carried as a **runtime
-attestation** on this clause, not a separate registered clause — a runtime
-witness is an attestation on the committed clause, so there is no
-`figaro-ghg-measurement` companion clause (the WHY is in "Composition and
-decomposition" below).
+`figaro-emissions` (renamed from `figaro-ghg`, 2026-07-10) is a single
+disclosure clause whose accounting methodology is a **free-form `standard`
+string** — any methodology, existing or future ("GHG Protocol Corporate
+Standard", "ISO 14064", "PAS 2050", "EN 16258", or a custom one); the protocol
+takes no closed list. No scope is stored: scope 1/2/3 is relative to a
+reporting entity's boundary, and a reader derives it from its own position in
+the process topology. Measured emissions (grams CO2e) are the clause's
+**`stages[1]` witness** — a runtime attestation on the committed clause, not a
+separate registered clause; there is no `figaro-ghg-measurement` companion
+clause (the WHY is in "Composition and decomposition" below). A correction is
+a later attestation at the same stage, weighed by readers. **Offset
+procurement (retiring CO2 via a carbon router) is out of protocol scope** — it
+composes as a fifth-noun on-network contract when a live router exists; the
+earlier Klima-coupled tooling was retired when the Ethereum-based routers went
+inactive.
 
 `figaro-proximity-policy` commits, at agreement signing, the set of
-proximity-detection bands a hand-off will accept. The runtime
-proof that a hand-off actually occurred within an accepted band is carried as a
-**runtime attestation**, not a separate registered clause — an earlier
-`figaro-proximity-proof` clause modelled that witness as its own clause and was
-retired for the same reason. The primitive is **counterparty-pair-agnostic**:
-buyer↔merchant pickup, merchant↔courier pickup, buyer↔courier drop-off all
-compose the same policy clause onto the relevant order — a new hand-off pair is
-composition, never a new clause (only a genuinely different witness model —
-multi-witness, on-chain device-sig verification — clears the bar for a new
-primitive).
+proximity-detection bands a hand-off will accept. The runtime proof that a
+hand-off actually occurred within an accepted band is the clause's
+**`stages[1]` witness** (detected band + evidence — a Wi-Fi BSSID, BLE beacon
+id, NFC payload, or a counterparty co-signature), not a separate registered
+clause — an earlier `figaro-proximity-proof` clause modelled that witness as
+its own clause and was retired for the same reason. Either party files it (a
+dead-drop seller attests with the device identifier in lieu of the buyer);
+sufficiency is derived at read time against the committed bands. The primitive
+is **counterparty-pair-agnostic**: buyer↔merchant pickup, merchant↔courier
+pickup, buyer↔courier drop-off all compose the same policy clause onto the
+relevant order — a new hand-off pair is composition, never a new clause (only
+a genuinely different witness model — multi-witness, on-chain device-sig
+verification — clears the bar for a new primitive).
 
 `figaro-topology` is the one **agreement-only** clause — committed at
 agreement-signing time, never re-asserted as a runtime attestation. It is
@@ -221,11 +253,13 @@ binding is the one cross-check, uniform across all of them (there is no
 object). What differs is *when* the content is supplied: a clause commits its
 policy at agreement signing (fixed for the order's life), and any runtime proof
 of that policy is filed during execution as a **runtime attestation on that same
-clause** — not a separate proof clause. The earlier `figaro-proximity-proof` /
-`figaro-ghg-measurement` sister-proof clauses were **retired** for exactly this
-reason (the runtime witness is an attestation, not a registered clause — see
-above). So do not split a clause to separate its committed band from its runtime
-proof; carry the proof as an attestation on the committed clause.
+clause** — its content shape declared as a witness stage (`spec.stages[N]`, see
+"Witness stages" above), never a separate proof clause. The earlier
+`figaro-proximity-proof` / `figaro-ghg-measurement` sister-proof clauses were
+**retired** for exactly this reason (the runtime witness is an attestation, not
+a registered clause). So do not split a clause to separate its committed band
+from its runtime proof; declare the proof as a witness stage on the committed
+clause.
 
 **Split when a generic-named clause carries provider-specific fields.** A clause
 whose NAME is generic but whose fields name one provider's internals
@@ -238,7 +272,7 @@ registering symmetrically. The clauseId is committed in the agreement hash, so
 which-provider is an immutable term, not a payload value; a combined clause
 forces either a closed enum (kills permissionless extension) or an open string
 (kills committing which provider was named). Note the boundary against the merge
-rule above: `figaro-ghg` keeps its methodology as a free-form field because a
+rule above: `figaro-emissions` keeps its methodology as a free-form field because a
 methodology is a *label on one disclosure concern*, not a provider whose
 internals shape the fields.
 

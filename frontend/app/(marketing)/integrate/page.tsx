@@ -50,7 +50,7 @@ export default function Integrate() {
                         <strong>Action proposer + dual-mode queue.</strong> <code>FigaroContext</code>, <code>proposeActions</code>, <code>ActionQueue</code>. Human-in-the-loop approval or fully autonomous submission via <code>WalletClient</code>. See the Agent SDK section above.
                     </LabelledListRow>
                     <LabelledListRow label="/extensions" labelWidth="narrow" uppercase>
-                        <strong>Attestation/GHG encoding, geo/handoff utilities, did:web resolution.</strong> Everything at the protocol tier that isn&apos;t kernel-critical but is commonly needed.
+                        <strong>Attestation encoding/filtering, geo/handoff utilities, did:web resolution.</strong> Everything at the protocol tier that isn&apos;t kernel-critical but is commonly needed.
                     </LabelledListRow>
                     <LabelledListRow label="/clauses" labelWidth="narrow" uppercase>
                         <strong>Meta-clause validator + a generic content encoder.</strong> Canonical spec format, validated off-chain (Layer A); the chain registers and merkle-binds clauses but validates no content shape (see <Link href="/clauses" className="underline">/clauses</Link>).
@@ -126,7 +126,7 @@ const state = reconstruct(events);
             <MarketingSection title="The kernel is narrow. The ecosystem composes around it.">
                 <div className="border-l-2 border-default pl-6 mb-8">
                     <p className="text-sm text-ink-body leading-relaxed">
-                        <strong>Implementation status.</strong> Currently wired: Kleros evidence export, XMTP messaging, IPFS storage, GHG disclosure attestations. Everything else below is a <strong>compositional surface</strong> &mdash; an architectural slot integrators can build against, with named vendors as illustrative examples rather than current integrations.
+                        <strong>Implementation status.</strong> Currently wired: Kleros evidence export, XMTP messaging, IPFS storage, emissions disclosure attestations. Everything else below is a <strong>compositional surface</strong> &mdash; an architectural slot integrators can build against, with named vendors as illustrative examples rather than current integrations.
                     </p>
                 </div>
 
@@ -139,7 +139,7 @@ const state = reconstruct(events);
                         Architectural example &mdash; carbon offset before settlement
                     </h3>
                     <p className="text-sm text-ink-body leading-relaxed mb-4">
-                        A delivery process runs through its normal lifecycle. Before the buyer calls <code>resolveProcess</code>, the GHG clause has fired an attestation declaring <em>X</em> grams CO<sub>2</sub>e emitted. The buyer commits a sub-order against an offset seller registered with the assembly, adding the offset purchase to the same process before closing. (The offset seller is whichever counterparty the assembly admits &mdash; any bonded seller whose value-add is retirement.)
+                        A delivery process runs through its normal lifecycle. Before the buyer calls <code>resolveProcess</code>, the emissions clause has fired an attestation declaring <em>X</em> grams CO<sub>2</sub>e emitted. The buyer commits a sub-order against an offset seller registered with the assembly, adding the offset purchase to the same process before closing. (The offset seller is whichever counterparty the assembly admits &mdash; any bonded seller whose value-add is retirement.)
                     </p>
                     <ol className="space-y-3 text-sm text-ink-body leading-relaxed list-decimal pl-5">
                         <li><strong>UI surfaces the option.</strong> A live quote from a bonded offset seller registered against the assembly.</li>

@@ -336,7 +336,7 @@ export CERTORAKEY=<your-key>
 | `state.test.ts` | Event reconstruction, ProcessGraph (incremental), active/seller/buyer queries | A-4, A-5 |
 | `proposer.test.ts` | Agent proposer: proposeActions, typed action generation | K-2 (buyer action routing) |
 | `hitl.test.ts` | ActionQueue HITL — approve/reject/execute lifecycle | Agent coordination |
-| `attestation.test.ts` | Clause IDs, GHG constants, grams encoding, event filtering, disclosure summaries | E-1, E-2 |
+| `attestation.test.ts` | Clause ID hashing (`computeClauseId`), attestation event filtering (by clause / process / order / stage) | E-1, E-2 |
 | `did.test.ts` | did:web validation, resolution, address extraction, seller DID docs | DID:web identity |
 | `geo.test.ts` | Geohash matching, haversine distance, photo+GPS evidence | Delivery attestation |
 

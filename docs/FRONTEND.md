@@ -92,6 +92,11 @@ Y", not as an open-ended build.)
 - **Runtime (phase-4) order surface** — `components/core/CapabilityRail.tsx`,
   driven by `deriveProcessModelFromRuntime` → `executeCapability`. The order
   page names NO clause (guard: `scripts/lint-no-hardcoded-clauses-in-runtime.sh`).
+  Two derived capability shapes: process-log LADDERS (attestations article →
+  one-click next-stage buttons) and WITNESS stages (any composed clause
+  declaring `spec.stages[N]` → a form generated from the declared fields via
+  the one `FieldControl`, offered to both parties, repeatable while the order
+  is active — mechanism owned by `docs/CLAUSES.md` § "Witness stages").
   Order ARRIVAL + acceptance + resolution are CORE (the `OrderCommitted` event +
   the bell notification, `lib/kernel/useNotifications.ts`) — never a clause
   lifecycle stage or a capability; clause state/labels surface from the clause

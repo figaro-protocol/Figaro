@@ -106,13 +106,13 @@ pill/badge for an empty result. A resolved-empty read renders as absence; a
 ## 2. Extending the ecosystem — bounded, versioned, spec-declared
 
 How the network grows with **zero code change and zero kernel change**. Worked out via
-the GHG consolidation + the hazmat / cold-chain handling clauses (2026-06); the model for
+the emissions consolidation + the hazmat / cold-chain handling clauses (2026-06); the model for
 every extension.
 
 - **N closed-world variants → ONE clause + a spec-declared option set.** The clause is
   the reusable concept; the variation is **data in the spec** (an `enum` array or a
   nested `object` tree), never separate hardcoded clauses and never a hardcoded enum in
-  code. (Five norm-specific GHG clauses → one `figaro-ghg`, methodology = one field.)
+  code. (Five norm-specific emissions clauses → one `figaro-emissions`, methodology = one field.)
 
 - **A field that represents a CHOICE or CATEGORY is BOUNDED.** Declared finite in the
   spec; never a free-form string for a choice. `type:"string"` is ONLY for genuinely

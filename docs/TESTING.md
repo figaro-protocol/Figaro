@@ -55,7 +55,7 @@ FigToken (`FigToken.tla` + `FigToken.cfg`): `Inv_MaxSupply`,
   `TokenDecimalDisplayFlows`.
 - **Lib tier** (`tests/lib/`, 56 files) — pure-client unit tests: commitment
   preparation + stores, agreement, clause-spec source, discovery +
-  catalogue pipeline, GHG disclosure, delivery/handoff attestation, dispute
+  catalogue pipeline, emissions disclosure, delivery/handoff attestation, dispute
   evidence, IPFS service, token conversion, geocode, and per-hook tests
   (`useOrderCommitmentFlow`, `useTokenApproval`, …).
 
@@ -107,16 +107,24 @@ pricing-policy fields, checkout deriving payment = rate × ceil(geodistance)
 from the sub-order's committed endpoints, signed + relayed;
 `local-commerce` — the meal-delivery scenario authored on the designer
 canvas, pinned by both its sellers, run buyer→merchant→courier with BOTH full
-process ladders attested stage by stage), designer + assembly registry (`designer-save-draft`, `designer-view`,
+process ladders attested stage by stage — stage labels DERIVED from the
+registered specs at run time, never a roster — the hand-off witness PAIRED at
+each courier arrival stage (single committed proximity band), the buyer's
+co-witness filed through the rail's form, and the post-resolve
+evidence-window-closed assertion), designer + assembly registry (`designer-save-draft`, `designer-view`,
 `designer-agreement-drawer`, `designer-drafts-delete`,
 `published-list-ui`), sellers (`sellers-onboarding`, `seller-edit-ui`,
 `seller-withdraw`), inventories (`assemblies-inventory`, `clauses-inventory`),
 and the open-world proof (`permissionless-clause`
-— a never-seen clause attestable with zero per-clause on-chain code;
-`clause-coverage` — the same harness iterated, one rung per protocol clause
-no other e2e drives: drawer → encode → commit → attest → audit through the
-generic pipeline, values authored via design-time drawer fills, the wizard's
-catalogue clause-values editor, or the nested sub-clause tree).
+— a never-seen clause attestable with zero per-clause on-chain code, plus a
+never-seen WITNESS clause whose declared `stages[1]` form/filing/decode all
+derive from the declaration; `clause-coverage` — the same harness iterated,
+one rung per protocol clause no other e2e drives: drawer → encode → commit →
+witness → audit through the generic pipeline, values authored via design-time
+drawer fills, the wizard's catalogue clause-values editor, or the nested
+sub-clause tree; the witness leg is DERIVED per rung from the registered
+spec's `stages` — a declaring spec with no rung fills fails as a coverage
+gap, never a silent skip).
 
 **mobile (`*.mobile.spec.ts`, 1 spec)** — responsive/viewport chrome jsdom
 can't render: `navigation.mobile.spec.ts` (Pixel 5 / Chromium).

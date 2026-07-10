@@ -354,6 +354,6 @@ This is the exhaustive whitelist. Files not listed are deletion candidates at ev
 
 **Architecture:** `ARCHITECTURE.md` (whole-system stack + the `clause.block` seam), `OPEN_WORLD.md` (open-world paradigm + composition model + semantic layer), `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md`, `LEXICON.md` (canonical-name-per-tier grid; documented half of the lexicon, enforced by `scripts/lint-architecture-lexicon.sh`).
 
-**Protocol-specific:** `FIG_TOKEN.md`, `GHG_PROTOCOL_SPEC.md`.
+**Protocol-specific:** `FIG_TOKEN.md`.
 
 **Reference:** `BOL_RESEARCH.md` (bill-of-lading research, load-bearing for `DESIGN_DECISIONS.md`), `DESIGN_TOKENS.md` (MUJI theme spec; canonical token reference for Tailwind config and component primitives).

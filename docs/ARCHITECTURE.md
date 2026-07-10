@@ -93,7 +93,7 @@ Three recurring questions collapse to "which side of the seam?":
 3. **Permissionless boundary — data, not code.** `block` is *always* data, always
    permissionless, and so are `fields`: every clause's content is validated off-chain by the
    already-generic `validate.ts` against the spec — data-only, no per-clause code. Imperative
-   checks (proximity-proof verification, GHG arithmetic, cross-field constraints) are off-chain /
+   checks (proximity-proof verification, emissions arithmetic, cross-field constraints) are off-chain /
    read-time concerns, never on-chain validators. There is no on-chain content validation at all —
    the chain registers clauses and merkle-binds attestations, nothing more. (See `CLAUSES.md`.)
 
