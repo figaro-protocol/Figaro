@@ -28,10 +28,18 @@
  * registry's "already published" refusal naming the same content-derived
  * slug, which the rung then binds and orders against.
  *
- * There is no runtime-attest leg: none of these clauses declares a stage
- * ladder (they are committed-content clauses, not process logs) — what each
- * test verifies follows from the clause being tested. The ladder path is
- * permissionless-clause's and local-commerce's assertion.
+ * witness → DERIVED, never enumerated: after the commit, the rung reads the
+ *   clause's REGISTERED spec from the network (ClauseRegistered → IPFS — the
+ *   same read every consumer does) and, iff the spec declares witness stages
+ *   (`spec.stages[N]` — the runtime feedback loop: a temperature record,
+ *   measured grams, a detected band), drives the seller through the rail's
+ *   generic witness form, asserts the attestation lands on the timeline, that
+ *   the capability REMAINS offered (repeatable while the order is active),
+ *   certifies the Attestation event out-of-band, and asserts the audit
+ *   decodes the witness's values from calldata. A spec that declares stages
+ *   while its rung carries no witness fills FAILS the rung — a coverage gap
+ *   is a finding, never a silent skip. Ladder clauses (process logs) stay
+ *   permissionless-clause's and local-commerce's assertion.
  *
  * The rung table's values are TEST INPUT (what a designer/seller would type),
  * not network data: sellers, catalogues, specs, and agreements are all read
@@ -56,7 +64,7 @@ import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
 import { readLocalDeploymentConfig, assertPinnedInIpfs } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
-import { calculateBonds } from '@figaro/core';
+import { calculateBonds, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI } from '@figaro/core';
 import type { Page } from '@playwright/test';
 
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
@@ -98,6 +106,15 @@ interface ClauseRung {
     auditTexts: string[];
     /** Assertions on the committed leaf's data, from the pinned agreement. */
     leaf: (data: Record<string, unknown>) => void;
+    /** Witness-stage form input (TEST INPUT, like `design`) — REQUIRED when the
+     *  registered spec declares `stages`; the trigger is the spec, this is only
+     *  the data a seller would type. */
+    witness?: {
+        /** Fill the rail's generic witness form (`capability-input-<clauseId>-<field>`). */
+        fill: (page: Page) => Promise<void>;
+        /** Decoded witness values the audit must render (spec labels + values). */
+        auditTexts: string[];
+    };
 }
 
 /** Design-time drawer field input (required scalar → text/number input). */
@@ -116,6 +133,13 @@ const cataloguePick = (clauseId: string, field: string, option: string) =>
 
 const all = (...steps: Array<(page: Page) => Promise<unknown>>) =>
     async (page: Page) => { for (const s of steps) await s(page); };
+
+/** Witness-form scalar input on the rail (`capability-input-<clauseId>-<field>`). */
+const witnessFill = (clauseId: string, field: string, value: string) =>
+    async (page: Page) => page.getByTestId(`capability-input-${clauseId}-${field}`).fill(value);
+/** Witness-form enum radio on the rail. */
+const witnessPick = (clauseId: string, field: string, option: string) =>
+    async (page: Page) => page.getByTestId(`capability-input-${clauseId}-${field}-${option}`).check();
 
 const RUNGS: ClauseRung[] = [
     {
@@ -147,12 +171,28 @@ const RUNGS: ClauseRung[] = [
             cataloguePick('figaro-cold-chain', 'tempClass', 'frozen'),
             catalogueFill('figaro-cold-chain', 'tempMinC', '-25'),
             catalogueFill('figaro-cold-chain', 'tempMaxC', '-18'),
+            // The periodicity is a COMMITTED TERM (no external standard mandates
+            // one interval); 900 s = the common 15-min logger cadence.
+            catalogueFill('figaro-cold-chain', 'recordingIntervalSeconds', '900'),
         ),
-        auditTexts: ['Cold chain', 'Frozen (≤ -18 °C)'],
+        auditTexts: ['Cold chain', 'Frozen (≤ -18 °C)', '900'],
         leaf: (data) => {
             expect(data.tempClass).toBe('frozen');
             expect(data.tempMinC).toBe(-25);
             expect(data.tempMaxC).toBe(-18);
+            expect(data.recordingIntervalSeconds).toBe(900);
+        },
+        // The temperature RECORD — the feedback loop the committed window +
+        // interval exist for. Excursion is DERIVED by any reader (observed
+        // range vs committed window), never stored.
+        witness: {
+            fill: all(
+                witnessFill('figaro-cold-chain', 'periodStart', '2026-07-10T08:00:00Z'),
+                witnessFill('figaro-cold-chain', 'periodEnd', '2026-07-10T12:00:00Z'),
+                witnessFill('figaro-cold-chain', 'observedMinC', '-24'),
+                witnessFill('figaro-cold-chain', 'observedMaxC', '-19'),
+            ),
+            auditTexts: ['Observed min (°C)', '-24', 'Observed max (°C)', '-19'],
         },
     },
     {
@@ -186,8 +226,15 @@ const RUNGS: ClauseRung[] = [
     {
         clauseId: 'figaro-emissions',
         design: drawerFill('figaro-emissions', 'standard', 'GHG Protocol Product Standard'),
-        auditTexts: ['GHG emissions disclosure', 'GHG Protocol Product Standard'],
+        auditTexts: ['Emissions disclosure', 'GHG Protocol Product Standard'],
         leaf: (data) => expect(data.standard).toBe('GHG Protocol Product Standard'),
+        // The measured-grams channel: the punch-list emissions e2e — the seller
+        // drives the grams attestation through the UI, the audit's disclosure
+        // summary renders the decoded value.
+        witness: {
+            fill: witnessFill('figaro-emissions', 'gramsCO2e', '1200'),
+            auditTexts: ['Measured emissions (g CO2e)', '1200'],
+        },
     },
     {
         clauseId: 'figaro-hazmat',
@@ -219,6 +266,14 @@ const RUNGS: ClauseRung[] = [
         ),
         auditTexts: ['Proximity-verification policy', 'Zone (Wi-Fi), Contact (NFC)', 'Hand-off point'],
         leaf: (data) => expect(data.bands).toEqual(['zone-wifi', 'contact-nfc']),
+        // The hand-off witness, standalone form: TWO bands are committed, so
+        // the attester picks which one witnessed the exchange (a single
+        // committed band pairs automatically at a hand-off ladder stage — that
+        // path is local-commerce's assertion).
+        witness: {
+            fill: witnessPick('figaro-proximity-policy', 'band', 'zone-wifi'),
+            auditTexts: ['Detected band', 'Zone (Wi-Fi)'],
+        },
     },
 ];
 
@@ -417,6 +472,85 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             expect(sellerBefore - sellerAfter, 'seller balance decreased by the seller bond').toBe(sellerBond);
             expect(coreAfter - coreBefore, 'FigaroCore escrow increased by both bonds').toBe(buyerBond + sellerBond);
 
+            // ── WITNESS (derived, never enumerated): read the clause's
+            //    REGISTERED spec from the network — ClauseRegistered →
+            //    contentURI → IPFS, the same read every consumer does — and iff
+            //    it declares witness stages, drive the feedback loop through
+            //    the rail's generic form. A spec that declares stages while
+            //    the rung carries no fills FAILS here: a coverage gap is a
+            //    finding, never a silent skip. ──
+            const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
+            const regEvents = await publicClient.getContractEvents({
+                address: config.clauseRegistry as Hex, abi: CLAUSE_REGISTRY_ABI,
+                eventName: 'ClauseRegistered', fromBlock: 0n,
+            });
+            const registration = regEvents.filter((e) => e.args.clauseId === rung.clauseId).pop();
+            expect(registration, `${rung.clauseId} is anchored on ClauseRegistry`).toBeTruthy();
+            const specCid = (registration!.args.contentURI as string).replace(/^ipfs:\/\//, '');
+            const registeredSpec = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${specCid}`, { method: 'POST' })).json() as {
+                title: string; stages?: Record<string, unknown>;
+            };
+            const declaredStages = Object.keys(registeredSpec.stages ?? {}).map(Number);
+            let witnessStage: number | null = null;
+            if (declaredStages.length > 0) {
+                expect(
+                    rung.witness,
+                    `${rung.clauseId} declares witness stages [${declaredStages.join(', ')}] — the rung MUST carry witness fills (coverage gap)`,
+                ).toBeTruthy();
+                expect(declaredStages.length, 'one witness stage per rung (extend the fills for more)').toBe(1);
+                witnessStage = declaredStages[0];
+
+                const attestationsBefore = (await publicClient.getContractEvents({
+                    address: config.attestationCoordinator as Hex, abi: ATTESTATION_COORDINATOR_ABI,
+                    eventName: 'Attestation', args: { processId }, fromBlock: 0n,
+                })).length;
+
+                await gotoAsWallet(page, SELLER, `/orders/${processId}?e2e=devnet`);
+                await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
+                await waitForConnected(page);
+                const witnessCap = page.locator(
+                    `[data-testid="capability-submit-clause-attestation"][data-clause-id="${rung.clauseId}"]`,
+                );
+                await expect(
+                    witnessCap,
+                    `the rail derives ${rung.clauseId}'s witness capability from its declared stages`,
+                ).toBeVisible({ timeout: 30000 });
+                await rung.witness!.fill(page);
+                const witnessBtn = witnessCap.getByTestId('capability-execute-submit-clause-attestation');
+                await expect(witnessBtn, 'the filled witness form is executable').toBeEnabled({ timeout: 15000 });
+                await witnessBtn.click();
+
+                // UI reaction: the witness lands on the timeline — the row's
+                // stable testid carries the stage code; its visible text is the
+                // clause's own title (spec-derived, never frontend copy).
+                const witnessRow = page.getByTestId(`timeline-event-stage-${witnessStage}`).first();
+                await expect(
+                    witnessRow,
+                    'the witness attestation lands on the timeline',
+                ).toBeVisible({ timeout: 60000 });
+                await expect(witnessRow, 'the row is labelled by the spec title')
+                    .toContainText(registeredSpec.title);
+                // Repeatable while the order is active: filing once does NOT
+                // retire the capability (periodic records are the point).
+                await expect(
+                    witnessCap,
+                    'the witness capability remains offered after filing (repeatable while unresolved)',
+                ).toBeVisible({ timeout: 15000 });
+
+                // Out-of-band: the Attestation event landed at the declared
+                // stage, attested by the seller — read fresh from the chain.
+                await expect.poll(async () => {
+                    const events = await publicClient.getContractEvents({
+                        address: config.attestationCoordinator as Hex, abi: ATTESTATION_COORDINATOR_ABI,
+                        eventName: 'Attestation', args: { processId }, fromBlock: 0n,
+                    });
+                    return events.length > attestationsBefore
+                        && events.slice(attestationsBefore).some((e) =>
+                            e.args.stage === witnessStage
+                            && (e.args.attester as string).toLowerCase() === SELLER.toLowerCase());
+                }, { timeout: 60000, message: 'the witness Attestation event lands at the declared stage' }).toBe(true);
+            }
+
             // ── AUDIT: the target clause's committed leaf surfaces, labelled
             //    from its spec, and the merkle root over ALL leaves matches the
             //    on-chain agreementHash. ──
@@ -432,6 +566,22 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                     `the audit surfaces "${text}" for ${rung.clauseId}, read from its registered spec`,
                 ).toBeVisible({ timeout: 15000 });
             }
+            if (witnessStage !== null) {
+                // The witness's structured values, DECODED from transaction
+                // calldata against the declared stage's fields and rendered
+                // with the spec's own labels — the read side of the loop.
+                const witnessDl = evidence.getByTestId(`audit-witness-${rung.clauseId}-${witnessStage}`);
+                await expect(
+                    witnessDl.first(),
+                    'the audit decodes the witness record from calldata',
+                ).toBeVisible({ timeout: 30000 });
+                for (const text of rung.witness!.auditTexts) {
+                    await expect(
+                        witnessDl.first().getByText(text).first(),
+                        `the audit renders the witness value "${text}" through the spec's labels`,
+                    ).toBeVisible({ timeout: 15000 });
+                }
+            }
 
             // The committed tree, from the network SSoT: fetch the agreement the
             // audit resolves (IPFS, pinned), assert the target leaf's DATA, then
@@ -444,7 +594,6 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             expect(agreementUri, 'the committed agreement has a network (IPFS) locator').toMatch(/^ipfs:\/\//);
             const agreementCid = agreementUri!.replace(/^ipfs:\/\//, '');
             await assertPinnedInIpfs(agreementCid);
-            const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
             const agreementJson = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${agreementCid}`, { method: 'POST' })).text();
             const agreement = JSON.parse(agreementJson) as {
                 sections: { clause: string; data: Record<string, unknown> }[];

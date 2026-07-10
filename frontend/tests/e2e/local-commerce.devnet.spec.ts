@@ -11,11 +11,12 @@
  *   author   → the delivery scenario is WRITTEN on the designer canvas (a
  *              root order composing merchant-process + modalities=delivery;
  *              a drawn courier sub-order composing courier-process, the
- *              hand-off clause (face-to-face), and geolocation with its
- *              public geohash cells — drawn, never spawned) and
- *              published to the AssemblyRegistry. Idempotent: the
- *              composition is content-addressed, so a re-run discovers the
- *              anchored assembly by SHAPE and consumes it.
+ *              hand-off clause (face-to-face), the proximity policy nested
+ *              under it (a single zone-wifi band — the hand-off witness),
+ *              and geolocation with its public geohash cells — drawn, never
+ *              spawned) and published to the AssemblyRegistry. Idempotent:
+ *              the composition is content-addressed, so a re-run discovers
+ *              the anchored assembly by SHAPE and consumes it.
  *   bind     → the merchant (Rosa's Kitchen, a pre-populated seller) pins the
  *              assembly to its profile through the seller-edit surface and
  *              DESIGNATES its courier (Cardinal Couriers); the courier pins
@@ -30,12 +31,16 @@
  *              buyer 2× payment per order, merchant 2×1, courier 2×2 (the
  *              courier bonds against CUMULATIVE upstream value).
  *   attest   → the story on the timeline: the merchant walks its WHOLE
- *              ladder (Preparation started → Ready for pickup → Handed off),
- *              then the courier walks its WHOLE ladder (En route to pickup →
- *              Arrived at pickup → In transit → Arrived at drop-off →
- *              Completed) — each stage through the ONE generic capability
- *              rail, each event landing on the timeline. First coverage of a
- *              full multi-stage ladder walk. The hand-off clause's DECLARED
+ *              ladder, then the courier walks its WHOLE ladder — stage labels
+ *              DERIVED from the registered specs (chain → IPFS), never a
+ *              roster in this file — each stage through the ONE generic
+ *              capability rail, each event landing on the timeline. The
+ *              courier's arrival stages are declared hand-off stages
+ *              (block.handoffStages), so each arrival click PAIRS the zone
+ *              witness of the committed single-band proximity policy — one
+ *              action, two attestations. The BUYER then co-witnesses through
+ *              the rail's standalone witness form (who must witness is never
+ *              engine policy). The hand-off clause's DECLARED
  *              interaction (block.interaction: qr-challenge-v1) mounts the
  *              QR order-identity panel on the courier's page — presented
  *              payload verified round-trip; no panel on the merchant's
@@ -56,7 +61,7 @@
  *              a financial statement per seller + the consolidation; the cash-flow log
  *              carrying EVERY kernel transfer (2 rows per commit, 2 per order
  *              at resolve — 8 exactly); the clause evidence with every
- *              committed leaf and all EIGHT attested stages; BOTH agreements
+ *              committed leaf, all EIGHT ladder stages and all THREE decoded hand-off witnesses; BOTH agreements
  *              pinned to IPFS with the hash verifier recomputing each merkle
  *              root to the on-chain agreementHash; the audit-bundle PDF
  *              downloaded (real %PDF bytes) and the dispute panel's evidence
@@ -86,7 +91,8 @@ import {
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
-import { ATTESTATION_COORDINATOR_ABI } from '@figaro/core';
+import { clauseIdHash } from '@/lib/shared/evm';
+import { ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI } from '@figaro/core';
 import { calculateBonds, computeSectionLeaf, type AgreementSection } from '@figaro/core';
 import type { Page } from '@playwright/test';
 
@@ -109,6 +115,7 @@ const MERCHANT_CLAUSE = 'figaro-merchant-process';
 const MODALITIES_CLAUSE = 'figaro-modalities';
 const HANDOFF_CLAUSE = 'figaro-handoff';
 const GEO_CLAUSE = 'figaro-geolocation';
+const PROXIMITY_CLAUSE = 'figaro-proximity-policy';
 
 // The committed PUBLIC half of where the delivery goes — coarse cells the
 // courier bonds on (the device-location affordance fills the origin from
@@ -135,11 +142,10 @@ const PICKUP = {
     unit: 'rear door',
 };
 
-// The two transfer ladders, stage labels straight from the registered specs
-// (`clauses/figaro-{merchant,courier}-process.json` valueLabels) — the story
-// the timeline tells.
-const MERCHANT_STAGES = ['Preparation started', 'Ready for pickup', 'Handed off'];
-const COURIER_STAGES = ['En route to pickup', 'Arrived at pickup', 'In transit', 'Arrived at drop-off', 'Completed'];
+// The two transfer ladders' stage labels are DERIVED from the registered
+// specs at run time — ClauseRegistered → contentURI → IPFS, the same read
+// every consumer does. No stage roster lives in this file: if the spec's
+// ladder changes, the walk follows it (`ladderLabelsFromChain`, below).
 
 /** Wait for ClientInit's devnet auto-connect (the "Connect Wallet" button goes). */
 async function waitForConnected(page: Page) {
@@ -152,8 +158,9 @@ async function waitForConnected(page: Page) {
 
 /** The delivery assembly's SHAPE — how the spec recognizes it on-chain
  *  without a hardcoded slug: exactly two orders, the sub-order carrying the
- *  courier process clause AND the hand-off clause (the QR-interaction
- *  declarer — a 2-order composition without it is an earlier scenario). */
+ *  courier process clause, the hand-off clause (the QR-interaction declarer),
+ *  geolocation, AND the proximity policy (the hand-off witness — a 2-order
+ *  composition without it is an earlier scenario). */
 async function findDeliveryAssembly(): Promise<string | undefined> {
     const templates = await discoverAnchoredAssemblies();
     return templates.find(
@@ -162,9 +169,34 @@ async function findDeliveryAssembly(): Promise<string | undefined> {
                 const clauses = Object.keys(o.clauses ?? {});
                 return clauses.includes(COURIER_CLAUSE)
                     && clauses.includes(HANDOFF_CLAUSE)
-                    && clauses.includes(GEO_CLAUSE);
+                    && clauses.includes(GEO_CLAUSE)
+                    && clauses.includes(PROXIMITY_CLAUSE);
             }),
     )?.slug;
+}
+
+/** The ladder labels of a registered clause, read the network way —
+ *  ClauseRegistered → contentURI → IPFS → the first enum field's ordered
+ *  valueLabels. The story the timeline tells comes from the spec; no stage
+ *  roster lives in this file. */
+async function ladderLabelsFromChain(
+    publicClient: ReturnType<typeof createPublicClient>,
+    registry: Hex,
+    clauseId: string,
+): Promise<string[]> {
+    const events = await publicClient.getContractEvents({
+        address: registry, abi: CLAUSE_REGISTRY_ABI, eventName: 'ClauseRegistered', fromBlock: 0n,
+    });
+    const reg = events.filter((e) => e.args.clauseId === clauseId).pop();
+    if (!reg) throw new Error(`${clauseId} is not anchored on ClauseRegistry`);
+    const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
+    const cid = (reg.args.contentURI as string).replace(/^ipfs:\/\//, '');
+    const spec = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${cid}`, { method: 'POST' })).json() as {
+        fields: { type: string; values?: string[]; valueLabels?: Record<string, string> }[];
+    };
+    const ladder = spec.fields.find((f) => f.type === 'enum');
+    if (!ladder?.values) throw new Error(`${clauseId} declares no enum ladder`);
+    return ladder.values.map((v) => ladder.valueLabels?.[v] ?? v);
 }
 
 test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → attest → one resolve pays both (devnet)', () => {
@@ -179,6 +211,11 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const balanceOf = (who: Hex) =>
             publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
+
+        // The transfer ladders' stage labels, derived from the REGISTERED specs
+        // (chain → IPFS) — the walk follows the network's spec, never a roster.
+        const merchantStages = await ladderLabelsFromChain(publicClient, config.clauseRegistry as Hex, MERCHANT_CLAUSE);
+        const courierStages = await ladderLabelsFromChain(publicClient, config.clauseRegistry as Hex, COURIER_CLAUSE);
 
         // The device-location affordance (geolocation authoring + any runtime
         // fill) reads the browser Geolocation API — pin the coordinates.
@@ -236,6 +273,14 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             await page.getByTestId(`drawer-registry-clause-${COURIER_CLAUSE}`).check();
             await page.getByTestId(`drawer-registry-clause-${HANDOFF_CLAUSE}`).check();
             await page.getByTestId(`drawer-field-${HANDOFF_CLAUSE}-handoff-face-to-face`).check();
+            // The hand-off WITNESS policy nests under the handoff field: commit
+            // a SINGLE band, so a hand-off ladder stage derives it unambiguously
+            // and pairs the witness automatically (one action, two attestations).
+            await page
+                .getByTestId(`drawer-nested-handoff-${PROXIMITY_CLAUSE}`)
+                .getByTestId(`drawer-registry-clause-${PROXIMITY_CLAUSE}`)
+                .check();
+            await page.getByTestId(`drawer-field-${PROXIMITY_CLAUSE}-bands-zone-wifi`).check();
             // The geolocation clause: the PUBLIC half of where the delivery
             // goes — origin filled from the DEVICE location (the format-declared
             // affordance), destination typed. The clause also declares the
@@ -412,12 +457,17 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         //    ladder through the ONE generic capability rail — the rail offers
         //    exactly the next unattested stage, labelled from the clause spec;
         //    each executed stage lands on the timeline; a finished ladder
-        //    leaves the rail. ──
-        const walkLadder = async (seller: Hex, stages: string[], label: string) => {
+        //    leaves the rail. Ladder buttons are targeted by their clause
+        //    (data-clause-id): the proximity WITNESS capability shares the
+        //    rail and — by ruling — stays offered while the order is active. ──
+        const walkLadder = async (seller: Hex, clauseId: string, stages: string[], label: string) => {
             await gotoAsWallet(page, seller, `/orders/${processId}?e2e=devnet`);
             await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
             await waitForConnected(page);
-            const attest = page.getByTestId('capability-execute-submit-clause-attestation').first();
+            const ladderBtn = page.locator(
+                `[data-testid="capability-execute-submit-clause-attestation"][data-clause-id="${clauseId}"]`,
+            );
+            const attest = ladderBtn.first();
             for (const stage of stages) {
                 await expect(attest, `the rail offers ${label}'s next stage: "${stage}"`)
                     .toContainText(stage, { timeout: 30000 });
@@ -429,11 +479,11 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
                 ).toBeVisible({ timeout: 60000 });
             }
             await expect(
-                page.getByTestId('capability-execute-submit-clause-attestation'),
+                ladderBtn,
                 `${label}'s ladder is fully attested — the rail offers no further stage`,
             ).toHaveCount(0, { timeout: 30000 });
         };
-        await walkLadder(MERCHANT, MERCHANT_STAGES, 'the merchant');
+        await walkLadder(MERCHANT, MERCHANT_CLAUSE, merchantStages, 'the merchant');
         // The merchant's own order composes no interaction-declaring clause —
         // no surface mounts (the mount is DERIVED from the agreement's
         // declarations, never a blanket panel).
@@ -441,7 +491,36 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             page.getByTestId('interaction-qr-panel'),
             "no declared interaction on the merchant's order → no QR panel",
         ).toHaveCount(0);
-        await walkLadder(COURIER, COURIER_STAGES, 'the courier');
+        await walkLadder(COURIER, COURIER_CLAUSE, courierStages, 'the courier');
+
+        // ── THE PAIRED HAND-OFF WITNESSES (one action, two attestations): the
+        //    courier ladder declares its arrival stages as hand-off stages
+        //    (block.handoffStages), and the committed proximity policy carries
+        //    a SINGLE band — so each arrival click ALSO filed the zone witness
+        //    automatically. Two arrivals → two witnesses on the timeline,
+        //    labelled by the policy clause's own title, and two Attestation
+        //    events at the declared witness stage, read fresh from the chain. ──
+        // Witness rows carry the stable `timeline-event-stage-1` testid (the
+        // spec title renders twice per row — eventLabel + clause line — so a
+        // text count would double-count).
+        await expect(
+            page.getByTestId('timeline-event-stage-1'),
+            'each hand-off ladder stage paired a zone witness onto the timeline',
+        ).toHaveCount(2, { timeout: 60000 });
+        // (clauseId, stage) is the on-chain discriminator: the courier LADDER's
+        // arrived-pickup is ALSO ordinal 1, so the witness filter must pin the
+        // proximity clause's id hash, not the stage alone.
+        const proximityIdHash = clauseIdHash(PROXIMITY_CLAUSE, 1).toLowerCase();
+        const proximityWitnessEvents = async () => (await publicClient.getContractEvents({
+            address: config.attestationCoordinator as Hex, abi: ATTESTATION_COORDINATOR_ABI,
+            eventName: 'Attestation', args: { processId }, fromBlock: 0n,
+        })).filter((e) => e.args.stage === 1
+            && (e.args.clauseId as string).toLowerCase() === proximityIdHash
+            && (e.args.orderHash as string).toLowerCase() === courierEvent.args.orderHash!.toLowerCase());
+        await expect.poll(async () => (await proximityWitnessEvents())
+            .filter((e) => (e.args.attester as string).toLowerCase() === COURIER.toLowerCase()).length, {
+            timeout: 60000, message: 'two courier-attested witness events land at the declared stage',
+        }).toBe(2);
 
         // ── DECLARED INTERACTION (block.interaction → registered surface):
         //    the hand-off clause on the courier order declares the
@@ -580,6 +659,25 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             "the pickup point matches the courier's on-chain anchor",
         ).toBeVisible({ timeout: 30000 });
 
+        // ── BUYER CO-WITNESS: the same witness capability derives for the
+        //    BUYER (who must witness is never engine policy — bilateral when
+        //    both are present, unilateral + device identifier at a dead drop).
+        //    The buyer files through the rail's standalone witness form. ──
+        const buyerWitnessCap = page.locator(
+            `[data-testid="capability-submit-clause-attestation"][data-clause-id="${PROXIMITY_CLAUSE}"]`,
+        );
+        await expect(buyerWitnessCap, 'the witness capability derives for the buyer too').toBeVisible({ timeout: 30000 });
+        await page.getByTestId(`capability-input-${PROXIMITY_CLAUSE}-band-zone-wifi`).check();
+        await buyerWitnessCap.getByTestId('capability-execute-submit-clause-attestation').click();
+        await expect(
+            page.getByTestId('timeline-event-stage-1'),
+            "the buyer's co-witness joins the two paired witnesses on the timeline",
+        ).toHaveCount(3, { timeout: 60000 });
+        await expect.poll(async () => (await proximityWitnessEvents())
+            .filter((e) => (e.args.attester as string).toLowerCase() === BUYER.toLowerCase()).length, {
+            timeout: 60000, message: 'the buyer-attested witness event lands at the declared stage',
+        }).toBe(1);
+
         // ── RESOLVE: buyer dominance — one signature settles both orders. ──
         const resolvedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
@@ -604,9 +702,21 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         expect(courierF - courier0, 'courier net earned exactly the delivery price').toBe(parseEther('1'));
         expect(coreF, 'FigaroCore escrow returned to its baseline').toBe(core0);
 
+        // ── THE EVIDENCE WINDOW CLOSES AT RESOLVE (DESIGN_DECISIONS §7): the
+        //    settled institution accepts no further attestations — the rail
+        //    derives nothing for any party, witness capabilities included
+        //    (on-chain, AttestationCoordinator reverts OrderResolved). ──
+        await gotoAsWallet(page, COURIER, `/orders/${processId}?e2e=devnet`);
+        await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        await expect(
+            page.getByTestId('capability-execute-submit-clause-attestation'),
+            'no attestation capability survives resolution — the evidence window is closed',
+        ).toHaveCount(0, { timeout: 30000 });
+
         // ── AUDIT: the full evidentiary record — the financial statements
         //    (one per seller + the consolidation), the cash-flow log, every
-        //    committed leaf, and all EIGHT attested stages, read from network
+        //    committed leaf, all EIGHT ladder stages and the THREE decoded witnesses, read from network
         //    state. The statements are documents drawn by the one generic
         //    renderer — no bespoke financials layout, no per-order "line item"
         //    breakdown (that is the invoice, carried in the audit bundle). ──
@@ -635,14 +745,23 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             'Geolocation',
             'Merchant internal process events',
             'Courier internal process events',
-            ...MERCHANT_STAGES,
-            ...COURIER_STAGES,
+            'Proximity-verification policy',
+            ...merchantStages,
+            ...courierStages,
         ]) {
             await expect(
                 evidence.getByText(text).first(),
                 `the "${text}" evidence leaf surfaces in the audit`,
             ).toBeVisible({ timeout: 30000 });
         }
+
+        // The three hand-off witnesses (2 paired + 1 buyer co-witness), their
+        // detected band DECODED from transaction calldata against the declared
+        // stage and rendered with the spec's own labels.
+        const witnessDl = evidence.locator(`[data-testid="audit-witness-${PROXIMITY_CLAUSE}-1"]`);
+        await expect(witnessDl, 'every witness record decodes in the audit').toHaveCount(3, { timeout: 60000 });
+        await expect(witnessDl.first().getByText('Detected band')).toBeVisible();
+        await expect(witnessDl.first().getByText('Zone (Wi-Fi)')).toBeVisible();
 
         // ── EVERY MONEY EVENT: one cash-flow row per kernel ERC-20 transfer —
         //    each commit pulls both deposits, the resolve refunds the buyer and
@@ -667,7 +786,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         let deliverySections: AgreementSection[] = [];
         for (const [event, label, expectedLeaves] of [
             [merchantEvent, 'meal', ['figaro-commerce', 'figaro-topology', MERCHANT_CLAUSE, MODALITIES_CLAUSE]],
-            [courierEvent, 'delivery', ['figaro-commerce', 'figaro-topology', COURIER_CLAUSE, HANDOFF_CLAUSE, GEO_CLAUSE]],
+            [courierEvent, 'delivery', ['figaro-commerce', 'figaro-topology', COURIER_CLAUSE, HANDOFF_CLAUSE, GEO_CLAUSE, PROXIMITY_CLAUSE]],
         ] as const) {
             const agreementHash = event.args.agreementHash as `0x${string}`;
             const agreementUri = await page.evaluate(

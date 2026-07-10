@@ -43,7 +43,7 @@ import {
 } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
 import { readLocalDeploymentConfig, assertPinnedInIpfs } from './devnet-helpers';
-import { makeProbeSpec, registerProbeClause } from './probeAssembly';
+import { makeProbeSpec, makeProbeWitnessSpec, registerProbeClause } from './probeAssembly';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import { calculateBonds } from '@figaro/core';
@@ -112,11 +112,18 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         const NOVEL_CLAUSE_ID = `figaro-probe-attest-${runNonce}`;
         const NOVEL_TITLE = `Probe attestation (acceptance test) ${runNonce}`;
         const NOVEL_SPEC = makeProbeSpec(NOVEL_CLAUSE_ID, NOVEL_TITLE);
+        // A SECOND never-seen clause, declaring a WITNESS stage (spec.stages[1])
+        // — certifies the feedback loop's open-world property: the rail's form,
+        // the filing, and the audit's decode all derive from the declaration.
+        const WITNESS_CLAUSE_ID = `figaro-probe-witness-${runNonce}`;
+        const WITNESS_TITLE = `Probe witness (feedback loop) ${runNonce}`;
+        const WITNESS_SPEC = makeProbeWitnessSpec(WITNESS_CLAUSE_ID, WITNESS_TITLE);
 
-        // ── SETUP: register the novel clause permissionlessly (no UI for clause
+        // ── SETUP: register the novel clauses permissionlessly (no UI for clause
         //    registration exists — this is the documented registration path; no
         //    validator to bind, the chain validates no clause content) ──
         await registerProbeClause(NOVEL_CLAUSE_ID, NOVEL_SPEC);
+        await registerProbeClause(WITNESS_CLAUSE_ID, WITNESS_SPEC);
 
         // ── DRAWER: author an assembly carrying the novel clause, via the REAL
         //    designer. The clause appears ONLY because the drawer read it from
@@ -143,6 +150,15 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
             'the drawer surfaces the NEVER-SEEN clause from the live registry (drawer leg)',
         ).toHaveCount(1, { timeout: 20000 });
         await novel.check();
+        // Compose the never-seen WITNESS clause beside it and fill its committed
+        // policy — the required scalar the drawer captures at design time.
+        const witnessNovel = page.getByTestId(`drawer-registry-clause-${WITNESS_CLAUSE_ID}`);
+        await expect(
+            witnessNovel,
+            'the drawer surfaces the never-seen WITNESS clause from the live registry',
+        ).toHaveCount(1, { timeout: 20000 });
+        await witnessNovel.check();
+        await page.getByTestId(`drawer-field-${WITNESS_CLAUSE_ID}-probePolicy`).fill('probe-policy-token');
 
         const assemblyName = `Probe assembly ${Date.now()}`;
         await page.getByTestId('designer-name-input').fill(assemblyName);
@@ -316,6 +332,31 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
             'the novel clause attestation renders on the timeline, its label read from the spec',
         ).toBeVisible({ timeout: 60000 });
 
+        // ── WITNESS (the feedback loop's open-world certification): the
+        //    never-seen witness clause DECLARED spec.stages[1], so the rail
+        //    derives its capability, renders its form from the declared
+        //    fields, and files the record — zero per-clause code anywhere. ──
+        const witnessCap = page.locator(
+            `[data-testid="capability-submit-clause-attestation"][data-clause-id="${WITNESS_CLAUSE_ID}"]`,
+        );
+        await expect(
+            witnessCap,
+            "the rail derives the never-seen clause's witness capability from its declaration",
+        ).toBeVisible({ timeout: 30000 });
+        await page.getByTestId(`capability-input-${WITNESS_CLAUSE_ID}-probeReading`).fill('42');
+        await witnessCap.getByTestId('capability-execute-submit-clause-attestation').click();
+        const witnessRow = page.getByTestId('timeline-event-stage-1').first();
+        await expect(
+            witnessRow,
+            'the witness attestation lands on the timeline',
+        ).toBeVisible({ timeout: 60000 });
+        await expect(witnessRow, 'the row is labelled by the never-seen spec title')
+            .toContainText(WITNESS_TITLE);
+        await expect(
+            witnessCap,
+            'the witness capability remains offered (repeatable while the order is active)',
+        ).toBeVisible({ timeout: 15000 });
+
         // ── BUYER ORDERS LIST — IN PROGRESS: before resolving, the buyer reads the
         //    actor-neutral /orders list. It is event-driven: useWalletProcessRows
         //    reads the OrderCommitted/OrderResolved EVENT logs through the indexer
@@ -393,6 +434,20 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
             evidence.getByText(NOVEL_TITLE),
             'the never-seen clause surfaces by its spec title — its committed data leaf AND its process-log timeline',
         ).toHaveCount(2, { timeout: 15000 });
+        // The witness clause surfaces the same two ways — its committed policy
+        // leaf and its witness timeline (the eventLabel is the title too, so the
+        // timeline row carries it twice: group heading + event row).
+        await expect(
+            evidence.getByText(WITNESS_TITLE).first(),
+            'the never-seen witness clause surfaces by its spec title',
+        ).toBeVisible({ timeout: 15000 });
+        const witnessDl = evidence.locator(`[data-testid="audit-witness-${WITNESS_CLAUSE_ID}-1"]`);
+        await expect(
+            witnessDl,
+            "the witness record decodes from calldata against the never-seen clause's declared stage",
+        ).toBeVisible({ timeout: 30000 });
+        await expect(witnessDl.getByText('Probe reading')).toBeVisible();
+        await expect(witnessDl.getByText('42')).toBeVisible();
 
         // ATTESTATION — the lifecycle's runtime step must surface in the audit too,
         // read from the indexer's AttestationRecorded logs (getAttestationsByOrder),
@@ -404,8 +459,8 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
             "the seller's runtime attestation surfaces in the audit, its stage label read from the spec",
         ).toBeVisible({ timeout: 30000 });
         await expect(
-            evidence.getByText(new RegExp(SELLER, 'i')),
-            'the audit attributes the attestation to the seller who signed it (attester from the event)',
+            evidence.getByText(new RegExp(SELLER, 'i')).first(),
+            'the audit attributes the attestation to the seller who signed it (attester from the event; the witness group carries a second attester span)',
         ).toBeVisible({ timeout: 15000 });
 
         // MERKLE TREE — the audit must surface the WHOLE committed tree, its root over
@@ -425,8 +480,8 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         const agreementJson = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${agreementCid}`, { method: 'POST' })).text();
         const agreement = JSON.parse(agreementJson) as { sections: { clause: string }[] };
         const leafClauses = agreement.sections.map((s) => s.clause);
-        expect(leafClauses, 'the committed merkle tree carries all three leaves')
-            .toEqual(expect.arrayContaining(['figaro-commerce', 'figaro-topology', NOVEL_CLAUSE_ID]));
+        expect(leafClauses, 'the committed merkle tree carries all four leaves')
+            .toEqual(expect.arrayContaining(['figaro-commerce', 'figaro-topology', NOVEL_CLAUSE_ID, WITNESS_CLAUSE_ID]));
 
         await page.getByTestId('verify-mode-agreement').click();
         await page.getByTestId('verify-agreement-input').fill(agreementJson);

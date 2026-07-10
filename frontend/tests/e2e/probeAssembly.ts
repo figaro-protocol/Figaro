@@ -67,12 +67,57 @@ export function makeProbeSpec(clauseId: string, title: string, version: number =
     };
 }
 
+/** A WITNESS-declaring clause nothing in this repo knows — a committed policy
+ *  field plus a declared `stages[1]` runtime record. Certifies the feedback
+ *  loop's open-world property: a never-seen clause declaring witness stages
+ *  surfaces the generic rail form, files, decodes, and renders with ZERO
+ *  per-clause code. */
+export function makeProbeWitnessSpec(clauseId: string, title: string, version: number = PROBE_VERSION) {
+    return {
+        clauseId,
+        version,
+        title,
+        description:
+            'A witness-declaring clause that no code in this repo knows — the open-world feedback-loop probe.',
+        fields: [
+            {
+                name: 'probePolicy',
+                type: 'string',
+                required: true,
+                minLength: 1,
+                description: 'Committed probe policy token.',
+            },
+        ],
+        stages: {
+            1: [
+                {
+                    name: 'probeReading',
+                    type: 'integer',
+                    required: true,
+                    min: 0,
+                    label: 'Probe reading',
+                    description: 'Runtime probe reading — the witness value.',
+                },
+                {
+                    name: 'evidenceUri',
+                    type: 'string',
+                    required: false,
+                    minLength: 0,
+                    maxLength: 512,
+                    description: 'Optional reference to off-chain evidence.',
+                },
+            ],
+        },
+        block: { article: 'logistics' },
+    };
+}
+
 /** Register the probe clause permissionlessly via ClauseRegistry.registerClause —
  *  the documented registration path the protocol's own clauses use. Idempotent:
  *  skips if already registered (Playwright retry re-mints the nonce anyway). */
 export async function registerProbeClause(
     clauseId: string,
-    spec: ReturnType<typeof makeProbeSpec>,
+    spec: ReturnType<typeof makeProbeSpec> | ReturnType<typeof makeProbeWitnessSpec>,
     version: number = PROBE_VERSION,
 ): Promise<void> {
     const cfg = readLocalDeploymentConfig();

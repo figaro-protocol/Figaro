@@ -66,6 +66,16 @@ describe("encodeContentFromSpec — stage selection", () => {
         expect(decodeContentFromSpec(spec, defaultBytes)).toEqual({ x: "ok" });
     });
 
+    it("integers are SIGNED — a negative witness value round-trips (int256, not uint256)", () => {
+        const cold = specOf([], { 1: [
+            { name: "observedMinC", type: "integer", required: true, min: -273, max: 100 },
+            { name: "observedMaxC", type: "integer", required: true, min: -273, max: 100 },
+        ] });
+        const record = { observedMinC: -24, observedMaxC: -19 };
+        const bytes = encodeContentFromSpec(cold, record, { stage: 1 });
+        expect(decodeContentFromSpec(cold, bytes, { stage: 1 })).toEqual(record);
+    });
+
     it("decodeContentFromSpec maps enum ordinals and nested shapes back to JSON", () => {
         const rich = specOf([
             { name: "band", type: "enum", required: true, values: ["zone-wifi", "nearby-ble"] },

@@ -7,7 +7,8 @@
  *
  *   - top-level fields encode as `encodeAbiParameters` in declaration order
  *   - `boolean` → `bool`
- *   - `integer` / `bigint` → `uint256` (width is encode-irrelevant)
+ *   - `integer` → `int256` (SIGNED — the spec grammar admits negative bounds)
+ *   - `bigint` → `uint256` (unsigned decimal string; width is encode-irrelevant)
  *   - `enum` → `uint8` = 0-based position in `EnumFieldSpec.values`
  *   - `string` (no format) → `string`
  *   - `string` `bytes32-hex` → `bytes32`
@@ -36,7 +37,11 @@ function abiParamOf(field: FieldSpec): AbiParameter {
     switch (field.type) {
         case "boolean":
             return { type: "bool" };
+        // `integer` is SIGNED: the spec grammar admits negative bounds (a
+        // cold-chain window declares min -273), so the word must be int256 —
+        // uint256 threw on the first negative witness value.
         case "integer":
+            return { type: "int256" };
         case "bigint":
             return { type: "uint256" };
         case "enum":

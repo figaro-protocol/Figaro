@@ -191,7 +191,7 @@ export function OrderTimelineView({ processId }: Props) {
                     capabilities={workspace.runtimeCapabilities}
                     executableCapabilityIds={workspace.executableCapabilityIds}
                     executingCapabilityId={workspace.executingCapabilityId}
-                    onExecute={(capability) => workspace.executeCapability(capability)}
+                    onExecute={(capability, input) => workspace.executeCapability(capability, input)}
                     contextLabel={role === "buyer" ? "Your actions" : "Next steps"}
                 />
             )}
