@@ -9,17 +9,11 @@
 # The script runs each committed spec against Certora's cloud and reports
 # per-spec outcome. Verification reports are returned as URLs.
 #
-# Specs currently committed:
+# Specs currently committed (25 rules total — VERIFICATION_MAP.md is the owner):
 #   certora/FigaroCore.spec             — kernel state-machine invariants (8 rules)
-#   certora/AttestationCoordinator.spec — attestation role-gate + validator-gate + binding (7 rules)
-#   certora/TokenOpsVerification.spec   — FigaroCore token-flow invariants (7 rules → 8 sub-rules)
-#   certora/BatchVerifierTokenOps.spec  — FigaroBatchVerifier token-flow (single-position, 4 rules)
-#   certora/FigToken.spec               — token ancillary spec
-#   certora/RpgfMinter.spec             — three-stage RPGF minter (12 rules)
-#
-# (The StagedMerkleAirdrop spec was retired alongside the contract;
-# RpgfMinter.spec is its successor — see docs/AUDIT_REPORT.md for the
-# retirement record and verification continuity note.)
+#   certora/AttestationCoordinator.spec — role-gate + parametric Core-immutability (4 rules)
+#   certora/TokenOpsVerification.spec   — FigaroCore token-flow invariants (7 rules)
+#   certora/FigToken.spec               — supply cap + minter registry (6 rules)
 #
 # Conf flag note:
 #   Any spec whose rules pass symbolic `bytes` (dynamic-length) to a function
@@ -27,7 +21,7 @@
 #   its .conf. Without it, the prover aborts every reaching rule with
 #   "Trying to hash a non-constant length array". Currently applied to
 #   AttestationCoordinator.conf (content → keccak256(content) in
-#   _validateContent). Sound for rules that don't assert specific hash values.
+#   _verifyInclusion). Sound for rules that don't assert specific hash values.
 #
 # Prerequisites (one-time):
 #   pip install certora-cli        # or: pipx install certora-cli
@@ -75,7 +69,7 @@ fi
 if [ "$#" -gt 0 ]; then
     SPECS=("$@")
 else
-    SPECS=(FigaroCore AttestationCoordinator TokenOpsVerification BatchVerifierTokenOps FigToken RpgfMinter)
+    SPECS=(FigaroCore AttestationCoordinator TokenOpsVerification FigToken)
 fi
 
 for spec in "${SPECS[@]}"; do
