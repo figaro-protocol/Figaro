@@ -306,7 +306,7 @@ The corpus is web-native (each paper a `/papers/<slug>` page rendered with serve
 
 One test layer per concern. These boundaries are hard; respect them when writing or auditing any test. Commands → `LOCAL_DEV.md`; full harness inventory → `TESTING.md`.
 
-- Layers: **Foundry** (contract behavior — the only home) · **Vitest** (UI logic / validation / pure-client, no chain or browser) · **Playwright `devnet`** (the e2e suite, and the only one) · **Playwright `mobile`** (responsive / CSS chrome jsdom can't test). Per-layer detail → `TESTING.md`.
+- Layers: **Foundry** (contract behavior — the only home) · **Vitest** (UI logic / validation / pure-client, no chain or browser — sole exception: the SDK's skipIf-gated `integration.test.ts` round-trip, which proves SDK artifacts survive a live chain and asserts no kernel math) · **Playwright `devnet`** (the e2e suite, and the only one) · **Playwright `mobile`** (responsive / CSS chrome jsdom can't test). Per-layer detail → `TESTING.md`.
 
 **e2e means end-to-end: action → reaction, both in the UI** — either end broken (viem-driven action, chain-only assertion, mock-backed reaction) and it is not e2e. Canonical definition → `TESTING.md` § Playwright.
 

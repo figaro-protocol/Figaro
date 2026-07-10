@@ -1,5 +1,11 @@
 /**
- * Integration test: full SDK lifecycle against Anvil.
+ * Integration test: the SDK ROUND-TRIP against Anvil — the one sanctioned
+ * chain-touching Vitest file (skipIf-gated). It proves SDK ARTIFACTS survive
+ * a real chain: a built+signed commitment is accepted by `commit`, events
+ * fetch and reconstruct, and the reconstructed commitment resolves. It
+ * asserts NO kernel math — bond/settlement amounts are Foundry/Certora-owned
+ * (K-1/2/3/6; SDK-mirror parity lives in the Foundry parity vectors), and
+ * `calculateSettlement` is unit-tested in bonds.test.ts.
  *
  * Requires Anvil running at http://127.0.0.1:8545
  * Skip with: SKIP_ANVIL=1 npm test
@@ -9,8 +15,7 @@
  *   2. Mint tokens, approve bonds
  *   3. Build commitment via SDK, sign, commit
  *   4. Fetch events via SDK, reconstruct state
- *   5. Verify bond math matches on-chain balances
- *   6. Resolve process, verify settlement
+ *   5. Resolve process from the reconstruction, reconstruct again
  */
 
 import { describe, it, expect, beforeAll } from "vitest";
@@ -22,13 +27,11 @@ import * as path from "node:path";
 
 import {
     CORE_ABI,
-    ERC20_ABI,
     fetchCoreEvents,
     ProcessGraph,
     buildCommitment,
     buildDomain,
     calculateBonds,
-    calculateSettlement,
     OrderState,
 } from "../src/index.js";
 import type { FigaroAddresses } from "../src/types.js";
@@ -235,17 +238,7 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
         expect(order.payment).toBe(PAYMENT);
         expect(order.state).toBe(OrderState.Active);
 
-        // ── 7. Verify on-chain bond balances ────────────────────────────
-        const coreBalance = await publicClient.readContract({
-            address: tokenAddress,
-            abi: ERC20_ABI,
-            functionName: "balanceOf",
-            args: [coreAddress],
-        }) as bigint;
-        // Core should hold buyerBond + sellerBond
-        expect(coreBalance).toBe(bonds.buyerBond + bonds.sellerBond);
-
-        // ── 8. Resolve process (buyer-only) ─────────────────────────────
+        // ── 7. Resolve process (buyer-only) ─────────────────────────────
         const resolveHash = await buyerWallet.writeContract({
             address: coreAddress,
             abi: CORE_ABI,
@@ -255,43 +248,7 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
         const resolveReceipt = await publicClient.waitForTransactionReceipt({ hash: resolveHash });
         expect(resolveReceipt.status).toBe("success");
 
-        // ── 9. Verify settlement math via SDK ───────────────────────────
-        const settlement = calculateSettlement(PAYMENT, bonds.sellerBond, bonds.buyerBond);
-        // Buyer gets: buyerBond - payment = 2*payment - payment = payment
-        // Seller gets: sellerBond + payment = 2*payment + payment = 3*payment
-        expect(settlement.buyerPayout).toBe(PAYMENT);
-        expect(settlement.sellerPayout).toBe(3n * PAYMENT);
-
-        // ── 10. Verify on-chain balances post-resolution ────────────────
-        const [buyerBal, sellerBal, coreBal] = await Promise.all([
-            publicClient.readContract({
-                address: tokenAddress,
-                abi: ERC20_ABI,
-                functionName: "balanceOf",
-                args: [buyerAccount.address],
-            }) as Promise<bigint>,
-            publicClient.readContract({
-                address: tokenAddress,
-                abi: ERC20_ABI,
-                functionName: "balanceOf",
-                args: [sellerAccount.address],
-            }) as Promise<bigint>,
-            publicClient.readContract({
-                address: tokenAddress,
-                abi: ERC20_ABI,
-                functionName: "balanceOf",
-                args: [coreAddress],
-            }) as Promise<bigint>,
-        ]);
-
-        // Core should be empty after resolution
-        expect(coreBal).toBe(0n);
-        // Buyer started with buyerBond, gets back settlement.buyerPayout
-        expect(buyerBal).toBe(settlement.buyerPayout);
-        // Seller started with sellerBond, gets back settlement.sellerPayout
-        expect(sellerBal).toBe(settlement.sellerPayout);
-
-        // ── 11. Reconstruct post-resolution state ───────────────────────
+        // ── 8. Reconstruct post-resolution state ────────────────────────
         const events2 = await fetchCoreEvents(publicClient, addresses, 0n);
         const graph2 = new ProcessGraph();
         graph2.applyEvents(events2);

@@ -330,13 +330,14 @@ export CERTORAKEY=<your-key>
 
 | SDK test file | Coverage | Maps to |
 |---|---|---|
-| `integration.test.ts` | Full lifecycle: deploy → commit → reconstruct → resolve → verify | K-1, K-2, K-3, K-6 |
+| `integration.test.ts` | SDK round-trip on a LIVE chain (the one sanctioned chain-touching Vitest file, skipIf-gated): built+signed commitment accepted by `commit`, events fetch + reconstruct, reconstruction resolves. Asserts no kernel math — amounts are Foundry/Certora-owned | K-8, K-9 (live-chain acceptance) |
 | `bonds.test.ts` | Bond calculations (2×), settlement payouts, approval amounts, validation | K-1, K-5 |
 | `commitments.test.ts` | EIP-712 domain building, salt generation, deadline, commitment building | K-8, K-9 |
 | `state.test.ts` | Event reconstruction, ProcessGraph (incremental), active/seller/buyer queries | A-4, A-5 |
 | `proposer.test.ts` | Agent proposer: proposeActions, typed action generation | K-2 (buyer action routing) |
 | `hitl.test.ts` | ActionQueue HITL — approve/reject/execute lifecycle | Agent coordination |
-| `attestation.test.ts` | Clause ID hashing (`computeClauseId`), attestation event filtering (by clause / process / order / stage) | E-1, E-2 |
+| `attestation.test.ts` | Attestation event filtering (by clause / process / order / stage) | E-1, E-2 |
+| `discovery.test.ts` | Clause-key hashing (`computeClauseKey`), registry-log parsers (decode round-trip), `DiscoveryGraph` liveness folds for the three families | Discovery reconstruction |
 | `did.test.ts` | did:web validation, resolution, address extraction, seller DID docs | DID:web identity |
 | `geo.test.ts` | Geohash matching, haversine distance, photo+GPS evidence | Delivery attestation |
 
