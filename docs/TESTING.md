@@ -95,16 +95,26 @@ iteration. In production builds, test-helper gating honors only the explicit
 `lib/shared/e2e.ts`); real deployments never set it, so their builds inline the
 hard-off (RA-5 intent preserved).
 
-**devnet (`*.devnet.spec.ts`)** — 16 specs on disk (`frontend/tests/e2e/`); see
-the files. Every spec drives the real UI against Anvil + deployed contracts
+**devnet (`*.devnet.spec.ts`)** — the census is the directory listing
+(`ls frontend/tests/e2e/*.devnet.spec.ts` — derived, never a stored count).
+Every spec drives the real UI against Anvil + deployed contracts
 (action in the UI, reaction in the UI): commerce / checkout / order lifecycle
 (`seller-page`, `orders-accept` — the bilateral full-cycle spine;
 `assembly-chain` — the multi-order value-added chain: three sellers bound +
 designated through the UI, walk-order accepts with exact per-party bond
 deltas, runtime attestations, one atomic resolve paying every party, full
-audit; `rate-pricing` — a contributor prices per started km: the wizard's
-pricing-policy fields, checkout deriving payment = rate × ceil(geodistance)
-from the sub-order's committed endpoints, signed + relayed;
+audit; `buyer-assigned` — the SAME delivery assembly adopted WITHOUT a
+courier designation: the unbound node falls to the buyer's checkout choice
+(the SellerCataloguePicker), the committed courier is the buyer's pick,
+settlement exact — coordination as an ADOPTION property; `kit-diamond` — the
+multi-PARENT topology: the diamond drawn on the canvas (select-add-parent),
+four orders, the leaf committing BOTH parents' real hashes in its topology
+section and bonding 2× the entire upstream value, one atomic 4-order
+resolve, 16 cash-flow rows; `rate-pricing` — a contributor prices per
+started km: the wizard's pricing-policy fields, checkout deriving payment =
+rate × ceil(geodistance) from the sub-order's committed endpoints, signed +
+relayed; `catalogue-fold` — catalogue-authored clause values folding onto
+the committed leaf; `clause-version` — the (clauseId, version) identity key;
 `local-commerce` — the meal-delivery scenario authored on the designer
 canvas, pinned by both its sellers, run buyer→merchant→courier with BOTH full
 process ladders attested stage by stage — stage labels DERIVED from the

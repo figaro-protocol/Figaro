@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { expect } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import {
     createPublicClient,
     createWalletClient,
@@ -502,3 +503,136 @@ function resolveIpfsURI(uri: string): string {
 
 
 
+
+// ── The DELIVERY scenario assembly (shared by local-commerce + buyer-assigned) ─
+// One composition, one content-addressed identity: the seller-assigned and
+// buyer-assigned runtimes are the SAME assembly adopted differently (a binding
+// WITH a courier designation vs one WITHOUT — coordination is an adoption
+// property, not stored composition, post the figaro-coordination retirement).
+
+export const DELIVERY_CLAUSES = {
+    merchant: 'figaro-merchant-process',
+    courier: 'figaro-courier-process',
+    modalities: 'figaro-modalities',
+    handoff: 'figaro-handoff',
+    geo: 'figaro-geolocation',
+    proximity: 'figaro-proximity-policy',
+} as const;
+
+/** The Playwright-pinned device location the geolocation clause's device
+ *  affordance reads at authoring time, and the typed destination cell. */
+export const DELIVERY_DEVICE = { lat: 37.7749, lon: -122.4194, destinationGeohash: '9q8yyk8yu' } as const;
+
+/** Wait for ClientInit's devnet auto-connect (the "Connect Wallet" button goes). */
+export async function waitForConnected(page: Page): Promise<void> {
+    await page.waitForFunction(
+        () => !Array.from(document.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Connect Wallet'),
+        null,
+        { timeout: 30000 },
+    );
+}
+
+/** The delivery assembly's SHAPE — how every consumer recognizes it on-chain
+ *  without a hardcoded slug: exactly two orders, the sub-order carrying the
+ *  courier process clause, the hand-off clause (the QR-interaction declarer),
+ *  geolocation, AND the proximity policy (the hand-off witness). Internal —
+ *  consumers go through `ensureDeliveryAssembly`. */
+async function findDeliveryAssembly(): Promise<string | undefined> {
+    const templates = await discoverAnchoredAssemblies();
+    return templates.find(
+        (t) => t.agreements.length === 2
+            && t.agreements.some((o) => {
+                const clauses = Object.keys(o.clauses ?? {});
+                return clauses.includes(DELIVERY_CLAUSES.courier)
+                    && clauses.includes(DELIVERY_CLAUSES.handoff)
+                    && clauses.includes(DELIVERY_CLAUSES.geo)
+                    && clauses.includes(DELIVERY_CLAUSES.proximity);
+            }),
+    )?.slug;
+}
+
+/**
+ * Ensure the delivery assembly is ANCHORED — discover it by shape, and when
+ * absent AUTHOR it on the real designer canvas and publish (idempotent: the
+ * composition is content-addressed, first-write-wins; a re-run adopts).
+ * Caller must have granted geolocation permission and pinned the device
+ * coordinates (`DELIVERY_DEVICE`) on the browser context. Returns the slug.
+ */
+export async function ensureDeliveryAssembly(page: Page): Promise<string> {
+    let deliverySlug = await findDeliveryAssembly();
+    if (!deliverySlug) {
+        await page.addInitScript(() => {
+            try {
+                window.localStorage.removeItem('figaro:designer:current');
+                window.localStorage.removeItem('figaro:designer:drafts');
+            } catch { /* noop */ }
+        });
+        await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
+        await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+
+        const orderNodes = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])');
+        await expect(orderNodes).toHaveCount(1, { timeout: 10000 });
+        const rootTestId = await orderNodes.first().getAttribute('data-testid');
+        const rootId = rootTestId!.replace('order-node-', '');
+
+        // Root order — the meal: the merchant's process ladder + the buyer's
+        // committed delivery request (the modalities clause).
+        await orderNodes.first().click();
+        await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
+        await page.getByTestId('drawer-tab-registry').click();
+        await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
+        await page.getByTestId(`drawer-registry-clause-${DELIVERY_CLAUSES.merchant}`).check();
+        await page.getByTestId(`drawer-registry-clause-${DELIVERY_CLAUSES.modalities}`).check();
+        await page.getByTestId(`drawer-field-${DELIVERY_CLAUSES.modalities}-modality-delivery`).check();
+
+        // The courier order is DRAWN — a second co-equal node under the root
+        // (never spawned by a checkbox; the drawn edge IS delivery reality).
+        await page.getByTestId(`btn-add-suborder-${rootId}`).click();
+        await expect(orderNodes).toHaveCount(2, { timeout: 10000 });
+        const nodeIds = await orderNodes.evaluateAll((els) =>
+            els.map((el) => el.getAttribute('data-testid')!.replace('order-node-', '')));
+        const subId = nodeIds.find((id) => id !== rootId)!;
+
+        // Compose the courier's process ladder + the hand-off point + the
+        // single-band proximity witness + geolocation on the drawn order.
+        await page.getByTestId(`drawer-node-tab-${subId}`).click();
+        await page.getByTestId('drawer-tab-registry').click();
+        await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
+        await page.getByTestId(`drawer-registry-clause-${DELIVERY_CLAUSES.courier}`).check();
+        await page.getByTestId(`drawer-registry-clause-${DELIVERY_CLAUSES.handoff}`).check();
+        await page.getByTestId(`drawer-field-${DELIVERY_CLAUSES.handoff}-handoff-face-to-face`).check();
+        await page
+            .getByTestId(`drawer-nested-handoff-${DELIVERY_CLAUSES.proximity}`)
+            .getByTestId(`drawer-registry-clause-${DELIVERY_CLAUSES.proximity}`)
+            .check();
+        await page.getByTestId(`drawer-field-${DELIVERY_CLAUSES.proximity}-bands-zone-wifi`).check();
+        await page.getByTestId(`drawer-registry-clause-${DELIVERY_CLAUSES.geo}`).check();
+        await page.getByTestId(`drawer-field-${DELIVERY_CLAUSES.geo}-originGeohash-device`).click();
+        await expect(page.getByTestId(`drawer-field-${DELIVERY_CLAUSES.geo}-originGeohash`))
+            .toHaveValue(/^[0-9b-hj-km-np-z]+$/, { timeout: 10000 });
+        await page.getByTestId(`drawer-field-${DELIVERY_CLAUSES.geo}-destinationGeohash`).fill(DELIVERY_DEVICE.destinationGeohash);
+
+        // Editorial identity + publish (pin template → AssemblyRegistered).
+        await page.getByTestId('designer-name-input').fill('Local delivery');
+        await page.getByTestId('designer-summary-input').fill('Meal/grocery delivery: a merchant order plus one co-equal courier order.');
+        await page.getByTestId('designer-description-input').fill('The local-commerce runtime: the buyer orders with the delivery modality; the courier order carries the goods; each transfer is attested; one resolve pays both.');
+        await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
+        await page.getByTestId('designer-review').click();
+        await page.waitForURL(/\/builders\/designer\/view\/asm-/, { timeout: 15000 });
+        const handle = page.url().match(/\/view\/(asm-[a-z0-9-]+)/)?.[1];
+        expect(handle, 'review navigated to a draft handle').toBeTruthy();
+        await page.goto(`/builders/designer/view/${handle}?intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        const confirmBtn = page.getByTestId('review-confirm-publish');
+        await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
+        await waitForConnected(page);
+        await confirmBtn.click();
+        await page.getByTestId('assembly-publish-receipt').waitFor({ timeout: 60000 });
+        const receiptSlug = (await page.getByTestId('receipt-slug').textContent())?.trim();
+        expect(receiptSlug, 'publish receipt shows the content slug').toMatch(/^asm-/);
+
+        deliverySlug = await findDeliveryAssembly();
+        expect(deliverySlug, 'the published delivery assembly is discoverable by shape').toBe(receiptSlug);
+    }
+    return deliverySlug!;
+}

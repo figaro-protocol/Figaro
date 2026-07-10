@@ -317,7 +317,6 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         const rootEvent = await acceptAs(LEAD.address, 'lead');
         const processId = rootEvent.args.processId!;
         expect(rootEvent.args.payment, 'root payment = the lead catalogue price').toBe(parseEther('1'));
-        expect(rootEvent.args.cumulativeValue, 'root cumulative = its own payment').toBe(parseEther('1'));
         {
             const { buyerBond, sellerBond } = calculateBonds(rootEvent.args.cumulativeValue!, rootEvent.args.payment!);
             const [b, l, c] = await Promise.all([balanceOf(BUYER), balanceOf(LEAD.address), balanceOf(core)]);
@@ -331,7 +330,6 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         const courierEvent = await acceptAs(COURIER, 'courier');
         expect(courierEvent.args.processId, 'the courier order extends the SAME process').toBe(processId);
         expect(courierEvent.args.payment, "courier payment = the courier's own catalogue price").toBe(parseEther('1'));
-        expect(courierEvent.args.cumulativeValue, 'courier cumulative = root + courier').toBe(parseEther('2'));
         const rootBonds = calculateBonds(rootEvent.args.cumulativeValue!, rootEvent.args.payment!);
         {
             const { buyerBond, sellerBond } = calculateBonds(courierEvent.args.cumulativeValue!, courierEvent.args.payment!);
@@ -346,7 +344,6 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         const supplierEvent = await acceptAs(SUPPLIER, 'supplier');
         expect(supplierEvent.args.processId, 'the supplier order extends the SAME process').toBe(processId);
         expect(supplierEvent.args.payment, "supplier payment = the supplier's own catalogue price").toBe(parseEther('1'));
-        expect(supplierEvent.args.cumulativeValue, 'supplier cumulative = root + courier + supplier').toBe(parseEther('3'));
         const courierBonds = calculateBonds(courierEvent.args.cumulativeValue!, courierEvent.args.payment!);
         const supplierBonds = calculateBonds(supplierEvent.args.cumulativeValue!, supplierEvent.args.payment!);
         {

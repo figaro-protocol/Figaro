@@ -85,7 +85,9 @@ import { mnemonicToAccount } from 'viem/accounts';
 import {
     assertPinnedInIpfs,
     confirmAgreementPreviews,
-    discoverAnchoredAssemblies,
+    DELIVERY_CLAUSES,
+    DELIVERY_DEVICE,
+    ensureDeliveryAssembly,
     readLocalDeploymentConfig,
     sellerProfileBindings,
 } from './devnet-helpers';
@@ -110,19 +112,18 @@ const BUYER = ANVIL_ACCOUNTS[2] as Hex; // anvil[2] — a buyer no other spec us
 const MERCHANT = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 7 }).address as Hex; // Rosa's Kitchen
 const COURIER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 8 }).address as Hex; // Cardinal Couriers
 
-const COURIER_CLAUSE = 'figaro-courier-process';
-const MERCHANT_CLAUSE = 'figaro-merchant-process';
-const MODALITIES_CLAUSE = 'figaro-modalities';
-const HANDOFF_CLAUSE = 'figaro-handoff';
-const GEO_CLAUSE = 'figaro-geolocation';
-const PROXIMITY_CLAUSE = 'figaro-proximity-policy';
+const {
+    courier: COURIER_CLAUSE,
+    merchant: MERCHANT_CLAUSE,
+    modalities: MODALITIES_CLAUSE,
+    handoff: HANDOFF_CLAUSE,
+    geo: GEO_CLAUSE,
+    proximity: PROXIMITY_CLAUSE,
+} = DELIVERY_CLAUSES;
 
-// The committed PUBLIC half of where the delivery goes — coarse cells the
-// courier bonds on (the device-location affordance fills the origin from
-// these Playwright-set coordinates at authoring time).
-const DEVICE_LAT = 37.7749;
-const DEVICE_LON = -122.4194;
-const DESTINATION_GEOHASH = '9q8yyk8yu';
+// The committed PUBLIC half of where the delivery goes lives in the shared
+// DELIVERY_DEVICE (the author-if-absent helper types the destination cell;
+// the device affordance reads these Playwright-set coordinates).
 
 // The PRIVATE half — the addressee block the buyer shares over the ECDH
 // channel. Never touches the chain in cleartext.
@@ -154,25 +155,6 @@ async function waitForConnected(page: Page) {
         null,
         { timeout: 30000 },
     );
-}
-
-/** The delivery assembly's SHAPE — how the spec recognizes it on-chain
- *  without a hardcoded slug: exactly two orders, the sub-order carrying the
- *  courier process clause, the hand-off clause (the QR-interaction declarer),
- *  geolocation, AND the proximity policy (the hand-off witness — a 2-order
- *  composition without it is an earlier scenario). */
-async function findDeliveryAssembly(): Promise<string | undefined> {
-    const templates = await discoverAnchoredAssemblies();
-    return templates.find(
-        (t) => t.agreements.length === 2
-            && t.agreements.some((o) => {
-                const clauses = Object.keys(o.clauses ?? {});
-                return clauses.includes(COURIER_CLAUSE)
-                    && clauses.includes(HANDOFF_CLAUSE)
-                    && clauses.includes(GEO_CLAUSE)
-                    && clauses.includes(PROXIMITY_CLAUSE);
-            }),
-    )?.slug;
 }
 
 /** The ladder labels of a registered clause, read the network way —
@@ -220,100 +202,13 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         // The device-location affordance (geolocation authoring + any runtime
         // fill) reads the browser Geolocation API — pin the coordinates.
         await page.context().grantPermissions(['geolocation']);
-        await page.context().setGeolocation({ latitude: DEVICE_LAT, longitude: DEVICE_LON });
+        await page.context().setGeolocation({ latitude: DELIVERY_DEVICE.lat, longitude: DELIVERY_DEVICE.lon });
 
-        // ── AUTHOR (idempotent): write the scenario on the designer canvas.
-        //    The composition is content-addressed (identical composition →
-        //    identical slug, first-write-wins), so when a prior run anchored
-        //    it, this run discovers it by shape and consumes it — the mainnet
-        //    ensure-exists semantics. ──
-        let deliverySlug = await findDeliveryAssembly();
-        if (!deliverySlug) {
-            await page.addInitScript(() => {
-                try {
-                    window.localStorage.removeItem('figaro:designer:current');
-                    window.localStorage.removeItem('figaro:designer:drafts');
-                } catch { /* noop */ }
-            });
-            await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
-            await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
-            await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
-
-            const orderNodes = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])');
-            await expect(orderNodes).toHaveCount(1, { timeout: 10000 });
-            const rootTestId = await orderNodes.first().getAttribute('data-testid');
-            const rootId = rootTestId!.replace('order-node-', '');
-
-            // Root order — the meal: the merchant's process ladder + the
-            // buyer's committed delivery request (the modalities clause).
-            await orderNodes.first().click();
-            await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
-            await page.getByTestId('drawer-tab-registry').click();
-            await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
-            await page.getByTestId(`drawer-registry-clause-${MERCHANT_CLAUSE}`).check();
-            await page.getByTestId(`drawer-registry-clause-${MODALITIES_CLAUSE}`).check();
-            await page.getByTestId(`drawer-field-${MODALITIES_CLAUSE}-modality-delivery`).check();
-
-            // The courier order is DRAWN — a second co-equal node under the
-            // root (never spawned by a checkbox; the drawn edge IS delivery
-            // reality, the modalities value only the request).
-            await page.getByTestId(`btn-add-suborder-${rootId}`).click();
-            await expect(orderNodes).toHaveCount(2, { timeout: 10000 });
-            const nodeIds = await orderNodes.evaluateAll((els) =>
-                els.map((el) => el.getAttribute('data-testid')!.replace('order-node-', '')));
-            const subId = nodeIds.find((id) => id !== rootId)!;
-
-            // Compose the courier's process ladder + the hand-off point on the
-            // drawn order, via the drawer's node tab. The hand-off clause
-            // declares the qr-challenge interaction (block.interaction) — its
-            // committed choice here is a face-to-face exchange.
-            await page.getByTestId(`drawer-node-tab-${subId}`).click();
-            await page.getByTestId('drawer-tab-registry').click();
-            await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
-            await page.getByTestId(`drawer-registry-clause-${COURIER_CLAUSE}`).check();
-            await page.getByTestId(`drawer-registry-clause-${HANDOFF_CLAUSE}`).check();
-            await page.getByTestId(`drawer-field-${HANDOFF_CLAUSE}-handoff-face-to-face`).check();
-            // The hand-off WITNESS policy nests under the handoff field: commit
-            // a SINGLE band, so a hand-off ladder stage derives it unambiguously
-            // and pairs the witness automatically (one action, two attestations).
-            await page
-                .getByTestId(`drawer-nested-handoff-${PROXIMITY_CLAUSE}`)
-                .getByTestId(`drawer-registry-clause-${PROXIMITY_CLAUSE}`)
-                .check();
-            await page.getByTestId(`drawer-field-${PROXIMITY_CLAUSE}-bands-zone-wifi`).check();
-            // The geolocation clause: the PUBLIC half of where the delivery
-            // goes — origin filled from the DEVICE location (the format-declared
-            // affordance), destination typed. The clause also declares the
-            // private-address interaction the runtime exercises below.
-            await page.getByTestId(`drawer-registry-clause-${GEO_CLAUSE}`).check();
-            await page.getByTestId(`drawer-field-${GEO_CLAUSE}-originGeohash-device`).click();
-            await expect(page.getByTestId(`drawer-field-${GEO_CLAUSE}-originGeohash`))
-                .toHaveValue(/^[0-9b-hj-km-np-z]+$/, { timeout: 10000 });
-            await page.getByTestId(`drawer-field-${GEO_CLAUSE}-destinationGeohash`).fill(DESTINATION_GEOHASH);
-
-            // Editorial identity + publish (pin template → AssemblyRegistered).
-            await page.getByTestId('designer-name-input').fill('Local delivery');
-            await page.getByTestId('designer-summary-input').fill('Meal/grocery delivery: a merchant order plus one co-equal courier order.');
-            await page.getByTestId('designer-description-input').fill('The local-commerce runtime: the buyer orders with the delivery modality; the courier order carries the goods; each transfer is attested; one resolve pays both.');
-            await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
-            await page.getByTestId('designer-review').click();
-            await page.waitForURL(/\/builders\/designer\/view\/asm-/, { timeout: 15000 });
-            const handle = page.url().match(/\/view\/(asm-[a-z0-9-]+)/)?.[1];
-            expect(handle, 'review navigated to a draft handle').toBeTruthy();
-            await page.goto(`/builders/designer/view/${handle}?intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
-            const confirmBtn = page.getByTestId('review-confirm-publish');
-            await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
-            await waitForConnected(page);
-            await confirmBtn.click();
-            await page.getByTestId('assembly-publish-receipt').waitFor({ timeout: 60000 });
-            const receiptSlug = (await page.getByTestId('receipt-slug').textContent())?.trim();
-            expect(receiptSlug, 'publish receipt shows the content slug').toMatch(/^asm-/);
-
-            // The anchored assembly is discoverable by SHAPE — the same read
-            // every consumer uses; a re-run consumes exactly this.
-            deliverySlug = await findDeliveryAssembly();
-            expect(deliverySlug, 'the published delivery assembly is discoverable by shape').toBe(receiptSlug);
-        }
+        // ── AUTHOR (idempotent): the shared author-if-absent helper writes the
+        //    scenario on the designer canvas when no anchored assembly matches
+        //    the shape; a re-run adopts the anchored one (content-addressed,
+        //    first-write-wins — the mainnet ensure-exists semantics). ──
+        const deliverySlug = await ensureDeliveryAssembly(page);
 
         // The public inventory carries it — author → pin → anchor → visible.
         await page.goto('/assemblies?e2e=devnet', { waitUntil: 'domcontentloaded' });
