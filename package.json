@@ -55,7 +55,11 @@
       "bash scripts/lint-clause-choices-are-bounded.sh"
     ],
     "src/**/*.sol": [
-      "forge fmt"
+      "forge fmt",
+      "bash scripts/lint-token-ops.sh"
+    ],
+    "certora/token-ops.inventory": [
+      "bash scripts/lint-token-ops.sh"
     ]
   }
 }
