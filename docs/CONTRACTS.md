@@ -42,7 +42,9 @@ attestable with **zero per-clause on-chain code**.
 
 No new kernel state: `agreementHash` is read from the caller-supplied
 Commitment struct, which `_requireKnownCommitment` verifies matches a
-committed orderHash via `core.orderStatus`.
+committed orderHash via `core.orderStatus`. One of the two live embodiments of
+the coordinator pattern — canonical statement in `ARCHITECTURE.md`
+§ "Composing the kernel".
 
 4 Certora CVL rules in `certora/AttestationCoordinator.spec` (role-gate +
 parametric Core-immutability). Binding-integrity, `contentRef == keccak256(content)`,
@@ -115,7 +117,9 @@ the swap venue is an off-protocol auxiliary; permissionless first-write-wins
 means alternative coordinators with different routers/MEV policies are valid
 extensions. Per-party prerequisites: a one-time `approve(FigaroCore, …)` for the
 bond currency (same as the base flow) plus a one-time `approve(Permit2, …)` for
-the input token. EIP-7702 and ERC-4337 variants are out of scope.
+the input token. EIP-7702 and ERC-4337 variants are out of scope. Its
+local-minimal `IFigaroCore` binding is the copyable exemplar of the coordinator
+pattern — canonical statement in `ARCHITECTURE.md` § "Composing the kernel".
 
 **`src/SellerRegistry.sol`** — Permissionless seller self-registration with
 reclaimable ETH deposit (staked intent — K4, no time lock). Three external

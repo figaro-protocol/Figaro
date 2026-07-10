@@ -97,6 +97,49 @@ Three recurring questions collapse to "which side of the seam?":
    read-time concerns, never on-chain validators. There is no on-chain content validation at all —
    the chain registers clauses and merkle-binds attestations, nothing more. (See `CLAUSES.md`.)
 
+## Composing the kernel — the coordinator pattern
+
+The fifth noun (composition with other on-network contracts) has a contract-side shape,
+and it is the only sanctioned way to give the network a new settlement-adjacent
+capability: **a new capability is a NEW parallel contract composing kernel state — never
+a kernel edit, never a tenant inside an existing registry.** The kernel is frozen and
+takes no position; the artifact families stay parallel; a composer is just another
+permissionless contract.
+
+The copyable shape:
+
+1. **Bind through a minimal, immutable surface.** Declare only the kernel functions you
+   actually call and bind at construction — `SwapAndCommitCoordinator.sol` declares a
+   local `interface IFigaroCore { commit(…) }` and holds it `immutable`. The local-minimal
+   interface *is* the pattern for external composers: a third party composing the deployed
+   kernel cannot import this repo's files, only its ABI. (`AttestationCoordinator.sol`
+   predates this statement and imports concrete `FigaroCore`; its coupling —
+   `core.orderStatus`, `core.DOMAIN_SEPARATOR()` — is the same read-only composition.
+   `CommitmentTypes` is the shared struct/hashing library both import.)
+2. **Read kernel state as the single source of truth; never re-implement kernel logic.**
+   A coordinator may read (`orderStatus`, `DOMAIN_SEPARATOR`), call (`commit`), and — when
+   it cannot import a constant from the frozen kernel — mirror one with a comment pinning
+   the source (the `2×` bond multiplier in `SwapAndCommitCoordinator`). The kernel always
+   does the enforcing: the bond pull, the status transition, the atomic resolve. A
+   contract that enforces bonding or resolution itself is re-implementing the kernel, not
+   composing it.
+3. **Hold no resolution-time discretion.** The no-escape-hatch constraint extends to
+   composers: a coordinator carries setup or evidence legs (a swap before `commit`; a
+   merkle-checked attestation), never a lever over a live process's settlement.
+4. **The arrow points one way.** The kernel never knows the coordinator exists (its one
+   mention of `AttestationCoordinator`, in the `DOMAIN_SEPARATOR` doc comment, is
+   illustrative, not a dependency). Tenant names — Kleros, Uniswap, a lender — live at the
+   edge: in the composing contract, in a clause's `block.composes`, in the UI dispatch.
+   Never in the kernel, never in the SDK's protocol modules.
+
+The test before building anything settlement-adjacent: *can this be a parallel contract
+that reads kernel state and lets the kernel enforce?* It was yes for swapped-currency
+funding (`SwapAndCommitCoordinator`), yes for merkle-gated attestation
+(`AttestationCoordinator`), and it is yes for cashflow assignment at resolve (the credit
+splitter: a payment-leg rail, never the bond return). If the answer seems to be no, the
+proposal is adding a mechanism to the kernel — stop (CLAUDE.md § "Common Misframings").
+Per-contract surfaces: `CONTRACTS.md`.
+
 ## Related
 
 `CLAUDE.md` (the discipline + the five nouns), `OPEN_WORLD.md` (the open-world paradigm + the
