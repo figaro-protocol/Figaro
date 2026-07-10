@@ -26,13 +26,15 @@ CLAUDE.md keeps the run commands; this file is the full inventory of test files,
 
 Companion: `certora/token-ops.inventory` + `scripts/lint-token-ops.sh` — declarative inventory of every ERC20 transfer call site in `src/`; the linter (run as a `./scripts/test-certora.sh` prelude) fails if a new transfer call merges without an inventory entry.
 
-## Echidna — 3 harnesses, 23 properties
+## Echidna — 2 harnesses, 15 properties
 
 | Harness | Properties | Path |
 |---|---|---|
 | `EchidnaFuzzer` | 7 | `src/echidna/EchidnaFuzzer.sol` — kernel: solvency, active-count consistency, cumulative accounting, state monotonicity, token conservation, buyer dominance, atomic resolution |
 | `EchidnaFigToken` | 8 | `src/echidna/EchidnaFigToken.sol` — FigToken: MAX_SUPPLY never exceeded, deployer can renounce, no deployer mint after renounce, minter cap enforced, no zero-address minter, no mint to zero address, total supply = sum of balances, transfer preserves supply |
-| `EchidnaToken` | 8 | `src/echidna/EchidnaToken.sol` — ERC20 token invariants |
+
+`src/echidna/EchidnaToken.sol` is not a harness — it is the minimal ERC-20 the kernel
+harness fuzzes against (`EchidnaFuzzer.sol` imports it); it declares no `echidna_` properties.
 
 ## TLA+ (`formal/`) — 15 invariants across 2 models (FigaroCore 7 + FigToken 8)
 
