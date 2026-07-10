@@ -31,22 +31,6 @@ import {
     type ProcessTimeline,
 } from "@/lib/audit/processTimeline";
 
-interface IndexedLog {
-    args?: Record<string, unknown>;
-    transactionHash?: string;
-    blockNumber?: bigint | number;
-}
-
-function toSellerRegistered(log: IndexedLog): SellerRegisteredEvent | null {
-    const a = log.args;
-    if (!a || typeof a.seller !== "string") return null;
-    return {
-        seller: a.seller,
-        metadataURI: typeof a.metadataURI === "string" ? a.metadataURI : "",
-        blockNumber: log.blockNumber === undefined ? undefined : Number(log.blockNumber),
-        transactionHash: log.transactionHash,
-    };
-}
 
 // `@react-pdf/renderer` is ~400 kB. Lazy-load on first call so the
 // importer's bundle stays light. Users who never trigger PDF generation
@@ -81,10 +65,14 @@ export async function buildAuditBundlePdfBlob(
     let sellerRegisteredAll: SellerRegisteredEvent[] = [];
     if (publicClient) {
         try {
-            const opRegLogs = await getAllSellerRegistered(publicClient, chainId);
-            sellerRegisteredAll = (opRegLogs as IndexedLog[])
-                .map(toSellerRegistered)
-                .filter((r): r is SellerRegisteredEvent => r !== null);
+            // SDK-decoded rows; project to the audit extractor's shape.
+            const rows = await getAllSellerRegistered(publicClient, chainId);
+            sellerRegisteredAll = rows.map((row) => ({
+                seller: row.seller,
+                metadataURI: row.metadataURI,
+                blockNumber: row.blockNumber,
+                transactionHash: row.transactionHash ?? undefined,
+            }));
         } catch {
             // Non-fatal — the extractor reports registered=false and the
             // bundle still renders.

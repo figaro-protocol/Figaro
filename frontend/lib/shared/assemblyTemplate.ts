@@ -23,42 +23,11 @@
  * clause fields.
  */
 
-import type { ClauseFields } from "@/lib/shared/clauseFields";
-
-export interface AssemblyTemplateAgreement {
-    /** Local label for the kernel-order slot this agreement binds to at
-     *  checkout — `order-<index>`, stable within the template; the reference
-     *  target the topology clause points at. NOT a chain id, and NOT a
-     *  party — the template is party-agnostic. */
-    id: string;
-    /** clauseId → the design-time field values the designer composed (an empty
-     *  object = selected, no fields set — filled downstream: seller at
-     *  first-use, buyer at checkout). The topology is a clause here too: the
-     *  structural topology clause carries `{ parentOrderHashes }` (root = []). */
-    clauses: ClauseFields;
-    /** clauseId → the registered VERSION composed, when it isn't 1. A clause's
-     *  identity is (name, version) — two live versions are two clauses; this
-     *  records WHICH one this agreement composed. SPARSE by normalization:
-     *  version-1 entries are never serialized (the builder omits them), so a
-     *  template with only v1 clauses carries no map and hashes identically to
-     *  the pre-version-field form. Read via `templateClauseVersion`. */
-    clauseVersions?: Record<string, number>;
-}
-
-export interface AssemblyTemplate {
-    /** EDITORIAL — the designer's own words, for legibility (the content-derived
-     *  slug is opaque at scale). `name` is a short handle, `summary` a one-line
-     *  gloss, `description` the long form. Free-form prose, NOT a taxonomy
-     *  (open-world: like a seller's name/specialty/description). These are pinned
-     *  in the document but EXCLUDED from the composition hash — identity stays
-     *  composition-derived, so renaming never forks the slug. All optional. */
-    name?: string;
-    summary?: string;
-    description?: string;
-    /** The composition: the agreements the designer composed, one per future
-     *  kernel order. */
-    agreements: AssemblyTemplateAgreement[];
-}
+// The template SHAPE's single home is the SDK (`@figaro/core` — assembly.ts):
+// one shape, one nested-type name (`TemplateAgreement`). `clauses` is the same
+// per-order bag `ClauseFields` names (`Record<string, Record<string, unknown>>`).
+export type { AssemblyTemplate, TemplateAgreement } from "@figaro/core";
+import type { TemplateAgreement } from "@figaro/core";
 
 /** Read a template agreement's parent ids — the data of its topology clause.
  *  The topology is a clause like any other; this is the one accessor for it.
@@ -67,7 +36,7 @@ export interface AssemblyTemplate {
  *  hashes; at design time the values are sibling `order-<i>` labels), so
  *  reading needs no spec cache and tolerates any registry-defined topology
  *  clause. */
-export function templateParentOrderHashes(agreement: AssemblyTemplateAgreement): string[] {
+export function templateParentOrderHashes(agreement: TemplateAgreement): string[] {
     const entry = Object.values(agreement.clauses).find(
         (fields) => Array.isArray((fields as { parentOrderHashes?: unknown } | undefined)?.parentOrderHashes),
     );
@@ -79,7 +48,7 @@ export function templateParentOrderHashes(agreement: AssemblyTemplateAgreement):
  *  sparse `clauseVersions` map says otherwise (v1 pins are never serialized).
  *  @public pending consumer: per-clause version display on the drawer/audit
  *  read surfaces (the map form below is the checkout consumer). */
-export function templateClauseVersion(agreement: AssemblyTemplateAgreement, clauseId: string): number {
+export function templateClauseVersion(agreement: TemplateAgreement, clauseId: string): number {
     return agreement.clauseVersions?.[clauseId] ?? 1;
 }
 
@@ -87,7 +56,7 @@ export function templateClauseVersion(agreement: AssemblyTemplateAgreement, clau
  *  made explicit). Checkout passes this into the agreement build so the
  *  committed section versions come from the composition, never from whichever
  *  spec versions happen to be loaded. */
-export function templateClauseVersionMap(agreement: AssemblyTemplateAgreement): Record<string, number> {
+export function templateClauseVersionMap(agreement: TemplateAgreement): Record<string, number> {
     return Object.fromEntries(
         Object.keys(agreement.clauses).map((c) => [c, templateClauseVersion(agreement, c)]),
     );

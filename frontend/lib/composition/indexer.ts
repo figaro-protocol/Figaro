@@ -8,7 +8,7 @@
  * reverse). Reads are clause-agnostic — clauseId is DATA off the event, never
  * hardcoded.
  */
-import { decodeFunctionData, type Hex, type PublicClient } from "viem";
+import { decodeFunctionData, type Hex, type Log, type PublicClient } from "viem";
 import { cachedGetLogs } from "@/lib/kernel/eventCache";
 import {
     cachedGetLogsMulti,
@@ -19,8 +19,8 @@ import {
     type IndexedLog,
 } from "@/lib/kernel/indexer";
 import { getAllSellerRegistered } from "@/lib/protocol/sellerRegistryIndexer";
-import { hexEqual, isEmptyHex, ZERO_BYTES32 } from "@/lib/shared/evm";
-import { ATTESTATION_COORDINATOR_ABI, EV_ATTESTATION } from "@figaro/core";
+import { hexEqual, isEmptyHex } from "@/lib/shared/evm";
+import { ATTESTATION_COORDINATOR_ABI, EV_ATTESTATION, parseAttestationLogs } from "@figaro/core";
 import { getAttestationCoordinator } from "@/lib/composition/contracts";
 
 // ── AttestationCoordinator ────────────────────────────────────────────────────
@@ -67,21 +67,12 @@ export type AttestationRecord = {
 
 /** THE Attestation-log → record reducer — the one parse every consumer shares
  *  (semantic model, evidence/audit bundle; the juror path stays React-free).
- *  Returns null when the log lacks its identity args (garbage or
+ *  Decoding is the SDK's (`parseAttestationLogs`); this wraps it per-log.
+ *  Returns null when the log doesn't decode as an `Attestation` (garbage or
  *  still-pending log) — callers filter. */
 export function parseAttestationLog(log: IndexedAttestationLog): AttestationRecord | null {
-    const args = log.args;
-    if (!args?.orderHash || !args.processId || !args.attester || !args.clauseId) return null;
-    return {
-        orderHash: args.orderHash,
-        processId: args.processId,
-        attester: args.attester,
-        clauseId: args.clauseId,
-        stage: args.stage === undefined ? 0 : Number(args.stage),
-        contentRef: args.contentRef ?? ZERO_BYTES32,
-        transactionHash: log.transactionHash ?? null,
-        blockNumber: log.blockNumber === undefined || log.blockNumber === null ? 0 : Number(log.blockNumber),
-    };
+    const [row] = parseAttestationLogs([log as unknown as Log]);
+    return row ?? null;
 }
 
 /**
@@ -253,10 +244,12 @@ export async function getSellerTrackRecord(
     );
 
     const ownRegistrations = registrations
-        .filter((log) => hexEqual(getStringArg(log, "seller"), seller))
-        .sort((a, b) => Number(a.blockNumber ?? 0n) - Number(b.blockNumber ?? 0n));
+        .filter((row) => hexEqual(row.seller, seller))
+        .sort((a, b) => a.blockNumber - b.blockNumber);
     const firstBlock = ownRegistrations[0]?.blockNumber;
-    const operatingSinceBlock: bigint | null = firstBlock != null ? BigInt(firstBlock) : null;
+    // The SDK parser coerces a pending log's null blockNumber to 0 — treat
+    // block 0 as unknown (no real registration lands in the genesis block).
+    const operatingSinceBlock: bigint | null = firstBlock ? BigInt(firstBlock) : null;
     let operatingSinceTimestamp: bigint | null = null;
     if (operatingSinceBlock != null) {
         try {

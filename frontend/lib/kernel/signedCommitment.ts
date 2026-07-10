@@ -14,13 +14,13 @@
 import {
     computeCommitmentProcessId,
     computeOrderHash,
+    restoreSignedProcessId as sdkRestoreSignedProcessId,
     type Agreement,
     type Commitment,
     type Hex,
 } from "@figaro/core";
 import { strippingReviver } from "@/lib/shared/safeJson";
 import { CONTRACTS } from "@/lib/kernel/contracts";
-import { hexEqual, ZERO_PROCESS_ID } from "@/lib/shared/evm";
 
 function configuredCore(): `0x${string}` {
     if (!CONTRACTS.core) {
@@ -43,13 +43,11 @@ export function commitmentProcessId(c: Commitment, chainId: number): `0x${string
     return computeCommitmentProcessId(c, chainId, configuredCore());
 }
 
+/** Deployment-curried wrapper over the SDK's `restoreSignedProcessId` — the
+ *  one home for the root-detection logic (a root reproduces its own processId
+ *  as its as-root EIP-712 digest). */
 export function restoreSignedProcessId(c: Commitment, chainId: number): Commitment {
-    const asRoot = { ...c, processId: ZERO_PROCESS_ID };
-    // If treating it as a root reproduces the event's processId (its EIP-712
-    // digest), the signed commitment WAS a root with processId 0.
-    return hexEqual(computeCommitmentProcessId(asRoot, chainId, CONTRACTS.core), c.processId)
-        ? asRoot
-        : c;
+    return sdkRestoreSignedProcessId(c, chainId, configuredCore());
 }
 
 /** The order as a (partially-)signed transport envelope. */

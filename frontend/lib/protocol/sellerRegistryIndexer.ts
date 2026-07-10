@@ -6,6 +6,10 @@
  * order events (OrderCommitted/OrderResolved) live in the kernel indexer;
  * this module reads a REGISTRY, which is protocol tier, not kernel tier.
  *
+ * Fetching goes through the cached indexer (`cachedGetLogsMulti`); DECODING is
+ * the SDK's (`parseSellerRegistryLogs` — the one parse per family). The
+ * liveness fold below stays here: it is this reader's own derived view.
+ *
  * Lifecycle flags (deactivate/reactivate) and on-chain role tracking remain
  * stripped — seller availability is signal-by-availability, and there is no
  * categorization field at any layer (no archetype, no role, no serviceType).
@@ -13,39 +17,43 @@
  * (registrations, clause attestations, signed commitments).
  */
 
-import type { PublicClient } from "viem";
+import type { Log, PublicClient } from "viem";
 import { getAbiItem } from "viem";
+import { parseSellerRegistryLogs, type SellerRegisteredEvent, type SellerWithdrawnEvent } from "@figaro/core";
 import { hexEqual } from "@/lib/shared/evm";
 import { CONTRACTS, SELLER_REGISTRY_ABI } from "@/lib/kernel/contracts";
-import { cachedGetLogsMulti, getStringArg, type IndexedLog } from "@/lib/kernel/indexer";
+import { cachedGetLogsMulti } from "@/lib/kernel/indexer";
 
 // Event defs come from the canonical SDK ABI, like the clause/assembly readers.
 const EV_SELLER_REGISTERED = getAbiItem({ abi: SELLER_REGISTRY_ABI, name: "SellerRegistered" });
 const EV_SELLER_PROFILE_UPDATED = getAbiItem({ abi: SELLER_REGISTRY_ABI, name: "SellerProfileUpdated" });
 const EV_SELLER_WITHDRAWN = getAbiItem({ abi: SELLER_REGISTRY_ABI, name: "SellerWithdrawn" });
 
-export async function getAllSellerRegistered(client: PublicClient, chainId: number) {
-    if (!CONTRACTS.sellerRegistry) return [];
-    return cachedGetLogsMulti(client, chainId,
-        [CONTRACTS.sellerRegistry],
-        { event: EV_SELLER_REGISTERED, eventName: "SellerRegistered" },
-    );
+/** Fetch one event stream through the cache and decode it with the SDK parser.
+ *  The cache stores the full log objects (data/topics survive the IDB
+ *  round-trip), so the SDK's raw-log decoder runs directly over cached rows. */
+async function fetchSellerEvents(
+    client: PublicClient,
+    chainId: number,
+    event: Parameters<typeof cachedGetLogsMulti>[3]["event"],
+    eventName: string,
+) {
+    if (!CONTRACTS.sellerRegistry) return { registered: [], withdrawn: [] };
+    const logs = await cachedGetLogsMulti(client, chainId, [CONTRACTS.sellerRegistry], { event, eventName });
+    return parseSellerRegistryLogs(logs as unknown as Log[]);
 }
 
-async function getAllSellerProfileUpdated(client: PublicClient, chainId: number) {
-    if (!CONTRACTS.sellerRegistry) return [];
-    return cachedGetLogsMulti(client, chainId,
-        [CONTRACTS.sellerRegistry],
-        { event: EV_SELLER_PROFILE_UPDATED, eventName: "SellerProfileUpdated" },
-    );
+/** All `SellerRegistered` rows (SDK-decoded; `updated === false`). */
+export async function getAllSellerRegistered(client: PublicClient, chainId: number): Promise<SellerRegisteredEvent[]> {
+    return (await fetchSellerEvents(client, chainId, EV_SELLER_REGISTERED, "SellerRegistered")).registered;
 }
 
-async function getAllSellerWithdrawn(client: PublicClient, chainId: number) {
-    if (!CONTRACTS.sellerRegistry) return [];
-    return cachedGetLogsMulti(client, chainId,
-        [CONTRACTS.sellerRegistry],
-        { event: EV_SELLER_WITHDRAWN, eventName: "SellerWithdrawn" },
-    );
+async function getAllSellerProfileUpdated(client: PublicClient, chainId: number): Promise<SellerRegisteredEvent[]> {
+    return (await fetchSellerEvents(client, chainId, EV_SELLER_PROFILE_UPDATED, "SellerProfileUpdated")).registered;
+}
+
+async function getAllSellerWithdrawn(client: PublicClient, chainId: number): Promise<SellerWithdrawnEvent[]> {
+    return (await fetchSellerEvents(client, chainId, EV_SELLER_WITHDRAWN, "SellerWithdrawn")).withdrawn;
 }
 
 /**
@@ -65,52 +73,38 @@ export async function getActiveSellers(client: PublicClient, chainId: number) {
         getAllSellerWithdrawn(client, chainId),
     ]);
 
-    function toBlockBigInt(log: IndexedLog): bigint {
-        const bn = log.blockNumber;
-        if (typeof bn === "bigint") return bn;
-        if (typeof bn === "number") return BigInt(bn);
-        return 0n;
-    }
-
     // Latest withdraw block per address (re-registration after withdraw is allowed)
-    const latestWithdraw = new Map<string, bigint>();
-    for (const log of withdrawn) {
-        const addr = getStringArg(log, "seller")?.toLowerCase();
-        if (!addr) continue;
-        const block = toBlockBigInt(log);
-        const prev = latestWithdraw.get(addr) ?? 0n;
-        if (block > prev) latestWithdraw.set(addr, block);
+    const latestWithdraw = new Map<string, number>();
+    for (const row of withdrawn) {
+        const addr = row.seller.toLowerCase();
+        const prev = latestWithdraw.get(addr) ?? 0;
+        if (row.blockNumber > prev) latestWithdraw.set(addr, row.blockNumber);
     }
 
     // Latest Registered event per address that survives Withdrawn.
-    const sellers = new Map<string, { metadataURI: string; registeredBlock: bigint; latestBlock: bigint }>();
-    for (const log of registered) {
-        const addr = getStringArg(log, "seller")?.toLowerCase();
-        if (!addr) continue;
-        const block = toBlockBigInt(log);
-        const withdrawnAfter = (latestWithdraw.get(addr) ?? 0n) >= block;
+    const sellers = new Map<string, { metadataURI: string; registeredBlock: number; latestBlock: number }>();
+    for (const row of registered) {
+        const addr = row.seller.toLowerCase();
+        const withdrawnAfter = (latestWithdraw.get(addr) ?? 0) >= row.blockNumber;
         if (withdrawnAfter) continue;
         const prev = sellers.get(addr);
-        if (!prev || block > prev.registeredBlock) {
+        if (!prev || row.blockNumber > prev.registeredBlock) {
             sellers.set(addr, {
-                metadataURI: getStringArg(log, "metadataURI") ?? "",
-                registeredBlock: block,
-                latestBlock: block,
+                metadataURI: row.metadataURI,
+                registeredBlock: row.blockNumber,
+                latestBlock: row.blockNumber,
             });
         }
     }
 
     // Apply ProfileUpdated events that post-date the surviving Registered event.
-    for (const log of profileUpdated) {
-        const addr = getStringArg(log, "seller")?.toLowerCase();
-        if (!addr) continue;
-        const entry = sellers.get(addr);
+    for (const row of profileUpdated) {
+        const entry = sellers.get(row.seller.toLowerCase());
         if (!entry) continue;
-        const block = toBlockBigInt(log);
-        if (block < entry.registeredBlock) continue;
-        if (block > entry.latestBlock) {
-            entry.metadataURI = getStringArg(log, "metadataURI") ?? entry.metadataURI;
-            entry.latestBlock = block;
+        if (row.blockNumber < entry.registeredBlock) continue;
+        if (row.blockNumber > entry.latestBlock) {
+            entry.metadataURI = row.metadataURI || entry.metadataURI;
+            entry.latestBlock = row.blockNumber;
         }
     }
 
@@ -151,59 +145,50 @@ export async function getSellerState(
         getAllSellerWithdrawn(client, chainId),
     ]);
 
-    function toBlockBigInt(log: IndexedLog): bigint {
-        const bn = log.blockNumber;
-        if (typeof bn === "bigint") return bn;
-        if (typeof bn === "number") return BigInt(bn);
-        return 0n;
-    }
-
     // Most recent Registered for this address. Track the latest by block;
     // tolerate null/0 blockNumbers by always preferring a candidate over no
     // candidate (test indexers occasionally return blockNumber=null for the
-    // very latest tx — picking it is still the right answer).
-    let regLog: IndexedLog | undefined;
-    let regBlock = 0n;
-    for (const log of registered) {
-        if (!hexEqual(getStringArg(log, "seller"), seller)) continue;
-        const b = toBlockBigInt(log);
-        if (!regLog || b > regBlock) {
-            regBlock = b;
-            regLog = log;
+    // very latest tx — the SDK parser coerces those to 0; picking it is still
+    // the right answer).
+    let regRow: SellerRegisteredEvent | undefined;
+    let regBlock = 0;
+    for (const row of registered) {
+        if (!hexEqual(row.seller, seller)) continue;
+        if (!regRow || row.blockNumber > regBlock) {
+            regBlock = row.blockNumber;
+            regRow = row;
         }
     }
-    if (!regLog) return null;
+    if (!regRow) return null;
 
     // If a Withdrawn event exists at or after the most recent Registered,
     // the seller has cleared the dedup guard and is no longer current.
     // Only enforce the comparison when at least one withdraw exists for this
-    // seller — otherwise a registration with blockNumber=null (regBlock=0n)
+    // seller — otherwise a registration with blockNumber=null (regBlock=0)
     // would spuriously look "withdrawn" against a default lastWithdrawBlock.
-    const sellerWithdraws = withdrawn
-        .filter((log) => hexEqual(getStringArg(log, "seller"), seller));
+    const sellerWithdraws = withdrawn.filter((row) => hexEqual(row.seller, seller));
     if (sellerWithdraws.length > 0) {
         const lastWithdrawBlock = sellerWithdraws
-            .map(toBlockBigInt)
-            .reduce((max, b) => (b > max ? b : max), 0n);
+            .map((row) => row.blockNumber)
+            .reduce((max, b) => (b > max ? b : max), 0);
         if (lastWithdrawBlock >= regBlock) return null;
     }
 
     // Apply the most recent ProfileUpdated that post-dates the surviving
     // registration, if any.
-    let metadataURI = getStringArg(regLog, "metadataURI") ?? "";
+    let metadataURI = regRow.metadataURI;
     let metadataBlock = regBlock;
-    for (const log of profileUpdated) {
-        if (!hexEqual(getStringArg(log, "seller"), seller)) continue;
-        const b = toBlockBigInt(log);
-        if (b < regBlock) continue;
-        if (b > metadataBlock) {
-            metadataURI = getStringArg(log, "metadataURI") ?? metadataURI;
-            metadataBlock = b;
+    for (const row of profileUpdated) {
+        if (!hexEqual(row.seller, seller)) continue;
+        if (row.blockNumber < regBlock) continue;
+        if (row.blockNumber > metadataBlock) {
+            metadataURI = row.metadataURI || metadataURI;
+            metadataBlock = row.blockNumber;
         }
     }
 
     return {
         metadataURI,
-        registeredBlock: regBlock > 0n ? regBlock : null,
+        registeredBlock: regBlock > 0 ? BigInt(regBlock) : null,
     };
 }

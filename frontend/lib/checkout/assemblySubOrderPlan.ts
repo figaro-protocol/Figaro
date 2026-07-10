@@ -14,7 +14,7 @@
  */
 
 import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
-import { templateParentOrderHashes, type AssemblyTemplateAgreement } from "@/lib/shared/assemblyTemplate";
+import { templateParentOrderHashes, type TemplateAgreement } from "@/lib/shared/assemblyTemplate";
 import { topologicalOrder } from "@/lib/shared/orderTopology";
 import type { SellerCatalogue } from "@/lib/seller/types";
 import type { CatalogueItemMetadata } from "@/lib/seller/sellerCatalogueMetadata";
@@ -34,7 +34,7 @@ import { getRateQuantityResolver } from "@/lib/checkout/rateQuantitySources";
  */
 export function planSubOrderSellers(
     assembly: BoundAssembly,
-): Array<{ node: AssemblyTemplateAgreement; seller: `0x${string}` | null }> {
+): Array<{ node: TemplateAgreement; seller: `0x${string}` | null }> {
     const { assemblyTemplate } = assembly;
     const byId = new Map(assemblyTemplate.agreements.map((o) => [o.id, o]));
     const rootId =
@@ -42,7 +42,7 @@ export function planSubOrderSellers(
         assemblyTemplate.agreements[0]?.id;
     // Topological order (throws on a cyclic topology — the guard the checkout relies on),
     // then the sub-orders are everything but the root, in commit order.
-    const ordered: AssemblyTemplateAgreement[] = topologicalOrder(
+    const ordered: TemplateAgreement[] = topologicalOrder(
         assemblyTemplate.agreements.map((o) => o.id),
         (id) => templateParentOrderHashes(byId.get(id)!),
         "throw",
@@ -102,7 +102,7 @@ export interface SubOrderPricing {
  * commerce clause's `payment ≥ 1` would reject it at Layer A regardless).
  */
 export function resolveSubOrderPricing(args: {
-    node: AssemblyTemplateAgreement;
+    node: TemplateAgreement;
     seller: `0x${string}`;
     sellerCatalogues: SellerCatalogue[];
     tokenDecimals: number;

@@ -4,7 +4,7 @@ import {
     planSubOrderSellers,
     resolveSubOrderPricing,
 } from "@/lib/checkout/assemblySubOrderPlan";
-import type { AssemblyTemplateAgreement } from "@/lib/shared/assemblyTemplate";
+import type { TemplateAgreement } from "@/lib/shared/assemblyTemplate";
 import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
 import type { SellerCatalogue } from "@/lib/seller/types";
 import { primeClauseSpecs } from "./primeClauseSpecs";
@@ -75,9 +75,9 @@ const catalogues = [
     },
 ] as unknown as SellerCatalogue[];
 
-const orderById = (id: string): AssemblyTemplateAgreement =>
+const orderById = (id: string): TemplateAgreement =>
     assembly.assemblyTemplate.agreements.find((o) => o.id === id)!;
-const payArgs = (node: AssemblyTemplateAgreement, seller: `0x${string}`) => ({
+const payArgs = (node: TemplateAgreement, seller: `0x${string}`) => ({
     node, seller, sellerCatalogues: catalogues, tokenDecimals: 18,
 });
 
@@ -143,8 +143,8 @@ const LA = "9q5ct";
 const rateCatalogue = (item: Record<string, unknown>): SellerCatalogue[] =>
     [{ address: SWIFT, name: "Swift Courier", items: [item] }] as unknown as SellerCatalogue[];
 
-const nodeWithClauses = (clauses: Record<string, Record<string, unknown>>): AssemblyTemplateAgreement =>
-    ({ id: "R", clauses: { ...clauses, ...parents(["A"]) } }) as unknown as AssemblyTemplateAgreement;
+const nodeWithClauses = (clauses: Record<string, Record<string, unknown>>): TemplateAgreement =>
+    ({ id: "R", clauses: { ...clauses, ...parents(["A"]) } }) as unknown as TemplateAgreement;
 
 describe("resolveSubOrderPricing — rate items", () => {
     beforeAll(async () => {

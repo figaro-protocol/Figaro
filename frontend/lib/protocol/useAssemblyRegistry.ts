@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { toError } from "@/lib/shared/errors";
 import { BaseError, ContractFunctionRevertedError } from "viem";
+import { parseAssemblyRegistryLogs } from "@figaro/core";
 import { publicClient } from "@/lib/shared/wagmi";
 import { ASSEMBLY_REGISTRY_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
@@ -147,17 +148,19 @@ export function usePublishedAssemblies(author: `0x${string}` | undefined) {
         ])
             .then(([logs, withdrawnLogs]) => {
                 if (cancelled) return;
+                // Decoding is the SDK's — one parse per family.
                 const withdrawn = new Set(
-                    withdrawnLogs.map((l) => (l.args.compositionHash as string).toLowerCase()),
+                    parseAssemblyRegistryLogs(withdrawnLogs).withdrawn
+                        .map((w) => w.compositionHash.toLowerCase()),
                 );
-                const items: PublishedAssembly[] = logs.map((log) => ({
-                    slug: deriveAssemblySlug(log.args.compositionHash as `0x${string}`),
-                    author: log.args.author as `0x${string}`,
-                    compositionHash: log.args.compositionHash as `0x${string}`,
-                    contentURI: log.args.contentURI ?? "",
-                    blockNumber: log.blockNumber ?? 0n,
-                    transactionHash: log.transactionHash as `0x${string}`,
-                    stakeWithdrawn: withdrawn.has((log.args.compositionHash as string).toLowerCase()),
+                const items: PublishedAssembly[] = parseAssemblyRegistryLogs(logs).registered.map((row) => ({
+                    slug: deriveAssemblySlug(row.compositionHash),
+                    author: row.author,
+                    compositionHash: row.compositionHash,
+                    contentURI: row.contentURI,
+                    blockNumber: BigInt(row.blockNumber),
+                    transactionHash: (row.transactionHash ?? "0x") as `0x${string}`,
+                    stakeWithdrawn: withdrawn.has(row.compositionHash.toLowerCase()),
                 }));
                 items.sort((a, b) => Number(b.blockNumber - a.blockNumber));
                 // Withdraw = de-surface: the network-wide read powers every

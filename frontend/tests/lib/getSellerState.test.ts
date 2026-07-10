@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { encodeAbiParameters, encodeEventTopics } from 'viem';
+import { SELLER_REGISTRY_ABI } from '@figaro/core';
 import { getSellerState } from '@/lib/protocol/sellerRegistryIndexer';
 
 // ── Mock the event cache and contract addresses ───────────────────────────────
@@ -34,34 +36,47 @@ const SELLER = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8';
 const CLIENT = {} as never;
 const CHAIN_ID = 31337;
 
-type MockLog = { blockNumber: bigint | number | null; args: Record<string, unknown> };
+// Fixtures are REAL encoded logs (data + topics via `encodeEventLog`): the
+// reader decodes through the SDK's raw-log parser, so args-only stubs would
+// silently parse to nothing.
+type MockLog = { blockNumber: bigint | number | null; logIndex: number; data: `0x${string}`; topics: [`0x${string}`, ...`0x${string}`[]] };
+
+function encodedLog(
+    eventName: 'SellerRegistered' | 'SellerProfileUpdated' | 'SellerWithdrawn',
+    args: { seller: string; metadataURI?: string; deposit?: bigint },
+    blockNumber: bigint | number | null,
+): MockLog {
+    const topics = encodeEventTopics({
+        abi: SELLER_REGISTRY_ABI,
+        eventName,
+        args: { seller: args.seller as `0x${string}` },
+    } as Parameters<typeof encodeEventTopics>[0]) as MockLog['topics'];
+    const data = eventName === 'SellerWithdrawn'
+        ? encodeAbiParameters([{ type: 'uint256' }], [args.deposit ?? 0n])
+        : encodeAbiParameters([{ type: 'string' }], [args.metadataURI ?? '']);
+    return { blockNumber, logIndex: 0, data, topics };
+}
 
 function regLog(overrides?: Partial<{
-    seller: string; metadataURI: string; blockNumber: bigint;
+    seller: string; metadataURI: string; blockNumber: bigint | null;
 }>): MockLog {
-    return {
-        blockNumber: overrides?.blockNumber ?? 100n,
-        args: {
-            seller: overrides?.seller ?? SELLER,
-            metadataURI: overrides?.metadataURI ?? 'ipfs://QmProfile',
-        },
-    };
+    return encodedLog('SellerRegistered', {
+        seller: overrides?.seller ?? SELLER,
+        metadataURI: overrides?.metadataURI ?? 'ipfs://QmProfile',
+    }, overrides?.blockNumber === undefined ? 100n : overrides.blockNumber);
 }
 
 function profileUpdatedLog(overrides?: Partial<{
     seller: string; metadataURI: string; blockNumber: bigint;
 }>): MockLog {
-    return {
-        blockNumber: overrides?.blockNumber ?? 200n,
-        args: {
-            seller: overrides?.seller ?? SELLER,
-            metadataURI: overrides?.metadataURI ?? 'ipfs://QmProfileV2',
-        },
-    };
+    return encodedLog('SellerProfileUpdated', {
+        seller: overrides?.seller ?? SELLER,
+        metadataURI: overrides?.metadataURI ?? 'ipfs://QmProfileV2',
+    }, overrides?.blockNumber ?? 200n);
 }
 
 function withdrawLog(seller = SELLER, blockNumber: bigint = 500n): MockLog {
-    return { blockNumber, args: { seller } };
+    return encodedLog('SellerWithdrawn', { seller, deposit: 0n }, blockNumber);
 }
 
 // Sets up cachedGetLogs to return specific logs per event name.
@@ -189,10 +204,7 @@ describe('getSellerState', () => {
     });
 
     it('handles a number blockNumber in the registration log', async () => {
-        const log: MockLog = {
-            blockNumber: 100,
-            args: { seller: SELLER, metadataURI: 'ipfs://QmNum' },
-        };
+        const log = encodedLog('SellerRegistered', { seller: SELLER, metadataURI: 'ipfs://QmNum' }, 100);
         mockEvents({ registered: [log] });
 
         const result = await getSellerState(CLIENT, CHAIN_ID, SELLER);
@@ -201,10 +213,7 @@ describe('getSellerState', () => {
     });
 
     it('returns null registeredBlock when blockNumber is null', async () => {
-        const log: MockLog = {
-            blockNumber: null,
-            args: { seller: SELLER, metadataURI: 'ipfs://QmNull' },
-        };
+        const log = encodedLog('SellerRegistered', { seller: SELLER, metadataURI: 'ipfs://QmNull' }, null);
         mockEvents({ registered: [log] });
 
         const result = await getSellerState(CLIENT, CHAIN_ID, SELLER);
