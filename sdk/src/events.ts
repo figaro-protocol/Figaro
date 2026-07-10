@@ -117,6 +117,7 @@ export function parseAttestationLogs(logs: Log[]): AttestationEvent[] {
                 stage: Number(a.stage),
                 contentRef: a.contentRef as Hex,
                 blockNumber: Number(log.blockNumber ?? 0),
+                transactionHash: (log.transactionHash ?? null) as Hex | null,
             });
         } catch {
             // Skip non-matching logs

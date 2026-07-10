@@ -92,6 +92,9 @@ export interface AttestationEvent {
     stage: number;
     contentRef: Hex;
     blockNumber: number;
+    /** Set when the source log carries it; calldata recovery
+     *  (`getAttestationContent`) starts from this. */
+    transactionHash: Hex | null;
 }
 
 // ── Discovery: registry events (the three artifact families) ─────────────────
@@ -112,6 +115,8 @@ export interface ClauseRegisteredEvent {
     registrar: Address;
     blockNumber: number;
     logIndex: number;
+    /** Set when the source log carries it. */
+    transactionHash: Hex | null;
 }
 
 /** ClauseRegistry `DepositWithdrawn`. `idHash` is the clause key, NOT the bare
@@ -133,6 +138,8 @@ export interface SellerRegisteredEvent {
     updated: boolean;
     blockNumber: number;
     logIndex: number;
+    /** Set when the source log carries it. */
+    transactionHash: Hex | null;
 }
 
 /** SellerRegistry `SellerWithdrawn`. Withdraw clears the dedup guard and
@@ -151,6 +158,8 @@ export interface AssemblyRegisteredEvent {
     contentURI: string;
     blockNumber: number;
     logIndex: number;
+    /** Set when the source log carries it. */
+    transactionHash: Hex | null;
 }
 
 /** AssemblyRegistry `DepositWithdrawn` — keyed by `compositionHash` directly. */

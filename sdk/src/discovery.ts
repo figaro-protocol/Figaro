@@ -84,6 +84,7 @@ export function parseClauseRegistryLogs(logs: Log[]): ClauseRegistryEvents {
                     registrar: a.registrar as Address,
                     blockNumber: Number(log.blockNumber ?? 0),
                     logIndex: Number(log.logIndex ?? 0),
+                    transactionHash: (log.transactionHash ?? null) as Hex | null,
                 });
             } else if (decoded.eventName === "DepositWithdrawn") {
                 withdrawn.push({
@@ -120,6 +121,7 @@ export function parseSellerRegistryLogs(logs: Log[]): SellerRegistryEvents {
                     updated: decoded.eventName === "SellerProfileUpdated",
                     blockNumber: Number(log.blockNumber ?? 0),
                     logIndex: Number(log.logIndex ?? 0),
+                    transactionHash: (log.transactionHash ?? null) as Hex | null,
                 });
             } else if (decoded.eventName === "SellerWithdrawn") {
                 withdrawn.push({
@@ -154,6 +156,7 @@ export function parseAssemblyRegistryLogs(logs: Log[]): AssemblyRegistryEvents {
                     contentURI: a.contentURI as string,
                     blockNumber: Number(log.blockNumber ?? 0),
                     logIndex: Number(log.logIndex ?? 0),
+                    transactionHash: (log.transactionHash ?? null) as Hex | null,
                 });
             } else if (decoded.eventName === "DepositWithdrawn") {
                 withdrawn.push({

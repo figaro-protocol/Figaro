@@ -149,8 +149,9 @@ export function orderToCommitment(order: Order): Commitment {
  * (`resolveProcess`, the attestation coordinator) needs the signed struct, so
  * the root must carry `processId = 0`. If treating the commitment as a root
  * reproduces its own processId, it WAS a root → return it with `processId = 0`;
- * otherwise it is a sub-order and is returned unchanged. Mirrors the frontend's
- * `restoreSignedProcessId` — the SDK-native home so agents don't reimplement it.
+ * otherwise it is a sub-order and is returned unchanged. THE one home for this
+ * logic — the frontend's `signedCommitment.ts` wraps it with the configured
+ * deployment (core address); nothing reimplements it.
  */
 export function restoreSignedProcessId(c: Commitment, chainId: number, coreAddress: Address): Commitment {
     const asRoot: Commitment = { ...c, processId: ZERO_PROCESS_ID };

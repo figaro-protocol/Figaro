@@ -26,18 +26,13 @@ import { ERC20_ABI } from "../abis.js";
 import { commit, type TxResult } from "./autonomous.js";
 import type { Hex, Address, Commitment, FigaroAddresses } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, OfferHandler } from "./coordination.js";
+import type { AssemblyTemplate, TemplateAgreement } from "../assembly.js";
 
 // ── Assembly template (the pinned document, hydrated off-SDK) ─────────────────
+// The shape's single home is ../assembly.js; re-exported here so the /agent
+// subpath keeps offering it alongside instantiate/originate.
 
-export interface TemplateAgreement {
-    id: string;
-    /** clauseId → design-time field bag (verbatim from the pinned template). */
-    clauses: Record<string, Record<string, unknown>>;
-}
-
-export interface AssemblyTemplate {
-    agreements: TemplateAgreement[];
-}
+export type { AssemblyTemplate, TemplateAgreement };
 
 /** A template agreement is a ROOT if no clause declares a non-empty
  *  `parentOrderHashes` — the structural topology field, matched by name not by

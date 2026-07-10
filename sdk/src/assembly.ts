@@ -10,12 +10,46 @@
 import type { Hex } from "./types.js";
 import { canonicalContentHash } from "./agreement.js";
 
+// ── The template document (the pinned assembly, hydrated off-chain) ──────────
+
+export interface TemplateAgreement {
+    /** Local label for the kernel-order slot this agreement binds to at
+     *  checkout — `order-<index>`, stable within the template; the reference
+     *  target the topology clause points at. NOT a chain id, and NOT a
+     *  party — the template is party-agnostic. */
+    id: string;
+    /** clauseId → the design-time field values the designer composed (an empty
+     *  object = selected, no fields set — filled downstream: seller at
+     *  first-use, buyer at checkout). The topology is a clause here too: the
+     *  structural topology clause carries `{ parentOrderHashes }` (root = []). */
+    clauses: Record<string, Record<string, unknown>>;
+    /** clauseId → the registered VERSION composed, when it isn't 1. A clause's
+     *  identity is (name, version) — two live versions are two clauses; this
+     *  records WHICH one this agreement composed. SPARSE by normalization:
+     *  version-1 entries are never serialized, so a template with only v1
+     *  clauses carries no map and hashes identically to the pre-version form. */
+    clauseVersions?: Record<string, number>;
+}
+
+export interface AssemblyTemplate {
+    /** EDITORIAL — the designer's own words, for legibility (the content-derived
+     *  slug is opaque at scale). Free-form prose, NOT a taxonomy. Pinned in the
+     *  document but EXCLUDED from the composition hash — identity stays
+     *  composition-derived, so renaming never forks the slug. All optional. */
+    name?: string;
+    summary?: string;
+    description?: string;
+    /** The composition: the agreements the designer composed, one per future
+     *  kernel order. */
+    agreements: TemplateAgreement[];
+}
+
 /** The assembly's identity — keccak256 of the canonical COMPOSITION subset of
  *  the template (the composed agreements: their clauses, values, and topology;
  *  editorial prose excluded, so renaming never forks identity). This is the
  *  hash `AssemblyRegistry` keys bindings on. Publishers anchor it; readers
  *  recompute it from a fetched document to verify integrity. */
-export function templateCompositionHash(template: { agreements: readonly unknown[] }): Hex {
+export function templateCompositionHash(template: Pick<AssemblyTemplate, "agreements">): Hex {
     return canonicalContentHash({ agreements: template.agreements });
 }
 
