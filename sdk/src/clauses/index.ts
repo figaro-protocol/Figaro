@@ -40,6 +40,8 @@ export { validateContent } from "./validate.js";
 // No per-clause types are exported — the encoder is clause-agnostic and takes
 // a parsed `ClauseSpec` + a plain `Record<string, unknown>`.
 
+export type { EncodeOptions } from "./encode.js";
+
 export {
     EMPTY_CONTENT,
     encodeContentFromSpec,

@@ -117,15 +117,29 @@ function abiValueOf(field: FieldSpec, raw: unknown): unknown {
     }
 }
 
+export interface EncodeOptions {
+    /** If set and the spec has a matching `stages[stage]`, encode against
+     *  those fields — the same selection `validateContent` applies. */
+    stage?: number;
+}
+
 /**
  * Encode JSON content to canonical ABI bytes from the parsed `ClauseSpec`
- * alone — no clause-specific code path.
+ * alone — no clause-specific code path. If `options.stage` is set and the
+ * spec defines a matching stage override, that stage's fields drive the
+ * encoding (a runtime witness whose content differs from the committed
+ * content); otherwise the spec's default `fields` apply.
  */
 export function encodeContentFromSpec(
     spec: ClauseSpec,
     content: Record<string, unknown>,
+    options: EncodeOptions = {},
 ): Hex {
-    const params = spec.fields.map(abiParamOf);
-    const values = spec.fields.map((field) => abiValueOf(field, content[field.name]));
+    const fields: readonly FieldSpec[] =
+        options.stage !== undefined && spec.stages?.[options.stage] !== undefined
+            ? spec.stages[options.stage]
+            : spec.fields;
+    const params = fields.map(abiParamOf);
+    const values = fields.map((field) => abiValueOf(field, content[field.name]));
     return encodeAbiParameters(params, values as never);
 }
