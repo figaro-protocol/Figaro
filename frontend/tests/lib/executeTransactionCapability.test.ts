@@ -52,7 +52,29 @@ describe("executeTransactionCapabilityAction", () => {
         await executeTransactionCapabilityAction(action, { submitClauseAttestation });
 
         // The descriptor is the single source — the executor encodes content from
-        // the clause spec and routes to seller/buyer by `party`.
-        expect(submitClauseAttestation).toHaveBeenCalledWith(action);
+        // the clause spec and routes to seller/buyer by `party`. A ladder click
+        // carries no form input (witness values ride the second argument).
+        expect(submitClauseAttestation).toHaveBeenCalledWith(action, undefined);
+    });
+
+    it("passes witness form values through to the attestation executor", async () => {
+        const submitClauseAttestation = vi.fn(async () => undefined);
+        const action = {
+            executionType: "transaction" as const,
+            kind: "submit-clause-attestation" as const,
+            orderHash: "courier-order",
+            clauseId: "figaro-proximity-policy",
+            stage: 1,
+            party: "seller" as const,
+        };
+        const values = { band: "zone-wifi" };
+
+        await executeTransactionCapabilityAction(
+            action,
+            { submitClauseAttestation },
+            { kind: "submit-clause-attestation", values },
+        );
+
+        expect(submitClauseAttestation).toHaveBeenCalledWith(action, values);
     });
 });

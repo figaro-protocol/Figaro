@@ -4,7 +4,7 @@ import { sectionByField } from "@/lib/kernel/agreementSections";
 import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 import type { ProcessSummary } from "@/lib/kernel/walletProcessQueries";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
-import { clauseIsProcessLog, clauseLadderField, labelEnumValue } from "@/lib/shared/clauseSpecSource";
+import { clauseIsProcessLog, clauseLadderField, clauseWitnessStages, getClauseSpec, labelEnumValue } from "@/lib/shared/clauseSpecSource";
 import { ZERO_BYTES32, hexEqual, clauseIdHash as clauseIdHashOf } from "@/lib/shared/evm";
 import {
     AttachmentModel,
@@ -153,6 +153,50 @@ function roleCapabilities(
                     uiPriority: party === "buyer" ? 76 : 75,
                     source: runtimeSource(`${party} attests ${clauseId} ${eventCode}`, capId),
                 });
+            }
+        }
+
+        // GENERIC witness stages: any composed clause DECLARING spec.stages[N]
+        // surfaces a runtime witness capability at N — a temperature record,
+        // measured grams, a detected band. Declaration is the signal (a
+        // never-seen clause participates by declaring); the form is generated
+        // from the declared stage's fields. Offered to BOTH parties — who must
+        // witness is never engine policy (a dead-drop seller attests with a
+        // device identifier in lieu of the buyer; sufficiency is derived at
+        // read time against the committed policy) — and REPEATABLE while the
+        // order is active (one attestation per reporting period; the evidence
+        // window closes at resolve, on-chain and here).
+        for (const section of agreement.sections) {
+            const clauseId = section.clause;
+            if (clauseIsProcessLog(clauseId)) continue;                // a ladder's stage overrides shape its content, not a witness
+            for (const witness of clauseWitnessStages(clauseId, section.version)) {
+                const title = getClauseSpec(clauseId, section.version)?.title ?? clauseId;
+                for (const party of ["seller", "buyer"] as const) {
+                    if (party === "seller" ? !isSeller : !isBuyer) continue;
+                    const capId = `${order.processId}:${orderIdStr}:${clauseId}-${party}-stage-${witness.stage}`;
+                    out.push({
+                        id: capId,
+                        label: title,
+                        eventCode: `stage-${witness.stage}`,
+                        actionKind: "submit-clause-attestation",
+                        action: {
+                            executionType: "transaction",
+                            kind: "submit-clause-attestation",
+                            orderHash: orderIdStr,
+                            clauseId,
+                            stage: witness.stage,
+                            party,
+                        },
+                        inputFields: witness.fields,
+                        mechanismId: "attestation-coordinator",
+                        scopeType: "order",
+                        scopeId: orderIdStr,
+                        preconditions: [party === "seller" ? "seller-of-active-order" : "buyer-of-active-order"],
+                        riskLabel: "standard",
+                        uiPriority: party === "buyer" ? 66 : 65,
+                        source: runtimeSource(`${party} witnesses ${clauseId} stage ${witness.stage}`, capId),
+                    });
+                }
             }
         }
     }

@@ -11,9 +11,9 @@ import { CONTRACTS, CORE_ABI } from "@/lib/kernel/contracts";
 import { OrderState, useOrderStore } from "@/lib/kernel/store";
 import { useFigaroActions } from "@/lib/kernel/useFigaroActions";
 import { isE2EMockSession } from "@/lib/shared/e2e";
-import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { clauseHandoffStages, clauseWitnessStages, deriveStageValuesFromCommitted, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { encodeContentFromSpec } from "@figaro/core/clauses";
+import { encodeContentFromSpec, validateContent } from "@figaro/core/clauses";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
 import { useRegisterSeller, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/seller/useSellerRegistry";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
@@ -248,22 +248,74 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                     return withdrawSellerDeposit.withdraw();
                 },
                 // ONE generic attestation path — the clause spec drives the on-chain
-                // content (enum ladder) and who attests (party). Names no clause; a
-                // permissionless clause attests through here unchanged.
-                submitClauseAttestation: async (action) => {
+                // content (enum ladder or a declared witness stage) and who attests
+                // (party). Names no clause; a permissionless clause attests through
+                // here unchanged.
+                submitClauseAttestation: async (action, values) => {
                     const spec = getClauseSpec(action.clauseId);
                     if (!spec) throw new Error(`Clause spec not loaded: ${action.clauseId}`);
-                    const fields: Record<string, unknown> = { [action.ladderField]: action.eventCode };
+                    const isLadder = action.ladderField !== undefined && action.eventCode !== undefined;
+                    let content: Hex;
+                    if (isLadder) {
+                        content = encodeContentFromSpec(spec, { [action.ladderField!]: action.eventCode });
+                    } else {
+                        // WITNESS: values from the rail's generic form, gated by the
+                        // same Layer-A validator that gates every sign point.
+                        const witnessValues = values ?? {};
+                        const validation = validateContent(witnessValues, spec, { stage: action.stage });
+                        if (!validation.ok) {
+                            throw new Error(validation.errors.map((e) => `${e.path}: ${e.message}`).join("; "));
+                        }
+                        content = encodeContentFromSpec(spec, witnessValues, { stage: action.stage });
+                    }
                     const args = {
                         orderHash: action.orderHash as Hex,
                         clauseId: clauseIdHash(action.clauseId, spec.version),
                         stage: action.stage,
-                        content: encodeContentFromSpec(spec, fields),
-                        failureMessage: `${action.clauseId} ${action.eventCode} attestation failed`,
+                        content,
+                        failureMessage: `${action.clauseId} ${action.eventCode ?? `stage-${action.stage}`} attestation failed`,
                     };
-                    return action.party === "buyer"
-                        ? attestationActions.submitBuyerAttestation(args)
-                        : attestationActions.submitSellerAttestation({ ...args, roleOrderHash: action.roleOrderHash as Hex | undefined });
+                    const submit = (a: typeof args) => action.party === "buyer"
+                        ? attestationActions.submitBuyerAttestation(a)
+                        : attestationActions.submitSellerAttestation({ ...a, roleOrderHash: action.roleOrderHash as Hex | undefined });
+                    const txHash = await submit(args);
+
+                    // HAND-OFF PAIRING (one action, two attestations): a ladder
+                    // stage the clause declares in block.handoffStages pairs the
+                    // witness stage of any co-composed clause nesting under
+                    // `handoff` on the SAME order — when the witness's required
+                    // values derive unambiguously from the committed content (a
+                    // single committed band). Ambiguous → the standalone witness
+                    // capability (with its form) carries the choice instead.
+                    let lastTx = txHash;
+                    if (isLadder && clauseHandoffStages(action.clauseId).includes(action.eventCode!)) {
+                        const order = processOrders.find((o) => o.id.toString() === action.orderHash);
+                        const agreement = order?.agreementHash ? processAgreements.get(order.agreementHash) : undefined;
+                        for (const section of agreement?.sections ?? []) {
+                            const witnessSpec = getClauseSpec(section.clause, section.version);
+                            // Field-name vocabulary, not a clause name: the witness
+                            // clause declares it REFINES the `handoff` field.
+                            if (witnessSpec?.block?.nestsUnder !== "handoff") continue;
+                            for (const witness of clauseWitnessStages(section.clause, section.version)) {
+                                const derived = deriveStageValuesFromCommitted(
+                                    section.clause,
+                                    witness.stage,
+                                    section.data as Record<string, unknown> | undefined,
+                                    section.version,
+                                );
+                                if (!derived) continue;
+                                await waitForTransactionConfirmation(lastTx as Hex | undefined);
+                                lastTx = await submit({
+                                    orderHash: action.orderHash as Hex,
+                                    clauseId: clauseIdHash(section.clause, witnessSpec.version),
+                                    stage: witness.stage,
+                                    content: encodeContentFromSpec(witnessSpec, derived, { stage: witness.stage }),
+                                    failureMessage: `${section.clause} stage-${witness.stage} paired witness failed`,
+                                });
+                            }
+                        }
+                    }
+                    return lastTx;
                 },
             }, input);
         } catch (error) {

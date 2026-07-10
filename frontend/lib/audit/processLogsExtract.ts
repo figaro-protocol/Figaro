@@ -19,7 +19,7 @@
 import type { Order } from "@/lib/kernel/store";
 import type { AttestationRecord } from "@/lib/composition/indexer";
 import type { ExtractedDocument } from "./types";
-import { clauseIsProcessLog, getClauseSpec, clauseIdForHash } from "@/lib/shared/clauseSpecSource";
+import { clauseIsProcessLog, clauseWitnessStages, getClauseSpec, clauseIdForHash } from "@/lib/shared/clauseSpecSource";
 
 interface ProcessLogEntry {
     clauseKey: string;
@@ -67,7 +67,12 @@ export function extractProcessLogs(
         // readable or the spec isn't cached). Without this, every attestation is
         // skipped and the process-log section renders empty.
         const clauseId = clauseIdForHash(att.clauseId) ?? att.clauseId;
-        if (!clauseIsProcessLog(clauseId)) continue;
+        // Two runtime-evidence shapes share this timeline: process-log LADDERS
+        // (attestations article) and declared WITNESS stages (spec.stages[N] —
+        // a temperature record, measured grams, a detected band). Both are
+        // spec-declared; neither is named here.
+        const isWitness = clauseWitnessStages(clauseId).some((w) => w.stage === att.stage);
+        if (!clauseIsProcessLog(clauseId) && !isWitness) continue;
         let group = groups.get(clauseId);
         if (!group) {
             group = {

@@ -18,10 +18,13 @@ export interface TransactionCapabilityExecutors {
     /** Withdraws the deposit and clears the dedup guard, freeing the address
      *  to re-register. Subject to the deploy-time lock period. */
     withdrawSellerDeposit?: () => TransactionExecutionResult;
-    /** Generic runtime attestation — advances any clause's enum ladder (and pairs
-     *  a proximity proof when the descriptor carries one). Replaces the per-clause
-     *  merchant/courier executors. */
-    submitClauseAttestation?: (action: SubmitClauseAttestationCapabilityAction) => TransactionExecutionResult;
+    /** Generic runtime attestation — advances any clause's enum ladder, or
+     *  files a declared witness stage (values arrive from the rail's generic
+     *  form). Replaces the per-clause merchant/courier executors. */
+    submitClauseAttestation?: (
+        action: SubmitClauseAttestationCapabilityAction,
+        values?: Record<string, unknown>,
+    ) => TransactionExecutionResult;
     claimAirdrop?: (amount: bigint, proof: `0x${string}`[]) => TransactionExecutionResult;
     claimVesting?: (variant: VestingVariant) => TransactionExecutionResult;
 }
@@ -87,7 +90,7 @@ export async function executeTransactionCapabilityAction(
             txHash = await ensureExecutor(
                 executors.submitClauseAttestation,
                 "Clause attestation execution is unavailable.",
-            )(action);
+            )(action, input?.kind === "submit-clause-attestation" ? input.values : undefined);
             break;
         case "claim-airdrop":
             txHash = await ensureExecutor(

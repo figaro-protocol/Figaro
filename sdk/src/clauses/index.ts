@@ -45,6 +45,7 @@ export type { EncodeOptions } from "./encode.js";
 export {
     EMPTY_CONTENT,
     encodeContentFromSpec,
+    decodeContentFromSpec,
 } from "./encode.js";
 
 // Clause specs are NOT bundled — they live in ClauseRegistry (→ IPFS) and are

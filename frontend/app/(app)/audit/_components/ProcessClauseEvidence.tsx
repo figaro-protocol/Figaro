@@ -5,6 +5,7 @@ import { usePublicClient } from "wagmi";
 import { useProcessOrders } from "@/hooks/core/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/core/useProcessAgreements";
 import {
+    getAttestationContent,
     getAttestationsByOrder,
     parseAttestationLog,
     type AttestationRecord,
@@ -12,8 +13,10 @@ import {
 } from "@/lib/composition/indexer";
 import { extractClauseData } from "@/lib/audit/clauseDataExtract";
 import { extractProcessLogs } from "@/lib/audit/processLogsExtract";
-import { describeAttestation } from "@/lib/shared/clauseSpecSource";
+import { clauseIdForHash, clauseWitnessStages, describeAttestation, describeWitness, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { decodeContentFromSpec } from "@figaro/core/clauses";
+import type { Hex } from "viem";
 
 /**
  * Clause evidence — the on-page rendering of the same `clauseData` +
@@ -69,6 +72,46 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
         return () => { cancelled = true; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [ordersKey, chainId, publicClient]);
+
+    // Witness content, recovered from transaction calldata: an attestation at
+    // a DECLARED witness stage (spec.stages[N]) carries structured values (a
+    // temperature record, measured grams, a detected band) — decode them
+    // through the same spec that declared them and render via the generic
+    // field reader. Keyed by transactionHash; failures stay undecoded (the
+    // receipt row still renders).
+    const [witnessValues, setWitnessValues] = useState<Map<string, Record<string, unknown>>>(new Map());
+    useEffect(() => {
+        if (!publicClient) return;
+        let cancelled = false;
+        (async () => {
+            const next = new Map<string, Record<string, unknown>>();
+            const jobs: Promise<void>[] = [];
+            for (const records of attestationsByOrder.values()) {
+                for (const att of records) {
+                    if (!att.transactionHash) continue;
+                    // The event carries the clauseId HASH; spec reads key on the
+                    // readable id — resolve through the cache first.
+                    const clauseId = clauseIdForHash(att.clauseId) ?? att.clauseId;
+                    if (!clauseWitnessStages(clauseId).some((w) => w.stage === att.stage)) continue;
+                    const witnessSpec = getClauseSpec(clauseId);
+                    if (!witnessSpec) continue;
+                    jobs.push((async () => {
+                        const content = await getAttestationContent(publicClient, att.transactionHash as Hex);
+                        if (!content) return;
+                        try {
+                            next.set(att.transactionHash!, decodeContentFromSpec(witnessSpec, content, { stage: att.stage }));
+                        } catch {
+                            // Garbage content — leave undecoded; the receipt row still renders.
+                        }
+                    })());
+                }
+            }
+            await Promise.all(jobs);
+            if (!cancelled) setWitnessValues(next);
+        })();
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [attestationsByOrder, publicClient, clauseSpecsVersion]);
 
     // Per-order evidence: committed clause data (from the agreement) + the
     // sovereign process-log timelines (from the attestations). Both via the
@@ -131,17 +174,36 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
                                 <div key={`log-${group.clauseId}`} className="space-y-2">
                                     <h3 className="text-sm font-semibold text-ink-heading">{group.title}</h3>
                                     <ul className="space-y-1 text-sm">
-                                        {group.events.map((event, i) => (
-                                            <li key={`${group.clauseId}-${i}`} className="flex flex-wrap gap-x-3 text-ink-body">
-                                                <span className="text-ink-heading">
-                                                    {describeAttestation(group.clauseId, event.stage).eventLabel}
-                                                </span>
-                                                <span className="text-ink-muted font-mono text-xs break-all">
-                                                    {event.attester}
-                                                </span>
-                                                <span className="text-ink-muted text-xs">block {event.blockNumber}</span>
-                                            </li>
-                                        ))}
+                                        {group.events.map((event, i) => {
+                                            const decoded = event.transactionHash ? witnessValues.get(event.transactionHash) : undefined;
+                                            const witness = decoded ? describeWitness(group.clauseId, event.stage, decoded) : null;
+                                            return (
+                                                <li key={`${group.clauseId}-${i}`} className="text-ink-body">
+                                                    <div className="flex flex-wrap gap-x-3">
+                                                        <span className="text-ink-heading">
+                                                            {describeAttestation(group.clauseId, event.stage).eventLabel}
+                                                        </span>
+                                                        <span className="text-ink-muted font-mono text-xs break-all">
+                                                            {event.attester}
+                                                        </span>
+                                                        <span className="text-ink-muted text-xs">block {event.blockNumber}</span>
+                                                    </div>
+                                                    {witness && witness.fields.length > 0 && (
+                                                        <dl
+                                                            className="mt-1 ml-4 grid grid-cols-[max-content_1fr] gap-x-6 gap-y-0.5 text-xs"
+                                                            data-testid={`audit-witness-${group.clauseId}-${event.stage}`}
+                                                        >
+                                                            {witness.fields.map((field) => (
+                                                                <div key={field.name} className="contents">
+                                                                    <dt className="text-ink-muted">{field.label}</dt>
+                                                                    <dd className="text-ink-body">{field.values.join(", ")}</dd>
+                                                                </div>
+                                                            ))}
+                                                        </dl>
+                                                    )}
+                                                </li>
+                                            );
+                                        })}
                                     </ul>
                                 </div>
                             ))}

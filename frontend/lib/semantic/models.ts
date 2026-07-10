@@ -1,6 +1,8 @@
 /** Semantic-model union types — the runtime semantic layer's canonical
  *  taxonomy for truth class, mechanism risk, scope, and roles. */
 
+import type { FieldSpec } from "@figaro/core/clauses";
+
 type TruthClass =
     | "protocol-enforced"
     | "protocol-derived"
@@ -64,25 +66,32 @@ interface WithdrawSellerDepositCapabilityAction {
     kind: "withdraw-seller-deposit";
 }
 
-/** Generic runtime attestation — the SELLER of an order advances ANY
- *  runtime clause's enum ladder. One descriptor for every runtime-attestable
- *  clause; the engine names no clause. The executor builds the on-chain content
- *  from the clause spec as `{ [ladderField]: eventCode }`. Replaces the former
- *  per-clause merchant-process / courier-process descriptors. */
+/** Generic runtime attestation — one descriptor for every runtime-attestable
+ *  clause; the engine names no clause. Two modes, told apart by the presence
+ *  of `ladderField` + `eventCode`:
+ *  - LADDER (process-log clause): the party advances the clause's enum ladder;
+ *    the executor builds content = `{ [ladderField]: eventCode }`.
+ *  - WITNESS (a clause declaring `spec.stages[stage]`): the party files a
+ *    runtime witness (temperature record, measured grams, detected band);
+ *    values arrive as `CapabilityExecutionInput` from the rail's generic form
+ *    and encode against the declared stage's fields. Repeatable while the
+ *    order is active. */
 export interface SubmitClauseAttestationCapabilityAction {
     executionType: "transaction";
     kind: "submit-clause-attestation";
     orderHash: string;
     /** Human clauseId (the readable registry id, not its keccak hash). */
     clauseId: string;
-    /** Enum ordinal of the stage being attested (the on-chain stage). */
+    /** The on-chain uint8 stage — the enum ordinal for a ladder, the declared
+     *  `spec.stages` key for a witness. */
     stage: number;
-    /** The enum stage CODE — content = `{ [ladderField]: eventCode }`. */
-    eventCode: string;
-    /** The spec field holding the enum ladder. */
-    ladderField: string;
-    /** WHICH party attests. "seller" for lifecycle clauses; "buyer" surfaces
-     *  only for a bilateral clause. */
+    /** LADDER mode only: the enum stage CODE — content = `{ [ladderField]: eventCode }`. */
+    eventCode?: string;
+    /** LADDER mode only: the spec field holding the enum ladder. */
+    ladderField?: string;
+    /** WHICH party attests. Ladders surface seller-side; witness stages
+     *  surface to BOTH parties — who must witness is never engine policy
+     *  (sufficiency is derived at read time against the committed policy). */
     party: "seller" | "buyer";
     roleOrderHash?: string;
 }
@@ -133,10 +142,18 @@ interface WithdrawSellerDepositCapabilityInput {
     kind: "withdraw-seller-deposit";
 }
 
+/** Values a party filled into a witness capability's generic form — keyed by
+ *  the declared stage's field names, validated Layer-A before encoding. */
+interface SubmitClauseAttestationCapabilityInput {
+    kind: "submit-clause-attestation";
+    values: Record<string, unknown>;
+}
+
 export type CapabilityExecutionInput =
     | RegisterSellerCapabilityInput
     | UpdateSellerProfileCapabilityInput
-    | WithdrawSellerDepositCapabilityInput;
+    | WithdrawSellerDepositCapabilityInput
+    | SubmitClauseAttestationCapabilityInput;
 
 export interface CapabilityModel {
     id: string;
@@ -148,6 +165,11 @@ export interface CapabilityModel {
     eventCode?: string;
     actionKind: string;
     action: CapabilityActionDescriptor;
+    /** Fields the party fills BEFORE executing (a witness stage's declared
+     *  field set) — the rail renders them through the one generic FieldControl
+     *  and passes the values as `CapabilityExecutionInput`. Absent for
+     *  one-click capabilities (ladder stages, resolve). */
+    inputFields?: readonly FieldSpec[];
     mechanismId: string;
     scopeType: ScopeType;
     scopeId: string;

@@ -295,6 +295,61 @@ export function clauseLadderField(clauseId: string, version?: number): { name: s
     return null;
 }
 
+/** The WITNESS stages a clause declares — its `spec.stages` entries, each a
+ *  runtime attestation whose content differs from the committed content (a
+ *  temperature record, measured grams, a detected band). Declaration IS the
+ *  signal: any registered clause declaring `stages[N]` surfaces a runtime
+ *  witness capability at N with a form generated from that stage's fields —
+ *  including a clause this codebase has never seen. Empty for clauses that
+ *  declare none (and while the spec is uncached). */
+export function clauseWitnessStages(
+    clauseId: string,
+    version?: number,
+): Array<{ stage: number; fields: readonly FieldSpec[] }> {
+    const stages = getClauseSpec(clauseId, version)?.stages;
+    if (!stages) return [];
+    return Object.entries(stages).map(([key, fields]) => ({ stage: Number(key), fields }));
+}
+
+/** The ladder stages at which a PHYSICAL hand-off occurs, read from the
+ *  clause's own `block.handoffStages` declaration. Executing one of these
+ *  ladder stages pairs the witness stage of a co-composed clause nesting under
+ *  `handoff` on the same order. Empty for clauses declaring none. */
+export function clauseHandoffStages(clauseId: string, version?: number): readonly string[] {
+    return getClauseSpec(clauseId, version)?.block?.handoffStages ?? [];
+}
+
+/** Derive a witness stage's values from the clause's COMMITTED content, for
+ *  the one-action-two-attestations hand-off pairing: a required enum witness
+ *  field resolves iff the committed data carries an array of the SAME enum
+ *  vocabulary narrowed to exactly one element (e.g. a single committed
+ *  proximity band); optional fields stay absent. Returns null when any
+ *  required field is unresolvable — the pairing skips and the standalone
+ *  witness capability (with its form) carries the choice instead. */
+export function deriveStageValuesFromCommitted(
+    clauseId: string,
+    stage: number,
+    committedData: Record<string, unknown> | undefined,
+    version?: number,
+): Record<string, unknown> | null {
+    const spec = getClauseSpec(clauseId, version);
+    const stageFields = spec?.stages?.[stage];
+    if (!spec || !stageFields) return null;
+    const out: Record<string, unknown> = {};
+    for (const field of stageFields) {
+        if (!field.required) continue;
+        if (field.type !== "enum") return null;
+        const committedMatch = spec.fields.find((f) =>
+            f.type === "array" && f.items.type === "enum"
+            && f.items.values.length === field.values.length
+            && f.items.values.every((v) => field.values.includes(v)));
+        const committed = committedMatch ? committedData?.[committedMatch.name] : undefined;
+        if (!Array.isArray(committed) || committed.length !== 1) return null;
+        out[field.name] = committed[0];
+    }
+    return out;
+}
+
 // ── Spec-derived reads ───────────────────────────────────────────────────────
 
 /** The first enum field on a spec — the eventType ladder (merchant / courier)
@@ -337,6 +392,13 @@ export function describeAttestation(
     // process-log groups now carry the readable id.
     const spec = clauseSpecForHash(clauseIdHash) ?? getClauseSpec(clauseIdHash);
     if (!spec) return { clauseTitle: `${clauseIdHash.slice(0, 10)}…`, eventLabel: `stage ${stage}`, eventCode: `stage-${stage}` };
+    // A DECLARED witness stage (spec.stages[stage]) is not a ladder ordinal —
+    // labelling it through the committed enum would misread (e.g. a cold-chain
+    // record at stage 1 is not "refrigerated"). The witness's display name is
+    // the clause's own title; its stable code is the stage number.
+    if (spec.stages?.[stage] !== undefined) {
+        return { clauseTitle: spec.title, eventLabel: spec.title, eventCode: `stage-${stage}` };
+    }
     const ladder = firstEnumField(spec);
     const value = ladder?.values[stage];
     // eventLabel is the HUMANIZED display text (valueLabels); eventCode is the
@@ -396,6 +458,37 @@ export function describeClause(clauseId: string, data: Record<string, unknown> |
     }
     const fields: ClauseFieldDescription[] = [];
     for (const field of spec.fields) {
+        const values = renderFieldValues(field, d[field.name]);
+        if (values.length === 0) continue;
+        fields.push({ name: field.name, label: field.label ?? field.name, values });
+    }
+    return { clauseId, title: spec.title, fields };
+}
+
+/** Describe a runtime WITNESS attestation's decoded content through its
+ *  declared stage fields — the stage-selected sibling of `describeClause`
+ *  (same shape, same value rendering). Falls back to raw key/value pairs when
+ *  the clause or stage is unknown — an unknown witness still renders. */
+export function describeWitness(
+    clauseId: string,
+    stage: number,
+    data: Record<string, unknown> | undefined,
+    version?: number,
+): ClauseDescription {
+    const spec = getClauseSpec(clauseId, version);
+    const stageFields = spec?.stages?.[stage];
+    const d = data ?? {};
+    if (!spec || !stageFields) {
+        return {
+            clauseId,
+            title: spec?.title ?? `${clauseId.slice(0, 10)}…`,
+            fields: Object.entries(d)
+                .map(([name, v]) => ({ name, label: name, values: Array.isArray(v) ? v.map(String) : v == null || v === "" ? [] : [String(v)] }))
+                .filter((f) => f.values.length > 0),
+        };
+    }
+    const fields: ClauseFieldDescription[] = [];
+    for (const field of stageFields) {
         const values = renderFieldValues(field, d[field.name]);
         if (values.length === 0) continue;
         fields.push({ name: field.name, label: field.label ?? field.name, values });

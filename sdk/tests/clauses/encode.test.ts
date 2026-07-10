@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { decodeAbiParameters } from "viem";
-import { encodeContentFromSpec } from "../../src/clauses/encode.js";
+import { decodeContentFromSpec, encodeContentFromSpec } from "../../src/clauses/encode.js";
 import { parseClauseSpec } from "../../src/clauses/spec.js";
 import { validateContent } from "../../src/clauses/validate.js";
 
@@ -51,6 +51,34 @@ describe("encodeContentFromSpec — stage selection", () => {
     it("throws on a required stage field absent from content", () => {
         expect(() => encodeContentFromSpec(spec, {}, { stage: 1 }))
             .toThrow(/grams: required field is absent/);
+    });
+
+    it("decodeContentFromSpec round-trips encoded stage content", () => {
+        const bytes = encodeContentFromSpec(
+            spec,
+            { grams: 1200, evidenceUri: "ipfs://bafy" },
+            { stage: 1 },
+        );
+        expect(decodeContentFromSpec(spec, bytes, { stage: 1 }))
+            .toEqual({ grams: 1200, evidenceUri: "ipfs://bafy" });
+        // Default-field content round-trips without a stage.
+        const defaultBytes = encodeContentFromSpec(spec, { x: "ok" });
+        expect(decodeContentFromSpec(spec, defaultBytes)).toEqual({ x: "ok" });
+    });
+
+    it("decodeContentFromSpec maps enum ordinals and nested shapes back to JSON", () => {
+        const rich = specOf([
+            { name: "band", type: "enum", required: true, values: ["zone-wifi", "nearby-ble"] },
+            { name: "docs", type: "array", required: false, items: {
+                type: "object", fields: [
+                    { name: "title", type: "string", required: true },
+                    { name: "pinned", type: "boolean", required: true },
+                ],
+            } },
+        ]);
+        const content = { band: "nearby-ble", docs: [{ title: "record", pinned: true }] };
+        const bytes = encodeContentFromSpec(rich, content);
+        expect(decodeContentFromSpec(rich, bytes)).toEqual(content);
     });
 
     it("agrees with validateContent on the same stage selection", () => {

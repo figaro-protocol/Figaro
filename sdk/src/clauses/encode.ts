@@ -22,7 +22,7 @@
  * caught it upstream).
  */
 
-import { encodeAbiParameters, type AbiParameter, type Hex } from "viem";
+import { decodeAbiParameters, encodeAbiParameters, type AbiParameter, type Hex } from "viem";
 import type { FieldSpec, ClauseSpec } from "./spec.js";
 
 // ── Empty content (some clauses accept empty bytes) ─────────────────────────
@@ -142,4 +142,63 @@ export function encodeContentFromSpec(
     const params = fields.map(abiParamOf);
     const values = fields.map((field) => abiValueOf(field, content[field.name]));
     return encodeAbiParameters(params, values as never);
+}
+
+/** The JSON value for a decoded ABI value, by field spec — the inverse of
+ *  `abiValueOf`: enum ordinals map back to their declared value strings,
+ *  integers within JS safe range come back as numbers (bigint otherwise),
+ *  tuples come back as objects keyed by field name. */
+function jsonValueOf(field: FieldSpec, decoded: unknown): unknown {
+    switch (field.type) {
+        case "boolean":
+            return Boolean(decoded);
+        case "integer": {
+            const v = decoded as bigint;
+            return v >= BigInt(Number.MIN_SAFE_INTEGER) && v <= BigInt(Number.MAX_SAFE_INTEGER)
+                ? Number(v)
+                : v;
+        }
+        case "bigint":
+            return (decoded as bigint).toString();
+        case "enum": {
+            const idx = Number(decoded as bigint | number);
+            return field.values[idx] ?? idx;
+        }
+        case "string":
+            return decoded;
+        case "array":
+            return (decoded as unknown[]).map((item) => jsonValueOf(field.items, item));
+        case "object": {
+            // Components are unnamed in `abiParamOf` (encoding passes tuple
+            // values positionally), so viem decodes a tuple to a positional
+            // array — map back to an object by declaration order.
+            const tuple = decoded as readonly unknown[];
+            const out: Record<string, unknown> = {};
+            field.fields.forEach((sub, i) => { out[sub.name] = jsonValueOf(sub, tuple[i]); });
+            return out;
+        }
+    }
+}
+
+/**
+ * Decode canonical ABI bytes back to JSON content from the parsed `ClauseSpec`
+ * alone — the inverse of `encodeContentFromSpec`, same stage selection. Used
+ * by readers (audit, timeline) to render a runtime witness's recovered
+ * calldata; no clause-specific code path. Throws on bytes that do not decode
+ * against the selected field set — callers treat that as garbage content.
+ */
+export function decodeContentFromSpec(
+    spec: ClauseSpec,
+    content: Hex,
+    options: EncodeOptions = {},
+): Record<string, unknown> {
+    const fields: readonly FieldSpec[] =
+        options.stage !== undefined && spec.stages?.[options.stage] !== undefined
+            ? spec.stages[options.stage]
+            : spec.fields;
+    const params = fields.map((field) => ({ ...abiParamOf(field), name: field.name }));
+    const values = decodeAbiParameters(params, content);
+    const out: Record<string, unknown> = {};
+    fields.forEach((field, i) => { out[field.name] = jsonValueOf(field, values[i]); });
+    return out;
 }
