@@ -113,8 +113,10 @@ describe("ipfsService", () => {
     });
 
     it("rejects uploads of disallowed MIME types", async () => {
-        const txt = makeFile("test.txt", "text/plain", 100);
-        await expect(DEFAULT_IPFS_SERVICE.uploadFile(txt)).rejects.toThrow("Unsupported file type");
+        // text/plain and application/pdf are ALLOWED (affixable documents);
+        // an archive is not.
+        const zip = makeFile("payload.zip", "application/zip", 100);
+        await expect(DEFAULT_IPFS_SERVICE.uploadFile(zip)).rejects.toThrow("Unsupported file type");
     });
 
     it("throws when the IPFS API returns a non-2xx response", async () => {

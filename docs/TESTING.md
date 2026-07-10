@@ -121,10 +121,14 @@ never-seen WITNESS clause whose declared `stages[1]` form/filing/decode all
 derive from the declaration; `clause-coverage` — the same harness iterated,
 one rung per protocol clause no other e2e drives: drawer → encode → commit →
 witness → audit through the generic pipeline, values authored via design-time
-drawer fills, the wizard's catalogue clause-values editor, or the nested
-sub-clause tree; the witness leg is DERIVED per rung from the registered
+drawer fills, the wizard's catalogue clause-values editor, the nested
+sub-clause tree, or the consent AFFIX (file → IPFS pin → keccak anchor
+through the array-of-object repeater; the rung asserts the preview modal's
+consent-terms notice at the signing moment and the document's pin
+out-of-band); the witness leg is DERIVED per rung from the registered
 spec's `stages` — a declaring spec with no rung fills fails as a coverage
-gap, never a silent skip).
+gap, never a silent skip). Every spec in `clauses/` now has a green rung —
+the former figaro-consent exclusion closed 2026-07-10.
 
 **mobile (`*.mobile.spec.ts`, 1 spec)** — responsive/viewport chrome jsdom
 can't render: `navigation.mobile.spec.ts` (Pixel 5 / Chromium).

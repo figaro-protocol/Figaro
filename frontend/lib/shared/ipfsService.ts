@@ -95,6 +95,12 @@ const ALLOWED_FILE_TYPES = new Set([
     "image/webp",
     "image/gif",
     "image/svg+xml",
+    // Affixable DOCUMENTS (a consent clause anchors legal text by keccak256;
+    // the artifact pins so a counterparty can verify by rehashing).
+    "application/pdf",
+    "text/plain",
+    "text/markdown",
+    "text/html",
 ]);
 
 interface IpfsPublishResult {

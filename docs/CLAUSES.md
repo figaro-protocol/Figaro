@@ -30,7 +30,9 @@ adding-a-clause checklist below.
   is a valid declaration; the validator enforces the formats it knows
   (`bytes32-hex`/`address-hex`/`bytes-hex`/`iso-datetime`) and treats the rest
   as plain strings; a frontend may map known formats to richer inputs (e.g.
-  `geohash` → the device-location picker via `fieldFormatInputs`).
+  `geohash` → the device-location picker, `bytes32-hex` → the content-anchor
+  affix — pick a file, pin it, keccak256 fills the field; pasting raw hex is
+  used nowhere as a content fill (ruled 2026-07-10) — via `fieldFormatInputs`).
 - `validateContent(content, spec, { stage? })` — validates a JS object against
   a parsed spec. Closed clauses: rejects unknown fields. Per-stage overrides
   via `spec.stages[stage]`.
@@ -146,7 +148,7 @@ which is agreement-only — so runtime-attestable = that count minus one.
 | `figaro-courier-process` | Courier per-role event enum (sovereign log) | Layer A (off-chain) |
 | `figaro-arbitration-kleros` | Decentralized off-chain arbitration via Kleros (subcourt + minimum jurors). Provider-specific; sister `figaro-arbitration-<provider>` clauses would cover future ODR providers | Layer A (off-chain) |
 | `figaro-applicable-law` | State / ADR / traditional-jurisdiction recourse layer (applicable law + forum + language). Provider-agnostic. Composes with arbitration clauses | Layer A (off-chain) |
-| `figaro-consent` | Cryptographic acceptance of an off-chain document (hash + version + title) — supports ToS acceptance, governance vote receipts, and other document-acceptance ceremonies (`consent` article) | Layer A (off-chain) |
+| `figaro-consent` | Cryptographic acceptance of an off-chain document (hash + version + title + optional locator) — supports ToS acceptance, governance vote receipts, and other document-acceptance ceremonies (`consent` article). The designer AFFIXES each document through the drawer repeater (pin → keccak anchor — the only fill path; no paste-hex); the parties' signatures over the agreement root ARE the acceptance, and the preview modal says so in the /security register (EDPB Guidelines 02/2025) | Layer A (off-chain) |
 
 `figaro-emissions` (renamed from `figaro-ghg`, 2026-07-10) is a single
 disclosure clause whose accounting methodology is a **free-form `standard`

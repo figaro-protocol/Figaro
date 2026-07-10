@@ -8,7 +8,11 @@ import consentSpecRaw from "../../../clauses/figaro-consent.json" with { type: "
 // Test-local shape for the consent fixture (the encoder itself is generic and
 // takes `Record<string, unknown>` — it knows nothing about consent).
 interface ConsentContent {
-    documents: readonly { documentHash: Hex; documentVersion: string; documentTitle: string }[];
+    documents: readonly {
+        documentHash: Hex; documentVersion: string; documentTitle: string;
+        /** Optional locator for the affixed document; absent encodes as "". */
+        documentUri?: string;
+    }[];
 }
 
 const SAMPLE_HASH: Hex = `0x${"ab".repeat(32)}`;
@@ -25,11 +29,12 @@ function encodeConsent(content: ConsentContent): Hex {
  * Post-Keystone consent encodes as `documents: tuple[]` per the
  * canonical object-array rule (struct-of-arrays was the pre-Keystone
  * per-clause shape). Each document tuple is
- * `(bytes32 documentHash, string documentVersion, string documentTitle)`.
+ * `(bytes32 documentHash, string documentVersion, string documentTitle,
+ * string documentUri)` — the optional locator encodes "" when absent.
  */
 function decodeConsent(
     bytes: Hex,
-): readonly [readonly { documentHash: Hex; documentVersion: string; documentTitle: string }[]] {
+): readonly [readonly { documentHash: Hex; documentVersion: string; documentTitle: string; documentUri: string }[]] {
     return decodeAbiParameters(
         [
             {
@@ -38,11 +43,12 @@ function decodeConsent(
                     { type: "bytes32", name: "documentHash" },
                     { type: "string", name: "documentVersion" },
                     { type: "string", name: "documentTitle" },
+                    { type: "string", name: "documentUri" },
                 ],
             },
         ],
         bytes,
-    ) as readonly [readonly { documentHash: Hex; documentVersion: string; documentTitle: string }[]];
+    ) as readonly [readonly { documentHash: Hex; documentVersion: string; documentTitle: string; documentUri: string }[]];
 }
 
 describe("figaro-consent-v1 — spec", () => {
@@ -139,6 +145,22 @@ describe("figaro-consent-v1 — encode/decode round-trip", () => {
         expect(docs[0].documentHash.toLowerCase()).toBe(SAMPLE_HASH.toLowerCase());
         expect(docs[0].documentVersion).toBe("1.0.0");
         expect(docs[0].documentTitle).toBe("Privacy Policy");
+        expect(docs[0].documentUri).toBe(""); // absent optional locator → ABI zero-value
+    });
+
+    it("round-trips the affixed document locator", () => {
+        const content: ConsentContent = {
+            documents: [
+                {
+                    documentHash: SAMPLE_HASH,
+                    documentVersion: "1.0.0",
+                    documentTitle: "Terms of Service",
+                    documentUri: "ipfs://bafyexampledocumentcid",
+                },
+            ],
+        };
+        const [docs] = decodeConsent(encodeConsent(content));
+        expect(docs[0].documentUri).toBe("ipfs://bafyexampledocumentcid");
     });
 
     it("encodes and decodes multiple documents exactly", () => {

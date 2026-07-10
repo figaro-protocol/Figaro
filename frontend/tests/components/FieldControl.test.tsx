@@ -127,3 +127,62 @@ describe("FieldControl constraint guidance", () => {
         expect(screen.queryByText(/ISO 3166-1/)).toBeNull();
     });
 });
+
+// The array-of-object REPEATER — a required object-array is a design-time
+// TERM (a consent clause's affixed documents; ruled 2026-07-10); an optional
+// one still defers. Items render their child fields recursively; the
+// companion channel routes a format input's derived sibling value (the
+// content-anchor's pinned locator) to the sibling declaring that format.
+// No clause is named — the specs here are synthetic.
+describe("FieldControl array-of-object repeater", () => {
+    const docsField: FieldSpec = {
+        name: "documents",
+        type: "array",
+        required: true,
+        minItems: 1,
+        items: {
+            type: "object",
+            fields: [
+                { name: "anchor", type: "string", required: true, format: "bytes32-hex" },
+                { name: "title", type: "string", required: true, minLength: 1 },
+                { name: "locator", type: "string", required: false, format: "uri" },
+            ],
+        },
+    } as unknown as FieldSpec;
+
+    it("a REQUIRED object-array renders the repeater at design time; add creates an item with child controls", async () => {
+        const onChange = vi.fn();
+        render(<FieldControl field={docsField} value={undefined} onChange={onChange} testId="f-docs" />);
+        await userEvent.click(screen.getByTestId("f-docs-add"));
+        expect(onChange).toHaveBeenLastCalledWith([{}]);
+        cleanup();
+        render(<FieldControl field={docsField} value={[{}]} onChange={onChange} testId="f-docs" />);
+        expect(screen.getByTestId("f-docs-item-0")).toBeTruthy();
+        // The anchor child routes to the content-anchor input (affix, no paste-hex)…
+        expect(screen.getByTestId("f-docs-0-anchor-affix")).toBeTruthy();
+        // …and children never defer inside an authored entry.
+        expect(screen.getByTestId("f-docs-0-title")).toBeTruthy();
+        expect(screen.getByTestId("f-docs-0-locator")).toBeTruthy();
+    });
+
+    it("remove drops exactly the removed item", async () => {
+        const onChange = vi.fn();
+        render(
+            <FieldControl
+                field={docsField}
+                value={[{ title: "ToS" }, { title: "Privacy" }]}
+                onChange={onChange}
+                testId="f-docs"
+            />,
+        );
+        await userEvent.click(screen.getByTestId("f-docs-item-0-remove"));
+        expect(onChange).toHaveBeenLastCalledWith([{ title: "Privacy" }]);
+    });
+
+    it("an OPTIONAL object-array still defers at design time", () => {
+        const optional = { ...docsField, name: "attachments", required: false } as unknown as FieldSpec;
+        render(<FieldControl field={optional} value={undefined} onChange={() => {}} testId="f-att" />);
+        expect(screen.getByTestId("f-att-deferred")).toBeTruthy();
+        expect(screen.queryByTestId("f-att-add")).toBeNull();
+    });
+});

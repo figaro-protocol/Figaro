@@ -22,6 +22,8 @@ import type { Commitment, Agreement, AgreementSection } from "@figaro/core";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 import { ModalChrome } from "@/components/ui/ModalChrome";
+import { describeClause, getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { resolveContentUri } from "@/lib/shared/ipfsService";
 
 interface Props {
     commitment: Commitment;
@@ -71,9 +73,30 @@ function nonCommerceSections(agreement: Agreement | null): AgreementSection[] {
     return agreement.sections.filter((s) => !Array.isArray(s.data?.lineItems));
 }
 
+/** Sections whose clause declares the `consent` ARTICLE — the spec's own
+ *  classification, never a clause name; a never-seen consent-article clause
+ *  gets the same notice. */
+function consentSections(agreement: Agreement | null): AgreementSection[] {
+    if (!agreement) return [];
+    return agreement.sections.filter((s) => getClauseSpec(s.clause)?.block?.article === "consent");
+}
+
+/** A described value token, linkified when it is a fetchable locator so the
+ *  signer can READ the affixed document before signing. */
+function ConsentValueToken({ token }: { token: string }) {
+    const href = token.startsWith("ipfs://") ? resolveContentUri(token) : null;
+    if (!href) return <>{token}</>;
+    return (
+        <a href={href} target="_blank" rel="noreferrer" className="underline text-black">
+            {token}
+        </a>
+    );
+}
+
 export function AgreementPreviewModal({ commitment, agreement, onConfirm, onCancel }: Props) {
     const lineItems = commerceLineItems(agreement);
     const otherSections = nonCommerceSections(agreement);
+    const consented = consentSections(agreement);
     const hasAgreement = agreement !== null;
 
     return (
@@ -147,6 +170,42 @@ export function AgreementPreviewModal({ commitment, agreement, onConfirm, onCanc
                                     </li>
                                 ))}
                             </ul>
+                        </section>
+                    )}
+
+                    {/* Consent terms — the /security framing, verbatim register:
+                        consent is an AGREEMENT concern (the assembly composes a
+                        consent clause and affixes its documents to the deal);
+                        the signature over the agreementHash IS the recorded
+                        acceptance — no separate ceremony, no checkbox. */}
+                    {consented.length > 0 && (
+                        <section data-testid="preview-consent-terms">
+                            <h3 className="text-xs font-semibold text-neutral-500 mb-2">Consent terms</h3>
+                            <div className="rounded border border-neutral-200 bg-neutral-50 px-3 py-2 space-y-2 text-xs text-neutral-700">
+                                <p>
+                                    This agreement composes a consent clause and affixes its
+                                    documents to the deal. Your signature over the{" "}
+                                    <code className="font-mono">agreementHash</code> cryptographically
+                                    records your acceptance of each document listed below — consent as
+                                    an agreement term, the pattern the European Data Protection Board
+                                    recommends for blockchains (Guidelines 02/2025): the documents stay
+                                    off-chain; the chain keeps only fingerprints.
+                                </p>
+                                <ul className="space-y-1" data-testid="preview-consent-documents">
+                                    {consented.flatMap((section) =>
+                                        describeClause(section.clause, section.data as Record<string, unknown>).fields.flatMap((field) =>
+                                            field.values.map((line, i) => (
+                                                <li key={`${section.clause}-${field.name}-${i}`} className="font-mono break-all text-black">
+                                                    {line.split(" · ").map((token, j) => (
+                                                        <span key={j}>
+                                                            {j > 0 && <span className="text-neutral-400"> · </span>}
+                                                            <ConsentValueToken token={token} />
+                                                        </span>
+                                                    ))}
+                                                </li>
+                                            ))))}
+                                </ul>
+                            </div>
                         </section>
                     )}
 

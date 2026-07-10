@@ -12,10 +12,15 @@
  * The one axis that differs between those two uses is the fill-vs-defer policy
  * for scalars, carried by `mode`:
  *
- *   - `"design"` (default) — the AgreementDrawer's policy: only a REQUIRED scalar
- *     with NO default is captured here (a design-time commitment the agreement
- *     build would otherwise drop); everything else defers to checkout ("provided
- *     at checkout"). Preserves the drawer's exact prior behavior.
+ *   - `"design"` (default) — the AgreementDrawer's policy, FULLY RULED
+ *     2026-07-10: a REQUIRED field is a design-time TERM — scalars with no
+ *     default fill inline, array-of-object renders its repeater (a consent
+ *     clause's affixed documents). OPTIONAL fields are NEVER design-filled,
+ *     and there is NO checkout clause-content surface (the old "provided at
+ *     checkout" stub pointed at the ripped-out beta-tester consent ceremony —
+ *     legacy, deleted): a value not filled here comes from its PRODUCING
+ *     surface (catalogue fold, derivation, spec default, companion routing)
+ *     or stays absent.
  *   - `"runtime"` — the composition form's policy: every scalar (string / integer
  *     / bigint) is an input the party fills NOW. Nothing defers — these fields ARE
  *     the runtime input.
@@ -23,10 +28,59 @@
  * enum / array-of-enum / boolean / object render identically in both modes.
  */
 
+import { useRef } from "react";
 import type { FieldSpec } from "@figaro/core/clauses";
 import { getFieldFormatInput } from "@/components/core/fieldFormatInputs";
 
 export type FieldControlMode = "design" | "runtime";
+
+/** The child-field editor an OBJECT value shares between the object branch
+ *  and the repeater's items. Patches go through a latest-value ref so two
+ *  SYNCHRONOUS patches COMPOSE — the content-anchor input emits its own value
+ *  AND a companion (the pinned locator) in one tick; computing both from the
+ *  same stale render closure would drop the first. Companion routing lives
+ *  here: a derived value lands on the first sibling declaring its format. */
+function ObjectEntryFields({
+    fields,
+    value,
+    onValue,
+    testIdBase,
+    mode,
+}: {
+    fields: readonly FieldSpec[];
+    value: Record<string, unknown>;
+    onValue: (next: Record<string, unknown>) => void;
+    testIdBase: string;
+    mode: FieldControlMode;
+}) {
+    const latest = useRef(value);
+    latest.current = value;
+    const patch = (name: string, next: unknown) => {
+        const nextObj = { ...latest.current };
+        if (next === undefined) delete nextObj[name];
+        else nextObj[name] = next;
+        latest.current = nextObj;
+        onValue(nextObj);
+    };
+    return (
+        <>
+            {fields.map((child) => (
+                <FieldControl
+                    key={child.name}
+                    field={child}
+                    value={value[child.name]}
+                    onChange={(next) => patch(child.name, next)}
+                    onCompanion={(format, next) => {
+                        const sibling = fields.find((f) => f.type === "string" && f.format === format);
+                        if (sibling) patch(sibling.name, next);
+                    }}
+                    testId={`${testIdBase}-${child.name}`}
+                    mode={mode}
+                />
+            ))}
+        </>
+    );
+}
 
 /** Spec-declared string constraints (pattern / minLength / maxLength), checked
  *  as the party types — display-only guidance so a violation surfaces at the
@@ -58,6 +112,7 @@ export function FieldControl({
     testId,
     hideLabel = false,
     mode = "design",
+    onCompanion,
 }: {
     field: FieldSpec;
     value: unknown;
@@ -68,6 +123,11 @@ export function FieldControl({
     hideLabel?: boolean;
     /** Fill-vs-defer policy for scalar fields — see the file header. */
     mode?: FieldControlMode;
+    /** Companion routing (object contexts only): a format input that derives
+     *  a SIBLING's value emits it keyed by the sibling's declared format —
+     *  the enclosing object/repeater branch patches the first sibling field
+     *  declaring that format. See `FieldFormatInputProps.onCompanion`. */
+    onCompanion?: (format: string, next: string | undefined) => void;
 }) {
     const label = hideLabel ? null : (
         <span
@@ -97,6 +157,66 @@ export function FieldControl({
                             <span>{opt}</span>
                         </label>
                     ))}
+                </div>
+            </div>
+        );
+    }
+
+    // array-of-object → REPEATER. The spec models a LIST of structured entries
+    // (a consent clause's affixed documents); each item renders its child
+    // fields recursively — one parser, one renderer, no per-clause shape.
+    // Fill-vs-defer follows the scalar rule: a REQUIRED object-array is a
+    // design-time term (fixed content is what makes the composition
+    // content-addressed — ruled 2026-07-10, partially settling the
+    // design-fill fork, since closed in full); an optional one stays unset. Runtime
+    // mode always fills. Companion routing is per ITEM: a format input that
+    // derives a sibling value (the content-anchor input pinning an artifact
+    // and emitting its locator) patches the first sibling field in the SAME
+    // item declaring that format.
+    if (field.type === "array" && field.items.type === "object"
+        && (mode === "runtime" || field.required)) {
+        const items = field.items;
+        const arr = Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
+        return (
+            <div data-testid={`${testId}-group`}>
+                {label && <div className="mb-1">{label}</div>}
+                <div className="space-y-2">
+                    {arr.map((item, i) => (
+                        <div
+                            key={i}
+                            className="space-y-2 rounded border border-neutral-200 p-2"
+                            data-testid={`${testId}-item-${i}`}
+                        >
+                            <ObjectEntryFields
+                                fields={items.fields}
+                                value={item}
+                                onValue={(nextItem) => onChange(arr.map((it, j) => (j === i ? nextItem : it)))}
+                                testIdBase={`${testId}-${i}`}
+                                // An authored entry is authored WHOLE: its
+                                // children never defer (the item exists
+                                // because the designer is filling it now).
+                                mode="runtime"
+                            />
+                            <div className="flex justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => onChange(arr.filter((_item, j) => j !== i))}
+                                    data-testid={`${testId}-item-${i}-remove`}
+                                    className="text-[11px] px-2 py-1 rounded border border-neutral-300 bg-white text-neutral-700 hover:border-neutral-500"
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                    <button
+                        type="button"
+                        onClick={() => onChange([...arr, {}])}
+                        data-testid={`${testId}-add`}
+                        className="text-[11px] px-2 py-1 rounded border border-neutral-300 bg-white text-neutral-700 hover:border-neutral-500"
+                    >
+                        Add {field.name} entry
+                    </button>
                 </div>
             </div>
         );
@@ -159,21 +279,13 @@ export function FieldControl({
             <div data-testid={`${testId}-object`}>
                 {label && <div className="mb-1">{label}</div>}
                 <div className="space-y-2 border-l border-neutral-200 pl-3">
-                    {field.fields.map((child) => (
-                        <FieldControl
-                            key={child.name}
-                            field={child}
-                            value={obj[child.name]}
-                            onChange={(next) => {
-                                const nextObj = { ...obj };
-                                if (next === undefined) delete nextObj[child.name];
-                                else nextObj[child.name] = next;
-                                onChange(Object.keys(nextObj).length ? nextObj : undefined);
-                            }}
-                            testId={`${testId}-${child.name}`}
-                            mode={mode}
-                        />
-                    ))}
+                    <ObjectEntryFields
+                        fields={field.fields}
+                        value={obj}
+                        onValue={(nextObj) => onChange(Object.keys(nextObj).length ? nextObj : undefined)}
+                        testIdBase={testId}
+                        mode={mode}
+                    />
                 </div>
             </div>
         );
@@ -225,6 +337,7 @@ export function FieldControl({
                             onChange={(next) => onChange(next)}
                             testId={testId}
                             pattern={field.pattern}
+                            onCompanion={onCompanion}
                         />
                         {guidance}
                     </div>
@@ -250,14 +363,16 @@ export function FieldControl({
         );
     }
 
-    // Everything else is a free-form / structured value, not a bounded design
-    // choice (e.g. array-of-object commerce line-items). The designer does NOT
-    // type it here — a fill-in field is exactly what turns the template into a
-    // checkout hash. It's captured downstream by a mounted component at
-    // checkout/runtime. Surface it as deferred, not fillable.
+    // Everything else is OPTIONAL structured content with no design fill —
+    // ruled 2026-07-10: no checkout clause-content surface exists (the old
+    // "provided at checkout" promise was legacy from the ripped-out
+    // beta-tester consent ceremony). The value comes from its PRODUCING
+    // surface (catalogue fold, derivation, spec default, companion routing)
+    // or stays absent — absence of an optional field is a valid committed
+    // state, not a gap.
     return (
         <div className="text-xs text-ink-faint italic" data-testid={`${testId}-deferred`}>
-            {field.name} — provided at checkout
+            {field.name} — optional; filled by its producing surface or left unset
         </div>
     );
 }

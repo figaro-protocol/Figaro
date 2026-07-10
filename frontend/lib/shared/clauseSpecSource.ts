@@ -437,6 +437,20 @@ export interface ClauseDescription {
 function renderFieldValues(field: FieldSpec, raw: unknown): string[] {
     const enumField = enumFieldOf(field);
     const label = (v: unknown) => labelEnumValue(enumField, String(v));
+    // Array-of-object: one line per entry, its child values in declaration
+    // order joined " · " (a consent document renders "Terms of Service · 1.0
+    // · 0x… · ipfs://…") — read from the spec, no per-clause shape.
+    if (field.type === "array" && field.items.type === "object") {
+        const itemFields = field.items.fields;
+        return (Array.isArray(raw) ? raw : [])
+            .filter((item) => item != null && typeof item === "object")
+            .map((item) => itemFields
+                .map((child) => (item as Record<string, unknown>)[child.name])
+                .filter((v) => v != null && v !== "")
+                .map(String)
+                .join(" · "))
+            .filter((line) => line.length > 0);
+    }
     if (Array.isArray(raw)) return raw.filter((v) => v != null && v !== "").map(label);
     if (raw == null || raw === "") return [];
     return [label(raw)];

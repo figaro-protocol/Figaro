@@ -18,6 +18,7 @@
  */
 import type { ComponentType } from "react";
 import { GeohashFieldInput } from "@/components/core/GeohashFieldInput";
+import { ContentAnchorFieldInput } from "@/components/core/ContentAnchorFieldInput";
 
 /** The contract a format input satisfies — the same props FieldControl's
  *  plain scalar input serves. */
@@ -28,10 +29,24 @@ export interface FieldFormatInputProps {
     /** The declared pattern, when the spec carries one — inputs may use it
      *  for inline shape feedback. */
     pattern?: string;
+    /** Companion channel — a format input that DERIVES sibling values reports
+     *  them keyed by the SIBLING's declared format (e.g. the content-anchor
+     *  input pins the artifact and emits its locator under `"uri"`).
+     *  FieldControl's object branch routes each companion to the first
+     *  sibling field declaring that format; no field name crosses this seam,
+     *  and a companion with no declaring sibling is dropped. Absent outside
+     *  an object context. */
+    onCompanion?: (format: string, value: string | undefined) => void;
 }
 
 const REGISTRY = new Map<string, ComponentType<FieldFormatInputProps>>([
     ["geohash", GeohashFieldInput],
+    // bytes32-hex = a CONTENT ANCHOR (keccak256 of a canonical artifact). The
+    // ONLY fill path is affix → pin → hash — pasting raw hex is used nowhere
+    // as a content fill (ruled 2026-07-10), so the anchor input replaces the
+    // plain text input for every bytes32-hex content field, including on
+    // clauses this codebase has never seen.
+    ["bytes32-hex", ContentAnchorFieldInput],
 ]);
 
 /** Register an input component for a declared format. Last write wins —

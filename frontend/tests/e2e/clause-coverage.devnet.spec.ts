@@ -50,18 +50,13 @@
  * effect and is asserted per rung. Each rung leaves its committed process
  * on-chain — devnet is a mainnet rehearsal, no snapshot/revert.
  *
- * NOT covered here, by finding (see the punch-list):
- *  - figaro-consent — `documents` (required array-of-object) has NO fill
- *    surface: the drawer defers object-arrays to checkout, checkout has no
- *    clause-content form, and no affix surface exists — the Layer-A sign gate
- *    blocks any checkout composing it. Uncommittable through the UI today.
- *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server (:3100).
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
 import { readLocalDeploymentConfig, assertPinnedInIpfs } from './devnet-helpers';
+import { keccak256 } from 'viem';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import { calculateBonds, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI } from '@figaro/core';
@@ -102,10 +97,16 @@ interface ClauseRung {
     /** Catalogue-step fills on the wizard's first item (clause values and
      *  physical facts — the item's own master data). */
     catalogue?: (page: Page) => Promise<void>;
+    /** Assertions inside the buyer's PREVIEW MODAL (the signing moment) —
+     *  e.g. the consent-terms notice that tells the signer their signature
+     *  records acceptance of the affixed documents. */
+    preview?: (page: Page) => Promise<void>;
     /** Spec-derived texts that must surface in the audit clause evidence. */
     auditTexts: string[];
-    /** Assertions on the committed leaf's data, from the pinned agreement. */
-    leaf: (data: Record<string, unknown>) => void;
+    /** Assertions on the committed leaf's data, from the pinned agreement —
+     *  async so a rung can verify out-of-band effects the leaf points at
+     *  (e.g. the affixed document's IPFS pin). */
+    leaf: (data: Record<string, unknown>) => void | Promise<void>;
     /** Witness-stage form input (TEST INPUT, like `design`) — REQUIRED when the
      *  registered spec declares `stages`; the trigger is the spec, this is only
      *  the data a seller would type. */
@@ -141,7 +142,55 @@ const witnessFill = (clauseId: string, field: string, value: string) =>
 const witnessPick = (clauseId: string, field: string, option: string) =>
     async (page: Page) => page.getByTestId(`capability-input-${clauseId}-${field}-${option}`).check();
 
+/** The affixed document's canonical text — its keccak256 is the committed
+ *  anchor the rung asserts on the leaf. */
+const CONSENT_DOC_TEXT = 'Coverage Terms of Service — the parties accept these terms by signing the agreement root.';
+
 const RUNGS: ClauseRung[] = [
+    {
+        // The consent ceremony: the designer AFFIXES the document through the
+        // repeater (pin → keccak anchor, the ONLY fill path — no paste-hex);
+        // the parties' EIP-712 signatures over the agreement root ARE the
+        // acceptance. The preview modal tells the signer exactly that, in the
+        // /security page's register (EDPB Guidelines 02/2025).
+        clauseId: 'figaro-consent',
+        design: async (page) => {
+            await page.getByTestId('drawer-field-figaro-consent-documents-add').click();
+            await page.getByTestId('drawer-field-figaro-consent-documents-0-documentHash-affix')
+                .setInputFiles({
+                    name: 'terms-of-service.txt',
+                    mimeType: 'text/plain',
+                    buffer: Buffer.from(CONSENT_DOC_TEXT),
+                });
+            // The affix pins + anchors before the hash renders — wait for it.
+            await page.getByTestId('drawer-field-figaro-consent-documents-0-documentHash')
+                .waitFor({ state: 'visible', timeout: 30000 });
+            await page.getByTestId('drawer-field-figaro-consent-documents-0-documentVersion').fill('1.0');
+            await page.getByTestId('drawer-field-figaro-consent-documents-0-documentTitle').fill('Terms of Service');
+        },
+        preview: async (page) => {
+            const notice = page.getByTestId('preview-consent-terms');
+            await expect(
+                notice,
+                "the signing moment tells the party their signature records acceptance of the affixed documents",
+            ).toBeVisible({ timeout: 15000 });
+            await expect(notice).toContainText('European Data Protection Board');
+            await expect(page.getByTestId('preview-consent-documents')).toContainText('Terms of Service');
+        },
+        auditTexts: ['Cryptographic consent attestations', 'Terms of Service'],
+        leaf: async (data) => {
+            const docs = data.documents as Array<Record<string, unknown>>;
+            expect(docs).toHaveLength(1);
+            expect(docs[0].documentHash, 'the committed anchor is keccak256 of the affixed bytes')
+                .toBe(keccak256(new Uint8Array(Buffer.from(CONSENT_DOC_TEXT))));
+            expect(docs[0].documentVersion).toBe('1.0');
+            expect(docs[0].documentTitle).toBe('Terms of Service');
+            expect(String(docs[0].documentUri), 'the affixed document has a network locator').toMatch(/^ipfs:\/\//);
+            // Out-of-band: the document is genuinely pinned — a counterparty
+            // can fetch it and verify by rehashing.
+            await assertPinnedInIpfs(String(docs[0].documentUri).replace(/^ipfs:\/\//, ''));
+        },
+    },
     {
         clauseId: 'figaro-applicable-law',
         // The spec constrains applicableLaw to a shaped jurisdiction token
@@ -433,6 +482,9 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             await expect(place, 'buyer connected + order ready → "Place order"').toHaveText(/Place order/, { timeout: 20000 });
             await place.click();
             await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
+            // The signing moment — a rung may assert what the preview tells
+            // the party before the signature (e.g. the consent-terms notice).
+            if (rung.preview) await rung.preview(page);
             await page.getByTestId('preview-confirm').click();
             await page.getByTestId('buyer-share-panel').waitFor({ timeout: 60000 });
             await page.getByTestId('send-commitment-xmtp').click();
@@ -606,7 +658,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                 ]));
             const targetLeaf = agreement.sections.find((s) => s.clause === rung.clauseId);
             expect(targetLeaf, `the ${rung.clauseId} section is a committed leaf`).toBeTruthy();
-            rung.leaf(targetLeaf!.data);
+            await rung.leaf(targetLeaf!.data);
 
             await page.getByTestId('verify-mode-agreement').click();
             await page.getByTestId('verify-agreement-input').fill(agreementJson);

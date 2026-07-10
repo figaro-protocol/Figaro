@@ -106,8 +106,12 @@ Y", not as an open-ended build.)
   the clause SPEC declares, never a clause id / mechanism kind / component
   name; no entry ⇒ graceful degradation (plain input / nothing). Two seams:
   `components/core/fieldFormatInputs.tsx` (a string field's open `format` →
-  input component; tenant: `geohash` → `GeohashFieldInput`, device-location
-  assisted) and `components/core/interactionSurfaces.tsx`
+  input component; tenants: `geohash` → `GeohashFieldInput`, device-location
+  assisted; `bytes32-hex` → `ContentAnchorFieldInput`, the AFFIX — pick a
+  file, pin it, keccak256 fills the field, and the pinned locator rides the
+  companion channel to the first sibling declaring `format: "uri"`; pasting
+  raw hex is used nowhere as a content fill, ruled 2026-07-10) and
+  `components/core/interactionSurfaces.tsx`
   (`block.interaction.interface` — the party↔party runtime interaction
   standard, the sibling of `block.composes` — → order-page surfaces via
   `OrderInteractionSurfaces`, mounted on every order the wallet is a party
