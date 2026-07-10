@@ -19,7 +19,6 @@ import {
     createPublicClient,
     defineChain,
     http,
-    parseAbi,
     type Hex,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -27,6 +26,7 @@ import {
     readLocalDeploymentConfig,
     seedRegisteredSeller,
 } from './devnet-helpers';
+import { SELLER_REGISTRY_ABI } from '@figaro/sdk';
 import { ANVIL_KEYS } from '../anvilAccounts';
 
 const RPC_URL = 'http://127.0.0.1:8545';
@@ -45,21 +45,10 @@ const LOCAL_ANVIL = defineChain({
 const SELLER_KEY = ANVIL_KEYS[3];
 const SELLER_ADDR = ANVIL_ACCOUNTS[3];
 
-const SELLER_REGISTRY_ABI = parseAbi([
-    'function register(string metadataURI) external payable',
-    'function withdraw() external',
-    'function registrationDeposit() view returns (uint256)',
-    // SellerRegistry exposes NO read functions for registration state —
-    // off-chain consumers reconstruct it from these three events. The
-    // tests below count Registered − Withdrawn events for the address;
-    // > 0 == currently registered.
-    'event SellerRegistered(address indexed seller, string metadataURI)',
-    'event SellerProfileUpdated(address indexed seller, string metadataURI)',
-    'event SellerWithdrawn(address indexed seller, uint256 deposit)',
-    'error AlreadyRegistered()',
-    'error InsufficientDeposit()',
-    'error NotRegistered()',
-]);
+// SellerRegistry exposes NO read functions for registration state —
+// off-chain consumers reconstruct it from the three events. The tests below
+// count Registered − Withdrawn events for the address; > 0 == currently
+// registered. ABI comes from the SDK canonical (never hand-rolled).
 
 function getRegistryAddress(): Hex {
     const config = readLocalDeploymentConfig();

@@ -27,7 +27,6 @@ import {
     createPublicClient,
     defineChain,
     http,
-    parseAbi,
     type Hex,
 } from 'viem';
 import {
@@ -35,7 +34,7 @@ import {
     readLocalDeploymentConfig,
     seedRegisteredSeller,
 } from './devnet-helpers';
-import { ASSEMBLY_REGISTRY_ABI } from '@figaro/sdk';
+import { ASSEMBLY_REGISTRY_ABI, SELLER_REGISTRY_ABI } from '@figaro/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 import { ANVIL_KEYS } from '../anvilAccounts';
 
@@ -48,10 +47,6 @@ const LOCAL_ANVIL = defineChain({
 });
 
 const SELLER_KEY = ANVIL_KEYS[0];
-
-const SELLER_REGISTRY_ABI = parseAbi([
-    'event SellerProfileUpdated(address indexed seller, string metadataURI)',
-]);
 
 function requireEnv(name: string): Hex {
     const v = process.env[name] as Hex | undefined;

@@ -22,9 +22,9 @@
  */
 import { expect } from "@playwright/test";
 import { test, gotoAsWallet } from "./devnet-multi-test";
-import { createPublicClient, defineChain, http, parseAbi, type Hex } from "viem";
+import { createPublicClient, defineChain, http, type Hex } from "viem";
 import { assertPinnedInIpfs, discoverAnchoredAssemblies, discoverSellers, readLocalDeploymentConfig } from "./devnet-helpers";
-import { ASSEMBLY_REGISTRY_ABI } from '@figaro/sdk';
+import { ASSEMBLY_REGISTRY_ABI, SELLER_REGISTRY_ABI } from '@figaro/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 
 const RPC_URL = "http://127.0.0.1:8545";
@@ -34,11 +34,6 @@ const LOCAL_ANVIL = defineChain({
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
     rpcUrls: { default: { http: [RPC_URL] } },
 });
-
-const SELLER_REGISTRY_ABI = parseAbi([
-    "event SellerRegistered(address indexed seller, string metadataURI)",
-    "event SellerProfileUpdated(address indexed seller, string metadataURI)",
-]);
 
 // The wizard-test seller — this test's own input data. anvil[13]: an unlocked
 // signer outside the buyer range (0..4) and outside every other test's seller

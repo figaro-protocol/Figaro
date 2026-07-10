@@ -48,6 +48,9 @@
     "frontend/tests/**/*.devnet.spec.ts": [
       "bash scripts/lint-no-devnet-revert.sh"
     ],
+    "frontend/scripts/*.mjs": [
+      "bash scripts/lint-no-handwritten-kernel-abis.sh"
+    ],
     "clauses/*.json": [
       "bash scripts/lint-clause-choices-are-bounded.sh"
     ],

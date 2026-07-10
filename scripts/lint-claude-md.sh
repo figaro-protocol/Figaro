@@ -202,6 +202,27 @@ if (( size > MAX_BYTES )); then
     violations=$((violations + 1))
 fi
 
+# --- Check 7: DIRECTORY HOMOGRAPHS in prose ---
+# `script/` (Foundry *.s.sol) vs `scripts/` (shell) vs `frontend/scripts/`
+# (seed .mjs) all EXIST, so a swapped reference resolves and defeats the
+# path-existence check (Check 1). Catch the two swap shapes mechanically in
+# every prose surface an agent reads: a *.s.sol under `scripts/`, or a
+# .sh/.mjs under bare `script/`. (2026-07-10 layer audit.)
+homograph_hits=""
+for doc in "$CLAUDE_MD" docs/*.md .claude/agents/*.md ecosystem-agents/*.md; do
+    [[ -f "$doc" ]] || continue
+    hits=$(grep -nE 'scripts/[A-Za-z0-9_/.-]*\.s\.sol|(^|[^a-zA-Z0-9_/-])script/[A-Za-z0-9_/.-]*\.(sh|mjs)' "$doc" || true)
+    if [[ -n "$hits" ]]; then
+        homograph_hits+="$doc:"$'\n'"$(echo "$hits" | sed 's/^/    /')"$'\n'
+    fi
+done
+if [[ -n "$homograph_hits" ]]; then
+    echo "[claude-md] directory-homograph reference(s) — deploy scripts live in script/ (*.s.sol);"
+    echo "            shell/seed scripts live in scripts/ or frontend/scripts/ (*.sh, *.mjs):"
+    printf '%s' "$homograph_hits"
+    violations=$((violations + 1))
+fi
+
 if (( violations > 0 )); then
     echo ""
     echo "[claude-md] $violations drift item(s). Update CLAUDE.md or restore the path."

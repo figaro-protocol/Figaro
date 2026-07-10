@@ -16,14 +16,14 @@
  * specs share (permissionless-clause, designer-view, published-list-ui).
  */
 import {
-    createWalletClient, defineChain, http, parseAbi, type Hex,
+    createWalletClient, defineChain, http, type Hex,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import type { Page } from '@playwright/test';
 import { expect } from './devnet-multi-test';
 import { readLocalDeploymentConfig, pinJSONToIPFS, localPublicClient } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
-import { computeClauseKey } from '@figaro/sdk';
+import { computeClauseKey, CLAUSE_REGISTRY_ABI } from '@figaro/sdk';
 import { canonicalContentHash } from '@/lib/shared/canonicalJson';
 
 const RPC_URL = 'http://127.0.0.1:8545';
@@ -34,11 +34,6 @@ const LOCAL_ANVIL = defineChain({
     rpcUrls: { default: { http: [RPC_URL] } },
 });
 const PROBE_VERSION = 1;
-const CLAUSE_REGISTRY_ABI = parseAbi([
-    'function registered(bytes32) view returns (bool)',
-    'function registerClause(string clauseId, uint64 version, bytes32 contentHash, string contentURI) external payable',
-    'function registrationDeposit() view returns (uint256)',
-]);
 
 /** A runtime-attestable lifecycle clause with one enum ladder — modelled on the
  *  SHAPE of merchant-process, but a name nothing in this repo knows. */
