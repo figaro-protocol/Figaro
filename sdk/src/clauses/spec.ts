@@ -134,6 +134,9 @@ export interface ClauseSpec {
     // The `block` slice of the spec JSON (designer/runtime composition metadata)
     // is NOT parsed here — it's pure presentation the SDK never reads. The
     // frontend parses it off the same JSON (`lib/shared/clauseBlockBinding`).
+    // AUTHORS: the on-chain `contentHash` covers the RAW canonical document
+    // including `block` — pin and hash the raw JSON; re-serializing the parsed
+    // spec would silently drop `block` and change the hash.
 }
 
 export interface SpecParseError {

@@ -194,6 +194,10 @@ import {
 // 1. Parse a clause spec (typically fetched from ClauseRegistry → IPFS)
 const parsed = parseClauseSpec(specJson);
 if (!parsed.ok) throw new Error(parsed.errors[0].message);
+// NOTE: `parsed.spec` deliberately omits the spec's `block` slice — that is
+// presentation metadata the SDK does not own. The `contentHash` you register
+// on ClauseRegistry covers the RAW canonical JSON document (including
+// `block`): pin and hash the raw document; never re-serialize `parsed.spec`.
 
 // 2. Validate content against the spec (closed clauses: unknown fields rejected).
 //    Content first, spec second; pass `{ stage }` for a per-stage witness shape.
