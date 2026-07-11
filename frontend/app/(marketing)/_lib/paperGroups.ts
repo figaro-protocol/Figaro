@@ -95,11 +95,11 @@ export const PAPER_GROUPS: PaperGroup[] = [
         slug: "computer-science-cryptography",
         disciplineIndex: 3,
         name: "Computer Science and Cryptography",
-        discipline: "Cryptographic primitives · adversarial review · formal verification · protocol extension · runtime architecture",
+        discipline: "Cryptographic primitives · adversarial review · formal verification · protocol composition · runtime architecture",
         charter: "Two complementary lenses on the protocol's CS surface. Paper C reads the kernel adversarially: where does the invariant break, and what proves that it does not? EIP-712 dual-signed commitments, merkle-bound attestation receipts, SP1-proven batch execution, the formal-verification stack. Paper N reads what stands above the kernel as a research object: clause design as a CS discipline (four-layer verification stack, append-only identity, first-write-wins binding, atomic-bind pattern), the coordinator pattern with formal composition semantics and equilibrium-preservation conditions, and the seven-layer runtime composition pipeline. Implementation work (clause authoring, contract development, assembly composition, frontend) organizes separately at /builders.",
         papers: [
             { title: "Asymmetric Bonding and Buyer Dominance: A Verified Solidity Settlement Kernel", href: "/papers/verified-settlement-kernel" },
-            { title: "Protocol Extension and Runtime Composition", href: "/papers/protocol-extension" },
+            { title: "Protocol Composition: Clause Design, the Coordinator Pattern, and Runtime Architecture Above the Kernel", href: "/papers/protocol-extension" },
         ],
         currentWork: [
             "Adversarial audit of the attestation coordinator's merkle-inclusion gate",
