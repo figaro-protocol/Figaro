@@ -107,7 +107,7 @@ pill/badge for an empty result. A resolved-empty read renders as absence; a
 
 How the network grows with **zero code change and zero kernel change**. Worked out via
 the emissions consolidation + the hazmat / cold-chain handling clauses (2026-06); the model for
-every extension.
+every composition.
 
 - **N closed-world variants → ONE clause + a spec-declared option set.** The clause is
   the reusable concept; the variation is **data in the spec** (an `enum` array or a

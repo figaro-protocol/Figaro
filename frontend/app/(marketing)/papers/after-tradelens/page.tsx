@@ -282,7 +282,7 @@ export default function AfterTradeLensPaper() {
                     <li>emissions-disclosure (free-form accounting methodology — GHG Protocol, ISO 14064, PAS 2050, EN 16258, or any other) &mdash; per-leg emissions disclosure on every transport edge.</li>
                 </ul>
                 <p>
-                    These clauses are already on chain and bound to validators; no further authoring work is needed for them. The customs-clearance determination is recorded by the customs-authority wallet as a clause-typed attestation, but no dedicated customs clause exists in the current set &mdash; it is a candidate extension, authored and registered the same way as the two new clauses below.
+                    These clauses are already on chain and bound to validators; no further authoring work is needed for them. The customs-clearance determination is recorded by the customs-authority wallet as a clause-typed attestation, but no dedicated customs clause exists in the current set &mdash; it is a candidate composition, authored and registered the same way as the two new clauses below.
                 </p>
                 <PaperRun title="New clause: container-seal.">
                     Container seals are the integrity mechanism for ocean shipping. A uniquely-numbered seal is applied at the origin and broken only at customs or at the destination consignee. Multiple parties (carrier, ports, customs, consignee) need a single canonical attestation of when the seal was applied, when it was inspected intact, and if it was breached. The clause&rsquo;s specification carries:

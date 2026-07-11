@@ -246,7 +246,7 @@ trust-minimization.
    pre-bond. Modern wallets (Rabby, MetaMask Swap, Rainbow) do this natively.
 
 3. **Level-3 atomic bundler mechanism.** When all-or-nothing semantics is needed
-   across N differently-denominated vendor processes, a Level-3 extension contract
+   across N differently-denominated vendor processes, a Level-3 composition contract
    can orchestrate N monotoken commits as a wallet-bundled group with
    revert-on-any-fail. Kernel still sees N independent monotoken processes.
 

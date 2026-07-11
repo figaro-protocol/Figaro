@@ -272,7 +272,7 @@ gluing two independently-composable concerns. Split along the provider seam:
 (provider-agnostic), with future `figaro-arbitration-<provider>` sisters
 registering symmetrically. The clauseId is committed in the agreement hash, so
 which-provider is an immutable term, not a payload value; a combined clause
-forces either a closed enum (kills permissionless extension) or an open string
+forces either a closed enum (kills permissionless composition) or an open string
 (kills committing which provider was named). Note the boundary against the merge
 rule above: `figaro-emissions` keeps its methodology as a free-form field because a
 methodology is a *label on one disclosure concern*, not a provider whose

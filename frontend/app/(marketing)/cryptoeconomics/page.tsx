@@ -177,7 +177,7 @@ export default function Cryptoeconomics() {
                     To declare current work, surface a received grant, publish a contributor handle, or amend a group&apos;s charter, open a pull request against <code>frontend/app/(marketing)/_lib/paperGroups.ts</code>. PRs are reviewed at merge time; conversation about scope happens on Telegram before codification.
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed">
-                    The disciplinary list tracks Voshmgir &amp; Zargham, <em>Foundations of Cryptoeconomic Systems</em>. The composability tiers track the extension doctrine on <Link href="/builders/composability" className="underline">composability</Link>. If either upstream taxonomy converges on a different shape, this page will follow.
+                    The disciplinary list tracks Voshmgir &amp; Zargham, <em>Foundations of Cryptoeconomic Systems</em>. The composability tiers track the composition doctrine on <Link href="/builders/composability" className="underline">composability</Link>. If either upstream taxonomy converges on a different shape, this page will follow.
                 </p>
             </MarketingSection>
 

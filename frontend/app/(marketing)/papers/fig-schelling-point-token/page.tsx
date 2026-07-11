@@ -224,7 +224,7 @@ export default function FigSchellingPointTokenPaper() {
                     <li><strong>Not bond collateral for the kernel.</strong> Kernel bonds are denominated in whatever ERC-20 the parties choose; making FIG the preferred denomination would distort price discovery and couple FIG to kernel activity through the back door.</li>
                     <li><strong>Not founder-vested.</strong> The founder and DAO allocations are unvested &mdash; no cliff, no schedule; vesting would recruit schedule-driven holders, whose clearest instance is a founder vesting into liquidity over years for mixed reasons.</li>
                     <li><strong>Not settlement-emitted.</strong> No path runs from kernel settlement activity to FIG mint; no settlement-evidence mechanism is ever granted mint authority, and the renouncement latch ensures none can be added later. This is the most rigorous application of Rule 4 and is treated in Section 9.</li>
-                    <li><strong>Not a coordinator-pattern extension.</strong> The coordinator pattern specifies the sufficient conditions under which a mechanism composed with the kernel preserves the bonding equilibrium; FIG satisfies them trivially because it has no kernel interaction at all. FIG and the kernel are siblings, not a composition.</li>
+                    <li><strong>Not a coordinator-pattern composition.</strong> The coordinator pattern specifies the sufficient conditions under which a mechanism composed with the kernel preserves the bonding equilibrium; FIG satisfies them trivially because it has no kernel interaction at all. FIG and the kernel are siblings, not a composition.</li>
                 </ul>
             </PaperSection>
 

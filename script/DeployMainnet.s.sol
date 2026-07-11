@@ -69,7 +69,7 @@ contract DeployMainnet is Script {
         require(vm.envAddress("DAO_WALLET") != address(0), "DAO_WALLET not set");
     }
 
-    // ── Protocol kernel + extensions ────────────────────────────────
+    // ── Protocol kernel + compositions ────────────────────────────────
 
     function _deployProtocol() internal {
         FigaroCore core = new FigaroCore();

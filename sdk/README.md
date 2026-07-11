@@ -3,7 +3,7 @@
 TypeScript SDK for the Figaro Protocol — self-enforcing agreements between strangers.
 
 Event parsing, state reconstruction, EIP-712 commitment building, bond math,
-agent coordination, and protocol extension utilities. Single dependency: `viem`.
+agent coordination, and protocol composition utilities. Single dependency: `viem`.
 
 ## Install
 

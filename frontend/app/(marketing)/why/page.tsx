@@ -80,7 +80,7 @@ export default function Why() {
                     Figaro is built to be extended. Anyone can author a new clause, register it on-chain, and be paid retroactively for clauses the network comes to rely on &mdash; sixty percent of the FIG supply is reserved for clause authors, distributed by a fixed formula that measures settled use. No application, no committee.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Clauses are one extension surface. Assemblies are another &mdash; communities compose clauses into the processes they need, with the sellers who run them indexing those processes freely. The protocol grows by what it actually carries. <Link href="/builders" className="text-ink-heading font-medium hover:underline">More on building on Figaro</Link>.
+                    Clauses are one composition surface. Assemblies are another &mdash; communities compose clauses into the processes they need, with the sellers who run them indexing those processes freely. The protocol grows by what it actually carries. <Link href="/builders" className="text-ink-heading font-medium hover:underline">More on building on Figaro</Link>.
                 </p>
             </MarketingSection>
 

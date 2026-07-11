@@ -6,7 +6,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 export const metadata: Metadata = {
     title: "Composability — Figaro Protocol",
     description:
-        "What the kernel's narrowness produces, and the architecture that preserves it: the coordinator pattern's three sufficient conditions, the three tiers of extension, and the security boundary that holds across them.",
+        "What the kernel's narrowness produces, and the architecture that preserves it: the coordinator pattern's three sufficient conditions, the three tiers of composition, and the security boundary that holds across them.",
 };
 
 export default function Composability() {
@@ -29,7 +29,7 @@ export default function Composability() {
 
             <MarketingSection title="Three sufficient conditions preserve the equilibrium.">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    Any internal exit path weakens the Nash equilibrium (Paper A, Theorem 4.7). So extensions live <em>outside</em> the kernel and compose via the coordinator pattern: the external reads kernel state and emits its own evidence, but observes three sufficient conditions.
+                    Any internal exit path weakens the Nash equilibrium (Paper A, Theorem 4.7). So compositions live <em>outside</em> the kernel and attach via the coordinator pattern: the external reads kernel state and emits its own evidence, but observes three sufficient conditions.
                 </p>
                 <ol className="space-y-3 text-base text-ink-body leading-relaxed list-decimal pl-6 mb-4">
                     <li><strong>Never writes to kernel state.</strong> External contracts cannot mutate <code>processes</code>, <code>orderStatus</code>, or <code>orderProcessId</code>. The kernel is the authoritative ledger of every commitment.</li>
@@ -77,7 +77,7 @@ export default function Composability() {
 
             <MarketingSection title="What the kernel enforces stays enforced.">
                 <p className="text-base text-ink-body leading-relaxed mb-6">
-                    Across every assembly that composes against the kernel, the same invariants hold. Across every extension authored above the kernel, the boundary of responsibility is the same.
+                    Across every assembly that composes against the kernel, the same invariants hold. Across every composition authored above the kernel, the boundary of responsibility is the same.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                     <div>

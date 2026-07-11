@@ -4,7 +4,7 @@ Status: active conceptual model. For the current codebase reading path and
 doc map, start with [README.md](README.md).
 
 This document names and defines the five semantic graphs that emerge from the
-Figaro protocol and its extensions. These graphs are **intentionally public
+Figaro protocol and its compositions. These graphs are **intentionally public
 coordination infrastructure**, not accidental data leakage.
 
 ---

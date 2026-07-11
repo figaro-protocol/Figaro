@@ -73,12 +73,12 @@ off-chain systems that already exist.
 ## Three-Tier Naming
 
 - **Kernel** = `FigaroCore`. The irreducible settlement primitive. Frozen.
-- **Protocol** = kernel + extension doctrine + public graphs.
+- **Protocol** = kernel + composition doctrine + public graphs.
 - **Runtime** = protocol + semantic layer + builder surfaces + UI.
 
 Match proposals to the correct tier:
 - "Add yield to locked bonds" → kernel concern. Reject.
-- "Add a new attestation mode" → protocol extension.
+- "Add a new attestation mode" → protocol composition.
 - "Change how roles display" → runtime concern.
 
 ## Before Proposing Any Kernel Change — Verify 3×

@@ -37,7 +37,7 @@ interface Props {
  * interactionSurfaces / rateQuantitySources): those key on a semantic the clause
  * SPEC declares, and there is no clause here to key on. "Re-homing" it under a
  * registry would build a one-tenant registry for a permanent kernel singleton —
- * ceremony that buys none of the open-world extension the registries exist for.
+ * ceremony that buys none of the open-world composition the registries exist for.
  *
  * TODO(Tier-B): Add provenance certification via AttestationCoordinator.
  */

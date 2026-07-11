@@ -131,7 +131,7 @@ const state = reconstruct(events);
                 </div>
 
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
-                    Figaro&apos;s useful extensions are predominantly external: the kernel does not include a dispute forum, a carbon-offset market, a prediction market, an insurance pool, a lending facility, a tax-reporting service, an identity provider, a storage layer, or a messaging fabric. An assembly names which external surfaces it composes with. A concrete walkthrough first, then the surface area.
+                    Figaro&apos;s useful compositions are predominantly external: the kernel does not include a dispute forum, a carbon-offset market, a prediction market, an insurance pool, a lending facility, a tax-reporting service, an identity provider, a storage layer, or a messaging fabric. An assembly names which external surfaces it composes with. A concrete walkthrough first, then the surface area.
                 </p>
 
                 <div className="border-l-2 border-default pl-6 mb-8">
@@ -219,7 +219,7 @@ const state = reconstruct(events);
                     </li>
                     <li>
                         <Link href="/builders/composability" className="text-ink-heading font-medium hover:underline">Composability</Link>
-                        <span className="text-ink-body"> &mdash; the coordinator pattern, the three extension tiers, and the kernel-vs-author boundary.</span>
+                        <span className="text-ink-body"> &mdash; the coordinator pattern, the three composition tiers, and the kernel-vs-author boundary.</span>
                     </li>
                     <li>
                         <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>

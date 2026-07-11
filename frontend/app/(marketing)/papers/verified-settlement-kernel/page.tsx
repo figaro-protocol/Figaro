@@ -10,7 +10,7 @@ import { Math } from "@/components/papers/Math";
 export const metadata: Metadata = {
     title: "A Verified Settlement Kernel — Figaro Protocol",
     description:
-        "A reference implementation of the two-mechanism bonded commitment kernel — ownerless, fee-less, admin-less — with the machine-checked formal-verification methodology used to audit it, the threat model, and the coordinator pattern for equilibrium-preserving extension.",
+        "A reference implementation of the two-mechanism bonded commitment kernel — ownerless, fee-less, admin-less — with the machine-checked formal-verification methodology used to audit it, the threat model, and the coordinator pattern for equilibrium-preserving composition.",
 };
 
 function FormalBlock({ label, children }: { label: string; children: React.ReactNode }) {
@@ -40,7 +40,7 @@ export default function VerifiedSettlementKernelPaper() {
                         Verification is layered: exhaustive model checking explores the full reachable state space under bounded parameters; property-based fuzzing exercises the deployed bytecode against randomized adversarial call sequences; symbolic execution discharges the kernel safety properties over all inputs in the modeled traces; and SMT-based specification checking proves method-quantified rules across the kernel, the attestation surface, and a token-operations conservation surface covering every value-transfer call site. The properties established are token conservation, contract solvency, the asymmetric-bonding amounts, monotonic cumulative value, buyer-dominant atomic resolution, and the no-state-change guarantee on the attestation surface.
                     </p>
                     <p>
-                        The implementation also realizes a <em>coordinator pattern</em>: an extension discipline under which external mechanisms (a clause-typed attestation coordinator, and clause and seller registries) compose with the kernel without weakening the bonding equilibrium. We give the four sufficient conditions and two concrete instances. Finally, we describe the three-layer enforcement architecture &mdash; economic (bonding), coordinational (atomic resolution), evidentiary (immutable log) &mdash; and the threat model under which the layers compose.
+                        The implementation also realizes a <em>coordinator pattern</em>: a composition discipline under which external mechanisms (a clause-typed attestation coordinator, and clause and seller registries) compose with the kernel without weakening the bonding equilibrium. We give the four sufficient conditions and two concrete instances. Finally, we describe the three-layer enforcement architecture &mdash; economic (bonding), coordinational (atomic resolution), evidentiary (immutable log) &mdash; and the threat model under which the layers compose.
                     </p>
                 </>
             }
@@ -169,7 +169,7 @@ export default function VerifiedSettlementKernelPaper() {
                         The kernel is modeled as a transition system whose state comprises the process records, order statuses, order records, process-to-order membership, the contract balance, and participant wallet balances, with three actions: root commitment, sub-order commitment, and process resolution. The model abstracts signatures (assumed correct given valid commitments), token mechanics (modeled as integer balances), and timing (deadlines are orthogonal to the bonding equilibrium and are exercised by regression testing instead). The bounded configuration uses two buyers and two sellers, several concurrent processes, and several sub-orders per process. Type well-formedness of all state variables and wallet non-negativity are additionally verified within the same bounds.
                     </p>
                 </PaperSubsection>
-                <PaperSubsection title="5.3 Extension Surfaces">
+                <PaperSubsection title="5.3 Composition Surfaces">
                     <p>
                         Two verified surfaces sit beyond the kernel entry points, both under specification checking. On the <strong>attestation surface</strong>, a non-buyer cannot attest as the buyer, and a successful buyer attestation implies the caller is the buyer; quantified over every public entry point on the coordinator, the attestation surface <em>cannot change kernel state</em> &mdash; neither order status nor process state &mdash; which is the headline guarantee for the coordinator. The clause-section bindings established at registration are first-write-wins and isolated from one another. On the <strong>token-operations surface</strong>, the conservation rules are gated so that every value-transfer call site in the kernel is covered by a rule before any check is dispatched; a new transfer call site without a matching rule fails the gate.
                     </p>
@@ -285,13 +285,13 @@ export default function VerifiedSettlementKernelPaper() {
                     Proposition 7.1 is sufficient, not necessary; mechanisms that violate one of (i)&ndash;(iv) may still preserve the equilibrium under additional per-mechanism argument. We exhibit two instances.
                 </p>
                 <PaperRun title="Attestation coordinator.">
-                    A unified zero-storage attestation surface keyed by clause type. Each attestation verifies role membership against the process&rsquo;s root buyer (or a role-resolver for the third-party path), verifies a merkle inclusion proof of the attested clause section against the signed agreement hash, content-hashes the evidence into an attestation event, and invokes no external per-clause code. The coordinator never modifies kernel state &mdash; this is its headline verified guarantee, established for both order status and process state. It is the cleanest example of an event-only extension.
+                    A unified zero-storage attestation surface keyed by clause type. Each attestation verifies role membership against the process&rsquo;s root buyer (or a role-resolver for the third-party path), verifies a merkle inclusion proof of the attested clause section against the signed agreement hash, content-hashes the evidence into an attestation event, and invokes no external per-clause code. The coordinator never modifies kernel state &mdash; this is its headline verified guarantee, established for both order status and process state. It is the cleanest example of an event-only composition.
                 </PaperRun>
                 <PaperRun title="Clause and seller registries.">
                     Permissionless, append-only, event-first registries. The clause registry anchors content clauses by a hash of the clause name together with a pointer to the off-chain specification. The seller registry is on-chain seller self-registration with a reclaimable deposit. Both compose with the kernel by being visible to readers and never invoking the kernel&rsquo;s settlement entry points. Conditions (i)&ndash;(iv) hold; both are pure coordination surfaces with no kernel interaction.
                 </PaperRun>
                 <PaperRun title="A note on liability allocation when conditions fail.">
-                    The verification status of Proposition 7.1 matters for legal readers: the four conditions are presently checked by inspection per extension, not by a parametric specification rule quantifying over arbitrary <Math>{"M"}</Math>. If an extension silently violates a condition and a downstream user is harmed when the kernel equilibrium breaks for that composition, the kernel verification in this paper does not extend to the resulting harm. The kernel claims it is correct; it does not claim that every extension built against it is correct, nor that the legal chain from kernel correctness to user remedy is closed.
+                    The verification status of Proposition 7.1 matters for legal readers: the four conditions are presently checked by inspection per composition, not by a parametric specification rule quantifying over arbitrary <Math>{"M"}</Math>. If a composition silently violates a condition and a downstream user is harmed when the kernel equilibrium breaks for that composition, the kernel verification in this paper does not extend to the resulting harm. The kernel claims it is correct; it does not claim that every composition built against it is correct, nor that the legal chain from kernel correctness to user remedy is closed.
                 </PaperRun>
             </PaperSection>
 

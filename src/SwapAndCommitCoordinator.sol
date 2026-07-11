@@ -55,7 +55,7 @@ interface IPermit2SignatureTransfer {
 ///      call, so it holds no resolution-time discretion. The Uniswap pool is an
 ///      off-protocol auxiliary. Permissionless first-write-wins binding means
 ///      alternative coordinators with different routers or MEV policies are valid
-///      extensions; this one fixes its router at deployment.
+///      compositions; this one fixes its router at deployment.
 ///
 ///      Per-party prerequisites (identical burden to the base flow plus Permit2):
 ///      a one-time `approve(FigaroCore, …)` for the bond currency, a one-time

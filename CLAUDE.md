@@ -186,10 +186,10 @@ The kernel is ideologically agnostic; the graph is the politics. FigaroCore take
 ### Three-Tier Naming
 
 - **Kernel** = `FigaroCore`. The irreducible settlement primitive.
-- **Protocol** = kernel + extension doctrine + public graphs.
+- **Protocol** = kernel + composition doctrine + public graphs.
 - **Runtime** = protocol + semantic layer + builder surfaces + UI.
 
-Use the correct tier. "Add yield to locked bonds" → kernel concern. "Add a new attestation mode" → protocol extension. "Change how roles display" → runtime concern.
+Use the correct tier. "Add yield to locked bonds" → kernel concern. "Add a new attestation mode" → protocol composition. "Change how roles display" → runtime concern.
 
 ### Separation of Concerns — Artifact Families
 

@@ -95,7 +95,7 @@ Why does Figaro use a singleton contract with a shared coordination surface?
 Figaro is **Infrastructure**, not an App. Like Ethereum itself, all participants agree to run the same version to maximize network effects and interoperability.
 - **Shared Security**: One battle-tested contract is safer than 1,000 forks.
 - **Shared Tooling**: Indexers, UIs, and wallets work for everyone.
-- **Shared Upgrades**: Non-upgradable core, but shared extensions.
+- **Shared Upgrades**: Non-upgradable core, but shared compositions.
 
 While anyone *can* fork the code, the value is in the shared coordination network.
 
@@ -893,7 +893,7 @@ exists does not make unilateral cheating more attractive.
 - Should the split ratio be constrained (e.g., minimum 50/50) to prevent
   coerced exits?
 - Does this belong in the kernel (bilateral primitive, like commitment) or
-  in an extension (opt-in per institution)?
+  in a composition (opt-in per institution)?
 
 **Current status**: Not implemented. Requires formal analysis before any code
 is written. The risk is small (bilateral agreement + dual signature is a

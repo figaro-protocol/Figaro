@@ -23,7 +23,7 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 ### In-scope (this document)
 
 - **Kernel**: `src/FigaroCore.sol` — 2 external functions, 3 mappings, no owner, no fee
-- **Protocol extensions**: `AttestationCoordinator`, `ClauseRegistry`, `SellerRegistry`, `AssemblyRegistry`, `SwapAndCommitCoordinator`
+- **Protocol compositions**: `AttestationCoordinator`, `ClauseRegistry`, `SellerRegistry`, `AssemblyRegistry`, `SwapAndCommitCoordinator`
 - **FIG token ecosystem**: `FigToken` (`IFigMinter` interface; no implementation wired)
 - **Formal model**: `formal/FigaroCore.tla`, `formal/MC.tla`, `formal/MC.cfg`
 - **Tests**: the Foundry, Halmos, Certora, Echidna, and TLA+ harnesses, plus the SDK suite — suite, file, property, and rule counts are in `TESTING.md` (the single source)
@@ -61,7 +61,7 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 - `A-6` **Resolution always possible**: contract can always pay out every active process
 - `A-7` **Fee-on-transfer rejection**: `_pullExact` reverts if received ≠ amount
 
-### Extension invariants
+### Composition invariants
 
 - `E-1` **Attestation role gating**: only verified role-holder (buyer/seller/resolver) can attest
 - `E-2` **Clause immutability**: registered clauses cannot be overwritten
@@ -100,7 +100,7 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 
 ---
 
-## 5) Extension invariants → enforcement map
+## 5) Composition invariants → enforcement map
 
 | ID | Statement | Code enforcement | Tests | UI presentation |
 |---|---|---|---|---|

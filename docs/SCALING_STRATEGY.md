@@ -273,10 +273,10 @@ by submitting directly to `FigaroCore` on-chain.
 
 ### What Is Not Kernel Scaling
 
-- Merkle trees for evidence or disclosure bundles → protocol-extension
+- Merkle trees for evidence or disclosure bundles → protocol-composition
   infrastructure
 - zk proofs for proximity, compliance, or selective reveal →
-  extension-layer tooling
+  composition-layer tooling
 - deploying on a cheaper network → execution-environment choice
 - multi-process composition → already built into the kernel
 
@@ -329,10 +329,10 @@ Do not resume StarkNet implementation until V5 parity gates are cleared.
 
 ## Prover Clause Architecture — Generic Engine, Not Compiled-In Specs
 
-Permissionless clause extension is an axiom of the protocol, not a
+Permissionless clause composition is an axiom of the protocol, not a
 forecast. `ClauseRegistrationHelper` makes registration permissionless
 on-chain; the clause-author RPGF funds authors across years 2/5/9; the
-extension doctrine assumes third-party clause families forever. An
+composition doctrine assumes third-party clause families forever. An
 architecture is correct only if it serves an unbounded, ever-growing
 clause population. "Is there enough demand to justify it" is a product
 question and has no place here.
@@ -388,7 +388,7 @@ step committed, none demand-gated:
    spec-content hash; the clause family's identity scheme should be
    content-binding — a content-derived `clauseId`, or a registry that
    exposes `keccak256(spec)`. The deployed registry is immutable, so this
-   is a registry v2 / parallel anchor — a protocol-extension-doctrine
+   is a registry v2 / parallel anchor — a protocol-composition-doctrine
    decision.
 4. **Witness-supplied specs.** The 16 protocol specs stop being
    special-cased; they become input like any other.
@@ -482,7 +482,7 @@ validator, content-binding, and witness-supplied specs are later steps.
 It rewrites `encode.rs` / `encode.ts`, the affected spec JSONs, and the
 rewritten clauses' Layer C validators; it does not touch the kernel or
 its invariants. Changing the clause family — even a free pre-mainnet
-rewrite — is a protocol-extension-doctrine event and runs past that
+rewrite — is a protocol-composition-doctrine event and runs past that
 review.
 
 **Implementation order.** (1) ratify this design; (2) `spec.rs` + TS

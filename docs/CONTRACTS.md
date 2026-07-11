@@ -115,7 +115,7 @@ pull; the leg reverts (`OutputBelowBond`) if the swap yields less than the bond.
 `ReentrancyGuard`; immutable `figaroCore`/`permit2`/`router`. Kernel untouched;
 the swap venue is an off-protocol auxiliary; permissionless first-write-wins
 means alternative coordinators with different routers/MEV policies are valid
-extensions. Per-party prerequisites: a one-time `approve(FigaroCore, …)` for the
+compositions. Per-party prerequisites: a one-time `approve(FigaroCore, …)` for the
 bond currency (same as the base flow) plus a one-time `approve(Permit2, …)` for
 the input token. EIP-7702 and ERC-4337 variants are out of scope. Its
 local-minimal `IFigaroCore` binding is the copyable exemplar of the coordinator
