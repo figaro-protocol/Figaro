@@ -30,10 +30,6 @@ type SellerAttestationInput = {
      * uniform across both; there is no "cross-checked" vs "runtime" clause tier.
      */
     content?: Hex;
-    /** Optional — defaults to `orderHash` for same-order attestation. Supply
-     *  a different order to attest cross-order (e.g. a driver's sub-order
-     *  commitment as role, the root order as target). Must be in the same process. */
-    roleOrderHash?: Hex;
     failureMessage?: string;
 };
 
@@ -132,23 +128,19 @@ export function useAttestationCoordinatorActions() {
         clauseId,
         stage,
         content,
-        roleOrderHash,
         failureMessage = "Transaction failed",
     }: SellerAttestationInput) => {
         const { account, coordinator: attestationCoordinator } = ensureCoordinatorAccess();
         setError("");
         try {
             const target = await loadCommitment(orderHash);
-            const role = (roleOrderHash && roleOrderHash !== orderHash)
-                ? await loadCommitment(roleOrderHash)
-                : target;
             const { sectionData, proof } = await buildReceipt(target.agreementHash as Hex, clauseId);
 
             return await writeContractAsync({
                 address: attestationCoordinator,
                 abi: ATTESTATION_COORDINATOR_ABI,
                 functionName: "attestAsSeller",
-                args: [role, target, clauseId, stage, sectionData, proof, content ?? sectionData],
+                args: [target, target, clauseId, stage, sectionData, proof, content ?? sectionData],
                 account,
                 chain,
             });

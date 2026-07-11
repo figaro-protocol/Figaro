@@ -55,10 +55,12 @@
  *              Harbor Provisions (anvil[11]), Sterling Goods (anvil[12]) —
  *              their catalogues price the sub-orders live.
  *
- * K3 note: cross-order sibling attest (attestAsSeller with distinct
- * role/target) has NO UI affordance today — the derivation never sets
- * roleOrderHash — so this spec does not fake one; that remains a design
- * ruling on the punch-list.
+ * K3 note: cross-order sibling attest has no client plumbing — the sister-
+ * clause pairing that produced it was deleted in the open-world de-hardcode,
+ * and the orphaned consumer leg was buried with it. The on-chain
+ * attestAsSeller(role, target) surface remains (DESIGN_DECISIONS §2); a
+ * cross-order verb, if ever needed, derives from a composed clause's spec —
+ * never a hardcoded affordance.
  *
  * No evmSnapshot/evmRevert — devnet is a mainnet rehearsal; the gates are
  * idempotent and the run leaves its state on-chain for out-of-band checks.

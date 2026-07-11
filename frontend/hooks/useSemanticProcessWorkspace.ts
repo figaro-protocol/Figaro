@@ -277,7 +277,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                     };
                     const submit = (a: typeof args) => action.party === "buyer"
                         ? attestationActions.submitBuyerAttestation(a)
-                        : attestationActions.submitSellerAttestation({ ...a, roleOrderHash: action.roleOrderHash as Hex | undefined });
+                        : attestationActions.submitSellerAttestation(a);
                     const txHash = await submit(args);
 
                     // HAND-OFF PAIRING (one action, two attestations): a ladder

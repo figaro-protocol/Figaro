@@ -93,7 +93,6 @@ export interface SubmitClauseAttestationCapabilityAction {
      *  surface to BOTH parties — who must witness is never engine policy
      *  (sufficiency is derived at read time against the committed policy). */
     party: "seller" | "buyer";
-    roleOrderHash?: string;
 }
 
 
