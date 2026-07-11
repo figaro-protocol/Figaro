@@ -25,7 +25,7 @@ import {
   calculateBonds,
   buildCommitment,
   buildDomain,
-  ProcessGraph,
+  Topology,
   maxOrdersResolvablePerProcess,
 } from "@figaro/sdk";
 
@@ -33,11 +33,11 @@ import {
 const events = await fetchCoreEvents(client, addresses, 0n);
 
 // Reconstruct full process/order state from events
-const graph = new ProcessGraph();
-graph.applyEvents(events);
+const topology = new Topology();
+topology.applyEvents(events);
 
-const process = graph.getProcess(processId);
-const active = graph.getActiveProcesses();
+const process = topology.getProcess(processId);
+const active = topology.getActiveProcesses();
 
 // Calculate bond requirements
 const bonds = calculateBonds(cumulativeValue, payment);
@@ -198,7 +198,7 @@ format `bytes32-hex` / `address-hex` / `bytes-hex` / `iso-datetime`),
 - **Single dependency** — only `viem`. No ethers, no web3.js, no framework lock-in.
 - **Pure where possible** — price curves, bond math, and state reconstruction are pure functions. Chain reads are isolated and clearly marked.
 - **Signing-agnostic** — builds EIP-712 typed data; you sign however you want (EOA, Safe, MPC, hardware wallet).
-- **Event-sourced state** — `ProcessGraph` reconstructs the full process/order graph from on-chain events. No subgraph dependency.
+- **Event-sourced state** — `Topology` reconstructs the full process/order topology from on-chain events. No subgraph dependency.
 - **Live kernel event contract** — reconstruction assumes `OrderCommitted` carries the full commitment payload (`agreementHash`, `salt`, `deadline`) and that order/process closure is derived from `OrderResolved` plus `ProcessResolved`.
 - **Agent-native** — the proposer generates typed actions; the HITL queue and autonomous gateway are two execution modes for the same action type.
 

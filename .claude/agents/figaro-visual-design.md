@@ -55,7 +55,7 @@ For an audit task:
 1. **Color usage audit**: grep for `bg-`, `text-`, `border-` color classes across components. Group by hue family. Flag any hue family used for >1 semantic role.
 2. **Typography audit**: grep for `text-` size + weight classes. Flag deviations from the canonical scale.
 3. **Component primitive audit**: for `<Modal>`, `<Form>`, `<FormField>`, `<Card>`, `<Button>`, `<Loading>`, `<Empty>`, `<Error>` — find each implementation and dedupe. Flag ad-hoc reimplementations.
-4. **A11y audit**: grep for `focus:outline-none` without follow-up `focus:ring-*`. Grep for `<input>` heights. Check ARIA on tab-styled buttons (e.g., the `ProcessGraphCanvas` lens buttons flagged in the audit).
+4. **A11y audit**: grep for `focus:outline-none` without follow-up `focus:ring-*`. Grep for `<input>` heights. Check ARIA on tab-styled buttons (e.g., the `TopologyCanvas` lens buttons flagged in the audit).
 5. **Tailwind config audit**: read `tailwind.config.ts`; flag missing semantic tokens, deviations from defaults, missing `darkMode` config.
 
 ---

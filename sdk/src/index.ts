@@ -80,7 +80,7 @@ export {
 } from "./events.js";
 
 // State reconstruction
-export { reconstruct, ProcessGraph } from "./state.js";
+export { reconstruct, Topology } from "./state.js";
 export type { CoreEvents } from "./state.js";
 
 // Discovery — the cold-start catalogue (clauses, sellers, assemblies)

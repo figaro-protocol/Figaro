@@ -28,7 +28,7 @@ import * as path from "node:path";
 import {
     CORE_ABI,
     fetchCoreEvents,
-    ProcessGraph,
+    Topology,
     buildCommitment,
     buildDomain,
     calculateBonds,
@@ -221,11 +221,11 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
 
         // ── 6. Fetch events and reconstruct state via SDK ───────────────
         const events = await fetchCoreEvents(publicClient, addresses, 0n);
-        const graph = new ProcessGraph();
-        graph.applyEvents(events);
+        const topology = new Topology();
+        topology.applyEvents(events);
 
         // There should be exactly one process with one order
-        const active = graph.getActiveProcesses();
+        const active = topology.getActiveProcesses();
         expect(active.length).toBe(1);
 
         const process = active[0];
@@ -250,10 +250,10 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
 
         // ── 8. Reconstruct post-resolution state ────────────────────────
         const events2 = await fetchCoreEvents(publicClient, addresses, 0n);
-        const graph2 = new ProcessGraph();
-        graph2.applyEvents(events2);
+        const topology2 = new Topology();
+        topology2.applyEvents(events2);
 
-        const resolvedProcess = graph2.getProcess(process.processId);
+        const resolvedProcess = topology2.getProcess(process.processId);
         expect(resolvedProcess).toBeDefined();
         expect(resolvedProcess!.resolved).toBe(true);
 

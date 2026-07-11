@@ -1,15 +1,15 @@
 /**
  * @figaro/sdk — Discovery Reconstructor
  *
- * The cold-start half of an agent's state. Where `state.ts`/`ProcessGraph`
+ * The cold-start half of an agent's state. Where `state.ts`/`Topology`
  * reconstructs the processes an agent is ALREADY in, this module reconstructs
  * what EXISTS on the network — the three artifact families a fresh-key agent
  * has never seen: clauses, sellers, assemblies.
  *
- * It is a PARALLEL family, deliberately not folded into `ProcessGraph`: the
+ * It is a PARALLEL family, deliberately not folded into `Topology`: the
  * registries have no on-chain edges among themselves or to FigaroCore
  * (separation-of-concerns doctrine — each family its own anchor and its own
- * reducer). `DiscoveryGraph` mirrors `ProcessGraph`'s shape (applyEvents +
+ * reducer). `DiscoveryGraph` mirrors `Topology`'s shape (applyEvents +
  * getters) so the two read the same way without knowing about each other.
  *
  * Surfacing derives from the LIVE stake (the registries' staked-intent model):
@@ -258,7 +258,7 @@ interface SellerEntry {
 
 /**
  * Mutable discovery graph — the "shadow catalogue" an agent maintains, sibling
- * to `ProcessGraph`. Incrementally updated as new registry events arrive.
+ * to `Topology`. Incrementally updated as new registry events arrive.
  */
 export class DiscoveryGraph {
     private readonly clauses = new Map<Hex, ClauseEntry>(); // key: idHash

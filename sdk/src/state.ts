@@ -1,9 +1,9 @@
 /**
  * @figaro/sdk — State Reconstructor
  *
- * Builds a typed in-memory process graph from parsed events.
+ * Builds a typed in-memory process topology from parsed events.
  * Stateless by default — call reconstruct() with events, get state out.
- * For incremental updates, use the ProcessGraph class.
+ * For incremental updates, use the Topology class.
  */
 
 import type {
@@ -29,22 +29,22 @@ export interface CoreEvents {
 }
 
 /**
- * Reconstruct the full process graph from parsed events.
+ * Reconstruct the full process topology from parsed events.
  * Returns a Map<processId, Process>.
  */
 export function reconstruct(events: CoreEvents): Map<Hex, Process> {
-    const graph = new ProcessGraph();
-    graph.applyEvents(events);
-    return graph.processes;
+    const topology = new Topology();
+    topology.applyEvents(events);
+    return topology.processes;
 }
 
-// ── Incremental process graph ───────────────────────────────────────────────
+// ── Incremental process topology ───────────────────────────────────────────────
 
 /**
- * Mutable process graph that can be incrementally updated as new events arrive.
+ * Mutable process topology that can be incrementally updated as new events arrive.
  * This is the "shadow state" an agent maintains.
  */
-export class ProcessGraph {
+export class Topology {
     readonly processes = new Map<Hex, Process>();
     private readonly orderIndex = new Map<Hex, Order>();
 

@@ -1,7 +1,7 @@
 /**
  * @figaro/sdk/agent — Context Provider
  *
- * Stateful wrapper around ProcessGraph + PublicClient.
+ * Stateful wrapper around Topology + PublicClient.
  * Handles sync, incremental updates, and structured briefings.
  *
  * Usage:
@@ -22,7 +22,7 @@ import type {
     RegisteredSeller,
     RegisteredAssembly,
 } from "../types.js";
-import { ProcessGraph } from "../state.js";
+import { Topology } from "../state.js";
 import { fetchCoreEvents } from "../events.js";
 import { DiscoveryGraph, fetchDiscoveryEvents } from "../discovery.js";
 
@@ -43,14 +43,14 @@ export interface SyncResult {
 
 /**
  * Stateful context that an agent maintains.
- * Wraps ProcessGraph with chain sync capabilities.
+ * Wraps Topology with chain sync capabilities.
  */
 export class FigaroContext {
     /** The processes this agent is in — reconstructed from FigaroCore events. */
-    readonly graph: ProcessGraph;
+    readonly topology: Topology;
     /** What EXISTS on the network — the live clause/seller/assembly catalogue.
      *  A parallel family (registries have no on-chain edges to the kernel), so
-     *  a distinct reducer, never folded into `graph`. */
+     *  a distinct reducer, never folded into `topology`. */
     readonly discovery: DiscoveryGraph;
     readonly client: PublicClient;
     readonly addresses: FigaroAddresses;
@@ -64,7 +64,7 @@ export class FigaroContext {
     constructor(client: PublicClient, addresses: FigaroAddresses) {
         this.client = client;
         this.addresses = addresses;
-        this.graph = new ProcessGraph();
+        this.topology = new Topology();
         this.discovery = new DiscoveryGraph();
     }
 
@@ -97,7 +97,7 @@ export class FigaroContext {
             fetchDiscoveryEvents(this.client, this.addresses, fromBlock, currentBlock),
         ]);
 
-        this.graph.applyEvents(events);
+        this.topology.applyEvents(events);
         this.discovery.applyEvents(discoveryEvents);
         this.lastSyncedBlock = currentBlock;
 
@@ -116,38 +116,38 @@ export class FigaroContext {
      * This is what you feed to an LLM or specialized agent.
      */
     getProcessBriefing(processId: Hex): AgentProcessContext | null {
-        return this.graph.buildAgentContext(processId);
+        return this.topology.buildAgentContext(processId);
     }
 
     /** Get the raw Process object. */
     getProcess(processId: Hex): Process | undefined {
-        return this.graph.getProcess(processId);
+        return this.topology.getProcess(processId);
     }
 
     /** Get a single order by hash. */
     getOrder(orderHash: Hex): Order | undefined {
-        return this.graph.getOrder(orderHash);
+        return this.topology.getOrder(orderHash);
     }
 
     /** All processes where `address` is the root buyer. */
     getProcessesAsBuyer(address: Address): Process[] {
-        return this.graph.getProcessesByBuyer(address);
+        return this.topology.getProcessesByBuyer(address);
     }
 
     /** All orders where `address` is the seller. */
     getOrdersAsSeller(address: Address): Order[] {
-        return this.graph.getOrdersBySeller(address);
+        return this.topology.getOrdersBySeller(address);
     }
 
     /** All active (unresolved) processes. */
     getActiveProcesses(): Process[] {
-        return this.graph.getActiveProcesses();
+        return this.topology.getActiveProcesses();
     }
 
     /** All processes where `address` participates (buyer or seller). */
     getMyProcesses(address: Address): Process[] {
         const lc = address.toLowerCase();
-        return [...this.graph.processes.values()].filter((p) => {
+        return [...this.topology.processes.values()].filter((p) => {
             if (p.rootBuyer.toLowerCase() === lc) return true;
             for (const o of p.orders.values()) {
                 if (o.seller.toLowerCase() === lc) return true;

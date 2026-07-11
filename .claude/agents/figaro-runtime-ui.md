@@ -24,7 +24,7 @@ Read in full:
 
 Then sample these to learn current patterns (use `Read` with offset/limit; do not read whole files unless small):
 
-- A representative lens panel in `frontend/components/` — for the lens-system pattern used in `ProcessGraphCanvas`.
+- A representative lens panel in `frontend/components/` — for the lens-system pattern used in `TopologyCanvas`.
 - An attestation form component (search for one that calls `useFigaroActions` or `useCommitmentFlow`).
 - A page in `frontend/app/(app)/` — `app` route-group conventions.
 - A page in `frontend/app/(marketing)/` — marketing-page conventions (no wagmi).

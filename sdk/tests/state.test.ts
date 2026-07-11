@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { reconstruct, ProcessGraph } from "../src/state.js";
+import { reconstruct, Topology } from "../src/state.js";
 import type { CoreEvents } from "../src/state.js";
 import { OrderState } from "../src/types.js";
 import type {
@@ -83,32 +83,32 @@ describe("reconstruct", () => {
     });
 });
 
-describe("ProcessGraph", () => {
+describe("Topology", () => {
     it("incrementally applies events", () => {
-        const graph = new ProcessGraph();
+        const topology = new Topology();
 
         // First batch: commit
-        graph.applyEvents(mkEvents({
+        topology.applyEvents(mkEvents({
             orderCommitted: [mkCommit(OHASH, PID, 1)],
         }));
-        expect(graph.getProcess(PID)).toBeDefined();
-        expect(graph.getOrder(OHASH)?.state).toBe(OrderState.Active);
+        expect(topology.getProcess(PID)).toBeDefined();
+        expect(topology.getOrder(OHASH)?.state).toBe(OrderState.Active);
 
         // Second batch: another order in same process
-        graph.applyEvents(mkEvents({
+        topology.applyEvents(mkEvents({
             orderCommitted: [mkCommit(OHASH2, PID, 2)],
         }));
-        expect(graph.getProcess(PID)!.orders.size).toBe(2);
+        expect(topology.getProcess(PID)!.orders.size).toBe(2);
     });
 
     it("getActiveProcesses returns only unresolved", () => {
-        const graph = new ProcessGraph();
-        graph.applyEvents(mkEvents({
+        const topology = new Topology();
+        topology.applyEvents(mkEvents({
             orderCommitted: [mkCommit(OHASH, PID, 1)],
         }));
-        expect(graph.getActiveProcesses().length).toBe(1);
+        expect(topology.getActiveProcesses().length).toBe(1);
 
-        graph.applyEvents(mkEvents({
+        topology.applyEvents(mkEvents({
             processResolved: [
                 { processId: PID, buyer: BUYER, orderCount: 1n, blockNumber: 2 } as ProcessResolvedEvent,
             ],
@@ -116,13 +116,13 @@ describe("ProcessGraph", () => {
                 { orderHash: OHASH, processId: PID, sellerPayout: 300n, buyerPayout: 100n, blockNumber: 2 } as OrderResolvedEvent,
             ],
         }));
-        expect(graph.getActiveProcesses().length).toBe(0);
+        expect(topology.getActiveProcesses().length).toBe(0);
     });
 
     it("getProcessesByBuyer filters correctly", () => {
         const otherBuyer = "0xdddddddddddddddddddddddddddddddddddddd" as Address;
-        const graph = new ProcessGraph();
-        graph.applyEvents(mkEvents({
+        const topology = new Topology();
+        topology.applyEvents(mkEvents({
             orderCommitted: [
                 mkCommit(OHASH, PID, 1),
                 {
@@ -131,25 +131,25 @@ describe("ProcessGraph", () => {
                 },
             ],
         }));
-        expect(graph.getProcessesByBuyer(BUYER).length).toBe(1);
-        expect(graph.getProcessesByBuyer(otherBuyer).length).toBe(1);
+        expect(topology.getProcessesByBuyer(BUYER).length).toBe(1);
+        expect(topology.getProcessesByBuyer(otherBuyer).length).toBe(1);
     });
 
     it("getOrdersBySeller filters correctly", () => {
-        const graph = new ProcessGraph();
-        graph.applyEvents(mkEvents({
+        const topology = new Topology();
+        topology.applyEvents(mkEvents({
             orderCommitted: [mkCommit(OHASH, PID, 1)],
         }));
-        expect(graph.getOrdersBySeller(SELLER).length).toBe(1);
-        expect(graph.getOrdersBySeller(BUYER).length).toBe(0);
+        expect(topology.getOrdersBySeller(SELLER).length).toBe(1);
+        expect(topology.getOrdersBySeller(BUYER).length).toBe(0);
     });
 
     it("buildAgentContext returns structured data", () => {
-        const graph = new ProcessGraph();
-        graph.applyEvents(mkEvents({
+        const topology = new Topology();
+        topology.applyEvents(mkEvents({
             orderCommitted: [mkCommit(OHASH, PID, 1)],
         }));
-        const ctx = graph.buildAgentContext(PID);
+        const ctx = topology.buildAgentContext(PID);
         expect(ctx).not.toBeNull();
         expect(ctx!.processId).toBe(PID);
         expect(ctx!.orders).toHaveLength(1);
@@ -157,8 +157,8 @@ describe("ProcessGraph", () => {
     });
 
     it("buildAgentContext returns null for unknown process", () => {
-        const graph = new ProcessGraph();
-        const ctx = graph.buildAgentContext(PID);
+        const topology = new Topology();
+        const ctx = topology.buildAgentContext(PID);
         expect(ctx).toBeNull();
     });
 });
