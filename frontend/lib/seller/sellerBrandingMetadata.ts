@@ -1,9 +1,9 @@
 /**
- * sellerBrandingMetadata.ts — the seller's branding (identity / presentation).
+ * lib/seller/sellerBrandingMetadata.ts
  *
- * A distinct concern from the catalogue (the seller's items) and the profile.
- * Kept in its own file so branding never leaks into catalogue or profile types.
+ * `SellerBrandingMetadata` is part of the seller-profile document shape
+ * owned by `@figaro/sdk`. This module re-exports it so existing
+ * `@/lib/seller/...` call sites keep working; add nothing here.
  */
-export interface SellerBrandingMetadata {
-    logoURI?: string;
-}
+
+export type { SellerBrandingMetadata } from "@figaro/sdk";

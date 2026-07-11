@@ -51,7 +51,11 @@ state, never configured).
    To surface the wallet as a discoverable seller, `SellerRegistry.register(metadataURI)`
    (a self-signed action, only the wallet's own key) — but if the wallet is already
    registered `register()` reverts `AlreadyRegistered`, so publish or refresh the profile
-   with `updateProfile(metadataURI)` instead.
+   with `updateProfile(metadataURI)` instead. `metadataURI` points at the seller-profile
+   JSON document — its shape (required `name`; optional branding, accepted tokens,
+   `catalogueURI`, agent `services`) is `SellerProfileMetadata` in `@figaro/sdk`; parse
+   and validate it with `parseSellerProfileDocument` before pinning (see the SDK README's
+   "Seller Profile + Catalogue Documents").
 
 ## The safety net you can lean on
 

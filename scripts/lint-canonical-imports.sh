@@ -60,7 +60,6 @@ DECL_BANNED=(
     'isValidAddress~frontend/lib/shared/evm.ts~re-declares isValidAddress — import from frontend/lib/shared/evm.ts'
     'addressIntegrity~frontend/lib/shared/evm.ts~re-declares addressIntegrity — import from frontend/lib/shared/evm.ts'
     'toError~frontend/lib/shared/errors.ts~re-declares toError — import from frontend/lib/shared/errors.ts'
-    'asOptionalNumber~frontend/lib/seller/parseHelpers.ts~re-declares asOptionalNumber — import from frontend/lib/seller/parseHelpers.ts'
 )
 
 violations=0

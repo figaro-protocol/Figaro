@@ -216,6 +216,78 @@ format `bytes32-hex` / `address-hex` / `bytes-hex` / `iso-datetime`),
 `integer`, `bigint` (decimal-string for JSON safety), `boolean`, `enum`,
 `array`, `object`. Per-stage overrides via `spec.stages[stage]`.
 
+## Seller Profile + Catalogue Documents
+
+Two off-chain JSON documents describe a seller. Both are **Layer-A** — their
+types and strict parsers are exported from the ROOT `@figaro/sdk` (next to
+`RegisteredSeller` / `reconstructDiscovery`), so an integrator reading a seller
+learns the shape from the SDK instead of the frontend bundle. Neither document
+is bundled — each is pinned to IPFS and read at runtime.
+
+- **Profile** (`SellerProfileMetadata`) — the stable identity envelope pinned at
+  `SellerRegistry.metadataURI`. `name` is the ONLY required field; everything
+  else is optional (`description`, `specialty`, `location`, `branding`, `assets`,
+  `acceptedTokens`, `defaultTokenAddress`, `dimWeightDivisor`, `assemblyBindings`,
+  `services`, and `catalogueURI` — the pointer to the catalogue). Token
+  acceptance is an identity declaration, not a market position. Carries no
+  role / archetype / category taxonomy — what a seller does is inferred from the
+  catalogue.
+- **Catalogue** (`SellerCatalogueMetadata`) — the volatile item list pinned at
+  `profile.catalogueURI`. Required: `subjectAddress`, `items[]`, `version`.
+  Each item requires `id`, `name`, `price`, `available`; optional are
+  `description`, `category`, `image`, physical measures (`massGrams`,
+  `volumeMl`, `lengthMm`/`widthMm`/`heightMm`), rate pricing
+  (`pricingPolicy: "fixed" | "rate"`, `rateUnit`, `rateQuantitySource`), and
+  the catalogue-sourced `clauseValues` map. Split off the profile so an item
+  edit re-pins one small JSON, not the whole identity envelope.
+
+```ts
+import {
+  reconstructDiscovery,
+  parseSellerProfileDocument,       // throws on malformed input
+  tryParseSellerProfileDocument,    // returns null on malformed input
+  parseSellerCatalogueDocument,
+  projectAgentServices,             // pull ERC-8004 agent endpoints from a profile
+} from "@figaro/sdk";
+import type { SellerProfileMetadata, SellerCatalogueMetadata } from "@figaro/sdk";
+
+// 1. Discovery hands you the metadataURI for each registered seller.
+const graph = reconstructDiscovery(events);
+const seller = graph.getSellers()[0]; // → RegisteredSeller { subject, metadataURI }
+
+// 2. Fetch + parse the profile document (IPFS/HTTP fetch is yours to make).
+const profileJson = await (await fetch(gateway(seller.metadataURI))).json();
+const profile: SellerProfileMetadata = parseSellerProfileDocument(profileJson);
+const { isAgent, services } = projectAgentServices(profileJson);
+
+// 3. Follow catalogueURI to the item list.
+if (profile.catalogueURI) {
+  const catJson = await (await fetch(gateway(profile.catalogueURI))).json();
+  const catalogue: SellerCatalogueMetadata = parseSellerCatalogueDocument(catJson);
+}
+```
+
+**Publish flow (write side).** Build a document, validate it by round-tripping
+it through the strict parser, pin it, then anchor the URI on-chain:
+
+```ts
+import { SELLER_REGISTRY_ABI } from "@figaro/sdk";
+
+const doc: SellerProfileMetadata = { name: "Bob Pizza", catalogueURI: "ipfs://Qm…" };
+parseSellerProfileDocument(doc);                 // throws if malformed — validate before pinning
+const metadataURI = await pinJSON(doc);          // your IPFS pin → "ipfs://…"
+
+// First registration (payable — sends the registration deposit):
+//   SellerRegistry.register(metadataURI)
+// Subsequent profile edits (re-pin, then point the registry at the new URI):
+//   SellerRegistry.updateProfile(metadataURI)
+```
+
+The catalogue follows the same shape: `parseSellerCatalogueDocument(cat)` →
+`pinJSON(cat)` → set the resulting URI as the profile's `catalogueURI` and
+`updateProfile`. First-write-wins binding means the wallet→profile edge is
+permanent; `updateProfile` swaps only the pointer.
+
 ## Design Principles
 
 - **Single dependency** — only `viem`. No ethers, no web3.js, no framework lock-in.
