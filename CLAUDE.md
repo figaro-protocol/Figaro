@@ -39,8 +39,9 @@ Consent is a first-class agreement layer, NOT boilerplate.
 **Agents keep mislabeling these as silt — they are DESIGNED IN:** agents are first-class
 participants (level field with humans; `/agents` ≠ `/users`); use-case pages
 (`/local-commerce`) are *marketing*, their runtime an assembly in `/assemblies`;
-`/dispute` is third-party composition (Kleros) over a *process*, not consent. This section IS
-the canonical statement of the model — everything below serves it.
+dispute recourse (the `composesForumUrl` link + evidence bundle — the bespoke `/dispute` UI was
+deleted; the forum is config, never code) is third-party composition (Kleros) over a *process*,
+not consent. This section IS the canonical statement of the model — everything below serves it.
 
 ## Read this first — the premise that has cost the most
 
