@@ -1,3 +1,8 @@
+# Kernel-freeze floor: FAIL the commit if a frozen kernel file (FigaroCore.sol /
+# CommitmentTypes.sol) is staged. The .claude/ warn-hook + settings deny are both
+# human-bypassable; this is the git-level stop. Override (reviewed change only):
+# FIGARO_KERNEL_EDIT=1 git commit ... Runs first so a kernel edit fails fast.
+bash scripts/lint-kernel-frozen.sh
 npx lint-staged
 # Repo-hygiene floor: only the shared agent harness (agents/ skills/ hooks/
 # settings.json) may be committed under .claude/; memory files never are. Reads the
