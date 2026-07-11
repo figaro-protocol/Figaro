@@ -33,8 +33,8 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
 
     const negatives: ReadonlyArray<readonly [string, unknown]> = [
         ["missing clauseId", { version: 1, title: "T", description: "D", fields: [] }],
-        ["enum field with no values", { clauseId: "x-v1", version: 1, title: "T", description: "D", fields: [{ name: "s", type: "enum", required: true }] }],
-        ["array field with no items", { clauseId: "x-v1", version: 1, title: "T", description: "D", fields: [{ name: "a", type: "array", required: true }] }],
+        ["enum field with no values", { clauseId: "x", version: 1, title: "T", description: "D", fields: [{ name: "s", type: "enum", required: true }] }],
+        ["array field with no items", { clauseId: "x", version: 1, title: "T", description: "D", fields: [{ name: "a", type: "array", required: true }] }],
     ];
     it.each(negatives)("rejects (%s) in BOTH schema and parser", (_name, spec) => {
         expect(validateAgainstSchema(spec)).toBe(false);
@@ -46,7 +46,7 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
     // parseClauseSpec. So a malformed block (e.g. missing the required article) is a
     // SCHEMA-level rejection only; the parser is silent on block by design.
     it("rejects a block missing the required article at the schema (the parser does not own block)", () => {
-        const spec = { clauseId: "x-v1", version: 1, title: "T", description: "D", fields: [], block: { mechanismKinds: [] } };
+        const spec = { clauseId: "x", version: 1, title: "T", description: "D", fields: [], block: { mechanismKinds: [] } };
         expect(validateAgainstSchema(spec)).toBe(false);
     });
 });

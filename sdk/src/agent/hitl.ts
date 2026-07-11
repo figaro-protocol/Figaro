@@ -15,7 +15,7 @@
  *   });                                     // Agent proposes with review context
  *   const pending = queue.pending();        // Human reviews
  *   const item = queue.approve(id);         // Human approves
- *   await executeAction(walletClient, item.action, ...);  // Executed externally
+ *   await executeAction(walletClient, publicClient, addresses, item.action);  // Executed externally
  */
 
 import type { ProposedAction } from "./proposer.js";

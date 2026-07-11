@@ -15,14 +15,16 @@ import emissionsSpecRaw from "../../../clauses/figaro-emissions.json" with { typ
 import proximityPolicySpecRaw from "../../../clauses/figaro-proximity-policy.json" with { type: "json" };
 import merchantSpecRaw from "../../../clauses/figaro-merchant-process.json" with { type: "json" };
 import courierSpecRaw from "../../../clauses/figaro-courier-process.json" with { type: "json" };
+import dimweightSpecRaw from "../../../clauses/figaro-dimweight.json" with { type: "json" };
+import handoffSpecRaw from "../../../clauses/figaro-handoff.json" with { type: "json" };
 
 describe("example clause specs — parse + validate sample content", () => {
-    it("figaro-topology-v1 spec parses cleanly", () => {
+    it("figaro-topology spec parses cleanly", () => {
         const result = parseClauseSpec(topologySpecRaw);
         expect(result.ok).toBe(true);
     });
 
-    it("figaro-topology-v1 accepts a root-order content", () => {
+    it("figaro-topology accepts a root-order content", () => {
         const parsed = parseClauseSpec(topologySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         // The clause stores only the edges; mode (root/explicit/linear) is
@@ -31,7 +33,7 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(validateContent(root, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-topology-v1 accepts an explicit child-order content", () => {
+    it("figaro-topology accepts an explicit child-order content", () => {
         const parsed = parseClauseSpec(topologySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const child = {
@@ -40,20 +42,20 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(validateContent(child, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-topology-v1 rejects malformed parent hashes", () => {
+    it("figaro-topology rejects malformed parent hashes", () => {
         const parsed = parseClauseSpec(topologySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const bogus = { parentOrderHashes: ["not-hex"] };
         expect(validateContent(bogus, parsed.spec).ok).toBe(false);
     });
 
-    // ── figaro-commerce-v1 ──
+    // ── figaro-commerce ──
 
-    it("figaro-commerce-v1 spec parses cleanly", () => {
+    it("figaro-commerce spec parses cleanly", () => {
         expect(parseClauseSpec(commerceSpecRaw).ok).toBe(true);
     });
 
-    it("figaro-commerce-v1 accepts an order with line items", () => {
+    it("figaro-commerce accepts an order with line items", () => {
         const parsed = parseClauseSpec(commerceSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const ok = validateContent({
@@ -64,7 +66,7 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(ok.ok).toBe(true);
     });
 
-    it("figaro-commerce-v1 rejects zero payment", () => {
+    it("figaro-commerce rejects zero payment", () => {
         const parsed = parseClauseSpec(commerceSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const result = validateContent({
@@ -264,14 +266,14 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(validateContent({ nmfcClass: "73" }, parsed.spec).ok).toBe(false);
     });
 
-    // ── figaro-modalities-v1 ──
+    // ── figaro-modalities ──
 
-    it("figaro-modalities-v1 spec parses cleanly", () => {
+    it("figaro-modalities spec parses cleanly", () => {
         const result = parseClauseSpec(modalitiesSpecRaw);
         expect(result.ok).toBe(true);
     });
 
-    it("figaro-modalities-v1 accepts each single-select modality", () => {
+    it("figaro-modalities accepts each single-select modality", () => {
         const parsed = parseClauseSpec(modalitiesSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         for (const modality of ["consume-onsite", "pickup", "delivery", "virtual"]) {
@@ -279,53 +281,53 @@ describe("example clause specs — parse + validate sample content", () => {
         }
     });
 
-    it("figaro-modalities-v1 rejects an unknown modality", () => {
+    it("figaro-modalities rejects an unknown modality", () => {
         const parsed = parseClauseSpec(modalitiesSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ modality: "teleport" }, parsed.spec).ok).toBe(false);
     });
 
-    it("figaro-modalities-v1 rejects a missing modality", () => {
+    it("figaro-modalities rejects a missing modality", () => {
         const parsed = parseClauseSpec(modalitiesSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({}, parsed.spec).ok).toBe(false);
     });
 
-    // ── figaro-arbitration-kleros-v1 ──
+    // ── figaro-arbitration-kleros ──
 
-    it("figaro-arbitration-kleros-v1 accepts a subcourt with default jurors", () => {
+    it("figaro-arbitration-kleros accepts a subcourt with default jurors", () => {
         const parsed = parseClauseSpec(arbitrationKlerosSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ klerosCourt: "general" }, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-arbitration-kleros-v1 accepts a subcourt with explicit juror count", () => {
+    it("figaro-arbitration-kleros accepts a subcourt with explicit juror count", () => {
         const parsed = parseClauseSpec(arbitrationKlerosSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ klerosCourt: "blockchain-nontechnical", klerosMinJurors: 5 }, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-arbitration-kleros-v1 rejects unknown klerosCourt", () => {
+    it("figaro-arbitration-kleros rejects unknown klerosCourt", () => {
         const parsed = parseClauseSpec(arbitrationKlerosSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ klerosCourt: "small-claims" }, parsed.spec).ok).toBe(false);
     });
 
-    it("figaro-arbitration-kleros-v1 rejects missing klerosCourt", () => {
+    it("figaro-arbitration-kleros rejects missing klerosCourt", () => {
         const parsed = parseClauseSpec(arbitrationKlerosSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ klerosMinJurors: 3 }, parsed.spec).ok).toBe(false);
     });
 
-    // ── figaro-applicable-law-v1 ──
+    // ── figaro-applicable-law ──
 
-    it("figaro-applicable-law-v1 accepts state-law + named forum", () => {
+    it("figaro-applicable-law accepts state-law + named forum", () => {
         const parsed = parseClauseSpec(applicableLawSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ applicableLaw: "US-CA", forum: "JAMS-arbitration", language: "en" }, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-applicable-law-v1 accepts non-state legal order (forum omitted, not blank)", () => {
+    it("figaro-applicable-law accepts non-state legal order (forum omitted, not blank)", () => {
         const parsed = parseClauseSpec(applicableLawSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         // forum is OMITTED — absence expresses "courts of competent jurisdiction",
@@ -333,7 +335,7 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(validateContent({ applicableLaw: "Sharia", language: "ar" }, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-applicable-law-v1 hardening rejects malformed shapes", () => {
+    it("figaro-applicable-law hardening rejects malformed shapes", () => {
         const parsed = parseClauseSpec(applicableLawSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         // applicableLaw: must be a hyphen-joined alnum token starting with a letter.
@@ -345,19 +347,19 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(validateContent({ applicableLaw: "US", language: "english" }, parsed.spec).ok).toBe(false);
     });
 
-    it("figaro-applicable-law-v1 accepts minimal applicableLaw only", () => {
+    it("figaro-applicable-law accepts minimal applicableLaw only", () => {
         const parsed = parseClauseSpec(applicableLawSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ applicableLaw: "EU" }, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-applicable-law-v1 rejects missing applicableLaw", () => {
+    it("figaro-applicable-law rejects missing applicableLaw", () => {
         const parsed = parseClauseSpec(applicableLawSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ forum: "JAMS-arbitration" }, parsed.spec).ok).toBe(false);
     });
 
-    it("figaro-applicable-law-v1 rejects applicableLaw shorter than 2 chars", () => {
+    it("figaro-applicable-law rejects applicableLaw shorter than 2 chars", () => {
         const parsed = parseClauseSpec(applicableLawSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ applicableLaw: "U" }, parsed.spec).ok).toBe(false);
@@ -405,9 +407,9 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(validateContent({ gramsCO2e: 1200 }, parsed.spec).ok).toBe(false);
     });
 
-    // ── figaro-proximity-policy-v1 ──
+    // ── figaro-proximity-policy ──
 
-    it("figaro-proximity-policy-v1 accepts each declared band as a single-element list", () => {
+    it("figaro-proximity-policy accepts each declared band as a single-element list", () => {
         const parsed = parseClauseSpec(proximityPolicySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         for (const band of ["zone-wifi", "nearby-ble", "contact-nfc"]) {
@@ -415,25 +417,25 @@ describe("example clause specs — parse + validate sample content", () => {
         }
     });
 
-    it("figaro-proximity-policy-v1 accepts multi-band offers", () => {
+    it("figaro-proximity-policy accepts multi-band offers", () => {
         const parsed = parseClauseSpec(proximityPolicySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ bands: ["nearby-ble", "contact-nfc"] }, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-proximity-policy-v1 rejects empty bands array", () => {
+    it("figaro-proximity-policy rejects empty bands array", () => {
         const parsed = parseClauseSpec(proximityPolicySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ bands: [] }, parsed.spec).ok).toBe(false);
     });
 
-    it("figaro-proximity-policy-v1 rejects an unknown band", () => {
+    it("figaro-proximity-policy rejects an unknown band", () => {
         const parsed = parseClauseSpec(proximityPolicySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ bands: ["psychic"] }, parsed.spec).ok).toBe(false);
     });
 
-    it("figaro-proximity-policy-v1 rejects unknown fields (closed clause — the proof lives in the witness stage)", () => {
+    it("figaro-proximity-policy rejects unknown fields (closed clause — the proof lives in the witness stage)", () => {
         const parsed = parseClauseSpec(proximityPolicySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
@@ -455,9 +457,9 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(validateContent({ bands: ["zone-wifi"] }, parsed.spec, { stage: 1 }).ok).toBe(false);
     });
 
-    // ── figaro-merchant-process-v1 ──
+    // ── figaro-merchant-process ──
 
-    it("figaro-merchant-process-v1 accepts each known eventType", () => {
+    it("figaro-merchant-process accepts each known eventType", () => {
         const parsed = parseClauseSpec(merchantSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         for (const e of ["prep-started", "ready-for-pickup", "handed-off"]) {
@@ -465,15 +467,15 @@ describe("example clause specs — parse + validate sample content", () => {
         }
     });
 
-    it("figaro-merchant-process-v1 rejects unknown eventType", () => {
+    it("figaro-merchant-process rejects unknown eventType", () => {
         const parsed = parseClauseSpec(merchantSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ eventType: "burned-the-meal" }, parsed.spec).ok).toBe(false);
     });
 
-    // ── figaro-courier-process-v1 ──
+    // ── figaro-courier-process ──
 
-    it("figaro-courier-process-v1 accepts each known eventType", () => {
+    it("figaro-courier-process accepts each known eventType", () => {
         const parsed = parseClauseSpec(courierSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         for (const e of ["en-route-pickup", "arrived-pickup", "in-transit", "arrived-dropoff", "completed"]) {
@@ -481,10 +483,58 @@ describe("example clause specs — parse + validate sample content", () => {
         }
     });
 
-    it("figaro-courier-process-v1 rejects unknown eventType", () => {
+    it("figaro-courier-process rejects unknown eventType", () => {
         const parsed = parseClauseSpec(courierSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ eventType: "teleported" }, parsed.spec).ok).toBe(false);
+    });
+
+    // ── figaro-dimweight (dimensional/volumetric billed weight) ──
+
+    it("figaro-dimweight accepts a billed weight with its divisor", () => {
+        const parsed = parseClauseSpec(dimweightSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ billedMassGrams: 5000, divisor: 5000 }, parsed.spec).ok).toBe(true);
+    });
+
+    it("figaro-dimweight rejects a zero billed weight", () => {
+        const parsed = parseClauseSpec(dimweightSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ billedMassGrams: 0, divisor: 5000 }, parsed.spec).ok).toBe(false);
+    });
+
+    it("figaro-dimweight rejects a missing divisor (billed weight is not reproducible without it)", () => {
+        const parsed = parseClauseSpec(dimweightSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ billedMassGrams: 5000 }, parsed.spec).ok).toBe(false);
+    });
+
+    // ── figaro-handoff (physical hand-off point) ──
+
+    it("figaro-handoff accepts each declared hand-off kind as a single-element list", () => {
+        const parsed = parseClauseSpec(handoffSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        for (const kind of ["face-to-face", "dead-drop", "parking-area", "locker"]) {
+            expect(validateContent({ handoff: [kind] }, parsed.spec).ok).toBe(true);
+        }
+    });
+
+    it("figaro-handoff accepts multiple hand-off kinds", () => {
+        const parsed = parseClauseSpec(handoffSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ handoff: ["face-to-face", "locker"] }, parsed.spec).ok).toBe(true);
+    });
+
+    it("figaro-handoff rejects an empty hand-off list", () => {
+        const parsed = parseClauseSpec(handoffSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ handoff: [] }, parsed.spec).ok).toBe(false);
+    });
+
+    it("figaro-handoff rejects an unknown hand-off kind", () => {
+        const parsed = parseClauseSpec(handoffSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ handoff: ["teleport"] }, parsed.spec).ok).toBe(false);
     });
 
 });

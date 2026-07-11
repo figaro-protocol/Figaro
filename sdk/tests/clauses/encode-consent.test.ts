@@ -51,7 +51,7 @@ function decodeConsent(
     ) as readonly [readonly { documentHash: Hex; documentVersion: string; documentTitle: string; documentUri: string }[]];
 }
 
-describe("figaro-consent-v1 — spec", () => {
+describe("figaro-consent — spec", () => {
     it("spec parses cleanly", () => {
         const result = parseClauseSpec(consentSpecRaw);
         expect(result.ok).toBe(true);
@@ -133,7 +133,7 @@ describe("figaro-consent-v1 — spec", () => {
     });
 });
 
-describe("figaro-consent-v1 — encode/decode round-trip", () => {
+describe("figaro-consent — encode/decode round-trip", () => {
     it("encodes and decodes a single document exactly", () => {
         const content: ConsentContent = {
             documents: [

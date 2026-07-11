@@ -116,9 +116,12 @@ export type FieldSpec =
     | ObjectFieldSpec;
 
 export interface ClauseSpec {
-    /** Human-readable clause name. keccak256(clauseId) is the on-chain bytes32. */
+    /** The bare human-readable clause name (e.g. `figaro-emissions`) — no version
+     *  suffix. The on-chain identity key is `keccak256(abi.encode(clauseId, version))`
+     *  (see `ClauseRegistry.registerClause`), so name + version together form it. */
     clauseId: string;
-    /** Clause version. Should match the vN suffix in clauseId. */
+    /** Clause version — a separate field, never embedded in `clauseId`. Folded
+     *  into the on-chain key alongside `clauseId`. */
     version: number;
     /** Display title. */
     title: string;

@@ -4,7 +4,7 @@ import { validateContent } from "../../src/clauses/validate.js";
 
 function specOf(fields: object[], stages?: Record<number, object[]>) {
     const result = parseClauseSpec({
-        clauseId: "t-v1", version: 1, title: "T", description: "D",
+        clauseId: "t", version: 1, title: "T", description: "D",
         fields,
         ...(stages !== undefined && { stages }),
     });

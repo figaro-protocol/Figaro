@@ -4,7 +4,7 @@ import { parseClauseSpec } from "../../src/clauses/spec.js";
 describe("parseClauseSpec — meta-clause validation", () => {
     it("accepts a minimal valid spec", () => {
         const result = parseClauseSpec({
-            clauseId: "test-v1",
+            clauseId: "test",
             version: 1,
             title: "Test",
             description: "A minimal test spec.",
@@ -31,7 +31,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
 
     it("rejects unknown field type", () => {
         const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "wat", required: true }],
         });
         expect(result.ok).toBe(false);
@@ -40,25 +40,25 @@ describe("parseClauseSpec — meta-clause validation", () => {
 
     it("accepts any string as a format — the axis is OPEN (a closed set would make a third-party clause with a novel format unparseable)", () => {
         const known = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t", version: 1, title: "T", description: "D",
             fields: [{ name: "addr", type: "string", required: true, format: "address-hex" }],
         });
         expect(known.ok).toBe(true);
 
         const novel = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t", version: 1, title: "T", description: "D",
             fields: [{ name: "loc", type: "string", required: true, format: "geohash" }],
         });
         expect(novel.ok).toBe(true);
 
         // Only the SHAPE of the declaration is checked.
         const malformed = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "string", required: true, format: 7 }],
         });
         expect(malformed.ok).toBe(false);
         const empty = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "string", required: true, format: "" }],
         });
         expect(empty.ok).toBe(false);
@@ -66,7 +66,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
 
     it("recursively parses array.items", () => {
         const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t", version: 1, title: "T", description: "D",
             fields: [{
                 name: "tags", type: "array", required: true,
                 items: { type: "string", name: "*", required: true },
@@ -77,7 +77,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
 
     it("recursively parses object.fields", () => {
         const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t", version: 1, title: "T", description: "D",
             fields: [{
                 name: "loc", type: "object", required: true,
                 fields: [
@@ -91,7 +91,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
 
     it("validates enum requires non-empty values array", () => {
         const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "enum", required: true, values: [] }],
         });
         expect(result.ok).toBe(false);
@@ -99,7 +99,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
 
     it("parses stage overrides", () => {
         const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "string", required: true }],
             stages: {
                 1: [{ name: "x", type: "string", required: true },
@@ -112,7 +112,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
 
     it("rejects bigint min/max as a number (must be string)", () => {
         const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t", version: 1, title: "T", description: "D",
             fields: [{ name: "amount", type: "bigint", required: true, min: 0 }],
         });
         expect(result.ok).toBe(false);
@@ -120,7 +120,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
 
     it("rejects invalid regex pattern", () => {
         const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "string", required: true, pattern: "(unclosed" }],
         });
         expect(result.ok).toBe(false);
@@ -132,7 +132,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
     // frontend/lib/shared/clauseBlockBinding.ts + frontend/tests/lib/clauseBlockBinding.test.ts.
     it("ignores the block slice (frontend-owned) without failing", () => {
         const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "string", required: true }],
             block: { tier: "runtime", mechanismKinds: [], moduleIds: [], attestation: "seller" },
         });
@@ -144,7 +144,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
     // `default` — round-trip it and reject shape mismatches.
     it("preserves a type-matching field default through the parse", () => {
         const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t", version: 1, title: "T", description: "D",
             fields: [
                 { name: "scope", type: "integer", min: 1, max: 3, required: false, default: 1 },
                 { name: "coordination", type: "array", required: false, default: ["a"], items: { type: "enum", values: ["a", "b"] } },
@@ -164,7 +164,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
             { name: "obj", type: "object", fields: [], required: false, default: "x" },
         ]) {
             const result = parseClauseSpec({
-                clauseId: "t-v1", version: 1, title: "T", description: "D", fields: [field],
+                clauseId: "t", version: 1, title: "T", description: "D", fields: [field],
             });
             expect(result.ok, `default on ${field.name} must be rejected`).toBe(false);
         }
@@ -174,7 +174,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
     // klerosCourt "none") — a member value that is never valid input.
     it("preserves an enum sentinel and rejects a non-member sentinel", () => {
         const ok = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t", version: 1, title: "T", description: "D",
             fields: [{ name: "court", type: "enum", values: ["none", "a"], sentinel: "none", required: true }],
         });
         expect(ok.ok).toBe(true);
@@ -184,7 +184,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
         }
 
         const bad = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t", version: 1, title: "T", description: "D",
             fields: [{ name: "court", type: "enum", values: ["a"], sentinel: "zzz", required: true }],
         });
         expect(bad.ok).toBe(false);
@@ -192,7 +192,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
 
     it("rejects a default equal to the enum sentinel", () => {
         const result = parseClauseSpec({
-            clauseId: "t-v1", version: 1, title: "T", description: "D",
+            clauseId: "t", version: 1, title: "T", description: "D",
             fields: [{ name: "court", type: "enum", values: ["none", "a"], sentinel: "none", default: "none", required: false }],
         });
         expect(result.ok).toBe(false);
@@ -206,7 +206,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
             leaf = { name: `n${i}`, type: "object", required: true, fields: [leaf] };
         }
         const result = parseClauseSpec({
-            clauseId: "deep-v1", version: 1, title: "Deep", description: "Adversarial nesting.",
+            clauseId: "deep", version: 1, title: "Deep", description: "Adversarial nesting.",
             fields: [leaf],
         });
         expect(result.ok).toBe(false);

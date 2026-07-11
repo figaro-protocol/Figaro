@@ -41,7 +41,7 @@ const active = topology.getActiveProcesses();
 
 // Calculate bond requirements
 const bonds = calculateBonds(cumulativeValue, payment);
-// → { buyerBond, sellerBond, buyerTotal, sellerTotal }
+// → { sellerBond, buyerBond, totalLocked }
 
 // Per-process resolve ceiling on the active chain (a process grown past
 // this can NEVER settle — check before every commit; the kernel cannot)
@@ -154,11 +154,26 @@ const close = geohashesMatch("dr5ru7", "dr5ru8", 5); // true (5-char prefix matc
 const km = haversineDistance(40.71, -74.00, 34.05, -118.24); // ~3944 km
 ```
 
-### `@figaro/sdk/clauses` — Clause-Spec Format + Content Validation
+### `@figaro/sdk/clauses` — Clause-Spec Format + Content Encoding
 
-Single source of truth that all three Figaro validation layers parse
-identically: client (this module), SP1 prover (Rust mirror, pending),
-on-chain `IClauseValidator` contracts.
+The single off-chain source of truth for clause-content well-formedness and
+canonical ABI encoding. It is **fully generic**: it parses a clause's spec JSON
+(fetched from `ClauseRegistry` → IPFS at runtime) and applies the same rules to
+ANY clause — no clause is known to this module, nothing is bundled. Adding a
+clause adds a spec, never a code path here.
+
+**Validation surfaces (present state).** Well-formedness is checked in ONE place
+off-chain: this Layer-A TypeScript module (frontend form gates + SDK agent-action
+preflight). On-chain, the `AttestationCoordinator` merkle-binds each attestation
+to its signed agreement and content-hashes the evidence — it does NOT validate
+clause content. So a never-seen clause is attestable with zero per-clause on-chain
+code.
+
+> On-chain clause-content validation (the per-clause validators) and the SP1
+> prover mirror are **DEFERRED** — removed 2026-06-25, rebuilt before launch. Until
+> they return, the merkle binding is the integrity floor; a rebuilt validator must
+> preserve permissionless attestation of never-seen clauses. Canonical teardown
+> state: `docs/CONTRACTS.md` § "Deferred vs permanent".
 
 ```ts
 import {
@@ -166,26 +181,24 @@ import {
   parseFieldSpec, // parse ONE field spec (for field specs outside a clause's
                   // content `fields` — e.g. a composition's runtime-input fields)
   validateContent,
-  encodeHandoffContent,
-  encodeCommerceContent,
-  // ... encoders for the 9 runtime-attestable local-commerce clauses
-  // (topology is agreement-only and has no ABI encoder)
+  encodeContentFromSpec,
+  decodeContentFromSpec,
 } from "@figaro/sdk/clauses";
 
-// 1. Parse a clause spec (typically fetched from IPFS)
+// 1. Parse a clause spec (typically fetched from ClauseRegistry → IPFS)
 const parsed = parseClauseSpec(specJson);
 if (!parsed.ok) throw new Error(parsed.errors[0].message);
 
-// 2. Validate content against the spec (closed clauses: unknown fields rejected)
-const result = validateContent(
-  { mode: "face-to-face" },
-  parsed.spec,
-);
+// 2. Validate content against the spec (closed clauses: unknown fields rejected).
+//    Content first, spec second; pass `{ stage }` for a per-stage witness shape.
+const result = validateContent({ handoff: ["face-to-face"] }, parsed.spec);
+if (!result.ok) throw new Error(result.errors[0].message);
 
-// 3. Encode TS content for the on-chain attestation call
-const bytes = encodeHandoffContent("face-to-face");
+// 3. Encode content to canonical ABI bytes straight from the parsed spec. ONE
+//    generic encoder drives every clause — there are no per-clause encoders.
+const bytes = encodeContentFromSpec(parsed.spec, { handoff: ["face-to-face"] });
 // Pass `bytes` as the `content` arg to AttestationCoordinator.attestAs{Seller,Buyer}.
-// The on-chain validator re-decodes it and reverts if invalid.
+// `decodeContentFromSpec(parsed.spec, bytes)` is the exact inverse (readers/audit).
 ```
 
 Format is a closed subset of JSON Schema. Field types: `string` (with
