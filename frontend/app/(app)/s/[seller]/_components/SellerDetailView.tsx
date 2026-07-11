@@ -193,7 +193,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                 <SellerTrackRecord record={trackRecord} isLoading={trackRecordLoading} />
 
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr,360px] gap-8 items-start">
-                    {/* Menu */}
+                    {/* Catalogue */}
                     <section className="space-y-8" data-testid="seller-catalogue">
                         <p className="text-xs font-semibold text-neutral-500">Catalogue</p>
                         {categories.map((category) => (

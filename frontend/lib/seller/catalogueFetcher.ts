@@ -21,7 +21,7 @@ const catalogueFetcher = createUriFetcher<SellerCatalogueMetadata>({
 });
 
 /**
- * Fetch and parse the full seller metadata (including catalogue/menu)
+ * Fetch and parse the full seller metadata (including the catalogue)
  * from a content URI. Returns null if the URI is empty, the fetch fails,
  * or parsing fails. Results are cached in-memory by URI with a 15-minute TTL.
  */

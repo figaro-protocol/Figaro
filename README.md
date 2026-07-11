@@ -17,14 +17,13 @@ The organizational consequence: each process assembles a temporary institution o
 `Figaro` is the canonical runtime. It owns:
 
 - **Kernel** — `FigaroCore.sol`: 2 external functions, 3 mappings, no owner
-- **Mechanism modules** — attestation, clause registry, Dutch auction, seller registry
-- **FIG token** — 1B fixed supply, 10/30/60 split (founders / DAO / clause-author RPGF), time-locks, SP1-proved per-tranche minting
+- **Mechanism modules** — attestation, clause registry, seller registry, assembly registry, swap-and-commit coordinator
+- **FIG token** — 1B fixed supply, 10/30/60 split (founders / DAO / clause-author RPGF); founder + DAO mint at genesis with no vesting; the clause-author RPGF distribution mechanism is deferred (no wired mint path for the 600M yet — see `docs/CONTRACTS.md` § "Deferred vs permanent")
 - **SDK** — `@figaro/sdk`: TypeScript, event-sourced state, agent coordination
 - **Runtime frontend** — Next.js 14, institution assembly, builder surfaces, reference assemblies
-- **SP1 prover** — Rust workspace: kernel library, guest program, batch sequencer
 - **Formal verification** — TLA+ safety invariants, Echidna fuzzing, Halmos symbolic proofs, Certora CVL rules
-- **Paper** — Academic paper in `paper/`
-- **Two agent worlds, one clean seam.** *(1) Operator-private repo agents* — `.claude/agents/` ships fifteen Claude Code subagents for building Figaro itself: reviews (kernel-reviewer, clause-lockstep), runtime UI (runtime-ui-author), audits (assumption-auditor, audit-commitment-checker, literalness-auditor, separation-of-concerns-auditor, open-world auditors), operations (memory-hygiene, feedback-triage), communications (marketing-author, site-ia, visual-design), paper-reviewer — the operator's own tools. *(2) Public ecosystem agents* — `ecosystem-agents/`, three prompts that act for a user's own wallet, never the repo: `figaro-operator` (operate a wallet — sign every transaction on the owner's behalf via `@figaro/sdk/agent`), `figaro-clause-author`, and `figaro-assembly-designer` (author or fork a clause/assembly and register it on the permissionless registries). See [CONTRIBUTING.md](CONTRIBUTING.md) and `ecosystem-agents/README.md`.
+- **Papers** — web-native academic papers at `frontend/app/(marketing)/papers/<slug>/page.tsx` (server-rendered KaTeX)
+- **Two agent worlds, one clean seam.** *(1) Operator-private repo agents* — `.claude/agents/` ships fifteen Claude Code subagents for building Figaro itself: reviews (kernel-reviewer, clause-lockstep), runtime UI (runtime-ui), audits (assumption-auditor, audit-commitment-checker, literalness-auditor, separation-of-concerns-auditor, open-world auditors), operations (memory-hygiene, feedback-triage), communications (marketing-copy, site-ia, visual-design), paper-reviewer — the operator's own tools. *(2) Public ecosystem agents* — `ecosystem-agents/`, three prompts that act for a user's own wallet, never the repo: `figaro-operator` (operate a wallet — sign every transaction on the owner's behalf via `@figaro/sdk/agent`), `figaro-clause-author`, and `figaro-assembly-designer` (author or fork a clause/assembly and register it on the permissionless registries). See [CONTRIBUTING.md](CONTRIBUTING.md) and `ecosystem-agents/README.md`.
 
 Start with [docs/README.md](docs/README.md) for the doc map + reading path.
 
@@ -42,16 +41,17 @@ src/                        Solidity contracts (0.8.26, Foundry)
   CommitmentTypes.sol       EIP-712 commitment structs + hashing
   AttestationCoordinator.sol  Zero-storage role-gated attestation
   ClauseRegistry.sol        Permissionless clause anchoring
-  DutchAuction.sol          Descending-price allocation
-  SellerRegistry.sol      On-chain seller registration
-  FigaroBatchVerifier.sol   SP1 batch proof verifier
-  fig/                      FIG token (ERC-20, emission, time-locks)
-  interfaces/               ISP1Verifier, IRoleResolverV4
-  mocks/                    Test tokens, mock verifier
+  SellerRegistry.sol        On-chain seller registration
+  AssemblyRegistry.sol      Permissionless assembly anchoring
+  SwapAndCommitCoordinator.sol  Off-protocol multi-token bond funding (Permit2 + Uniswap Universal Router)
+  IRoleResolver.sol         Role-authorization interface for delegated attestation
+  fig/                      FIG token (ERC-20, minter registry)
+  mocks/                    Test tokens, fee-on-transfer/permit variants, swap-venue mocks
+  echidna/                  Echidna fuzzing harnesses
 
 sdk/                        TypeScript SDK (@figaro/sdk)
   src/                      Event parsing, state reconstruction, agent coordination
-  test/                     Vitest tests
+  tests/                    Vitest tests
 
 ecosystem-agents/           Public agent prompts (act for a user's wallet, never the repo)
   figaro-operator.md        Operate a wallet — sign every transaction on the owner's behalf
@@ -60,30 +60,19 @@ ecosystem-agents/           Public agent prompts (act for a user's wallet, never
 
 frontend/                   Next.js 14 runtime
   app/                      App Router routes
-  components/               core, modules, shared, ui
-  lib/                      hooks, mechanisms, semantic
+  components/               assemblies, marketing, modules, papers, runtime, sellers, shared, ui, icons
+  lib/                      agent, audit, checkout, composition, designer, handoff, kernel, protocol, seller, semantic, shared
   tests/                    Vitest unit tests
-  tests/e2e/                Playwright specs (mock, mock-mobile, devnet)
-
-prover/                     Rust SP1 workspace
-  lib/                      Kernel library (figaro-kernel)
-  program/                  SP1 kernel guest program
-  script/                   SP1 kernel prove script
-  sequencer/                Batch sequencer + mempool
-  rpgf/                     RPGF aggregation library (figaro-rpgf)
-  rpgf-program/             SP1 RPGF guest program
-  rpgf-script/              SP1 RPGF prove script
-  clause/                   Generic clause validator (mirrors Layer A)
+  tests/e2e/                Playwright specs (devnet, mobile)
 
 .claude/                    Operator-private tooling (building Figaro itself)
-  agents/                   Repo subagents (kernel-reviewer, clause-lockstep, runtime-ui-author, marketing-author, …)
+  agents/                   Repo subagents (kernel-reviewer, clause-lockstep, runtime-ui, marketing-copy, …)
   skills/                   figaro-kernel-discipline (canonical kernel rules)
-  hooks/                    kernel-warn.sh + clause-lockstep-warn.sh (edit-time guards)
+  hooks/                    kernel-warn.sh, clause-lockstep-warn.sh + session/memory-hygiene hooks (edit-time + session guards)
   settings.json             Project-level permissions + hook registration
 
 test/                       Foundry tests
 formal/                     TLA+ specs + TLC config
-paper/                      Academic paper (LaTeX)
 docs/                    Active design documents
 ```
 
@@ -152,7 +141,6 @@ cd sdk && npm test                          # SDK
 cd frontend && npx vitest run               # Frontend unit
 cd frontend && npm run test:e2e:mobile      # Responsive/viewport (jsdom can't)
 cd frontend && npm run test:e2e:devnet      # E2E, real UI against Anvil + contracts
-cd prover && cargo test                     # Rust (kernel + sequencer + rpgf)
 ./scripts/test-echidna.sh                           # Echidna fuzzing
 ./scripts/test-halmos.sh                            # Halmos symbolic proofs
 ./scripts/test-tla.sh                               # TLA+ model checking
@@ -177,16 +165,16 @@ Inventories indexed by CLAUDE.md:
 - [CONTRACTS.md](docs/CONTRACTS.md) — Smart-contract inventory
 - [CLAUSES.md](docs/CLAUSES.md) — Clause validation architecture + per-clause table
 - [FRONTEND.md](docs/FRONTEND.md) — Route catalogue, lib map, designer surface
-- [TESTING.md](docs/TESTING.md) — Foundry / Halmos / Certora / Echidna / TLA+ / Vitest / Playwright / Rust harness inventory
+- [TESTING.md](docs/TESTING.md) — Foundry / Halmos / Certora / Echidna / TLA+ / Vitest / Playwright harness inventory
 
 Core theory + design:
 
 - [VISION.md](docs/VISION.md) — Post-firm economy, Coasean collapse, token denomination
 - [THEORY.md](docs/THEORY.md) — Game-theoretic derivation of six protocol properties
-- [FIG_TOKEN.md](docs/FIG_TOKEN.md) — Token design: allocation, RPGF emission, time-locks
-- [SCALING_STRATEGY.md](docs/SCALING_STRATEGY.md) — Proof-based batching, SP1
-- [RUNTIME.md](docs/RUNTIME.md) — Why this is a runtime, not just contracts (thesis + frontend model + semantic layer)
-- [DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md) — 14 intentional patterns that look like vulnerabilities (read before auditing)
+- [FIG_TOKEN.md](docs/FIG_TOKEN.md) — Token design: allocation, RPGF emission
+- [SCALING_STRATEGY.md](docs/SCALING_STRATEGY.md) — Proof-based batching, SP1 (deferred design baseline)
+- [OPEN_WORLD.md](docs/OPEN_WORLD.md) — Why this is a runtime, not just contracts (paradigm + frontend composition model + semantic layer; consolidates the former RUNTIME.md)
+- [DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md) — 13 intentional patterns that look like vulnerabilities (read before auditing)
 - [VERIFICATION_MAP.md](docs/VERIFICATION_MAP.md) — Every invariant → code → test → formal layer
 
 ## License

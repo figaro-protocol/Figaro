@@ -65,14 +65,14 @@ export default function Specifications() {
                         title="ClauseRegistry.sol"
                         href={`${GH}/ClauseRegistry.sol`}
                         meta="permissionless · event-only"
-                        desc="Event-only clause anchoring, first-write-wins. clauseId = keccak256(humanReadableName); metadataURI points at the off-chain JSON spec. No on-chain content validation — a registered clause is immediately attestable."
+                        desc="Event-only clause anchoring, first-write-wins. clauseId is the bare human-readable name; the on-chain identity/dedup key is keccak256(abi.encode(clauseId, version)), so name+version together form the key. metadataURI points at the off-chain JSON spec. No on-chain content validation — a registered clause is immediately attestable."
                     />
                 </ul>
             </MarketingSection>
 
             <MarketingSection title="Clause validation">
                 <p className="text-base text-ink-body leading-relaxed">
-                    Clause content is validated <strong>off-chain</strong> (the Layer-A TypeScript SDK); the chain registers clauses and merkle-binds attestations but validates no content shape, so a never-seen clause is attestable with zero per-clause on-chain code. <code>figaro-topology-v1</code> is agreement-only &mdash; committed at signing, with no runtime attestation. The full inventory &mdash; every clauseId and what it carries &mdash; is on <Link href="/clauses" className="underline">Clauses</Link>.
+                    Clause content is validated <strong>off-chain</strong> (the Layer-A TypeScript SDK); the chain registers clauses and merkle-binds attestations but validates no content shape, so a never-seen clause is attestable with zero per-clause on-chain code. <code>figaro-topology</code> is agreement-only &mdash; committed at signing, with no runtime attestation. The full inventory &mdash; every clauseId and what it carries &mdash; is on <Link href="/clauses" className="underline">Clauses</Link>.
                 </p>
             </MarketingSection>
 

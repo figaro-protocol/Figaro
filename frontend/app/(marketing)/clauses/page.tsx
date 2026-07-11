@@ -65,7 +65,7 @@ export default function Clauses() {
 
             <MarketingSection title="Registered clauses, by article.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
-                    The reference set spans assembly topology, commerce primitives, emissions accounting, lifecycle and proximity, sovereign process logs, and legal anchoring. One &mdash; <code>figaro-topology-v1</code> &mdash; is agreement-only: committed at agreement signing, with no on-chain validator.
+                    The reference set spans assembly topology, commerce primitives, emissions accounting, lifecycle and proximity, sovereign process logs, and legal anchoring. One &mdash; <code>figaro-topology</code> &mdash; is agreement-only: committed at agreement signing, with no on-chain validator.
                 </p>
                 <ClauseInventory />
             </MarketingSection>
