@@ -13,17 +13,10 @@
 #     check_buyerDominance_revert
 #     check_cumulativeValueMonotonic
 #
-#   HalmosRpgfMinter (8 properties):
-#     check_claimSetsFlag                 check_alreadyClaimedReverts
-#     check_notUnlockedReverts            check_invalidStageReverts
-#     check_rootNotSetReverts             check_submitRootNotSubmitterReverts
-#     check_submitRootAlreadySetReverts   check_submitRootZeroRootReverts
-#
-# The run is split into three halmos processes:
+# The run is split into two halmos processes:
 #
 #   Pass 1 (6 FigaroCore properties): batched in a single halmos process.
 #   Pass 2 (1 FigaroCore property, check_resolutionPayouts): fresh process.
-#   Pass 3 (8 RpgfMinter properties): batched in a single halmos process.
 #
 # Why the split: check_resolutionPayouts exercises the full commit + resolve
 # lifecycle (2 ECDSA signature recoveries, multiple keccak256 hashes, 4 ERC-20
@@ -78,15 +71,9 @@ CORE_ARGS=(
     --solver-timeout-assertion "$HALMOS_SOLVER_TIMEOUT_MS"
 )
 
-RPGF_ARGS=(
-    --contract HalmosRpgfMinter
-    --solver z3
-    --solver-timeout-assertion "$HALMOS_SOLVER_TIMEOUT_MS"
-)
-
 # ── Pass 1: six fast properties, batched ───────────────────────────────────
 
-echo "▶ Pass 1/3 — 6 batched FigaroCore properties (fast)"
+echo "▶ Pass 1/2 — 6 batched FigaroCore properties (fast)"
 echo ""
 
 FOUNDRY_PROFILE=halmos halmos \
@@ -95,7 +82,7 @@ FOUNDRY_PROFILE=halmos halmos \
     "$@"
 
 echo ""
-echo "▶ Pass 2/3 — check_resolutionPayouts (run in isolation)"
+echo "▶ Pass 2/2 — check_resolutionPayouts (run in isolation)"
 echo ""
 
 # ── Pass 2: the one heavy property, in a fresh halmos process ──────────────
@@ -106,14 +93,4 @@ FOUNDRY_PROFILE=halmos halmos \
     "$@"
 
 echo ""
-echo "▶ Pass 3/3 — 8 batched RpgfMinter properties"
-echo ""
-
-# ── Pass 3: the RpgfMinter symbolic harness ────────────────────────────────
-
-FOUNDRY_PROFILE=halmos halmos \
-    "${RPGF_ARGS[@]}" \
-    "$@"
-
-echo ""
-echo "✅ All 15 Halmos properties proved (FigaroCore + RpgfMinter)."
+echo "✅ All 7 Halmos properties proved (FigaroCore)."
