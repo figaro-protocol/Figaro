@@ -49,7 +49,7 @@ export default function Integrate() {
                     <LabelledListRow label="/agent" labelWidth="narrow" uppercase>
                         <strong>Action proposer + dual-mode queue.</strong> <code>FigaroContext</code>, <code>proposeActions</code>, <code>ActionQueue</code>. Human-in-the-loop approval or fully autonomous submission via <code>WalletClient</code>. See the Agent SDK section above.
                     </LabelledListRow>
-                    <LabelledListRow label="/extensions" labelWidth="narrow" uppercase>
+                    <LabelledListRow label="/derive" labelWidth="narrow" uppercase>
                         <strong>Attestation encoding/filtering, geo/handoff utilities, did:web resolution.</strong> Everything at the protocol tier that isn&apos;t kernel-critical but is commonly needed.
                     </LabelledListRow>
                     <LabelledListRow label="/clauses" labelWidth="narrow" uppercase>

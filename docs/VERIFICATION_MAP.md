@@ -118,10 +118,10 @@ This section tracks features that are not protocol invariants but are significan
 | Feature | Code location | SDK coverage | UI explainer pages | UI functional surfaces | Gap? |
 |---|---|---|---|---|---|
 | **Handoff encryption (ECDH)** | `frontend/lib/handoff/` | — | `/local-commerce` → Handoff Encryption | `HandoffKeyExchangeModule`, `HandoffTrackerModule`, `HandoffDetailsModule` | — |
-| **Delivery attestation (4 modes)** | removed (proximity proofs live in the handoff clause runtime, `frontend/lib/handoff/`) | `@figaro/sdk/extensions`: `geohashesMatch`, `haversineDistance` | `/local-commerce` → Proximity Proofs; `/builders` → attestation modes | `DeliveryAttestationPanel`, `/evidence-display` | — |
+| **Delivery attestation (4 modes)** | removed (proximity proofs live in the handoff clause runtime, `frontend/lib/handoff/`) | `@figaro/sdk/derive`: `geohashesMatch`, `haversineDistance` | `/local-commerce` → Proximity Proofs; `/builders` → attestation modes | `DeliveryAttestationPanel`, `/evidence-display` | — |
 | **DID:web identity** | `frontend/lib/agent/useDidWeb.ts` | `@figaro/sdk/agent`: `resolveDidWeb`, `didWebToUrl`, `didDocumentMatchesAddress`, `buildSellerDidDocument` | `/builders` → Seller identity | `DidVerificationBadge` (component) | — |
 | **Kleros dispute / evidence** | `frontend/lib/audit/` + `frontend/lib/semantic/processRecourse.ts` | — (frontend-local; SDK carries no Kleros helpers) | `/builders` → Kleros integration | `/evidence-display` (full rendering for jurors) | — |
-| **Agent SDK** | `sdk/` (root + `/agent`, `/extensions`, `/clauses`) | Self-referential (`npx vitest run` in `sdk/` is the census) | `/builders` → Agent SDK section | — | — |
+| **Agent SDK** | `sdk/` (root + `/agent`, `/derive`, `/clauses`) | Self-referential (`npx vitest run` in `sdk/` is the census) | `/builders` → Agent SDK section | — | — |
 | **Semantic derivation** | `frontend/lib/semantic/` | — | `/builders` → How the runtime renders institutions | `TopologyCanvas` in the design canvas (`/builders/designer/*`); `CapabilityRail` + `RecoursePanel` at runtime | — |
 | **Institution assembly** | `frontend/lib/designer/`; `src/AssemblyRegistry.sol` | — | `/builders` → Level 1 assembly config; `/local-commerce` → "Fork Local Commerce" | `/builders/designer/new`, `/builders/designer/edit/[slug]`, `/builders/designer/view/[slug]` | — |
 | **Agreement publication** | `frontend/lib/kernel/agreementFetch.ts`, `orderAgreement.ts` | — | `/builders` → Agreement publication | — | — |

@@ -12,7 +12,7 @@ import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { FieldSpec } from "@figaro/sdk/clauses";
 import { FieldControl } from "@/components/runtime/FieldControl";
-import { encodeGeohash } from "@figaro/sdk/extensions";
+import { encodeGeohash } from "@figaro/sdk/derive";
 import { PUBLIC_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
 
 const geohashField: FieldSpec = {

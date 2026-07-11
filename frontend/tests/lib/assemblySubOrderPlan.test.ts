@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { geohashCentroidDistanceKm } from "@figaro/sdk/extensions";
+import { geohashCentroidDistanceKm } from "@figaro/sdk/derive";
 import {
     planSubOrderSellers,
     resolveSubOrderPricing,

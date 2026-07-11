@@ -131,7 +131,7 @@ const bound = document ? didDocumentMatchesAddress(document, "0xSeller...", 1) :
 const [endpoint] = document ? extractServiceEndpoints(document, "MCPEndpoint") : [];
 ```
 
-### `@figaro/sdk/extensions` — Protocol Extensions
+### `@figaro/sdk/derive` — Clause-Agnostic Derivations
 
 Clause-agnostic attestation filtering and geo math.
 
@@ -141,7 +141,7 @@ import {
   filterByClause,
   haversineDistance,
   geohashesMatch,
-} from "@figaro/sdk/extensions";
+} from "@figaro/sdk/derive";
 
 // Attestations: derive the on-chain clause key (name, version), then filter
 // events for it. The SDK knows no specific clause — the stage/contentRef

@@ -24,7 +24,7 @@
  */
 import { test, expect } from './devnet-multi-test';
 import type { Page } from '@playwright/test';
-import { encodeGeohash } from '@figaro/sdk/extensions';
+import { encodeGeohash } from '@figaro/sdk/derive';
 import { PUBLIC_GEOHASH_MAX_PRECISION } from '@/lib/shared/geohash';
 
 const GEO_CLAUSE_KEY = 'figaro-geolocation';

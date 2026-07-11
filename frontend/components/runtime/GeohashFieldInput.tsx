@@ -16,7 +16,7 @@
  */
 import { useState } from "react";
 import { getDeviceLocation } from "@/lib/seller/geocode";
-import { encodeGeohash } from "@figaro/sdk/extensions";
+import { encodeGeohash } from "@figaro/sdk/derive";
 import { clampPublicGeohash, PUBLIC_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
 import type { FieldFormatInputProps } from "@/components/runtime/fieldFormatInputs";
 

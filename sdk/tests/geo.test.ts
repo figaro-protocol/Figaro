@@ -6,7 +6,7 @@ import {
     encodeGeohash,
     decodeGeohash,
     geohashCentroidDistanceKm,
-} from "../src/extensions/geo.js";
+} from "../src/derive/geo.js";
 
 // ── encodeGeohash ───────────────────────────────────────────────────────────
 

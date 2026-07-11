@@ -1,5 +1,5 @@
 /**
- * @figaro/sdk/extensions — Geo math
+ * @figaro/sdk/derive — Geo math
  *
  * Geohash prefix matching and Haversine distance. Pure, standard geo
  * primitives with no knowledge of any clause, attestation mode, or

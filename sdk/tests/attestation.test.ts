@@ -4,7 +4,7 @@ import {
     filterByProcess,
     filterByOrder,
     filterByStage,
-} from "../src/extensions/attestation.js";
+} from "../src/derive/attestation.js";
 import type { Hex, Address, AttestationEvent } from "../src/types.js";
 import { keccak256, stringToHex, encodeAbiParameters } from "viem";
 

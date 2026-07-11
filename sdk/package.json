@@ -16,10 +16,10 @@
             "types": "./dist/agent/index.d.ts",
             "default": "./dist/agent/index.js"
         },
-        "./extensions": {
-            "import": "./dist/extensions/index.js",
-            "types": "./dist/extensions/index.d.ts",
-            "default": "./dist/extensions/index.js"
+        "./derive": {
+            "import": "./dist/derive/index.js",
+            "types": "./dist/derive/index.d.ts",
+            "default": "./dist/derive/index.js"
         },
         "./clauses": {
             "import": "./dist/clauses/index.js",
