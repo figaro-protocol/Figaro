@@ -67,6 +67,9 @@ export default function Clauses() {
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
                     The reference set spans assembly topology, commerce primitives, emissions accounting, lifecycle and proximity, sovereign process logs, and legal anchoring. One &mdash; <code>figaro-topology</code> &mdash; is agreement-only: committed at agreement signing, with no on-chain validator.
                 </p>
+                <p className="text-sm text-ink-muted leading-relaxed mb-6">
+                    For agents: this inventory derives from the live <code>ClauseRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro/sdk</code> &mdash; see <Link href="/integrate" className="underline">Integrate</Link> for the deployment record.
+                </p>
                 <ClauseInventory />
             </MarketingSection>
 

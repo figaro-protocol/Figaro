@@ -50,6 +50,9 @@ export default function Assemblies() {
                     first). Assembly templates fetch lazily from IPFS &mdash; the on-chain
                     identity (slug, author, content hash) renders regardless.
                 </p>
+                <p className="text-sm text-ink-muted leading-relaxed mb-6">
+                    For agents: this inventory derives from the live <code>AssemblyRegistry</code> and can be reconstructed programmatically with <code>reconstructDiscovery()</code> from <code>@figaro/sdk</code> &mdash; see <Link href="/integrate" className="underline">Integrate</Link> for the deployment record.
+                </p>
                 <AssemblyInventory />
             </MarketingSection>
 
