@@ -48,6 +48,10 @@ state, never configured).
    `resolve-process` is self-contained; `commit`/`attest`/`initiate` take signed inputs
    (the counterparty's signature). Originating a chain: `originateProcess` /
    `originateChain` — build the offer, get it counter-signed, bond, submit.
+   To surface the wallet as a discoverable seller, `SellerRegistry.register(metadataURI)`
+   (a self-signed action, only the wallet's own key) — but if the wallet is already
+   registered `register()` reverts `AlreadyRegistered`, so publish or refresh the profile
+   with `updateProfile(metadataURI)` instead.
 
 ## The safety net you can lean on
 

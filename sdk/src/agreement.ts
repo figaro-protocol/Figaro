@@ -7,7 +7,10 @@
  * content was committed to at contract-signing time.
  *
  * Leaf format: `keccak256(clauseId || sectionDataHash)` where
- *   - `clauseId` = `keccak256(clauseKey)` (matches on-chain bytes32 id)
+ *   - `clauseId` = `computeClauseKey(clause, version)` =
+ *      `keccak256(abi.encode(clause, version))` — the on-chain bytes32 id,
+ *      used DIRECTLY as the leaf id (it is NOT hashed again). This same value
+ *      is the `clauseId` argument passed to the attest* calls.
  *   - `sectionDataHash` = `keccak256(canonicalJSON(section.data))`
  *
  * Merkle tree: OpenZeppelin-style sorted-pair hashing. Leaves are sorted

@@ -80,6 +80,12 @@ await ctx.sync();
 // Discover what exists (cold start): getAssemblies() / getSellers() / getClauses()
 const assemblies = ctx.getAssemblies();
 
+// FigaroContext wraps the low-level discovery primitives, which are ROOT
+// `@figaro/sdk` exports — NOT `@figaro/sdk/agent`. Use them directly for a
+// one-shot catalogue read without a context:
+import { fetchDiscoveryEvents, reconstructDiscovery } from "@figaro/sdk";
+const discovery = reconstructDiscovery(await fetchDiscoveryEvents(client, addresses, 0n));
+
 // Propose actions on a process the agent is in, and originations from discovery
 const actions = proposeActions(ctx.getProcess(processId)!, myAddress);
 const initiations = proposeInitiations(assemblies, myAddress);

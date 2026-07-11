@@ -18,7 +18,7 @@ the whole model first.
 - **`figaro-clause-author`** — author (or version) a clause: a spec → IPFS → a permissionless
   `ClauseRegistry` registration under the user's wallet. No on-chain code.
 - **`figaro-assembly-designer`** — compose a new assembly, or **fork** an existing one: a
-  `DesignDraft`/template → IPFS → a permissionless `AssemblyRegistry` registration under the
+  an `AssemblyTemplate` → IPFS → a permissionless `AssemblyRegistry` registration under the
   user's wallet.
 
 All three are **prompts** (frontmatter + body). They drive `@figaro/sdk` (the SDK), act for
