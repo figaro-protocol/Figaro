@@ -46,14 +46,14 @@ export default function Clauses() {
                     A clause is a free-form <strong>content shape</strong>: <code>fields</code> declares any named attributes &mdash; string, enum, array, object &mdash; and <em>that</em> is what gets validated off-chain and merkle-bound on-chain when attested. With four identity fields, that is already a whole, valid clause:
                 </p>
                 <pre className="text-xs font-mono text-ink-body bg-paper border border-default rounded-section p-4 overflow-x-auto mb-5"><code>{`{
-  "clauseId": "figaro-probe-v1",
+  "clauseId": "figaro-probe",
   "version": 1,
   "title": "Probe",
   "description": "A minimal clause.",
   "fields": [ { "name": "note", "type": "string", "required": true } ]
 }`}</code></pre>
                 <p className="text-sm text-ink-body leading-relaxed mb-5">
-                    <strong><code>block</code> is how the clause shows up in the UI &mdash; add it only if you want that.</strong> Omit it and the clause still validates and attests; it just won&apos;t surface in the designer or runtime. <code>block</code> carries the <code>tier</code>, the <code>article</code> (the section it <strong>groups</strong> under), and what it <code>nestsUnder</code> &mdash; the name of a structured field on another clause that this clause <strong>refines</strong> as a sub-clause. Grouping is <code>article</code>&apos;s job; <code>nestsUnder</code> is only for a genuine sub-detail (never a whole clause under a plain number).
+                    <strong><code>block</code> is how the clause shows up in the UI &mdash; add it only if you want that.</strong> Omit it and the clause still validates and attests; it just won&apos;t surface in the designer or runtime. <code>block</code> carries the <code>article</code> (the section it <strong>groups</strong> under) and what it <code>nestsUnder</code> &mdash; the name of a structured field on another clause that this clause <strong>refines</strong> as a sub-clause. Grouping is <code>article</code>&apos;s job; <code>nestsUnder</code> is only for a genuine sub-detail (never a whole clause under a plain number).
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed">
                     <code>block.article</code> is your clause&apos;s <strong>group</strong> &mdash; geo, coordination, emissions &mdash; the section it groups under in the designer, and the only classification it needs. The RPGF substrate-broadening formula, when active, derives its group key as <code>keccak256(article)</code> from the spec &mdash; nothing extra is stored on-chain. Validate the whole spec against the published JSON Schema before you register.
