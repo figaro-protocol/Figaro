@@ -22,9 +22,9 @@ export default function Clauses() {
                 }
             />
 
-            <MarketingSection title="One spec. Three validators. Enforced in lockstep.">
+            <MarketingSection title="One spec. Two enforcement layers. In lockstep.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
-                    Every registered clause is enforced at three layers. A new clause is not &ldquo;done&rdquo; until all required layers ship together:
+                    Every registered clause is enforced at two layers. A new clause is not &ldquo;done&rdquo; until both layers ship together:
                 </p>
                 <ul className="space-y-4 text-sm text-ink-body leading-relaxed">
                     <li className="flex gap-4">
