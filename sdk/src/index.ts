@@ -164,3 +164,32 @@ export {
     templateClauseVersionMap,
 } from "./assembly.js";
 export type { AssemblyTemplate, TemplateAgreement } from "./assembly.js";
+
+// Seller profile document — the identity envelope pinned to
+// SellerRegistry.metadataURI (discovery hands you the URI; this is the
+// natural next call). Types + strict/lenient parsers + the agent-service
+// projection.
+export {
+    parseSellerProfileDocument,
+    tryParseSellerProfileDocument,
+    projectAgentServices,
+} from "./sellerProfile.js";
+export type {
+    SellerProfileMetadata,
+    AcceptedTokenMetadata,
+    SellerBrandingMetadata,
+    SellerAgentServices,
+    SellerAssetReferences,
+    CounterpartyBinding,
+    AssemblyBindingRecord,
+    AgentServiceInfo,
+} from "./sellerProfile.js";
+
+// Seller catalogue document — the volatile item list pinned to
+// SellerProfileMetadata.catalogueURI. Types + strict parser.
+export { parseSellerCatalogueDocument } from "./sellerCatalogue.js";
+export type {
+    UnitSystem,
+    CatalogueItemMetadata,
+    SellerCatalogueMetadata,
+} from "./sellerCatalogue.js";

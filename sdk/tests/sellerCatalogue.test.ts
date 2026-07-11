@@ -1,0 +1,111 @@
+import { describe, expect, it } from "vitest";
+
+import {
+    parseSellerCatalogueDocument,
+    type SellerCatalogueMetadata,
+} from "../src/sellerCatalogue.js";
+
+const subjectAddress = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
+
+const VALID_DOC: SellerCatalogueMetadata = {
+    subjectAddress,
+    items: [
+        {
+            id: "item1",
+            name: "Margherita",
+            description: "Classic pizza",
+            price: "0.01",
+            category: "Pizza",
+            available: true,
+        },
+    ],
+    version: "1",
+};
+
+describe("parseSellerCatalogueDocument (strict)", () => {
+    it("parses a valid catalogue document", () => {
+        const parsed = parseSellerCatalogueDocument(VALID_DOC);
+        expect(parsed.subjectAddress).toBe(subjectAddress);
+        expect(parsed.items).toHaveLength(1);
+        expect(parsed.items[0].name).toBe("Margherita");
+        expect(parsed.version).toBe("1");
+    });
+
+    it("accepts an empty item list", () => {
+        const parsed = parseSellerCatalogueDocument({ ...VALID_DOC, items: [] });
+        expect(parsed.items).toEqual([]);
+    });
+
+    it("throws when items is missing", () => {
+        expect(() => parseSellerCatalogueDocument({ subjectAddress, version: "1" }))
+            .toThrow(/items must be an array/);
+    });
+
+    it("throws when subjectAddress is malformed", () => {
+        expect(() => parseSellerCatalogueDocument({ ...VALID_DOC, subjectAddress: "not-an-address" }))
+            .toThrow(/subjectAddress must be a 20-byte hex address/);
+    });
+
+    it("throws when an item is missing a required field (available)", () => {
+        expect(() => parseSellerCatalogueDocument({
+            subjectAddress,
+            version: "1",
+            items: [{ id: "i1", name: "X", price: "1" }],
+        })).toThrow(/items\[0\]\.available must be a boolean/);
+    });
+
+    it("rejects an out-of-set pricingPolicy", () => {
+        expect(() => parseSellerCatalogueDocument({
+            subjectAddress,
+            version: "1",
+            items: [{ id: "i1", name: "X", price: "1", available: true, pricingPolicy: "auction" }],
+        })).toThrow(/pricingPolicy must be one of/);
+    });
+
+    it("carries a rate item's pricingPolicy/rateUnit/rateQuantitySource through a parse", () => {
+        const parsed = parseSellerCatalogueDocument({
+            subjectAddress,
+            version: "1",
+            items: [{
+                id: "i1", name: "Courier leg", price: "2", available: true,
+                pricingPolicy: "rate", rateUnit: "km", rateQuantitySource: "order-geodistance",
+            }],
+        });
+        expect(parsed.items[0]).toMatchObject({
+            pricingPolicy: "rate",
+            rateUnit: "km",
+            rateQuantitySource: "order-geodistance",
+        });
+    });
+
+    it("carries lengthMm/widthMm/heightMm + mass/volume through a parse (physical dims floor)", () => {
+        const parsed = parseSellerCatalogueDocument({
+            subjectAddress,
+            version: "1",
+            items: [{
+                id: "i1", name: "Box", price: "1", available: true,
+                massGrams: 500, volumeMl: 1000, lengthMm: 300, widthMm: 200, heightMm: 150,
+            }],
+        });
+        expect(parsed.items[0]).toMatchObject({
+            massGrams: 500, volumeMl: 1000, lengthMm: 300, widthMm: 200, heightMm: 150,
+        });
+    });
+
+    it("carries the catalogue-sourced clauseValues map through a parse", () => {
+        const clauseValues = {
+            "figaro-hazmat": { unNumber: "UN1203", properShippingName: "Petrol", hazardClass: "3" },
+        };
+        const parsed = parseSellerCatalogueDocument({
+            subjectAddress,
+            version: "1",
+            items: [{ id: "i1", name: "Drum", price: "1", available: true, clauseValues }],
+        });
+        expect(parsed.items[0].clauseValues).toEqual(clauseValues);
+    });
+
+    it("parses the optional unitSystem preference", () => {
+        const parsed = parseSellerCatalogueDocument({ ...VALID_DOC, unitSystem: "imperial" });
+        expect(parsed.unitSystem).toBe("imperial");
+    });
+});
