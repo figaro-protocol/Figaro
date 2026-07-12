@@ -68,4 +68,63 @@ describe("parseBlockBinding — clause block-binding (frontend presentation slic
         expect(block).toBeNull();
     });
 
+    // composes.forumUrl is rendered as a link — only https: is accepted. A
+    // non-https scheme must degrade the same way any other malformed block
+    // field does: null + a pushed SpecParseError, never a thrown exception.
+    describe("composes.forumUrl — https-only scheme gate", () => {
+        it("parses a valid https forumUrl", () => {
+            const { block, errors } = parse({
+                article: "dispute",
+                composes: { interface: "kleros-v1", forumUrl: "https://forum.example.com/case/1" },
+            });
+            expect(errors).toEqual([]);
+            expect(block?.composes?.forumUrl).toBe("https://forum.example.com/case/1");
+        });
+
+        it("rejects a javascript: forumUrl", () => {
+            const { block, errors } = parse({
+                article: "dispute",
+                composes: { interface: "kleros-v1", forumUrl: "javascript:alert(1)" },
+            });
+            expect(block).toBeNull();
+            expect(errors.some((e) => e.path === "$.block.composes.forumUrl")).toBe(true);
+        });
+
+        it("rejects a data: forumUrl", () => {
+            const { block, errors } = parse({
+                article: "dispute",
+                composes: { interface: "kleros-v1", forumUrl: "data:text/html,<script>alert(1)</script>" },
+            });
+            expect(block).toBeNull();
+            expect(errors.some((e) => e.path === "$.block.composes.forumUrl")).toBe(true);
+        });
+
+        it("rejects a plain http: forumUrl (no downgrade)", () => {
+            const { block, errors } = parse({
+                article: "dispute",
+                composes: { interface: "kleros-v1", forumUrl: "http://forum.example.com/case/1" },
+            });
+            expect(block).toBeNull();
+            expect(errors.some((e) => e.path === "$.block.composes.forumUrl")).toBe(true);
+        });
+
+        it("rejects a protocol-relative // forumUrl", () => {
+            const { block, errors } = parse({
+                article: "dispute",
+                composes: { interface: "kleros-v1", forumUrl: "//forum.example.com/case/1" },
+            });
+            expect(block).toBeNull();
+            expect(errors.some((e) => e.path === "$.block.composes.forumUrl")).toBe(true);
+        });
+
+        it("rejects a whitespace-obfuscated scheme", () => {
+            const { block, errors } = parse({
+                article: "dispute",
+                composes: { interface: "kleros-v1", forumUrl: " \tjavascript:alert(1)" },
+            });
+            expect(block).toBeNull();
+            expect(errors.some((e) => e.path === "$.block.composes.forumUrl")).toBe(true);
+        });
+    });
+
 });

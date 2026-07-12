@@ -51,7 +51,8 @@ export interface ClauseBlockBinding {
      *  clause-id switch in code); the concrete instance ADDRESS is chain-specific
      *  and comes at runtime (clause data / chain self-declaration / env), NOT
      *  here. `forumUrl` deep-links a provider's own web UI for URL-only
-     *  compositions (e.g. a dispute forum). Invoking an on-network contract is
+     *  compositions (e.g. a dispute forum) — parsed as https: only (see
+     *  `parseBlockBinding`), since it renders as a link. Invoking an on-network contract is
      *  per-standard-interface integration code (a handler + the standard's ABI);
      *  there is no per-clause ABI/choreography artifact — the CALL-SHAPE is the
      *  interface standard, and the trade-level coordination is the assembly. Omit
@@ -139,6 +140,23 @@ export function parseBlockBinding(
             const v = raw.composes[opt];
             if (v !== undefined && (typeof v !== "string" || v.length === 0)) {
                 errors.push({ path: `${path}.composes.${opt}`, message: `composes.${opt} must be a non-empty string when present` });
+                return null;
+            }
+        }
+        if (typeof raw.composes.forumUrl === "string") {
+            // forumUrl is rendered as a link — gate the scheme to https only.
+            // `javascript:`/`data:`/plain `http:` are an XSS/downgrade vector;
+            // parse with `new URL` (never a string-prefix check) so a scheme
+            // hidden behind whitespace/case tricks or a protocol-relative `//`
+            // URL (which `new URL` rejects without a base) is caught too.
+            let scheme: string | null = null;
+            try {
+                scheme = new URL(raw.composes.forumUrl).protocol;
+            } catch {
+                scheme = null;
+            }
+            if (scheme !== "https:") {
+                errors.push({ path: `${path}.composes.forumUrl`, message: "composes.forumUrl must be an https: URL" });
                 return null;
             }
         }
