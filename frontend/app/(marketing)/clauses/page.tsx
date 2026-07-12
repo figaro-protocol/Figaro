@@ -43,7 +43,7 @@ export default function Clauses() {
 
             <MarketingSection title="Write the spec.">
                 <p className="text-sm text-ink-body leading-relaxed mb-5">
-                    A clause is a free-form <strong>content shape</strong>: <code>fields</code> declares any named attributes &mdash; string, enum, array, object &mdash; and <em>that</em> is what gets validated off-chain and merkle-bound on-chain when attested. With four identity fields, that is already a whole, valid clause:
+                    A clause is a free-form <strong>content shape</strong>: <code>fields</code> declares any named attributes &mdash; string, enum, array, object &mdash; and <em>that</em> is what gets validated off-chain and merkle-bound on-chain when attested. Five required keys &mdash; <code>clauseId</code>, <code>version</code>, <code>title</code>, a one-line <code>description</code>, and <code>fields</code> &mdash; already make a whole, valid clause:
                 </p>
                 <pre className="text-xs font-mono text-ink-body bg-paper border border-default rounded-section p-4 overflow-x-auto mb-5"><code>{`{
   "clauseId": "figaro-probe",
@@ -77,14 +77,17 @@ export default function Clauses() {
             </MarketingSection>
 
             <MarketingSection title="The checklist.">
+                <p className="text-sm text-ink-body leading-relaxed mb-6">
+                    No permission, no pull request, no repository access. Four steps take a spec from your editor to an anchored, attestable clause &mdash; and <Link href="/builders/clauses" className="text-ink-heading font-medium underline">/builders/clauses</Link> runs all four from the browser if you would rather not touch code.
+                </p>
                 <ol className="space-y-3 text-sm text-ink-body leading-relaxed list-decimal pl-5">
-                    <li>Write the JSON spec at <code>clauses/&lt;your-clause&gt;.json</code> — <code>populate-clauses</code> pins it to IPFS and anchors it on <code>ClauseRegistry</code>; every consumer fetches it from the registry. Nothing bundles a copy.</li>
-                    <li>No per-clause encoder is needed &mdash; <code>sdk/src/clauses/encode.ts</code> (<code>encodeContentFromSpec</code>) is the single generic, spec-driven encoder for any clause.</li>
-                    <li>Add a conformance fixture in <code>sdk/tests/clauses/examples.test.ts</code> that reads the new spec from <code>clauses/</code>; the off-chain validator is generic and needs no per-clause case.</li>
-                    <li>Register the spec on <code>ClauseRegistry</code> via <code>scripts/populate-clauses.mjs</code> (and a <code>registerClause</code> call in <code>script/Deploy.s.sol</code> / <code>DeployMainnet.s.sol</code> for the reference set). There is <strong>no validator to bind</strong> &mdash; registration alone makes the clause attestable. The UI loads every spec chain&rarr;IPFS; the article is read from the spec&apos;s <code>block.article</code>; the inventory above reads its set live from on-chain <code>ClauseRegistered</code> events.</li>
+                    <li><strong>Write the spec.</strong> The shape above is the whole of it &mdash; <code>clauseId</code>, <code>version</code>, <code>title</code>, <code>description</code>, and your <code>fields</code>. Add <code>block</code> only if you want the clause to surface in the designer and runtime.</li>
+                    <li><strong>Validate it off-chain.</strong> Run it through the one validator &mdash; <code>parseClauseSpec</code> / <code>validateContent</code> from <code>@figaro/sdk/clauses</code>, or paste it into the <Link href="/builders/clauses" className="underline">/builders/clauses</Link> form, which runs the same check live in the browser. This is the only place clause content is checked; get it green here before you anchor.</li>
+                    <li><strong>Pin the raw document to IPFS.</strong> Pin the exact JSON you validated &mdash; the raw canonical document, <code>block</code> included &mdash; and keep it pinned. The <code>contentHash</code> you anchor is the hash of that raw document; every consumer fetches the spec back from IPFS at read time. Nothing bundles a copy.</li>
+                    <li><strong>Anchor it on <code>ClauseRegistry</code>.</strong> Call <code>registerClause(clauseId, version, contentHash, contentURI)</code> &mdash; permissionless, first-write-wins, permanent per <code>(name, version)</code>. Registering posts a reclaimable ETH deposit &mdash; staked intent, no time lock, reclaimed in full &mdash; not a fee. There is <strong>no validator to bind</strong> and no content shape the chain checks: registration alone makes the clause attestable, and the inventory above picks it up live from on-chain <code>ClauseRegistered</code> events.</li>
                 </ol>
                 <p className="mt-6 text-sm text-ink-muted leading-relaxed">
-                    The one lockstep that matters: the registered <code>contentHash</code> must match the pinned spec, and the spec must stay pinned. If they drift, the clause won&apos;t surface.
+                    The one lockstep that matters: the registered <code>contentHash</code> must match the pinned document, and the document must stay pinned. If they drift, the clause won&apos;t surface.
                 </p>
             </MarketingSection>
 
@@ -94,7 +97,7 @@ export default function Clauses() {
                     <li><strong>Registration path:</strong> <code>ClauseRegistry.registerClause(clauseId, version, contentHash, contentURI)</code> &mdash; permissionless, first-write-wins, immutable. No validator to bind; registration alone makes the clause attestable. Contract catalogue at <Link href="/spec" className="underline">/spec</Link>.</li>
                     <li><strong>Kernel side:</strong> attestation receipts are bound to the signed <code>agreementHash</code> via merkle inclusion proof, with no on-chain content validation; the rationale is on <Link href="/protocol" className="underline">Protocol</Link>.</li>
                     <li><strong>Academic frame:</strong> Paper E (jurisdiction baseline) and the Philosophy / Law / Ethics discipline on <Link href="/cryptoeconomics" className="underline">Cryptoeconomics</Link>.</li>
-                    <li><strong>Repository:</strong> <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="underline">github.com/figaro-protocol/Figaro</a>. The <code>CLAUDE.md</code> at the root is the authoritative inventory and carries the canonical clause-authoring checklist.</li>
+                    <li><strong>Repository:</strong> <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="underline">github.com/figaro-protocol/Figaro</a> &mdash; the reference clauses, the SDK, and the contracts.</li>
                 </ul>
                 <p className="mt-6 text-sm text-ink-muted">
                     Composition tools and the assembly designer: <Link href="/builders" className="underline">/builders</Link>.
