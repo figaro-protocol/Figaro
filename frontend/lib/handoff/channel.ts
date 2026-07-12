@@ -11,6 +11,7 @@
  */
 
 import { isE2EMockSession, isE2EDevnetSession } from "@/lib/shared/e2e";
+import { readUserTransport } from "@/lib/shared/userTransport";
 
 // ── Message types ──────────────────────────────────────────────
 
@@ -182,6 +183,18 @@ export async function getCoordinationChannel(
     if (isE2EMockSession() || isE2EDevnetSession()) {
         const { createMockChannel } = await import("./mockChannel");
         const ch = createMockChannel(address);
+        channelCache.set(key, ch);
+        return ch;
+    }
+
+    // Outside test mode the transport is the WALLET'S choice, defaulting to
+    // `links-only` (the share/receive URI flow — no push transport, no
+    // broker). Return an inert channel so callers keep working and the XMTP
+    // chunk is NEVER loaded or initialized unless the wallet opted in on
+    // /settings. (Applies on reload — the channel is a cached singleton.)
+    if (readUserTransport() !== "xmtp") {
+        const { createNullChannel } = await import("./nullChannel");
+        const ch = createNullChannel();
         channelCache.set(key, ch);
         return ch;
     }

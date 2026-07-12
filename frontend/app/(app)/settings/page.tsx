@@ -18,12 +18,19 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { useMounted } from "@/hooks/useMounted";
 import {
     readUserEndpoints,
     writeUserEndpoints,
     type UserEndpointOverrides,
 } from "@/lib/shared/userEndpoints";
+import {
+    readUserTransport,
+    writeUserTransport,
+    DEFAULT_TRANSPORT,
+    type CoordinationTransport,
+} from "@/lib/shared/userTransport";
 
 export default function SettingsPage() {
     const mounted = useMounted();
@@ -33,6 +40,7 @@ export default function SettingsPage() {
         ipfsGatewayUrl: "",
         geocodeUrl: "",
     });
+    const [transport, setTransport] = useState<CoordinationTransport>(DEFAULT_TRANSPORT);
     const [saved, setSaved] = useState(false);
 
     useEffect(() => {
@@ -44,6 +52,7 @@ export default function SettingsPage() {
             ipfsGatewayUrl: current.ipfsGatewayUrl ?? "",
             geocodeUrl: current.geocodeUrl ?? "",
         });
+        setTransport(readUserTransport());
     }, [mounted]);
 
     if (!mounted) return null;
@@ -53,8 +62,14 @@ export default function SettingsPage() {
         setForm((prev) => ({ ...prev, [key]: value }));
     }
 
+    function setTransportField(value: CoordinationTransport) {
+        setSaved(false);
+        setTransport(value);
+    }
+
     function handleSave() {
         writeUserEndpoints(form);
+        writeUserTransport(transport);
         setSaved(true);
     }
 
@@ -129,6 +144,25 @@ export default function SettingsPage() {
                         Nominatim-compatible search endpoint typed addresses resolve
                         through — called directly from your browser, only when you use
                         &ldquo;From address&rdquo;. Applies immediately.
+                    </p>
+                </FormField>
+
+                <FormField label="Coordination transport" inputId="settings-transport">
+                    <Select
+                        id="settings-transport"
+                        value={transport}
+                        onChange={(e) => setTransportField(e.target.value as CoordinationTransport)}
+                        data-testid="settings-transport"
+                    >
+                        <option value="links-only">Share links only (default)</option>
+                        <option value="xmtp">XMTP push (dev network)</option>
+                    </Select>
+                    <p className="text-xs text-ink-faint mt-1">
+                        How a pending commitment reaches the other party for
+                        counter-signature. &ldquo;Share links only&rdquo; needs no
+                        messaging network — you send them a link. Opting into XMTP
+                        adds live push over its dev network, signed for with your
+                        wallet on first use. Applies on the next reload.
                     </p>
                 </FormField>
 
