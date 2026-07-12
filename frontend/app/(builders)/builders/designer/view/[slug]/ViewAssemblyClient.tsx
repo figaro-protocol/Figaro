@@ -27,7 +27,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { usePublicClient } from "wagmi";
+import { useAccount, usePublicClient } from "wagmi";
 import { TopologyCanvas } from "@/components/runtime/TopologyCanvas";
 import { AgreementDrawer } from "../../_components/AgreementDrawer";
 import {
@@ -39,12 +39,15 @@ import { ASSEMBLY_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import {
     fetchAssemblyTemplate,
     getAssemblyRegistry,
+    useWithdrawAssembly,
 } from "@/lib/protocol/useAssemblyRegistry";
+import { useWithdrawGate, withdrawBlockedReason, withdrawUnverifiedCaveat } from "@/lib/protocol/withdrawGate";
 import { usePublishAssembly } from "@/lib/designer/publishAssembly";
 import { templateToOrders } from "@/lib/designer/assemblyTemplateToDraft";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { deriveAssemblySlug, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
+import { hexEqual } from "@/lib/shared/evm";
 import type { Order } from "@/lib/kernel/store";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 
@@ -56,6 +59,11 @@ type ResolvedSource =
         name: string;
         orders: Order[];
         assemblyTemplate: AssemblyTemplate;
+        /** The on-chain binding — needed to gate the author-only reclaim. */
+        author: `0x${string}`;
+        compositionHash: `0x${string}`;
+        /** Whether the registration stake has already been reclaimed. */
+        stakeWithdrawn: boolean;
     }
     | { kind: "error"; message: string };
 
@@ -85,6 +93,18 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     } | null>(null);
     const [publishError, setPublishError] = useState<string | null>(null);
     const { publish } = usePublishAssembly();
+    const { address } = useAccount();
+    const { withdraw } = useWithdrawAssembly();
+    const [withdrawing, setWithdrawing] = useState(false);
+    const [withdrawError, setWithdrawError] = useState<string | null>(null);
+    // The advisory commits==resolves gate for THIS assembly — in-flight deals
+    // composed from it (derived from chain + IPFS by the SDK). Null artifact for
+    // drafts/errors; the hook no-ops. The reclaim affordance reads `.canWithdraw`.
+    const { gate: withdrawGate } = useWithdrawGate(
+        resolved.kind === "published"
+            ? { kind: "assembly", template: resolved.assemblyTemplate }
+            : null,
+    );
     // `templateToOrders` builds synthetic agreements through the chain-loaded
     // clause specs; the on-chain resolution path below waits for the cache
     // (the `useClauseSpecs` contract). Drafts don't build, so they resolve
@@ -155,9 +175,10 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     }
                     const log = logs[0];
                     const contentURI = (log.args.contentURI ?? "") as string;
+                    const compositionHash = log.args.compositionHash as `0x${string}`;
                     const assemblyTemplate = await fetchAssemblyTemplate(
                         contentURI,
-                        log.args.compositionHash as `0x${string}`,
+                        compositionHash,
                     );
                     if (cancelled) return;
                     if (!assemblyTemplate) {
@@ -168,6 +189,26 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         });
                         return;
                     }
+                    // The binding is authoritative for author + withdrawn state
+                    // (the author is also an indexed event topic, but reading the
+                    // binding also tells us whether the stake was already
+                    // reclaimed). A read failure falls back to the event author
+                    // and a not-yet-withdrawn assumption.
+                    let author = log.args.author as `0x${string}`;
+                    let stakeWithdrawn = false;
+                    try {
+                        const binding = (await client.readContract({
+                            address: registry,
+                            abi: ASSEMBLY_REGISTRY_ABI,
+                            functionName: "bindings",
+                            args: [compositionHash],
+                        })) as readonly [`0x${string}`, bigint, boolean, string];
+                        author = binding[0];
+                        stakeWithdrawn = binding[2];
+                    } catch {
+                        /* fall back to the event author, stakeWithdrawn=false */
+                    }
+                    if (cancelled) return;
                     const orders = templateToOrders(assemblyTemplate);
                     // The editorial name the designer published; the
                     // content-derived slug is the fallback (and the identity).
@@ -176,6 +217,9 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         name: assemblyTemplate.name ?? slug,
                         orders,
                         assemblyTemplate,
+                        author,
+                        compositionHash,
+                        stakeWithdrawn,
                     });
                     return;
                 } catch (err) {
@@ -229,6 +273,21 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         // on route change is sufficient cleanup.
         router.push("/builders/designer");
     }, [router]);
+
+    const handleWithdraw = useCallback(async () => {
+        if (resolved.kind !== "published") return;
+        setWithdrawing(true);
+        setWithdrawError(null);
+        try {
+            await withdraw(resolved.compositionHash);
+            // Reflect the reclaim locally — the binding stays; only the stake moved.
+            setResolved((prev) => (prev.kind === "published" ? { ...prev, stakeWithdrawn: true } : prev));
+        } catch (err) {
+            setWithdrawError(err instanceof Error ? err.message : String(err));
+        } finally {
+            setWithdrawing(false);
+        }
+    }, [resolved, withdraw]);
 
     const handleFork = useCallback(async () => {
         if (resolved.kind !== "published") return;
@@ -318,6 +377,14 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     }
 
     const orders = resolved.orders;
+    // The connected wallet authored this published assembly — the reclaim
+    // affordance (and its caveat strip) renders only for them.
+    const isAuthor =
+        resolved.kind === "published" && !!address && hexEqual(resolved.author, address);
+    // Unverifiable in-flight deals: informational only (party-private terms),
+    // never disabling. Shown visibly while the reclaim is still available.
+    const withdrawCaveat =
+        isAuthor && !resolved.stakeWithdrawn ? withdrawUnverifiedCaveat(withdrawGate) : null;
     // Editorial prose the designer attached — read from the pinned template
     // (published) or the local snapshot (draft). Both optional.
     const editorial =
@@ -367,15 +434,40 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
             Edit
         </Link>
     ) : (
-        <button
-            type="button"
-            onClick={handleFork}
-            disabled={forking}
-            className="ml-auto text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-heading font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
-            data-testid="view-fork-button"
-        >
-            {forking ? "Forking…" : "Fork"}
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+            {isAuthor && (
+                <button
+                    type="button"
+                    onClick={handleWithdraw}
+                    // Author-only reclaim, gated by the advisory commits==resolves
+                    // gate: disabled while any VERIFIED in-flight deal composes
+                    // this assembly, while the gate is unknown (loading /
+                    // chain-read failure), or once already reclaimed. Unverified
+                    // deals never disable — they render as the caveat strip
+                    // below the toolbar. The title names why.
+                    disabled={withdrawing || resolved.stakeWithdrawn || withdrawGate === null || withdrawGate.inFlightCount > 0}
+                    className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:bg-subtle text-ink-heading font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+                    data-testid="view-withdraw-button"
+                    title={
+                        resolved.stakeWithdrawn
+                            ? "This assembly's registration stake has already been reclaimed."
+                            : (withdrawBlockedReason(withdrawGate)
+                                ?? "Reclaim your registration stake. The binding stays anchored; the assembly de-surfaces for new orders.")
+                    }
+                >
+                    {resolved.stakeWithdrawn ? "Stake reclaimed" : withdrawing ? "Reclaiming…" : "Reclaim stake"}
+                </button>
+            )}
+            <button
+                type="button"
+                onClick={handleFork}
+                disabled={forking}
+                className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-heading font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+                data-testid="view-fork-button"
+            >
+                {forking ? "Forking…" : "Fork"}
+            </button>
+        </div>
     );
 
     const selectedOrder = selectedOrderId
@@ -445,6 +537,20 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 <div className="px-6 py-3 border-b border-default bg-subtle">
                     <p className="text-sm text-red-600" role="alert" data-testid="publish-error">
                         Publish failed: {publishError}
+                    </p>
+                </div>
+            )}
+            {withdrawError && (
+                <div className="px-6 py-3 border-b border-default bg-subtle">
+                    <p className="text-sm text-red-600" role="alert" data-testid="withdraw-error">
+                        Reclaim failed: {withdrawError}
+                    </p>
+                </div>
+            )}
+            {withdrawCaveat && (
+                <div className="px-6 py-3 border-b border-default bg-subtle">
+                    <p className="text-xs text-ink-muted" role="status" data-testid="withdraw-caveat">
+                        {withdrawCaveat}
                     </p>
                 </div>
             )}

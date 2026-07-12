@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { toError } from "@/lib/shared/errors";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { parseAssemblyRegistryLogs } from "@figaro/sdk";
@@ -91,6 +92,83 @@ export function translatePublishRevert(err: unknown, attemptedSlug: string): Err
         if (name === "ZeroCompositionHash") return new Error("Computed an empty composition hash — likely a assemblyTemplate-builder bug.");
     }
     return toError(err);
+}
+
+/** Map an `AssemblyRegistry.withdrawDeposit` revert into a human-readable
+ *  Error. The commits==resolves gate is off-chain/advisory (the chain carries
+ *  no composition provenance), so these are the on-chain guards only:
+ *  author-only, once-only, must-exist. */
+function translateWithdrawRevert(err: unknown): Error {
+    if (err instanceof BaseError) {
+        const revert = err.walk(
+            (e) => e instanceof ContractFunctionRevertedError,
+        ) as ContractFunctionRevertedError | undefined;
+        const name = revert?.data?.errorName;
+        if (name === "AlreadyWithdrawn") {
+            return new Error("This assembly's registration stake has already been reclaimed.");
+        }
+        if (name === "NotAuthor") {
+            return new Error("Only the assembly's author can reclaim its registration stake.");
+        }
+        if (name === "NotRegistered") {
+            return new Error("No registration binding exists for this composition.");
+        }
+        if (name === "TransferFailed") {
+            return new Error("The stake refund transfer failed. No state changed — retry.");
+        }
+    }
+    return toError(err);
+}
+
+/**
+ * Reclaim an assembly's registration stake (`AssemblyRegistry.withdrawDeposit`).
+ * The binding is permanent — withdraw only moves the deposit and de-surfaces
+ * the assembly for NEW orders; committed processes keep resolving. Gating on
+ * in-flight deals is the caller's job via `useWithdrawGate` (advisory,
+ * off-chain); this hook is the plain author-only write. Simulates first to
+ * surface a typed revert before opening the wallet, sends, then waits for a
+ * `success` receipt. Throws on any failure.
+ */
+export function useWithdrawAssembly() {
+    const client = usePublicClient();
+    const { address } = useAccount();
+    const { writeContractAsync, isPending } = useWriteContract();
+
+    async function withdraw(compositionHash: `0x${string}`): Promise<`0x${string}`> {
+        const registry = getAssemblyRegistry();
+        if (!registry) {
+            throw new Error("AssemblyRegistry address not configured (NEXT_PUBLIC_ASSEMBLY_REGISTRY).");
+        }
+        if (!client) throw new Error("No public client available to submit the withdrawal.");
+        if (!address) throw new Error("Connect a wallet before reclaiming the stake.");
+
+        try {
+            await client.simulateContract({
+                address: registry,
+                abi: ASSEMBLY_REGISTRY_ABI,
+                functionName: "withdrawDeposit",
+                args: [compositionHash],
+                account: address,
+            });
+        } catch (err) {
+            throw translateWithdrawRevert(err);
+        }
+
+        const txHash = await writeContractAsync({
+            address: registry,
+            abi: ASSEMBLY_REGISTRY_ABI,
+            functionName: "withdrawDeposit",
+            args: [compositionHash],
+        });
+
+        const receipt = await client.waitForTransactionReceipt({ hash: txHash });
+        if (receipt.status !== "success") {
+            throw new Error(`Withdrawal transaction reverted on-chain (tx ${txHash}). The stake was not reclaimed.`);
+        }
+        return txHash;
+    }
+
+    return { withdraw, isPending };
 }
 
 /**

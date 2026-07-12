@@ -139,14 +139,18 @@ const [endpoint] = document ? extractServiceEndpoints(document, "MCPEndpoint") :
 
 ### `@figaro/sdk/derive` — Clause-Agnostic Derivations
 
-Clause-agnostic attestation filtering and geo math.
+Clause-agnostic attestation filtering, geo math, and the commits==resolves
+withdraw gate.
 
 ```ts
-import { computeClauseKey } from "@figaro/sdk";
+import { computeClauseKey, fetchCoreEvents } from "@figaro/sdk";
 import {
   filterByClause,
   haversineDistance,
   geohashesMatch,
+  deriveInFlightOrders,
+  deriveClauseWithdrawGate,
+  deriveAssemblyWithdrawGate,
 } from "@figaro/sdk/derive";
 
 // Attestations: derive the on-chain clause key (name, version), then filter
@@ -158,6 +162,20 @@ const forClause = filterByClause(attestations, clauseId);
 // Geo: check delivery proximity
 const close = geohashesMatch("dr5ru7", "dr5ru8", 5); // true (5-char prefix match)
 const km = haversineDistance(40.71, -74.00, 34.05, -118.24); // ~3944 km
+
+// Withdraw gate (advisory): an artifact author must not reclaim their
+// registration stake while deals composed from the artifact are in flight.
+// The join is derived at read time from chain + IPFS, never stored:
+const events = await fetchCoreEvents(client, addresses, 0n);
+const inFlight = deriveInFlightOrders(events); // committed, process unresolved
+// You resolve each ref's pinned agreement (the SDK does no IPFS I/O), pairing
+// it as { processId, agreement } — a null agreement (party-private/unreachable)
+// is COUNTED as unverified and surfaced, but never blocks: agreement bodies are
+// party-private, and the on-chain inclusion-proof hardening doesn't lock the
+// stake on unrevealed deals either. Then:
+const clauseGate = deriveClauseWithdrawGate("figaro-emissions", agreements);
+const assemblyGate = deriveAssemblyWithdrawGate(assemblyTemplate, agreements);
+// gate.canWithdraw === (inFlightCount === 0); unverifiedCount is a caveat
 ```
 
 ### `@figaro/sdk/clauses` — Clause-Spec Format + Content Encoding
