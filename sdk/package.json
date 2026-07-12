@@ -39,7 +39,7 @@
         "lint": "tsc --noEmit"
     },
     "dependencies": {
-        "viem": "^2.0.0"
+        "viem": "^2.55.1"
     },
     "devDependencies": {
         "ajv": "^8.20.0",
