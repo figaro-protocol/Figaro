@@ -13,7 +13,8 @@
  * sharing one subscribe → fetch → deserialize → filter → accumulate path; they
  * diverge only in the `match` predicate the caller passes.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { create } from "zustand";
 import { useAccount, useWalletClient } from "wagmi";
 import { hexEqual } from "@/lib/shared/evm";
 import { isE2EMockSession } from "@/lib/shared/e2e";
@@ -50,8 +51,41 @@ export function awaitsCounterpartySignature(p: CommitmentPayload, address: strin
 }
 
 /**
+ * Dismissed-order store — a process-wide singleton so every
+ * `usePendingSellerSignature` mount (header badge + /orders accept surface)
+ * shares one dismiss/accept decision. Without it, each instance accumulates its
+ * own `pending` list and a dismissal in one leaves the other counting a stale
+ * order. Keyed by the coordination-channel `orderId` (stable across instances).
+ * Follows the codebase's zustand singleton-store idiom (`cartStore`,
+ * `useOrderStore`).
+ */
+interface DismissedPendingStore {
+    dismissed: ReadonlySet<string>;
+    dismissOrder: (orderId: string) => void;
+}
+
+const useDismissedPending = create<DismissedPendingStore>((set) => ({
+    dismissed: new Set<string>(),
+    dismissOrder: (orderId) =>
+        set((s) => {
+            if (s.dismissed.has(orderId)) return s;
+            const next = new Set(s.dismissed);
+            next.add(orderId);
+            return { dismissed: next };
+        }),
+}));
+
+/** A witnessed payload tagged with its coordination-channel order id. */
+interface PendingEntry {
+    payload: CommitmentPayload;
+    orderId: string;
+}
+
+/**
  * Subscribe to relayed payloads for the connected wallet, keeping those that
  * satisfy `match`. Returns the accumulated `pending` list plus `dismiss(index)`.
+ * Dismissal is shared across every hook instance through a singleton store, so
+ * accepting/dismissing on one surface immediately clears it everywhere.
  * Suppressed in `?e2e=mock` sessions (mock orders commit immediately and bypass
  * the channel).
  */
@@ -62,7 +96,9 @@ export function usePendingSellerSignature(
     const { data: walletClient } = useWalletClient();
     const services = useRuntimeServices();
 
-    const [pending, setPending] = useState<CommitmentPayload[]>([]);
+    const [entries, setEntries] = useState<PendingEntry[]>([]);
+    const dismissed = useDismissedPending((s) => s.dismissed);
+    const dismissOrder = useDismissedPending((s) => s.dismissOrder);
     const receivedOrderIds = useRef<Set<string>>(new Set());
     const subscribed = useRef(false);
     const isMock = isE2EMockSession();
@@ -103,7 +139,7 @@ export function usePendingSellerSignature(
                         await publishAgreement(payload.agreement, { evidenceTransport: services.evidenceTransport });
                         if (!matchRef.current(payload, address)) return;
                         receivedOrderIds.current.add(orderId);
-                        setPending((prev) => [...prev, payload]);
+                        setEntries((prev) => [...prev, { payload, orderId }]);
                     } catch {
                         // Malformed payload or IPFS fetch failure — ignore.
                     }
@@ -128,9 +164,22 @@ export function usePendingSellerSignature(
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [address]);
 
-    const dismiss = useCallback((index: number) => {
-        setPending((prev) => prev.filter((_, i) => i !== index));
-    }, []);
+    // Hide entries dismissed (or accepted) on ANY instance — the shared store
+    // is the single source of that decision. `pending`/`dismiss` index into
+    // this visible list.
+    const visible = useMemo(
+        () => entries.filter((e) => !dismissed.has(e.orderId)),
+        [entries, dismissed],
+    );
+    const pending = useMemo(() => visible.map((e) => e.payload), [visible]);
+
+    const dismiss = useCallback(
+        (index: number) => {
+            const entry = visible[index];
+            if (entry) dismissOrder(entry.orderId);
+        },
+        [visible, dismissOrder],
+    );
 
     return { pending, dismiss };
 }

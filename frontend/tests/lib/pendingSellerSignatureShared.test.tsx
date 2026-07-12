@@ -1,0 +1,121 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { renderHook, act, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
+import {
+    usePendingSellerSignature,
+    awaitsMyCounterSign,
+} from "@/lib/checkout/orderPendingSellerSignature";
+import { RuntimeServicesProvider } from "@/lib/shared/runtimeServicesContext";
+import type { RuntimeServices } from "@/lib/shared/runtimeServices";
+
+const SELLER = "0x1111111111111111111111111111111111111111";
+const BUYER = "0x2222222222222222222222222222222222222222";
+
+const useAccountMock = vi.fn();
+const useWalletClientMock = vi.fn();
+
+vi.mock("wagmi", () => ({
+    useAccount: () => useAccountMock(),
+    useWalletClient: () => useWalletClientMock(),
+}));
+
+vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));
+
+// The payload fetch: return the serialized payload JSON so the REAL
+// deserializeCommitmentPayload runs (never mock the parse itself).
+const fetchCappedContentMock = vi.fn();
+vi.mock("@/lib/shared/ipfsService", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/shared/ipfsService")>();
+    return {
+        ...actual,
+        fetchCappedContent: (...args: unknown[]) => fetchCappedContentMock(...args),
+    };
+});
+
+// Agreement pinning is a side effect of witnessing — a no-op for this test.
+vi.mock("@/lib/kernel/agreementFetch", () => ({
+    publishAgreement: vi.fn().mockResolvedValue(undefined),
+}));
+
+// One order awaiting the seller's counter-signature (buyer has signed).
+const PAYLOAD = {
+    commitment: { buyer: BUYER, seller: SELLER },
+    agreement: {},
+    buyerSig: "0xdeadbeef",
+};
+
+// Captured subscription callbacks — one per mounted hook instance.
+let callbacks: Array<(cid: string, orderId: string) => Promise<void> | void>;
+
+function makeServices(): RuntimeServices {
+    return {
+        catalogue: {} as RuntimeServices["catalogue"],
+        discovery: {} as RuntimeServices["discovery"],
+        evidenceTransport: {
+            resolveFetchUrl: (uri: string) => `https://gateway.test/${uri}`,
+        } as unknown as RuntimeServices["evidenceTransport"],
+        coordinationMessaging: {
+            subscribeAnyCommitmentPayload: ({
+                callback,
+            }: {
+                callback: (cid: string, orderId: string) => Promise<void> | void;
+            }) => {
+                callbacks.push(callback);
+                return Promise.resolve(() => undefined);
+            },
+        } as unknown as RuntimeServices["coordinationMessaging"],
+        handoffPersistence: {} as RuntimeServices["handoffPersistence"],
+        tokenConversion: {} as RuntimeServices["tokenConversion"],
+    };
+}
+
+function wrapper(services: RuntimeServices) {
+    return ({ children }: { children: ReactNode }) => (
+        <RuntimeServicesProvider services={services}>{children}</RuntimeServicesProvider>
+    );
+}
+
+describe("usePendingSellerSignature shared dismiss state", () => {
+    beforeEach(() => {
+        callbacks = [];
+        useAccountMock.mockReset();
+        useWalletClientMock.mockReset();
+        fetchCappedContentMock.mockReset();
+        useAccountMock.mockReturnValue({ address: SELLER });
+        useWalletClientMock.mockReturnValue({ data: null });
+        fetchCappedContentMock.mockResolvedValue({
+            ok: true,
+            text: async () => JSON.stringify(PAYLOAD),
+        });
+    });
+
+    it("a dismissal in one instance immediately clears the pending order in the other", async () => {
+        const services = makeServices();
+        const w = wrapper(services);
+
+        // Two independent mount sites (header badge + accept surface).
+        const a = renderHook(() => usePendingSellerSignature(awaitsMyCounterSign), { wrapper: w });
+        const b = renderHook(() => usePendingSellerSignature(awaitsMyCounterSign), { wrapper: w });
+
+        // The same relayed order reaches both subscriptions.
+        await act(async () => {
+            for (const cb of callbacks) await cb("cid-order-1", "order-1");
+        });
+
+        await waitFor(() => {
+            expect(a.result.current.pending).toHaveLength(1);
+            expect(b.result.current.pending).toHaveLength(1);
+        });
+
+        // The seller dismisses (or accepts) on ONE surface.
+        act(() => {
+            a.result.current.dismiss(0);
+        });
+
+        // Both surfaces must reflect it — the badge cannot keep counting it.
+        await waitFor(() => {
+            expect(a.result.current.pending).toHaveLength(0);
+            expect(b.result.current.pending).toHaveLength(0);
+        });
+    });
+});

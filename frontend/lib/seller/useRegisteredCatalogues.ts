@@ -43,6 +43,10 @@ export function useRegisteredCatalogues(
     const [discoveryResult, setDiscoveryResult] =
         useState<UseRegisteredCataloguesResult>(EMPTY_RESULT);
     const [isLoading, setIsLoading] = useState(false);
+    // Re-read generation — bumped when the tab regains focus so a long-open
+    // discovery surface refreshes from the chain instead of going stale.
+    // Mirrors the generation/refetch idiom in useRegisteredClausesByWallet.
+    const [generation, setGeneration] = useState(0);
     const client = usePublicClient();
     const chainId = useChainId();
     // The AssemblyRegistry read the surfacing rule cross-checks against —
@@ -80,7 +84,23 @@ export function useRegisteredCatalogues(
         return () => {
             cancelled = true;
         };
-    }, [client, chainId, service, publishedAssemblies]);
+    }, [client, chainId, service, publishedAssemblies, generation]);
+
+    // A long-open tab's catalogue goes stale as sellers register/de-surface.
+    // Refresh on focus (returning to the tab) and on tab re-visibility.
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const bump = () => setGeneration((g) => g + 1);
+        const onVisible = () => {
+            if (document.visibilityState === "visible") bump();
+        };
+        window.addEventListener("focus", bump);
+        document.addEventListener("visibilitychange", onVisible);
+        return () => {
+            window.removeEventListener("focus", bump);
+            document.removeEventListener("visibilitychange", onVisible);
+        };
+    }, []);
 
     return {
         catalogues: discoveryResult.catalogues,

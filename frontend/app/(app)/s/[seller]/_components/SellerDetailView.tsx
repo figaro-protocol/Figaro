@@ -140,7 +140,11 @@ export function SellerDetailView({ sellerAddress }: Props) {
     const cartSubtotal = cartItems.reduce((sum, it) => sum + parseFloat(it.price || "0") * it.quantity, 0);
     const cartUnitSystem = sellerCatalogue.unitSystem ?? "metric";
 
-    const categories = Array.from(new Set(sellerCatalogue.items.map((item) => item.category)));
+    // `category` is optional on a catalogue item; items without one group under
+    // an explicit, visible fallback — never an undefined key / heading-less
+    // group. Matches the "(unclassified)" convention groupClausesByArticle uses.
+    const categoryOf = (item: CatalogueItemMetadata) => item.category ?? "(unclassified)";
+    const categories = Array.from(new Set(sellerCatalogue.items.map(categoryOf)));
 
     return (
         <div>
@@ -201,7 +205,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                 <h2 className="text-lg font-semibold text-black mb-3">{category}</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {sellerCatalogue.items
-                                        .filter((item) => item.category === category)
+                                        .filter((item) => categoryOf(item) === category)
                                         .map((catalogueItem) => {
                                             const quantity = getItemQuantity(catalogueItem.id);
                                             return (
