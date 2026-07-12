@@ -124,6 +124,15 @@ export const CLAUSE_REGISTRY_ABI = parseAbi([
     "event ClauseRegistered(string clauseId, uint64 version, bytes32 contentHash, string contentURI, address indexed registrar)",
     "event DepositWithdrawn(bytes32 indexed clauseId, address indexed registrar, uint256 amount)",
     "event MechanismClauseSet(address indexed mechanism, bytes32 indexed clauseId)",
+    "error AlreadyRegistered(bytes32 clauseId)",
+    "error NotRegistered(bytes32 clauseId)",
+    "error EmptyClauseId()",
+    "error EmptyContentURI()",
+    "error ZeroContentHash()",
+    "error WrongDeposit(uint256 provided, uint256 required)",
+    "error NotRegistrar(address caller, address registrar)",
+    "error AlreadyWithdrawn()",
+    "error TransferFailed()",
 ]);
 
 
