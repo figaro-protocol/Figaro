@@ -2,29 +2,31 @@
 
 /**
  * SellerAgentIdentity — the READ surface for a seller's declared agent service
- * endpoints, and the consumer of the did:web verification hook.
+ * endpoints, and the consumer of the did:web consistency-check hook.
  *
  * A seller can publish a `did:web` identifier plus MCP / A2A / REST / ENS
  * endpoints (the agents onboarding step). This surfaces them to a browsing party
- * and, for the did:web, RESOLVES the DID Document and checks it binds the
- * seller's on-chain address on the current chain — the "discovery vs trust"
+ * and, for the did:web, RESOLVES the DID Document and checks whether it names
+ * the seller's on-chain address on the current chain — the "discovery vs trust"
  * split the actor-neutral-coordination architecture calls for: endpoints help a
- * counterparty FIND this seller; the verified binding is what lets an agent
- * TRUST the identifier before bonding.
+ * counterparty FIND this seller; the consistency check is a discovery signal,
+ * NOT proof of control. Anyone can host a did:web document naming any wallet, so
+ * the binding is attacker-forgeable and informs — never by itself justifies —
+ * trust before bonding.
  *
  * Renders nothing when the seller published no services (resolved-empty =
  * absence). did:web resolution is a live network fetch of the DID host, so the
- * badge reflects reachability: verified / unverified / could-not-resolve.
+ * badge reflects reachability: consistent / inconsistent / could-not-resolve.
  */
 
 import { useAgentServices } from "@/lib/seller/useSellerRegistry";
-import { useDidVerification } from "@/lib/agent/useDidWeb";
+import { useDidConsistency } from "@/lib/agent/useDidWeb";
 
 export function SellerAgentIdentity({ sellerAddress }: { sellerAddress: `0x${string}` | undefined }) {
     const { data } = useAgentServices(sellerAddress);
     const services = data?.services;
     const did = services?.did;
-    const { verified, isLoading: verifying, error } = useDidVerification(did, sellerAddress);
+    const { consistent, isLoading: checking, error } = useDidConsistency(did, sellerAddress);
 
     const endpoints: Array<[string, string]> = [];
     if (services?.mcp) endpoints.push(["MCP", services.mcp]);
@@ -45,26 +47,27 @@ export function SellerAgentIdentity({ sellerAddress }: { sellerAddress: `0x${str
             {did && (
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                     <code className="text-xs text-neutral-800 break-all">{did}</code>
-                    {verifying ? (
+                    {checking ? (
                         <span data-testid="did-status" className="text-xs text-neutral-500">
                             checking…
                         </span>
-                    ) : verified ? (
+                    ) : consistent ? (
                         <span
                             data-testid="did-status"
-                            data-verified="true"
+                            data-consistent="true"
                             className="text-xs font-semibold text-green-700"
+                            title="This DID document names this wallet. It does not prove the wallet controls the DID — anyone can host a document naming any wallet."
                         >
-                            ✓ verified · binds this wallet
+                            ✓ consistent · DID names this wallet
                         </span>
                     ) : (
                         <span
                             data-testid="did-status"
-                            data-verified="false"
+                            data-consistent="false"
                             className="text-xs font-semibold text-amber-700"
                             title={error ?? undefined}
                         >
-                            {error ? "unverified · could not resolve" : "unverified · does not bind this wallet"}
+                            {error ? "unconfirmed · could not resolve" : "inconsistent · DID does not name this wallet"}
                         </span>
                     )}
                 </div>

@@ -4,6 +4,7 @@ import {
     didWebToUrl,
     validateDidDocument,
     resolveDidWeb,
+    assertSafeResolutionUrl,
     extractEthereumAddresses,
     extractServiceEndpoints,
     didDocumentMatchesAddress,
@@ -415,7 +416,7 @@ describe("resolveDidWeb", () => {
         expect(result.document).toEqual(validDoc);
         expect(mockFetch).toHaveBeenCalledWith(
             "https://example.com/.well-known/did.json",
-            { headers: { Accept: "application/json" } },
+            { headers: { Accept: "application/json" }, redirect: "error" },
         );
     });
 
@@ -545,5 +546,219 @@ describe("buildSellerDidDocument", () => {
         );
 
         expect(validateDidDocument(doc, "did:web:example.com")).toBeNull();
+    });
+});
+
+// ── assertSafeResolutionUrl (SSRF guard) ─────────────────────────────────────
+
+describe("assertSafeResolutionUrl", () => {
+    it("accepts a public https host", () => {
+        expect(() =>
+            assertSafeResolutionUrl("https://example.com/.well-known/did.json"),
+        ).not.toThrow();
+        // A public IP literal is fine too.
+        expect(() => assertSafeResolutionUrl("https://93.184.216.34/x")).not.toThrow();
+    });
+
+    it("rejects non-https schemes", () => {
+        expect(() => assertSafeResolutionUrl("http://example.com/x")).toThrow(
+            /https-only/,
+        );
+        expect(() => assertSafeResolutionUrl("ftp://example.com/x")).toThrow(
+            /https-only/,
+        );
+    });
+
+    it("rejects loopback (localhost + 127.0.0.0/8 + ::1)", () => {
+        for (const url of [
+            "https://localhost/x",
+            "https://sub.localhost/x",
+            "https://127.0.0.1/x",
+            "https://127.9.9.9/x",
+            "https://[::1]/x",
+        ]) {
+            expect(() => assertSafeResolutionUrl(url), url).toThrow(/internal host/);
+        }
+    });
+
+    it("rejects RFC1918 private ranges", () => {
+        for (const url of [
+            "https://10.0.0.1/x",
+            "https://172.16.5.5/x",
+            "https://172.31.0.1/x",
+            "https://192.168.1.1/x",
+        ]) {
+            expect(() => assertSafeResolutionUrl(url), url).toThrow(/internal host/);
+        }
+    });
+
+    it("allows the 172.16/12 boundaries that are NOT private", () => {
+        expect(() => assertSafeResolutionUrl("https://172.15.0.1/x")).not.toThrow();
+        expect(() => assertSafeResolutionUrl("https://172.32.0.1/x")).not.toThrow();
+    });
+
+    it("rejects CGNAT 100.64/10 (hosts e.g. Alibaba metadata) but allows its boundaries", () => {
+        for (const url of ["https://100.100.100.200/x", "https://100.64.0.1/x", "https://100.127.255.254/x"]) {
+            expect(() => assertSafeResolutionUrl(url), url).toThrow(/internal host/);
+        }
+        expect(() => assertSafeResolutionUrl("https://100.63.255.254/x")).not.toThrow();
+        expect(() => assertSafeResolutionUrl("https://100.128.0.1/x")).not.toThrow();
+    });
+
+    it("rejects link-local (169.254/16 + fe80::/10)", () => {
+        for (const url of ["https://169.254.1.1/x", "https://[fe80::1]/x"]) {
+            expect(() => assertSafeResolutionUrl(url), url).toThrow(/internal host/);
+        }
+    });
+
+    it("rejects cloud metadata endpoints", () => {
+        expect(() => assertSafeResolutionUrl("https://169.254.169.254/x")).toThrow(
+            /internal host/,
+        );
+        expect(() =>
+            assertSafeResolutionUrl("https://metadata.google.internal/x"),
+        ).toThrow(/internal host/);
+    });
+
+    it("rejects .internal and .local suffixes", () => {
+        expect(() => assertSafeResolutionUrl("https://foo.internal/x")).toThrow(
+            /internal host/,
+        );
+        expect(() => assertSafeResolutionUrl("https://printer.local/x")).toThrow(
+            /internal host/,
+        );
+    });
+
+    it("rejects IPv4-mapped / unique-local IPv6 forms of blocked hosts", () => {
+        for (const url of [
+            "https://[::ffff:127.0.0.1]/x", // mapped loopback
+            "https://[::ffff:169.254.169.254]/x", // mapped metadata
+            "https://[::ffff:10.0.0.1]/x", // mapped RFC1918
+            "https://[fc00::1]/x", // unique-local
+        ]) {
+            expect(() => assertSafeResolutionUrl(url), url).toThrow(/internal host/);
+        }
+    });
+});
+
+// ── resolveDidWeb — SSRF hardening ───────────────────────────────────────────
+
+describe("resolveDidWeb — SSRF hardening", () => {
+    const validDoc: DIDDocument = {
+        "@context": "https://www.w3.org/ns/did/v1",
+        id: "did:web:example.com",
+        verificationMethod: [
+            {
+                id: "did:web:example.com#controller",
+                type: "EcdsaSecp256k1RecoveryMethod2020",
+                controller: "did:web:example.com",
+                blockchainAccountId:
+                    "eip155:1:0x89a932207c485f85226d86f7cd486a89a24fcc12",
+            },
+        ],
+    };
+
+    it("refuses internal hosts WITHOUT making a request", async () => {
+        for (const did of [
+            "did:web:localhost",
+            "did:web:127.0.0.1",
+            "did:web:10.0.0.5",
+            "did:web:192.168.1.1",
+            "did:web:169.254.169.254",
+            "did:web:metadata.google.internal",
+            "did:web:vault.internal",
+            // percent-encoded IPv6 loopback (did:web encodes ":" as %3A)
+            "did:web:%5B%3A%3A1%5D",
+        ]) {
+            const mockFetch = vi.fn();
+            const result = await resolveDidWeb(did, mockFetch);
+            expect(result.document, did).toBeNull();
+            expect(result.error, did).toMatch(/internal host|https-only|Malformed/);
+            expect(mockFetch, did).not.toHaveBeenCalled();
+        }
+    });
+
+    it("passes redirect: \"error\" so redirects are refused by fetch", async () => {
+        const mockFetch = vi.fn().mockResolvedValue({
+            ok: true,
+            headers: new Headers(),
+            json: () => Promise.resolve(validDoc),
+        });
+        await resolveDidWeb("did:web:example.com", mockFetch);
+        expect(mockFetch).toHaveBeenCalledWith(
+            "https://example.com/.well-known/did.json",
+            expect.objectContaining({ redirect: "error" }),
+        );
+    });
+
+    it("surfaces a redirect rejection as a fetch failure", async () => {
+        // fetch({ redirect: "error" }) rejects the promise on any 3xx.
+        const mockFetch = vi
+            .fn()
+            .mockRejectedValue(new Error("unexpected redirect"));
+        const result = await resolveDidWeb("did:web:example.com", mockFetch);
+        expect(result.document).toBeNull();
+        expect(result.error).toContain("Failed to fetch");
+    });
+
+    it("fast-rejects an oversize Content-Length", async () => {
+        const mockFetch = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            headers: new Headers({ "content-length": String((1 << 20) + 1) }),
+            json: () => Promise.resolve(validDoc),
+        });
+        const result = await resolveDidWeb("did:web:example.com", mockFetch);
+        expect(result.document).toBeNull();
+        expect(result.error).toContain("size cap");
+    });
+
+    it("aborts a streamed body that exceeds the size cap", async () => {
+        const cancel = vi.fn().mockResolvedValue(undefined);
+        // Two 700 KiB chunks — the second pushes the total past 1 MiB.
+        const sizes = [700 * 1024, 700 * 1024];
+        let i = 0;
+        const reader = {
+            read: async () =>
+                i < sizes.length
+                    ? { done: false, value: new Uint8Array(sizes[i++]) }
+                    : { done: true, value: undefined },
+            cancel,
+            releaseLock: () => {},
+        };
+        const mockFetch = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            headers: new Headers(), // no Content-Length ⇒ must be caught mid-stream
+            body: { getReader: () => reader },
+        });
+        const result = await resolveDidWeb("did:web:example.com", mockFetch);
+        expect(result.document).toBeNull();
+        expect(result.error).toContain("size cap");
+        expect(cancel).toHaveBeenCalled();
+    });
+
+    it("parses a valid DID Document delivered as a streamed body", async () => {
+        const bytes = new TextEncoder().encode(JSON.stringify(validDoc));
+        const mid = Math.floor(bytes.length / 2);
+        const chunks = [bytes.slice(0, mid), bytes.slice(mid)];
+        let i = 0;
+        const reader = {
+            read: async () =>
+                i < chunks.length
+                    ? { done: false, value: chunks[i++] }
+                    : { done: true, value: undefined },
+            cancel: async () => {},
+            releaseLock: () => {},
+        };
+        const mockFetch = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            headers: new Headers(),
+            body: { getReader: () => reader },
+        });
+        const result = await resolveDidWeb("did:web:example.com", mockFetch);
+        expect(result.error).toBeNull();
+        expect(result.document).toEqual(validDoc);
     });
 });

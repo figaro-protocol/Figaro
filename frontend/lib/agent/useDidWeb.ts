@@ -1,7 +1,13 @@
 /**
- * lib/agent/useDidWeb.ts — React hooks for W3C did:web resolution + on-chain
- * identity verification: the frontend's agent-integration surface over the SDK's
- * did:web extension.
+ * lib/agent/useDidWeb.ts — React hooks for W3C did:web resolution + an on-chain
+ * address consistency check: the frontend's agent-integration surface over the
+ * SDK's did:web extension.
+ *
+ * A DID document naming an address proves only that whoever hosts the document
+ * CLAIMS that address — anyone can host a did:web document naming any wallet.
+ * So this surface reports CONSISTENCY (the document names this wallet), never
+ * "verified": the binding is attacker-forgeable and is a discovery signal, not
+ * proof the wallet controls the DID.
  *
  * ALL did:web logic — resolution algorithm, URL derivation, document validation,
  * Ethereum-address extraction, and the DID Document types — lives ONCE in
@@ -23,7 +29,7 @@ export type { DIDDocument };
 /**
  * @public — agent-integration surface. Resolve a did:web identifier to its DID
  * Document. Returns `{ document, error, isLoading }`. Consumed by
- * `useDidVerification` (and available directly for other resolution surfaces).
+ * `useDidConsistency` (and available directly for other resolution surfaces).
  */
 export function useDidDocument(did: string | undefined) {
     const [document, setDocument] = useState<DIDDocument | null>(null);
@@ -59,23 +65,26 @@ export function useDidDocument(did: string | undefined) {
 }
 
 /**
- * Resolve a did:web identifier and verify it contains a verification method
- * matching `address` on the current chain. Returns
- * `{ document, verified, error, isLoading }`. Consumed by `SellerAgentIdentity`.
+ * Resolve a did:web identifier and check whether its DID Document names
+ * `address` (via a verification method) on the current chain. Returns
+ * `{ document, consistent, error, isLoading }` — `consistent` means the
+ * document names this wallet, NOT that the wallet controls the DID (the binding
+ * is attacker-forgeable; see the module header). Consumed by
+ * `SellerAgentIdentity`.
  */
-export function useDidVerification(
+export function useDidConsistency(
     did: string | undefined,
     address: string | undefined,
 ) {
     const chainId = useChainId();
     const { document, error, isLoading } = useDidDocument(did);
-    const [verified, setVerified] = useState(false);
+    const [consistent, setConsistent] = useState(false);
 
     useEffect(() => {
-        setVerified(
+        setConsistent(
             !!document && !!address && didDocumentMatchesAddress(document, address, chainId),
         );
     }, [document, address, chainId]);
 
-    return { document, verified, error, isLoading };
+    return { document, consistent, error, isLoading };
 }

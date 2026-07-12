@@ -47,8 +47,9 @@ export interface DidWebResolverOptions {
  * An {@link EndpointResolver} backed by did:web — the loop-closer over the
  * discovery half. Given a way to look up a seller's DID (from its
  * `SellerRegistry` metadata, an ENS record, or a static map), it resolves the DID
- * Document, VERIFIES the document binds this seller address (never route an offer
- * to an endpoint from a DID that does not bind the seller), and returns the
+ * Document, CHECKS the document names this seller address — a consistency check,
+ * not proof of control, since a DID document is self-published (never route an
+ * offer to an endpoint from a DID that does not name the seller) — and returns the
  * coordination `service` endpoint of the requested type.
  */
 export function didWebEndpointResolver(
