@@ -14,13 +14,16 @@ function installFetch() {
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 }
 
+/** Geocoder responses flow through the size-capped fetch (F4), which reads the
+ *  body as text — stubs expose `text()`, the shape the cap enforces on. */
+function jsonResponse(body: unknown) {
+    return { ok: true, text: async () => JSON.stringify(body) };
+}
+
 describe("geocodeAddress", () => {
     it("returns ok with parsed lat/lon when Nominatim returns a result", async () => {
         installFetch();
-        fetchMock.mockResolvedValueOnce({
-            ok: true,
-            json: async () => [{ lat: "40.7177933", lon: "-73.9954856" }],
-        });
+        fetchMock.mockResolvedValueOnce(jsonResponse([{ lat: "40.7177933", lon: "-73.9954856" }]));
 
         const out = await geocodeAddress("100 Bowery, New York");
 
@@ -41,10 +44,7 @@ describe("geocodeAddress", () => {
             JSON.stringify({ geocodeUrl: "https://geo.example.com/search" }),
         );
         try {
-            fetchMock.mockResolvedValueOnce({
-                ok: true,
-                json: async () => [{ lat: "48.8584", lon: "2.2945" }],
-            });
+            fetchMock.mockResolvedValueOnce(jsonResponse([{ lat: "48.8584", lon: "2.2945" }]));
             const out = await geocodeAddress("Champ de Mars");
             expect(out.ok).toBe(true);
             const url = (fetchMock.mock.calls[0]?.[0] ?? "") as string;
@@ -63,7 +63,7 @@ describe("geocodeAddress", () => {
 
     it("returns no-match when Nominatim returns an empty array", async () => {
         installFetch();
-        fetchMock.mockResolvedValueOnce({ ok: true, json: async () => [] });
+        fetchMock.mockResolvedValueOnce(jsonResponse([]));
         const out = await geocodeAddress("zzzzzz");
         expect(out).toEqual({ ok: false, reason: "no-match" });
     });
@@ -76,6 +76,21 @@ describe("geocodeAddress", () => {
         if (!out.ok) {
             expect(out.reason).toBe("network-error");
             expect(out.detail).toBe("Failed to fetch");
+        }
+    });
+
+    it("returns network-error naming the cap for an oversized geocoder response (F4)", async () => {
+        installFetch();
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            headers: { get: () => String(9 * 1024 * 1024) }, // Content-Length over the 8 MB cap
+            text: async () => "[]",
+        });
+        const out = await geocodeAddress("anywhere");
+        expect(out.ok).toBe(false);
+        if (!out.ok) {
+            expect(out.reason).toBe("network-error");
+            expect(out.detail).toMatch(/exceeds the maximum size of 8 MB/);
         }
     });
 
@@ -92,7 +107,7 @@ describe("geocodeAddress", () => {
 
     it("returns malformed when response is not an array", async () => {
         installFetch();
-        fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ unexpected: true }) });
+        fetchMock.mockResolvedValueOnce(jsonResponse({ unexpected: true }));
         const out = await geocodeAddress("anywhere");
         expect(out.ok).toBe(false);
         if (!out.ok) expect(out.reason).toBe("malformed");
@@ -100,12 +115,7 @@ describe("geocodeAddress", () => {
 
     it("returns malformed when JSON parsing throws", async () => {
         installFetch();
-        fetchMock.mockResolvedValueOnce({
-            ok: true,
-            json: async () => {
-                throw new SyntaxError("Unexpected token");
-            },
-        });
+        fetchMock.mockResolvedValueOnce({ ok: true, text: async () => "{{{not json" });
         const out = await geocodeAddress("anywhere");
         expect(out.ok).toBe(false);
         if (!out.ok) expect(out.reason).toBe("malformed");
@@ -113,10 +123,7 @@ describe("geocodeAddress", () => {
 
     it("returns malformed when lat/lon don't parse to numbers", async () => {
         installFetch();
-        fetchMock.mockResolvedValueOnce({
-            ok: true,
-            json: async () => [{ lat: "not-a-number", lon: "abc" }],
-        });
+        fetchMock.mockResolvedValueOnce(jsonResponse([{ lat: "not-a-number", lon: "abc" }]));
         const out = await geocodeAddress("anywhere");
         expect(out.ok).toBe(false);
         if (!out.ok) expect(out.reason).toBe("malformed");

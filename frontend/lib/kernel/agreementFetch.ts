@@ -16,7 +16,7 @@
  */
 import type { Hex } from "viem";
 import { computeAgreementHash, type Agreement } from "@figaro/sdk";
-import { DEFAULT_IPFS_SERVICE, type IpfsService } from "@/lib/shared/ipfsService";
+import { DEFAULT_IPFS_SERVICE, fetchCappedContent, type IpfsService } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { hexEqual } from "@/lib/shared/evm";
 
@@ -73,7 +73,9 @@ export async function fetchAgreement(
 
     const run = (async () => {
         try {
-            const res = await fetch(fetchUrl, { method: "GET" });
+            // Size-capped: an attacker-pinned multi-GB body aborts mid-stream
+            // (throws → the catch below → null) before the hash check buffers it.
+            const res = await fetchCappedContent(fetchUrl);
             const agreement = await safeJsonFromResponse<Agreement>(res);
             if (!agreement) return null;
             if (!hexEqual(computeAgreementHash(agreement), agreementHash)) return null;

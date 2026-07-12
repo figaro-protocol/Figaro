@@ -23,6 +23,7 @@
  */
 
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { fetchCappedContent, type CappedContentResponse } from "@/lib/shared/ipfsService";
 import { readUserEndpoints } from "@/lib/shared/userEndpoints";
 
 export interface GeocodeResult {
@@ -62,11 +63,15 @@ export async function geocodeAddress(query: string): Promise<GeocodeOutcome> {
     const trimmed = query.trim();
     if (!trimmed) return { ok: false, reason: "empty-query" };
 
-    let res: Response;
+    let res: CappedContentResponse;
     try {
         const url = `${activeGeocoderUrl()}?q=${encodeURIComponent(trimmed)}&format=json&limit=1`;
-        res = await fetch(url, {
-            headers: { Accept: "application/json" },
+        // Size-capped fetch (F4): the geocoder endpoint is user-configured —
+        // an oversized response from a hostile override OOMs the same tab an
+        // IPFS document would. Oversize throws → `network-error`, whose detail
+        // names the cap.
+        res = await fetchCappedContent(url, {
+            fetch: (u, init) => fetch(u, { ...init, headers: { Accept: "application/json" } }),
         });
     } catch (err) {
         return {
@@ -82,7 +87,7 @@ export async function geocodeAddress(query: string): Promise<GeocodeOutcome> {
 
     let data: unknown;
     try {
-        data = await res.json();
+        data = JSON.parse(await res.text());
     } catch (err) {
         return {
             ok: false,

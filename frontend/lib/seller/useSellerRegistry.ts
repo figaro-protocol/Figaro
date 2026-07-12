@@ -17,7 +17,7 @@ import { getSellerRegistry } from "@/lib/kernel/contracts";
 import { SELLER_REGISTRY_ABI } from "@figaro/sdk";
 import { getSellerState, getSellerMetadataURI } from "@/lib/protocol/sellerRegistryIndexer";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
-import { resolveContentUri } from "@/lib/shared/ipfsService";
+import { fetchCappedContent, resolveContentUri } from "@/lib/shared/ipfsService";
 import {
     AgentServiceInfo,
     SellerAgentServices,
@@ -283,7 +283,9 @@ export function useAgentServices(address: `0x${string}` | undefined) {
                     }
                     return;
                 }
-                return fetch(url).then((r) => safeJsonFromResponse(r));
+                // Size-capped fetch (F4): the seller-pinned metadata document is
+                // external-party-controlled — oversize throws → the catch below.
+                return fetchCappedContent(url).then((r) => safeJsonFromResponse(r));
             })
             .then((json) => {
                 if (cancelled) return;

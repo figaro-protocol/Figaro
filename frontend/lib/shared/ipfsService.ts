@@ -5,7 +5,7 @@
  * resolution so runtime surfaces do not duplicate Kubo HTTP wiring.
  */
 
-import { safeJsonFromResponse, safeJsonParse } from "@/lib/shared/safeJson";
+import { safeJsonFromResponse, safeJsonParse, type SafeJsonResponse } from "@/lib/shared/safeJson";
 import { readUserEndpoints } from "@/lib/shared/userEndpoints";
 
 // Build-baked DEFAULTS only — a user's runtime endpoint override (their own
@@ -55,6 +55,118 @@ export function extractIpfsCid(uri: string): string | null {
     if (uri.startsWith("/ipfs/")) return uri.slice("/ipfs/".length).split("/")[0] || null;
     if (/^Qm[1-9A-HJ-NP-Za-km-z]{44}/.test(uri) || /^bafy/.test(uri)) return uri.split("/")[0];
     return null;
+}
+
+// ── Capped document retrieval ────────────────────────────────────────────────
+
+/**
+ * Byte ceiling for a document body fetched from IPFS/HTTP. An attacker can pin
+ * a multi-GB object at a CID and hand it to any reader; buffering it whole would
+ * OOM the browser tab (or an agent process) BEFORE the content-hash check that
+ * would reject it ever runs. Protocol documents — clause specs, agreements,
+ * seller catalogues/profiles — are KB-scale; the 5 MB media-upload ceiling
+ * (`MAX_FILE_SIZE`) is the largest artifact legitimately pinned, so 8 MB clears
+ * every real document with margin while turning a hostile blob into a clean
+ * rejection. Pairs with the clause-load depth cap (`MAX_FIELD_DEPTH`).
+ */
+export const MAX_IPFS_DOCUMENT_BYTES = 8 * 1024 * 1024;
+
+function documentTooLargeError(bytes: number, cap: number): Error {
+    return new Error(
+        `IPFS document exceeds the maximum size of ${cap / (1024 * 1024)} MB` +
+            ` (saw ${(bytes / (1024 * 1024)).toFixed(1)} MB)`,
+    );
+}
+
+/** A fetched, size-capped body exposed in the `safeJsonFromResponse` shape, so
+ *  callers keep piping through `safeJsonFromResponse` / `res.text()` unchanged. */
+export interface CappedContentResponse extends SafeJsonResponse {
+    status: number;
+    statusText: string;
+}
+
+export interface CappedFetchOptions {
+    /** Byte ceiling for the body; defaults to `MAX_IPFS_DOCUMENT_BYTES`. */
+    cap?: number;
+    /** Fetch override for injected transports / tests. Defaults to global `fetch`. */
+    fetch?: (url: string, init?: RequestInit) => Promise<Response>;
+}
+
+/**
+ * Stream a response body, counting bytes off the reader and aborting the moment
+ * the running total crosses `cap` — before the full body is buffered. The
+ * Content-Length header is only a fast-reject hint upstream; this is the actual
+ * enforcement, because a hostile gateway can lie about (or omit) the header.
+ */
+async function readBodyCapped(res: Response, cap: number, controller: AbortController): Promise<string> {
+    const reader = res.body?.getReader?.();
+    if (!reader) {
+        // No readable stream (e.g. a minimal test stub) — buffer, then enforce
+        // the cap on what came back. Not the primary path in a real browser/undici.
+        const text = await res.text();
+        const size = new TextEncoder().encode(text).length;
+        if (size > cap) throw documentTooLargeError(size, cap);
+        return text;
+    }
+
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    try {
+        for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (!value) continue;
+            total += value.byteLength;
+            if (total > cap) {
+                controller.abort();
+                await reader.cancel().catch(() => {});
+                throw documentTooLargeError(total, cap);
+            }
+            chunks.push(value);
+        }
+    } finally {
+        reader.releaseLock?.();
+    }
+
+    const joined = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+        joined.set(chunk, offset);
+        offset += chunk.byteLength;
+    }
+    return new TextDecoder().decode(joined);
+}
+
+/**
+ * Fetch a content-addressed document with a hard byte cap. Rejects early on a
+ * declared Content-Length over the cap, and — never trusting the header —
+ * counts bytes off the body stream and aborts mid-download the instant the cap
+ * is crossed. Returns a `safeJsonFromResponse`-compatible result; a non-OK
+ * response passes through as `{ ok: false }` with an empty body (the caller's
+ * existing `!ok → null` branch handles it).
+ */
+export async function fetchCappedContent(
+    url: string,
+    options: CappedFetchOptions = {},
+): Promise<CappedContentResponse> {
+    const cap = options.cap ?? MAX_IPFS_DOCUMENT_BYTES;
+    const doFetch = options.fetch ?? ((u: string, init?: RequestInit) => fetch(u, init));
+    const controller = new AbortController();
+    const res = await doFetch(url, { signal: controller.signal });
+
+    if (!res.ok) {
+        return { ok: false, status: res.status, statusText: res.statusText, text: async () => "" };
+    }
+
+    // Fast reject: a truthful Content-Length over the cap saves the download.
+    const declared = Number(res.headers?.get?.("content-length"));
+    if (Number.isFinite(declared) && declared > cap) {
+        controller.abort();
+        throw documentTooLargeError(declared, cap);
+    }
+
+    const body = await readBodyCapped(res, cap, controller);
+    return { ok: true, status: res.status, statusText: res.statusText, text: async () => body };
 }
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;

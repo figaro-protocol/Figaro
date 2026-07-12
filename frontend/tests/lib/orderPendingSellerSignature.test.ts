@@ -19,8 +19,26 @@ describe("fetchCommitmentPayloadJsonByCid", () => {
         const result = await fetchCommitmentPayloadJsonByCid({ resolveFetchUrl }, "QmExampleCid");
 
         expect(resolveFetchUrl).toHaveBeenCalledWith("ipfs://QmExampleCid");
-        expect(fetchMock).toHaveBeenCalledWith("http://gateway/ipfs/QmExampleCid");
+        // The size-capped fetch (F4) passes an abort signal alongside the URL.
+        expect(fetchMock).toHaveBeenCalledWith(
+            "http://gateway/ipfs/QmExampleCid",
+            expect.objectContaining({ signal: expect.any(AbortSignal) }),
+        );
         expect(result).toBe('{"hello":"world"}');
+    });
+
+    it("throws naming the cap when the gateway declares an oversized body (F4)", async () => {
+        const resolveFetchUrl = vi.fn().mockReturnValue("http://gateway/ipfs/QmExampleCid");
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            headers: { get: () => String(9 * 1024 * 1024) }, // Content-Length over the 8 MB cap
+            text: vi.fn().mockResolvedValue("{}"),
+        } as unknown as Response);
+        globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+        await expect(
+            fetchCommitmentPayloadJsonByCid({ resolveFetchUrl }, "QmExampleCid"),
+        ).rejects.toThrow(/exceeds the maximum size of 8 MB/);
     });
 
     it("throws when the IPFS service cannot resolve the CID", async () => {

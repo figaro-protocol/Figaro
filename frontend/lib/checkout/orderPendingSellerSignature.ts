@@ -23,7 +23,7 @@ import {
     type CommitmentPayload,
 } from "@/lib/kernel/signedCommitment";
 import { publishAgreement } from "@/lib/kernel/agreementFetch";
-import type { IpfsService } from "@/lib/shared/ipfsService";
+import { fetchCappedContent, type IpfsService } from "@/lib/shared/ipfsService";
 
 /**
  * Awaiting MY counter-signature: I am a party, the OTHER party has signed, I
@@ -88,7 +88,10 @@ export function usePendingSellerSignature(
                         // Resolve + fetch the payload by CID via the IPFS gateway.
                         const url = services.evidenceTransport.resolveFetchUrl(`ipfs://${payloadCid}`);
                         if (!url) return;
-                        const res = await fetch(url);
+                        // Size-capped fetch (F4): the CID arrives over the
+                        // coordination channel from a counterparty — oversize
+                        // throws → the catch below → payload ignored.
+                        const res = await fetchCappedContent(url);
                         if (!res.ok || cancelled) return;
                         const payload = deserializeCommitmentPayload(await res.text());
                         if (!payload.commitment?.buyer || !payload.commitment?.seller) return;
@@ -145,7 +148,8 @@ export async function fetchCommitmentPayloadJsonByCid(
     if (!url) {
         throw new Error(`Could not resolve IPFS gateway URL for CID: ${payloadCid}`);
     }
-    const res = await fetch(url);
+    // Size-capped fetch (F4): oversize throws, naming the cap.
+    const res = await fetchCappedContent(url);
     if (!res.ok) {
         throw new Error(`IPFS fetch failed for CID ${payloadCid}: ${res.status} ${res.statusText}`);
     }

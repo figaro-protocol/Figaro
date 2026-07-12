@@ -18,7 +18,7 @@ import { parseClauseSpec, type ClauseSpec, type FieldSpec, type EnumFieldSpec, t
 import { canonicalContentHash } from "@/lib/shared/canonicalJson";
 import { parseBlockBinding, type ClauseBlockBinding } from "@/lib/shared/clauseBlockBinding";
 import { computeClauseKey } from "@figaro/sdk";
-import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
+import { DEFAULT_IPFS_SERVICE, fetchCappedContent } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 
 /** A clause spec plus its frontend-parsed `block` slice. The SDK `ClauseSpec` is
@@ -63,7 +63,10 @@ export type ClauseSpecFetcher = (uri: string) => Promise<unknown>;
 let activeFetcher: ClauseSpecFetcher = async (uri) => {
     const url = DEFAULT_IPFS_SERVICE.resolveFetchUrl(uri);
     if (!url) throw new Error(`Cannot resolve clause spec URI: ${uri}`);
-    const response = await fetch(url);
+    // Size-capped fetch (F4): a permissionlessly-registered clause pointing at
+    // a multi-GB pin aborts mid-stream instead of OOMing every clause surface —
+    // the DoS sibling of the MAX_FIELD_DEPTH parse cap.
+    const response = await fetchCappedContent(url);
     if (!response.ok) throw new Error(`Failed to fetch clause spec at ${uri}: ${response.status} ${response.statusText}`);
     const parsed = await safeJsonFromResponse(response);
     if (parsed === null) throw new Error(`Failed to parse clause spec at ${uri}: invalid JSON`);

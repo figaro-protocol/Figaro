@@ -17,7 +17,7 @@
  * that supplies a `parse` function and (optionally) a TTL.
  */
 
-import { resolveContentUri } from "@/lib/shared/ipfsService";
+import { fetchCappedContent, resolveContentUri } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 
 export interface UriFetcherConfig<T> {
@@ -60,7 +60,6 @@ interface CacheEntry<T> {
  */
 export function createUriFetcher<T>(config: UriFetcherConfig<T>): UriFetcher<T> {
     const ttl = config.cacheTtlMs ?? Number.POSITIVE_INFINITY;
-    const fetcher = config.fetch ?? ((url: string) => fetch(url));
     const cache = new Map<string, CacheEntry<T>>();
 
     return {
@@ -75,7 +74,10 @@ export function createUriFetcher<T>(config: UriFetcherConfig<T>): UriFetcher<T> 
             try {
                 const url = resolveContentUri(uri);
                 if (!url) return null;
-                const res = await fetcher(url);
+                // Size-capped fetch (F4): an oversized seller-pinned document
+                // aborts mid-stream (throws → the catch below → null). An
+                // injected `config.fetch` transport is capped the same way.
+                const res = await fetchCappedContent(url, { fetch: config.fetch });
                 const doc = await safeJsonFromResponse(res);
                 if (!doc) return null;
 

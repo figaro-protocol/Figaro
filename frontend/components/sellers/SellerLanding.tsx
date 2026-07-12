@@ -30,7 +30,7 @@ import {
 } from "@/lib/seller/useSellerRegistry";
 import { getSellerRegistry } from "@/lib/kernel/contracts";
 import { SELLER_REGISTRY_ABI } from "@figaro/sdk";
-import { DEFAULT_IPFS_SERVICE, resolveContentUri } from "@/lib/shared/ipfsService";
+import { DEFAULT_IPFS_SERVICE, fetchCappedContent, resolveContentUri } from "@/lib/shared/ipfsService";
 import { unpinSupersededProfileArtifacts } from "@/lib/seller/profileErasure";
 import { tryParseSellerProfileDocument } from "@/lib/seller/sellerProfileMetadata";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -119,8 +119,9 @@ function RegisteredCard({
             setProfileError("Profile URI couldn't be resolved.");
             return;
         }
-        fetch(url)
-            .then((r) => r.json())
+        fetchCappedContent(url)
+            .then((r) => r.text())
+            .then((text) => JSON.parse(text))
             .then((doc) => {
                 if (cancelled) return;
                 const parsed = tryParseSellerProfileDocument(doc);

@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { resolveContentUri } from "@/lib/shared/ipfsService";
+import { fetchCappedContent, resolveContentUri } from "@/lib/shared/ipfsService";
 import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { useSellerProfile } from "@/lib/seller/useSellerRegistry";
 import {
@@ -94,9 +94,11 @@ export function useSellerBoundAssemblies(
 
         (async () => {
             try {
-                const response = await fetch(url);
+                // Size-capped fetch (F4): the seller-pinned profile document is
+                // external-party-controlled — oversize throws → the catch below.
+                const response = await fetchCappedContent(url);
                 if (!response.ok) throw new Error("seller profile fetch failed");
-                const doc = await response.json();
+                const doc = JSON.parse(await response.text());
                 const profile = tryParseSellerProfileDocument(doc);
                 if (cancelled) return;
                 if (!profile?.assemblyBindings || profile.assemblyBindings.length === 0) {

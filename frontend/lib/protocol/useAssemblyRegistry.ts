@@ -17,7 +17,7 @@ import { BaseError, ContractFunctionRevertedError } from "viem";
 import { parseAssemblyRegistryLogs } from "@figaro/sdk";
 import { publicClient } from "@/lib/shared/wagmi";
 import { ASSEMBLY_REGISTRY_ABI, CONTRACTS } from "@/lib/kernel/contracts";
-import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
+import { DEFAULT_IPFS_SERVICE, fetchCappedContent } from "@/lib/shared/ipfsService";
 import {
     deriveAssemblySlug,
     templateCompositionHash,
@@ -210,9 +210,11 @@ export async function fetchAssemblyTemplate(
     const url = DEFAULT_IPFS_SERVICE.resolveFetchUrl(contentURI);
     if (!url) return null;
     try {
-        const response = await fetch(url);
+        // Size-capped fetch (F4): an oversized pin aborts mid-stream (throws →
+        // the catch below → null) before the hash check would buffer it.
+        const response = await fetchCappedContent(url);
         if (!response.ok) return null;
-        const template = (await response.json()) as AssemblyTemplate;
+        const template = JSON.parse(await response.text()) as AssemblyTemplate;
         const recomputed = templateCompositionHash(template);
         if (recomputed.toLowerCase() !== expectedCompositionHash.toLowerCase()) {
             console.warn(

@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_IPFS_SERVICE, extractIpfsCid, ipfsTimeoutForBytes, resolveContentUri } from "@/lib/shared/ipfsService";
+import {
+    DEFAULT_IPFS_SERVICE,
+    MAX_IPFS_DOCUMENT_BYTES,
+    extractIpfsCid,
+    fetchCappedContent,
+    ipfsTimeoutForBytes,
+    resolveContentUri,
+} from "@/lib/shared/ipfsService";
 
 describe("ipfsService", () => {
     const originalFetch = globalThis.fetch;
@@ -244,5 +251,148 @@ describe("ipfsService", () => {
             const result = await DEFAULT_IPFS_SERVICE.uploadFile(file);
             expect(result.cid).toBe("QmValid");
         }
+    });
+
+    describe("fetchCappedContent (the download byte cap — F4 hardening)", () => {
+        // Build a Response-like stub with a controllable body stream so a test
+        // can prove bytes are counted (and the read aborted) OFF THE STREAM,
+        // never merely trusting the declared Content-Length.
+        function streamOf(
+            chunks: Uint8Array[],
+            onPull?: (i: number) => void,
+            onCancel?: () => void,
+        ): ReadableStream<Uint8Array> {
+            let i = 0;
+            return new ReadableStream<Uint8Array>({
+                pull(controller) {
+                    if (i >= chunks.length) {
+                        controller.close();
+                        return;
+                    }
+                    onPull?.(i);
+                    controller.enqueue(chunks[i++]);
+                },
+                cancel() {
+                    onCancel?.();
+                },
+            });
+        }
+
+        function stubResponse(opts: {
+            contentLength?: number | null;
+            body: ReadableStream<Uint8Array>;
+            fallbackText?: string;
+        }): Response {
+            return {
+                ok: true,
+                status: 200,
+                statusText: "OK",
+                headers: {
+                    get: (k: string) =>
+                        k.toLowerCase() === "content-length" && opts.contentLength != null
+                            ? String(opts.contentLength)
+                            : null,
+                },
+                body: opts.body,
+                text: async () => opts.fallbackText ?? "",
+            } as unknown as Response;
+        }
+
+        it("passes a normal-size document through unchanged", async () => {
+            const doc = { hello: "world", n: 42 };
+            const bytes = new TextEncoder().encode(JSON.stringify(doc));
+            let canceled = false;
+            const res = await fetchCappedContent("ipfs://ok", {
+                fetch: async () =>
+                    stubResponse({
+                        contentLength: bytes.length,
+                        body: streamOf([bytes], undefined, () => {
+                            canceled = true;
+                        }),
+                    }),
+            });
+
+            expect(res.ok).toBe(true);
+            expect(JSON.parse(await res.text())).toEqual(doc);
+            // A well-sized body is read to completion, never aborted.
+            expect(canceled).toBe(false);
+        });
+
+        it("rejects early on a Content-Length over the cap WITHOUT draining the body", async () => {
+            let pulled = 0;
+            const chunks = Array.from({ length: 4 }, () => new Uint8Array(16));
+            await expect(
+                fetchCappedContent("ipfs://huge", {
+                    fetch: async () =>
+                        stubResponse({
+                            contentLength: MAX_IPFS_DOCUMENT_BYTES + 1,
+                            body: streamOf(chunks, () => {
+                                pulled++;
+                            }),
+                        }),
+                }),
+            ).rejects.toThrow(/exceeds the maximum size of 8 MB/);
+            // Fast-reject path: our code never iterates the reader, so the body
+            // is not drained. (A ReadableStream eagerly pre-buffers at most one
+            // chunk on its own; anything beyond that would mean we read it.)
+            expect(pulled).toBeLessThanOrEqual(1);
+        });
+
+        const MB = 1024 * 1024;
+
+        it("aborts mid-stream once the running byte total crosses the cap", async () => {
+            const chunks = Array.from({ length: 6 }, () => new Uint8Array(300 * 1024)); // 1.75 MB
+            let canceled = false;
+            await expect(
+                fetchCappedContent("ipfs://oversized", {
+                    cap: MB, // 1 MB
+                    fetch: async () =>
+                        stubResponse({
+                            contentLength: null, // no header at all — must count off the stream
+                            body: streamOf(chunks, undefined, () => {
+                                canceled = true;
+                            }),
+                        }),
+                }),
+            ).rejects.toThrow(/exceeds the maximum size of 1 MB/);
+            // The reader was cancelled — the download stopped at the ceiling
+            // rather than buffering all 1.75 MB.
+            expect(canceled).toBe(true);
+        });
+
+        it("never trusts a lying Content-Length — a small header with an oversized body is still aborted", async () => {
+            const chunks = Array.from({ length: 6 }, () => new Uint8Array(300 * 1024)); // 1.75 MB
+            let canceled = false;
+            await expect(
+                fetchCappedContent("ipfs://liar", {
+                    cap: MB, // 1 MB
+                    fetch: async () =>
+                        stubResponse({
+                            contentLength: 10, // claims 10 bytes, delivers 1.75 MB
+                            body: streamOf(chunks, undefined, () => {
+                                canceled = true;
+                            }),
+                        }),
+                }),
+            ).rejects.toThrow(/exceeds the maximum size of 1 MB/);
+            expect(canceled).toBe(true);
+        });
+
+        it("returns a non-OK response as { ok: false } with an empty body", async () => {
+            const res = await fetchCappedContent("ipfs://missing", {
+                fetch: async () =>
+                    ({
+                        ok: false,
+                        status: 404,
+                        statusText: "Not Found",
+                        headers: { get: () => null },
+                        text: async () => "nope",
+                    }) as unknown as Response,
+            });
+
+            expect(res.ok).toBe(false);
+            expect(res.status).toBe(404);
+            expect(await res.text()).toBe("");
+        });
     });
 });

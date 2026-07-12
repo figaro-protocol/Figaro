@@ -2,7 +2,7 @@ import type { PublicClient } from 'viem';
 import { getActiveSellers } from '@/lib/protocol/sellerRegistryIndexer';
 import type { SellerCatalogue } from '@/lib/seller/types';
 import { CONTRACTS } from "@/lib/kernel/contracts";
-import { resolveContentUri } from "@/lib/shared/ipfsService";
+import { fetchCappedContent, resolveContentUri, type CappedContentResponse } from "@/lib/shared/ipfsService";
 import type { SellerCatalogueMetadata } from '@/lib/seller/sellerCatalogueMetadata';
 import {
     SellerProfileMetadata,
@@ -49,7 +49,7 @@ function profileToCatalogue(
 async function fetchSellerAsCatalogue(
     address: string,
     metadataURI: string,
-    fetchFn: (url: string) => Promise<Response>,
+    fetchFn: (url: string) => Promise<CappedContentResponse>,
     publishedSlugs: ReadonlySet<string>,
 ): Promise<SellerCatalogue | null> {
     const url = resolveContentUri(metadataURI);
@@ -130,7 +130,11 @@ const EMPTY_RESULT: DiscoveryResult = { catalogues: [] };
 export function createDiscoveryService(
     options: DiscoveryServiceOptions = {},
 ): DiscoveryService {
-    const fetchFn = options.fetchDocument ?? ((url: string) => fetch(url));
+    // Size-capped fetch (F4): seller-pinned profile/catalogue documents are
+    // external-party-controlled — an oversized body aborts mid-stream (throws →
+    // the per-seller catch → that seller drops). An injected `fetchDocument`
+    // transport is capped the same way.
+    const fetchFn = (url: string) => fetchCappedContent(url, { fetch: options.fetchDocument });
 
     const service: DiscoveryService = {
         isRegistryConfigured() {
