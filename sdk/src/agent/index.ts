@@ -102,6 +102,7 @@ export type {
     InstantiateParams,
     BuildOfferParams,
     OfferCheck,
+    OfferPolicy,
     OriginateParams,
     SellerOfferHandlerOpts,
     ChainNodeSpec,

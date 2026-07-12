@@ -8,6 +8,7 @@ import {
     counterSignOffer,
     offerToExecutionInputs,
     type AssemblyTemplate,
+    type OfferPolicy,
 } from "../src/agent/originate.js";
 import { InProcessChannel } from "../src/agent/coordination.js";
 import { computeAgreementHash } from "../src/agreement.js";
@@ -31,6 +32,9 @@ const overrides = { "figaro-commerce": { currency: CURRENCY, payment: "1000", li
 function offerParams() {
     return { template, seller: SELLER.address, currency: CURRENCY, payment: 1000n, chainId: CHAIN, core: CORE, overrides };
 }
+
+// A conforming operator policy for the root offer above (payment 1000, CURRENCY).
+const policy: OfferPolicy = { requireRootShape: true, currencyAllowlist: [CURRENCY], maxValue: 10_000n };
 
 describe("instantiateRootAgreement", () => {
     it("merges overrides onto the template's root clause bag", () => {
@@ -76,9 +80,9 @@ describe("origination handshake (real signatures, no chain)", () => {
         expect(validateOffer(offer, SELLER.address).ok).toBe(true);
     });
 
-    it("seller counter-signs a clean offer WHEN the policy accepts; yields both execution inputs", async () => {
+    it("seller counter-signs a clean offer WHEN accept AND policy pass; yields both execution inputs", async () => {
         const offer = await buildBuyerOffer(buyerW, offerParams());
-        const signed = await counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE }, () => true);
+        const signed = await counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE }, () => true, policy);
         expect(signed).not.toBeNull();
         const inputs = offerToExecutionInputs(signed!);
         expect(inputs.buyerSig).toBeDefined();
@@ -86,16 +90,73 @@ describe("origination handshake (real signatures, no chain)", () => {
         expect(inputs.commitment).toBe(offer.commitment);
     });
 
-    it("REFUSE-ALL FLOOR: a clean offer with NO accept policy is declined (null), not signed", async () => {
+    it("REFUSE-ALL FLOOR: a clean offer with NO accept rule is declined (null), not signed", async () => {
         const offer = await buildBuyerOffer(buyerW, offerParams());
-        const signed = await counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE });
+        const signed = await counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE }, undefined, policy);
         expect(signed).toBeNull();
     });
 
-    it("policy decline returns null (not a throw) on a clean offer", async () => {
+    it("ECONOMIC FLOOR safe default: a clean offer with NO policy is declined (null), even when accept says yes", async () => {
         const offer = await buildBuyerOffer(buyerW, offerParams());
-        const signed = await counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE }, () => false);
+        const signed = await counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE }, () => true);
         expect(signed).toBeNull();
+    });
+
+    it("ECONOMIC FLOOR: an offer whose currency is outside the policy declines (null), not a throw", async () => {
+        const offer = await buildBuyerOffer(buyerW, offerParams());
+        const otherOnly: OfferPolicy = { ...policy, currencyAllowlist: ["0xdddddddddddddddddddddddddddddddddddddddd" as Address] };
+        const signed = await counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE }, () => true, otherOnly);
+        expect(signed).toBeNull();
+    });
+
+    it("accept decline returns null (not a throw) on a clean offer", async () => {
+        const offer = await buildBuyerOffer(buyerW, offerParams());
+        const signed = await counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE }, () => false, policy);
+        expect(signed).toBeNull();
+    });
+});
+
+describe("validateOffer — the economic floor (operator policy)", () => {
+    it("a conforming offer passes under a full policy", async () => {
+        const offer = await buildBuyerOffer(buyerW, offerParams());
+        expect(validateOffer(offer, SELLER.address, policy).ok).toBe(true);
+    });
+
+    it("rejects a root-shape violation when requireRootShape is set (cumulativeValue != payment)", async () => {
+        const offer = await buildBuyerOffer(buyerW, offerParams());
+        offer.commitment.expectedCumulativeValue = 500n; // != payment (1000) — not a well-formed root
+        expect(validateOffer(offer, SELLER.address, policy).reason).toMatch(/root order/i);
+    });
+
+    it("accepts a non-root shape when requireRootShape is omitted (a sub-order seller)", async () => {
+        const offer = await buildBuyerOffer(buyerW, offerParams());
+        offer.commitment.expectedCumulativeValue = 1800n; // running total on a sub-order
+        const subPolicy: OfferPolicy = { currencyAllowlist: [CURRENCY], maxValue: 10_000n };
+        expect(validateOffer(offer, SELLER.address, subPolicy).ok).toBe(true);
+    });
+
+    it("rejects a currency outside the operator allowlist", async () => {
+        const offer = await buildBuyerOffer(buyerW, offerParams());
+        const otherOnly: OfferPolicy = { ...policy, currencyAllowlist: ["0xdddddddddddddddddddddddddddddddddddddddd" as Address] };
+        expect(validateOffer(offer, SELLER.address, otherOnly).reason).toMatch(/not in the policy allowlist/i);
+    });
+
+    it("rejects magnitude over the operator cap", async () => {
+        const offer = await buildBuyerOffer(buyerW, offerParams());
+        const tightCap: OfferPolicy = { ...policy, maxValue: 500n }; // payment is 1000
+        expect(validateOffer(offer, SELLER.address, tightCap).reason).toMatch(/exceeds the policy cap/i);
+    });
+
+    it("an opted-in policy with an empty allowlist vouches for nothing (rejects)", async () => {
+        const offer = await buildBuyerOffer(buyerW, offerParams());
+        const noList: OfferPolicy = { currencyAllowlist: [], maxValue: 10_000n };
+        expect(validateOffer(offer, SELLER.address, noList).reason).toMatch(/no currency allowlist/i);
+    });
+
+    it("an opted-in policy with no cap leaves magnitude unbounded (rejects)", async () => {
+        const offer = await buildBuyerOffer(buyerW, offerParams());
+        const noCap: OfferPolicy = { currencyAllowlist: [CURRENCY] };
+        expect(validateOffer(offer, SELLER.address, noCap).reason).toMatch(/no magnitude cap/i);
     });
 });
 
@@ -125,7 +186,7 @@ describe("origination handshake — the anti-tamper gate (security)", () => {
 describe("InProcessChannel", () => {
     it("routes an offer to the registered seller handler; unregistered → null", async () => {
         const channel = new InProcessChannel();
-        channel.register(SELLER.address, (o) => counterSignOffer(sellerW, o, { chainId: CHAIN, core: CORE }, () => true));
+        channel.register(SELLER.address, (o) => counterSignOffer(sellerW, o, { chainId: CHAIN, core: CORE }, () => true, policy));
         const offer = await buildBuyerOffer(buyerW, offerParams());
         const signed = await channel.sendOffer(SELLER.address, offer);
         expect(signed?.sellerSig).toBeDefined();

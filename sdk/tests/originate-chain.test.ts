@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createWalletClient, http, type PublicClient } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import {
-    buildChainOffers, originateChain, counterSignOffer, type AssemblyTemplate, type ChainNodeSpec,
+    buildChainOffers, originateChain, counterSignOffer, type AssemblyTemplate, type ChainNodeSpec, type OfferPolicy,
 } from "../src/agent/originate.js";
 import { InProcessChannel } from "../src/agent/coordination.js";
 import { computeCommitmentProcessId, computeOrderHash, ZERO_PROCESS_ID } from "../src/commitments.js";
@@ -33,6 +33,10 @@ const nodes: ChainNodeSpec[] = [
     { nodeId: "order-2", seller: S2.address, payment: 300n },
 ];
 const params = { template, currency: CURRENCY, chainId: CHAIN, core: CORE, nodes, salt: () => 42n };
+
+// A chain-tolerant operator policy: no requireRootShape (sub-orders carry the
+// running cumulative value), the chain's currency, cap above the 1800 total.
+const policy: OfferPolicy = { currencyAllowlist: [CURRENCY], maxValue: 10_000n };
 
 function topologyParents(offer: { agreement: { sections: { clause: string; data: Record<string, unknown> }[] } }): unknown {
     return offer.agreement.sections.find((s) => s.clause === "figaro-topology")?.data.parentOrderHashes;
@@ -77,9 +81,9 @@ describe("buildChainOffers — the value-added chain walk", () => {
 describe("originateChain — abort on any decline (nothing commits)", () => {
     it("returns null and touches no chain when a mid-chain seller declines", async () => {
         const channel = new InProcessChannel();
-        channel.register(S0.address, (o) => counterSignOffer(w(S0), o, { chainId: CHAIN, core: CORE }, () => true));
+        channel.register(S0.address, (o) => counterSignOffer(w(S0), o, { chainId: CHAIN, core: CORE }, () => true, policy));
         channel.register(S1.address, async () => null); // courier declines
-        channel.register(S2.address, (o) => counterSignOffer(w(S2), o, { chainId: CHAIN, core: CORE }, () => true));
+        channel.register(S2.address, (o) => counterSignOffer(w(S2), o, { chainId: CHAIN, core: CORE }, () => true, policy));
         // A PublicClient that throws if used — proves abort happens before any chain call.
         const explodingPub = { getChainId: () => { throw new Error("chain must not be touched on abort"); } } as unknown as PublicClient;
         const result = await originateChain(buyerW, explodingPub, { core: CORE }, { ...params, channel });

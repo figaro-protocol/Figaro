@@ -123,14 +123,50 @@ export async function buildBuyerOffer(wallet: WalletClient, params: BuildOfferPa
 export interface OfferCheck { ok: boolean; reason?: string }
 
 /**
+ * The operator's economic floor for an inbound offer — the counterpart to the
+ * `accept` refuse-all floor, for the offer's *economic fields* rather than its
+ * business fit. A seller counter-signing bonds 2× the offer's
+ * `expectedCumulativeValue` in the offer's `currency`, so a hostile offer can
+ * carry an absurd magnitude or an unexpected currency; this policy bounds both.
+ * Everything here is OPERATOR-SUPPLIED — the allowlist is the operator's own set
+ * of currencies, never a bundled token list. Passing a policy is opt-IN: with
+ * none, the seller-facing seam DECLINES (see `counterSignOffer`), mirroring the
+ * `accept` floor's unspecified case.
+ */
+export interface OfferPolicy {
+    /** Require the offer to be a well-formed ROOT order: `processId` zero AND
+     *  `expectedCumulativeValue == payment` (a root order's cumulative value IS
+     *  its payment; the root signs processId=0 and the chain derives the real
+     *  id). OMIT (or false) for a seller that serves sub-orders in a chain, where
+     *  `processId` is the root's derived id and cumulative value exceeds payment. */
+    requireRootShape?: boolean;
+    /** The operator's currency allowlist — the offer's `currency` must be one of
+     *  these (case-insensitive). REQUIRED when a policy is supplied: an empty or
+     *  absent allowlist vouches for no currency, so the offer is rejected. */
+    currencyAllowlist?: Address[];
+    /** The operator's magnitude cap — neither `payment` nor
+     *  `expectedCumulativeValue` may exceed it. REQUIRED when a policy is
+     *  supplied: an absent cap leaves magnitude unbounded, so the offer is
+     *  rejected. */
+    maxValue?: bigint;
+}
+
+/**
  * Structural validation a seller MUST run before counter-signing — the
- * anti-tamper gate. Verifies the offer is well-formed and internally
- * consistent: buyer signature present, named seller is me, the agreement hashes
- * to the committed `agreementHash` (the buyer cannot sign one agreement and pin
+ * anti-tamper gate, plus (when an `OfferPolicy` is supplied) the operator's
+ * economic floor. Verifies the offer is well-formed and internally consistent:
+ * buyer signature present, named seller is me, the agreement hashes to the
+ * committed `agreementHash` (the buyer cannot sign one agreement and pin
  * another), and the agreement's parties match the commitment. Cryptographic
  * verification of the buyer signature is done in `counterSignOffer` (async).
+ *
+ * With a `policy`, ALSO checks the economic fields the seller bonds against:
+ * root-shape, the currency allowlist, and the magnitude cap. WITHOUT a `policy`,
+ * only the structural checks run — the seller-facing seam (`counterSignOffer`)
+ * treats an absent policy as a DECLINE, so a bare integration never vouches for
+ * economic fields it has not been told to bound.
  */
-export function validateOffer(offer: CommitmentPayload, expectedSeller: Address): OfferCheck {
+export function validateOffer(offer: CommitmentPayload, expectedSeller: Address, policy?: OfferPolicy): OfferCheck {
     if (!offer.buyerSig) return { ok: false, reason: "offer is missing the buyer signature" };
     const c = offer.commitment;
     if (c.seller.toLowerCase() !== expectedSeller.toLowerCase()) return { ok: false, reason: "offer names a different seller" };
@@ -141,6 +177,33 @@ export function validateOffer(offer: CommitmentPayload, expectedSeller: Address)
         || offer.agreement.seller.toLowerCase() !== c.seller.toLowerCase()) {
         return { ok: false, reason: "agreement parties do not match the commitment" };
     }
+    if (policy) {
+        const economic = checkOfferPolicy(c, policy);
+        if (!economic.ok) return economic;
+    }
+    return { ok: true };
+}
+
+/** The economic floor, applied once the offer is structurally sound. Each check
+ *  is safe-by-default: an opted-in policy that omits the allowlist or the cap
+ *  rejects rather than waving the offer through. */
+function checkOfferPolicy(c: Commitment, policy: OfferPolicy): OfferCheck {
+    if (policy.requireRootShape
+        && !(c.processId.toLowerCase() === ZERO_PROCESS_ID && c.expectedCumulativeValue === c.payment)) {
+        return { ok: false, reason: "offer is not a well-formed root order (processId 0 and cumulativeValue == payment)" };
+    }
+    if (!policy.currencyAllowlist || policy.currencyAllowlist.length === 0) {
+        return { ok: false, reason: "offer policy supplies no currency allowlist — no currency is vouched for" };
+    }
+    if (!policy.currencyAllowlist.some((a) => a.toLowerCase() === c.currency.toLowerCase())) {
+        return { ok: false, reason: `offer currency ${c.currency} is not in the policy allowlist` };
+    }
+    if (policy.maxValue === undefined) {
+        return { ok: false, reason: "offer policy supplies no magnitude cap — magnitude is unbounded" };
+    }
+    if (c.payment > policy.maxValue || c.expectedCumulativeValue > policy.maxValue) {
+        return { ok: false, reason: `offer magnitude (payment ${c.payment}, cumulativeValue ${c.expectedCumulativeValue}) exceeds the policy cap ${policy.maxValue}` };
+    }
     return { ok: true };
 }
 
@@ -150,23 +213,30 @@ export function validateOffer(offer: CommitmentPayload, expectedSeller: Address)
  * that does not recover to the named buyer) THROWS — the seller must never
  * counter-sign a tampered or bogus commitment.
  *
- * REFUSE-ALL FLOOR (operator ruling 2026-07-07, binds the SDK): `accept` is the
- * policy gate, and its DEFAULT is refuse. A clean offer counter-signs ONLY when
- * an explicit `accept` policy returns true; omit `accept` (or return false) and
- * the offer is declined (`null`). A seller must never auto-sign a stranger's
- * offer by default — counter-signing bonds the seller against attacker-chosen
- * `expectedCumulativeValue`/`currency`, so autonomy is opt-IN, never the floor.
+ * TWO FLOORS, both operator-supplied, both opt-IN (autonomy is never the
+ * default), both DECLINE (`null`) rather than throw — a throw is reserved for a
+ * tampered/forged offer:
+ *   - REFUSE-ALL FLOOR (operator ruling 2026-07-07): `accept` is the business
+ *     gate. A clean offer counter-signs ONLY when an explicit `accept` returns
+ *     true; omit it (or return false) and the offer is declined.
+ *   - ECONOMIC FLOOR: `policy` bounds the economic fields the seller bonds
+ *     against (root-shape, currency allowlist, magnitude cap). Counter-signing
+ *     bonds the seller against attacker-chosen `expectedCumulativeValue` /
+ *     `currency`, so with NO policy the offer is declined — a bare integration
+ *     never silently vouches for unbounded magnitudes or an unexpected currency.
  */
 export async function counterSignOffer(
     wallet: WalletClient,
     offer: CommitmentPayload,
     ctx: { chainId: number; core: Address },
     accept?: (offer: CommitmentPayload) => boolean,
+    policy?: OfferPolicy,
 ): Promise<CommitmentPayload | null> {
     const account = wallet.account;
     if (!account) throw new Error("counterSignOffer: wallet has no account");
     const seller = account.address;
 
+    // Anti-tamper gate: a malformed/tampered offer THROWS (integrity attack).
     const check = validateOffer(offer, seller);
     if (!check.ok) throw new Error(`counterSignOffer: refusing malformed offer — ${check.reason}`);
 
@@ -178,7 +248,12 @@ export async function counterSignOffer(
     });
     if (!buyerSigValid) throw new Error("counterSignOffer: buyer signature does not recover to the named buyer");
 
-    // Refuse-all floor: no policy, or a policy that says no, declines.
+    // Economic floor: no policy, or economic fields outside it, DECLINES.
+    if (!policy) return null;
+    const economic = validateOffer(offer, seller, policy);
+    if (!economic.ok) return null;
+
+    // Refuse-all floor: no accept, or an accept that says no, declines.
     if (!accept || !accept(offer)) return null;
 
     const sellerSig = await wallet.signTypedData({
@@ -250,11 +325,16 @@ export async function originateProcess(
 }
 
 export interface SellerOfferHandlerOpts {
-    /** Policy gate (the refuse-all floor): the handler counter-signs ONLY when
+    /** Business gate (the refuse-all floor): the handler counter-signs ONLY when
      *  this returns true. OMIT it and the handler declines every offer — a fresh
      *  integration is autonomous-inert by default; enabling autonomy means
      *  writing this rule (operator ruling 2026-07-07). */
     accept?: (offer: CommitmentPayload) => boolean;
+    /** Economic floor: the operator's bounds on the offer's economic fields
+     *  (root-shape, currency allowlist, magnitude cap). OMIT it and the handler
+     *  declines every offer — counter-signing bonds the seller against
+     *  attacker-chosen magnitudes/currency, so vouching for them is opt-IN. */
+    policy?: OfferPolicy;
     /** Approve the seller's 2× cumulative-value bond before returning the signed
      *  offer, so the allowance is on chain before the buyer commits (default true). */
     approveBond?: boolean;
@@ -265,8 +345,8 @@ export interface SellerOfferHandlerOpts {
  * offer it validates (the anti-tamper gate), applies the accept policy, and — if
  * accepting — approves its bond then counter-signs. A declined offer returns
  * `null` (and does NOT approve the bond); a malformed offer throws. With no
- * `accept` policy the handler declines everything (refuse-all floor) — so
- * registering it bare never auto-signs a stranger's offer.
+ * `accept` business rule OR no economic `policy` the handler declines everything
+ * (both floors) — so registering it bare never auto-signs a stranger's offer.
  */
 export function makeSellerOfferHandler(
     wallet: WalletClient,
@@ -276,7 +356,7 @@ export function makeSellerOfferHandler(
 ): OfferHandler {
     return async (offer: CommitmentPayload): Promise<CommitmentPayload | null> => {
         const chainId = await publicClient.getChainId();
-        const signed = await counterSignOffer(wallet, offer, { chainId, core: addresses.core }, opts.accept);
+        const signed = await counterSignOffer(wallet, offer, { chainId, core: addresses.core }, opts.accept, opts.policy);
         if (!signed) return null;
         if (opts.approveBond !== false) {
             await approveBond(wallet, publicClient, addresses.core, offer.commitment.currency, 2n * offer.commitment.expectedCumulativeValue);
