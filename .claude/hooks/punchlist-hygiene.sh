@@ -21,7 +21,7 @@ PUNCHLIST="$HOME/.claude/projects/-Users-adaliana-Figaro/memory/project_punchlis
 hits=$(awk '
   /^## ▶/ { started=1; hygiene = ($0 ~ /Punchlist hygiene/) }
   started && !hygiene
-' "$PUNCHLIST" | grep -E '✅|\bDONE\b|\bSUBSUMED\b|\bSUPERSEDED\b' || true)
+' "$PUNCHLIST" | grep -E '✅|\bDONE\b|\bSUBSUMED\b|\bSUPERSEDED\b|\b(SHIPPED|[Ss]hipped)\b|\bPOSTPONED\b|\bRULED:|\bLANDED\b|[Cc]losed this session|\bPASSED\b' || true)
 
 [ -z "$hits" ] && exit 0
 
