@@ -246,11 +246,11 @@ contract FigaroCore is EIP712, ReentrancyGuard {
     ///         that's a hard cap of ~1,240 orders per process (resolve
     ///         cost ~= 38,000 + 23,000*N). The cap is a property of
     ///         the kernel resolveProcess path; it cannot be enforced
-    ///         on-chain at assembly registration because manifests
+    ///         on-chain at assembly registration because assembly documents
     ///         live off-chain (AssemblyRegistry only stores their
     ///         hash + URI). Publish-side clients refuse to anchor an
     ///         assembly that would exceed the cap; buyer-side clients
-    ///         verify the manifest's order count before committing.
+    ///         verify the assembly document's order count before committing.
     ///         For trees larger than the cap, compose multiple
     ///         processes: a sub-order in process A roots process B,
     ///         so the overall tree spans multiple settlements while
