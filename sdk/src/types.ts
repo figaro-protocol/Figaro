@@ -44,6 +44,13 @@ export interface Order {
 
 // ── Process (aggregated from orders) ────────────────────────────────────────
 
+/**
+ * A process aggregated from its orders. `rootBuyer` is the process-level
+ * resolver — the one party who can call `resolveProcess` (kernel star shape).
+ * This field is deliberately NOT named `buyer`: `Commitment.buyer` / `Order.buyer`
+ * is the per-order party, and on a root order the two coincide. Filtering
+ * processes on `p.buyer` silently matches nothing — use `p.rootBuyer`.
+ */
 export interface Process {
     processId: Hex;
     rootBuyer: Address;

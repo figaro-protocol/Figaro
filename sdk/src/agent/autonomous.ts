@@ -100,6 +100,9 @@ export async function resolveProcess(
  * @param target Commitment for the order being attested (carries the
  *               `agreementHash` the merkle proof opens against). Pass the
  *               same commitment twice for same-order attestation.
+ * @param clauseId The `computeClauseKey(clause, version)` bytes32 HASH — NOT
+ *               the raw clause name that `buildSectionInclusionProof` takes as
+ *               its `clauseKey`. Same value used as the merkle leaf id.
  * @param sectionData The raw clause bytes committed in the agreement.
  *               Use `canonicalizeSectionData(section.data)` + encode to Hex.
  * @param proof  Merkle inclusion proof produced by `buildSectionInclusionProof`.
@@ -131,6 +134,10 @@ export async function attestAsSeller(
 /**
  * Submit an attestation as a buyer. Caller must equal `target.buyer` (which
  * equals `rootBuyer` of the process by commit invariant).
+ *
+ * @param clauseId The `computeClauseKey(clause, version)` bytes32 HASH — NOT
+ *               the raw clause name that `buildSectionInclusionProof` takes as
+ *               its `clauseKey`. Same value used as the merkle leaf id.
  */
 export async function attestAsBuyer(
     walletClient: WalletClient,
@@ -177,6 +184,8 @@ export interface ActionExecutionInputs {
          *  attestation; omit for same-order (role = target). */
         role?: Commitment;
         target: Commitment;
+        /** The `computeClauseKey(clause, version)` bytes32 HASH — NOT the raw
+         *  clause name `buildSectionInclusionProof` takes as its `clauseKey`. */
         clauseId: Hex;
         stage: number;
         sectionData: Hex;

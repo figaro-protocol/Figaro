@@ -116,6 +116,29 @@ const result = await commit(walletClient, publicClient, coreAddress, commitment,
 // attest/initiate take signed `inputs` — the SDK never fabricates a signature.
 const result = await executeAction(walletClient, publicClient, addresses, approvedAction);
 
+// Attest one clause end-to-end from a hydrated Agreement. Pick the clause from
+// the agreement's OWN sections — never a bundled list.
+import { buildSectionInclusionProof, getSectionDataBytes, computeClauseKey } from "@figaro/sdk";
+import { attestAsSeller } from "@figaro/sdk/agent";
+import { parseClauseSpec, encodeContentFromSpec } from "@figaro/sdk/clauses";
+
+const section = agreement.sections[0]; // e.g. { clause: "figaro-provenance", version, data }
+
+// 1. Inclusion proof — buildSectionInclusionProof takes the RAW section name.
+const { proof } = buildSectionInclusionProof(agreement, section.clause);
+// 2. Section bytes — the canonical JSON that formed the leaf.
+const sectionData = getSectionDataBytes(section);
+// 3. Content — ABI-encoded per the clause spec (fetched from ClauseRegistry → IPFS).
+const parsed = parseClauseSpec(specJson);
+if (!parsed.ok) throw new Error(parsed.errors[0].message);
+const content = encodeContentFromSpec(parsed.spec, section.data);
+// 4. Attest. `clauseId` is the bytes32 HASH — NOT the raw name from step 1.
+const clauseId = computeClauseKey(section.clause, section.version);
+await attestAsSeller(
+  walletClient, addresses.attestationCoordinator!,
+  roleCommitment, targetCommitment, clauseId, /* stage */ 0, sectionData, proof, content,
+);
+
 // Autonomous origination — the two-party handshake over a coordination channel:
 // buyer instantiates a discovered assembly + signs; seller validates + counter-signs.
 import { originateProcess, makeSellerOfferHandler, InProcessChannel } from "@figaro/sdk/agent";

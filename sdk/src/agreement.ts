@@ -157,6 +157,12 @@ export function computeAgreementHash(agreement: Agreement): Hex {
  * Build an inclusion proof for a given section. Returns the leaf and the
  * sibling hashes walking the tree toward the root. Throws if the section is
  * absent from the agreement.
+ *
+ * @param clauseKey The RAW clause section name — `section.clause`, e.g.
+ *        "figaro-provenance". This is NOT the `computeClauseKey(clause, version)`
+ *        bytes32 hash that the attest calls (`attestAsSeller`/`attestAsBuyer`)
+ *        take as their `clauseId`; passing that hash here throws
+ *        "Section not found: 0x…".
  */
 export function buildSectionInclusionProof(
     agreement: Agreement,
