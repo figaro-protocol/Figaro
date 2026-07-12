@@ -20,6 +20,7 @@ export function Footer() {
                     <div className="space-y-2">
                         <Link href="/builders" className={COL_LINK_CLS}>Builders</Link>
                         <Link href="/builders/designer" className={COL_LINK_CLS}>Designer</Link>
+                        <Link href="/builders/clauses" className={COL_LINK_CLS}>Register a clause</Link>
                         <Link href="/builders/composability" className={COL_LINK_CLS}>Composability</Link>
                         <Link href="/clauses" className={COL_LINK_CLS}>Clauses</Link>
                         <Link href="/assemblies" className={COL_LINK_CLS}>Assemblies</Link>

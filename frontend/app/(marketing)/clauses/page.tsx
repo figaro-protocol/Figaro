@@ -61,6 +61,9 @@ export default function Clauses() {
                 <p className="text-sm text-ink-body leading-relaxed mt-5">
                     <strong>Best practice: anchor your clause to a norm or standard.</strong> A clause is strongest when its content references an external, named, versioned standard the parties already recognize &mdash; a body of law (<code>figaro-applicable-law</code>), an arbitration forum&apos;s rules (<code>figaro-arbitration-kleros</code>), an accounting standard (<code>figaro-emissions</code> names ISO&nbsp;14064, the GHG&nbsp;Protocol, &hellip; in its <code>standard</code> field). Anchoring to a standard gives the clause stable, shared meaning across parties and over time &mdash; the standard is the source of truth and your clause points to it &mdash; and it bridges how people already reason, through established norms, to how the protocol reasons. Name the standard and carry its version, and the clause stays durable as the world changes around it.
                 </p>
+                <p className="text-sm text-ink-body leading-relaxed mt-5">
+                    Written a spec? <Link href="/builders/clauses" className="text-ink-heading font-medium underline">Register a clause</Link> &mdash; paste it, validate it against this same off-chain check, and anchor it on the <code>ClauseRegistry</code>: permissionless, first-write-wins, permanent per <code>(name, version)</code>. Registering posts a reclaimable ETH deposit &mdash; staked intent, no time lock, reclaimed in full &mdash; not a fee.
+                </p>
             </MarketingSection>
 
             <MarketingSection title="Registered clauses, by article.">

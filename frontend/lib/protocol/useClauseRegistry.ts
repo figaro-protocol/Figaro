@@ -18,11 +18,23 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Log } from "viem";
+import { BaseError, ContractFunctionRevertedError, type Log } from "viem";
 import { computeClauseKey, parseClauseRegistryLogs } from "@figaro/sdk";
-import { usePublicClient } from "wagmi";
+import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import { publicClient } from "@/lib/shared/wagmi";
+import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
+import { canonicalContentHash } from "@/lib/shared/canonicalJson";
+import { toError } from "@/lib/shared/errors";
+
+
+/** The ClauseRegistry address if it's a well-formed address, else null.
+ *  Mirrors `getAssemblyRegistry` / `getSellerRegistry`. Internal — the write
+ *  hooks below are the only callers. */
+function getClauseRegistry(): `0x${string}` | null {
+    const a = CONTRACTS.clauseRegistry;
+    return /^0x[0-9a-fA-F]{40}$/.test(a) ? a : null;
+}
 
 export interface RegisteredClauseEvent {
     /** `keccak256(abi.encode(clauseId, version))` — the on-chain key the
@@ -194,4 +206,227 @@ export function useAllRegisteredClauses() {
 
     const refetch = useCallback(() => setGeneration((g) => g + 1), []);
     return useMemo(() => ({ data, isLoading, failed, refetch }), [data, isLoading, failed, refetch]);
+}
+
+// ── Revert translation (pure — unit-tested) ──────────────────────────────────
+
+/** Map a decoded `registerClause` error name (+ args) to a human-readable
+ *  message, or null when unrecognized. Split from the viem extraction so it's
+ *  testable without constructing a viem error. Mirrors the SHAPE of
+ *  `translatePublishRevert` for assemblies. */
+export function clauseRegisterRevertMessage(
+    errorName: string | undefined,
+    args: readonly unknown[] | undefined,
+    clauseId: string,
+): string | null {
+    switch (errorName) {
+        case "AlreadyRegistered":
+            return `"${clauseId}" is already registered at this version. A clause's identity is (name, version) and registration is first-write-wins and immutable, so the same (name, version) always maps to one binding. Bump the spec's version to register a new one, or adopt the existing clause.`;
+        case "WrongDeposit": {
+            const provided = (args?.[0] as bigint | undefined)?.toString() ?? "?";
+            const required = (args?.[1] as bigint | undefined)?.toString() ?? "?";
+            return `Registration deposit mismatch (provided ${provided} wei, required ${required} wei). The deposit amount changed between the read and the send — retry.`;
+        }
+        case "EmptyClauseId":
+            return "The spec has an empty clauseId.";
+        case "EmptyContentURI":
+            return "The IPFS pin returned an empty URI.";
+        case "ZeroContentHash":
+            return "Computed an empty content hash — the spec document is empty or malformed.";
+        default:
+            return null;
+    }
+}
+
+/** Map a decoded `withdrawDeposit` error name to a human-readable message, or
+ *  null when unrecognized. The commits==resolves gate is off-chain/advisory
+ *  (`useWithdrawGate`), so these are the on-chain guards only: registrar-only,
+ *  once-only, must-exist. Mirrors assembly `translateWithdrawRevert`. */
+export function clauseWithdrawRevertMessage(errorName: string | undefined): string | null {
+    switch (errorName) {
+        case "AlreadyWithdrawn":
+            return "This clause's registration stake has already been reclaimed.";
+        case "NotRegistrar":
+            return "Only the wallet that registered this clause can reclaim its stake.";
+        case "NotRegistered":
+            return "No registration binding exists for this clause.";
+        case "TransferFailed":
+            return "The stake refund transfer failed. No state changed — retry.";
+        default:
+            return null;
+    }
+}
+
+/** Extract the decoded revert from a viem error and route it through the pure
+ *  register-message mapper; falls through to the original error. Internal —
+ *  the pure `clauseRegisterRevertMessage` above is the unit-tested surface. */
+function translateClauseRegisterRevert(err: unknown, clauseId: string): Error {
+    if (err instanceof BaseError) {
+        const revert = err.walk(
+            (e) => e instanceof ContractFunctionRevertedError,
+        ) as ContractFunctionRevertedError | undefined;
+        const message = clauseRegisterRevertMessage(
+            revert?.data?.errorName,
+            revert?.data?.args,
+            clauseId,
+        );
+        if (message) return new Error(message);
+    }
+    return toError(err);
+}
+
+/** Extract the decoded revert from a viem error and route it through the pure
+ *  withdraw-message mapper; falls through to the original error. Internal —
+ *  the pure `clauseWithdrawRevertMessage` above is the unit-tested surface. */
+function translateClauseWithdrawRevert(err: unknown): Error {
+    if (err instanceof BaseError) {
+        const revert = err.walk(
+            (e) => e instanceof ContractFunctionRevertedError,
+        ) as ContractFunctionRevertedError | undefined;
+        const message = clauseWithdrawRevertMessage(revert?.data?.errorName);
+        if (message) return new Error(message);
+    }
+    return toError(err);
+}
+
+// ── Write hooks ──────────────────────────────────────────────────────────────
+
+/** The confirmed outcome of a `registerClause` — the registered identity plus
+ *  the anchored locator, enough to render a receipt and link to the live
+ *  `/clauses` inventory where the clause now appears. */
+export interface RegisterClauseOutcome {
+    hash: `0x${string}`;
+    clauseId: string;
+    version: number;
+    /** `keccak256(abi.encode(clauseId, version))` — the on-chain key. */
+    idHash: `0x${string}`;
+    contentURI: string;
+}
+
+/**
+ * Register a clause on `ClauseRegistry.registerClause` (payable). Mirrors the
+ * assembly publish flow (`usePublishAssembly`) for clauses: hash the RAW spec
+ * document over the canonical form (INCLUDING `block` — the on-chain
+ * `contentHash` covers it, so re-serializing a parsed spec would drop `block`
+ * and change the hash), pin the raw document to IPFS, read the registry's
+ * deposit ON DEMAND, simulate to surface a typed revert before opening the
+ * wallet, send, then wait for a `success` receipt.
+ *
+ * The caller validates well-formedness via `@figaro/sdk/clauses`
+ * (`parseClauseSpec`) BEFORE calling this — the same off-chain gate that runs
+ * at sign-time. This hook takes the already-parsed raw document and does the
+ * pin + anchor. Throws on any failure (no wallet, IPFS down, wrong deposit,
+ * already-registered collision, on-chain revert).
+ */
+export function useRegisterClause() {
+    const client = usePublicClient();
+    const { address } = useAccount();
+    const { writeContractAsync, isPending } = useWriteContract();
+
+    async function register(rawSpec: Record<string, unknown>): Promise<RegisterClauseOutcome> {
+        const registry = getClauseRegistry();
+        if (!registry) {
+            throw new Error("ClauseRegistry address not configured (NEXT_PUBLIC_CLAUSE_REGISTRY).");
+        }
+        if (!client) throw new Error("No public client available to read the registration deposit.");
+        if (!address) throw new Error("Connect a wallet before registering a clause.");
+
+        const clauseId = rawSpec.clauseId as string;
+        const version = Number(rawSpec.version);
+        const idHash = computeClauseKey(clauseId, version);
+
+        // Digest over the CANONICAL form (sorted keys) of the RAW document —
+        // the convention populate-clauses.mjs anchors and loadClauseSpec
+        // verifies after fetch. Pin the raw document (verification
+        // re-canonicalizes, so the pinned byte order is irrelevant).
+        const contentHash = canonicalContentHash(rawSpec);
+        const { uri } = await DEFAULT_IPFS_SERVICE.publishJSON(rawSpec);
+
+        const deposit = await client.readContract({
+            address: registry,
+            abi: CLAUSE_REGISTRY_ABI,
+            functionName: "registrationDeposit",
+        });
+
+        try {
+            await client.simulateContract({
+                address: registry,
+                abi: CLAUSE_REGISTRY_ABI,
+                functionName: "registerClause",
+                args: [clauseId, BigInt(version), contentHash, uri],
+                value: deposit,
+                account: address,
+            });
+        } catch (err) {
+            throw translateClauseRegisterRevert(err, clauseId);
+        }
+
+        const txHash = await writeContractAsync({
+            address: registry,
+            abi: CLAUSE_REGISTRY_ABI,
+            functionName: "registerClause",
+            args: [clauseId, BigInt(version), contentHash, uri],
+            value: deposit,
+        });
+
+        const receipt = await client.waitForTransactionReceipt({ hash: txHash });
+        if (receipt.status !== "success") {
+            throw new Error(`Registration transaction reverted on-chain (tx ${txHash}). The clause was not registered.`);
+        }
+        return { hash: txHash, clauseId, version, idHash, contentURI: uri };
+    }
+
+    return { register, isPending };
+}
+
+/**
+ * Reclaim a clause's registration stake (`ClauseRegistry.withdrawDeposit`).
+ * Mirrors `useWithdrawAssembly` exactly: the binding is permanent — withdraw
+ * only moves the deposit and de-surfaces the clause for NEW compositions;
+ * committed agreements keep resolving the clause. Gating on in-flight deals is
+ * the caller's job via `useWithdrawGate` (advisory, off-chain); this hook is the
+ * plain registrar-only write. Simulates first to surface a typed revert before
+ * opening the wallet, sends, then waits for a `success` receipt. Throws on any
+ * failure.
+ */
+export function useWithdrawClause() {
+    const client = usePublicClient();
+    const { address } = useAccount();
+    const { writeContractAsync, isPending } = useWriteContract();
+
+    async function withdraw(idHash: `0x${string}`): Promise<`0x${string}`> {
+        const registry = getClauseRegistry();
+        if (!registry) {
+            throw new Error("ClauseRegistry address not configured (NEXT_PUBLIC_CLAUSE_REGISTRY).");
+        }
+        if (!client) throw new Error("No public client available to submit the withdrawal.");
+        if (!address) throw new Error("Connect a wallet before reclaiming the stake.");
+
+        try {
+            await client.simulateContract({
+                address: registry,
+                abi: CLAUSE_REGISTRY_ABI,
+                functionName: "withdrawDeposit",
+                args: [idHash],
+                account: address,
+            });
+        } catch (err) {
+            throw translateClauseWithdrawRevert(err);
+        }
+
+        const txHash = await writeContractAsync({
+            address: registry,
+            abi: CLAUSE_REGISTRY_ABI,
+            functionName: "withdrawDeposit",
+            args: [idHash],
+        });
+
+        const receipt = await client.waitForTransactionReceipt({ hash: txHash });
+        if (receipt.status !== "success") {
+            throw new Error(`Withdrawal transaction reverted on-chain (tx ${txHash}). The stake was not reclaimed.`);
+        }
+        return txHash;
+    }
+
+    return { withdraw, isPending };
 }

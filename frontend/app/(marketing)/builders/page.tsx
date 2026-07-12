@@ -86,6 +86,12 @@ export default function BuildersPage() {
                     <span className="text-ink-body"> &mdash; compose a bonded process on a canvas and edit its agreement clauses.</span>
                 </li>
                 <li>
+                    <Link href="/builders/clauses" className="text-ink-heading font-medium hover:underline">
+                        Register a clause
+                    </Link>
+                    <span className="text-ink-body"> &mdash; paste a spec, validate it against the live off-chain check, and anchor it on the <code>ClauseRegistry</code>.</span>
+                </li>
+                <li>
                     <Link href="/clauses" className="text-ink-heading font-medium hover:underline">
                         Clauses
                     </Link>

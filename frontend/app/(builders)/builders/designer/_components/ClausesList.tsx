@@ -5,11 +5,11 @@
  *
  * Reads from `useRegisteredClausesByWallet(address)` which filters the
  * `ClauseRegistered` event log by registrar. For most wallets the list is
- * empty (no authoring UI ships yet); the empty state points at the
- * marketing /clauses page so users can see what clauses exist
- * protocol-wide. For the deployer wallet (which registers the bundled
- * specs through the deploy script), the list shows the 17+ built-ins
- * with their human-readable names.
+ * empty; the empty state points at `/builders/clauses` (the clause authoring
+ * surface — paste a spec and register it) and at the marketing /clauses page
+ * so users can see what clauses exist protocol-wide. For the deployer wallet
+ * (which registers the bundled specs through the deploy script), the list
+ * shows the built-ins with their human-readable names.
  *
  * Mirrors `PublishedList`'s shape: no-wallet, loading, empty, list.
  */
@@ -47,14 +47,15 @@ export function ClausesList() {
     if (data.length === 0) {
         return (
             <p className="text-sm text-ink-muted" data-testid="clauses-empty">
-                You haven&apos;t registered any clauses yet. Browse the
-                {" "}
+                You haven&apos;t registered any clauses yet.{" "}
+                <Link href="/builders/clauses" className="underline">
+                    Register a clause
+                </Link>{" "}
+                — paste a spec and anchor it on the <code>ClauseRegistry</code> — or browse the{" "}
                 <Link href="/clauses" className="underline">
                     protocol-tier clauses
                 </Link>{" "}
-                to see what&apos;s in force, or register a new one via the{" "}
-                <code>ClauseRegistry</code> on{" "}
-                <Link href="/spec" className="underline">/spec</Link>.
+                to see what&apos;s in force.
             </p>
         );
     }
