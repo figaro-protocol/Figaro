@@ -16,7 +16,7 @@ export default function Why() {
                 title="Three eras of rule-making."
                 lead={
                     <>
-                        Coercion. Cognition. Crypto. Each is a way humans give rules legitimacy. The first two are ancient, sophisticated, and persistent. The third is new &mdash; and brings something the first two could not: clarity, anchored in mathematics and deterministic computing. Figaro is what cryptoeconomics looks like when it is applied to trade.
+                        Coercion. Cognition. Crypto. Each is a way humans give rules legitimacy. The first two are ancient, sophisticated, and persistent. The third is new &mdash; and brings something the first two could not: clarity, anchored in mathematics and deterministic computing. Figaro is what cryptoeconomics looks like when it is applied to trade. This is Figaro read as history: how it arrives, not what it is.
                     </>
                 }
             />
@@ -77,7 +77,7 @@ export default function Why() {
 
             <MarketingSection title="How Figaro grows.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Figaro is built to be extended. Anyone can author a new clause, register it on-chain, and be paid retroactively for clauses the network comes to rely on &mdash; sixty percent of the FIG supply is reserved for clause authors, distributed by a fixed formula that measures settled use. No application, no committee.
+                    Figaro is built to be extended: anyone can author a new clause, register it on-chain, and &mdash; for the clauses the network comes to rely on &mdash; <Link href="/clause-rewards" className="text-ink-heading font-medium hover:underline">be paid retroactively</Link> from the share of FIG set aside for exactly that. No application, no committee.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     Clauses are one composition surface. Assemblies are another &mdash; communities compose clauses into the processes they need, with the sellers who run them indexing those processes freely. The protocol grows by what it actually carries. <Link href="/builders" className="text-ink-heading font-medium hover:underline">More on building on Figaro</Link>.
@@ -117,7 +117,7 @@ export default function Why() {
                         <Link href="/physics" className="text-ink-heading font-medium hover:underline">
                             Physics
                         </Link>
-                        <span className="text-ink-body"> &mdash; the same mechanism read as physics: the few facts the core obeys, why its state can leave the chain, and why trust moves from the keeper in the middle to the boundary at the edge.</span>
+                        <span className="text-ink-body"> &mdash; the same mechanism read as structure: the few facts the core obeys, why its state can leave the chain, and why trust moves from the keeper in the middle to the boundary at the edge.</span>
                     </li>
                     <li>
                         <Link href="/builders" className="text-ink-heading font-medium hover:underline">

@@ -26,7 +26,7 @@ export function Footer() {
                         <Link href="/assemblies" className={COL_LINK_CLS}>Assemblies</Link>
                         <Link href="/local-commerce" className={COL_LINK_CLS}>Local Commerce reference</Link>
                         <Link href="/integrate" className={COL_LINK_CLS}>Integrate</Link>
-                        <Link href="/rpgf" className={COL_LINK_CLS}>RPGF</Link>
+                        <Link href="/clause-rewards" className={COL_LINK_CLS}>Clause rewards</Link>
                         <Link href="/fig" className={COL_LINK_CLS}>FIG token</Link>
                     </div>
                     <div className="space-y-2">

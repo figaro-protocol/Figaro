@@ -14,7 +14,7 @@ export default function Physics() {
         <>
             <MarketingHero
                 title="Physics."
-                lead="Figaro started as a contract for buying safely from a stranger. It worked — and it could not scale, because it tried to hold the whole agreement itself. The fix was not more code. It was noticing that the core only has to obey a few physical facts, and everything else can leave. What is left is a primitive, not a platform — the thin, fixed layer trade is built on, the way the network is built on TCP/IP."
+                lead="Figaro started as a contract for buying safely from a stranger. It worked — and it could not scale, because it tried to hold the whole agreement itself. The fix was not more code. It was noticing that the core only has to obey a few physical facts, and everything else can leave. What is left is a primitive, not a platform — the thin, fixed layer trade is built on, the way the network is built on TCP/IP. This is Figaro read as structure: the shape of the thing itself, before any history."
             />
 
             <MarketingSection title="Three facts, not three rules.">
@@ -92,11 +92,11 @@ export default function Physics() {
                         That is why the rest of Figaro exists. Not as decoration on the core &mdash; as the only level at which the core <em>means</em> anything. The core is complete and, by itself, silent. You hear it in what gets built on it.
                     </p>
                     <p>
-                        And that is what the network&apos;s token is for. It doesn&apos;t pay to run the core; the core runs itself. It{" "}
-                        <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">
-                            rewards the people who build the layer
-                        </Link>{" "}
-                        that makes the core legible and usable &mdash; the clauses, the agreements, the assemblies. The protocol pays for its own emergence.
+                        And that is what the network&apos;s token funds &mdash; not the core, which runs itself, but the clauses, agreements, and assemblies built on it, and the authors the protocol{" "}
+                        <Link href="/clause-rewards" className="text-ink-heading font-medium hover:underline">
+                            pays for the ones it comes to rely on
+                        </Link>
+                        .
                     </p>
                     <p className="text-ink-heading font-medium">
                         The core is a small law that holds. The network is what emerges when people build on it. Building on it isn&apos;t optional &mdash; it&apos;s the point.

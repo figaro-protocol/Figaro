@@ -77,7 +77,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         ],
         references: [
             { label: "Protocol — two mechanisms", href: "/protocol", note: "two-mechanism + contract-law overview" },
-            { label: "RPGF", href: "/rpgf", note: "the clause-author reward formula" },
+            { label: "Clause rewards", href: "/clause-rewards", note: "the clause-author reward formula" },
         ],
     },
     {

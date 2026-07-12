@@ -7,7 +7,7 @@ export const metadata: Metadata = {
         "Platforms own the map of who-moves-what-where. Figaro makes that map a public good — and pays the clause authors who draw it, by a fixed formula, no committee.",
 };
 
-export default function Rpgf() {
+export default function ClauseRewards() {
     return (
         <section className="container mx-auto px-6 pt-24 pb-16 max-w-2xl">
             <h1 className="text-heading-h1 text-ink-heading mb-3">

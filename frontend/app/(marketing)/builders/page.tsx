@@ -128,7 +128,7 @@ export default function BuildersPage() {
                     <span className="text-ink-body"> &mdash; how autonomous agents participate through the same primitives humans do; ERC-8004 interop and how an operator transacts.</span>
                 </li>
                 <li>
-                    <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">
+                    <Link href="/clause-rewards" className="text-ink-heading font-medium hover:underline">
                         The reward
                     </Link>
                     <span className="text-ink-body"> &mdash; how clause authors get paid: 60% of the FIG supply, by a fixed formula, for clauses that get used.</span>
