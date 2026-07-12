@@ -121,6 +121,33 @@ the input token. EIP-7702 and ERC-4337 variants are out of scope. Its
 local-minimal `IFigaroCore` binding is the copyable exemplar of the coordinator
 pattern — canonical statement in `ARCHITECTURE.md` § "Composing the kernel".
 
+**`src/WitnessSwapAndCommitCoordinator.sol`** — Front-run-hardened sibling of
+`SwapAndCommitCoordinator` (a new, separately-identified contract; the base
+coordinator is immutable and untouched). Same job and same
+`swapAndCommit(c, buyerSig, sellerSig, buyerFunding, sellerFunding)` surface, one
+difference: the base coordinator forwarded each leg's `swapData` (the swap route)
+to the router **outside every signature**, so a relayer/front-runner could
+substitute its own route — sandwiching the pool or routing to a just-above-bond
+output — and capture the slippage residual the coordinator would otherwise refund
+to the party (MED severity). This sibling calls Permit2's
+`permitWitnessTransferFrom`, binding `{router, inputToken, maxInput, keccak256(swapData)}`
+into a `SwapWitness` the party signs (helper `swapWitness(inputToken, maxInput, swapData)`
+recomputes it for off-chain signers). Substitute any of those and the recomputed
+witness no longer matches the signed digest — Permit2's own signature check reverts
+before a token moves. Bond currency/amount are NOT re-bound in the witness: they
+derive from `c`, already bilaterally EIP-712-signed and kernel-enforced. Immutable
+`figaroCore`/`permit2`/`router`, `ReentrancyGuard`, no owner/admin/pause. Kernel
+untouched; the swap venue is an off-protocol auxiliary; permissionless first-write-wins
+means it coexists with the base coordinator as a distinct composition. Per-party
+prerequisites identical to the base flow plus a per-commit Permit2 **witness**
+signature. Not yet UI-wired or deploy-wired. Its two token-forwarding sites ARE
+tracked in `certora/token-ops.inventory` (unlike the base coordinator, which is
+carved out of `lint-token-ops.sh` while pre-production) — both `[PENDING]` a CVL
+rule. Foundry tests in `test/WitnessSwapAndCommitCoordinatorTest.t.sol` mirror the
+base coordinator's coverage and add `test_RevertWhen_SwapDataSubstituted_FrontRunImpossible`
+(a substituted route fails witness verification) using a test-local
+`MockWitnessPermit2` that verifies the witness signature.
+
 **`src/SellerRegistry.sol`** — Permissionless seller self-registration with
 reclaimable ETH deposit (staked intent — K4, no time lock). Three external
 functions: `register(metadataURI)` (sets the dedup guard, consumes the
