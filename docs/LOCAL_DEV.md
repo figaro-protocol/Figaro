@@ -103,9 +103,13 @@ NEXT_PUBLIC_IPFS_API_URL=http://127.0.0.1:5001
 NEXT_PUBLIC_IPFS_GATEWAY_URL=http://127.0.0.1:8080
 ```
 
-One server-side (non-`NEXT_PUBLIC`) knob, set per deployment rather than in
-`.env.local`: `EVIDENCE_DISPLAY_FRAME_ANCESTORS` — the SPACE-SEPARATED list of
-forum origins (CSP source syntax) allowed to iframe `/evidence-display`, e.g.
+The `/evidence-display` forum iframing allowlist is a **hosting/CDN-layer**
+concern, not an app env var. Since the static-export migration (`output:
+export`) the app runs no server middleware, so the CSP `frame-ancestors` that
+lets an arbitration forum iframe `/evidence-display` is set at the edge along
+with the rest of the security headers (see `docs/FRONTEND.md` § "Static
+export") — the SPACE-SEPARATED list of forum origins in CSP source syntax, e.g.
 `'self' https://resolve.kleros.io https://*.kleros.io`. Unset, the route admits
-no third-party ancestor — a forum is deployment config, never a code default
-(`frontend/middleware.ts`).
+no third-party ancestor — a forum is deployment config, never a code default.
+(The former `EVIDENCE_DISPLAY_FRAME_ANCESTORS` env var and the frontend
+middleware that read it were removed with the migration.)

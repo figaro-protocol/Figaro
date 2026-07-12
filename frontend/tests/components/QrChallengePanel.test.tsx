@@ -56,7 +56,7 @@ describe("QrChallengePanel", () => {
         await userEvent.click(screen.getByTestId("interaction-qr-scan-input"));
         await userEvent.paste(payload);
         const link = screen.getByTestId("interaction-qr-goto") as HTMLAnchorElement;
-        expect(link.getAttribute("href")).toBe(`/orders/${OTHER_PROCESS}`);
+        expect(link.getAttribute("href")).toBe(`/orders/view?process=${OTHER_PROCESS}`);
         expect(screen.queryByTestId("interaction-qr-match")).toBeNull();
     });
 

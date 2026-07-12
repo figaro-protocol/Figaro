@@ -25,8 +25,10 @@ export {   activeChain,  };
 // Viem public client — used directly by hooks and window.figaroPublicClient
 // ---------------------------------------------------------------------------
 
-// In development the Next.js dev server proxies /rpc → local Anvil (same-origin,
-// no CORS). In production builds NEXT_PUBLIC_RPC_URL is only the DEFAULT —
+// The RPC transport points straight at the chain endpoint in every
+// environment — the static export has no server to proxy through (the former
+// dev `/rpc` rewrite is gone), and the browser reaches a CORS-permissive local
+// Anvil / a public gateway directly. NEXT_PUBLIC_RPC_URL is only the DEFAULT —
 // the user's runtime override (their own provider key, /settings) wins, so a
 // hosted deploy never bills every visitor's reads to the operator's key.
 // wagmi's config is created once at module load, so an override change
@@ -34,7 +36,7 @@ export {   activeChain,  };
 const rpcUrl =
     readUserEndpoints().rpcUrl ??
     process.env.NEXT_PUBLIC_RPC_URL ??
-    (process.env.NODE_ENV === "production" ? activeChain.rpcUrls.default.http[0] : "/rpc");
+    activeChain.rpcUrls.default.http[0];
 
 export const publicClient = createPublicClient({
     chain: activeChain,

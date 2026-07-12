@@ -66,9 +66,9 @@ test.describe('clause version axis (devnet)', () => {
         await page.getByTestId('designer-description-input').fill('Single-node assembly composing the v2 registration of a per-run probe clause.');
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
-        await page.waitForURL(/\/builders\/designer\/view\/asm-/, { timeout: 15000 });
-        const handle = page.url().match(/\/view\/(asm-[a-z0-9-]+)/)?.[1];
-        await page.goto(`/builders/designer/view/${handle}?intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.waitForURL(/\/builders\/designer\/view\?slug=asm-/, { timeout: 15000 });
+        const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
+        await page.goto(`/builders/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         const confirmBtn = page.getByTestId('review-confirm-publish');
         await confirmBtn.waitFor({ state: 'visible', timeout: 30000 });
         await page.waitForFunction(

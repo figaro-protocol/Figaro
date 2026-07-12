@@ -19,7 +19,7 @@
  *   - Error handling around the assemblyTemplate fetch.
  *
  * Returns the final slug on success (caller navigates to
- * `/builders/designer/edit/${finalSlug}`), or `null` if the user
+ * `/builders/designer/edit?slug=${finalSlug}`), or `null` if the user
  * cancelled the prompt.
  */
 

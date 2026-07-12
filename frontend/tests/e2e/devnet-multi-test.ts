@@ -48,7 +48,7 @@ export const test = base.extend<{ page: Page }>({
  * and then receiving an `accountsChanged` event).
  *
  * Use this when a test exercises a wallet OTHER than the default
- * buyer (anvil[0]) — e.g. seller-side `/orders/[processId]`,
+ * buyer (anvil[0]) — e.g. seller-side `/orders/view`,
  * spectator views, or the seller's `/orders` view. Mirrors an inline
  * pattern lifted into a reusable helper.
  *

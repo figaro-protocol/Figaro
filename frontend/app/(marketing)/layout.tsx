@@ -1,14 +1,13 @@
 import { MarketingHeader } from "@/components/marketing/MarketingHeader";
 import { Footer } from "@/components/shared/Footer";
 
-// Render per request, never at build time. middleware.ts issues a
-// per-request CSP nonce under `'strict-dynamic'`; statically prerendered
-// HTML cannot carry it, so on a production server the browser blocks every
-// script on a static page — zero client JS, dead inventories (surfaced by
-// the prod-build e2e webServer, 2026-06-12). Per-request rendering also
-// keeps the event-driven inventories (/assemblies, /clauses, /sellers)
-// reading live network state instead of a build-time snapshot.
-export const dynamic = "force-dynamic";
+// Statically exported (`output: 'export'`). These pages prerender to real
+// HTML at build time — the content curl/crawlers see — then hydrate. The
+// event-driven inventories (/assemblies, /clauses, /sellers) read live
+// network state client-side after mount (chain → IPFS), so the build-time
+// snapshot is only the shell, never stale data. Security headers + CSP are
+// applied at the hosting/CDN layer, not per-request (a static export runs no
+// middleware).
 
 /**
  * Layout for marketing-tier routes. Canonical inventory is the directory

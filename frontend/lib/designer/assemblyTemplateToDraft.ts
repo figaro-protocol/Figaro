@@ -3,7 +3,7 @@
  * assembly TEMPLATE (the no-hash JSON pinned on AssemblyRegistry). Powers the
  * "Fork" button: a published template is fetched, this helper turns it into a
  * localStorage draft under a new slug, and the canvas opens at
- * /builders/designer/edit/<new-slug>.
+ * /builders/designer/edit?slug=<new-slug>.
  *
  * The template carries structure (orders + topology parents) + the per-order clause
  * choices, but no agreements and no payment (payment is a runtime value). So

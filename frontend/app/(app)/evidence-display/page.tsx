@@ -17,7 +17,7 @@
  *   - disputeID:            (optional) a forum-side dispute reference, shown for context
  */
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { Suspense, useEffect, useState, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { createPublicClient, isAddress } from "viem";
 import { mockAwareHttp } from "@/lib/shared/mockTransport";
@@ -149,7 +149,7 @@ function SummaryBar({ timeline }: { timeline: ProcessTimeline }) {
 // Main Page
 // ---------------------------------------------------------------------------
 
-export default function EvidenceDisplayPage() {
+function EvidenceDisplayContent() {
     const searchParams = useSearchParams();
 
     const processId = searchParams.get("processId") as `0x${string}` | null;
@@ -304,5 +304,19 @@ export default function EvidenceDisplayPage() {
                 </footer>
             </article>
         </div>
+    );
+}
+
+export default function EvidenceDisplayPage() {
+    return (
+        <Suspense
+            fallback={
+                <div className="min-h-screen flex items-center justify-center">
+                    <p className="text-sm text-gray-500">Loading evidence…</p>
+                </div>
+            }
+        >
+            <EvidenceDisplayContent />
+        </Suspense>
     );
 }

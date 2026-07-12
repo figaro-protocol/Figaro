@@ -33,7 +33,9 @@ export const hardhat = _hardhat;
  *   NEXT_PUBLIC_CHAIN=base-sepolia  → Base Sepolia testnet
  *   (default / unset)               → local Anvil
  *
- * The /rpc proxy in next.config.js must point at the matching RPC endpoint.
+ * The wagmi transport (lib/shared/wagmi.ts) points straight at this chain's
+ * RPC endpoint — there is no server-side proxy (the static export has no
+ * server).
  */
 export const activeChain =
     process.env.NEXT_PUBLIC_CHAIN === "base-sepolia" ? baseSepolia : localAnvil;

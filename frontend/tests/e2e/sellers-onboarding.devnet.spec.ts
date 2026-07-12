@@ -4,7 +4,7 @@
  * SELLER REGISTRATION WIZARD (lifecycle Phase 2) — the UI test that a wallet can
  * register as a seller through the real 6-step wizard: identity → catalogue →
  * assemblies → agents → review → publish, ending anchored on `SellerRegistry`,
- * pinned to IPFS, and surfacing on `/s/[seller]` and `/discover`.
+ * pinned to IPFS, and surfacing on `/s/view` and `/discover`.
  *
  * Scope: ONE seller, the wizard, the on-chain registration. Nothing else. It uses
  * a dedicated wallet (anvil[13]) that no other test registers, so the wizard
@@ -180,7 +180,7 @@ test.describe("seller registration wizard (devnet)", () => {
         await assertPinnedInIpfs(profileURI!.slice("ipfs://".length));
 
         // ── Surfaces where a buyer finds it: its page + /discover ───────────
-        await page.goto(`/s/${SELLER.address}?e2e=devnet`, { waitUntil: "domcontentloaded" });
+        await page.goto(`/s/view?seller=${SELLER.address}&e2e=devnet`, { waitUntil: "domcontentloaded" });
         const detail = page.getByTestId("seller-detail-view");
         try {
             await detail.waitFor({ state: "visible", timeout: 30000 });

@@ -164,7 +164,7 @@ function OrderRow({ row, listings }: { row: ProcessRow; listings: ReadonlyArray<
     const { decimals } = useTokenDecimals(row.currency as `0x${string}` | undefined);
     return (
         <Link
-            href={`/orders/${row.processId}`}
+            href={`/orders/view?process=${row.processId}`}
             className="block rounded-lg border border-neutral-200 bg-white p-4 hover:border-black transition-colors"
             data-testid={`order-row-${row.processId}`}
         >

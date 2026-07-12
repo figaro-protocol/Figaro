@@ -64,13 +64,13 @@ export function DraftsList() {
                     </div>
                     <div className="flex flex-col gap-2 shrink-0">
                         <Link
-                            href={`/builders/designer/edit/${encodeURIComponent(d.slug)}`}
+                            href={`/builders/designer/edit?slug=${encodeURIComponent(d.slug)}`}
                             className="text-xs px-3 py-1.5 rounded border border-black bg-white hover:bg-neutral-100 text-black text-center"
                         >
                             Edit
                         </Link>
                         <Link
-                            href={`/builders/designer/view/${encodeURIComponent(d.slug)}`}
+                            href={`/builders/designer/view?slug=${encodeURIComponent(d.slug)}`}
                             className="text-xs px-3 py-1.5 rounded border border-neutral-300 bg-white hover:border-neutral-500 text-neutral-700 text-center"
                             data-testid={`draft-inspect-${d.slug}`}
                         >

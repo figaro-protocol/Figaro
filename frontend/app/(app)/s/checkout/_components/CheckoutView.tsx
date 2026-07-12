@@ -1,13 +1,13 @@
 "use client";
 
 /**
- * CheckoutView — the buyer's order surface at `/s/[seller]/checkout`.
+ * CheckoutView — the buyer's order surface at `/s/checkout?seller=<address>`.
  *
  * Driven EXCLUSIVELY by the seller's bound assembly. The checkout names no
  * clause and knows no modality: it resolves the assembly from the seller's
  * profile, walks the assembly's own topology + clauses, computes the bond,
  * validates Layer A, runs the bilateral / multi-order commit, and redirects to
- * `/orders/<processId>`. Every order's clauses come straight from the assembly
+ * `/orders/view?process=<processId>`. Every order's clauses come straight from the assembly
  * template; every sub-order's seller is resolved generically from the assembly's
  * `counterpartyBindings`. No courier picker, no modality taxonomy, no
  * buyer-set pricing — those are the assembly's concerns, not the checkout's.
@@ -485,7 +485,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     return (
         <div data-testid="checkout-view" data-seller-address={sellerAddressLower} className="container mx-auto px-6 py-10 max-w-2xl space-y-6">
             <div>
-                <Link href={`/s/${sellerAddressLower}`} className="text-sm text-neutral-500 hover:text-black">
+                <Link href={`/s/view?seller=${sellerAddressLower}`} className="text-sm text-neutral-500 hover:text-black">
                     ← Back to {sellerCatalogue.name}
                 </Link>
             </div>
@@ -502,7 +502,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                 {cartItems.length === 0 ? (
                     <p className="text-sm text-neutral-500">
                         Your cart is empty.{" "}
-                        <Link href={`/s/${sellerAddressLower}`} className="underline text-black hover:text-neutral-600">
+                        <Link href={`/s/view?seller=${sellerAddressLower}`} className="underline text-black hover:text-neutral-600">
                             Browse {sellerCatalogue.name}&apos;s catalogue
                         </Link>{" "}
                         to add items.

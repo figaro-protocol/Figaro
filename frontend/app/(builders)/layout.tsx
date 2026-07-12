@@ -3,10 +3,11 @@ import { Providers } from "../providers";
 import { BuilderHeader } from "@/components/shared/BuilderHeader";
 import { Footer } from "@/components/shared/Footer";
 
-// Render per request, never at build time — same reason as the (app) and
-// (marketing) tiers: the per-request CSP nonce is incompatible with static
-// prerender, and the designer reads live network state (ClauseRegistry → IPFS).
-export const dynamic = "force-dynamic";
+// Statically exported (`output: 'export'`) — same as the (app) and
+// (marketing) tiers. The designer reads live network state (ClauseRegistry →
+// IPFS) client-side after mount; the prerendered HTML is only the shell.
+// Security headers + CSP live at the hosting/CDN layer (a static export runs
+// no middleware).
 
 export const metadata: Metadata = {
     title: "Build on Figaro — Trade Infrastructure",

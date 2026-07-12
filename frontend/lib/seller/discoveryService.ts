@@ -78,7 +78,7 @@ async function fetchSellerAsCatalogue(
     if (!hasAnchoredBinding) return null;
 
     // Stamp the wallet onto the profile so downstream renderers can
-    // route from the listing back to /s/<address>.
+    // route from the listing back to /s/view?seller=<address>.
     const stamped: SellerProfileMetadata = {
         ...profile,
         subjectAddress: profile.subjectAddress ?? (address as `0x${string}`),

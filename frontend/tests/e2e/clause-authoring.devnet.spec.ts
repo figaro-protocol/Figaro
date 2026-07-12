@@ -214,10 +214,10 @@ test.describe('CLAUSE AUTHORING — register on /builders/clauses, inventory rea
         await page.getByTestId('designer-description-input').fill(`Single-node assembly carrying ${CLAUSE_ID}.`);
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
-        await page.waitForURL(/\/builders\/designer\/view\/asm-/, { timeout: 15000 });
-        const handle = page.url().match(/\/view\/(asm-[a-z0-9-]+)/)?.[1];
+        await page.waitForURL(/\/builders\/designer\/view\?slug=asm-/, { timeout: 15000 });
+        const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
         expect(handle, 'review navigated to a draft handle').toBeTruthy();
-        await page.goto(`/builders/designer/view/${handle}?intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`/builders/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         const confirmBtn = page.getByTestId('review-confirm-publish');
         await confirmBtn.waitFor({ state: 'visible', timeout: 30000 });
         await waitForConnected(page);
@@ -263,7 +263,7 @@ test.describe('CLAUSE AUTHORING — register on /builders/clauses, inventory rea
         const [buyerBefore, sellerBefore, coreBefore] = await Promise.all([
             balanceOf(AUTHOR), balanceOf(SELLER), balanceOf(core),
         ]);
-        await gotoAsWallet(page, AUTHOR, `/s/${SELLER}?e2e=devnet`);
+        await gotoAsWallet(page, AUTHOR, `/s/view?seller=${SELLER}&e2e=devnet`);
         await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();
@@ -333,7 +333,7 @@ test.describe('CLAUSE AUTHORING — register on /builders/clauses, inventory rea
         const resolvedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: AUTHOR }, fromBlock: 0n,
         })).length;
-        await gotoAsWallet(page, AUTHOR, `/orders/${processId}?e2e=devnet`);
+        await gotoAsWallet(page, AUTHOR, `/orders/view?process=${processId}&e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const resolveBtn = page.getByTestId('capability-execute-resolve-process');

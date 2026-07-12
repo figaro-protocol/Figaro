@@ -135,7 +135,7 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
         ]);
 
         // ── CHECKOUT: the unbound path. The picker is the NEW coverage. ──
-        await gotoAsWallet(page, BUYER, `/s/${MERCHANT}?e2e=devnet`);
+        await gotoAsWallet(page, BUYER, `/s/view?seller=${MERCHANT}&e2e=devnet`);
         await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();
@@ -232,7 +232,7 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
         const resolvedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length;
-        await gotoAsWallet(page, BUYER, `/orders/${processId}?e2e=devnet`);
+        await gotoAsWallet(page, BUYER, `/orders/view?process=${processId}&e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const resolveBtn = page.getByTestId('capability-execute-resolve-process');
@@ -256,7 +256,7 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
         // ── AUDIT (lean — the runtime legs are local-commerce's assertion on
         //    this same assembly): the financials render a statement per seller
         //    plus the consolidation. ──
-        await page.goto(`/audit/${processId}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`/audit/view?process=${processId}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         await expect(page.getByTestId('financials-view')).toBeVisible({ timeout: 30000 });

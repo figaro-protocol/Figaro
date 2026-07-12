@@ -6,8 +6,8 @@ export async function ensureRpc(publicClient: RpcClient | null | undefined): Pro
     if (!publicClient) return { ok: false, fromBlock: 0n };
 
     try {
-        // 10 s timeout — generous enough for the first request through the
-        // Next.js /rpc proxy (dev) while still bailing quickly on real outages.
+        // 10 s timeout — generous enough for the first request to the chain
+        // endpoint while still bailing quickly on real outages.
         const latest = await Promise.race([
             publicClient.getBlockNumber(),
             new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 10000)),

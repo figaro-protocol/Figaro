@@ -2,7 +2,7 @@
  * designer-view.devnet.spec.ts
  *
  * Phase 5 A9: the read-only assembly inspector at
- * /builders/designer/view/[slug] (`ViewAssemblyClient`). No devnet spec
+ * /builders/designer/view (`ViewAssemblyClient`). No devnet spec
  * covered the on-chain read-only resolution path before.
  *
  * `ViewAssemblyClient` resolves a slug from a localStorage draft first,
@@ -20,12 +20,12 @@ import { test, expect } from './devnet-multi-test';
 import { publishProbeAssembly } from './probeAssembly';
 
 
-test.describe('Assembly read-only inspector — /view/[slug] (devnet)', () => {
+test.describe('Assembly read-only inspector — /view?slug= (devnet)', () => {
 
     // The publish leg is canvas → review → IPFS pin → on-chain tx.
     test.setTimeout(180_000);
 
-    test('publishes an assembly, then inspects it read-only at /view/[slug]', async ({ page }) => {
+    test('publishes an assembly, then inspects it read-only at /view?slug=', async ({ page }) => {
         // Publish a per-run-unique assembly via the REAL canvas (the nonce lives
         // in the probe clause id, so the content-derived slug is fresh each run —
         // no snapshot/revert needed; devnet is a mainnet rehearsal).
@@ -35,7 +35,7 @@ test.describe('Assembly read-only inspector — /view/[slug] (devnet)', () => {
         // The publish flow deleted the local draft, so /view/<slug> resolves from
         // chain. `just-published=1` rides out the AssemblyRegistered indexer race.
         await page.goto(
-            `/builders/designer/view/${slug}?just-published=1&e2e=devnet`,
+            `/builders/designer/view?slug=${slug}&just-published=1&e2e=devnet`,
             { waitUntil: 'domcontentloaded' },
         );
 
@@ -53,7 +53,7 @@ test.describe('Assembly read-only inspector — /view/[slug] (devnet)', () => {
         const missingSlug = `a9-missing-${Date.now()}`;
 
         await page.goto(
-            `/builders/designer/view/${missingSlug}?e2e=devnet`,
+            `/builders/designer/view?slug=${missingSlug}&e2e=devnet`,
             { waitUntil: 'domcontentloaded' },
         );
 

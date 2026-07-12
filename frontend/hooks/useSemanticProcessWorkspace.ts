@@ -104,7 +104,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     // Spectator path: wallet isn't a participant in this process, but
     // the process exists on-chain (event log says processOrders is
     // non-empty). Build a synthetic summary so deriveProcessModelFromRuntime
-    // can still produce a model. Without this, /orders/<processId>
+    // can still produce a model. Without this, /orders/view?process=<processId>
     // stays in perpetual "Loading…" for any wallet that didn't witness
     // the order — auditors, journalists, counterparty researchers, etc.
     // The event log is public; the page should follow.

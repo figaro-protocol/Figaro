@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * OrderTimelineView — per-order page at `/orders/[processId]`.
+ * OrderTimelineView — per-order page at `/orders/view?process=<processId>`.
  *
  * This surface NAMES NO CLAUSE. It renders only:
  *   - CORE state — placed / active / completed, from the commit + process
@@ -17,7 +17,7 @@
  *     no edit to this page. (Enforced by `lint-no-hardcoded-clauses-in-runtime`.)
  *
  * The settlement panel (kernel proceeds — names no clause) renders once the
- * process is resolved. This page does NOT replace `/audit/[processId]`.
+ * process is resolved. This page does NOT replace `/audit/view?process=<processId>`.
  */
 
 import Link from "next/link";
@@ -247,7 +247,7 @@ export function OrderTimelineView({ processId }: Props) {
             {/* Secondary affordances */}
             <section className="flex flex-wrap gap-3 text-sm">
                 <Link
-                    href={`/audit/${processId}`}
+                    href={`/audit/view?process=${processId}`}
                     className="rounded border border-neutral-300 px-4 py-2 text-neutral-700 hover:bg-neutral-50"
                     data-testid="link-audit"
                 >

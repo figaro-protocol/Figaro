@@ -17,7 +17,7 @@
  *     PDF's hash appendix); the component searches the locally-loaded
  *     orders + agreements and reports which event field / section / leaf
  *     matches it. Used both standalone (auditor with a hash but no
- *     process) and inside `/audit/[processId]` (search scoped to the
+ *     process) and inside `/audit/view?process=<processId>` (search scoped to the
  *     wallet's visible orders, including the current process).
  *
  * No server round-trip; all computation is client-side via the same
@@ -332,7 +332,7 @@ function SearchMode() {
                 <div className="rounded border border-neutral-200 bg-neutral-50 p-4 text-xs text-neutral-600" data-testid="verify-search-no-hits">
                     No match in locally-loaded orders + agreements. Try modes A or B
                     with the hash&apos;s source content, or open the relevant
-                    process audit at /audit/[processId] first.
+                    process audit at /audit/view?process=… first.
                 </div>
             )}
             {hits.length > 0 && (

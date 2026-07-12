@@ -1,7 +1,7 @@
 /**
  * seller-page.devnet.spec.ts
  *
- * /s/[seller] is the buyer-facing catalogue page — branding hero,
+ * /s/view is the buyer-facing catalogue page — branding hero,
  * menu grid, cart, place-order CTA. The page reads the seller's
  * profile + catalogue from IPFS via useRegisteredCatalogues and
  * mounts the cart against useCheckout.
@@ -15,7 +15,7 @@
  *      one first). The surfacing rule is applied EVENLY (operator
  *      2026-07-02): a seller without ≥1 anchored binding is absent on
  *      /discover, /s, and checkout alike — browse-only is retired.
- *   3. Open /s/<sellerAddress>?e2e=devnet from a buyer wallet.
+ *   3. Open /s/view?seller=<sellerAddress>?e2e=devnet from a buyer wallet.
  *
  * Assertions: the seller-detail-view shell renders for the seller
  * address, the menu item from the seeded catalogue appears, clicking
@@ -133,7 +133,7 @@ async function seedRegisteredSellerWithCatalogue(): Promise<SeededSeller> {
     return { address: SELLER_ADDR as Hex, itemId, itemName };
 }
 
-test.describe('/s/[seller] (devnet)', () => {
+test.describe('/s/view (devnet)', () => {
     // Discovery + IPFS round-trip pushes this past the 60s default.
     test.setTimeout(120_000);
 
@@ -141,7 +141,7 @@ test.describe('/s/[seller] (devnet)', () => {
         const seeded = await seedRegisteredSellerWithCatalogue();
 
         // Buyer wallet is anvil[0] by default — connect via ?e2e=devnet.
-        await page.goto(`/s/${seeded.address}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`/s/view?seller=${seeded.address}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
 
         // The page mounts SellerDetailView and queries
         // useRegisteredCatalogues, which iterates registered sellers

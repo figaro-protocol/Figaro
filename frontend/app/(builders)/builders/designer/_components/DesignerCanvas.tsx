@@ -3,7 +3,7 @@
 /**
  * DesignerCanvas — the shared composition canvas (the TopologyCanvas of
  * orders + the per-order AgreementDrawer) used by /builders/designer/new
- * and /builders/designer/edit/[slug]. Both pages render this component
+ * and /builders/designer/edit?slug=<slug>. Both pages render this component
  * with different `seed` props; everything else (state, handlers,
  * autosave, drawer, toolbar) is identical.
  *
@@ -485,7 +485,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         // Preserve a ?e2e= mode flag — the review page must stay in
         // devnet/mock mode across this canvas redirect.
         const e2e = searchParams.get("e2e");
-        const reviewPath = `/builders/designer/view/${encodeURIComponent(result.snapshot.slug)}?intent=publish`;
+        const reviewPath = `/builders/designer/view?slug=${encodeURIComponent(result.snapshot.slug)}&intent=publish`;
         router.push(e2e ? `${reviewPath}&e2e=${encodeURIComponent(e2e)}` : reviewPath);
     }, [buildSnapshot, router, searchParams, slug]);
 

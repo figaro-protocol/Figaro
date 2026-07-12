@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { SellerEditProfile } from "@/components/sellers/SellerEditProfile";
 
-export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
     title: "Edit profile — Figaro Protocol",
     description: "Update the on-chain seller-profile metadata pointer. Re-pins the profile JSON to IPFS and calls SellerRegistry.updateProfile; deposit and lock period are not touched.",

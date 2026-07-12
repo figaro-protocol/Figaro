@@ -392,8 +392,8 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
             await page.getByTestId('designer-review').click();
 
-            await page.waitForURL(/\/builders\/designer\/view\/asm-/, { timeout: 15000 });
-            const handle = page.url().match(/\/view\/(asm-[a-z0-9-]+)/)?.[1];
+            await page.waitForURL(/\/builders\/designer\/view\?slug=asm-/, { timeout: 15000 });
+            const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
             expect(handle, 'review navigated to a draft handle').toBeTruthy();
 
             // ── PUBLISH OR ADOPT: on a fresh deployment the publish anchors the
@@ -402,7 +402,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             //    (first-write-wins) and its refusal NAMES the anchored slug —
             //    the rung ADOPTS that assembly. Either way the slug comes from
             //    the network's answer, never derived locally. ──
-            await page.goto(`/builders/designer/view/${handle}?intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+            await page.goto(`/builders/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
             const confirmBtn = page.getByTestId('review-confirm-publish');
             await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
             await waitForConnected(page);
@@ -470,7 +470,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             const [buyerBefore, sellerBefore, coreBefore] = await Promise.all([
                 balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
             ]);
-            await gotoAsWallet(page, BUYER, `/s/${SELLER}?e2e=devnet`);
+            await gotoAsWallet(page, BUYER, `/s/view?seller=${SELLER}&e2e=devnet`);
             await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
             await waitForConnected(page);
             const addBtn = page.locator('[data-testid^="btn-add-"]').first();
@@ -557,7 +557,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                     eventName: 'Attestation', args: { processId }, fromBlock: 0n,
                 })).length;
 
-                await gotoAsWallet(page, SELLER, `/orders/${processId}?e2e=devnet`);
+                await gotoAsWallet(page, SELLER, `/orders/view?process=${processId}&e2e=devnet`);
                 await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
                 await waitForConnected(page);
                 const witnessCap = page.locator(
@@ -606,7 +606,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             // ── AUDIT: the target clause's committed leaf surfaces, labelled
             //    from its spec, and the merkle root over ALL leaves matches the
             //    on-chain agreementHash. ──
-            await page.goto(`/audit/${processId}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+            await page.goto(`/audit/view?process=${processId}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
             await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
             await waitForConnected(page);
             const evidence = page.getByTestId('audit-clause-evidence');

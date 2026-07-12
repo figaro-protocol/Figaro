@@ -263,7 +263,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         // ── CHECKOUT: the buyer orders the pizza with delivery. One bound
         //    assembly → the static method line names it; the breakdown prices
         //    the courier live from the courier's own catalogue. ──
-        await gotoAsWallet(page, BUYER, `/s/${MERCHANT}?e2e=devnet`);
+        await gotoAsWallet(page, BUYER, `/s/view?seller=${MERCHANT}&e2e=devnet`);
         await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();
@@ -356,7 +356,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         //    (data-clause-id): the proximity WITNESS capability shares the
         //    rail and — by ruling — stays offered while the order is active. ──
         const walkLadder = async (seller: Hex, clauseId: string, stages: string[], label: string) => {
-            await gotoAsWallet(page, seller, `/orders/${processId}?e2e=devnet`);
+            await gotoAsWallet(page, seller, `/orders/view?process=${processId}&e2e=devnet`);
             await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
             await waitForConnected(page);
             const ladderBtn = page.locator(
@@ -461,7 +461,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             address: config.attestationCoordinator as Hex, abi: ATTESTATION_COORDINATOR_ABI,
             eventName: 'Attestation', args: { attester: BUYER }, fromBlock: 0n,
         })).length;
-        await gotoAsWallet(page, BUYER, `/orders/${processId}?e2e=devnet`);
+        await gotoAsWallet(page, BUYER, `/orders/view?process=${processId}&e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         await page.getByTestId('interaction-address-name').waitFor({ state: 'visible', timeout: 30000 });
@@ -490,7 +490,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
 
         // The courier decrypts and the panel verifies the received blob
         // against the on-chain anchor — readable address, tamper-evident.
-        await gotoAsWallet(page, COURIER, `/orders/${processId}?e2e=devnet`);
+        await gotoAsWallet(page, COURIER, `/orders/view?process=${processId}&e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addressDetail = page.getByTestId('interaction-address-detail');
@@ -540,7 +540,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         // The BUYER decrypts the pickup point and the panel verifies it
         // against the courier's on-chain anchor — the receiving seat this
         // time, same tamper-evidence.
-        await gotoAsWallet(page, BUYER, `/orders/${processId}?e2e=devnet`);
+        await gotoAsWallet(page, BUYER, `/orders/view?process=${processId}&e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const pickupDetail = page.getByTestId('interaction-address-detail');
@@ -577,7 +577,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         const resolvedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length;
-        await gotoAsWallet(page, BUYER, `/orders/${processId}?e2e=devnet`);
+        await gotoAsWallet(page, BUYER, `/orders/view?process=${processId}&e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const resolveBtn = page.getByTestId('capability-execute-resolve-process');
@@ -601,7 +601,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         //    settled institution accepts no further attestations — the rail
         //    derives nothing for any party, witness capabilities included
         //    (on-chain, AttestationCoordinator reverts OrderResolved). ──
-        await gotoAsWallet(page, COURIER, `/orders/${processId}?e2e=devnet`);
+        await gotoAsWallet(page, COURIER, `/orders/view?process=${processId}&e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         await expect(
@@ -615,7 +615,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         //    state. The statements are documents drawn by the one generic
         //    renderer — no bespoke financials layout, no per-order "line item"
         //    breakdown (that is the invoice, carried in the audit bundle). ──
-        await page.goto(`/audit/${processId}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`/audit/view?process=${processId}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         await expect(page.getByTestId('financials-view')).toBeVisible({ timeout: 30000 });
@@ -763,7 +763,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             baseURL: test.info().project.use.baseURL,
         });
         const spectatorPage = await spectator.newPage();
-        await spectatorPage.goto(`/audit/${processId}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await spectatorPage.goto(`/audit/view?process=${processId}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         expect(
             await spectatorPage.evaluate(() => (window as { ethereum?: unknown }).ethereum === undefined),
             'the spectator context has NO wallet provider at all',

@@ -187,10 +187,10 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
             await page.getByTestId('designer-description-input').fill('Rate-pricing scenario: the hauler lists a per-km rate; checkout derives the payment from the geodistance between the committed origin and destination.');
             await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
             await page.getByTestId('designer-review').click();
-            await page.waitForURL(/\/builders\/designer\/view\/asm-/, { timeout: 15000 });
-            const handle = page.url().match(/\/view\/(asm-[a-z0-9-]+)/)?.[1];
+            await page.waitForURL(/\/builders\/designer\/view\?slug=asm-/, { timeout: 15000 });
+            const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
             expect(handle, 'review navigated to a draft handle').toBeTruthy();
-            await page.goto(`/builders/designer/view/${handle}?intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+            await page.goto(`/builders/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
             const confirmBtn = page.getByTestId('review-confirm-publish');
             await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
             await waitForConnected(page);
@@ -246,7 +246,7 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
         }
 
         // The hauler's public page reads the item as a rate, not a price.
-        await gotoAsWallet(page, BUYER, `/s/${HAULER}?e2e=devnet`);
+        await gotoAsWallet(page, BUYER, `/s/view?seller=${HAULER}&e2e=devnet`);
         await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
         await expect(
             page.getByText(`/ km`).first(),
@@ -256,7 +256,7 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
         // ── CHECKOUT: the buyer orders from the lead. The P&L derives the
         //    hauled leg LIVE: rate × ceil(km between the committed endpoints),
         //    shown before anything is signed. ──
-        await gotoAsWallet(page, BUYER, `/s/${LEAD}?e2e=devnet`);
+        await gotoAsWallet(page, BUYER, `/s/view?seller=${LEAD}&e2e=devnet`);
         await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();

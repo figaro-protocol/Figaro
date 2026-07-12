@@ -87,12 +87,13 @@ misfiled; it belongs in Foundry. A mock-backed test cannot be e2e — the
 reaction is fabricated. The `mock` Playwright project was retired 2026-05-20;
 do not recreate it.
 
-The webServer is a **production build** by default (`next build` + `next start`
-on :3100, ~90 s build): the dev server degrades after ~25 min of
-compile-on-demand (the seller-track-record tail-position flake, 2026-06-11),
-and devnet is a mainnet rehearsal — participants hit a production build. The
-build inlines `frontend/.env.local`, so kill :3100 after a `FORCE_REDEPLOY` or
-an app-code edit — a reused server keeps serving the build it started with.
+The webServer is a **production build** by default (`next build` → static
+export served by `serve` on :3100, ~90 s build — there is no `next start` under
+`output: export`): the dev server degrades after ~25 min of compile-on-demand
+(the seller-track-record tail-position flake, 2026-06-11), and devnet is a
+mainnet rehearsal — participants hit the exported production artifact. The build
+inlines `frontend/.env.local`, so kill :3100 after a `FORCE_REDEPLOY` or an
+app-code edit — a reused server keeps serving the build it started with.
 `PLAYWRIGHT_WEB_MODE=dev` restores the dev-server webServer for HMR-speed
 iteration. In production builds, test-helper gating honors only the explicit
 `NEXT_PUBLIC_ENABLE_TEST_HELPERS` build-time opt-in (`lib/shared/testHelpers.ts`,

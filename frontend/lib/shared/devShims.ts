@@ -82,7 +82,7 @@ export function attachDebugClient(rpcUrl: string): void {
             return c.readContract({ address: addr, abi, functionName: "feeRate" });
         };
 
-        // Instrument window.fetch to surface /rpc calls in Playwright traces
+        // Instrument window.fetch to surface RPC calls in Playwright traces
         if (!window.__figaro_fetch_wrapped) {
             const orig = window.fetch.bind(window);
             window.fetch = async (...args: Parameters<typeof fetch>) => {
@@ -141,11 +141,11 @@ export function attachTestSigner(): void {
         const account = privateKeyToAccount(pk as `0x${string}`);
         const wallet = createWalletClient({
             account,
-            transport: http("/rpc"),
+            transport: http(localAnvil.rpcUrls.default.http[0]),
         });
         const pub = createPublicClient({
             chain: localAnvil,
-            transport: http("/rpc"),
+            transport: http(localAnvil.rpcUrls.default.http[0]),
         });
 
         if (!window.ethereum) window.ethereum = {};

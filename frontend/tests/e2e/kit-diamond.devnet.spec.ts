@@ -215,10 +215,10 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             await page.getByTestId('designer-description-input').fill('Multi-parent topology: the leaf order carries two parents — the DAG join the kernel never sees, committed in the topology clause.');
             await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
             await page.getByTestId('designer-review').click();
-            await page.waitForURL(/\/builders\/designer\/view\/asm-/, { timeout: 15000 });
-            const handle = page.url().match(/\/view\/(asm-[a-z0-9-]+)/)?.[1];
+            await page.waitForURL(/\/builders\/designer\/view\?slug=asm-/, { timeout: 15000 });
+            const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
             expect(handle, 'review navigated to a draft handle').toBeTruthy();
-            await page.goto(`/builders/designer/view/${handle}?intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+            await page.goto(`/builders/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
             const confirmBtn = page.getByTestId('review-confirm-publish');
             await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
             await waitForConnected(page);
@@ -316,7 +316,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
         ]);
 
         // ── CHECKOUT: one place signs all FOUR orders through the confirm gate. ──
-        await gotoAsWallet(page, BUYER, `/s/${LEAD.address}?e2e=devnet`);
+        await gotoAsWallet(page, BUYER, `/s/view?seller=${LEAD.address}&e2e=devnet`);
         await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();
@@ -402,7 +402,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
 
         // ── THE DIAMOND, merkle-bound: the leaf's pinned agreement commits
         //    BOTH parents' REAL order hashes in its topology section. ──
-        await gotoAsWallet(page, BUYER, `/orders/${processId}?e2e=devnet`);
+        await gotoAsWallet(page, BUYER, `/orders/view?process=${processId}&e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
         const dAgreementUri = await page.evaluate(
             (key) => window.localStorage.getItem(key),
@@ -448,7 +448,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
         expect(coreF, 'FigaroCore escrow returned to its baseline').toBe(core0);
 
         // ── AUDIT: the full four-order record. ──
-        await page.goto(`/audit/${processId}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`/audit/view?process=${processId}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         await expect(page.getByTestId('financials-view')).toBeVisible({ timeout: 30000 });

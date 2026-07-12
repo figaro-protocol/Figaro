@@ -79,7 +79,7 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
         // Plain goto auto-connects the default account via ClientInit (as
         // designer-publish does); gotoAsWallet's switch-to-default is a no-op that
         // leaves wagmi unconnected — reserve the switch for the non-default seller.
-        await page.goto(`/s/${SELLER}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`/s/view?seller=${SELLER}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();
@@ -181,7 +181,7 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
         const resolvedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length;
-        await gotoAsWallet(page, BUYER, `/orders/${processId}?e2e=devnet`);
+        await gotoAsWallet(page, BUYER, `/orders/view?process=${processId}&e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const resolveBtn = page.getByTestId('capability-execute-resolve-process');
@@ -206,7 +206,7 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
         //    and the EVENTS for the (now resolved) process — its financial statements
         //    (per seller + consolidated) and the on-chain events (the cash-flow log
         //    of commit + resolve transfers, carried in the consolidated statement). ──
-        await page.goto(`/audit/${processId}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`/audit/view?process=${processId}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         await expect(

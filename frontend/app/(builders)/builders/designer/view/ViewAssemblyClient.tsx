@@ -29,7 +29,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAccount, usePublicClient } from "wagmi";
 import { TopologyCanvas } from "@/components/runtime/TopologyCanvas";
-import { AgreementDrawer } from "../../_components/AgreementDrawer";
+import { AgreementDrawer } from "../_components/AgreementDrawer";
 import {
     deleteNamedDraft,
     loadNamedDraft,
@@ -295,7 +295,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         try {
             const outcome = forkPublishedAssembly(slug, resolved.assemblyTemplate);
             if (!outcome) return;
-            router.push(`/builders/designer/edit/${encodeURIComponent(outcome.finalSlug)}`);
+            router.push(`/builders/designer/edit?slug=${encodeURIComponent(outcome.finalSlug)}`);
         } catch (err) {
             window.alert(`Fork failed: ${err instanceof Error ? err.message : String(err)}`);
         } finally {
@@ -357,9 +357,9 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 </dl>
                 <div className="flex items-center gap-3 pt-2">
                     <Link
-                        href={`/builders/designer/view/${encodeURIComponent(receipt.slug)}?just-published=1`}
+                        href={`/builders/designer/view?slug=${encodeURIComponent(receipt.slug)}&just-published=1`}
                         className="text-sm text-ink-faint hover:text-ink-heading underline"
-                        title={`Opens the public read-only view at /builders/designer/view/${receipt.slug}`}
+                        title={`Opens the public read-only view at /builders/designer/view?slug=${receipt.slug}`}
                     >
                         Open public read-only view →
                     </Link>
@@ -405,7 +405,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     const actionButton = inReviewMode ? (
         <div className="ml-auto flex items-center gap-2">
             <Link
-                href={`/builders/designer/edit/${encodeURIComponent(slug)}`}
+                href={`/builders/designer/edit?slug=${encodeURIComponent(slug)}`}
                 className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong text-ink-heading"
                 data-testid="review-back-to-editor"
             >

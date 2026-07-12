@@ -12,7 +12,7 @@
  * is no bespoke financials layout and no per-order "line item" breakdown — the
  * per-seller line detail is the invoice document, carried in the audit bundle.
  *
- * Used by `/audit/[processId]`.
+ * Used by `/audit/view?process=<processId>`.
  */
 
 import { useProcessOrders } from "@/hooks/useProcessOrders";

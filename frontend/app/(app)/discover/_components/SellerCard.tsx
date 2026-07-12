@@ -96,7 +96,7 @@ export function SellerCard({
             {/* Track record — public-graph-derived. Rendered only once the
                 seller has completed a process; the absence of the line is
                 itself the signal, matching the detail page's honest empty
-                state. The full breakdown lives on /s/[seller]. */}
+                state. The full breakdown lives on /s/view?seller=<address>. */}
             {trackRecord && trackRecord.completedProcesses > 0 && (
                 <p className="text-xs text-gray-600 mb-3" data-testid="card-track-record">
                     <span className="font-semibold text-black tabular-nums">

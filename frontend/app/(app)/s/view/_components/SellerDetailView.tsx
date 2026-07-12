@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * SellerDetailView — the buyer's BROWSE surface at `/s/[seller]`.
+ * SellerDetailView — the buyer's BROWSE surface at `/s/view?seller=<address>`.
  *
  * Browse only: the seller's branding/hero, public-graph track record, and
  * catalogue grid. The buyer selects items into the merchant-scoped cart and
- * follows the "Review order" CTA to `/s/[seller]/checkout`, where the method is
+ * follows the "Review order" CTA to `/s/checkout?seller=<address>`, where the method is
  * chosen and the bonded order is committed. This page composes NO order and
  * holds NO checkout state — that concern lives entirely on the checkout surface.
  *
@@ -321,7 +321,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                                         {cartSubtotal.toFixed(4)}{tokenSymbol ? ` ${tokenSymbol}` : ""}
                                     </span>
                                 </div>
-                                <Link href={`/s/${sellerAddressLower}/checkout`} className="block">
+                                <Link href={`/s/checkout?seller=${sellerAddressLower}`} className="block">
                                     <Button className="w-full" data-testid="btn-review-order">
                                         Review order ({cartCount})
                                     </Button>

@@ -27,15 +27,18 @@ try {
 const PLAYWRIGHT_PORT = Number(process.env.PLAYWRIGHT_PORT ?? '3100');
 const PLAYWRIGHT_BASE_URL = `http://127.0.0.1:${PLAYWRIGHT_PORT}`;
 
-// Web-server mode. Default = production (`next build` + `next start`):
-// the dev server degrades after ~25 min of compile-on-demand (the
+// Web-server mode. Default = production (`next build` → static export, served
+// by `serve`): the dev server degrades after ~25 min of compile-on-demand (the
 // seller-track-record tail-position pattern, 2026-06-11), and devnet is a
-// mainnet rehearsal — participants hit a production build, not a dev
-// server. The build (~90 s) inlines frontend/.env.local (contract
-// addresses, NEXT_PUBLIC_ENABLE_TEST_HELPERS), so after a FORCE_REDEPLOY
-// or an app-code edit, kill :3100 — a reused server keeps serving the
-// build it started with. PLAYWRIGHT_WEB_MODE=dev restores the dev-server
-// webServer for HMR-speed iteration on app code.
+// mainnet rehearsal — participants hit the exported production artifact, not a
+// dev server. `output: 'export'` (next.config.mjs) writes the static site into
+// the build dir (`.next-e2e` here, isolated from the dev :3000 `.next`), which
+// `serve` then hosts — there is no `next start` under a static export. The
+// build (~90 s) inlines frontend/.env.local (contract addresses,
+// NEXT_PUBLIC_ENABLE_TEST_HELPERS), so after a FORCE_REDEPLOY or an app-code
+// edit, kill :3100 — a reused server keeps serving the build it started with.
+// PLAYWRIGHT_WEB_MODE=dev restores the dev-server webServer for HMR-speed
+// iteration on app code.
 const WEB_MODE = process.env.PLAYWRIGHT_WEB_MODE === 'dev' ? 'dev' : 'prod';
 
 export default defineConfig({
@@ -55,11 +58,20 @@ export default defineConfig({
     },
 
     webServer: {
-        // NEXT_DISTDIR isolates the e2e build (`.next-e2e`) from the developer's
-        // interactive :3000 build (`.next`) so neither clobbers the other's cache.
+        // NEXT_DISTDIR isolates the e2e static export (`.next-e2e`) from the
+        // developer's interactive :3000 dev build (`.next`) so neither clobbers
+        // the other. In prod mode `next build` emits the static site into
+        // `.next-e2e`, which `serve` hosts (no `next start` under output:export);
+        // clean-URL resolution maps `/s/view` → `.next-e2e/s/view.html`.
         command:
             WEB_MODE === 'prod'
-                ? `NEXT_DISTDIR=.next-e2e npm run build && NEXT_DISTDIR=.next-e2e PORT=${PLAYWRIGHT_PORT} npm run start`
+                // `serve:export` (scripts/serve-export.mjs), NOT `npx serve`: serve
+                // leaks a file descriptor per aborted prefetch and crashes on
+                // macOS's per-process fd cap (kern.maxfilesperproc = 10240) with an
+                // unhandled EMFILE mid-suite, taking every later test down with
+                // CONNECTION_REFUSED. Our server destroys each file stream on
+                // response close, so fds are released and no request can crash it.
+                ? `NEXT_DISTDIR=.next-e2e npm run build && SERVE_DIR=.next-e2e PORT=${PLAYWRIGHT_PORT} npm run serve:export`
                 : `NEXT_DISTDIR=.next-e2e PORT=${PLAYWRIGHT_PORT} npm run dev`,
         url: PLAYWRIGHT_BASE_URL,
         reuseExistingServer: !process.env.CI,

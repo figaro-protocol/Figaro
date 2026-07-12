@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { ProcessFinancialsView } from "../_components/ProcessFinancialsView";
 import { ProcessClauseEvidence } from "../_components/ProcessClauseEvidence";
 import { HashVerifier } from "../_components/HashVerifier";
@@ -42,8 +42,8 @@ function ProcessDisputeSection({ processId }: { processId: string }) {
 }
 
 export function ProcessAuditClient() {
-    const params = useParams<{ processId: string }>();
-    const processId = params?.processId ?? null;
+    const searchParams = useSearchParams();
+    const processId = searchParams.get("process");
 
     if (!processId) {
         return (

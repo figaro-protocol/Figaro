@@ -15,7 +15,7 @@
  *      the DEVICE location (Playwright-set coordinates → encoded geohash),
  *      the destination is typed by hand (typing stays first-class).
  *   4. Save; discover the assigned draft handle from the hub's drafts list and
- *      reload via /builders/designer/edit/<slug> — the geolocation checkbox is
+ *      reload via /builders/designer/edit?slug=<slug> — the geolocation checkbox is
  *      STILL CHECKED and both composed VALUES survived.
  *   5. Uncheck it, save, reload — STILL UNCHECKED. Both directions of a
  *      user-driven clause edit persist.
@@ -69,7 +69,7 @@ async function saveDraft(page: Page): Promise<string> {
 
 /** Reopen the saved draft in the editor. */
 async function reopenDraft(page: Page, slug: string) {
-    await page.goto(`/builders/designer/edit/${slug}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`/builders/designer/edit?slug=${slug}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
     await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
 }
 

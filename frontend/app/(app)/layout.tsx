@@ -2,15 +2,17 @@ import { Providers } from "../providers";
 import { Header } from "@/components/shared/Header";
 import { Footer } from "@/components/shared/Footer";
 
-// Wallet-dependent pages (everything in this group) read window.ethereum
-// + wagmi/RainbowKit client state at render time. Static pre-render would
-// require Suspense boundaries around every transitive useSearchParams /
-// useAccount call site in the dependency tree (RainbowKit + wagmi).
-// Marking the layout `force-dynamic` opts the entire (app) tier out of
-// static export — pages render at request time on the server. The
-// (marketing) tier is force-dynamic too: the per-request CSP nonce is
-// incompatible with static prerender (see (marketing)/layout.tsx).
-export const dynamic = "force-dynamic";
+// The whole site is statically exported (`output: 'export'` in
+// next.config.mjs) — no server runtime. Wallet-dependent pages in this group
+// read window.ethereum + wagmi/RainbowKit client state, but only AFTER mount
+// (the `useMounted` hydration gate — first render matches the prerendered
+// shell, never `ssr:true`), so the static shell hydrates cleanly. The
+// id-bearing detail routes (`/orders/view`, `/audit/view`, `/s/view`,
+// `/s/checkout`) read their open-world id from a query param via
+// `useSearchParams` behind a Suspense boundary — the id is unknowable at
+// build time, so it can never be a route segment. Security headers + CSP are
+// applied at the hosting/CDN layer, not per-request (a static export runs no
+// middleware).
 
 /**
  * Layout for the (app) tier — wallet-aware routes that mount the full

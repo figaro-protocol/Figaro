@@ -5,7 +5,8 @@
     "scripts": {
         "dev": "NODE_OPTIONS=--no-deprecation next dev",
         "build": "next build",
-        "start": "next start",
+        "start": "node scripts/serve-export.mjs out 3000",
+        "serve:export": "node scripts/serve-export.mjs",
         "lint": "next lint",
         "type-check": "tsc --noEmit",
         "knip": "knip",

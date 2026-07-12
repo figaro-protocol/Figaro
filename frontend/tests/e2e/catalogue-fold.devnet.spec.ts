@@ -127,15 +127,15 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
 
-        await page.waitForURL(/\/builders\/designer\/view\/asm-/, { timeout: 15000 });
-        const handle = page.url().match(/\/view\/(asm-[a-z0-9-]+)/)?.[1];
+        await page.waitForURL(/\/builders\/designer\/view\?slug=asm-/, { timeout: 15000 });
+        const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
         expect(handle, 'review navigated to a draft handle').toBeTruthy();
 
         // Publish or ADOPT: fresh deployment → the receipt names the content
         // slug; re-run → the registry refuses the identical composition
         // (first-write-wins) and its refusal NAMES the anchored slug. Either
         // way the slug comes from the network's answer.
-        await page.goto(`/builders/designer/view/${handle}?intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`/builders/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         const confirmBtn = page.getByTestId('review-confirm-publish');
         await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
         await waitForConnected(page);
@@ -202,7 +202,7 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
         const [buyerBefore, sellerBefore, coreBefore] = await Promise.all([
             balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
         ]);
-        await gotoAsWallet(page, BUYER, `/s/${SELLER}?e2e=devnet`);
+        await gotoAsWallet(page, BUYER, `/s/view?seller=${SELLER}&e2e=devnet`);
         await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();
@@ -280,7 +280,7 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
         //    registered figaro-cargo spec title. There is NO "cargo page", no BoL/invoice
         //    genre — the folded leaf is just another committed leaf. Then the merkle
         //    verifier recomputes the root over EVERY leaf to match the on-chain hash. ──
-        await page.goto(`/audit/${processId}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`/audit/view?process=${processId}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
         await waitForConnected(page);
 

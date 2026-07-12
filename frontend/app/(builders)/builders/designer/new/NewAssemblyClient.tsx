@@ -7,7 +7,7 @@
  *
  * Query params:
  *   - ?draft=<slug>  — open a named draft (transitional; the canonical
- *                      entry is /builders/designer/edit/<slug>).
+ *                      entry is /builders/designer/edit?slug=<slug>).
  *   - ?fresh=1       — clear the autosaved current-session and start blank.
  *   - (none)         — resume the autosaved current-session if present.
  */

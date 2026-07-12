@@ -1,7 +1,7 @@
 import React from "react";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { SellerDetailView } from "@/app/(app)/s/[seller]/_components/SellerDetailView";
+import { SellerDetailView } from "@/app/(app)/s/view/_components/SellerDetailView";
 import type { SellerCatalogue } from "@/lib/seller/types";
 
 const SELLER = "0x00000000000000000000000000000000000000aa";

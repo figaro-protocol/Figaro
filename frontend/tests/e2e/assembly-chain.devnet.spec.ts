@@ -243,7 +243,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         // ── CHECKOUT: the buyer orders from the lead, PICKS the chain assembly
         //    (the seller offers two), reviews the P&L breakdown, and places —
         //    signing all three orders through the same confirm gate. ──
-        await gotoAsWallet(page, BUYER, `/s/${LEAD.address}?e2e=devnet`);
+        await gotoAsWallet(page, BUYER, `/s/view?seller=${LEAD.address}&e2e=devnet`);
         await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();
@@ -367,7 +367,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         const attestAs = async (
             seller: Hex, stageLabel: string, expectedOnTimeline: number, label: string,
         ) => {
-            await gotoAsWallet(page, seller, `/orders/${processId}?e2e=devnet`);
+            await gotoAsWallet(page, seller, `/orders/view?process=${processId}&e2e=devnet`);
             await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
             await waitForConnected(page);
             const attest = page.getByTestId('capability-execute-submit-clause-attestation').first();
@@ -391,7 +391,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         const resolvedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length;
-        await gotoAsWallet(page, BUYER, `/orders/${processId}?e2e=devnet`);
+        await gotoAsWallet(page, BUYER, `/orders/view?process=${processId}&e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const resolveBtn = page.getByTestId('capability-execute-resolve-process');
@@ -416,7 +416,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         // ── AUDIT: the package renders the FULL process — a financial statement
         //    per seller (all THREE), the consolidation, the cash-flow log, and the
         //    evidence documents (the committed clause leaves of the chain). ──
-        await page.goto(`/audit/${processId}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`/audit/view?process=${processId}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         await expect(page.getByTestId('financials-view'), 'the audit renders the process financials')

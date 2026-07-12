@@ -10,7 +10,7 @@ import type { Metadata } from "next";
  * standalone (paste the JSON, get the hash).
  *
  * For process-bound audit (financials + audit bundle + verify scoped to
- * the current process), use `/audit/[processId]`.
+ * the current process), use `/audit/view?process=<processId>`.
  *
  * Server component — the top-level page doesn't use hooks itself; the
  * `<HashVerifier />` child carries its own `"use client"`.
@@ -35,7 +35,7 @@ export default function AuditPage() {
                 <p className="text-sm text-ink-body max-w-2xl">
                     Paste content or a hash from an audit bundle to verify against
                     chain. For process-bound audit (financials, audit-bundle PDF,
-                    and verifier scoped to the process), open <code>/audit/[processId]</code>{" "}
+                    and verifier scoped to the process), open <code>/audit/view?process=…</code>{" "}
                     directly.
                 </p>
             </header>

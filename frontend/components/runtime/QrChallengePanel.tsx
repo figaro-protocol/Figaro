@@ -128,7 +128,7 @@ export function QrChallengePanel({ processId, orderHash, clauseId }: Interaction
                         <p className="text-xs text-neutral-700" data-testid="interaction-qr-other">
                             Identifies a different order —{" "}
                             <Link
-                                href={`/orders/${decoded.processId}`}
+                                href={`/orders/view?process=${decoded.processId}`}
                                 className="underline text-black hover:text-neutral-600"
                                 data-testid="interaction-qr-goto"
                             >

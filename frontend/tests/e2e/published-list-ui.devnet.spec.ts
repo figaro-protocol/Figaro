@@ -10,8 +10,8 @@
  * would test fork/inspect against a shape the designer never emits),
  * then exercises both `PublishedList` controls:
  *
- *   - Inspect (`published-inspect-<slug>`) → /builders/designer/view/<slug>
- *   - Fork    (`published-fork-<slug>`)    → /builders/designer/edit/<forkSlug>
+ *   - Inspect (`published-inspect-<slug>`) → /builders/designer/view?slug=<slug>
+ *   - Fork    (`published-fork-<slug>`)    → /builders/designer/edit?slug=<forkSlug>
  *
  * Additive UI-tier coverage — the contract path is already covered by
  * assembly-registry.devnet.spec.ts; the publish flow by
@@ -45,12 +45,12 @@ test.describe('PublishedList fork + inspect (devnet)', () => {
         // the IPFS-pinned assemblyTemplate was fetched and parsed.
         await expect(page.getByTestId(`published-fork-${slug}`)).toBeEnabled({ timeout: 30000 });
 
-        // ── Inspect → /builders/designer/view/<slug> ─────────────────
+        // ── Inspect → /builders/designer/view?slug=<slug> ─────────────────
         await page.getByTestId(`published-inspect-${slug}`).click();
-        await page.waitForURL(new RegExp(`/builders/designer/view/${slug}`), { timeout: 15000 });
+        await page.waitForURL(new RegExp(`/builders/designer/view\\?slug=${slug}`), { timeout: 15000 });
         await expect(page.getByTestId('assembly-view-page')).toBeVisible({ timeout: 30000 });
 
-        // ── Back to the index, Fork → /builders/designer/edit/<forkSlug> ──
+        // ── Back to the index, Fork → /builders/designer/edit?slug=<forkSlug> ──
         await page.goto('/builders/designer?e2e=devnet', { waitUntil: 'domcontentloaded' });
         await expect(page.getByTestId(`published-fork-${slug}`)).toBeEnabled({ timeout: 30000 });
 
@@ -61,7 +61,7 @@ test.describe('PublishedList fork + inspect (devnet)', () => {
         page.once('dialog', (dialog) => { void dialog.accept(forkSlug); });
         await page.getByTestId(`published-fork-${slug}`).click();
 
-        await page.waitForURL(new RegExp(`/builders/designer/edit/${forkSlug}`), { timeout: 15000 });
+        await page.waitForURL(new RegExp(`/builders/designer/edit\\?slug=${forkSlug}`), { timeout: 15000 });
         // The forked draft hydrated into an editable canvas — not just a URL change.
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
     });

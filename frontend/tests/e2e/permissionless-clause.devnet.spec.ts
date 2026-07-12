@@ -167,10 +167,10 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
 
-        await page.waitForURL(/\/builders\/designer\/view\/asm-/, { timeout: 15000 });
-        const handle = page.url().match(/\/view\/(asm-[a-z0-9-]+)/)?.[1];
+        await page.waitForURL(/\/builders\/designer\/view\?slug=asm-/, { timeout: 15000 });
+        const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
         expect(handle, 'review navigated to a draft handle').toBeTruthy();
-        await page.goto(`/builders/designer/view/${handle}?intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`/builders/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         const confirmBtn = page.getByTestId('review-confirm-publish');
         await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
         await waitForConnected(page);
@@ -234,7 +234,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         // place the order as anvil[14] (a self-deal), so the buyer's approval never runs
         // for anvil[0] and `OrderCommitted{buyer: anvil[0]}` never lands. gotoAsWallet(BUYER)
         // registers a later switch-script that wins, mounting wagmi as the buyer.
-        await gotoAsWallet(page, BUYER, `/s/${SELLER}?e2e=devnet`);
+        await gotoAsWallet(page, BUYER, `/s/view?seller=${SELLER}&e2e=devnet`);
         await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();
@@ -311,7 +311,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         //    NOVEL clause's lifecycle through the ONE generic capability rail.
         //    If the runtime engine is clause-agnostic, a capability for a clause
         //    no code knows surfaces here with NO edit to the order page. ──
-        await gotoAsWallet(page, SELLER, `/orders/${processId}?e2e=devnet`);
+        await gotoAsWallet(page, SELLER, `/orders/view?process=${processId}&e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const attest = page.getByTestId('capability-execute-submit-clause-attestation').first();
@@ -379,7 +379,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         const resolvedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length;
-        await gotoAsWallet(page, BUYER, `/orders/${processId}?e2e=devnet`);
+        await gotoAsWallet(page, BUYER, `/orders/view?process=${processId}&e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const resolveBtn = page.getByTestId('capability-execute-resolve-process');
@@ -419,7 +419,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         //    cache): the audit package surfaces the WHOLE order lifecycle for the
         //    never-seen clause — every committed leaf's value, the seller's runtime
         //    ATTESTATION, and a merkle proof tying the agreement to the on-chain root. ──
-        await page.goto(`/audit/${processId}?e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`/audit/view?process=${processId}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
         await waitForConnected(page);
 
