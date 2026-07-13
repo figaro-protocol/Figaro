@@ -108,9 +108,14 @@ Required output:
 (The Cloudflare closed-beta apparatus — gate Worker + access codes, rpc-proxy
 allowlist, beta Anvil container, `cloudflare/` runbook — was deleted 2026-07-09
 with the no-beta ruling; there is no beta phase, so the rehearsal targets an
-ordinary public deployment. Hosting is chosen at deploy time; the frontend is a
-static-exportable protocol surface with user-owned RPC/IPFS endpoints, so no
-edge middleware is presumed.) Order: deploy-script audits → Sepolia smoke-test
+ordinary public deployment. Hosting is PICKED (2026-07-13): **Cloudflare Pages**
+serves the rehearsal URL — free static tier, native `_headers` support, direct
+upload of the export, no build coupling — with an **IPFS + ENS mirror** as the
+ownerless companion (re-pinnable by anyone; gateways serve no custom headers,
+so the mirror trades the header layer for re-pinnability). The security headers
+are artifact-enforced: `frontend/public/_headers` ships inside the export
+(FRONTEND.md § Static export). The frontend is a static-exportable protocol
+surface with user-owned RPC/IPFS endpoints, so no edge middleware is presumed.) Order: deploy-script audits → Sepolia smoke-test
 → flip the device-only deployment-context line in the punch-list and `CLAUDE.md`.
 
 Required output:

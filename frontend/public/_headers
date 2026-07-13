@@ -1,0 +1,42 @@
+# _headers — the deployment's security headers, ARTIFACT-ENFORCED.
+#
+# Next copies public/ into the static export verbatim, so this file ships
+# inside out/ and the host (Cloudflare Pages / Netlify _headers convention)
+# applies it at the edge. It replaces the deleted middleware.ts (per-request
+# CSP nonce) and next.config headers() — both incompatible with
+# `output: 'export'`. Policy provenance: git history of those two files.
+#
+# Static-export adaptations, deliberate:
+#   - script-src: 'unsafe-inline' in place of the former per-request nonce
+#     (no server to mint one). Hash-pinning the inlined bootstrap scripts at
+#     build time is the future hardening; 'wasm-unsafe-eval' stays for
+#     @react-pdf's fontkit (Harfbuzz WASM, the /audit evidence-bundle PDF).
+#   - connect-src: scheme-wide https:/wss:/ws: + loopback. A wallet points
+#     this frontend at its OWN RPC + IPFS endpoints (/settings — the
+#     composition cost model), so the endpoint set is the USER'S, not
+#     enumerable here. https: also covers XMTP's :5558 gRPC-web ports.
+#   - img-src loopback: the local Kubo gateway (127.0.0.1:8080) serves
+#     catalogue/branding pins on a devnet.
+#   - font-src data:: fontkit loads its WASM as a data: URI; fonts.gstatic
+#     kept from the former policy.
+#   - worker-src blob:: @react-pdf's layout worker.
+
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http://127.0.0.1:* http://localhost:*; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' data: ws: wss: https: http://127.0.0.1:* http://localhost:*; worker-src 'self' blob:; frame-src 'self' https://*.walletconnect.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(self)
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+  Cross-Origin-Resource-Policy: same-origin
+
+# /evidence-display is iframed by arbitration-forum reviewers. The ancestor
+# list is deployment CONFIG (the dispute layer is provider-agnostic): a
+# deployment that recognizes a forum EDITS this frame-ancestors line (e.g.
+# 'self' https://resolve.kleros.io). The unconfigured default admits no
+# third-party ancestor. X-Frame-Options is detached so the legacy header
+# can't override the CSP allowlist.
+/evidence-display
+  ! X-Frame-Options
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http://127.0.0.1:* http://localhost:*; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' data: ws: wss: https: http://127.0.0.1:* http://localhost:*; worker-src 'self' blob:; frame-src 'self' https://*.walletconnect.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'
