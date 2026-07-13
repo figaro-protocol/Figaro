@@ -12,11 +12,11 @@
  * checkout stays decoupled from the handoff layer's concrete transport.
  */
 import { publishAgreement } from "@/lib/kernel/agreementFetch";
+import { commitmentOrderHash } from "@/lib/kernel/signedCommitment";
 import {
-    commitmentOrderHash,
     serializeCommitmentPayload,
     type CommitmentPayload,
-} from "@/lib/kernel/signedCommitment";
+} from "@figaro/sdk/agent";
 import type { IpfsService } from "@/lib/shared/ipfsService";
 
 interface WalletMessageSigner {

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { commitSignedOrder } from "@/lib/kernel/orderCommitted";
-import type { CommitmentPayload } from "@/lib/kernel/signedCommitment";
+import type { CommitmentPayload } from "@figaro/sdk/agent";
 import type { Commitment } from "@figaro/sdk";
 import { ZERO_PROCESS_ID } from "@/lib/shared/evm";
 

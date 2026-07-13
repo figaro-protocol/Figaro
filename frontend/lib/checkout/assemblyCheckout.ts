@@ -25,7 +25,8 @@
 import { buildOrderPreview, type OrderPreview } from "@/lib/checkout/orderPreview";
 import { assertAgreementSignable } from "@/lib/kernel/orderAgreement";
 import type { DraftOrder } from "@/lib/checkout/draftOrders";
-import { commitmentOrderHash, commitmentProcessId, type CommitmentPayload } from "@/lib/kernel/signedCommitment";
+import { commitmentOrderHash, commitmentProcessId } from "@/lib/kernel/signedCommitment";
+import type { CommitmentPayload } from "@figaro/sdk/agent";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { planSubOrderSellers, resolveSubOrderPricing } from "@/lib/checkout/assemblySubOrderPlan";
 import { templateClauseVersionMap, templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";

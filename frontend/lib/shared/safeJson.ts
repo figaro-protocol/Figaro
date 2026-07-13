@@ -34,20 +34,17 @@
  * via Zod / parseClauseSpec / hand-rolled checks.
  */
 
-const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+import { strippingReviver } from "@figaro/sdk";
 
 /**
- * `JSON.parse` reviver that drops `__proto__`, `constructor`, and
- * `prototype` keys to defuse prototype-pollution. Exported so callers
- * that need the original parse-error to propagate (rather than being
- * swallowed into `null` like `safeJsonParse`) can pass it directly:
+ * The reviver itself lives in `@figaro/sdk` (it guards the relayed
+ * commitment envelope there too); re-exported here so frontend callers that
+ * need the original parse-error to propagate (rather than being swallowed
+ * into `null` like `safeJsonParse`) can pass it directly:
  *
  *   const data = JSON.parse(json, strippingReviver);
  */
-export function strippingReviver(key: string, value: unknown): unknown {
-    if (DANGEROUS_KEYS.has(key)) return undefined;
-    return value;
-}
+export { strippingReviver };
 
 /**
  * Parse a JSON string with prototype-pollution defenses. Returns `null`

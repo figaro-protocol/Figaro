@@ -10,7 +10,7 @@
  */
 import { assertOrderFitsResolveCap } from "@figaro/sdk";
 import type { Commitment, Hex } from "@figaro/sdk";
-import type { CommitmentPayload } from "@/lib/kernel/signedCommitment";
+import type { CommitmentPayload } from "@figaro/sdk/agent";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 
 interface CommitBroadcaster {

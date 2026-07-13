@@ -38,7 +38,7 @@ import {
     deserializeCommitmentPayload,
     serializeCommitmentPayload,
     type CommitmentPayload,
-} from "@/lib/kernel/signedCommitment";
+} from "@figaro/sdk/agent";
 import { buildOrderAgreement } from "@/lib/kernel/orderAgreement";
 import { buildAssemblyTemplate, serializeAssemblyTemplate } from "@/lib/designer/buildAssemblyTemplate";
 import { canonicalize } from "@/lib/shared/canonicalJson";

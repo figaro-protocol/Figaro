@@ -39,7 +39,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 import { requestSignConfirmation, type OrderPreview } from "@/lib/checkout/orderPreview";
 import { shareSignedOrder } from "@/lib/checkout/orderSignedAndShared";
-import type { CommitmentPayload } from "@/lib/kernel/signedCommitment";
+import type { CommitmentPayload } from "@figaro/sdk/agent";
 import { commitSignedOrder } from "@/lib/kernel/orderCommitted";
 
 export type OrderFlowStep =

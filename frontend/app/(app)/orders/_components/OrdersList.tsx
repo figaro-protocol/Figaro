@@ -33,7 +33,7 @@ import { Button } from "@/components/ui/Button";
 import { WalletGate } from "@/components/runtime/WalletGate";
 import { useWalletProcessRows, type ProcessRow } from "@/lib/kernel/walletProcessQueries";
 import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
-import { type CommitmentPayload } from "@/lib/kernel/signedCommitment";
+import { type CommitmentPayload } from "@figaro/sdk/agent";
 import { computeOrderHash } from "@figaro/sdk";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { CONTRACTS } from "@/lib/kernel/contracts";

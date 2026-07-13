@@ -20,6 +20,7 @@
 
 import type { Hex, Commitment } from "../types.js";
 import type { Agreement } from "../agreement.js";
+import { strippingReviver } from "../safeJson.js";
 
 // ── Offer envelope ────────────────────────────────────────────────────────────
 
@@ -39,9 +40,11 @@ export function serializeCommitmentPayload(p: CommitmentPayload): string {
 }
 
 /** Deserialize a payload back to typed form (hex strings → bigints on the
- *  commitment's numeric fields). */
+ *  commitment's numeric fields). The stripping reviver drops
+ *  `__proto__`/`constructor`/`prototype` at parse time so a malicious relayed
+ *  envelope can't pollute the prototype chain downstream. */
 export function deserializeCommitmentPayload(json: string): CommitmentPayload {
-    const raw = JSON.parse(json);
+    const raw = JSON.parse(json, strippingReviver);
     const c = raw.commitment;
     for (const f of ["payment", "salt", "deadline", "expectedCumulativeValue"]) {
         if (typeof c[f] === "string" && c[f].startsWith("0x")) c[f] = BigInt(c[f]);

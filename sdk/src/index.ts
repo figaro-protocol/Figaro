@@ -154,6 +154,9 @@ export {
 } from "./agreement.js";
 export type { Agreement, AgreementSection } from "./agreement.js";
 
+// Prototype-pollution defense for parsed envelopes
+export { strippingReviver } from "./safeJson.js";
+
 // Assembly identity (the AssemblyRegistry key + derived slug) + the template
 // shape and its accessors (topology parents, composed clause versions)
 export {

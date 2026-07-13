@@ -22,7 +22,7 @@ import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import {
     deserializeCommitmentPayload,
     type CommitmentPayload,
-} from "@/lib/kernel/signedCommitment";
+} from "@figaro/sdk/agent";
 import { publishAgreement } from "@/lib/kernel/agreementFetch";
 import { fetchCappedContent, type IpfsService } from "@/lib/shared/ipfsService";
 
