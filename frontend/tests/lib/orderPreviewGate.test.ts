@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     requestSignConfirmation,
+    requestCommitConfirmation,
     confirmPendingSign,
     cancelPendingSign,
     subscribeToPendingSign,
@@ -111,5 +112,54 @@ describe("orderPreview confirm gate", () => {
         await promise;
 
         expect(subscriber).not.toHaveBeenCalled();
+    });
+
+    it("carries the sign intent on the pending preview", async () => {
+        const subscriber = vi.fn();
+        subscribeToPendingSign(subscriber);
+        subscriber.mockClear();
+
+        const promise = requestSignConfirmation(COMMITMENT, AGREEMENT);
+        expect(subscriber).toHaveBeenCalledWith(
+            expect.objectContaining({ intent: "sign" }),
+        );
+        confirmPendingSign();
+        await promise;
+    });
+
+    it("requestCommitConfirmation shares the gate with commit intent", async () => {
+        const subscriber = vi.fn();
+        subscribeToPendingSign(subscriber);
+        subscriber.mockClear();
+
+        const promise = requestCommitConfirmation(COMMITMENT, AGREEMENT);
+        expect(subscriber).toHaveBeenCalledWith(
+            expect.objectContaining({
+                intent: "commit",
+                commitment: COMMITMENT,
+                agreement: AGREEMENT,
+            }),
+        );
+        confirmPendingSign();
+        await expect(promise).resolves.toBe(true);
+    });
+
+    it("requestCommitConfirmation resolves false on cancel", async () => {
+        const promise = requestCommitConfirmation(COMMITMENT, AGREEMENT);
+        cancelPendingSign();
+        await expect(promise).resolves.toBe(false);
+    });
+
+    it("a pending commit confirmation rejects a concurrent sign request", async () => {
+        const first = requestCommitConfirmation(COMMITMENT, AGREEMENT);
+        const second = await requestSignConfirmation(COMMITMENT, AGREEMENT);
+        expect(second).toBe(false);
+        confirmPendingSign();
+        await expect(first).resolves.toBe(true);
+    });
+
+    it("test auto-approve mode covers the commit gate too", async () => {
+        _setSignPreviewMode_TESTING_ONLY("auto-approve");
+        await expect(requestCommitConfirmation(COMMITMENT, AGREEMENT)).resolves.toBe(true);
     });
 });

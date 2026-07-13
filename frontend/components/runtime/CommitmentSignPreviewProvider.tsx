@@ -1,13 +1,14 @@
 "use client";
 
 /**
- * CommitmentSignPreviewProvider — global mount for the pre-sign gate.
+ * CommitmentSignPreviewProvider — global mount for the confirm gate.
  *
- * Subscribes to the confirm gate in `orderPreview`. When `requestSignConfirmation`
- * is called from anywhere in the app (the order commitment flow's sign step),
- * the store posts a pending preview; this provider renders the
- * AgreementPreviewModal. User clicks Confirm or Cancel; the store resolves
- * the awaited promise; the modal disappears.
+ * Subscribes to the confirm gate in `orderPreview`. When
+ * `requestSignConfirmation` or `requestCommitConfirmation` is called from
+ * anywhere in the app (the order commitment flow's sign step / standalone
+ * commit broadcast), the store posts a pending preview; this provider renders
+ * the AgreementPreviewModal with the matching wording. User clicks Confirm or
+ * Cancel; the store resolves the awaited promise; the modal disappears.
  *
  * Mount once in `app/providers.tsx` (inside the chain-guard / commerce
  * context where signing actually happens). No props.
@@ -35,6 +36,7 @@ export function CommitmentSignPreviewProvider() {
         <AgreementPreviewModal
             commitment={pending.commitment}
             agreement={pending.agreement}
+            intent={pending.intent}
             onConfirm={confirmPendingSign}
             onCancel={cancelPendingSign}
         />

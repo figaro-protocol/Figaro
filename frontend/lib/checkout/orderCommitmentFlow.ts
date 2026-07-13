@@ -12,7 +12,8 @@
  *   buyer:  signAndShare(preview) → sign → relay to the seller
  *   seller: acceptOrder(payload)  → sign → broadcast on-chain
  *
- * It owns the EIP-712 domain and the pre-sign confirm gate. It does NOT approve
+ * It owns the EIP-712 domain and the confirm gate — before every sign, and
+ * before the standalone commit broadcast (`commitOrder`). It does NOT approve
  * — that is `useTokenApproval`'s job, wired beside the preview.
  */
 import { useCallback, useState } from "react";
@@ -38,7 +39,11 @@ import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { hexEqual, isValidAddress, ZERO_ADDRESS } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
-import { requestSignConfirmation, type OrderPreview } from "@/lib/checkout/orderPreview";
+import {
+    requestSignConfirmation,
+    requestCommitConfirmation,
+    type OrderPreview,
+} from "@/lib/checkout/orderPreview";
 import { shareSignedOrder } from "@/lib/checkout/orderSignedAndShared";
 import type { CommitmentPayload } from "@figaro/sdk/agent";
 import { commitSignedOrder } from "@/lib/kernel/orderCommitted";
@@ -215,12 +220,27 @@ export function useOrderCommitmentFlow() {
     /**
      * Broadcast an ALREADY fully-signed payload — no signature added. For the
      * case where both signatures are present and anyone may submit it on-chain.
+     *
+     * Gated like the sign step: Layer A first (a payload whose inline agreement
+     * doesn't merkle to the signed agreementHash is never broadcast — the chain
+     * can't check it, so this is the last integrity gate), then the same
+     * review-before-commit confirmation the sign step uses.
      */
     const commitOrder = useCallback(async (
         payload: CommitmentPayload,
     ): Promise<Hex> => {
         setError(null);
         try {
+            assertAgreementSignable(
+                payload.agreement,
+                payload.commitment.agreementHash,
+                specSource(),
+            );
+            const approved = await requestCommitConfirmation(
+                payload.commitment,
+                payload.agreement,
+            );
+            if (!approved) throw new Error("Commit cancelled by user.");
             setStep("committing");
             const hash = await commitSignedOrder({
                 payload,

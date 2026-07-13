@@ -1,105 +1,63 @@
 "use client";
 
 /**
- * AgreementPreviewModal — pre-sign gate for Commitment EIP-712 signing.
+ * AgreementPreviewModal — the confirm gate's modal, for both the SIGN and
+ * the COMMIT step of a Commitment.
  *
  * Threat-model 🟡 Priority 4 (UI ↔ MetaMask injection). The wallet prompt
- * shows only the agreementHash. This modal renders the human-readable
- * agreement terms (line items, addresses, amounts, jurisdiction, etc.)
- * next to the hash so the user can verify "the hash I'm about to sign
- * corresponds to the agreement I assembled in the UI" before delegating
- * to the wallet.
+ * shows only the agreementHash (sign) or an opaque transaction (commit).
+ * This modal renders the human-readable agreement terms — the shared
+ * `AgreementReview` — next to the hash so the user can verify "the hash
+ * I'm about to bind to corresponds to the agreement in front of me"
+ * before delegating to the wallet.
  *
  * Consumers should not import this directly — it's rendered by the
  * `<CommitmentSignPreviewProvider>` against the confirm gate in
  * `orderPreview`. To gate a sign flow, call
  * `requestSignConfirmation(commitment, agreement)` from your async path;
+ * to gate a broadcast, call `requestCommitConfirmation(commitment, agreement)`;
  * the provider opens this modal and resolves your promise on confirm/cancel.
  */
 
-import { formatToken } from "@/lib/shared/utils";
-import useTokenDecimals from "@/hooks/useTokenDecimals";
-import type { Commitment, Agreement, AgreementSection } from "@figaro/sdk";
-import { truncateHex } from "@/lib/shared/formatHex";
-import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
+import type { Commitment, Agreement } from "@figaro/sdk";
 import { ModalChrome } from "@/components/ui/ModalChrome";
-import { describeClause, getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { resolveContentUri } from "@/lib/shared/ipfsService";
+import { AgreementReview } from "@/components/runtime/AgreementReview";
+import type { ConfirmationIntent } from "@/lib/checkout/orderPreview";
 
 interface Props {
     commitment: Commitment;
     agreement: Agreement | null;
+    intent: ConfirmationIntent;
     onConfirm: () => void;
     onCancel: () => void;
 }
 
-function formatPayment(payment: bigint, decimals: number): string {
-    // Display only — the bytes signed are the bigint exactly. Decimals are the
-    // token's on-chain `decimals()` (read on the connected chain), NOT an
-    // 18-default: this is the verify-before-sign surface, so a wrong magnitude
-    // here defeats the modal's whole purpose for a non-18-decimal token.
-    try {
-        return formatToken(payment, decimals);
-    } catch {
-        return payment.toString();
-    }
-}
+const INTENT_COPY: Record<ConfirmationIntent, { eyebrow: string; lede: React.ReactNode; confirm: string }> = {
+    sign: {
+        eyebrow: "Review before signing",
+        lede: (
+            <>
+                Your wallet will display only the <code className="font-mono text-xs">agreementHash</code>.
+                Verify the terms below match what you intend to sign.
+            </>
+        ),
+        confirm: "Confirm & sign",
+    },
+    commit: {
+        eyebrow: "Review before committing",
+        lede: (
+            <>
+                This broadcasts the fully-signed commitment on-chain and locks both
+                parties&apos; bonds. Verify the terms below match the agreement both
+                parties signed.
+            </>
+        ),
+        confirm: "Confirm & commit",
+    },
+};
 
-function commerceLineItems(agreement: Agreement | null): Array<{
-    name: string;
-    quantity: string;
-    unitPrice: string;
-}> {
-    if (!agreement) return [];
-    // Structural, not nominal: the line-item table renders from whichever
-    // section carries a `lineItems` array — no clause is named, so a
-    // third-party commerce-equivalent clause gets the same rendering.
-    const commerce = agreement.sections.find((s) => Array.isArray(s.data?.lineItems));
-    if (!commerce) return [];
-    const items = commerce.data?.lineItems;
-    if (!Array.isArray(items)) return [];
-    return items.map((item: Record<string, unknown>) => ({
-        name: typeof item.name === "string" ? item.name : "(unnamed item)",
-        quantity: typeof item.quantity === "string" || typeof item.quantity === "number"
-            ? String(item.quantity)
-            : "?",
-        unitPrice: typeof item.unitPrice === "string" || typeof item.unitPrice === "number"
-            ? String(item.unitPrice)
-            : "?",
-    }));
-}
-
-function nonCommerceSections(agreement: Agreement | null): AgreementSection[] {
-    if (!agreement) return [];
-    return agreement.sections.filter((s) => !Array.isArray(s.data?.lineItems));
-}
-
-/** Sections whose clause declares the `consent` ARTICLE — the spec's own
- *  classification, never a clause name; a never-seen consent-article clause
- *  gets the same notice. */
-function consentSections(agreement: Agreement | null): AgreementSection[] {
-    if (!agreement) return [];
-    return agreement.sections.filter((s) => getClauseSpec(s.clause)?.block?.article === "consent");
-}
-
-/** A described value token, linkified when it is a fetchable locator so the
- *  signer can READ the affixed document before signing. */
-function ConsentValueToken({ token }: { token: string }) {
-    const href = token.startsWith("ipfs://") ? resolveContentUri(token) : null;
-    if (!href) return <>{token}</>;
-    return (
-        <a href={href} target="_blank" rel="noreferrer" className="underline text-black">
-            {token}
-        </a>
-    );
-}
-
-export function AgreementPreviewModal({ commitment, agreement, onConfirm, onCancel }: Props) {
-    const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
-    const lineItems = commerceLineItems(agreement);
-    const otherSections = nonCommerceSections(agreement);
-    const consented = consentSections(agreement);
-    const hasAgreement = agreement !== null;
+export function AgreementPreviewModal({ commitment, agreement, intent, onConfirm, onCancel }: Props) {
+    const copy = INTENT_COPY[intent];
 
     return (
         <ModalChrome
@@ -111,135 +69,19 @@ export function AgreementPreviewModal({ commitment, agreement, onConfirm, onCanc
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-neutral-200 bg-neutral-50">
                     <p className="text-xs font-semibold text-neutral-500 mb-1">
-                        Review before signing
+                        {copy.eyebrow}
                     </p>
                     <h2 id="agreement-preview-title" className="text-lg font-semibold text-black">
                         Agreement preview
                     </h2>
                     <p className="text-sm text-neutral-600 mt-1">
-                        Your wallet will display only the <code className="font-mono text-xs">agreementHash</code>.
-                        Verify the terms below match what you intend to sign.
+                        {copy.lede}
                     </p>
                 </div>
 
                 {/* Body */}
-                <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5 text-sm">
-                    {!hasAgreement && (
-                        <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                            ⚠ The full agreement document isn&apos;t available locally. Verify the
-                            <code className="font-mono mx-1">agreementHash</code> below against the source you trust
-                            before continuing.
-                        </div>
-                    )}
-
-                    {/* Parties */}
-                    <section>
-                        <h3 className="text-xs font-semibold text-neutral-500 mb-2">Parties</h3>
-                        <dl className="grid grid-cols-[80px_1fr] gap-y-1 text-sm">
-                            <dt className="text-neutral-500">Buyer</dt>
-                            <dd className="font-mono text-xs text-black" data-testid="preview-buyer">{commitment.buyer}</dd>
-                            <dt className="text-neutral-500">Seller</dt>
-                            <dd className="font-mono text-xs text-black" data-testid="preview-seller">{commitment.seller}</dd>
-                        </dl>
-                    </section>
-
-                    {/* Payment */}
-                    <section>
-                        <h3 className="text-xs font-semibold text-neutral-500 mb-2">Payment</h3>
-                        <dl className="grid grid-cols-[80px_1fr] gap-y-1 text-sm">
-                            <dt className="text-neutral-500">Currency</dt>
-                            <dd className="font-mono text-xs text-black">{commitment.currency}</dd>
-                            <dt className="text-neutral-500">Amount</dt>
-                            <dd className="text-black" data-testid="preview-payment">
-                                {formatPayment(commitment.payment, decimals)} <span className="text-neutral-500 text-xs">(raw: {commitment.payment.toString()})</span>
-                            </dd>
-                            <dt className="text-neutral-500">Deadline</dt>
-                            <dd className="text-black">
-                                {formatBlockTimestamp(commitment.deadline)} <span className="text-neutral-500 text-xs">(unix {commitment.deadline.toString()})</span>
-                            </dd>
-                        </dl>
-                    </section>
-
-                    {/* Commerce / line items */}
-                    {lineItems.length > 0 && (
-                        <section>
-                            <h3 className="text-xs font-semibold text-neutral-500 mb-2">Line items</h3>
-                            <ul className="border border-neutral-200 rounded divide-y divide-neutral-200 text-sm" data-testid="preview-line-items">
-                                {lineItems.map((item, i) => (
-                                    <li key={i} className="px-3 py-2 flex justify-between">
-                                        <span className="text-black">{item.name}</span>
-                                        <span className="text-neutral-600 font-mono text-xs">×{item.quantity} @ {item.unitPrice}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </section>
-                    )}
-
-                    {/* Consent terms — the /security framing, verbatim register:
-                        consent is an AGREEMENT concern (the assembly composes a
-                        consent clause and affixes its documents to the deal);
-                        the signature over the agreementHash IS the recorded
-                        acceptance — no separate ceremony, no checkbox. */}
-                    {consented.length > 0 && (
-                        <section data-testid="preview-consent-terms">
-                            <h3 className="text-xs font-semibold text-neutral-500 mb-2">Consent terms</h3>
-                            <div className="rounded border border-neutral-200 bg-neutral-50 px-3 py-2 space-y-2 text-xs text-neutral-700">
-                                <p>
-                                    This agreement composes a consent clause and affixes its
-                                    documents to the deal. Your signature over the{" "}
-                                    <code className="font-mono">agreementHash</code> cryptographically
-                                    records your acceptance of each document listed below — consent as
-                                    an agreement term, the pattern the European Data Protection Board
-                                    recommends for blockchains (Guidelines 02/2025): the documents stay
-                                    off-chain; the chain keeps only fingerprints.
-                                </p>
-                                <ul className="space-y-1" data-testid="preview-consent-documents">
-                                    {consented.flatMap((section) =>
-                                        describeClause(section.clause, section.data as Record<string, unknown>).fields.flatMap((field) =>
-                                            field.values.map((line, i) => (
-                                                <li key={`${section.clause}-${field.name}-${i}`} className="font-mono break-all text-black">
-                                                    {line.split(" · ").map((token, j) => (
-                                                        <span key={j}>
-                                                            {j > 0 && <span className="text-neutral-400"> · </span>}
-                                                            <ConsentValueToken token={token} />
-                                                        </span>
-                                                    ))}
-                                                </li>
-                                            ))))}
-                                </ul>
-                            </div>
-                        </section>
-                    )}
-
-                    {/* Other agreement sections */}
-                    {otherSections.length > 0 && (
-                        <section>
-                            <h3 className="text-xs font-semibold text-neutral-500 mb-2">Clauses</h3>
-                            <ul className="space-y-2 text-xs" data-testid="preview-clauses">
-                                {otherSections.map((section) => (
-                                    <li key={section.clause} className="border border-neutral-200 rounded px-3 py-2">
-                                        <p className="font-mono text-neutral-500 mb-1">{section.clause}</p>
-                                        <pre className="text-black whitespace-pre-wrap break-words">
-                                            {JSON.stringify(section.data, null, 2)}
-                                        </pre>
-                                    </li>
-                                ))}
-                            </ul>
-                        </section>
-                    )}
-
-                    {/* Hash */}
-                    <section className="border-t border-neutral-200 pt-4">
-                        <h3 className="text-xs font-semibold text-neutral-500 mb-2">
-                            agreementHash (signed value)
-                        </h3>
-                        <p className="font-mono text-xs text-black break-all bg-neutral-50 border border-neutral-200 rounded p-2" data-testid="preview-agreement-hash">
-                            {commitment.agreementHash}
-                        </p>
-                        <p className="text-xs text-neutral-500 mt-1">
-                            Your wallet will show this exact value. Confirm only if it matches the agreement above.
-                        </p>
-                    </section>
+                <div className="flex-1 overflow-y-auto px-6 py-4">
+                    <AgreementReview commitment={commitment} agreement={agreement} />
                 </div>
 
                 {/* Footer */}
@@ -259,7 +101,7 @@ export function AgreementPreviewModal({ commitment, agreement, onConfirm, onCanc
                         className="px-4 py-2 text-sm font-semibold bg-black text-white rounded hover:bg-neutral-800"
                         autoFocus
                     >
-                        Confirm &amp; sign
+                        {copy.confirm}
                     </button>
                 </div>
         </ModalChrome>

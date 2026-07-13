@@ -9,7 +9,7 @@
  * with their wallet, and broadcasts the fully-signed commitment.
  */
 
-import { Suspense, useState, useEffect, useRef, useCallback } from "react";
+import { Suspense, useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAccount, useWalletClient } from "wagmi";
 import { Card } from "@/components/ui/Card";
@@ -21,8 +21,10 @@ import {
 } from "@figaro/sdk/agent";
 import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { calculateBonds } from "@figaro/sdk";
+import { calculateBonds, validateCommitmentAgreement } from "@figaro/sdk";
+import { specSource } from "@/lib/shared/clauseSpecSource";
 import { TokenApprovalFlow } from "@/components/runtime/TokenApprovalFlow";
+import { AgreementReview } from "@/components/runtime/AgreementReview";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import useProcessResolveCapacity from "@/hooks/useProcessResolveCapacity";
 import { formatToken } from "@/lib/shared/utils";
@@ -205,6 +207,15 @@ function SignPageContent() {
         return 0n;
     })();
 
+    // Layer A over what was pasted/relayed: does the inline agreement merkle
+    // to the signed agreementHash and conform to its clause specs? Computed at
+    // review time so the party isn't reading terms that aren't the ones signed;
+    // the sign/commit gates re-assert this at the exit.
+    const agreementCheck = useMemo(() => {
+        if (!parsed?.agreement || !commitment) return null;
+        return validateCommitmentAgreement(parsed.agreement, commitment.agreementHash, specSource());
+    }, [parsed, commitment]);
+
     return (
         <div className="max-w-lg mx-auto px-4 py-12 space-y-6">
             <h1 className="text-2xl font-bold text-black">Counter-Sign Commitment</h1>
@@ -267,19 +278,30 @@ function SignPageContent() {
                         {isRoot ? "Order Commitment" : "Sub-Order Commitment"}
                     </h2>
 
-                    <div className="text-xs space-y-1.5 text-neutral-600">
-                        <div className="flex justify-between">
-                            <span>Buyer</span>
-                            <span className="font-mono">{truncateHex(commitment.buyer)}</span>
+                    {agreementCheck && !agreementCheck.ok && (
+                        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700" data-testid="sign-agreement-invalid">
+                            <p className="font-semibold mb-1">
+                                These terms do NOT match the signed agreementHash — do not proceed.
+                            </p>
+                            <ul className="list-disc pl-4 space-y-0.5">
+                                {agreementCheck.issues.map((issue, i) => (
+                                    <li key={i} className="break-all">
+                                        {issue.clause} {issue.path}: {issue.message}
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
-                        <div className="flex justify-between">
-                            <span>Seller</span>
-                            <span className="font-mono">{truncateHex(commitment.seller)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span>Payment</span>
-                            <span>{formatToken(commitment.payment, tokenDecimals)} tokens</span>
-                        </div>
+                    )}
+                    {agreementCheck?.ok && (
+                        <p className="text-xs text-green-700" data-testid="sign-agreement-verified">
+                            ✓ Terms verified — the agreement below recomputes to the signed hash.
+                        </p>
+                    )}
+
+                    <AgreementReview commitment={commitment} agreement={parsed.agreement ?? null} />
+
+                    {/* This party's position — context the agreement itself doesn't carry */}
+                    <div className="text-xs space-y-1.5 text-neutral-600 border-t border-neutral-200 pt-3">
                         <div className="flex justify-between">
                             <span>{myBondLabel}</span>
                             <span>{formatToken(myBondAmount, tokenDecimals)} tokens</span>
@@ -306,10 +328,6 @@ function SignPageContent() {
                                 </span>
                             </div>
                         )}
-                        <div className="flex justify-between">
-                            <span>Deadline</span>
-                            <span>{new Date(Number(commitment.deadline) * 1000).toLocaleString()}</span>
-                        </div>
                     </div>
 
                     {/* Signature status */}

@@ -6,11 +6,12 @@
  * commitment (chain-time deadline + salt). It is NOT final, so it is NOT pinned
  * to IPFS — pinning happens only once the order is signed (orderSignedAndShared).
  *
- * This file also owns the pre-sign CONFIRM GATE: the singleton that pauses
- * signing until the human has seen the human-readable terms next to the 32-byte
- * agreementHash the wallet will show. The gate is SHARED — the buyer's preview
- * here and the seller's preview (orderPendingSellerSignature) are the same gate
- * over different term sources.
+ * This file also owns the CONFIRM GATE: the singleton that pauses signing —
+ * and the standalone commit broadcast — until the human has seen the
+ * human-readable terms next to the 32-byte agreementHash they bind to. The
+ * gate is SHARED — the buyer's preview here, the seller's preview
+ * (orderPendingSellerSignature), and the both-sigs broadcast are the same
+ * gate over different term sources.
  */
 import {
     computeDeadline,
@@ -47,18 +48,24 @@ export async function chainDeadline(ttlSeconds = 3600n): Promise<bigint> {
     }
 }
 
-// ── Pre-sign confirm gate (shared with the seller's preview) ────────────────
+// ── Confirm gate (shared: sign AND commit, both parties) ────────────────────
 //
 // Threat-model 🟡 (UI ↔ wallet). The wallet prompt for an EIP-712 Commitment
-// shows only the agreementHash (a 32-byte merkle root). The signer cannot verify
-// in the wallet that the hash matches the terms they assembled. This store + its
-// Provider + Modal close the gap: every sign goes through `requestSignConfirmation`,
-// which posts a pending preview; the Provider renders the human-readable terms
-// next to the hash; the user confirms or cancels; only then does the wallet open.
+// shows only the agreementHash (a 32-byte merkle root); the prompt for the
+// commit broadcast shows an opaque transaction. Neither lets the party verify
+// the terms they're binding to. This store + its Provider + Modal close the
+// gap: every sign goes through `requestSignConfirmation` and every standalone
+// broadcast through `requestCommitConfirmation`; each posts a pending preview;
+// the Provider renders the human-readable terms next to the hash; the user
+// confirms or cancels; only then does the wallet open.
 // Singleton + global Provider avoids placing a modal at every call site.
+
+/** Which wallet act the confirmation gates — the modal words itself by this. */
+export type ConfirmationIntent = "sign" | "commit";
 
 export interface PendingPreview {
     id: number;
+    intent: ConfirmationIntent;
     commitment: Commitment;
     /** May be null when the agreement isn't recoverable; the modal still shows
      *  the commitment fields and the hash, and should warn when it's missing. */
@@ -77,11 +84,8 @@ function emit(): void {
     for (const s of subscribers) s(current);
 }
 
-/**
- * Request confirmation before signing. Resolves `true` on Confirm, `false` on
- * Cancel. The Provider must be mounted; otherwise the promise pends forever.
- */
-export function requestSignConfirmation(
+function requestConfirmation(
+    intent: ConfirmationIntent,
     commitment: Commitment,
     agreement: Agreement | null,
 ): Promise<boolean> {
@@ -89,7 +93,7 @@ export function requestSignConfirmation(
     if (testMode === "auto-reject") return Promise.resolve(false);
     if (current !== null) return Promise.resolve(false); // concurrent — reject the new one
     return new Promise<boolean>((resolve) => {
-        current = { id: nextId++, commitment, agreement };
+        current = { id: nextId++, intent, commitment, agreement };
         resolveCurrent = (approved) => {
             current = null;
             resolveCurrent = null;
@@ -98,6 +102,29 @@ export function requestSignConfirmation(
         };
         emit();
     });
+}
+
+/**
+ * Request confirmation before signing. Resolves `true` on Confirm, `false` on
+ * Cancel. The Provider must be mounted; otherwise the promise pends forever.
+ */
+export function requestSignConfirmation(
+    commitment: Commitment,
+    agreement: Agreement | null,
+): Promise<boolean> {
+    return requestConfirmation("sign", commitment, agreement);
+}
+
+/**
+ * Request confirmation before broadcasting an already fully-signed commitment
+ * on-chain — the standalone COMMIT step, the moment both bonds lock. Same
+ * gate, same modal, commit wording.
+ */
+export function requestCommitConfirmation(
+    commitment: Commitment,
+    agreement: Agreement | null,
+): Promise<boolean> {
+    return requestConfirmation("commit", commitment, agreement);
 }
 
 /** Provider calls this on Confirm. */
