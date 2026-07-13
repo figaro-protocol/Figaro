@@ -88,6 +88,25 @@ export default function Integrate() {
                 <p className="mt-6 text-sm text-ink-muted leading-relaxed">
                     Any client that can read the chain reconstructs any state.
                 </p>
+                <p className="mt-6 text-sm text-ink-body leading-relaxed">
+                    <strong>Reading attestations.</strong> <code>fetchCoreEvents</code> covers the three FigaroCore events (<code>orderCommitted</code>, <code>orderResolved</code>, <code>processResolved</code>). <code>Attestation</code> is emitted by the <em>AttestationCoordinator</em> &mdash; a separate contract &mdash; so you read it directly against that address with <code>EV_ATTESTATION</code> and <code>parseAttestationLogs</code>:
+                </p>
+                <pre
+                    tabIndex={0}
+                    className="font-mono text-xs bg-subtle border border-default rounded px-3 py-3 mt-3 overflow-x-auto whitespace-pre"
+                >
+                    <code>{`import { EV_ATTESTATION, parseAttestationLogs } from "@figaro/sdk";
+
+const logs = await client.getLogs({
+  address: ATTESTATION_COORDINATOR, // record: attestationCoordinator
+  event: EV_ATTESTATION,
+  fromBlock: DEPLOY_BLOCK,
+  toBlock: "latest",
+});
+const attestations = parseAttestationLogs(logs);
+// each: { orderHash, processId, attester, clauseId,
+//         stage, contentRef, blockNumber, transactionHash }`}</code>
+                </pre>
             </MarketingSection>
 
             <MarketingSection title="Install, fetch, reconstruct.">
@@ -108,19 +127,85 @@ const client = createPublicClient({
   transport: http(process.env.RPC_URL),
 });
 
-const events = await fetchCoreEvents(client, {
-  core: CORE_ADDRESS,
-  fromBlock: DEPLOY_BLOCK,
-  toBlock: "latest",
-});
+// fetchCoreEvents(client, addresses, fromBlock?, toBlock?)
+// — fromBlock/toBlock are positional args, not addresses fields.
+const events = await fetchCoreEvents(
+  client,
+  { core: CORE_ADDRESS },   // deployment record: figaroCore
+  DEPLOY_BLOCK,             // fromBlock (0n on a fresh devnet)
+  "latest",
+);
 
-const state = reconstruct(events);
-// state.processes, state.orderStatus, state.orderProcessId
-// — the same state the contract itself holds.`}</code>
+// reconstruct() returns a Map<processId, Process> directly.
+const processes = reconstruct(events);
+for (const [processId, process] of processes) {
+  // process.rootBuyer, process.currency, process.cumulativeValue,
+  // process.orders (Map<orderHash, Order>), process.resolved
+}`}</code>
                 </pre>
                 <p className="mt-6 text-sm text-ink-body leading-relaxed">
                     The reconstruction is deterministic: the same events fetched against the same chain state produce the same output. No &ldquo;eventually consistent&rdquo; behavior, no reorg surprises beyond the chain&apos;s own finality assumptions.
                 </p>
+            </MarketingSection>
+
+            <MarketingSection title="The deployment record.">
+                <p className="text-sm text-ink-body leading-relaxed mb-4">
+                    Where <code>CORE_ADDRESS</code> and the rest come from: per-network contract addresses ship as a <strong>deployment record</strong> &mdash; a JSON file the deploy script emits at <code>.deployments/&lt;network&gt;.json</code>. A local devnet writes <code>.deployments/local.json</code>; each public network&apos;s addresses are published in the <Link href="/spec" className="underline">/spec</Link> deployments table when that network goes live. Addresses are never hardcoded into these pages or the SDK &mdash; a local deployment rotates its addresses every redeploy, so read them from the record, not from prose. On a fresh devnet <code>DEPLOY_BLOCK</code> can be <code>0n</code>; on a public network, use the block the deploy landed in.
+                </p>
+                <pre
+                    tabIndex={0}
+                    className="font-mono text-xs bg-subtle border border-default rounded px-3 py-3 mb-4 overflow-x-auto whitespace-pre"
+                >
+                    <code>{`// .deployments/local.json
+{
+  "chainId": 31337,
+  "figaroCore": "0x…",
+  "tokenAddress": "0x…",
+  "permitTokenAddress": "0x…",
+  "attestationCoordinator": "0x…",
+  "clauseRegistry": "0x…",
+  "sellerRegistry": "0x…",
+  "assemblyRegistry": "0x…",
+  "figToken": "0x…"
+}`}</code>
+                </pre>
+                <p className="text-sm text-ink-body leading-relaxed mb-4">
+                    The record&apos;s keys map onto the SDK&apos;s <code>FigaroAddresses</code> with one rename: <code>figaroCore</code> &rarr; <code>core</code>, <code>tokenAddress</code> &rarr; <code>token</code>, and <code>attestationCoordinator</code> / <code>clauseRegistry</code> / <code>sellerRegistry</code> / <code>assemblyRegistry</code> keep their names. <code>permitTokenAddress</code> and <code>figToken</code> are <em>not</em> part of <code>FigaroAddresses</code>.
+                </p>
+                <p className="text-sm text-ink-body leading-relaxed mb-4">
+                    Three token addresses appear; only one is a trade currency:
+                </p>
+                <ul className="space-y-3">
+                    <LabelledListRow label="tokenAddress" labelWidth="wide">
+                        The <strong>trade / settlement currency</strong> &mdash; the ERC-20 that bonds and payments are denominated in (<code>FigaroAddresses.token</code>). Devnet uses a mock ERC-20; a public deployment names a real ERC-20 (e.g. USDC).
+                    </LabelledListRow>
+                    <LabelledListRow label="permitTokenAddress" labelWidth="wide">
+                        An EIP-2612 permit-enabled ERC-20 for the single-transaction approve-and-commit flow. A devnet convenience token, not a separate currency.
+                    </LabelledListRow>
+                    <LabelledListRow label="figToken" labelWidth="wide">
+                        The FIG protocol token (<Link href="/fig" className="underline">FIG</Link>). Not a trade currency &mdash; you never bond or pay in it.
+                    </LabelledListRow>
+                </ul>
+            </MarketingSection>
+
+            <MarketingSection title="Handing a counterparty a link.">
+                <p className="text-sm text-ink-body leading-relaxed mb-4">
+                    The app&apos;s public surfaces are plain URLs with a single query parameter &mdash; read at the edge, no login required. A seller hands a buyer a &ldquo;buy from me&rdquo; link; anyone audits a settled process from its id.
+                </p>
+                <ul className="space-y-3">
+                    <LabelledListRow label="/s/view?seller=" labelWidth="wide">
+                        The seller&apos;s storefront &mdash; browse their catalogue and place a bonded order. Value is the seller address.
+                    </LabelledListRow>
+                    <LabelledListRow label="/s/checkout?seller=" labelWidth="wide">
+                        Straight to checkout for that seller &mdash; review the cart and place a bonded order.
+                    </LabelledListRow>
+                    <LabelledListRow label="/orders/view?process=" labelWidth="wide">
+                        A process&apos;s live status and record, keyed by <code>processId</code> &mdash; readable by anyone, no wallet.
+                    </LabelledListRow>
+                    <LabelledListRow label="/builders/designer/view?slug=" labelWidth="wide">
+                        Read-only inspect of an assembly, keyed by its derived slug.
+                    </LabelledListRow>
+                </ul>
             </MarketingSection>
 
             <MarketingSection title="The kernel is narrow. The ecosystem composes around it.">

@@ -65,7 +65,7 @@ export default function Specifications() {
                         title="ClauseRegistry.sol"
                         href={`${GH}/ClauseRegistry.sol`}
                         meta="permissionless · event-only"
-                        desc="Event-only clause anchoring, first-write-wins. clauseId is the bare human-readable name; the on-chain identity/dedup key is keccak256(abi.encode(clauseId, version)), so name+version together form the key. metadataURI points at the off-chain JSON spec. No on-chain content validation — a registered clause is immediately attestable."
+                        desc="Event-only clause anchoring, first-write-wins. clauseId is the bare human-readable name; the on-chain identity/dedup key is keccak256(abi.encode(clauseId, version)), so name+version together form the key. contentURI points at the off-chain JSON spec. No on-chain content validation — a registered clause is immediately attestable."
                     />
                 </ul>
             </MarketingSection>
@@ -106,6 +106,13 @@ export default function Specifications() {
                         meta="self-register · reclaimable deposit"
                         desc="Permissionless seller self-registration with reclaimable ETH deposit. Two functions (register, withdraw); state is dedup-only. Seller availability is signal-by-availability off-chain, not registry state."
                     />
+                    <ContractEntry
+                        id="AssemblyRegistry"
+                        title="AssemblyRegistry.sol"
+                        href={`${GH}/AssemblyRegistry.sol`}
+                        meta="self-register · reclaimable deposit"
+                        desc="Permissionless assembly anchoring with reclaimable ETH deposit — the assembly artifact family's anchor, parallel to ClauseRegistry and SellerRegistry. Two functions (registerAssembly, withdrawDeposit); first-write-wins. Identity IS the composition: compositionHash = keccak256 of the template's canonical composition subset, so identical compositions collapse to one binding and the human slug is derived off-chain (deriveAssemblySlug). The binding is permanent — withdraw returns only the deposit and de-surfaces the assembly; no owner, no admin, no content validation."
+                    />
                 </ul>
             </MarketingSection>
 
@@ -125,6 +132,9 @@ export default function Specifications() {
                         </tbody>
                     </table>
                 </div>
+                <p className="text-xs text-ink-muted mt-4">
+                    Per-network contract addresses ship in the deployment record the deploy script emits &mdash; <code>.deployments/local.json</code> for the local devnet. Each public network&apos;s addresses are published in this table when it goes live; the record&apos;s key&nbsp;&rarr;&nbsp;SDK mapping is on <Link href="/integrate" className="underline">Integrate</Link>.
+                </p>
                 <p className="text-xs text-ink-muted mt-4">
                     Kernel surface is frozen for external audit. See{" "}
                     <a href="https://github.com/figaro-protocol/Figaro/blob/main/docs/RELEASE_READINESS.md" target="_blank" rel="noopener noreferrer" className="underline">RELEASE_READINESS.md</a>{" "}

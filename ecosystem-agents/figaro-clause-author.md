@@ -77,8 +77,12 @@ check. A malformed spec is caught here, at author time.
 
 ## Step 5 — Pin + register (the user's wallet)
 
-1. Pin the canonical spec JSON to IPFS → `contentURI` (`ipfs://…`); `contentHash =
-   keccak256(canonical JSON)`.
+1. Pin the **canonical serialization** to IPFS → `contentURI` (`ipfs://…`): the exact
+   bytes `canonicalize(spec)` returns from `@figaro/sdk` (sorted keys at every depth, no
+   whitespace). Anchor `contentHash = canonicalContentHash(spec)`. Pin *that* serialization,
+   never a pretty-printed variant — readers re-canonicalize the fetched JSON and recompute
+   the hash to verify it, so pinned bytes must equal the hashed form or the clause never
+   surfaces.
 2. Register: `ClauseRegistry.registerClause(clauseId, version, contentHash, contentURI)`
    with the deposit, signed by the **user's** key. First-write-wins: the id binds
    permanently. A behaviour change is a NEW `version` (never mutate a registered id).
