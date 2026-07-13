@@ -596,7 +596,7 @@ export interface ClauseArticleGroup {
  *  the /clauses inventory and the designer drawer read this one function, so the
  *  two surfaces classify clauses identically. Clauses with no article fall to
  *  "(unclassified)". Sub-clause nesting is layered on top from `block.nestsUnder`
- *  (see `clauseNestsUnder`); companions from `block.sisterClauseId`. */
+ *  (see `clauseNestsUnder`). */
 export function groupClausesByArticle(): readonly ClauseArticleGroup[] {
     const byArticle = new Map<string, ClauseArticleEntry[]>();
     for (const spec of SPEC_CACHE.values()) {

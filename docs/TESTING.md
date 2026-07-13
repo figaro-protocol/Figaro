@@ -58,10 +58,19 @@ derived, never a stored count).
   `SellerTrackRecord`, `TokenAddressInput`, `TokenApprovalFlow`,
   `TokenDecimalDisplayFlows`, …
 - **Lib tier** (`tests/lib/`) — pure-client unit tests: commitment
-  preparation + stores, agreement, clause-spec source, discovery +
+  preparation + stores, clause-spec source, discovery +
   catalogue pipeline, emissions disclosure, delivery/handoff attestation, dispute
   evidence, IPFS service, token conversion, geocode, and per-hook tests
   (`useOrderCommitmentFlow`, `useTokenApproval`, …).
+
+The hash- and wire-load-bearing choreography suites live with their code in
+`sdk/tests/` (`npm --prefix sdk test`): agreement/template projection, the
+template→orders walk, checkout planning + sub-order pricing, the handoff
+ECDH, and the commitment envelope — several pinned byte-exact to
+`sdk/tests/fixtures/promotion-golden-vectors.json` (recorded from the
+pre-promotion frontend implementations; `HARVEST_GOLDEN_VECTORS=1` in
+`frontend/tests/lib/promotionGoldenVectors.test.ts` re-records, legitimate
+only before a move).
 
 ## Playwright — devnet (e2e) + mobile (viewport) projects
 

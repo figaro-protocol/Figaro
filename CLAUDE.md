@@ -331,7 +331,7 @@ The protocol clauses are the specs in `clauses/` (the canonical Layer-A specs / 
 
 ### Agent SDK
 
-`@figaro/sdk` — TypeScript SDK for reading, analyzing, and proposing Figaro transactions. Single dependency: `viem ^2.0.0`. ESM; four subpath exports (root, `/agent`, `/derive`, `/clauses` — the lockstep clause source-of-truth). Full entry-point map + build/test commands → `sdk/README.md`.
+`@figaro/sdk` — TypeScript SDK for reading, analyzing, and proposing Figaro transactions. Runtime deps: `viem ^2.0.0` + `@noble/curves`/`@noble/hashes` (the handoff ECDH — the versions viem itself resolves). ESM; five subpath exports (root, `/agent`, `/derive`, `/clauses` — the lockstep clause source-of-truth — and `/handoff`, the runtime handoff wire protocol). Root also owns the promoted choreography: agreement/template projection behind `SpecSource`, the ONE template→orders walk (`reconstructOrdersFromTemplate`), and checkout planning. Full entry-point map + build/test commands → `sdk/README.md`.
 
 **"Agent" = two worlds; pin the referent.** Default = OPERATOR-PRIVATE (`.claude/agents/`, the operator's repo tools; no SDK). The exception: PUBLIC ECOSYSTEM agents (`ecosystem-agents/`) act for a USER's wallet, NEVER the repo — `figaro-operator` (operate a wallet) + `figaro-clause-author`/`figaro-assembly-designer`. Full split → `docs/AI_AGENT_COORDINATION.md` + the agent-seam memory.
 

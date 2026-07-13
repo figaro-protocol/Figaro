@@ -10,8 +10,7 @@
  *     the chain, grouped by `groupClausesByArticle()` (the single clause
  *     classification, shared with the /clauses inventory — grouping + order come
  *     from the spec's `block.article`, never a hardcoded list), a checkbox
- *     per clause. Companion clauses (named as another's `sisterClauseId`) are
- *     surfaced by their sister at commit, not listed here.
+ *     per clause.
  *
  * The legacy per-article clause-editing tabs (and their hardcoded option
  * enums / sentinels / spec-card field controls) were removed; clause

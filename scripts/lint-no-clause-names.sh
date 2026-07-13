@@ -35,9 +35,11 @@ for file in "$@"; do
     [[ -f "$file" ]] || continue
     [[ "$file" == *.ts || "$file" == *.tsx ]] || continue
 
-    # Scope: generic frontend code only.
+    # Scope: generic frontend code + the SDK's shipped source (the promoted
+    # projection/checkout/walk modules must stay exactly as clause-agnostic
+    # as the frontend they came from; sdk/tests fixtures stay out of scope).
     case "$file" in
-        *"frontend/lib/"*|*"frontend/components/"*|*"frontend/app/(app)/"*) ;;
+        *"frontend/lib/"*|*"frontend/components/"*|*"frontend/app/(app)/"*|*"sdk/src/"*) ;;
         *) continue ;;
     esac
     # Out of scope: marketing prose, papers, JSON specs/fixtures.

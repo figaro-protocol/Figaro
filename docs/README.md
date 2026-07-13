@@ -26,6 +26,7 @@ content. (This is the instruction-system form of "derive, don't store.")
 | Contract inventory | `CONTRACTS.md` |
 | Clause table, validation architecture, adding-a-clause | `CLAUSES.md` |
 | Route catalogue, lib map, designer surface | `FRONTEND.md` |
+| Wire formats, agreement/template projection, the template→orders walk, checkout planning | `sdk/README.md` (+ the `sdk/dist` docblocks) |
 | Test-harness inventory, layer boundaries | `TESTING.md` |
 | Commands, env vars, services, deploy scripts | `LOCAL_DEV.md` |
 | Canonical names per tier | `LEXICON.md` |
