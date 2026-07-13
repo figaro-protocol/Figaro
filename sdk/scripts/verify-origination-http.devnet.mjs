@@ -50,7 +50,10 @@ const tryHydrate = async (uri) => { try { return await (await fetch(GATEWAY + ur
 let fail = 0; const check = (n, c) => { console.log(`${c ? "✓" : "✗ FAIL"} ${n}`); if (!c) fail++; };
 
 // ── Seller: run its offer handler behind a REAL HTTP endpoint ─────────────────
-const responder = makeHttpOfferResponder(makeSellerOfferHandler(sellerW, pub, addresses));
+// Refuse-all floor: the proof script IS the operator — explicit accept + policy.
+const responder = makeHttpOfferResponder(makeSellerOfferHandler(sellerW, pub, addresses, {
+    accept: () => true, policy: { requireRootShape: true, currencyAllowlist: [TOKEN], maxValue: 10_000n },
+}));
 const server = createServer((req, res) => {
     let body = ""; req.on("data", (c) => (body += c));
     req.on("end", async () => {

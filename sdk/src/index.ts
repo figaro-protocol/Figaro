@@ -181,6 +181,20 @@ export type {
     TemplateOrderNode,
 } from "./projection.js";
 
+// The ONE template → orders walk (+ the generic topology math under it)
+export {
+    planTemplateOrders,
+    reconstructOrdersFromTemplate,
+    templateAgreementFromClauses,
+} from "./reconstructOrders.js";
+export type {
+    PlannedTemplateOrder,
+    ReconstructNodeSpec,
+    ReconstructParams,
+    ReconstructedOrder,
+} from "./reconstructOrders.js";
+export { topologicalOrder } from "./topology.js";
+
 // Assembly identity (the AssemblyRegistry key + derived slug) + the template
 // shape and its accessors (topology parents, composed clause versions)
 export {

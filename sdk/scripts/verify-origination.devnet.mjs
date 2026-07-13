@@ -72,7 +72,10 @@ check("located the commerce clause by its declared field", !!commerceClauseId);
 
 // ── Seller LOOP: register the offer handler on the channel ────────────────────
 const channel = new InProcessChannel();
-channel.register(SELLER.address, makeSellerOfferHandler(sellerW, pub, addresses));
+// Refuse-all floor: the proof script IS the operator — explicit accept + policy.
+channel.register(SELLER.address, makeSellerOfferHandler(sellerW, pub, addresses, {
+    accept: () => true, policy: { requireRootShape: true, currencyAllowlist: [TOKEN], maxValue: 10_000n },
+}));
 
 // ── Buyer LOOP: originate against the discovered assembly + seller ────────────
 const result = await originateProcess(buyerW, pub, addresses, {

@@ -20,14 +20,15 @@
 
 import type { WalletClient, PublicClient } from "viem";
 import { verifyTypedData } from "viem";
-import { buildCommitment, buildDomain, ZERO_PROCESS_ID, COMMITMENT_TYPES, computeCommitmentProcessId, computeOrderHash } from "../commitments.js";
-import { computeAgreementHash, type Agreement, type AgreementSection } from "../agreement.js";
+import { buildCommitment, buildDomain, ZERO_PROCESS_ID, COMMITMENT_TYPES } from "../commitments.js";
+import { computeAgreementHash, type Agreement } from "../agreement.js";
 import { ERC20_ABI } from "../abis.js";
 import { commit, type TxResult } from "./autonomous.js";
 import type { Hex, Address, Commitment, FigaroAddresses } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, OfferHandler } from "./coordination.js";
-import { templateClauseVersion, templateParentOrderHashes } from "../assembly.js";
+import { templateParentOrderHashes } from "../assembly.js";
 import type { AssemblyTemplate, TemplateAgreement } from "../assembly.js";
+import { reconstructOrdersFromTemplate, templateAgreementFromClauses } from "../reconstructOrders.js";
 
 // ── Assembly template (the pinned document, hydrated off-SDK) ─────────────────
 // The shape's single home is ../assembly.js; re-exported here so the /agent
@@ -59,27 +60,9 @@ export interface InstantiateParams {
 export function instantiateRootAgreement(template: AssemblyTemplate, params: InstantiateParams): Agreement {
     const root = template.agreements.find(isRootAgreement) ?? template.agreements[0];
     if (!root) throw new Error("assembly template has no agreements to instantiate");
-    return agreementFromClauses(root.clauses, root, params.buyer, params.seller, params.overrides);
-}
-
-/** Build an Agreement from a clause bag: each clauseId → a section, buyer
- *  overrides merged in. Shared by root and multi-order instantiation. Section
- *  versions come from the COMPOSITION (`node.clauseVersions`, sparse — absent
- *  = 1), never from a registry read: the template pinned WHICH clause it
- *  composed, and two live versions are two clauses. */
-function agreementFromClauses(
-    clauses: Record<string, Record<string, unknown>>,
-    node: TemplateAgreement,
-    buyer: Address,
-    seller: Address,
-    overrides?: Record<string, Record<string, unknown>>,
-): Agreement {
-    const sections: AgreementSection[] = Object.entries(clauses).map(([clauseId, data]) => ({
-        clause: clauseId,
-        version: templateClauseVersion(node, clauseId),
-        data: { ...data, ...(overrides?.[clauseId] ?? {}) },
-    }));
-    return { version: "a1", buyer, seller, sections };
+    // The one clause-bag → Agreement builder (root and multi-order alike)
+    // lives with the template walk: ../reconstructOrders.js.
+    return templateAgreementFromClauses(root.clauses, root, params.buyer, params.seller, params.overrides);
 }
 
 // ── Buyer side: build + sign the offer ────────────────────────────────────────
@@ -377,7 +360,8 @@ export function makeSellerOfferHandler(
 //     payment, then + each sub's), which the kernel matches exactly — so commits
 //     are SUBMITTED in that same order (root first).
 //   - N counterparties: each order's own seller counter-signs its own order.
-// The frontend `assemblyCheckout` is the reference for this walk.
+// The walk's single home is `../reconstructOrders.js` (`planTemplateOrders` +
+// `reconstructOrdersFromTemplate`); this module supplies the signing seam.
 
 export interface ChainNodeSpec {
     /** Template node id (matches `template.agreements[].id`). */
@@ -410,86 +394,41 @@ export interface ChainOffer {
     offer: CommitmentPayload;
 }
 
-/** Order agreements so every node's parents precede it (root first). Throws on a
- *  cyclic or dangling parent reference. Parents read via the one topology
- *  accessor (`templateParentOrderHashes`). */
-function topoSort(agreements: TemplateAgreement[]): TemplateAgreement[] {
-    const placed = new Set<string>();
-    const out: TemplateAgreement[] = [];
-    const remaining = [...agreements];
-    while (remaining.length > 0) {
-        const i = remaining.findIndex((a) => templateParentOrderHashes(a).every((pid) => placed.has(pid)));
-        if (i < 0) throw new Error("assembly template has a cyclic or dangling parent reference");
-        placed.add(remaining[i].id);
-        out.push(remaining[i]);
-        remaining.splice(i, 1);
-    }
-    return out;
-}
-
-/** Replace a node's template-local parent ids with the REAL order hashes built
- *  for those nodes. Root (empty parents) passes through unchanged. */
-function withRealParents(clauses: Record<string, Record<string, unknown>>, realHash: Map<string, Hex>): Record<string, Record<string, unknown>> {
-    const out: Record<string, Record<string, unknown>> = { ...clauses };
-    for (const [cid, data] of Object.entries(clauses)) {
-        const p = (data as { parentOrderHashes?: unknown }).parentOrderHashes;
-        if (Array.isArray(p) && p.length > 0) {
-            out[cid] = {
-                ...data,
-                parentOrderHashes: (p as string[]).map((localId) => {
-                    const h = realHash.get(localId);
-                    if (!h) throw new Error(`parent "${localId}" was not built before its child (bad topo order)`);
-                    return h;
-                }),
-            };
-        }
-    }
-    return out;
-}
-
 /**
  * Build the whole chain's buyer-signed offers, in commit order. Walks the
- * template in dependency order: the root signs `processId = 0`; sub-orders name
- * the root's derived processId, carry their parents' real order hashes, and
- * commit against the running cumulative value. Every order is signed by the
- * buyer here; each seller counter-signs its own via the channel.
+ * template through the ONE walk (`reconstructOrdersFromTemplate`): the root
+ * signs `processId = 0`; sub-orders name the root's derived processId, carry
+ * their parents' real order hashes, and commit against the running cumulative
+ * value. Every order is signed by the buyer here (in the walk's `onOrder`
+ * seam); each seller counter-signs its own via the channel.
  */
 export async function buildChainOffers(wallet: WalletClient, params: BuildChainParams): Promise<ChainOffer[]> {
     const account = wallet.account;
     if (!account) throw new Error("buildChainOffers: wallet has no account");
     const buyer = account.address;
     const specByNode = new Map(params.nodes.map((n) => [n.nodeId, n]));
-    const ordered = topoSort(params.template.agreements);
-    const domain = buildDomain(params.chainId, params.core);
-
-    const realHash = new Map<string, Hex>();
-    let rootProcessId: Hex | null = null;
-    let cumulative = 0n;
     const out: ChainOffer[] = [];
-
-    for (let i = 0; i < ordered.length; i++) {
-        const node = ordered[i];
-        const spec = specByNode.get(node.id);
-        if (!spec) throw new Error(`no seller/payment spec for template node "${node.id}"`);
-        const isRoot = i === 0;
-        if (!isRoot && rootProcessId === null) throw new Error("template has a sub-order but no root");
-
-        cumulative += spec.payment;
-        const clauses = withRealParents(node.clauses, realHash);
-        const agreement = agreementFromClauses(clauses, node, buyer, spec.seller, spec.overrides);
-        const { commitment, typedData } = buildCommitment({
-            processId: isRoot ? ZERO_PROCESS_ID : rootProcessId!,
-            buyer, seller: spec.seller, currency: params.currency,
-            payment: spec.payment, expectedCumulativeValue: cumulative,
-            agreementHash: computeAgreementHash(agreement),
-            salt: params.salt?.(node.id), deadline: params.deadline,
-        }, domain);
-        const buyerSig = await wallet.signTypedData({ account, ...typedData });
-
-        if (isRoot) rootProcessId = computeCommitmentProcessId(commitment, params.chainId, params.core);
-        realHash.set(node.id, computeOrderHash(commitment, params.chainId, params.core));
-        out.push({ nodeId: node.id, seller: spec.seller, offer: { commitment, agreement, buyerSig } });
-    }
+    await reconstructOrdersFromTemplate(params.template, {
+        buyer,
+        currency: params.currency,
+        chainId: params.chainId,
+        core: params.core,
+        nodes: (planned) => {
+            const spec = specByNode.get(planned.nodeId);
+            if (!spec) throw new Error(`no seller/payment spec for template node "${planned.nodeId}"`);
+            return spec;
+        },
+        salt: params.salt,
+        deadline: params.deadline,
+        onOrder: async (order) => {
+            const buyerSig = await wallet.signTypedData({ account, ...order.typedData });
+            out.push({
+                nodeId: order.nodeId,
+                seller: order.seller,
+                offer: { commitment: order.commitment, agreement: order.agreement, buyerSig },
+            });
+        },
+    });
     return out;
 }
 

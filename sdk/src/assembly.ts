@@ -63,7 +63,7 @@ export function templateParentOrderHashes(agreement: TemplateAgreement): string[
  *  sparse `clauseVersions` map says otherwise (v1 pins are never serialized).
  *  The committed section versions come from the COMPOSITION, never from
  *  whichever spec versions a registry read happens to resolve. */
-export function templateClauseVersion(agreement: TemplateAgreement, clauseId: string): number {
+export function templateClauseVersion(agreement: Pick<TemplateAgreement, "clauseVersions">, clauseId: string): number {
     return agreement.clauseVersions?.[clauseId] ?? 1;
 }
 
