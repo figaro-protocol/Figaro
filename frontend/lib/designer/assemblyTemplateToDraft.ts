@@ -13,8 +13,9 @@
  * `clausesByOrderId` so re-opening the fork shows them.
  */
 
+import { planTemplateOrders } from "@figaro/sdk";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
-import { templateParentOrderHashes, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
+import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 import type { DesignSnapshot } from "./syntheticDesignStore";
 import { Order } from "@/lib/kernel/store";
@@ -34,20 +35,21 @@ export function templateToOrders(template: AssemblyTemplate): Order[] {
     // The template is party-agnostic. For DISPLAY (fork / read-only /view) we
     // reconstruct synthetic parties — one shared synthetic buyer (rootBuyer) +
     // a distinct synthetic seller per order. Real parties bind at
-    // adoption/checkout, never from the template. Per-order build→hash→save→
-    // assemble is the shared `buildSyntheticOrder`.
-    return template.agreements.map((to, i) =>
+    // adoption/checkout, never from the template. The nodes come from the ONE
+    // template walk (`planTemplateOrders` — commit order, local parent edges);
+    // per-order build→hash→save→assemble is the shared `buildSyntheticOrder`.
+    return planTemplateOrders(template).map((planned) =>
         buildSyntheticOrder({
-            orderId: to.id as `0x${string}`,
+            orderId: planned.nodeId as `0x${string}`,
             processId: SYNTHETIC_PROCESS_ID,
             buyer: syntheticAddress(0),
-            seller: syntheticAddress(i + 1),
+            seller: syntheticAddress(planned.index + 1),
             currency: ZERO_ADDRESS,
             payment: DISPLAY_PAYMENT,
-            cumulativeValue: DISPLAY_PAYMENT * BigInt(i + 1),
-            salt: BigInt(i + 1),
-            clauseFields: to.clauses as ClauseFields,
-            parentOrderHashes: templateParentOrderHashes(to),
+            cumulativeValue: DISPLAY_PAYMENT * BigInt(planned.index + 1),
+            salt: BigInt(planned.index + 1),
+            clauseFields: planned.clauses as ClauseFields,
+            parentOrderHashes: planned.parentLocalIds,
         }).order,
     );
 }
