@@ -116,7 +116,8 @@ edge middleware is presumed.) Order: deploy-script audits → Sepolia smoke-test
 Required output:
 
 1. Audit `script/Deploy.s.sol` + `script/DeployMainnet.s.sol` — confirm the env-var contract, no mocks, and that the atomic clause-validator binding composes on Sepolia.
-2. Sepolia smoke-test of the deployed stack through the UI (the devnet e2e pattern against a public testnet).
+2. **Resolve the wagmi-2 advisory gate (blocking — ten highs do not deploy to a public testnet).** The 39 frontend prod advisories sit in wagmi 2's bundled connector sub-tree; the only npm fix is the wagmi@3 major, and RainbowKit peers `wagmi ^2.9.0`. Re-check RainbowKit wagmi-3 support and migrate; if still absent, go injected-only (drop RainbowKit/WalletConnect). Either path lands before the smoke test, since it changes the frontend under test. This is a decision point with a self-owned fallback, never a wait on RainbowKit.
+3. Sepolia smoke-test of the deployed stack through the UI (the devnet e2e pattern against a public testnet).
 
 (Kleros subcourt-ID verification and IPFS content durability for this path are already covered by the Pre-Mainnet Deployment Verification checks and Task 6 above.)
 
