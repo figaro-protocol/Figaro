@@ -124,7 +124,7 @@ This section tracks features that are not protocol invariants but are significan
 | **Agent SDK** | `sdk/` (root + `/agent`, `/derive`, `/clauses`) | Self-referential (`npx vitest run` in `sdk/` is the census) | `/builders` → Agent SDK section | — | — |
 | **Semantic derivation** | `frontend/lib/semantic/` | — | `/builders` → How the runtime renders institutions | `TopologyCanvas` in the design canvas (`/builders/designer/*`); `CapabilityRail` + `RecoursePanel` at runtime | — |
 | **Institution assembly** | `frontend/lib/designer/`; `src/AssemblyRegistry.sol` | — | `/builders` → Level 1 assembly config; `/local-commerce` → "Fork Local Commerce" | `/builders/designer/new`, `/builders/designer/edit?slug=<slug>`, `/builders/designer/view?slug=<slug>` | — |
-| **Agreement publication** | `frontend/lib/kernel/agreementFetch.ts`, `orderAgreement.ts` | — | `/builders` → Agreement publication | — | — |
+| **Agreement publication** | `frontend/lib/kernel/agreementFetch.ts`, `@figaro/sdk` `projection.ts` | — | `/builders` → Agreement publication | — | — |
 | **Commerce checkout** | `frontend/lib/checkout/` | — | — | `CartModule` (interactive) | — |
 | **Process topology** | `frontend/lib/semantic/processTopology.ts` | SDK: `reconstruct()`, `Topology` | `/builders` → Composability (the graph above the kernel) | `TopologyCanvas` (`/builders/designer/new`, `/builders/designer/view?slug=<slug>`) | — |
 | **Bond math** | `sdk/src/bonds.ts` | SDK: `calculateBonds`, `calculateSettlement` | `/builders` → bond math formulas | checkout/order surfaces render via the SDK (the dedicated `BondCalculator` component was deleted) | — |
