@@ -358,8 +358,8 @@ and `frontend/`) · `npx playwright test --list` · `./scripts/test-tla.sh` ·
 | **Echidna fuzzing** | 2 harnesses | 15 properties (kernel 7 + FigToken 8) | `EchidnaFuzzer` Kernel (7): solvency, monotonicity, buyer dominance, atomicity, cumulative accounting, conservation, active-count consistency. `EchidnaFigToken` (8): FigToken supply/minter fuzzing. (`EchidnaToken` is the kernel harness's support ERC-20, not a harness.) |
 | **Foundry unit tests** | 10 suites | 166 tests | Core lifecycle, revert branches, mechanisms, gas, FIG, parity vectors |
 | **SDK Vitest** | 22 files | 336 tests | Event parsing, state reconstruction, bond math, commitments, discovery, clauses, agent origination |
-| **Frontend Vitest** | 47 files | 359 tests | Components, hooks, semantic derivation, assembly, runtime identity |
-| **Playwright** | 22 spec files | 37 tests | Devnet e2e (UI action → UI reaction against the live chain) + the mobile viewport spec |
+| **Frontend Vitest** | 52 files | 376 tests | Components, hooks, semantic derivation, assembly, runtime identity |
+| **Playwright** | 26 spec files | 41 tests | Devnet e2e (UI action → UI reaction against the live chain) + the mobile viewport spec |
 
 ---
 

@@ -114,6 +114,14 @@ hard-off (RA-5 intent preserved).
 Every spec drives the real UI against Anvil + deployed contracts
 (action in the UI, reaction in the UI): commerce / checkout / order lifecycle
 (`seller-page`, `orders-accept` — the bilateral full-cycle spine;
+`sign-countersign` — the /sign counter-party leg: the relayed payload received
+over the coordination channel, the shared agreement review rendered INLINE
+with the Layer-A verified banner BEFORE any bond authorization, counter-sign
+through the confirm gate, commit with exact bond deltas;
+`checkout-assembly-choice` — a seller bound to TWO published assemblies forces
+the buyer's pick: the method dropdown (never the static line), place-order
+refusing until the choice, the picked assembly committing with exact bond
+deltas — the mechanism derived from binding state, no taxonomy;
 `assembly-chain` — the multi-order value-added chain: three sellers bound +
 designated through the UI, walk-order accepts with exact per-party bond
 deltas, runtime attestations, one atomic resolve paying every party, full
