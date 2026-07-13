@@ -15,6 +15,7 @@
  */
 
 import { parseClauseSpec, type ClauseSpec, type FieldSpec, type EnumFieldSpec, type SpecParseError } from "@figaro/sdk/clauses";
+import type { ProjectionHints, ProjectionSpecView, SpecSource } from "@figaro/sdk";
 import { canonicalContentHash } from "@/lib/shared/canonicalJson";
 import { parseBlockBinding, type ClauseBlockBinding } from "@/lib/shared/clauseBlockBinding";
 import { computeClauseKey } from "@figaro/sdk";
@@ -204,6 +205,35 @@ export function listKnownClauseIds(): readonly string[] {
 /** Every loaded spec identity, one entry per (clauseId, version). */
 export function listKnownClauses(): readonly { clauseId: string; version: number }[] {
     return Array.from(SPEC_CACHE.values(), (s) => ({ clauseId: s.clauseId, version: s.version }));
+}
+
+/** A cached spec as the SDK projection sees it: the Layer-A spec plus the
+ *  hash-load-bearing `block` hints (article, catalogueSourced). */
+function toProjectionView(spec: ClauseSpecWithBlock): ProjectionSpecView {
+    const hints: ProjectionHints = {};
+    if (spec.block?.article !== undefined) hints.article = spec.block.article;
+    if (spec.block?.catalogueSourced === true) hints.catalogueSourced = true;
+    return { ...spec, hints };
+}
+
+/** The SDK projection seam (`SpecSource`), backed by this live registry cache.
+ *  A stable singleton that reads the cache at call time, so it inherits the
+ *  cache's degradation semantics exactly: `get` is undefined while a spec is
+ *  unloaded (defaults skipped, validation skipped, field lookups fall back to
+ *  data-key presence), and warms as `useClauseSpecs` hydrates. */
+const SPEC_SOURCE: SpecSource = {
+    get(clauseId, version) {
+        const spec = getClauseSpec(clauseId, version);
+        return spec ? toProjectionView(spec) : undefined;
+    },
+    list() {
+        return Array.from(SPEC_CACHE.values(), toProjectionView);
+    },
+};
+
+/** The live-cache `SpecSource` every SDK projection call site passes. */
+export function specSource(): SpecSource {
+    return SPEC_SOURCE;
 }
 
 /** The field name a clause nests under in the drawer, or null if top-level. */

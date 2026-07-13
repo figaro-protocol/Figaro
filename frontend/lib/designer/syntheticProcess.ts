@@ -16,7 +16,8 @@ import { calculateBonds } from "@figaro/sdk";
 import { Order, OrderState } from "@/lib/kernel/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
-import { buildOrderAgreement } from "@/lib/kernel/orderAgreement";
+import { buildOrderAgreement } from "@figaro/sdk";
+import { specSource } from "@/lib/shared/clauseSpecSource";
 import { saveAgreement } from "@/lib/designer/syntheticAgreementStore";
 import { draftOrderTopology } from "@/lib/shared/orderTopology";
 
@@ -95,6 +96,7 @@ export function buildSyntheticOrder(params: {
         params.buyer,
         params.seller,
         params.clauseFields,
+        specSource(),
     );
     // Persist to the designer's authoring store (localStorage) so the in-progress
     // design survives until publish — the assembly-management counterpart to the
@@ -243,6 +245,7 @@ export function mergeSyntheticParent(
         child.buyer as `0x${string}`,
         child.seller as `0x${string}`,
         defaultNodeClauseFields(),
+        specSource(),
     );
     saveAgreement(newAgreement);
 

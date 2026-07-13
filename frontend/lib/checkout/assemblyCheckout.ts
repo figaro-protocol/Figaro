@@ -23,14 +23,14 @@
 
 
 import { buildOrderPreview, type OrderPreview } from "@/lib/checkout/orderPreview";
-import { assertAgreementSignable } from "@/lib/kernel/orderAgreement";
+import { assertAgreementSignable } from "@figaro/sdk";
 import type { DraftOrder } from "@/lib/checkout/draftOrders";
 import { commitmentOrderHash, commitmentProcessId } from "@/lib/kernel/signedCommitment";
 import type { CommitmentPayload } from "@figaro/sdk/agent";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { planSubOrderSellers, resolveSubOrderPricing } from "@/lib/checkout/assemblySubOrderPlan";
 import { templateClauseVersionMap, templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
-import { clauseDeclaresField, clauseIsCatalogueSourced } from "@/lib/shared/clauseSpecSource";
+import { clauseDeclaresField, clauseIsCatalogueSourced, specSource } from "@/lib/shared/clauseSpecSource";
 import { parseToken } from "@/lib/shared/utils";
 import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
 import type { SellerCatalogue } from "@/lib/seller/types";
@@ -236,7 +236,7 @@ function divisorFor(seller: `0x${string}`, catalogues: SellerCatalogue[]): numbe
  *  sign step itself (`signAs`) runs the same gate — this call is the UX
  *  courtesy, not the enforcement. */
 function assertValidToSign(preview: OrderPreview, label: string): void {
-    assertAgreementSignable(preview.agreement, preview.agreementHash, label);
+    assertAgreementSignable(preview.agreement, preview.agreementHash, specSource(), label);
 }
 
 export async function executeAssemblyCheckout(

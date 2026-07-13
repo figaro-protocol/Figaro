@@ -31,7 +31,8 @@ import {
     type Hex,
 } from "@figaro/sdk";
 import { CONTRACTS } from "@/lib/kernel/contracts";
-import { assertAgreementSignable } from "@/lib/kernel/orderAgreement";
+import { assertAgreementSignable } from "@figaro/sdk";
+import { specSource } from "@/lib/shared/clauseSpecSource";
 import { useFigaroActions } from "@/lib/kernel/useFigaroActions";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { hexEqual, isValidAddress, ZERO_ADDRESS } from "@/lib/shared/evm";
@@ -91,7 +92,7 @@ export function useOrderCommitmentFlow() {
         // recomputed merkle root equals the hash being signed. The /orders
         // accept card, /sign, and the buyer's checkout sign all route through
         // here — both sides of the bilateral commit get the same check.
-        assertAgreementSignable(agreement, commitment.agreementHash);
+        assertAgreementSignable(agreement, commitment.agreementHash, specSource());
         const approved = await requestSignConfirmation(commitment, agreement);
         if (!approved) throw new Error("Signing cancelled by user.");
         const sig = await signTypedDataAsync({

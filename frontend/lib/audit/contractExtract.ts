@@ -15,8 +15,8 @@ import {
     type AgreementSection,
     computeSectionLeaf,
 } from "@figaro/sdk";
-import { sectionByField } from "@/lib/kernel/agreementSections";
-import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { sectionByField } from "@figaro/sdk";
+import { getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import type { Order } from "@/lib/kernel/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ExtractedDocument } from "./types";
@@ -95,7 +95,7 @@ function clauseFromSection(section: AgreementSection): ContractClause {
 }
 
 function extractJurisdictionSummary(agreement: Agreement) {
-    const applicableLaw = sectionByField(agreement, "applicableLaw");
+    const applicableLaw = sectionByField(agreement, "applicableLaw", specSource());
     if (!applicableLaw) return undefined;
     const data = applicableLaw.data as { applicableLaw?: string; forum?: string; language?: string };
     if (!data.applicableLaw || typeof data.applicableLaw !== "string") return undefined;
@@ -107,7 +107,7 @@ function extractJurisdictionSummary(agreement: Agreement) {
 }
 
 function extractTopology(agreement: Agreement) {
-    const topology = sectionByField(agreement, "parentOrderHashes");
+    const topology = sectionByField(agreement, "parentOrderHashes", specSource());
     const data = topology?.data as { parentOrderHashes?: unknown } | undefined;
     const parentOrderHashes = Array.isArray(data?.parentOrderHashes)
         ? (data.parentOrderHashes.filter((p) => typeof p === "string") as string[])
@@ -122,7 +122,7 @@ function extractMethodSummary(agreement: Agreement) {
     // (open-world). There is no coordination field: the courier-edge fill
     // mechanism is derived (binding state),
     // not stored, so it never appears in the canonical method.
-    const modalityData = sectionByField(agreement, "modality")?.data as
+    const modalityData = sectionByField(agreement, "modality", specSource())?.data as
         | { modality?: unknown }
         | undefined;
     return typeof modalityData?.modality === "string" ? modalityData.modality : undefined;
@@ -137,7 +137,7 @@ export function extractContract(
     // identical, but the commerce section is the authoritative party-signed
     // source). When the commerce section is absent, fall back to order.currency
     // — the kernel records currency on the commitment regardless.
-    const commerce = sectionByField(agreement, "lineItems");
+    const commerce = sectionByField(agreement, "lineItems", specSource());
     const commerceCurrency = (commerce?.data as { currency?: string } | undefined)?.currency;
 
     return {

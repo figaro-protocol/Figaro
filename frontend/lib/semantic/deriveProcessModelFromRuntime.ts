@@ -1,10 +1,10 @@
 import { Order, OrderState } from "@/lib/kernel/store";
 import type { Agreement } from "@figaro/sdk";
-import { sectionByField } from "@/lib/kernel/agreementSections";
+import { sectionByField } from "@figaro/sdk";
 import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 import type { ProcessSummary } from "@/lib/kernel/walletProcessQueries";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
-import { clauseIsProcessLog, clauseLadderField, clauseWitnessStages, getClauseSpec, labelEnumValue } from "@/lib/shared/clauseSpecSource";
+import { clauseIsProcessLog, clauseLadderField, clauseWitnessStages, getClauseSpec, labelEnumValue, specSource } from "@/lib/shared/clauseSpecSource";
 import { computeClauseKey } from "@figaro/sdk";
 import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
 import {
@@ -639,7 +639,7 @@ export function deriveProcessModelFromRuntime(
     // The modality section is found by its declared field, never by name.
     // Single-select: one scalar value per order.
     const rootModality = rootAgreement
-        ? ((sectionByField(rootAgreement, "modality")?.data as { modality?: string } | undefined)?.modality ?? null)
+        ? ((sectionByField(rootAgreement, "modality", specSource())?.data as { modality?: string } | undefined)?.modality ?? null)
         : null;
     const stateCounts = {
         active: processOrders.filter((order) => order.state === OrderState.Active).length,

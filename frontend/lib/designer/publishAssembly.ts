@@ -28,7 +28,8 @@
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
-import { buildAssemblyTemplate, serializeAssemblyTemplate } from "@/lib/designer/buildAssemblyTemplate";
+import { buildAssemblyTemplate, serializeAssemblyTemplate } from "@figaro/sdk";
+import { specSource } from "@/lib/shared/clauseSpecSource";
 import { deriveAssemblySlug } from "@/lib/shared/assemblyTemplate";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { ASSEMBLY_REGISTRY_ABI } from "@/lib/kernel/contracts";
@@ -91,6 +92,7 @@ export function usePublishAssembly() {
             orders: snapshot.orders,
             clausesByOrderId: snapshot.clausesByOrderId ?? {},
             clauseVersionsByOrderId: snapshot.clauseVersionsByOrderId,
+            specs: specSource(),
         });
         const { json, compositionHash } = serializeAssemblyTemplate(template);
         // The slug is presentation, derived from the composition hash —

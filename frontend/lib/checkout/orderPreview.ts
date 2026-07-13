@@ -21,7 +21,8 @@ import {
 } from "@figaro/sdk";
 import { publicClient } from "@/lib/shared/wagmi";
 import { ZERO_PROCESS_ID } from "@/lib/shared/evm";
-import { buildOrderAgreement } from "@/lib/kernel/orderAgreement";
+import { buildOrderAgreement } from "@figaro/sdk";
+import { specSource } from "@/lib/shared/clauseSpecSource";
 import type { DraftOrder } from "@/lib/checkout/draftOrders";
 
 // ── Build the buyer's preview from a draft ──────────────────────────────────
@@ -63,6 +64,7 @@ export async function buildOrderPreview(
         draft.buyer,
         draft.seller,
         draft.clauses,
+        specSource(),
         draft.clauseVersions,
     );
     const commitment: Commitment = {

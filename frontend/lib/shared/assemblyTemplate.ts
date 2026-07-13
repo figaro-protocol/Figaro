@@ -4,7 +4,7 @@
  * The shared source every tier reads (the assembly-family mirror of
  * `clauseSpecSource.ts`): the template types, the one accessor for a template
  * agreement's topology edges, and the content-derived slug. AUTHORING lives in
- * `lib/designer/buildAssemblyTemplate.ts` (designers build); this module is
+ * `@figaro/sdk` projection — `buildAssemblyTemplate` (designers build); this module is
  * for everyone who READS published assemblies — checkout instantiates,
  * sellers bind, inventories list, view pages inspect. SoC: design is design,
  * checkout is checkout; both speak this vocabulary, neither owns the other.

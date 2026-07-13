@@ -16,13 +16,14 @@
  */
 import type { Agreement } from "@figaro/sdk";
 import type { Order } from "@/lib/kernel/store";
-import { sectionByField } from "@/lib/kernel/agreementSections";
+import { sectionByField } from "@figaro/sdk";
+import { specSource } from "@/lib/shared/clauseSpecSource";
 
 // ── By-field reads of the topology clause (no clause id named) ────────────────
 
 function topologyParentOrderHashes(agreement: Agreement | null | undefined): string[] | null {
     if (!agreement) return null;
-    const section = sectionByField(agreement, "parentOrderHashes");
+    const section = sectionByField(agreement, "parentOrderHashes", specSource());
     if (!section) return null;
     const raw = (section.data as Record<string, unknown>).parentOrderHashes;
     if (!Array.isArray(raw)) return [];

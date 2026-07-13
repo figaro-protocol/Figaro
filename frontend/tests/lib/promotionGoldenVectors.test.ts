@@ -9,11 +9,11 @@
  *      since encryption draws a random IV),
  *   2. CommitmentPayload serialization (lib/kernel/signedCommitment.ts —
  *      bigint→hex replacer + prototype-pollution stripping on deserialize),
- *   3. agreement projection → agreementHash (lib/kernel/orderAgreement.ts —
- *      spec-default injection, process-log skip, section sort),
- *   4. template composition → compositionHash (lib/designer/
- *      buildAssemblyTemplate.ts — structural auto-fold, sparse-version
- *      normalization, editorial exclusion).
+ *   3. agreement projection → agreementHash (since Phase 3: @figaro/sdk
+ *      projection — spec-default injection, process-log skip, section sort),
+ *   4. template composition → compositionHash (since Phase 3: @figaro/sdk
+ *      projection — structural auto-fold, sparse-version normalization,
+ *      editorial exclusion).
  *
  * The fixture lives in `sdk/tests/fixtures/promotion-golden-vectors.json` so
  * the SDK-side tests consume the SAME frozen bytes after each move phase.
@@ -39,10 +39,9 @@ import {
     serializeCommitmentPayload,
     type CommitmentPayload,
 } from "@figaro/sdk/agent";
-import { buildOrderAgreement } from "@/lib/kernel/orderAgreement";
-import { buildAssemblyTemplate, serializeAssemblyTemplate } from "@/lib/designer/buildAssemblyTemplate";
+import { buildOrderAgreement, buildAssemblyTemplate, serializeAssemblyTemplate } from "@figaro/sdk";
 import { canonicalize } from "@/lib/shared/canonicalJson";
-import type { Order } from "@/lib/kernel/store";
+import { specSource } from "@/lib/shared/clauseSpecSource";
 import { primeClauseSpecs } from "./primeClauseSpecs";
 
 const HARVEST = process.env.HARVEST_GOLDEN_VECTORS === "1";
@@ -79,12 +78,12 @@ function projectionCases() {
             "figaro-commerce": commerceData(),
             "figaro-topology": { parentOrderHashes: [] },
             "figaro-applicable-law": { applicableLaw: "US-NY" },
-        }),
+        }, specSource()),
         processLog: buildOrderAgreement(BUYER, SELLER, {
             "figaro-commerce": commerceData(),
             "figaro-topology": { parentOrderHashes: [] },
             "figaro-merchant-process": {},
-        }),
+        }, specSource()),
     };
 }
 
@@ -94,7 +93,7 @@ function templateCase() {
     const orders = [
         { orderHash: "synthetic-root", parentOrderHashes: [] },
         { orderHash: "synthetic-child", parentOrderHashes: ["synthetic-root"] },
-    ] as unknown as readonly Order[];
+    ];
     return serializeAssemblyTemplate(
         buildAssemblyTemplate({
             name: "Golden Vector Chain",
@@ -102,6 +101,7 @@ function templateCase() {
             clausesByOrderId: {
                 "synthetic-child": { "figaro-applicable-law": { applicableLaw: "US-NY" } },
             },
+            specs: specSource(),
         }),
     );
 }
