@@ -1,0 +1,29 @@
+{
+  "ecdh": {
+    "privA": "0x1111111111111111111111111111111111111111111111111111111111111111",
+    "privB": "0x2222222222222222222222222222222222222222222222222222222222222222",
+    "pubA": "034f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aa",
+    "pubB": "02466d7fcae563e5cb09a0d1870bb580344804617879a14949cf22285f1bae3f27",
+    "sharedSecretAtoB": "a2d7c68e4c1189d4b07d761c53f78fefb90dfbceaef8ae011cbe7a57f7cfd7e2",
+    "sharedSecretBtoA": "1dd146e8cf934ed2f1099ca85205264b70dd7811fa4ce3b591bfdb19f5086b69",
+    "plaintextKeyB64": "Zml4ZWQtaGFuZG9mZi1rZXktZm9yLXZlY3RvcnM",
+    "wrappedBlobB64": "IPfPBgxc68NI8oSXHC7VBnRS-B6LhvqDBNqeKkdMoEiAvxOjgXou5QzF6C5trG8nmculaU00FVLB0PgfAhVbocedxQ"
+  },
+  "commitmentPayload": {
+    "serialized": "{\"commitment\":{\"processId\":\"0x0000000000000000000000000000000000000000000000000000000000000000\",\"buyer\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"seller\":\"0x2546BcD3c84621e976D8185a91A922aE77ECEc30\",\"currency\":\"0x0000000000000000000000000000000000000001\",\"payment\":\"0x15af1d78b58c40000\",\"expectedCumulativeValue\":\"0x15af1d78b58c40000\",\"agreementHash\":\"0x7bcceea2395e5cad028162c50914dcc1bf09ce3c7b7b0023cd671bfb7f4c4d92\",\"salt\":\"0x1234\",\"deadline\":\"0x69800e80\"},\"agreement\":{\"version\":\"a1\",\"buyer\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"seller\":\"0x2546BcD3c84621e976D8185a91A922aE77ECEc30\",\"sections\":[{\"clause\":\"figaro-applicable-law\",\"version\":1,\"data\":{\"applicableLaw\":\"US-NY\"}},{\"clause\":\"figaro-commerce\",\"version\":1,\"data\":{\"currency\":\"0x0000000000000000000000000000000000000001\",\"payment\":\"1\",\"lineItems\":[{\"itemId\":\"item-1\",\"name\":\"Test item\",\"quantity\":1,\"unitPrice\":\"1\"}]}},{\"clause\":\"figaro-topology\",\"version\":1,\"data\":{\"parentOrderHashes\":[]}}]},\"buyerSig\":\"0xababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab\"}"
+  },
+  "agreementProjection": {
+    "defaults": {
+      "canonicalAgreement": "{\"buyer\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"sections\":[{\"clause\":\"figaro-applicable-law\",\"data\":{\"applicableLaw\":\"US-NY\"},\"version\":1},{\"clause\":\"figaro-commerce\",\"data\":{\"currency\":\"0x0000000000000000000000000000000000000001\",\"lineItems\":[{\"itemId\":\"item-1\",\"name\":\"Test item\",\"quantity\":1,\"unitPrice\":\"1\"}],\"payment\":\"1\"},\"version\":1},{\"clause\":\"figaro-topology\",\"data\":{\"parentOrderHashes\":[]},\"version\":1}],\"seller\":\"0x2546BcD3c84621e976D8185a91A922aE77ECEc30\",\"version\":\"a1\"}",
+      "agreementHash": "0x7bcceea2395e5cad028162c50914dcc1bf09ce3c7b7b0023cd671bfb7f4c4d92"
+    },
+    "processLog": {
+      "canonicalAgreement": "{\"buyer\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"sections\":[{\"clause\":\"figaro-commerce\",\"data\":{\"currency\":\"0x0000000000000000000000000000000000000001\",\"lineItems\":[{\"itemId\":\"item-1\",\"name\":\"Test item\",\"quantity\":1,\"unitPrice\":\"1\"}],\"payment\":\"1\"},\"version\":1},{\"clause\":\"figaro-merchant-process\",\"data\":{},\"version\":1},{\"clause\":\"figaro-topology\",\"data\":{\"parentOrderHashes\":[]},\"version\":1}],\"seller\":\"0x2546BcD3c84621e976D8185a91A922aE77ECEc30\",\"version\":\"a1\"}",
+      "agreementHash": "0xada7ccc70e79403b056d61a1b7f0cac2aaedf909c00bd1d767ace437c973d79f"
+    }
+  },
+  "assemblyTemplate": {
+    "canonicalJson": "{\"agreements\":[{\"clauses\":{\"figaro-commerce\":{},\"figaro-topology\":{\"parentOrderHashes\":[]}},\"id\":\"order-0\"},{\"clauses\":{\"figaro-applicable-law\":{\"applicableLaw\":\"US-NY\"},\"figaro-commerce\":{},\"figaro-topology\":{\"parentOrderHashes\":[\"order-0\"]}},\"id\":\"order-1\"}],\"name\":\"Golden Vector Chain\"}",
+    "compositionHash": "0x9d746e0f3d791e2444204719ef1173946184acd6c08239cbd19b8b82d7efb72f"
+  }
+}
