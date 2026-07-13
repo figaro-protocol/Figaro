@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/Button";
 import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
-import { planSubOrderSellers, resolveSubOrderPricing, type SubOrderPricing } from "@/lib/checkout/assemblySubOrderPlan";
+import { planSubOrderSellers, resolveSubOrderPricing, type SubOrderPricing } from "@figaro/sdk";
 import { executeAssemblyCheckout } from "@/lib/checkout/assemblyCheckout";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel";
@@ -41,7 +41,7 @@ import { formatToken, parseToken } from "@/lib/shared/utils";
 import { useSellerBoundAssemblies } from "@/lib/seller/useSellerBoundAssemblies";
 import { displayNameForAddress } from "@/lib/seller/sellerListing";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
-import { getClauseSpec, clauseIsStructural } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec, clauseIsStructural, specSource } from "@/lib/shared/clauseSpecSource";
 import type { FieldSpec } from "@figaro/sdk/clauses";
 
 interface Props {
@@ -295,6 +295,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                 if (seller) {
                     const pricing = resolveSubOrderPricing({
                         node, seller, sellerCatalogues, tokenDecimals,
+                        specs: specSource(),
                         checkoutQuantity: subOrderQuantities[node.id],
                     });
                     return { name: nameOf(seller), payment: pricing.payment, nodeId: node.id, pricing };

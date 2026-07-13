@@ -4,7 +4,7 @@
  * orderCommitmentFlow.ts — the SIGN step of the order flow (+ share / commit).
  *
  * Preview and APPROVE happen first and TOGETHER, OUTSIDE this hook: the page
- * builds the preview (orderPreview.buildOrderPreview) and approves the bond via
+ * builds the preview (the SDK walk (assemblyCheckout)) and approves the bond via
  * `useTokenApproval`, wired beside the preview so the approval can never be
  * forgotten. This hook owns only the deliberate SIGN step that follows, plus
  * the share / commit it leads into:

@@ -13,19 +13,16 @@
  * over different term sources.
  */
 import {
-    generateSalt,
     computeDeadline,
     type Agreement,
     type Commitment,
     type Hex,
 } from "@figaro/sdk";
 import { publicClient } from "@/lib/shared/wagmi";
-import { ZERO_PROCESS_ID } from "@/lib/shared/evm";
-import { buildOrderAgreement } from "@figaro/sdk";
-import { specSource } from "@/lib/shared/clauseSpecSource";
-import type { DraftOrder } from "@/lib/checkout/draftOrders";
 
-// ── Build the buyer's preview from a draft ──────────────────────────────────
+// ── The buyer's preview (what the confirm gate + sign flow consume) ─────────
+// Built by the checkout walk (`assemblyCheckout` drives the SDK's
+// reconstructOrdersFromTemplate and shapes each realized order into this).
 
 export interface OrderPreview {
     agreement: Agreement;
@@ -41,44 +38,13 @@ export interface OrderPreview {
  * mainnet; a time-traveled devnet). Falls back to wall-clock only if the chain
  * read fails.
  */
-async function chainDeadline(ttlSeconds = 3600n): Promise<bigint> {
+export async function chainDeadline(ttlSeconds = 3600n): Promise<bigint> {
     try {
         const block = await publicClient.getBlock({ blockTag: "latest" });
         return block.timestamp + ttlSeconds;
     } catch {
         return computeDeadline();
     }
-}
-
-/**
- * Build the buyer's preview from a draft. A root order leaves `processId` at 0x0
- * (the kernel derives it from the EIP-712 digest) and sets
- * expectedCumulativeValue = payment; a sub-order passes the live processId and
- * the running cumulative value.
- */
-export async function buildOrderPreview(
-    draft: DraftOrder,
-    opts?: { processId?: Hex; expectedCumulativeValue?: bigint },
-): Promise<OrderPreview> {
-    const { agreement, agreementHash } = buildOrderAgreement(
-        draft.buyer,
-        draft.seller,
-        draft.clauses,
-        specSource(),
-        draft.clauseVersions,
-    );
-    const commitment: Commitment = {
-        processId: opts?.processId ?? ZERO_PROCESS_ID,
-        buyer: draft.buyer,
-        seller: draft.seller,
-        currency: draft.currency,
-        payment: draft.payment,
-        expectedCumulativeValue: opts?.expectedCumulativeValue ?? draft.payment,
-        agreementHash,
-        salt: generateSalt(),
-        deadline: await chainDeadline(),
-    };
-    return { agreement, agreementHash, commitment };
 }
 
 // ── Pre-sign confirm gate (shared with the seller's preview) ────────────────

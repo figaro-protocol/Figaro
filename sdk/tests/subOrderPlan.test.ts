@@ -1,13 +1,18 @@
-import { beforeAll, describe, expect, it } from "vitest";
-import { geohashCentroidDistanceKm } from "@figaro/sdk/derive";
+/**
+ * planSubOrderSellers (the per-clause binding cursor) + resolveSubOrderPricing
+ * (live contributor pricing, fixed + rate). Migrated from the frontend's
+ * assemblySubOrderPlan suite when checkout planning promoted to the SDK.
+ */
+import { describe, expect, it } from "vitest";
+import { geohashCentroidDistanceKm } from "../src/derive/geo.js";
 import {
     planSubOrderSellers,
     resolveSubOrderPricing,
-} from "@/lib/checkout/assemblySubOrderPlan";
-import type { TemplateAgreement } from "@/lib/shared/assemblyTemplate";
-import type { BoundAssembly } from "@/lib/seller/useSellerBoundAssemblies";
-import type { SellerCatalogue } from "@/lib/seller/types";
-import { primeClauseSpecs } from "./primeClauseSpecs";
+    type BoundAssemblyPlanInput,
+    type PricingCatalogue,
+} from "../src/checkoutPlan.js";
+import type { TemplateAgreement } from "../src/assembly.js";
+import { specSourceFromFixtures } from "./specFixtures.js";
 
 // The kit-assembly diamond: A (lead, root) → B, A → C, B → D, C → D.
 // B + D carry proximity-policy, C carries emissions. Proximity is bound
@@ -26,16 +31,15 @@ const EMISSIONS = "figaro-emissions";
 const TOPO = "figaro-topology";
 const parents = (ids: string[]) => ({ [TOPO]: { parentOrderHashes: ids } });
 
-const assembly = {
-    slug: "kit-assembly",
-    name: "Kit",
-    canonicalMethod: null,
+const NO_SPECS = specSourceFromFixtures([]);
+const GEO_SPECS = specSourceFromFixtures(["figaro-geolocation"]);
+
+const assembly: BoundAssemblyPlanInput = {
     counterpartyBindings: [
         { clauseId: PROX, addresses: [SWIFT, MERCATO] },
         { clauseId: EMISSIONS, addresses: [ROSSO] },
     ],
     assemblyTemplate: {
-        slug: "kit-assembly",
         name: "Kit",
         agreements: [
             { id: "A", clauses: { ...parents([]) } },
@@ -44,14 +48,13 @@ const assembly = {
             { id: "D", clauses: { [PROX]: {}, ...parents(["B", "C"]) } },
         ],
     },
-} as unknown as BoundAssembly;
+};
 
 // Every seller — the lead included — prices from its OWN catalogue's component
 // item at the item's published price.
 const catalogues = [
     {
         address: SWIFT,
-        name: "Swift Courier",
         items: [{
             id: "kit-fastening", name: "Fastening", category: "component",
             price: "0.6", available: true,
@@ -59,7 +62,6 @@ const catalogues = [
     },
     {
         address: ROSSO,
-        name: "Rosso Kitchen",
         items: [{
             id: "kit-housing", name: "Housing", category: "component",
             price: "0.55", available: true,
@@ -67,18 +69,17 @@ const catalogues = [
     },
     {
         address: MERCATO,
-        name: "Mercato",
         items: [{
             id: "kit-assemble", name: "Assemble", category: "component",
             price: "0.25", available: true,
         }],
     },
-] as unknown as SellerCatalogue[];
+] as unknown as PricingCatalogue[];
 
 const orderById = (id: string): TemplateAgreement =>
     assembly.assemblyTemplate.agreements.find((o) => o.id === id)!;
 const payArgs = (node: TemplateAgreement, seller: `0x${string}`) => ({
-    node, seller, sellerCatalogues: catalogues, tokenDecimals: 18,
+    node, seller, sellerCatalogues: catalogues, tokenDecimals: 18, specs: NO_SPECS,
 });
 
 describe("planSubOrderSellers", () => {
@@ -94,7 +95,7 @@ describe("planSubOrderSellers", () => {
     });
 
     it("returns a null seller when no binding covers the order's clause", () => {
-        const unbound = { ...assembly, counterpartyBindings: [] } as unknown as BoundAssembly;
+        const unbound: BoundAssemblyPlanInput = { ...assembly, counterpartyBindings: [] };
         expect(planSubOrderSellers(unbound).every((p) => p.seller === null)).toBe(true);
     });
 });
@@ -140,17 +141,13 @@ const GEO = "figaro-geolocation";
 const SF = "9q8yy";
 const LA = "9q5ct";
 
-const rateCatalogue = (item: Record<string, unknown>): SellerCatalogue[] =>
-    [{ address: SWIFT, name: "Swift Courier", items: [item] }] as unknown as SellerCatalogue[];
+const rateCatalogue = (item: Record<string, unknown>): PricingCatalogue[] =>
+    [{ address: SWIFT, items: [item] }] as unknown as PricingCatalogue[];
 
 const nodeWithClauses = (clauses: Record<string, Record<string, unknown>>): TemplateAgreement =>
-    ({ id: "R", clauses: { ...clauses, ...parents(["A"]) } }) as unknown as TemplateAgreement;
+    ({ id: "R", clauses: { ...clauses, ...parents(["A"]) } }) as TemplateAgreement;
 
 describe("resolveSubOrderPricing — rate items", () => {
-    beforeAll(async () => {
-        await primeClauseSpecs([GEO]);
-    });
-
     it("checkout-quantity: payment = rate × the buyer's entered units", () => {
         const p = resolveSubOrderPricing({
             node: nodeWithClauses({}),
@@ -160,6 +157,7 @@ describe("resolveSubOrderPricing — rate items", () => {
                 pricingPolicy: "rate", rateUnit: "hour", rateQuantitySource: "checkout-quantity",
             }),
             tokenDecimals: 18,
+            specs: GEO_SPECS,
             checkoutQuantity: 16,
         });
         expect(p.billedQuantity).toBe(16);
@@ -177,6 +175,7 @@ describe("resolveSubOrderPricing — rate items", () => {
                 pricingPolicy: "rate", rateUnit: "hour", rateQuantitySource: "checkout-quantity",
             }),
             tokenDecimals: 18,
+            specs: GEO_SPECS,
         });
         expect(p.payment).toBe(0n);
         expect(p.issue).toBe("unresolvable-quantity");
@@ -191,6 +190,7 @@ describe("resolveSubOrderPricing — rate items", () => {
                 pricingPolicy: "rate", rateUnit: "km", rateQuantitySource: "order-geodistance",
             }),
             tokenDecimals: 18,
+            specs: GEO_SPECS,
         });
         const km = geohashCentroidDistanceKm(SF, LA);
         expect(p.resolvedUnits).toBeCloseTo(km, 6);
@@ -208,6 +208,7 @@ describe("resolveSubOrderPricing — rate items", () => {
                 pricingPolicy: "rate", rateUnit: "km", rateQuantitySource: "order-geodistance",
             }),
             tokenDecimals: 18,
+            specs: GEO_SPECS,
         });
         expect(p.billedQuantity).toBe(1);
         expect(p.payment).toBe(10000000000000000n);
@@ -222,6 +223,7 @@ describe("resolveSubOrderPricing — rate items", () => {
                 pricingPolicy: "rate", rateUnit: "km", rateQuantitySource: "order-geodistance",
             }),
             tokenDecimals: 18,
+            specs: GEO_SPECS,
         });
         expect(p.payment).toBe(0n);
         expect(p.issue).toBe("unresolvable-quantity");
@@ -236,6 +238,7 @@ describe("resolveSubOrderPricing — rate items", () => {
                 pricingPolicy: "rate", rateUnit: "unit", rateQuantitySource: "never-seen-source",
             }),
             tokenDecimals: 18,
+            specs: GEO_SPECS,
         });
         expect(p.payment).toBe(0n);
         expect(p.issue).toBe("unresolvable-quantity");

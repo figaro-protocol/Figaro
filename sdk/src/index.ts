@@ -195,6 +195,30 @@ export type {
 } from "./reconstructOrders.js";
 export { topologicalOrder } from "./topology.js";
 
+// Checkout planning — fill-where-composed section writers, the sub-order
+// seller plan, live contributor pricing, the rate-quantity-source registry
+export {
+    divisorFor,
+    fillCargoSection,
+    fillClassSections,
+    fillCommerceSection,
+    fillDerivedSections,
+    fillDimweightSection,
+    getRateQuantityResolver,
+    planSubOrderSellers,
+    registerRateQuantitySource,
+    resolveSubOrderPricing,
+    writeTopologySection,
+} from "./checkoutPlan.js";
+export type {
+    AssemblyCheckoutLineItem,
+    BoundAssemblyPlanInput,
+    PricingCatalogue,
+    RateQuantityContext,
+    RateQuantityResolver,
+    SubOrderPricing,
+} from "./checkoutPlan.js";
+
 // Assembly identity (the AssemblyRegistry key + derived slug) + the template
 // shape and its accessors (topology parents, composed clause versions)
 export {

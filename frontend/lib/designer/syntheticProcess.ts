@@ -74,7 +74,7 @@ function defaultNodeClauseFields(): ClauseFields {
  * — the canvas node-spawn paths here and the template fork/`/view`
  * reconstruction in `assemblyTemplateToDraft` — routes through this one builder.
  *
- * Deliberately NOT the real checkout path: `buildOrderPreview` produces a
+ * Deliberately NOT the real checkout path: the SDK checkout walk produces a
  * signable `Commitment` from real parties and constructs no display `Order`.
  * That is a different concern and stays separate.
  */

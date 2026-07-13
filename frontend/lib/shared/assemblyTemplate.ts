@@ -26,18 +26,17 @@
 // The template SHAPE's single home is the SDK (`@figaro/sdk` — assembly.ts):
 // one shape, one nested-type name (`TemplateAgreement`). `clauses` is the same
 // per-order bag `ClauseFields` names (`Record<string, Record<string, unknown>>`).
-export type { AssemblyTemplate, TemplateAgreement } from "@figaro/sdk";
+export type { AssemblyTemplate } from "@figaro/sdk";
 
 // The shape's accessors (topology parents, composed clause versions), the
 // assembly's identity (the AssemblyRegistry key), and its derived slug —
 // single home is the SDK; re-exported here for the designer/registry surfaces.
 export {
     templateParentOrderHashes,
-    templateClauseVersionMap,
     templateCompositionHash,
     deriveAssemblySlug,
 } from "@figaro/sdk";
 
 /** @public pending consumer: per-clause version display on the drawer/audit
- *  read surfaces (the map form above is the checkout consumer). */
+ *  read surfaces. */
 export { templateClauseVersion } from "@figaro/sdk";

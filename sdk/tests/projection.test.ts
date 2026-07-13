@@ -11,40 +11,20 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseClauseSpec } from "../src/clauses/index.js";
 import {
     assertAgreementSignable,
     buildAssemblyTemplate,
     buildOrderAgreement,
     canonicalize,
-    parseProjectionHints,
     sectionByField,
     serializeAssemblyTemplate,
     validateCommitmentAgreement,
-    type ProjectionSpecView,
     type SpecSource,
 } from "../src/index.js";
+import { specSourceFromFixtures } from "./specFixtures.js";
 
 const BUYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as const;
 const SELLER = "0x2546BcD3c84621e976D8185a91A922aE77ECEc30" as const;
-
-const CLAUSES_DIR = path.resolve(__dirname, "../../clauses");
-
-function specSourceFromFixtures(clauseIds: readonly string[]): SpecSource {
-    const views: ProjectionSpecView[] = clauseIds.map((id) => {
-        const raw = JSON.parse(readFileSync(path.join(CLAUSES_DIR, `${id}.json`), "utf8"));
-        const parsed = parseClauseSpec(raw);
-        if (!parsed.ok) throw new Error(`fixture spec ${id} failed to parse`);
-        return { ...parsed.spec, hints: parseProjectionHints(raw) };
-    });
-    return {
-        get: (clauseId, version) =>
-            views.find(
-                (v) => v.clauseId === clauseId && (version === undefined || v.version === version),
-            ),
-        list: () => views,
-    };
-}
 
 const SPECS = specSourceFromFixtures([
     "figaro-commerce",

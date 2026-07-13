@@ -12,7 +12,6 @@
  * process id), so it is returned unchanged.
  */
 import {
-    computeCommitmentProcessId,
     computeOrderHash,
     restoreSignedProcessId as sdkRestoreSignedProcessId,
     type Commitment,
@@ -31,13 +30,6 @@ function configuredCore(): `0x${string}` {
  *  Core address is unconfigured. */
 export function commitmentOrderHash(c: Commitment, chainId: number): `0x${string}` {
     return computeOrderHash(c, chainId, configuredCore());
-}
-
-/** This deployment's derived process id — the ROOT commitment's EIP-712
- *  digest, computable from the unsigned commitment (so sub-orders can name
- *  the process before the root commits). */
-export function commitmentProcessId(c: Commitment, chainId: number): `0x${string}` {
-    return computeCommitmentProcessId(c, chainId, configuredCore());
 }
 
 /** Deployment-curried wrapper over the SDK's `restoreSignedProcessId` — the
