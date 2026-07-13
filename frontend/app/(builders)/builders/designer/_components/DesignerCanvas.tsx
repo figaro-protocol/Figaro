@@ -334,7 +334,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             }
             const parent = orders.find((o) => o.orderHash === parentOrderId);
             if (!parent) return;
-            const sub = createSyntheticSubOrder(session, parent, orders);
+            const sub = createSyntheticSubOrder(session, parent);
             setOrders((prev) => [...prev, sub.order]);
         },
         [atOrderCapacity, maxOrders, orders, session],

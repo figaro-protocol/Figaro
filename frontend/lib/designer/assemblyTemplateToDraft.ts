@@ -46,7 +46,6 @@ export function templateToOrders(template: AssemblyTemplate): Order[] {
             seller: syntheticAddress(planned.index + 1),
             currency: ZERO_ADDRESS,
             payment: DISPLAY_PAYMENT,
-            cumulativeValue: DISPLAY_PAYMENT * BigInt(planned.index + 1),
             salt: BigInt(planned.index + 1),
             clauseFields: planned.clauses as ClauseFields,
             parentOrderHashes: planned.parentLocalIds,

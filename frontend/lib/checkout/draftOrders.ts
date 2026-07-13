@@ -65,11 +65,12 @@ function fromStored(s: StoredDraftOrder): DraftOrder {
     };
 }
 
-// The draft-order localStorage API is a runtime DELIVERABLE ahead of its UI: the
-// buyer's order-composition surface (draft → preview → sign) is not yet wired, so
-// these have no consumer — they ship with the order* path by design. @public on
-// each keeps knip green until that surface lands (see the punch-list draft-order
-// testing item).
+// The checkout preview → sign path is live (orderPreview / orderCommitmentFlow);
+// what is NOT yet wired is draft persistence itself — no UI saves or recalls an
+// order through these helpers yet. They are the intended save/edit surface for a
+// buyer's pre-sign order (a draft stores inputs only — payment, fills, topology
+// position; every derived value is rebuilt at preview). @public on each keeps
+// knip green until that wiring lands.
 
 /** @public — Save (or replace) a draft order under `draftId`. */
 export function saveDraftOrder(draftId: string, draft: DraftOrder): void {

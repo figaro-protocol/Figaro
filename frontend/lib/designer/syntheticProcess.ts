@@ -12,7 +12,6 @@
  */
 
 import type { Hex } from "viem";
-import { calculateBonds } from "@figaro/sdk";
 import { Order, OrderState } from "@/lib/kernel/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
@@ -70,9 +69,15 @@ function defaultNodeClauseFields(): ClauseFields {
  * The single synthetic display-Order choreography: build the agreement from the
  * order's clauses + topology parents, hash it, persist it to the agreement store (so
  * the canvas + topology derivation resolve it by hash), and assemble the display
- * `Order` with the standard 2× bond derivations. Every synthetic-Order producer
- * — the canvas node-spawn paths here and the template fork/`/view`
- * reconstruction in `assemblyTemplateToDraft` — routes through this one builder.
+ * `Order`. Every synthetic-Order producer — the canvas node-spawn paths here
+ * and the template fork/`/view` reconstruction in `assemblyTemplateToDraft` —
+ * routes through this one builder.
+ *
+ * Designer drafts are VALUE-FREE: the published template carries no amounts
+ * (commerce values are checkout-time fills) and designer-mode nodes render no
+ * amounts, so no cumulative value or bond is derived here — those exist only
+ * on runtime orders, where the chain is the source. The value fields the
+ * shared `Order` shape requires are zeroed.
  *
  * Deliberately NOT the real checkout path: the SDK checkout walk produces a
  * signable `Commitment` from real parties and constructs no display `Order`.
@@ -85,7 +90,6 @@ export function buildSyntheticOrder(params: {
     seller: `0x${string}`;
     currency: `0x${string}`;
     payment: bigint;
-    cumulativeValue: bigint;
     salt: bigint;
     clauseFields: ClauseFields;
     parentOrderHashes?: string[];
@@ -103,11 +107,6 @@ export function buildSyntheticOrder(params: {
     // buyer's draftOrders.
     saveAgreement(agreement);
 
-    // The kernel's bond math, taken from the SDK — never re-implemented.
-    // Destructured, NOT spread: calculateBonds also returns totalLocked, and a
-    // stray bigint field on the Order breaks the draft store's JSON round-trip
-    // (writeJson swallows the throw, so the draft silently never persists).
-    const { sellerBond, buyerBond } = calculateBonds(params.cumulativeValue, params.payment);
     const order: Order = {
         orderHash: params.orderId,
         processId: params.processId,
@@ -118,11 +117,13 @@ export function buildSyntheticOrder(params: {
         // First-class topology edges (the topology clause's data) — read directly by
         // the topology deriver, never recovered from the agreement.
         parentOrderHashes: params.parentOrderHashes ?? [],
-        cumulativeValue: params.cumulativeValue,
+        // Value-free draft: zeros satisfy the shared Order shape; never rendered
+        // (designer-mode nodes show no amounts), never published, never signed.
+        cumulativeValue: 0n,
         payment: params.payment,
         state: OrderState.Active,
-        sellerBond,
-        buyerBond,
+        sellerBond: 0n,
+        buyerBond: 0n,
         salt: params.salt,
         deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
     };
@@ -148,7 +149,6 @@ export function createSyntheticRootOrder(
         seller: syntheticAddress(sellerIndex),
         currency: ZERO_ADDRESS,
         payment,
-        cumulativeValue: payment,
         salt: BigInt(orderIndex + 1),
         clauseFields: { ...defaultNodeClauseFields(), ...clauseFieldOverrides },
     });
@@ -157,11 +157,6 @@ export function createSyntheticRootOrder(
 export function createSyntheticSubOrder(
     session: SyntheticProcessSession,
     parent: Order,
-    /** ALL orders currently in the draft — the kernel's cumulative-value
-     *  accumulator is GLOBAL per process (Σ of every order's payment), never
-     *  branch-local along a topology edge. Topology is organizational;
-     *  bonding is linear (operator ruling 2026-07-02). */
-    allOrders: readonly Order[],
     /** Optional per-sub-order clause-field overrides, merged onto
      *  defaultNodeClauseFields(). */
     clauseFieldOverrides?: ClauseFields,
@@ -170,7 +165,6 @@ export function createSyntheticSubOrder(
     const sellerIndex = session.nextSellerIndex++;
     const currency = (parent.currency ?? ZERO_ADDRESS) as `0x${string}`;
     const payment = parent.payment / 2n > 0n ? parent.payment / 2n : 1n;
-    const priorPayments = allOrders.reduce((sum, o) => sum + o.payment, 0n);
 
     return buildSyntheticOrder({
         orderId: syntheticBytes32(`order${orderIndex}${session.processId.slice(2, 8)}`),
@@ -179,7 +173,6 @@ export function createSyntheticSubOrder(
         seller: syntheticAddress(sellerIndex),
         currency,
         payment,
-        cumulativeValue: priorPayments + payment,
         salt: BigInt(orderIndex + 1),
         clauseFields: { ...defaultNodeClauseFields(), ...clauseFieldOverrides },
         parentOrderHashes: [parent.orderHash],

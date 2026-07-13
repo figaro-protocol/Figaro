@@ -30,11 +30,8 @@ interface SerializedOrder {
     seller: string;
     currency?: string;
     agreementHash?: string;
-    cumulativeValue: string;
     payment: string;
     state: number;
-    sellerBond: string;
-    buyerBond: string;
     salt: string;
     deadline: string;
     blockNumber?: number;
@@ -43,12 +40,14 @@ interface SerializedOrder {
 }
 
 function serializeOrder(o: Order): SerializedOrder {
+    // Drafts are value-free: cumulativeValue/sellerBond/buyerBond are always
+    // 0n on a synthetic Order and are NOT persisted. Destructured OUT (not
+    // spread through) so no raw bigint reaches JSON.stringify — writeJson
+    // swallows the throw and the draft would silently never persist.
+    const { cumulativeValue: _cv, sellerBond: _sb, buyerBond: _bb, ...rest } = o;
     return {
-        ...o,
-        cumulativeValue: o.cumulativeValue.toString(),
+        ...rest,
         payment: o.payment.toString(),
-        sellerBond: o.sellerBond.toString(),
-        buyerBond: o.buyerBond.toString(),
         salt: o.salt.toString(),
         deadline: o.deadline.toString(),
     };
@@ -57,12 +56,14 @@ function serializeOrder(o: Order): SerializedOrder {
 function deserializeOrder(s: SerializedOrder): Order {
     return {
         ...s,
-        cumulativeValue: BigInt(s.cumulativeValue),
         payment: BigInt(s.payment),
-        sellerBond: BigInt(s.sellerBond),
-        buyerBond: BigInt(s.buyerBond),
         salt: BigInt(s.salt),
         deadline: BigInt(s.deadline),
+        // Value-free draft: the shared Order shape requires the fields. Also
+        // overwrites the persisted strings in pre-cleanup drafts.
+        cumulativeValue: 0n,
+        sellerBond: 0n,
+        buyerBond: 0n,
     };
 }
 

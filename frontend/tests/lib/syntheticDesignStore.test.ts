@@ -33,7 +33,7 @@ describe("syntheticDesignStore round-trip", () => {
     it("a draft built by the real canvas builders survives save -> load", () => {
         const session = startSyntheticSession();
         const root = createSyntheticRootOrder(session);
-        const sub = createSyntheticSubOrder(session, root.order, [root.order]);
+        const sub = createSyntheticSubOrder(session, root.order);
 
         const snapshot: DesignSnapshot = {
             slug: "asm-draft-roundtrip",
@@ -54,9 +54,12 @@ describe("syntheticDesignStore round-trip", () => {
         // "Assembly not found" review-page symptom.
         expect(loaded).not.toBeNull();
         expect(loaded!.orders).toHaveLength(2);
-        expect(loaded!.orders[0].sellerBond).toBe(root.order.sellerBond);
-        expect(loaded!.orders[1].cumulativeValue).toBe(sub.order.cumulativeValue);
+        expect(loaded!.orders[1].payment).toBe(sub.order.payment);
         expect(loaded!.orders[1].parentOrderHashes).toEqual([root.order.orderHash]);
+        // Drafts are value-free: the value fields hydrate as zeros, whatever
+        // an older stored draft carried.
+        expect(loaded!.orders[0].cumulativeValue).toBe(0n);
+        expect(loaded!.orders[0].sellerBond).toBe(0n);
     });
 
     it("every field the canvas puts on an Order is JSON-serializable after bigint conversion", () => {
