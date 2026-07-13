@@ -153,7 +153,6 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
             processAgreements,
             address,
             selectedCurrency,
-            isE2EMock,
             processAttestations,
         )
         : null;
@@ -354,6 +353,5 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         isSuccess: isActionSuccess,
         executeCapability,
         retryLastAction,
-        isE2EMock,
     };
 }

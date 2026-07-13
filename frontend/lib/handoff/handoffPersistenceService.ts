@@ -23,7 +23,7 @@ interface PendingHandoffIntent {
     originOrderId: string;
     pickupGeohash: string;
     dropoffGeohash: string;
-    maxFulfillerPrice: string;
+    maxSellerPrice: string;
     createdAt: number;
 }
 
@@ -34,7 +34,7 @@ interface PersistHandoffArtifactsParams {
     keyB64: string;
     pickupGeohash: string;
     dropoffGeohash: string;
-    maxFulfillerPrice: string;
+    maxSellerPrice: string;
     ephemeralPublicKeyHex?: string;
     ephemeralPrivateKeyHex?: string;
 }
@@ -213,7 +213,7 @@ class DefaultHandoffPersistenceService implements HandoffPersistenceService {
             originOrderId: orderId,
             pickupGeohash: params.pickupGeohash,
             dropoffGeohash: params.dropoffGeohash,
-            maxFulfillerPrice: params.maxFulfillerPrice,
+            maxSellerPrice: params.maxSellerPrice,
             createdAt: Date.now(),
         });
 

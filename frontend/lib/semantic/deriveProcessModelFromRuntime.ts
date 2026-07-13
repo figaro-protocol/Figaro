@@ -83,14 +83,13 @@ function roleCapabilities(
     agreements: Map<string, Agreement>,
     indexes: RuntimeIndexes,
     _address?: string,
-    _isE2EMock = false,
 ): CapabilityModel[] {
     const order = _order;
     if (order.state !== OrderState.Active || !order.currency) return [];
 
     const normalized = _address?.toLowerCase();
-    const isBuyer = _isE2EMock ? true : hexEqual(order.buyer, normalized);
-    const isSeller = _isE2EMock ? true : hexEqual(order.seller, normalized);
+    const isBuyer = hexEqual(order.buyer, normalized);
+    const isSeller = hexEqual(order.seller, normalized);
 
     // DERIVE means derive: this model READS the committed process — it never
     // alters it. The process shape is fixed by the assembly the buyer selected
@@ -209,17 +208,14 @@ function deriveProcessCapabilities(
     processId: string,
     orders: Order[],
     address?: string,
-    isE2EMock = false,
 ): CapabilityModel[] {
-    if (!address && !isE2EMock) return [];
+    if (!address) return [];
 
     const normalized = address?.toLowerCase();
     const capabilities: CapabilityModel[] = [];
-    const canResolve = isE2EMock
-        ? orders.some((order) => order.state === OrderState.Active)
-        : orders.some(
-            (order) => order.state === OrderState.Active && hexEqual(order.buyer, normalized)
-        );
+    const canResolve = orders.some(
+        (order) => order.state === OrderState.Active && hexEqual(order.buyer, normalized),
+    );
 
     if (canResolve) {
         capabilities.push({
@@ -595,7 +591,6 @@ function deriveOrderNodeModelFromOrder(
     agreements: Map<string, Agreement>,
     indexes: RuntimeIndexes,
     address?: string,
-    isE2EMock = false,
 ): OrderNodeModel {
     const parentOrderHashes = topology.get(order.orderHash) ?? [];
     const attachments = deriveOrderAttachments(order, parentOrderHashes, address);
@@ -611,7 +606,7 @@ function deriveOrderNodeModelFromOrder(
         parentOrderHashes,
         agreementHash: (order.agreementHash ?? ZERO_BYTES32) as `0x${string}`,
         attachments,
-        capabilities: roleCapabilities(order, agreements, indexes, address, isE2EMock),
+        capabilities: roleCapabilities(order, agreements, indexes, address),
         settlementBreakdown: deriveSettlementBreakdown(order, parentOrderHashes, address),
     };
 }
@@ -622,7 +617,6 @@ export function deriveProcessModelFromRuntime(
     agreements: Map<string, Agreement>,
     address?: string,
     currencyAddress?: string,
-    isE2EMock = false,
     attestations: RuntimeAttestation[] = [],
 ): ProcessModel {
     const processOrders = orders
@@ -632,7 +626,7 @@ export function deriveProcessModelFromRuntime(
     // Built ONCE per derivation — the per-order loop reads these maps so the
     // whole model stays O(orders + attestations) at the resolve ceiling.
     const indexes = buildRuntimeIndexes(processOrders, topology, agreements, attestations);
-    const semanticOrders = processOrders.map((order) => deriveOrderNodeModelFromOrder(order, topology, agreements, indexes, address, isE2EMock));
+    const semanticOrders = processOrders.map((order) => deriveOrderNodeModelFromOrder(order, topology, agreements, indexes, address));
     const rootOrderId = semanticOrders.find((order) => order.parentOrderHashes.length === 0)?.orderId ?? semanticOrders[0]?.orderId ?? "";
     const rootOrder = processOrders.find((order) => order.orderHash.toString() === rootOrderId);
     const rootAgreement = rootOrder?.agreementHash ? agreements.get(rootOrder.agreementHash) : undefined;
@@ -654,7 +648,7 @@ export function deriveProcessModelFromRuntime(
         stateSummary: stateCounts.active > 0
             ? `Active · ${stateCounts.active} active / ${processOrders.length} total`
             : `Closed · ${stateCounts.closed} settled / ${processOrders.length} total`,
-        capabilities: deriveProcessCapabilities(summary.processId, processOrders, address, isE2EMock),
+        capabilities: deriveProcessCapabilities(summary.processId, processOrders, address),
         economicSummary: deriveProcessEconomicSummary(summary.processId, processOrders, topology, address),
         attachments: deriveProcessAttachments(summary.processId, processOrders, rootOrderId, address, currencyAddress),
     };

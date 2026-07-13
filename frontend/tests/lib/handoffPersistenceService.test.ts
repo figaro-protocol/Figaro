@@ -50,7 +50,7 @@ describe("handoffPersistenceService", () => {
             originOrderId: "order-1",
             pickupGeohash: "dr5reg",
             dropoffGeohash: "dr5reh",
-            maxFulfillerPrice: "0.5",
+            maxSellerPrice: "0.5",
             createdAt: 456,
         });
 
@@ -100,7 +100,7 @@ describe("handoffPersistenceService", () => {
             keyB64: "key-abc",
             pickupGeohash: "dr5reg",
             dropoffGeohash: "dr5reh",
-            maxFulfillerPrice: "0.6",
+            maxSellerPrice: "0.6",
             ephemeralPublicKeyHex: "pub-1",
             ephemeralPrivateKeyHex: "priv-1",
         });
@@ -120,7 +120,7 @@ describe("handoffPersistenceService", () => {
         }));
         expect(
             DEFAULT_HANDOFF_PERSISTENCE_SERVICE.getPendingHandoffIntent("0x1234", "process-2", "42"),
-        ).toEqual(expect.objectContaining({ maxFulfillerPrice: "0.6" }));
+        ).toEqual(expect.objectContaining({ maxSellerPrice: "0.6" }));
     });
 
     it("purges all records for a resolved process instead of looking up a fake all-order id", () => {
@@ -150,7 +150,7 @@ describe("handoffPersistenceService", () => {
             originOrderId: "order-a",
             pickupGeohash: "dr5reg",
             dropoffGeohash: "dr5reh",
-            maxFulfillerPrice: "0.1",
+            maxSellerPrice: "0.1",
             createdAt: 4,
         });
         DEFAULT_HANDOFF_PERSISTENCE_SERVICE.savePendingHandoffIntent("0xabc", {
@@ -158,7 +158,7 @@ describe("handoffPersistenceService", () => {
             originOrderId: "order-c",
             pickupGeohash: "9q8yyk",
             dropoffGeohash: "9q8yym",
-            maxFulfillerPrice: "0.2",
+            maxSellerPrice: "0.2",
             createdAt: 5,
         });
 

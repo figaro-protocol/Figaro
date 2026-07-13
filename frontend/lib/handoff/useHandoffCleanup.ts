@@ -6,7 +6,7 @@
  *
  * Cleans up (all via handoffPersistenceService):
  *   - Buyer-side AES handoff key + ephemeral private key
- *   - Fulfiller-side ECDH ephemeral keypair (ecdh store)
+ *   - Receiving-side ECDH ephemeral keypair (ecdh store)
  *   - Pending handoff intent
  *
  * A grace period (default 0 — immediate) can be configured per-instance.
