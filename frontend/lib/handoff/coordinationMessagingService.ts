@@ -1,7 +1,5 @@
-import {
-    getCoordinationChannel,
-    type CoordinationChannel,
-} from "@/lib/handoff/channel";
+import { getCoordinationChannel } from "@/lib/handoff/channel";
+import type { HandoffChannel } from "@figaro/sdk/handoff";
 
 interface WalletMessageSignerSource {
     signMessage(params: { message: string }): Promise<`0x${string}`>;
@@ -13,7 +11,7 @@ interface CoordinationMessagingContext {
 }
 
 export interface CoordinationMessagingService {
-    getChannel(context: CoordinationMessagingContext): Promise<CoordinationChannel>;
+    getChannel(context: CoordinationMessagingContext): Promise<HandoffChannel>;
     sendHandoffKey(
         params: CoordinationMessagingContext & {
             recipientAddress: string;
@@ -82,7 +80,7 @@ function resolveWalletMessageSigner(walletClient?: WalletMessageSignerSource | n
 }
 
 class DefaultCoordinationMessagingService implements CoordinationMessagingService {
-    async getChannel({ address, walletClient }: CoordinationMessagingContext): Promise<CoordinationChannel> {
+    async getChannel({ address, walletClient }: CoordinationMessagingContext): Promise<HandoffChannel> {
         return getCoordinationChannel(address, resolveWalletMessageSigner(walletClient));
     }
 

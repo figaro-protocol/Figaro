@@ -33,7 +33,7 @@ import {
     deriveSharedSecretAsSender,
     unwrapWithSharedSecret,
     wrapWithSharedSecret,
-} from "@/lib/handoff/ecdh";
+} from "@figaro/sdk/handoff";
 import {
     deserializeCommitmentPayload,
     serializeCommitmentPayload,
@@ -152,10 +152,14 @@ beforeAll(async () => {
     ]);
 
     if (HARVEST) {
-        const { PrivateKey } = await import("eciesjs");
+        // The ECDH vectors were originally recorded from eciesjs (see the
+        // handoff.test.ts fixture note); since Phase 2 the SDK owns the
+        // implementation, so a re-harvest derives from it.
+        const { secp256k1 } = await import("@noble/curves/secp256k1");
         const { hexToBytes } = await import("@/lib/shared/evm");
-        const pubA = new PrivateKey(hexToBytes(PRIV_A)).publicKey.toHex();
-        const pubB = new PrivateKey(hexToBytes(PRIV_B)).publicKey.toHex();
+        const { bytesToHex } = await import("@/lib/shared/evm");
+        const pubA = bytesToHex(secp256k1.getPublicKey(hexToBytes(PRIV_A), true));
+        const pubB = bytesToHex(secp256k1.getPublicKey(hexToBytes(PRIV_B), true));
         const sharedSecretAtoB = deriveSharedSecretAsSender(PRIV_A, pubB);
         const { defaults, processLog } = projectionCases();
         const template = templateCase();

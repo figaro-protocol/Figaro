@@ -21,7 +21,8 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useChainId, usePublicClient } from "wagmi";
-import { getCoordinationChannel, type CoordinationChannel } from "@/lib/handoff/channel";
+import { getCoordinationChannel } from "@/lib/handoff/channel";
+import type { HandoffChannel } from "@figaro/sdk/handoff";
 import {
     addressDetailAnchorRef,
     addressDetailBlobHash,
@@ -51,7 +52,7 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
         : null;
 
     const counterparty = role === "seller" ? buyer : seller;
-    const [channel, setChannel] = useState<CoordinationChannel | null>(null);
+    const [channel, setChannel] = useState<HandoffChannel | null>(null);
     const [peerPubKey, setPeerPubKey] = useState<string | null>(null);
     const [blob, setBlob] = useState<string | null>(null);
     const [requested, setRequested] = useState(false);

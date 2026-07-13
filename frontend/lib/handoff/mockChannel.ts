@@ -1,12 +1,12 @@
 /**
- * Mock CoordinationChannel for e2e tests.
+ * Mock HandoffChannel for e2e tests.
  *
  * Messages are persisted in same-origin localStorage so separate pages in the
  * same browser context can exchange keys and commitment payloads without a real
  * XMTP network.
  */
 
-import type { CoordinationChannel, HandoffKeyMessage, EcdhPubkeyMessage, EcdhWrappedKeyMessage, CommitmentSignatureMessage } from "./channel";
+import type { HandoffChannel, HandoffKeyMessage, EcdhPubkeyMessage, EcdhWrappedKeyMessage, CommitmentSignatureMessage } from "@figaro/sdk/handoff";
 
 type StoredHandoffKeyMessage = HandoffKeyMessage & { senderIdentity: string };
 type StoredEcdhPubkeyMessage = EcdhPubkeyMessage & { senderIdentity: string };
@@ -160,7 +160,7 @@ function ensureStore() {
     return window.__FIGARO_COORDINATION_MOCK__;
 }
 
-export function createMockChannel(ownerAddress: string): CoordinationChannel {
+export function createMockChannel(ownerAddress: string): HandoffChannel {
     const store = ensureStore();
 
     if (!store) {

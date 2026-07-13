@@ -1,7 +1,7 @@
 /**
  * addressDetail — the private-address ceremony, lib tier.
  *
- * Real crypto end to end (eciesjs ECDH + WebCrypto AES-GCM; no mocks): the
+ * Real crypto end to end (@figaro/sdk/handoff ECDH + WebCrypto AES-GCM; no mocks): the
  * seller requests (ephemeral pubkey out), the buyer answers (encrypted
  * addressee block + own pubkey), the seller decrypts; the anchored hash
  * matches the transported blob; a wrong key or corrupted blob decrypts to
@@ -18,7 +18,7 @@ import {
     type AddresseeBlock,
 } from "@/lib/handoff/addressDetail";
 import { keccak256, toHex } from "viem";
-import type { CoordinationChannel } from "@/lib/handoff/channel";
+import type { HandoffChannel } from "@figaro/sdk/handoff";
 
 const SELLER = "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f";
 const BUYER = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC";
@@ -42,7 +42,7 @@ function recordingChannel() {
         sendWrappedKey: vi.fn(async ({ orderId, wrappedKeyB64 }) => {
             sent.push({ kind: "blob", orderId, value: wrappedKeyB64 });
         }),
-    } as unknown as CoordinationChannel;
+    } as unknown as HandoffChannel;
     return { channel, sent };
 }
 

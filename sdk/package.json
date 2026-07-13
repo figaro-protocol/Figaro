@@ -25,6 +25,11 @@
             "import": "./dist/clauses/index.js",
             "types": "./dist/clauses/index.d.ts",
             "default": "./dist/clauses/index.js"
+        },
+        "./handoff": {
+            "import": "./dist/handoff/index.js",
+            "types": "./dist/handoff/index.d.ts",
+            "default": "./dist/handoff/index.js"
         }
     },
     "files": [
@@ -39,6 +44,8 @@
         "lint": "tsc --noEmit"
     },
     "dependencies": {
+        "@noble/curves": "^1.9.1",
+        "@noble/hashes": "^1.8.0",
         "viem": "^2.55.1"
     },
     "devDependencies": {

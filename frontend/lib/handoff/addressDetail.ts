@@ -39,11 +39,11 @@ import { keccak256, toHex } from "viem";
 import {
     deriveSharedSecretAsReceiver,
     deriveSharedSecretAsSender,
-    getOrCreateOrderEcdhKeypair,
     unwrapWithSharedSecret,
     wrapWithSharedSecret,
-} from "./ecdh";
-import type { CoordinationChannel } from "./channel";
+} from "@figaro/sdk/handoff";
+import type { HandoffChannel } from "@figaro/sdk/handoff";
+import { getOrCreateOrderEcdhKeypair } from "./ecdh";
 
 /** The precise-address payload — everything a label/door needs and the chain
  *  never learns. All fields free-form; `name` is the addressee (names are
@@ -97,7 +97,7 @@ export function addressDetailAnchorRef(blobB64: string): `0x${string}` {
  *  requests the drop-off door; in a pickup, the buyer requests the seller's
  *  precise pickup point the same way. Returns the public key sent. */
 export async function requestAddressDetail(
-    channel: CoordinationChannel,
+    channel: HandoffChannel,
     params: { myAddress: string; recipientAddress: string; orderId: string },
 ): Promise<string> {
     const keypair = getOrCreateOrderEcdhKeypair(params.myAddress, params.orderId);
@@ -114,7 +114,7 @@ export async function requestAddressDetail(
  *  Returns the blob so the caller can anchor its hash on-chain (a buyer
  *  answer anchors as a buyer attestation; a seller answer as a seller one). */
 export async function sendAddressDetail(
-    channel: CoordinationChannel,
+    channel: HandoffChannel,
     params: {
         myAddress: string;
         recipientAddress: string;

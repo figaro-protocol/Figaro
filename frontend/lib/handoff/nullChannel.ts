@@ -1,5 +1,5 @@
 /**
- * Inert CoordinationChannel for the `links-only` transport (the default).
+ * Inert HandoffChannel for the `links-only` transport (the default).
  *
  * When a wallet has NOT opted into a push transport, coordination happens
  * out-of-band through the share/receive URI flow: the counter-party opens a
@@ -9,10 +9,10 @@
  * `links-only` floor WITHOUT loading or initializing the XMTP chunk, while
  * callers keep the same interface they use for the mock and XMTP channels.
  */
-import type { CoordinationChannel } from "./channel";
+import type { HandoffChannel } from "@figaro/sdk/handoff";
 
 /** Create an inert coordination channel (no push transport). */
-export function createNullChannel(): CoordinationChannel {
+export function createNullChannel(): HandoffChannel {
     const noopUnsubscribe = () => {};
     return {
         async sendHandoffKey() {},

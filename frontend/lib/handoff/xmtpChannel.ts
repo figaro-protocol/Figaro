@@ -1,12 +1,12 @@
 /**
- * Real XMTP CoordinationChannel using @xmtp/browser-sdk v7.
+ * Real XMTP HandoffChannel using @xmtp/browser-sdk v7.
  *
  * The SDK is dynamically imported so that SSR builds never
  * pull in OPFS / WASM code.  This module is only loaded via
  * `import('./xmtpChannel')` inside the channel factory.
  */
 
-import type { CoordinationChannel, HandoffKeyMessage, EcdhPubkeyMessage, EcdhWrappedKeyMessage, CommitmentSignatureMessage, ChannelMessage } from "./channel";
+import type { HandoffChannel, HandoffKeyMessage, EcdhPubkeyMessage, EcdhWrappedKeyMessage, CommitmentSignatureMessage, ChannelMessage } from "@figaro/sdk/handoff";
 import { safeJsonParse } from "@/lib/shared/safeJson";
 import { hexToBytes } from "@/lib/shared/evm";
 
@@ -50,7 +50,7 @@ function isInstallationCapError(err: unknown): boolean {
 export async function createXmtpChannel(
     address: string,
     signMessage: (message: string) => Promise<`0x${string}`>,
-): Promise<CoordinationChannel> {
+): Promise<HandoffChannel> {
     // Dynamic import — keeps WASM out of the server bundle.
     const { Client, IdentifierKind, generateInboxId } = await import("@xmtp/browser-sdk");
 
