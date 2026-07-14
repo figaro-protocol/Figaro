@@ -333,6 +333,24 @@ const RUNGS: ClauseRung[] = [
         },
     },
     {
+        // THE DIGITAL TWIN: value added in the digital medium hands off by
+        // MODE (the buyer's checkout pick, like the physical twin's) and
+        // completes with the delivered artifact's keccak256 as the stage-1
+        // witness — the freelancer/production-chain completion evidence.
+        clauseId: 'figaro-content-handoff',
+        checkout: checkoutPick('figaro-content-handoff', 'contentHandoff', 'public-release'),
+        auditTexts: ['Content hand-off', 'public-release'],
+        leaf: (data) => expect(data.contentHandoff).toEqual(['public-release']),
+        witness: {
+            fill: all(
+                witnessFill('figaro-content-handoff', 'contentHash',
+                    keccak256(new Uint8Array(Buffer.from('coverage deliverable — the digital artifact')))),
+                witnessFill('figaro-content-handoff', 'contentUri', 'ipfs://bafy-coverage-deliverable'),
+            ),
+            auditTexts: ['Delivered content hash', 'Content locator', 'ipfs://bafy-coverage-deliverable'],
+        },
+    },
+    {
         // Nested sub-clause: proximity-policy nests under the handoff FIELD
         // (clauseNestsUnder), so it is reachable only inside its host's
         // sub-clause tree — reconstructed from the spec, never hardcoded.

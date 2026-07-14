@@ -5,6 +5,7 @@ import { validateContent } from "../../src/clauses/validate.js";
 import topologySpecRaw from "../../../clauses/figaro-topology.json" with { type: "json" };
 import commerceSpecRaw from "../../../clauses/figaro-commerce.json" with { type: "json" };
 import denominationSpecRaw from "../../../clauses/figaro-denomination.json" with { type: "json" };
+import contentHandoffSpecRaw from "../../../clauses/figaro-content-handoff.json" with { type: "json" };
 import geolocationSpecRaw from "../../../clauses/figaro-geolocation.json" with { type: "json" };
 import cargoSpecRaw from "../../../clauses/figaro-cargo.json" with { type: "json" };
 import hazmatSpecRaw from "../../../clauses/figaro-hazmat.json" with { type: "json" };
@@ -64,6 +65,23 @@ describe("example clause specs — parse + validate sample content", () => {
             lineItems: [{ itemId: "burger-001", name: "Cheeseburger", quantity: 2, unitPrice: "500000000000000000" }],
         }, parsed.spec);
         expect(ok.ok).toBe(true);
+    });
+
+    // ── figaro-content-handoff ──
+
+    it("figaro-content-handoff spec parses cleanly and declares its stage-1 witness", () => {
+        const parsed = parseClauseSpec(contentHandoffSpecRaw);
+        expect(parsed.ok).toBe(true);
+        const stages = (contentHandoffSpecRaw as { stages?: Record<string, unknown[]> }).stages;
+        expect(stages?.["1"]?.length).toBe(2);
+    });
+
+    it("figaro-content-handoff accepts a mode set and rejects an empty one (the digital twin of the hand-off point)", () => {
+        const parsed = parseClauseSpec(contentHandoffSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ contentHandoff: ["encrypted-transfer", "public-release"] }, parsed.spec).ok).toBe(true);
+        expect(validateContent({ contentHandoff: [] }, parsed.spec).ok).toBe(false);
+        expect(validateContent({ contentHandoff: ["carrier-pigeon"] }, parsed.spec).ok).toBe(false);
     });
 
     // ── figaro-denomination ──
