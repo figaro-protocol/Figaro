@@ -424,7 +424,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         await waitForConnected(page);
 
         // VALUES — the clause-evidence view surfaces EVERY committed leaf's value,
-        // each rendered from its registered spec title: the two structural leaves
+        // each rendered from its registered spec title: the two mandatory leaves
         // (commerce + topology) AND the never-seen clause.
         const evidence = page.getByTestId('audit-clause-evidence');
         await evidence.waitFor({ state: 'visible', timeout: 30000 });

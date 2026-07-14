@@ -3,7 +3,7 @@
  * populate-test-data.mjs — the ONE pre-population path FOR TESTING. Populates the
  * registries the e2e suite consumes from: clauses (ClauseRegistry + IPFS, reusing
  * populate-clauses), the seed assemblies (AssemblyRegistry + IPFS — the blank
- * structural composition sellers bind, plus the multi-order delivery chain
+ * mandatory-only composition sellers bind, plus the multi-order delivery chain
  * the multi-order e2e runs), AND sellers (SellerRegistry + IPFS).
  * Run after deploy, before the test suite. The runtime specs then discover everything from chain → IPFS.
  *
@@ -62,27 +62,27 @@ const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Er
 // (operator ruling 2026-07-02; the scenario-era build-order coupling is the
 // cautionary tale). The template reproduces the designer's emission byte for
 // byte: identity (compositionHash + slug) and canonical JSON come from the
-// SDK; the structural fold mirrors `lib/designer/buildAssemblyTemplate.ts`
+// SDK; the mandatory fold mirrors `lib/designer/buildAssemblyTemplate.ts`
 // (composeStructuralClauses) — so the anchored document is indistinguishable
 // from a designer-published one.
 
-/** Fold the MANDATORY structural clauses (block.article === "structural",
+/** Fold the MANDATORY clauses (block.article === "mandatory",
  *  read from the canonical Layer-A specs — derived, never named) onto an
  *  order: each takes the subset of the design-time bag it declares. Parents
  *  are LOCAL template ids — mirrors the designer's composeStructuralClauses. */
-function structuralClauseFold(parents = []) {
+function mandatoryClauseFold(parents = []) {
     const bag = { parentOrderHashes: parents };
     const out = {};
     for (const file of fs.readdirSync(CLAUSES_DIR).filter((f) => f.endsWith('.json')).sort()) {
         const spec = JSON.parse(fs.readFileSync(path.join(CLAUSES_DIR, file), 'utf8'));
-        if (spec.block?.article !== 'structural') continue;
+        if (spec.block?.article !== 'mandatory') continue;
         const data = {};
         for (const field of spec.fields ?? []) {
             if (field.name in bag) data[field.name] = bag[field.name];
         }
         out[spec.clauseId] = data;
     }
-    if (Object.keys(out).length === 0) throw new Error('no structural clauses found in clauses/*.json');
+    if (Object.keys(out).length === 0) throw new Error('no mandatory clauses found in clauses/*.json');
     return out;
 }
 
@@ -116,14 +116,14 @@ async function anchorAssembly({ publicClient, walletClient, account, registry, i
     return slug;
 }
 
-/** The blank single-agreement composition: structural clauses only — the
+/** The blank single-agreement composition: mandatory clauses only — the
  *  minimal bindable assembly the single-order specs run against. */
 function seedTemplateBlank() {
     return {
         name: 'Devnet seed',
         summary: 'Pre-populated bindable assembly for the e2e suite.',
-        description: 'A blank single-agreement composition (structural clauses only), anchored by populate-test-data so sellers can bind before any spec runs.',
-        agreements: [{ id: 'order-0', clauses: structuralClauseFold() }],
+        description: 'A blank single-agreement composition (mandatory clauses only), anchored by populate-test-data so sellers can bind before any spec runs.',
+        agreements: [{ id: 'order-0', clauses: mandatoryClauseFold() }],
     };
 }
 
@@ -144,21 +144,21 @@ function seedTemplateChain() {
                 clauses: {
                     'figaro-merchant-process': {},
                     'figaro-modalities': { modality: 'delivery' },
-                    ...structuralClauseFold([]),
+                    ...mandatoryClauseFold([]),
                 },
             },
             {
                 id: 'order-1',
                 clauses: {
                     'figaro-courier-process': {},
-                    ...structuralClauseFold(['order-0']),
+                    ...mandatoryClauseFold(['order-0']),
                 },
             },
             {
                 id: 'order-2',
                 clauses: {
                     'figaro-merchant-process': {},
-                    ...structuralClauseFold(['order-0']),
+                    ...mandatoryClauseFold(['order-0']),
                 },
             },
         ],

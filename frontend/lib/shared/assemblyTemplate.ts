@@ -12,7 +12,7 @@
  * The template is the no-hash JSON the designer emits: a composition of
  * AGREEMENTS. Each agreement is one buyer↔seller relationship's MEANING —
  * the clauses composed on it in the drawer — and the topology is ONE OF
- * THOSE CLAUSES: the structural topology clause holds the agreement's parent
+ * THOSE CLAUSES: the mandatory topology clause holds the agreement's parent
  * ids. At checkout the parties fill and sign each agreement, and each signed
  * agreement commits as one kernel ORDER — the agreement's `id` names that
  * future order slot (`order-<index>`), which is why the topology field is

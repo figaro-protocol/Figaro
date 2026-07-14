@@ -435,7 +435,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         ).toBeVisible({ timeout: 30000 });
 
         // Evidence documents: the chain's committed clause leaves surface by
-        // their registered spec titles — the structural leaves, the coordination
+        // their registered spec titles — the mandatory leaves, the coordination
         // declaration, both process ladders, and the sellers' recorded
         // attestation stages (read from the event log, never a local cache).
         const evidence = page.getByTestId('audit-clause-evidence');

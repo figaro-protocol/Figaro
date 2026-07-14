@@ -20,7 +20,7 @@ export default function DesignerLanding() {
                     An assembly is a composition of roles, coordination mechanisms, and display views that use the Figaro kernel to coordinate a multi-party process.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Every assembly automatically carries the two structural clauses — capital flow (committed at buy time) and topology. You compose the rest by spawning sub-orders from any node and attaching the clauses that define each edge — geolocation, modality, coordination, hand-off, proximity, emissions, recourse, and more. Those clauses are read live from the ClauseRegistry, never a fixed menu: a clause registered tomorrow shows up here with no code change.
+                    Every assembly automatically carries the two mandatory clauses — capital flow (committed at buy time) and topology. You compose the rest by spawning sub-orders from any node and attaching the clauses that define each edge — geolocation, modality, coordination, hand-off, proximity, emissions, recourse, and more. Those clauses are read live from the ClauseRegistry, never a fixed menu: a clause registered tomorrow shows up here with no code change.
                 </p>
                 <div className="mt-8">
                     <Link

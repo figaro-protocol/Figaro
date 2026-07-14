@@ -35,7 +35,7 @@ function topologyParentOrderHashes(agreement: Agreement | null | undefined): str
 /** The ONLY topology data is the parent edges: order id → parent order ids.
  *  Two sources: a designer draft carries its edges directly (the canvas is
  *  the origin of the topology clause's data, pre-commit); a committed order's
- *  edges are read from its agreement's mandatory structural topology section.
+ *  edges are read from its agreement's mandatory topology section.
  *  An agreement not yet hydrated from IPFS yields [] — edgeless until it
  *  loads, NEVER invented edges. */
 export function deriveOrderTopology(

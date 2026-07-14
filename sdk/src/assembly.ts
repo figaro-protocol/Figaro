@@ -21,7 +21,7 @@ export interface TemplateAgreement {
     /** clauseId → the design-time field values the designer composed (an empty
      *  object = selected, no fields set — filled downstream: seller at
      *  first-use, buyer at checkout). The topology is a clause here too: the
-     *  structural topology clause carries `{ parentOrderHashes }` (root = []). */
+     *  mandatory topology clause carries `{ parentOrderHashes }` (root = []). */
     clauses: Record<string, Record<string, unknown>>;
     /** clauseId → the registered VERSION composed, when it isn't 1. A clause's
      *  identity is (name, version) — two live versions are two clauses; this

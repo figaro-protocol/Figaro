@@ -119,7 +119,7 @@ describe("projection — golden-vector byte-exactness", () => {
         expect(agreementHash).toBe(vectors.agreementProjection.processLog.agreementHash);
     });
 
-    it("structural fold + relabeling reproduce the frozen template + compositionHash", () => {
+    it("mandatory fold + relabeling reproduce the frozen template + compositionHash", () => {
         const template = serializeAssemblyTemplate(
             buildAssemblyTemplate({
                 name: "Golden Vector Chain",

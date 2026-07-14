@@ -25,7 +25,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Order } from "@/lib/kernel/store";
 import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/protocol/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsStructural } from "@/lib/shared/clauseSpecSource";
+import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsMandatory } from "@/lib/shared/clauseSpecSource";
 import { ClausesByArticle } from "@/components/runtime/ClausesByArticle";
 import { FieldControl } from "@/components/runtime/FieldControl";
 
@@ -373,7 +373,7 @@ function ClauseRegistryPanel({
             .map((g) => ({
                 article: g.article,
                 entries: g.clauses
-                    .filter((c) => !clauseIsStructural(c.clauseId, c.version))
+                    .filter((c) => !clauseIsMandatory(c.clauseId, c.version))
                     .map((c) => eventByIdentity.get(`${c.clauseId}#${c.version}`))
                     .filter((e): e is RegisteredClauseEvent => e !== undefined),
             }))

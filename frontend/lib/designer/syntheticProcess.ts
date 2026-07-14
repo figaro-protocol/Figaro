@@ -57,7 +57,7 @@ export interface CreatedOrder {
 
 /**
  * Clause-field defaults applied to every freshly-spawned synthetic order.
- * No clause is pre-composed by default: structural clauses (commerce, topology)
+ * No clause is pre-composed by default: mandatory clauses (commerce, topology)
  * are composed by the build itself, and every other clause is an explicit
  * designer choice in the drawer.
  */

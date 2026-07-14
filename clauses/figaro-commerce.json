@@ -38,6 +38,6 @@
         }
     ],
     "block": {
-        "article": "structural"
+        "article": "mandatory"
     }
 }

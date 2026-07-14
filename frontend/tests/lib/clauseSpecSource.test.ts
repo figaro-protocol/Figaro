@@ -121,7 +121,7 @@ describe("clauseIsProcessLog — classified by the attestations article, never b
     });
 
     it("a committed-choice enum clause (coordination article) is NOT a lifecycle", async () => {
-        // Regression: "non-structural + has enum" misread modalities as a
+        // Regression: "non-mandatory + has enum" misread modalities as a
         // process-log — fabricated seller capabilities and skipped Layer-A
         // validation at both sign points.
         await primeClauseSpecs(["figaro-modalities"]);
@@ -129,7 +129,7 @@ describe("clauseIsProcessLog — classified by the attestations article, never b
         expect(clauseIsProcessLog("figaro-modalities")).toBe(false);   // …but declares coordination
     });
 
-    it("a structural clause with an enum is NOT a lifecycle (the earlier collision)", async () => {
+    it("a mandatory clause with an enum is NOT a lifecycle (the earlier collision)", async () => {
         await primeClauseSpecs(["figaro-topology"]);
         expect(clauseIsProcessLog("figaro-topology")).toBe(false);
     });

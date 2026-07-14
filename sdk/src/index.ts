@@ -171,7 +171,7 @@ export {
     specDeclaresField,
     specIsCatalogueSourced,
     specIsProcessLog,
-    specIsStructural,
+    specIsMandatory,
     validateCommitmentAgreement,
 } from "./projection.js";
 export type {

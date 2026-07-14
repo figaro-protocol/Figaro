@@ -37,7 +37,7 @@ import { reconstructOrdersFromTemplate, templateAgreementFromClauses } from "../
 export type { AssemblyTemplate, TemplateAgreement };
 
 /** A template agreement is a ROOT if no clause declares a non-empty
- *  `parentOrderHashes` — the structural topology field, matched by name not by
+ *  `parentOrderHashes` — the mandatory topology clause's field, matched by name not by
  *  clause id (open-world). */
 function isRootAgreement(a: TemplateAgreement): boolean {
     return templateParentOrderHashes(a).length === 0;

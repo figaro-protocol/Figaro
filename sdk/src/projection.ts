@@ -14,7 +14,7 @@
  * their cache being warm before projecting.
  *
  * Three `block` hints are HASH-LOAD-BEARING and therefore projection
- * vocabulary, not presentation: `article: "structural"` (which clauses
+ * vocabulary, not presentation: `article: "mandatory"` (which clauses
  * auto-fold into every template agreement → compositionHash),
  * `article: "attestations"` (process-log clauses stay empty anchors at
  * commit → agreementHash), and `catalogueSourced` (which sections a
@@ -36,7 +36,7 @@ import { validateContent, type ClauseSpec } from "./clauses/index.js";
 
 /** The hash-load-bearing slice of a clause spec's `block`. */
 export interface ProjectionHints {
-    /** The spec's `block.article` (e.g. `"structural"`, `"attestations"`). */
+    /** The spec's `block.article` (e.g. `"mandatory"`, `"attestations"`). */
     article?: string;
     /** The spec's `block.catalogueSourced` marker. */
     catalogueSourced?: boolean;
@@ -75,10 +75,12 @@ export function specDeclaresField(spec: ProjectionSpecView, fieldName: string): 
     return spec.fields.some((f) => f.name === fieldName);
 }
 
-/** True for the MANDATORY structural clauses (`block.article: "structural"`)
- *  that auto-fold into every template agreement. */
-export function specIsStructural(spec: ProjectionSpecView): boolean {
-    return spec.hints?.article === "structural";
+/** True for the MANDATORY clauses (`block.article: "mandatory"` — commerce,
+ *  topology) that auto-fold into every template agreement; they are not
+ *  designer choices. (Article renamed from "structural" 2026-07-14 — that word
+ *  collided with the design/DAG sense and maddened everyone.) */
+export function specIsMandatory(spec: ProjectionSpecView): boolean {
+    return spec.hints?.article === "mandatory";
 }
 
 /** True for process-log clauses (`block.article: "attestations"`) — empty
@@ -274,32 +276,32 @@ export function sectionByField(
 
 // ── Template building (design-time projection) ─────────────────────────────
 
-/** The structural slice of a design-time order the template build reads:
+/** The DAG slice of a design-time order the template build reads:
  *  its (synthetic) hash and its parent edges. */
 export interface TemplateOrderNode {
     orderHash: string;
     parentOrderHashes?: readonly string[];
 }
 
-/** Fold the MANDATORY structural clauses into a template agreement's clause
- *  set. Each structural clause (`block.article: "structural"`) draws the
- *  fields it declares from the design-time value bag — topology gets
+/** Fold the MANDATORY clauses into a template agreement's clause set. Each
+ *  mandatory clause (`block.article: "mandatory"`) draws the fields it
+ *  declares from the design-time value bag — topology gets
  *  `{ parentOrderHashes }` (mode is DERIVED from the edges, never stored);
  *  commerce's currency/payment/lineItems are NOT design-time (the buyer fills
  *  them at checkout), so commerce folds in empty. Generic: a never-seen
- *  structural clause composes the subset of the bag it declares, with zero
+ *  mandatory clause composes the subset of the bag it declares, with zero
  *  per-clause code. */
-function composeStructuralClauses(
-    structural: readonly ProjectionSpecView[],
+function composeMandatoryClauses(
+    mandatorySpecs: readonly ProjectionSpecView[],
     parents: string[],
 ): Record<string, Record<string, unknown>> {
-    // The design-time structural value bag. Checkout-time values (commerce's
+    // The design-time value bag. Checkout-time values (commerce's
     // currency/payment/lineItems) are deliberately absent — filled downstream.
     const bag: Record<string, unknown> = {
         parentOrderHashes: parents,
     };
     const out: Record<string, Record<string, unknown>> = {};
-    for (const spec of structural) {
+    for (const spec of mandatorySpecs) {
         const data: Record<string, unknown> = {};
         for (const field of spec.fields ?? []) {
             if (field.name in bag) data[field.name] = bag[field.name];
@@ -311,7 +313,7 @@ function composeStructuralClauses(
 
 /** Build the no-hash assembly template from the design's orders + the per-order
  *  clause selection: one template AGREEMENT per canvas order. The MANDATORY
- *  structural clauses (commerce + topology) fold in automatically on every
+ *  clauses (commerce + topology) fold in automatically on every
  *  agreement — they are not designer choices. */
 export function buildAssemblyTemplate(args: {
     name?: string;
@@ -327,25 +329,25 @@ export function buildAssemblyTemplate(args: {
     const { name, summary, description, orders, clausesByOrderId, clauseVersionsByOrderId, specs } =
         args;
     // Dedupe by clauseId (list() is per-version): the fold wants each
-    // structural clause once, at its highest loaded version.
-    const structural = new Map<string, ProjectionSpecView>();
+    // mandatory clause once, at its highest loaded version.
+    const mandatory = new Map<string, ProjectionSpecView>();
     for (const spec of specs.list()) {
-        if (!specIsStructural(spec)) continue;
-        const seen = structural.get(spec.clauseId);
-        if (!seen || spec.version > seen.version) structural.set(spec.clauseId, spec);
+        if (!specIsMandatory(spec)) continue;
+        const seen = mandatory.get(spec.clauseId);
+        if (!seen || spec.version > seen.version) mandatory.set(spec.clauseId, spec);
     }
-    if (structural.size === 0) {
-        // Without the chain→IPFS spec set the structural clauses cannot be
+    if (mandatory.size === 0) {
+        // Without the chain→IPFS spec set the mandatory clauses cannot be
         // resolved — refuse loudly rather than emit a template missing them.
         // Consumers gate on their spec cache being warm before building.
         throw new Error(
-            "clause specs not loaded: no structural clauses in the SpecSource — warm the spec cache before building templates",
+            "clause specs not loaded: no mandatory clauses in the SpecSource — warm the spec cache before building templates",
         );
     }
-    const structuralSpecs = Array.from(structural.values());
+    const mandatorySpecs = Array.from(mandatory.values());
     // Re-label each design-time (synthetic) order id to a clean local label
     // naming the future kernel-order slot. The template carries no chain ids
-    // and no party addresses — only the clauses (the structural ones among
+    // and no party addresses — only the clauses (the mandatory ones among
     // them), keyed by these local labels.
     const idToLocal = new Map(orders.map((o, i) => [o.orderHash, `order-${i}`]));
     return {
@@ -355,14 +357,14 @@ export function buildAssemblyTemplate(args: {
         agreements: orders.map((order, i) => {
             const clauses = {
                 ...(clausesByOrderId[order.orderHash] ?? {}),
-                ...composeStructuralClauses(
-                    structuralSpecs,
+                ...composeMandatoryClauses(
+                    mandatorySpecs,
                     (order.parentOrderHashes ?? []).map((p) => idToLocal.get(p) ?? p),
                 ),
             };
             // Record each composed clause's registered version — the designer's
             // pick for selected clauses, the loaded spec's version for the
-            // auto-folded structural ones. NORMALIZED SPARSE: v1 entries are
+            // auto-folded mandatory ones. NORMALIZED SPARSE: v1 entries are
             // dropped and an empty map is omitted, so templates composed
             // entirely from v1 clauses hash identically to the pre-version form.
             const versions: Record<string, number> = {};

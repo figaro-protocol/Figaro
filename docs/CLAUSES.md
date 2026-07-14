@@ -107,14 +107,16 @@ don't quote a remembered one.
 thing a clause is; never infer kind from field shape ("has an enum" ≠ "is a
 lifecycle"; every committed-choice clause carries a bounded enum):
 
-- **`structural`** — mandatory committed content on every order (commerce,
-  topology). `clauseIsStructural` reads exactly this article, and the template
-  build folds structural clauses in generically (`composeStructuralClauses`).
+- **`mandatory`** — committed content on every order (commerce, topology),
+  never a designer choice. Renamed from `structural` 2026-07-14: that word
+  collided with the design/DAG sense of "structure". `clauseIsMandatory` reads
+  exactly this article, and the template build folds mandatory clauses in
+  generically (`composeMandatoryClauses`).
 - **`attestations`** — runtime TRANSFER ladders the responsible party advances
   (merchant-process, courier-process; a supply chain runs the same structure at
   length — each transfer attested, each intermediary paid at resolve).
   `clauseIsProcessLog` = `block.article === "attestations"` — ruled 2026-07-03,
-  replacing a field-shape heuristic ("non-structural ∧ has enum") that misread
+  replacing a field-shape heuristic ("non-mandatory ∧ has enum") that misread
   committed-choice clauses as lifecycles.
 - **`coordination`** — committed declarations of WHICH scenario everyone runs
   (modalities). Committed content, not a runtime lifecycle — topology carries an

@@ -651,7 +651,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                 sections: { clause: string; data: Record<string, unknown> }[];
             };
             const leafClauses = agreement.sections.map((s) => s.clause);
-            expect(leafClauses, 'the committed merkle tree carries the structural and target leaves')
+            expect(leafClauses, 'the committed merkle tree carries the mandatory and target leaves')
                 .toEqual(expect.arrayContaining([
                     'figaro-commerce', 'figaro-topology',
                     ...(rung.composeFirst ?? []), rung.clauseId,

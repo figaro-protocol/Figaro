@@ -12,7 +12,7 @@
  *   3. agreement projection → agreementHash (since Phase 3: @figaro/sdk
  *      projection — spec-default injection, process-log skip, section sort),
  *   4. template composition → compositionHash (since Phase 3: @figaro/sdk
- *      projection — structural auto-fold, sparse-version normalization,
+ *      projection — mandatory auto-fold, sparse-version normalization,
  *      editorial exclusion).
  *
  * The fixture lives in `sdk/tests/fixtures/promotion-golden-vectors.json` so
@@ -87,7 +87,7 @@ function projectionCases() {
     };
 }
 
-/** Two-node parent-edged design (root + child) exercising the structural
+/** Two-node parent-edged design (root + child) exercising the mandatory
  *  auto-fold, the local relabeling, and the sparse-version normalization. */
 function templateCase() {
     const orders = [
@@ -260,7 +260,7 @@ describe("SDK-promotion golden vectors — the live bytes, frozen", () => {
         expect(agreementHash).toBe(v.agreementHash);
     });
 
-    it("assembly template: structural fold + relabeling reproduce the frozen template + compositionHash", () => {
+    it("assembly template: mandatory fold + relabeling reproduce the frozen template + compositionHash", () => {
         const v = loadVectors().assemblyTemplate;
         const template = templateCase();
         expect(template.json).toBe(v.canonicalJson);
