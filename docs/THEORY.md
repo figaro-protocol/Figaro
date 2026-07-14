@@ -837,50 +837,41 @@ Alice creates Order #2 with Charlie: Locks $4 (uses returned $10)
 
 **Net Capital**: Alice only needs `2×(final total)` not `2×(sum of all steps)`.
 
-### Mutual-Consent Exit (Open Question)
+### Mutual-Consent Exit (Permanently Excluded)
 
-**Problem**: What happens when neither party is at fault but the deal cannot
+**Question**: What happens when neither party is at fault but the deal cannot
 complete? A delivery truck is in an accident. A natural disaster destroys
-inventory. The current design has no exit from a committed order — both bonds
-remain locked permanently.
+inventory. Can both parties agree to unwind with a refund split?
 
-**The "no escape hatches" property** means no *unilateral* escape. But mutual
-consent is a different category. If both parties agree to exit, neither gains
-from defection — the exit is itself a bilateral agreement, just like the
-original commitment.
+**Answer**: The kernel carries no exit path, and never will. It has exactly
+two external functions — `commit()` and `resolveProcess()` — and resolution
+pays one fixed settlement per order (seller: full bond back plus payment;
+buyer: payment recovered). A `mutualExit(processId, splitRatio, …)` entry
+point is permanently excluded (ruled 2026-07-14).
 
-**Proposed mechanism**:
-1. Both parties sign a "mutual exit" EIP-712 message specifying a refund split
-2. A `mutualExit(processId, splitRatio, buyerSig, sellerSig)` function
-   verifies both signatures and distributes bonds according to the agreed split
-3. No third party is involved; no governance vote; no oracle
+Nothing is lost, because a mutual exit is already fully expressible with the
+existing primitives:
 
-**Payoff matrix analysis**:
+1. **The buyer can always resolve.** `resolveProcess` has no precondition
+   beyond buyer identity and the full active-order list. Bonds are locked only
+   while the buyer chooses not to resolve — the indefinite lock is the
+   deterrent working as designed (refusal is a war of attrition the seller
+   loses), not a missing feature.
+2. **The refund split is a compensating reverse commitment.** The original
+   seller, acting as buyer of a new process, commits the agreed refund to the
+   original buyer — bonded like any other order. Both processes resolve; the
+   net effect is exactly the agreed split. The "mutual consent" is enforced by
+   the same bilateral EIP-712 dual signature as the original commitment: the
+   exit is the primitive itself, not a hatch.
+3. **External legal forums** adjudicating frustration or impossibility operate
+   on the timestamped on-chain evidence as input; they are constrained by
+   their own institutional bond structures, never by kernel discretion.
 
-|              | Seller signs exit | Seller refuses |
-|--------------|-------------------|----------------|
-| **Buyer signs exit** | Both recover agreed portion ✓ | Status quo (bonds locked) |
-| **Buyer refuses** | Status quo (bonds locked) | Status quo (bonds locked) |
-
-The exit is Pareto-improving relative to permanent lock: both parties prefer
-*some* recovery over *none*. It cannot be exploited unilaterally because it
-requires dual signature. It does not weaken the deterrent because the deterrent
-operates on the *unilateral* defection path — knowing that a mutual exit
-exists does not make unilateral cheating more attractive.
-
-**Open questions**:
-- Does the *existence* of a mutual exit path change off-chain negotiation
-  dynamics? (A party might deliberately create an "Act of God" to trigger
-  exit negotiations.)
-- Should the split ratio be constrained (e.g., minimum 50/50) to prevent
-  coerced exits?
-- Does this belong in the kernel (bilateral primitive, like commitment) or
-  in a composition (opt-in per institution)?
-
-**Current status**: Not implemented. Requires formal analysis before any code
-is written. The risk is small (bilateral agreement + dual signature is a
-narrow surface), but the question of whether *knowing* about the exit changes
-the game's equilibrium needs rigorous treatment.
+A kernel-level exit with a split ratio would be a third entry point on a
+frozen kernel and a soft edge on the no-escape-hatches constraint. The
+composed path preserves the equilibrium: knowing the exit exists changes
+nothing, because the exit carries the same bond structure as the deal it
+unwinds.
 
 ---
 
