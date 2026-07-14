@@ -208,11 +208,12 @@ export function listKnownClauses(): readonly { clauseId: string; version: number
 }
 
 /** A cached spec as the SDK projection sees it: the Layer-A spec plus the
- *  hash-load-bearing `block` hints (article, catalogueSourced). */
+ *  hash-load-bearing `block` hints (article, catalogueSourced, terms). */
 function toProjectionView(spec: ClauseSpecWithBlock): ProjectionSpecView {
     const hints: ProjectionHints = {};
     if (spec.block?.article !== undefined) hints.article = spec.block.article;
     if (spec.block?.catalogueSourced === true) hints.catalogueSourced = true;
+    if (spec.block?.terms !== undefined) hints.terms = spec.block.terms;
     return { ...spec, hints };
 }
 

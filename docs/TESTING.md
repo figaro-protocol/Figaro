@@ -80,6 +80,13 @@ assembly + sellers; seeding is pre-population, never a test) → run) and
 Config: `playwright.config.ts`. The retired `mock` project is gone — Playwright
 is e2e-only.
 
+**⚠ `test:e2e:devnet` runs `--project=devnet` ONLY.** The self-contained
+acceptance specs (`clause-coverage`, `permissionless-clause`,
+`assembly-withdraw`, `clause-authoring`) live in the separate
+`devnet-standalone` project and must be run explicitly —
+`npx playwright test --project=devnet-standalone --workers=1` — before any
+"full e2e green" claim. A `devnet`-only run is NOT the whole suite.
+
 **One smoke per event-driven inventory page** (`/clauses`, `/assemblies`, …):
 navigate → assert the resolved-state count line + a few row ids. A marketing
 inventory has no user action — the navigation IS the read — so a smoke, not a

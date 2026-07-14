@@ -11,6 +11,7 @@ import {
     listCatalogueSourcedClauses,
     clauseLadderField,
     labelEnumValue,
+    specSource,
     _resetClauseSpecCache_TESTING_ONLY,
 } from "@/lib/shared/clauseSpecSource";
 import { primeClauseSpecs } from "./primeClauseSpecs";
@@ -75,6 +76,22 @@ describe("clauseSpecSource — async loadClauseSpec via fetcher", () => {
         expect(spec.clauseId).toBe("test-remote-v1");
         // Subsequent sync lookup should resolve to the cached entry
         expect(getClauseSpec("test-remote-v1")?.clauseId).toBe("test-remote-v1");
+    });
+
+    it("the SpecSource adapter carries EVERY hash-load-bearing hint — terms included (a dropped hint silently strips specific-T&C values at publish)", async () => {
+        setClauseSpecFetcher(async () => ({
+            clauseId: "test-specific-terms",
+            version: 1,
+            title: "Test Specific",
+            description: "Specific-T&C spec for the hint-passthrough regression.",
+            fields: [{ name: "x", type: "string", required: true }],
+            block: { article: "settlement", terms: "specific", catalogueSourced: true },
+        }));
+        await loadClauseSpec("test-specific-terms", 1, "ipfs://fake-specific");
+        const view = specSource().get("test-specific-terms");
+        expect(view?.hints?.article).toBe("settlement");
+        expect(view?.hints?.terms).toBe("specific");
+        expect(view?.hints?.catalogueSourced).toBe(true);
     });
 
     it("rejects when the spec's clauseId does not match the requested ID", async () => {
