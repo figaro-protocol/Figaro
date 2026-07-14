@@ -2,8 +2,10 @@
  * @figaro/sdk — Agent SDK for Figaro Protocol
  *
  * Standalone TypeScript SDK for reading, analyzing, and proposing
- * Figaro transactions. Works with any signing method — human wallets,
- * Safe multi-sigs, or autonomous agent keys.
+ * Figaro transactions. Works with any ECDSA signing key — human wallets
+ * or autonomous agent keys. The kernel verifies parties by ECDSA recovery
+ * alone, so buyer and seller are always externally-owned accounts;
+ * contract wallets (Safe, ERC-1271) cannot hold the role directly.
  *
  * @example
  * ```ts

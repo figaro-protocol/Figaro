@@ -50,10 +50,10 @@ export default function Security() {
 
             <MarketingSection title="What if you lose your keys?" sectionId="keys">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Key loss is a wallet concern, not a protocol concern. The defense is the same posture as for ETH or USDC: hardware wallet, multisig, or social recovery configured at the wallet layer. Figaro inherits whatever your wallet provides; it adds no recovery surface and removes none.
+                    Key loss is a wallet concern, not a protocol concern &mdash; with one sharp qualifier. The kernel verifies every commitment signature by ECDSA recovery, so a buyer or seller is always an externally-owned account: a Safe or other contract wallet cannot hold the role directly. The durable posture is decided before you commit: hardware-grade custody of the key, plus a pre-installed EIP-7702 delegation carrying its own recovery authorization. Figaro inherits whatever your account provides; it adds no recovery surface and removes none.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The caveat is sharp. The kernel has no recovery path of any kind. If a buyer with an active process loses access to their keys, no one can sign the resolution that releases the funds &mdash; not Figaro, not a court order, not a software update. The bonds stay locked. This is an explicit accepted risk of the protocol&apos;s no-escape-hatch posture: the same property that prevents anyone from stealing funds also prevents anyone from recovering them. Plan key custody before you commit tokens to an active process.
+                    The caveat is sharp. The kernel has no recovery path of any kind. New commitments always require a fresh signature from the party&apos;s key &mdash; lose the key and no one can produce one, not Figaro, not a court order, not a software update. Resolution differs in exactly one way: it is authorized by the buyer&apos;s <em>address</em>, not a fresh signature. A buyer who pre-installed an EIP-7702 delegation before losing the key can still trigger resolution from that address and settle every active process; a buyer who didn&apos;t leaves the bonds locked, permanently. This is the explicit accepted risk of the no-escape-hatch posture: the same property that prevents anyone from stealing funds also prevents anyone from recovering them. Plan key custody before you commit tokens to an active process.
                 </p>
             </MarketingSection>
 

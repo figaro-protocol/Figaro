@@ -125,8 +125,24 @@ breaks buyer dominance. Breaking buyer dominance breaks the MAD equilibrium
 (if the seller knows the buyer can be timed out, withholding cooperation
 becomes a viable strategy).
 
-The accepted risk is documented: buyers should use a multi-sig or social-
-recovery wallet for the buyer role in any high-value process.
+**The mitigation matches the kernel** (ruled 2026-07-14): the kernel verifies
+both parties by ECDSA recovery alone (`FigaroCore.sol:161-165`), so a contract
+wallet — multi-sig, ERC-1271 smart account — can never hold the buyer role,
+and the frozen kernel forecloses adding contract-signature support. The live
+mitigation is **pre-installed EIP-7702 delegation**: before committing, the
+buyer sets a delegation (carrying its own guardian/recovery authorization) on
+the buyer EOA. `resolveProcess` authorizes by `msg.sender`
+(`FigaroCore.sol:267`), so after key loss the delegated code can still
+originate the resolve call from the buyer's address — every active process
+remains settleable and no bond is stranded. New commitments are not rescuable:
+each requires a fresh EIP-712 ECDSA signature from the lost key. The
+delegation must be installed while the key is still held; it cannot be added
+after loss.
+
+(The kernel natspec at `FigaroCore.sol:238-240` still says "use social
+recovery or multi-sig for the buyer role" — a stale comment on a frozen
+contract, contradicted by its own ECDSA-only verification; recorded for
+auditor handover, never edited.)
 
 ---
 
