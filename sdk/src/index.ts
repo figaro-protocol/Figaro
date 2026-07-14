@@ -205,6 +205,7 @@ export {
     fillCargoSection,
     fillClassSections,
     fillCommerceSection,
+    readDenominationPin,
     fillDerivedSections,
     fillDimweightSection,
     getRateQuantityResolver,

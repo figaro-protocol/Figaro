@@ -226,6 +226,23 @@ const RUNGS: ClauseRung[] = [
         },
     },
     {
+        // THE PRIVILEGED TOKEN: the designer PINS the one token the whole
+        // assembly's processes run in — a SPECIFIC-T&C drawer fill (like
+        // consent's affix), identity-bearing in the compositionHash. Checkout
+        // resolves the process currency from the pin, ahead of the seller
+        // default; the committed root carries the denomination section.
+        clauseId: 'figaro-denomination',
+        design: async (page) => {
+            const token = readLocalDeploymentConfig().tokenAddress as string;
+            await page.getByTestId('drawer-field-figaro-denomination-currency').fill(token);
+        },
+        auditTexts: ['Denomination'],
+        leaf: (data) => {
+            const token = readLocalDeploymentConfig().tokenAddress as string;
+            expect(String(data.currency).toLowerCase(), 'the committed pin is the designer\'s token').toBe(token.toLowerCase());
+        },
+    },
+    {
         // Catalogue-sourced: the seller authors the values on the catalogue
         // ITEM (the wizard's spec-driven clause-values editor); checkout folds
         // them onto the composed leaf.

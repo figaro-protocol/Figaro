@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/Button";
 import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
-import { planSubOrderSellers, resolveSubOrderPricing, type SubOrderPricing } from "@figaro/sdk";
+import { planSubOrderSellers, readDenominationPin, resolveSubOrderPricing, type SubOrderPricing } from "@figaro/sdk";
 import { executeAssemblyCheckout } from "@/lib/checkout/assemblyCheckout";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel";
@@ -88,27 +88,6 @@ export function CheckoutView({ sellerAddress }: Props) {
     );
 
     const { address: buyer } = useCommerce();
-    // The order settles in the seller's declared default token. `acceptedTokens`
-    // is the set the buyer may swap into (the swap-and-commit path). No declared
-    // currency ⇒ undefined — never a coined default (resolved-empty = absence);
-    // ordering is gated off below until the seller declares one.
-    const currency = sellerCatalogue?.defaultTokenAddress as `0x${string}` | undefined;
-    const { data: resolvedSymbol } = useTokenSymbol(currency ?? "");
-    const tokenSymbol = resolvedSymbol
-        ?? (currency ? sellerCatalogue?.acceptedTokens?.find((t) => hexEqual(t.address, currency))?.symbol : undefined)
-        ?? "";
-    const {
-        decimals: tokenDecimals,
-        decimalsReady,
-        balance: tokenBalance,
-        needsAuthorization: needsApproval,
-        authorize: approve,
-        authorization: { isPending: isApprovePending, isConfirming: isApproveConfirming, isSuccess: isApproveSuccess },
-        signRoot,
-        signAndShare,
-        order: { step: commitStep, error: commitError, payload },
-    } = useCheckout(currency);
-
     const { items } = useCartStore();
     const { openConnectModal } = useConnectModal();
 
@@ -126,6 +105,40 @@ export function CheckoutView({ sellerAddress }: Props) {
     );
     // The buyer's chosen assembly slug, when the seller offers more than one.
     const [selectedSlug, setSelectedSlug] = useState<string | undefined>(undefined);
+
+    // The assembly the buyer is ordering from attaches to the seller PROFILE. One
+    // bound assembly -> use it; several -> the buyer's selected slug disambiguates which.
+    // Every order commits against a published assembly — there is no fallback.
+    const pickedAssembly = boundAssemblies.length === 1
+        ? boundAssemblies[0]
+        : boundAssemblies.find((a) => a.slug === selectedSlug);
+
+    // The process currency. Resolution order: the assembly's DENOMINATION PIN
+    // (the designer's specific-T&C tailoring on the root agreement — the one
+    // token the whole assembly runs in, part of its identity), else the
+    // seller's declared default. `acceptedTokens` is the set the buyer may
+    // swap into (the swap-and-commit path). Neither ⇒ undefined — never a
+    // coined default (resolved-empty = absence); ordering is gated off below.
+    const pinRoot = pickedAssembly?.assemblyTemplate.agreements.find(
+        (o) => templateParentOrderHashes(o).length === 0,
+    );
+    const denominationPin = pinRoot ? readDenominationPin(pinRoot.clauses, specSource()) : undefined;
+    const currency = denominationPin ?? (sellerCatalogue?.defaultTokenAddress as `0x${string}` | undefined);
+    const { data: resolvedSymbol } = useTokenSymbol(currency ?? "");
+    const tokenSymbol = resolvedSymbol
+        ?? (currency ? sellerCatalogue?.acceptedTokens?.find((t) => hexEqual(t.address, currency))?.symbol : undefined)
+        ?? "";
+    const {
+        decimals: tokenDecimals,
+        decimalsReady,
+        balance: tokenBalance,
+        needsAuthorization: needsApproval,
+        authorize: approve,
+        authorization: { isPending: isApprovePending, isConfirming: isApproveConfirming, isSuccess: isApproveSuccess },
+        signRoot,
+        signAndShare,
+        order: { step: commitStep, error: commitError, payload },
+    } = useCheckout(currency);
     // Runtime inputs for any order that composes an on-network contract — the
     // clause's `block.fields`, filled at checkout (like the cart line items),
     // keyed by template node id then field name. Interface-agnostic: the form
@@ -214,12 +227,6 @@ export function CheckoutView({ sellerAddress }: Props) {
     // Filter cart to items from THIS merchant only — the buyer's line-item input,
     // read-only here (edited on the browse page).
     const cartItems = items.filter((it) => it.sellerId === sellerAddressLower);
-    // The assembly the buyer is ordering from attaches to the seller PROFILE. One
-    // bound assembly -> use it; several -> the buyer's selected slug disambiguates which.
-    // Every order commits against a published assembly — there is no fallback.
-    const pickedAssembly = boundAssemblies.length === 1
-        ? boundAssemblies[0]
-        : boundAssemblies.find((a) => a.slug === selectedSlug);
     // Sub-orders the adopting seller's catalogue leaves UNBOUND take the buyer's
     // checkout-time choice; bound sub-orders keep the catalogue's designation
     // (seller-assigned). The fill mechanism is DERIVED from binding state +

@@ -213,7 +213,7 @@ export async function executeAssemblyCheckout(
                         lineItems, specs,
                         divisorFor(leadSellerAddress, sellerCatalogues),
                     ),
-                    currency, payment, specs, lineItems,
+                    payment, specs, lineItems,
                 );
                 return {
                     seller: leadSellerAddress,
@@ -285,7 +285,7 @@ export async function executeAssemblyCheckout(
                     subLineItems ?? [], specs,
                     divisorFor(subSeller, sellerCatalogues),
                 ),
-                currency, subPayment, specs, subLineItems,
+                subPayment, specs, subLineItems,
             );
             return {
                 seller: subSeller,

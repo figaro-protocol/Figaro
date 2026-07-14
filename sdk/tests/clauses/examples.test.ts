@@ -4,6 +4,7 @@ import modalitiesSpecRaw from "../../../clauses/figaro-modalities.json" with { t
 import { validateContent } from "../../src/clauses/validate.js";
 import topologySpecRaw from "../../../clauses/figaro-topology.json" with { type: "json" };
 import commerceSpecRaw from "../../../clauses/figaro-commerce.json" with { type: "json" };
+import denominationSpecRaw from "../../../clauses/figaro-denomination.json" with { type: "json" };
 import geolocationSpecRaw from "../../../clauses/figaro-geolocation.json" with { type: "json" };
 import cargoSpecRaw from "../../../clauses/figaro-cargo.json" with { type: "json" };
 import hazmatSpecRaw from "../../../clauses/figaro-hazmat.json" with { type: "json" };
@@ -55,15 +56,29 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(parseClauseSpec(commerceSpecRaw).ok).toBe(true);
     });
 
-    it("figaro-commerce accepts an order with line items", () => {
+    it("figaro-commerce accepts an order with line items (currency is NOT commerce content — it is the kernel commitment's, pinned via figaro-denomination)", () => {
         const parsed = parseClauseSpec(commerceSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const ok = validateContent({
-            currency: "0x" + "ab".repeat(20),
             payment: "1000000000000000000",
             lineItems: [{ itemId: "burger-001", name: "Cheeseburger", quantity: 2, unitPrice: "500000000000000000" }],
         }, parsed.spec);
         expect(ok.ok).toBe(true);
+    });
+
+    // ── figaro-denomination ──
+
+    it("figaro-denomination spec parses cleanly and declares specific terms", () => {
+        const parsed = parseClauseSpec(denominationSpecRaw);
+        expect(parsed.ok).toBe(true);
+        expect((denominationSpecRaw as { block: { terms?: string } }).block.terms).toBe("specific");
+    });
+
+    it("figaro-denomination accepts a token address and rejects prose", () => {
+        const parsed = parseClauseSpec(denominationSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ currency: "0x" + "ab".repeat(20) }, parsed.spec).ok).toBe(true);
+        expect(validateContent({ currency: "the MARIA token" }, parsed.spec).ok).toBe(false);
     });
 
     it("figaro-commerce rejects zero payment", () => {

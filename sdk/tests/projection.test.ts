@@ -35,7 +35,6 @@ const SPECS = specSourceFromFixtures([
 
 function commerceData() {
     return {
-        currency: "0x0000000000000000000000000000000000000001",
         payment: "1",
         lineItems: [{ itemId: "item-1", name: "Test item", quantity: 1, unitPrice: "1" }],
     };

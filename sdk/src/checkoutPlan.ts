@@ -62,17 +62,18 @@ function composedClauseDeclaring(
 }
 
 /**
- * Write the order's settlement terms into the commerce section, found by its
+ * Write the order's commercial terms into the commerce section, found by its
  * declared `lineItems` field (never by clause id; gracefully skipped when the
- * assembly composes no commerce clause). currency + payment are stored as the
- * clause spec wants them (address-hex string, decimal string); `lineItems` is
- * supplied only for the root (the buyer's cart) and stripped to the commerce
- * section's closed shape — the cart's physical attributes belong to the cargo
- * collapse, not here.
+ * assembly composes no commerce clause). `payment` is stored as the clause
+ * spec wants it (decimal string); `lineItems` is supplied only for the root
+ * (the buyer's cart) and stripped to the commerce section's closed shape —
+ * the cart's physical attributes belong to the cargo collapse, not here.
+ * The settlement CURRENCY is not commerce content: it is signed in the
+ * kernel commitment itself, and pinned assemblies commit it through the
+ * root's denomination section (`readDenominationPin`).
  */
 export function fillCommerceSection(
     clauses: ClauseFields,
-    currency: `0x${string}`,
     payment: bigint,
     specs: SpecSource,
     lineItems?: AssemblyCheckoutLineItem[],
@@ -83,7 +84,6 @@ export function fillCommerceSection(
         ...clauses,
         [commerceClauseId]: {
             ...clauses[commerceClauseId],
-            currency,
             payment: payment.toString(),
             ...(lineItems
                 ? {
@@ -93,6 +93,25 @@ export function fillCommerceSection(
                 : {}),
         },
     };
+}
+
+/**
+ * The designer's denomination pin, read from a template agreement's composed
+ * clauses — the first composed clause declaring a `currency` field (never a
+ * clause id; commerce no longer declares one), with a non-empty designer
+ * value. The pin is SPECIFIC-T&C content: it survives the value-free build
+ * and is part of the compositionHash — the assembly's one-token tailoring.
+ * Undefined = unpinned (the seller's default denominates) or spec cache cold.
+ */
+export function readDenominationPin(
+    clauses: ClauseFields,
+    specs: SpecSource,
+): `0x${string}` | undefined {
+    const clauseId = composedClauseDeclaring(clauses, "currency", specs);
+    const value = clauseId ? clauses[clauseId]?.currency : undefined;
+    return typeof value === "string" && /^0x[0-9a-fA-F]{40}$/.test(value)
+        ? (value as `0x${string}`)
+        : undefined;
 }
 
 /**

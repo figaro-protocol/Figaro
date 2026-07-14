@@ -2,15 +2,8 @@
     "clauseId": "figaro-commerce",
     "version": 1,
     "title": "Commerce terms",
-    "description": "Currency, payment amount, and itemized line items for the commercial half of an order.",
+    "description": "Payment amount and itemized line items for the commercial half of an order. The settlement currency is NOT here: it is signed in the kernel commitment itself, resolved at checkout from the assembly's figaro-denomination pin (the designer's tailoring, when composed on the root order) or the seller's default.",
     "fields": [
-        {
-            "name": "currency",
-            "type": "string",
-            "format": "address-hex",
-            "required": true,
-            "description": "ERC-20 settlement currency address."
-        },
         {
             "name": "payment",
             "type": "bigint",
@@ -29,10 +22,30 @@
                 "type": "object",
                 "required": true,
                 "fields": [
-                    { "name": "itemId", "type": "string", "required": true, "minLength": 1 },
-                    { "name": "name", "type": "string", "required": true, "minLength": 1 },
-                    { "name": "quantity", "type": "integer", "required": true, "min": 1 },
-                    { "name": "unitPrice", "type": "bigint", "required": true, "min": "0" }
+                    {
+                        "name": "itemId",
+                        "type": "string",
+                        "required": true,
+                        "minLength": 1
+                    },
+                    {
+                        "name": "name",
+                        "type": "string",
+                        "required": true,
+                        "minLength": 1
+                    },
+                    {
+                        "name": "quantity",
+                        "type": "integer",
+                        "required": true,
+                        "min": 1
+                    },
+                    {
+                        "name": "unitPrice",
+                        "type": "bigint",
+                        "required": true,
+                        "min": "0"
+                    }
                 ]
             }
         }
