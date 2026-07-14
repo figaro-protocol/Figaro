@@ -837,24 +837,6 @@ Alice creates Order #2 with Charlie: Locks $4 (uses returned $10)
 
 **Net Capital**: Alice only needs `2×(final total)` not `2×(sum of all steps)`.
 
-### Reputation Layer
-
-**On-chain signals**:
-- Buyer rejection rate: `rejected_orders / total_orders`
-- Seller resolution rate: `resolved_orders / created_orders`
-- Average resolution time: `sum(resolve_time) / resolved_orders`
-
-**Possible integration** (not yet implemented — future work):
-```
-Reputation-weighted bonds:
-  adjustedBond = baseBond × reputationMultiplier
-  
-High reputation  → lower multiplier → less capital locked
-Low reputation   → higher multiplier → more capital locked
-```
-
-**Effect**: Good reputation → Lower bonds → More capital efficient. This remains a design direction, not a deployed feature.
-
 ### Mutual-Consent Exit (Open Question)
 
 **Problem**: What happens when neither party is at fault but the deal cannot

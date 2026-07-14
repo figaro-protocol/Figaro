@@ -18,13 +18,23 @@
 #   single-select modalities + coordination clauses) and the word swept to
 #   zero. The replacement vocabulary is modality / coordination / method.
 #
-# Scope: code files only (.ts/.tsx/.sol/.rs). Docs and CLAUDE.md narrate the
-# history of these words and are exempt, as are the /papers pages
-# (frontend/app/(marketing)/papers/ — historical prose rendered as .tsx).
+# FAIL (doctrine class, code AND markdown) — bonding-multiplier drift. The 2×
+# bonding multiplier is mechanism-design DOCTRINE (operator ruling 2026-07-14).
+# The recurring prior is traditional-finance capital-efficiency reasoning:
+# ">1× suffices", "1+ε restores strict loss", reputation-weighted/adjusted
+# bonds. Excised from THEORY.md + the retrospective-audit memory 2026-07-14;
+# any reappearance is that prior worming back in.
+#
+# Scope: legacy vocabulary classes check code files only (.ts/.tsx/.sol/.rs);
+# docs narrate the history of those words and are exempt. The doctrine class
+# additionally checks .md files — a doctrine violation is never "history".
+# CLAUDE.md and the /papers pages (frontend/app/(marketing)/papers/ —
+# historical prose rendered as .tsx) are exempt from all classes: they
+# narrate the bans themselves.
 #
 # Wired into the root package.json lint-staged block under
-# `**/*.{ts,tsx,sol,rs}`. Run manually over the whole repo:
-#   git ls-files '*.ts' '*.tsx' '*.sol' '*.rs' | xargs bash scripts/lint-no-closed-world-vocab.sh
+# `**/*.{ts,tsx,sol,rs,md}`. Run manually over the whole repo:
+#   git ls-files '*.ts' '*.tsx' '*.sol' '*.rs' '*.md' | xargs bash scripts/lint-no-closed-world-vocab.sh
 #
 # Exit code: 0 on clean (warnings allowed), 1 on any FAIL violation.
 
@@ -32,19 +42,35 @@ set -euo pipefail
 
 FAIL_TERMS='roleKind|archetypeId|clauseCategories|documentKind'
 FAIL_WORD='[Ff]ulfil+ment'
+# 2× is doctrine: no ">1x"/">1×", no "1+ε"/"1+epsilon" bonding bound, no
+# reputation-weighted/adjusted bonds, no lower/reduced/variable/tunable multiplier.
+FAIL_DOCTRINE='>[[:space:]]*1(\.[0-9]+)?[x×]|1[[:space:]]*\+[[:space:]]*(ε|epsilon)|[Rr]eputation[- ]?weighted|reputationMultiplier|adjustedBond|(lower|reduced|variable|tunable)[[:space:]]+(bond[[:space:]]+)?multiplier'
 
 violations=0
 
 for file in "$@"; do
     [[ -f "$file" ]] || continue
+    is_md=0
     case "$file" in
         *.ts | *.tsx | *.sol | *.rs) ;;
+        *.md) is_md=1 ;;
         *) continue ;;
     esac
     # Papers narrate the project's history (incl. retired vocabulary) — exempt.
+    # CLAUDE.md narrates the bans themselves — exempt.
     case "$file" in
-        *"(marketing)/papers/"*) continue ;;
+        *"(marketing)/papers/"* | *CLAUDE.md) continue ;;
     esac
+
+    hits=$(grep -nE "$FAIL_DOCTRINE" "$file" || true)
+    if [[ -n "$hits" ]]; then
+        echo "[closed-world] $file — bonding-multiplier drift: 2× is mechanism-design DOCTRINE (ruled 2026-07-14), never '>1×'/'1+ε'/reputation-weighted/variable"
+        echo "$hits" | head -3 | sed 's/^/    /'
+        violations=$((violations + 1))
+    fi
+
+    # The legacy vocabulary classes are code-only; docs narrate their history.
+    (( is_md )) && continue
 
     hits=$(grep -nE "\b($FAIL_TERMS)\b" "$file" || true)
     if [[ -n "$hits" ]]; then

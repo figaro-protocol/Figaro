@@ -25,7 +25,7 @@
     "**/*.{ts,tsx,sol,md}": [
       "bash scripts/lint-architecture-lexicon.sh"
     ],
-    "**/*.{ts,tsx,sol,rs}": [
+    "**/*.{ts,tsx,sol,rs,md}": [
       "bash scripts/lint-no-closed-world-vocab.sh"
     ],
     "frontend/**/*.{ts,tsx}": [
