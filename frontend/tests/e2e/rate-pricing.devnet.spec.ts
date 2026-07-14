@@ -71,15 +71,20 @@ async function waitForConnected(page: Page) {
  *  on the same slug). */
 async function findRateAssembly(): Promise<string | undefined> {
     const templates = await discoverAnchoredAssemblies();
-    return templates.find(
-        (t) => t.agreements.length === 2
-            && t.agreements.some((o) => {
-                const geo = (o.clauses ?? {})[GEO_CLAUSE] as Record<string, unknown> | undefined;
-                return Object.keys(o.clauses ?? {}).includes(PROCESS_CLAUSE)
-                    && geo?.originGeohash === ORIGIN_GEOHASH
-                    && geo?.destinationGeohash === DESTINATION_GEOHASH;
-            }),
-    )?.slug;
+    // Discovery is STRUCTURAL (ruled 2026-07-14: templates are value-free by
+    // construction — the geohashes are the buyer's checkout fills, so no
+    // anchored value can identify the assembly). The rate shape: a two-node
+    // chain whose hauled leg composes process + geo and NOTHING else beyond
+    // the two mandatory folds (the delivery assembly's courier leg also
+    // carries handoff + proximity → 6 keys, and its root carries merchant +
+    // modalities → 4 keys; this shape is 4 and 2).
+    return templates.find((t) => {
+        if (t.agreements.length !== 2) return false;
+        const keysets = t.agreements.map((o) => Object.keys(o.clauses ?? {}));
+        const sub = keysets.find((k) => k.includes(PROCESS_CLAUSE) && k.includes(GEO_CLAUSE));
+        const root = keysets.find((k) => !k.includes(PROCESS_CLAUSE));
+        return !!sub && sub.length === 4 && !!root && root.length === 2;
+    })?.slug;
 }
 
 /** Walk the registration wizard for a wallet — catalogue item per `product`,

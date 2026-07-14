@@ -42,12 +42,15 @@ interface Props {
     orders?: Order[];
     /** Switch to another node's agreement. Paired with `orders`. */
     onSelectOrder?: (orderId: string) => void;
-    /** clauseId → design-time field values for the current order. A clause's
-     *  presence as a key = selected; the values are what the designer filled. */
+    /** clauseId → composed clause map for the current order. A clause's
+     *  presence as a key = selected; values exist only for SPECIFIC-T&C
+     *  clauses (the designer's tailoring — consent's affix); general clauses
+     *  carry `{}`, their fields fill at checkout (ruled 2026-07-14). */
     selectedClauseValues?: Record<string, Record<string, unknown>>;
     /** Toggle a clause on/off for the current order. */
     onToggleClause?: (clauseId: string, next: boolean, version?: number) => void;
-    /** Set one design-time field on a selected clause for the current order. */
+    /** Set one field on a selected SPECIFIC-T&C clause (the only clauses the
+     *  drawer renders editors for). */
     onSetClauseField?: (clauseId: string, field: string, value: unknown) => void;
 }
 
@@ -324,7 +327,8 @@ export function AgreementDrawer({
 
 /**
  * One registered clause on the registry tab: a checkbox to compose it onto the
- * order, plus its design-time fields when selected (runtime process clauses
+ * order, plus — for SPECIFIC-T&C clauses only — its field editors when
+ * selected (general clauses fill at checkout; runtime process clauses
  * toggle whole — no fields). Under any field, renders the clauses that declare
  * `block.nestsUnder === <that field's name>` (read from the spec, never
  * hardcoded) — e.g. proximity-policy nested under the modality clause's

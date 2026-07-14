@@ -109,8 +109,9 @@ export interface DesignSnapshot {
     /** All orders in the design. */
     orders: Order[];
     /** Per-order clause selection — keyed by order id, then clauseId → the
-     *  design-time field values the designer filled. Drives the assembly
-     *  template's per-order `clauses`. */
+     *  composed values (SPECIFIC-T&C clauses only — consent's affix; general
+     *  clauses carry `{}`, ruled 2026-07-14). Drives the assembly template's
+     *  per-order `clauses`; the build strips general values regardless. */
     clausesByOrderId?: Record<string, Record<string, Record<string, unknown>>>;
     /** orderId → clauseId → the registered version picked in the drawer, when
      *  it isn't 1 (sparse — mirrors the template's `clauseVersions`). */
