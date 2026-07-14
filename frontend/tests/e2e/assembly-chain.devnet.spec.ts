@@ -268,6 +268,10 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         await expect(page.getByTestId('checkout-locked-total'), 'the buyer locks 2× the chain total')
             .toHaveText(/^6(\.0*)?$/, { timeout: 15000 });
 
+        // The buyer's modality request — a transaction particular authored at
+        // checkout (templates arrive value-free by construction, ruled 2026-07-14).
+        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-modalities-modality-delivery"]').first().check();
+
         const place = page.getByTestId('btn-place-order');
         await expect(place, 'buyer connected + assembly picked → "Place order"').toHaveText(/Place order/, { timeout: 20000 });
         await place.click();

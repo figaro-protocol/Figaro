@@ -18,10 +18,14 @@ export interface TemplateAgreement {
      *  target the topology clause points at. NOT a chain id, and NOT a
      *  party — the template is party-agnostic. */
     id: string;
-    /** clauseId → the design-time field values the designer composed (an empty
-     *  object = selected, no fields set — filled downstream: seller at
-     *  first-use, buyer at checkout). The topology is a clause here too: the
-     *  mandatory topology clause carries `{ parentOrderHashes }` (root = []). */
+    /** clauseId → the designer's composed clause map. Design time is
+     *  STRUCTURAL (ruled 2026-07-14): a GENERAL clause carries `{}` — the
+     *  selection only; its fields are transaction particulars filled at
+     *  checkout. Exactly two kinds of values exist here: the mandatory
+     *  topology clause's `{ parentOrderHashes }` (root = [] — the DAG, the
+     *  design itself) and SPECIFIC-T&C clauses (`block.terms: "specific"`,
+     *  consent today) whose values are the designer's tailoring.
+     *  `buildAssemblyTemplate` enforces this by construction. */
     clauses: Record<string, Record<string, unknown>>;
     /** clauseId → the registered VERSION composed, when it isn't 1. A clause's
      *  identity is (name, version) — two live versions are two clauses; this

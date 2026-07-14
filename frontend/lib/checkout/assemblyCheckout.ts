@@ -126,6 +126,14 @@ export async function executeAssemblyCheckout(
          *  "checkout-quantity" rate source's input (hours, seats, …). Only
          *  read for a node whose contributor prices by such a rate. */
         subOrderQuantities?: Record<string, number>;
+        /** The buyer's checkout-time GENERAL-clause field fills, keyed by
+         *  template node id → clauseId → field values. Design time is
+         *  structural (ruled 2026-07-14): a general clause arrives from the
+         *  template as `{}` and its transaction particulars are authored
+         *  HERE. Specific-T&C values (consent's affix) come from the template
+         *  and are never overridden by this map. Spec-routed — no clause is
+         *  named. */
+        clauseFills?: Record<string, Record<string, Record<string, unknown>>>;
     },
     deps: AssemblyCheckoutDeps,
 ): Promise<void> {
@@ -201,7 +209,8 @@ export async function executeAssemblyCheckout(
                 // CurrencyMismatch), never a per-order input.
                 const filled = fillCommerceSection(
                     fillDerivedSections(
-                        { ...node.clauses }, lineItems, specs,
+                        { ...node.clauses, ...(params.clauseFills?.[planned.nodeId] ?? {}) },
+                        lineItems, specs,
                         divisorFor(leadSellerAddress, sellerCatalogues),
                     ),
                     currency, payment, specs, lineItems,
@@ -221,10 +230,16 @@ export async function executeAssemblyCheckout(
             if (!subSeller) {
                 throw new Error("This assembly has a sub-order with no counterparty — the seller's profile must designate one, or the buyer chooses one at checkout.");
             }
+            // The buyer's checkout fills join the node's clauses BEFORE pricing:
+            // a rate quantity source (e.g. order-geodistance) derives from the
+            // clause content, and the template arrives value-free by
+            // construction — the fills ARE the content.
+            const nodeClauses = { ...node.clauses, ...(params.clauseFills?.[planned.nodeId] ?? {}) };
             const pricing = selection
                 ? null
                 : resolveSubOrderPricing({
-                    node, seller: subSeller, sellerCatalogues, tokenDecimals, specs,
+                    node: { ...node, clauses: nodeClauses },
+                    seller: subSeller, sellerCatalogues, tokenDecimals, specs,
                     checkoutQuantity: params.subOrderQuantities?.[planned.nodeId],
                 });
             if (pricing?.issue === "unresolvable-quantity") {
@@ -266,7 +281,8 @@ export async function executeAssemblyCheckout(
             // real order hashes), so it is never in the overrides.
             const filled = fillCommerceSection(
                 fillDerivedSections(
-                    { ...node.clauses }, subLineItems ?? [], specs,
+                    { ...nodeClauses },
+                    subLineItems ?? [], specs,
                     divisorFor(subSeller, sellerCatalogues),
                 ),
                 currency, subPayment, specs, subLineItems,

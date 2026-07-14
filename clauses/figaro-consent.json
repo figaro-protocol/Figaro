@@ -50,6 +50,7 @@
         }
     ],
     "block": {
-        "article": "consent"
+        "article": "consent",
+        "terms": "specific"
     }
 }

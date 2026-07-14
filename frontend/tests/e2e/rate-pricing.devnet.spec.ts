@@ -178,9 +178,9 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
             await page.getByTestId('drawer-tab-registry').click();
             await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
             await page.getByTestId(`drawer-registry-clause-${PROCESS_CLAUSE}`).check();
+            // Design time is STRUCTURAL (ruled 2026-07-14): the geolocation
+            // clause is SELECTED here; the endpoints are the buyer's, at checkout.
             await page.getByTestId(`drawer-registry-clause-${GEO_CLAUSE}`).check();
-            await page.getByTestId(`drawer-field-${GEO_CLAUSE}-originGeohash`).fill(ORIGIN_GEOHASH);
-            await page.getByTestId(`drawer-field-${GEO_CLAUSE}-destinationGeohash`).fill(DESTINATION_GEOHASH);
 
             await page.getByTestId('designer-name-input').fill('Rate-priced haul');
             await page.getByTestId('designer-summary-input').fill('A lead order plus one hauled leg priced per started km of its committed endpoints.');
@@ -268,6 +268,10 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
 
         await expect(page.getByTestId('cart-contributor-breakdown'), 'checkout shows the two-contributor P&L')
             .toBeVisible({ timeout: 30000 });
+        // The buyer authors the committed endpoints HERE (templates arrive
+        // value-free); the rate derivation prices from these fills.
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${GEO_CLAUSE}-originGeohash"]`).first().fill(ORIGIN_GEOHASH);
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${GEO_CLAUSE}-destinationGeohash"]`).first().fill(DESTINATION_GEOHASH);
         // The derivation line: raw km → billed per started km × the rate.
         const derivation = page.locator('[data-testid^="rate-derivation-"]');
         await expect(derivation, 'the rate derivation surfaces in the P&L').toBeVisible({ timeout: 30000 });

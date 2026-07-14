@@ -41,7 +41,7 @@ import { formatToken, parseToken } from "@/lib/shared/utils";
 import { useSellerBoundAssemblies } from "@/lib/seller/useSellerBoundAssemblies";
 import { displayNameForAddress } from "@/lib/seller/sellerListing";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
-import { getClauseSpec, clauseIsMandatory, specSource } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec, clauseIsMandatory, clauseIsSpecificTerms, clauseIsProcessLog, clauseIsCatalogueSourced, specSource } from "@/lib/shared/clauseSpecSource";
 import type { FieldSpec } from "@figaro/sdk/clauses";
 
 interface Props {
@@ -131,6 +131,19 @@ export function CheckoutView({ sellerAddress }: Props) {
     // keyed by template node id then field name. Interface-agnostic: the form
     // renders whatever fields the composing clause declares, naming no clause.
     const [compositionInputs, setCompositionInputs] = useState<Record<string, Record<string, unknown>>>({});
+    // The buyer's GENERAL-clause field fills, nodeId → clauseId → values.
+    // Design time is structural (ruled 2026-07-14): general clauses arrive
+    // from the template as `{}`; their transaction particulars are authored
+    // here, at checkout. Spec-routed — the checkout names no clause.
+    const [clauseFills, setClauseFills] = useState<Record<string, Record<string, Record<string, unknown>>>>({});
+    const setClauseFill = (nodeId: string, clauseId: string, field: string, value: unknown) =>
+        setClauseFills((prev) => ({
+            ...prev,
+            [nodeId]: {
+                ...prev[nodeId],
+                [clauseId]: { ...prev[nodeId]?.[clauseId], [field]: value },
+            },
+        }));
     const setCompositionField = (nodeId: string, fieldName: string, value: unknown) =>
         setCompositionInputs((prev) => {
             const nextNode = { ...(prev[nodeId] ?? {}) };
@@ -293,8 +306,13 @@ export function CheckoutView({ sellerAddress }: Props) {
             { name: nameOf(lead), payment: cartTotal },
             ...plan.map(({ node, seller }) => {
                 if (seller) {
+                    // The buyer's checkout fills join the node BEFORE pricing —
+                    // a rate source (order-geodistance) derives from clause
+                    // content, and templates arrive value-free by construction.
+                    // Same merge the commit walk performs, so shown = committed.
                     const pricing = resolveSubOrderPricing({
-                        node, seller, sellerCatalogues, tokenDecimals,
+                        node: { ...node, clauses: { ...node.clauses, ...clauseFills[node.id] } },
+                        seller, sellerCatalogues, tokenDecimals,
                         specs: specSource(),
                         checkoutQuantity: subOrderQuantities[node.id],
                     });
@@ -323,7 +341,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // values (the terms the buyer is agreeing to), spec-driven. Mandatory
     // clauses (e.g. the topology clause) are protocol-composed, not
     // buyer-chosen terms; they stay out of the review.
-    const agreementGroups = ((): Array<{ key: string; label: string; clauses: Array<{ clauseId: string; values: string }> }> => {
+    const agreementGroups = ((): Array<{ key: string; label: string; clauses: Array<{ clauseId: string; values: string; fillable: boolean }> }> => {
         if (!pickedAssembly) return [];
         const orders = pickedAssembly.assemblyTemplate.agreements;
         const lead = sellerCatalogue.address as `0x${string}`;
@@ -341,7 +359,22 @@ export function CheckoutView({ sellerAddress }: Props) {
                 label: assigned ? nameOf(assigned) : "(to be assigned)",
                 clauses: Object.entries(order.clauses)
                     .filter(([clauseId]) => !clauseIsMandatory(clauseId))
-                    .map(([clauseId, fields]) => ({ clauseId, values: clauseValueSummary(fields) })),
+                    .map(([clauseId, fields]) => ({
+                        clauseId,
+                        values: clauseValueSummary(fields),
+                        // A GENERAL clause's fields are transaction particulars
+                        // the buyer authors here. Not fillable: specific-T&C
+                        // values (the designer's tailoring, from the template),
+                        // process-log anchors (attested at runtime, empty at
+                        // commit), and catalogue-sourced sections (the seller's
+                        // items fill them). A COMPOSING clause's content fields
+                        // ARE fillable — the composition surface collects only
+                        // its block.fields runtime params, never its content.
+                        fillable: !clauseIsSpecificTerms(clauseId)
+                            && !clauseIsProcessLog(clauseId)
+                            && !clauseIsCatalogueSourced(clauseId)
+                            && (getClauseSpec(clauseId)?.fields.length ?? 0) > 0,
+                    })),
             };
         });
     })();
@@ -431,6 +464,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                         ]))
                         : undefined,
                     subOrderQuantities,
+                    clauseFills,
                 },
                 {
                     chainId,
@@ -647,10 +681,24 @@ export function CheckoutView({ sellerAddress }: Props) {
                                             <p className="text-[11px] font-medium text-neutral-500">{group.label}</p>
                                         )}
                                         <ul className="text-xs text-neutral-600 space-y-0.5">
-                                            {group.clauses.map(({ clauseId, values }) => (
+                                            {group.clauses.map(({ clauseId, values, fillable }) => (
                                                 <li key={clauseId} data-testid={`agreement-clause-${clauseId}`}>
                                                     {getClauseSpec(clauseId)?.title ?? clauseId}
                                                     {values && <span className="text-neutral-900"> — {values}</span>}
+                                                    {fillable && (
+                                                        <div className="mt-1 mb-2 ml-3 space-y-2">
+                                                            {getClauseSpec(clauseId)?.fields.map((field) => (
+                                                                <FieldControl
+                                                                    key={field.name}
+                                                                    field={field}
+                                                                    value={clauseFills[group.key]?.[clauseId]?.[field.name]}
+                                                                    onChange={(v) => setClauseFill(group.key, clauseId, field.name, v)}
+                                                                    testId={`checkout-field-${group.key}-${clauseId}-${field.name}`}
+                                                                    hideLabel={field.name.toLowerCase() === (getClauseSpec(clauseId)?.title ?? "").toLowerCase()}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </li>
                                             ))}
                                         </ul>

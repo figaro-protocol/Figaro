@@ -13,14 +13,17 @@
  * fall back to data-key presence. Consumers that need strictness gate on
  * their cache being warm before projecting.
  *
- * Three `block` hints are HASH-LOAD-BEARING and therefore projection
+ * Four `block` hints are HASH-LOAD-BEARING and therefore projection
  * vocabulary, not presentation: `article: "mandatory"` (which clauses
  * auto-fold into every template agreement → compositionHash),
  * `article: "attestations"` (process-log clauses stay empty anchors at
- * commit → agreementHash), and `catalogueSourced` (which sections a
- * catalogue fold writes → agreementHash). `parseProjectionHints` extracts
- * exactly those from a raw spec document; everything else in `block`
- * remains presentation the SDK never reads.
+ * commit → agreementHash), `catalogueSourced` (which sections a
+ * catalogue fold writes → agreementHash), and `terms: "specific"` (whose
+ * field values the DESIGNER composes into the template — the specific-T&C
+ * tailoring clauses, consent today; every other clause is general: the
+ * template carries `{}` and the fields fill at checkout → compositionHash).
+ * `parseProjectionHints` extracts exactly those from a raw spec document;
+ * everything else in `block` remains presentation the SDK never reads.
  */
 
 import {
@@ -40,6 +43,9 @@ export interface ProjectionHints {
     article?: string;
     /** The spec's `block.catalogueSourced` marker. */
     catalogueSourced?: boolean;
+    /** The spec's `block.terms` marker (`"specific"` = designer-composed
+     *  specific T&Cs; absent = general, filled at checkout). */
+    terms?: string;
 }
 
 /** A clause spec as the projection sees it: the Layer-A spec plus the
@@ -65,6 +71,7 @@ export function parseProjectionHints(rawSpec: unknown): ProjectionHints {
     const hints: ProjectionHints = {};
     if (typeof block.article === "string") hints.article = block.article;
     if (block.catalogueSourced === true) hints.catalogueSourced = true;
+    if (typeof block.terms === "string") hints.terms = block.terms;
     return hints;
 }
 
@@ -81,6 +88,15 @@ export function specDeclaresField(spec: ProjectionSpecView, fieldName: string): 
  *  collided with the design/DAG sense and maddened everyone.) */
 export function specIsMandatory(spec: ProjectionSpecView): boolean {
     return spec.hints?.article === "mandatory";
+}
+
+/** True for SPECIFIC-T&C clauses (`block.terms: "specific"` — consent today):
+ *  the clauses whose field values the DESIGNER composes into the template,
+ *  tailoring a generic assembly for a specific application (ruled 2026-07-14).
+ *  Every other clause is GENERAL: its fields are transaction particulars,
+ *  filled at checkout — the template carries `{}` for it. */
+export function specIsSpecificTerms(spec: ProjectionSpecView): boolean {
+    return spec.hints?.terms === "specific";
 }
 
 /** True for process-log clauses (`block.article: "attestations"`) — empty
@@ -355,8 +371,20 @@ export function buildAssemblyTemplate(args: {
         ...(summary ? { summary } : {}),
         ...(description ? { description } : {}),
         agreements: orders.map((order, i) => {
+            // Design time is STRUCTURAL (ruled 2026-07-14): the template keeps
+            // the designer's clause SELECTION, but a general clause's field
+            // values are transaction particulars — filled at checkout, never
+            // composed. Only SPECIFIC-T&C clauses (block.terms: "specific" —
+            // the designer's tailoring, consent's affixed documents) keep
+            // their composed values; everything else strips to `{}` here, so
+            // templates are value-free by construction, not by convention.
+            const selection: Record<string, Record<string, unknown>> = {};
+            for (const [clauseId, values] of Object.entries(clausesByOrderId[order.orderHash] ?? {})) {
+                const spec = specs.get(clauseId, clauseVersionsByOrderId?.[order.orderHash]?.[clauseId]);
+                selection[clauseId] = spec && specIsSpecificTerms(spec) ? values : {};
+            }
             const clauses = {
-                ...(clausesByOrderId[order.orderHash] ?? {}),
+                ...selection,
                 ...composeMandatoryClauses(
                     mandatorySpecs,
                     (order.parentOrderHashes ?? []).map((p) => idToLocal.get(p) ?? p),

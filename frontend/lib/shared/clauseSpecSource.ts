@@ -253,6 +253,16 @@ export function clauseIsMandatory(clauseId: string, version?: number): boolean {
     return getClauseSpec(clauseId, version)?.block?.article === "mandatory";
 }
 
+/** True if a clause carries SPECIFIC T&Cs (`block.terms: "specific"` — consent
+ *  today): the designer composes its field values into the template, tailoring
+ *  a generic assembly for a specific application (ruled 2026-07-14). Every
+ *  other clause is GENERAL — its fields are transaction particulars, filled at
+ *  checkout; the designer only SELECTS it. ANY registered clause declaring the
+ *  marker participates — including one this codebase has never seen. */
+export function clauseIsSpecificTerms(clauseId: string, version?: number): boolean {
+    return getClauseSpec(clauseId, version)?.block?.terms === "specific";
+}
+
 /** True if a clause is CATALOGUE-SOURCED — its content values are authored
  *  per-item on the seller's catalogue (product master data: freight class,
  *  hazmat, cold-chain), classified by its own `block.catalogueSourced` marker.

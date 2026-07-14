@@ -1,22 +1,24 @@
 /**
  * designer-agreement-drawer.devnet.spec.ts
  *
- * AgreementDrawer clause composition persists. The drawer's registry tab
- * lists every clause the live ClauseRegistry holds (chain → IPFS); checking
- * a clause composes it onto the selected order, and the composition must
- * survive the save + reload round-trip — through the UI on both ends:
+ * AgreementDrawer clause composition persists — and design time is
+ * STRUCTURAL (ruled 2026-07-14). The drawer's registry tab lists every
+ * clause the live ClauseRegistry holds (chain → IPFS); checking a clause
+ * composes it onto the selected order, and the composition must survive the
+ * save + reload round-trip — through the UI on both ends:
  *
  *   1. /builders/designer/new?fresh=1 — blank canvas, one root order.
  *   2. Open the drawer → registry tab → compose figaro-geolocation (awaited into
  *      existence: checkboxes render once the spec cache warms chain→IPFS).
- *   3. The clause's REQUIRED geohash fields render as design-time inputs with
- *      the format-declared affordance (`format: "geohash"` → the registered
- *      device-location picker — the open format axis): the origin fills from
- *      the DEVICE location (Playwright-set coordinates → encoded geohash),
- *      the destination is typed by hand (typing stays first-class).
+ *   3. A GENERAL clause exposes NO field editors in the drawer — its fields
+ *      are transaction particulars, authored by the buyer at checkout (the
+ *      device affordance and precision clamp live there now; local-commerce
+ *      and rate-pricing drive them). A SPECIFIC-T&C clause (figaro-consent,
+ *      `block.terms: "specific"`) DOES expose its editors — the designer's
+ *      tailoring affix.
  *   4. Save; discover the assigned draft handle from the hub's drafts list and
  *      reload via /builders/designer/edit?slug=<slug> — the geolocation checkbox is
- *      STILL CHECKED and both composed VALUES survived.
+ *      STILL CHECKED.
  *   5. Uncheck it, save, reload — STILL UNCHECKED. Both directions of a
  *      user-driven clause edit persist.
  *
@@ -24,17 +26,9 @@
  */
 import { test, expect } from './devnet-multi-test';
 import type { Page } from '@playwright/test';
-import { encodeGeohash } from '@figaro/sdk/derive';
-import { PUBLIC_GEOHASH_MAX_PRECISION } from '@/lib/shared/geohash';
 
 const GEO_CLAUSE_KEY = 'figaro-geolocation';
-
-// The coordinates Playwright feeds the browser's Geolocation API — the
-// device-location affordance must encode exactly this cell, at the
-// public-surface precision cap (the field lands in a pinned agreement).
-const DEVICE_LAT = 37.7749;
-const DEVICE_LON = -122.4194;
-const DEVICE_GEOHASH = encodeGeohash(DEVICE_LAT, DEVICE_LON, PUBLIC_GEOHASH_MAX_PRECISION);
+const CONSENT_CLAUSE_KEY = 'figaro-consent';
 
 /** Open the (sole) root order's drawer on its registry tab and return the
  *  geo checkbox, awaited into existence (chain→IPFS spec warm). */
@@ -76,12 +70,7 @@ async function reopenDraft(page: Page, slug: string) {
 test.describe('Designer AgreementDrawer (devnet)', () => {
     test.setTimeout(180_000);
 
-    test('toggling the geo clause persists through save and reload — both directions', async ({ page }) => {
-        // The device-location affordance reads the browser's Geolocation API —
-        // grant it and pin the coordinates the test asserts against.
-        await page.context().grantPermissions(['geolocation']);
-        await page.context().setGeolocation({ latitude: DEVICE_LAT, longitude: DEVICE_LON });
-
+    test('toggling the geo clause persists through save and reload — both directions; editors gate on specific-terms', async ({ page }) => {
         await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
         await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
@@ -91,38 +80,33 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         await expect(geoToggle, 'geo is NOT default-composed on a fresh order').not.toBeChecked();
         await geoToggle.check();
 
-        // ── The clause's REQUIRED geohash fields render as design-time inputs
-        //    with the format-declared affordance (the open format axis:
-        //    format:"geohash" → the registered device-location picker; no
-        //    clause is named in the dispatch). Fill the origin from the
-        //    DEVICE, type the destination by hand. ──
-        const origin = page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-originGeohash`);
-        await origin.waitFor({ state: 'visible', timeout: 10000 });
-        await page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-originGeohash-device`).click();
-        await expect(origin, "the device affordance encodes the browser's location into the field")
-            .toHaveValue(DEVICE_GEOHASH, { timeout: 10000 });
-        const destination = page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-destinationGeohash`);
-        // Typing a door-grade (9-char) hash exercises the public-surface cap:
-        // the field clamps to neighborhood precision (6 chars) — agreement
-        // fields are pinned publicly, door-level rides the ECDH envelope.
-        await destination.fill('9q8yy78yu');
-        await expect(destination, 'typed input clamps to the public precision cap')
-            .toHaveValue('9q8yy7');
+        // ── Design time is STRUCTURAL: a GENERAL clause exposes NO field
+        //    editors here — its geohashes are the buyer's, at checkout. ──
+        await expect(
+            page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-originGeohash`),
+            'a general clause renders no design-time field editor (ruled 2026-07-14)',
+        ).toHaveCount(0);
+        await expect(
+            page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-destinationGeohash`),
+            'a general clause renders no design-time field editor (ruled 2026-07-14)',
+        ).toHaveCount(0);
+
+        // ── A SPECIFIC-T&C clause (consent — block.terms: "specific") DOES
+        //    render its editors: the affix repeater is the designer's act. ──
+        const consentToggle = page.getByTestId(`drawer-registry-clause-${CONSENT_CLAUSE_KEY}`);
+        await expect(consentToggle, 'drawer surfaces the consent clause').toHaveCount(1, { timeout: 20000 });
+        await consentToggle.check();
+        await expect(
+            page.getByTestId(`drawer-field-${CONSENT_CLAUSE_KEY}-documents-add`),
+            'a specific-T&C clause renders its design-time editors (the tailoring affix)',
+        ).toBeVisible({ timeout: 10000 });
+        await consentToggle.uncheck();
 
         const slug = await saveDraft(page);
 
         await reopenDraft(page, slug);
         const geoAfterOn = await openGeoToggle(page);
         await expect(geoAfterOn, 'the composed geo clause survives save + reload').toBeChecked();
-        // The composed VALUES survive too — both fill paths.
-        await expect(
-            page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-originGeohash`),
-            'the device-filled origin survives save + reload',
-        ).toHaveValue(DEVICE_GEOHASH, { timeout: 10000 });
-        await expect(
-            page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-destinationGeohash`),
-            'the typed (clamped) destination survives save + reload',
-        ).toHaveValue('9q8yy7', { timeout: 10000 });
 
         // ── Toggle OFF, save, reload — the removal survives too ─────────────
         await geoAfterOn.uncheck();

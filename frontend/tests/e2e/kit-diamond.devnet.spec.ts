@@ -183,14 +183,14 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
                 await page.getByTestId('drawer-tab-registry').click();
                 await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
             };
+            // Design time is STRUCTURAL (ruled 2026-07-14): select the clauses
+            // and the nesting; the mode/band CHOICES are the buyer's, at checkout.
             const composeHandoffProximity = async () => {
                 await page.getByTestId(`drawer-registry-clause-${DELIVERY_CLAUSES.handoff}`).check();
-                await page.getByTestId(`drawer-field-${DELIVERY_CLAUSES.handoff}-handoff-face-to-face`).check();
                 await page
                     .getByTestId(`drawer-nested-handoff-${DELIVERY_CLAUSES.proximity}`)
                     .getByTestId(`drawer-registry-clause-${DELIVERY_CLAUSES.proximity}`)
                     .check();
-                await page.getByTestId(`drawer-field-${DELIVERY_CLAUSES.proximity}-bands-zone-wifi`).check();
             };
             await orderNodes.first().click();
             await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
@@ -203,7 +203,6 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             await openNode(cId);
             await page.getByTestId(`drawer-registry-clause-${DELIVERY_CLAUSES.merchant}`).check();
             await page.getByTestId(`drawer-registry-clause-${EMISSIONS_CLAUSE}`).check();
-            await page.getByTestId(`drawer-field-${EMISSIONS_CLAUSE}-standard`).fill('ISO 14064');
             // D — the final leg: courier PROCESS ladder + hand-off + proximity.
             await openNode(dId);
             await page.getByTestId(`drawer-registry-clause-${DELIVERY_CLAUSES.courier}`).check();
@@ -332,6 +331,17 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             page.getByTestId('cart-contributor-breakdown'),
             'the P&L renders one row per contributor, each priced from its own catalogue',
         ).toBeVisible({ timeout: 30000 });
+        // The buyer authors every node's transaction particulars: TWO nodes
+        // compose hand-off + proximity (B and D), one composes emissions (C) —
+        // fill EVERY matching control, per node (templates arrive value-free).
+        const checkAllFields = async (suffix: string) => {
+            const controls = page.locator(`[data-testid^="checkout-field-"][data-testid$="${suffix}"]`);
+            const n = await controls.count();
+            for (let i = 0; i < n; i++) await controls.nth(i).check();
+        };
+        await checkAllFields(`-${DELIVERY_CLAUSES.handoff}-handoff-face-to-face`);
+        await checkAllFields(`-${DELIVERY_CLAUSES.proximity}-bands-zone-wifi`);
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${EMISSIONS_CLAUSE}-standard"]`).first().fill('ISO 14064');
         const place = page.getByTestId('btn-place-order');
         await expect(place).toHaveText(/Place order/, { timeout: 20000 });
         await place.click();

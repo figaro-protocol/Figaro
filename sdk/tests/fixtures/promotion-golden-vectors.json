@@ -23,7 +23,7 @@
     }
   },
   "assemblyTemplate": {
-    "canonicalJson": "{\"agreements\":[{\"clauses\":{\"figaro-commerce\":{},\"figaro-topology\":{\"parentOrderHashes\":[]}},\"id\":\"order-0\"},{\"clauses\":{\"figaro-applicable-law\":{\"applicableLaw\":\"US-NY\"},\"figaro-commerce\":{},\"figaro-topology\":{\"parentOrderHashes\":[\"order-0\"]}},\"id\":\"order-1\"}],\"name\":\"Golden Vector Chain\"}",
-    "compositionHash": "0x9d746e0f3d791e2444204719ef1173946184acd6c08239cbd19b8b82d7efb72f"
+    "canonicalJson": "{\"agreements\":[{\"clauses\":{\"figaro-commerce\":{},\"figaro-topology\":{\"parentOrderHashes\":[]}},\"id\":\"order-0\"},{\"clauses\":{\"figaro-applicable-law\":{},\"figaro-commerce\":{},\"figaro-topology\":{\"parentOrderHashes\":[\"order-0\"]}},\"id\":\"order-1\"}],\"name\":\"Golden Vector Chain\"}",
+    "compositionHash": "0x41d04cfa4fce79f95085e7f989aba3c2964c9368ee9c61bd076e788b7fb67936"
   }
 }

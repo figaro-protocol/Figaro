@@ -12,7 +12,7 @@
             "maxLength": 12,
             "pattern": "^[0123456789bcdefghjkmnpqrstuvwxyz]+$",
             "format": "geohash",
-            "description": "Origin geohash (base32). 1–12 characters; longer = higher precision. A design-time commitment: the designer pins it when composing (a frontend may fill it from the device location)."
+            "description": "Origin geohash (base32). 1–12 characters; longer = higher precision. A transaction particular: filled at checkout like every general-clause field (a frontend may fill it from the device location); the composed clause is generic."
         },
         {
             "name": "destinationGeohash",
@@ -22,7 +22,7 @@
             "maxLength": 12,
             "pattern": "^[0123456789bcdefghjkmnpqrstuvwxyz]+$",
             "format": "geohash",
-            "description": "Destination geohash (base32). 1–12 characters; longer = higher precision. A design-time commitment: the designer pins it when composing (a frontend may fill it from the device location)."
+            "description": "Destination geohash (base32). 1–12 characters; longer = higher precision. A transaction particular: filled at checkout like every general-clause field (a frontend may fill it from the device location); the composed clause is generic."
         }
     ],
     "block": {

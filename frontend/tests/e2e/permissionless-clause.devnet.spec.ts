@@ -158,7 +158,10 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
             'the drawer surfaces the never-seen WITNESS clause from the live registry',
         ).toHaveCount(1, { timeout: 20000 });
         await witnessNovel.check();
-        await page.getByTestId(`drawer-field-${WITNESS_CLAUSE_ID}-probePolicy`).fill('probe-policy-token');
+        // Design time is STRUCTURAL (ruled 2026-07-14): the never-seen clause
+        // is SELECTED here; its required committed policy — a transaction
+        // particular — is authored by the buyer at checkout, proving the
+        // open-world path end to end under the same rule as every clause.
 
         const assemblyName = `Probe assembly ${Date.now()}`;
         await page.getByTestId('designer-name-input').fill(assemblyName);
@@ -242,6 +245,11 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         await addBtn.click();
         await page.getByTestId('btn-review-order').click();
         await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
+        // The NEVER-SEEN witness clause's required committed policy is filled
+        // on the generic checkout fill surface — spec-routed, zero per-clause
+        // code (templates arrive value-free by construction).
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${WITNESS_CLAUSE_ID}-probePolicy"]`).first()
+            .fill('probe-policy-token');
         const place = page.getByTestId('btn-place-order');
         await expect(place, 'buyer connected + order ready → "Place order"').toHaveText(/Place order/, { timeout: 20000 });
         await place.click();

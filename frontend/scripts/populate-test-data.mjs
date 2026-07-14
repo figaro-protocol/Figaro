@@ -143,7 +143,9 @@ function seedTemplateChain() {
                 id: 'order-0',
                 clauses: {
                     'figaro-merchant-process': {},
-                    'figaro-modalities': { modality: 'delivery' },
+                    // Design time is STRUCTURAL (ruled 2026-07-14): the clause
+                    // is SELECTED; the modality is the buyer's checkout pick.
+                    'figaro-modalities': {},
                     ...mandatoryClauseFold([]),
                 },
             },

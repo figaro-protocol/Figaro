@@ -172,6 +172,7 @@ export {
     specIsCatalogueSourced,
     specIsProcessLog,
     specIsMandatory,
+    specIsSpecificTerms,
     validateCommitmentAgreement,
 } from "./projection.js";
 export type {

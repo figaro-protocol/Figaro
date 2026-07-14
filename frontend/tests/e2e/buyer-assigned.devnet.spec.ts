@@ -53,6 +53,7 @@ import {
     DELIVERY_DEVICE,
     discoverSellers,
     ensureDeliveryAssembly,
+    fillDeliveryCheckout,
     readLocalDeploymentConfig,
     sellerProfileBindings,
     waitForConnected,
@@ -166,6 +167,11 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
         await page.getByTestId('seller-catalogue-list').waitFor({ state: 'visible', timeout: 30000 });
         await page.locator('[data-testid^="seller-item-"]').first().check();
         await expect(breakdown, 'the picked courier prices into the P&L').not.toContainText('(choose below)', { timeout: 15000 });
+
+        // The buyer authors the transaction particulars (modality request,
+        // hand-off mode, proximity band, geolocation endpoints) — templates
+        // arrive value-free by construction (ruled 2026-07-14).
+        await fillDeliveryCheckout(page);
 
         const place = page.getByTestId('btn-place-order');
         await expect(place, 'buyer connected + pick made → "Place order"').toHaveText(/Place order/, { timeout: 20000 });

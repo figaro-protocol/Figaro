@@ -8,9 +8,11 @@
  * the generic pipeline:
  *
  *   drawer  → the target clause surfaces from the live ClauseRegistry → IPFS
- *   encode  → composing it (design-time field fills, catalogue-authored values,
- *             or a nested sub-clause tick) carries its section into the
- *             committed agreement, past the Layer-A sign gate
+ *   encode  → composing it (a selection or nested sub-clause tick at design
+ *             time; values from the checkout fill surface, the catalogue, or
+ *             a specific-T&C affix — design time is STRUCTURAL, ruled
+ *             2026-07-14) carries its section into the committed agreement,
+ *             past the Layer-A sign gate
  *   commit  → a real bilateral order commits that agreement on-chain, and the
  *             asymmetric bonds actually move in the payment token
  *   audit   → the audit package surfaces the target clause's committed leaf,
@@ -41,9 +43,9 @@
  *   is a finding, never a silent skip. Ladder clauses (process logs) stay
  *   permissionless-clause's and local-commerce's assertion.
  *
- * The rung table's values are TEST INPUT (what a designer/seller would type),
- * not network data: sellers, catalogues, specs, and agreements are all read
- * from chain + IPFS through the real UI.
+ * The rung table's values are TEST INPUT (what a buyer/seller/designer would
+ * type), not network data: sellers, catalogues, specs, and agreements are all
+ * read from chain + IPFS through the real UI.
  *
  * Rungs settle no funds (no resolve): full-cycle settlement is
  * permissionless-clause's assertion; the bond LOCK is the commit's on-chain
@@ -79,14 +81,22 @@ const SELLER = seller.address;
 
 /** One rung: how the target clause gets composed + filled, and what must
  *  surface in the audit. All selectors drive the REAL generic surfaces —
- *  drawer field editors (`drawer-field-<clauseId>-<field>[-<option>]`), the
- *  wizard's catalogue clause-values editor
+ *  the checkout fill surface (`checkout-field-<orderId>-<clauseId>-<field>
+ *  [-<option>]` — general-clause transaction particulars), the drawer's
+ *  specific-T&C editors (`drawer-field-<clauseId>-<field>` — consent's
+ *  affix), the wizard's catalogue clause-values editor
  *  (`item-<uid>-clause-<clauseId>-<field>[-<option>]`), and the nested
  *  sub-clause tree (`drawer-nested-<hostField>-<clauseId>`). */
 interface ClauseRung {
     clauseId: string;
-    /** Extra drawer work after ticking the target clause (design-time fills). */
+    /** Extra drawer work after ticking the target clause. Design time is
+     *  STRUCTURAL (ruled 2026-07-14): this hook is for SPECIFIC-T&C fills only
+     *  (consent's affix — the designer's tailoring); general clauses have no
+     *  drawer editors — their fields fill at checkout (`checkout` below). */
     design?: (page: Page) => Promise<void>;
+    /** Checkout-time GENERAL-clause field fills (transaction particulars) —
+     *  runs on the buyer's checkout view before "Place order". */
+    checkout?: (page: Page) => Promise<void>;
     /** Tick these host clauses BEFORE the target (nesting hosts, fold inputs). */
     composeFirst?: string[];
     /** The target's checkbox lives inside this nested container instead of the
@@ -118,12 +128,15 @@ interface ClauseRung {
     };
 }
 
-/** Design-time drawer field input (required scalar → text/number input). */
-const drawerFill = (clauseId: string, field: string, value: string) =>
-    async (page: Page) => page.getByTestId(`drawer-field-${clauseId}-${field}`).fill(value);
-/** Design-time drawer enum radio / enum-array checkbox. */
-const drawerPick = (clauseId: string, field: string, option: string) =>
-    async (page: Page) => page.getByTestId(`drawer-field-${clauseId}-${field}-${option}`).check();
+/** Checkout-time general-clause field input (`checkout-field-<orderId>-<clauseId>-<field>`;
+ *  prefix+suffix matched — the template-local order id varies per assembly). */
+const checkoutFill = (clauseId: string, field: string, value: string) =>
+    async (page: Page) =>
+        page.locator(`[data-testid^="checkout-field-"][data-testid$="-${clauseId}-${field}"]`).first().fill(value);
+/** Checkout-time general-clause enum radio / enum-array checkbox. */
+const checkoutPick = (clauseId: string, field: string, option: string) =>
+    async (page: Page) =>
+        page.locator(`[data-testid^="checkout-field-"][data-testid$="-${clauseId}-${field}-${option}"]`).first().check();
 /** Wizard catalogue clause-values input (suffix-matched — the item uid is dynamic). */
 const catalogueFill = (clauseId: string, field: string, value: string) =>
     async (page: Page) =>
@@ -196,13 +209,14 @@ const RUNGS: ClauseRung[] = [
         // The spec constrains applicableLaw to a shaped jurisdiction token
         // (pattern ^[A-Za-z][A-Za-z0-9-]{1,15}$; prose fails the Layer-A gate);
         // convention per the field description is ISO 3166-2 — 'US-NY'.
-        design: drawerFill('figaro-applicable-law', 'applicableLaw', 'US-NY'),
+        // General clause → the BUYER fills it at checkout (ruled 2026-07-14).
+        checkout: checkoutFill('figaro-applicable-law', 'applicableLaw', 'US-NY'),
         auditTexts: ['Applicable law and forum', 'US-NY'],
         leaf: (data) => expect(data.applicableLaw).toBe('US-NY'),
     },
     {
         clauseId: 'figaro-arbitration-kleros',
-        design: drawerPick('figaro-arbitration-kleros', 'klerosCourt', 'blockchain-technical'),
+        checkout: checkoutPick('figaro-arbitration-kleros', 'klerosCourt', 'blockchain-technical'),
         auditTexts: ['Kleros decentralized arbitration', 'Blockchain — Technical'],
         leaf: (data) => {
             expect(data.klerosCourt).toBe('blockchain-technical');
@@ -274,7 +288,7 @@ const RUNGS: ClauseRung[] = [
     },
     {
         clauseId: 'figaro-emissions',
-        design: drawerFill('figaro-emissions', 'standard', 'GHG Protocol Product Standard'),
+        checkout: checkoutFill('figaro-emissions', 'standard', 'GHG Protocol Product Standard'),
         auditTexts: ['Emissions disclosure', 'GHG Protocol Product Standard'],
         leaf: (data) => expect(data.standard).toBe('GHG Protocol Product Standard'),
         // The measured-grams channel: the punch-list emissions e2e — the seller
@@ -308,10 +322,12 @@ const RUNGS: ClauseRung[] = [
         clauseId: 'figaro-proximity-policy',
         composeFirst: ['figaro-handoff'],
         nestedUnder: 'handoff',
-        design: all(
-            drawerPick('figaro-handoff', 'handoff', 'locker'),
-            drawerPick('figaro-proximity-policy', 'bands', 'zone-wifi'),
-            drawerPick('figaro-proximity-policy', 'bands', 'contact-nfc'),
+        // The nesting (structure) is composed in the drawer above; the mode
+        // and band CHOICES are transaction particulars — buyer, checkout.
+        checkout: all(
+            checkoutPick('figaro-handoff', 'handoff', 'locker'),
+            checkoutPick('figaro-proximity-policy', 'bands', 'zone-wifi'),
+            checkoutPick('figaro-proximity-policy', 'bands', 'contact-nfc'),
         ),
         auditTexts: ['Proximity-verification policy', 'Zone (Wi-Fi), Contact (NFC)', 'Hand-off point'],
         leaf: (data) => expect(data.bands).toEqual(['zone-wifi', 'contact-nfc']),
@@ -478,6 +494,10 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             await addBtn.click();
             await page.getByTestId('btn-review-order').click();
             await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
+            // GENERAL-clause transaction particulars are authored HERE, on the
+            // checkout's spec-routed fill surface (ruled 2026-07-14) — the
+            // template arrived value-free by construction.
+            if (rung.checkout) await rung.checkout(page);
             const place = page.getByTestId('btn-place-order');
             await expect(place, 'buyer connected + order ready → "Place order"').toHaveText(/Place order/, { timeout: 20000 });
             await place.click();

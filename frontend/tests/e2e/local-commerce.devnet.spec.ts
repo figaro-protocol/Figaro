@@ -88,6 +88,7 @@ import {
     DELIVERY_CLAUSES,
     DELIVERY_DEVICE,
     ensureDeliveryAssembly,
+    fillDeliveryCheckout,
     readLocalDeploymentConfig,
     sellerProfileBindings,
 } from './devnet-helpers';
@@ -280,6 +281,11 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             .toBeVisible({ timeout: 30000 });
         await expect(page.getByTestId('cart-kit-total'), 'meal 1 + delivery 1').toHaveText(/^2(\.0*)?$/, { timeout: 15000 });
         await expect(page.getByTestId('checkout-locked-total'), 'the buyer locks 2× the total').toHaveText(/^4(\.0*)?$/, { timeout: 15000 });
+
+        // The buyer authors the transaction particulars (modality request,
+        // hand-off mode, proximity band, geolocation endpoints) — templates
+        // arrive value-free by construction (ruled 2026-07-14).
+        await fillDeliveryCheckout(page);
 
         const place = page.getByTestId('btn-place-order');
         await expect(place, 'buyer connected + assembly bound → "Place order"').toHaveText(/Place order/, { timeout: 20000 });

@@ -81,6 +81,12 @@ export interface ClauseBlockBinding {
      *  clause opts in by declaring it — including one this codebase has never
      *  seen. Omit (falsy) for clauses whose values come from composition/topology. */
     catalogueSourced?: boolean;
+    /** Terms classification — `"specific"` marks a SPECIFIC-T&C clause
+     *  (consent today): the designer composes its field values into the
+     *  template, tailoring a generic assembly for a specific application
+     *  (ruled 2026-07-14). Omitted = GENERAL: the designer only selects the
+     *  clause; its fields are transaction particulars filled at checkout. */
+    terms?: string;
     /** Runtime inputs — the fields a party supplies at RUNTIME, distinct
      *  from the clause's content `fields` (which are committed into the agreement
      *  at signing). Rendered by ONE generic form; the surface reads no interface
@@ -169,6 +175,10 @@ export function parseBlockBinding(
         errors.push({ path: `${path}.catalogueSourced`, message: "catalogueSourced must be a boolean when present" });
         return null;
     }
+    if (raw.terms !== undefined && (typeof raw.terms !== "string" || raw.terms.length === 0)) {
+        errors.push({ path: `${path}.terms`, message: "terms must be a non-empty string when present" });
+        return null;
+    }
     let interaction: ClauseBlockBinding["interaction"];
     if (raw.interaction !== undefined) {
         if (!isObject(raw.interaction)) {
@@ -209,6 +219,7 @@ export function parseBlockBinding(
         article: raw.article as ClauseArticle,
         ...(raw.nestsUnder !== undefined && { nestsUnder: raw.nestsUnder as string }),
         ...(raw.catalogueSourced !== undefined && { catalogueSourced: raw.catalogueSourced as boolean }),
+        ...(raw.terms !== undefined && { terms: raw.terms as string }),
         ...(composes !== undefined && { composes }),
         ...(interaction !== undefined && { interaction }),
         ...(fields !== undefined && { fields }),

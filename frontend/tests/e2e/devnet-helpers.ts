@@ -523,6 +523,29 @@ export const DELIVERY_CLAUSES = {
  *  affordance reads at authoring time, and the typed destination cell. */
 export const DELIVERY_DEVICE = { lat: 37.7749, lon: -122.4194, destinationGeohash: '9q8yyk8yu' } as const;
 
+/** A checkout-view general-clause field control, suffix-matched — the testid
+ *  is `checkout-field-<orderId>-<clauseId>-<field>[-<option>]` and the
+ *  template-local order id varies per assembly. */
+function checkoutField(page: Page, clauseId: string, fieldPath: string) {
+    return page.locator(`[data-testid^="checkout-field-"][data-testid$="-${clauseId}-${fieldPath}"]`).first();
+}
+
+/** Fill the delivery assembly's GENERAL-clause transaction particulars on the
+ *  buyer's checkout view. Design time is STRUCTURAL (ruled 2026-07-14):
+ *  templates arrive value-free by construction; the buyer authors the
+ *  modality request, the hand-off mode, the proximity band, and the
+ *  geolocation endpoints HERE. Call after `checkout-view` renders, before
+ *  placing the order. */
+export async function fillDeliveryCheckout(page: Page): Promise<void> {
+    await checkoutField(page, DELIVERY_CLAUSES.modalities, 'modality-delivery').check();
+    await checkoutField(page, DELIVERY_CLAUSES.handoff, 'handoff-face-to-face').check();
+    await checkoutField(page, DELIVERY_CLAUSES.proximity, 'bands-zone-wifi').check();
+    await checkoutField(page, DELIVERY_CLAUSES.geo, 'originGeohash-device').click();
+    await expect(checkoutField(page, DELIVERY_CLAUSES.geo, 'originGeohash'))
+        .toHaveValue(/^[0-9b-hj-km-np-z]+$/, { timeout: 10000 });
+    await checkoutField(page, DELIVERY_CLAUSES.geo, 'destinationGeohash').fill(DELIVERY_DEVICE.destinationGeohash);
+}
+
 /** Wait for ClientInit's devnet auto-connect (the "Connect Wallet" button goes). */
 export async function waitForConnected(page: Page): Promise<void> {
     await page.waitForFunction(
@@ -583,8 +606,10 @@ export async function ensureDeliveryAssembly(page: Page): Promise<string> {
         await page.getByTestId('drawer-tab-registry').click();
         await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
         await page.getByTestId(`drawer-registry-clause-${DELIVERY_CLAUSES.merchant}`).check();
+        // Design time is STRUCTURAL (ruled 2026-07-14): the designer SELECTS
+        // the modalities clause; WHICH modality is the buyer's request — a
+        // transaction particular picked at checkout (fillDeliveryCheckout).
         await page.getByTestId(`drawer-registry-clause-${DELIVERY_CLAUSES.modalities}`).check();
-        await page.getByTestId(`drawer-field-${DELIVERY_CLAUSES.modalities}-modality-delivery`).check();
 
         // The courier order is DRAWN — a second co-equal node under the root
         // (never spawned by a checkbox; the drawn edge IS delivery reality).
@@ -601,17 +626,13 @@ export async function ensureDeliveryAssembly(page: Page): Promise<string> {
         await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
         await page.getByTestId(`drawer-registry-clause-${DELIVERY_CLAUSES.courier}`).check();
         await page.getByTestId(`drawer-registry-clause-${DELIVERY_CLAUSES.handoff}`).check();
-        await page.getByTestId(`drawer-field-${DELIVERY_CLAUSES.handoff}-handoff-face-to-face`).check();
         await page
             .getByTestId(`drawer-nested-handoff-${DELIVERY_CLAUSES.proximity}`)
             .getByTestId(`drawer-registry-clause-${DELIVERY_CLAUSES.proximity}`)
             .check();
-        await page.getByTestId(`drawer-field-${DELIVERY_CLAUSES.proximity}-bands-zone-wifi`).check();
         await page.getByTestId(`drawer-registry-clause-${DELIVERY_CLAUSES.geo}`).check();
-        await page.getByTestId(`drawer-field-${DELIVERY_CLAUSES.geo}-originGeohash-device`).click();
-        await expect(page.getByTestId(`drawer-field-${DELIVERY_CLAUSES.geo}-originGeohash`))
-            .toHaveValue(/^[0-9b-hj-km-np-z]+$/, { timeout: 10000 });
-        await page.getByTestId(`drawer-field-${DELIVERY_CLAUSES.geo}-destinationGeohash`).fill(DELIVERY_DEVICE.destinationGeohash);
+        // The hand-off mode, proximity band, and geohashes are transaction
+        // particulars — authored by the buyer at checkout, never here.
 
         // Editorial identity + publish (pin template → AssemblyRegistered).
         await page.getByTestId('designer-name-input').fill('Local delivery');
