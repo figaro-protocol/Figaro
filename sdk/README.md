@@ -471,7 +471,10 @@ const orders = await reconstructOrdersFromTemplate(template, {
   nodes: (node) => ({
     seller: sellerFor(node.nodeId),
     payment: paymentFor(node.nodeId),
-    overrides: { "figaro-commerce": { currency, payment: paymentFor(node.nodeId).toString(), lineItems } },
+    // currency is NOT commerce content — it is signed in the kernel commitment
+    // (the `currency` param above); a pinned assembly commits it through the
+    // root's figaro-denomination section (readDenominationPin resolves it).
+    overrides: { "figaro-commerce": { payment: paymentFor(node.nodeId).toString(), lineItems } },
   }),
   // Per-node seam, invoked in commit order as each order is realized — sign,
   // pin the party-private agreement, share, or compose here.
