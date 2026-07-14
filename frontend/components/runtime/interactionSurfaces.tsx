@@ -5,7 +5,7 @@
  * INTERACTION STANDARD its tasks use (the sibling of `block.composes`, which
  * names an on-network contract interface). This registry is the frontend
  * half of that seam: it maps the interaction interfaces THIS frontend has a
- * surface for (e.g. `"qr-challenge-v1"` → the QR order-identity panel) to
+ * surface for (e.g. `"qr-challenge"` → the QR order-identity panel) to
  * the component that renders it beside the order's capability rail. An
  * interface with no entry renders nothing extra — the affordance is
  * progressive enhancement; the protocol never depends on it.
@@ -36,8 +36,8 @@ export interface InteractionSurfaceProps {
 }
 
 const REGISTRY = new Map<string, ComponentType<InteractionSurfaceProps>>([
-    ["qr-challenge-v1", QrChallengePanel],
-    ["ecdh-address-v1", AddressDetailPanel],
+    ["qr-challenge", QrChallengePanel],
+    ["ecdh-address", AddressDetailPanel],
 ]);
 
 /** Register a surface for a declared interaction interface. Last write wins —

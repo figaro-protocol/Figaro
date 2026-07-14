@@ -41,11 +41,11 @@
  *              action, two attestations. The BUYER then co-witnesses through
  *              the rail's standalone witness form (who must witness is never
  *              engine policy). The hand-off clause's DECLARED
- *              interaction (block.interaction: qr-challenge-v1) mounts the
+ *              interaction (block.interaction: qr-challenge) mounts the
  *              QR order-identity panel on the courier's page — presented
  *              payload verified round-trip; no panel on the merchant's
  *              order, which declares none. The geolocation clause's declared
- *              interaction (ecdh-address-v1) runs the PRIVATE-ADDRESS
+ *              interaction (ecdh-address) runs the PRIVATE-ADDRESS
  *              ceremony: the courier requests, the buyer answers with the
  *              ECDH-encrypted addressee block whose fingerprint anchors
  *              on-chain (buyer attestation), the courier decrypts and the
@@ -446,7 +446,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             'a scanned matching payload verifies against this order',
         ).toBeVisible({ timeout: 10000 });
 
-        // ── THE PRIVATE-ADDRESS CEREMONY (block.interaction: ecdh-address-v1
+        // ── THE PRIVATE-ADDRESS CEREMONY (block.interaction: ecdh-address
         //    on the geolocation clause): the agreement committed only the
         //    geohash cells; the door-level ADDRESSEE BLOCK travels the ECDH
         //    channel, and its fingerprint anchors on-chain as a buyer

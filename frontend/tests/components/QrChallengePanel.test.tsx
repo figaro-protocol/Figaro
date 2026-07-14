@@ -19,8 +19,8 @@ const OTHER_ORDER = "0x" + "44".repeat(32);
 afterEach(cleanup);
 
 describe("interactionSurfaces registry", () => {
-    it("routes qr-challenge-v1 to the panel; a never-seen interface routes to nothing", () => {
-        expect(getInteractionSurface("qr-challenge-v1")).toBe(QrChallengePanel);
+    it("routes qr-challenge to the panel; a never-seen interface routes to nothing", () => {
+        expect(getInteractionSurface("qr-challenge")).toBe(QrChallengePanel);
         expect(getInteractionSurface("holographic-handshake-v9")).toBeNull();
         expect(getInteractionSurface(undefined)).toBeNull();
     });

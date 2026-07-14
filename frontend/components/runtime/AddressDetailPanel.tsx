@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * AddressDetailPanel — the surface for the `ecdh-address-v1` interaction
+ * AddressDetailPanel — the surface for the `ecdh-address` interaction
  * standard: the private-address ceremony on an order whose clause commits
  * public geohashes (the geolocation clause declares this interaction).
  *

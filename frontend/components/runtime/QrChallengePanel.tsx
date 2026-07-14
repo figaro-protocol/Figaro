@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * QrChallengePanel — the surface for the `qr-challenge-v1` interaction
+ * QrChallengePanel — the surface for the `qr-challenge` interaction
  * standard: order identity over the VISUAL channel at a physical hand-off.
  *
  * One party presents the QR (this order's identity — processId + orderHash,
@@ -12,7 +12,7 @@
  * (the search-by-QR affordance).
  *
  * Mounted by the interactionSurfaces registry for any clause declaring
- * `block.interaction.interface = "qr-challenge-v1"` — this component knows
+ * `block.interaction.interface = "qr-challenge"` — this component knows
  * no clause; `clauseId` is display attribution only.
  */
 import { useEffect, useState } from "react";
