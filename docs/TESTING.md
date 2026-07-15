@@ -6,7 +6,7 @@ CLAUDE.md keeps the run commands; this file is the full inventory of test files,
 
 `FigaroCoreTest`, `FigaroCoreRevertBranchTest`, `FigaroCoreEventEmissionTest`,
 `AttestationCoordinatorTest`, `ClauseRegistryTest`, `AssemblyRegistryTest`,
-`SellerRegistryTest`, `GasCeilingTest`, `SwapAndCommitCoordinatorTest`,
+`SellerRegistryTest`, `GasCeilingTest`, `WitnessSwapAndCommitCoordinatorTest`,
 `HalmosFigaroCore`, `fig/FigToken.t.sol`.
 
 ## Halmos (`test/`) — 1 harness, 7 properties

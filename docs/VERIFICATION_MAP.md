@@ -23,7 +23,7 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 ### In-scope (this document)
 
 - **Kernel**: `src/FigaroCore.sol` — 2 external functions, 3 mappings, no owner, no fee
-- **Protocol compositions**: `AttestationCoordinator`, `ClauseRegistry`, `SellerRegistry`, `AssemblyRegistry`, `SwapAndCommitCoordinator`
+- **Protocol compositions**: `AttestationCoordinator`, `ClauseRegistry`, `SellerRegistry`, `AssemblyRegistry`, `WitnessSwapAndCommitCoordinator`
 - **FIG token ecosystem**: `FigToken` (`IFigMinter` interface; no implementation wired)
 - **Formal model**: `formal/FigaroCore.tla`, `formal/MC.tla`, `formal/MC.cfg`
 - **Tests**: the Foundry, Halmos, Certora, Echidna, and TLA+ harnesses, plus the SDK suite — suite, file, property, and rule counts are in `TESTING.md` (the single source)

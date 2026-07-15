@@ -111,7 +111,7 @@ The copyable shape:
 1. **Bind through a minimal, immutable surface.** Declare only the kernel functions you
    actually call and bind at construction — each coordinator declares its own local
    `interface IFigaroCore` naming exactly the surface it uses (`commit` in
-   `SwapAndCommitCoordinator.sol`; `orderStatus` + `DOMAIN_SEPARATOR` in
+   `WitnessSwapAndCommitCoordinator.sol`; `orderStatus` + `DOMAIN_SEPARATOR` in
    `AttestationCoordinator.sol`) and holds it `immutable`. The local-minimal interface
    *is* the pattern for external composers: a third party composing the deployed kernel
    cannot import this repo's files, only its ABI. (`CommitmentTypes` is the shared
@@ -119,7 +119,7 @@ The copyable shape:
 2. **Read kernel state as the single source of truth; never re-implement kernel logic.**
    A coordinator may read (`orderStatus`, `DOMAIN_SEPARATOR`), call (`commit`), and — when
    it cannot import a constant from the frozen kernel — mirror one with a comment pinning
-   the source (the `2×` bond multiplier in `SwapAndCommitCoordinator`). The kernel always
+   the source (the `2×` bond multiplier in `WitnessSwapAndCommitCoordinator`). The kernel always
    does the enforcing: the bond pull, the status transition, the atomic resolve. A
    contract that enforces bonding or resolution itself is re-implementing the kernel, not
    composing it.
@@ -134,7 +134,7 @@ The copyable shape:
 
 The test before building anything settlement-adjacent: *can this be a parallel contract
 that reads kernel state and lets the kernel enforce?* It was yes for swapped-currency
-funding (`SwapAndCommitCoordinator`), yes for merkle-gated attestation
+funding (`WitnessSwapAndCommitCoordinator`), yes for merkle-gated attestation
 (`AttestationCoordinator`), and it is yes for cashflow assignment at resolve (the credit
 splitter: a payment-leg rail, never the bond return). If the answer seems to be no, the
 proposal is adding a mechanism to the kernel — stop (CLAUDE.md § "Common Misframings").

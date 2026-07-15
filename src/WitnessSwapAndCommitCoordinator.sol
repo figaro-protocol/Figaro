@@ -50,8 +50,7 @@ interface IPermit2WitnessTransfer {
 /// @title WitnessSwapAndCommitCoordinator — swap-route-bound pay-in-any-token executor
 /// @custom:security-contact security@figaro.org
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
-/// @notice Front-run-hardened sibling of `SwapAndCommitCoordinator`. Same job:
-///         an off-protocol executor that lets a buyer and/or seller post their
+/// @notice Off-protocol executor that lets a buyer and/or seller post their
 ///         FigaroCore bond in a token other than the process bond currency, by
 ///         pulling the party's input token via Permit2, swapping it to the bond
 ///         currency through an immutable router, forwarding the proceeds to the
@@ -60,20 +59,20 @@ interface IPermit2WitnessTransfer {
 ///         checks `msg.sender`, the coordinator funds the party in-place rather
 ///         than substituting itself — the EIP-712 commitment stays bilaterally
 ///         signed and the coordinator never becomes a counterparty.
-/// @dev WHY A SIBLING (do not read as a critique of a deployed contract — the
-///      base `SwapAndCommitCoordinator` is immutable and stays as-is): in the
-///      base coordinator the per-leg `swapData` — the exact swap route — was
-///      forwarded verbatim to the router but sat OUTSIDE every signature. The
-///      buyer's Permit2 signature (via `permitTransferFrom`) committed only to
+/// @dev WHY THE WITNESS: a predecessor coordinator (`SwapAndCommitCoordinator`,
+///      deleted before any deployment — git history) forwarded the per-leg
+///      `swapData` — the exact swap route — verbatim to the router while it sat
+///      OUTSIDE every signature. The party's Permit2 signature (via plain
+///      `permitTransferFrom`) committed only to
 ///      {token, amount, nonce, deadline, spender}; it did NOT commit to the
 ///      route. A relayer or front-runner submitting the transaction could
 ///      substitute its own `swapData` — routing the swap through a pool it
 ///      sandwiches, or a route that yields only just above the bond floor — and
-///      capture the slippage residual that the base coordinator would otherwise
-///      refund to the party. MED-severity: bounded by the party's `maxInput`,
-///      but real value leaks to whoever relays.
+///      capture the slippage residual that would otherwise be refunded to the
+///      party. MED-severity: bounded by the party's `maxInput`, but real value
+///      leaks to whoever relays.
 ///
-///      THE FIX: this sibling calls `permitWitnessTransferFrom`, binding the
+///      THE FIX: this coordinator calls `permitWitnessTransferFrom`, binding the
 ///      swap route into a Permit2 witness. The witness commits to
 ///      `{router, inputToken, maxInput, keccak256(swapData)}`, so the owner's
 ///      signature COVERS the exact route. Substitute any of those and the
@@ -90,7 +89,7 @@ interface IPermit2WitnessTransfer {
 ///      routers or MEV policies are valid compositions; this one fixes its
 ///      router at deployment.
 ///
-///      Per-party prerequisites (identical burden to the base flow plus a
+///      Per-party prerequisites (identical burden to the plain FigaroCore flow plus a
 ///      witness signature): a one-time `approve(FigaroCore, …)` for the bond
 ///      currency, a one-time `approve(Permit2, …)` for the input token, and a
 ///      per-commit Permit2 witness signature (over `swapWitness(...)`) alongside

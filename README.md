@@ -43,7 +43,7 @@ src/                        Solidity contracts (0.8.26, Foundry)
   ClauseRegistry.sol        Permissionless clause anchoring
   SellerRegistry.sol        On-chain seller registration
   AssemblyRegistry.sol      Permissionless assembly anchoring
-  SwapAndCommitCoordinator.sol  Off-protocol multi-token bond funding (Permit2 + Uniswap Universal Router)
+  WitnessSwapAndCommitCoordinator.sol  Off-protocol multi-token bond funding (Permit2 witness-bound swap route + Uniswap Universal Router)
   IRoleResolver.sol         Role-authorization interface for delegated attestation
   fig/                      FIG token (ERC-20, minter registry)
   mocks/                    Test tokens, fee-on-transfer/permit variants, swap-venue mocks

@@ -98,55 +98,46 @@ process's chain without a trusted bridge. Emissions *disclosure*
 offset re-enters, permissionlessly, as a new clause naming a mainnet router's
 interface when one exists.
 
-**`src/SwapAndCommitCoordinator.sol`** — Off-protocol executor letting a buyer
-and/or seller post their FigaroCore bond in a token other than the process bond
-currency. One external function, `swapAndCommit(c, buyerSig, sellerSig,
+**`src/WitnessSwapAndCommitCoordinator.sol`** — Off-protocol executor letting a
+buyer and/or seller post their FigaroCore bond in a token other than the process
+bond currency. One external function, `swapAndCommit(c, buyerSig, sellerSig,
 buyerFunding, sellerFunding)`: for each enabled leg it pulls the party's input
-token via a Permit2 signature (`IPermit2SignatureTransfer.permitTransferFrom`),
-forwards caller-supplied swap calldata to an immutable `router` (the Uniswap
-Universal Router in production), forwards the swapped bond currency to the
-party's EOA, then calls `FigaroCore.commit`. Because the kernel pulls each bond
-from the named party (`c.buyer`/`c.seller`) and never checks `msg.sender`, the
-coordinator funds the party in-place rather than substituting itself — the
-EIP-712 commitment stays bilaterally signed and the coordinator never becomes a
-counterparty. Bond amounts are derived from the commitment (2·payment,
-2·expectedCumulativeValue), never passed in, so a caller cannot under-fund the
-pull; the leg reverts (`OutputBelowBond`) if the swap yields less than the bond.
-`ReentrancyGuard`; immutable `figaroCore`/`permit2`/`router`. Kernel untouched;
-the swap venue is an off-protocol auxiliary; permissionless first-write-wins
-means alternative coordinators with different routers/MEV policies are valid
-compositions. Per-party prerequisites: a one-time `approve(FigaroCore, …)` for the
-bond currency (same as the base flow) plus a one-time `approve(Permit2, …)` for
-the input token. EIP-7702 and ERC-4337 variants are out of scope. Its
-local-minimal `IFigaroCore` binding is the copyable exemplar of the coordinator
-pattern — canonical statement in `ARCHITECTURE.md` § "Composing the kernel".
-
-**`src/WitnessSwapAndCommitCoordinator.sol`** — Front-run-hardened sibling of
-`SwapAndCommitCoordinator` (a new, separately-identified contract; the base
-coordinator is immutable and untouched). Same job and same
-`swapAndCommit(c, buyerSig, sellerSig, buyerFunding, sellerFunding)` surface, one
-difference: the base coordinator forwarded each leg's `swapData` (the swap route)
-to the router **outside every signature**, so a relayer/front-runner could
-substitute its own route — sandwiching the pool or routing to a just-above-bond
-output — and capture the slippage residual the coordinator would otherwise refund
-to the party (MED severity). This sibling calls Permit2's
-`permitWitnessTransferFrom`, binding `{router, inputToken, maxInput, keccak256(swapData)}`
-into a `SwapWitness` the party signs (helper `swapWitness(inputToken, maxInput, swapData)`
-recomputes it for off-chain signers). Substitute any of those and the recomputed
-witness no longer matches the signed digest — Permit2's own signature check reverts
-before a token moves. Bond currency/amount are NOT re-bound in the witness: they
-derive from `c`, already bilaterally EIP-712-signed and kernel-enforced. Immutable
+token via a Permit2 **witness** signature (`permitWitnessTransferFrom`), forwards
+the swap calldata to an immutable `router` (the Uniswap Universal Router in
+production), forwards the swapped bond currency to the party's EOA, then calls
+`FigaroCore.commit`. Because the kernel pulls each bond from the named party
+(`c.buyer`/`c.seller`) and never checks `msg.sender`, the coordinator funds the
+party in-place rather than substituting itself — the EIP-712 commitment stays
+bilaterally signed and the coordinator never becomes a counterparty. Bond amounts
+are derived from the commitment (2·payment, 2·expectedCumulativeValue), never
+passed in, so a caller cannot under-fund the pull; the leg reverts
+(`OutputBelowBond`) if the swap yields less than the bond. The witness binds
+`{router, inputToken, maxInput, keccak256(swapData)}` into a `SwapWitness` the
+party signs (helper `swapWitness(inputToken, maxInput, swapData)` recomputes it
+for off-chain signers): substitute any of those and the recomputed witness no
+longer matches the signed digest — Permit2's own signature check reverts before a
+token moves. Without the witness a relayer/front-runner could substitute its own
+route — sandwiching the pool or routing to a just-above-bond output — and capture
+the slippage residual owed to the party (MED severity; an earlier unhardened
+coordinator with exactly that flaw was deleted before any deployment — git
+history). Bond currency/amount are NOT re-bound in the witness: they derive from
+`c`, already bilaterally EIP-712-signed and kernel-enforced. Immutable
 `figaroCore`/`permit2`/`router`, `ReentrancyGuard`, no owner/admin/pause. Kernel
-untouched; the swap venue is an off-protocol auxiliary; permissionless first-write-wins
-means it coexists with the base coordinator as a distinct composition. Per-party
-prerequisites identical to the base flow plus a per-commit Permit2 **witness**
-signature. Not yet UI-wired or deploy-wired. Its two token-forwarding sites ARE
-tracked in `certora/token-ops.inventory` (unlike the base coordinator, which is
-carved out of `lint-token-ops.sh` while pre-production) — both `[PENDING]` a CVL
-rule. Foundry tests in `test/WitnessSwapAndCommitCoordinatorTest.t.sol` mirror the
-base coordinator's coverage and add `test_RevertWhen_SwapDataSubstituted_FrontRunImpossible`
-(a substituted route fails witness verification) using a test-local
-`MockWitnessPermit2` that verifies the witness signature.
+untouched; the swap venue is an off-protocol auxiliary; permissionless
+first-write-wins means alternative coordinators with different routers/MEV
+policies are valid compositions. Per-party prerequisites: a one-time
+`approve(FigaroCore, …)` for the bond currency (same as the plain flow), a
+one-time `approve(Permit2, …)` for the input token, and a per-commit Permit2
+**witness** signature. Not yet UI-wired or deploy-wired. Its two token-forwarding
+sites are tracked in `certora/token-ops.inventory` — both `[PENDING]` a CVL rule.
+Foundry tests in `test/WitnessSwapAndCommitCoordinatorTest.t.sol` cover both
+funding legs, residual refunds, and
+`test_RevertWhen_SwapDataSubstituted_FrontRunImpossible` (a substituted route
+fails witness verification) using `src/mocks/MockWitnessPermit2.sol`, which
+verifies the witness signature. Its local-minimal `IFigaroCore` binding is the
+copyable exemplar of the coordinator pattern — canonical statement in
+`ARCHITECTURE.md` § "Composing the kernel". EIP-7702 and ERC-4337 variants are
+out of scope.
 
 **`src/SellerRegistry.sol`** — Permissionless seller self-registration with
 reclaimable ETH deposit (staked intent — K4, no time lock). Three external
@@ -215,8 +206,8 @@ minted; the remaining 600M has no wired mint path. No settlement-anchored emissi
 
 - `src/mocks/MockERC20.sol` — the devnet payment/bond token. Plain ERC-20 with a permissionless `mint(to, amount)`; constructor takes `(name, symbol)`. Deployed by `Deploy.s.sol` as `NEXT_PUBLIC_TOKEN_ADDRESS` (minted 100k to anvil[0..19]) and used by the Foundry tests — one mock, not a per-file inline copy. (Mainnet uses a real ERC-20, e.g. USDC.e.)
 - `src/mocks/MockERC20FeeOnTransfer.sol`, `MockPermitToken.sol` — fee-on-transfer ERC-20 (Foundry tests only) and EIP-2612 permit ERC-20 (`Deploy.s.sol` deploys it as `NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS` for the `*WithPermit` flow).
-- `src/mocks/MockPermit2.sol` — test stand-in for Uniswap Permit2 SignatureTransfer; implements `permitTransferFrom` (deadline + amount enforced, signature not verified), pulling the owner's input token under the standard one-time Permit2 approval. Test-only (`SwapAndCommitCoordinatorTest`); not wired into any deploy script — mainnet uses the canonical Permit2.
-- `src/mocks/MockUniversalRouter.sol` — test stand-in for a swap venue; `swap(tokenIn, tokenOut, amountIn, recipient)` at a settable rate, paying out of pre-funded liquidity. Test-only (`SwapAndCommitCoordinatorTest`); not wired into any deploy script — mainnet uses the real Uniswap Universal Router.
+- `src/mocks/MockWitnessPermit2.sol` — devnet/test stand-in for Uniswap Permit2's `permitWitnessTransferFrom`, WITH witness-signature verification (reconstructs the exact digest real Permit2 builds; deadline + amount enforced), pulling the owner's input token under the standard one-time Permit2 approval. Used by `WitnessSwapAndCommitCoordinatorTest`; mainnet uses the canonical Permit2.
+- `src/mocks/MockUniversalRouter.sol` — test stand-in for a swap venue; `swap(tokenIn, tokenOut, amountIn, recipient)` at a settable rate, paying out of pre-funded liquidity. Used by `WitnessSwapAndCommitCoordinatorTest`; mainnet uses the real Uniswap Universal Router.
 - `src/echidna/EchidnaFuzzer.sol`, `EchidnaFigToken.sol`, `EchidnaToken.sol`
 
 ## What Does NOT Exist
