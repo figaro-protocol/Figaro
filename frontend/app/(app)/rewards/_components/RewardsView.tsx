@@ -34,8 +34,10 @@ function trancheStatus(t: RpgfTrancheState, nowSeconds: number): string {
 export function RewardsView() {
     const mounted = useMounted();
     // Warm the spec cache: the recompute classifies clauses by their
-    // contentHash-verified specs (chain → IPFS), never a bundled list.
-    useClauseSpecs();
+    // contentHash-verified specs (chain → IPFS), never a bundled list. The
+    // post action gates on `loaded` — a cold-cache recompute would classify
+    // every clause null and post a wrong (empty) root.
+    const specs = useClauseSpecs();
     const rewards = useRpgfRewards();
     const { address: account } = useAccount();
     const publicClient = usePublicClient();
@@ -133,10 +135,14 @@ export function RewardsView() {
                                     {status === "open" && (
                                         <Button
                                             data-testid={`post-root-${t.trancheId}`}
-                                            disabled={busy !== null}
+                                            disabled={busy !== null || !specs.loaded}
                                             onClick={() => act("post", () => rewards.postRoot(t))}
                                         >
-                                            {busy === "post" ? "Computing + posting…" : `Compute + post root (${formatEther(rewards.bondWei)} ETH bond)`}
+                                            {busy === "post"
+                                                ? "Computing + posting…"
+                                                : specs.loaded
+                                                    ? `Compute + post root (${formatEther(rewards.bondWei)} ETH bond)`
+                                                    : "Loading clause specs…"}
                                         </Button>
                                     )}
                                     {status === "posted" && (
@@ -161,7 +167,7 @@ export function RewardsView() {
                                     {t.finalized && (
                                         <Button
                                             data-testid={`claim-${t.trancheId}`}
-                                            disabled={busy !== null}
+                                            disabled={busy !== null || !specs.loaded}
                                             onClick={() => act("claim", () => rewards.claim(t))}
                                         >
                                             {busy === "claim" ? "Claiming…" : "Claim my allocation"}
