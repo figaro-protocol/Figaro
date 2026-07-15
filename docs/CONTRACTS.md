@@ -134,7 +134,9 @@ Foundry tests in `test/WitnessSwapAndCommitCoordinatorTest.t.sol` cover both
 funding legs, residual refunds, and
 `test_RevertWhen_SwapDataSubstituted_FrontRunImpossible` (a substituted route
 fails witness verification) using `src/mocks/MockWitnessPermit2.sol`, which
-verifies the witness signature. Its local-minimal `IFigaroCore` binding is the
+verifies the witness signature; digest parity with the canonical Permit2
+deployment is proven by `test/WitnessSwapAndCommitCoordinatorForkTest.t.sol`
+(mainnet fork, `MAINNET_RPC_URL`-gated). Its local-minimal `IFigaroCore` binding is the
 copyable exemplar of the coordinator pattern — canonical statement in
 `ARCHITECTURE.md` § "Composing the kernel". EIP-7702 and ERC-4337 variants are
 out of scope.

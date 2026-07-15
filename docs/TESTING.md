@@ -7,7 +7,14 @@ CLAUDE.md keeps the run commands; this file is the full inventory of test files,
 `FigaroCoreTest`, `FigaroCoreRevertBranchTest`, `FigaroCoreEventEmissionTest`,
 `AttestationCoordinatorTest`, `ClauseRegistryTest`, `AssemblyRegistryTest`,
 `SellerRegistryTest`, `GasCeilingTest`, `WitnessSwapAndCommitCoordinatorTest`,
-`HalmosFigaroCore`, `fig/FigToken.t.sol`.
+`WitnessSwapAndCommitCoordinatorForkTest`, `HalmosFigaroCore`, `fig/FigToken.t.sol`.
+
+`WitnessSwapAndCommitCoordinatorForkTest` is the mainnet-fork parity proof for the
+Permit2 witness digest: gated on `MAINNET_RPC_URL` (each test SKIPS without it,
+never silently passes), it proves the `swapWitness` convention is accepted by the
+canonical Permit2 deployment and that a substituted swap route is rejected by real
+Permit2's own signature check — the one claim the mocked suite proves only against
+our own digest reconstruction (`MockWitnessPermit2`).
 
 ## Halmos (`test/`) — 1 harness, 7 properties
 
