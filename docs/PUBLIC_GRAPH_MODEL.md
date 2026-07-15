@@ -138,10 +138,12 @@ participants that other agents learn from, without centralized orchestration.
 This section is load-bearing. Without it, the RPGF `w_category` weight
 (`FIG_TOKEN.md`) reads as an unexplained category privilege in a
 neutrality-preaching system, is mistaken for closed-world cruft, and is removed.
-It is not cruft. (The `lint-substrate-broadening-weight.sh` guard was retired with
-the RPGF prover in the proof-apparatus teardown — its protected files were deleted;
-see the note in `.husky/pre-commit`. Reinstate the guard alongside any rebuilt RPGF
-distribution that re-homes the weight.)
+It is not cruft. (The `lint-substrate-broadening-weight.sh` guard that once kept
+parallel formula files in sync was retired with the RPGF prover; the 2026-07-15
+optimistic rebuild replaced enforcement with derivation — the weight now lives in
+exactly ONE artifact, `sdk/src/rpgf/formula.json`, anchored on-chain as
+`RpgfMinter.formulaHash`, and the reference implementation derives every constant
+from it, so there are no parallel copies left to drift.)
 
 **The must-haves see value, not place.** Every Figaro agreement composes the core
 protocol plus two clauses present in essentially all of them: **topology** (the
@@ -160,15 +162,16 @@ It is the Geo graph above, and nothing forces it into existence.
 
 **So the protocol pays more for the clauses that draw the map.** To make the
 flow-graph exist, the substrate-broadening formula weights a **category of work** —
-the physical/virtual-flow article groups (logistics, coordination…) —
-above the rest (`w_category = 3.0`). The group key is derived as
-`keccak256(block.article)` from the contentHash-verified spec — nothing is stored
-on-chain (there is no `family` field; derive, don't store). The formula's on-chain
-implementation (the SP1 prover + its sealed Rust/TS mirrors) was removed in the
-proof-apparatus teardown; this section is the rationale's surviving home, to be
-re-homed alongside any rebuilt RPGF distribution (which finalizes the tier-1 article
-set). It is a deliberate incentive: contribute and use the clauses that emit
-physical/virtual-flow data, and earn more of the supply reserved for clause authors.
+the physical/virtual-flow article groups — above the rest (`w_category = 3.0`).
+The tier-1 article set is finalized by formula v1 as **logistics + coordination**
+(`sdk/src/rpgf/formula.json`, the canonical artifact `RpgfMinter.formulaHash`
+anchors). The group is read as `block.article` from the contentHash-verified spec
+— nothing is stored on-chain (there is no `family` field; derive, don't store).
+Mandatory-article clauses are excluded entirely (committed on every order, their
+usage carries no signal), as is the provenance article (scoring infrastructure).
+It is a deliberate incentive: contribute and use the clauses that emit
+physical/virtual-flow data, and earn more of the supply reserved for the
+substrate's contributors — clause authors and assembly designers of record.
 
 **This privileges a kind of public good, not a set of authors.** The weight attaches
 to the *article group*, never to a wallet: any author who registers a clause under a

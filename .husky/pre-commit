@@ -15,11 +15,14 @@ bash scripts/lint-clause-counts.sh
 # conflation (grouping is article's job; nestsUnder is sub-clause refinement). Whole-tree:
 # it resolves each target across the full clauses/ set, so it can't be a per-diff check.
 bash scripts/lint-clause-nests-under-a-field.sh
-# NOTE: the RPGF substrate-broadening-weight guard was retired in the proof-
-# apparatus teardown — its protected files (prover/rpgf/src/formula.rs +
-# sdk/scripts/rpgf-simulator/formula.ts) were deleted with the RPGF prover.
-# The incentive's RATIONALE survives in docs/PUBLIC_GRAPH_MODEL.md; reinstate
-# the guard alongside any rebuilt RPGF distribution that re-homes the weight.
+# NOTE: the RPGF substrate-broadening-weight guard (retired with the RPGF
+# prover) is NOT reinstated with the 2026-07-15 optimistic rebuild — by design:
+# the guard kept parallel formula files (Rust + TS mirrors) in sync, and the
+# rebuild replaced enforcement with derivation. The formula lives in exactly
+# ONE artifact (sdk/src/rpgf/formula.json, anchored on-chain as
+# RpgfMinter.formulaHash) and sdk/src/rpgf derives every constant from it —
+# there are no parallel copies left to drift. The incentive's RATIONALE lives
+# in docs/PUBLIC_GRAPH_MODEL.md.
 bash scripts/lint-chain-gas.sh
 # SDK dist freshness: the frontend EXECUTES sdk/dist, and tsc never deletes
 # outputs of deleted sources — a stale dist ships deleted APIs into builds and
