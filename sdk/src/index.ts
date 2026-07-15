@@ -273,3 +273,36 @@ export type {
     CatalogueItemMetadata,
     SellerCatalogueMetadata,
 } from "./sellerCatalogue.js";
+
+// RPGF recompute — the reference implementation of sdk/src/rpgf/formula.json.
+// Deterministic over public chain events: anyone reproduces a posted
+// tranche root exactly, which is what makes the optimistic challenge work.
+export {
+    computeRpgfAllocations,
+    fetchRpgfEventStream,
+    buildRpgfTree,
+    rpgfLeaf,
+    icbrt,
+    waterFill,
+    RPGF_PAIR_CAP,
+    RPGF_TIER1_ARTICLES,
+    RPGF_EXCLUDED_ARTICLES,
+    RPGF_CAP_NUMERATOR,
+    RPGF_CAP_DENOMINATOR,
+    RPGF_PROVENANCE_CLAUSE,
+    RPGF_EMPTY_ROOT,
+} from "./rpgf/index.js";
+export type {
+    RpgfEventStream,
+    RpgfAllocation,
+    RpgfSpecClassification,
+    RpgfContractAddresses,
+    RpgfTree,
+    RpgfOrderEvent,
+    RpgfResolvedEvent,
+    RpgfAttestationEvent,
+    RpgfClauseRegisteredEvent,
+    RpgfAssemblyRegisteredEvent,
+    RpgfWithdrawalEvent,
+    RpgfSellerStakeEvent,
+} from "./rpgf/index.js";

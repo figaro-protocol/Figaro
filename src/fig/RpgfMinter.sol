@@ -69,7 +69,7 @@ contract RpgfMinter {
 
     IFigMinter public immutable fig;
     IRpgfArbitrator public immutable arbitrator;
-    /// @notice keccak256 of the canonical formula-spec bytes (`rpgf/formula.json`).
+    /// @notice keccak256 of the canonical formula-spec bytes (`sdk/src/rpgf/formula.json`).
     bytes32 public immutable formulaHash;
     /// @notice ETH stake required to post a root, and to challenge one.
     uint256 public immutable bond;

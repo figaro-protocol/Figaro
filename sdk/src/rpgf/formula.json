@@ -1,0 +1,73 @@
+{
+    "formula": "figaro-rpgf",
+    "version": 1,
+    "description": "Canonical scoring formula for the RpgfMinter's optimistic distribution. keccak256 of this file's exact bytes is anchored on-chain as RpgfMinter.formulaHash. The formula is deterministic over public chain events: any observer recomputes a posted tranche root exactly, and a mismatch is challengeable. Integer arithmetic throughout — no floating point anywhere. The machine-readable half is `parameters`; the reference implementation (sdk/src/rpgf) derives its constants from it — the prose sections are the normative statement of the algorithm.",
+    "parameters": {
+        "pairCap": 5,
+        "tier1Articles": ["logistics", "coordination"],
+        "excludedArticles": ["mandatory", "provenance"],
+        "capNumerator": 15,
+        "capDenominator": 100,
+        "provenanceClauseId": "figaro-assembly-provenance",
+        "emptyRootPreimage": "figaro-rpgf:empty"
+    },
+    "window": {
+        "fromBlock": "MUST be 0.",
+        "toBlock": "MUST equal (block number of the postRoot transaction) - 1. Every event with blockNumber <= toBlock is in scope; nothing later is. Each tranche is therefore a cumulative snapshot at its posting time."
+    },
+    "events": {
+        "description": "All inputs are event logs of the deployment's canonical contract addresses (published in the deployment record). Log order is (blockNumber, logIndex) ascending.",
+        "consumed": [
+            "FigaroCore.OrderCommitted",
+            "FigaroCore.ProcessResolved",
+            "AttestationCoordinator.Attestation",
+            "ClauseRegistry.ClauseRegistered",
+            "ClauseRegistry.DepositWithdrawn",
+            "AssemblyRegistry.AssemblyRegistered",
+            "AssemblyRegistry.DepositWithdrawn",
+            "SellerRegistry.SellerRegistered",
+            "SellerRegistry.SellerWithdrawn"
+        ]
+    },
+    "documents": {
+        "description": "Clause classification reads each clause's spec document from its registered contentURI, verified by keccak256(bytes) == the registration's contentHash. A clause whose spec bytes are unavailable or hash-mismatched scores zero (it can be neither classified nor excluded). Posters SHOULD publish the spec bytes they classified with alongside the allocation list; omissions are what challenges and the composed forum are for."
+    },
+    "eligibility": {
+        "resolvedOnly": "A process counts only if its ProcessResolved event is inside the window.",
+        "stakedRootSeller": "The process's root order is its first OrderCommitted (lowest blockNumber, then logIndex). The root order's seller must hold a live SellerRegistry stake at the ProcessResolved block: the most recent SellerRegistered/SellerWithdrawn event for that address at or before that block is SellerRegistered.",
+        "liveArtifactStake": "A clause counts only if at least one of its registered (clauseId, version) keys has no ClauseRegistry.DepositWithdrawn event inside the window. An assembly counts only if its compositionHash has no AssemblyRegistry.DepositWithdrawn event inside the window.",
+        "excludedArticles": ["mandatory", "provenance"],
+        "excludedArticlesWhy": "Mandatory-article clauses are committed on every order — their usage carries zero signal about contribution (operator ruling 2026-07-15). The provenance article is scoring infrastructure: it is how processes declare their assembly, and must not itself earn."
+    },
+    "identifiers": {
+        "clauseKey": "bytes32 clauseId in events = keccak256(abi.encode(string clauseId, uint64 version)). Aggregation is per clauseId STRING (versions merge); the author of record is the registrar of the string id's first ClauseRegistered event; classification uses the spec of the highest version registered inside the window.",
+        "assemblyKey": "compositionHash, as registered. The designer of record is the author of the compositionHash's first AssemblyRegistered event (first-write-wins).",
+        "assemblyProvenance": "A process is linked to an assembly by an Attestation event whose clause is 'figaro-assembly-provenance' (any version) and whose contentRef equals keccak256(abi.encode(bytes32 compositionHash)) for a registered compositionHash. contentRef inversion enumerates the registered set."
+    },
+    "aggregation": {
+        "clauseLeg": "For each non-excluded clause: counted attestations are Attestation events inside the window whose clause key belongs to the clause, whose order has an OrderCommitted event, and whose process passes eligibility. c = distinct counted processes after the pair cap; d = distinct (buyer, seller) pairs of the attested orders in counted processes; chain positions are per counted attestation (its order's 1-indexed commit ordinal within its process).",
+        "assemblyLeg": "For each assembly: counted processes are eligible processes carrying a verified provenance attestation for its compositionHash, after the pair cap. d = distinct (buyer, seller) pairs over ALL orders of counted processes; chain positions are per order of counted processes.",
+        "pairCap": "Per artifact, a single pair key contributes at most 5 processes to c, where a process's pair key is its ROOT order's (buyer, seller). Processes beyond the cap are dropped from that artifact's aggregation entirely (they feed neither c, d, nor positions). Which 5: the first by the process's ProcessResolved (blockNumber, logIndex)."
+    },
+    "weights": {
+        "unit": "milli (integer thousandths)",
+        "wCategory": "3000 if the clause's block.article is in tier1Articles, else 1000. Assemblies: always 1000.",
+        "tier1Articles": ["logistics", "coordination"],
+        "tier1Why": "The physical/virtual-flow article groups — the substrate-broadening incentive (docs/PUBLIC_GRAPH_MODEL.md 'Why the substrate-broadening weight exists'). This list finalizes the tier-1 article set for formula v1.",
+        "wTopology": "clamp(floor(sum(chainPositions) * 1000 / count(chainPositions)), 1000, 3000). Zero counted positions cannot occur (an artifact with no counted attestations produces no entry at all — zero by absence).",
+        "wTotal": "1000 + (wCategory - 1000) + (wTopology - 1000)"
+    },
+    "score": {
+        "alpha": "exactly 1/3: score is proportional to c^(1/3) * d^(2/3)",
+        "integerForm": "score = wTotal * icbrt(c * d * d * 10^18), where icbrt is the floor integer cube root over arbitrary-precision integers. Value/bond size is deliberately not a term (the substrate signal is per counterparty pair, regardless of quanta)."
+    },
+    "recipients": {
+        "aggregation": "A wallet's score is the sum of the scores of every artifact it is author or designer of record for. Clause-author and assembly-designer scores merge into one per-wallet total — the cap spans both families.",
+        "cap": "15/100 of the tranche amount per wallet, applied by water-filling: repeatedly compute alloc_i = floor(remaining * score_i / sum(scores of uncapped wallets)) over uncapped wallets; any wallet whose alloc exceeds the cap is fixed at the cap and removed from the pool (with remaining reduced by the cap) before recomputing; terminate when no wallet exceeds the cap. Flooring dust stays unminted (the tranche amount is a ceiling, not a target).",
+        "leaves": "One leaf per wallet with a positive allocation: keccak256(bytes.concat(keccak256(abi.encode(address account, uint256 amount))))."
+    },
+    "merkle": {
+        "tree": "Sort leaves ascending as byte strings. Build levels bottom-up: each adjacent pair hashes as keccak256(min(a,b) || max(a,b)); an unpaired last node is promoted unchanged. A single leaf is its own root.",
+        "emptyRoot": "If no wallet has a positive allocation, the canonical root is keccak256('figaro-rpgf:empty') — postable, finalizable, unclaimable."
+    }
+}

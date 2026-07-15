@@ -227,3 +227,25 @@ export const FIG_TOKEN_ABI = parseAbi([
     "function deployerMintRenounced() view returns (bool)",
     "function deployer() view returns (address)",
 ]);
+
+export const RPGF_MINTER_ABI = parseAbi([
+    "function postRoot(uint8 trancheId, bytes32 root, uint64 fromBlock, uint64 toBlock) external payable",
+    "function challenge(uint8 trancheId) external payable returns (uint256 caseId)",
+    "function disputeChallenge(uint256 caseId) external payable",
+    "function concede(uint256 caseId) external",
+    "function finalize(uint8 trancheId) external",
+    "function claim(uint8 trancheId, address account, uint256 amount, bytes32[] proof) external",
+    "function withdrawBonds() external",
+    "function bond() view returns (uint256)",
+    "function challengeWindow() view returns (uint64)",
+    "function disputeWindow() view returns (uint64)",
+    "function formulaHash() view returns (bytes32)",
+    "function tranches(uint256) view returns (uint256 amount, uint64 earliestPost, bytes32 root, uint64 fromBlock, uint64 toBlock, bool finalized, uint256 minted)",
+    "function postings(uint256) view returns (address poster, bytes32 root, uint64 fromBlock, uint64 toBlock, uint64 postedAt)",
+    "function claimed(uint8 trancheId, address account) view returns (bool)",
+    "function withdrawable(address account) view returns (uint256)",
+    "event RootPosted(uint8 indexed trancheId, address indexed poster, bytes32 root, uint64 fromBlock, uint64 toBlock)",
+    "event RootChallenged(uint8 indexed trancheId, uint256 indexed caseId, address indexed challenger, bytes32 root)",
+    "event TrancheFinalizedRoot(uint8 indexed trancheId, bytes32 root, uint64 fromBlock, uint64 toBlock)",
+    "event Claimed(uint8 indexed trancheId, address indexed account, uint256 amount)",
+]);
