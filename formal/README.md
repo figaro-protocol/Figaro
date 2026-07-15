@@ -28,8 +28,6 @@ These concerns are orthogonal to the economic mechanism and are omitted:
 - **Block timestamps / deadlines** — timing concern, not economic
 - **Multi-currency** — single currency model (mechanism is identical per currency)
 - **Gas limits** — operational concern
-- **Post-resolution continuation** — the contract allows sub-orders after
-  `resolveProcess`; modeled as single-resolution per process for tractability
 
 ## Model Checking Results
 
@@ -90,6 +88,11 @@ The TLA+ spec mirrors the two external functions of `FigaroCore.sol`:
 | `commit()` (root) | `CommitRoot(buyer, seller, payment)` | New process creation, bond deposit |
 | `commit()` (sub) | `CommitSub(pid, seller, payment)` | Process extension, cumulative upstream bonding |
 | `resolveProcess()` | `ResolveProcess(pid)` | Atomic resolution, payout distribution |
+
+A resolved process is terminal in the model AND in the contract: `commit()`
+reverts `ProcessAlreadyResolved` on a sub-order naming a resolved process
+(`src/FigaroCore.sol` — the `activeOrderCount == 0` gate), so the model's
+single-resolution-per-process shape is a faithful mirror, not an abstraction.
 
 ### Bond Math
 

@@ -183,7 +183,7 @@ for (const [processId, process] of processes) {
                         An EIP-2612 permit-enabled ERC-20 for the single-transaction approve-and-commit flow. A devnet convenience token, not a separate currency.
                     </LabelledListRow>
                     <LabelledListRow label="figToken" labelWidth="wide">
-                        The FIG protocol token (<Link href="/fig" className="underline">FIG</Link>). Not a trade currency &mdash; you never bond or pay in it.
+                        The FIG protocol token (<Link href="/papers/fig-schelling-point-token" className="underline">FIG</Link>). Not a trade currency &mdash; you never bond or pay in it.
                     </LabelledListRow>
                 </ul>
             </MarketingSection>

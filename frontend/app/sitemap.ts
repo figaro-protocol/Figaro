@@ -7,7 +7,7 @@ const SITE_URL =
     "https://figaro.example";
 
 // Public surface. Per-instance / interactive surfaces (/sign,
-// /i/[slug], /console, /evidence-display, /fig/claim, /builders/{designer,
+// /i/[slug], /console, /evidence-display, /builders/{designer,
 // authoring,assemblies,prototype}) are excluded.
 const PUBLIC_ROUTES: { path: string; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"]; priority: number }[] = [
     { path: "/", changeFrequency: "weekly", priority: 1.0 },
@@ -19,7 +19,7 @@ const PUBLIC_ROUTES: { path: string; changeFrequency: MetadataRoute.Sitemap[numb
     { path: "/builders/composability", changeFrequency: "monthly", priority: 0.7 },
     { path: "/agents", changeFrequency: "weekly", priority: 0.8 },
     { path: "/local-commerce", changeFrequency: "weekly", priority: 0.8 },
-    { path: "/fig", changeFrequency: "weekly", priority: 0.8 },
+    { path: "/papers/fig-schelling-point-token", changeFrequency: "weekly", priority: 0.8 },
     { path: "/clause-rewards", changeFrequency: "monthly", priority: 0.7 },
     { path: "/clauses", changeFrequency: "weekly", priority: 0.7 },
     { path: "/integrate", changeFrequency: "weekly", priority: 0.7 },

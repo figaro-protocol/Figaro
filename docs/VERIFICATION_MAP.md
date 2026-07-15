@@ -1,6 +1,6 @@
 # Figaro V5 — Verification Map (Theory → Code → Tests → TLA+ → UI)
 
-Last updated: 2026-04-20
+Last updated: 2026-07-15
 
 ## 0) Purpose
 
@@ -74,15 +74,15 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 
 | ID | Statement | Code enforcement | Tests | TLA+ | Echidna | UI presentation |
 |---|---|---|---|---|---|---|
-| K-1 | Buyer bond = $2 \times payment$; seller bond = $2 \times cumulativeValue$ | `_pullExact(token, buyer, payment * 2)` and `_pullExact(token, seller, cumVal * 2)` in `commit()` | `FigaroCoreTest`: bond-amount coverage; `ParityVectors`: EIP-712 ↔ Solidity parity | `BondFormulaCorrectV3` — verified across 6M+ states | `echidna_solvency` — core holds ≥ sum of active bonds | `/cryptoeconomics` → /papers/asymmetric-bonding (mechanism); `/local-commerce` → Why deposits work; `/builders` → Security boundary |
+| K-1 | Buyer bond = $2 \times payment$; seller bond = $2 \times cumulativeValue$ | `_pullExact(token, buyer, payment * 2)` and `_pullExact(token, seller, cumVal * 2)` in `commit()` | `FigaroCoreTest`: bond-amount coverage; SDK `bonds.test.ts`: the 2× math the frontend/agents derive from | `BondFormulaCorrectV3` — verified across 6M+ states | `echidna_solvency` — core holds ≥ sum of active bonds | `/cryptoeconomics` → /papers/asymmetric-bonding (mechanism); `/local-commerce` → Why deposits work; `/builders` → Security boundary |
 | K-2 | Only root buyer can call `resolveProcess` | `if (msg.sender != ps.rootBuyer) revert NotProcessBuyer()` in `resolveProcess()` | `FigaroCoreTest`: buyer-only paths; `FigaroCoreRevertBranchTest`: 16 revert tests | `ResolveProcess` constrains resolver to root buyer | `echidna_buyer_dominance` — non-buyer resolve always fails | `/cryptoeconomics` → /papers/asymmetric-bonding; `/builders` → Security boundary |
 | K-3 | Must resolve all active orders (anti-cherry-picking) | `if (commitments.length != ps.activeOrderCount) revert IncompleteOrderList()` + per-order status check | `FigaroCoreTest`: multi-order arrays; `FigaroCoreRevertBranchTest`: incomplete list reverts | `ResolveProcess` uses `ActiveOrdersInProcess` + count check | `echidna_atomic_resolution` — incomplete lists always fail | `/cryptoeconomics` → /papers/asymmetric-bonding (atomic resolution); `/builders` → Enforcement, in three layers |
 | K-4 | No timeout, no admin exit from Active state | No timeout action exists; only `resolveProcess` transitions Active→Resolved; no owner, no admin functions | `FigaroCoreRevertBranchTest`: no alternate exit paths | Model has no timeout action; only Committed→Resolved via buyer | `echidna_state_monotonicity` — status only moves forward (0→1→2) | `/cryptoeconomics` → /papers/asymmetric-bonding (the Escape-Hatch Weakness theorem); `/security` → "no admin, no owner, no pause function" |
 | K-5 | Monotonic accumulator ($cumulativeValue$ only increases) | `uint256 actualCumulative = ps.cumulativeValue + c.payment` + `CumulativeValueMismatch` revert | `FigaroCoreTest`: accumulator tests | `CumulativeIntegrity` — $cumulativeValue = \sum(payment)$ | `echidna_cumulative_accounting` — accumulator = sum(payment) | `/cryptoeconomics` → /papers/asymmetric-bonding (cumulative upstream bonding); `/builders` → Three levels |
 | K-6 | No internal ledger — direct ERC-20 transfer at resolution | `currency.safeTransfer(seller, 2*cumVal + payment)` + `currency.safeTransfer(buyer, payment)` | `FigaroCoreTest`: payout assertions; `FigaroCoreEventEmissionTest`: OrderResolved events | Not modeled (TLA+ abstracts transfer mechanics; wallets model is sufficient) | — | `/local-commerce` → Step 4: "Settlement returns your bond and pays you directly" |
 | K-7 | Per-process immutable token binding | `if (c.currency != address(ps.currency)) revert CurrencyMismatch()` on sub-orders | `FigaroCoreRevertBranchTest`: currency mismatch revert | Implicitly via single-currency model | — | `/builders` → Composability → Single-Currency Binding |
-| K-8 | Both parties sign off-chain via EIP-712 typed data | `ECDSA.recover(digest, buyerSig)` + `ECDSA.recover(digest, sellerSig)` checks in `commit()` | `FigaroCoreTest`: signature verification; `ParityVectors`: EIP-712 parity | Not modeled (TLA+ abstracts signature mechanics) | — | `/sign` → commitment signing UI |
-| K-9 | `orderHash = keccak256(EIP-712 digest)`, content-addressed | `bytes32 orderHash = keccak256(abi.encode(digest))` + `if (orderStatus[orderHash] != 0) revert OrderAlreadyExists()` | `FigaroCoreTest`: duplicate guard; `ParityVectors`: hash parity | Not directly modeled (TLA+ uses sequential IDs) | — | `/builders` → Composability → Content-Addressed Order IDs |
+| K-8 | Both parties sign off-chain via EIP-712 typed data | `ECDSA.recover(digest, buyerSig)` + `ECDSA.recover(digest, sellerSig)` checks in `commit()` | `FigaroCoreTest`: signature verification; SDK `commitments.test.ts`: EIP-712 domain/typed-data build. SDK↔Solidity parity currently lives ONLY in the skipIf-gated `integration.test.ts` live-chain round-trip — thin by admission; the unconditional CI parity harness is punch-listed | Not modeled (TLA+ abstracts signature mechanics) | — | `/sign` → commitment signing UI |
+| K-9 | `orderHash = keccak256(EIP-712 digest)`, content-addressed | `bytes32 orderHash = keccak256(abi.encode(digest))` + `if (orderStatus[orderHash] != 0) revert OrderAlreadyExists()` | `FigaroCoreTest`: duplicate guard; SDK `integration.test.ts`: live-chain acceptance of an SDK-built commitment (hash parity, skipIf-gated) | Not directly modeled (TLA+ uses sequential IDs) | — | `/builders` → Composability → Content-Addressed Order IDs |
 
 ---
 
@@ -345,21 +345,22 @@ export CERTORAKEY=<your-key>
 
 ## 12) Test inventory summary
 
-Counts are point-in-time snapshots (last refreshed 2026-07-10) — derive the
-current numbers, never trust these: `forge test` · `npx vitest run` (in `sdk/`
-and `frontend/`) · `npx playwright test --list` · `./scripts/test-tla.sh` ·
-`./scripts/test-echidna.sh`.
+The formal layers carry their property counts here (stable, and
+existence-gated by `scripts/lint-formal-targets.sh`). The volatile suites
+(Foundry / SDK / frontend / Playwright) store NO counts anywhere — the count
+is derived, never stored; run the command in the Census column. `TESTING.md`
+owns the harness inventory.
 
-| Layer | Files | Test count | What it covers |
-|---|---|---|---|
-| **TLA+ model checking** | 2 models | 15 invariants (FigaroCore: 7 across 6,087,113 states / 4m 8s; FigToken: 8 across 160,844 states / 9s — all via `./scripts/test-tla.sh`) | Kernel safety (conservation, solvency, bonding, atomicity, resolution) + FIG token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, renounce-monotonicity, deployer-cannot-mint-after-renounce) |
-| **Halmos symbolic testing** | 1 file | 7 properties | FigaroCore (7): token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. |
-| **Certora formal verification** | 4 specs | 25 declared rules (8 + 4 + 7 + 6) | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability (merkle-only — no content-shape validation). TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. FigToken: supply cap + minter registry preservation. |
-| **Echidna fuzzing** | 2 harnesses | 15 properties (kernel 7 + FigToken 8) | `EchidnaFuzzer` Kernel (7): solvency, monotonicity, buyer dominance, atomicity, cumulative accounting, conservation, active-count consistency. `EchidnaFigToken` (8): FigToken supply/minter fuzzing. (`EchidnaToken` is the kernel harness's support ERC-20, not a harness.) |
-| **Foundry unit tests** | 10 suites | 166 tests | Core lifecycle, revert branches, mechanisms, gas, FIG, parity vectors |
-| **SDK Vitest** | 22 files | 336 tests | Event parsing, state reconstruction, bond math, commitments, discovery, clauses, agent origination |
-| **Frontend Vitest** | 52 files | 376 tests | Components, hooks, semantic derivation, assembly, runtime identity |
-| **Playwright** | 26 spec files | 41 tests | Devnet e2e (UI action → UI reaction against the live chain) + the mobile viewport spec |
+| Layer | Census | What it covers |
+|---|---|---|
+| **TLA+ model checking** | 2 models, 15 invariants (FigaroCore: 7 across 6,087,113 states; FigToken: 8 across 160,844 states) — `./scripts/test-tla.sh` | Kernel safety (conservation, solvency, bonding, atomicity, resolution) + FIG token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, renounce-monotonicity, deployer-cannot-mint-after-renounce) |
+| **Halmos symbolic testing** | 1 harness, 7 properties — `./scripts/test-halmos.sh` | FigaroCore (7): token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. |
+| **Certora formal verification** | 4 specs, 25 declared rules (8 + 4 + 7 + 6) — `./scripts/test-certora.sh` | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability (merkle-only — no content-shape validation). TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. FigToken: supply cap + minter registry preservation. |
+| **Echidna fuzzing** | 2 harnesses, 15 properties (kernel 7 + FigToken 8) — `./scripts/test-echidna.sh` | `EchidnaFuzzer` Kernel (7): solvency, monotonicity, buyer dominance, atomicity, cumulative accounting, conservation, active-count consistency. `EchidnaFigToken` (8): FigToken supply/minter fuzzing. (`EchidnaToken` is the kernel harness's support ERC-20, not a harness.) |
+| **Foundry unit tests** | derive: `forge test --via-ir` (the summary line is the census; the fork suite skips without `MAINNET_RPC_URL`) | Core lifecycle, revert branches, coordinators (incl. the Permit2 witness + its mainnet-fork parity suite), gas, FIG |
+| **SDK Vitest** | derive: `cd sdk && npx vitest run` | Event parsing, state reconstruction, bond math, commitments, discovery, clauses, swap-funding witness parity, agent origination |
+| **Frontend Vitest** | derive: `cd frontend && npx vitest run` | Components, hooks, semantic derivation, assembly, runtime identity |
+| **Playwright** | derive: `cd frontend && npx playwright test --list` | Devnet e2e (UI action → UI reaction against the live chain) + the mobile viewport spec |
 
 ---
 
@@ -383,7 +384,7 @@ Prereqs (one-time): `brew install z3 && pipx install halmos`.
 
 ```bash
 export CERTORAKEY=<key from certora.com/signup>
-certoraRun certora/FigaroCore.conf --disable_local_typechecking
+./scripts/test-certora.sh        # wrapper: checks prereqs and runs all specs
 ```
 
 ### Echidna (2 harnesses, 15 properties: kernel 7 + FigToken 8)
@@ -403,13 +404,13 @@ Prereqs: `brew install echidna`.
 Prereqs: Java 11+, and `tla2tools.jar` downloaded once into `formal/`
 (see the script header for the exact `curl` command).
 
-### SDK tests (166 tests)
+### SDK tests
 
 ```bash
 cd sdk && npm test
 ```
 
-### Frontend Vitest (560 tests)
+### Frontend Vitest
 
 ```bash
 cd frontend && npx vitest run

@@ -18,6 +18,13 @@
 # drift) and each is checked against the working tree. Comment lines are ignored —
 # only executable `--contract` / `-config` / path references count.
 #
+# ALSO gates docs/VERIFICATION_MAP.md's cited names: the map cites suites,
+# functions, and test files as `Name`: <coverage>. A deleted suite left a
+# phantom citation for months (`ParityVectors` survived in three invariant
+# rows long after the suite was removed) — exactly the drift an external
+# auditor reads as live coverage. Every `Name`: cite must resolve to a
+# defined contract, a defined Solidity function, or a tracked file basename.
+#
 # Exit codes:
 #   0 — every formal runner targets a live contract / spec / model
 #   1 — a runner points at a deleted target (drop the dead pass, or restore it)
@@ -93,8 +100,28 @@ if [ -f scripts/test-tla.sh ]; then
     done < <(code_only scripts/test-tla.sh | grep -oE '[A-Za-z0-9_]+\.tla' | sort -u)
 fi
 
+# ── VERIFICATION_MAP: every `Name`: cite must resolve to something live ──
+# The map's suite-cite convention is a backticked name immediately followed by
+# a colon (`FigaroCoreTest`: bond-amount coverage). Resolution order: a
+# defined contract, a defined Solidity function (code-enforcement cites), or
+# a tracked file with that basename (`FigToken.t.sol`, SDK `bonds.test.ts`).
+VMAP="docs/VERIFICATION_MAP.md"
+if [ -f "$VMAP" ]; then
+    while read -r name; do
+        [ -z "$name" ] && continue
+        if contract_defined "$name"; then continue; fi
+        if git grep -qE "function[[:space:]]+$name[[:space:]]*\(" -- '*.sol' 2>/dev/null; then continue; fi
+        # Tracked file: exact basename, or the Foundry suite-file convention
+        # (`FigaroCoreRevertBranchTest` → test/FigaroCoreRevertBranchTest.t.sol —
+        # suite cites name the FILE; the contract inside may differ).
+        if git ls-files "*/$name" "$name" "*/$name.t.sol" "*/$name.sol" | grep -q .; then continue; fi
+        note "$VMAP cites \`$name\`: but no contract, function, or tracked file with that name exists"
+        fail=1
+    done < <(grep -oE '\`[A-Za-z0-9_.]+\`:' "$VMAP" | sed -E 's/\`([^\`]+)\`:/\1/' | sort -u)
+fi
+
 if [ "$fail" -eq 0 ]; then
-    echo "[formal-targets] clean — every formal runner targets a live contract/spec/model"
+    echo "[formal-targets] clean — every formal runner targets a live contract/spec/model, and every VERIFICATION_MAP cite resolves"
     exit 0
 fi
 note "a formal-verification runner points at a deleted target (above)."

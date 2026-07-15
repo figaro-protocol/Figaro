@@ -93,7 +93,7 @@ export default function Specifications() {
                     />
                 </ul>
                 <p className="text-xs text-ink-muted mt-4">
-                    Allocation: 100M founders (genesis), 300M DAO (genesis), 600M clause-author RPGF (no minter wired &mdash; the proof-gated distribution was removed). See <Link href="/fig" className="underline">FIG</Link>.
+                    Allocation: 100M founders (genesis), 300M DAO (genesis), 600M clause-author RPGF (no minter wired &mdash; the proof-gated distribution was removed). See <Link href="/papers/fig-schelling-point-token" className="underline">FIG</Link>.
                 </p>
             </MarketingSection>
 

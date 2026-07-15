@@ -139,13 +139,15 @@ Use these commands as the release gate. Expected output means successful complet
 ### Contracts
 
 ```bash
-forge test --via-ir
+MAINNET_RPC_URL=<mainnet rpc> forge test --via-ir
 ```
 
 Expected output:
 
 - 0 failed
-- 0 skipped
+- 0 skipped — the release gate RUNS the `MAINNET_RPC_URL`-gated mainnet-fork
+  suite (the Permit2 witness-digest parity proof); without the env var those
+  tests skip, which is a dev convenience, not a release posture
 
 ### Halmos Symbolic Proofs
 
@@ -156,6 +158,47 @@ Expected output:
 Prereqs (one-time): `brew install z3 && pipx install halmos`.
 
 Expected output: `✅ All 7 Halmos properties proved.` (exit code 0)
+
+### Certora Formal Verification
+
+```bash
+export CERTORAKEY=<key>
+./scripts/test-certora.sh
+```
+
+Expected output: all 4 specs green (FigaroCore, AttestationCoordinator,
+TokenOpsVerification, FigToken). `Failed on rule_not_vacuous` alone is the
+vacuity heuristic, not a rule failure — the results table is the authority.
+
+### Echidna Fuzzing
+
+```bash
+./scripts/test-echidna.sh
+```
+
+Prereqs: `brew install echidna`.
+
+Expected output: all properties hold on both harnesses (kernel + FigToken), exit code 0.
+
+### TLA+ Model Checking
+
+```bash
+./scripts/test-tla.sh
+```
+
+Prereqs: Java 11+, `tla2tools.jar` in `formal/` (script header has the `curl`).
+
+Expected output: both models verify every invariant, TLC exit code 0.
+
+### SDK Tests
+
+```bash
+cd sdk && npx vitest run
+```
+
+Expected output: Vitest exits cleanly with no failing suites (the live-chain
+`integration.test.ts` requires a running devnet; it skips without one — run
+the gate with the devnet up so it executes).
 
 ### Frontend Type Check
 
@@ -199,8 +242,8 @@ cd frontend && npm run test:e2e:devnet
 Expected output:
 
 - Anvil deployment verification passes first
-- Playwright devnet project exits cleanly with no failing specs
-- observed pass: 40 passed
+- Playwright devnet project exits cleanly with no failing specs (the census is
+  derived — `npx playwright test --list` — never a stored count)
 
 High-value browser checks that must remain covered:
 
