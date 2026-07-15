@@ -384,12 +384,13 @@ step committed, none demand-gated:
    collapses to one spec-driven encoder (`alloy-dyn-abi` already does
    runtime-typed encoding inside the per-clause functions).
 3. **Content-binding.** The guest must verify a witness spec against an
-   on-chain anchor. `ClauseRegistry` commits to a `uriHash`, not a
-   spec-content hash; the clause family's identity scheme should be
-   content-binding — a content-derived `clauseId`, or a registry that
-   exposes `keccak256(spec)`. The deployed registry is immutable, so this
-   is a registry v2 / parallel anchor — a protocol-composition-doctrine
-   decision.
+   on-chain anchor — and the live `ClauseRegistry` already provides one:
+   `registerClause` anchors `contentHash = keccak256(canonical spec JSON)`
+   alongside `contentURI`. The guest verifies its witness spec's bytes
+   against the anchored `contentHash` directly; no registry change, v2, or
+   parallel anchor is needed for this. (An earlier revision of this point
+   claimed the registry committed only to a URI hash — stale; the premise
+   inverted and the registry-v2 requirement it derived dissolved.)
 4. **Witness-supplied specs.** The 16 protocol specs stop being
    special-cased; they become input like any other.
 

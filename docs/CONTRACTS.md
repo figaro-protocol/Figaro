@@ -57,7 +57,7 @@ before the resolver check.
 
 **`src/ClauseRegistry.sol`** — Permissionless clause anchoring with a
 reclaimable ETH deposit (staked intent — K4).
-`clauseId` is the bare human-readable name; the on-chain dedup key is `keccak256(abi.encode(clauseId, version))` (details in CLAUSES.md). `uriHash` points at off-chain JSON spec.
+`clauseId` is the bare human-readable name; the on-chain dedup key is `keccak256(abi.encode(clauseId, version))` (details in CLAUSES.md). `contentHash` is keccak256 of the canonical off-chain spec JSON (integrity); `contentURI` is the pointer readers fetch it from.
 `registerClause` is first-write-wins, immutable, and `payable` (requires the
 immutable `registrationDeposit`); `withdrawDeposit(idHash)` (registrar-only,
 once, no time lock) returns the stake and emits `DepositWithdrawn` — the

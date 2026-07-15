@@ -190,15 +190,28 @@ residue — closed by operator ruling, 2026-07-10.)
 ## 8. ClauseRegistry is fully permissionless
 
 **Pattern**: Anyone can call `registerClause` with any `clauseId`, `version`,
-and `uriHash`. There is no approval, no staking, no identity check.
+`contentHash`, and `contentURI`, staking the fixed `registrationDeposit`
+(ETH, immutable at deploy). There is no approval and no identity check.
+First write wins per `(clauseId, version)` (`AlreadyRegistered` revert) and
+the binding is permanent — `withdrawDeposit` returns the stake without
+clearing it; readers de-surface a withdrawn clause for new compositions.
 
-**Why it looks wrong**: Permissionless registration enables namespace squatting
-and spam.
+**Why it looks wrong**: Permissionless registration enables namespace
+squatting and spam. The clause names are public, human-readable strings, so
+a squatter can register a well-known name (or the next version of one)
+before its author does — nothing about the id is secret.
 
-**Why it is correct**: `clauseId` is content-addressed — it is the keccak256
-of a human-readable clause name. Squatting `keccak256("figaro-commerce")`
-requires knowing the preimage. Registering a garbage `uriHash` for a known
-clauseId is blocked by the dedup guard (`AlreadyRegistered` revert).
+**Why it is correct**: Nothing that settles trusts the registry's binding.
+Integrity routes through `agreementHash` and `contentHash`, never through
+the registry: an agreement merkle-commits the clause CONTENT under the hash
+both parties sign, and every consumer of a registry entry fetches the spec
+from `contentURI` and verifies its bytes against the anchored `contentHash`
+before trusting a field. A squatted or garbage entry can therefore pollute
+DISCOVERY only — it cannot alter, impersonate, or invalidate any commitment,
+attestation, or settlement. The staked-intent deposit prices that pollution
+in deposit × time-surfaced, and the permanent binding means a squatter buys
+one dead `(name, version)` slot, not the name: honest authors register the
+next version.
 
 Clause governance — which clauses are authoritative — is a convention-layer
 concern resolved off-chain, consistent with the event-sourced architecture.
@@ -260,6 +273,10 @@ trust-minimization.
    USDC. The wallet performs a DEX swap, then calls `commit` with USDC in the
    same transaction. Kernel sees one clean commitment; slippage is absorbed
    pre-bond. Modern wallets (Rabby, MetaMask Swap, Rainbow) do this natively.
+   The shipped form of this pattern is `WitnessSwapAndCommitCoordinator`
+   (`CONTRACTS.md`): the swap route is bound into the party's Permit2 witness
+   signature, the coordinator funds the party in-place, and the kernel pulls
+   the bond as always — still one monotoken process.
 
 3. **Level-3 atomic bundler mechanism.** When all-or-nothing semantics is needed
    across N differently-denominated vendor processes, a Level-3 composition contract
@@ -411,14 +428,14 @@ Questioned and ruled KEEP 2026-07-02.
 
 | # | Pattern | Looks wrong because | Is correct because |
 |---|---|---|---|
-| 1 | Process re-opens after resolution | Missing lifecycle guard | Multi-round by bilateral signature |
+| 1 | Resolved processId is permanently closed | Closure-less extension "sounds protocol-aligned" | The closure IS the institution dissolving; follow-on rounds sign a fresh root; the gate derives from existing state |
 | 2 | Cross-order seller attestation | Wrong role for target order | Attester recorded truthfully; semantics off-chain |
 | 3 | buyer == seller allowed | Self-dealing vector | Bond math balances; bilateral signature required |
 | 4 | No owner/admin/pause | No incident response | Admin = trusted third party = breaks mechanism |
 | 5 | Buyer key loss is terminal | No stuck-fund recovery | Timeout = escape hatch = breaks MAD equilibrium |
 | 6 | No prevrandao salt | Missing on-chain entropy | Validators predict prevrandao; party-chosen salt sufficient |
 | 7 | Attestation reverts on resolved orders | Rejecting legitimate late evidence | Evidence window closes with the institution; forums get the closed record |
-| 8 | Permissionless clause registry | Namespace squatting | Content-addressed IDs; governance is off-chain |
+| 8 | Permissionless clause registry | Namespace squatting | Integrity routes through contentHash, never the registry; squatting pollutes discovery only, priced by the staked deposit |
 | 9 | RETIRED (DutchAuction deleted 2026-07-02) | — | Competitive pricing abandoned; see §9 |
 | 10 | Strict token compatibility rejection | Overly restrictive | Bond math requires exact amounts; wrapping is the solution |
 | 11 | Single currency per process | Can't do multi-token commerce | 2:1 bond ratio is Nash-stable only in one currency; multi-token lives at composition layer (process / wallet swap / Level-3 bundler) |
