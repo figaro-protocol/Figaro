@@ -250,12 +250,14 @@ eliminated:**
   validation.
 - **The batch prover / verifier / sequencer** (SP1 batch settlement) — rebuilt after the
   RPGF mechanism, before launch. Design baseline retained in `SCALING_STRATEGY.md`.
-- **The RPGF distribution mechanism** — returns, but the 2026-07-09 redesign REVISES this
-  leg: recipients widen to clause authors + assembly designers of record, the zk-proved
-  minter is replaced by an optimistic posted-window + challenge-recompute design, and
-  whether the minter gates launch (vs shipping before the year-2 tranche) is an OPEN
-  operator fork. `FIG_TOKEN.md` carries the allocation; `PUBLIC_GRAPH_MODEL.md` the
-  incentive rationale.
+- **The RPGF distribution mechanism** — returns, per the 2026-07-09 redesign: recipients
+  widen to clause authors + assembly designers of record, the zk-proved minter is replaced
+  by an optimistic posted-window + challenge-recompute design, and mandatory-article
+  clauses (`block.article: "mandatory"`) are excluded from scoring (ruled 2026-07-15).
+  The launch-timing fork is RESOLVED (2026-07-15): the minter ships in TESTNET and gates
+  FIG genesis there — `FigToken.registerMinter` precedes `renounceDeployerMint`, so the
+  minter address must exist at genesis. `FIG_TOKEN.md` carries the allocation;
+  `PUBLIC_GRAPH_MODEL.md` the incentive rationale.
 
 **PERMANENT — a property, not an artifact absence:** a never-seen clause must remain
 attestable permissionlessly, and the merkle binding stays the integrity floor. The
