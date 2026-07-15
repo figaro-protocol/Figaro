@@ -9,6 +9,7 @@ import "../src/AttestationCoordinator.sol";
 import "../src/ClauseRegistry.sol";
 import "../src/SellerRegistry.sol";
 import "../src/fig/FigToken.sol";
+import {RpgfMinter} from "../src/fig/RpgfMinter.sol";
 
 /// @title DeployMainnet — Mainnet deployment of the full Figaro V5 protocol stack
 ///
@@ -20,13 +21,24 @@ import "../src/fig/FigToken.sol";
 ///   PRIVATE_KEY                — deployer private key (or use hardware wallet via flags)
 ///   FOUNDER_WALLET             — address receiving the 100M founder allocation at genesis
 ///   DAO_WALLET                 — address receiving the 300M DAO allocation at genesis
+///   RPGF_ARBITRATOR            — the composed bond-settlement forum (an arbitration
+///                                provider adapter implementing IRpgfArbitrator; the
+///                                forum is deployment config, never protocol code)
+///   RPGF_BOND                  — post/challenge bond in wei
+///   RPGF_CHALLENGE_WINDOW      — seconds a posted root must survive to finalize
+///   RPGF_DISPUTE_WINDOW        — seconds the poster has to escalate a challenge
+///   RPGF_EARLIEST_POST_1/2/3   — ascending unix timestamps for the tranche
+///                                earliest-post times (testnet compresses years
+///                                2/5/9 to weeks 2/5/9 — time compresses when
+///                                time is involved; ruled 2026-07-15)
 ///
 /// FIG allocation (1B cap):
 ///   100M  (10%)  founders — genesis mint to FOUNDER_WALLET (no vesting, no unlock)
 ///   300M  (30%)  DAO      — genesis mint to DAO_WALLET     (no vesting, no unlock)
-///   The proof-gated 600M RPGF airdrop (RpgfMinter + its SP1 prover) was removed
-///   in the proof-apparatus teardown. Only the 400M founder + DAO genesis mints
-///   are minted here; the remaining 600M of the cap has no wired mint path.
+///   600M  (60%)  RPGF     — RpgfMinter registered at genesis (registerMinter
+///                           precedes renounce, so the minter MUST exist here);
+///                           optimistic post/challenge/finalize/claim distribution
+///                           to clause authors + assembly designers of record.
 ///
 /// @dev There is NO on-chain clause-content validation and NO batch settlement
 ///      proof path. The chain binds an attestation to its signed agreement
@@ -39,6 +51,7 @@ import "../src/fig/FigToken.sol";
 contract DeployMainnet is Script {
     uint256 constant FOUNDER_ALLOC = 100_000_000 ether; // 10%
     uint256 constant DAO_ALLOC = 300_000_000 ether; // 30%
+    uint256 constant RPGF_ALLOC = 600_000_000 ether; // 60%
 
     // Deployment output addresses — populated by run(), logged at the end.
     address internal _core;
@@ -46,6 +59,7 @@ contract DeployMainnet is Script {
     address internal _clauses;
     address internal _sellers;
     address internal _fig;
+    address internal _rpgfMinter;
 
     function run() external {
         uint256 privateKey = vm.envUint("PRIVATE_KEY");
@@ -67,6 +81,16 @@ contract DeployMainnet is Script {
     function _validateEnv() internal view {
         require(vm.envAddress("FOUNDER_WALLET") != address(0), "FOUNDER_WALLET not set");
         require(vm.envAddress("DAO_WALLET") != address(0), "DAO_WALLET not set");
+        require(vm.envAddress("RPGF_ARBITRATOR") != address(0), "RPGF_ARBITRATOR not set");
+        require(vm.envUint("RPGF_BOND") > 0, "RPGF_BOND not set");
+        require(vm.envUint("RPGF_CHALLENGE_WINDOW") > 0, "RPGF_CHALLENGE_WINDOW not set");
+        require(vm.envUint("RPGF_DISPUTE_WINDOW") > 0, "RPGF_DISPUTE_WINDOW not set");
+        require(
+            vm.envUint("RPGF_EARLIEST_POST_1") > block.timestamp
+                && vm.envUint("RPGF_EARLIEST_POST_2") > vm.envUint("RPGF_EARLIEST_POST_1")
+                && vm.envUint("RPGF_EARLIEST_POST_3") > vm.envUint("RPGF_EARLIEST_POST_2"),
+            "RPGF_EARLIEST_POST_1/2/3 must be ascending future timestamps"
+        );
     }
 
     // ── Protocol kernel + compositions ────────────────────────────────
@@ -117,6 +141,30 @@ contract DeployMainnet is Script {
         _fig = address(fig);
         console.log("FigToken:               ", _fig);
 
+        // The RPGF minter must exist at genesis: registerMinter only works
+        // before renounce, and renounce is irreversible. formulaHash anchors
+        // the exact bytes of the canonical formula spec; the composed forum
+        // and every timing/bond parameter arrive via environment (config,
+        // never code).
+        bytes32 formulaHash = keccak256(bytes(vm.readFile("sdk/src/rpgf/formula.json")));
+        RpgfMinter rpgfMinter = new RpgfMinter(
+            address(fig),
+            vm.envAddress("RPGF_ARBITRATOR"),
+            formulaHash,
+            vm.envUint("RPGF_BOND"),
+            uint64(vm.envUint("RPGF_CHALLENGE_WINDOW")),
+            uint64(vm.envUint("RPGF_DISPUTE_WINDOW")),
+            [
+                uint64(vm.envUint("RPGF_EARLIEST_POST_1")),
+                uint64(vm.envUint("RPGF_EARLIEST_POST_2")),
+                uint64(vm.envUint("RPGF_EARLIEST_POST_3"))
+            ],
+            [uint256(300_000_000 ether), 200_000_000 ether, 100_000_000 ether]
+        );
+        _rpgfMinter = address(rpgfMinter);
+        console.log("RpgfMinter:             ", _rpgfMinter);
+        fig.registerMinter(_rpgfMinter, RPGF_ALLOC);
+
         // Genesis distribution: mint 100M + 300M directly to the founder and
         // DAO wallets. Register the deployer as a one-shot genesis minter with
         // cap exactly 400M so that this script is the ONLY entity that can ever
@@ -127,10 +175,10 @@ contract DeployMainnet is Script {
         fig.mint(vm.envAddress("DAO_WALLET"), DAO_ALLOC);
         console.log("FigToken: genesis mint complete (founder + DAO)");
 
-        // After renounce, no new minters can ever be registered and the deployer
-        // cannot mint again. The 400M deployer cap is exactly exhausted at this
-        // point; the remaining 600M of the 1B cap has no wired mint path (the
-        // proof-gated RPGF airdrop was removed).
+        // After renounce, no new minters can ever be registered and the
+        // deployer cannot mint again. At this point the full 1B cap is
+        // spoken for: 400M exactly exhausted by the genesis mints, 600M
+        // mintable only through the RpgfMinter's finalized merkle claims.
         fig.renounceDeployerMint();
         console.log("FigToken: deployer mint renounced (permanent)");
     }
@@ -145,6 +193,7 @@ contract DeployMainnet is Script {
         console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=          ", _clauses);
         console.log("  NEXT_PUBLIC_SELLER_REGISTRY=        ", _sellers);
         console.log("  NEXT_PUBLIC_FIG_TOKEN_ADDRESS=        ", _fig);
+        console.log("  NEXT_PUBLIC_RPGF_MINTER=              ", _rpgfMinter);
         console.log("---");
     }
 }

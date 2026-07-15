@@ -13,6 +13,8 @@ import "../src/mocks/MockPermitToken.sol";
 import "../src/mocks/MockERC20.sol";
 import "../src/mocks/MockWitnessPermit2.sol";
 import "../src/mocks/MockUniversalRouter.sol";
+import "../src/mocks/MockArbitrator.sol";
+import {RpgfMinter} from "../src/fig/RpgfMinter.sol";
 // Named import: the coordinator declares its own local-minimal `IFigaroCore`
 // (the coordinator exemplar), which would collide with AttestationCoordinator's.
 import {WitnessSwapAndCommitCoordinator} from "../src/WitnessSwapAndCommitCoordinator.sol";
@@ -27,9 +29,10 @@ import "../src/AssemblyRegistry.sol";
 ///         tokens to Anvil accounts.
 ///
 ///         Devnet FIG allocation: 100M → deployer's wallet (stands in for founder
-///         + DAO on devnet; the mainnet split is in script/DeployMainnet.s.sol).
-///         The proof-gated RPGF airdrop was removed in the proof-apparatus
-///         teardown, so there is no staged-airdrop allocation on either path.
+///         + DAO on devnet; the mainnet split is in script/DeployMainnet.s.sol),
+///         plus the RpgfMinter registered at 600M before renounce — the
+///         optimistic RPGF distribution (post/challenge/finalize/claim) is live
+///         on devnet with seconds-scale windows and a MockArbitrator forum.
 contract Deploy is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -124,17 +127,26 @@ contract Deploy is Script {
         SellerRegistry sellers = new SellerRegistry(0.001 ether);
         console.log("SellerRegistry deployed at:", address(sellers));
 
-        // ── FIG Token ───────────────────────────────────────────────
+        // ── FIG Token + RPGF minter ─────────────────────────────────
         FigToken fig = new FigToken();
         console.log("FigToken deployed at:", address(fig));
+
+        // The RPGF minter must exist AT GENESIS: FigToken.registerMinter only
+        // works before renounceDeployerMint, and renounce is irreversible —
+        // so the optimistic 600M distribution registers here, before any
+        // other genesis step. The composed bond-settlement forum is a mock on
+        // devnet (a real deployment composes an arbitration provider behind
+        // the same IRpgfArbitrator seam). formulaHash anchors the exact bytes
+        // of the canonical formula spec so any observer can recompute posted
+        // roots. Devnet windows are seconds, not days, so the e2e suite can
+        // run the full post -> challenge -> finalize -> claim cycle in real
+        // time (testnet compresses years 2/5/9 to weeks; devnet compresses
+        // further to now/+14d/+35d with 20s windows).
+        _deployRpgf(fig);
 
         // Devnet genesis mint: 100M to deployer as a simplified placeholder
         // for testing. Mainnet performs the 10/30/60 canonical distribution
         // in DeployMainnet.s.sol.
-        // Devnet genesis mint: 100M to deployer. The proof-gated RPGF
-        // distribution (RpgfMinter + its SP1 prover) was removed in the
-        // proof-apparatus teardown; FIG ships with no wired distribution
-        // minter on devnet beyond this genesis allocation.
         address deployer = vm.addr(deployerPrivateKey);
         fig.registerMinter(deployer, 100_000_000 ether);
         fig.mint(deployer, 100_000_000 ether);
@@ -192,5 +204,28 @@ contract Deploy is Script {
         console.log("  NEXT_PUBLIC_SELLER_REGISTRY=", address(sellers));
         console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=", address(assemblies));
         console.log("  NEXT_PUBLIC_FIG_TOKEN_ADDRESS=", address(fig));
+    }
+
+    /// @dev Own frame: keeps run()'s stack shallow (via_ir=false by design).
+    ///      Logs its own address lines — deploy-local.sh parses the
+    ///      "deployed at:" lines, and the NEXT_PUBLIC_ summary for these two
+    ///      prints here rather than in run().
+    function _deployRpgf(FigToken fig) internal {
+        MockArbitrator rpgfArbitrator = new MockArbitrator();
+        console.log("MockArbitrator deployed at:", address(rpgfArbitrator));
+
+        bytes32 formulaHash = keccak256(bytes(vm.readFile("sdk/src/rpgf/formula.json")));
+        RpgfMinter rpgfMinter = new RpgfMinter(
+            address(fig),
+            address(rpgfArbitrator),
+            formulaHash,
+            0.05 ether, // post/challenge bond — devnet-sized
+            20, // challenge window (seconds)
+            20, // dispute window (seconds)
+            [uint64(block.timestamp), uint64(block.timestamp + 14 days), uint64(block.timestamp + 35 days)],
+            [uint256(300_000_000 ether), 200_000_000 ether, 100_000_000 ether]
+        );
+        console.log("RpgfMinter deployed at:", address(rpgfMinter));
+        fig.registerMinter(address(rpgfMinter), 600_000_000 ether);
     }
 }

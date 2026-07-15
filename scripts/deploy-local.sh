@@ -79,6 +79,8 @@ CLAUSE_ADDR=$(echo "$FORGE_OUT"      | grep 'ClauseRegistry deployed at:'       
 SELLER_ADDR=$(echo "$FORGE_OUT"    | grep 'SellerRegistry deployed at:'       | grep -oE '0x[0-9a-fA-F]+')
 ASSEMBLY_ADDR=$(echo "$FORGE_OUT"    | grep 'AssemblyRegistry deployed at:'       | grep -oE '0x[0-9a-fA-F]+')
 FIG_TOKEN_ADDR=$(echo "$FORGE_OUT"   | grep 'FigToken deployed at:'               | grep -oE '0x[0-9a-fA-F]+')
+RPGF_MINTER_ADDR=$(echo "$FORGE_OUT" | grep 'RpgfMinter deployed at:'             | grep -oE '0x[0-9a-fA-F]+')
+RPGF_ARBITRATOR_ADDR=$(echo "$FORGE_OUT" | grep 'MockArbitrator deployed at:'     | grep -oE '0x[0-9a-fA-F]+')
 
 if [ -z "$CORE_ADDR" ]; then
   echo "❌ Could not parse FigaroCore address from forge output. Aborting env update."
@@ -149,6 +151,8 @@ update_env "$CORE_ENV" "NEXT_PUBLIC_CLAUSE_REGISTRY"           "$CLAUSE_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_SELLER_REGISTRY"         "$SELLER_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_ASSEMBLY_REGISTRY"         "$ASSEMBLY_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_FIG_TOKEN_ADDRESS"         "$FIG_TOKEN_ADDR"
+update_env "$CORE_ENV" "NEXT_PUBLIC_RPGF_MINTER"               "$RPGF_MINTER_ADDR"
+update_env "$CORE_ENV" "NEXT_PUBLIC_RPGF_ARBITRATOR"           "$RPGF_ARBITRATOR_ADDR"
 
 # IPFS service endpoints — default to the local Kubo daemon. Set only if
 # absent, so a custom endpoint configured by hand survives a redeploy.
@@ -171,7 +175,9 @@ cat > "$CORE_DEPLOYMENT" <<EOF
   "clauseRegistry": "$CLAUSE_ADDR",
   "sellerRegistry": "$SELLER_ADDR",
   "assemblyRegistry": "$ASSEMBLY_ADDR",
-  "figToken": "$FIG_TOKEN_ADDR"
+  "figToken": "$FIG_TOKEN_ADDR",
+  "rpgfMinter": "$RPGF_MINTER_ADDR",
+  "rpgfArbitrator": "$RPGF_ARBITRATOR_ADDR"
 }
 EOF
 
@@ -189,6 +195,8 @@ echo "   NEXT_PUBLIC_CLAUSE_REGISTRY=$CLAUSE_ADDR"
 echo "   NEXT_PUBLIC_SELLER_REGISTRY=$SELLER_ADDR"
 echo "   NEXT_PUBLIC_ASSEMBLY_REGISTRY=$ASSEMBLY_ADDR"
 echo "   NEXT_PUBLIC_FIG_TOKEN_ADDRESS=$FIG_TOKEN_ADDR"
+echo "   NEXT_PUBLIC_RPGF_MINTER=$RPGF_MINTER_ADDR"
+echo "   NEXT_PUBLIC_RPGF_ARBITRATOR=$RPGF_ARBITRATOR_ADDR"
 echo "   NEXT_PUBLIC_IPFS_API_URL / NEXT_PUBLIC_IPFS_GATEWAY_URL — local Kubo defaults (set only if absent)"
 echo "   Deployment: $CORE_DEPLOYMENT"
 
