@@ -28,10 +28,12 @@ import {
     divisorFor,
     fillCommerceSection,
     fillDerivedSections,
+    fillProvenanceSection,
     generateSalt,
     planSubOrderSellers,
     reconstructOrdersFromTemplate,
     resolveSubOrderPricing,
+    templateCompositionHash,
     templateParentOrderHashes,
     type AssemblyCheckoutLineItem,
     type ReconstructedOrder,
@@ -207,13 +209,16 @@ export async function executeAssemblyCheckout(
                 // settlement terms. `currency` is the ONE process currency (the
                 // kernel enforces single-denomination, FigaroCore
                 // CurrencyMismatch), never a per-order input.
-                const filled = fillCommerceSection(
-                    fillDerivedSections(
-                        { ...node.clauses, ...(params.clauseFills?.[planned.nodeId] ?? {}) },
-                        lineItems, specs,
-                        divisorFor(leadSellerAddress, sellerCatalogues),
+                const filled = fillProvenanceSection(
+                    fillCommerceSection(
+                        fillDerivedSections(
+                            { ...node.clauses, ...(params.clauseFills?.[planned.nodeId] ?? {}) },
+                            lineItems, specs,
+                            divisorFor(leadSellerAddress, sellerCatalogues),
+                        ),
+                        payment, specs, lineItems,
                     ),
-                    payment, specs, lineItems,
+                    templateCompositionHash(template), specs,
                 );
                 return {
                     seller: leadSellerAddress,
@@ -279,13 +284,16 @@ export async function executeAssemblyCheckout(
             // composing none (e.g. a service leg) → G7 absence. The topology
             // section is the WALK's to complete (template-local parent ids →
             // real order hashes), so it is never in the overrides.
-            const filled = fillCommerceSection(
-                fillDerivedSections(
-                    { ...nodeClauses },
-                    subLineItems ?? [], specs,
-                    divisorFor(subSeller, sellerCatalogues),
+            const filled = fillProvenanceSection(
+                fillCommerceSection(
+                    fillDerivedSections(
+                        { ...nodeClauses },
+                        subLineItems ?? [], specs,
+                        divisorFor(subSeller, sellerCatalogues),
+                    ),
+                    subPayment, specs, subLineItems,
                 ),
-                subPayment, specs, subLineItems,
+                templateCompositionHash(template), specs,
             );
             return {
                 seller: subSeller,

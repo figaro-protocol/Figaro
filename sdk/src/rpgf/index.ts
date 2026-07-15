@@ -23,6 +23,7 @@ import {
     CORE_ABI,
     SELLER_REGISTRY_ABI,
 } from "../abis.js";
+import { canonicalizeSectionData } from "../agreement.js";
 import { computeClauseKey } from "../discovery.js";
 import formula from "./formula.json" with { type: "json" };
 
@@ -38,6 +39,16 @@ export const RPGF_EXCLUDED_ARTICLES: readonly string[] = formula.parameters.excl
 export const RPGF_CAP_NUMERATOR = BigInt(formula.parameters.capNumerator);
 export const RPGF_CAP_DENOMINATOR = BigInt(formula.parameters.capDenominator);
 export const RPGF_PROVENANCE_CLAUSE: string = formula.parameters.provenanceClauseId;
+
+/** The contentRef a re-asserting provenance attestation carries for a given
+ *  compositionHash: keccak256 of the canonical-JSON section bytes — the SAME
+ *  bytes the SDK's agreement encoding commits (content defaults to
+ *  sectionData). The inversion table enumerates registered hashes with this. */
+export function provenanceContentRef(compositionHash: Hex): Hex {
+    return keccak256(
+        stringToHex(canonicalizeSectionData({ [formula.parameters.provenanceField]: compositionHash })),
+    );
+}
 /** Canonical root for a window with no positive allocations. */
 export const RPGF_EMPTY_ROOT: Hex = keccak256(stringToHex(formula.parameters.emptyRootPreimage));
 
@@ -315,8 +326,7 @@ export function computeRpgfAllocations(
     const withdrawnAssemblies = new Set(stream.assemblyWithdrawals.map((w) => w.key.toLowerCase()));
     const assemblyByContentRef = new Map<Hex, Hex>();
     for (const key of assemblyByHash.keys()) {
-        const contentRef = keccak256(encodeAbiParameters([{ type: "bytes32" }], [key]));
-        assemblyByContentRef.set(contentRef.toLowerCase() as Hex, key);
+        assemblyByContentRef.set(provenanceContentRef(key).toLowerCase() as Hex, key);
     }
 
     // Group counted attestations per artifact, honoring eligibility.

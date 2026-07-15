@@ -9,6 +9,7 @@
         "capNumerator": 15,
         "capDenominator": 100,
         "provenanceClauseId": "figaro-assembly-provenance",
+        "provenanceField": "compositionHash",
         "emptyRootPreimage": "figaro-rpgf:empty"
     },
     "window": {
@@ -42,7 +43,7 @@
     "identifiers": {
         "clauseKey": "bytes32 clauseId in events = keccak256(abi.encode(string clauseId, uint64 version)). Aggregation is per clauseId STRING (versions merge); the author of record is the registrar of the string id's first ClauseRegistered event; classification uses the spec of the highest version registered inside the window.",
         "assemblyKey": "compositionHash, as registered. The designer of record is the author of the compositionHash's first AssemblyRegistered event (first-write-wins).",
-        "assemblyProvenance": "A process is linked to an assembly by an Attestation event whose clause is 'figaro-assembly-provenance' (any version) and whose contentRef equals keccak256(abi.encode(bytes32 compositionHash)) for a registered compositionHash. contentRef inversion enumerates the registered set."
+        "assemblyProvenance": "A process is linked to an assembly by an Attestation event whose clause is 'figaro-assembly-provenance' (any version) and whose contentRef equals keccak256 of the canonical-JSON section bytes for a registered compositionHash — i.e. the utf8 bytes of {\"compositionHash\":\"0x…\"} exactly as the SDK's agreement section encoding (getSectionDataBytes) commits them; a re-asserting attestation's content IS its committed sectionData, so contentRef = keccak256(sectionData). contentRef inversion enumerates the registered compositionHash set."
     },
     "aggregation": {
         "clauseLeg": "For each non-excluded clause: counted attestations are Attestation events inside the window whose clause key belongs to the clause, whose order has an OrderCommitted event, and whose process passes eligibility. c = distinct counted processes after the pair cap; d = distinct (buyer, seller) pairs of the attested orders in counted processes; chain positions are per counted attestation (its order's 1-indexed commit ordinal within its process).",

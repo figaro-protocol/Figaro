@@ -115,6 +115,32 @@ export function readDenominationPin(
 }
 
 /**
+ * Write the template's own composition identity into the provenance section,
+ * found by its declared `compositionHash` field (never by clause id; a no-op
+ * when the assembly composes no provenance clause). MECHANICAL, not authored:
+ * the value is derived from the loaded template itself
+ * (`templateCompositionHash`), so it cannot be a designer value — the hash
+ * cannot appear inside the composition it hashes. Committed under
+ * agreementHash, a buyer attestation of this section becomes the on-chain
+ * event linking the process to its registered assembly.
+ */
+export function fillProvenanceSection(
+    clauses: ClauseFields,
+    compositionHash: `0x${string}`,
+    specs: SpecSource,
+): ClauseFields {
+    const provenanceClauseId = composedClauseDeclaring(clauses, "compositionHash", specs);
+    if (!provenanceClauseId) return clauses;
+    return {
+        ...clauses,
+        [provenanceClauseId]: {
+            ...clauses[provenanceClauseId],
+            compositionHash,
+        },
+    };
+}
+
+/**
  * Write the REAL parent-order hashes into the topology section, found by its
  * declared `parentOrderHashes` field (never by clause id). The template's
  * topology data carries template-LOCAL order ids ("order-0"); the committed

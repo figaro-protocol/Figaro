@@ -146,6 +146,12 @@ function seedTemplateChain() {
                     // Design time is STRUCTURAL (ruled 2026-07-14): the clause
                     // is SELECTED; the modality is the buyer's checkout pick.
                     'figaro-modalities': {},
+                    // The designer's provenance declaration: checkout fills the
+                    // template's own compositionHash (mechanically — the hash
+                    // cannot appear inside the composition it hashes), and a
+                    // buyer attestation of it links the process to this
+                    // assembly on-chain (the RPGF designer-credit event).
+                    'figaro-assembly-provenance': {},
                     ...mandatoryClauseFold([]),
                 },
             },

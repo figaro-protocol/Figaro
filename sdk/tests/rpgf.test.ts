@@ -4,6 +4,7 @@ import {
     buildRpgfTree,
     computeRpgfAllocations,
     icbrt,
+    provenanceContentRef,
     rpgfLeaf,
     waterFill,
     RPGF_EMPTY_ROOT,
@@ -251,8 +252,7 @@ describe("computeRpgfAllocations", () => {
 
         const p1 = keccak256(stringToBytes32Seed("pa"));
         const o1 = process(stream, p1, 10, { subOrder: true });
-        const contentRef = keccak256(encodeAbiParameters([{ type: "bytes32" }], [COMPOSITION]));
-        attest(stream, RPGF_PROVENANCE_CLAUSE, o1.rootOrder, p1, 12, contentRef);
+        attest(stream, RPGF_PROVENANCE_CLAUSE, o1.rootOrder, p1, 12, provenanceContentRef(COMPOSITION));
 
         const allocations = computeRpgfAllocations(stream, SPECS, 1000n);
         expect(allocations).toEqual([{ account: DESIGNER.toLowerCase() as Address, amount: 150n }]);
