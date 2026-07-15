@@ -196,25 +196,29 @@ tests in `test/AssemblyRegistryTest.t.sol`.
 Reentrancy-guarded. Minter registry with `totalRegisteredCap` (sum of all registered
 caps enforced not to exceed MAX_SUPPLY). Deployer registers capped minters, then renounces.
 
-**`IFigMinter.sol`** — `mint(address, uint256)` interface a FIG minter module would implement. No implementation is wired (the proof-gated RPGF minter was removed in the teardown); `FigToken.registerMinter` is where a future implementation attaches.
+**`IFigMinter.sol`** — `mint(address, uint256)` interface FIG minter modules implement; `FigToken.registerMinter` is where implementations attach (before renounce).
+
+**`RpgfMinter.sol`** — the optimistic 600M distribution (rebuilt 2026-07-15, replacing the SP1-proof-gated, submitter-role minter removed in the teardown). Permissionless bonded `postRoot` per tranche (3 tranches; window recorded for public recompute; `formulaHash` anchors the canonical formula spec), `challenge` ALWAYS voids the posting (minting stays purely mechanical — only a root surviving its full challenge window finalizes), merkle `claim` (OZ standard-tree leaves) mints through the FigToken cap with a per-tranche budget backstop. Bond cases settle on a separate track: poster `disputeChallenge`s to the composed forum (`IRpgfArbitrator`) or concedes; the forum routes bonds only, never mints. No owner, no sweep, no claim expiry; pull-payment bond withdrawal.
+
+**`IRpgfArbitrator.sol`** — the minimal provider-agnostic forum seam (`createDispute` + a `rule` callback on the minter). The forum choice is deployment config, never protocol code.
 
 **FIG allocation (canonical, 1B total):**
 - **100M (10%) founders** — genesis mint, no vesting, no unlock
 - **300M (30%) DAO**       — genesis mint, no vesting, no unlock
-- **600M (60%) clause-author RPGF** — the proof-gated distribution (an `RpgfMinter`
-  staged behind an SP1 prover) was **removed in the proof-apparatus teardown**, so this
-  600M of the cap currently has **no wired mint path**. The RPGF rationale survives in
-  `docs/PUBLIC_GRAPH_MODEL.md`; re-home a distribution mechanism there if one is rebuilt.
+- **600M (60%) RPGF** — clause authors + assembly designers of record, distributed by
+  `RpgfMinter` above. The incentive rationale lives in `docs/PUBLIC_GRAPH_MODEL.md`.
 
-Deploy flow: deployer registers itself as a one-shot genesis minter with cap 400M,
-mints 100M+300M to the founder/DAO wallets, then renounces. Only the 400M genesis is
-minted; the remaining 600M has no wired mint path. No settlement-anchored emission.
+Deploy flow: deployer deploys `RpgfMinter`, registers it with cap 600M, registers itself
+as a one-shot genesis minter with cap 400M, mints 100M+300M to the founder/DAO wallets,
+then renounces — the minter must exist at genesis because `registerMinter` precedes
+`renounceDeployerMint`. No settlement-anchored emission.
 
 ## Test / Mock Contracts
 
 - `src/mocks/MockERC20.sol` — the devnet payment/bond token. Plain ERC-20 with a permissionless `mint(to, amount)`; constructor takes `(name, symbol)`. Deployed by `Deploy.s.sol` as `NEXT_PUBLIC_TOKEN_ADDRESS` (minted 100k to anvil[0..19]) and used by the Foundry tests — one mock, not a per-file inline copy. (Mainnet uses a real ERC-20, e.g. USDC.e.)
 - `src/mocks/MockERC20FeeOnTransfer.sol`, `MockPermitToken.sol` — fee-on-transfer ERC-20 (Foundry tests only) and EIP-2612 permit ERC-20 (`Deploy.s.sol` deploys it as `NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS` for the `*WithPermit` flow).
 - `src/mocks/MockWitnessPermit2.sol` — devnet/test stand-in for Uniswap Permit2's `permitWitnessTransferFrom`, WITH witness-signature verification (reconstructs the exact digest real Permit2 builds; deadline + amount enforced), pulling the owner's input token under the standard one-time Permit2 approval. Used by `WitnessSwapAndCommitCoordinatorTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_PERMIT2`; mainnet uses the canonical Permit2.
+- `src/mocks/MockArbitrator.sol` — devnet/test stand-in for the composed bond-settlement forum behind `RpgfMinter`'s `IRpgfArbitrator` seam: accepts disputes at zero fee, lets anyone deliver a ruling back to the arbitrable contract. Mainnet composes a real arbitration provider (e.g. Kleros via an adapter) behind the same seam — the forum is deployment config, never protocol code.
 - `src/mocks/MockUniversalRouter.sol` — test stand-in for a swap venue; `swap(tokenIn, tokenOut, amountIn, recipient)` at a settable rate, paying out of pre-funded liquidity. Used by `WitnessSwapAndCommitCoordinatorTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_SWAP_ROUTER` (pre-funded with both devnet tokens); mainnet uses the real Uniswap Universal Router.
 - `src/echidna/EchidnaFuzzer.sol`, `EchidnaFigToken.sol`, `EchidnaToken.sol`
 
@@ -223,7 +227,8 @@ minted; the remaining 600M has no wired mint path. No settlement-anchored emissi
 **Deleted in the proof-apparatus teardown (no on-chain content validation, no proof/batch path):**
 the 17 `src/clauseValidators/*` validators, `IClauseValidator.sol`, `MockClauseValidator.sol`,
 `ClauseRegistrationHelper.sol`, `JSONSchemaValidator.sol`; `FigaroBatchVerifier.sol`,
-`src/interfaces/ISP1Verifier.sol`, `MockSP1Verifier.sol`; `RpgfMinter.sol`; the entire Rust
+`src/interfaces/ISP1Verifier.sol`, `MockSP1Verifier.sol`; the SP1-gated `RpgfMinter`
+(rebuilt optimistic 2026-07-15 — see the FIG section above); the entire Rust
 `prover/` tree and the SDK sequencer / `merkleAirdrop`. Validation is now off-chain Layer-A
 (SDK `validate.ts`/`encode.ts`) + `ClauseRegistry.registerClause`; settlement is the kernel's
 atomic `resolveProcess` only.
