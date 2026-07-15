@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { useReadContract } from "wagmi";
 import { useCommerce } from "./CommerceProvider";
-import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
+import { useOrderCommitmentFlow, type BuyerFundingRequest } from "@/lib/checkout/orderCommitmentFlow";
 import type { OrderPreview } from "@/lib/checkout/orderPreview";
 import type { CommitmentPayload } from "@figaro/sdk/agent";
 import useTokenApproval from "@/hooks/useTokenApproval";
@@ -71,8 +71,11 @@ export function useCheckout(
 
     // Sign the ROOT and surface its payload to the share panel — the buyer
     // relays it from there. No auto-relay (that is `signAndShare`, for subs).
-    const signRoot = useCallback(async (preview: OrderPreview): Promise<CommitmentPayload> => {
-        const p = await signCommitment(preview);
+    const signRoot = useCallback(async (
+        preview: OrderPreview,
+        funding?: BuyerFundingRequest,
+    ): Promise<CommitmentPayload> => {
+        const p = await signCommitment(preview, funding);
         setPayload(p);
         return p;
     }, [signCommitment]);

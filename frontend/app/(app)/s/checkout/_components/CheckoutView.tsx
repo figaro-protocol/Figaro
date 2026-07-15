@@ -31,11 +31,15 @@ import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel";
 import { SellerCataloguePicker, type SellerSelection } from "@/components/runtime/SellerCataloguePicker";
 import { useCompositionActions } from "@/lib/composition/useCompositionActions";
+import { resolveSwapFundingContracts } from "@/lib/composition/swapFunding";
+import { SwapFundingPanel } from "./SwapFundingPanel";
+import useTokenApproval from "@/hooks/useTokenApproval";
+import { maxUint256 } from "viem";
 import { FieldControl } from "@/components/runtime/FieldControl";
 import { useTokenSymbol } from "@/components/sellers/TokenAddressInput";
 import { calculateBonds } from "@figaro/sdk";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { hexEqual, normalizeAddressParam } from "@/lib/shared/evm";
+import { hexEqual, normalizeAddressParam, ZERO_ADDRESS } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatToken, parseToken } from "@/lib/shared/utils";
 import { useSellerBoundAssemblies } from "@/lib/seller/useSellerBoundAssemblies";
@@ -181,6 +185,27 @@ export function CheckoutView({ sellerAddress }: Props) {
     const isApproving = isApprovePending || isApproveConfirming;
     const pendingCheckout = useRef(false);
     const [checkoutError, setCheckoutError] = useState<string | null>(null);
+    // Swap-funded bond leg (buyer side): when the buyer's bond-currency
+    // balance can't cover the locked total, they may fund from another of the
+    // seller's accepted tokens — the coordinator swaps it at commit time. The
+    // candidate set IS the seller's acceptedTokens minus the process currency;
+    // available only where the swap composition (coordinator + Permit2 +
+    // venue) is configured. Resolved-empty = the path is absent.
+    const swapFundingContracts = resolveSwapFundingContracts();
+    const fundingCandidates = useMemo(
+        () => (swapFundingContracts && currency
+            ? (sellerCatalogue?.acceptedTokens ?? []).filter((t) => !hexEqual(t.address, currency))
+            : []),
+        [swapFundingContracts, currency, sellerCatalogue],
+    );
+    const [fundingToken, setFundingToken] = useState<`0x${string}` | null>(null);
+    // The one-time Permit2 authorization for the chosen funding token (the
+    // standard Permit2 max approval; per-commit amounts are witness-bound).
+    const permit2Funding = useTokenApproval({
+        tokenAddress: fundingToken ?? undefined,
+        owner: buyer ?? undefined,
+        spender: (swapFundingContracts?.permit2 ?? ZERO_ADDRESS) as `0x${string}`,
+    });
     // The buyer's checkout-time counterparty choice for a sub-order the
     // adopting seller's catalogue leaves unbound (the buyer assigns it).
     const [sellerSelection, setSellerSelection] = useState<SellerSelection | null>(null);
@@ -479,8 +504,11 @@ export function CheckoutView({ sellerAddress }: Props) {
                         if (!publicClient) throw new Error("No chain connection — cannot verify the resolve ceiling.");
                         return maxOrdersResolvablePerProcess(publicClient);
                     },
-                    signRoot,
-                    signAndShare,
+                    // The buyer's funding choice binds here: every order the
+                    // walk signs (root and sub-orders alike) carries its own
+                    // witness-signed swap leg when a funding token is chosen.
+                    signRoot: (p) => signRoot(p, fundingToken ? { inputToken: fundingToken } : undefined),
+                    signAndShare: (p) => signAndShare(p, fundingToken ? { inputToken: fundingToken } : undefined),
                     compose,
                 },
             );
@@ -496,10 +524,15 @@ export function CheckoutView({ sellerAddress }: Props) {
             return;
         }
         if (cartItems.length === 0) return;
-        if (hasInsufficientBalance) {
+        if (hasInsufficientBalance && !fundingToken) {
             setCheckoutError(
-                `Insufficient funds. Required: ${formatToken(lockedTotal, tokenDecimals)}, available: ${formatToken(balance, tokenDecimals)}`,
+                `Insufficient funds. Required: ${formatToken(lockedTotal, tokenDecimals)}, available: ${formatToken(balance, tokenDecimals)}`
+                + (fundingCandidates.length > 0 ? " — or fund your bond from another accepted token below." : ""),
             );
+            return;
+        }
+        if (fundingToken && permit2Funding.needsApproval(lockedTotal)) {
+            setCheckoutError("Authorize the funding token first — the one-time Permit2 approval below.");
             return;
         }
         setCheckoutError(null);
@@ -770,6 +803,24 @@ export function CheckoutView({ sellerAddress }: Props) {
                             <SellerCataloguePicker
                                 tokenSymbol={tokenSymbol}
                                 onSelect={setSellerSelection}
+                            />
+                        )}
+
+                        {/* Swap-funded bond leg: shown when the buyer's balance
+                            in the process currency can't cover the locked total
+                            and the seller accepts other tokens the coordinator
+                            can swap from. */}
+                        {hasInsufficientBalance && fundingCandidates.length > 0 && buyer && (
+                            <SwapFundingPanel
+                                candidates={fundingCandidates}
+                                buyer={buyer}
+                                currencySymbol={tokenSymbol}
+                                decimals={tokenDecimals}
+                                fundingToken={fundingToken}
+                                onSelect={setFundingToken}
+                                needsAuthorization={permit2Funding.needsApproval(lockedTotal)}
+                                onAuthorize={() => permit2Funding.approve(maxUint256)}
+                                isAuthorizing={permit2Funding.isApprovePending || permit2Funding.isApproveConfirming}
                             />
                         )}
 

@@ -8,7 +8,7 @@
 
 import type { OrderPreview } from "@/lib/checkout/orderPreview";
 import type { CommitmentPayload } from "@figaro/sdk/agent";
-import type { OrderFlowStep } from "@/lib/checkout/orderCommitmentFlow";
+import type { BuyerFundingRequest, OrderFlowStep } from "@/lib/checkout/orderCommitmentFlow";
 
 // ── Identity ────────────────────────────────────────────────────
 
@@ -61,8 +61,11 @@ export interface CheckoutHandle {
     //   signRoot:     signs the root and surfaces its payload to the share
     //                 panel; the buyer relays it (XMTP / QR / copy) from there.
     //   signAndShare: signs + relays a sub-order to its bound seller in one step.
-    signRoot: (preview: OrderPreview) => Promise<CommitmentPayload>;
-    signAndShare: (preview: OrderPreview) => Promise<CommitmentPayload>;
+    // The optional funding request attaches a witness-signed swap-funded bond
+    // leg to the payload (the buyer funds their bond from another accepted
+    // token; broadcast routes through the swap-and-commit coordinator).
+    signRoot: (preview: OrderPreview, funding?: BuyerFundingRequest) => Promise<CommitmentPayload>;
+    signAndShare: (preview: OrderPreview, funding?: BuyerFundingRequest) => Promise<CommitmentPayload>;
 
     // Order status
     order: OrderFlowState;

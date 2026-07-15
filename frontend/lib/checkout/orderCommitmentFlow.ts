@@ -27,6 +27,7 @@ import {
 import {
     COMMITMENT_TYPES,
     buildDomain,
+    calculateBonds,
     type Agreement,
     type Commitment,
     type Hex,
@@ -47,6 +48,16 @@ import {
 import { shareSignedOrder } from "@/lib/checkout/orderSignedAndShared";
 import type { CommitmentPayload } from "@figaro/sdk/agent";
 import { commitSignedOrder } from "@/lib/kernel/orderCommitted";
+import { buildBuyerFundingLeg } from "@/lib/composition/swapFunding";
+import { useSwapAndCommitActions } from "@/lib/composition/useSwapAndCommitActions";
+
+/** The buyer's checkout-time choice to fund their bond by swap: which
+ *  accepted token to fund from. Threaded through the sign step so EVERY
+ *  payload the checkout produces (root and sub-orders alike) carries its own
+ *  witness-signed leg. */
+export interface BuyerFundingRequest {
+    inputToken: Hex;
+}
 
 export type OrderFlowStep =
     | "idle"
@@ -76,6 +87,7 @@ export function useOrderCommitmentFlow() {
     const { data: walletClient } = useWalletClient();
     const { signTypedDataAsync } = useSignTypedData();
     const { commit } = useFigaroActions();
+    const { swapAndCommit } = useSwapAndCommitActions();
     const services = useRuntimeServices();
 
     const [step, setStep] = useState<OrderFlowStep>("idle");
@@ -128,24 +140,46 @@ export function useOrderCommitmentFlow() {
      */
     const signCommitment = useCallback(async (
         preview: OrderPreview,
+        funding?: BuyerFundingRequest,
     ): Promise<CommitmentPayload> => {
         if (!address) throw new Error("Connect a wallet first.");
         setError(null);
         try {
             setStep("signing");
             const buyerSig = await signAs(preview.commitment, preview.agreement);
+            // The buyer's optional swap-funded bond leg: quoted, route-built,
+            // and witness-signed HERE so it rides the payload to whoever
+            // broadcasts. The route is bound into the buyer's Permit2 witness
+            // signature — the relayer is untrusted by construction.
+            let buyerFunding: CommitmentPayload["buyerFunding"];
+            if (funding) {
+                if (!publicClient) throw new Error("No chain connection — cannot quote the funding swap.");
+                buyerFunding = await buildBuyerFundingLeg({
+                    publicClient,
+                    chainId,
+                    inputToken: funding.inputToken,
+                    currency: preview.commitment.currency as Hex,
+                    bondAmount: calculateBonds(
+                        preview.commitment.payment,
+                        preview.commitment.expectedCumulativeValue,
+                    ).buyerBond,
+                    deadline: preview.commitment.deadline,
+                    signTypedData: (typedData) => signTypedDataAsync(typedData) as Promise<Hex>,
+                });
+            }
             setStep("awaiting-seller");
             return {
                 commitment: preview.commitment,
                 agreement: preview.agreement,
                 buyerSig,
+                ...(buyerFunding ? { buyerFunding } : {}),
             };
         } catch (e: unknown) {
             setError(extractErrorMessage(e, "Order failed"));
             setStep("error");
             throw e;
         }
-    }, [address, signAs]);
+    }, [address, signAs, publicClient, chainId, signTypedDataAsync]);
 
     /**
      * BUYER side: sign the previewed order and relay it to the seller — sign +
@@ -154,9 +188,10 @@ export function useOrderCommitmentFlow() {
      */
     const signAndShare = useCallback(async (
         preview: OrderPreview,
+        funding?: BuyerFundingRequest,
     ): Promise<CommitmentPayload> => {
         if (!address) throw new Error("Connect a wallet first.");
-        const payload = await signCommitment(preview);
+        const payload = await signCommitment(preview, funding);
         setError(null);
         try {
             setStep("sharing");
@@ -178,6 +213,20 @@ export function useOrderCommitmentFlow() {
             throw e;
         }
     }, [address, chainId, walletClient, services, signCommitment]);
+
+    // Broadcast routing: a payload carrying a witness-signed buyer funding
+    // leg goes through the coordinator's `swapAndCommit` (which swaps, funds
+    // the buyer in-place, then calls the kernel); every other payload goes
+    // straight to the kernel's `commit`. The route is signature-bound, so
+    // either party (or anyone) may safely broadcast the funded form.
+    const broadcasterFor = useCallback((payload: CommitmentPayload) => {
+        const funding = payload.buyerFunding;
+        if (funding?.enabled) {
+            return (c: Commitment, buyerSig: Hex, sellerSig: Hex) =>
+                swapAndCommit(c, buyerSig, sellerSig, funding);
+        }
+        return commit;
+    }, [commit, swapAndCommit]);
 
     /**
      * COUNTER-PARTY side (usually the seller): an incoming pending payload →
@@ -203,7 +252,7 @@ export function useOrderCommitmentFlow() {
             setStep("committing");
             const hash = await commitSignedOrder({
                 payload,
-                commit,
+                commit: broadcasterFor(payload),
                 publicClient,
                 waitForReceipt: true,
             });
@@ -215,7 +264,7 @@ export function useOrderCommitmentFlow() {
             setStep("error");
             throw e;
         }
-    }, [address, commit, publicClient, signAs]);
+    }, [address, broadcasterFor, publicClient, signAs]);
 
     /**
      * Broadcast an ALREADY fully-signed payload — no signature added. For the
@@ -244,7 +293,7 @@ export function useOrderCommitmentFlow() {
             setStep("committing");
             const hash = await commitSignedOrder({
                 payload,
-                commit,
+                commit: broadcasterFor(payload),
                 publicClient,
                 waitForReceipt: true,
             });
@@ -255,7 +304,7 @@ export function useOrderCommitmentFlow() {
             setStep("error");
             throw e;
         }
-    }, [commit, publicClient]);
+    }, [broadcasterFor, publicClient]);
 
     return {
         step,

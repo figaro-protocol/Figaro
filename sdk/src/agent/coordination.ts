@@ -21,17 +21,23 @@
 import type { Hex, Commitment } from "../types.js";
 import type { Agreement } from "../agreement.js";
 import { strippingReviver } from "../safeJson.js";
+import { SWAP_FUNDING_BIGINT_FIELDS, type SwapFundingLeg } from "../swapFunding.js";
 
 // ── Offer envelope ────────────────────────────────────────────────────────────
 
 /** A commitment in flight between the two parties, pinned with the agreement it
  *  hashes so the recipient hydrates everything from one message. Signatures fill
- *  in as each party signs. */
+ *  in as each party signs. `buyerFunding` is the buyer's OPTIONAL swap-funded
+ *  bond leg (witness-signed at checkout): when present, whoever broadcasts
+ *  routes through `WitnessSwapAndCommitCoordinator.swapAndCommit` instead of
+ *  the kernel's `commit` — relayer-agnostic by construction, because the swap
+ *  route is bound into the buyer's Permit2 witness signature. */
 export interface CommitmentPayload {
     commitment: Commitment;
     agreement: Agreement;
     buyerSig?: Hex;
     sellerSig?: Hex;
+    buyerFunding?: SwapFundingLeg;
 }
 
 /** Serialize a payload to compact JSON (bigints → hex strings). */
@@ -48,6 +54,12 @@ export function deserializeCommitmentPayload(json: string): CommitmentPayload {
     const c = raw.commitment;
     for (const f of ["payment", "salt", "deadline", "expectedCumulativeValue"]) {
         if (typeof c[f] === "string" && c[f].startsWith("0x")) c[f] = BigInt(c[f]);
+    }
+    const funding = raw.buyerFunding;
+    if (funding) {
+        for (const f of SWAP_FUNDING_BIGINT_FIELDS) {
+            if (typeof funding[f] === "string" && funding[f].startsWith("0x")) funding[f] = BigInt(funding[f]);
+        }
     }
     return raw as CommitmentPayload;
 }

@@ -35,6 +35,16 @@ export {
     // contract ABIs that take a Commitment as a calldata arg.
     COMMITMENT_TUPLE,
 } from "./abis.js";
+
+// Swap-funded bond legs (WitnessSwapAndCommitCoordinator's off-chain half)
+export {
+    DISABLED_SWAP_FUNDING_LEG,
+    SWAP_FUNDING_BIGINT_FIELDS,
+    SWAP_WITNESS_PERMIT_TYPES,
+    buildSwapWitnessTypedData,
+    type SwapFundingLeg,
+    type SwapWitnessTypedDataArgs,
+} from "./swapFunding.js";
 export {
     EV_ORDER_COMMITTED,
     EV_ORDER_SELLER,
