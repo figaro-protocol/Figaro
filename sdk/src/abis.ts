@@ -112,6 +112,33 @@ export const EV_ATTESTATION = parseAbiItem(
     "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)",
 );
 
+// ── WitnessSwapAndCommitCoordinator ABI ─────────────────────────────────────
+//
+// Off-protocol executor: fund a FigaroCore bond from a swapped input token,
+// with the swap route bound into the party's Permit2 witness signature. The
+// coordinator funds the party in-place (the kernel pulls the bond from
+// `c.buyer`/`c.seller`, never `msg.sender`), so the commitment stays
+// bilaterally signed and the coordinator is never a counterparty.
+
+/** The coordinator's per-leg `SwapFunding` struct as an ABI tuple string.
+ *  `enabled = false` skips the leg (the party self-funds the bond currency). */
+export const SWAP_FUNDING_TUPLE =
+    "(bool enabled, address inputToken, uint256 maxInput, uint256 permitNonce, uint256 permitDeadline, bytes permitSignature, bytes swapData)";
+
+export const WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI = parseAbi([
+    "function figaroCore() view returns (address)",
+    "function permit2() view returns (address)",
+    "function router() view returns (address)",
+    // Recomputes the Permit2 witness a party must sign for a leg — binds
+    // {router, inputToken, maxInput, keccak256(swapData)} so the signature
+    // covers the exact swap route.
+    "function swapWitness(address inputToken, uint256 maxInput, bytes swapData) view returns (bytes32)",
+    `function swapAndCommit(${COMMITMENT_TUPLE} c, bytes buyerSig, bytes sellerSig, ${SWAP_FUNDING_TUPLE} buyerFunding, ${SWAP_FUNDING_TUPLE} sellerFunding) external returns (bytes32 processId, bytes32 orderHash)`,
+    "error NothingToFund()",
+    "error SwapCallFailed()",
+    "error OutputBelowBond(uint256 received, uint256 required)",
+]);
+
 // ── ClauseRegistry ABI ──────────────────────────────────────────────────────
 
 export const CLAUSE_REGISTRY_ABI = parseAbi([

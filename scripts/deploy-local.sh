@@ -7,7 +7,8 @@ set -e
 #   .deployments/local.json         (downstream/manual consumption)
 #
 # Stack: FigaroCore, AttestationCoordinator, ClauseRegistry, AssemblyRegistry,
-#        SellerRegistry, FigToken, MockERC20, MockPermitToken.
+#        SellerRegistry, WitnessSwapAndCommitCoordinator (+ MockWitnessPermit2,
+#        MockUniversalRouter), FigToken, MockERC20, MockPermitToken.
 #
 # Usage:
 #   ./scripts/deploy-local.sh                                  # Anvil (default)
@@ -71,6 +72,9 @@ CORE_ADDR=$(echo "$FORGE_OUT"        | grep 'FigaroCore deployed at:'           
 TOKEN_ADDR=$(echo "$FORGE_OUT"       | grep 'MockERC20 deployed at:'              | grep -oE '0x[0-9a-fA-F]+')
 PERMIT_ADDR=$(echo "$FORGE_OUT"      | grep 'MockPermitToken deployed at:'        | grep -oE '0x[0-9a-fA-F]+')
 ATTESTATION_ADDR=$(echo "$FORGE_OUT" | grep 'AttestationCoordinator deployed at:' | grep -oE '0x[0-9a-fA-F]+')
+SWAP_COORD_ADDR=$(echo "$FORGE_OUT"  | grep 'WitnessSwapAndCommitCoordinator deployed at:' | grep -oE '0x[0-9a-fA-F]+')
+PERMIT2_ADDR=$(echo "$FORGE_OUT"     | grep 'MockWitnessPermit2 deployed at:'      | grep -oE '0x[0-9a-fA-F]+')
+SWAP_ROUTER_ADDR=$(echo "$FORGE_OUT" | grep 'MockUniversalRouter deployed at:'     | grep -oE '0x[0-9a-fA-F]+')
 CLAUSE_ADDR=$(echo "$FORGE_OUT"      | grep 'ClauseRegistry deployed at:'         | grep -oE '0x[0-9a-fA-F]+')
 SELLER_ADDR=$(echo "$FORGE_OUT"    | grep 'SellerRegistry deployed at:'       | grep -oE '0x[0-9a-fA-F]+')
 ASSEMBLY_ADDR=$(echo "$FORGE_OUT"    | grep 'AssemblyRegistry deployed at:'       | grep -oE '0x[0-9a-fA-F]+')
@@ -138,6 +142,9 @@ update_env "$CORE_ENV" "NEXT_PUBLIC_FIGARO_CORE"              "$CORE_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_TOKEN_ADDRESS"             "$TOKEN_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS"      "$PERMIT_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_ATTESTATION_COORDINATOR"   "$ATTESTATION_ADDR"
+update_env "$CORE_ENV" "NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR" "$SWAP_COORD_ADDR"
+update_env "$CORE_ENV" "NEXT_PUBLIC_PERMIT2"                    "$PERMIT2_ADDR"
+update_env "$CORE_ENV" "NEXT_PUBLIC_SWAP_ROUTER"                "$SWAP_ROUTER_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_CLAUSE_REGISTRY"           "$CLAUSE_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_SELLER_REGISTRY"         "$SELLER_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_ASSEMBLY_REGISTRY"         "$ASSEMBLY_ADDR"
@@ -158,6 +165,9 @@ cat > "$CORE_DEPLOYMENT" <<EOF
   "tokenAddress": "$TOKEN_ADDR",
   "permitTokenAddress": "$PERMIT_ADDR",
   "attestationCoordinator": "$ATTESTATION_ADDR",
+  "witnessSwapAndCommitCoordinator": "$SWAP_COORD_ADDR",
+  "permit2": "$PERMIT2_ADDR",
+  "swapRouter": "$SWAP_ROUTER_ADDR",
   "clauseRegistry": "$CLAUSE_ADDR",
   "sellerRegistry": "$SELLER_ADDR",
   "assemblyRegistry": "$ASSEMBLY_ADDR",
@@ -172,6 +182,9 @@ echo "   NEXT_PUBLIC_FIGARO_CORE=$CORE_ADDR"
 echo "   NEXT_PUBLIC_TOKEN_ADDRESS=$TOKEN_ADDR"
 echo "   NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS=$PERMIT_ADDR"
 echo "   NEXT_PUBLIC_ATTESTATION_COORDINATOR=$ATTESTATION_ADDR"
+echo "   NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR=$SWAP_COORD_ADDR"
+echo "   NEXT_PUBLIC_PERMIT2=$PERMIT2_ADDR"
+echo "   NEXT_PUBLIC_SWAP_ROUTER=$SWAP_ROUTER_ADDR"
 echo "   NEXT_PUBLIC_CLAUSE_REGISTRY=$CLAUSE_ADDR"
 echo "   NEXT_PUBLIC_SELLER_REGISTRY=$SELLER_ADDR"
 echo "   NEXT_PUBLIC_ASSEMBLY_REGISTRY=$ASSEMBLY_ADDR"

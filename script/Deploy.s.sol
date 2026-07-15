@@ -11,12 +11,18 @@ import "../src/SellerRegistry.sol";
 import "../src/fig/FigToken.sol";
 import "../src/mocks/MockPermitToken.sol";
 import "../src/mocks/MockERC20.sol";
+import "../src/mocks/MockWitnessPermit2.sol";
+import "../src/mocks/MockUniversalRouter.sol";
+// Named import: the coordinator declares its own local-minimal `IFigaroCore`
+// (the coordinator exemplar), which would collide with AttestationCoordinator's.
+import {WitnessSwapAndCommitCoordinator} from "../src/WitnessSwapAndCommitCoordinator.sol";
 import "../src/AssemblyRegistry.sol";
 
 /// @title Deploy — Full protocol stack to local Anvil
 /// @notice Deploys: FigaroCore, AttestationCoordinator, ClauseRegistry,
-///         AssemblyRegistry, SellerRegistry, FigToken,
-///         MockERC20, MockPermitToken.
+///         AssemblyRegistry, SellerRegistry, WitnessSwapAndCommitCoordinator
+///         (+ MockWitnessPermit2 / MockUniversalRouter as its devnet Permit2 and
+///         swap venue), FigToken, MockERC20, MockPermitToken.
 ///         Clauses are populated post-deploy (populate-clauses.mjs). Mints test
 ///         tokens to Anvil accounts.
 ///
@@ -44,6 +50,28 @@ contract Deploy is Script {
         // ── AttestationCoordinator ──────────────────────────────────
         AttestationCoordinator attestation = new AttestationCoordinator(address(core));
         console.log("AttestationCoordinator deployed at:", address(attestation));
+
+        // ── WitnessSwapAndCommitCoordinator ─────────────────────────
+        // Off-protocol multi-token bond funding. Devnet composes it with a
+        // mock Permit2 (witness-signature-verifying — digest parity with the
+        // canonical deployment is proven by the mainnet-fork suite) and a
+        // mock swap venue; mainnet uses the canonical Permit2 and the real
+        // Uniswap Universal Router. The router is pre-funded with bond-token
+        // liquidity so buyer legs can swap the permit token into the bond
+        // currency at the mock's settable rate (1:1 default).
+        MockWitnessPermit2 permit2 = new MockWitnessPermit2();
+        console.log("MockWitnessPermit2 deployed at:", address(permit2));
+
+        MockUniversalRouter router = new MockUniversalRouter();
+        console.log("MockUniversalRouter deployed at:", address(router));
+
+        WitnessSwapAndCommitCoordinator swapCoordinator =
+            new WitnessSwapAndCommitCoordinator(address(core), address(permit2), address(router));
+        console.log("WitnessSwapAndCommitCoordinator deployed at:", address(swapCoordinator));
+
+        // Router liquidity in both devnet tokens, so either can be swap output.
+        token.mint(address(router), 10_000_000 ether);
+        permitToken.mint(address(router), 10_000_000 ether);
 
         // ── ClauseRegistry ──────────────────────────────────────────
         // Deposit = staked intent (K4): registering costs 0.001 ETH,
@@ -157,6 +185,9 @@ contract Deploy is Script {
         console.log("  NEXT_PUBLIC_TOKEN_ADDRESS=", address(token));
         console.log("  NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS=", address(permitToken));
         console.log("  NEXT_PUBLIC_ATTESTATION_COORDINATOR=", address(attestation));
+        console.log("  NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR=", address(swapCoordinator));
+        console.log("  NEXT_PUBLIC_PERMIT2=", address(permit2));
+        console.log("  NEXT_PUBLIC_SWAP_ROUTER=", address(router));
         console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=", address(clauses));
         console.log("  NEXT_PUBLIC_SELLER_REGISTRY=", address(sellers));
         console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=", address(assemblies));

@@ -30,6 +30,7 @@ export {
     CORE_ABI, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI,
     ERC20_ABI, SELLER_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI,
     FIG_TOKEN_ABI,
+    WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI, SWAP_FUNDING_TUPLE,
     // Kernel Commitment struct tuple — a core primitive, used by composition-layer
     // contract ABIs that take a Commitment as a calldata arg.
     COMMITMENT_TUPLE,
