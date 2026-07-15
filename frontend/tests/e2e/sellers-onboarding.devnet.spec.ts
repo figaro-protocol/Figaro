@@ -72,6 +72,10 @@ async function onboardViaWizard(page: import("@playwright/test").Page, assemblyS
     await page.locator("#profile-specialty").fill(SELLER.specialty);
     await page.locator("#profile-geohash").fill(SELLER.geohash);
     await page.getByRole("button", { name: /\+ MOCK$/ }).click();
+    // The second devnet token joins acceptedTokens — the set the buyer may
+    // swap INTO the default from (the swap-funded bond leg;
+    // swap-funded-checkout orders from this seller). Default stays MOCK.
+    await page.getByRole("button", { name: /\+ MOCKP$/ }).click();
     await page.locator('input[name="defaultTokenAddress"]').first().check();
     await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/sellers\/catalogue/);
@@ -166,7 +170,14 @@ test.describe("seller registration wizard (devnet)", () => {
             const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? "http://127.0.0.1:8080";
             const doc = await (await fetch(`${gateway}/ipfs/${uriBefore.slice("ipfs://".length)}`)).json();
             const bindings = (doc.assemblyBindings ?? []) as Array<{ assemblySlug: string }>;
-            conformant = bindings.length === 1 && bindings[0].assemblySlug === singleOrderSlug;
+            // Premise: exactly the single-order binding AND both devnet tokens
+            // accepted (the permit token is the swap-funded leg's input set —
+            // an older single-token profile gets repaired in update mode).
+            const acceptedTokens = (doc.acceptedTokens ?? []) as Array<{ address?: string }>;
+            const permitToken = (config.permitTokenAddress ?? "").toLowerCase();
+            conformant = bindings.length === 1 && bindings[0].assemblySlug === singleOrderSlug
+                && !!permitToken
+                && acceptedTokens.some((t) => t.address?.toLowerCase() === permitToken);
         }
         if (!uriBefore || !conformant) {
             await onboardViaWizard(page, singleOrderSlug!);

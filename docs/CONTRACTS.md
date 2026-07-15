@@ -128,8 +128,14 @@ first-write-wins means alternative coordinators with different routers/MEV
 policies are valid compositions. Per-party prerequisites: a one-time
 `approve(FigaroCore, …)` for the bond currency (same as the plain flow), a
 one-time `approve(Permit2, …)` for the input token, and a per-commit Permit2
-**witness** signature. Not yet UI-wired or deploy-wired. Its two token-forwarding
-sites are tracked in `certora/token-ops.inventory` — both `[PENDING]` a CVL rule.
+**witness** signature. Deploy-wired on devnet (`Deploy.s.sol`, composed with
+`MockWitnessPermit2` + `MockUniversalRouter`; mainnet uses the canonical Permit2
+and a real venue) and UI-wired: the checkout's swap-funding panel builds the
+witness-signed buyer leg (`@figaro/sdk` `buildSwapWitnessTypedData` +
+`lib/composition/swapFunding.ts`), and any payload carrying one broadcasts
+through `swapAndCommit` (`lib/composition/useSwapAndCommitActions.ts`). Its two
+token-forwarding sites are tracked in `certora/token-ops.inventory` — both
+`[PENDING]` a CVL rule.
 Foundry tests in `test/WitnessSwapAndCommitCoordinatorTest.t.sol` cover both
 funding legs, residual refunds, and
 `test_RevertWhen_SwapDataSubstituted_FrontRunImpossible` (a substituted route
@@ -208,8 +214,8 @@ minted; the remaining 600M has no wired mint path. No settlement-anchored emissi
 
 - `src/mocks/MockERC20.sol` — the devnet payment/bond token. Plain ERC-20 with a permissionless `mint(to, amount)`; constructor takes `(name, symbol)`. Deployed by `Deploy.s.sol` as `NEXT_PUBLIC_TOKEN_ADDRESS` (minted 100k to anvil[0..19]) and used by the Foundry tests — one mock, not a per-file inline copy. (Mainnet uses a real ERC-20, e.g. USDC.e.)
 - `src/mocks/MockERC20FeeOnTransfer.sol`, `MockPermitToken.sol` — fee-on-transfer ERC-20 (Foundry tests only) and EIP-2612 permit ERC-20 (`Deploy.s.sol` deploys it as `NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS` for the `*WithPermit` flow).
-- `src/mocks/MockWitnessPermit2.sol` — devnet/test stand-in for Uniswap Permit2's `permitWitnessTransferFrom`, WITH witness-signature verification (reconstructs the exact digest real Permit2 builds; deadline + amount enforced), pulling the owner's input token under the standard one-time Permit2 approval. Used by `WitnessSwapAndCommitCoordinatorTest`; mainnet uses the canonical Permit2.
-- `src/mocks/MockUniversalRouter.sol` — test stand-in for a swap venue; `swap(tokenIn, tokenOut, amountIn, recipient)` at a settable rate, paying out of pre-funded liquidity. Used by `WitnessSwapAndCommitCoordinatorTest`; mainnet uses the real Uniswap Universal Router.
+- `src/mocks/MockWitnessPermit2.sol` — devnet/test stand-in for Uniswap Permit2's `permitWitnessTransferFrom`, WITH witness-signature verification (reconstructs the exact digest real Permit2 builds; deadline + amount enforced), pulling the owner's input token under the standard one-time Permit2 approval. Used by `WitnessSwapAndCommitCoordinatorTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_PERMIT2`; mainnet uses the canonical Permit2.
+- `src/mocks/MockUniversalRouter.sol` — test stand-in for a swap venue; `swap(tokenIn, tokenOut, amountIn, recipient)` at a settable rate, paying out of pre-funded liquidity. Used by `WitnessSwapAndCommitCoordinatorTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_SWAP_ROUTER` (pre-funded with both devnet tokens); mainnet uses the real Uniswap Universal Router.
 - `src/echidna/EchidnaFuzzer.sol`, `EchidnaFigToken.sol`, `EchidnaToken.sol`
 
 ## What Does NOT Exist

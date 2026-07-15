@@ -14,8 +14,8 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { ASSEMBLY_REGISTRY_ABI } from '@figaro/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
+export const RPC_URL = 'http://127.0.0.1:8545';
+export const LOCAL_ANVIL = defineChain({
     id: 31337,
     name: 'Localhost',
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
@@ -39,7 +39,11 @@ export function localPublicClient() {
 type DeploymentConfig = {
     figaroCore?: `0x${string}`;
     tokenAddress?: `0x${string}`;
+    permitTokenAddress?: `0x${string}`;
     attestationCoordinator?: `0x${string}`;
+    witnessSwapAndCommitCoordinator?: `0x${string}`;
+    permit2?: `0x${string}`;
+    swapRouter?: `0x${string}`;
     clauseRegistry?: `0x${string}`;
     clauseRegistrationHelper?: `0x${string}`;
     sellerRegistry?: `0x${string}`;
@@ -62,7 +66,11 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
             const value = trimmed.slice(eq + 1).trim() as `0x${string}`;
             if (key === 'NEXT_PUBLIC_FIGARO_CORE') config.figaroCore = value;
             if (key === 'NEXT_PUBLIC_TOKEN_ADDRESS') config.tokenAddress = value;
+            if (key === 'NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS') config.permitTokenAddress = value;
             if (key === 'NEXT_PUBLIC_ATTESTATION_COORDINATOR') config.attestationCoordinator = value;
+            if (key === 'NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR') config.witnessSwapAndCommitCoordinator = value;
+            if (key === 'NEXT_PUBLIC_PERMIT2') config.permit2 = value;
+            if (key === 'NEXT_PUBLIC_SWAP_ROUTER') config.swapRouter = value;
             if (key === 'NEXT_PUBLIC_CLAUSE_REGISTRY') config.clauseRegistry = value;
             if (key === 'NEXT_PUBLIC_CLAUSE_REGISTRATION_HELPER') config.clauseRegistrationHelper = value;
             if (key === 'NEXT_PUBLIC_SELLER_REGISTRY') config.sellerRegistry = value;

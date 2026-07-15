@@ -198,6 +198,17 @@ async function main() {
         publicClient.readContract({ address: mockErc20, abi: ERC20_ABI, functionName: 'symbol' }),
         publicClient.readContract({ address: mockErc20, abi: ERC20_ABI, functionName: 'name' }),
     ]);
+    // The second devnet token: sellers accept it alongside the default, so the
+    // buyer may fund a bond from it via the swap-and-commit path (acceptedTokens
+    // IS the swap-into set; the process stays denominated in the default).
+    const permitErc20 = env.NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS;
+    const permitTokenEntry = permitErc20
+        ? [{
+            address: permitErc20,
+            symbol: await publicClient.readContract({ address: permitErc20, abi: ERC20_ABI, functionName: 'symbol' }),
+            name: await publicClient.readContract({ address: permitErc20, abi: ERC20_ABI, functionName: 'name' }),
+        }]
+        : [];
 
     console.log('\nSellers:');
     for (const s of SELLERS) {
@@ -229,7 +240,7 @@ async function main() {
             specialty: s.specialty,
             catalogueURI,
             location: { geohash: s.geohash },
-            acceptedTokens: [{ address: mockErc20, symbol: tokenSymbol, name: tokenName }],
+            acceptedTokens: [{ address: mockErc20, symbol: tokenSymbol, name: tokenName }, ...permitTokenEntry],
             defaultTokenAddress: mockErc20,
             // No bindings seeded: a seller binds a PUBLISHED assembly (asm-<hash>)
             // through the real flow — author + publish in the designer, then bind.
