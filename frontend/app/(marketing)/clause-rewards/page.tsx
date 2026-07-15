@@ -37,6 +37,12 @@ export default function ClauseRewards() {
             </h2>
             <ul className="space-y-3 text-base">
                 <li>
+                    <Link href="/rewards" className="text-ink-heading font-medium hover:underline">
+                        Rewards
+                    </Link>
+                    <span className="text-ink-body"> &mdash; the live distribution surface: recompute a tranche&apos;s payout from public chain events, post it under a bond, challenge, finalize, claim.</span>
+                </li>
+                <li>
                     <Link href="/builders" className="text-ink-heading font-medium hover:underline">
                         Builders
                     </Link>

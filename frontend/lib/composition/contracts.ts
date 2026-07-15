@@ -17,6 +17,8 @@ const COMPOSITION_CONTRACTS = {
     witnessSwapAndCommitCoordinator: (process.env.NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR || "") as `0x${string}`,
     permit2: (process.env.NEXT_PUBLIC_PERMIT2 || "") as `0x${string}`,
     swapRouter: (process.env.NEXT_PUBLIC_SWAP_ROUTER || "") as `0x${string}`,
+    rpgfMinter: (process.env.NEXT_PUBLIC_RPGF_MINTER || "") as `0x${string}`,
+    rpgfArbitrator: (process.env.NEXT_PUBLIC_RPGF_ARBITRATOR || "") as `0x${string}`,
 };
 
 function resolveAddress(addr: `0x${string}`): `0x${string}` | null {
@@ -48,4 +50,19 @@ export function getPermit2(): `0x${string}` | null {
 /** The coordinator's immutable swap venue (devnet: the mock venue). */
 export function getSwapRouter(): `0x${string}` | null {
     return resolveAddress(COMPOSITION_CONTRACTS.swapRouter);
+}
+
+/** The optimistic RPGF minter — the 600M distribution's post/challenge/
+ *  finalize/claim surface. Resolved-empty: null = the rewards runtime is
+ *  unavailable (the marketing prose still renders). */
+export function getRpgfMinter(): `0x${string}` | null {
+    return resolveAddress(COMPOSITION_CONTRACTS.rpgfMinter);
+}
+
+/** The composed bond-settlement forum behind the minter's IRpgfArbitrator
+ *  seam (devnet: MockArbitrator). @public pending consumer: the bond-case
+ *  dispute surface (poster escalation + ruling display) — remove the tag when
+ *  it lands. */
+export function getRpgfArbitrator(): `0x${string}` | null {
+    return resolveAddress(COMPOSITION_CONTRACTS.rpgfArbitrator);
 }
