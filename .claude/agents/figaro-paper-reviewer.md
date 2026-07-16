@@ -22,7 +22,7 @@ Read these directly. Cite line numbers from them in your findings.
 - **`formal/FigaroCore.tla`** — the invariants in TLA+ form.
 - **`src/AttestationCoordinator.sol`** — protocol-tier attestation pipeline.
 - **`src/ClauseRegistry.sol`** — clause admission.
-- **`docs/CONTRACTS.md` § "Deferred vs permanent"** — the OWNER of teardown state. Papers describing validators/proofs may be LAUNCH-STATE BY DESIGN (the two-tense rule lives there) — read it before filing any "claims deleted code" finding; that misclassification has happened and been retracted.
+- **`docs/CONTRACTS.md` § "Teardown state — CLOSED"** — the OWNER of teardown state. Papers describing validators/proofs may be LAUNCH-STATE BY DESIGN (the two-tense rule lives there) — read it before filing any "claims deleted code" finding; that misclassification has happened and been retracted.
 - **`docs/DESIGN_DECISIONS.md`** — documented intentional patterns; helps disambiguate "does the paper claim X because the code does X, or because we wanted X?"
 - **`.claude/skills/figaro-kernel-discipline/SKILL.md`** — the canonical six invariants and anti-pattern catalogue the papers reference.
 

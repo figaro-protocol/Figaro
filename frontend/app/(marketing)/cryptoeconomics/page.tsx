@@ -34,7 +34,7 @@ const COMPOSITION_GROUPS: CompositionGroup[] = [
         name: "Clause authoring",
         tier: "Tier 2",
         charter:
-            "Authors new clauses — content-type design plus the validator-implementation work that ships in lockstep across TypeScript and on-chain Solidity (the on-chain validator and its SP1 Rust mirror rebuild pre-launch). Cross-cuts disciplines: validator implementation pulls from Computer Science and Cryptography; content definition pulls from whichever discipline the clause's domain belongs to.",
+            "Authors new clauses — content-type design plus the spec/validation work that ships in lockstep across the TypeScript Layer-A validator and its byte-parity Rust mirror in the generic SP1 proof engine (which validates any registered clause in-proof against its anchored spec — no per-clause on-chain validator, by design). Cross-cuts disciplines: the spec and its conformance vectors pull from Computer Science and Cryptography; content definition pulls from whichever discipline the clause's domain belongs to.",
         references: [
             { label: "Composability — Tier 2", href: "/builders/composability" },
             { label: "Clauses — architecture and inventory", href: "/clauses" },
@@ -109,7 +109,7 @@ export default function Cryptoeconomics() {
 
             <MarketingSection title="Output-oriented; cross-cut the disciplines.">
                 <p className="text-sm text-ink-body leading-relaxed mb-8">
-                    Where the cryptoeconomic disciplines are reading lenses, the composability working groups are oriented around concrete builder outputs &mdash; assemblies and clauses. They cross-cut the disciplinary axis: a clause for GHG measurement pulls validator-implementation expertise from Computer Science and Cryptography while the content-definition expertise comes from Operations Research or Industrial Engineering. The tier framing comes from <Link href="/builders/composability" className="underline">composability</Link>.
+                    Where the cryptoeconomic disciplines are reading lenses, the composability working groups are oriented around concrete builder outputs &mdash; assemblies and clauses. They cross-cut the disciplinary axis: a clause for GHG measurement pulls spec-and-conformance expertise from Computer Science and Cryptography while the content-definition expertise comes from Operations Research or Industrial Engineering. The tier framing comes from <Link href="/builders/composability" className="underline">composability</Link>.
                 </p>
                 <div className="space-y-8">
                     {COMPOSITION_GROUPS.map((g) => (

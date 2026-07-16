@@ -219,7 +219,7 @@ Full treatment → memory `feedback_fulfilment_retired_modality_derived`; clause
 
 Mechanically enforced: `scripts/lint-no-closed-world-vocab.sh` (pre-commit, lint-staged) fails any commit reintroducing a stored role/archetype/category identifier in code (`roleKind`, `archetypeId`, `clauseCategories`, `documentKind`) and warns on retired `fulfilment` vocabulary until the de-hardcoding migration lands — then the warn list promotes to fail.
 
-**The `w_category` substrate-broadening weight** (the RPGF geo·coordination boost) is a *category-of-work* incentive, not author-favoritism — retiring it as "a privileged category breaks neutrality" is the **neutrality ≠ flat-weighting error**. Rationale + rebuild notes → `docs/PUBLIC_GRAPH_MODEL.md` (the owner); teardown status → `CONTRACTS.md` § "Deferred vs permanent".
+**The `w_category` substrate-broadening weight** (the RPGF geo·coordination boost) is a *category-of-work* incentive, not author-favoritism — retiring it as "a privileged category breaks neutrality" is the **neutrality ≠ flat-weighting error**. Rationale + rebuild notes → `docs/PUBLIC_GRAPH_MODEL.md` (the owner); teardown status → `CONTRACTS.md` § "Teardown state — CLOSED".
 
 ### Dispute Resolution — Three Layers
 
@@ -323,7 +323,7 @@ All contracts live in `src/` (Solidity 0.8.26, Foundry); V3 in `archive-v3/`. No
 
 ### Clause Validation
 
-A clause's spec ships in two lockstep surfaces: **Layer A** (TypeScript, `@figaro/sdk/clauses`) — the off-chain spec + content encoders + the well-formedness validator — and **on-chain registration** (`ClauseRegistry.registerClause` — permissionless, first-write-wins, immutable). **There is no on-chain clause-content validation today** — validators/prover/verifier are DEFERRED (`CONTRACTS.md` § "Deferred vs permanent" is the owner, incl. the two-tense reading rule for papers/marketing): the `AttestationCoordinator` merkle-binds each attestation to its signed agreement and content-hashes the evidence — well-formedness is an off-chain SDK + read-time concern. So a never-seen clause is attestable with **zero per-clause on-chain code** — open-world by construction.
+A clause's spec ships in two lockstep surfaces: **Layer A** (TypeScript, `@figaro/sdk/clauses`) — the off-chain spec + content encoders + the well-formedness validator — and **on-chain registration** (`ClauseRegistry.registerClause` — permissionless, first-write-wins, immutable). **On-chain content validation exists on the BATCHED path only** (`CONTRACTS.md` § "Teardown state — CLOSED" owns it): the prover's generic engine validates against the spec as witness input; `FigaroBatchVerifier` settles only if its hash matches `ClauseRegistry.contentHashOf`. The DIRECT path merkle-binds and content-hashes but validates no shape. Per-clause validator contracts do not exist, permanently; a never-seen clause is attestable — and batch-settleable — with **zero per-clause code**.
 
 The protocol clauses are the specs in `clauses/` (the canonical Layer-A specs / `ClauseRegistry` seed data; nothing bundles a copy — every consumer loads them from ClauseRegistry → IPFS at runtime). **The count is derived, never stored** — `ls clauses/*.json | wc -l`; all are runtime-attestable except `figaro-topology` (agreement-only), so runtime-attestable = that count minus one. The full clause table, the **adding-a-new-clause checklist**, and registration discipline → `CLAUSES.md`.
 
@@ -353,7 +353,7 @@ This is the exhaustive whitelist. Files not listed are deletion candidates at ev
 
 **Core theory:** `VISION.md` (post-firm economy, Coasean collapse, token denomination), `THEORY.md` (game-theoretic derivation of the six protocol properties).
 
-**Security & verification:** `DESIGN_DECISIONS.md` (the catalogue of intentional patterns that look like vulnerabilities — **read before auditing**; count it there, never quote a remembered number), `VERIFICATION_MAP.md` (invariant → code → test → formal layer), `RELEASE_READINESS.md` (gate criteria, frozen Solidity surface for external audit), `SCALING_STRATEGY.md` (proof-based scaling — a deferred FUTURE development path; the prototype was removed in the teardown, the design is retained as the baseline).
+**Security & verification:** `DESIGN_DECISIONS.md` (the catalogue of intentional patterns that look like vulnerabilities — **read before auditing**; count it there, never quote a remembered number), `VERIFICATION_MAP.md` (invariant → code → test → formal layer), `RELEASE_READINESS.md` (gate criteria, frozen Solidity surface for external audit), `SCALING_STRATEGY.md` (proof-based batch scaling — BUILT: witness prover/verifier/sequencer beside the direct path).
 
 **Architecture:** `ARCHITECTURE.md` (whole-system stack + the `clause.block` seam), `OPEN_WORLD.md` (open-world paradigm + composition model + semantic layer), `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md`, `LEXICON.md` (canonical-name-per-tier grid; documented half of the lexicon, enforced by `scripts/lint-architecture-lexicon.sh`).
 

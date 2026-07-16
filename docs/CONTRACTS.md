@@ -147,6 +147,38 @@ copyable exemplar of the coordinator pattern — canonical statement in
 `ARCHITECTURE.md` § "Composing the kernel". EIP-7702 and ERC-4337 variants are
 out of scope.
 
+**`src/FigaroBatchVerifier.sol`** — Proof-based batch settlement (the Track-2
+scaling path, `SCALING_STRATEGY.md`; rebuilt 2026-07-16 from the pre-teardown
+prototype, upgraded to the witness model). One external function,
+`settleBatch(proof, publicValues, positions, events)`: verifies an SP1 proof of
+a batch of kernel operations (commits, resolves, witness-gated attestations)
+against the immutable `programVKey`, checks state-root continuity + chain
+binding, hash-verifies the calldata (positions / attestations / spec bindings,
+O(n) assembly packing — byte-exact parity with the Rust kernel's
+`compute_*_hash`), **checks every (clause key → witness-spec hash) binding
+against `ClauseRegistry.contentHashOf`** — the open-world gate: the vkey covers
+the generic clause ENGINE, the registry anchors the constraint set, so a
+never-seen registered clause settles through the proven path with zero code
+changes while a permissive-spec substitution reverts
+(`test_permissionless_newClause_settlesWithZeroVerifierChanges`) — reconciles
+net token positions (pull net deposits / push net payouts;
+`FeeOnTransferDetected` guard), re-emits proven `Attestation` events (same
+topic as the coordinator's — indexers filter by address), and advances the
+state root. Immutable `verifier`/`programVKey`/`clauseRegistry`, no owner, no
+fee, no upgrade path — a program change is a fresh deploy. NOT a FIG minter.
+The Rust side lives in `prover/` (kernel mirror, generic clause engine, SP1
+guest, sequencer); a real local SP1 Core proof of the canonical batch
+generates and verifies (`SP1_REAL_PROOF=1 cargo run -p figaro-prove-test
+--release`, ~1.2M cycles with the k256 precompile patch). The sequencer is a
+liveness convenience, never a trust assumption — direct `FigaroCore` remains
+the fallback path. Its two token-moving sites are tracked in
+`certora/token-ops.inventory` (`[PENDING]` the realigned
+`BatchVerifierTokenOps.spec` cloud run).
+
+**`src/interfaces/ISP1Verifier.sol`** — the Succinct SP1 verifier-gateway ABI
+(`verifyProof(programVKey, publicValues, proof)`); devnet wires
+`MockSP1Verifier`, mainnet the canonical gateway (env `SP1_VERIFIER_GATEWAY`).
+
 **`src/SellerRegistry.sol`** — Permissionless seller self-registration with
 reclaimable ETH deposit (staked intent — K4, no time lock). Three external
 functions: `register(metadataURI)` (sets the dedup guard, consumes the
@@ -220,18 +252,20 @@ then renounces — the minter must exist at genesis because `registerMinter` pre
 - `src/mocks/MockWitnessPermit2.sol` — devnet/test stand-in for Uniswap Permit2's `permitWitnessTransferFrom`, WITH witness-signature verification (reconstructs the exact digest real Permit2 builds; deadline + amount enforced), pulling the owner's input token under the standard one-time Permit2 approval. Used by `WitnessSwapAndCommitCoordinatorTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_PERMIT2`; mainnet uses the canonical Permit2.
 - `src/mocks/MockArbitrator.sol` — devnet/test stand-in for the composed bond-settlement forum behind `RpgfMinter`'s `IRpgfArbitrator` seam: accepts disputes at zero fee, lets anyone deliver a ruling back to the arbitrable contract. Mainnet composes a real arbitration provider (e.g. Kleros via an adapter) behind the same seam — the forum is deployment config, never protocol code.
 - `src/mocks/MockUniversalRouter.sol` — test stand-in for a swap venue; `swap(tokenIn, tokenOut, amountIn, recipient)` at a settable rate, paying out of pre-funded liquidity. Used by `WitnessSwapAndCommitCoordinatorTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_SWAP_ROUTER` (pre-funded with both devnet tokens); mainnet uses the real Uniswap Universal Router.
+- `src/mocks/MockSP1Verifier.sol` — devnet/test stand-in for Succinct's SP1 verifier gateway behind `ISP1Verifier`: accepts any proof, so the batch path runs end-to-end on Anvil without proving hardware. Deployed by `Deploy.s.sol` for `FigaroBatchVerifier`; mainnet wires the canonical gateway (`SP1_VERIFIER_GATEWAY`).
 - `src/echidna/EchidnaFuzzer.sol`, `EchidnaFigToken.sol`, `EchidnaToken.sol`
 
 ## What Does NOT Exist
 
-**Deleted in the proof-apparatus teardown (no on-chain content validation, no proof/batch path):**
-the 17 `src/clauseValidators/*` validators, `IClauseValidator.sol`, `MockClauseValidator.sol`,
-`ClauseRegistrationHelper.sol`, `JSONSchemaValidator.sol`; `FigaroBatchVerifier.sol`,
-`src/interfaces/ISP1Verifier.sol`, `MockSP1Verifier.sol`; the SP1-gated `RpgfMinter`
-(rebuilt optimistic 2026-07-15 — see the FIG section above); the entire Rust
-`prover/` tree and the SDK sequencer / `merkleAirdrop`. Validation is now off-chain Layer-A
-(SDK `validate.ts`/`encode.ts`) + `ClauseRegistry.registerClause`; settlement is the kernel's
-atomic `resolveProcess` only.
+**Per-clause validator contracts — permanently.** The 17 `src/clauseValidators/*`
+validators, `IClauseValidator.sol`, `MockClauseValidator.sol`,
+`ClauseRegistrationHelper.sol`, and `JSONSchemaValidator.sol` were deleted in the
+2026-06-25 teardown and never return: a clause is DATA (a spec JSON anchored on
+`ClauseRegistry`), not code. In-proof clause validation lives in the rebuilt
+generic prover engine (see `FigaroBatchVerifier` above) — the engine validates
+against witness specs anchored by `contentHashOf`, so no clause ever needs a
+contract. On the DIRECT path, validation remains off-chain Layer-A (SDK
+`validate.ts`/`encode.ts`) + the coordinator's merkle/content-hash binding.
 
 Also absent: `FigaroFactory.sol`, `FigaroRouter.sol`, `governance/`, `compliance/`,
 `FigEmission.sol`, `FigTimeLock.sol`, `MerkleAirdrop.sol`, `StagedMerkleAirdrop.sol`,
@@ -240,37 +274,34 @@ Also absent: `FigaroFactory.sol`, `FigaroRouter.sol`, `governance/`, `compliance
 upgradeable proxy, protocol fee, owner, or admin surface.
 FIG is not a governance token.
 
-### Deferred vs permanent — the canonical two-tense ruling
+### Teardown state — CLOSED (the canonical statement)
 
 This subsection is the OWNER of teardown state (per the ownership map in `README.md`).
 Every other surface — docs, marketing pages, agent prompts, memories — states this only
 as a summary plus a pointer here.
 
-**DEFERRED — removed 2026-06-25, coming back; describe as the intended design, never as
-eliminated:**
+**Every surface removed in the 2026-06-25 proof-apparatus teardown has been rebuilt;
+nothing remains deferred:**
 
-- **On-chain clause-content validation** (the per-clause validators) — rebuilt **before
-  launch** (operator ruling 2026-07-05). Until then, the on-chain integrity mechanism is
-  the `AttestationCoordinator` merkle binding alone; Layer-A (SDK) is the only content
-  validation.
-- **The batch prover / verifier / sequencer** (SP1 batch settlement) — rebuilt after the
-  RPGF mechanism, before launch. Design baseline retained in `SCALING_STRATEGY.md`.
-- **The RPGF distribution mechanism** — returns, per the 2026-07-09 redesign: recipients
-  widen to clause authors + assembly designers of record, the zk-proved minter is replaced
-  by an optimistic posted-window + challenge-recompute design, and mandatory-article
-  clauses (`block.article: "mandatory"`) are excluded from scoring (ruled 2026-07-15).
-  The launch-timing fork is RESOLVED (2026-07-15): the minter ships in TESTNET and gates
-  FIG genesis there — `FigToken.registerMinter` precedes `renounceDeployerMint`, so the
-  minter address must exist at genesis. `FIG_TOKEN.md` carries the allocation;
-  `PUBLIC_GRAPH_MODEL.md` the incentive rationale.
+- **The RPGF distribution** returned 2026-07-15 as the optimistic `RpgfMinter`
+  (recipients = clause authors + assembly designers of record; mandatory-article
+  clauses excluded from scoring; the minter ships in TESTNET and gates FIG genesis).
+  `FIG_TOKEN.md` carries the allocation; `PUBLIC_GRAPH_MODEL.md` the rationale.
+- **On-chain clause-content validation + the batch prover/verifier/sequencer**
+  returned 2026-07-16 as the witness-based proof apparatus (`prover/` +
+  `FigaroBatchVerifier` above). It is a STRICT upgrade over the removed prototype:
+  the SP1 guest holds a generic clause ENGINE and no clauses — specs arrive as
+  witness inputs bound to `ClauseRegistry.contentHashOf`, so registering a clause
+  never touches the prover, the vkey, or the verifier. The per-clause Layer-C
+  validators never return (see "What Does NOT Exist").
 
-**PERMANENT — a property, not an artifact absence:** a never-seen clause must remain
-attestable permissionlessly, and the merkle binding stays the integrity floor. The
-rebuilt validator/verifier must preserve this; the property constrains the rebuild's
-design — it does not forbid the rebuild.
+**PERMANENT — the property the rebuild preserves:** a never-seen clause is attestable
+permissionlessly with zero per-clause on-chain code, and the coordinator's merkle
+binding stays the direct path's integrity floor. In-proof content validation is a
+property of the BATCHED path; the direct path validates no content shape.
 
-**Reading rule (both directions):** launch-state literature (papers, `/builders`,
-`/cryptoeconomics`) describing validators/proofs is CORRECT BY DESIGN and carries the
-"rebuild pre-launch" marker — do not file it as stale. Present-state surfaces must state
-merkle-only reality. Deleting launch-state prose as drift, and describing merkle-only as
-the end state, are the same misclassification in opposite directions.
+**Reading rule:** the "rebuild pre-launch" markers that guarded launch-state literature
+are retired — present-state surfaces state the apparatus as built (devnet-deployed;
+mainnet wires Succinct's verifier gateway by env). What remains two-tense is
+DEPLOYMENT: no public network deployment exists yet, so surfaces must not claim a
+live mainnet/testnet.

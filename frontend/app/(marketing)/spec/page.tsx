@@ -65,14 +65,21 @@ export default function Specifications() {
                         title="ClauseRegistry.sol"
                         href={`${GH}/ClauseRegistry.sol`}
                         meta="permissionless · event-only"
-                        desc="Event-only clause anchoring, first-write-wins. clauseId is the bare human-readable name; the on-chain identity/dedup key is keccak256(abi.encode(clauseId, version)), so name+version together form the key. contentURI points at the off-chain JSON spec. No on-chain content validation — a registered clause is immediately attestable."
+                        desc="Event-only clause anchoring, first-write-wins. clauseId is the bare human-readable name; the on-chain identity/dedup key is keccak256(abi.encode(clauseId, version)), so name+version together form the key. contentURI points at the off-chain JSON spec, and the registry stores its keccak256 contentHash as the integrity anchor the batch verifier binds witness specs to (contentHashOf). The registry validates no content shape itself — a registered clause is immediately attestable, and settleable through the proven path."
+                    />
+                    <ContractEntry
+                        id="FigaroBatchVerifier"
+                        title="FigaroBatchVerifier.sol"
+                        href={`${GH}/FigaroBatchVerifier.sol`}
+                        meta="SP1 proof · open-world content check"
+                        desc="Batched settlement via a single SP1 validity proof. A generic in-proof engine validates each clause's content against its spec (supplied as a witness); settleBatch accepts the batch only if every (clauseId → witness-spec hash) binding equals ClauseRegistry.contentHashOf(clauseId), then reconciles net token positions and re-emits attestation events. The program verification key covers the engine, not a clause list — a never-seen clause settles with zero code changes. No owner, no fee, no upgrade. Devnet wires MockSP1Verifier; mainnet wires Succinct's SP1 gateway + program vkey from env."
                     />
                 </ul>
             </MarketingSection>
 
             <MarketingSection title="Clause validation">
                 <p className="text-base text-ink-body leading-relaxed">
-                    Clause content is validated <strong>off-chain</strong> (the Layer-A TypeScript SDK); the chain registers clauses and merkle-binds attestations but validates no content shape, so a never-seen clause is attestable with zero per-clause on-chain code. <code>figaro-topology</code> is agreement-only &mdash; committed at signing, with no runtime attestation. The full inventory &mdash; every clauseId and what it carries &mdash; is on <Link href="/clauses" className="underline">Clauses</Link>.
+                    Clause content is validated <strong>off-chain</strong> (the Layer-A TypeScript SDK) before signing, and re-validated <strong>on-chain</strong> on the batched, proof-based settlement path &mdash; a generic SP1 engine checks each clause against its registry-anchored spec, so a never-seen clause settles with zero per-clause on-chain code. The direct attestation path merkle-binds but validates no content shape. <code>figaro-topology</code> is agreement-only &mdash; committed at signing, with no runtime attestation. The full inventory &mdash; every clauseId and what it carries &mdash; is on <Link href="/clauses" className="underline">Clauses</Link>.
                 </p>
             </MarketingSection>
 
@@ -93,7 +100,7 @@ export default function Specifications() {
                     />
                 </ul>
                 <p className="text-xs text-ink-muted mt-4">
-                    Allocation: 100M founders (genesis), 300M DAO (genesis), 600M clause-author RPGF (no minter wired &mdash; the proof-gated distribution was removed). See <Link href="/papers/fig-schelling-point-token" className="underline">FIG</Link>.
+                    Allocation: 100M founders (genesis), 300M DAO (genesis), 600M RPGF to clause authors + assembly designers of record (RpgfMinter &mdash; registered at genesis; optimistic post / challenge / finalize / claim). See <Link href="/papers/fig-schelling-point-token" className="underline">FIG</Link>.
                 </p>
             </MarketingSection>
 

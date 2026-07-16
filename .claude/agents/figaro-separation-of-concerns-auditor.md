@@ -36,7 +36,7 @@ Before auditing, read these:
 - `docs/CLAUSES.md` (§"When something deserves a clause — payload vs anchor")
 
 The existing parallel families (all three anchored on-chain, K4 staked-intent model):
-1. **Clauses** — `src/ClauseRegistry.sol` (spec anchoring; the per-clause on-chain validators are a DEFERRED surface — `docs/CONTRACTS.md` § "Deferred vs permanent").
+1. **Clauses** — `src/ClauseRegistry.sol` (spec anchoring; the per-clause on-chain validators are a DEFERRED surface — `docs/CONTRACTS.md` § "Teardown state — CLOSED").
 2. **Sellers** — `src/SellerRegistry.sol` (seller entity + IPFS metadata).
 3. **Assemblies** — `src/AssemblyRegistry.sol` (composition templates; use clauses; parallel to (1) and (2), not subordinate).
 

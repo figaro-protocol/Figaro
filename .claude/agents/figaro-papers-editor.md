@@ -52,7 +52,7 @@ agrees at all three sites.
 ## Two-tense discipline
 
 The validator/prover apparatus is DEFERRED (owner:
-`docs/CONTRACTS.md` § "Deferred vs permanent"). Papers describe the LAUNCH
+`docs/CONTRACTS.md` § "Teardown state — CLOSED"). Papers describe the LAUNCH
 state in the timeless present only where that section's two-tense rule says
 so — read it before writing any sentence about on-chain validation, proofs, or
 RPGF distribution.

@@ -33,7 +33,7 @@ requires the repo, the surface is wrong — fix the surface or flag the gap.
   the open-world model, never a closed enum of it.
 - `docs/LEXICON.md` — one canonical name per tier; qualify, never mint.
 - The owning inventories for whatever you touch: `docs/CLAUSES.md` (clause
-  architecture), `docs/CONTRACTS.md` (incl. § "Deferred vs permanent" and its
+  architecture), `docs/CONTRACTS.md` (incl. § "Teardown state — CLOSED" and its
   two-tense rule — present-state pages state merkle-only reality),
   `sdk/README.md` (entry-point map).
 - The probe's protected list (recipe memory, run-2 note): the SDK `.d.ts` doc

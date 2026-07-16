@@ -60,7 +60,7 @@ export default function Composability() {
                     <div id="tier-2" className="border-l-2 border-default-strong pl-6 scroll-mt-24">
                         <dt className="text-base font-semibold text-ink-heading mb-1">Tier 2 — Add a typed clause</dt>
                         <dd className="text-ink-body leading-relaxed">
-                            Register a new <code>clauseId</code> and ship its validation layers in lockstep &mdash; TypeScript today; the on-chain Solidity validator and SP1 Rust mirror rebuild pre-launch. The settlement substrate is unchanged; the attestation surface extends. At launch the kernel gates every attestation through the validator; today the chain merkle-binds each attestation and validates no content shape &mdash; the new clause author owns the validator&apos;s correctness.
+                            Register a new <code>clauseId</code> and ship its validation layers in lockstep &mdash; the TypeScript Layer&nbsp;A validator and its byte-parity Rust mirror, the generic SP1 proof engine. That engine is not per-clause: it validates any registered clause against its spec, supplied to the proof as a witness and anchored to the <code>ClauseRegistry</code> <code>contentHash</code> &mdash; so a never-seen clause settles through the batched, proof-based path with zero on-chain code. There are no per-clause validator contracts, by design; a clause is data, not code. The direct attestation path still merkle-binds and validates no content shape. The settlement substrate is unchanged; the attestation surface extends &mdash; the new clause author owns the spec&apos;s correctness.
                         </dd>
                     </div>
                     <div id="tier-3" className="border-l-2 border-ink-heading pl-6 scroll-mt-24">
@@ -87,7 +87,7 @@ export default function Composability() {
                             <li>Cumulative upstream bonding across sub-orders</li>
                             <li>Buyer-dominant atomic resolution</li>
                             <li>Merkle-bound attestation receipts against the signed agreement</li>
-                            <li>Validator-gated attestation dispatch (rebuilds pre-launch)</li>
+                            <li>Proof-gated clause-content validation on the batched settlement path (FigaroBatchVerifier &mdash; a composition above the frozen kernel; devnet-live)</li>
                             <li>Token conservation (Certora + Halmos + TLA⁺ verified)</li>
                         </ul>
                     </div>

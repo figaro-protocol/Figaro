@@ -7,7 +7,14 @@ CLAUDE.md keeps the run commands; this file is the full inventory of test files,
 `FigaroCoreTest`, `FigaroCoreRevertBranchTest`, `FigaroCoreEventEmissionTest`,
 `AttestationCoordinatorTest`, `ClauseRegistryTest`, `AssemblyRegistryTest`,
 `SellerRegistryTest`, `GasCeilingTest`, `WitnessSwapAndCommitCoordinatorTest`,
-`WitnessSwapAndCommitCoordinatorForkTest`, `HalmosFigaroCore`, `fig/FigToken.t.sol`.
+`WitnessSwapAndCommitCoordinatorForkTest`, `FigaroBatchVerifierTest`,
+`HalmosFigaroCore`, `fig/FigToken.t.sol`.
+
+`FigaroBatchVerifierTest` covers the batch-settlement verifier: the happy path
+with money legs, the ClauseRegistry spec-binding anchor gate (permissive-spec
+substitution + unregistered clause both revert; a never-seen registered clause
+settles with zero verifier changes), state-root continuity, calldata-tamper
+reverts, and constructor guards.
 
 `WitnessSwapAndCommitCoordinatorForkTest` is the mainnet-fork parity proof for the
 Permit2 witness digest: gated on `MAINNET_RPC_URL` (each test SKIPS without it,
@@ -22,7 +29,7 @@ our own digest reconstruction (`MockWitnessPermit2`).
 |---|---|---|
 | `HalmosFigaroCore.t.sol` | 7 | Token conservation, bond amounts, resolution payouts, status transitions, buyer dominance, monotonicity |
 
-## Certora (`certora/`) — 4 specs
+## Certora (`certora/`) — 5 specs
 
 | Spec | Rules | Covers |
 |---|---|---|
@@ -30,6 +37,7 @@ our own digest reconstruction (`MockWitnessPermit2`).
 | `AttestationCoordinator.spec` | 4 | Role-gate on `attestAsBuyer` (non-buyer reverts; success ⟹ caller is buyer) + parametric Core-immutability (AC cannot change orderStatus or processes[]). No on-chain clause-content validator — well-formedness is an off-chain concern. |
 | `TokenOpsVerification.spec` | 7 | Universal FigaroCore token-flow: exact commit deltas (buyer/seller/Core), allowance-drain safety (∀ address), commit + single-order resolve conservation, single-order resolve exact payouts. Generalizes Halmos root-only coverage to arbitrary sub-orders. |
 | `FigToken.spec` | 6 | Supply cap, registered-cap bound, registered-cap monotonicity, renounce one-way latch, minter cap immutability, minter within cap |
+| `BatchVerifierTokenOps.spec` | 4 | FigaroBatchVerifier net-position settlement: user delta = payout−deposit, contract delta = deposit−payout, allowance-drain safety, conservation (single-position; inductive generalization documented in-spec). Realigned to the witness model; cloud run pending CERTORAKEY. |
 
 Companion: `certora/token-ops.inventory` + `scripts/lint-token-ops.sh` — declarative inventory of every ERC20 transfer call site in `src/`; the linter (run as a `./scripts/test-certora.sh` prelude) fails if a new transfer call merges without an inventory entry.
 
@@ -53,6 +61,27 @@ FigToken (`FigToken.tla` + `FigToken.cfg`): `Inv_MaxSupply`,
 `Inv_DeployerCannotMintAfterRenounce`, `Inv_MinterCap`,
 `Inv_CapBelowMaxSupply`, `Inv_SupplyEqualsSumMinted`, `Inv_NonNegative`,
 `Inv_NoMintToZero`, `Inv_BalancesSumToSupply`.
+
+## Rust — the proof apparatus (`prover/`)
+
+`cargo test` from `prover/` — five crates, one suite: `figaro-clause`
+(Layer-A conformance: every spec in `clauses/` parses — count derived from the
+directory; 11 encode vectors generated from the live TS encoder lock byte
+parity incl. signed int256, stage-scoped witnesses, tuple[] arrays, open
+formats), `figaro-kernel` (frozen Foundry parity vectors for commit/resolve +
+the witness-gate suite: spec-identity substitution, content-hash mismatch,
+inclusion failure, attest-after-resolve; bincode roundtrips fence the SP1
+stdin landmines), `figaro-prove-test` (SP1 mock-executor guest tests — guest
+PublicValues must equal host `apply_batch` field-for-field; in-VM Gate-S
+rejection; `SP1_REAL_PROOF=1` generates + verifies a real local Core proof),
+and `figaro-sequencer` (mempool runs the kernel's own witness gates at the
+door; assembler fixpoint filtering incl. the resolve-closes-the-evidence-window
+property; HTTP API; mempool→assemble→kernel→advance pipeline).
+
+`sdk/tests/batch-e2e.test.ts` is the cross-language lock: TS signs + builds
+the witness payload, the Rust sequencer binary proves + submits, the Solidity
+verifier checks the hashes and the registry anchor on a live Anvil — money
+legs asserted from the chain. Anvil-gated (skips clean without it).
 
 ## Frontend Vitest (`frontend/tests/`) — 2 tiers
 

@@ -2263,7 +2263,6 @@ dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
  "axum",
- "figaro-clause",
  "figaro-kernel",
  "figaro-prove-test",
  "k256",

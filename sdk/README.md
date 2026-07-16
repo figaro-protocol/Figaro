@@ -240,11 +240,14 @@ to its signed agreement and content-hashes the evidence — it does NOT validate
 clause content. So a never-seen clause is attestable with zero per-clause on-chain
 code.
 
-> On-chain clause-content validation (the per-clause validators) and the SP1
-> prover mirror are **DEFERRED** — removed 2026-06-25, rebuilt before launch. Until
-> they return, the merkle binding is the integrity floor; a rebuilt validator must
-> preserve permissionless attestation of never-seen clauses. Canonical teardown
-> state: `docs/CONTRACTS.md` § "Deferred vs permanent".
+> On the BATCHED path the proof apparatus (rebuilt 2026-07-16) DOES validate
+> content in-proof: a Rust mirror of this same Layer A validates and re-encodes
+> the content against the clause's spec supplied as a witness input, and
+> `FigaroBatchVerifier` settles only if the witness's hash matches
+> `ClauseRegistry.contentHashOf` — so never-seen clauses stay attestable AND
+> batch-settleable with zero per-clause code. There are no per-clause validator
+> contracts, permanently. Canonical statement: `docs/CONTRACTS.md`
+> § "Teardown state — CLOSED".
 
 ```ts
 import {

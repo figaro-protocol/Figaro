@@ -1,11 +1,14 @@
 /**
  * Content validator — validates a content value against a parsed ClauseSpec.
  *
- * Call sites: frontend form gates, SDK agent-action preflight. This off-chain
- * check is the ONLY content validation: the chain merkle-binds an attestation
- * to its signed agreement and content-hash-binds the evidence, but does not
- * validate content shape (well-formedness is this layer's job + a read-time
- * concern). There is no on-chain validator and no prover.
+ * Call sites: frontend form gates, SDK agent-action preflight. This is the
+ * reference implementation (Layer A): the Rust prover mirror (`prover/clause`,
+ * conformance-locked byte-for-byte) re-runs the same validation inside the SP1
+ * proof on the batched settlement path. The DIRECT path validates no content
+ * shape on-chain — the coordinator merkle-binds an attestation to its signed
+ * agreement and content-hash-binds the evidence; well-formedness there is this
+ * layer's job + a read-time concern. There are no per-clause validator
+ * contracts, permanently.
  */
 
 import type {

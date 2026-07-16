@@ -40,7 +40,7 @@ export default function Integrate() {
 
             <MarketingSection title="Read, reconstruct, propose.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
-                    <code>@figaro/sdk</code> is a TypeScript SDK with a single runtime dependency (<code>viem</code>). ESM, four subpath exports. Used from React frontends, server-side indexers, and headless agents.
+                    <code>@figaro/sdk</code> is a TypeScript SDK with a single runtime dependency (<code>viem</code>). ESM, five subpath exports. Used from React frontends, server-side indexers, and headless agents.
                 </p>
                 <ul className="space-y-4">
                     <LabelledListRow label="@figaro/sdk" labelWidth="narrow" uppercase>
@@ -53,7 +53,7 @@ export default function Integrate() {
                         <strong>Attestation encoding/filtering, geo/handoff utilities, did:web resolution.</strong> Everything at the protocol tier that isn&apos;t kernel-critical but is commonly needed.
                     </LabelledListRow>
                     <LabelledListRow label="/clauses" labelWidth="narrow" uppercase>
-                        <strong>Meta-clause validator + a generic content encoder.</strong> Canonical spec format, validated off-chain (Layer A); the chain registers and merkle-binds clauses but validates no content shape (see <Link href="/clauses" className="underline">/clauses</Link>).
+                        <strong>Meta-clause validator + a generic content encoder.</strong> Canonical spec format, validated off-chain (Layer A); the batched, proof-based settlement path re-validates it in-proof against the registry-anchored spec, while the direct attestation path only merkle-binds (see <Link href="/clauses" className="underline">/clauses</Link>).
                     </LabelledListRow>
                 </ul>
             </MarketingSection>

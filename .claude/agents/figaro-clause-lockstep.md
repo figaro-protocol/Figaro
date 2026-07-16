@@ -1,6 +1,6 @@
 ---
 name: figaro-clause-lockstep
-description: Read-only verifier for the Figaro multi-surface clause-lockstep contract. Invoke when a clause is added, renamed, or changed — to check that every surface that must move together has actually moved together. Surfaces tracked — canonical spec JSON in `clauses/`, the generic Layer-A parse/validate/encode round-trip in `@figaro/sdk/clauses`, `ClauseRegistry` seeding, and user-facing prose in `frontend/app/`. The on-chain validator and Rust prover mirror are DEFERRED surfaces (docs/CONTRACTS.md § "Deferred vs permanent" is the owner) — absence is NOT drift until the rebuild lands. Returns a per-clause coverage matrix with drift findings. Does not edit files.
+description: Read-only verifier for the Figaro multi-surface clause-lockstep contract. Invoke when a clause is added, renamed, or changed — to check that every surface that must move together has actually moved together. Surfaces tracked — canonical spec JSON in `clauses/`, the generic Layer-A parse/validate/encode round-trip in `@figaro/sdk/clauses`, `ClauseRegistry` seeding, and user-facing prose in `frontend/app/`. The Rust prover mirror (`prover/clause`) is a LIVE lockstep surface — its generic engine takes any spec as witness input, so a clause needs NO per-clause Rust code (demanding any is itself a finding); per-clause on-chain validators do not exist, permanently (docs/CONTRACTS.md § "Teardown state — CLOSED" is the owner). Returns a per-clause coverage matrix with drift findings. Does not edit files.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -12,7 +12,7 @@ its meaning is identical across every surface that consumes it. You do not edit 
 You return a coverage matrix and a drift list.
 
 Read first: `docs/CLAUSES.md` (owns the clause table + adding-a-clause checklist) and
-`docs/CONTRACTS.md` § "Deferred vs permanent" (owns which surfaces exist today).
+`docs/CONTRACTS.md` § "Teardown state — CLOSED" (owns which surfaces exist today).
 
 ## The surfaces (discover per run; never trust remembered counts)
 
@@ -22,8 +22,8 @@ Read first: `docs/CLAUSES.md` (owns the clause table + adding-a-clause checklist
 | 2 | **Generic Layer A round-trip** | `sdk/src/clauses/` — the spec must PARSE (`parseClauseSpec`) and its fields round-trip through `validateContent` + `encodeContentFromSpec`. There is NO per-clause TS code — finding any would itself be drift | every clause (encoder n/a for agreement-only) |
 | 3 | **Registry seeding** | the deploy path (`frontend/scripts/populate-clauses.mjs` / `deploy-local.sh`) registers the id with `ClauseRegistry` | every clause |
 | 4 | **User-facing prose** | `grep -rl "<id>" frontend/app/` — the inventory pages (`/clauses`) render from the live registry automatically; only PROSE mentions can drift | check on rename/remove |
-| 5 | **On-chain validator** | DEFERRED — removed in the teardown, rebuilt pre-launch | absence is NOT drift |
-| 6 | **Rust prover mirror** | DEFERRED — same ruling | absence is NOT drift |
+| 5 | **On-chain validator** | does not exist, permanently — the generic in-proof engine replaced per-clause validators | demanding one IS drift |
+| 6 | **Rust prover mirror** | LIVE (`prover/clause`) — generic; specs are witness inputs | per-clause Rust code would BE drift |
 
 Agreement-only vs runtime-attestable is a real categorization: `figaro-topology` is the
 canonical agreement-only clause (spec, no runtime attestation, no encoded content —
@@ -51,7 +51,7 @@ verified via merkle inclusion instead). Discover the category from the spec; don
 - **Per-clause encoder/validator code existing anywhere** — the generic engine is the
   model; special-casing a clause is the anti-pattern this room exists to catch.
 
-Soft signals (NOTE, not drift): deferred surfaces absent (per the owner doc); prose copy
+Soft signals (NOTE, not drift): prose copy
 variation while the canonical id matches.
 
 ## Output
@@ -64,5 +64,5 @@ clause count.
 ## Discipline
 
 - Discover the canonical list from disk every run; the count is derived, never stored.
-- Do not flag deferred surfaces; do not demand per-clause code — its absence is the design.
+- Do not demand per-clause code anywhere (TS, Rust, or Solidity) — its absence is the design.
 - You return findings; humans (or the clause-author agent) make the changes.

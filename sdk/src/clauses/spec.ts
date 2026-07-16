@@ -1,9 +1,12 @@
 /**
  * Figaro clause-spec format — the single source of truth for clause-content
- * validation. There is ONE validation layer: this off-chain TypeScript module
- * (used by frontend form gates and SDK agent-action preflight). The chain does
- * not validate content — it merkle-binds attestations and content-hash-binds
- * the evidence; well-formedness is this layer's job + a read-time concern.
+ * validation. This off-chain TypeScript module (frontend form gates, SDK
+ * agent-action preflight) is Layer A, the reference; the Rust prover mirror
+ * (`prover/clause`) re-runs the same semantics in-proof on the batched path,
+ * against the spec as a witness input anchored by ClauseRegistry.contentHashOf.
+ * The DIRECT path's chain validates no content — it merkle-binds attestations
+ * and content-hash-binds the evidence; well-formedness there is this layer's
+ * job + a read-time concern.
  *
  * The format is a closed subset of JSON Schema: small and predictable. A spec
  * is DATA (a JSON file in `clauses/`, anchored on `ClauseRegistry` → IPFS),

@@ -1,17 +1,22 @@
 # Scaling Strategy
 
-**Status: a possible FUTURE development path — deferred, not shipped.** The
-proof-based batch-scaling approach in Track 2 below was prototyped end to end —
-a Rust kernel mirror, an SP1 guest program that generated and locally verified a
-real Core proof, the `FigaroBatchVerifier` Solidity contract under Foundry, and
-a devnet sequencer — and then **removed in the 2026-06-25 proof-apparatus
-teardown**. Present settlement is the kernel's single atomic `resolveProcess`
-(per-process ceiling ~1,240 orders at the 30M block gas limit). This document is
-retained as the **design baseline** for if/when batch-proof scaling is rebuilt:
-the `prover/`, `FigaroBatchVerifier`, `MockSP1Verifier`, and `ISP1Verifier`
-paths it cites refer to that removed prototype, not to current code. Track 1
-(launch the unchanged kernel) is the live path; everything proof/sequencer-related
-is the deferred design.
+**Status: BUILT — rebuilt 2026-07-16 from the teardown baseline, upgraded to the
+witness model.** The proof-based batch-scaling path in Track 2 is live code:
+the Rust kernel mirror + generic clause engine (`prover/lib`, `prover/clause`),
+the SP1 guest (`prover/program`; a real local Core proof of the canonical batch
+generates and verifies, ~1.2M cycles), the `FigaroBatchVerifier` Solidity
+contract (devnet-deployed by `Deploy.s.sol`; mainnet wires Succinct's gateway +
+program vkey by env), and the devnet sequencer (`prover/sequencer`) with its
+SDK client (`@figaro/sdk/agent` `SequencerClient`) — proven end to end by
+`sdk/tests/batch-e2e.test.ts`. The rebuild landed the "Prover Clause
+Architecture" end-state below on day one: the guest embeds NO clauses — specs
+are witness inputs bound on-chain to `ClauseRegistry.contentHashOf`, so the
+vkey covers the ENGINE and registering a clause never touches the prover.
+Direct settlement (the kernel's atomic `resolveProcess`, per-process ceiling
+~1,240 orders at the 30M gas limit) remains the always-available path; the
+batch path is the throughput tier beside it. Historical sections below that
+narrate the removed prototype's bootstrap (compiled-in specs, per-clause
+encoders) describe a superseded stage — the migration they plan is DONE.
 
 ## The Kernel's Shape
 
