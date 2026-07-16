@@ -78,7 +78,7 @@ describe('discoveryService', () => {
                     available: true,
                 },
             ],
-            acceptedTokens: [{ address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', symbol: 'FIG' }],
+            acceptedTokens: [{ address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', symbol: "FLORIN" }],
             assemblyBindings: anchoredBinding('0x70997970C51812dc3A010C7d01b50e0d17dc79C8'),
             version: '1.0.0',
         }));

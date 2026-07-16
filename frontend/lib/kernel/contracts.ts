@@ -1,5 +1,5 @@
 // Figaro contract configuration — the five core Figaro contracts only
-// (kernel + Clause/Seller/Assembly registries + FIG token) plus the agnostic ERC-20.
+// (kernel + Clause/Seller/Assembly registries + florin token) plus the agnostic ERC-20.
 // Addresses are sourced from environment variables written by deploy-local.sh.
 // ABIs are re-exported from the canonical SDK (@figaro/sdk).
 // Any contract the frontend merely COMPOSES with lives in lib/composition/, not here.
@@ -10,7 +10,7 @@
 // browser. Always use process.env.NEXT_PUBLIC_... directly.
 
 // The frontend imports these from here (the allowlisted core-ABI home). The
-// other core ABIs (FIG_TOKEN_ABI) are equally canonical but currently imported
+// other core ABIs (FLORIN_TOKEN_ABI) are equally canonical but currently imported
 // straight from `@figaro/sdk` by their few consumers — they re-enter this
 // barrel the moment a frontend surface needs them from here.
 export {
@@ -32,8 +32,8 @@ export interface ChainConfig {
     sellerRegistry: `0x${string}`;
     /** AssemblyRegistry. */
     assemblyRegistry: `0x${string}`;
-    /** FIG token — the protocol's own token. */
-    figToken: `0x${string}`;
+    /** The florin — the protocol's own token. */
+    florinToken: `0x${string}`;
 }
 
 export const CONTRACTS: ChainConfig = {
@@ -41,7 +41,7 @@ export const CONTRACTS: ChainConfig = {
     clauseRegistry: (process.env.NEXT_PUBLIC_CLAUSE_REGISTRY || "") as `0x${string}`,
     sellerRegistry: (process.env.NEXT_PUBLIC_SELLER_REGISTRY || "") as `0x${string}`,
     assemblyRegistry: (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY || "") as `0x${string}`,
-    figToken: (process.env.NEXT_PUBLIC_FIG_TOKEN_ADDRESS || "") as `0x${string}`,
+    florinToken: (process.env.NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS || "") as `0x${string}`,
 };
 
 /** The SellerRegistry address if it's a well-formed address, else null. */

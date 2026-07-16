@@ -41,7 +41,7 @@ cd sdk && npm test
 cd prover && cargo test
 
 # Mythril analysis (Docker)
-./scripts/mythril-docker.sh src/fig/FigToken.sol
+./scripts/mythril-docker.sh src/florin/FlorinToken.sol
 ```
 
 ## Scripts layout

@@ -43,8 +43,8 @@ const localTokens: () => CommonToken[] = () => {
     if (mock) out.push({ address: mock, symbol: "MOCK", name: "Mock ERC-20 (devnet)" });
     const permit = normalizeAddress(process.env.NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS);
     if (permit) out.push({ address: permit, symbol: "MOCKP", name: "Mock Permit token (devnet)" });
-    const fig = normalizeAddress(process.env.NEXT_PUBLIC_FIG_TOKEN_ADDRESS);
-    if (fig) out.push({ address: fig, symbol: "FIG", name: "Figaro" });
+    const florin = normalizeAddress(process.env.NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS);
+    if (florin) out.push({ address: florin, symbol: "FLORIN", name: "Florin" });
     return out;
 };
 

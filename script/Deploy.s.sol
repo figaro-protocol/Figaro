@@ -8,13 +8,13 @@ import "../src/FigaroCore.sol";
 import "../src/AttestationCoordinator.sol";
 import "../src/ClauseRegistry.sol";
 import "../src/SellerRegistry.sol";
-import "../src/fig/FigToken.sol";
+import "../src/florin/FlorinToken.sol";
 import "../src/mocks/MockPermitToken.sol";
 import "../src/mocks/MockERC20.sol";
 import "../src/mocks/MockWitnessPermit2.sol";
 import "../src/mocks/MockUniversalRouter.sol";
 import "../src/mocks/MockArbitrator.sol";
-import {RpgfMinter} from "../src/fig/RpgfMinter.sol";
+import {RpgfMinter} from "../src/florin/RpgfMinter.sol";
 import "../src/mocks/MockSP1Verifier.sol";
 import "../src/FigaroBatchVerifier.sol";
 // Named import: the coordinator declares its own local-minimal `IFigaroCore`
@@ -26,11 +26,11 @@ import "../src/AssemblyRegistry.sol";
 /// @notice Deploys: FigaroCore, AttestationCoordinator, ClauseRegistry,
 ///         AssemblyRegistry, SellerRegistry, WitnessSwapAndCommitCoordinator
 ///         (+ MockWitnessPermit2 / MockUniversalRouter as its devnet Permit2 and
-///         swap venue), FigToken, MockERC20, MockPermitToken.
+///         swap venue), FlorinToken, MockERC20, MockPermitToken.
 ///         Clauses are populated post-deploy (populate-clauses.mjs). Mints test
 ///         tokens to Anvil accounts.
 ///
-///         Devnet FIG allocation: 100M → deployer's wallet (stands in for founder
+///         Devnet florin allocation: 100M → deployer's wallet (stands in for founder
 ///         + DAO on devnet; the mainnet split is in script/DeployMainnet.s.sol),
 ///         plus the RpgfMinter registered at 600M before renounce — the
 ///         optimistic RPGF distribution (post/challenge/finalize/claim) is live
@@ -139,14 +139,14 @@ contract Deploy is Script {
         // on the empty state. ClauseRegistry is the witness-spec anchor:
         // settleBatch checks each proof's (clause key → spec hash)
         // binding against contentHashOf before settling.
-        // Note: FigaroBatchVerifier is NOT a FIG minter and never will be.
+        // Note: FigaroBatchVerifier is NOT a florin minter and never will be.
         _deployBatchVerifier(address(clauses));
 
-        // ── FIG Token + RPGF minter ─────────────────────────────────
-        FigToken fig = new FigToken();
-        console.log("FigToken deployed at:", address(fig));
+        // ── florin token + RPGF minter ─────────────────────────────────
+        FlorinToken florin = new FlorinToken();
+        console.log("FlorinToken deployed at:", address(florin));
 
-        // The RPGF minter must exist AT GENESIS: FigToken.registerMinter only
+        // The RPGF minter must exist AT GENESIS: FlorinToken.registerMinter only
         // works before renounceDeployerMint, and renounce is irreversible —
         // so the optimistic 600M distribution registers here, before any
         // other genesis step. The composed bond-settlement forum is a mock on
@@ -157,16 +157,16 @@ contract Deploy is Script {
         // run the full post -> challenge -> finalize -> claim cycle in real
         // time (testnet compresses years 2/5/9 to weeks; devnet compresses
         // further to now/+14d/+35d with 20s windows).
-        _deployRpgf(fig);
+        _deployRpgf(florin);
 
         // Devnet genesis mint: 100M to deployer as a simplified placeholder
         // for testing. Mainnet performs the 10/30/60 canonical distribution
         // in DeployMainnet.s.sol.
         address deployer = vm.addr(deployerPrivateKey);
-        fig.registerMinter(deployer, 100_000_000 ether);
-        fig.mint(deployer, 100_000_000 ether);
+        florin.registerMinter(deployer, 100_000_000 ether);
+        florin.mint(deployer, 100_000_000 ether);
 
-        fig.renounceDeployerMint();
+        florin.renounceDeployerMint();
         console.log("Deployer mint renounced");
 
         // ── Mint test tokens to Anvil accounts ──────────────────────
@@ -218,7 +218,7 @@ contract Deploy is Script {
         console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=", address(clauses));
         console.log("  NEXT_PUBLIC_SELLER_REGISTRY=", address(sellers));
         console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=", address(assemblies));
-        console.log("  NEXT_PUBLIC_FIG_TOKEN_ADDRESS=", address(fig));
+        console.log("  NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=", address(florin));
         console.log("  NEXT_PUBLIC_BATCH_VERIFIER=", _batchVerifier);
     }
 
@@ -243,13 +243,13 @@ contract Deploy is Script {
     ///      Logs its own address lines — deploy-local.sh parses the
     ///      "deployed at:" lines, and the NEXT_PUBLIC_ summary for these two
     ///      prints here rather than in run().
-    function _deployRpgf(FigToken fig) internal {
+    function _deployRpgf(FlorinToken florin) internal {
         MockArbitrator rpgfArbitrator = new MockArbitrator();
         console.log("MockArbitrator deployed at:", address(rpgfArbitrator));
 
         bytes32 formulaHash = keccak256(bytes(vm.readFile("sdk/src/rpgf/formula.json")));
         RpgfMinter rpgfMinter = new RpgfMinter(
-            address(fig),
+            address(florin),
             address(rpgfArbitrator),
             formulaHash,
             0.05 ether, // post/challenge bond — devnet-sized
@@ -259,6 +259,6 @@ contract Deploy is Script {
             [uint256(300_000_000 ether), 200_000_000 ether, 100_000_000 ether]
         );
         console.log("RpgfMinter deployed at:", address(rpgfMinter));
-        fig.registerMinter(address(rpgfMinter), 600_000_000 ether);
+        florin.registerMinter(address(rpgfMinter), 600_000_000 ether);
     }
 }

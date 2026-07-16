@@ -103,7 +103,7 @@ interface ClaimAirdropCapabilityAction {
     proof: `0x${string}`[];
 }
 
-/** FIG-token vesting tranches with separate claim curves. */
+/** Florin vesting tranches with separate claim curves. */
 export type VestingVariant = "founder" | "ecosystem";
 
 interface ClaimVestingCapabilityAction {

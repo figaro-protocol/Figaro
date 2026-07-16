@@ -82,7 +82,7 @@ export default function Integrate() {
                         Clause-typed attestation from the coordinator: orderHash, processId, attester, clauseId, stage, contentRef (= keccak256(content)).
                     </LabelledListRow>
                     <LabelledListRow label="MinterRegistered" labelWidth="wide">
-                        FIG token minter registry. Not relevant to settlement; relevant if you&apos;re indexing the token.
+                        Florin token minter registry. Not relevant to settlement; relevant if you&apos;re indexing the token.
                     </LabelledListRow>
                 </ul>
                 <p className="mt-6 text-sm text-ink-muted leading-relaxed">
@@ -166,11 +166,11 @@ for (const [processId, process] of processes) {
   "clauseRegistry": "0x…",
   "sellerRegistry": "0x…",
   "assemblyRegistry": "0x…",
-  "figToken": "0x…"
+  "florinToken": "0x…"
 }`}</code>
                 </pre>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    The record&apos;s keys map onto the SDK&apos;s <code>FigaroAddresses</code> with one rename: <code>figaroCore</code> &rarr; <code>core</code>, <code>tokenAddress</code> &rarr; <code>token</code>, and <code>attestationCoordinator</code> / <code>clauseRegistry</code> / <code>sellerRegistry</code> / <code>assemblyRegistry</code> keep their names. <code>permitTokenAddress</code> and <code>figToken</code> are <em>not</em> part of <code>FigaroAddresses</code>.
+                    The record&apos;s keys map onto the SDK&apos;s <code>FigaroAddresses</code> with one rename: <code>figaroCore</code> &rarr; <code>core</code>, <code>tokenAddress</code> &rarr; <code>token</code>, and <code>attestationCoordinator</code> / <code>clauseRegistry</code> / <code>sellerRegistry</code> / <code>assemblyRegistry</code> keep their names. <code>permitTokenAddress</code> and <code>florinToken</code> are <em>not</em> part of <code>FigaroAddresses</code>.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
                     Three token addresses appear; only one is a trade currency:
@@ -182,8 +182,8 @@ for (const [processId, process] of processes) {
                     <LabelledListRow label="permitTokenAddress" labelWidth="wide">
                         An EIP-2612 permit-enabled ERC-20 for the single-transaction approve-and-commit flow. A devnet convenience token, not a separate currency.
                     </LabelledListRow>
-                    <LabelledListRow label="figToken" labelWidth="wide">
-                        The FIG protocol token (<Link href="/papers/fig-schelling-point-token" className="underline">FIG</Link>). Not a trade currency &mdash; you never bond or pay in it.
+                    <LabelledListRow label="florinToken" labelWidth="wide">
+                        The protocol token, the florin (<Link href="/papers/florin-schelling-point-token" className="underline">FLORIN</Link>). Not a trade currency &mdash; you never bond or pay in it.
                     </LabelledListRow>
                 </ul>
             </MarketingSection>
@@ -278,7 +278,7 @@ for (const [processId, process] of processes) {
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
                     <li><strong>Repository:</strong> <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="underline">github.com/figaro-protocol/Figaro</a>. SDK lives at <code>sdk/</code>.</li>
                     <li><strong>SDK README:</strong> <code>sdk/README.md</code> in the repo. Covers every subpath export and the test-harness conventions.</li>
-                    <li><strong>ABIs:</strong> <code>CORE_ABI</code>, <code>ATTESTATION_COORDINATOR_ABI</code>, <code>CLAUSE_REGISTRY_ABI</code>, <code>ERC20_ABI</code>, <code>SELLER_REGISTRY_ABI</code>, <code>FIG_TOKEN_ABI</code>. All exported from <code>@figaro/sdk</code>; canonical contract surface at <Link href="/spec" className="underline">/spec</Link>.</li>
+                    <li><strong>ABIs:</strong> <code>CORE_ABI</code>, <code>ATTESTATION_COORDINATOR_ABI</code>, <code>CLAUSE_REGISTRY_ABI</code>, <code>ERC20_ABI</code>, <code>SELLER_REGISTRY_ABI</code>, <code>FLORIN_TOKEN_ABI</code>. All exported from <code>@figaro/sdk</code>; canonical contract surface at <Link href="/spec" className="underline">/spec</Link>.</li>
                     <li><strong>Tests as documentation:</strong> <code>sdk/tests/</code> includes round-trip tests of every exported primitive. If the README is ambiguous, read the tests.</li>
                 </ul>
                 <p className="mt-8 text-sm text-ink-muted leading-relaxed">

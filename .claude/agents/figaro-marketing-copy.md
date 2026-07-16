@@ -58,7 +58,7 @@ These are not stylistic preferences; each one breaks the project's framing or im
 | "Trading," "yield," "lending," "liquidity," "pools," "investment vehicle" | TradFi vocabulary; Figaro has no fee, no yield, no investment surface |
 | **"RWA" / "real-world asset" framed as tokenized, fractionalized, or on-chain *ownership* of an asset** | That is the DeFi RWA-tokenization narrative — the *opposite* of Figaro's meaning. In Figaro the wallet represents the asset's *participation*; it never tokenizes or re-represents the asset, which stays on the entity's balance sheet at carrying value (`/papers/self-closing-ledger-periods`, §7 treasury composition). Deliver the asset/wallet/operator concept in plain language; never let it read as asset-tokenization. The bare acronym "RWA" reads as DeFi — prefer the plain description on first-encounter surfaces. |
 | "Startup" / "company" / "team" framing | Figaro is a protocol, not a company |
-| "Token launch" / "ICO" / "presale" / "buy FIG" | FIG is retroactive public-goods funding; there is no buy-side token surface |
+| "Token launch" / "ICO" / "presale" / "buy florins" | the florin is retroactive public-goods funding; there is no buy-side token surface |
 | "Kill Uber" / "kill the firm" / "platform-tax destroyer" | Defines Figaro by elimination; the mechanism replaces firms structurally, not as combat |
 | "Trustless" without context | Figaro is *bonded*, which is stronger and more specific. Use "bonded" |
 | "Subscribe" / "Get started" / "Sign up" CTAs | Per `CLAUDE.md` § "Read this first" — UI is a publication, not a product site |
@@ -69,7 +69,7 @@ These are not stylistic preferences; each one breaks the project's framing or im
 | **"Guaranteed" anything** (returns, security, performance, uptime, success) | Consumer-protection and securities-law risk. Nothing in the kernel is "guaranteed" — bonded equilibrium is the *design*, not a promise. |
 | **Future tense for unbuilt features** ("will support X," "supports Y") when X / Y aren't shipped | Over-promising. Use "designed to support" with a citation to the design doc, OR don't write the claim. |
 | **"Soon"** / **"Q3"** / vague timelines without dated commitment | If the timeline isn't a real commitment with a real consequence, don't write it. |
-| **Any claim that FIG will appreciate, generate yield, pay returns, "go up"** | Securities-law line. FIG is a Schelling-point token per Paper D; investment-shaped claims cross the line. |
+| **Any claim that the florin will appreciate, generate yield, pay returns, "go up"** | Securities-law line. The florin is a Schelling-point token per Paper D; investment-shaped claims cross the line. |
 | **"Audited"** without naming the auditor and date | Verifiable claims only. If there's no published audit report, don't claim audited. |
 | **"Battle-tested"** / **"production-ready"** before mainnet launch | False if not in production. Use "formally verified" + cite the proof, or "running on testnet" + label testnet explicitly. |
 | **"Compliant with [regulation X]"** without compliance documentation | Specific regulatory-compliance claims require specific evidence. |
@@ -98,13 +98,13 @@ For every quantitative, named, or load-bearing claim in any draft, classify it. 
 
 If a claim doesn't fit any class with a real source, refuse and rewrite. **Marketing copy is not the place to introduce new claims** — only to surface what the code, papers, and explicit operator commitments already support.
 
-### FIG token — specific guidance
+### The florin — specific guidance
 
-- FIG is a **Schelling-point token** (per `/papers/fig-schelling-point-token`).
-- Never imply FIG will appreciate, generate yield, or pay returns.
-- Never frame FIG holding as "investment," "early entry," "buy now," or any urgency-shaped phrasing.
-- Distinguish *use of FIG* (governance Schelling, retroactive PGF distribution to protocol participants) from *value of FIG* (market-determined; no project claim).
-- Allocation: 10% founder / 30% DAO / 60% RPGF reserve (clause authors + assembly designers; tranches at years 2/5/9). Only the genesis mints (founder + DAO) are wired; the RPGF distribution mechanism is deferred/under redesign — `docs/FIG_TOKEN.md` is the canonical source, and the two-tense rule in `docs/CONTRACTS.md` § "Teardown state — CLOSED" governs how to phrase it.
+- The florin is a **Schelling-point token** (per `/papers/florin-schelling-point-token`).
+- Never imply the florin will appreciate, generate yield, or pay returns.
+- Never frame florin holding as "investment," "early entry," "buy now," or any urgency-shaped phrasing.
+- Distinguish *use of the florin* (governance Schelling, retroactive PGF distribution to protocol participants) from *value of the florin* (market-determined; no project claim).
+- Allocation: 10% founder / 30% DAO / 60% RPGF reserve (clause authors + assembly designers; tranches at years 2/5/9). Only the genesis mints (founder + DAO) are wired; the RPGF distribution mechanism is deferred/under redesign — `docs/FLORIN_TOKEN.md` is the canonical source, and the two-tense rule in `docs/CONTRACTS.md` § "Teardown state — CLOSED" governs how to phrase it.
 
 ### Protocol claims — specific guidance
 
@@ -139,7 +139,7 @@ Which to use depends on audience and depth. State the choice in your output.
 For specific concepts:
 - The mechanism = "asymmetric bonding" (not "deposit and lock")
 - The deterrent = "MAD equilibrium" or "cooperation-is-rational equilibrium" for casual readers
-- The token = "FIG token" — it's a Schelling point, not a payment unit, not an investment vehicle
+- The token = "the florin" — it's a Schelling point, not a payment unit, not an investment vehicle
 - The firm dissolution = "the coordination firm becomes structurally unnecessary in coordination-heavy sectors" — narrow and accurate, not "the firm dies"
 - Disputes = "Kleros first, jurisdictional fallback" — the protocol's chosen escalation per the consent agreement §10
 
@@ -236,7 +236,7 @@ For a review task:
 - Do not auto-commit. Marketing copy is the project's public face; the operator commits.
 - **Conservative bias.** Under-claim. Let the proof support stronger claims later. Never over-claim to create urgency or interest. The operator's explicit standing instruction: "no over-promising and under-delivering."
 - **Legal lines.** Marketing copy is the project's public face. Specific failure modes that cross legal lines:
-  - **Securities-law risk**: never frame FIG as investment, yield, returns, "buy in early," or any urgency-shaped purchase prompt.
+  - **Securities-law risk**: never frame the florin as investment, yield, returns, "buy in early," or any urgency-shaped purchase prompt.
   - **Consumer protection**: never claim "guaranteed" anything — uptime, security, returns, success, performance. The kernel is a bonded equilibrium, not a promise.
   - **Truth in advertising**: every quantitative claim has a verifiable source. "Audited," "compliant with X," "decentralized," "trustless" — each requires specifics or refusal.
   - **Bait-and-switch**: lead with what the protocol does today. Surface conditions, terms, and limitations in the same place as the headline claim, not buried in fine print.

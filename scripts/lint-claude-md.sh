@@ -77,7 +77,7 @@ fi
 # wholesale: its charter is describing the removed batch-scaling prototype.
 HISTORICAL_ALLOW=(
     "src/interfaces/ISP1Verifier.sol"
-    "src/fig/RpgfMinter.sol"
+    "src/florin/RpgfMinter.sol"
     "frontend/scripts/seed-devnet.mjs"
 )
 

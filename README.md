@@ -18,7 +18,7 @@ The organizational consequence: each process assembles a temporary institution o
 
 - **Kernel** — `FigaroCore.sol`: 2 external functions, 3 mappings, no owner
 - **Mechanism modules** — attestation, clause registry, seller registry, assembly registry, swap-and-commit coordinator
-- **FIG token** — 1B fixed supply, 10/30/60 split (founders / DAO / clause-author RPGF); founder + DAO mint at genesis with no vesting; the clause-author RPGF distribution mechanism is deferred (no wired mint path for the 600M yet — see `docs/CONTRACTS.md` § "Deferred vs permanent")
+- **The florin** — 1B fixed supply, 10/30/60 split (founders / DAO / clause-author RPGF); founder + DAO mint at genesis with no vesting; the clause-author RPGF distribution mechanism is deferred (no wired mint path for the 600M yet — see `docs/CONTRACTS.md` § "Deferred vs permanent")
 - **SDK** — `@figaro/sdk`: TypeScript, event-sourced state, agent coordination
 - **Runtime frontend** — Next.js 14, institution assembly, builder surfaces, reference assemblies
 - **Formal verification** — TLA+ safety invariants, Echidna fuzzing, Halmos symbolic proofs, Certora CVL rules
@@ -45,7 +45,7 @@ src/                        Solidity contracts (0.8.26, Foundry)
   AssemblyRegistry.sol      Permissionless assembly anchoring
   WitnessSwapAndCommitCoordinator.sol  Off-protocol multi-token bond funding (Permit2 witness-bound swap route + Uniswap Universal Router)
   IRoleResolver.sol         Role-authorization interface for delegated attestation
-  fig/                      FIG token (ERC-20, minter registry)
+  florin/                   the florin (ERC-20, minter registry)
   mocks/                    Test tokens, fee-on-transfer/permit variants, swap-venue mocks
   echidna/                  Echidna fuzzing harnesses
 
@@ -115,7 +115,7 @@ Anvil at `http://127.0.0.1:8545` (chain ID 31337).
 ./scripts/deploy-local.sh
 
 # Run Mythril analysis (via Docker)
-./scripts/mythril-docker.sh src/fig/FigToken.sol
+./scripts/mythril-docker.sh src/florin/FlorinToken.sol
 
 # Start frontend dev server
 cd frontend && npm install && npm run dev
@@ -171,7 +171,7 @@ Core theory + design:
 
 - [VISION.md](docs/VISION.md) — Post-firm economy, Coasean collapse, token denomination
 - [THEORY.md](docs/THEORY.md) — Game-theoretic derivation of six protocol properties
-- [FIG_TOKEN.md](docs/FIG_TOKEN.md) — Token design: allocation, RPGF emission
+- [FLORIN_TOKEN.md](docs/FLORIN_TOKEN.md) — Token design: allocation, RPGF emission
 - [SCALING_STRATEGY.md](docs/SCALING_STRATEGY.md) — Proof-based batching, SP1 (deferred design baseline)
 - [OPEN_WORLD.md](docs/OPEN_WORLD.md) — Why this is a runtime, not just contracts (paradigm + frontend composition model + semantic layer; consolidates the former RUNTIME.md)
 - [DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md) — 13 intentional patterns that look like vulnerabilities (read before auditing)

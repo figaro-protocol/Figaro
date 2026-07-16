@@ -1,17 +1,17 @@
-# FIG Token — Design Document
+# The Florin — Design Document
 
 ## Status
 
 Implemented. Two contracts:
 
-- `src/fig/FigToken.sol` — ERC-20 + EIP-2612 permit, 1B hard cap, minter registry
+- `src/florin/FlorinToken.sol` — ERC-20 + EIP-2612 permit, 1B hard cap, minter registry
   with `totalRegisteredCap` enforcement.
-- `src/fig/IFigMinter.sol` — minimal `mint(address,uint256)` interface, implemented
-  by `FigToken`.
+- `src/florin/IFlorinMinter.sol` — minimal `mint(address,uint256)` interface, implemented
+  by `FlorinToken`.
 
-The RPGF distribution is `src/fig/RpgfMinter.sol` (rebuilt optimistic 2026-07-15
+The RPGF distribution is `src/florin/RpgfMinter.sol` (rebuilt optimistic 2026-07-15
 — the SP1-proof-gated predecessor was removed in the proof-apparatus teardown)
-plus `src/fig/IRpgfArbitrator.sol`, the provider-agnostic bond-settlement forum
+plus `src/florin/IRpgfArbitrator.sol`, the provider-agnostic bond-settlement forum
 seam. Contract surfaces are inventoried in `docs/CONTRACTS.md`.
 
 Deployment: `script/DeployMainnet.s.sol` (mainnet) and `script/Deploy.s.sol` (devnet)
@@ -47,18 +47,34 @@ not a governance right, not a staking instrument.
 - **Not required for participation.** Gating order creation, bonding, or
   settlement behind a token would reintroduce infrastructure rent. The
   protocol's permissionless nature is load-bearing.
-- **Not settlement-anchored emission.** FIG is **not minted on `resolveProcess`**.
+- **Not settlement-anchored emission.** The florin is **not minted on `resolveProcess`**.
   There is no per-settlement reward path.
 
 ---
 
 ## Name
 
-**FIG.**
+**The florin.** Ticker **FLORIN**, symbol **ƒ** (U+0192).
 
-Three characters. Works as both ticker and spoken word. Three-letter tickers
-are premium, pronounceable in every language. The short form is the currency;
-the full name is the protocol.
+Figaro is the protocol; the florin is its money. The unit is a **common noun** —
+lowercase in prose, natural plural "florins" — because real money is a common
+noun with a symbol, not a perpetually-capitalized brand. The teaching sentence:
+*"Figaro settles in florins — the unit Florence gave world trade."*
+
+**The rule this name obeys: a money name DENOMINATES, it never DESCRIBES.** A
+name that describes the service reads as a substitutable product brand (the
+"Filecoin mismatch"). Historical money names come from four sources only —
+weights (peso, lira, pound), places (dollar ← thaler; florin ← Florence),
+persons (bolívar, napoleon), and material (guilder, złoty). The florin is the
+archetypal trade denomination: the fiorino d'oro (1252) held its unit across
+jurisdictions for centuries, which is Figaro's job description. The name also
+plugs into a claim the corpus already makes — the florin era is the era of
+double-entry bookkeeping, and a process is framed as a self-closing ledger
+period.
+
+The ticker is the full word because FLO, XFL, and FLR are taken or adjacent.
+The symbol ƒ is the orphaned guilder/florin sign: universal font support, and
+the initial of Figaro — the visual protocol↔unit bridge.
 
 ---
 
@@ -74,7 +90,7 @@ the full name is the protocol.
 Founders and DAO receive tokens directly to their wallets at deploy time. The
 600M mints only through the `RpgfMinter`'s finalized merkle claims — the minter
 is registered at genesis (before `renounceDeployerMint`, which is why it must
-exist at deploy time), capped at exactly 600M by the FigToken minter registry.
+exist at deploy time), capped at exactly 600M by the FlorinToken minter registry.
 
 ### The 600M RPGF allocation
 
@@ -108,18 +124,18 @@ The incentive rationale — why the substrate-broadening weight exists — lives
   investors. Adding a vesting cliff would be theater. The DAO needs its tokens
   at genesis to perform its coordination function from day one.
 
-- **No settlement-anchored emission.** FIG is not minted per settlement. Coupling
+- **No settlement-anchored emission.** The florin is not minted per settlement. Coupling
   the token to protocol activity invites gaming and complicates the trust surface.
 
-- **No token sale.** FIG is never sold — not in an ICO, IDO, SAFT, or
+- **No token sale.** The florin is never sold — not in an ICO, IDO, SAFT, or
   presale. There is no investment contract. The founders and DAO receive
   their allocations at genesis.
 
 ---
 
-## FigToken Mechanics
+## FlorinToken Mechanics
 
-`FigToken` (`src/fig/FigToken.sol`) is an ERC-20 with EIP-2612 permit
+`FlorinToken` (`src/florin/FlorinToken.sol`) is an ERC-20 with EIP-2612 permit
 (`ERC20Permit`) and a reentrancy-guarded `mint`. The supply discipline is
 enforced entirely at registration and mint time — there is no admin, no pause,
 no upgrade path.
@@ -154,7 +170,7 @@ allocation, then seals minting. `FOUNDER_ALLOC = 100M`, `DAO_ALLOC = 300M`,
 `RPGF_ALLOC = 600M`.
 
 ```
-1. Deploy FigToken (deployer becomes the constructor deployer).
+1. Deploy FlorinToken (deployer becomes the constructor deployer).
 2. Deploy RpgfMinter (forum, bond, windows, tranche times via environment;
    formulaHash = keccak256 of the canonical formula-spec bytes).
 3. fig.registerMinter(rpgfMinter, 600M) — MUST precede renounce (irreversible).
@@ -184,16 +200,16 @@ own wallet (standing in for founder + DAO), and renounces.
 
 All resolved. Each item is a **decision**, not an open question.
 
-1. **Total supply: 1,000,000,000 FIG.** Round, memorable.
+1. **Total supply: 1,000,000,000 florins.** Round, memorable.
 2. **Founder + DAO at genesis, no vesting.** See "Rationale" above.
-3. **FIG token standard: ERC-20 + EIP-2612 permit.**
+3. **Florin token standard: ERC-20 + EIP-2612 permit.**
 4. **No emission contract, no settlement-anchored minting.**
 5. **Optimistic RPGF distribution.** Posted-window + bonded challenge +
    deterministic public recompute (ruled 2026-07-15, replacing the removed
    proof-gated minter): input provenance is covered by anyone's recompute —
    strictly stronger than the SP1 version, with zero proving infrastructure
    and no recurring cost to anyone but disputing parties.
-6. **Immutability.** Once deployed, no contract in the FIG stack can be
+6. **Immutability.** Once deployed, no contract in the florin stack can be
    upgraded, paused, or reconfigured. If any contract is wrong, a new one
    is deployed and the community migrates. There is no admin.
 
@@ -203,4 +219,4 @@ All resolved. Each item is a **decision**, not an open question.
 
 This is an internal design record. Not a whitepaper, pitch deck, or
 regulatory disclosure. The allocation table above is the canonical reference
-for any FIG-related work in the codebase.
+for any florin-related work in the codebase.

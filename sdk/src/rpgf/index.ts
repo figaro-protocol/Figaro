@@ -252,7 +252,7 @@ function scoreOf(acc: ArtifactAccumulator): bigint {
     return wTotal * icbrt(c * d * d * 10n ** 18n);
 }
 
-/** The formula: aggregate an event window into per-wallet FIG allocations.
+/** The formula: aggregate an event window into per-wallet florin allocations.
  *  `specByClauseId` carries the contentHash-VERIFIED classification of every
  *  clause id appearing in the window (see RpgfSpecClassification). */
 export function computeRpgfAllocations(

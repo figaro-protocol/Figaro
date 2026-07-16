@@ -104,7 +104,7 @@ fi
 # The map's suite-cite convention is a backticked name immediately followed by
 # a colon (`FigaroCoreTest`: bond-amount coverage). Resolution order: a
 # defined contract, a defined Solidity function (code-enforcement cites), or
-# a tracked file with that basename (`FigToken.t.sol`, SDK `bonds.test.ts`).
+# a tracked file with that basename (`FlorinToken.t.sol`, SDK `bonds.test.ts`).
 VMAP="docs/VERIFICATION_MAP.md"
 if [ -f "$VMAP" ]; then
     while read -r name; do

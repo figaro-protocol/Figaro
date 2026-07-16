@@ -355,30 +355,30 @@ confuse tiers (e.g., "add yield to locked bonds") misidentify what they touch.
 The kernel is bedrock; the protocol is law; the runtime is the shared workshop;
 institutions are the structures built on top.
 
-### FIG — The Named Schelling Point
+### The florin — the named Schelling point
 
 The token denomination thesis above is abstract: *any* ERC-20 carries a
 coordination signal, and the bonding equilibrium holds regardless of which
-token is used. FIG makes this concrete. It is the token participants converge
+token is used. The florin makes this concrete. It is the token participants converge
 on by name — a Schelling point, not a governance mechanism.
 
-FIG has a fixed supply of one billion tokens, set at genesis and never
-inflated. There is no settlement-anchored emission: FIG is not minted on
+The florin has a fixed supply of one billion tokens, set at genesis and never
+inflated. There is no settlement-anchored emission: the florin is not minted on
 `resolveProcess`, and there is no per-settlement reward path. The allocation
 is 100M (10%) to founders and 300M (30%) to the DAO — both minted at genesis,
 no vesting — and 600M (60%) reserved for clause-author retroactive
 public-goods funding. The proof-gated distribution mechanism was removed in the
 proof-apparatus teardown, so the 600M currently has no wired minter (the
-rationale survives in `PUBLIC_GRAPH_MODEL.md`). The surviving FIG contracts are
+rationale survives in `PUBLIC_GRAPH_MODEL.md`). The surviving florin contracts are
 immutable: no owner, no upgrade path, no parameter changes. If one is wrong, a
 new one is deployed and the community migrates.
 
-This design is deliberate. FIG is not required for participation. It is not
+This design is deliberate. The florin is not required for participation. It is not
 staked, slashed, or voted with. The 98% cooperation rate comes from the
-bonding equilibrium, not from token incentives. FIG exists because people
+bonding equilibrium, not from token incentives. The florin exists because people
 will ask for a token — and when they do, they should receive one whose
 issuance is fixed, transparent, and free of discretionary control. See
-`FIG_TOKEN.md` for the full design.
+`FLORIN_TOKEN.md` for the full design.
 
 ### Per-Order Sovereignty
 

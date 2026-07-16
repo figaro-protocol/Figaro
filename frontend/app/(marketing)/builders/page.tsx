@@ -50,7 +50,7 @@ export default function BuildersPage() {
                 <div>
                     <dt className="font-semibold text-ink-heading">Clause authors</dt>
                     <dd className="text-ink-body leading-relaxed mt-1">
-                        Define new attestation content types &mdash; what a deal contains, what counts as delivered, what a disclosure must include. Each clause is registered permissionlessly: write it, register it, it is live. Sixty percent of the FIG supply (600 million) is reserved for this group, distributed by a fixed formula that measures real adoption across distinct counterparty pairs.
+                        Define new attestation content types &mdash; what a deal contains, what counts as delivered, what a disclosure must include. Each clause is registered permissionlessly: write it, register it, it is live. Sixty percent of the florin supply (600 million) is reserved for this group, distributed by a fixed formula that measures real adoption across distinct counterparty pairs.
                     </dd>
                 </div>
                 <div>
@@ -62,7 +62,7 @@ export default function BuildersPage() {
                 <div>
                     <dt className="font-semibold text-ink-heading">Token issuance</dt>
                     <dd className="text-ink-body leading-relaxed mt-1">
-                        Deploy new tokens using protocol primitives. The kernel is token-agnostic for bonding and settlement; any ERC-20 can be the unit of a deal. FIG itself follows this pattern &mdash; a Schelling-point cryptocurrency denominated in the trade the substrate secures.
+                        Deploy new tokens using protocol primitives. The kernel is token-agnostic for bonding and settlement; any ERC-20 can be the unit of a deal. The florin itself follows this pattern &mdash; a Schelling-point cryptocurrency denominated in the trade the substrate secures.
                     </dd>
                 </div>
                 <div>
@@ -131,7 +131,7 @@ export default function BuildersPage() {
                     <Link href="/clause-rewards" className="text-ink-heading font-medium hover:underline">
                         The reward
                     </Link>
-                    <span className="text-ink-body"> &mdash; how clause authors get paid: 60% of the FIG supply, by a fixed formula, for clauses that get used.</span>
+                    <span className="text-ink-body"> &mdash; how clause authors get paid: 60% of the florin supply, by a fixed formula, for clauses that get used.</span>
                 </li>
             </ul>
         </section>

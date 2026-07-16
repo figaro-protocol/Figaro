@@ -77,7 +77,7 @@ export default function Why() {
 
             <MarketingSection title="How Figaro grows.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Figaro is built to be extended: anyone can author a new clause, register it on-chain, and &mdash; for the clauses the network comes to rely on &mdash; <Link href="/clause-rewards" className="text-ink-heading font-medium hover:underline">be paid retroactively</Link> from the share of FIG set aside for exactly that. No application, no committee.
+                    Figaro is built to be extended: anyone can author a new clause, register it on-chain, and &mdash; for the clauses the network comes to rely on &mdash; <Link href="/clause-rewards" className="text-ink-heading font-medium hover:underline">be paid retroactively</Link> from the share of florins set aside for exactly that. No application, no committee.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     Clauses are one composition surface. Assemblies are another &mdash; communities compose clauses into the processes they need, with the sellers who run them indexing those processes freely. The protocol grows by what it actually carries. <Link href="/builders" className="text-ink-heading font-medium hover:underline">More on building on Figaro</Link>.
@@ -123,7 +123,7 @@ export default function Why() {
                         <Link href="/builders" className="text-ink-heading font-medium hover:underline">
                             Builders
                         </Link>
-                        <span className="text-ink-body"> &mdash; how to extend the protocol: author a clause, register it on-chain, earn from settled use under the FIG clause-author allocation.</span>
+                        <span className="text-ink-body"> &mdash; how to extend the protocol: author a clause, register it on-chain, earn from settled use under the florin clause-author allocation.</span>
                     </li>
                     <li>
                         <Link href="/cryptoeconomics" className="text-ink-heading font-medium hover:underline">

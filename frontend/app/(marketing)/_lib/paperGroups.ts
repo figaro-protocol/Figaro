@@ -73,7 +73,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         papers: [
             { title: "Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for Self-Enforcing N-Party Coordination", href: "/papers/asymmetric-bonding" },
             { title: "From Firms to Transaction-Scoped Institutions: A Coasean Re-Examination", href: "/papers/transaction-scoped-institutions" },
-            { title: "FIG: A Schelling-Point Token for the Figaro Coordination Ecosystem", href: "/papers/fig-schelling-point-token" },
+            { title: "The Florin: A Schelling-Point Token for the Figaro Coordination Ecosystem", href: "/papers/florin-schelling-point-token" },
         ],
         references: [
             { label: "Protocol — two mechanisms", href: "/protocol", note: "two-mechanism + contract-law overview" },

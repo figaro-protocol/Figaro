@@ -19,8 +19,8 @@
  *      score. The recipient of record (the registrar wallet — clause author
  *      AND assembly designer of record) then drives the UI: compute + post →
  *      wait out the challenge window → finalize → claim. Money legs from the
- *      chain: FIG mints EXACTLY the 15% per-wallet cap of the tranche (sole
- *      recipient → water-fill caps at floor(300M × 15/100) = 45M FIG), the
+ *      chain: the florin mints EXACTLY the 15% per-wallet cap of the tranche (sole
+ *      recipient → water-fill caps at floor(300M × 15/100) = 45M florins), the
  *      poster's bond returns via the withdraw surface, double-claim reverts.
  *
  * Depends on populate-test-data (clauses incl. figaro-assembly-provenance,
@@ -168,12 +168,12 @@ test.describe('RPGF rewards — optimistic post / challenge / finalize / claim (
         const config = readLocalDeploymentConfig();
         const minter = config.rpgfMinter as Hex;
         const core = config.figaroCore as Hex;
-        const fig = config.figToken as Hex;
+        const florin = config.florinToken as Hex;
         const token = config.tokenAddress as Hex;
         const coordinator = config.attestationCoordinator as Hex;
         const sellerRegistry = config.sellerRegistry as Hex;
         const assemblyRegistry = config.assemblyRegistry as Hex;
-        expect(minter && fig && coordinator && sellerRegistry && assemblyRegistry, 'full deployment record').toBeTruthy();
+        expect(minter && florin && coordinator && sellerRegistry && assemblyRegistry, 'full deployment record').toBeTruthy();
         const publicClient = localPublicClient();
         const chainId = LOCAL_ANVIL.id;
         const finalizedAlready = ((await publicClient.readContract({
@@ -299,7 +299,7 @@ test.describe('RPGF rewards — optimistic post / challenge / finalize / claim (
 
         // ── Baselines ──
         const balanceOfFig = (who: Hex) =>
-            publicClient.readContract({ address: fig, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
+            publicClient.readContract({ address: florin, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
         const figBefore = await balanceOfFig(RECIPIENT);
         const minterEthBefore = await publicClient.getBalance({ address: minter });
         const bond = (await publicClient.readContract({
@@ -337,10 +337,10 @@ test.describe('RPGF rewards — optimistic post / challenge / finalize / claim (
         await expect
             .poll(async () => (await balanceOfFig(RECIPIENT)) - figBefore, {
                 timeout: 60000,
-                message: 'the claim mints FIG to the recipient of record',
+                message: 'the claim mints florins to the recipient of record',
             })
             .toBe(expectedAllocation);
-        await expect(page.getByTestId('fig-balance'), 'the UI reflects the minted balance')
+        await expect(page.getByTestId('florin-balance'), 'the UI reflects the minted balance')
             .toContainText('45', { timeout: 30000 });
 
         // Double-claim refuses (the pre-flight simulate surfaces the revert).

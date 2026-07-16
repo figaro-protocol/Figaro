@@ -136,7 +136,7 @@ participants that other agents learn from, without centralized orchestration.
 ## Why the substrate-broadening weight exists — the geo/coordination incentive
 
 This section is load-bearing. Without it, the RPGF `w_category` weight
-(`FIG_TOKEN.md`) reads as an unexplained category privilege in a
+(`FLORIN_TOKEN.md`) reads as an unexplained category privilege in a
 neutrality-preaching system, is mistaken for closed-world cruft, and is removed.
 It is not cruft. (The `lint-substrate-broadening-weight.sh` guard that once kept
 parallel formula files in sync was retired with the RPGF prover; the 2026-07-15

@@ -48,7 +48,7 @@ type DeploymentConfig = {
     clauseRegistrationHelper?: `0x${string}`;
     sellerRegistry?: `0x${string}`;
     assemblyRegistry?: `0x${string}`;
-    figToken?: `0x${string}`;
+    florinToken?: `0x${string}`;
     rpgfMinter?: `0x${string}`;
     rpgfArbitrator?: `0x${string}`;
 };
@@ -78,7 +78,7 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
             if (key === 'NEXT_PUBLIC_CLAUSE_REGISTRATION_HELPER') config.clauseRegistrationHelper = value;
             if (key === 'NEXT_PUBLIC_SELLER_REGISTRY') config.sellerRegistry = value;
             if (key === 'NEXT_PUBLIC_ASSEMBLY_REGISTRY') config.assemblyRegistry = value;
-            if (key === 'NEXT_PUBLIC_FIG_TOKEN_ADDRESS') config.figToken = value;
+            if (key === 'NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS') config.florinToken = value;
             if (key === 'NEXT_PUBLIC_RPGF_MINTER') config.rpgfMinter = value;
             if (key === 'NEXT_PUBLIC_RPGF_ARBITRATOR') config.rpgfArbitrator = value;
         }

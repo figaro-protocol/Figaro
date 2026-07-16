@@ -9,7 +9,7 @@ This document ties every protocol property to its enforcement across five layers
 - **Theory** — the game-theoretic invariant (from THEORY.md / VISION.md)
 - **Code** — what is actually enforced on-chain (Solidity)
 - **Tests** — what is continuously regression-checked (Foundry, Echidna, SDK Vitest)
-- **TLA+** — what is exhaustively model-checked (15 invariants across 2 models: FigaroCore 7 / 6M+ states, FigToken 8 / 160k states)
+- **TLA+** — what is exhaustively model-checked (15 invariants across 2 models: FigaroCore 7 / 6M+ states, FlorinToken 8 / 160k states)
 - **Halmos** — what is symbolically proved at the bytecode level (7 invariants, z3 solver)
 - **Certora** — what is formally verified via SMT-based proving (state-machine rules)
 - **UI** — where the feature is explained or rendered for users (pages, sections)
@@ -24,7 +24,7 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 
 - **Kernel**: `src/FigaroCore.sol` — 2 external functions, 3 mappings, no owner, no fee
 - **Protocol compositions**: `AttestationCoordinator`, `ClauseRegistry`, `SellerRegistry`, `AssemblyRegistry`, `WitnessSwapAndCommitCoordinator`
-- **FIG token ecosystem**: `FigToken` (`IFigMinter` interface; no implementation wired)
+- **Florin ecosystem**: `FlorinToken` (`IFlorinMinter` interface; no implementation wired)
 - **Formal model**: `formal/FigaroCore.tla`, `formal/MC.tla`, `formal/MC.cfg`
 - **Tests**: the Foundry, Halmos, Certora, Echidna, and TLA+ harnesses, plus the SDK suite — suite, file, property, and rule counts are in `TESTING.md` (the single source)
 - **Frontend**: All pages in `frontend/app/`, components, mechanism modules
@@ -66,7 +66,7 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 - `E-1` **Attestation role gating**: only verified role-holder (buyer/seller/resolver) can attest
 - `E-2` **Clause immutability**: registered clauses cannot be overwritten
 - `E-4` **Seller deposit lock**: withdrawal only after deactivation + lock period
-- `E-6` **FIG supply cap**: total minted ≤ 1,000,000,000 FIG (enforced on every mint path)
+- `E-6` **Florin supply cap**: total minted ≤ 1,000,000,000 florins (enforced on every mint path)
 
 ---
 
@@ -107,7 +107,7 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 | E-1 | Only verified role-holder can attest | `attestAsSeller`: verifies seller via commitment orderHash lookup; `attestAsBuyer`: verifies via ProcessState.rootBuyer; `attestViaResolver`: delegates to IRoleResolver | `AttestationCoordinatorTest`: all 3 paths + cross-order same-process | `/papers/on-chain-evidence` → evidentiary properties; `/local-commerce` → Attestation Coordinator; `/builders` → Clause validation |
 | E-2 | Registered clauses cannot be overwritten | `registerClause`: event-only anchoring (no storage to overwrite); dedup guard on re-registration | `ClauseRegistryTest`: registration, dedup, deposit + withdraw paths | `/builders` → Clause validation; `/local-commerce` → clause-typed events |
 | E-4 | Seller deposit = staked intent (K4): withdraw allowed at ANY time (no lock), returns the deposit and clears the dedup guard — de-surfacing is the price; re-registration allowed after | `register()`: deposit-bound match + dedup guard; `withdraw()`: requires registered, pays back the deposit, clears the guard. `updateProfile()` is a separate caller-only path that emits `SellerProfileUpdated` without touching the deposit | `SellerRegistryTest`: register, deposit-bound match, dedup, withdraw-any-time, re-registration, updateProfile (only-self, no deposit movement); e2e `seller-withdraw` (UI round-trip + exact registry ETH delta) | `/local-commerce` → Seller Registry; `/sellers`; `/builders` → Seller identity |
-| E-6 | FIG supply cap: $\leq$ 1B on every mint | `mint()`: `if (totalSupply() + amount > MAX_SUPPLY) revert SupplyCapExceeded()` + reentrancy guard | `FigToken.t.sol`: cap enforcement, multi-minter, renounce | `/papers/fig-schelling-point-token` → supply integrity |
+| E-6 | Florin supply cap: $\leq$ 1B on every mint | `mint()`: `if (totalSupply() + amount > MAX_SUPPLY) revert SupplyCapExceeded()` + reentrancy guard | `FlorinToken.t.sol`: cap enforcement, multi-minter, renounce | `/papers/florin-schelling-point-token` → supply integrity |
 
 ---
 
@@ -291,7 +291,7 @@ The coordinator is merkle-only: it merkle-binds each attestation to its signed a
 Foundry-covered companion:
 - `testFuzz_contentRefIsKeccakOfContent` — emitted `contentRef` equals `keccak256(content)` for arbitrary bytes
 
-**FigToken (7 sub-rules from 6 declared) — `rule_sanity: none` (vacuity heuristic not meaningful for these state-invariant claims)**
+**FlorinToken (7 sub-rules from 6 declared) — `rule_sanity: none` (vacuity heuristic not meaningful for these state-invariant claims)**
 
 | CVL rule | Maps to | Type |
 |---|---|---|
@@ -304,7 +304,7 @@ Foundry-covered companion:
 
 ### Status
 
-25 declared rules across 4 specs (FigaroCore 8 + FigToken 6 +
+25 declared rules across 4 specs (FigaroCore 8 + FlorinToken 6 +
 AttestationCoordinator 4 + TokenOpsVerification 7). **All green**. AC
 re-dispatched 2026-04-23 after the agreement-receipt ABI change.
 
@@ -313,7 +313,7 @@ re-dispatched 2026-04-23 after the agreement-receipt ABI change.
 | FigaroCore | https://prover.certora.com/output/9512759/dc9fa6e2d9dd4361845214222bd70258 (2026-04-21) |
 | AttestationCoordinator | https://prover.certora.com/output/9512759/dd5e5e4dde634419967d3be4958a0eae (2026-04-23, commitment-arg ABI + receipt binding) |
 | TokenOpsVerification | https://prover.certora.com/output/9512759/4768752379cc434aa53cc7b8894cdd25 (2026-04-23, FigaroCore token-flow universal proof) |
-| FigToken | https://prover.certora.com/output/9512759/e48a5c0c4b94465ba93b44a716b31025 (2026-04-21) |
+| FlorinToken | https://prover.certora.com/output/9512759/e48a5c0c4b94465ba93b44a716b31025 (2026-04-21) |
 
 ```bash
 # Install
@@ -353,11 +353,11 @@ owns the harness inventory.
 
 | Layer | Census | What it covers |
 |---|---|---|
-| **TLA+ model checking** | 2 models, 15 invariants (FigaroCore: 7 across 6,087,113 states; FigToken: 8 across 160,844 states) — `./scripts/test-tla.sh` | Kernel safety (conservation, solvency, bonding, atomicity, resolution) + FIG token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, renounce-monotonicity, deployer-cannot-mint-after-renounce) |
+| **TLA+ model checking** | 2 models, 15 invariants (FigaroCore: 7 across 6,087,113 states; FlorinToken: 8 across 160,844 states) — `./scripts/test-tla.sh` | Kernel safety (conservation, solvency, bonding, atomicity, resolution) + florin token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, renounce-monotonicity, deployer-cannot-mint-after-renounce) |
 | **Halmos symbolic testing** | 1 harness, 7 properties — `./scripts/test-halmos.sh` | FigaroCore (7): token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. |
-| **Certora formal verification** | 4 specs, 25 declared rules (8 + 4 + 7 + 6) — `./scripts/test-certora.sh` | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability (merkle-only — no content-shape validation). TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. FigToken: supply cap + minter registry preservation. |
-| **Echidna fuzzing** | 2 harnesses, 15 properties (kernel 7 + FigToken 8) — `./scripts/test-echidna.sh` | `EchidnaFuzzer` Kernel (7): solvency, monotonicity, buyer dominance, atomicity, cumulative accounting, conservation, active-count consistency. `EchidnaFigToken` (8): FigToken supply/minter fuzzing. (`EchidnaToken` is the kernel harness's support ERC-20, not a harness.) |
-| **Foundry unit tests** | derive: `forge test --via-ir` (the summary line is the census; the fork suite skips without `MAINNET_RPC_URL`) | Core lifecycle, revert branches, coordinators (incl. the Permit2 witness + its mainnet-fork parity suite), gas, FIG |
+| **Certora formal verification** | 4 specs, 25 declared rules (8 + 4 + 7 + 6) — `./scripts/test-certora.sh` | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability (merkle-only — no content-shape validation). TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. FlorinToken: supply cap + minter registry preservation. |
+| **Echidna fuzzing** | 2 harnesses, 15 properties (kernel 7 + FlorinToken 8) — `./scripts/test-echidna.sh` | `EchidnaFuzzer` Kernel (7): solvency, monotonicity, buyer dominance, atomicity, cumulative accounting, conservation, active-count consistency. `EchidnaFlorinToken` (8): FlorinToken supply/minter fuzzing. (`EchidnaToken` is the kernel harness's support ERC-20, not a harness.) |
+| **Foundry unit tests** | derive: `forge test --via-ir` (the summary line is the census; the fork suite skips without `MAINNET_RPC_URL`) | Core lifecycle, revert branches, coordinators (incl. the Permit2 witness + its mainnet-fork parity suite), gas, florin |
 | **SDK Vitest** | derive: `cd sdk && npx vitest run` | Event parsing, state reconstruction, bond math, commitments, discovery, clauses, swap-funding witness parity, agent origination |
 | **Frontend Vitest** | derive: `cd frontend && npx vitest run` | Components, hooks, semantic derivation, assembly, runtime identity |
 | **Playwright** | derive: `cd frontend && npx playwright test --list` | Devnet e2e (UI action → UI reaction against the live chain) + the mobile viewport spec |
@@ -380,14 +380,14 @@ forge test --via-ir
 
 Prereqs (one-time): `brew install z3 && pipx install halmos`.
 
-### Certora (25 declared rules across 4 specs: FigaroCore, AttestationCoordinator, TokenOpsVerification, FigToken — requires API key)
+### Certora (25 declared rules across 4 specs: FigaroCore, AttestationCoordinator, TokenOpsVerification, FlorinToken — requires API key)
 
 ```bash
 export CERTORAKEY=<key from certora.com/signup>
 ./scripts/test-certora.sh        # wrapper: checks prereqs and runs all specs
 ```
 
-### Echidna (2 harnesses, 15 properties: kernel 7 + FigToken 8)
+### Echidna (2 harnesses, 15 properties: kernel 7 + FlorinToken 8)
 
 ```bash
 ./scripts/test-echidna.sh

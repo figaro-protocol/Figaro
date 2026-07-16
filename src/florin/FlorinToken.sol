@@ -5,11 +5,11 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-/// @title FigToken
-/// @notice Canonical ERC-20 + EIP-2612 permit token for the Figaro protocol.
+/// @title FlorinToken
+/// @notice Canonical ERC-20 + EIP-2612 permit token for the Figaro protocol: the florin.
 /// @dev Minter registry: deployer can register emission/vesting contracts as minters (one-shot, capped, non-upgradeable). No legacy emission logic remains.
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
-contract FigToken is ERC20Permit, ReentrancyGuard {
+contract FlorinToken is ERC20Permit, ReentrancyGuard {
     error NotMinter();
     error DeployerMintRenounced();
     error ZeroAddress();
@@ -36,7 +36,7 @@ contract FigToken is ERC20Permit, ReentrancyGuard {
 
     event MinterRegistered(address indexed minter, uint256 cap);
 
-    constructor() ERC20("Figaro", "FIG") ERC20Permit("Figaro") {
+    constructor() ERC20("Florin", "FLORIN") ERC20Permit("Florin") {
         deployer = msg.sender;
     }
 

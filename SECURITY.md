@@ -23,7 +23,7 @@ small project — but every report is read.
 In scope:
 
 - `src/**/*.sol` — the kernel (`FigaroCore.sol`, `CommitmentTypes.sol`), the
-  attestation / clause / mechanism contracts, the FIG token contracts, the
+  attestation / clause / mechanism contracts, the florin token contracts, the
   per-clause validators, and the batch verifier.
 - `formal/` — the TLA+ models and Certora CVL specs, if a spec asserts an
   invariant the kernel does not actually hold.

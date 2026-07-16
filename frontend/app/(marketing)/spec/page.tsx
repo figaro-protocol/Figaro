@@ -86,21 +86,21 @@ export default function Specifications() {
             <MarketingSection title="Token">
                 <ul className="space-y-4">
                     <ContractEntry
-                        id="FigToken"
-                        title="FigToken.sol"
-                        href={`${GH}/fig/FigToken.sol`}
+                        id="FlorinToken"
+                        title="FlorinToken.sol"
+                        href={`${GH}/florin/FlorinToken.sol`}
                         meta="ERC-20 + permit · 1B cap"
                         desc="ERC-20 + EIP-2612 permit. 1,000,000,000 MAX_SUPPLY hard cap on every mint. Minter registry with totalRegisteredCap. Deployer registers capped minters, then renounces."
                     />
                     <ContractEntry
-                        id="IFigMinter"
-                        title="IFigMinter.sol"
-                        href={`${GH}/fig/IFigMinter.sol`}
-                        desc="Single-method minter interface (mint(address, uint256)) implemented by FigToken. Anchors the minter-registry composition pattern."
+                        id="IFlorinMinter"
+                        title="IFlorinMinter.sol"
+                        href={`${GH}/florin/IFlorinMinter.sol`}
+                        desc="Single-method minter interface (mint(address, uint256)) implemented by FlorinToken. Anchors the minter-registry composition pattern."
                     />
                 </ul>
                 <p className="text-xs text-ink-muted mt-4">
-                    Allocation: 100M founders (genesis), 300M DAO (genesis), 600M RPGF to clause authors + assembly designers of record (RpgfMinter &mdash; registered at genesis; optimistic post / challenge / finalize / claim). See <Link href="/papers/fig-schelling-point-token" className="underline">FIG</Link>.
+                    Allocation: 100M founders (genesis), 300M DAO (genesis), 600M RPGF to clause authors + assembly designers of record (RpgfMinter &mdash; registered at genesis; optimistic post / challenge / finalize / claim). See <Link href="/papers/florin-schelling-point-token" className="underline">the florin</Link>.
                 </p>
             </MarketingSection>
 

@@ -28,7 +28,7 @@ You do not auto-commit. You produce drafts; the operator reviews and commits.
 - **CLAUDE.md § "What Figaro Is"** — the two mechanisms and the three mistakes
   to avoid. A paper that collapses them is wrong regardless of its prose.
 - `docs/THEORY.md` (the game-theoretic derivation) and, when the paper touches
-  economics or token design, `docs/VISION.md` + `docs/FIG_TOKEN.md`.
+  economics or token design, `docs/VISION.md` + `docs/FLORIN_TOKEN.md`.
 - The authorship memories (read via absolute path):
   `/Users/adaliana/.claude/projects/-Users-adaliana-Figaro/memory/reference_project_genesis.md`
   (provenance — use for ANY acknowledgement or lineage decision),

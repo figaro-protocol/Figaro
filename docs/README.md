@@ -30,7 +30,7 @@ content. (This is the instruction-system form of "derive, don't store.")
 | Test-harness inventory, layer boundaries | `TESTING.md` |
 | Commands, env vars, services, deploy scripts | `LOCAL_DEV.md` |
 | Canonical names per tier | `LEXICON.md` |
-| FIG token, allocations | `FIG_TOKEN.md` |
+| The florin, allocations | `FLORIN_TOKEN.md` |
 | Batch-scaling design (deferred) | `SCALING_STRATEGY.md` |
 | Release gates, frozen audit surface | `RELEASE_READINESS.md` |
 | Public-graph / RPGF incentive rationale | `PUBLIC_GRAPH_MODEL.md` |
@@ -39,13 +39,13 @@ content. (This is the instruction-system form of "derive, don't store.")
 
 ## Start Here
 
-1. `VISION.md` — protocol vision (post-firm economy, bonded commitment, FIG)
+1. `VISION.md` — protocol vision (post-firm economy, bonded commitment, the florin)
 2. `THEORY.md` — game-theoretic derivation of the six properties
-3. `FIG_TOKEN.md` — token canonical reference
+3. `FLORIN_TOKEN.md` — token canonical reference
 
 ## Main Groups
 
-- **Protocol and framing**: `VISION.md`, `THEORY.md`, `FIG_TOKEN.md`
+- **Protocol and framing**: `VISION.md`, `THEORY.md`, `FLORIN_TOKEN.md`
 - **Runtime and frontend**: `OPEN_WORLD.md` (the open-world paradigm + runtime composition model + semantic-derivation layer), `FRONTEND.md` (route + lib catalogue), `DESIGN_TOKENS.md` (MUJI theme spec), `AI_AGENT_COORDINATION.md`
 - **Inventories**: `CONTRACTS.md`, `CLAUSES.md`, `FRONTEND.md`, `TESTING.md` — the four split-out inventory docs (contracts / clauses / frontend / tests; `CLAUSES.md` also carries the anchoring doctrine)
 - **Composition and disclosure**: `PUBLIC_GRAPH_MODEL.md` (the emissions clause + witness-stage disclosure channel is owned by `CLAUSES.md`; the aspirational GHG protocol spec was deleted 2026-07-10 — its two load-bearing rulings, reader-derived scope and offset-out-of-scope, live in `CLAUSES.md`)

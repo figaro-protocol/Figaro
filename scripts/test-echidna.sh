@@ -8,7 +8,7 @@
 #        echidna_cumulative_accounting     echidna_atomic_resolution
 #        echidna_state_monotonicity
 #
-#   2. FigToken (src/echidna/EchidnaFigToken.sol) — 8 invariants
+#   2. FlorinToken (src/echidna/EchidnaFlorinToken.sol) — 8 invariants
 #        echidna_max_supply_never_exceeded            echidna_deployer_can_renounce
 #        echidna_deployer_cannot_mint_after_renounce  echidna_minter_cap_enforced
 #        echidna_no_zero_address_minter               echidna_no_mint_to_zero_address
@@ -55,13 +55,13 @@ echidna . \
     --config echidna.yaml \
     "$@"
 
-# The FigToken harness lives in src/echidna/ alongside the kernel harness.
+# The FlorinToken harness lives in src/echidna/ alongside the kernel harness.
 # Invoked by explicit file path (not `echidna . --contract X`) so the pass
 # keeps its own --workers / --timeout knobs independent of echidna.yaml.
 echo ""
-echo "── Pass 2/2: FigToken (EchidnaFigToken) ──"
-echidna src/echidna/EchidnaFigToken.sol \
-    --contract EchidnaFigToken \
+echo "── Pass 2/2: FlorinToken (EchidnaFlorinToken) ──"
+echidna src/echidna/EchidnaFlorinToken.sol \
+    --contract EchidnaFlorinToken \
     --test-limit 50000 \
     --seq-len 30 \
     --format text \

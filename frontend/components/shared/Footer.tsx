@@ -27,7 +27,7 @@ export function Footer() {
                         <Link href="/local-commerce" className={COL_LINK_CLS}>Local Commerce reference</Link>
                         <Link href="/integrate" className={COL_LINK_CLS}>Integrate</Link>
                         <Link href="/clause-rewards" className={COL_LINK_CLS}>Clause rewards</Link>
-                        <Link href="/papers/fig-schelling-point-token" className={COL_LINK_CLS}>FIG token</Link>
+                        <Link href="/papers/florin-schelling-point-token" className={COL_LINK_CLS}>florin token</Link>
                     </div>
                     <div className="space-y-2">
                         <Link href="/users" className={COL_LINK_CLS}>Users</Link>

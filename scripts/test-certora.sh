@@ -13,7 +13,7 @@
 #   certora/FigaroCore.spec             — kernel state-machine invariants (8 rules)
 #   certora/AttestationCoordinator.spec — role-gate + parametric Core-immutability (4 rules)
 #   certora/TokenOpsVerification.spec   — FigaroCore token-flow invariants (7 rules)
-#   certora/FigToken.spec               — supply cap + minter registry (6 rules)
+#   certora/FlorinToken.spec               — supply cap + minter registry (6 rules)
 #
 # Conf flag note:
 #   Any spec whose rules pass symbolic `bytes` (dynamic-length) to a function
@@ -69,7 +69,7 @@ fi
 if [ "$#" -gt 0 ]; then
     SPECS=("$@")
 else
-    SPECS=(FigaroCore AttestationCoordinator TokenOpsVerification FigToken)
+    SPECS=(FigaroCore AttestationCoordinator TokenOpsVerification FlorinToken)
 fi
 
 for spec in "${SPECS[@]}"; do

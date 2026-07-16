@@ -2,17 +2,17 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import {FigToken} from "src/fig/FigToken.sol";
-import {RpgfMinter} from "src/fig/RpgfMinter.sol";
+import {FlorinToken} from "src/florin/FlorinToken.sol";
+import {RpgfMinter} from "src/florin/RpgfMinter.sol";
 import {MockArbitrator} from "src/mocks/MockArbitrator.sol";
 
 /// @title RpgfMinterTest
 /// @notice Foundry tests for the optimistic RPGF minter: post/challenge/
 ///         dispute/rule/concede/finalize/claim lifecycle, bond routing,
-///         budget backstops, and the FIG genesis coupling (minter registered
+///         budget backstops, and the florin genesis coupling (minter registered
 ///         before renounce).
 contract RpgfMinterTest is Test {
-    FigToken internal fig;
+    FlorinToken internal florin;
     MockArbitrator internal arbitrator;
     RpgfMinter internal minter;
 
@@ -32,7 +32,7 @@ contract RpgfMinterTest is Test {
     uint64 internal t2Post;
 
     function setUp() public {
-        fig = new FigToken();
+        florin = new FlorinToken();
         arbitrator = new MockArbitrator();
 
         uint64 nowTs = uint64(block.timestamp);
@@ -40,7 +40,7 @@ contract RpgfMinterTest is Test {
         t2Post = nowTs + 60 days;
 
         minter = new RpgfMinter(
-            address(fig),
+            address(florin),
             address(arbitrator),
             keccak256("formula-spec-v1"),
             BOND,
@@ -52,8 +52,8 @@ contract RpgfMinterTest is Test {
 
         // Genesis coupling: the minter registers BEFORE renounce, like the
         // deploy flow. 600M cap = sum of tranche budgets.
-        fig.registerMinter(address(minter), 600_000_000 ether);
-        fig.renounceDeployerMint();
+        florin.registerMinter(address(minter), 600_000_000 ether);
+        florin.renounceDeployerMint();
 
         vm.deal(poster, 100 ether);
         vm.deal(challenger, 100 ether);
@@ -94,7 +94,7 @@ contract RpgfMinterTest is Test {
         );
         vm.expectRevert(RpgfMinter.ZeroAddress.selector);
         new RpgfMinter(
-            address(fig), address(0), bytes32(0), BOND, 1, 1, [nowTs, nowTs + 1, nowTs + 2], [uint256(1), 1, 1]
+            address(florin), address(0), bytes32(0), BOND, 1, 1, [nowTs, nowTs + 1, nowTs + 2], [uint256(1), 1, 1]
         );
     }
 
@@ -102,15 +102,15 @@ contract RpgfMinterTest is Test {
         uint64 nowTs = uint64(block.timestamp);
         vm.expectRevert(RpgfMinter.ZeroBond.selector);
         new RpgfMinter(
-            address(fig), address(arbitrator), bytes32(0), 0, 1, 1, [nowTs, nowTs + 1, nowTs + 2], [uint256(1), 1, 1]
+            address(florin), address(arbitrator), bytes32(0), 0, 1, 1, [nowTs, nowTs + 1, nowTs + 2], [uint256(1), 1, 1]
         );
         vm.expectRevert(RpgfMinter.ZeroWindow.selector);
         new RpgfMinter(
-            address(fig), address(arbitrator), bytes32(0), BOND, 0, 1, [nowTs, nowTs + 1, nowTs + 2], [uint256(1), 1, 1]
+            address(florin), address(arbitrator), bytes32(0), BOND, 0, 1, [nowTs, nowTs + 1, nowTs + 2], [uint256(1), 1, 1]
         );
         vm.expectRevert(RpgfMinter.ZeroAmount.selector);
         new RpgfMinter(
-            address(fig), address(arbitrator), bytes32(0), BOND, 1, 1, [nowTs, nowTs + 1, nowTs + 2], [uint256(0), 1, 1]
+            address(florin), address(arbitrator), bytes32(0), BOND, 1, 1, [nowTs, nowTs + 1, nowTs + 2], [uint256(0), 1, 1]
         );
     }
 
@@ -118,7 +118,7 @@ contract RpgfMinterTest is Test {
         uint64 nowTs = uint64(block.timestamp);
         vm.expectRevert(RpgfMinter.PostTimesNotAscending.selector);
         new RpgfMinter(
-            address(fig), address(arbitrator), bytes32(0), BOND, 1, 1, [nowTs, nowTs, nowTs + 1], [uint256(1), 1, 1]
+            address(florin), address(arbitrator), bytes32(0), BOND, 1, 1, [nowTs, nowTs, nowTs + 1], [uint256(1), 1, 1]
         );
     }
 
@@ -328,14 +328,14 @@ contract RpgfMinterTest is Test {
 
     // ── Claim ───────────────────────────────────────────────────────
 
-    function test_ClaimMintsFigAgainstFinalizedRoot() public {
+    function test_ClaimMintsFlorinAgainstFinalizedRoot() public {
         (bytes32 root, bytes32[] memory proofAlice) = _twoLeafTree(_leaf(alice, 100 ether), _leaf(bob, 50 ether));
         _postAndFinalize(0, root);
 
         // Anyone may execute the claim; the mint goes to the account.
         vm.prank(bob);
         minter.claim(0, alice, 100 ether, proofAlice);
-        assertEq(fig.balanceOf(alice), 100 ether);
+        assertEq(florin.balanceOf(alice), 100 ether);
         assertTrue(minter.claimed(0, alice));
 
         vm.expectRevert(abi.encodeWithSelector(RpgfMinter.AlreadyClaimed.selector, 0, alice));
@@ -372,11 +372,11 @@ contract RpgfMinterTest is Test {
         minter.claim(0, bob, 1 ether, proofBob);
     }
 
-    function test_FigMinterCapBoundsTotalMintingAcrossTranches() public view {
-        // The outer FigToken cap (600M) is the second backstop.
-        (uint256 cap,) = fig.minters(address(minter));
+    function test_FlorinMinterCapBoundsTotalMintingAcrossTranches() public view {
+        // The outer FlorinToken cap (600M) is the second backstop.
+        (uint256 cap,) = florin.minters(address(minter));
         assertEq(cap, 600_000_000 ether);
-        assertEq(fig.totalRegisteredCap(), 600_000_000 ether);
+        assertEq(florin.totalRegisteredCap(), 600_000_000 ether);
     }
 
     // ── Withdraw ────────────────────────────────────────────────────

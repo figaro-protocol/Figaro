@@ -92,7 +92,7 @@ formal/states/
 formal/.tlacache/
 formal/MC_trace_*
 # TLA+ Toolbox scratch: auto-generated counterexample/trace-exploration modules.
-# Pattern covers FigaroCore, FigToken, and any future model's TTrace outputs.
+# Pattern covers FigaroCore, FlorinToken, and any future model's TTrace outputs.
 formal/*_TTrace_*.tla
 formal/*_TTrace_*.bin
 # tla2tools.jar is a tool binary, not source — downloaded on demand by

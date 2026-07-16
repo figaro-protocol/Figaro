@@ -8,7 +8,7 @@ CLAUDE.md keeps the run commands; this file is the full inventory of test files,
 `AttestationCoordinatorTest`, `ClauseRegistryTest`, `AssemblyRegistryTest`,
 `SellerRegistryTest`, `GasCeilingTest`, `WitnessSwapAndCommitCoordinatorTest`,
 `WitnessSwapAndCommitCoordinatorForkTest`, `FigaroBatchVerifierTest`,
-`ReentrancyAdversarialTest`, `Eip712ParityTest`, `HalmosFigaroCore`, `fig/FigToken.t.sol`.
+`ReentrancyAdversarialTest`, `Eip712ParityTest`, `HalmosFigaroCore`, `fig/FlorinToken.t.sol`.
 
 `ReentrancyAdversarialTest` hands the protocol a `MockReentrantToken` that
 re-enters mid-transfer and asserts the `nonReentrant` guard fires (nested call
@@ -42,7 +42,7 @@ our own digest reconstruction (`MockWitnessPermit2`).
 | `FigaroCore.spec` | 8 | Status monotonicity, transitions, active count, buyer dominance, no double-commit, cumulative monotonicity, rootBuyer immutable, currency immutable |
 | `AttestationCoordinator.spec` | 4 | Role-gate on `attestAsBuyer` (non-buyer reverts; success ⟹ caller is buyer) + parametric Core-immutability (AC cannot change orderStatus or processes[]). No on-chain clause-content validator — well-formedness is an off-chain concern. |
 | `TokenOpsVerification.spec` | 7 | Universal FigaroCore token-flow: exact commit deltas (buyer/seller/Core), allowance-drain safety (∀ address), commit + single-order resolve conservation, single-order resolve exact payouts. Generalizes Halmos root-only coverage to arbitrary sub-orders. |
-| `FigToken.spec` | 6 | Supply cap, registered-cap bound, registered-cap monotonicity, renounce one-way latch, minter cap immutability, minter within cap |
+| `FlorinToken.spec` | 6 | Supply cap, registered-cap bound, registered-cap monotonicity, renounce one-way latch, minter cap immutability, minter within cap |
 | `BatchVerifierTokenOps.spec` | 4 | FigaroBatchVerifier net-position settlement: user delta = payout−deposit, contract delta = deposit−payout, allowance-drain safety, conservation (single-position; inductive generalization documented in-spec). Realigned to the witness model; cloud run green 2026-07-16. |
 
 Companion: `certora/token-ops.inventory` + `scripts/lint-token-ops.sh` — declarative inventory of every ERC20 transfer call site in `src/`; the linter (run as a `./scripts/test-certora.sh` prelude) fails if a new transfer call merges without an inventory entry.
@@ -52,18 +52,18 @@ Companion: `certora/token-ops.inventory` + `scripts/lint-token-ops.sh` — decla
 | Harness | Properties | Path |
 |---|---|---|
 | `EchidnaFuzzer` | 7 | `src/echidna/EchidnaFuzzer.sol` — kernel: solvency, active-count consistency, cumulative accounting, state monotonicity, token conservation, buyer dominance, atomic resolution |
-| `EchidnaFigToken` | 8 | `src/echidna/EchidnaFigToken.sol` — FigToken: MAX_SUPPLY never exceeded, deployer can renounce, no deployer mint after renounce, minter cap enforced, no zero-address minter, no mint to zero address, total supply = sum of balances, transfer preserves supply |
+| `EchidnaFlorinToken` | 8 | `src/echidna/EchidnaFlorinToken.sol` — FlorinToken: MAX_SUPPLY never exceeded, deployer can renounce, no deployer mint after renounce, minter cap enforced, no zero-address minter, no mint to zero address, total supply = sum of balances, transfer preserves supply |
 
 `src/echidna/EchidnaToken.sol` is not a harness — it is the minimal ERC-20 the kernel
 harness fuzzes against (`EchidnaFuzzer.sol` imports it); it declares no `echidna_` properties.
 
-## TLA+ (`formal/`) — 15 invariants across 2 models (FigaroCore 7 + FigToken 8)
+## TLA+ (`formal/`) — 15 invariants across 2 models (FigaroCore 7 + FlorinToken 8)
 
 FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
 `WalletNonNegative`, `CumulativeIntegrity`, `ActiveCountCorrect`,
 `ResolutionAlwaysPossible`, `TypeOK`.
 
-FigToken (`FigToken.tla` + `FigToken.cfg`): `Inv_MaxSupply`,
+FlorinToken (`FlorinToken.tla` + `FlorinToken.cfg`): `Inv_MaxSupply`,
 `Inv_DeployerCannotMintAfterRenounce`, `Inv_MinterCap`,
 `Inv_CapBelowMaxSupply`, `Inv_SupplyEqualsSumMinted`, `Inv_NonNegative`,
 `Inv_NoMintToZero`, `Inv_BalancesSumToSupply`.

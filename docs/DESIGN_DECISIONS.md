@@ -92,7 +92,7 @@ is a choice, not an exploit.
 
 **Pattern**: FigaroCore, AttestationCoordinator, ClauseRegistry,
 SellerRegistry, and AssemblyRegistry have no owner, no
-pause function, no upgrade path, and no admin recovery. FigToken has a one-shot
+pause function, no upgrade path, and no admin recovery. FlorinToken has a one-shot
 deployer who registers minter contracts then renounces (`deployerMintRenounced`)
 — a bounded privileged actor, documented separately in `CONTRACTS.md`.
 

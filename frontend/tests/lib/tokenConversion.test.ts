@@ -9,7 +9,7 @@ import {
 } from "@/lib/shared/tokenConversion";
 
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as const;
-const FIG = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as const;
+const FLORIN = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as const;
 const QUOTER = "0x61fFE014bA17989E743c5F6cB21bF9697530B21e" as const;
 
 describe("DEFAULT_TOKEN_CONVERSION_SERVICE", () => {
@@ -26,7 +26,7 @@ describe("DEFAULT_TOKEN_CONVERSION_SERVICE", () => {
     it("returns null for cross-token without registered provider", async () => {
         const result = await DEFAULT_TOKEN_CONVERSION_SERVICE.quote({
             fromTokenAddress: USDC,
-            toTokenAddress: FIG,
+            toTokenAddress: FLORIN,
             amountIn: 1_000_000n,
         });
         expect(result).toBeNull();
@@ -55,15 +55,15 @@ describe("createFixedRateQuoter", () => {
         expect(result?.source).toBe("identity");
     });
 
-    it("returns the configured rate (USDC → FIG @ 2.0)", async () => {
+    it("returns the configured rate (USDC → FLORIN @ 2.0)", async () => {
         const quoter = createFixedRateQuoter({
             rates: buildFixedRateTable({
-                [USDC]: { [FIG]: 2 },
+                [USDC]: { [FLORIN]: 2 },
             }),
         });
         const result = await quoter.quote({
             fromTokenAddress: USDC,
-            toTokenAddress: FIG,
+            toTokenAddress: FLORIN,
             amountIn: 100n,
         });
         expect(result?.amountOut).toBe(200n);
@@ -74,7 +74,7 @@ describe("createFixedRateQuoter", () => {
         const quoter = createFixedRateQuoter({ rates: new Map() });
         const result = await quoter.quote({
             fromTokenAddress: USDC,
-            toTokenAddress: FIG,
+            toTokenAddress: FLORIN,
             amountIn: 100n,
         });
         expect(result).toBeNull();
@@ -83,12 +83,12 @@ describe("createFixedRateQuoter", () => {
     it("returns null when the configured rate is zero or negative", async () => {
         const quoter = createFixedRateQuoter({
             rates: buildFixedRateTable({
-                [USDC]: { [FIG]: 0 },
+                [USDC]: { [FLORIN]: 0 },
             }),
         });
         const result = await quoter.quote({
             fromTokenAddress: USDC,
-            toTokenAddress: FIG,
+            toTokenAddress: FLORIN,
             amountIn: 100n,
         });
         expect(result).toBeNull();
@@ -97,12 +97,12 @@ describe("createFixedRateQuoter", () => {
     it("preserves precision on bigint amounts at sub-rate fractions", async () => {
         const quoter = createFixedRateQuoter({
             rates: buildFixedRateTable({
-                [USDC]: { [FIG]: 0.5 },
+                [USDC]: { [FLORIN]: 0.5 },
             }),
         });
         const result = await quoter.quote({
             fromTokenAddress: USDC,
-            toTokenAddress: FIG,
+            toTokenAddress: FLORIN,
             amountIn: 10_000_000_000n,
         });
         expect(result?.amountOut).toBe(5_000_000_000n);
@@ -137,7 +137,7 @@ describe("createUniswapV3Quoter", () => {
 
         const result = await quoter.quote({
             fromTokenAddress: USDC,
-            toTokenAddress: FIG,
+            toTokenAddress: FLORIN,
             amountIn: 1_000_000n,
         });
 
@@ -157,7 +157,7 @@ describe("createUniswapV3Quoter", () => {
 
         const result = await quoter.quote({
             fromTokenAddress: USDC,
-            toTokenAddress: FIG,
+            toTokenAddress: FLORIN,
             amountIn: 1_000_000n,
         });
 
@@ -178,7 +178,7 @@ describe("createUniswapV3Quoter", () => {
 
         const result = await quoter.quote({
             fromTokenAddress: USDC,
-            toTokenAddress: FIG,
+            toTokenAddress: FLORIN,
             amountIn: 1n,
         });
 
@@ -196,7 +196,7 @@ describe("createUniswapV3Quoter", () => {
 
         const result = await quoter.quote({
             fromTokenAddress: USDC,
-            toTokenAddress: FIG,
+            toTokenAddress: FLORIN,
             amountIn: 1_000_000n,
         });
 
@@ -214,7 +214,7 @@ describe("createUniswapV3Quoter", () => {
 
         const result = await quoter.quote({
             fromTokenAddress: USDC,
-            toTokenAddress: FIG,
+            toTokenAddress: FLORIN,
             amountIn: 1n,
         });
 
@@ -244,7 +244,7 @@ describe("createUniswapV3Quoter", () => {
 describe("applySlippageFloor", () => {
     const QUOTE = {
         fromTokenAddress: USDC,
-        toTokenAddress: FIG,
+        toTokenAddress: FLORIN,
         amountIn: 1_000_000n,
         amountOut: 1_900_000n,
         source: "uniswap-v3-fee-500",

@@ -45,7 +45,7 @@ import {
 export interface AcceptedTokenMetadata {
     /** ERC-20 contract address. */
     address: `0x${string}`;
-    /** Token symbol, e.g. "USDC", "FIG". */
+    /** Token symbol, e.g. "USDC", "FLORIN". */
     symbol: string;
     /** Human-readable name. */
     name?: string;

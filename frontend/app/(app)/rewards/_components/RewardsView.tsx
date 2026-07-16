@@ -14,7 +14,7 @@
 import { useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
 import { formatEther, formatUnits } from "viem";
-import { FIG_TOKEN_ABI } from "@figaro/sdk";
+import { FLORIN_TOKEN_ABI } from "@figaro/sdk";
 import { Button } from "@/components/ui/Button";
 import { WalletGate } from "@/components/runtime/WalletGate";
 import { useMounted } from "@/hooks/useMounted";
@@ -43,15 +43,15 @@ export function RewardsView() {
     const publicClient = usePublicClient();
     const [busy, setBusy] = useState<string | null>(null);
     const [error, setError] = useState("");
-    const [figBalance, setFigBalance] = useState<bigint | null>(null);
+    const [florinBalance, setFigBalance] = useState<bigint | null>(null);
 
     useEffect(() => {
-        if (!publicClient || !account || !CONTRACTS.figToken) return;
+        if (!publicClient || !account || !CONTRACTS.florinToken) return;
         let cancelled = false;
         publicClient
             .readContract({
-                address: CONTRACTS.figToken,
-                abi: FIG_TOKEN_ABI,
+                address: CONTRACTS.florinToken,
+                abi: FLORIN_TOKEN_ABI,
                 functionName: "balanceOf",
                 args: [account],
             })
@@ -84,7 +84,7 @@ export function RewardsView() {
         <section className="container mx-auto px-6 pt-24 pb-16 max-w-3xl" data-testid="rewards-page">
             <h1 className="text-heading-h1 text-ink-heading mb-3">Rewards</h1>
             <p className="text-base text-ink-body leading-relaxed mb-8">
-                The 600M FIG reserved for clause authors and assembly designers of record,
+                The 600M florins reserved for clause authors and assembly designers of record,
                 distributed optimistically: anyone recomputes a tranche&apos;s payout from public
                 chain events and posts it under a bond; a challenge voids the posting; only a
                 root that survives its full challenge window unchallenged mints. The formula is
@@ -98,9 +98,9 @@ export function RewardsView() {
             )}
 
             <WalletGate hint="Connect a wallet to recompute, post, challenge, finalize, or claim.">
-                {account && figBalance !== null && (
-                    <p className="text-sm text-ink-muted mb-6" data-testid="fig-balance">
-                        Your FIG balance: <span className="font-mono">{formatUnits(figBalance, 18)}</span>
+                {account && florinBalance !== null && (
+                    <p className="text-sm text-ink-muted mb-6" data-testid="florin-balance">
+                        Your florin balance: <span className="font-mono">{formatUnits(florinBalance, 18)}</span>
                     </p>
                 )}
 
@@ -115,7 +115,7 @@ export function RewardsView() {
                             >
                                 <div className="flex items-baseline justify-between mb-2">
                                     <h2 className="text-base font-semibold text-ink-heading">
-                                        Tranche {t.trancheId + 1} — {formatUnits(t.amount, 18)} FIG
+                                        Tranche {t.trancheId + 1} — {formatUnits(t.amount, 18)} FLORIN
                                     </h2>
                                     <span className="text-sm text-ink-muted" data-testid={`tranche-status-${t.trancheId}`}>
                                         {status}
@@ -128,7 +128,7 @@ export function RewardsView() {
                                 )}
                                 {t.finalized && (
                                     <p className="text-sm text-ink-muted mb-3 font-mono break-all">
-                                        finalized root {t.root} · minted {formatUnits(t.minted, 18)} FIG
+                                        finalized root {t.root} · minted {formatUnits(t.minted, 18)} FLORIN
                                     </p>
                                 )}
                                 <div className="flex flex-wrap gap-3">

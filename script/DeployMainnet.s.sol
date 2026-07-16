@@ -8,8 +8,8 @@ import "../src/FigaroCore.sol";
 import "../src/AttestationCoordinator.sol";
 import "../src/ClauseRegistry.sol";
 import "../src/SellerRegistry.sol";
-import "../src/fig/FigToken.sol";
-import {RpgfMinter} from "../src/fig/RpgfMinter.sol";
+import "../src/florin/FlorinToken.sol";
+import {RpgfMinter} from "../src/florin/RpgfMinter.sol";
 import "../src/FigaroBatchVerifier.sol";
 
 /// @title DeployMainnet — Mainnet deployment of the full Figaro V5 protocol stack
@@ -33,7 +33,7 @@ import "../src/FigaroBatchVerifier.sol";
 ///                                2/5/9 to weeks 2/5/9 — time compresses when
 ///                                time is involved; ruled 2026-07-15)
 ///
-/// FIG allocation (1B cap):
+/// florin allocation (1B cap):
 ///   100M  (10%)  founders — genesis mint to FOUNDER_WALLET (no vesting, no unlock)
 ///   300M  (30%)  DAO      — genesis mint to DAO_WALLET     (no vesting, no unlock)
 ///   600M  (60%)  RPGF     — RpgfMinter registered at genesis (registerMinter
@@ -59,7 +59,7 @@ contract DeployMainnet is Script {
     address internal _attestation;
     address internal _clauses;
     address internal _sellers;
-    address internal _fig;
+    address internal _florin;
     address internal _rpgfMinter;
     address internal _batchVerifier;
 
@@ -71,7 +71,7 @@ contract DeployMainnet is Script {
         vm.startBroadcast(privateKey);
 
         _deployProtocol();
-        _deployFigEcosystem(privateKey);
+        _deployFlorinEcosystem(privateKey);
 
         vm.stopBroadcast();
 
@@ -145,7 +145,7 @@ contract DeployMainnet is Script {
         // map), matching the Rust KernelState::compute_root on the empty
         // state. ClauseRegistry anchors the witness specs: settleBatch
         // checks each proof's (clause key → spec hash) binding against
-        // contentHashOf. Not a FIG minter, never will be.
+        // contentHashOf. Not a florin minter, never will be.
         require(vm.envAddress("SP1_VERIFIER_GATEWAY") != address(0), "SP1_VERIFIER_GATEWAY not set");
         require(vm.envBytes32("SP1_PROGRAM_VKEY") != bytes32(0), "SP1_PROGRAM_VKEY not set");
         bytes32 emptyMapHash = keccak256("");
@@ -159,12 +159,12 @@ contract DeployMainnet is Script {
         console.log("FigaroBatchVerifier:    ", _batchVerifier);
     }
 
-    // ── FIG token + genesis distribution ────────────────────────────
+    // ── florin token + genesis distribution ─────────────────────────
 
-    function _deployFigEcosystem(uint256 privateKey) internal {
-        FigToken fig = new FigToken();
-        _fig = address(fig);
-        console.log("FigToken:               ", _fig);
+    function _deployFlorinEcosystem(uint256 privateKey) internal {
+        FlorinToken florin = new FlorinToken();
+        _florin = address(florin);
+        console.log("FlorinToken:               ", _florin);
 
         // The RPGF minter must exist at genesis: registerMinter only works
         // before renounce, and renounce is irreversible. formulaHash anchors
@@ -173,7 +173,7 @@ contract DeployMainnet is Script {
         // never code).
         bytes32 formulaHash = keccak256(bytes(vm.readFile("sdk/src/rpgf/formula.json")));
         RpgfMinter rpgfMinter = new RpgfMinter(
-            address(fig),
+            address(florin),
             vm.envAddress("RPGF_ARBITRATOR"),
             formulaHash,
             vm.envUint("RPGF_BOND"),
@@ -188,24 +188,24 @@ contract DeployMainnet is Script {
         );
         _rpgfMinter = address(rpgfMinter);
         console.log("RpgfMinter:             ", _rpgfMinter);
-        fig.registerMinter(_rpgfMinter, RPGF_ALLOC);
+        florin.registerMinter(_rpgfMinter, RPGF_ALLOC);
 
         // Genesis distribution: mint 100M + 300M directly to the founder and
         // DAO wallets. Register the deployer as a one-shot genesis minter with
         // cap exactly 400M so that this script is the ONLY entity that can ever
         // exercise deployer-side minting, and only for these two transfers.
         address deployer = vm.addr(privateKey);
-        fig.registerMinter(deployer, FOUNDER_ALLOC + DAO_ALLOC);
-        fig.mint(vm.envAddress("FOUNDER_WALLET"), FOUNDER_ALLOC);
-        fig.mint(vm.envAddress("DAO_WALLET"), DAO_ALLOC);
-        console.log("FigToken: genesis mint complete (founder + DAO)");
+        florin.registerMinter(deployer, FOUNDER_ALLOC + DAO_ALLOC);
+        florin.mint(vm.envAddress("FOUNDER_WALLET"), FOUNDER_ALLOC);
+        florin.mint(vm.envAddress("DAO_WALLET"), DAO_ALLOC);
+        console.log("FlorinToken: genesis mint complete (founder + DAO)");
 
         // After renounce, no new minters can ever be registered and the
         // deployer cannot mint again. At this point the full 1B cap is
         // spoken for: 400M exactly exhausted by the genesis mints, 600M
         // mintable only through the RpgfMinter's finalized merkle claims.
-        fig.renounceDeployerMint();
-        console.log("FigToken: deployer mint renounced (permanent)");
+        florin.renounceDeployerMint();
+        console.log("FlorinToken: deployer mint renounced (permanent)");
     }
 
     // ── Address summary ──────────────────────────────────────────────
@@ -217,7 +217,7 @@ contract DeployMainnet is Script {
         console.log("  NEXT_PUBLIC_ATTESTATION_COORDINATOR=  ", _attestation);
         console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=          ", _clauses);
         console.log("  NEXT_PUBLIC_SELLER_REGISTRY=        ", _sellers);
-        console.log("  NEXT_PUBLIC_FIG_TOKEN_ADDRESS=        ", _fig);
+        console.log("  NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=        ", _florin);
         console.log("  NEXT_PUBLIC_RPGF_MINTER=              ", _rpgfMinter);
         console.log("  NEXT_PUBLIC_BATCH_VERIFIER=           ", _batchVerifier);
         console.log("---");

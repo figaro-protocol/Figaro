@@ -11,7 +11,7 @@
 #        ContractSolvency           ResolutionAlwaysPossible
 #        WalletNonNegative
 #
-#   2. FigToken — via formal/FigToken.tla + formal/FigToken.cfg
+#   2. FlorinToken — via formal/FlorinToken.tla + formal/FlorinToken.cfg
 #      (MAX_SUPPLY=5, 3 minters, 6 recipients). Verifies 8 safety invariants:
 #        Inv_MaxSupply                    Inv_NonNegative
 #        Inv_DeployerCannotMintAfterRenounce  Inv_NoMintToZero
@@ -78,13 +78,13 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 2/2 — FigToken (8 invariants)"
+echo "▶ Pass 2/2 — FlorinToken (8 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
-    -config FigToken.cfg \
+    -config FlorinToken.cfg \
     -workers auto \
     -cleanup \
-    FigToken.tla \
+    FlorinToken.tla \
     "$@"
 
 echo ""

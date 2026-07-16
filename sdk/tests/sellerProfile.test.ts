@@ -15,7 +15,7 @@ describe("seller profile metadata parser", () => {
         catalogueURI: "ipfs://QmCatalogue123",
         acceptedTokens: [
             { address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", symbol: "USDC", name: "USD Coin" },
-            { address: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", symbol: "FIG" },
+            { address: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", symbol: "FLORIN" },
         ],
         defaultTokenAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
         services: {

@@ -46,7 +46,7 @@ Arrows point **up**: the UI reads the registries; the registries don't know the 
 - **Registries + RPGF.** Three parallel families, each its own anchor/identity/event stream
   (never nested): `ClauseRegistry`, `SellerRegistry`, `AssemblyRegistry`. Permissionless,
   first-write-wins, content-addressed. RPGF rewards how much a contribution helps the network
-  evolve. (`CONTRACTS.md`, `PUBLIC_GRAPH_MODEL.md`, `FIG_TOKEN.md`.)
+  evolve. (`CONTRACTS.md`, `PUBLIC_GRAPH_MODEL.md`, `FLORIN_TOKEN.md`.)
 - **The clause** — the unit that straddles the seam (below).
 - **UI + IPFS.** One frontend that composes catalogues and renders network state. The signed
   agreement and the clause/assembly specs live in IPFS, pinned; the chain keeps only

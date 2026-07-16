@@ -1,4 +1,4 @@
----- MODULE FigToken ----
+---- MODULE FlorinToken ----
 EXTENDS Naturals, Sequences, FiniteSets
 
 CONSTANTS MAX_SUPPLY, Minters, Recipients

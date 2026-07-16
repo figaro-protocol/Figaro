@@ -79,7 +79,7 @@ owning doc, not here.
 **Do not reference any contract or file not listed here or in the indexed
 `docs/` files** (full Document Index at the bottom). Primary inventories:
 
-- **`docs/CONTRACTS.md`** — smart-contract inventory: kernel, attestation, clause, mechanism modules, FIG token, mocks, "what does NOT exist".
+- **`docs/CONTRACTS.md`** — smart-contract inventory: kernel, attestation, clause, mechanism modules, florin token, mocks, "what does NOT exist".
 - **`docs/CLAUSES.md`** — clause validation architecture, the clause table, the adding-a-clause checklist.
 - **`docs/FRONTEND.md`** — frontend route catalogue, lib map, designer surface, wallet-provider scope rules.
 - **`docs/TESTING.md`** — Foundry / Halmos / Certora / Echidna / TLA+ / Vitest / Playwright harness inventory.
@@ -131,7 +131,7 @@ When in doubt, ask. Cheap question, expensive cleanup.
 
 **Figaro is not an app, a firm, or an economic system. It is the TCP/IP of Trade.** A stateless, ownerless protocol defining the smallest unit of a secure handshake: **the Bonded Commitment**. Two parties who have never met transact with mathematical certainty that cooperation is the dominant strategy — no arbitrator, no timeout, no admin backdoor.
 
-**The spine — read it before any architectural reasoning; do not re-derive or duplicate it.** Figaro is one object, the boundary, read four ways: it **HOLDS** (the chain keeps only a fingerprint; agreements, clauses, and proofs live off-chain and are *pinned*, not reconstructed), **COUPLES** (data, identity, compute/agents, and law stay in their native medium and attach through the same boundary), **EMERGES** (a minimal law is silent alone — meaning lives one level up in clauses/assemblies/processes, which the FIG/RPGF token funds), and **ADMITS** (no keeper governs; anyone or anything that can sign and bond participates). The frontend is a **reader of network state, never the custodian in the middle**. Canonical source: `/physics` + `/why` (`frontend/app/(marketing)/{physics,why}/page.tsx`) + the `project_physics_spine` memory.
+**The spine — read it before any architectural reasoning; do not re-derive or duplicate it.** Figaro is one object, the boundary, read four ways: it **HOLDS** (the chain keeps only a fingerprint; agreements, clauses, and proofs live off-chain and are *pinned*, not reconstructed), **COUPLES** (data, identity, compute/agents, and law stay in their native medium and attach through the same boundary), **EMERGES** (a minimal law is silent alone — meaning lives one level up in clauses/assemblies/processes, which the florin/RPGF token funds), and **ADMITS** (no keeper governs; anyone or anything that can sign and bond participates). The frontend is a **reader of network state, never the custodian in the middle**. Canonical source: `/physics` + `/why` (`frontend/app/(marketing)/{physics,why}/page.tsx`) + the `project_physics_spine` memory.
 
 The kernel runs **two mechanisms that compose, not substitute**, plus one security constraint:
 
@@ -173,7 +173,7 @@ Verify 3× before suggesting any change to kernel invariants. The MAD equilibriu
 
 ### Why the Name
 
-**Figaro** is Rossini's factotum of the city — the coordinator of everything without being the owner of anything. The metaphor is the thesis, not decoration; lineage → `VISION.md` "Appendix: Project Lineage". **FIG** is a speech-act identifier like ETH or USD — evaluate it by speech-register fit, not Fortune-500 brand logic. Never introduce alternative metaphors (no "Uber-killer", no "Stripe but decentralized"); the factotum framing is canonical.
+**Protocol = Figaro; its money = the florin** (FLORIN, ƒ) — a common noun: lowercase, plural florins. Figaro is Rossini's factotum: coordinates everything, owns nothing. The metaphor is the thesis, not decoration; no alternatives (no "Uber-killer" / "Stripe but decentralized"). **A money name DENOMINATES, never DESCRIBES.** Factotum (protocol) and florin (unit) stay layered, never blended. Owners → `VISION.md` "Appendix: Project Lineage"; `FLORIN_TOKEN.md` § "Name"; do not relitigate.
 
 ### Framing Discipline
 
@@ -357,6 +357,6 @@ This is the exhaustive whitelist. Files not listed are deletion candidates at ev
 
 **Architecture:** `ARCHITECTURE.md` (whole-system stack + the `clause.block` seam), `OPEN_WORLD.md` (open-world paradigm + composition model + semantic layer), `PUBLIC_GRAPH_MODEL.md`, `AI_AGENT_COORDINATION.md`, `LEXICON.md` (canonical-name-per-tier grid; documented half of the lexicon, enforced by `scripts/lint-architecture-lexicon.sh`).
 
-**Protocol-specific:** `FIG_TOKEN.md`.
+**Protocol-specific:** `FLORIN_TOKEN.md`.
 
 **Reference:** `BOL_RESEARCH.md` (bill-of-lading research, load-bearing for `DESIGN_DECISIONS.md`), `DESIGN_TOKENS.md` (MUJI theme spec; canonical token reference for Tailwind config and component primitives).

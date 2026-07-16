@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {IFigMinter} from "./IFigMinter.sol";
+import {IFlorinMinter} from "./IFlorinMinter.sol";
 import {IRpgfArbitrator} from "./IRpgfArbitrator.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
-/// @title RpgfMinter — optimistic three-tranche retroactive public-goods minter for FIG
+/// @title RpgfMinter — optimistic three-tranche retroactive public-goods minter for the florin
 /// @custom:security-contact security@figaro.org
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
-/// @notice Distributes the 600M FIG reserved for clause authors and assembly
+/// @notice Distributes the 600M florins reserved for clause authors and assembly
 ///         designers of record, in three tranches, via an OPTIMISTIC posted-root
 ///         mechanism — no proving infrastructure, no submitter role, no
 ///         discretionary panel:
@@ -52,8 +52,8 @@ import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProo
 /// @dev Per-tranche budget is enforced twice: `minted[t] + amount <= amounts[t]`
 ///      here (an over-allocating root fails late claims — such a root is
 ///      exactly what challenges are for; this is the backstop), and the outer
-///      FigToken minter cap (600M registered at genesis, before
-///      `renounceDeployerMint` — this contract must therefore exist at FIG
+///      FlorinToken minter cap (600M registered at genesis, before
+///      `renounceDeployerMint` — this contract must therefore exist at florin
 ///      genesis).
 ///
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any
@@ -67,7 +67,7 @@ contract RpgfMinter {
     uint8 public constant RULING_POSTER = 1; // poster takes both bonds
     uint8 public constant RULING_CHALLENGER = 2; // challenger takes both bonds
 
-    IFigMinter public immutable fig;
+    IFlorinMinter public immutable florin;
     IRpgfArbitrator public immutable arbitrator;
     /// @notice keccak256 of the canonical formula-spec bytes (`sdk/src/rpgf/formula.json`).
     bytes32 public immutable formulaHash;
@@ -79,7 +79,7 @@ contract RpgfMinter {
     uint64 public immutable disputeWindow;
 
     struct Tranche {
-        uint256 amount; // FIG budget of this tranche
+        uint256 amount; // florin budget of this tranche
         uint64 earliestPost; // no posting before this timestamp
         bytes32 root; // set at finalization, immutable after
         uint64 fromBlock; // finalized window (public recompute record)
@@ -163,17 +163,17 @@ contract RpgfMinter {
 
     // ── Constructor ─────────────────────────────────────────────────
 
-    /// @param _fig             The FigToken this minter mints through (must be
-    ///                         registered as a FigToken minter before renounce).
+    /// @param _florin          The FlorinToken this minter mints through (must be
+    ///                         registered as a FlorinToken minter before renounce).
     /// @param _arbitrator      The composed bond-settlement forum (config, never code).
     /// @param _formulaHash     keccak256 of the canonical formula-spec bytes.
     /// @param _bond            ETH stake for posting and for challenging.
     /// @param _challengeWindow Seconds a posting must survive to finalize.
     /// @param _disputeWindow   Seconds the poster has to escalate a challenge.
     /// @param _earliestPost    Ascending earliest-post timestamps per tranche.
-    /// @param _amounts         FIG budget per tranche.
+    /// @param _amounts         florin budget per tranche.
     constructor(
-        address _fig,
+        address _florin,
         address _arbitrator,
         bytes32 _formulaHash,
         uint256 _bond,
@@ -182,12 +182,12 @@ contract RpgfMinter {
         uint64[TRANCHE_COUNT] memory _earliestPost,
         uint256[TRANCHE_COUNT] memory _amounts
     ) {
-        if (_fig == address(0) || _arbitrator == address(0)) {
+        if (_florin == address(0) || _arbitrator == address(0)) {
             revert ZeroAddress();
         }
         if (_bond == 0) revert ZeroBond();
         if (_challengeWindow == 0 || _disputeWindow == 0) revert ZeroWindow();
-        fig = IFigMinter(_fig);
+        florin = IFlorinMinter(_florin);
         arbitrator = IRpgfArbitrator(_arbitrator);
         formulaHash = _formulaHash;
         bond = _bond;
@@ -340,7 +340,7 @@ contract RpgfMinter {
 
         claimed[trancheId][account] = true;
         t.minted += amount;
-        fig.mint(account, amount);
+        florin.mint(account, amount);
         emit Claimed(trancheId, account, amount);
     }
 

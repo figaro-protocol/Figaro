@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-// Certora CVL specification for FigToken
+// Certora CVL specification for FlorinToken
 //
-// Verifies the state-machine invariants of the FigToken minter registry:
+// Verifies the state-machine invariants of the FlorinToken minter registry:
 //   I1. totalSupply never exceeds MAX_SUPPLY
 //   I2. totalRegisteredCap never exceeds MAX_SUPPLY
 //   I3. A registered minter's minted count never exceeds its cap
@@ -70,7 +70,7 @@ rule totalRegisteredCapWithinMaxSupply(method f) {
 // `(uint256, uint256)`, not a struct with `.cap` / `.minted` in CVL's type
 // system). We destructure into local vars instead.
 //
-// Init-state holds trivially: FigToken's constructor leaves `minters`
+// Init-state holds trivially: FlorinToken's constructor leaves `minters`
 // untouched, so every (cap, minted) pair is (0, 0) and the invariant
 // `cap > 0 => minted <= cap` is vacuously true.
 // ═══════════════════════════════════════════════════════════════════

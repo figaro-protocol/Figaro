@@ -87,8 +87,8 @@ export default function Security() {
                     <li>&mdash; <strong className="text-ink-heading font-medium">Foundry</strong>: unit + integration suite, 0 failed.</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">Halmos</strong>: symbolic execution proves 7 properties of the kernel exhaustively.</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">Certora</strong>: formal verification of CVL specs covering bond conservation, atomic resolution, and authorization.</li>
-                    <li>&mdash; <strong className="text-ink-heading font-medium">TLA+</strong>: model-checking of the kernel and FIG-token state machines.</li>
-                    <li>&mdash; <strong className="text-ink-heading font-medium">Echidna</strong>: property-based fuzzing of the kernel and the FIG token.</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">TLA+</strong>: model-checking of the kernel and florin-token state machines.</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">Echidna</strong>: property-based fuzzing of the kernel and the florin token.</li>
                     <li>&mdash; <strong className="text-ink-heading font-medium">Mythril</strong>: symbolic execution for common vulnerability classes.</li>
                 </ul>
                 <p className="text-base text-ink-body leading-relaxed mb-5">

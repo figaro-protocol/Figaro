@@ -12,7 +12,7 @@ This file is the canonical inventory. CLAUDE.md indexes it; agents must not refe
 - 2 external functions: `commit` (unified dual-signed), `resolveProcess`
 - 3 mappings: `processes` (ProcessState), `orderStatus` (uint8), `orderProcessId` (bytes32)
 - EIP-712 dual-signed commitments; asymmetric bonding; direct transfer at resolution
-- Covered by Foundry unit tests, 7 Echidna properties (EchidnaFuzzer), 7 Halmos symbolic proofs (HalmosFigaroCore), and 4 Certora CVL specs across the protocol (FigaroCore, AttestationCoordinator, TokenOpsVerification, FigToken — see `docs/VERIFICATION_MAP.md` for the current per-contract verification coverage)
+- Covered by Foundry unit tests, 7 Echidna properties (EchidnaFuzzer), 7 Halmos symbolic proofs (HalmosFigaroCore), and 4 Certora CVL specs across the protocol (FigaroCore, AttestationCoordinator, TokenOpsVerification, FlorinToken — see `docs/VERIFICATION_MAP.md` for the current per-contract verification coverage)
 
 **`src/CommitmentTypes.sol`** — EIP-712 typed structs and hash functions.
 Single `Commitment` struct for both root and sub-orders; `processId` zero for root.
@@ -165,7 +165,7 @@ net token positions (pull net deposits / push net payouts;
 `FeeOnTransferDetected` guard), re-emits proven `Attestation` events (same
 topic as the coordinator's — indexers filter by address), and advances the
 state root. Immutable `verifier`/`programVKey`/`clauseRegistry`, no owner, no
-fee, no upgrade path — a program change is a fresh deploy. NOT a FIG minter.
+fee, no upgrade path — a program change is a fresh deploy. NOT a florin minter.
 The Rust side lives in `prover/` (kernel mirror, generic clause engine, SP1
 guest, sequencer); a real local SP1 Core proof of the canonical batch
 generates and verifies (`SP1_REAL_PROOF=1 cargo run -p figaro-prove-test
@@ -222,19 +222,19 @@ visibility from it. No owner, no admin, no fee, no `transferAssembly`, no
 off-chain (Layer-A SDK + read-time) concern, never an on-chain check. Foundry
 tests in `test/AssemblyRegistryTest.t.sol`.
 
-## FIG Token (`src/fig/`)
+## The florin (`src/florin/`)
 
-**`FigToken.sol`** — ERC-20 + EIP-2612 permit. 1B MAX_SUPPLY hard cap on every mint.
+**`FlorinToken.sol`** — ERC-20 + EIP-2612 permit. 1B MAX_SUPPLY hard cap on every mint.
 Reentrancy-guarded. Minter registry with `totalRegisteredCap` (sum of all registered
 caps enforced not to exceed MAX_SUPPLY). Deployer registers capped minters, then renounces.
 
-**`IFigMinter.sol`** — `mint(address, uint256)` interface FIG minter modules implement; `FigToken.registerMinter` is where implementations attach (before renounce).
+**`IFlorinMinter.sol`** — `mint(address, uint256)` interface florin minter modules implement; `FlorinToken.registerMinter` is where implementations attach (before renounce).
 
-**`RpgfMinter.sol`** — the optimistic 600M distribution (rebuilt 2026-07-15, replacing the SP1-proof-gated, submitter-role minter removed in the teardown). Permissionless bonded `postRoot` per tranche (3 tranches; window recorded for public recompute; `formulaHash` anchors the canonical formula spec), `challenge` ALWAYS voids the posting (minting stays purely mechanical — only a root surviving its full challenge window finalizes), merkle `claim` (OZ standard-tree leaves) mints through the FigToken cap with a per-tranche budget backstop. Bond cases settle on a separate track: poster `disputeChallenge`s to the composed forum (`IRpgfArbitrator`) or concedes; the forum routes bonds only, never mints. No owner, no sweep, no claim expiry; pull-payment bond withdrawal.
+**`RpgfMinter.sol`** — the optimistic 600M distribution (rebuilt 2026-07-15, replacing the SP1-proof-gated, submitter-role minter removed in the teardown). Permissionless bonded `postRoot` per tranche (3 tranches; window recorded for public recompute; `formulaHash` anchors the canonical formula spec), `challenge` ALWAYS voids the posting (minting stays purely mechanical — only a root surviving its full challenge window finalizes), merkle `claim` (OZ standard-tree leaves) mints through the FlorinToken cap with a per-tranche budget backstop. Bond cases settle on a separate track: poster `disputeChallenge`s to the composed forum (`IRpgfArbitrator`) or concedes; the forum routes bonds only, never mints. No owner, no sweep, no claim expiry; pull-payment bond withdrawal.
 
 **`IRpgfArbitrator.sol`** — the minimal provider-agnostic forum seam (`createDispute` + a `rule` callback on the minter). The forum choice is deployment config, never protocol code.
 
-**FIG allocation (canonical, 1B total):**
+**Florin allocation (canonical, 1B total):**
 - **100M (10%) founders** — genesis mint, no vesting, no unlock
 - **300M (30%) DAO**       — genesis mint, no vesting, no unlock
 - **600M (60%) RPGF** — clause authors + assembly designers of record, distributed by
@@ -254,7 +254,7 @@ then renounces — the minter must exist at genesis because `registerMinter` pre
 - `src/mocks/MockUniversalRouter.sol` — test stand-in for a swap venue; `swap(tokenIn, tokenOut, amountIn, recipient)` at a settable rate, paying out of pre-funded liquidity. Used by `WitnessSwapAndCommitCoordinatorTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_SWAP_ROUTER` (pre-funded with both devnet tokens); mainnet uses the real Uniswap Universal Router.
 - `src/mocks/MockSP1Verifier.sol` — devnet/test stand-in for Succinct's SP1 verifier gateway behind `ISP1Verifier`: accepts any proof, so the batch path runs end-to-end on Anvil without proving hardware. Deployed by `Deploy.s.sol` for `FigaroBatchVerifier`; mainnet wires the canonical gateway (`SP1_VERIFIER_GATEWAY`).
 - `src/mocks/MockReentrantToken.sol` — Foundry-tests-only malicious ERC-20 that re-enters an armed target on `transfer`/`transferFrom` (the fee-on-transfer / ERC-777 hook an attacker gets). Used by `ReentrancyAdversarialTest` to prove the `nonReentrant` guards on `FigaroCore.commit`/`resolveProcess` and `FigaroBatchVerifier.settleBatch` actually fire under a live re-entry attempt. Never deployed.
-- `src/echidna/EchidnaFuzzer.sol`, `EchidnaFigToken.sol`, `EchidnaToken.sol`
+- `src/echidna/EchidnaFuzzer.sol`, `EchidnaFlorinToken.sol`, `EchidnaToken.sol`
 
 ## What Does NOT Exist
 
@@ -273,7 +273,7 @@ Also absent: `FigaroFactory.sol`, `FigaroRouter.sol`, `governance/`, `compliance
 `TrancheVesting.sol` (founder and DAO receive tokens at genesis with no vesting),
 `ProximityTypes.sol`, `IRoleResolverV4.sol` (renamed to `IRoleResolver.sol`),
 upgradeable proxy, protocol fee, owner, or admin surface.
-FIG is not a governance token.
+The florin is not a governance token.
 
 ### Teardown state — CLOSED (the canonical statement)
 
@@ -286,8 +286,8 @@ nothing remains deferred:**
 
 - **The RPGF distribution** returned 2026-07-15 as the optimistic `RpgfMinter`
   (recipients = clause authors + assembly designers of record; mandatory-article
-  clauses excluded from scoring; the minter ships in TESTNET and gates FIG genesis).
-  `FIG_TOKEN.md` carries the allocation; `PUBLIC_GRAPH_MODEL.md` the rationale.
+  clauses excluded from scoring; the minter ships in TESTNET and gates florin genesis).
+  `FLORIN_TOKEN.md` carries the allocation; `PUBLIC_GRAPH_MODEL.md` the rationale.
 - **On-chain clause-content validation + the batch prover/verifier/sequencer**
   returned 2026-07-16 as the witness-based proof apparatus (`prover/` +
   `FigaroBatchVerifier` above). It is a STRICT upgrade over the removed prototype:

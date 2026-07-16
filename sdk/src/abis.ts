@@ -212,9 +212,9 @@ export const ASSEMBLY_REGISTRY_ABI = parseAbi([
     "error TransferFailed()",
 ]);
 
-// ── FIG Token ABIs ──────────────────────────────────────────────────────────
+// ── Florin Token ABIs ─────────────────────────────────────────────────────────
 
-export const FIG_TOKEN_ABI = parseAbi([
+export const FLORIN_TOKEN_ABI = parseAbi([
     "function balanceOf(address account) view returns (uint256)",
     "function totalSupply() view returns (uint256)",
     "function decimals() view returns (uint8)",

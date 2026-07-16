@@ -117,8 +117,8 @@ verifies locally.
 verifies state root continuity and chain binding, hash-verifies auxiliary
 data (positions, attestation events, clause events, seller events),
 executes net token transfers, and re-emits protocol-compatible events.
-The legacy FIG-mint path has been removed along with the `figToken`
-constructor argument; the batch verifier does not and will not mint FIG.
+The legacy florin-mint path has been removed along with the `florinToken`
+constructor argument; the batch verifier does not and will not mint florins.
 Uses `BatchEventData` struct to avoid stack-too-deep.
 
 **Mock verifier** (`src/mocks/MockSP1Verifier.sol`): Accepts any proof
@@ -303,7 +303,7 @@ It is gated by two prerequisites:
    event semantics, same ERC-20 interaction model.
 3. **Operational continuity** — standard RPC, stable explorers,
    reliable archive/log access, standard wallet compatibility.
-4. **Token-reward coherence** — whether FIG emission remains
+4. **Token-reward coherence** — whether florin emission remains
    single-domain or becomes network-aware; whether adding a network
    strengthens or muddies token denomination as coordination signal.
 5. **Cost under real process shapes** — root `commit`, sub-order
@@ -691,7 +691,7 @@ The verifier contract:
 2. Checks state root continuity (`prevRoot == stateRoot`)
 3. Checks chain binding (`chainId`, `verifyingContract`)
 4. Verifies auxiliary data hashes match proof commitments
-5. Executes net token transfers (mints FIG directly when the settlement token is FIG)
+5. Executes net token transfers (mints florins directly when the settlement token is the florin)
 6. Re-emits protocol-compatible events
 7. Advances the state root
 
@@ -804,7 +804,7 @@ The prototype was a Rust crate in `prover/sequencer/` — 6 modules, 22 tests.
 - Shared sequencer set with leader rotation
 - MEV protection (not currently a concern — the kernel has no MEV surface,
   but worth monitoring as usage patterns evolve)
-- Economic incentives for sequencer sellers (potentially FIG-denominated)
+- Economic incentives for sequencer sellers (potentially florin-denominated)
 
 ---
 
@@ -863,7 +863,7 @@ Security (correctness of what gets settled) does **not** require trusting the se
 **Liveness** — the property that valid resolved orders eventually get settled —
 does require trusting the sequencer. A non-submitting or slow sequencer:
 
-- Delays FIG distribution (if/when emissions are live)
+- Delays florin distribution (if/when emissions are live)
 - Delays net-position settlement for participants who are waiting on batch settlement
 - Does not affect FigaroCore directly (FigaroCore settlement is independent of batches)
 
@@ -994,5 +994,5 @@ invariants:
 - It cannot forge ZK proofs (Groth16/Plonk computational security)
 
 The worst outcome of a compromised or stopped sequencer is delayed batch
-settlement and delayed FIG distribution — both recoverable by deploying a new
+settlement and delayed florin distribution — both recoverable by deploying a new
 sequencer against the same on-chain state root.

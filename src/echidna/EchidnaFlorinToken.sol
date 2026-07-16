@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {FigToken} from "../fig/FigToken.sol";
+import {FlorinToken} from "../florin/FlorinToken.sol";
 
-/// @title Echidna property-based tests for FigToken
-contract EchidnaFigToken {
+/// @title Echidna property-based tests for FlorinToken
+contract EchidnaFlorinToken {
     // Property: MAX_SUPPLY is never exceeded
     function echidna_max_supply_never_exceeded() public view returns (bool) {
         return token.totalSupply() <= token.MAX_SUPPLY();
@@ -49,13 +49,13 @@ contract EchidnaFigToken {
         (bool ok,) = address(token).call(abi.encodeWithSignature("mint(address,uint256)", address(0), 1 ether));
         return !ok;
     }
-    FigToken public token;
+    FlorinToken public token;
     address public deployer = address(this);
     address public user1 = address(0xCAFE);
     address public user2 = address(0xF00D);
 
     constructor() {
-        token = new FigToken();
+        token = new FlorinToken();
         // Register this contract as a minter with a large cap
         token.registerMinter(address(this), 1_000_000_000 ether);
         // Mint some tokens to users for testing (deployer is msg.sender)

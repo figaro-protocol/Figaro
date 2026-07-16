@@ -267,7 +267,7 @@ The clause can be anchored in `ClauseRegistry` as
 
   "acceptedTokens": [
     { "address": "0xUSDC...", "symbol": "USDC" },
-    { "address": "0xFIG...", "symbol": "FIG" }
+    { "address": "0xF10R1N...", "symbol": "FLORIN" }
   ]
 }
 ```

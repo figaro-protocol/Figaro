@@ -35,7 +35,7 @@ The concrete tasks that remain before the public-release gate is closed:
 Scope to freeze:
 
 1. `src/`
-2. `src/fig/`
+2. `src/florin/`
 3. deploy and setup scripts that define the live Solidity surface
 
 Required output:
@@ -175,7 +175,7 @@ export CERTORAKEY=<key>
 ```
 
 Expected output: all 4 specs green (FigaroCore, AttestationCoordinator,
-TokenOpsVerification, FigToken). `Failed on rule_not_vacuous` alone is the
+TokenOpsVerification, FlorinToken). `Failed on rule_not_vacuous` alone is the
 vacuity heuristic, not a rule failure — the results table is the authority.
 
 ### Echidna Fuzzing
@@ -186,7 +186,7 @@ vacuity heuristic, not a rule failure — the results table is the authority.
 
 Prereqs: `brew install echidna`.
 
-Expected output: all properties hold on both harnesses (kernel + FigToken), exit code 0.
+Expected output: all properties hold on both harnesses (kernel + FlorinToken), exit code 0.
 
 ### TLA+ Model Checking
 
@@ -281,7 +281,7 @@ Deploy-time configuration checks to run against the mainnet deployment before
 it is treated as live. These are separate from the surface-freeze and
 external-audit gates above:
 
-- `FigToken.deployer` == the expected deployer EOA; `FigToken.deployerMintRenounced` == `true` after minter setup; `FigToken.totalSupply()` == the expected genesis allocation; every registered minter is an intended allocation contract.
+- `FlorinToken.deployer` == the expected deployer EOA; `FlorinToken.deployerMintRenounced` == `true` after minter setup; `FlorinToken.totalSupply()` == the expected genesis allocation; every registered minter is an intended allocation contract.
 - `AttestationCoordinator.core` == the deployed `FigaroCore` address.
 - `SellerRegistry.registrationDeposit` and `ClauseRegistry.registrationDeposit` == the mainnet values picked per Task 3 (NOT the devnet `0.001 ether` placeholder).
 - `AssemblyRegistry.registrationDeposit` == the mainnet value picked per Task 3 — if Task 4 disposition (1) is taken. If disposition (2) is taken, `AssemblyRegistry` is not deployed and this check does not apply.
@@ -292,7 +292,7 @@ external-audit gates above:
 
 ## Freeze Notice — Solidity Surface Frozen for External Audit
 
-**Initial freeze**: 2026-04-20. Subsequent amendments landed a pre-audit findings batch (FIG allocation restructured, `MerkleAirdrop`/`TrancheVesting` deleted, `DOMAIN_SEPARATOR()` getter, `totalRegisteredCap` enforcement); revised the `SellerRegistry` surface (dropped `role` from `register` + `SellerRegistered`, added `updateProfile`, removed `SellerRole` / `InvalidRole`, lockstep update to `FigaroBatchVerifier.SellerEventInput`); expanded the frozen-scope declaration to add `IClauseValidator.sol`, `AssemblyRegistry.sol`, `ProcessOffsetReceipt.sol`; and closed the post-resolve commit gate (`FigaroCore.commit`'s sub-order branch reverts `ProcessAlreadyResolved` when `ps.activeOrderCount == 0`; Rust prover mirrors; `DESIGN_DECISIONS.md` item #1 rewritten). A further amendment (2026-07-03) removed `ProcessOffsetReceipt.sol` from scope — the carbon-offset apparatus was deleted (no on-network retirement router exists on the deployment chain; see `CONTRACTS.md`). Amendment history is in `git log`; current frozen scope is below.
+**Initial freeze**: 2026-04-20. Subsequent amendments landed a pre-audit findings batch (florin allocation restructured, `MerkleAirdrop`/`TrancheVesting` deleted, `DOMAIN_SEPARATOR()` getter, `totalRegisteredCap` enforcement); revised the `SellerRegistry` surface (dropped `role` from `register` + `SellerRegistered`, added `updateProfile`, removed `SellerRole` / `InvalidRole`, lockstep update to `FigaroBatchVerifier.SellerEventInput`); expanded the frozen-scope declaration to add `IClauseValidator.sol`, `AssemblyRegistry.sol`, `ProcessOffsetReceipt.sol`; and closed the post-resolve commit gate (`FigaroCore.commit`'s sub-order branch reverts `ProcessAlreadyResolved` when `ps.activeOrderCount == 0`; Rust prover mirrors; `DESIGN_DECISIONS.md` item #1 rewritten). A further amendment (2026-07-03) removed `ProcessOffsetReceipt.sol` from scope — the carbon-offset apparatus was deleted (no on-network retirement router exists on the deployment chain; see `CONTRACTS.md`). Amendment history is in `git log`; current frozen scope is below.
 
 The following Solidity surface is declared frozen for external audit.
 No feature changes, refactors, or dependency upgrades will be made to
@@ -304,7 +304,7 @@ narrow follow-up review or a repeat audit decision.
 | Directory / file | Contents |
 |---|---|
 | `src/` | `FigaroCore.sol`, `AttestationCoordinator.sol`, `CommitmentTypes.sol`, `IRoleResolver.sol`, `ClauseRegistry.sol`, `SellerRegistry.sol`, `AssemblyRegistry.sol` |
-| `src/fig/` | `FigToken.sol`, `IFigMinter.sol` |
+| `src/florin/` | `FlorinToken.sol`, `IFlorinMinter.sol` |
 | `script/Deploy.s.sol` | Devnet deploy (defines the devnet surface) |
 | `script/DeployMainnet.s.sol` | Mainnet deploy (defines the audited mainnet surface) |
 
@@ -319,7 +319,7 @@ narrow follow-up review or a repeat audit decision.
 To verify a file is unchanged from the freeze commit:
 
 ```bash
-git diff <FREEZE_COMMIT> -- src/ src/fig/ script/Deploy.s.sol script/DeployMainnet.s.sol
+git diff <FREEZE_COMMIT> -- src/ src/florin/ script/Deploy.s.sol script/DeployMainnet.s.sol
 ```
 
 Expected output: empty.

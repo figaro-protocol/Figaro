@@ -148,7 +148,7 @@ export default function Cryptoeconomics() {
                     <div className="border-l-2 border-default pl-4">
                         <dt className="text-base font-semibold text-ink-heading">DAO allocation</dt>
                         <dd className="text-ink-body leading-relaxed mt-1">
-                            300M FIG (30% of supply) minted to the DAO wallet at genesis with no vesting. Allocation decisions will be made by the DAO&apos;s governance process; the DAO is not yet instantiated.
+                            300M florins (30% of supply) minted to the DAO wallet at genesis with no vesting. Allocation decisions will be made by the DAO&apos;s governance process; the DAO is not yet instantiated.
                         </dd>
                     </div>
                     <div className="border-l-2 border-default pl-4">
