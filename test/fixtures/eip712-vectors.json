@@ -1,0 +1,41 @@
+{
+    "chainId": 31337,
+    "verifyingContract": "0x2e234DAe75C793f67A35089C9d99245E1C58470b",
+    "domainSeparator": "0x6325a49af8b05e724de86f3ff9397854cd7733afbdaf519b96ee7b6816891bc4",
+    "vectors": [
+        {
+            "label": "root",
+            "commitment": {
+                "processId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "buyer": "0x0376AAc07Ad725E01357B1725B5ceC61aE10473c",
+                "seller": "0xAd29D7a8aD3639F97798c768202F27C1dE81DC55",
+                "currency": "0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f",
+                "payment": "100000000000000000000",
+                "expectedCumulativeValue": "100000000000000000000",
+                "agreementHash": "0x4d38a284aebd2196b913b9bd71cee7e649123b53deb813d048a75dae79663cbd",
+                "salt": "42",
+                "deadline": "2000"
+            },
+            "structHash": "0x56c45ad86315e2a2eb77538407cb6914b581b352f0852ef61fde329fc11510cd",
+            "processId": "0x7189e6bb14436b6fd327cc785bc52c9a9c7b5e16f83bcdebaf5438a9f81322fe",
+            "orderHash": "0xa4ff2adf77b123ca122f01fb3b8e3a887434b6cfd8555585bdc4d0e337b6316d"
+        },
+        {
+            "label": "sub",
+            "commitment": {
+                "processId": "0x83118784bdf5c22406e4bd1877f8a6cc53da421295721b5fdc99cd7a5dc4f3c4",
+                "buyer": "0x0376AAc07Ad725E01357B1725B5ceC61aE10473c",
+                "seller": "0xC22667C5926d1C9af6C0fa8Cedc4ea3e489F6F70",
+                "currency": "0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f",
+                "payment": "50000000000000000000",
+                "expectedCumulativeValue": "150000000000000000000",
+                "agreementHash": "0xc246b902bc5d7588756d6d8cfc22e022a052b19175a4277456c96196877efc2b",
+                "salt": "43",
+                "deadline": "2000"
+            },
+            "structHash": "0x79c2f3be4fcecb869aacb3fca5baf99d1ea2b9757a8243e8ab5d97696b0bb84c",
+            "processId": "0x83118784bdf5c22406e4bd1877f8a6cc53da421295721b5fdc99cd7a5dc4f3c4",
+            "orderHash": "0x4ab8b13d6589e595e04b7858c75ee32c0293b49f92b38d8f4a25480e75e5e5ea"
+        }
+    ]
+}

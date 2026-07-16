@@ -1,0 +1,137 @@
+name: Devnet E2E CI
+
+# The bilateral spine end-to-end (buyer orders → seller accepts → commit), the
+# highest-catch layer, run against a REAL stack in the runner: Anvil + a
+# deployed protocol + Kubo (IPFS) + the production static export. Until now this
+# layer was operator-discipline-only — nothing exercised action→reaction across
+# the whole stack on push.
+#
+# Scope: the `orders-accept` spec (the bilateral spine). Broader devnet specs
+# stay operator-run for now; this proves the spine can't silently break.
+
+on:
+    push:
+        branches: [main, develop]
+        paths:
+            - "src/**"
+            - "script/**"
+            - "sdk/**"
+            - "frontend/**"
+            - "clauses/**"
+            - ".github/workflows/devnet-e2e-ci.yml"
+    pull_request:
+        branches: [main, develop]
+        paths:
+            - "src/**"
+            - "script/**"
+            - "sdk/**"
+            - "frontend/**"
+            - "clauses/**"
+
+permissions:
+    contents: read
+
+jobs:
+    devnet-e2e:
+        name: Bilateral spine (orders-accept)
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+              with:
+                  submodules: recursive
+
+            - name: Install Foundry
+              uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1.9.0
+
+            - name: Setup Node.js
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+              with:
+                  node-version: "20"
+
+            # ── IPFS (Kubo) — the agreement/branding pin target ──────────
+            # Pinned to v0.42.0 (docs/LOCAL_DEV.md: latest 0.40.1 segfaulted in
+            # its DHT reprovider). Configure the CORS allowlist for the e2e
+            # origins BEFORE the daemon serves pins, then restart — mirrors the
+            # manual `figaro-ipfs` container devup expects.
+            - name: Start Kubo (IPFS)
+              run: |
+                  docker run -d --name figaro-ipfs -p 5001:5001 -p 8080:8080 ipfs/kubo:v0.42.0
+                  for _ in $(seq 1 60); do
+                      if curl -s -X POST http://127.0.0.1:5001/api/v0/version >/dev/null 2>&1; then break; fi
+                      sleep 1
+                  done
+                  docker exec figaro-ipfs ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin \
+                      '["http://localhost:3000","http://localhost:3100","http://127.0.0.1:3000","http://127.0.0.1:3100"]'
+                  docker exec figaro-ipfs ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods \
+                      '["PUT","POST","GET"]'
+                  docker restart figaro-ipfs
+                  for _ in $(seq 1 60); do
+                      if curl -s -X POST http://127.0.0.1:5001/api/v0/version >/dev/null 2>&1; then break; fi
+                      sleep 1
+                  done
+                  curl -s -X POST http://127.0.0.1:5001/api/v0/version
+
+            - name: Build SDK
+              run: cd sdk && npm ci && npm run build
+
+            - name: Install frontend dependencies
+              run: cd frontend && npm ci
+
+            - name: Install Playwright (chromium)
+              run: cd frontend && npx playwright install --with-deps chromium
+
+            # ── Chain ────────────────────────────────────────────────────
+            # --accounts 20: indices 10-19 must be unlocked signers (sellers
+            # beyond anvil[9]); deploy-local.sh's gas top-up assumes it.
+            - name: Start Anvil
+              run: |
+                  anvil --port 8545 --accounts 20 >/tmp/anvil.log 2>&1 &
+                  for _ in $(seq 1 60); do
+                      if cast block-number --rpc-url http://127.0.0.1:8545 >/dev/null 2>&1; then break; fi
+                      sleep 0.5
+                  done
+                  cast block-number --rpc-url http://127.0.0.1:8545
+
+            # ── Build-time env the static export inlines ─────────────────
+            # NEXT_PUBLIC_ENABLE_TEST_HELPERS is read at `next build` time (the
+            # webServer builds the export), so it must exist before the deploy
+            # appends the contract addresses. deploy-local.sh appends/overwrites
+            # keys, creating the file if absent.
+            - name: Seed base .env.local
+              run: |
+                  cat > frontend/.env.local <<'EOF'
+                  NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=localtestprojectid
+                  NEXT_PUBLIC_ENABLE_TEST_HELPERS=true
+                  EOF
+
+            - name: Deploy protocol stack (+ pin clauses)
+              run: bash scripts/deploy-local.sh
+
+            # ── The bilateral spine, end to end ──────────────────────────
+            # verify-devnet-deployment (preflight) + populate-test-data (seed,
+            # never a test) then the orders-accept spec only. The Playwright
+            # `devnet` webServer builds + serves the production static export on
+            # :3100; the `devnet-authoring` dependency project sets up the seller.
+            - name: Run orders-accept e2e
+              run: |
+                  cd frontend
+                  node scripts/verify-devnet-deployment.mjs
+                  node scripts/populate-test-data.mjs
+                  npx playwright test --project=devnet orders-accept.devnet --workers=1
+              env:
+                  CI: true
+
+            - name: Upload Playwright report
+              if: failure()
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+              with:
+                  name: devnet-playwright-report
+                  path: frontend/playwright-report/
+                  retention-days: 7
+
+            - name: Anvil log tail on failure
+              if: failure()
+              run: tail -100 /tmp/anvil.log || true

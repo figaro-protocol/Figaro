@@ -8,7 +8,7 @@ CLAUDE.md keeps the run commands; this file is the full inventory of test files,
 `AttestationCoordinatorTest`, `ClauseRegistryTest`, `AssemblyRegistryTest`,
 `SellerRegistryTest`, `GasCeilingTest`, `WitnessSwapAndCommitCoordinatorTest`,
 `WitnessSwapAndCommitCoordinatorForkTest`, `FigaroBatchVerifierTest`,
-`ReentrancyAdversarialTest`, `HalmosFigaroCore`, `fig/FigToken.t.sol`.
+`ReentrancyAdversarialTest`, `Eip712ParityTest`, `HalmosFigaroCore`, `fig/FigToken.t.sol`.
 
 `ReentrancyAdversarialTest` hands the protocol a `MockReentrantToken` that
 re-enters mid-transfer and asserts the `nonReentrant` guard fires (nested call
@@ -114,6 +114,19 @@ pre-promotion frontend implementations; `HARVEST_GOLDEN_VECTORS=1` in
 `frontend/tests/lib/promotionGoldenVectors.test.ts` re-records, legitimate
 only before a move).
 
+**EIP-712 parity — the unconditional cross-language lock.**
+`sdk/tests/eip712Parity.test.ts` freezes SDK-computed EIP-712 vectors (domain
+separator, struct hash, root digest/processId, order hash) into
+`test/fixtures/eip712-vectors.json` and self-checks the SDK still reproduces
+them (`HARVEST_EIP712_VECTORS=1` re-records). `test/Eip712ParityTest.t.sol`
+reads that same fixture and asserts the Solidity kernel reproduces every hash —
+`CommitmentTypes.hashStruct` directly, the order-hash derivation verbatim, and
+the domain separator both ways (SDK vector == formula, and a live
+`FigaroCore.DOMAIN_SEPARATOR()` == formula). Runs in BOTH the SDK and Foundry
+CI jobs with no chain and no skipIf — the SDK↔kernel signature agreement that
+was previously only in the skipIf-gated `integration.test.ts` round-trip is now
+a hard gate.
+
 ## Playwright — devnet (e2e) + mobile (viewport) projects
 
 `npm run test:e2e:devnet` (preflight → populate-test-data (clauses + ONE seed
@@ -215,6 +228,23 @@ the former figaro-consent exclusion closed 2026-07-10.
 
 **mobile (`*.mobile.spec.ts`, 1 spec)** — responsive/viewport chrome jsdom
 can't render: `navigation.mobile.spec.ts` (Pixel 5 / Chromium).
+
+## CI (`.github/workflows/`)
+
+Four workflows gate `main`/`develop` on push + PR, path-filtered:
+- **`foundry-ci`** — `forge build`/`test`/`fmt` + Halmos symbolic proofs (Certora
+  is excluded by design — it needs the operator-held CERTORAKEY, never stored).
+- **`sdk-ci`** — tsc type-check, `npm test`, build.
+- **`frontend-ci`** — type-check, ESLint, Vitest (+coverage), the **mobile**
+  Playwright project, production build.
+- **`devnet-e2e-ci`** — the **bilateral spine** (`orders-accept`) end to end in
+  the runner: Kubo (IPFS, CORS-configured), Anvil (`--accounts 20`), a full
+  `deploy-local.sh` stack, `populate-test-data`, then the `orders-accept` devnet
+  spec against the production static export. The highest-catch layer, no longer
+  operator-discipline-only. Broader devnet specs stay operator-run.
+
+The EIP-712 parity harness (above) rides `foundry-ci` + `sdk-ci`; both run its
+two halves unconditionally.
 
 ## Opportunistic — Mythril
 
