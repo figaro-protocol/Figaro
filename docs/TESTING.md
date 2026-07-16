@@ -8,7 +8,13 @@ CLAUDE.md keeps the run commands; this file is the full inventory of test files,
 `AttestationCoordinatorTest`, `ClauseRegistryTest`, `AssemblyRegistryTest`,
 `SellerRegistryTest`, `GasCeilingTest`, `WitnessSwapAndCommitCoordinatorTest`,
 `WitnessSwapAndCommitCoordinatorForkTest`, `FigaroBatchVerifierTest`,
-`HalmosFigaroCore`, `fig/FigToken.t.sol`.
+`ReentrancyAdversarialTest`, `HalmosFigaroCore`, `fig/FigToken.t.sol`.
+
+`ReentrancyAdversarialTest` hands the protocol a `MockReentrantToken` that
+re-enters mid-transfer and asserts the `nonReentrant` guard fires (nested call
+reverts) while the outer settlement completes exactly once — across
+`FigaroCore.commit`, `FigaroCore.resolveProcess`, and
+`FigaroBatchVerifier.settleBatch`.
 
 `FigaroBatchVerifierTest` covers the batch-settlement verifier: the happy path
 with money legs, the ClauseRegistry spec-binding anchor gate (permissive-spec
