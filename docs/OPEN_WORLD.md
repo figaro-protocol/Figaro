@@ -142,6 +142,59 @@ every composition.
   SellerRegistry; assemblies → AssemblyRegistry) — parallel, never nested. Arrows point
   one way: assemblies use clauses; clauses don't know assemblies exist.
 
+### Where a composed contract may stand — the four placements
+
+The boundary is a **narrow waist**: EIP-712 signatures in, deterministic settlement events out.
+Relative to the bilateral signature, a composed contract stands in exactly four places.
+
+| # | Placement | Relative to the signature | What the contract supplies |
+|---|---|---|---|
+| 1 | **Terms in** | before | deterministic output that becomes content `fields` both parties sign under `agreementHash` |
+| 2 | **Funding at the kernel-pull** | inside the `commit` tx | bond currency, delivered to the party's own EOA |
+| 3 | **Attested auxiliary** (Path A) | after commit, off the bond path | an external receipt, attested against the root order under a purpose-built clause |
+| 4 | **Settlement consumer** | after resolution | consequences derived from kernel state |
+
+**The invariant: a composed contract supplies terms, funding, evidence, or consequences —
+NEVER a signature.**
+
+- **Placement 1 constraint — the output must be fully known at signing.** The accumulator is
+  exact-match, so a composition whose result is not fixed when both parties sign cannot settle;
+  counterparty-deferring compositions are dead as a class (the auction abandonment).
+- **Placement 2 constraint — exactly one call qualifies.** `FigaroCore.commit` is the only place
+  Figaro itself pulls a named party's ERC-20 (`_pullExact`, `FigaroCore.sol:130-135`), and it
+  never checks `msg.sender` — so a coordinator funds the party **in place** instead of
+  substituting itself, and the commitment stays bilaterally signed
+  (`WitnessSwapAndCommitCoordinator` demonstrates the shape). Swap-and-commit is therefore the
+  WHOLE family, not the first of many: an off-protocol auxiliary needs no such helper because
+  Figaro never pulls its token.
+- **Placement 4 constraint — read, never intercept.** A frozen kernel is a frozen ABI: its
+  events and getters ARE the standard API, so a settlement consumer is a parallel contract family
+  that reads it (`AttestationCoordinator` reads `core.orderStatus`; `RpgfMinter` scores settled
+  history). A consumer that inserts itself into the money leg is placement-4 cosplay for
+  contract-as-party.
+
+#### The seller problem is a boundary detector, not a composability defect
+
+Every composition that has failed here put a contract in a **party slot**. The kernel rejects that
+by construction — ECDSA-only recovery (`FigaroCore.sol:161`), no EIP-1271 — and the rejection is
+load-bearing: **a bond prices conduct, and a contract has no conduct to deter.** There is no
+external standard to adopt: EIP-1271, ERC-4337, Safe modules, and hooks all standardize
+contract-as-party, which is precisely what the mechanism design forbids.
+
+So the triage before scoping any integration is one question — **who signs the seller half?**
+
+- **A wallet-holding entity** (human, DAO multisig, agent holding a private key) → can be a
+  seller. Bonded sub-order (**Path B**) or a separate bonded process (**Path C**); that party must
+  be online to countersign.
+- **A contract** (aggregator, oracle, bridge, router) → cannot sign EIP-712 → not a seller →
+  **Path A**, placement 3 above: the buyer transacts with it directly, then attests the receipt
+  against the root order. Evidence, not entanglement — no bonding, no second signature, no
+  atomic-resolution coupling. (The offset apparatus that first demonstrated Path A was deleted
+  2026-07-03; the pattern is what survives.)
+
+Never invent a "wrapper operator" to drag a contract into the bonded model — that only moves the
+problem to whoever must run the wrapper, online and signing, indefinitely.
+
 ---
 
 ## 3. The runtime composition model
