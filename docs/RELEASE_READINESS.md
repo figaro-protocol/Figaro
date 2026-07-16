@@ -2,7 +2,7 @@
 
 Status: canonical release gate note for the live V5 kernel, protocol, and runtime.
 
-Last updated: 2026-07-09 (no-beta ruling: the `cloudflare/` closed-beta apparatus was deleted — Task 7 is a plain testnet rehearsal now. 2026-06-25 proof-apparatus teardown: the SP1 prover, `FigaroBatchVerifier`, and `RpgfMinter` were deleted — Task 8 is VOID).
+Last updated: 2026-07-16 (no-beta ruling: the `cloudflare/` closed-beta apparatus was deleted — Task 7 is a plain testnet rehearsal now. The proof apparatus teardown was REVERSED: `RpgfMinter`, `FigaroBatchVerifier`, and the Rust `prover/` were rebuilt witness-based 2026-07-15/16 — Task 8 is live again; `CONTRACTS.md` § "Teardown state — CLOSED" owns the status).
 
 This note is the current answer to a simple question: what is ready now, what is still open, and what must happen before a public release is treated as complete.
 
@@ -126,11 +126,19 @@ Required output:
 
 (Kleros subcourt-ID verification and IPFS content durability for this path are already covered by the Pre-Mainnet Deployment Verification checks and Task 6 above.)
 
-### Task 8: SP1 Prover End-to-End — VOID
+### Task 8: SP1 Prover End-to-End — REBUILT (2026-07-16)
 
-The SP1 prover, `FigaroBatchVerifier`, and `RpgfMinter` were deleted in the
-proof-apparatus teardown. There is no proof/batch path to deploy or rehearse;
-this task is removed.
+The proof apparatus deleted in the 2026-06-25 teardown was rebuilt witness-based
+and is live: `RpgfMinter` (optimistic, 2026-07-15) and `FigaroBatchVerifier` +
+the Rust `prover/` (2026-07-16). Canonical state: `CONTRACTS.md` § "Teardown
+state — CLOSED". A real local SP1 Core proof of the canonical batch generates
+and verifies; the cross-language batch e2e (`sdk/tests/batch-e2e.test.ts`) and
+`BatchVerifierTokenOps.spec` are green. Mainnet deploy wires Succinct's SP1
+verifier gateway + the program vkey (`DeployMainnet.s.sol`,
+`SP1_VERIFIER_GATEWAY`/`SP1_PROGRAM_VKEY`). Re-establishing the FROZEN AUDIT
+SCOPE to include the rebuilt surface is a pre-mainnet deployment task — the
+batch/proof path is a composition ABOVE the frozen kernel, deployed and
+rehearsed with the rest of the stack, not a kernel change.
 
 ## Validation Commands
 
