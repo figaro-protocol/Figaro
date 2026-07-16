@@ -38,6 +38,11 @@ const BYTES32_HEX_RE = /^0x[0-9a-fA-F]{64}$/;
 const ADDRESS_HEX_RE = /^0x[0-9a-fA-F]{40}$/;
 const BYTES_HEX_RE = /^0x([0-9a-fA-F]{2})*$/;
 const ISO_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+/** The bigint grammar: a plain decimal integer, optionally negative.
+ *  Deliberately TIGHTER than bare `BigInt()` (which coerces `""`, `"0x10"`,
+ *  and padded whitespace) — the spec's contract is "decimal string", and the
+ *  prover's Rust mirror enforces the same grammar in lockstep. */
+const DECIMAL_BIGINT_RE = /^-?[0-9]+$/;
 
 function isObject(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -94,11 +99,11 @@ function validateBigint(value: unknown, spec: BigintFieldSpec, path: string, err
         errors.push({ path, message: `expected bigint as decimal string, got ${typeof value}` });
         return;
     }
-    let parsed: bigint;
-    try { parsed = BigInt(value); } catch {
+    if (!DECIMAL_BIGINT_RE.test(value)) {
         errors.push({ path, message: `value "${value}" does not parse as BigInt` });
         return;
     }
+    const parsed = BigInt(value);
     if (spec.min !== undefined && parsed < BigInt(spec.min)) {
         errors.push({ path, message: `value ${parsed} is below min ${spec.min}` });
     }

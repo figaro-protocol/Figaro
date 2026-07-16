@@ -153,6 +153,12 @@ const VALID_FIELD_TYPES: ReadonlySet<string> = new Set([
     "string", "integer", "bigint", "boolean", "enum", "array", "object",
 ]);
 
+/** The bigint grammar: a plain decimal integer, optionally negative.
+ *  Deliberately TIGHTER than bare `BigInt()` (which coerces `""`, `"0x10"`,
+ *  and padded whitespace) — the spec's contract is "decimal string", and the
+ *  prover's Rust mirror enforces the same grammar in lockstep. */
+const DECIMAL_BIGINT_RE = /^-?[0-9]+$/;
+
 function isObject(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -169,9 +175,7 @@ function defaultMatchesField(spec: FieldSpec, value: unknown): boolean {
                 && (spec.min === undefined || value >= spec.min)
                 && (spec.max === undefined || value <= spec.max);
         case "bigint":
-            if (typeof value !== "string") return false;
-            try { BigInt(value); } catch { return false; }
-            return true;
+            return typeof value === "string" && DECIMAL_BIGINT_RE.test(value);
         case "boolean":
             return typeof value === "boolean";
         case "enum":
@@ -317,7 +321,7 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
                     errors.push({ path: `${path}.${key}`, message: `${key} must be a decimal string for bigint` });
                     return false;
                 }
-                try { BigInt(v); } catch {
+                if (!DECIMAL_BIGINT_RE.test(v)) {
                     errors.push({ path: `${path}.${key}`, message: `${key} must parse as a BigInt` });
                     return false;
                 }
