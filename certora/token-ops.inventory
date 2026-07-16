@@ -33,5 +33,5 @@ src/WitnessSwapAndCommitCoordinator.sol:235 | _fund (input residual refund → p
 # restored from the pre-teardown prototype; realignment to the new PublicValues
 # in flight). Its BatchVerifierTokenOps.spec was restored alongside and re-runs
 # when the verifier realignment lands — until then both entries ship [PENDING].
-src/FigaroBatchVerifier.sol:379 | _reconcile (net payout → user) | [PENDING: BatchVerifierTokenOps.spec re-run at verifier realignment]
-src/FigaroBatchVerifier.sol:389 | _pullExact (net deposit pull) | [PENDING: BatchVerifierTokenOps.spec re-run at verifier realignment]
+src/FigaroBatchVerifier.sol:339 | _executePositions (net payout → user) | [PENDING: BatchVerifierTokenOps.spec re-run at verifier realignment]
+src/FigaroBatchVerifier.sol:349 | _pullExact (net deposit pull) | [PENDING: BatchVerifierTokenOps.spec re-run at verifier realignment]
