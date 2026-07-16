@@ -9,7 +9,8 @@
 Figaro is a coordination protocol that enables sovereign economic coordination
 through two composing mechanisms: asymmetric bonding and buyer dominance.
 Asymmetric bonding (each party locks 2× their respective stake) produces a
-Nash equilibrium where cooperation is strictly dominant for both parties, and
+Nash equilibrium where cooperation weakly dominates defection for both parties —
+the unique profile surviving iterated elimination of weakly dominated strategies — and
 scales the bilateral primitive from 2-party to N-party service chains
 (downstream sellers bond against cumulative
 upstream value, creating a mesh of independently secured edges). Buyer
@@ -60,7 +61,7 @@ Figaro achieves multi-party coordination through two composing mechanisms:
 **Mechanism 1 — Asymmetric bonding (the bilateral equilibrium + scaling):**
 
 1. **Both parties lock collateral on-chain** (buyer 2P, seller 2G)
-2. **The 2× ratio creates the Nash equilibrium** — cooperation strictly dominates defection for both, at the minimum viable multiplier
+2. **The 2× ratio creates the Nash equilibrium** — cooperation weakly dominates defection for both (the unique profile surviving iterated elimination of weakly dominated strategies), at the minimum viable multiplier
 3. **Each seller bonds against cumulative upstream value**, creating a mesh of independently secured edges that scales from 2-party to N-party DAGs
 
 **Mechanism 2 — Buyer dominance (inter-seller coordination on the mesh):**
@@ -171,7 +172,34 @@ Where:
 - **Seller Defects**: Both lose bonds → (-2P, -2G) → **Worse for both**
 - **Buyer Defects**: Same outcome → **Buyer hurts self**
 
-**Dominant Strategy**: Cooperation is strictly dominant for both parties.
+**Dominant Strategy**: Cooperation **weakly** dominates defection for both parties, and
+(Cooperate, Cooperate) is the **unique profile surviving iterated elimination of weakly
+dominated strategies** (IEWDS).
+
+Read the matrix carefully — the dominance is weak, not strict, and the distinction is the
+honest statement of what the bonds buy:
+
+- **Against a cooperating counterparty**, cooperation is *strictly* better: the seller earns
+  `+P` instead of `-2G`; the buyer pays `-P` instead of `-2P`.
+- **Against a defecting counterparty**, the two rows are *equal* — `(-2P, -2G)` either way.
+  Once the counterparty defects, the bonds are burned regardless of what you do.
+
+So cooperation never does worse and sometimes does better: **weak** dominance. Claiming strict
+dominance would require the flat column to be strictly ordered, and it is not — the matrix above
+is its own counterexample. IEWDS is what recovers uniqueness: eliminate the weakly dominated
+strategy (Defect) for both players, and (Cooperate, Cooperate) is the sole survivor.
+
+**Why the seller cooperates anyway — the war of attrition.** Weak dominance leaves the seller
+*indifferent* in the flat column, so the equilibrium's credibility rests on what a standoff
+costs each side. A buyer who refuses to resolve burns `2P` of their own bond; the seller burns
+`2G`. Because cumulative value is at least the local payment (`G ≥ P`), we have `2G ≥ 2P`: **the
+seller always loses at least as much as the buyer, and strictly more at every position where
+`G > P`** — which is every position downstream of the first. Refusal is therefore a war the
+seller cannot win, and the deeper the seller sits in the chain, the more lopsided the loss. That
+is what makes the buyer's implicit threat credible without any timeout, arbitrator, or appeal:
+the seller's only strategy that is never worse and sometimes better is to cooperate. The buyer's
+side of the same asymmetry is mutual-assured-destruction, not free power — refusing costs the
+buyer `2P` and returns nothing (see *Liveness Properties*).
 
 ### Cumulative Upstream Bonding
 
@@ -209,7 +237,7 @@ When C = P and D = 0 (no delivery):
   P > 0 - B
   B > -P
   
-But we need strict dominance:
+But we need cooperation to weakly dominate:
   B ≥ 2P (sufficient condition)
 ```
 
@@ -360,7 +388,7 @@ Figaro's coordination mechanism operates across three primary game-theoretic lay
 
 **Players**: Single buyer, single seller  
 **Mechanism**: Symmetric bonding (2× payment from each party)  
-**Outcome**: Cooperation is the dominant strategy
+**Outcome**: Cooperation weakly dominates; (Cooperate, Cooperate) is the unique IEWDS survivor
 
 **Payoff Matrix** (revisited for clarity):
 
@@ -373,7 +401,9 @@ Figaro's coordination mechanism operates across three primary game-theoretic lay
 - **Single transaction**: Isolated 2-party exchange
 - **Symmetric stakes**: Both parties bond 2×payment
 - **Clear outcome**: Mutual cooperation yields (-P, +P), all defection paths yield (-2P, -2P)
-- **Nash equilibrium**: (Cooperate, Cooperate) is strictly dominant
+- **Nash equilibrium**: (Cooperate, Cooperate) is the unique profile surviving iterated
+  elimination of weakly dominated strategies (the defection paths are flat — see the
+  weak-vs-strict reading under *Nash Equilibrium Analysis*)
 
 **Example**: Alice orders $10 bread from Bob
 - Alice bonds $20, Bob bonds $20
@@ -437,11 +467,18 @@ Seller earns: E(i) = P(i)
 Cooperation payoff:  +P(i)            (earns payment, recovers bond)
 Defection payoff:    -B(i) = -2×G(i)   (loses entire bond)
 
-Nash condition (cooperation strictly dominates):
-  P(i) > -2×G(i)
+Nash condition (cooperation weakly dominates):
+  P(i) > -2×G(i)     against a cooperating buyer — strictly better
+  -2×G(i) = -2×G(i)  against a defecting buyer — equal, hence WEAK dominance
 
-Since P(i) > 0 and G(i) > 0, this inequality always holds.
-Therefore: Cooperation is the dominant strategy at ALL chain positions.
+Since P(i) > 0 and G(i) > 0, the first inequality always holds.
+Therefore: cooperation weakly dominates at ALL chain positions, and (Cooperate,
+Cooperate) is the unique IEWDS survivor at every depth.
+
+Credibility deepens with position: refusal costs the buyer 2×P(i) and the seller
+2×G(i), and G(i) ≥ P(i) by construction — so the seller loses strictly more at
+every position past the first. The war of attrition is one the seller loses by
+more the deeper they sit.
 ```
 
 **Critical Insight**: Asymmetric bonding ensures that:

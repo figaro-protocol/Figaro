@@ -29,7 +29,7 @@ export default function Composability() {
 
             <MarketingSection title="Three sufficient conditions preserve the equilibrium.">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    Any internal exit path weakens the Nash equilibrium (Paper A, Theorem 4.7). So compositions live <em>outside</em> the kernel and attach via the coordinator pattern: the external reads kernel state and emits its own evidence, but observes three sufficient conditions.
+                    Any internal exit path weakens the Nash equilibrium &mdash; the <Link href="/papers/asymmetric-bonding" className="underline">escape-hatch theorem</Link>. So compositions live <em>outside</em> the kernel and attach via the coordinator pattern: the external reads kernel state and emits its own evidence, but observes three sufficient conditions.
                 </p>
                 <ol className="space-y-3 text-base text-ink-body leading-relaxed list-decimal pl-6 mb-4">
                     <li><strong>Never writes to kernel state.</strong> External contracts cannot mutate <code>processes</code>, <code>orderStatus</code>, or <code>orderProcessId</code>. The kernel is the authoritative ledger of every commitment.</li>

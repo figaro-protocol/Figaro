@@ -15,7 +15,11 @@
 //
 // - `NAV_LINKS_APP_DRAWER` is the (app) mobile drawer — combined
 //   publication + reference + transactional surfaces, grouped by
-//   section. Marketing drawer uses NAV_LINKS only.
+//   section.
+//
+// - `NAV_LINKS_MARKETING_DRAWER` is the marketing mobile drawer, derived from
+//   `MARKETING_MAP` (which the footer renders as columns). Same grouped shape
+//   as the (app) drawer.
 export interface NavLink {
     href: string;
     label: string;
@@ -41,6 +45,12 @@ export const NAV_LINKS: NavLink[] = [
 // connected has a one-click path to "their" work.
 export const NAV_LINKS_APP_PRIMARY: NavLink[] = [
     { href: "/orders", label: "Orders" },
+    // The buyer's start-order verb — the wallet browses bonded sellers and opens
+    // the chosen seller's assembly runtime, where a commitment begins. NOT
+    // interchangeable with `/sellers`, which is the seller's own registration
+    // surface (register a wallet in SellerRegistry, or manage that entry). Both
+    // read a registry; they serve opposite roles, so both are listed.
+    { href: "/discover", label: "Discover" },
     { href: "/sellers", label: "Sellers" },
     { href: "/audit", label: "Audit" },
     // The RPGF distribution's runtime surface (post / challenge / finalize /
@@ -52,13 +62,67 @@ export const NAV_LINKS_APP_PRIMARY: NavLink[] = [
     { href: "/settings", label: "Endpoints" },
 ];
 
+// The drawer's App section IS the primary row restated for mobile, so it SPREADS
+// `NAV_LINKS_APP_PRIMARY` instead of re-listing it — a hand-copy drifts the
+// moment one surface gains an entry and the other is forgotten.
 export const NAV_LINKS_APP_DRAWER: NavLink[] = [
     { isSectionHeader: true, label: "Publication", href: "" },
     ...NAV_LINKS,
     { isSectionHeader: true, label: "App", href: "" },
-    { href: "/orders", label: "Orders" },
-    { href: "/sellers", label: "Sellers" },
-    { href: "/audit", label: "Audit" },
-    { href: "/rewards", label: "Rewards" },
-    { href: "/settings", label: "Endpoints" },
+    ...NAV_LINKS_APP_PRIMARY,
 ];
+
+/**
+ * The marketing map — the canonical section→pages structure of the `(marketing)`
+ * tier, grouped under the three publication doorways (each group's first entry
+ * IS its doorway). ONE source, two renderings: `Footer` lays each group out as a
+ * column; `NAV_LINKS_MARKETING_DRAWER` flattens it with section headers. Add a
+ * marketing page here and both surfaces carry it.
+ */
+export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
+    {
+        section: "Protocol",
+        links: [
+            { href: "/protocol", label: "Protocol mechanisms" },
+            { href: "/why", label: "Why" },
+            { href: "/physics", label: "Physics" },
+            { href: "/cryptoeconomics", label: "Cryptoeconomics" },
+            { href: "/papers", label: "Papers" },
+            { href: "/security", label: "Security" },
+            { href: "/spec", label: "Specifications" },
+        ],
+    },
+    {
+        section: "Builders",
+        links: [
+            { href: "/builders", label: "Builders" },
+            { href: "/builders/designer", label: "Designer" },
+            { href: "/builders/clauses", label: "Register a clause" },
+            { href: "/builders/composability", label: "Composability" },
+            { href: "/clauses", label: "Clauses" },
+            { href: "/assemblies", label: "Assemblies" },
+            { href: "/local-commerce", label: "Local Commerce reference" },
+            { href: "/integrate", label: "Integrate" },
+            { href: "/clause-rewards", label: "Clause rewards" },
+            { href: "/papers/florin-schelling-point-token", label: "florin token" },
+        ],
+    },
+    {
+        section: "Users",
+        links: [
+            { href: "/users", label: "Users" },
+            { href: "/discover", label: "Discover sellers" },
+            { href: "/sellers", label: "Sellers" },
+            { href: "/agents", label: "Agents" },
+        ],
+    },
+];
+
+// The marketing mobile drawer. The desktop marketing nav is the three-doorway
+// publication row; on mobile that row was the ONLY way in, leaving every page
+// behind a doorway reachable only by scrolling to the footer. Grouped like
+// `NAV_LINKS_APP_DRAWER` so the whole map is one tap away.
+export const NAV_LINKS_MARKETING_DRAWER: NavLink[] = MARKETING_MAP.flatMap((group) => [
+    { isSectionHeader: true, label: group.section, href: "" },
+    ...group.links,
+]);

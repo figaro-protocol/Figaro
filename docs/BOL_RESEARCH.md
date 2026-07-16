@@ -241,8 +241,8 @@ sidesteps the failure mode by having no consortium at all.
 
 Three of the four MLETR properties Figaro provides natively:
 - Singularity → one orderHash / one agreementHash per committed order.
-- Integrity → merkle-root binding via `agreementHash` (Paper E
-  Class A artifact).
+- Integrity → merkle-root binding via `agreementHash` (a Class A artifact —
+  the evidence taxonomy in `/papers/on-chain-evidence`).
 - Identifiability → `orderHash` is globally unique, derivable from the
   signed Commitment struct.
 

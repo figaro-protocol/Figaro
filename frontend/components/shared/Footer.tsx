@@ -1,40 +1,28 @@
 import Link from "next/link";
+import { MARKETING_MAP } from "@/components/shared/navLinks";
 
 const COL_LINK_CLS =
     "block text-sm text-ink-muted hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded";
 
+/**
+ * The footer renders `MARKETING_MAP` one column per section — the same map the
+ * mobile drawer flattens (`NAV_LINKS_MARKETING_DRAWER`). The section names are
+ * structural here, not printed: each column already opens with its doorway link.
+ */
 export function Footer() {
     return (
         <footer className="border-t border-default bg-canvas">
             <div className="container mx-auto px-6 py-16">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-                    <div className="space-y-2">
-                        <Link href="/protocol" className={COL_LINK_CLS}>Protocol mechanisms</Link>
-                        <Link href="/why" className={COL_LINK_CLS}>Why</Link>
-                        <Link href="/physics" className={COL_LINK_CLS}>Physics</Link>
-                        <Link href="/cryptoeconomics" className={COL_LINK_CLS}>Cryptoeconomics</Link>
-                        <Link href="/papers" className={COL_LINK_CLS}>Papers</Link>
-                        <Link href="/security" className={COL_LINK_CLS}>Security</Link>
-                        <Link href="/spec" className={COL_LINK_CLS}>Specifications</Link>
-                    </div>
-                    <div className="space-y-2">
-                        <Link href="/builders" className={COL_LINK_CLS}>Builders</Link>
-                        <Link href="/builders/designer" className={COL_LINK_CLS}>Designer</Link>
-                        <Link href="/builders/clauses" className={COL_LINK_CLS}>Register a clause</Link>
-                        <Link href="/builders/composability" className={COL_LINK_CLS}>Composability</Link>
-                        <Link href="/clauses" className={COL_LINK_CLS}>Clauses</Link>
-                        <Link href="/assemblies" className={COL_LINK_CLS}>Assemblies</Link>
-                        <Link href="/local-commerce" className={COL_LINK_CLS}>Local Commerce reference</Link>
-                        <Link href="/integrate" className={COL_LINK_CLS}>Integrate</Link>
-                        <Link href="/clause-rewards" className={COL_LINK_CLS}>Clause rewards</Link>
-                        <Link href="/papers/florin-schelling-point-token" className={COL_LINK_CLS}>florin token</Link>
-                    </div>
-                    <div className="space-y-2">
-                        <Link href="/users" className={COL_LINK_CLS}>Users</Link>
-                        <Link href="/discover" className={COL_LINK_CLS}>Discover sellers</Link>
-                        <Link href="/sellers" className={COL_LINK_CLS}>Sellers</Link>
-                        <Link href="/agents" className={COL_LINK_CLS}>Agents</Link>
-                    </div>
+                    {MARKETING_MAP.map((group) => (
+                        <div key={group.section} className="space-y-2">
+                            {group.links.map((link) => (
+                                <Link key={link.href} href={link.href} className={COL_LINK_CLS}>
+                                    {link.label}
+                                </Link>
+                            ))}
+                        </div>
+                    ))}
                 </div>
                 <div className="mt-12 pt-8 border-t border-default flex flex-col gap-4 text-xs text-ink-muted sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex flex-wrap gap-x-5 gap-y-1">

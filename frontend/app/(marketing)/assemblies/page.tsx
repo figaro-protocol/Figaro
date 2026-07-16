@@ -14,15 +14,18 @@ export default function Assemblies() {
     return (
         <>
             <MarketingHero
-                title="Composition templates."
+                title="The shape of a deal, drawn once, reused by anyone."
                 lead={
                     <>
-                        An assembly is a composition template &mdash; an assembly
-                        document that wires clauses into a multi-order process. Each one
-                        registers on <code>AssemblyRegistry</code> with a permanent slug, a
-                        content hash, and an IPFS pointer to its document. Sellers bind to
-                        assemblies in their profile; checkout reads those bindings to
-                        surface the buyer-facing choice.
+                        A delivered meal has a shape: a buyer, a kitchen, a courier, and
+                        the terms binding the three. Somebody drew that shape once, and now
+                        any kitchen in any town can serve dinner through it without drawing
+                        it again. An assembly is that drawing &mdash; a composition template
+                        that wires clauses into a multi-order process. Each one registers on{" "}
+                        <code>AssemblyRegistry</code> with a permanent slug, a content hash,
+                        and an IPFS pointer to its document. Sellers bind to assemblies in
+                        their profile; checkout reads those bindings to surface the
+                        buyer-facing choice.
                     </>
                 }
             />

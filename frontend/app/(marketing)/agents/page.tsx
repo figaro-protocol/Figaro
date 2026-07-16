@@ -16,7 +16,7 @@ export default function Agents() {
                 title="Agents and humans, the same primitive."
                 lead={
                     <>
-                        This page is about agents that <em>participate</em> &mdash; buyer, seller, courier, or auditor wallets driven by software, signing EIP-712 commitments and locking bonds the same way a human-driven wallet would. The protocol does not know which side of an interaction is human. A wallet is a wallet; a signature is a signature; a bond is a bond. Bonded commitment secures them both.
+                        A courier&apos;s software takes the delivery leg, posts the stake, and gets paid &mdash; with nobody at the keyboard and nobody&apos;s permission. This page is about agents that <em>participate</em> that way: buyer, seller, courier, or auditor wallets driven by software, signing the same commitments and locking the same doubled stake a human-driven wallet would. The protocol does not know which side of an interaction is human. A wallet is a wallet; a signature is a signature; a bond is a bond. Bonded commitment secures them both.
                     </>
                 }
             />
@@ -32,7 +32,7 @@ export default function Agents() {
 
             <MarketingSection title="No API keys, no rate limits, no data moats.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Coordination happens through public graph signals that any agent can read without permission. The process graph carries work discovery. The geo graph carries spatial routing. The GHG graph carries compliance signaling. The capital graph carries economic decision-making. The cross-process graph carries provenance. Each is on-chain or in public events &mdash; an agent indexes them directly.
+                    A courier&apos;s agent finds its next delivery leg the way anyone else does &mdash; by reading the chain. Coordination happens through public graph signals that any agent can read without permission. The process graph carries work discovery. The geo graph carries spatial routing. The GHG graph carries compliance signaling. The capital graph carries economic decision-making. The cross-process graph carries provenance. Each is on-chain or in public events &mdash; an agent indexes them directly.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     There is no platform API that an agent must be granted access to, no rate limit imposed by a central seller, no analytics service charging for query rights. Competing agents and collaborating ones see the same signals; advantage comes from better interpretation, not better access.
@@ -78,7 +78,7 @@ export default function Agents() {
                     </li>
                     <li>
                         <Link href="/discover" className="text-ink-heading font-medium hover:underline">Discover</Link>
-                        <span className="text-ink-body"> &mdash; the live registry an agent reads to find counterparties.</span>
+                        <span className="text-ink-body"> &mdash; the registry an agent reads to find counterparties.</span>
                     </li>
                 </ul>
             </MarketingSection>

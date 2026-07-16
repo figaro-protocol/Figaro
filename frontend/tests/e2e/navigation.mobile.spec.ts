@@ -69,6 +69,41 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         await expect(drawer).toBeHidden({ timeout: 5000 });
     });
 
+    // Wayfinding is comprehension. The marketing tier's desktop nav is the
+    // three-doorway publication row; on mobile that row was the ONLY way in, so
+    // every page behind a doorway was reachable only by scrolling to the footer.
+    // The drawer now carries the whole marketing map — a stranger's first visit
+    // is usually a phone, so this is the entry path that has to work.
+    test('the marketing drawer opens the whole map, not just the doorways', async ({ page }) => {
+        await page.goto('/', { waitUntil: 'load' });
+        await waitForReactHydration(page, 'button[aria-label="Toggle mobile menu"]');
+
+        await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
+        const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });
+        await expect(drawer).toBeVisible();
+
+        // A page from BEHIND each doorway — the ones the 3-link drawer stranded.
+        for (const [label, href] of [
+            ['Physics', '/physics'],
+            ['Papers', '/papers'],
+            ['Clauses', '/clauses'],
+            ['Agents', '/agents'],
+        ] as const) {
+            await expect(
+                drawer.getByRole('link', { name: label }),
+                `${label} is reachable from the marketing drawer`,
+            ).toHaveAttribute('href', href);
+        }
+
+        // Section headers group the map (same shape as the (app) drawer).
+        await expect(drawer.getByText('Protocol', { exact: true }).first()).toBeVisible();
+
+        // And it navigates, closing behind itself.
+        await drawer.getByRole('link', { name: 'Physics' }).click();
+        await expect(page).toHaveURL(/\/physics$/);
+        await expect(drawer).toBeHidden({ timeout: 5000 });
+    });
+
     test('backdrop click closes the drawer', async ({ page }) => {
         await gotoAppNavHydrated(page);
 

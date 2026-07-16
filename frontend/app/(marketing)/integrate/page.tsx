@@ -31,7 +31,7 @@ export default function Integrate() {
                     Nothing in the kernel distinguishes a human signer from an agent &mdash; an EIP-712 signature is an EIP-712 signature. <code>@figaro/sdk/agent</code> ships <code>FigaroContext</code>, <code>proposeActions</code>, and <code>ActionQueue</code>: an agent receives kernel state, returns the set of valid actions, and submits via a wallet client. The queue runs in two modes &mdash; human-in-the-loop approval, or fully autonomous submission &mdash; without changes to the underlying call sites.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    What this enables: agents that hold roles in a process (a courier-bot bonded against cumulative value, an offset-burning seller settling under the same atomic-resolution rule, an audit agent reading reconstructed state and posting attestations). Bonding makes the agent legible to its counterparty &mdash; cooperation is dominant for the agent on the same arithmetic that makes it dominant for a human (Paper A, Theorem 4.3).
+                    What this enables: agents that hold roles in a process (a courier-bot bonded against cumulative value, an offset-burning seller settling under the same atomic-resolution rule, an audit agent reading reconstructed state and posting attestations). Bonding makes the agent legible to its counterparty &mdash; cooperation weakly dominates for the agent on exactly the arithmetic that makes it weakly dominate for a human (the <Link href="/papers/asymmetric-bonding" className="underline">bonding equilibrium</Link>; the kernel cannot tell the two apart, because it does not look).
                 </p>
                 <p className="text-sm text-ink-muted">
                     Subpath: <code>@figaro/sdk/agent</code>. Full subpath table below.
@@ -228,7 +228,7 @@ for (const [processId, process] of processes) {
                     </p>
                     <ol className="space-y-3 text-sm text-ink-body leading-relaxed list-decimal pl-5">
                         <li><strong>UI surfaces the option.</strong> A live quote from a bonded offset seller registered against the assembly.</li>
-                        <li><strong>Buyer commits a sub-order.</strong> Same <code>processId</code>, non-zero <code>cumulativeValue</code>, offset seller as seller. Buyer bonds <code>2&times;Y</code>; seller bonds 2&times; cumulative value (Paper A, Theorem 4.3).</li>
+                        <li><strong>Buyer commits a sub-order.</strong> Same <code>processId</code>, non-zero <code>cumulativeValue</code>, offset seller as seller. Buyer bonds <code>2&times;Y</code>; seller bonds 2&times; cumulative value (the <Link href="/papers/asymmetric-bonding" className="underline">N-party bonding equilibrium</Link>).</li>
                         <li><strong>Wallet handles any token swap.</strong> Multi-token bookkeeping is resolved before the commit; the kernel sees a single-currency sub-order.</li>
                         <li><strong>Seller delivers.</strong> Burns the offset and posts the burn receipt as an attestation against the sub-order.</li>
                         <li><strong>Buyer calls <code>resolveProcess</code> once.</strong> Main order and offset sub-order settle atomically. Offset receipt joins the evidence bundle.</li>
@@ -270,7 +270,7 @@ for (const [processId, process] of processes) {
                 </ul>
 
                 <p className="mt-8 text-sm text-ink-body leading-relaxed">
-                    <strong>How composition stays safe.</strong> An external mechanism that could override resolution, claw back a bond, or revoke a counterparty mid-process would import an escape hatch the kernel was designed to deny. The coordinator pattern gives three sufficient conditions under which composition preserves the bonding equilibrium: the external reads kernel state and emits its own evidence, but never writes to kernel state, never reverses a resolution, and never controls a bond. Integrators bringing a new external into an assembly should verify the composition against the same conditions. Property-side treatment with Theorem 4.7 citation: <Link href="/builders/composability" className="underline">Composability</Link>.
+                    <strong>How composition stays safe.</strong> An external mechanism that could override resolution, claw back a bond, or revoke a counterparty mid-process would import an escape hatch the kernel was designed to deny. The coordinator pattern gives three sufficient conditions under which composition preserves the bonding equilibrium: the external reads kernel state and emits its own evidence, but never writes to kernel state, never reverses a resolution, and never controls a bond. Integrators bringing a new external into an assembly should verify the composition against the same conditions. Property-side treatment, with the escape-hatch theorem it rests on: <Link href="/builders/composability" className="underline">Composability</Link>.
                 </p>
             </MarketingSection>
 
