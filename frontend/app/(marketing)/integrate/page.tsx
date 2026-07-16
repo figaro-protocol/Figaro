@@ -40,7 +40,7 @@ export default function Integrate() {
 
             <MarketingSection title="Read, reconstruct, propose.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
-                    <code>@figaro/sdk</code> is a TypeScript SDK with a single runtime dependency (<code>viem</code>). ESM, five subpath exports. Used from React frontends, server-side indexers, and headless agents.
+                    <code>@figaro/sdk</code> is a TypeScript SDK with three runtime dependencies &mdash; <code>viem</code>, plus <code>@noble/curves</code> and <code>@noble/hashes</code> (the versions viem itself resolves, for the handoff ECDH). ESM, five subpath exports. Used from React frontends, server-side indexers, and headless agents.
                 </p>
                 <ul className="space-y-4">
                     <LabelledListRow label="@figaro/sdk" labelWidth="narrow" uppercase>
@@ -279,7 +279,7 @@ for (const [processId, process] of processes) {
                     <li><strong>Repository:</strong> <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="underline">github.com/figaro-protocol/Figaro</a>. SDK lives at <code>sdk/</code>.</li>
                     <li><strong>SDK README:</strong> <code>sdk/README.md</code> in the repo. Covers every subpath export and the test-harness conventions.</li>
                     <li><strong>ABIs:</strong> <code>CORE_ABI</code>, <code>ATTESTATION_COORDINATOR_ABI</code>, <code>CLAUSE_REGISTRY_ABI</code>, <code>ERC20_ABI</code>, <code>SELLER_REGISTRY_ABI</code>, <code>FLORIN_TOKEN_ABI</code>. All exported from <code>@figaro/sdk</code>; canonical contract surface at <Link href="/spec" className="underline">/spec</Link>.</li>
-                    <li><strong>Tests as documentation:</strong> <code>sdk/tests/</code> includes round-trip tests of every exported primitive. If the README is ambiguous, read the tests.</li>
+                    <li><strong>Type declarations as documentation:</strong> the package ships <code>dist/**/*.d.ts</code> and <code>src/</code>. Every exported primitive carries a docblock stating its invariants in plain arithmetic &mdash; <code>bonds.d.ts</code>, <code>agreement.d.ts</code>, and <code>commitments.d.ts</code> are the ones to read first. If the README is ambiguous, read the declaration.</li>
                 </ul>
                 <p className="mt-8 text-sm text-ink-muted leading-relaxed">
                     Related:&nbsp;

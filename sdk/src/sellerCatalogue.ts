@@ -36,6 +36,14 @@ export interface CatalogueItemMetadata {
     id: string;
     name: string;
     description?: string;
+    /** HUMAN DECIMAL, in whole currency units — `"180"` means 180 tokens, NOT
+     *  180 wei. Checkout converts it with `parseUnits(price, tokenDecimals)`.
+     *
+     *  Do not confuse it with its two siblings, which use the OPPOSITE
+     *  convention: `AssemblyCheckoutLineItem.unitPrice` and the commerce
+     *  clause's `payment` are both in the currency's SMALLEST unit. Writing a
+     *  smallest-unit value here silently overprices the item by 10^decimals on
+     *  a real bonded order. */
     price: string;
     /** Free-form seller-authored grouping. Optional — absent when the seller
      *  didn't author one; never coerced to a coined "General". */

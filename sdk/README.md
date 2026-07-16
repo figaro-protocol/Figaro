@@ -246,8 +246,8 @@ code.
 > `FigaroBatchVerifier` settles only if the witness's hash matches
 > `ClauseRegistry.contentHashOf` — so never-seen clauses stay attestable AND
 > batch-settleable with zero per-clause code. There are no per-clause validator
-> contracts, permanently. Canonical statement: `docs/CONTRACTS.md`
-> § "Teardown state — CLOSED".
+> contracts, permanently. The contract catalogue that states this is published
+> at `/spec`; the clause-authoring path is at `/clauses`.
 
 ```ts
 import {
@@ -370,9 +370,17 @@ import type { SpecSource, ProjectionSpecView } from "@figaro/sdk";
 
 // Build a SpecSource from the raw spec JSON you fetched from the registry.
 // A view is the Layer-A spec PLUS the hash-load-bearing `block` hints
-// (`article: "structural" | "attestations"`, `catalogueSourced`) that
-// parseProjectionHints extracts — everything else in `block` is presentation
-// the SDK never reads.
+// (`article`, `catalogueSourced`, `terms`) that parseProjectionHints extracts —
+// everything else in `block` is presentation the SDK never reads.
+//
+// `block.article` is normally your clause's own group name (free text: "geo",
+// "logistics", …). TWO values are RESERVED and change agreement semantics:
+//   "mandatory"    — auto-folds into EVERY template agreement (specIsMandatory)
+//   "attestations" — an empty anchor at commit, content attested later
+//                    (specIsProcessLog)
+// Pick either by accident — say you group an attestation clause under
+// "attestations" — and your clause behaves differently with no error raised.
+// Registration is permanent and first-write-wins, so choose before you register.
 function makeSpecSource(rawSpecsByKey: Map<string, unknown>): SpecSource {
   const views = new Map<string, ProjectionSpecView>();
   for (const [key, raw] of rawSpecsByKey) {   // key = `${clauseId}@${version}`
