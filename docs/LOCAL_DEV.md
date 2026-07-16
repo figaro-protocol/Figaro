@@ -41,6 +41,7 @@ cd sdk && npm run lint                   # tsc --noEmit
 
 # --- Deploy to local Anvil ---
 ./scripts/devup.sh                       # ⭐ one-shot, idempotent: clean-rebuilds sdk/dist, ensures Anvil + IPFS, deploys the protocol
+./scripts/devdown.sh                     # the inverse: stops Anvil + Kubo (and ONLY those). KEEP_IPFS=1 leaves Kubo pinning
 # …or the individual steps it wraps:
 ./scripts/deploy-local.sh                # deploys the stack AND pins+anchors clauses (incl. mandatory commerce/topology) — self-sufficient
 ```
@@ -70,7 +71,10 @@ Mechanism caveat: processes started via `run_in_background` may be reaped by
 the harness — start long-lived services detached through the repo's own
 scripts (`devup.sh` starts Anvil detached → `/tmp/figaro-anvil.log`) or as
 Docker containers (which outlive the spawning shell), never as opaque
-one-off daemons.
+one-off daemons. **Taking it down is one command: `./scripts/devdown.sh`** —
+the inverse of `devup.sh`, stopping Anvil + Kubo and nothing else. It reports
+a stray `:3100` rather than killing it (that may be a Playwright run in
+flight) and never touches `:3000` (yours).
 
 - **IPFS (Kubo).** Pins seller profiles, catalogues, agreements, uploaded media via `lib/shared/ipfsService.ts`. Endpoint `http://127.0.0.1:5001`; image `ipfs/kubo:v0.42.0` (pinned — `latest` at 0.40.1 segfaulted in its DHT reprovider; upgrade deliberately, container `figaro-ipfs` runs with `--restart unless-stopped`). Kubo's default CORS needs the dev origin allowlisted + a restart before pinning works.
 - **Mythril.** Symbolic execution via `scripts/mythril-docker.sh` (image `mythril/myth`). Opportunistic, not in the standard test loop.
