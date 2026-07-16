@@ -1,0 +1,36 @@
+[package]
+name = "figaro-sequencer"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "sequencer"
+path = "src/main.rs"
+
+[dependencies]
+figaro-kernel = { path = "../lib" }
+# Layer B validator + canonical encoders — used in the mempool pre-flight
+# to mirror the kernel's content gate (see pre_check_attest_content in
+# mempool.rs). Rejecting bad attestations here means the prover never
+# spends cycles on batches the kernel would reject.
+figaro-clause = { path = "../clause" }
+sp1-sdk = "6.0"
+alloy-primitives = { version = "0.8", features = ["serde"] }
+alloy-sol-types = "0.8"
+alloy = { version = "0.8", features = ["full", "node-bindings"] }
+axum = { version = "0.7", features = ["json"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[build-dependencies]
+sp1-build = "6.0"
+
+[dev-dependencies]
+k256 = { version = "0.13", features = ["ecdsa"] }
+tower = { version = "0.5", features = ["util"] }
+
+# Canonical batch fixtures (witness-based ops) shared with the prove-test harness.
+figaro-prove-test = { path = "../script" }

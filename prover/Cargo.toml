@@ -2,7 +2,7 @@
 # The clause engine landed first in the rebuild; the kernel mirror,
 # guest program, prove-script, and sequencer crates rejoin as each is
 # realigned to the current contract ABIs.
-members = ["clause", "lib", "program", "script"]
+members = ["clause", "lib", "program", "script", "sequencer"]
 resolver = "2"
 
 # SP1 accelerates secp256k1 via a precompile. The kernel ELF verifies ~7

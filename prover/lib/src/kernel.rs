@@ -288,6 +288,22 @@ fn apply_resolve(
 
 // ── Attestation helpers ───────────────────────────────────────────
 
+/// Derive a commitment's (orderHash, processId) pair from its struct
+/// alone — the same derivation the coordinator and kernel apply. Public
+/// so the sequencer's stateless mempool pre-checks share it (one
+/// derivation, no drift).
+pub fn derive_commitment_ids(domain: &B256, c: &Commitment) -> (B256, B256) {
+    let struct_hash = commitment_struct_hash(c);
+    let process_id = if c.process_id == B256::ZERO {
+        // Root order: processId is the EIP-712 digest of the commitment.
+        typed_data_hash(domain, &struct_hash)
+    } else {
+        c.process_id
+    };
+    let order_hash = compute_order_hash(&process_id, &struct_hash);
+    (order_hash, process_id)
+}
+
 /// Mirror of `AttestationCoordinator._requireKnownCommitment`: derive the
 /// (orderHash, processId) pair from a commitment and require the order to
 /// be ACTIVE (committed, unresolved). Attestation is runtime evidence
@@ -297,14 +313,7 @@ fn require_known_active_commitment(
     domain: &B256,
     c: &Commitment,
 ) -> Result<(B256, B256), KernelError> {
-    let struct_hash = commitment_struct_hash(c);
-    let process_id = if c.process_id == B256::ZERO {
-        // Root order: processId is the EIP-712 digest of the commitment.
-        typed_data_hash(domain, &struct_hash)
-    } else {
-        c.process_id
-    };
-    let order_hash = compute_order_hash(&process_id, &struct_hash);
+    let (order_hash, process_id) = derive_commitment_ids(domain, c);
     match state.order_status.get(&order_hash).copied().unwrap_or(0) {
         0 => Err(KernelError::UnknownOrder),
         1 => Ok((order_hash, process_id)),
@@ -338,7 +347,10 @@ fn require_known_active_commitment(
 ///     the target's signed `agreement_hash` via the sorted-pair Merkle
 ///     `inclusion_proof` — mandatory for every mode, mirroring the
 ///     coordinator.
-fn validate_attestation_content(
+/// Public so the sequencer's mempool pre-checks run the EXACT gate the
+/// guest will run — advisory there, enforced here; one implementation,
+/// no drift.
+pub fn validate_attestation_content(
     proof: &AttestationContentProof,
     content_ref: &B256,
     clause_id: &B256,
