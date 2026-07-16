@@ -6,7 +6,8 @@
  * section) is a leaf; inclusion proofs let runtime attestations prove their
  * content was committed to at contract-signing time.
  *
- * Leaf format: `keccak256(clauseId || sectionDataHash)` where
+ * Leaf format: `keccak256(keccak256(clauseId || sectionDataHash))` (double-hashed
+ * for leaf/node domain separation) where
  *   - `clauseId` = `computeClauseKey(clause, version)` =
  *      `keccak256(abi.encode(clause, version))` — the on-chain bytes32 id,
  *      used DIRECTLY as the leaf id (it is NOT hashed again). This same value
@@ -106,13 +107,19 @@ export function getSectionDataBytes(section: AgreementSection): Hex {
 }
 
 /**
- * Compute one merkle leaf: `keccak256(clauseId || keccak256(sectionDataBytes))`.
+ * Compute one merkle leaf:
+ * `keccak256(keccak256(clauseId || keccak256(sectionDataBytes)))` — the inner
+ * hash binds the section, the outer hash DOMAIN-SEPARATES leaves from internal
+ * nodes (OZ double-hash convention: a leaf preimage is 32 bytes, an internal
+ * node's is 64, so no internal node can ever be replayed as a leaf).
  * Uses `getSectionDataBytes` so leaves computed off-chain match the coordinator's
  * reconstruction during inclusion-proof verification.
  */
 export function computeSectionLeaf(section: AgreementSection): Hex {
     return keccak256(
-        concat([computeClauseKey(section.clause, section.version), keccak256(getSectionDataBytes(section))]),
+        keccak256(
+            concat([computeClauseKey(section.clause, section.version), keccak256(getSectionDataBytes(section))]),
+        ),
     );
 }
 

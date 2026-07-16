@@ -50,7 +50,10 @@ interface IFigaroCore {
 ///      the inclusion proof won't open. This closes the drift where runtime
 ///      declarations could contradict the signed contract.
 ///
-///      Leaf format: `keccak256(abi.encodePacked(clauseId, keccak256(sectionData)))`.
+///      Leaf format: `keccak256(bytes.concat(keccak256(abi.encodePacked(clauseId, keccak256(sectionData)))))`
+///      — double-hashed so the leaf domain (32-byte preimage) can never collide
+///      with the internal-node domain (64-byte preimage); a crafted agreement
+///      cannot replay one of its own internal nodes as a signed section leaf.
 ///      Tree: OpenZeppelin `MerkleProof` with sorted-pair hashing.
 ///      Empty / unbound attestation is blocked — callers must prove a clause.
 ///
@@ -176,8 +179,9 @@ contract AttestationCoordinator {
     ///      the attestation to the signed contract (merkle inclusion) and to
     ///      its content (`keccak256(content)`); it does not validate content
     ///      shape — that is an off-chain SDK / read-time concern.
-    ///      Leaf = `keccak256(clauseId || keccak256(sectionData))`, sorted-pair
-    ///      merkle tree as produced by the off-chain agreement helpers.
+    ///      Leaf = `keccak256(keccak256(clauseId || keccak256(sectionData)))`
+    ///      (double-hashed — leaf/node domain separation), sorted-pair merkle
+    ///      tree as produced by the off-chain agreement helpers.
     function _verifyInclusion(
         bytes32 agreementHash,
         bytes32 clauseId,
@@ -185,7 +189,7 @@ contract AttestationCoordinator {
         bytes32[] calldata proof,
         bytes calldata content
     ) internal pure returns (bytes32) {
-        bytes32 leaf = keccak256(abi.encodePacked(clauseId, keccak256(sectionData)));
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(clauseId, keccak256(sectionData)))));
         if (!MerkleProof.verify(proof, agreementHash, leaf)) {
             revert InvalidInclusionProof(agreementHash, clauseId);
         }

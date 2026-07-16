@@ -44,12 +44,13 @@ fn encode_content(spec_json: &str, content: &serde_json::Value, stage: u8) -> Ve
 }
 
 /// The agreement Merkle leaf for a clause section:
-/// `keccak256(clauseId ++ keccak256(sectionData))`.
+/// `keccak256(keccak256(clauseId ++ keccak256(sectionData)))` — double-hashed
+/// for leaf/node domain separation.
 fn section_leaf(clause_key: &B256, section_data: &str) -> B256 {
     let mut preimage = [0u8; 64];
     preimage[..32].copy_from_slice(clause_key.as_slice());
     preimage[32..].copy_from_slice(keccak256(section_data.as_bytes()).as_slice());
-    keccak256(preimage)
+    keccak256(keccak256(preimage))
 }
 
 // ── Test keys (match Foundry's constants) ─────────────────────────

@@ -86,7 +86,7 @@ Two on-chain touch points remain:
   in the spec JSON). No validator is registered or bound; a registered clause is
   immediately attestable.
 - **`AttestationCoordinator`** merkle-binds each attestation: it verifies an OZ-style
-  inclusion proof of `leaf = keccak256(clauseId ++ keccak256(sectionData))` against the
+  inclusion proof of `leaf = keccak256(keccak256(clauseId ++ keccak256(sectionData)))` (double-hashed — leaf/node domain separation) against the
   signed `agreementHash`, content-hashes the evidence (`contentRef = keccak256(content)`),
   and emits `Attestation`. It validates **no content shape** — an attestation whose clause
   was not committed at signing cannot land (the proof won't open), but any committed clause

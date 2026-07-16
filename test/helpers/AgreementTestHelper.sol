@@ -14,7 +14,7 @@ pragma solidity ^0.8.24;
 library AgreementTestHelper {
     /// @dev Compute the merkle leaf for one clause clause.
     function leafFor(bytes32 clauseId, bytes memory sectionData) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(clauseId, keccak256(sectionData)));
+        return keccak256(bytes.concat(keccak256(abi.encodePacked(clauseId, keccak256(sectionData)))));
     }
 
     /// @dev Compute the agreement merkle root for an ordered list of leaves.

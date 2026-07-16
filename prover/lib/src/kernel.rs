@@ -431,13 +431,14 @@ pub fn validate_attestation_content(
     }
 
     // ── Gate I: the clause is a leaf of the signed agreement ──
-    // Leaf = keccak256(clauseId ++ keccak256(sectionData)) — mirrors
+    // Leaf = keccak256(keccak256(clauseId ++ keccak256(sectionData))) —
+    // double-hashed for leaf/node domain separation, mirroring
     // AttestationCoordinator._verifyInclusion (mandatory, every mode).
     let section_data_hash = keccak256(proof.section_data.as_bytes());
     let mut leaf_preimage = [0u8; 64];
     leaf_preimage[..32].copy_from_slice(clause_id.as_slice());
     leaf_preimage[32..].copy_from_slice(section_data_hash.as_slice());
-    let leaf = keccak256(leaf_preimage);
+    let leaf = keccak256(keccak256(leaf_preimage));
     if !crate::merkle::verify_inclusion(&proof.inclusion_proof, *agreement_hash, leaf) {
         return Err(KernelError::InvalidInclusionProof);
     }

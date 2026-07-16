@@ -275,8 +275,12 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
     const contentRef = keccak256(
         encodeContentFromSpec(parsedSpec, JSON.parse(SECTION_DATA), { stage: 0 }),
     );
+    // Double-hashed leaf (leaf/node domain separation) — must mirror
+    // computeSectionLeaf / the coordinator / the prover's Gate I.
     const sectionLeaf = keccak256(
-        encodePacked(["bytes32", "bytes32"], [clauseKey, keccak256(stringToHex(SECTION_DATA))]),
+        keccak256(
+            encodePacked(["bytes32", "bytes32"], [clauseKey, keccak256(stringToHex(SECTION_DATA))]),
+        ),
     );
     const witnessProof: SequencerContentProof = {
         spec_json: specJson,

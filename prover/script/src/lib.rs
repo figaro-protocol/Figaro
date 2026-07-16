@@ -126,11 +126,12 @@ pub fn build_canonical_batch_input() -> BatchInput {
     let re_assert_content_ref = keccak256(SECTION_DATA.as_bytes());
 
     // Single-section agreement: agreement_hash IS the lone section leaf
-    // keccak256(clauseKey ++ keccak256(sectionData)).
+    // keccak256(keccak256(clauseKey ++ keccak256(sectionData))) — double-
+    // hashed for leaf/node domain separation.
     let mut leaf_preimage = [0u8; 64];
     leaf_preimage[..32].copy_from_slice(clause_key.as_slice());
     leaf_preimage[32..].copy_from_slice(re_assert_content_ref.as_slice());
-    let agreement_leaf = keccak256(leaf_preimage);
+    let agreement_leaf = keccak256(keccak256(leaf_preimage));
 
     let root = Commitment {
         process_id: B256::ZERO,

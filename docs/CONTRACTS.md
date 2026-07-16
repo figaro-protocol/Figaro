@@ -30,7 +30,7 @@ expires post-commit). See `DESIGN_DECISIONS.md` §13.
 - `attestViaResolver(Commitment target, ...)` — caller authorized by `IRoleResolver(target.seller).isAuthorized`.
 
 For every call, the coordinator verifies an OZ-style merkle inclusion proof of
-`leaf = keccak256(clauseId || keccak256(sectionData))` against
+`leaf = keccak256(keccak256(clauseId || keccak256(sectionData)))` (double-hashed — leaf/node domain separation) against
 `target.agreementHash`, then emits
 `Attestation(orderHash, processId, attester, clauseId, stage, contentRef)`
 where `contentRef = keccak256(content)`. It **validates no content shape** — it
@@ -253,6 +253,7 @@ then renounces — the minter must exist at genesis because `registerMinter` pre
 - `src/mocks/MockArbitrator.sol` — devnet/test stand-in for the composed bond-settlement forum behind `RpgfMinter`'s `IRpgfArbitrator` seam: accepts disputes at zero fee, lets anyone deliver a ruling back to the arbitrable contract. Mainnet composes a real arbitration provider (e.g. Kleros via an adapter) behind the same seam — the forum is deployment config, never protocol code.
 - `src/mocks/MockUniversalRouter.sol` — test stand-in for a swap venue; `swap(tokenIn, tokenOut, amountIn, recipient)` at a settable rate, paying out of pre-funded liquidity. Used by `WitnessSwapAndCommitCoordinatorTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_SWAP_ROUTER` (pre-funded with both devnet tokens); mainnet uses the real Uniswap Universal Router.
 - `src/mocks/MockSP1Verifier.sol` — devnet/test stand-in for Succinct's SP1 verifier gateway behind `ISP1Verifier`: accepts any proof, so the batch path runs end-to-end on Anvil without proving hardware. Deployed by `Deploy.s.sol` for `FigaroBatchVerifier`; mainnet wires the canonical gateway (`SP1_VERIFIER_GATEWAY`).
+- `src/mocks/MockReentrantToken.sol` — Foundry-tests-only malicious ERC-20 that re-enters an armed target on `transfer`/`transferFrom` (the fee-on-transfer / ERC-777 hook an attacker gets). Used by `ReentrancyAdversarialTest` to prove the `nonReentrant` guards on `FigaroCore.commit`/`resolveProcess` and `FigaroBatchVerifier.settleBatch` actually fire under a live re-entry attempt. Never deployed.
 - `src/echidna/EchidnaFuzzer.sol`, `EchidnaFigToken.sol`, `EchidnaToken.sol`
 
 ## What Does NOT Exist

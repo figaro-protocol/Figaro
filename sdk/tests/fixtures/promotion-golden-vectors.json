@@ -7,19 +7,19 @@
     "sharedSecretAtoB": "a2d7c68e4c1189d4b07d761c53f78fefb90dfbceaef8ae011cbe7a57f7cfd7e2",
     "sharedSecretBtoA": "1dd146e8cf934ed2f1099ca85205264b70dd7811fa4ce3b591bfdb19f5086b69",
     "plaintextKeyB64": "Zml4ZWQtaGFuZG9mZi1rZXktZm9yLXZlY3RvcnM",
-    "wrappedBlobB64": "IPfPBgxc68NI8oSXHC7VBnRS-B6LhvqDBNqeKkdMoEiAvxOjgXou5QzF6C5trG8nmculaU00FVLB0PgfAhVbocedxQ"
+    "wrappedBlobB64": "LPI5D6pcgaBmlkH-E-h08vlydS5FEItH9Gxxod3laYrjZ_yhkEamQ1JUemYxdJAg5vt_Tk7xhmVEbReWK_BOzBj3VA"
   },
   "commitmentPayload": {
-    "serialized": "{\"commitment\":{\"processId\":\"0x0000000000000000000000000000000000000000000000000000000000000000\",\"buyer\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"seller\":\"0x2546BcD3c84621e976D8185a91A922aE77ECEc30\",\"currency\":\"0x0000000000000000000000000000000000000001\",\"payment\":\"0x15af1d78b58c40000\",\"expectedCumulativeValue\":\"0x15af1d78b58c40000\",\"agreementHash\":\"0x3b990a416b38a9db74dbf0a9e131916242c9b6f8cf2203d5fdb849a378a3a79d\",\"salt\":\"0x1234\",\"deadline\":\"0x69800e80\"},\"agreement\":{\"version\":\"a1\",\"buyer\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"seller\":\"0x2546BcD3c84621e976D8185a91A922aE77ECEc30\",\"sections\":[{\"clause\":\"figaro-applicable-law\",\"version\":1,\"data\":{\"applicableLaw\":\"US-NY\"}},{\"clause\":\"figaro-commerce\",\"version\":1,\"data\":{\"payment\":\"1\",\"lineItems\":[{\"itemId\":\"item-1\",\"name\":\"Test item\",\"quantity\":1,\"unitPrice\":\"1\"}]}},{\"clause\":\"figaro-topology\",\"version\":1,\"data\":{\"parentOrderHashes\":[]}}]},\"buyerSig\":\"0xababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab\"}"
+    "serialized": "{\"commitment\":{\"processId\":\"0x0000000000000000000000000000000000000000000000000000000000000000\",\"buyer\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"seller\":\"0x2546BcD3c84621e976D8185a91A922aE77ECEc30\",\"currency\":\"0x0000000000000000000000000000000000000001\",\"payment\":\"0x15af1d78b58c40000\",\"expectedCumulativeValue\":\"0x15af1d78b58c40000\",\"agreementHash\":\"0x37100989926886531d02cf50ca99d39c5b706c36c75b7ab9d3555f6003537874\",\"salt\":\"0x1234\",\"deadline\":\"0x69800e80\"},\"agreement\":{\"version\":\"a1\",\"buyer\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"seller\":\"0x2546BcD3c84621e976D8185a91A922aE77ECEc30\",\"sections\":[{\"clause\":\"figaro-applicable-law\",\"version\":1,\"data\":{\"applicableLaw\":\"US-NY\"}},{\"clause\":\"figaro-commerce\",\"version\":1,\"data\":{\"payment\":\"1\",\"lineItems\":[{\"itemId\":\"item-1\",\"name\":\"Test item\",\"quantity\":1,\"unitPrice\":\"1\"}]}},{\"clause\":\"figaro-topology\",\"version\":1,\"data\":{\"parentOrderHashes\":[]}}]},\"buyerSig\":\"0xababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab\"}"
   },
   "agreementProjection": {
     "defaults": {
       "canonicalAgreement": "{\"buyer\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"sections\":[{\"clause\":\"figaro-applicable-law\",\"data\":{\"applicableLaw\":\"US-NY\"},\"version\":1},{\"clause\":\"figaro-commerce\",\"data\":{\"lineItems\":[{\"itemId\":\"item-1\",\"name\":\"Test item\",\"quantity\":1,\"unitPrice\":\"1\"}],\"payment\":\"1\"},\"version\":1},{\"clause\":\"figaro-topology\",\"data\":{\"parentOrderHashes\":[]},\"version\":1}],\"seller\":\"0x2546BcD3c84621e976D8185a91A922aE77ECEc30\",\"version\":\"a1\"}",
-      "agreementHash": "0x3b990a416b38a9db74dbf0a9e131916242c9b6f8cf2203d5fdb849a378a3a79d"
+      "agreementHash": "0x37100989926886531d02cf50ca99d39c5b706c36c75b7ab9d3555f6003537874"
     },
     "processLog": {
       "canonicalAgreement": "{\"buyer\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"sections\":[{\"clause\":\"figaro-commerce\",\"data\":{\"lineItems\":[{\"itemId\":\"item-1\",\"name\":\"Test item\",\"quantity\":1,\"unitPrice\":\"1\"}],\"payment\":\"1\"},\"version\":1},{\"clause\":\"figaro-merchant-process\",\"data\":{},\"version\":1},{\"clause\":\"figaro-topology\",\"data\":{\"parentOrderHashes\":[]},\"version\":1}],\"seller\":\"0x2546BcD3c84621e976D8185a91A922aE77ECEc30\",\"version\":\"a1\"}",
-      "agreementHash": "0x132f9667cf500121588a37cc7a3bb3c35d19aca8156511fa1811129a92cb903a"
+      "agreementHash": "0x668a946a89a5abbd1f5537923abb29f335eef0317626a46c401b31702102f1b0"
     }
   },
   "assemblyTemplate": {
