@@ -10,6 +10,7 @@ import "../src/ClauseRegistry.sol";
 import "../src/SellerRegistry.sol";
 import "../src/fig/FigToken.sol";
 import {RpgfMinter} from "../src/fig/RpgfMinter.sol";
+import "../src/FigaroBatchVerifier.sol";
 
 /// @title DeployMainnet — Mainnet deployment of the full Figaro V5 protocol stack
 ///
@@ -60,6 +61,7 @@ contract DeployMainnet is Script {
     address internal _sellers;
     address internal _fig;
     address internal _rpgfMinter;
+    address internal _batchVerifier;
 
     function run() external {
         uint256 privateKey = vm.envUint("PRIVATE_KEY");
@@ -132,6 +134,29 @@ contract DeployMainnet is Script {
         SellerRegistry sellers = new SellerRegistry(0.001 ether);
         _sellers = address(sellers);
         console.log("SellerRegistry:       ", _sellers);
+
+        // ── FigaroBatchVerifier (proof-based batch settlement) ─────
+        // SP1_VERIFIER_GATEWAY: Succinct's canonical SP1 verifier gateway
+        // on the target chain (their contract-addresses docs list the
+        // deployments; a chain with none can host the verifier directly).
+        // SP1_PROGRAM_VKEY: the guest program's verification key —
+        // `SP1_VKEY_ONLY=1 cargo run -p figaro-prove-test --release`.
+        // The genesis root is DERIVED (one keccak256("") per kernel state
+        // map), matching the Rust KernelState::compute_root on the empty
+        // state. ClauseRegistry anchors the witness specs: settleBatch
+        // checks each proof's (clause key → spec hash) binding against
+        // contentHashOf. Not a FIG minter, never will be.
+        require(vm.envAddress("SP1_VERIFIER_GATEWAY") != address(0), "SP1_VERIFIER_GATEWAY not set");
+        require(vm.envBytes32("SP1_PROGRAM_VKEY") != bytes32(0), "SP1_PROGRAM_VKEY not set");
+        bytes32 emptyMapHash = keccak256("");
+        FigaroBatchVerifier batchVerifier = new FigaroBatchVerifier(
+            vm.envAddress("SP1_VERIFIER_GATEWAY"),
+            vm.envBytes32("SP1_PROGRAM_VKEY"),
+            _clauses,
+            keccak256(abi.encodePacked(emptyMapHash, emptyMapHash, emptyMapHash))
+        );
+        _batchVerifier = address(batchVerifier);
+        console.log("FigaroBatchVerifier:    ", _batchVerifier);
     }
 
     // ── FIG token + genesis distribution ────────────────────────────
@@ -194,6 +219,7 @@ contract DeployMainnet is Script {
         console.log("  NEXT_PUBLIC_SELLER_REGISTRY=        ", _sellers);
         console.log("  NEXT_PUBLIC_FIG_TOKEN_ADDRESS=        ", _fig);
         console.log("  NEXT_PUBLIC_RPGF_MINTER=              ", _rpgfMinter);
+        console.log("  NEXT_PUBLIC_BATCH_VERIFIER=           ", _batchVerifier);
         console.log("---");
     }
 }

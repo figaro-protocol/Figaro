@@ -15,6 +15,8 @@ import "../src/mocks/MockWitnessPermit2.sol";
 import "../src/mocks/MockUniversalRouter.sol";
 import "../src/mocks/MockArbitrator.sol";
 import {RpgfMinter} from "../src/fig/RpgfMinter.sol";
+import "../src/mocks/MockSP1Verifier.sol";
+import "../src/FigaroBatchVerifier.sol";
 // Named import: the coordinator declares its own local-minimal `IFigaroCore`
 // (the coordinator exemplar), which would collide with AttestationCoordinator's.
 import {WitnessSwapAndCommitCoordinator} from "../src/WitnessSwapAndCommitCoordinator.sol";
@@ -127,6 +129,19 @@ contract Deploy is Script {
         SellerRegistry sellers = new SellerRegistry(0.001 ether);
         console.log("SellerRegistry deployed at:", address(sellers));
 
+        // ── Batch-settlement proof path (mock verifier on devnet) ──
+        // MockSP1Verifier accepts any proof; the real deployment wires
+        // Succinct's SP1 verifier gateway + the program vkey from
+        // `SP1_VKEY_ONLY=1 cargo run -p figaro-prove-test --release`
+        // (DeployMainnet.s.sol). The genesis root is DERIVED — one
+        // keccak256("") per kernel state map (processes, orderStatus,
+        // orderProcessId), matching the Rust KernelState::compute_root
+        // on the empty state. ClauseRegistry is the witness-spec anchor:
+        // settleBatch checks each proof's (clause key → spec hash)
+        // binding against contentHashOf before settling.
+        // Note: FigaroBatchVerifier is NOT a FIG minter and never will be.
+        _deployBatchVerifier(address(clauses));
+
         // ── FIG Token + RPGF minter ─────────────────────────────────
         FigToken fig = new FigToken();
         console.log("FigToken deployed at:", address(fig));
@@ -204,6 +219,24 @@ contract Deploy is Script {
         console.log("  NEXT_PUBLIC_SELLER_REGISTRY=", address(sellers));
         console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=", address(assemblies));
         console.log("  NEXT_PUBLIC_FIG_TOKEN_ADDRESS=", address(fig));
+        console.log("  NEXT_PUBLIC_BATCH_VERIFIER=", _batchVerifier);
+    }
+
+    address internal _batchVerifier;
+
+    /// @dev Own frame: keeps run()'s stack shallow (via_ir=false by design).
+    function _deployBatchVerifier(address clauseRegistry) internal {
+        MockSP1Verifier mockSp1 = new MockSP1Verifier();
+        console.log("MockSP1Verifier deployed at:", address(mockSp1));
+        bytes32 emptyMapHash = keccak256("");
+        FigaroBatchVerifier batchVerifier = new FigaroBatchVerifier(
+            address(mockSp1),
+            keccak256(abi.encodePacked("figaro-kernel-dev")),
+            clauseRegistry,
+            keccak256(abi.encodePacked(emptyMapHash, emptyMapHash, emptyMapHash))
+        );
+        _batchVerifier = address(batchVerifier);
+        console.log("FigaroBatchVerifier deployed at:", _batchVerifier);
     }
 
     /// @dev Own frame: keeps run()'s stack shallow (via_ir=false by design).

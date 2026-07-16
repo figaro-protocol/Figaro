@@ -81,6 +81,7 @@ ASSEMBLY_ADDR=$(echo "$FORGE_OUT"    | grep 'AssemblyRegistry deployed at:'     
 FIG_TOKEN_ADDR=$(echo "$FORGE_OUT"   | grep 'FigToken deployed at:'               | grep -oE '0x[0-9a-fA-F]+')
 RPGF_MINTER_ADDR=$(echo "$FORGE_OUT" | grep 'RpgfMinter deployed at:'             | grep -oE '0x[0-9a-fA-F]+')
 RPGF_ARBITRATOR_ADDR=$(echo "$FORGE_OUT" | grep 'MockArbitrator deployed at:'     | grep -oE '0x[0-9a-fA-F]+')
+BATCH_VERIFIER_ADDR=$(echo "$FORGE_OUT" | grep 'FigaroBatchVerifier deployed at:' | grep -oE '0x[0-9a-fA-F]+')
 
 if [ -z "$CORE_ADDR" ]; then
   echo "❌ Could not parse FigaroCore address from forge output. Aborting env update."
@@ -153,6 +154,7 @@ update_env "$CORE_ENV" "NEXT_PUBLIC_ASSEMBLY_REGISTRY"         "$ASSEMBLY_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_FIG_TOKEN_ADDRESS"         "$FIG_TOKEN_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_RPGF_MINTER"               "$RPGF_MINTER_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_RPGF_ARBITRATOR"           "$RPGF_ARBITRATOR_ADDR"
+update_env "$CORE_ENV" "NEXT_PUBLIC_BATCH_VERIFIER"            "$BATCH_VERIFIER_ADDR"
 
 # IPFS service endpoints — default to the local Kubo daemon. Set only if
 # absent, so a custom endpoint configured by hand survives a redeploy.
@@ -177,6 +179,7 @@ cat > "$CORE_DEPLOYMENT" <<EOF
   "assemblyRegistry": "$ASSEMBLY_ADDR",
   "figToken": "$FIG_TOKEN_ADDR",
   "rpgfMinter": "$RPGF_MINTER_ADDR",
+  "batchVerifier": "$BATCH_VERIFIER_ADDR",
   "rpgfArbitrator": "$RPGF_ARBITRATOR_ADDR"
 }
 EOF
