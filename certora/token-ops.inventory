@@ -30,9 +30,9 @@ src/WitnessSwapAndCommitCoordinator.sol:231 | _fund (bond currency → party) | 
 src/WitnessSwapAndCommitCoordinator.sol:235 | _fund (input residual refund → party) | [PENDING: CoordinatorTokenConservation — coordinator retains no input residual]
 
 # FigaroBatchVerifier — the batch-settlement verifier (proof-apparatus
-# rebuild). BatchVerifierTokenOps.spec is realigned to the witness model
-# (7-word PV, specBindings, contentHashOf summarized as a revert-only view);
-# the cloud run needs the operator's CERTORAKEY — both entries stay [PENDING]
-# until that run's results table is green.
-src/FigaroBatchVerifier.sol:339 | _executePositions (net payout → user) | [PENDING: BatchVerifierTokenOps cloud run — needs CERTORAKEY; spec realigned]
-src/FigaroBatchVerifier.sol:349 | _pullExact (net deposit pull) | [PENDING: BatchVerifierTokenOps cloud run — needs CERTORAKEY; spec realigned]
+# rebuild, witness model). BatchVerifierTokenOps.spec covers both sites:
+# single-position rules with the documented inductive generalization;
+# contentHashOf summarized as a revert-only view (sound — the anchor gate
+# refuses settlement, never moves a token). Cloud run green 2026-07-16.
+src/FigaroBatchVerifier.sol:339 | _executePositions (net payout → user) | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
+src/FigaroBatchVerifier.sol:349 | _pullExact (net deposit pull) | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
