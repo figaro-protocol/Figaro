@@ -234,12 +234,6 @@ export async function seedRegisteredSeller(opts: {
     };
 }
 
-// The fig-claims disk-fixture helpers (write/clearFigClaimsFixture) were
-// buried 2026-06-12: the prod-build e2e webServer serves only build-time
-// public/ assets (a post-build write 404s), so fig-claim-ui.devnet.spec.ts
-// simulates the build-time allocation artifact via page.route instead.
-
-
 /**
  * Pin a JSON document to the local Kubo daemon and return the CID + ipfs URI.
  *
