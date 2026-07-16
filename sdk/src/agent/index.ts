@@ -128,3 +128,16 @@ export type {
     DIDDocument,
     DIDResolutionResult,
 } from "./did.js";
+
+// Sequencer client (batch path)
+export { SequencerClient, SequencerError, toSequencerCommitment, toSequencerSig } from "./sequencer.js";
+export type {
+    SequencerClientConfig,
+    SequencerOp,
+    SequencerCommitment,
+    SequencerSignature,
+    SequencerContentProof,
+    SequencerContentKind,
+    SequencerStatus,
+    SubmitResult,
+} from "./sequencer.js";

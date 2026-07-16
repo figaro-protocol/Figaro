@@ -249,3 +249,26 @@ export const RPGF_MINTER_ABI = parseAbi([
     "event TrancheFinalizedRoot(uint8 indexed trancheId, bytes32 root, uint64 fromBlock, uint64 toBlock)",
     "event Claimed(uint8 indexed trancheId, address indexed account, uint256 amount)",
 ]);
+
+// ── FigaroBatchVerifier ABI ──────────────────────────────────────────────────
+// The batch-settlement verifier (proof-based scaling). settleBatch carries the
+// proof, the 7-word public values, net positions, and the event data — the
+// attestations to re-emit plus the (clause key → witness-spec hash) bindings
+// the contract checks against ClauseRegistry.contentHashOf before settling.
+
+export const BATCH_VERIFIER_ABI = parseAbi([
+    // ── Batch settlement ────────────────────────────────────────────
+    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId, bytes32 specHash)[] specBindings) events) external",
+
+    // ── Views ────────────────────────────────────────────────────────
+    "function stateRoot() view returns (bytes32)",
+    "function batchCount() view returns (uint64)",
+    "function verifier() view returns (address)",
+    "function programVKey() view returns (bytes32)",
+    "function clauseRegistry() view returns (address)",
+
+    // ── Events (Attestation shares its topic with the coordinator's —
+    //    indexers filter by address) ─────────────────────────────────
+    "event BatchSettled(uint64 indexed batchId, bytes32 indexed prevStateRoot, bytes32 indexed newStateRoot, uint256 positionCount)",
+    "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)",
+]);
