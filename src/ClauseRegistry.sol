@@ -63,6 +63,16 @@ contract ClauseRegistry {
     ///         deposit is withdrawn.
     mapping(bytes32 => bool) public registered;
 
+    /// @notice The integrity anchor — keccak256 of the canonical off-chain
+    ///         spec JSON, stored at registration (identity + integrity is
+    ///         this registry's whole purpose). This is the trust anchor the
+    ///         proof apparatus binds witness specs to: the batch verifier
+    ///         checks each proof's (clause key → spec-bytes hash) binding
+    ///         against this mapping, so an in-proof clause validation is
+    ///         only accepted for the exact spec the registry anchors.
+    ///         Never cleared — committed agreements reference it forever.
+    mapping(bytes32 => bytes32) public contentHashOf;
+
     /// @dev Stake accounting per clause key. `registrar` is the depositor
     ///      of record; `withdrawn` marks the stake reclaimed (= de-surfaced).
     struct DepositState {
@@ -146,6 +156,7 @@ contract ClauseRegistry {
         bytes32 idHash = keccak256(abi.encode(clauseId, version));
         if (registered[idHash]) revert AlreadyRegistered(idHash);
         registered[idHash] = true;
+        contentHashOf[idHash] = contentHash;
         depositOf[idHash] = DepositState({registrar: msg.sender, withdrawn: false});
         emit ClauseRegistered(clauseId, version, contentHash, contentURI, msg.sender);
     }

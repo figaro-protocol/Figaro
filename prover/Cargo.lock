@@ -897,6 +897,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "figaro-kernel"
+version = "0.1.0"
+dependencies = [
+ "alloy-primitives",
+ "bincode",
+ "figaro-clause",
+ "k256",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "find-msvc-tools"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1270,6 +1282,7 @@ dependencies = [
  "hex",
  "once_cell",
  "sha2",
+ "signature",
  "sp1-lib",
 ]
 

@@ -47,6 +47,9 @@ contract ClauseRegistryTest is Test {
         registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
 
         assertTrue(registry.registered(MODALITIES_HASH));
+        // The integrity anchor is stored, not just emitted — the batch
+        // verifier checks proof spec-bindings against it.
+        assertEq(registry.contentHashOf(MODALITIES_HASH), MODALITIES_CONTENT);
         (address registrar, bool withdrawn) = registry.depositOf(MODALITIES_HASH);
         assertEq(registrar, alice);
         assertFalse(withdrawn);

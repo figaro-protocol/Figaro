@@ -28,3 +28,10 @@ src/FigaroCore.sol:294 | resolveProcess (buyer payout)  | resolveSingleOrderPayo
 # `SlippageResidualStaysWithParty` / `InputResidualRefunded` Foundry tests today).
 src/WitnessSwapAndCommitCoordinator.sol:231 | _fund (bond currency → party) | [PENDING: CoordinatorTokenConservation — coordinator retains no bond currency post-swap]
 src/WitnessSwapAndCommitCoordinator.sol:235 | _fund (input residual refund → party) | [PENDING: CoordinatorTokenConservation — coordinator retains no input residual]
+
+# FigaroBatchVerifier — the batch-settlement verifier (proof-apparatus rebuild,
+# restored from the pre-teardown prototype; realignment to the new PublicValues
+# in flight). Its BatchVerifierTokenOps.spec was restored alongside and re-runs
+# when the verifier realignment lands — until then both entries ship [PENDING].
+src/FigaroBatchVerifier.sol:379 | _reconcile (net payout → user) | [PENDING: BatchVerifierTokenOps.spec re-run at verifier realignment]
+src/FigaroBatchVerifier.sol:389 | _pullExact (net deposit pull) | [PENDING: BatchVerifierTokenOps.spec re-run at verifier realignment]
