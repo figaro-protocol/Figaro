@@ -115,10 +115,10 @@ export function buildMatchTree(leaves: readonly Hex[]): RpgfTree {
 // ── The formula (pure) ───────────────────────────────────────────────
 
 /** The formula: turn a round's donation events into per-wallet match
- *  allocations of `budget` (the pool's finalized budget, or the funded
- *  balance when recomputing ahead of finalization). Scope filtering
- *  (token, window, machinery recipients) happens here so the input can be
- *  the raw fetched stream. */
+ *  allocations of `budget` — per the spec, matchToken.balanceOf(pool) at the
+ *  posting's toBlock (deterministic chain state; the finalized budget can
+ *  only equal or exceed it). Scope filtering (token, window, machinery
+ *  recipients) happens here so the input can be the raw fetched stream. */
 export function computeMatchAllocations(
     donations: readonly MatchDonationEvent[],
     round: MatchRoundConfig,

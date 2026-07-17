@@ -19,6 +19,7 @@ const COMPOSITION_CONTRACTS = {
     swapRouter: (process.env.NEXT_PUBLIC_SWAP_ROUTER || "") as `0x${string}`,
     rpgfMinter: (process.env.NEXT_PUBLIC_RPGF_MINTER || "") as `0x${string}`,
     rpgfArbitrator: (process.env.NEXT_PUBLIC_RPGF_ARBITRATOR || "") as `0x${string}`,
+    donationRail: (process.env.NEXT_PUBLIC_DONATION_RAIL || "") as `0x${string}`,
 };
 
 function resolveAddress(addr: `0x${string}`): `0x${string}` | null {
@@ -64,4 +65,14 @@ export function getRpgfMinter(): `0x${string}` | null {
  *  on /rewards. */
 export function getRpgfArbitrator(): `0x${string}` | null {
     return resolveAddress(COMPOSITION_CONTRACTS.rpgfArbitrator);
+}
+
+/** The chain's canonical DonationRail — the no-custody donation event
+ *  surface match rounds consume. A round (an OptimisticMatchPool instance)
+ *  names its own rail immutably, so the round page reads the rail FROM the
+ *  pool; this resolver is for surfaces with no round in hand.
+ *  @public — pending consumer: a round-opening surface (deploy a pool
+ *  against the deployment's rail) or a standalone donate surface. */
+export function getDonationRail(): `0x${string}` | null {
+    return resolveAddress(COMPOSITION_CONTRACTS.donationRail);
 }

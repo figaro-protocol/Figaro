@@ -39,6 +39,10 @@ export interface RpgfBondCase {
     conceded: boolean;
 }
 
+/** A match round's bond case — the OptimisticMatchPool runs the minter's
+ *  exact case track, minus tranches (one round = one posting slot). */
+export type MatchBondCase = Omit<RpgfBondCase, "trancheId">;
+
 export type BondCasePhase = "escalatable" | "concedable" | "disputed" | "closed";
 
 export function deriveBondCasePhase(

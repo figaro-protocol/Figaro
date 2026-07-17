@@ -17,7 +17,7 @@
     },
     "round": {
         "binding": "All round constants are the pool's immutables, read from the OptimisticMatchPool instance whose formulaHash anchors this file: donationRail, donationToken, matchToken, donationStart, donationEnd. Nothing round-specific lives anywhere else.",
-        "budget": "The match budget is OptimisticMatchPool.budget — the pool's matchToken balance snapshotted at finalize(). The posted root's total allocation SHOULD NOT exceed the pool's funded balance; the contract's budget cap makes over-allocation unclaimable regardless."
+        "budget": "The allocation budget is matchToken.balanceOf(pool) AT BLOCK toBlock — deterministic chain state any observer reads, so a posted root is exactly recomputable. Nothing moves the match token out of the pool before finalization, so the contract's finalized budget (the balance snapshot finalize() takes) can only equal or exceed the allocation budget — the claim-side budget cap holds by construction."
     },
     "window": {
         "fromBlock": "MUST be 0.",
