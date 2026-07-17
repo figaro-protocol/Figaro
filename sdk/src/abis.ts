@@ -282,6 +282,8 @@ export const OPTIMISTIC_MATCH_POOL_ABI = parseAbi([
     "function posting() view returns (address poster, bytes32 root, uint64 fromBlock, uint64 toBlock, uint64 postedAt)",
     "function bondCases(uint256) view returns (address poster, address challenger, uint64 challengedAt, uint8 status)",
     "function finalRoot() view returns (bytes32)",
+    "function finalFromBlock() view returns (uint64)",
+    "function finalToBlock() view returns (uint64)",
     "function finalized() view returns (bool)",
     "function budget() view returns (uint256)",
     "function claimedTotal() view returns (uint256)",
