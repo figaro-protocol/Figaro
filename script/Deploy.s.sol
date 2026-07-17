@@ -16,6 +16,7 @@ import "../src/mocks/MockUniversalRouter.sol";
 import "../src/mocks/MockArbitrator.sol";
 import "../src/mocks/MockTreasuryMultisig.sol";
 import {RpgfMinter} from "../src/florin/RpgfMinter.sol";
+import {DonationRail} from "../src/DonationRail.sol";
 import "../src/mocks/MockSP1Verifier.sol";
 import "../src/FigaroBatchVerifier.sol";
 // Named import: the coordinator declares its own local-minimal `IFigaroCore`
@@ -160,28 +161,9 @@ contract Deploy is Script {
         // further to now/+14d/+35d with 20s windows).
         _deployRpgf(florin);
 
-        // Devnet genesis mint, rehearsing the mainnet 10/30/60 custody shape:
-        // 100M founder stand-in to the deployer, 300M DAO to a treasury
-        // MULTISIG (mainnet: a canonical Safe at DAO_WALLET — config, never
-        // code; devnet: MockTreasuryMultisig with anvil[0..2] as 2-of-3
-        // placeholder owners, per the anvil-placeholder ruling). The DAO buys
-        // through a per-procurement funded operator-EOA — the treasury itself
-        // never signs kernel commitments (the kernel is ECDSA-only).
-        address deployer = vm.addr(deployerPrivateKey);
-        address[] memory treasuryOwners = new address[](3);
-        treasuryOwners[0] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266; // anvil[0]
-        treasuryOwners[1] = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8; // anvil[1]
-        treasuryOwners[2] = 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC; // anvil[2]
-        MockTreasuryMultisig daoTreasury = new MockTreasuryMultisig(treasuryOwners, 2);
-        console.log("MockTreasuryMultisig deployed at:", address(daoTreasury));
+        _deployTreasuryGenesis(florin, vm.addr(deployerPrivateKey));
 
-        florin.registerMinter(deployer, 400_000_000 ether);
-        florin.mint(deployer, 100_000_000 ether);
-        florin.mint(address(daoTreasury), 300_000_000 ether);
-
-        florin.renounceDeployerMint();
-        console.log("Deployer mint renounced");
-        console.log("  NEXT_PUBLIC_DAO_TREASURY=", address(daoTreasury));
+        _deployDonationRail();
 
         // ── Mint test tokens to Anvil accounts ──────────────────────
         // anvil[0..19] — all 20 accounts minted EXPLICITLY. The deployer is
@@ -251,6 +233,44 @@ contract Deploy is Script {
         );
         _batchVerifier = address(batchVerifier);
         console.log("FigaroBatchVerifier deployed at:", _batchVerifier);
+    }
+
+    /// @dev Own frame: keeps run()'s stack shallow (via_ir=false by design).
+    ///      Devnet genesis mint, rehearsing the mainnet 10/30/60 custody
+    ///      shape: 100M founder stand-in to the deployer, 300M DAO to a
+    ///      treasury MULTISIG (mainnet: a canonical Safe at DAO_WALLET —
+    ///      config, never code; devnet: MockTreasuryMultisig with anvil[0..2]
+    ///      as 2-of-3 placeholder owners, per the anvil-placeholder ruling).
+    ///      The DAO buys through a per-procurement funded operator-EOA — the
+    ///      treasury itself never signs kernel commitments (the kernel is
+    ///      ECDSA-only).
+    function _deployTreasuryGenesis(FlorinToken florin, address deployer) internal {
+        address[] memory treasuryOwners = new address[](3);
+        treasuryOwners[0] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266; // anvil[0]
+        treasuryOwners[1] = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8; // anvil[1]
+        treasuryOwners[2] = 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC; // anvil[2]
+        MockTreasuryMultisig daoTreasury = new MockTreasuryMultisig(treasuryOwners, 2);
+        console.log("MockTreasuryMultisig deployed at:", address(daoTreasury));
+
+        florin.registerMinter(deployer, 400_000_000 ether);
+        florin.mint(deployer, 100_000_000 ether);
+        florin.mint(address(daoTreasury), 300_000_000 ether);
+
+        florin.renounceDeployerMint();
+        console.log("Deployer mint renounced");
+        console.log("  NEXT_PUBLIC_DAO_TREASURY=", address(daoTreasury));
+    }
+
+    /// @dev Own frame: keeps run()'s stack shallow (via_ir=false by design).
+    ///      The no-custody donation event surface for crowd-steered match
+    ///      rounds: a permissionless singleton like the registries. Match
+    ///      pools (OptimisticMatchPool) are NOT genesis contracts — one
+    ///      instance IS one round, deployed by whoever opens the round and
+    ///      pointed at this rail (the e2e suite deploys its own per run).
+    function _deployDonationRail() internal {
+        DonationRail donationRail = new DonationRail();
+        console.log("DonationRail deployed at:", address(donationRail));
+        console.log("  NEXT_PUBLIC_DONATION_RAIL=", address(donationRail));
     }
 
     /// @dev Own frame: keeps run()'s stack shallow (via_ir=false by design).
