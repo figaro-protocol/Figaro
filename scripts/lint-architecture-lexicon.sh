@@ -36,6 +36,9 @@ is_excluded() {
         # necessity, so it must never be checked against itself.
         *lint-architecture-lexicon.sh) return 0 ;;
         */node_modules/*|*/.git/*|*/dist/*|*/.next/*) return 0 ;;
+        # Generated lockfiles: third-party package names ('object-schema', …)
+        # are not Figaro vocabulary.
+        *package-lock.json|*Cargo.lock) return 0 ;;
         archive-*|*/archive-*) return 0 ;;
     esac
     return 1
@@ -95,7 +98,7 @@ for file in "$@"; do
     # JSON Schema — the published format definition of a clause spec — a homonym
     # of the retired Figaro 'schema' (the clause artifact family), not drift.
     check "$file" FAIL "\\bschema" '(^|/)(CLAUDE\.md|docs/LEXICON\.md)$|\.schema\.json$|schema-conformance\.test' \
-        'json[ -]schema|commitment schema|schema version|schema\.org' \
+        'json[ -]schema|commitment schema|schema version|schema\.org|\.schema\.json|\$schema' \
         "retired: the protocol artifact family is the 'clause' (ClauseRegistry / clauseId), not the 'schema'."
 
     # ── retired clause vocabulary ('tier' / 'manifest', 2026) ──────
@@ -117,6 +120,24 @@ for file in "$@"; do
         '(^|/)(docs/LEXICON\.md|src/FigaroCore\.sol)$' \
         'CARGO_MANIFEST|--manifest-path|manifestation|will manifest|would manifest' \
         "retired: 'manifest' is dead — use 'off-chain agreement' / 'pinned content' / 'sealed payload'."
+
+    # ── token concepts (three distinct; operator ruling 2026-07-17) ──
+    # The florin is a PURE SCHELLING POINT — nothing structural anywhere is
+    # conditioned on it (its only couplings are its own issuance: genesis +
+    # RpgfMinter). figaro-denomination is a GENERIC pin: the designer names ANY
+    # ERC-20; the clause carries no economics. The privileged token (VISION
+    # § "Value Capture After the Firm") is an ASSEMBLY-AUTHOR's own token.
+    # Assimilating any two is the thrice-recurring drift (reverted 2026-07-17);
+    # same-line coupling is the tell. LEXICON.md documents the distinction.
+    check "$file" FAIL "florin.*figaro-denomination|figaro-denomination.*florin" \
+        '(^|/)docs/LEXICON\.md$' "" \
+        "florin ≠ figaro-denomination: the pin is generic (any ERC-20); the florin has no structural role."
+    check "$file" FAIL "florin.*privileged token|privileged token.*florin" \
+        '(^|/)docs/LEXICON\.md$' "" \
+        "florin ≠ privileged token: the privileged token is an assembly-author's OWN token (VISION doctrine), never the protocol's."
+    check "$file" FAIL "florin-pinned|florin.*structural demand|structural demand.*florin" \
+        '(^|/)docs/LEXICON\.md$' "" \
+        "the florin has NO structural demand mechanism — it is a pure Schelling point."
 done
 
 if (( fail > 0 )); then

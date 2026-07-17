@@ -26,6 +26,7 @@ name at each tier* — these are PROJECTIONS, not synonyms. Translate across tie
 | the agreement | **`agreementHash`** (the EIP-712 fingerprint field) | — | `Agreement` (off-chain JSON) · `agreementUri` (IPFS location) | grep-verified canonical |
 | evidence | — | **attestation** (`contentRef` = `keccak256(content)`) | attestation | `lint-architecture-lexicon` |
 | value | currency · payment | — | consumer copy via `vocab.ts` (deposit/place/complete) | — |
+| token concepts | `currency` = ANY ERC-20 (the kernel is token-agnostic) | **three distinct, never assimilated**: the **florin** (a pure Schelling point — NOTHING is conditioned on it) ≠ **`figaro-denomination`** (a generic pin: the designer names any ERC-20; no economics in the clause) ≠ the **privileged token** (VISION doctrine: an assembly-author's OWN token) | florin · denomination pin | `lint-architecture-lexicon` (same-line florin↔pin / florin↔privileged coupling banned) |
 
 **Distinct concepts that are NOT drift** (do not collapse): `compositionHash` = the *assembly's*
 identity (AssemblyRegistry binding key) ≠ `contentHash` (the *clause spec's* integrity digest,
@@ -34,6 +35,13 @@ IPFS document *location* (Clause/Assembly registries; SellerRegistry keeps `meta
 mutable profile IS metadata) ≠ a hash; `contentRef` = the *attestation's* fingerprint ≠ any of
 them. Verify-after-fetch: readers recompute `contentHash`/`compositionHash` from the fetched
 document (`canonicalJson.ts` — one canonical form, sorted keys) — a mismatched pin is absence.
+**The three token concepts stay apart** (operator, 2026-07-17 — the thrice-recurring drift):
+the **florin** is a pure Schelling point — no structural role anywhere, its only couplings are
+its own issuance (genesis + RpgfMinter); **`figaro-denomination`** is a generic settlement-token
+pin carrying no economics; the **privileged token** is an assembly-author's own value-capture
+token (`VISION.md` § "Value Capture After the Firm" — which itself says "distinct from
+denomination"). Writing any of these in terms of another — "the florin's structural demand",
+"florin-pinned" as a strategy object, the pin as "THE privileged token" — is drift.
 **The clause's GROUP is `block.article`** (geo, coordination, emissions…) — ONE word, ONE home. The
 earlier `categories` array and on-chain `family` (`= keccak256(categories[0])`) were a closed-world
 duplicate of the same concept that drifted across clauses; both were removed 2026-06-26, leaving
@@ -57,7 +65,9 @@ canonical across kernel + SDK + frontend (225 uses), rivals (`agreementId`/`Ref`
 - **`lint-no-closed-world-vocab.sh`** — bans stored taxonomy fields (`roleKind`/`archetypeId`/etc.).
 - **`lint-architecture-lexicon.sh`** — cross-cutting retired terms (`process tree`, `progressive
   collateralization`, `schema`, `order-received`, the retired clause tiers `category-1/2` /
-  `manifest-only`, and `manifest` as off-chain-content); grows tier by tier.
+  `manifest-only`, and `manifest` as off-chain-content) plus the token-concept coupling bans
+  (florin↔`figaro-denomination`, florin↔privileged-token, "florin structural demand"); grows
+  tier by tier.
 - **synonym-audit agent (PENDING)** — the reasoning backstop for a *newly-minted* synonym no static
   guard lists yet; its anchor is THIS grid (punch-list, Agent-workflow hygiene).
 

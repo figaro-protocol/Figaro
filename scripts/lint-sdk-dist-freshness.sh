@@ -7,7 +7,7 @@
 # modules keep sitting in dist, where they can silently ship deleted APIs into a
 # hosted build and poison any audit that reads dist as ground truth (the 2026-07
 # state: 9 orphan modules incl. merkleAirdrop, agent/sequencer, the retired
-# schemas/* tree). `npm --prefix sdk run build` clean-rebuilds (rm -rf dist);
+# clause-spec source tree). `npm --prefix sdk run build` clean-rebuilds (rm -rf dist);
 # this guard certifies the invariant afterwards: every dist artifact traces to
 # a live source file.
 set -euo pipefail
