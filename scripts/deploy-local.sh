@@ -81,6 +81,7 @@ ASSEMBLY_ADDR=$(echo "$FORGE_OUT"    | grep 'AssemblyRegistry deployed at:'     
 FLORIN_TOKEN_ADDR=$(echo "$FORGE_OUT"   | grep 'FlorinToken deployed at:'               | grep -oE '0x[0-9a-fA-F]+')
 RPGF_MINTER_ADDR=$(echo "$FORGE_OUT" | grep 'RpgfMinter deployed at:'             | grep -oE '0x[0-9a-fA-F]+')
 RPGF_ARBITRATOR_ADDR=$(echo "$FORGE_OUT" | grep 'MockArbitrator deployed at:'     | grep -oE '0x[0-9a-fA-F]+')
+DAO_TREASURY_ADDR=$(echo "$FORGE_OUT" | grep 'MockTreasuryMultisig deployed at:' | grep -oE '0x[0-9a-fA-F]+')
 BATCH_VERIFIER_ADDR=$(echo "$FORGE_OUT" | grep 'FigaroBatchVerifier deployed at:' | grep -oE '0x[0-9a-fA-F]+')
 
 if [ -z "$CORE_ADDR" ]; then
@@ -154,6 +155,7 @@ update_env "$CORE_ENV" "NEXT_PUBLIC_ASSEMBLY_REGISTRY"         "$ASSEMBLY_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS"         "$FLORIN_TOKEN_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_RPGF_MINTER"               "$RPGF_MINTER_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_RPGF_ARBITRATOR"           "$RPGF_ARBITRATOR_ADDR"
+update_env "$CORE_ENV" "NEXT_PUBLIC_DAO_TREASURY"              "$DAO_TREASURY_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_BATCH_VERIFIER"            "$BATCH_VERIFIER_ADDR"
 
 # IPFS service endpoints — default to the local Kubo daemon. Set only if
@@ -180,7 +182,8 @@ cat > "$CORE_DEPLOYMENT" <<EOF
   "florinToken": "$FLORIN_TOKEN_ADDR",
   "rpgfMinter": "$RPGF_MINTER_ADDR",
   "batchVerifier": "$BATCH_VERIFIER_ADDR",
-  "rpgfArbitrator": "$RPGF_ARBITRATOR_ADDR"
+  "rpgfArbitrator": "$RPGF_ARBITRATOR_ADDR",
+  "daoTreasury": "$DAO_TREASURY_ADDR"
 }
 EOF
 
@@ -200,6 +203,7 @@ echo "   NEXT_PUBLIC_ASSEMBLY_REGISTRY=$ASSEMBLY_ADDR"
 echo "   NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=$FLORIN_TOKEN_ADDR"
 echo "   NEXT_PUBLIC_RPGF_MINTER=$RPGF_MINTER_ADDR"
 echo "   NEXT_PUBLIC_RPGF_ARBITRATOR=$RPGF_ARBITRATOR_ADDR"
+echo "   NEXT_PUBLIC_DAO_TREASURY=$DAO_TREASURY_ADDR"
 echo "   NEXT_PUBLIC_IPFS_API_URL / NEXT_PUBLIC_IPFS_GATEWAY_URL — local Kubo defaults (set only if absent)"
 echo "   Deployment: $CORE_DEPLOYMENT"
 

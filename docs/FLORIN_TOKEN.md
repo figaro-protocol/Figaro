@@ -96,6 +96,17 @@ Founders and DAO receive tokens directly to their wallets at deploy time. The
 is registered at genesis (before `renounceDeployerMint`, which is why it must
 exist at deploy time), capped at exactly 600M by the FlorinToken minter registry.
 
+**DAO custody**: the DAO wallet is a **multisig** (mainnet: a canonical Safe instance —
+deployment config via `DAO_WALLET`, never authored code). The DAO buys through a
+**per-procurement funded operator-EOA** — the treasury itself can never sign kernel
+commitments (the kernel is ECDSA-only), so governance gates the *funding* and the EOA's
+blast radius is only ever the current procurement. Devnet rehearses the whole shape:
+`Deploy.s.sol` stands up `MockTreasuryMultisig` (anvil-placeholder 2-of-3) as the 300M
+mint target, and `test/florin/TreasuryProcurement.t.sol` drives fund → bonded commit →
+resolve → sweep-back, asserting the treasury's net spend is exactly the payment.
+Threshold-ECDSA (a multisig in cryptography, an EOA on-chain) is the recorded custody
+upgrade for the buyer key, rehearsed on testnet before adoption.
+
 ### The 600M RPGF allocation
 
 The *intent* of this allocation is unchanged: 60% of the supply is reserved for
