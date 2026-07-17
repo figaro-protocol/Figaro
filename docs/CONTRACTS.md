@@ -234,6 +234,17 @@ caps enforced not to exceed MAX_SUPPLY). Deployer registers capped minters, then
 
 **`IRpgfArbitrator.sol`** — the minimal provider-agnostic forum seam (`createDispute` + a `rule` callback on the minter). The forum choice is deployment config, never protocol code.
 
+**`src/florin/KlerosRpgfAdapter.sol`** — the Kleros composition behind the seam (built to
+Kleros's developer docs — their ERC-792 Arbitration Standard — per the 2026-07-17 operator
+instruction; re-check the docs before changing it). Translates `createDispute(caseId)` into a
+2-choice court dispute (`extraData` = opaque court-routing bytes, fixed at deployment) and the
+court's final `rule(disputeID, ruling)` back into `minter.rule(caseId, ruling)` — the 0/1/2
+ruling codes (refused/poster/challenger) align on both sides by construction. Bond cases only;
+no forum ever touches mints. Deploy order: court → adapter → minter(adapter) →
+`bindMinter(minter)` (deployer-gated one-shot, the FlorinToken registerMinter pattern). Appeals
+live on the court; parties reach them via `disputeOf(caseId)`. Mainnet composes a live Kleros
+court; devnet/testnet keep MockArbitrator directly behind the seam.
+
 **Florin allocation (canonical, 1B total):**
 - **100M (10%) founders** — genesis mint, no vesting, no unlock
 - **300M (30%) DAO**       — genesis mint, no vesting, no unlock
@@ -250,7 +261,8 @@ then renounces — the minter must exist at genesis because `registerMinter` pre
 - `src/mocks/MockERC20.sol` — the devnet payment/bond token. Plain ERC-20 with a permissionless `mint(to, amount)`; constructor takes `(name, symbol)`. Deployed by `Deploy.s.sol` as `NEXT_PUBLIC_TOKEN_ADDRESS` (minted 100k to anvil[0..19]) and used by the Foundry tests — one mock, not a per-file inline copy. (Mainnet uses a real ERC-20, e.g. USDC.e.)
 - `src/mocks/MockERC20FeeOnTransfer.sol`, `MockPermitToken.sol` — fee-on-transfer ERC-20 (Foundry tests only) and a second devnet ERC-20 (EIP-2612-capable, incidental — `Deploy.s.sol` deploys it as `NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS`; used as the swap-funding input token and the MOCKP seller-catalogue token; the V3 `*WithPermit` flow it once served is gone).
 - `src/mocks/MockWitnessPermit2.sol` — devnet/test stand-in for Uniswap Permit2's `permitWitnessTransferFrom`, WITH witness-signature verification (reconstructs the exact digest real Permit2 builds; deadline + amount enforced), pulling the owner's input token under the standard one-time Permit2 approval. Used by `WitnessSwapAndCommitCoordinatorTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_PERMIT2`; mainnet uses the canonical Permit2.
-- `src/mocks/MockArbitrator.sol` — devnet/test stand-in for the composed bond-settlement forum behind `RpgfMinter`'s `IRpgfArbitrator` seam: accepts disputes at zero fee, lets anyone deliver a ruling back to the arbitrable contract. Mainnet composes a real arbitration provider (e.g. Kleros via an adapter) behind the same seam — the forum is deployment config, never protocol code.
+- `src/mocks/MockArbitrator.sol` — devnet/test stand-in for the composed bond-settlement forum behind `RpgfMinter`'s `IRpgfArbitrator` seam: accepts disputes at zero fee, lets anyone deliver a ruling back to the arbitrable contract. Mainnet composes a real arbitration provider (Kleros via `KlerosRpgfAdapter`) behind the same seam — the forum is deployment config, never protocol code.
+- `src/mocks/MockKlerosCourt.sol` — Foundry-tests-only stand-in for a Kleros court on the arbitrator side of ERC-792 (`createDispute` paid at least `arbitrationCost`, `executeRuling` plays the jurors' final decision calling `rule` back). Used by `KlerosRpgfAdapterTest`; records the routed `extraData` so the adapter's config passthrough is assertable. Never deployed.
 - `src/mocks/MockUniversalRouter.sol` — test stand-in for a swap venue; `swap(tokenIn, tokenOut, amountIn, recipient)` at a settable rate, paying out of pre-funded liquidity. Used by `WitnessSwapAndCommitCoordinatorTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_SWAP_ROUTER` (pre-funded with both devnet tokens); mainnet uses the real Uniswap Universal Router.
 - `src/mocks/MockSP1Verifier.sol` — devnet/test stand-in for Succinct's SP1 verifier gateway behind `ISP1Verifier`: accepts any proof, so the batch path runs end-to-end on Anvil without proving hardware. Deployed by `Deploy.s.sol` for `FigaroBatchVerifier`; mainnet wires the canonical gateway (`SP1_VERIFIER_GATEWAY`).
 - `src/mocks/MockReentrantToken.sol` — Foundry-tests-only malicious ERC-20 that re-enters an armed target on `transfer`/`transferFrom` (the fee-on-transfer / ERC-777 hook an attacker gets). Used by `ReentrancyAdversarialTest` to prove the `nonReentrant` guards on `FigaroCore.commit`/`resolveProcess` and `FigaroBatchVerifier.settleBatch` actually fire under a live re-entry attempt. Never deployed.
