@@ -152,9 +152,11 @@ export default function Cryptoeconomics() {
                         </dd>
                     </div>
                     <div className="border-l-2 border-default pl-4">
-                        <dt className="text-base font-semibold text-ink-heading">Gitcoin rounds</dt>
+                        <dt className="text-base font-semibold text-ink-heading">
+                            <Link href="/match-rounds" className="hover:underline">Match rounds</Link>
+                        </dt>
                         <dd className="text-ink-body leading-relaxed mt-1">
-                            Quadratic funding for Figaro-adjacent work. No Figaro round is live yet; until then, groups can apply to general ecosystem rounds where they fit the theme.
+                            The DAO funds a match in florins for work it wants done, and a crowd of donors steers who earns it by a published quadratic-funding rule &mdash; no committee, no application, settled the same optimistic way as the author reward. This is how the first florins reach strangers&apos; hands, and how the issuer funds work without ever touching a market.
                         </dd>
                     </div>
                     <div className="border-l-2 border-default pl-4">
