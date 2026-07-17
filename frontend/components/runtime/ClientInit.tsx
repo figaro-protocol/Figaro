@@ -20,7 +20,6 @@ type MockStoredOrder = {
     buyerBond: string;
     parentOrderIds: number[];
     timestamp: number;
-    permit?: unknown;
     origin: string;
     destination: string;
 };
@@ -59,10 +58,6 @@ type MockApi = {
         destination?: string;
     }) => Promise<{ processId: string; orderId: number; ipfsHash: string | null }>;
 };
-
-function getPendingPermit() {
-    return windowSafe()?.__FIGARO_PENDING_PERMIT__;
-}
 
 function isMockStoreState(value: unknown): value is MockStoreState {
     if (!value || typeof value !== "object") return false;
@@ -158,8 +153,6 @@ export default function ClientInit() {
                         buyerBond: calculateBonds(paymentWei, paymentWei).buyerBond.toString(),
                         parentOrderIds: [],
                         timestamp: Date.now(),
-                        // attach any pending mock permit blob provided by E2E helpers
-                        permit: getPendingPermit() || undefined,
                         origin: opts?.origin || '',
                         destination: opts?.destination || '',
                     };
@@ -223,8 +216,6 @@ export default function ClientInit() {
                         buyerBond: calculateBonds(paymentWei, paymentWei).buyerBond.toString(),
                         parentOrderIds: opts?.parentOrderIds || [],
                         timestamp: Date.now(),
-                        // attach any pending mock permit blob provided by E2E helpers
-                        permit: getPendingPermit() || undefined,
                         origin: opts?.origin || '',
                         destination: opts?.destination || '',
                     };

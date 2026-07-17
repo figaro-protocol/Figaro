@@ -128,7 +128,7 @@ This section tracks features that are not protocol invariants but are significan
 | **Commerce checkout** | `frontend/lib/checkout/` | — | — | `CartModule` (interactive) | — |
 | **Process topology** | `frontend/lib/semantic/processTopology.ts` | SDK: `reconstruct()`, `Topology` | `/builders` → Composability (the graph above the kernel) | `TopologyCanvas` (`/builders/designer/new`, `/builders/designer/view?slug=<slug>`) | — |
 | **Bond math** | `sdk/src/bonds.ts` | SDK: `calculateBonds`, `calculateSettlement` | `/builders` → bond math formulas | checkout/order surfaces render via the SDK (the dedicated `BondCalculator` component was deleted) | — |
-| **EIP-2612 permit** | removed (permit path deleted 2026-07-02; approve-only) | — | `/builders` → Gasless token approvals | `PermitControl` component | — |
+| **EIP-2612 permit** | removed (permit path deleted 2026-07-02; frontend limbs buried 2026-07-17; approve-only) | — | — | — | — |
 | **Single-currency binding** | `src/FigaroCore.sol` | — | `/builders` → Composability → Single-Currency Binding | — | — |
 | **Fee-on-transfer rejection** | `src/FigaroCore.sol` `_pullExact()` | — | `/builders` → Composability → Fee-on-Transfer Guard | — | — |
 
@@ -434,5 +434,5 @@ details that are now explained on `/builders` but do not appear on marketing pag
 |---|---|---|
 | Single-currency binding (K-7) | `FigaroCore.sol` `CurrencyMismatch` revert | `/builders` → Composability → Single-Currency Binding |
 | Fee-on-transfer rejection (A-7) | `FigaroCore.sol` `_pullExact()` | `/builders` → Composability → Fee-on-Transfer Guard |
-| EIP-2612 permit pathway | removed (permit path deleted 2026-07-02; approve-only) | `/builders` → Gasless token approvals |
+| EIP-2612 permit pathway | removed (permit path deleted 2026-07-02; frontend limbs buried 2026-07-17; approve-only) | — |
 | Content-addressed order IDs (K-9) | `FigaroCore.sol` commit hash | `/builders` → Composability → Content-Addressed Order IDs |

@@ -180,7 +180,7 @@ for (const [processId, process] of processes) {
                         The <strong>trade / settlement currency</strong> &mdash; the ERC-20 that bonds and payments are denominated in (<code>FigaroAddresses.token</code>). Devnet uses a mock ERC-20; a public deployment names a real ERC-20 (e.g. USDC).
                     </LabelledListRow>
                     <LabelledListRow label="permitTokenAddress" labelWidth="wide">
-                        An EIP-2612 permit-enabled ERC-20 for the single-transaction approve-and-commit flow. A devnet convenience token, not a separate currency.
+                        A second devnet ERC-20 (EIP-2612-capable), used as a swap-funding input token and a seller-catalogue example. A devnet convenience token, not a separate currency.
                     </LabelledListRow>
                     <LabelledListRow label="florinToken" labelWidth="wide">
                         The protocol token, the florin (<Link href="/papers/florin-schelling-point-token" className="underline">FLORIN</Link>). Not a trade currency &mdash; you never bond or pay in it.

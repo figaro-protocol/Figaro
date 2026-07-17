@@ -35,11 +35,6 @@ export const TEST_HELPERS_ENABLED = ((): boolean => {
     return false;
 })();
 
-interface PendingPermitState {
-    target: string;
-    data: string;
-}
-
 export function windowSafe(): Window | undefined {
     if (typeof window === 'undefined') return undefined;
     return window;

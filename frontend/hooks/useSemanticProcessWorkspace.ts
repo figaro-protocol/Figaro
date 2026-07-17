@@ -72,10 +72,8 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     const withdrawSellerDeposit = useWithdrawDeposit();
     const registrationDeposit = useRegistrationDeposit();
     const {
-        supportsPermit,
         needsApproval,
         approve,
-        signPermitForTx,
         refetchAllowance,
     } = useTokenApproval({
         tokenAddress: approvalTokenAddress,

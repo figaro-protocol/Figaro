@@ -15,11 +15,6 @@
 
 import type { Abi } from "viem";
 
-interface PendingPermitState {
-    target: string;
-    data: string;
-}
-
 interface FigaroDebugClient {
     // Method-form (bivariant) so devShims.ts can assign a more-specific
     // (opts: ReadContractParameters) => Promise<unknown> implementation
@@ -53,7 +48,6 @@ declare global {
         // app/(app)/terminal/page.tsx)
         __FIGARO_MOCK__?: unknown;
         __FIGARO_MOCK_API__?: unknown;
-        __FIGARO_PENDING_PERMIT__?: PendingPermitState;
         __FIGARO_ALLOWANCES__?: Record<string, string>;
         __FIGARO_MOCK_APPROVE__?: (token: string, amount: string) => Promise<boolean>;
 
