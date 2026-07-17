@@ -167,10 +167,9 @@ export function SellerDiscovery() {
                             This registry opens with the network.
                         </p>
                         <p className="text-sm text-gray-500 max-w-md mx-auto">
-                            Figaro is not yet live on a public network. When it is, every seller
-                            listed here will be a wallet that registered itself &mdash; an identity,
-                            a catalogue, accepted tokens; no application, no approval, no one to
-                            say yes. You can be the first.
+                            Every seller listed here is a wallet that registered itself &mdash;
+                            an identity, a catalogue, accepted tokens; no application, no
+                            approval, no one to say yes. You can be the first.
                         </p>
                         <a
                             href="/sellers"

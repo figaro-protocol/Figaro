@@ -45,9 +45,6 @@ export default function Users() {
             </MarketingSection>
 
             <MarketingSection title="Before you commit.">
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Figaro is still in development; the mechanism described here is built and tested, but not yet running on a public network. Nothing you place today is a deal on a live market.
-                </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     Two questions sit under both paths: who holds the money while a deal is open, and what happens if the other party defects? The short answers are <em>no one</em> and <em>the defector loses more than the honest party, every time</em> &mdash; bonded against the kernel directly, no custodian, no escrow account. The longer answers, with every honest caveat, are at <Link href="/security" className="text-ink-heading font-medium hover:underline">security</Link>.
                 </p>

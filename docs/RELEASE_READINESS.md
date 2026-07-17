@@ -6,6 +6,15 @@ Last updated: 2026-07-16 (no-beta ruling: the `cloudflare/` closed-beta apparatu
 
 This note is the current answer to a simple question: what is ready now, what is still open, and what must happen before a public release is treated as complete.
 
+## Deployment Targets
+
+Ruled by the operator 2026-07-17: the public deployment target is **Ethereum mainnet**.
+**Polygon** is a possible additional deployment. A **Cairo rewrite** of the contracts
+(Starknet) is planned as a later line of work. Testnet rehearses the mainnet deployment
+(testnet = mainnet rehearsal); chain-coupled compositions resolve against these targets —
+Kleros courts are live on Ethereum mainnet, and the Gitcoin/Allo matching-pool mechanics
+must support the florin on the deployment chain.
+
 ## Current Verdict
 
 The live V5 Solidity surface is internally consistent and the runtime hardening pass has closed the highest-value browser, build, and event-reconstruction risks.

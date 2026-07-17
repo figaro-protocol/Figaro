@@ -7,6 +7,9 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 
 /// @title FlorinToken
 /// @notice Canonical ERC-20 + EIP-2612 permit token for the Figaro protocol: the florin.
+/// @notice Market stance, permanent as of deployment: neither the DAO treasury nor the
+///         founder will ever sell, buy, or provide liquidity for this token on any market.
+///         The first price is a stranger's to name; value arises from use.
 /// @dev Minter registry: deployer can register emission/vesting contracts as minters (one-shot, capped, non-upgradeable). No legacy emission logic remains.
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
 contract FlorinToken is ERC20Permit, ReentrancyGuard {

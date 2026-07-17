@@ -89,7 +89,7 @@ export default function LocalCommercePage() {
                         <Link href="/discover" data-testid="reference-runtime-link" className="text-ink-heading font-medium hover:underline">
                             Try it
                         </Link>
-                        <span className="text-ink-body"> &mdash; browse the sellers on the registry and place a bonded order. Figaro is still in development; the mechanism is built and tested, but not yet running on a public network.</span>
+                        <span className="text-ink-body"> &mdash; browse the sellers on the registry and place a bonded order.</span>
                     </li>
                     <li>
                         <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>

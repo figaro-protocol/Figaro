@@ -49,6 +49,10 @@ not a governance right, not a staking instrument.
   protocol's permissionless nature is load-bearing.
 - **Not settlement-anchored emission.** The florin is **not minted on `resolveProcess`**.
   There is no per-settlement reward path.
+- **Never market-touched by its issuers.** The market stance is stated indelibly in the
+  contract natspec (`src/florin/FlorinToken.sol`): neither the DAO treasury nor the founder
+  ever sells, buys, or provides liquidity on any market; the first price is a stranger's to
+  name. Strategy: the `project_florin_market_strategy_2026_07` memory (operator-held).
 
 ---
 
