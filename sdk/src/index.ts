@@ -310,3 +310,29 @@ export type {
     RpgfWithdrawalEvent,
     RpgfSellerStakeEvent,
 } from "./rpgf/index.js";
+
+// Match recompute — the reference implementation of sdk/src/match/formula.json.
+// A match round (DonationRail + OptimisticMatchPool) distributes a funded
+// budget by surplus-form quadratic funding over the rail's donation events;
+// this recompute reproduces a posted match root exactly, which is what makes
+// the optimistic challenge work.
+export {
+    computeMatchAllocations,
+    fetchMatchDonationEvents,
+    buildMatchTree,
+    matchLeaf,
+    isqrt,
+    MATCH_FORMULA,
+    MATCH_DONATION_FLOOR,
+    MATCH_DONOR_RECIPIENT_CAP,
+    MATCH_CAP_NUMERATOR,
+    MATCH_CAP_DENOMINATOR,
+    MATCH_SQRT_SCALE,
+    MATCH_EMPTY_ROOT,
+} from "./match/index.js";
+export type {
+    MatchRoundConfig,
+    MatchDonationEvent,
+    MatchAllocation,
+    MatchFormulaParameters,
+} from "./match/index.js";

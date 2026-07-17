@@ -18,7 +18,12 @@ npm install @figaro/sdk
 ### `@figaro/sdk` — Protocol Primitives
 
 Event parsing, state reconstruction, EIP-712 commitments, bond calculations,
-chain gas ceilings.
+chain gas ceilings. Also home to the two optimistic-distribution reference
+recomputes — `computeRpgfAllocations` (`src/rpgf/formula.json`, anchored as
+`RpgfMinter.formulaHash`) and `computeMatchAllocations`
+(`src/match/formula.json`, anchored as `OptimisticMatchPool.formulaHash`):
+deterministic integer pipelines that reproduce a posted payout root exactly,
+which is what makes each contract's bonded challenge game work.
 
 ```ts
 import {

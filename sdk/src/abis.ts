@@ -256,6 +256,47 @@ export const RPGF_MINTER_ABI = parseAbi([
     "event Claimed(uint8 indexed trancheId, address indexed account, uint256 amount)",
 ]);
 
+export const DONATION_RAIL_ABI = parseAbi([
+    "function donate(address token, address recipient, uint256 amount) external",
+    "event Donation(address indexed token, address indexed donor, address indexed recipient, uint256 amount)",
+]);
+
+export const OPTIMISTIC_MATCH_POOL_ABI = parseAbi([
+    "function postRoot(bytes32 root, uint64 fromBlock, uint64 toBlock) external payable",
+    "function challenge() external payable returns (uint256 caseId)",
+    "function disputeChallenge(uint256 caseId) external payable",
+    "function concede(uint256 caseId) external",
+    "function finalize() external",
+    "function claim(address account, uint256 amount, bytes32[] proof) external",
+    "function withdrawBonds() external",
+    "function matchToken() view returns (address)",
+    "function donationToken() view returns (address)",
+    "function donationRail() view returns (address)",
+    "function formulaHash() view returns (bytes32)",
+    "function arbitrator() view returns (address)",
+    "function bond() view returns (uint256)",
+    "function challengeWindow() view returns (uint64)",
+    "function disputeWindow() view returns (uint64)",
+    "function donationStart() view returns (uint64)",
+    "function donationEnd() view returns (uint64)",
+    "function posting() view returns (address poster, bytes32 root, uint64 fromBlock, uint64 toBlock, uint64 postedAt)",
+    "function bondCases(uint256) view returns (address poster, address challenger, uint64 challengedAt, uint8 status)",
+    "function finalRoot() view returns (bytes32)",
+    "function finalized() view returns (bool)",
+    "function budget() view returns (uint256)",
+    "function claimedTotal() view returns (uint256)",
+    "function claimed(address account) view returns (bool)",
+    "function withdrawable(address account) view returns (uint256)",
+    "event RootPosted(address indexed poster, bytes32 root, uint64 fromBlock, uint64 toBlock)",
+    "event RootChallenged(uint256 indexed caseId, address indexed challenger, bytes32 root)",
+    "event ChallengeDisputed(uint256 indexed caseId, uint256 fee)",
+    "event ChallengeConceded(uint256 indexed caseId)",
+    "event CaseRuled(uint256 indexed caseId, uint8 ruling)",
+    "event MatchFinalized(bytes32 root, uint64 fromBlock, uint64 toBlock, uint256 budget)",
+    "event Claimed(address indexed account, uint256 amount)",
+    "event BondsWithdrawn(address indexed account, uint256 amount)",
+]);
+
 // ── FigaroBatchVerifier ABI ──────────────────────────────────────────────────
 // The batch-settlement verifier (proof-based scaling). settleBatch carries the
 // proof, the 7-word public values, net positions, and the event data — the

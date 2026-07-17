@@ -192,11 +192,13 @@ export interface RpgfTree {
 
 /** Sorted-leaf, sorted-pair tree per the formula spec: leaves ascending,
  *  adjacent pairs hash as keccak(min‖max), an odd node promotes unchanged.
- *  Empty leaf set → the canonical empty root (unclaimable). */
-export function buildRpgfTree(leaves: readonly Hex[]): RpgfTree {
+ *  Empty leaf set → the canonical empty root (unclaimable). The tree shape is
+ *  shared by every optimistic distribution formula; `emptyRoot` is the one
+ *  formula-specific constant (each formula anchors its own preimage). */
+export function buildRpgfTree(leaves: readonly Hex[], emptyRoot: Hex = RPGF_EMPTY_ROOT): RpgfTree {
     if (leaves.length === 0) {
         return {
-            root: RPGF_EMPTY_ROOT,
+            root: emptyRoot,
             proofOf() {
                 throw new Error("empty tree has no proofs");
             },

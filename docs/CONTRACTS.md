@@ -245,9 +245,11 @@ gates nothing.
 **`src/OptimisticMatchPool.sol`** — one crowd-steered match round, optimistically settled:
 the RpgfMinter shape minus minting. One contract instance IS one round (anyone deploys,
 anyone funds by ordinary transfer — the DAO treasury is one funder among all). An anchored
-`formulaHash` names the match formula (QF + sybil mitigations is one such spec — the
-contract is formula-agnostic); anyone recomputes over the rail's events for the round's
-donation token + window and posts the merkle root under an ETH bond; challenge ALWAYS
+`formulaHash` names the match formula — the contract is formula-agnostic; the canonical v1
+spec is `sdk/src/match/formula.json` (surplus-form QF: single-donor recipients score zero;
+donation floor + per-donor-per-recipient cap + 15% water-filled recipient cap — ratified
+2026-07-17; reference recompute `sdk/src/match/`); anyone recomputes over the rail's events
+for the round's donation token + window and posts the merkle root under an ETH bond; challenge ALWAYS
 voids; bond cases settle via the SAME `IRpgfArbitrator` seam (MockArbitrator devnet,
 `KlerosRpgfAdapter` mainnet); finalization snapshots the pool balance as the budget;
 merkle claims (OZ standard-tree leaves) transfer the match out, budget-capped. No owner,
