@@ -97,6 +97,17 @@ export function MatchRoundView({ pool }: { pool: `0x${string}` }) {
                         {new Date(Number(s.round.donationStart) * 1000).toLocaleString()} →{" "}
                         {new Date(Number(s.round.donationEnd) * 1000).toLocaleString()}
                     </p>
+                    <p className="text-sm text-ink-muted mb-1" data-testid="round-donations">
+                        {s.donations.length} donation{s.donations.length === 1 ? "" : "s"} ·{" "}
+                        <span className="font-mono">
+                            {formatUnits(
+                                s.donations.reduce((sum, d) => sum + d.amount, 0n),
+                                s.donationDecimals,
+                            )}{" "}
+                            {s.donationSymbol}
+                        </span>{" "}
+                        steering the match
+                    </p>
                     <p className="text-sm text-ink-muted mb-1 font-mono break-all">
                         formula {s.formulaHash}
                     </p>
