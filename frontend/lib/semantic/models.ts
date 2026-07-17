@@ -89,6 +89,11 @@ export interface SubmitClauseAttestationCapabilityAction {
     eventCode?: string;
     /** LADDER mode only: the spec field holding the enum ladder. */
     ladderField?: string;
+    /** RE-ASSERT mode: the attestation re-asserts the committed section —
+     *  content is OMITTED on the wire so the coordinator's `content ??
+     *  sectionData` default applies (the exact committed bytes; contentRef =
+     *  keccak of them). No form, no ladder. */
+    reasserts?: boolean;
     /** WHICH party attests. Ladders surface seller-side; witness stages
      *  surface to BOTH parties — who must witness is never engine policy
      *  (sufficiency is derived at read time against the committed policy). */

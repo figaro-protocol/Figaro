@@ -252,8 +252,13 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                     const spec = getClauseSpec(action.clauseId);
                     if (!spec) throw new Error(`Clause spec not loaded: ${action.clauseId}`);
                     const isLadder = action.ladderField !== undefined && action.eventCode !== undefined;
-                    let content: Hex;
-                    if (isLadder) {
+                    let content: Hex | undefined;
+                    if (action.reasserts) {
+                        // RE-ASSERT: content stays OMITTED — the coordinator
+                        // defaults it to the committed sectionData, the exact
+                        // bytes under the agreementHash merkle binding.
+                        content = undefined;
+                    } else if (isLadder) {
                         content = encodeContentFromSpec(spec, { [action.ladderField!]: action.eventCode });
                     } else {
                         // WITNESS: values from the rail's generic form, gated by the
@@ -270,7 +275,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                         clauseId: computeClauseKey(action.clauseId, spec.version),
                         stage: action.stage,
                         content,
-                        failureMessage: `${action.clauseId} ${action.eventCode ?? `stage-${action.stage}`} attestation failed`,
+                        failureMessage: `${action.clauseId} ${action.eventCode ?? (action.reasserts ? "re-assert" : `stage-${action.stage}`)} attestation failed`,
                     };
                     const submit = (a: typeof args) => action.party === "buyer"
                         ? attestationActions.submitBuyerAttestation(a)

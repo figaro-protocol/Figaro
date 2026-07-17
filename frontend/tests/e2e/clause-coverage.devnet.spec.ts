@@ -55,7 +55,7 @@
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server (:3100).
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
+import { createPublicClient, decodeFunctionData, defineChain, http, parseAbi, type Hex } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
 import { readLocalDeploymentConfig, assertPinnedInIpfs } from './devnet-helpers';
 import { keccak256 } from 'viem';
@@ -656,6 +656,62 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                             e.args.stage === witnessStage
                             && (e.args.attester as string).toLowerCase() === SELLER.toLowerCase());
                 }, { timeout: 60000, message: 'the witness Attestation event lands at the declared stage' }).toBe(true);
+            }
+
+            // ── RE-ASSERT (derived, never enumerated): every committed section
+            //    without a declared stage-0 witness offers the generic
+            //    re-assert capability — an attestation whose content IS the
+            //    committed sectionData (the coordinator's omit-content
+            //    default). Drive the target clause's card as the seller and
+            //    certify ON THE WIRE, from the tx calldata the UI sent, that
+            //    content === sectionData. ──
+            if (!declaredStages.includes(0)) {
+                const reassertBaseline = (await publicClient.getContractEvents({
+                    address: config.attestationCoordinator as Hex, abi: ATTESTATION_COORDINATOR_ABI,
+                    eventName: 'Attestation', args: { processId }, fromBlock: 0n,
+                })).length;
+                await gotoAsWallet(page, SELLER, `/orders/view?process=${processId}&e2e=devnet`);
+                await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
+                await waitForConnected(page);
+                const reassertCap = page.locator(
+                    `[data-testid="capability-reassert-committed-section"][data-clause-id="${rung.clauseId}"]`,
+                );
+                await expect(
+                    reassertCap,
+                    `the rail derives ${rung.clauseId}'s re-assert capability (committed section, no stage-0 witness)`,
+                ).toBeVisible({ timeout: 30000 });
+                await reassertCap.getByTestId('capability-execute-reassert-committed-section').click();
+
+                let reassertTxHash: Hex | undefined;
+                await expect.poll(async () => {
+                    const events = await publicClient.getContractEvents({
+                        address: config.attestationCoordinator as Hex, abi: ATTESTATION_COORDINATOR_ABI,
+                        eventName: 'Attestation', args: { processId }, fromBlock: 0n,
+                    });
+                    const fresh = events.slice(reassertBaseline).find((e) =>
+                        e.args.stage === 0
+                        && (e.args.attester as string).toLowerCase() === SELLER.toLowerCase());
+                    reassertTxHash = fresh?.transactionHash;
+                    return !!fresh;
+                }, { timeout: 60000, message: 'the re-assert Attestation lands at stage 0' }).toBe(true);
+
+                // The wire truth: decode the transaction the UI sent —
+                // attest args carry (…, sectionData, proof, content); the
+                // re-assert's content IS the committed sectionData bytes.
+                const reassertTx = await publicClient.getTransaction({ hash: reassertTxHash! });
+                const decoded = decodeFunctionData({ abi: ATTESTATION_COORDINATOR_ABI, data: reassertTx.input });
+                const dArgs = decoded.args as readonly unknown[];
+                const sectionDataArg = dArgs[dArgs.length - 3] as Hex;
+                const contentArg = dArgs[dArgs.length - 1] as Hex;
+                expect(sectionDataArg.length > 2, 'the committed sectionData is non-empty').toBe(true);
+                expect(contentArg, 're-assert on the wire: content IS the committed sectionData').toBe(sectionDataArg);
+
+                // Once per party per section: a repeat adds nothing (same
+                // bytes, same contentRef) — the capability retires.
+                await expect(
+                    reassertCap,
+                    'the re-assert capability retires once asserted',
+                ).toBeHidden({ timeout: 30000 });
             }
 
             // ── AUDIT: the target clause's committed leaf surfaces, labelled

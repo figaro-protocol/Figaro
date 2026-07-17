@@ -199,6 +199,58 @@ function roleCapabilities(
                 }
             }
         }
+
+        // GENERIC re-assert: any OTHER committed section can be affirmed
+        // on-chain as an attestation whose content IS the committed
+        // sectionData (the coordinator's omit-content default) — the act that
+        // turns committed content into a timestamped runtime event (the
+        // designer-credit provenance attestation is one instance; geo and
+        // modality are others — no clause is named here). Offered to BOTH
+        // parties, once each per section (a repeat adds nothing: same bytes,
+        // same contentRef). Process-log ladders advance instead — their
+        // lifecycle IS their attestation — and a clause declaring witness
+        // stage 0 owns that slot with its own form.
+        for (const section of agreement.sections) {
+            const clauseId = section.clause;
+            if (clauseIsProcessLog(clauseId)) continue;
+            if (clauseWitnessStages(clauseId, section.version).some((w) => w.stage === 0)) continue;
+            const clauseIdHash = computeClauseKey(clauseId, section.version).toLowerCase();
+            const title = getClauseSpec(clauseId, section.version)?.title ?? clauseId;
+            for (const party of ["seller", "buyer"] as const) {
+                if (party === "seller" ? !isSeller : !isBuyer) continue;
+                const partyAddr = party === "seller" ? order.seller : order.buyer;
+                const already = orderAttestations.some(
+                    (a) => hexEqual(a.clauseId, clauseIdHash) && hexEqual(a.attester, partyAddr) && a.stage === 0,
+                );
+                if (already) continue;
+                const capId = `${order.processId}:${orderIdStr}:${clauseId}-${party}-reassert`;
+                out.push({
+                    id: capId,
+                    label: `Re-assert: ${title}`,
+                    // Its OWN actionKind (→ its own `capability-*` testid): the
+                    // rail renders many attestation cards per order, and the
+                    // re-assert card must never collide with a ladder/witness
+                    // card's locator. Dispatch still routes on `action.kind`.
+                    actionKind: "reassert-committed-section",
+                    action: {
+                        executionType: "transaction",
+                        kind: "submit-clause-attestation",
+                        orderHash: orderIdStr,
+                        clauseId,
+                        stage: 0,
+                        party,
+                        reasserts: true,
+                    },
+                    mechanismId: "attestation-coordinator",
+                    scopeType: "order",
+                    scopeId: orderIdStr,
+                    preconditions: [party === "seller" ? "seller-of-active-order" : "buyer-of-active-order"],
+                    riskLabel: "standard",
+                    uiPriority: party === "buyer" ? 56 : 55,
+                    source: runtimeSource(`${party} re-asserts ${clauseId}`, capId),
+                });
+            }
+        }
     }
 
     return out;
