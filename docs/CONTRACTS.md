@@ -234,6 +234,26 @@ caps enforced not to exceed MAX_SUPPLY). Deployer registers capped minters, then
 
 **`IRpgfArbitrator.sol`** — the minimal provider-agnostic forum seam (`createDispute` + a `rule` callback on the minter). The forum choice is deployment config, never protocol code.
 
+**`src/DonationRail.sol`** — the no-custody donation event surface for crowd-steered match
+rounds (the QF-venue BUILD ruling, 2026-07-17). One function: `donate(token, recipient,
+amount)` moves the donor's tokens STRAIGHT THROUGH to the recipient (strict-amount balance
+check — fee-on-transfer reverts, house rule) and emits `Donation(token, donor, recipient,
+amount)` — the event stream a round's match formula consumes. There is NO recipient
+registry: a round's recipient set is EMERGENT from these events; the rail holds nothing and
+gates nothing.
+
+**`src/OptimisticMatchPool.sol`** — one crowd-steered match round, optimistically settled:
+the RpgfMinter shape minus minting. One contract instance IS one round (anyone deploys,
+anyone funds by ordinary transfer — the DAO treasury is one funder among all). An anchored
+`formulaHash` names the match formula (QF + sybil mitigations is one such spec — the
+contract is formula-agnostic); anyone recomputes over the rail's events for the round's
+donation token + window and posts the merkle root under an ETH bond; challenge ALWAYS
+voids; bond cases settle via the SAME `IRpgfArbitrator` seam (MockArbitrator devnet,
+`KlerosRpgfAdapter` mainnet); finalization snapshots the pool balance as the budget;
+merkle claims (OZ standard-tree leaves) transfer the match out, budget-capped. No owner,
+no sweep, no claim expiry. Foundry: `test/OptimisticMatchPool.t.sol` (round end-to-end,
+challenge-voids, forum routing, budget backstop, rail strictness).
+
 **`src/florin/KlerosRpgfAdapter.sol`** — the Kleros composition behind the seam (built to
 Kleros's developer docs — their ERC-792 Arbitration Standard — per the 2026-07-17 operator
 instruction; re-check the docs before changing it). Translates `createDispute(caseId)` into a
