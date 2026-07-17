@@ -28,6 +28,7 @@ import {
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { getAttestationCoordinator, getRpgfMinter } from "@/lib/composition/contracts";
 import { getClauseSpec, listKnownClauses } from "@/lib/shared/clauseSpecSource";
+import { type RpgfBondCase } from "@/lib/composition/bondCases";
 
 export interface RpgfTrancheState {
     trancheId: number;
@@ -70,7 +71,9 @@ export function useRpgfRewards() {
     const { writeContractAsync } = useWriteContract();
 
     const [tranches, setTranches] = useState<RpgfTrancheState[]>([]);
+    const [bondCases, setBondCases] = useState<RpgfBondCase[]>([]);
     const [bondWei, setBondWei] = useState<bigint>(0n);
+    const [disputeWindowSeconds, setDisputeWindowSeconds] = useState<bigint>(0n);
     const [withdrawableWei, setWithdrawableWei] = useState<bigint>(0n);
     const [refreshNonce, setRefreshNonce] = useState(0);
 
@@ -81,20 +84,52 @@ export function useRpgfRewards() {
         let cancelled = false;
         (async () => {
             const base = { address: minter, abi: RPGF_MINTER_ABI } as const;
-            const [bond, withdrawable, ...rest] = await Promise.all([
-                publicClient.readContract({ ...base, functionName: "bond" }),
-                account
-                    ? publicClient.readContract({ ...base, functionName: "withdrawable", args: [account] })
-                    : Promise.resolve(0n),
-                ...[0, 1, 2].map((t) =>
-                    Promise.all([
-                        publicClient.readContract({ ...base, functionName: "tranches", args: [BigInt(t)] }),
-                        publicClient.readContract({ ...base, functionName: "postings", args: [BigInt(t)] }),
-                    ]),
-                ),
-            ]);
+            const [bond, disputeWindow, withdrawable, challengedEvents, concededEvents, ruledEvents, ...rest] =
+                await Promise.all([
+                    publicClient.readContract({ ...base, functionName: "bond" }),
+                    publicClient.readContract({ ...base, functionName: "disputeWindow" }),
+                    account
+                        ? publicClient.readContract({ ...base, functionName: "withdrawable", args: [account] })
+                        : Promise.resolve(0n),
+                    publicClient.getContractEvents({ ...base, eventName: "RootChallenged", fromBlock: 0n }),
+                    publicClient.getContractEvents({ ...base, eventName: "ChallengeConceded", fromBlock: 0n }),
+                    publicClient.getContractEvents({ ...base, eventName: "CaseRuled", fromBlock: 0n }),
+                    ...[0, 1, 2].map((t) =>
+                        Promise.all([
+                            publicClient.readContract({ ...base, functionName: "tranches", args: [BigInt(t)] }),
+                            publicClient.readContract({ ...base, functionName: "postings", args: [BigInt(t)] }),
+                        ]),
+                    ),
+                ]);
+            // The case track, event-sourced: RootChallenged births a case; its
+            // live status comes from the bondCases(caseId) read; concession and
+            // ruling attach from their own events.
+            const cases = await Promise.all(
+                challengedEvents.map(async (ev) => {
+                    const caseId = ev.args.caseId as bigint;
+                    const onChain = await publicClient.readContract({
+                        ...base,
+                        functionName: "bondCases",
+                        args: [caseId],
+                    });
+                    const ruled = ruledEvents.find((r) => (r.args.caseId as bigint) === caseId);
+                    return {
+                        caseId,
+                        trancheId: Number(ev.args.trancheId),
+                        root: ev.args.root as `0x${string}`,
+                        poster: onChain[0],
+                        challenger: onChain[1],
+                        challengedAt: onChain[2] as bigint,
+                        status: Number(onChain[3]),
+                        ruling: ruled ? Number(ruled.args.ruling) : null,
+                        conceded: concededEvents.some((c) => (c.args.caseId as bigint) === caseId),
+                    } satisfies RpgfBondCase;
+                }),
+            );
             if (cancelled) return;
             setBondWei(bond);
+            setDisputeWindowSeconds(disputeWindow as bigint);
+            setBondCases(cases);
             setWithdrawableWei(withdrawable);
             setTranches(
                 (rest as Array<[
@@ -151,7 +186,14 @@ export function useRpgfRewards() {
      *  `request` is a fully-typed contract call (viem narrows per function). */
     const send = useCallback(
         async (request: {
-            functionName: "postRoot" | "challenge" | "finalize" | "claim" | "withdrawBonds";
+            functionName:
+                | "postRoot"
+                | "challenge"
+                | "disputeChallenge"
+                | "concede"
+                | "finalize"
+                | "claim"
+                | "withdrawBonds";
             args?: readonly unknown[];
             value?: bigint;
         }) => {
@@ -196,6 +238,22 @@ export function useRpgfRewards() {
         [send, bondWei],
     );
 
+    /** Escalate a challenge to the composed forum (poster-only, inside the
+     *  dispute window). `feeWei` is the forum's fee, forwarded verbatim —
+     *  provider-defined; the devnet mock accepts zero. */
+    const disputeChallenge = useCallback(
+        (caseId: bigint, feeWei: bigint = 0n) =>
+            send({ functionName: "disputeChallenge", args: [caseId], value: feeWei }),
+        [send],
+    );
+
+    /** Close an unescalated challenge after the dispute window: the poster
+     *  conceded by silence, the challenger takes both bonds. Anyone may call. */
+    const concede = useCallback(
+        (caseId: bigint) => send({ functionName: "concede", args: [caseId] }),
+        [send],
+    );
+
     const finalize = useCallback(
         (trancheId: number) => send({ functionName: "finalize", args: [trancheId] }),
         [send],
@@ -233,11 +291,15 @@ export function useRpgfRewards() {
         available: !!minter,
         account,
         tranches,
+        bondCases,
         bondWei,
+        disputeWindowSeconds,
         withdrawableWei,
         recompute,
         postRoot,
         challenge,
+        disputeChallenge,
+        concede,
         finalize,
         claim,
         withdrawBonds,

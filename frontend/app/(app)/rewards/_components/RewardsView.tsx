@@ -20,8 +20,12 @@ import { WalletGate } from "@/components/runtime/WalletGate";
 import { useMounted } from "@/hooks/useMounted";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { useRpgfRewards, type RpgfTrancheState } from "@/lib/composition/useRpgfRewards";
+import { bondCaseRulingLabel, deriveBondCasePhase } from "@/lib/composition/bondCases";
+import { getRpgfArbitrator } from "@/lib/composition/contracts";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { hexEqual } from "@/lib/shared/evm";
+import { truncateHex } from "@/lib/shared/formatHex";
 import { useEffect } from "react";
 
 function trancheStatus(t: RpgfTrancheState, nowSeconds: number): string {
@@ -178,6 +182,86 @@ export function RewardsView() {
                         );
                     })}
                 </div>
+
+                {rewards.bondCases.length > 0 && (
+                    <div className="mt-10" data-testid="bond-cases">
+                        <h2 className="text-base font-semibold text-ink-heading mb-2">Bond cases</h2>
+                        <p className="text-sm text-ink-muted mb-4">
+                            A challenge always voids its posting — minting is never at stake here.
+                            Each case settles only the two bonds: the poster may escalate to the
+                            composed forum inside the dispute window; an unescalated case closes
+                            as a concession, the challenger taking both bonds.
+                        </p>
+                        <div className="space-y-4">
+                            {rewards.bondCases.map((c) => {
+                                const phase = deriveBondCasePhase(c, BigInt(nowSeconds), rewards.disputeWindowSeconds);
+                                const viewerIsPoster = !!account && hexEqual(account, c.poster);
+                                const id = c.caseId.toString();
+                                return (
+                                    <div
+                                        key={id}
+                                        className="border border-edge-muted rounded-lg p-5"
+                                        data-testid={`bond-case-${id}`}
+                                    >
+                                        <div className="flex items-baseline justify-between mb-2">
+                                            <h3 className="text-sm font-semibold text-ink-heading">
+                                                Case {id} — tranche {c.trancheId + 1}
+                                            </h3>
+                                            <span className="text-sm text-ink-muted" data-testid={`bond-case-status-${id}`}>
+                                                {phase}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-ink-muted mb-1 font-mono break-all">
+                                            voided root {c.root}
+                                        </p>
+                                        <p className="text-sm text-ink-muted mb-3">
+                                            poster <span className="font-mono">{truncateHex(c.poster)}</span> · challenger{" "}
+                                            <span className="font-mono">{truncateHex(c.challenger)}</span>
+                                        </p>
+                                        {phase === "escalatable" && viewerIsPoster && (
+                                            <Button
+                                                data-testid={`dispute-${id}`}
+                                                disabled={busy !== null}
+                                                onClick={() => act("dispute", () => rewards.disputeChallenge(c.caseId))}
+                                            >
+                                                {busy === "dispute" ? "Escalating…" : "Escalate to the forum"}
+                                            </Button>
+                                        )}
+                                        {phase === "escalatable" && !viewerIsPoster && (
+                                            <p className="text-sm text-ink-muted">
+                                                Awaiting the poster: escalate or concede by silence.
+                                            </p>
+                                        )}
+                                        {phase === "concedable" && (
+                                            <Button
+                                                data-testid={`concede-${id}`}
+                                                variant="secondary"
+                                                disabled={busy !== null}
+                                                onClick={() => act("concede", () => rewards.concede(c.caseId))}
+                                            >
+                                                {busy === "concede" ? "Closing…" : "Close conceded case"}
+                                            </Button>
+                                        )}
+                                        {phase === "disputed" && (
+                                            <p className="text-sm text-ink-muted" data-testid={`bond-case-forum-${id}`}>
+                                                Escalated to the composed forum
+                                                {getRpgfArbitrator() ? (
+                                                    <> at <span className="font-mono">{truncateHex(getRpgfArbitrator())}</span></>
+                                                ) : null}{" "}
+                                                — awaiting its ruling.
+                                            </p>
+                                        )}
+                                        {phase === "closed" && (
+                                            <p className="text-sm text-ink-body" data-testid={`bond-case-ruling-${id}`}>
+                                                {bondCaseRulingLabel(c)}
+                                            </p>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
 
                 {rewards.withdrawableWei > 0n && (
                     <div className="mt-8">

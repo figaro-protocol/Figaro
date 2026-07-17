@@ -60,9 +60,8 @@ export function getRpgfMinter(): `0x${string}` | null {
 }
 
 /** The composed bond-settlement forum behind the minter's IRpgfArbitrator
- *  seam (devnet: MockArbitrator). @public pending consumer: the bond-case
- *  dispute surface (poster escalation + ruling display) — remove the tag when
- *  it lands. */
+ *  seam (devnet: MockArbitrator). Rendered by the bond-case dispute surface
+ *  on /rewards. */
 export function getRpgfArbitrator(): `0x${string}` | null {
     return resolveAddress(COMPOSITION_CONTRACTS.rpgfArbitrator);
 }
