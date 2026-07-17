@@ -2,8 +2,9 @@
  * rpgf-rewards.devnet.spec.ts
  *
  * The optimistic RPGF distribution, end to end and UI on both ends, on
- * /rewards. Two scenarios, in file order (they share tranche 0 — the only
- * tranche postable on devnet clocks):
+ * /rewards. Four scenarios, in file order (they share tranche 0 — the only
+ * tranche postable on devnet clocks; the full-mint scenario finalizes it
+ * one-shot, so it stays LAST):
  *
  *   1. CHALLENGE VOIDS — a poster computes + posts tranche 0's root through
  *      the UI (bond staked); a challenger stakes an equal bond through the UI
@@ -12,7 +13,17 @@
  *      chain: the minter escrows exactly both bonds; the tranche slot
  *      reopens.
  *
- *   2. THE FULL MINT — scenario pre-population (real protocol acts, no
+ *   2. ESCALATE — the bond-case track's dispute branch: a griefed poster
+ *      escalates through the UI inside the dispute window; the composed
+ *      forum (devnet: MockArbitrator — the juror act is EXTERNAL, never UI)
+ *      rules for the poster; the ruling renders and the poster withdraws
+ *      both bonds through the UI. The forum touches bonds only, never mints.
+ *
+ *   3. CONCEDE — the case track's silence branch: the dispute window lapses
+ *      unescalated, anyone closes the conceded case through the UI, the
+ *      challenger takes both bonds through the withdraw surface.
+ *
+ *   4. THE FULL MINT — scenario pre-population (real protocol acts, no
  *      mocks: a staked seller, a signed+committed order whose agreement
  *      composes a tier-1 clause AND the assembly-provenance section, buyer
  *      attestations of both, one resolve) gives the formula something to
@@ -162,6 +173,167 @@ test.describe('RPGF rewards — optimistic post / challenge / finalize / claim (
         const minterEthAfter = await publicClient.getBalance({ address: minter });
         expect(minterEthAfter - minterEthBefore, 'the minter escrows the post bond + the challenge bond')
             .toBe(2n * bond);
+    });
+
+    test('a griefed poster escalates — the composed forum routes both bonds to the poster', async ({ page }) => {
+        const config = readLocalDeploymentConfig();
+        const minter = config.rpgfMinter as Hex;
+        const arbitrator = config.rpgfArbitrator as Hex;
+        expect(minter, 'the RPGF minter is deployed').toBeTruthy();
+        expect(arbitrator, 'the composed forum (devnet: MockArbitrator) is deployed').toBeTruthy();
+        const publicClient = localPublicClient();
+        const finalized = ((await publicClient.readContract({
+            address: minter, abi: RPGF_MINTER_ABI, functionName: 'tranches', args: [0n],
+        })) as readonly [bigint, bigint, Hex, bigint, bigint, boolean, bigint])[5];
+        test.skip(finalized, 'tranche 0 already finalized on this chain — redeploy (devup FORCE_REDEPLOY=1) to re-run');
+        test.skip(
+            (await reopenTrancheSlot(publicClient, minter)) === 'finalized',
+            'a stale expired posting finalized during cleanup — redeploy to re-run',
+        );
+        const bond = (await publicClient.readContract({
+            address: minter, abi: RPGF_MINTER_ABI, functionName: 'bond',
+        })) as bigint;
+        const minterEthBefore = await publicClient.getBalance({ address: minter });
+
+        // ── Poster posts, challenger voids (both through the UI) ──
+        await gotoAsWallet(page, POSTER, '/rewards?e2e=devnet');
+        await page.getByTestId('rewards-page').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        const post = page.getByTestId('post-root-0');
+        await expect(post).toBeEnabled({ timeout: 60000 });
+        await post.click();
+        await expect(page.getByTestId('tranche-status-0')).toHaveText('posted', { timeout: 60000 });
+
+        await gotoAsWallet(page, CHALLENGER, '/rewards?e2e=devnet');
+        await page.getByTestId('rewards-page').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        await page.getByTestId('challenge-0').click();
+        await expect(page.getByTestId('tranche-status-0')).toHaveText('open', { timeout: 60000 });
+
+        // The case this challenge birthed — the LAST RootChallenged event.
+        const challenged = await publicClient.getContractEvents({
+            address: minter, abi: RPGF_MINTER_ABI, eventName: 'RootChallenged', fromBlock: 0n,
+        });
+        const caseId = challenged[challenged.length - 1]!.args.caseId as bigint;
+        const id = caseId.toString();
+
+        // ── The poster escalates through the UI, inside the 20s window ──
+        await gotoAsWallet(page, POSTER, '/rewards?e2e=devnet');
+        await page.getByTestId('rewards-page').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        await expect(page.getByTestId(`bond-case-status-${id}`)).toHaveText('escalatable', { timeout: 30000 });
+        await page.getByTestId(`dispute-${id}`).click();
+        await expect(page.getByTestId(`bond-case-status-${id}`), 'the composed forum holds the case')
+            .toHaveText('disputed', { timeout: 60000 });
+        await expect(page.getByTestId(`bond-case-forum-${id}`)).toBeVisible();
+
+        // ── The forum rules for the poster — a juror decision arriving is the
+        //    EXTERNAL composed act (Kleros court in production, the mock's
+        //    deliverRuling on devnet); the UI shows its consequence. ──
+        const juror = createWalletClient({
+            account: privateKeyToAccount(ANVIL_KEYS[13]), chain: LOCAL_ANVIL, transport: http(RPC_URL),
+        });
+        const rulingHash = await juror.writeContract({
+            address: arbitrator,
+            abi: parseAbi(['function deliverRuling(address arbitrable, uint256 caseId, uint8 ruling) external']),
+            functionName: 'deliverRuling',
+            args: [minter, caseId, 1 /* RULING_POSTER */],
+        });
+        await publicClient.waitForTransactionReceipt({ hash: rulingHash });
+
+        // ── Ruling display + the poster withdraws both bonds through the UI ──
+        const withdrawableBefore = (await publicClient.readContract({
+            address: minter, abi: RPGF_MINTER_ABI, functionName: 'withdrawable', args: [POSTER],
+        })) as bigint;
+        expect(withdrawableBefore, 'the ruling routed BOTH bonds to the poster').toBe(2n * bond);
+        const posterEthBefore = await publicClient.getBalance({ address: POSTER });
+
+        await gotoAsWallet(page, POSTER, '/rewards?e2e=devnet');
+        await page.getByTestId('rewards-page').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        await expect(page.getByTestId(`bond-case-ruling-${id}`)).toHaveText(/ruled for the poster/, { timeout: 30000 });
+        await page.getByTestId('withdraw-bonds').click();
+        await expect(page.getByTestId('withdraw-bonds')).toBeHidden({ timeout: 60000 });
+
+        // ── Money legs, from the chain ──
+        expect((await publicClient.readContract({
+            address: minter, abi: RPGF_MINTER_ABI, functionName: 'withdrawable', args: [POSTER],
+        })) as bigint, 'the pull-payment drained').toBe(0n);
+        const posterEthAfter = await publicClient.getBalance({ address: POSTER });
+        expect(posterEthAfter - posterEthBefore > bond, 'the poster nets more than one bond (2× minus gas)').toBe(true);
+        const minterEthAfter = await publicClient.getBalance({ address: minter });
+        expect(minterEthAfter - minterEthBefore, 'both bonds in, both bonds out — the minter holds nothing of this case')
+            .toBe(0n);
+    });
+
+    test('an unescalated challenge concedes — the challenger takes both bonds', async ({ page }) => {
+        const config = readLocalDeploymentConfig();
+        const minter = config.rpgfMinter as Hex;
+        const publicClient = localPublicClient();
+        const finalized = ((await publicClient.readContract({
+            address: minter, abi: RPGF_MINTER_ABI, functionName: 'tranches', args: [0n],
+        })) as readonly [bigint, bigint, Hex, bigint, bigint, boolean, bigint])[5];
+        test.skip(finalized, 'tranche 0 already finalized on this chain — redeploy (devup FORCE_REDEPLOY=1) to re-run');
+        test.skip(
+            (await reopenTrancheSlot(publicClient, minter)) === 'finalized',
+            'a stale expired posting finalized during cleanup — redeploy to re-run',
+        );
+        const bond = (await publicClient.readContract({
+            address: minter, abi: RPGF_MINTER_ABI, functionName: 'bond',
+        })) as bigint;
+        const disputeWindow = (await publicClient.readContract({
+            address: minter, abi: RPGF_MINTER_ABI, functionName: 'disputeWindow',
+        })) as bigint;
+        const minterEthBefore = await publicClient.getBalance({ address: minter });
+
+        // ── Poster posts, challenger voids (both through the UI) ──
+        await gotoAsWallet(page, POSTER, '/rewards?e2e=devnet');
+        await page.getByTestId('rewards-page').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        const post = page.getByTestId('post-root-0');
+        await expect(post).toBeEnabled({ timeout: 60000 });
+        await post.click();
+        await expect(page.getByTestId('tranche-status-0')).toHaveText('posted', { timeout: 60000 });
+
+        await gotoAsWallet(page, CHALLENGER, '/rewards?e2e=devnet');
+        await page.getByTestId('rewards-page').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        await page.getByTestId('challenge-0').click();
+        await expect(page.getByTestId('tranche-status-0')).toHaveText('open', { timeout: 60000 });
+        const challenged = await publicClient.getContractEvents({
+            address: minter, abi: RPGF_MINTER_ABI, eventName: 'RootChallenged', fromBlock: 0n,
+        });
+        const caseId = challenged[challenged.length - 1]!.args.caseId as bigint;
+        const id = caseId.toString();
+
+        // ── The poster stays silent: the dispute window lapses ──
+        await page.waitForTimeout(Number(disputeWindow) * 1000 + 2000);
+        await mineBlock(publicClient);
+
+        // ── Anyone closes the conceded case — the challenger does, via the UI ──
+        await gotoAsWallet(page, CHALLENGER, '/rewards?e2e=devnet');
+        await page.getByTestId('rewards-page').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        await expect(page.getByTestId(`bond-case-status-${id}`)).toHaveText('concedable', { timeout: 30000 });
+        await page.getByTestId(`concede-${id}`).click();
+        await expect(page.getByTestId(`bond-case-ruling-${id}`), 'concession is the challenger winning by silence')
+            .toHaveText(/conceded — challenger took both bonds/, { timeout: 60000 });
+
+        // ── The challenger withdraws both bonds through the UI ──
+        expect((await publicClient.readContract({
+            address: minter, abi: RPGF_MINTER_ABI, functionName: 'withdrawable', args: [CHALLENGER],
+        })) as bigint, 'concession routed BOTH bonds to the challenger').toBe(2n * bond);
+        const challengerEthBefore = await publicClient.getBalance({ address: CHALLENGER });
+        await page.getByTestId('withdraw-bonds').click();
+        await expect(page.getByTestId('withdraw-bonds')).toBeHidden({ timeout: 60000 });
+
+        // ── Money legs, from the chain ──
+        const challengerEthAfter = await publicClient.getBalance({ address: CHALLENGER });
+        expect(challengerEthAfter - challengerEthBefore > bond, 'the challenger nets more than one bond (2× minus gas)')
+            .toBe(true);
+        const minterEthAfter = await publicClient.getBalance({ address: minter });
+        expect(minterEthAfter - minterEthBefore, 'both bonds in, both bonds out — the minter holds nothing of this case')
+            .toBe(0n);
     });
 
     test('activity → post → finalize → claim mints the recipient of record exactly the capped allocation', async ({ page }) => {
