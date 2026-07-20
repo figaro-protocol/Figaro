@@ -127,6 +127,8 @@ export {
     quoteDraft,
     verifyQuoteReply,
     requestQuotes,
+    requestCounterSignatures,
+    makeSellerRaceHandler,
     makeSellerQuoteHandler,
 } from "./dispatchRace.js";
 export type { RaceReply, BuildQuoteRequestParams } from "./dispatchRace.js";

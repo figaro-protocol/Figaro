@@ -4,7 +4,8 @@ import { privateKeyToAccount } from "viem/accounts";
 import { buildBuyerOffer, type AssemblyTemplate, type OfferPolicy } from "../src/agent/originate.js";
 import {
     validateDraft, counterSignDraft, verifyRaceReply, selectRaceWinner,
-    substitutePricedValue, buildQuoteRequest, quoteDraft, verifyQuoteReply, requestQuotes, makeSellerQuoteHandler,
+    substitutePricedValue, buildQuoteRequest, quoteDraft, verifyQuoteReply,
+    requestQuotes, requestCounterSignatures, makeSellerRaceHandler, makeSellerQuoteHandler,
     type RaceReply,
 } from "../src/agent/dispatchRace.js";
 import { InProcessChannel, type CommitmentPayload, type PricedField } from "../src/agent/coordination.js";
@@ -298,6 +299,32 @@ describe("verifyQuoteReply — the reconstruction gate", () => {
         const check = await verifyQuoteReply(forged, req, CTX);
         expect(check.ok).toBe(false);
         expect(check.reason).toMatch(/does not recover to the drafted candidate/);
+    });
+});
+
+describe("requestCounterSignatures over the coordination channel", () => {
+    it("fans race drafts out through mounted handlers; the cheapest posted countersigner wins, silence drops out", async () => {
+        const channel = new InProcessChannel();
+        channel.register(COURIER_A.address, makeSellerRaceHandler(courierAW, CTX, { accept: () => true, policy }));
+        channel.register(COURIER_B.address, makeSellerRaceHandler(courierBW, CTX, { accept: () => true, policy }));
+        const silent = "0x000000000000000000000000000000000000dEaD" as Address;
+        const drafts = [
+            await draftFor(COURIER_A.address, 3000n),
+            await draftFor(COURIER_B.address, 1000n),
+            await draftFor(silent, 2000n),
+        ];
+        const { replies, winner } = await requestCounterSignatures(channel, drafts, CTX);
+        expect(replies).toHaveLength(2);
+        expect(winner?.reply.commitment.seller.toLowerCase()).toBe(COURIER_B.address.toLowerCase());
+        expect(winner?.reply.commitment.payment).toBe(1000n);
+    });
+
+    it("a race handler refuses a quote request (throw → dropped), never countersigns the ceiling", async () => {
+        const channel = new InProcessChannel();
+        channel.register(COURIER_A.address, makeSellerRaceHandler(courierAW, CTX, { accept: () => true, policy: quotePolicy }));
+        const { replies, winner } = await requestCounterSignatures(channel, [requestFor(COURIER_A.address)], CTX);
+        expect(replies).toHaveLength(0);
+        expect(winner).toBeNull();
     });
 });
 

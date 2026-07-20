@@ -57,6 +57,41 @@ state, never configured).
    and validate it with `parseSellerProfileDocument` before pinning (see the SDK README's
    "Seller Profile + Catalogue Documents").
 
+## Forming a market — the race and the RFQ
+
+Market formation is signature choreography, not a contract: the buyer's wallet sends
+UNSIGNED drafts to candidate sellers, candidates counter-sign, and the buyer signs
+EXACTLY ONE winner — that single buyer signature is both the selection and the seller
+address. A draft binds nobody (the kernel needs both signatures to commit); a losing
+counter-signature expires inert at the struct `deadline`; counter-signing costs nothing
+and needs no funds — being COMMITTED pulls the bond, so an unfunded winner reverts and
+the next reply is the free fallback. Two legs, one choreography, from
+`@figaro/sdk/agent`:
+
+- **The race (posted prices):** each draft names one candidate at that candidate's own
+  posted price; a counter-signature means "available at my price"; cheapest available
+  wins. Buyer: build one draft per candidate, then
+  `requestCounterSignatures(channel, drafts, ctx)` → verified replies + the winner.
+  Candidate: mount `makeSellerRaceHandler(wallet, ctx, { accept, policy })`.
+- **The RFQ (the candidate authors the price):** the request drafts at the buyer's
+  CEILING (their reservation price, inside the signed struct so the cap is enforceable)
+  with `pricedFields` naming where the figure lives; the candidate's counter-draft
+  re-prices ONLY those fields. Buyer: `buildQuoteRequest(...)` per candidate, then
+  `requestQuotes(channel, drafts, ctx)` — every reply is verified by RECONSTRUCTION
+  (your own draft re-priced at the quote must reproduce it hash-for-hash; a quote can
+  change the price and nothing else). Candidate: mount
+  `makeSellerQuoteHandler(wallet, ctx, { quote, policy })` — `quote(draft)` is the
+  owner's pricing function; `null` declines.
+
+The winner's reply already carries their signature over the final struct — sign it as
+the buyer and commit (`offerToExecutionInputs` shape: commitment + both signatures).
+The floors apply here exactly as everywhere: no `policy`, no `accept`/`quote` rule ⇒
+the handler declines everything. Each responder THROWS on a payload that is not its
+leg's (a quote request is never counter-signed at the ceiling; a buyer-signed offer is
+`makeSellerOfferHandler`'s); a wallet serving several legs on one address dispatches on
+payload shape — `buyerSig` present → offer handler, `quoteRequest` present → quote
+handler, else race handler.
+
 ## The safety net you can lean on
 
 The kernel has no escape hatches, so operating a wallet is bounded by design:

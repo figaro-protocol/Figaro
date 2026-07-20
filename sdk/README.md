@@ -172,6 +172,10 @@ const reply = await counterSignDraft(courierWallet, draft, { chainId, core }, ac
 // a doctored reply cannot ride a valid signature.
 const check = await verifyRaceReply(reply!, draft, { chainId, core });
 const winner = selectRaceWinner(replies); // cheapest countersigner; ties by arrival
+// Packaged fan-out + mountable responder (the RFQ leg below has the same pair):
+import { requestCounterSignatures, makeSellerRaceHandler } from "@figaro/sdk/agent";
+channel.register(courierAddr, makeSellerRaceHandler(courierWallet, { chainId, core }, { accept, policy }));
+const race = await requestCounterSignatures(channel, drafts, { chainId, core }); // { replies, winner }
 
 // The RFQ leg — same choreography, the CANDIDATE authors the price (bespoke
 // jobs, thin markets — no posted figure fits). The request goes out at the

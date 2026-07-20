@@ -413,6 +413,55 @@ export async function requestQuotes(
 }
 
 /**
+ * Send one race draft per candidate over the coordination channel, verify
+ * every countersigned reply by EXACT MATCH against its sent draft, and rank —
+ * cheapest posted-price countersigner first (`selectRaceWinner`). The RACE
+ * sibling of `requestQuotes`: same fan-out, exact-match verification instead
+ * of reconstruction (the draft already carries the candidate's price).
+ * Unreachable, declining, or unverifiable candidates drop out silently.
+ */
+export async function requestCounterSignatures(
+    channel: CoordinationChannel,
+    drafts: readonly CommitmentPayload[],
+    ctx: { chainId: number; core: Address },
+): Promise<{ replies: RaceReply[]; winner: RaceReply | null }> {
+    const settled = await Promise.all(drafts.map(async (draft) => {
+        try {
+            const reply = await channel.sendOffer(draft.commitment.seller, draft);
+            if (!reply) return null;
+            const check = await verifyRaceReply(reply, draft, ctx);
+            return check.ok ? { draft, reply } : null;
+        } catch {
+            return null;
+        }
+    }));
+    const replies = settled.filter((r): r is RaceReply => r !== null);
+    return { replies, winner: selectRaceWinner(replies) };
+}
+
+/**
+ * A mountable candidate-side responder for the RACE leg — wraps
+ * `counterSignDraft` with the two operator floors (economic policy +
+ * refuse-all accept). Register it on a coordination channel to answer inbound
+ * race drafts. NOTE: like every leg-specific responder it THROWS on a payload
+ * that is not its leg's (tamper protection — a quote request or a buyer-signed
+ * offer is refused, never silently mis-handled); a wallet serving several legs
+ * on one address composes a dispatcher on payload shape — `buyerSig` present →
+ * `makeSellerOfferHandler`, `quoteRequest` present → `makeSellerQuoteHandler`,
+ * else this.
+ */
+export function makeSellerRaceHandler(
+    wallet: WalletClient,
+    ctx: { chainId: number; core: Address },
+    opts: {
+        accept: (draft: CommitmentPayload) => boolean;
+        policy: OfferPolicy;
+    },
+): (offer: CommitmentPayload) => Promise<CommitmentPayload | null> {
+    return (offer) => counterSignDraft(wallet, offer, ctx, opts.accept, opts.policy);
+}
+
+/**
  * A mountable seller-side responder for the quote leg — the sibling of
  * `makeSellerOfferHandler`, wrapping `quoteDraft` with the operator's pricing
  * function + economic floor. Register it on a coordination channel to answer
