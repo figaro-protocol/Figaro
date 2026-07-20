@@ -216,10 +216,16 @@ test.describe('THE PAYMENT TOKEN — the buyer picks the denomination; swap is t
         // on-ramp from the DEFAULT into the picked denomination.
         await page.getByTestId('swap-funding-panel').waitFor({ state: 'visible', timeout: 30000 });
         await page.getByTestId(`funding-token-option-${defaultToken.toLowerCase()}`).click();
+        // Permit2 authorization is CONDITIONAL on the persisted chain — a prior
+        // run's maxUint256 approval survives (devnet is a mainnet rehearsal, no
+        // snapshots), so the button renders only when the allowance is short.
+        // Same pattern as the seller on-ramp test below; demanding the button
+        // unconditionally fails every re-run after the first.
         const authorize = page.getByTestId('funding-authorize');
-        await authorize.waitFor({ state: 'visible', timeout: 15000 });
-        await authorize.click();
-        await authorize.waitFor({ state: 'hidden', timeout: 30000 });
+        if (await authorize.isVisible().catch(() => false)) {
+            await authorize.click();
+            await authorize.waitFor({ state: 'hidden', timeout: 30000 });
+        }
 
         await placeAndShare(page);
 
