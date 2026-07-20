@@ -169,8 +169,11 @@ export function validateOffer(offer: CommitmentPayload, expectedSeller: Address,
 
 /** The economic floor, applied once the offer is structurally sound. Each check
  *  is safe-by-default: an opted-in policy that omits the allowlist or the cap
- *  rejects rather than waving the offer through. */
-function checkOfferPolicy(c: Commitment, policy: OfferPolicy): OfferCheck {
+ *  rejects rather than waving the offer through. Exported for the dispatch
+ *  race's draft validator, which applies the same floor to an UNSIGNED draft
+ *  (`validateOffer` itself requires a buyer signature, which a draft lacks by
+ *  definition). */
+export function checkOfferPolicy(c: Commitment, policy: OfferPolicy): OfferCheck {
     if (policy.requireRootShape
         && !(c.processId.toLowerCase() === ZERO_PROCESS_ID && c.expectedCumulativeValue === c.payment)) {
         return { ok: false, reason: "offer is not a well-formed root order (processId 0 and cumulativeValue == payment)" };

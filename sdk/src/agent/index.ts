@@ -111,6 +111,17 @@ export type {
     OriginateChainParams,
 } from "./originate.js";
 
+// The dispatch race — market formation with zero contracts: countersign-first
+// choreography over unsigned drafts (the seller-signs-first inverse of the
+// origination handshake).
+export {
+    validateDraft,
+    counterSignDraft,
+    verifyRaceReply,
+    selectRaceWinner,
+} from "./dispatchRace.js";
+export type { RaceReply } from "./dispatchRace.js";
+
 // did:web identity — agents bind their on-chain address to a resolvable DID
 export {
     isDidWeb,
