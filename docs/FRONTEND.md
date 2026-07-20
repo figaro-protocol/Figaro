@@ -119,7 +119,13 @@ Y", not as an open-ended build.)
   assisted; `bytes32-hex` → `ContentAnchorFieldInput`, the AFFIX — pick a
   file, pin it, keccak256 fills the field, and the pinned locator rides the
   companion channel to the first sibling declaring `format: "uri"`; pasting
-  raw hex is used nowhere as a content fill, ruled 2026-07-10) and
+  raw hex is used nowhere as a content fill, ruled 2026-07-10;
+  `evidence-capture` → `EvidenceCaptureInput`, the device-layer witness
+  capture — the device's OWN capabilities detected at runtime (geolocation
+  cross-check everywhere, NFC tap on Android Chrome, BLE sighting on
+  Chromium; browser and mobile, one surface — `lib/shared/deviceEvidence.ts`),
+  capture pins the artifact and the URI fills the field, manual URI entry
+  stays; richer ranging arrives via the agent/operator seam, never the page) and
   `components/runtime/interactionSurfaces.tsx`
   (`block.interaction.interface` — the party↔party runtime interaction
   standard, the sibling of `block.composes` — → order-page surfaces via

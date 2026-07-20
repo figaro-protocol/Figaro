@@ -19,6 +19,7 @@
 import type { ComponentType } from "react";
 import { GeohashFieldInput } from "@/components/runtime/GeohashFieldInput";
 import { ContentAnchorFieldInput } from "@/components/runtime/ContentAnchorFieldInput";
+import { EvidenceCaptureInput } from "@/components/runtime/EvidenceCaptureInput";
 
 /** The contract a format input satisfies — the same props FieldControl's
  *  plain scalar input serves. */
@@ -47,6 +48,11 @@ const REGISTRY = new Map<string, ComponentType<FieldFormatInputProps>>([
     // plain text input for every bytes32-hex content field, including on
     // clauses this codebase has never seen.
     ["bytes32-hex", ContentAnchorFieldInput],
+    // evidence-capture = a runtime witness's evidence pointer. The device's
+    // OWN capture capabilities (geolocation / NFC / BLE, detected at runtime
+    // — browser and mobile, one surface) pin the artifact and fill the URI;
+    // manual URI entry stays (the field is an open pointer).
+    ["evidence-capture", EvidenceCaptureInput],
 ]);
 
 /** Register an input component for a declared format. Last write wins —

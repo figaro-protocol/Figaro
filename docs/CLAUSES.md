@@ -149,7 +149,7 @@ which is agreement-only — so runtime-attestable = that count minus one.
 | `figaro-modalities` | The buyer's request — consume-onsite / pickup / delivery / virtual (single-select) | Layer A (off-chain) |
 | `figaro-handoff` | Hand-off point — where the physical exchange happens (proximity-policy nests under it) | Layer A (off-chain) |
 | `figaro-emissions` | Accounting methodology (free-form `standard` string, committed at signing) + the measured-grams witness at `stages[1]` | Layer A (off-chain) |
-| `figaro-proximity-policy` | Required detection bands committed at agreement signing; the hand-off witness (detected band + evidence) is the `stages[1]` witness, paired by hand-off ladder stages or filed standalone by either party | Layer A (off-chain) |
+| `figaro-proximity-policy` | Required detection bands committed at agreement signing; the hand-off witness (detected band + evidence) is the `stages[1]` witness, paired by hand-off ladder stages or filed standalone by either party — its `evidenceUri` declares `format: "evidence-capture"`, mounting the device-layer capture input (geolocation cross-check / NFC / BLE per device) | Layer A (off-chain) |
 | `figaro-merchant-process` | Merchant per-role event enum (sovereign log) | Layer A (off-chain) |
 | `figaro-courier-process` | Courier per-role event enum (sovereign log) | Layer A (off-chain) |
 | `figaro-arbitration-kleros` | Decentralized off-chain arbitration via Kleros (subcourt + minimum jurors). Provider-specific; sister `figaro-arbitration-<provider>` clauses would cover future ODR providers | Layer A (off-chain) |

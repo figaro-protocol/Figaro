@@ -52,11 +52,12 @@
             {
                 "name": "evidenceUri",
                 "type": "string",
+                "format": "evidence-capture",
                 "required": false,
                 "minLength": 0,
                 "maxLength": 512,
                 "label": "Witness evidence",
-                "description": "Optional reference to the detection artifact — Wi-Fi BSSID, BLE beacon id, UWB ranging report, NFC tap payload, or a counterparty co-signature."
+                "description": "Optional reference to the detection artifact — Wi-Fi BSSID, BLE beacon id, UWB ranging report, NFC tap payload, a device-captured evidence document, or a counterparty co-signature."
             }
         ]
     },

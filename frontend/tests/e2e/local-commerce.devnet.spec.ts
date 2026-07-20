@@ -569,6 +569,31 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         );
         await expect(buyerWitnessCap, 'the witness capability derives for the buyer too').toBeVisible({ timeout: 30000 });
         await page.getByTestId(`capability-input-${PROXIMITY_CLAUSE}-band-zone-wifi`).check();
+
+        // ── DEVICE-LAYER EVIDENCE: the buyer captures the geolocation
+        //    cross-check — the universal browser capture (NFC/BLE are
+        //    progressive per device; headless Chromium has neither) — and the
+        //    pinned artifact's URI fills the witness's evidenceUri through the
+        //    format-registry input. The spec declares the format; the field
+        //    gets the capture with zero clause-specific code. ──
+        await page.getByTestId(`capability-input-${PROXIMITY_CLAUSE}-evidenceUri-capture-geolocation-cross-check`).click();
+        const evidenceField = page.getByTestId(`capability-input-${PROXIMITY_CLAUSE}-evidenceUri`);
+        await expect.poll(async () => evidenceField.inputValue(), {
+            timeout: 30000, message: 'the captured evidence pins and its URI fills the field',
+        }).toMatch(/^ipfs:\/\/.+/);
+        const evidenceUri = await evidenceField.inputValue();
+        // Out-of-band: the pinned artifact is REAL — fetch it straight from
+        // the Kubo API and match the mocked device's coordinates.
+        {
+            const cid = evidenceUri.replace('ipfs://', '');
+            const res = await fetch(`http://127.0.0.1:5001/api/v0/cat?arg=${encodeURIComponent(cid)}`, { method: 'POST' });
+            expect(res.ok, 'the evidence artifact is fetchable from Kubo').toBe(true);
+            const evidence = await res.json() as { kind: string; lat: number; lon: number; geohash?: string };
+            expect(evidence.kind, 'the artifact records the capture kind').toBe('geolocation-cross-check');
+            expect(evidence.lat, "the capture is the DEVICE's position (the mocked geolocation)").toBeCloseTo(DELIVERY_DEVICE.lat, 4);
+            expect(evidence.lon).toBeCloseTo(DELIVERY_DEVICE.lon, 4);
+        }
+
         await buyerWitnessCap.getByTestId('capability-execute-submit-clause-attestation').click();
         await expect(
             page.getByTestId('timeline-event-stage-1'),

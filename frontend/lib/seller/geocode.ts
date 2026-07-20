@@ -26,7 +26,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { fetchCappedContent, type CappedContentResponse } from "@/lib/shared/ipfsService";
 import { readUserEndpoints } from "@/lib/shared/userEndpoints";
 
-export interface GeocodeResult {
+interface GeocodeResult {
     lat: number;
     lon: number;
 }
@@ -111,19 +111,3 @@ export async function geocodeAddress(query: string): Promise<GeocodeOutcome> {
     return { ok: true, result: { lat, lon } };
 }
 
-/**
- * Resolve the device's current position via the Geolocation API.
- * Returns null on permission denial, no support, or any error.
- */
-export function getDeviceLocation(): Promise<GeocodeResult | null> {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-        return Promise.resolve(null);
-    }
-    return new Promise((resolve) => {
-        navigator.geolocation.getCurrentPosition(
-            (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-            () => resolve(null),
-            { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
-        );
-    });
-}

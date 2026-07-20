@@ -15,7 +15,7 @@
  * component knows no clause and no field name.
  */
 import { useState } from "react";
-import { getDeviceLocation } from "@/lib/seller/geocode";
+import { getDeviceLocation } from "@/lib/shared/deviceLocation";
 import { encodeGeohash } from "@figaro/sdk/derive";
 import { clampPublicGeohash, PUBLIC_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
 import type { FieldFormatInputProps } from "@/components/runtime/fieldFormatInputs";
