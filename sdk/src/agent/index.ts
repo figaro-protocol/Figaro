@@ -123,6 +123,7 @@ export {
     selectRaceWinner,
     substitutePricedValue,
     buildQuoteRequest,
+    buildCounterDraft,
     quoteDraft,
     verifyQuoteReply,
     requestQuotes,

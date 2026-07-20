@@ -219,6 +219,7 @@ export { topologicalOrder } from "./topology.js";
 export {
     profileValuesFor,
     fillCargoSection,
+    derivePricedFields,
     fillClassSections,
     fillProfileSections,
     fillCommerceSection,

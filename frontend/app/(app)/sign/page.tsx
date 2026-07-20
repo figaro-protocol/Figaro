@@ -35,7 +35,7 @@ import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
 import { AgreementReview } from "@/components/runtime/AgreementReview";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import useProcessResolveCapacity from "@/hooks/useProcessResolveCapacity";
-import { formatToken } from "@/lib/shared/utils";
+import { formatToken, parseToken } from "@/lib/shared/utils";
 import { maxUint256 } from "viem";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { fetchCommitmentPayloadJsonByCid } from "@/lib/checkout/orderPendingSellerSignature";
@@ -48,7 +48,7 @@ function SignPageContent() {
     const { data: walletClient } = useWalletClient();
     const searchParams = useSearchParams();
     const { coordinationMessaging, evidenceTransport } = useRuntimeServices();
-    const { acceptOrder, counterSignAndReturn, commitOrder, step, error: commitError, reset } = useOrderCommitmentFlow();
+    const { acceptOrder, counterSignAndReturn, quoteAndReturn, commitOrder, step, error: commitError, reset } = useOrderCommitmentFlow();
     const hydratedPayloadRef = useRef<string | null>(null);
     const receivedTransportOrderIdsRef = useRef<Set<string>>(new Set());
 
@@ -216,6 +216,18 @@ function SignPageContent() {
         }
     };
 
+    // The RFQ leg: this wallet names its price under the buyer's ceiling.
+    const [quotePrice, setQuotePrice] = useState("");
+    const handleQuoteReturn = async () => {
+        if (!parsed || !quotePrice.trim()) return;
+        try {
+            const returned = await quoteAndReturn(parsed, parseToken(quotePrice.trim(), tokenDecimals ?? 18));
+            setParsed(returned);
+        } catch {
+            // Error state handled by the order commitment flow.
+        }
+    };
+
     const handleReset = () => {
         setRawInput("");
         setParsed(null);
@@ -235,7 +247,11 @@ function SignPageContent() {
     const hasSellerSig = !!parsed?.sellerSig;
     // No signatures at all = a race draft: counter-sign RETURNS to the buyer
     // instead of broadcasting (derived from signature absence, never stored).
+    // A draft carrying quote-request terms is the RFQ leg — this wallet names
+    // its price under the buyer's ceiling instead of countersigning as-is.
     const isDraft = !!parsed && !hasBuyerSig && !hasSellerSig;
+    const quoteTerms = isDraft ? parsed?.quoteRequest : undefined;
+    const isQuoteRequest = !!quoteTerms && quoteTerms.pricedFields.length > 0;
 
     // Determine which role the current wallet would fill
     const isBuyer = hexEqual(address, commitment?.buyer);
@@ -505,8 +521,36 @@ function SignPageContent() {
                     )}
 
                     {/* Counter-sign button — a draft (no signatures) returns to
-                        the buyer; a buyer-signed order counter-signs & submits. */}
-                    {needsMySignature && approvalDone && (isDraft ? (
+                        the buyer; a QUOTE REQUEST names a price first; a
+                        buyer-signed order counter-signs & submits. */}
+                    {needsMySignature && approvalDone && (isQuoteRequest ? (
+                        <div className="space-y-2">
+                            <p className="text-xs text-neutral-600">
+                                The buyer asks for your price — at most{" "}
+                                <span className="font-semibold" data-testid="quote-ceiling">
+                                    {formatToken(commitment!.payment, tokenDecimals)} {currencySymbol}
+                                </span>. Your counter-signature binds you at YOUR figure
+                                if the buyer commits it before the deadline.
+                            </p>
+                            <input
+                                type="text"
+                                inputMode="decimal"
+                                value={quotePrice}
+                                onChange={(e) => setQuotePrice(e.target.value)}
+                                placeholder="Your price"
+                                className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                                data-testid="quote-price-input"
+                            />
+                            <Button
+                                onClick={handleQuoteReturn}
+                                disabled={step === "signing" || step === "sharing" || !address || !quotePrice.trim()}
+                                data-testid="btn-quote-return"
+                                className="w-full"
+                            >
+                                {step === "signing" ? "Signing…" : step === "sharing" ? "Returning…" : "Quote & Return"}
+                            </Button>
+                        </div>
+                    ) : isDraft ? (
                         <Button
                             onClick={handleCounterSignReturn}
                             disabled={step === "signing" || step === "sharing" || !address}

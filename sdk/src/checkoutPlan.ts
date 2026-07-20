@@ -62,6 +62,30 @@ function composedClauseDeclaring(
 }
 
 /**
+ * The RFQ's priced fields, DERIVED from an agreement by declared field — the
+ * section that carries the commercial terms (declared `lineItems`) prices at
+ * `payment` and each committed line's `unitPrice`. Spec-routed like every
+ * fill, naming no clause; empty when no commercial section is composed
+ * (nothing to quote) or the spec cache is cold. The returned paths are the
+ * SAME fields `fillCommerceSection` writes, so a quote's substitution and the
+ * checkout walk at the quoted price produce identical agreements.
+ */
+export function derivePricedFields(
+    sections: readonly { clause: string; data: Record<string, unknown> }[],
+    specs: SpecSource,
+): { clause: string; path: string }[] {
+    const clauses = Object.fromEntries(sections.map((s) => [s.clause, s.data])) as ClauseFields;
+    const commerce = composedClauseDeclaring(clauses, "lineItems", specs);
+    if (!commerce) return [];
+    const lineItems = clauses[commerce]?.lineItems;
+    const count = Array.isArray(lineItems) ? lineItems.length : 0;
+    return [
+        { clause: commerce, path: "payment" },
+        ...Array.from({ length: count }, (_, i) => ({ clause: commerce, path: `lineItems.${i}.unitPrice` })),
+    ];
+}
+
+/**
  * Write the order's commercial terms into the commerce section, found by its
  * declared `lineItems` field (never by clause id; gracefully skipped when the
  * assembly composes no commerce clause). `payment` is stored as the clause

@@ -39,6 +39,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useChainId, useWalletClient } from "wagmi";
 import {
+    derivePricedFields,
     hashCommitmentStruct,
     resolveSubOrderPricing,
 } from "@figaro/sdk";
@@ -46,6 +47,7 @@ import {
     deserializeCommitmentPayload,
     serializeCommitmentPayload,
     selectRaceWinner,
+    verifyQuoteReply,
     verifyRaceReply,
     type CommitmentPayload,
     type RaceReply,
@@ -74,6 +76,12 @@ interface WalletMessageSigner {
  * Pin a race payload and relay its CID — the ONE mechanic under both race
  * legs (draft out, countersigned reply back). See the module doc for why this
  * is not `shareSignedOrder`. Returns the coordination-channel order id.
+ *
+ * The channel key is the CONVERSATION's order id — by default the payload's
+ * own commitment hash, but a QUOTE must answer under the REQUEST's id
+ * (`threadOrderId`): a counter-draft is a different struct by construction
+ * (the candidate re-priced it), and the buyer listens on the id of the draft
+ * they sent, not on a struct they cannot know in advance.
  */
 export async function relayRacePayload(params: {
     payload: CommitmentPayload;
@@ -83,8 +91,11 @@ export async function relayRacePayload(params: {
     chainId: number;
     coordinationMessaging: CommitmentPayloadRelay;
     evidenceTransport: Pick<IpfsService, "pinBlob">;
+    /** The conversation's order id, when the payload's own struct is not the
+     *  thread (a quote answering a request). Defaults to the payload's. */
+    threadOrderId?: string;
 }): Promise<string> {
-    const orderId = commitmentOrderHash(params.payload.commitment, params.chainId);
+    const orderId = params.threadOrderId ?? commitmentOrderHash(params.payload.commitment, params.chainId);
     const blob = new Blob([serializeCommitmentPayload(params.payload)], { type: "application/json" });
     const payloadCid = await params.evidenceTransport.pinBlob(blob);
     await params.coordinationMessaging.sendCommitmentPayload({
@@ -146,8 +157,11 @@ export function useDispatchRace() {
     const repliesRef = useRef<Array<RaceReply & { candidate: Hex }>>([]);
     const unsubsRef = useRef<Array<() => void>>([]);
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const ctxRef = useRef<{ nodeId: string; salts: Map<string, bigint>; deadline: bigint } | null>(null);
+    const ctxRef = useRef<{ nodeId: string; salts: Map<string, bigint>; deadline: bigint; decimals: number } | null>(null);
     const finishedRef = useRef(false);
+    // The quotes leg: same choreography, the CANDIDATE authors the price.
+    // Set for the run by start(); rendered so the panel can label rows.
+    const [quoting, setQuoting] = useState(false);
 
     const cleanup = useCallback(() => {
         for (const unsub of unsubsRef.current) unsub();
@@ -181,10 +195,18 @@ export function useDispatchRace() {
             setStep("error");
             return;
         }
+        // The committed figures come from the winner's REPLY: identical to the
+        // draft on the race leg (exact-match verification), the candidate's
+        // quote on the quotes leg (reconstruction-verified). The final walk
+        // rebuilds at this price and must hash to this struct.
         setResult({
             nodeId: ctx.nodeId,
-            selection: { seller: state.address, price: state.price, item: state.item },
-            race: { structHash: state.structHash, sellerSig: winner.reply.sellerSig as Hex },
+            selection: {
+                seller: state.address,
+                price: formatToken(winner.reply.commitment.payment, ctx.decimals),
+                item: state.item,
+            },
+            race: { structHash: hashCommitmentStruct(winner.reply.commitment) as Hex, sellerSig: winner.reply.sellerSig as Hex },
             salt: (nodeId: string) => {
                 const s = ctx.salts.get(nodeId);
                 if (s === undefined) throw new Error(`No race salt for template node "${nodeId}" — the race fixed a salt for every node at draft time.`);
@@ -201,11 +223,20 @@ export function useDispatchRace() {
      * node with no counterparty) — racing several positions is sequential
      * composition: each winner enters `subOrderSelections` before the next
      * race starts.
+     *
+     * All knobs are checkout-time buyer policy, never stored: `windowMs` (how
+     * long to wait), `maxCandidates` (race only the k best-priced), and
+     * `quote` — the RFQ leg: drafts go out at the buyer's CEILING with the
+     * priced fields derived from the built agreement (spec-routed, no clause
+     * named), candidates author the price, and replies verify by
+     * reconstruction instead of exact match.
      */
     const start = useCallback(async (args: {
         checkout: Omit<AssemblyCheckoutParams, "salt" | "deadline" | "subOrderRace">;
         racedNodeId: string;
         windowMs?: number;
+        maxCandidates?: number;
+        quote?: { ceiling: bigint };
     }) => {
         const { checkout, racedNodeId } = args;
         const core = CONTRACTS.core as Hex | undefined;
@@ -225,7 +256,10 @@ export function useDispatchRace() {
             // The candidate set: the live discovered-seller catalogues that can
             // price this node — the same registry read the manual path uses,
             // resolved fresh here. The buyer's own catalogue is skipped (the
-            // buyer does not race itself over the channel).
+            // buyer does not race itself over the channel). Sorted best-priced
+            // first so the buyer's k (a policy knob, never stored) means "the
+            // k cheapest posted" — on the quotes leg the posted figure is only
+            // the eligibility/ranking signal; the quote sets the price.
             const priced = checkout.sellerCatalogues
                 .filter((cat) => !hexEqual(cat.address, checkout.buyer))
                 .map((cat) => ({
@@ -239,10 +273,13 @@ export function useDispatchRace() {
                         checkoutQuantity: checkout.subOrderQuantities?.[racedNodeId],
                     }),
                 }))
-                .filter(({ pricing }) => pricing.item !== null && !pricing.issue && pricing.payment > 0n);
+                .filter(({ pricing }) => pricing.item !== null && !pricing.issue && pricing.payment > 0n)
+                .sort((a, b) => (a.pricing.payment < b.pricing.payment ? -1 : a.pricing.payment > b.pricing.payment ? 1 : 0))
+                .slice(0, args.maxCandidates && args.maxCandidates > 0 ? args.maxCandidates : undefined);
             if (priced.length === 0) {
                 throw new Error("No registered seller's catalogue can price this order — nothing to race.");
             }
+            setQuoting(!!args.quote);
 
             // Fix the reproduction inputs ONCE: a salt per template node and a
             // single deadline. Every dry walk and the final checkout use them.
@@ -255,13 +292,17 @@ export function useDispatchRace() {
                 if (s === undefined) throw new Error(`No race salt for template node "${nodeId}".`);
                 return s;
             };
-            ctxRef.current = { nodeId: racedNodeId, salts, deadline };
+            ctxRef.current = { nodeId: racedNodeId, salts, deadline, decimals: checkout.tokenDecimals };
 
             // One dry walk per candidate — the raced node's order IS the draft.
+            // On the quotes leg every draft prices at the buyer's CEILING; the
+            // priced fields are derived from the built agreement (the same
+            // spec-routed lookup the fills use) and attached as the quote
+            // request's terms.
             const drafts: RaceCandidateState[] = [];
             for (const { address: candidate, pricing } of priced) {
                 const item = { id: pricing.item!.id, name: pricing.item!.name };
-                const price = formatToken(pricing.payment, checkout.tokenDecimals);
+                const price = formatToken(args.quote?.ceiling ?? pricing.payment, checkout.tokenDecimals);
                 const orders = await planAssemblyOrders({
                     ...checkout,
                     subOrderSelections: {
@@ -273,12 +314,20 @@ export function useDispatchRace() {
                 }, { chainId });
                 const order = orders.find((o) => o.nodeId === racedNodeId);
                 if (!order) throw new Error(`The walk produced no order for node "${racedNodeId}".`);
+                let payload: CommitmentPayload = { commitment: order.commitment, agreement: order.agreement };
+                if (args.quote) {
+                    const pricedFields = derivePricedFields(order.agreement.sections, specs);
+                    if (pricedFields.length === 0) {
+                        throw new Error("This order composes no commercial section to quote against.");
+                    }
+                    payload = { ...payload, quoteRequest: { pricedFields } };
+                }
                 drafts.push({
                     address: candidate,
                     item,
                     payment: order.payment,
                     price,
-                    draft: { commitment: order.commitment, agreement: order.agreement },
+                    draft: payload,
                     structHash: hashCommitmentStruct(order.commitment) as Hex,
                     orderId: commitmentOrderHash(order.commitment, chainId),
                 });
@@ -303,12 +352,20 @@ export function useDispatchRace() {
                                 const json = await fetchCommitmentPayloadJsonByCid(services.evidenceTransport, payloadCid);
                                 const reply = deserializeCommitmentPayload(json);
                                 if (!reply.sellerSig) return; // the draft's own echo
-                                const check = await verifyRaceReply(reply, d.draft, { chainId, core });
+                                // Race leg: exact-match against the sent draft.
+                                // Quotes leg: reconstruction — the same
+                                // substitution applied to OUR draft must
+                                // reproduce the reply hash-for-hash.
+                                const check = args.quote
+                                    ? await verifyQuoteReply(reply, d.draft, { chainId, core })
+                                    : await verifyRaceReply(reply, d.draft, { chainId, core });
                                 if (!check.ok) return;
                                 if (repliesRef.current.some((r) => hexEqual(r.candidate, d.address))) return;
                                 repliesRef.current.push({ candidate: d.address, draft: d.draft, reply });
                                 setCandidates((prev) => prev.map((c) =>
-                                    hexEqual(c.address, d.address) ? { ...c, replied: true } : c,
+                                    hexEqual(c.address, d.address)
+                                        ? { ...c, replied: true, payment: reply.commitment.payment }
+                                        : c,
                                 ));
                                 if (repliesRef.current.length === draftsRef.current.length) finish();
                             } catch {
@@ -353,8 +410,9 @@ export function useDispatchRace() {
         setError(null);
         setCandidates([]);
         setResult(null);
+        setQuoting(false);
     }, [cleanup]);
 
     const repliedCount = candidates.filter((c) => c.replied).length;
-    return { step, error, candidates, repliedCount, result, start, selectNow, pick, reset };
+    return { step, error, candidates, repliedCount, result, quoting, start, selectNow, pick, reset };
 }

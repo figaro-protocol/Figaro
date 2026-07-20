@@ -14,33 +14,96 @@
  * `useDispatchRace`, threaded in whole from the checkout surface.
  */
 
+import { useState } from "react";
 import type { useDispatchRace } from "@/lib/checkout/dispatchRace";
 import { Button } from "@/components/ui/Button";
 import { formatToken } from "@/lib/shared/utils";
 import { truncateHex } from "@/lib/shared/formatHex";
 
+/** The buyer's checkout-time policy for this run — window, candidate count,
+ *  and (on the quotes leg) the ceiling. Never stored anywhere. */
+export interface RaceStartPolicy {
+    windowMs: number;
+    maxCandidates?: number;
+    /** Decimal string in display units; present = the RFQ leg (candidates
+     *  author the price under this ceiling). */
+    ceiling?: string;
+}
+
+const FIELD = "w-full rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent";
+
 interface Props {
     race: ReturnType<typeof useDispatchRace>;
-    onStart: () => void;
+    onStart: (policy: RaceStartPolicy) => void;
     tokenSymbol: string;
     decimals: number;
 }
 
 export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Props) {
-    const { step, error, candidates, repliedCount, result } = race;
+    const { step, error, candidates, repliedCount, result, quoting } = race;
+    const [windowSeconds, setWindowSeconds] = useState("120");
+    const [maxCandidates, setMaxCandidates] = useState("");
+    const [ceiling, setCeiling] = useState("");
 
     if (step === "idle") {
+        const windowMs = Math.max(1, Number(windowSeconds) || 120) * 1000;
+        const k = Number(maxCandidates);
+        const policy: Omit<RaceStartPolicy, "ceiling"> = {
+            windowMs,
+            ...(Number.isInteger(k) && k > 0 ? { maxCandidates: k } : {}),
+        };
+        const ceilingValid = /^\d+(\.\d+)?$/.test(ceiling.trim()) && Number(ceiling) > 0;
         return (
-            <div className="rounded-lg border border-neutral-200 bg-white p-4 space-y-2" data-testid="race-panel">
+            <div className="rounded-lg border border-neutral-200 bg-white p-4 space-y-3" data-testid="race-panel">
                 <p className="text-xs text-neutral-600">
-                    Or race the market: every registered seller whose catalogue can
-                    price this order receives your draft; whoever counter-signs is
-                    available at their posted price, and the cheapest wins unless
-                    you pick otherwise.
+                    Or form the market: every registered seller whose catalogue can
+                    serve this order receives your draft; whoever counter-signs is
+                    in, and the cheapest wins unless you pick otherwise.
                 </p>
-                <Button type="button" onClick={onStart} className="w-full" data-testid="race-start">
-                    Race the market
+                <div className="grid grid-cols-2 gap-2">
+                    <label className="text-xs text-neutral-600">
+                        Window (seconds)
+                        <input
+                            type="number" min="1" value={windowSeconds}
+                            onChange={(e) => setWindowSeconds(e.target.value)}
+                            className={FIELD} data-testid="race-window-input"
+                        />
+                    </label>
+                    <label className="text-xs text-neutral-600">
+                        Candidates (blank = all)
+                        <input
+                            type="number" min="1" value={maxCandidates}
+                            onChange={(e) => setMaxCandidates(e.target.value)}
+                            className={FIELD} data-testid="race-k-input"
+                        />
+                    </label>
+                </div>
+                <Button type="button" onClick={() => onStart(policy)} className="w-full" data-testid="race-start">
+                    Race at posted prices
                 </Button>
+                <div className="space-y-2 border-t border-neutral-200 pt-3">
+                    <p className="text-xs text-neutral-600">
+                        Or request quotes: candidates name their own price under your
+                        ceiling — for work no posted price fits.
+                    </p>
+                    <label className="text-xs text-neutral-600">
+                        Your ceiling ({tokenSymbol})
+                        <input
+                            type="text" inputMode="decimal" value={ceiling} placeholder="0.00"
+                            onChange={(e) => setCeiling(e.target.value)}
+                            className={FIELD} data-testid="quote-ceiling-input"
+                        />
+                    </label>
+                    <Button
+                        type="button"
+                        onClick={() => onStart({ ...policy, ceiling: ceiling.trim() })}
+                        disabled={!ceilingValid}
+                        className="w-full"
+                        data-testid="quote-start"
+                    >
+                        Request quotes
+                    </Button>
+                </div>
             </div>
         );
     }
@@ -57,7 +120,7 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
         return (
             <div className="rounded-lg border border-neutral-200 bg-white p-4 space-y-3" data-testid="race-panel">
                 <p className="text-xs font-semibold text-neutral-500">
-                    Racing {candidates.length} candidate{candidates.length === 1 ? "" : "s"} — {repliedCount} available
+                    {quoting ? "Requesting quotes from" : "Racing"} {candidates.length} candidate{candidates.length === 1 ? "" : "s"} — {repliedCount} {quoting ? "quoted" : "available"}
                 </p>
                 <ul className="space-y-2">
                     {candidates.map((c) => (
@@ -73,9 +136,14 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
                                 <p className="text-xs text-neutral-500 truncate">{c.itemName}</p>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
-                                <span className="text-xs font-semibold text-black">
-                                    {formatToken(c.payment, decimals)} {tokenSymbol}
-                                </span>
+                                {/* On the quotes leg an unreplied row has no price
+                                    yet — the payment field still holds the ceiling
+                                    the draft went out at, which is not a quote. */}
+                                {(!quoting || c.replied) && (
+                                    <span className="text-xs font-semibold text-black">
+                                        {formatToken(c.payment, decimals)} {tokenSymbol}
+                                    </span>
+                                )}
                                 {c.replied ? (
                                     <button
                                         type="button"
@@ -86,7 +154,7 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
                                         Choose
                                     </button>
                                 ) : (
-                                    <span className="text-xs text-neutral-400">waiting…</span>
+                                    <span className="text-xs text-neutral-400">{quoting ? "awaiting quote…" : "waiting…"}</span>
                                 )}
                             </div>
                         </li>
@@ -99,7 +167,7 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
                     className="w-full"
                     data-testid="race-select-now"
                 >
-                    Take the best offer now
+                    {quoting ? "Take the best quote now" : "Take the best offer now"}
                 </Button>
             </div>
         );

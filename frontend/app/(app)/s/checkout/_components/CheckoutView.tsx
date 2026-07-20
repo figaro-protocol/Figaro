@@ -28,7 +28,7 @@ import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
 import { fillProfileSections, planSubOrderSellers, profileValuesFor, readDenominationPin, resolveSubOrderPricing, type SubOrderPricing } from "@figaro/sdk";
 import { executeAssemblyCheckout, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import { useDispatchRace } from "@/lib/checkout/dispatchRace";
-import { DispatchRacePanel } from "@/components/runtime/DispatchRacePanel";
+import { DispatchRacePanel, type RaceStartPolicy } from "@/components/runtime/DispatchRacePanel";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel";
 import { SellerCataloguePicker, type SellerSelection } from "@/components/runtime/SellerCataloguePicker";
@@ -553,15 +553,20 @@ export function CheckoutView({ sellerAddress }: Props) {
 
     // Start the race for the first unbound sub-order — the raced position.
     // Racing several positions is sequential: each winner enters the
-    // selections before the next race starts. The window is checkout-time
-    // buyer policy (a surface control later, a constant for now); the buyer
-    // can always close early with "take the best offer now".
-    const RACE_WINDOW_MS = 120_000;
-    const handleRaceStart = () => {
+    // selections before the next race starts. Window, candidate count, and
+    // the quotes-leg ceiling all arrive from the panel — checkout-time buyer
+    // policy, never stored; the buyer can always close early.
+    const handleRaceStart = (policy: RaceStartPolicy) => {
         const checkout = buildWalkParams();
         const racedNode = buyerPickSubOrders[0]?.node;
         if (!checkout || !racedNode) return;
-        void race.start({ checkout, racedNodeId: racedNode.id, windowMs: RACE_WINDOW_MS });
+        void race.start({
+            checkout,
+            racedNodeId: racedNode.id,
+            windowMs: policy.windowMs,
+            maxCandidates: policy.maxCandidates,
+            quote: policy.ceiling ? { ceiling: parseToken(policy.ceiling, tokenDecimals) } : undefined,
+        });
     };
 
     const executeCheckout = async () => {

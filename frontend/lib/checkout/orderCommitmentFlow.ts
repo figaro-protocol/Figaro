@@ -48,8 +48,9 @@ import {
 } from "@/lib/checkout/orderPreview";
 import { shareSignedOrder } from "@/lib/checkout/orderSignedAndShared";
 import { relayRacePayload } from "@/lib/checkout/dispatchRace";
-import { validateDraft, type CommitmentPayload } from "@figaro/sdk/agent";
+import { buildCounterDraft, validateDraft, type CommitmentPayload } from "@figaro/sdk/agent";
 import { commitSignedOrder } from "@/lib/kernel/orderCommitted";
+import { commitmentOrderHash } from "@/lib/kernel/signedCommitment";
 import { buildFundingLeg } from "@/lib/composition/swapFunding";
 import { useSwapAndCommitActions } from "@/lib/composition/useSwapAndCommitActions";
 
@@ -352,6 +353,60 @@ export function useOrderCommitmentFlow() {
     }, [address, signAs, chainId, walletClient, services]);
 
     /**
+     * CANDIDATE side (RFQ): an inbound QUOTE REQUEST → the person names their
+     * price → counter-draft at that figure → counter-sign → relay back. The
+     * human entering the quote IS the pricing function, and the sign step's
+     * Layer-A + confirm gate (rendering the QUOTED agreement) replaces the
+     * autonomous floors — exactly as accept does. The counter-draft is built
+     * through the SDK's shared substitution, so the buyer's reconstruction
+     * reproduces it hash-for-hash; a quote above the buyer's ceiling (the
+     * request's payment) or below the payment floor refuses before signing.
+     */
+    const quoteAndReturn = useCallback(async (
+        incoming: CommitmentPayload,
+        quotedPayment: bigint,
+    ): Promise<CommitmentPayload> => {
+        if (!address) throw new Error("Connect a wallet first.");
+        setError(null);
+        try {
+            const check = validateDraft(incoming, address);
+            if (!check.ok) throw new Error(`Refusing this draft — ${check.reason}`);
+            const terms = incoming.quoteRequest;
+            if (!terms || terms.pricedFields.length === 0) {
+                throw new Error("This draft carries no quote request — counter-sign it instead.");
+            }
+            if (quotedPayment < 1n) throw new Error("A quote must be at least 1 unit.");
+            if (quotedPayment > incoming.commitment.payment) {
+                throw new Error("Your quote is above the buyer's ceiling — they asked for at most the figure shown.");
+            }
+            const counter = buildCounterDraft(incoming, terms, quotedPayment);
+            setStep("signing");
+            const sellerSig = await signAs(counter.commitment, counter.agreement);
+            const returned: CommitmentPayload = { commitment: counter.commitment, agreement: counter.agreement, sellerSig };
+            setStep("sharing");
+            await relayRacePayload({
+                payload: returned,
+                recipientAddress: incoming.commitment.buyer,
+                senderAddress: address,
+                walletClient: walletClient ?? null,
+                chainId,
+                coordinationMessaging: services.coordinationMessaging,
+                evidenceTransport: services.evidenceTransport,
+                // A quote is a DIFFERENT struct than the request (the whole
+                // point) — it answers on the REQUEST's conversation id, where
+                // the buyer is listening.
+                threadOrderId: commitmentOrderHash(incoming.commitment, chainId),
+            });
+            setStep("awaiting-buyer");
+            return returned;
+        } catch (e: unknown) {
+            setError(extractErrorMessage(e, "Quote failed"));
+            setStep("error");
+            throw e;
+        }
+    }, [address, signAs, chainId, walletClient, services]);
+
+    /**
      * Broadcast an ALREADY fully-signed payload — no signature added. For the
      * case where both signatures are present and anyone may submit it on-chain.
      *
@@ -398,6 +453,7 @@ export function useOrderCommitmentFlow() {
         signAndShare,
         acceptOrder,
         counterSignAndReturn,
+        quoteAndReturn,
         commitOrder,
         reset,
     } as const;

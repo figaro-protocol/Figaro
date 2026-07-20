@@ -314,7 +314,7 @@ export async function quoteDraft(
     const q = quote(draft);
     if (q === null || q < 1n || q > draft.commitment.payment) return null;
 
-    const { commitment: quoted, agreement } = counterDraftAt(draft, terms, q);
+    const { commitment: quoted, agreement } = buildCounterDraft(draft, terms, q);
     const domain = buildDomain(ctx.chainId, ctx.core);
     const sellerSig = await wallet.signTypedData({
         account, domain, types: COMMITMENT_TYPES, primaryType: "Commitment", message: quoted,
@@ -322,12 +322,15 @@ export async function quoteDraft(
     return { commitment: quoted, agreement, sellerSig };
 }
 
-/** The counter-draft at price `q` — shared by the candidate's build and the
- *  buyer's reconstruction, so the two are equal by construction or the quote
- *  is dishonest. Only the priced fields, `payment`, the re-derived
- *  `expectedCumulativeValue` (same upstream base), and `agreementHash` move;
- *  salt, deadline, parties, currency, processId are the draft's. */
-function counterDraftAt(
+/** The counter-draft at price `q` — the ONE build shared by the candidate's
+ *  quote and the buyer's reconstruction, so the two are equal by construction
+ *  or the quote is dishonest. Only the priced fields, `payment`, the
+ *  re-derived `expectedCumulativeValue` (same upstream base), and
+ *  `agreementHash` move; salt, deadline, parties, currency, processId are the
+ *  draft's. Exported for human-driven quote surfaces (a person entering the
+ *  figure IS the pricing function; the confirm gate replaces the autonomous
+ *  floors, exactly as accept does). */
+export function buildCounterDraft(
     draft: CommitmentPayload,
     terms: QuoteRequestTerms,
     q: bigint,
@@ -365,7 +368,7 @@ export async function verifyQuoteReply(
     const q = reply.commitment.payment;
     if (q < 1n) return { ok: false, reason: "quote is below the payment floor" };
     if (q > draft.commitment.payment) return { ok: false, reason: "quote exceeds the request's ceiling" };
-    const expected = counterDraftAt(draft, terms, q);
+    const expected = buildCounterDraft(draft, terms, q);
     if (hashCommitmentStruct(reply.commitment) !== hashCommitmentStruct(expected.commitment)) {
         return { ok: false, reason: "quote does not match the reconstruction — something beyond the price moved" };
     }

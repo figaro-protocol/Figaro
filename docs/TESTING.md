@@ -196,7 +196,12 @@ formation with zero contracts): unsigned drafts to every priceable
 discovered catalogue, two couriers counter-sign-and-return on their OWN
 /sign tabs (concurrent contexts), the cheapest AVAILABLE candidate wins
 (cheaper-posted candidates lose by silence), the winner submits the
-commit-ready relay from /orders, settlement exact, the LOSER nets zero; `kit-diamond` — the
+commit-ready relay from /orders, settlement exact, the LOSER nets zero;
+`rfq-checkout` — the RFQ leg at checkout: the buyer names a CEILING, each
+courier authors their OWN price on /sign, the counter-draft verifies by
+reconstruction and answers on the REQUEST's conversation id, the cheapest
+QUOTE commits (not the ceiling, not the posted price), the losing quoter
+nets zero; `kit-diamond` — the
 multi-PARENT topology: the diamond drawn on the canvas (select-add-parent),
 four orders, the leaf committing BOTH parents' real hashes in its topology
 section and bonding 2× the entire upstream value, one atomic 4-order
