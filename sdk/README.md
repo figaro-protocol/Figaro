@@ -158,6 +158,21 @@ channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, 
 }));
 const tx = await originateProcess(buyerWallet, publicClient, addresses, { channel, template, seller, currency, payment, chainId, core, overrides });
 
+// The dispatch race — market formation with zero contracts, the seller-signs-
+// first INVERSE of the handshake above: a buyer relays the SAME unsigned draft
+// shape to k candidates (each draft naming that candidate at their own posted
+// price), candidates counter-sign to answer "available", and the buyer signs
+// EXACTLY ONE winner — the single buyer signature is both the selection event
+// and the seller-address answer. A draft binds nobody and cannot be broadcast
+// (the kernel needs both signatures); a losing countersignature expires inert
+// at the struct deadline. Same two candidate-side floors as counterSignOffer.
+import { validateDraft, counterSignDraft, verifyRaceReply, selectRaceWinner } from "@figaro/sdk/agent";
+const reply = await counterSignDraft(courierWallet, draft, { chainId, core }, accept, policy);
+// Buyer side: exact struct-hash equality against the SENT draft, then recovery —
+// a doctored reply cannot ride a valid signature.
+const check = await verifyRaceReply(reply!, draft, { chainId, core });
+const winner = selectRaceWinner(replies); // cheapest countersigner; ties by arrival
+
 // A relayed offer envelope is untrusted input. `deserializeCommitmentPayload`
 // parses through the root-exported `strippingReviver`, dropping any
 // `__proto__` / `constructor` / `prototype` keys at parse time — a malicious

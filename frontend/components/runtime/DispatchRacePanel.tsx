@@ -65,6 +65,8 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
                             key={c.address}
                             className="flex items-center justify-between gap-3 rounded border border-neutral-200 p-2"
                             data-testid={`race-candidate-${c.address.toLowerCase()}`}
+                            data-payment={c.payment.toString()}
+                            data-replied={c.replied ? "true" : "false"}
                         >
                             <div className="min-w-0">
                                 <p className="text-xs font-mono text-neutral-700 truncate">{truncateHex(c.address)}</p>
@@ -107,7 +109,7 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
         return (
             <div className="rounded-lg border border-neutral-200 bg-white p-4 space-y-2" data-testid="race-panel">
                 <p className="text-xs font-semibold text-neutral-500">Race winner</p>
-                <p className="text-sm font-mono text-neutral-700" data-testid="race-winner">
+                <p className="text-sm font-mono text-neutral-700" data-testid="race-winner" data-seller={result.selection.seller.toLowerCase()}>
                     {truncateHex(result.selection.seller)} — {result.selection.price} {tokenSymbol}
                 </p>
                 <p className="text-xs text-neutral-500">

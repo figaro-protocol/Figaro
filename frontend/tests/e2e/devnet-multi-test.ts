@@ -56,6 +56,18 @@ export const test = base.extend<{ page: Page }>({
  * with Next.js dev-server cold-compile races (see
  * `reference_e2e_flake_patterns.md` #7).
  */
+/**
+ * A SECOND tab in the SAME browser context — shares origin + localStorage
+ * (the mock coordination bus), with the multi-account provider injected so
+ * `gotoAsWallet` works on it. Concurrent-party specs (the dispatch race)
+ * keep one tab per wallet alive simultaneously.
+ */
+export async function newWalletPage(context: BrowserContext): Promise<Page> {
+    const p = await context.newPage();
+    await p.addInitScript({ path: multiInjectPath });
+    return p;
+}
+
 export async function gotoAsWallet(
     page: Page,
     walletAddress: string,

@@ -138,6 +138,21 @@ function SignPageContent() {
 
                 if (cancelled) return;
 
+                // The subscription is wallet-wide and the transport may not be
+                // addressed (the mock bus broadcasts) — surface only payloads
+                // this wallet could ever act on: it must be a party. With the
+                // dispatch race, k drafts are in flight at once, each naming a
+                // different candidate; every candidate must parse THEIR draft,
+                // not the first arrival.
+                try {
+                    const preview = deserializeCommitmentPayload(payloadJson);
+                    const isParty = hexEqual(address, preview.commitment?.buyer)
+                        || hexEqual(address, preview.commitment?.seller);
+                    if (!isParty) return;
+                } catch {
+                    return;
+                }
+
                 const nextPayload = await parseSerializedPayload(payloadJson);
                 if (cancelled || !nextPayload) {
                     if (!cancelled && !nextPayload) {

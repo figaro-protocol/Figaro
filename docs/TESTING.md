@@ -190,7 +190,13 @@ deltas, runtime attestations, one atomic resolve paying every party, full
 audit; `buyer-assigned` — the SAME delivery assembly adopted WITHOUT a
 courier designation: the unbound node falls to the buyer's checkout choice
 (the SellerCataloguePicker), the committed courier is the buyer's pick,
-settlement exact — coordination as an ADOPTION property; `kit-diamond` — the
+settlement exact — coordination as an ADOPTION property; `dispatch-race` —
+the SAME unbound node resolved by the countersign-first race (market
+formation with zero contracts): unsigned drafts to every priceable
+discovered catalogue, two couriers counter-sign-and-return on their OWN
+/sign tabs (concurrent contexts), the cheapest AVAILABLE candidate wins
+(cheaper-posted candidates lose by silence), the winner submits the
+commit-ready relay from /orders, settlement exact, the LOSER nets zero; `kit-diamond` — the
 multi-PARENT topology: the diamond drawn on the canvas (select-add-parent),
 four orders, the leaf committing BOTH parents' real hashes in its topology
 section and bonding 2× the entire upstream value, one atomic 4-order

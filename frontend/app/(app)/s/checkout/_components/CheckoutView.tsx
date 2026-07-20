@@ -553,12 +553,15 @@ export function CheckoutView({ sellerAddress }: Props) {
 
     // Start the race for the first unbound sub-order — the raced position.
     // Racing several positions is sequential: each winner enters the
-    // selections before the next race starts.
+    // selections before the next race starts. The window is checkout-time
+    // buyer policy (a surface control later, a constant for now); the buyer
+    // can always close early with "take the best offer now".
+    const RACE_WINDOW_MS = 120_000;
     const handleRaceStart = () => {
         const checkout = buildWalkParams();
         const racedNode = buyerPickSubOrders[0]?.node;
         if (!checkout || !racedNode) return;
-        void race.start({ checkout, racedNodeId: racedNode.id });
+        void race.start({ checkout, racedNodeId: racedNode.id, windowMs: RACE_WINDOW_MS });
     };
 
     const executeCheckout = async () => {
