@@ -26,7 +26,9 @@ import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
 import { fillProfileSections, planSubOrderSellers, profileValuesFor, readDenominationPin, resolveSubOrderPricing, type SubOrderPricing } from "@figaro/sdk";
-import { executeAssemblyCheckout } from "@/lib/checkout/assemblyCheckout";
+import { executeAssemblyCheckout, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
+import { useDispatchRace } from "@/lib/checkout/dispatchRace";
+import { DispatchRacePanel } from "@/components/runtime/DispatchRacePanel";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel";
 import { SellerCataloguePicker, type SellerSelection } from "@/components/runtime/SellerCataloguePicker";
@@ -252,6 +254,12 @@ export function CheckoutView({ sellerAddress }: Props) {
     // The buyer's checkout-time counterparty choice for a sub-order the
     // adopting seller's catalogue leaves unbound (the buyer assigns it).
     const [sellerSelection, setSellerSelection] = useState<SellerSelection | null>(null);
+    // The dispatch race — the OTHER way to fill the same unbound sub-order:
+    // candidates countersign unsigned drafts, cheapest valid reply wins, the
+    // winner's countersignature rides the commit walk. `race.result` holds
+    // the winner + the reproduction inputs (salts, deadline).
+    const race = useDispatchRace();
+    const raceOutcome = race.result;
     // Buyer-entered units per template node id — the "checkout-quantity" rate
     // source's input (hours, seats, …). Read by the SAME pricing call the
     // commit walk makes, so the shown figure equals what commits.
@@ -344,7 +352,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         && !!currency
         && decimalsReady
         && !conversionBlocked
-        && (!buyerChoosesCounterparty || !!sellerSelection)
+        && (!buyerChoosesCounterparty || !!sellerSelection || !!raceOutcome)
         && compositionsReady;
     // The root order carries the design-time clauses the buyer is bonding to.
     // Surfaced inline below so the buyer reviews the terms before placing the
@@ -395,7 +403,13 @@ export function CheckoutView({ sellerAddress }: Props) {
                     return { name: nameOf(seller), payment: pricing.payment, nodeId: node.id, pricing };
                 }
                 // Unbound node: the buyer's checkout-time choice fills it — the
-                // shown figure is the SAME selection the commit will use.
+                // shown figure is the SAME selection the commit will use. A
+                // race winner overlays the manual pick for its node (matching
+                // the commit mapping's overlay order); its price is already in
+                // the process denomination.
+                if (raceOutcome && raceOutcome.nodeId === node.id) {
+                    return { name: nameOf(raceOutcome.selection.seller), payment: parseToken(raceOutcome.selection.price, tokenDecimals) };
+                }
                 return sellerSelection
                     ? { name: nameOf(sellerSelection.seller), payment: toCurrency(parseToken(sellerSelection.price, tokenDecimals)) }
                     : { name: "(choose below)", payment: 0n };
@@ -480,6 +494,73 @@ export function CheckoutView({ sellerAddress }: Props) {
         return sum + catalogueItem.volumeMl * cartItem.quantity;
     }, 0);
 
+    // ONE walk-params construction — the race's dry draft walks and the final
+    // commit walk MUST build from identical inputs (the walk's digest
+    // assertion refuses a drift), so both read this single builder. Null until
+    // the prerequisites the checkout guards on are present.
+    const buildWalkParams = (): AssemblyCheckoutParams | null => {
+        if (!buyer || !pickedAssembly || !currency) return null;
+        const manualSelections = buyerChoosesCounterparty && sellerSelection
+            ? Object.fromEntries(buyerPickSubOrders.map(({ node }) => [
+                node.id,
+                {
+                    seller: sellerSelection.seller,
+                    price: formatToken(toCurrency(parseToken(sellerSelection.price, tokenDecimals)), tokenDecimals),
+                    item: { id: sellerSelection.item.id, name: sellerSelection.item.name },
+                },
+            ]))
+            : {};
+        // A race winner overlays the manual pick for its node — the pick IS
+        // the winner; its price is already in the process denomination.
+        const selections = {
+            ...manualSelections,
+            ...(raceOutcome ? { [raceOutcome.nodeId]: raceOutcome.selection } : {}),
+        };
+        return {
+            buyer,
+            leadSellerAddress: sellerCatalogue.address as `0x${string}`,
+            currency,
+            payment: cartTotal,
+            lineItems: cartItems.map((item) => ({
+                itemId: item.catalogueItemId,
+                name: item.name,
+                quantity: item.quantity,
+                // Cart prices were snapshotted in the seller's default
+                // (the unit of account); the committed unit price is in
+                // the process denomination.
+                unitPrice: toCurrency(parseToken(item.price, tokenDecimals)).toString(),
+                massGrams: item.massGrams,
+                volumeMl: item.volumeMl,
+                lengthMm: item.lengthMm,
+                widthMm: item.widthMm,
+                heightMm: item.heightMm,
+                clauseValues: item.clauseValues,
+            })),
+            assembly: pickedAssembly,
+            sellerCatalogues: pricedCatalogues,
+            tokenDecimals,
+            subOrderSelections: Object.keys(selections).length > 0 ? selections : undefined,
+            subOrderCompositions: orderCompositions.length > 0
+                ? Object.fromEntries(orderCompositions.map((c) => [
+                    c.nodeId,
+                    { interface: c.interface, fieldValues: compositionInputs[c.nodeId] ?? {} },
+                ]))
+                : undefined,
+            subOrderQuantities,
+            clauseFills,
+        };
+    };
+
+    // Start the race for the first unbound sub-order — the raced position.
+    // Racing several positions is sequential: each winner enters the
+    // selections before the next race starts.
+    const handleRaceStart = () => {
+        const checkout = buildWalkParams();
+        const racedNode = buyerPickSubOrders[0]?.node;
+        if (!checkout || !racedNode) return;
+        void race.start({ checkout, racedNodeId: racedNode.id });
+    };
+
     const executeCheckout = async () => {
         if (!buyer) {
             setCheckoutError("Connect your wallet to place an order.");
@@ -514,50 +595,20 @@ export function CheckoutView({ sellerAddress }: Props) {
             // single-order relay, or the multi-order walk (sub-orders signed +
             // relayed to their bound sellers, root through the buyer-share-panel
             // last) — lives in lib/checkout/assemblyCheckout. The surface keeps
-            // guards and error display only.
+            // guards and error display only. A completed race adds its
+            // reproduction inputs (fixed salts + deadline) and the winner's
+            // countersignature.
+            const walkParams = buildWalkParams();
+            if (!walkParams) { setCheckoutError("The order inputs are incomplete."); return; }
             await executeAssemblyCheckout(
-                {
-                    buyer,
-                    leadSellerAddress,
-                    currency,
-                    payment: cartTotal,
-                    lineItems: cartItems.map((item) => ({
-                        itemId: item.catalogueItemId,
-                        name: item.name,
-                        quantity: item.quantity,
-                        // Cart prices were snapshotted in the seller's default
-                        // (the unit of account); the committed unit price is in
-                        // the process denomination.
-                        unitPrice: toCurrency(parseToken(item.price, tokenDecimals)).toString(),
-                        massGrams: item.massGrams,
-                        volumeMl: item.volumeMl,
-                        lengthMm: item.lengthMm,
-                        widthMm: item.widthMm,
-                        heightMm: item.heightMm,
-                        clauseValues: item.clauseValues,
-                    })),
-                    assembly: pickedAssembly,
-                    sellerCatalogues: pricedCatalogues,
-                    tokenDecimals,
-                    subOrderSelections: buyerChoosesCounterparty && sellerSelection
-                        ? Object.fromEntries(buyerPickSubOrders.map(({ node }) => [
-                            node.id,
-                            {
-                                seller: sellerSelection.seller,
-                                price: formatToken(toCurrency(parseToken(sellerSelection.price, tokenDecimals)), tokenDecimals),
-                                item: { id: sellerSelection.item.id, name: sellerSelection.item.name },
-                            },
-                        ]))
-                        : undefined,
-                    subOrderCompositions: orderCompositions.length > 0
-                        ? Object.fromEntries(orderCompositions.map((c) => [
-                            c.nodeId,
-                            { interface: c.interface, fieldValues: compositionInputs[c.nodeId] ?? {} },
-                        ]))
-                        : undefined,
-                    subOrderQuantities,
-                    clauseFills,
-                },
+                raceOutcome
+                    ? {
+                        ...walkParams,
+                        salt: raceOutcome.salt,
+                        deadline: raceOutcome.deadline,
+                        subOrderRace: { [raceOutcome.nodeId]: raceOutcome.race },
+                    }
+                    : walkParams,
                 {
                     chainId,
                     readResolveCap: async () => {
@@ -568,7 +619,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                     // walk signs (root and sub-orders alike) carries its own
                     // witness-signed swap leg when a funding token is chosen.
                     signRoot: (p) => signRoot(p, fundingToken ? { inputToken: fundingToken } : undefined),
-                    signAndShare: (p) => signAndShare(p, fundingToken ? { inputToken: fundingToken } : undefined),
+                    signAndShare: (p, opts) => signAndShare(p, fundingToken ? { inputToken: fundingToken } : undefined, opts),
                     compose,
                 },
             );
@@ -904,12 +955,25 @@ export function CheckoutView({ sellerAddress }: Props) {
                         {/* Buyer-assigned: the catalogue leaves the sub-order
                             unbound — the buyer chooses the counterparty here,
                             priced from that seller's own catalogue.
-                            Checkout-phase data, like the cart. */}
+                            Checkout-phase data, like the cart. The dispatch
+                            race below fills the SAME derived absence by racing
+                            the market instead — race vs manual pick is
+                            checkout-time buyer behavior, never stored. */}
                         {buyerChoosesCounterparty && (
-                            <SellerCataloguePicker
-                                tokenSymbol={tokenSymbol}
-                                onSelect={setSellerSelection}
-                            />
+                            <>
+                                {!raceOutcome && (
+                                    <SellerCataloguePicker
+                                        tokenSymbol={tokenSymbol}
+                                        onSelect={setSellerSelection}
+                                    />
+                                )}
+                                <DispatchRacePanel
+                                    race={race}
+                                    onStart={handleRaceStart}
+                                    tokenSymbol={tokenSymbol}
+                                    decimals={tokenDecimals}
+                                />
+                            </>
                         )}
 
                         {/* Swap-funded bond leg: shown when the buyer's balance

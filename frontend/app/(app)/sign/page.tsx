@@ -48,7 +48,7 @@ function SignPageContent() {
     const { data: walletClient } = useWalletClient();
     const searchParams = useSearchParams();
     const { coordinationMessaging, evidenceTransport } = useRuntimeServices();
-    const { acceptOrder, commitOrder, step, error: commitError, reset } = useOrderCommitmentFlow();
+    const { acceptOrder, counterSignAndReturn, commitOrder, step, error: commitError, reset } = useOrderCommitmentFlow();
     const hydratedPayloadRef = useRef<string | null>(null);
     const receivedTransportOrderIdsRef = useRef<Set<string>>(new Set());
 
@@ -71,9 +71,11 @@ function SignPageContent() {
             if (!p.commitment?.buyer || !p.commitment?.seller) {
                 throw new Error("Invalid commitment: missing buyer or seller");
             }
-            if (!p.buyerSig && !p.sellerSig) {
-                throw new Error("No signatures found — this commitment has not been signed yet");
-            }
+            // A payload with NO signatures is a race DRAFT — the dispatch
+            // race relays unsigned structs and asks for a countersignature
+            // (the candidate's availability answer). Derived from signature
+            // absence, never a stored flag; everything downstream branches on
+            // the same derived state.
             setParsed(p);
             return p;
         } catch (e: unknown) {
@@ -185,6 +187,20 @@ function SignPageContent() {
         }
     };
 
+    const handleCounterSignReturn = async () => {
+        if (!parsed) return;
+        try {
+            // A race draft: counter-sign and relay BACK to the buyer — no
+            // broadcast (the buyer's signature does not exist yet). The
+            // countersignature is this wallet's availability answer, binding
+            // only if the buyer commits it before the struct deadline.
+            const returned = await counterSignAndReturn(parsed);
+            setParsed(returned);
+        } catch {
+            // Error state handled by the order commitment flow.
+        }
+    };
+
     const handleReset = () => {
         setRawInput("");
         setParsed(null);
@@ -202,6 +218,9 @@ function SignPageContent() {
     const processCapacity = useProcessResolveCapacity(commitment?.processId);
     const hasBuyerSig = !!parsed?.buyerSig;
     const hasSellerSig = !!parsed?.sellerSig;
+    // No signatures at all = a race draft: counter-sign RETURNS to the buyer
+    // instead of broadcasting (derived from signature absence, never stored).
+    const isDraft = !!parsed && !hasBuyerSig && !hasSellerSig;
 
     // Determine which role the current wallet would fill
     const isBuyer = hexEqual(address, commitment?.buyer);
@@ -337,7 +356,7 @@ function SignPageContent() {
             )}
 
             {/* Step 2: Review & counter-sign */}
-            {parsed && commitment && step !== "done" && (
+            {parsed && commitment && step !== "done" && step !== "awaiting-buyer" && (
                 <Card className="p-4 space-y-4">
                     <h2 className="text-sm font-semibold text-neutral-900">
                         {isRoot ? "Order Commitment" : "Sub-Order Commitment"}
@@ -470,8 +489,18 @@ function SignPageContent() {
                         </div>
                     )}
 
-                    {/* Counter-sign button */}
-                    {needsMySignature && approvalDone && (
+                    {/* Counter-sign button — a draft (no signatures) returns to
+                        the buyer; a buyer-signed order counter-signs & submits. */}
+                    {needsMySignature && approvalDone && (isDraft ? (
+                        <Button
+                            onClick={handleCounterSignReturn}
+                            disabled={step === "signing" || step === "sharing" || !address}
+                            data-testid="btn-counter-sign-return"
+                            className="w-full"
+                        >
+                            {step === "signing" ? "Signing…" : step === "sharing" ? "Returning…" : "Counter-Sign & Return"}
+                        </Button>
+                    ) : (
                         <Button
                             onClick={handleCounterSign}
                             disabled={step === "signing" || step === "committing" || !address}
@@ -480,7 +509,7 @@ function SignPageContent() {
                         >
                             {step === "signing" ? "Signing…" : step === "committing" ? "Submitting…" : "Counter-Sign & Submit"}
                         </Button>
-                    )}
+                    ))}
 
                     {/* Already signed — show broadcast button if both sigs present */}
                     {!needsMySignature && hasBuyerSig && hasSellerSig && (
@@ -503,6 +532,28 @@ function SignPageContent() {
                         className="text-xs text-neutral-500 hover:text-neutral-700"
                     >
                         ← Start over
+                    </button>
+                </Card>
+            )}
+
+            {/* Race draft returned — the countersignature is out, awaiting the
+                buyer's selection. Nothing binds unless the buyer commits this
+                struct before its deadline. */}
+            {step === "awaiting-buyer" && (
+                <Card className="p-6 text-center space-y-3">
+                    <p className="text-sm font-semibold text-black" data-testid="sign-offer-returned">
+                        Offer returned to the buyer.
+                    </p>
+                    <p className="text-xs text-neutral-500">
+                        If the buyer commits you before the offer&apos;s deadline, the
+                        commit-ready order appears on your Orders page. Until then
+                        nothing binds either side, and the offer simply expires.
+                    </p>
+                    <button
+                        onClick={handleReset}
+                        className="text-xs text-blue-600 hover:text-blue-800 underline"
+                    >
+                        Listen for another commitment
                     </button>
                 </Card>
             )}

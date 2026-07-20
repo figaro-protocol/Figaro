@@ -47,7 +47,8 @@ import {
     type OrderPreview,
 } from "@/lib/checkout/orderPreview";
 import { shareSignedOrder } from "@/lib/checkout/orderSignedAndShared";
-import type { CommitmentPayload } from "@figaro/sdk/agent";
+import { relayRacePayload } from "@/lib/checkout/dispatchRace";
+import { validateDraft, type CommitmentPayload } from "@figaro/sdk/agent";
 import { commitSignedOrder } from "@/lib/kernel/orderCommitted";
 import { buildFundingLeg } from "@/lib/composition/swapFunding";
 import { useSwapAndCommitActions } from "@/lib/composition/useSwapAndCommitActions";
@@ -72,6 +73,9 @@ export type OrderFlowStep =
     | "signing"
     | "sharing"
     | "awaiting-seller"
+    /** A race candidate countersigned an unsigned draft and returned it — now
+     *  awaiting the buyer's selection (the buyer signs exactly one winner). */
+    | "awaiting-buyer"
     | "committing"
     | "done"
     | "error";
@@ -192,14 +196,19 @@ export function useOrderCommitmentFlow() {
     /**
      * BUYER side: sign the previewed order and relay it to the seller — sign +
      * share in one step (the XMTP auto-relay path). Composes `signCommitment`
-     * then pins + relays. Returns the signed payload now in flight.
+     * then pins + relays. Returns the signed payload now in flight. A
+     * race-formed order passes the winner's countersignature via
+     * `opts.sellerSig` — the relayed payload then carries BOTH signatures and
+     * arrives commit-ready on the winner's surface.
      */
     const signAndShare = useCallback(async (
         preview: OrderPreview,
         funding?: BuyerFundingRequest,
+        opts?: { sellerSig?: Hex },
     ): Promise<CommitmentPayload> => {
         if (!address) throw new Error("Connect a wallet first.");
-        const payload = await signCommitment(preview, funding);
+        const signed = await signCommitment(preview, funding);
+        const payload = opts?.sellerSig ? { ...signed, sellerSig: opts.sellerSig } : signed;
         setError(null);
         try {
             setStep("sharing");
@@ -301,6 +310,48 @@ export function useOrderCommitmentFlow() {
     }, [address, broadcasterFor, publicClient, signAs, chainId, signTypedDataAsync]);
 
     /**
+     * CANDIDATE side (dispatch race): an inbound UNSIGNED draft → counter-sign
+     * → relay the countersigned payload BACK to the buyer. NO broadcast — a
+     * draft cannot be broadcast (the buyer's signature does not exist yet),
+     * which is exactly why countersigning first is safe: the countersignature
+     * is the candidate's availability answer, binding only if the buyer
+     * commits this struct before its deadline. The SDK's draft gate rejects a
+     * tampered draft — and a payload that already carries a buyer signature
+     * (that is an offer; it accepts through `acceptOrder`). Signing runs the
+     * SAME Layer-A + confirm gate as every other signature. The bond is
+     * already approved (the page gated this) — being committed later pulls it.
+     */
+    const counterSignAndReturn = useCallback(async (
+        incoming: CommitmentPayload,
+    ): Promise<CommitmentPayload> => {
+        if (!address) throw new Error("Connect a wallet first.");
+        setError(null);
+        try {
+            const check = validateDraft(incoming, address);
+            if (!check.ok) throw new Error(`Refusing this draft — ${check.reason}`);
+            setStep("signing");
+            const sellerSig = await signAs(incoming.commitment, incoming.agreement);
+            const returned: CommitmentPayload = { ...incoming, sellerSig };
+            setStep("sharing");
+            await relayRacePayload({
+                payload: returned,
+                recipientAddress: incoming.commitment.buyer,
+                senderAddress: address,
+                walletClient: walletClient ?? null,
+                chainId,
+                coordinationMessaging: services.coordinationMessaging,
+                evidenceTransport: services.evidenceTransport,
+            });
+            setStep("awaiting-buyer");
+            return returned;
+        } catch (e: unknown) {
+            setError(extractErrorMessage(e, "Counter-sign failed"));
+            setStep("error");
+            throw e;
+        }
+    }, [address, signAs, chainId, walletClient, services]);
+
+    /**
      * Broadcast an ALREADY fully-signed payload — no signature added. For the
      * case where both signatures are present and anyone may submit it on-chain.
      *
@@ -346,6 +397,7 @@ export function useOrderCommitmentFlow() {
         signCommitment,
         signAndShare,
         acceptOrder,
+        counterSignAndReturn,
         commitOrder,
         reset,
     } as const;

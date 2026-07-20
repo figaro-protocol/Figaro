@@ -64,8 +64,10 @@ export interface CheckoutHandle {
     // The optional funding request attaches a witness-signed swap-funded bond
     // leg to the payload (the buyer funds their bond from another accepted
     // token; broadcast routes through the swap-and-commit coordinator).
+    // signAndShare's opts carry a race winner's countersignature — the relayed
+    // payload then holds BOTH signatures and arrives commit-ready.
     signRoot: (preview: OrderPreview, funding?: BuyerFundingRequest) => Promise<CommitmentPayload>;
-    signAndShare: (preview: OrderPreview, funding?: BuyerFundingRequest) => Promise<CommitmentPayload>;
+    signAndShare: (preview: OrderPreview, funding?: BuyerFundingRequest, opts?: { sellerSig?: `0x${string}` }) => Promise<CommitmentPayload>;
 
     // Order status
     order: OrderFlowState;

@@ -41,6 +41,7 @@ import {
     usePendingSellerSignature,
     awaitsMyCounterSign,
     awaitsCounterpartySignature,
+    awaitsMyBroadcast,
 } from "@/lib/checkout/orderPendingSellerSignature";
 import { useSellerListings } from "@/lib/seller/useSellerListings";
 import { displayNameForAddress } from "@/lib/seller/sellerListing";
@@ -122,6 +123,84 @@ function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listings }: {
                     disabled={isAccepting || isApproving}
                     className="rounded border border-neutral-300 px-3 py-2 text-sm text-neutral-500 hover:bg-neutral-50 disabled:opacity-40"
                     data-testid="btn-dismiss-order"
+                >
+                    Dismiss
+                </button>
+            </div>
+        </div>
+    );
+}
+
+// ── Ready-to-submit card: fully signed, relayed to me as seller — my broadcast ──
+// The dispatch race's last mile: the buyer signed my countersigned draft and
+// relayed it back carrying BOTH signatures. Same approve-then-act shape as the
+// accept card — being committed pulls my seller bond, so the allowance must
+// cover it before broadcasting.
+function ReadyToSubmitCard({ payload, onSubmit, onDismiss, isSubmitting, listings }: {
+    payload: CommitmentPayload;
+    onSubmit: () => void;
+    onDismiss: () => void;
+    isSubmitting: boolean;
+    listings: ReadonlyArray<Listing>;
+}) {
+    const { commitment } = payload;
+    const { address } = useAccount();
+    const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
+    const sellerBond = calculateBonds(commitment.expectedCumulativeValue, commitment.payment).sellerBond;
+    const core = CONTRACTS.core as `0x${string}` | undefined;
+    const { needsApproval, approve, isApprovePending, isApproveConfirming, isApproveSuccess } = useTokenApproval({
+        tokenAddress: commitment.currency as `0x${string}`,
+        owner: address,
+        spender: (core ?? ZERO_ADDRESS) as `0x${string}`,
+    });
+    const pendingSubmit = useRef(false);
+    useEffect(() => {
+        if (isApproveSuccess && pendingSubmit.current) {
+            pendingSubmit.current = false;
+            onSubmit();
+        }
+    }, [isApproveSuccess, onSubmit]);
+    const isApproving = isApprovePending || isApproveConfirming;
+    const handleSubmit = () => {
+        if (needsApproval(sellerBond)) {
+            pendingSubmit.current = true;
+            approve(sellerBond * 10n);
+        } else {
+            onSubmit();
+        }
+    };
+
+    return (
+        <div className="rounded-lg border border-neutral-200 bg-white p-5 space-y-4" data-testid="order-ready-to-submit-card">
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <p className="text-xs font-semibold text-neutral-500 mb-1">Fully signed — submit on-chain</p>
+                    <p className="text-sm font-mono text-neutral-700">
+                        From {displayNameForAddress(listings, commitment.buyer)}
+                    </p>
+                </div>
+                <div className="text-right shrink-0">
+                    <p className="text-xs text-neutral-500">Order value</p>
+                    <p className="text-sm font-semibold text-black">{formatToken(commitment.payment, decimals)}</p>
+                </div>
+            </div>
+            <div className="rounded border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600 space-y-1">
+                <p>
+                    <span className="font-medium text-neutral-700">Your seller bond:</span>{" "}
+                    {formatToken(sellerBond, decimals)}
+                    <span className="text-neutral-400 ml-1">(locked at submit, returned at settlement)</span>
+                </p>
+            </div>
+            <div className="flex gap-2">
+                <Button type="button" onClick={handleSubmit} disabled={isSubmitting || isApproving} className="flex-1" data-testid="btn-submit-ready-order">
+                    {isApproving ? "Approving bond…" : isSubmitting ? "Submitting…" : "Submit on-chain"}
+                </Button>
+                <button
+                    type="button"
+                    onClick={onDismiss}
+                    disabled={isSubmitting || isApproving}
+                    className="rounded border border-neutral-300 px-3 py-2 text-sm text-neutral-500 hover:bg-neutral-50 disabled:opacity-40"
+                    data-testid="btn-dismiss-ready-order"
                 >
                     Dismiss
                 </button>
@@ -221,7 +300,7 @@ export function OrdersList() {
 
     // YOUR TURN — relayed commitments awaiting my counter-signature (accept).
     const { pending: incoming, dismiss: dismissIncoming } = usePendingSellerSignature(awaitsMyCounterSign);
-    const { acceptOrder, error: flowError, reset, step: flowStep } = useOrderCommitmentFlow();
+    const { acceptOrder, commitOrder, error: flowError, reset, step: flowStep } = useOrderCommitmentFlow();
     const [acceptingIndex, setAcceptingIndex] = useState<number | null>(null);
     const [acceptError, setAcceptError] = useState<string | null>(null);
 
@@ -243,6 +322,29 @@ export function OrdersList() {
         }
     }, [incoming, acceptOrder, reset, dismissIncoming]);
 
+    // READY TO SUBMIT — fully-signed payloads relayed to me as seller (the
+    // race's last mile): my countersigned draft came back with the buyer's
+    // signature; broadcasting is mine.
+    const { pending: readyToSubmit, dismiss: dismissReady } = usePendingSellerSignature(awaitsMyBroadcast);
+    const [submittingIndex, setSubmittingIndex] = useState<number | null>(null);
+    const [submitError, setSubmitError] = useState<string | null>(null);
+
+    const handleSubmitReady = useCallback(async (index: number) => {
+        const payload = readyToSubmit[index];
+        if (!payload) return;
+        setSubmittingIndex(index);
+        setSubmitError(null);
+        try {
+            await commitOrder(payload);
+            dismissReady(index);
+            reset();
+        } catch (cause: unknown) {
+            setSubmitError(extractErrorMessage(cause, "Submit failed"));
+        } finally {
+            setSubmittingIndex(null);
+        }
+    }, [readyToSubmit, commitOrder, dismissReady, reset]);
+
     // AWAITING ACCEPTANCE — commitments I relayed, waiting on the counterparty.
     const { pending: outbound } = usePendingSellerSignature(awaitsCounterpartySignature);
 
@@ -262,10 +364,13 @@ export function OrdersList() {
         .map((payload, index) => ({ payload, index }))
         .filter(({ payload }) => notCommitted(payload));
     const visibleOutbound = address && core ? outbound.filter(notCommitted) : outbound;
+    const visibleReady = readyToSubmit
+        .map((payload, index) => ({ payload, index }))
+        .filter(({ payload }) => notCommitted(payload));
 
     const activeRows = rows.filter((r) => !r.isResolved);
     const completedRows = rows.filter((r) => r.isResolved);
-    const nothing = !isLoading && rows.length === 0 && visibleIncoming.length === 0 && visibleOutbound.length === 0;
+    const nothing = !isLoading && rows.length === 0 && visibleIncoming.length === 0 && visibleOutbound.length === 0 && visibleReady.length === 0;
 
     return (
         <div data-testid="orders-list" className="container mx-auto px-6 py-10 max-w-3xl space-y-8">
@@ -306,6 +411,27 @@ export function OrdersList() {
                             </div>
                             {(acceptError ?? flowError) && (
                                 <p className="text-sm text-red-600" data-testid="orders-your-turn-error">{acceptError ?? flowError}</p>
+                            )}
+                        </section>
+                    )}
+
+                    {!isMock && visibleReady.length > 0 && (
+                        <section className="space-y-3" data-testid="orders-ready-section">
+                            <p className="text-xs font-semibold text-neutral-500">Ready to submit</p>
+                            <div className="space-y-3">
+                                {visibleReady.map(({ payload, index }) => (
+                                    <ReadyToSubmitCard
+                                        key={`ready-${index}`}
+                                        payload={payload}
+                                        onSubmit={() => void handleSubmitReady(index)}
+                                        onDismiss={() => dismissReady(index)}
+                                        isSubmitting={submittingIndex === index}
+                                        listings={listings}
+                                    />
+                                ))}
+                            </div>
+                            {submitError && (
+                                <p className="text-sm text-red-600" data-testid="orders-ready-error">{submitError}</p>
                             )}
                         </section>
                     )}

@@ -51,6 +51,17 @@ export function awaitsCounterpartySignature(p: CommitmentPayload, address: strin
 }
 
 /**
+ * Fully signed and relayed to ME as the seller — my turn to broadcast. The
+ * dispatch race's last mile: the buyer signed the winning countersigned draft
+ * and relayed it back carrying BOTH signatures; the winner submits on-chain
+ * (and pays gas), exactly as an accepted order would. Not race-specific: any
+ * fully-signed payload relayed to its seller lands here.
+ */
+export function awaitsMyBroadcast(p: CommitmentPayload, address: string): boolean {
+    return hexEqual(address, p.commitment.seller) && !!p.buyerSig && !!p.sellerSig;
+}
+
+/**
  * Dismissed-order store — a process-wide singleton so every
  * `usePendingSellerSignature` mount (header badge + /orders accept surface)
  * shares one dismiss/accept decision. Without it, each instance accumulates its
