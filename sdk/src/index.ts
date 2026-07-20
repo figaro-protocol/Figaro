@@ -184,6 +184,8 @@ export {
     serializeAssemblyTemplate,
     specDeclaresField,
     specIsCatalogueSourced,
+    specIsProfileSourced,
+    profileSourcedFieldNames,
     specIsProcessLog,
     specIsMandatory,
     specIsSpecificTerms,
@@ -215,9 +217,10 @@ export { topologicalOrder } from "./topology.js";
 // Checkout planning — fill-where-composed section writers, the sub-order
 // seller plan, live contributor pricing, the rate-quantity-source registry
 export {
-    divisorFor,
+    profileValuesFor,
     fillCargoSection,
     fillClassSections,
+    fillProfileSections,
     fillCommerceSection,
     fillProvenanceSection,
     readDenominationPin,

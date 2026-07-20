@@ -28,7 +28,6 @@
 import {
     asAddress,
     asOptionalAddress,
-    asOptionalNumber,
     asOptionalString,
     asRecord,
     asString,
@@ -161,14 +160,16 @@ export interface SellerProfileMetadata {
      */
     defaultTokenAddress?: `0x${string}`;
     /**
-     * Dimensional-weight divisor for parcel billing — the seller's shipping
-     * convention (carrier-specific; e.g. ~5000 metric, ~139 imperial).
-     * Optional and logistics-only. `figaro-dimweight` reads it at checkout to
-     * derive billed weight = max(actual mass, volume ÷ divisor); the exact
-     * units and per-dimension rounding live in that clause. Absent for
-     * non-shipping sellers.
+     * PROFILE-authored clause values — SELLER master data for any registered
+     * clause declaring `block.profileSourced` (the seller-level sibling of the
+     * catalogue's per-item `clauseValues`): keyed clauseId → field → value,
+     * restricted by each spec's declared profile-authored subset. Examples:
+     * `figaro-dimweight`'s `divisor` (the seller's shipping convention, e.g.
+     * ~5000 metric), `figaro-credential`'s `credentialId` (a declared license
+     * number). Checkout folds these onto composed profile-sourced leaves.
+     * Absent when the seller authors none.
      */
-    dimWeightDivisor?: number;
+    profileClauseValues?: Record<string, Record<string, unknown>>;
     /**
      * Assembly bindings — one entry per assembly the wallet
      * participates in. Counterparty wallet designations live inside
@@ -181,6 +182,22 @@ export interface SellerProfileMetadata {
     services?: SellerAgentServices;
     /** IPFS URI of the wallet's catalogue document. */
     catalogueURI?: string;
+}
+
+/** Parse the profile-authored clause-values map (clauseId → field → value).
+ *  Shape-checked only — per-clause content validity is the Layer-A
+ *  validator's job at the points that consume the values. */
+function parseProfileClauseValues(
+    value: unknown,
+    path: string,
+): Record<string, Record<string, unknown>> | undefined {
+    if (value === undefined) return undefined;
+    const record = asRecord(value, path);
+    const out: Record<string, Record<string, unknown>> = {};
+    for (const [clauseId, fields] of Object.entries(record)) {
+        out[clauseId] = asRecord(fields, `${path}.${clauseId}`);
+    }
+    return out;
 }
 
 // ── Assembly-binding parser helpers ──────────────────────────────────────────
@@ -321,7 +338,7 @@ export function parseSellerProfileDocument(
         assets: parseAssetsField(record.assets, `${sourceLabel}.assets`),
         acceptedTokens: parseAcceptedTokens(record.acceptedTokens, `${sourceLabel}.acceptedTokens`),
         defaultTokenAddress: asOptionalAddress(record.defaultTokenAddress, `${sourceLabel}.defaultTokenAddress`),
-        dimWeightDivisor: asOptionalNumber(record.dimWeightDivisor, `${sourceLabel}.dimWeightDivisor`),
+        profileClauseValues: parseProfileClauseValues(record.profileClauseValues, `${sourceLabel}.profileClauseValues`),
         assemblyBindings: parseAssemblyBindings(record.assemblyBindings, `${sourceLabel}.assemblyBindings`),
         services: parseAgentServicesField(record.services, `${sourceLabel}.services`),
         catalogueURI: asOptionalString(record.catalogueURI, `${sourceLabel}.catalogueURI`),

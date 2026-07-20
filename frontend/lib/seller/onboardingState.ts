@@ -49,10 +49,11 @@ export interface OnboardingProfileDraft {
     assets?: SellerAssetReferences;
     acceptedTokens?: AcceptedTokenMetadata[];
     defaultTokenAddress?: `0x${string}`;
-    /** Dimensional-weight divisor (shipping convention) — checkout derives
-     *  billed weight = max(actual mass, volume ÷ divisor) onto a composed
-     *  dimweight leaf. Absent for non-shipping sellers. */
-    dimWeightDivisor?: number;
+    /** PROFILE-authored clause values (seller master data: dimweight's
+     *  divisor, a declared credential id), clauseId → field → value —
+     *  checkout folds them onto composed profile-sourced leaves. Absent when
+     *  the seller authors none. */
+    profileClauseValues?: Record<string, Record<string, unknown>>;
 }
 
 interface OnboardingCatalogueDraft {

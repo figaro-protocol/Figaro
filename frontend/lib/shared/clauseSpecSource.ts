@@ -208,11 +208,13 @@ export function listKnownClauses(): readonly { clauseId: string; version: number
 }
 
 /** A cached spec as the SDK projection sees it: the Layer-A spec plus the
- *  hash-load-bearing `block` hints (article, catalogueSourced, terms). */
+ *  hash-load-bearing `block` hints (article, catalogueSourced, profileSourced,
+ *  terms). */
 function toProjectionView(spec: ClauseSpecWithBlock): ProjectionSpecView {
     const hints: ProjectionHints = {};
     if (spec.block?.article !== undefined) hints.article = spec.block.article;
     if (spec.block?.catalogueSourced === true) hints.catalogueSourced = true;
+    if (spec.block?.profileSourced !== undefined) hints.profileSourced = spec.block.profileSourced;
     if (spec.block?.terms !== undefined) hints.terms = spec.block.terms;
     return { ...spec, hints };
 }
@@ -281,6 +283,38 @@ export function clauseIsCatalogueSourced(clauseId: string, version?: number): bo
  *  zero code change. */
 export function listCatalogueSourcedClauses(): readonly { clauseId: string; version: number }[] {
     return listKnownClauses().filter((c) => clauseIsCatalogueSourced(c.clauseId, c.version));
+}
+
+/** True if a clause is PROFILE-SOURCED — its content values are SELLER master
+ *  data, authored once on the seller's profile (a dim-weight divisor, a
+ *  declared credential id), classified by its own `block.profileSourced`
+ *  marker. The seller-level sibling of `clauseIsCatalogueSourced` (item master
+ *  data): catalogue = what is sold, profile = who sells. ANY registered clause
+ *  declaring the marker participates — including one this codebase has never
+ *  seen. */
+export function clauseIsProfileSourced(clauseId: string, version?: number): boolean {
+    const marker = getClauseSpec(clauseId, version)?.block?.profileSourced;
+    return marker === true || (Array.isArray(marker) && marker.length > 0);
+}
+
+/** Every loaded profile-sourced clause identity — the set the seller-profile
+ *  authoring section iterates. Derived from the live registry cache, never a
+ *  bundled list. */
+export function listProfileSourcedClauses(): readonly { clauseId: string; version: number }[] {
+    return listKnownClauses().filter((c) => clauseIsProfileSourced(c.clauseId, c.version));
+}
+
+/** The PROFILE-AUTHORED field names of a profile-sourced clause, read from its
+ *  own `block.profileSourced` marker: the array form names the subset; `true`
+ *  means every content field. Empty for clauses that are not profile-sourced.
+ *  The profile editor renders exactly these fields; other fields belong to
+ *  other sources (designer pins, checkout derivation). */
+export function profileSourcedFields(clauseId: string, version?: number): readonly string[] {
+    const spec = getClauseSpec(clauseId, version);
+    const marker = spec?.block?.profileSourced;
+    if (Array.isArray(marker)) return marker;
+    if (marker === true && spec) return spec.fields.map((f) => f.name);
+    return [];
 }
 
 /** The deep-link to a composed provider's OWN web UI, read from the clause's

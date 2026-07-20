@@ -25,7 +25,7 @@
 
 import {
     assertAgreementSignable,
-    divisorFor,
+    profileValuesFor,
     fillCommerceSection,
     fillDerivedSections,
     fillProvenanceSection,
@@ -214,7 +214,7 @@ export async function executeAssemblyCheckout(
                         fillDerivedSections(
                             { ...node.clauses, ...(params.clauseFills?.[planned.nodeId] ?? {}) },
                             lineItems, specs,
-                            divisorFor(leadSellerAddress, sellerCatalogues),
+                            profileValuesFor(leadSellerAddress, sellerCatalogues),
                         ),
                         payment, specs, lineItems,
                     ),
@@ -280,7 +280,7 @@ export async function executeAssemblyCheckout(
                     : undefined;
             // Same fill-where-composed as the root: this sub-order's own
             // logistics leaves (cargo / class / dimweight) from its own
-            // catalogue item + its own seller's divisor. A no-op for orders
+            // catalogue item + its own seller's profile values. A no-op for orders
             // composing none (e.g. a service leg) → G7 absence. The topology
             // section is the WALK's to complete (template-local parent ids →
             // real order hashes), so it is never in the overrides.
@@ -289,7 +289,7 @@ export async function executeAssemblyCheckout(
                     fillDerivedSections(
                         { ...nodeClauses },
                         subLineItems ?? [], specs,
-                        divisorFor(subSeller, sellerCatalogues),
+                        profileValuesFor(subSeller, sellerCatalogues),
                     ),
                     subPayment, specs, subLineItems,
                 ),

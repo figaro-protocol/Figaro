@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/Button";
 import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
-import { planSubOrderSellers, readDenominationPin, resolveSubOrderPricing, type SubOrderPricing } from "@figaro/sdk";
+import { fillProfileSections, planSubOrderSellers, profileValuesFor, readDenominationPin, resolveSubOrderPricing, type SubOrderPricing } from "@figaro/sdk";
 import { executeAssemblyCheckout } from "@/lib/checkout/assemblyCheckout";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel";
@@ -45,7 +45,8 @@ import { formatToken, parseToken } from "@/lib/shared/utils";
 import { useSellerBoundAssemblies } from "@/lib/seller/useSellerBoundAssemblies";
 import { displayNameForAddress } from "@/lib/seller/sellerListing";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
-import { getClauseSpec, clauseIsMandatory, clauseIsSpecificTerms, clauseIsProcessLog, clauseIsCatalogueSourced, specSource } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec, clauseIsMandatory, clauseIsSpecificTerms, clauseIsProcessLog, clauseIsCatalogueSourced, clauseIsProfileSourced, specSource } from "@/lib/shared/clauseSpecSource";
+import { CredentialVerifyButton } from "@/components/runtime/CredentialVerifyButton";
 import type { FieldSpec } from "@figaro/sdk/clauses";
 
 interface Props {
@@ -373,7 +374,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // values (the terms the buyer is agreeing to), spec-driven. Mandatory
     // clauses (e.g. the topology clause) are protocol-composed, not
     // buyer-chosen terms; they stay out of the review.
-    const agreementGroups = ((): Array<{ key: string; label: string; clauses: Array<{ clauseId: string; values: string; fillable: boolean }> }> => {
+    const agreementGroups = ((): Array<{ key: string; label: string; clauses: Array<{ clauseId: string; values: string; data: Record<string, unknown>; fillable: boolean }> }> => {
         if (!pickedAssembly) return [];
         const orders = pickedAssembly.assemblyTemplate.agreements;
         const lead = sellerCatalogue.address as `0x${string}`;
@@ -386,25 +387,38 @@ export function CheckoutView({ sellerAddress }: Props) {
         return orders.map((order, i) => {
             const isRoot = templateParentOrderHashes(order).length === 0;
             const assigned = isRoot ? lead : sellerOf.get(order.id);
+            // Fold the assigned seller's PROFILE master data (dimweight's
+            // divisor, a declared credential id) onto the preview leaves —
+            // the same fold the order build applies, so the buyer reviews
+            // what will actually commit (and can Verify a declared
+            // credential before placing the order).
+            const previewClauses = fillProfileSections(
+                Object.fromEntries(Object.entries(order.clauses).filter(([clauseId]) => !clauseIsMandatory(clauseId))),
+                assigned ? profileValuesFor(assigned, sellerCatalogues) : undefined,
+                specSource(),
+            );
             return {
                 key: String(order.id ?? i),
                 label: assigned ? nameOf(assigned) : "(to be assigned)",
-                clauses: Object.entries(order.clauses)
-                    .filter(([clauseId]) => !clauseIsMandatory(clauseId))
+                clauses: Object.entries(previewClauses)
                     .map(([clauseId, fields]) => ({
                         clauseId,
                         values: clauseValueSummary(fields),
+                        data: fields as Record<string, unknown>,
                         // A GENERAL clause's fields are transaction particulars
                         // the buyer authors here. Not fillable: specific-T&C
                         // values (the designer's tailoring, from the template),
                         // process-log anchors (attested at runtime, empty at
-                        // commit), and catalogue-sourced sections (the seller's
-                        // items fill them). A COMPOSING clause's content fields
-                        // ARE fillable — the composition surface collects only
-                        // its block.fields runtime params, never its content.
+                        // commit), catalogue-sourced sections (the seller's
+                        // items fill them), and profile-sourced sections (the
+                        // seller's standing declarations fill them). A COMPOSING
+                        // clause's content fields ARE fillable — the composition
+                        // surface collects only its block.fields runtime params,
+                        // never its content.
                         fillable: !clauseIsSpecificTerms(clauseId)
                             && !clauseIsProcessLog(clauseId)
                             && !clauseIsCatalogueSourced(clauseId)
+                            && !clauseIsProfileSourced(clauseId)
                             && (getClauseSpec(clauseId)?.fields.length ?? 0) > 0,
                     })),
             };
@@ -721,10 +735,11 @@ export function CheckoutView({ sellerAddress }: Props) {
                                             <p className="text-[11px] font-medium text-neutral-500">{group.label}</p>
                                         )}
                                         <ul className="text-xs text-neutral-600 space-y-0.5">
-                                            {group.clauses.map(({ clauseId, values, fillable }) => (
+                                            {group.clauses.map(({ clauseId, values, data, fillable }) => (
                                                 <li key={clauseId} data-testid={`agreement-clause-${clauseId}`}>
                                                     {getClauseSpec(clauseId)?.title ?? clauseId}
                                                     {values && <span className="text-neutral-900"> — {values}</span>}
+                                                    <CredentialVerifyButton data={data} />
                                                     {fillable && (
                                                         <div className="mt-1 mb-2 ml-3 space-y-2">
                                                             {getClauseSpec(clauseId)?.fields.map((field) => (

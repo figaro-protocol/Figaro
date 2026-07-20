@@ -104,7 +104,7 @@ export function SellerEditProfile() {
             assets: existingProfile.assets,
             acceptedTokens: existingProfile.acceptedTokens,
             defaultTokenAddress: existingProfile.defaultTokenAddress,
-            dimWeightDivisor: existingProfile.dimWeightDivisor,
+            profileClauseValues: existingProfile.profileClauseValues,
         };
         update({ profile: draft });
         setSeeded(true);

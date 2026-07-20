@@ -25,7 +25,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Order } from "@/lib/kernel/store";
 import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/protocol/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsMandatory, clauseIsSpecificTerms } from "@/lib/shared/clauseSpecSource";
+import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsMandatory, clauseIsSpecificTerms, profileSourcedFields } from "@/lib/shared/clauseSpecSource";
 import { ClausesByArticle } from "@/components/runtime/ClausesByArticle";
 import { FieldControl } from "@/components/runtime/FieldControl";
 
@@ -502,9 +502,14 @@ function ClauseControl({
                             // clauses (block.terms: "specific" — the tailoring
                             // affix, consent today). General clauses show no
                             // inputs here — their fields are transaction
-                            // particulars, filled at checkout. Sub-clause
-                            // NESTING is structure and always renders.
-                            const editable = clauseIsSpecificTerms(clauseKey, clause.version);
+                            // particulars, filled at checkout. A specific
+                            // clause's PROFILE-SOURCED field subset is the
+                            // SELLER's standing declaration (a credential id) —
+                            // not the designer's to pin; the checkout fold
+                            // fills it. Sub-clause NESTING is structure and
+                            // always renders.
+                            const editable = clauseIsSpecificTerms(clauseKey, clause.version)
+                                && !profileSourcedFields(clauseKey, clause.version).includes(field.name);
                             if (!editable && nested.length === 0) return null;
                             return (
                                 <div key={field.name}>

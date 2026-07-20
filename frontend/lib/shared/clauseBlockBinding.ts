@@ -81,6 +81,17 @@ export interface ClauseBlockBinding {
      *  clause opts in by declaring it — including one this codebase has never
      *  seen. Omit (falsy) for clauses whose values come from composition/topology. */
     catalogueSourced?: boolean;
+    /** Profile-sourced — this clause's content values are seller master data,
+     *  authored ONCE on the seller's PROFILE (a dim-weight divisor, a declared
+     *  credential id) rather than per catalogue item. The profile editor
+     *  renders a spec-driven authoring section for any clause declaring it, and
+     *  checkout folds the stored values onto the matching leaf. The seller-level
+     *  sibling of `catalogueSourced` (item master data) — two distinct layers:
+     *  catalogue = what is sold, profile = who sells. ANY registered clause
+     *  opts in by declaring it. `true` = every content field is
+     *  profile-authored; a FIELD-NAME ARRAY names the profile-authored subset
+     *  (the rest belong to other sources — designer pins, checkout derivation). */
+    profileSourced?: boolean | readonly string[];
     /** Terms classification — `"specific"` marks a SPECIFIC-T&C clause
      *  (consent today): the designer composes its field values into the
      *  template, tailoring a generic assembly for a specific application
@@ -175,6 +186,15 @@ export function parseBlockBinding(
         errors.push({ path: `${path}.catalogueSourced`, message: "catalogueSourced must be a boolean when present" });
         return null;
     }
+    if (
+        raw.profileSourced !== undefined &&
+        typeof raw.profileSourced !== "boolean" &&
+        !(Array.isArray(raw.profileSourced) && raw.profileSourced.length > 0 &&
+            raw.profileSourced.every((f) => typeof f === "string" && f.length > 0))
+    ) {
+        errors.push({ path: `${path}.profileSourced`, message: "profileSourced must be a boolean or a non-empty array of field names when present" });
+        return null;
+    }
     if (raw.terms !== undefined && (typeof raw.terms !== "string" || raw.terms.length === 0)) {
         errors.push({ path: `${path}.terms`, message: "terms must be a non-empty string when present" });
         return null;
@@ -219,6 +239,7 @@ export function parseBlockBinding(
         article: raw.article as ClauseArticle,
         ...(raw.nestsUnder !== undefined && { nestsUnder: raw.nestsUnder as string }),
         ...(raw.catalogueSourced !== undefined && { catalogueSourced: raw.catalogueSourced as boolean }),
+        ...(raw.profileSourced !== undefined && { profileSourced: raw.profileSourced as boolean | readonly string[] }),
         ...(raw.terms !== undefined && { terms: raw.terms as string }),
         ...(composes !== undefined && { composes }),
         ...(interaction !== undefined && { interaction }),

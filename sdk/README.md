@@ -525,8 +525,8 @@ composed is a no-op, so the same call serves the root and every sub-order.
 ```ts
 import {
   fillCommerceSection, writeTopologySection, fillDerivedSections,
-  fillCargoSection, fillClassSections, fillDimweightSection,
-  planSubOrderSellers, resolveSubOrderPricing, divisorFor,
+  fillCargoSection, fillClassSections, fillProfileSections, fillDimweightSection,
+  planSubOrderSellers, resolveSubOrderPricing, profileValuesFor,
   registerRateQuantitySource, getRateQuantityResolver, topologicalOrder,
 } from "@figaro/sdk";
 ```
@@ -534,9 +534,13 @@ import {
 - **Section fills** (by declared field): `fillCommerceSection` (settlement
   terms — `lineItems` supplied only for the root cart), `writeTopologySection`
   (the REAL parent-order hashes into `parentOrderHashes`), and the logistics
-  triple `fillDerivedSections` folds together — `fillCargoSection` (mass/volume
+  fills `fillDerivedSections` folds together — `fillCargoSection` (mass/volume
   sum × quantity), `fillClassSections` (catalogue-sourced freight-class/hazmat/…),
-  and the DERIVED `fillDimweightSection` (`billed = max(gross, volumetric)`).
+  `fillProfileSections` (the seller's PROFILE-authored master data — dimweight's
+  divisor, a declared credential id — restricted to each spec's declared
+  `block.profileSourced` subset, with the template's committed terms winning),
+  and the DERIVED `fillDimweightSection` (`billed = max(gross, volumetric)`,
+  divisor read from the profile-folded leaf).
 - **Sub-order sellers**: `planSubOrderSellers` topologically orders the non-root
   orders and resolves each one's seller from the adopting seller's counterparty
   bindings via a per-clause binding cursor — a clause shared by sibling orders
@@ -546,7 +550,8 @@ import {
 - **Pricing**: `resolveSubOrderPricing` prices a sub-order from its contributor's
   OWN catalogue (`billedQuantity × unitPrice = payment` always holds, so the
   committed line item replays the payment with no reference back to the mutable
-  catalogue); `divisorFor` looks up a seller's dimensional-weight divisor.
+  catalogue); `profileValuesFor` looks up a seller's profile-authored clause
+  values for the profile fold.
 - **Open rate-quantity registry**: `registerRateQuantitySource(source, resolver)`
   / `getRateQuantityResolver(source)` — a `pricingPolicy: "rate"` item resolves
   its billed quantity through this last-write-wins registry (shipped tenants:
@@ -568,7 +573,7 @@ is bundled — each is pinned to IPFS and read at runtime.
 - **Profile** (`SellerProfileMetadata`) — the stable identity envelope pinned at
   `SellerRegistry.metadataURI`. `name` is the ONLY required field; everything
   else is optional (`description`, `specialty`, `location`, `branding`, `assets`,
-  `acceptedTokens`, `defaultTokenAddress`, `dimWeightDivisor`, `assemblyBindings`,
+  `acceptedTokens`, `defaultTokenAddress`, `profileClauseValues`, `assemblyBindings`,
   `services`, and `catalogueURI` — the pointer to the catalogue). Token
   acceptance is an identity declaration, not a market position. Carries no
   role / archetype / category taxonomy — what a seller does is inferred from the

@@ -12,6 +12,7 @@ import {
     type IndexedAttestationLog,
 } from "@/lib/composition/indexer";
 import { extractClauseData } from "@/lib/audit/clauseDataExtract";
+import { CredentialVerifyButton } from "@/components/runtime/CredentialVerifyButton";
 import { extractProcessLogs } from "@/lib/audit/processLogsExtract";
 import { clauseIdForHash, clauseWitnessStages, describeAttestation, describeWitness, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
@@ -165,6 +166,11 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
                                                     ))}
                                                 </dl>
                                             )}
+                                            {/* The reader's verification affordance — renders only for a
+                                                leaf declaring a register template + declared id. */}
+                                            <CredentialVerifyButton
+                                                data={Object.fromEntries(clause.fields.map((f) => [f.name, f.values[0]]))}
+                                            />
                                         </div>
                                     ))}
                                 </div>

@@ -17,7 +17,7 @@
 
 import { parseUnits } from "viem";
 import { geohashCentroidDistanceKm } from "./derive/geo.js";
-import { specDeclaresField, specIsCatalogueSourced, type SpecSource } from "./projection.js";
+import { specDeclaresField, specIsCatalogueSourced, specIsProfileSourced, profileSourcedFieldNames, type SpecSource } from "./projection.js";
 import { templateParentOrderHashes, type AssemblyTemplate, type TemplateAgreement } from "./assembly.js";
 import { topologicalOrder } from "./topology.js";
 import type { CounterpartyBinding } from "./sellerProfile.js";
@@ -218,7 +218,53 @@ export function fillClassSections(
             (li) => li.clauseValues?.[clauseId] && Object.keys(li.clauseValues[clauseId]).length > 0,
         );
         if (!line) continue;
-        out = { ...out, [clauseId]: { ...out[clauseId], ...line.clauseValues![clauseId] } };
+        out = { ...out, [clauseId]: mergeUnderTemplate(out[clauseId], line.clauseValues![clauseId]) };
+    }
+    return out;
+}
+
+/** Merge authored master data UNDER the template's committed values: a field
+ *  the template already carries (a designer's specific-T&C pin) is a term and
+ *  WINS; authored values fill the gaps. Empty-string/undefined template
+ *  entries do not count as pins — they cannot shadow authored data. */
+function mergeUnderTemplate(
+    template: Record<string, unknown> | undefined,
+    authored: Record<string, unknown>,
+): Record<string, unknown> {
+    const pins = Object.fromEntries(
+        Object.entries(template ?? {}).filter(([, v]) => v !== undefined && v !== ""),
+    );
+    return { ...authored, ...pins };
+}
+
+/**
+ * Fold the seller's PROFILE-authored clause values onto their leaves. For each
+ * profile-sourced clause the order composes (dimweight's divisor, a declared
+ * credential id, …, discovered by `block.profileSourced`, never by name), write
+ * the seller's stored values — restricted to the spec's DECLARED
+ * profile-authored subset (`profileSourcedFieldNames`), with the template's
+ * committed terms winning over authored data. Absent when the seller stores no
+ * values for that clause. The seller-level sibling of `fillClassSections`
+ * (catalogue = what is sold, profile = who sells).
+ */
+export function fillProfileSections(
+    clauses: ClauseFields,
+    profileValues: Readonly<Record<string, Record<string, unknown>>> | undefined,
+    specs: SpecSource,
+): ClauseFields {
+    if (!profileValues) return clauses;
+    let out = clauses;
+    for (const clauseId of Object.keys(clauses)) {
+        const spec = specs.get(clauseId);
+        if (!spec || !specIsProfileSourced(spec)) continue;
+        const stored = profileValues[clauseId];
+        if (!stored || Object.keys(stored).length === 0) continue;
+        const declared = profileSourcedFieldNames(spec);
+        const authored = Object.fromEntries(
+            Object.entries(stored).filter(([k, v]) => declared.includes(k) && v !== undefined && v !== ""),
+        );
+        if (Object.keys(authored).length === 0) continue;
+        out = { ...out, [clauseId]: mergeUnderTemplate(out[clauseId], authored) };
     }
     return out;
 }
@@ -228,17 +274,20 @@ export function fillClassSections(
  * declared `billedMassGrams` field. DERIVED, not authored: billed = max(gross
  * mass, volumetric), volumetric = packaged volume ÷ divisor with each packaged
  * dimension rounded up to the next whole centimetre first (carriers round per
- * dimension). Reads the cargo leaf just filled; skipped when the order composes
- * no dimweight clause, has no packaged dimensions, or the seller declares no
- * divisor — dimensional weight then simply does not apply.
+ * dimension). Reads the cargo leaf just filled and the divisor the PROFILE fold
+ * just wrote onto this same leaf (the seller's shipping convention, a
+ * profile-sourced value); skipped when the order composes no dimweight clause,
+ * has no packaged dimensions, or the seller declares no divisor — dimensional
+ * weight then simply does not apply.
  */
 export function fillDimweightSection(
     clauses: ClauseFields,
     specs: SpecSource,
-    divisor?: number,
 ): ClauseFields {
     const dimId = composedClauseDeclaring(clauses, "billedMassGrams", specs);
-    if (!dimId || !divisor || divisor <= 0) return clauses;
+    if (!dimId) return clauses;
+    const divisor = Number(clauses[dimId]?.divisor ?? 0);
+    if (!(divisor > 0)) return clauses;
     const cargoId = composedClauseDeclaring(clauses, "massGrams", specs);
     const cargo = cargoId ? clauses[cargoId] : undefined;
     const l = Number(cargo?.lengthMm ?? 0), w = Number(cargo?.widthMm ?? 0), h = Number(cargo?.heightMm ?? 0);
@@ -252,17 +301,21 @@ export function fillDimweightSection(
 
 /**
  * Fill every derivable LOGISTICS section on an order, wherever composed — cargo
- * (physical measure), the class leaves (catalogue-sourced), then the derived
- * dimweight (reads the cargo it just wrote). Each fill is a no-op when its
- * clause isn't composed, so the same call serves the root and every sub-order.
+ * (physical measure), the class leaves (catalogue-sourced), the profile leaves
+ * (seller master data), then the derived dimweight (reads the cargo and the
+ * profile-folded divisor it just wrote). Each fill is a no-op when its clause
+ * isn't composed, so the same call serves the root and every sub-order.
  */
 export function fillDerivedSections(
     clauses: ClauseFields,
     lines: AssemblyCheckoutLineItem[],
     specs: SpecSource,
-    divisor?: number,
+    profileValues?: Readonly<Record<string, Record<string, unknown>>>,
 ): ClauseFields {
-    return fillDimweightSection(fillClassSections(fillCargoSection(clauses, lines, specs), lines, specs), specs, divisor);
+    return fillDimweightSection(
+        fillProfileSections(fillClassSections(fillCargoSection(clauses, lines, specs), lines, specs), profileValues, specs),
+        specs,
+    );
 }
 
 // ── Contributor pricing context ─────────────────────────────────────────────
@@ -273,16 +326,21 @@ export function fillDerivedSections(
 export interface PricingCatalogue {
     address: string;
     items: CatalogueItemMetadata[];
-    /** The seller's dimensional-weight divisor (shipping convention), when
-     *  declared. */
-    dimWeightDivisor?: number;
+    /** The seller's PROFILE-authored clause values (seller master data:
+     *  dimweight's divisor, a declared credential id), keyed clauseId →
+     *  field → value. Folded onto composed profile-sourced leaves at
+     *  checkout by `fillProfileSections`. */
+    profileClauseValues?: Readonly<Record<string, Record<string, unknown>>>;
 }
 
-/** The seller's dimensional-weight divisor, looked up by the order's seller
- *  address from the checkout's catalogue projections. Undefined when the seller
- *  declares none — dimweight then does not apply. */
-export function divisorFor(seller: `0x${string}`, catalogues: readonly PricingCatalogue[]): number | undefined {
-    return catalogues.find((c) => c.address.toLowerCase() === seller.toLowerCase())?.dimWeightDivisor;
+/** The seller's profile-authored clause values, looked up by the order's
+ *  seller address from the checkout's catalogue projections. Undefined when
+ *  the seller stores none — profile-sourced leaves then stay unfilled. */
+export function profileValuesFor(
+    seller: `0x${string}`,
+    catalogues: readonly PricingCatalogue[],
+): Readonly<Record<string, Record<string, unknown>>> | undefined {
+    return catalogues.find((c) => c.address.toLowerCase() === seller.toLowerCase())?.profileClauseValues;
 }
 
 // ── Sub-order seller plan (the per-clause binding cursor) ──────────────────

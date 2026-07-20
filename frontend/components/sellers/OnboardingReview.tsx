@@ -67,7 +67,7 @@ function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], walle
         assets: state.profile.assets,
         acceptedTokens: state.profile.acceptedTokens,
         defaultTokenAddress: state.profile.defaultTokenAddress,
-        dimWeightDivisor: state.profile.dimWeightDivisor,
+        profileClauseValues: state.profile.profileClauseValues,
         assemblyBindings: state.assemblies,
         services: state.services,
     };

@@ -9,7 +9,9 @@ import { describe, expect, it } from "vitest";
 import {
     fillCargoSection,
     fillClassSections,
+    fillDerivedSections,
     fillDimweightSection,
+    fillProfileSections,
     type AssemblyCheckoutLineItem,
 } from "../src/checkoutPlan.js";
 import { specSourceFromFixtures } from "./specFixtures.js";
@@ -69,35 +71,95 @@ describe("fillClassSections — catalogue-sourced values folded onto their leave
         const clauses: ClauseFields = { "figaro-commerce": {} };
         expect(fillClassSections(clauses, [line({ clauseValues: { "figaro-commerce": { x: 1 } } })], COMMERCE)).toEqual(clauses);
     });
+
+    it("template's committed value WINS over the catalogue's (terms outrank master data)", () => {
+        const out = fillClassSections({ "figaro-freight-class": { nmfcClass: "70" } }, [
+            line({ clauseValues: { "figaro-freight-class": { nmfcClass: "100", nmfcItem: "156600" } } }),
+        ], FREIGHT);
+        // The pinned class survives; the un-pinned item number fills from the catalogue.
+        expect(out["figaro-freight-class"]).toMatchObject({ nmfcClass: "70", nmfcItem: "156600" });
+    });
+
+    it("an empty-string template entry is not a pin — the catalogue value fills it", () => {
+        const out = fillClassSections({ "figaro-freight-class": { nmfcClass: "" } }, [
+            line({ clauseValues: { "figaro-freight-class": { nmfcClass: "100" } } }),
+        ], FREIGHT);
+        expect(out["figaro-freight-class"]).toMatchObject({ nmfcClass: "100" });
+    });
 });
 
-describe("fillDimweightSection — derived billed weight", () => {
+const CREDENTIAL = specSourceFromFixtures(["figaro-credential"]);
+const REGISTER = "https://data.cityofnewyork.us/resource/xjfq-wh2d.json?license_number={id}";
+
+describe("fillProfileSections — seller profile master data folded onto their leaves", () => {
+    it("folds the declared profile-authored subset onto a composed leaf", () => {
+        const out = fillProfileSections(
+            { "figaro-credential": { credentialRegisterUri: REGISTER } },
+            { "figaro-credential": { credentialId: "500458" } },
+            CREDENTIAL,
+        );
+        expect(out["figaro-credential"]).toMatchObject({
+            credentialRegisterUri: REGISTER,
+            credentialId: "500458",
+        });
+    });
+
+    it("folds ONLY the spec's declared subset — stored values outside it never land", () => {
+        const out = fillProfileSections(
+            { "figaro-credential": { credentialRegisterUri: REGISTER } },
+            // The register pin is the DESIGNER's field; a profile-stored copy is
+            // outside `profileSourced: ["credentialId"]` and must not fold.
+            { "figaro-credential": { credentialId: "500458", credentialRegisterUri: "https://evil.example/{id}" } },
+            CREDENTIAL,
+        );
+        expect(out["figaro-credential"].credentialRegisterUri).toBe(REGISTER);
+    });
+
+    it("no-ops for clauses that are not profile-sourced, absent stores, and undeclared fields", () => {
+        const clauses: ClauseFields = { "figaro-commerce": {} };
+        expect(fillProfileSections(clauses, { "figaro-commerce": { x: 1 } }, COMMERCE)).toEqual(clauses);
+        const credential: ClauseFields = { "figaro-credential": { credentialRegisterUri: REGISTER } };
+        expect(fillProfileSections(credential, undefined, CREDENTIAL)).toEqual(credential);
+        expect(fillProfileSections(credential, {}, CREDENTIAL)).toEqual(credential);
+    });
+});
+
+describe("fillDimweightSection — derived billed weight (divisor from the profile-folded leaf)", () => {
     it("computes billed = max(gross, volumetric) with per-dimension round-up", () => {
         // 305×200×150 mm → round each up to the next cm → 310×200×150 = 9,300,000 mm³
         // ÷ 5000 = 1860 g volumetric > 1000 g gross → billed 1860.
         const out = fillDimweightSection(
-            { "figaro-cargo": { massGrams: 1000, lengthMm: 305, widthMm: 200, heightMm: 150 }, "figaro-dimweight": {} },
+            { "figaro-cargo": { massGrams: 1000, lengthMm: 305, widthMm: 200, heightMm: 150 }, "figaro-dimweight": { divisor: 5000 } },
             CARGO_DIM,
-            5000,
         );
         expect(out["figaro-dimweight"]).toMatchObject({ billedMassGrams: 1860, divisor: 5000 });
     });
 
     it("uses gross mass when it exceeds the volumetric weight", () => {
         const out = fillDimweightSection(
-            { "figaro-cargo": { massGrams: 9000, lengthMm: 300, widthMm: 200, heightMm: 150 }, "figaro-dimweight": {} },
+            { "figaro-cargo": { massGrams: 9000, lengthMm: 300, widthMm: 200, heightMm: 150 }, "figaro-dimweight": { divisor: 5000 } },
             CARGO_DIM,
-            5000,
         );
         expect(out["figaro-dimweight"].billedMassGrams).toBe(9000); // gross > 1800 volumetric
     });
 
-    it("no-ops without a divisor, without dims, or without the dimweight clause", () => {
+    it("no-ops without a divisor on the leaf, without dims, or without the dimweight clause", () => {
         const withDims = { "figaro-cargo": { massGrams: 1000, lengthMm: 300, widthMm: 200, heightMm: 150 }, "figaro-dimweight": {} };
-        expect(fillDimweightSection(withDims, CARGO_DIM, undefined)).toEqual(withDims); // no divisor
-        const noDims = { "figaro-cargo": { massGrams: 1000 }, "figaro-dimweight": {} };
-        expect(fillDimweightSection(noDims, CARGO_DIM, 5000)).toEqual(noDims); // no dims
+        expect(fillDimweightSection(withDims, CARGO_DIM)).toEqual(withDims); // no divisor folded
+        const noDims = { "figaro-cargo": { massGrams: 1000 }, "figaro-dimweight": { divisor: 5000 } };
+        expect(fillDimweightSection(noDims, CARGO_DIM)).toEqual(noDims); // no dims
         const noClause = { "figaro-cargo": { massGrams: 1000, lengthMm: 300, widthMm: 200, heightMm: 150 } };
-        expect(fillDimweightSection(noClause, CARGO_DIM, 5000)).toEqual(noClause); // no dimweight clause
+        expect(fillDimweightSection(noClause, CARGO_DIM)).toEqual(noClause); // no dimweight clause
+    });
+
+    it("derives end to end through fillDerivedSections: profile divisor → folded leaf → billed", () => {
+        const out = fillDerivedSections(
+            { "figaro-cargo": {}, "figaro-dimweight": {} },
+            [line({ massGrams: 500, lengthMm: 300, widthMm: 200, heightMm: 150 })],
+            CARGO_DIM,
+            { "figaro-dimweight": { divisor: 5000 } },
+        );
+        // volumetric = 300×200×150 ÷ 5000 = 1800 > 500 gross → billed 1800.
+        expect(out["figaro-dimweight"]).toMatchObject({ billedMassGrams: 1800, divisor: 5000 });
     });
 });

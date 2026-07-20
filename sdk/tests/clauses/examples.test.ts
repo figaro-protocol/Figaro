@@ -15,6 +15,7 @@ import hazmatSpecRaw from "../../../clauses/figaro-hazmat.json" with { type: "js
 import coldChainSpecRaw from "../../../clauses/figaro-cold-chain.json" with { type: "json" };
 import freightClassSpecRaw from "../../../clauses/figaro-freight-class.json" with { type: "json" };
 import incotermsSpecRaw from "../../../clauses/figaro-incoterms.json" with { type: "json" };
+import credentialSpecRaw from "../../../clauses/figaro-credential.json" with { type: "json" };
 import arbitrationKlerosSpecRaw from "../../../clauses/figaro-arbitration-kleros.json" with { type: "json" };
 import applicableLawSpecRaw from "../../../clauses/figaro-applicable-law.json" with { type: "json" };
 import emissionsSpecRaw from "../../../clauses/figaro-emissions.json" with { type: "json" };
@@ -328,6 +329,35 @@ describe("example clause specs — parse + validate sample content", () => {
         const parsed = parseClauseSpec(incotermsSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ incotermsRule: "EXW" }, parsed.spec).ok).toBe(false);
+    });
+
+    // ── figaro-credential (declared credential vs an authority's register) ──
+
+    it("figaro-credential accepts a declared credential against a register template", () => {
+        const parsed = parseClauseSpec(credentialSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({
+            credentialRegisterUri: "https://data.cityofnewyork.us/resource/xjfq-wh2d.json?license_number={id}",
+            credentialTitle: "NYC TLC For-Hire Vehicle Driver License",
+            credentialId: "500458",
+        }, parsed.spec).ok).toBe(true);
+    });
+
+    it("figaro-credential accepts content without the optional title", () => {
+        const parsed = parseClauseSpec(credentialSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({
+            credentialRegisterUri: "https://example.org/register?entry={id}",
+            credentialId: "A-1",
+        }, parsed.spec).ok).toBe(true);
+    });
+
+    it("figaro-credential rejects a pinned register with no declared identifier", () => {
+        const parsed = parseClauseSpec(credentialSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({
+            credentialRegisterUri: "https://example.org/register?entry={id}",
+        }, parsed.spec).ok).toBe(false);
     });
 
     // ── figaro-modalities ──

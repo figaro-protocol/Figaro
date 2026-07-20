@@ -42,6 +42,12 @@ pin carrying no economics; the **privileged token** is an assembly-author's own 
 token (`VISION.md` § "Value Capture After the Firm" — which itself says "distinct from
 denomination"). Writing any of these in terms of another — "the florin's structural demand",
 "florin-pinned" as a strategy object, the pin as "THE privileged token" — is drift.
+**REGISTER ≠ registry** (2026-07-20, with `figaro-credential`): a **register** is an EXTERNAL
+authority's public record (the NYC TLC's active-drivers dataset, an airman registry, a state
+medical board) — referenced by a clause's committed content (`credentialRegisterUri`), read by
+counterparties at verification time, never mirrored on-chain; a **registry** is one of the
+protocol's three on-chain anchors (Clause/Seller/Assembly). Writing "registry" for an authority's
+record — or anchoring an authority's record in a protocol registry — is drift.
 **The clause's GROUP is `block.article`** (geo, coordination, emissions…) — ONE word, ONE home. The
 earlier `categories` array and on-chain `family` (`= keccak256(categories[0])`) were a closed-world
 duplicate of the same concept that drifted across clauses; both were removed 2026-06-26, leaving

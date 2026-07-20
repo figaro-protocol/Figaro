@@ -13,12 +13,14 @@
  * fall back to data-key presence. Consumers that need strictness gate on
  * their cache being warm before projecting.
  *
- * Four `block` hints are HASH-LOAD-BEARING and therefore projection
+ * Five `block` hints are HASH-LOAD-BEARING and therefore projection
  * vocabulary, not presentation: `article: "mandatory"` (which clauses
  * auto-fold into every template agreement → compositionHash),
  * `article: "attestations"` (process-log clauses stay empty anchors at
  * commit → agreementHash), `catalogueSourced` (which sections a
- * catalogue fold writes → agreementHash), and `terms: "specific"` (whose
+ * catalogue fold writes → agreementHash), `profileSourced` (which
+ * sections the seller-profile fold writes → agreementHash), and
+ * `terms: "specific"` (whose
  * field values the DESIGNER composes into the template — the specific-T&C
  * tailoring clauses, consent today; every other clause is general: the
  * template carries `{}` and the fields fill at checkout → compositionHash).
@@ -43,6 +45,14 @@ export interface ProjectionHints {
     article?: string;
     /** The spec's `block.catalogueSourced` marker. */
     catalogueSourced?: boolean;
+    /** The spec's `block.profileSourced` marker — content authored once on
+     *  the seller's PROFILE (seller master data: a divisor, a declared
+     *  credential id), folded onto the matching leaf at checkout. The
+     *  profile sibling of `catalogueSourced` (item master data). `true` =
+     *  every content field; a field-name array = the profile-authored
+     *  subset (the rest belong to other sources — designer pins, checkout
+     *  derivation). */
+    profileSourced?: boolean | readonly string[];
     /** The spec's `block.terms` marker (`"specific"` = designer-composed
      *  specific T&Cs; absent = general, filled at checkout). */
     terms?: string;
@@ -71,6 +81,12 @@ export function parseProjectionHints(rawSpec: unknown): ProjectionHints {
     const hints: ProjectionHints = {};
     if (typeof block.article === "string") hints.article = block.article;
     if (block.catalogueSourced === true) hints.catalogueSourced = true;
+    if (
+        block.profileSourced === true ||
+        (Array.isArray(block.profileSourced) && block.profileSourced.every((f) => typeof f === "string" && f.length > 0))
+    ) {
+        hints.profileSourced = block.profileSourced as boolean | readonly string[];
+    }
     if (typeof block.terms === "string") hints.terms = block.terms;
     return hints;
 }
@@ -110,6 +126,26 @@ export function specIsProcessLog(spec: ProjectionSpecView): boolean {
  *  leaf at checkout. */
 export function specIsCatalogueSourced(spec: ProjectionSpecView): boolean {
     return spec.hints?.catalogueSourced === true;
+}
+
+/** True for profile-sourced clauses (`block.profileSourced`) — content
+ *  authored once on the seller's PROFILE (seller master data, the sibling of
+ *  the catalogue's per-item data) and folded onto the matching leaf at
+ *  checkout. */
+export function specIsProfileSourced(spec: ProjectionSpecView): boolean {
+    const marker = spec.hints?.profileSourced;
+    return marker === true || (Array.isArray(marker) && marker.length > 0);
+}
+
+/** The PROFILE-AUTHORED field names of a profile-sourced clause — the array
+ *  form of `block.profileSourced` names the subset; `true` means every
+ *  content field. Empty for clauses that are not profile-sourced. Editors
+ *  render exactly these fields; the fold folds only these values. */
+export function profileSourcedFieldNames(spec: ProjectionSpecView): readonly string[] {
+    const marker = spec.hints?.profileSourced;
+    if (Array.isArray(marker)) return marker;
+    if (marker === true) return spec.fields.map((f) => f.name);
+    return [];
 }
 
 // ── Agreement projection ────────────────────────────────────────────────────

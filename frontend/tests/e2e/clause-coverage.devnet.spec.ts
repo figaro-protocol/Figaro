@@ -283,7 +283,9 @@ const RUNGS: ClauseRung[] = [
         // leaf — nothing is authored at design time.
         clauseId: 'figaro-dimweight',
         composeFirst: ['figaro-cargo'],
-        profile: async (page) => page.locator('#profile-dimweight-divisor').fill('5000'),
+        // The divisor is PROFILE-SOURCED master data — authored in the generic
+        // profile clause-values section (spec-driven, from the live registry).
+        profile: async (page) => page.getByTestId('profile-clause-figaro-dimweight-divisor').fill('5000'),
         catalogue: async (page) => {
             await page.locator('[id^="item-"][id$="-mass"]').first().fill('500');
             await page.locator('[id^="item-"][id$="-volume"]').first().fill('1000');
@@ -316,6 +318,33 @@ const RUNGS: ClauseRung[] = [
         leaf: (data) => {
             expect(data.incotermsRule).toBe('FOB');
             expect(data.incotermsNamedPlace).toBe('Port of Shanghai');
+        },
+    },
+    {
+        // DECLARED credential (the NYC-TLC shape): the designer pins the
+        // authority's public REGISTER (a URI template, specific-T&C); the
+        // seller declares their id ONCE on the profile (profile-sourced
+        // master data); checkout folds the id onto the leaf and offers the
+        // buyer the Verify link-out — the register stays the source of
+        // truth, nothing gates signing, no status is stored.
+        clauseId: 'figaro-credential',
+        // The drawer renders editors for REQUIRED specific-term fields only —
+        // the optional credentialTitle surfaces as a producing-surface note,
+        // so the rung pins the register and leaves the title unset.
+        design: async (page) => page.getByTestId('drawer-field-figaro-credential-credentialRegisterUri')
+            .fill('https://register.example/lookup?entry={id}'),
+        profile: async (page) => page.getByTestId('profile-clause-figaro-credential-credentialId').fill('LIC-500458'),
+        checkout: async (page) => {
+            // The buyer's verification opportunity: the leaf's Verify link-out,
+            // already substituted with the seller's declared id.
+            const verify = page.getByTestId('credential-verify').first();
+            await expect(verify, 'the Verify link-out renders on the credential leaf at checkout').toBeVisible();
+            await expect(verify).toHaveAttribute('href', 'https://register.example/lookup?entry=LIC-500458');
+        },
+        auditTexts: ['Credential', 'LIC-500458'],
+        leaf: (data) => {
+            expect(data.credentialRegisterUri).toBe('https://register.example/lookup?entry={id}');
+            expect(data.credentialId, "the seller's profile declaration folded onto the committed leaf").toBe('LIC-500458');
         },
     },
     {

@@ -18,6 +18,7 @@ import {
 } from "@/components/sellers/TokenAddressInput";
 import { addressIntegrity, isValidAddress } from "@/lib/shared/evm";
 import { IpfsImageUpload } from "@/components/sellers/IpfsImageUpload";
+import { ProfileClauseValues, type ProfileClauseValuesMap } from "@/components/sellers/ProfileClauseValues";
 import { useMounted } from "@/hooks/useMounted";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
 import type {
@@ -50,8 +51,10 @@ interface FormState {
     logoURI: string;
     acceptedTokens: Array<{ address: string; symbol: string }>;
     defaultTokenAddress: string;
-    /** Kept as the raw input string; parsed to a number in toDraft. */
-    dimWeightDivisor: string;
+    /** PROFILE-authored clause values (seller master data: dimweight's
+     *  divisor, a declared credential id) — the generic profile-sourced
+     *  section's map, clauseId → field → value. */
+    profileClauseValues: ProfileClauseValuesMap;
 }
 
 const EMPTY_FORM: FormState = {
@@ -64,7 +67,7 @@ const EMPTY_FORM: FormState = {
     logoURI: "",
     acceptedTokens: [{ address: "", symbol: "" }],
     defaultTokenAddress: "",
-    dimWeightDivisor: "",
+    profileClauseValues: {},
 };
 
 // Public-surface cap (lib/shared/geohash.ts): the profile is pinned to IPFS,
@@ -109,7 +112,7 @@ function fromDraft(draft: OnboardingProfileDraft | undefined): FormState {
             ? draft.acceptedTokens.map((t) => ({ address: t.address, symbol: t.symbol }))
             : [{ address: "", symbol: "" }],
         defaultTokenAddress: draft.defaultTokenAddress ?? "",
-        dimWeightDivisor: draft.dimWeightDivisor !== undefined ? String(draft.dimWeightDivisor) : "",
+        profileClauseValues: draft.profileClauseValues ?? {},
     };
 }
 
@@ -146,10 +149,9 @@ function toDraft(form: FormState): OnboardingProfileDraft {
         branding: form.logoURI ? { logoURI: form.logoURI } : undefined,
         acceptedTokens: validTokens.length > 0 ? validTokens : undefined,
         defaultTokenAddress: defaultToken ? defaultToken.address : undefined,
-        dimWeightDivisor: (() => {
-            const parsed = Number(form.dimWeightDivisor.trim());
-            return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
-        })(),
+        profileClauseValues: Object.keys(form.profileClauseValues).length > 0
+            ? form.profileClauseValues
+            : undefined,
     };
 }
 
@@ -472,20 +474,13 @@ export function OnboardingProfileForm({
                         Free-form. What you specialise in, in your own words.
                     </p>
                 </FormField>
-                <FormField label="Dim-weight divisor" inputId="profile-dimweight-divisor">
-                    <Input
-                        id="profile-dimweight-divisor"
-                        type="number"
-                        placeholder="e.g. 5000"
-                        value={form.dimWeightDivisor}
-                        onChange={(e) => setField("dimWeightDivisor", e.target.value)}
-                    />
-                    <p className="text-xs text-ink-faint mt-1">
-                        Shipping sellers only. Checkout bills parcels at max(actual mass,
-                        packaged volume ÷ divisor) on orders composing a dimensional-weight
-                        clause. Leave blank if you don&apos;t ship.
-                    </p>
-                </FormField>
+                {/* Profile-sourced clause values — seller master data (dimweight's
+                    divisor, a declared credential id), one spec-driven group per
+                    clause declaring block.profileSourced, from the live registry. */}
+                <ProfileClauseValues
+                    values={form.profileClauseValues}
+                    onChange={(next) => setField("profileClauseValues", next)}
+                />
             </section>
 
             {/* ── Location ──────────────────────────────────────────── */}
