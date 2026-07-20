@@ -27,7 +27,7 @@ import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
 import { fillProfileSections, planSubOrderSellers, profileValuesFor, readDenominationPin, resolveSubOrderPricing, type SubOrderPricing } from "@figaro/sdk";
 import { executeAssemblyCheckout, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
-import { useDispatchRace } from "@/lib/checkout/dispatchRace";
+import { postToAgentEndpoint, useDispatchRace } from "@/lib/checkout/dispatchRace";
 import { DispatchRacePanel, type RaceStartPolicy } from "@/components/runtime/DispatchRacePanel";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel";
@@ -627,7 +627,18 @@ export function CheckoutView({ sellerAddress }: Props) {
                     // walk signs (root and sub-orders alike) carries its own
                     // witness-signed swap leg when a funding token is chosen.
                     signRoot: (p) => signRoot(p, fundingToken ? { inputToken: fundingToken } : undefined),
-                    signAndShare: (p, opts) => signAndShare(p, fundingToken ? { inputToken: fundingToken } : undefined, opts),
+                    // An AGENT winner (declared services.rest) also receives the
+                    // commit-ready payload at its endpoint — a wallet with no
+                    // browser open still gets its order and broadcasts itself.
+                    // The channel relay still goes out; dual delivery is
+                    // harmless and the endpoint failing never blocks checkout.
+                    signAndShare: async (p, opts) => {
+                        const payload = await signAndShare(p, fundingToken ? { inputToken: fundingToken } : undefined, opts);
+                        if (opts?.sellerSig && raceOutcome?.endpoint && hexEqual(p.commitment.seller, raceOutcome.selection.seller)) {
+                            await postToAgentEndpoint(raceOutcome.endpoint, payload).catch(() => undefined);
+                        }
+                        return payload;
+                    },
                     compose,
                 },
             );

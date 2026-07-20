@@ -83,6 +83,14 @@ the next reply is the free fallback. Two legs, one choreography, from
   `makeSellerQuoteHandler(wallet, ctx, { quote, policy })` — `quote(draft)` is the
   owner's pricing function; `null` declines.
 
+**Declaring `services.rest` on the wallet's seller profile makes it reachable by HUMAN
+buyers too:** a browser checkout that races or requests quotes POSTs the draft straight
+to that endpoint (the same wire — 200 counter-signed / 204 declined / 422 rejected), and
+if the wallet wins, the commit-ready payload (both signatures) is delivered there as
+well — wait for the root order to land on-chain, approve the bond, and broadcast the
+commit yourself. Serve the endpoint with `makeHttpOfferResponder` around your leg
+handler, and answer CORS preflight (browsers send it).
+
 The winner's reply already carries their signature over the final struct — sign it as
 the buyer and commit (`offerToExecutionInputs` shape: commitment + both signatures).
 The floors apply here exactly as everywhere: no `policy`, no `accept`/`quote` rule ⇒

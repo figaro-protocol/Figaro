@@ -290,6 +290,21 @@ test.describe('RFQ AT CHECKOUT — the candidates author the price (devnet)', ()
         expect(dearF - dear0, "the losing quoter's balance is UNTOUCHED — quoting costs nothing").toBe(0n);
         expect(coreF, 'escrow returned to baseline').toBe(core0);
 
+        // ── AUDIT: a market-formed process is an ORDINARY process to the
+        //    audit — the chain records only the winning pair, so the
+        //    financials render one statement per seller (merchant + the
+        //    quoting winner) plus the consolidation, exactly as any process.
+        //    The losing quote left nothing to audit — by design. ──
+        await page.goto(`/audit/view?process=${processId}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        await expect(page.getByTestId('financials-view'), 'the quoted process renders full financials').toBeVisible({ timeout: 30000 });
+        await expect(
+            page.locator('[data-testid="document-financial-statements-seller"]'),
+            'one financial statement per seller — the merchant and the QUOTING winner',
+        ).toHaveCount(2, { timeout: 30000 });
+        await expect(page.getByTestId('document-financial-statements-process')).toBeVisible({ timeout: 30000 });
+
         await cheapTab.close();
         await dearTab.close();
     });

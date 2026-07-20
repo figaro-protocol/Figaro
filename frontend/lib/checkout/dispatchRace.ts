@@ -120,13 +120,40 @@ export interface RaceCandidateView {
 
 /** What the checkout needs to execute with the race's winner: the node's
  *  selection (the pick IS the winner), the reproduction inputs (salts +
- *  deadline), and the winner's countersignature keyed to the drafted struct. */
+ *  deadline), and the winner's countersignature keyed to the drafted struct.
+ *  `endpoint` is present when the winner is an AGENT candidate (their profile
+ *  declares `services.rest`) — the fully-signed payload is ALSO delivered
+ *  there, so a wallet with no browser open still receives its commit-ready
+ *  order and broadcasts it itself. */
 export interface DispatchRaceResult {
     nodeId: string;
     selection: { seller: Hex; price: string; item: { id: string; name: string } };
     race: { structHash: Hex; sellerSig: Hex };
     salt: (nodeId: string) => bigint;
     deadline: bigint;
+    endpoint?: string;
+}
+
+/**
+ * Deliver a payload to an agent candidate's declared REST endpoint — the SAME
+ * wire `HttpChannel` speaks (POST the serialized envelope; 200 = countersigned
+ * reply, 204 = declined, anything else = refusal). This is what makes MIXED
+ * pairings work: a human buyer's browser and an agent's service exchange the
+ * same artifacts, only the transport differs per candidate.
+ */
+export async function postToAgentEndpoint(
+    endpoint: string,
+    payload: CommitmentPayload,
+): Promise<CommitmentPayload | null> {
+    const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json" },
+        body: serializeCommitmentPayload(payload),
+    });
+    if (res.status === 204) return null;
+    if (!res.ok) throw new Error(`Agent endpoint ${endpoint} refused the payload — HTTP ${res.status}`);
+    const text = await res.text();
+    return text ? deserializeCommitmentPayload(text) : null;
 }
 
 interface RaceCandidateState {
@@ -137,6 +164,10 @@ interface RaceCandidateState {
     draft: CommitmentPayload;
     structHash: Hex;
     orderId: string;
+    /** The candidate's declared agent REST endpoint — present makes them an
+     *  AGENT candidate: drafts POST there (request/reply in one round-trip)
+     *  instead of relaying over the wallet coordination channel. */
+    endpoint?: string;
 }
 
 const DEFAULT_RACE_WINDOW_MS = 30_000;
@@ -213,6 +244,7 @@ export function useDispatchRace() {
                 return s;
             },
             deadline: ctx.deadline,
+            endpoint: state.endpoint,
         });
         setStep("done");
     }, [cleanup]);
@@ -264,6 +296,7 @@ export function useDispatchRace() {
                 .filter((cat) => !hexEqual(cat.address, checkout.buyer))
                 .map((cat) => ({
                     address: cat.address as Hex,
+                    endpoint: cat.agentServices?.rest,
                     pricing: resolveSubOrderPricing({
                         node: { ...node, clauses: nodeClauses },
                         seller: cat.address as Hex,
@@ -300,7 +333,7 @@ export function useDispatchRace() {
             // spec-routed lookup the fills use) and attached as the quote
             // request's terms.
             const drafts: RaceCandidateState[] = [];
-            for (const { address: candidate, pricing } of priced) {
+            for (const { address: candidate, endpoint, pricing } of priced) {
                 const item = { id: pricing.item!.id, name: pricing.item!.name };
                 const price = formatToken(args.quote?.ceiling ?? pricing.payment, checkout.tokenDecimals);
                 const orders = await planAssemblyOrders({
@@ -330,44 +363,66 @@ export function useDispatchRace() {
                     draft: payload,
                     structHash: hashCommitmentStruct(order.commitment) as Hex,
                     orderId: commitmentOrderHash(order.commitment, chainId),
+                    endpoint,
                 });
             }
             draftsRef.current = drafts;
             setCandidates(drafts.map((d) => ({ address: d.address, itemName: d.item.name, payment: d.payment, replied: false })));
 
-            // Relay every draft and listen for its countersigned return on the
-            // same order id. The buyer's own relay echoes back on the mock
-            // bus — a payload without a seller signature is ignored, so the
-            // echo is inert.
+            // Verify and record a countersigned reply — ONE path for both
+            // transports. Race leg: exact-match against the sent draft.
+            // Quotes leg: reconstruction — the same substitution applied to
+            // OUR draft must reproduce the reply hash-for-hash.
+            const recordReply = async (d: RaceCandidateState, reply: CommitmentPayload) => {
+                if (finishedRef.current) return;
+                if (!reply.sellerSig) return;
+                const check = args.quote
+                    ? await verifyQuoteReply(reply, d.draft, { chainId, core })
+                    : await verifyRaceReply(reply, d.draft, { chainId, core });
+                if (!check.ok) return;
+                if (repliesRef.current.some((r) => hexEqual(r.candidate, d.address))) return;
+                repliesRef.current.push({ candidate: d.address, draft: d.draft, reply });
+                setCandidates((prev) => prev.map((c) =>
+                    hexEqual(c.address, d.address)
+                        ? { ...c, replied: true, payment: reply.commitment.payment }
+                        : c,
+                ));
+                if (repliesRef.current.length === draftsRef.current.length) finish();
+            };
+
+            // Send every draft — per-candidate transport, one choreography:
+            //   - AGENT candidate (declared `services.rest`): POST the draft
+            //     to their endpoint; the HTTP response IS the reply (or a
+            //     decline). Mixed pairings are exactly this branch — the
+            //     artifacts never change, only the wire.
+            //   - wallet candidate: relay over the coordination channel and
+            //     listen for the countersigned return on the same order id.
+            //     The buyer's own relay echoes back on the mock bus — a
+            //     payload without a seller signature is ignored.
             setStep("racing");
             for (const d of drafts) {
+                if (d.endpoint) {
+                    const endpoint = d.endpoint;
+                    void (async () => {
+                        try {
+                            const reply = await postToAgentEndpoint(endpoint, d.draft);
+                            if (reply) await recordReply(d, reply);
+                        } catch {
+                            // Unreachable or refusing endpoint — the candidate
+                            // simply never replies; the window closes the race.
+                        }
+                    })();
+                    continue;
+                }
                 const unsub = await services.coordinationMessaging.subscribeCommitmentPayload({
                     address: checkout.buyer,
                     walletClient: walletClient ?? null,
                     orderId: d.orderId,
                     callback: (payloadCid: string) => {
                         void (async () => {
-                            if (finishedRef.current) return;
                             try {
                                 const json = await fetchCommitmentPayloadJsonByCid(services.evidenceTransport, payloadCid);
-                                const reply = deserializeCommitmentPayload(json);
-                                if (!reply.sellerSig) return; // the draft's own echo
-                                // Race leg: exact-match against the sent draft.
-                                // Quotes leg: reconstruction — the same
-                                // substitution applied to OUR draft must
-                                // reproduce the reply hash-for-hash.
-                                const check = args.quote
-                                    ? await verifyQuoteReply(reply, d.draft, { chainId, core })
-                                    : await verifyRaceReply(reply, d.draft, { chainId, core });
-                                if (!check.ok) return;
-                                if (repliesRef.current.some((r) => hexEqual(r.candidate, d.address))) return;
-                                repliesRef.current.push({ candidate: d.address, draft: d.draft, reply });
-                                setCandidates((prev) => prev.map((c) =>
-                                    hexEqual(c.address, d.address)
-                                        ? { ...c, replied: true, payment: reply.commitment.payment }
-                                        : c,
-                                ));
-                                if (repliesRef.current.length === draftsRef.current.length) finish();
+                                await recordReply(d, deserializeCommitmentPayload(json));
                             } catch {
                                 // Unfetchable or malformed reply — ignore; the
                                 // window closes the race regardless.

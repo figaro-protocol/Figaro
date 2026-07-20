@@ -688,6 +688,13 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         await expect(witnessDl, 'every witness record decodes in the audit').toHaveCount(3, { timeout: 60000 });
         await expect(witnessDl.first().getByText('Detected band')).toBeVisible();
         await expect(witnessDl.first().getByText('Zone (Wi-Fi)')).toBeVisible();
+        // The DEVICE-CAPTURED evidence URI — pinned at the buyer's co-witness
+        // click — is recovered from the attestation calldata and rendered in
+        // the audit: the courier market's device layer is audit-captured.
+        await expect(
+            evidence.getByText(evidenceUri).first(),
+            "the captured evidence artifact's URI surfaces in the audit",
+        ).toBeVisible({ timeout: 30000 });
 
         // ── EVERY MONEY EVENT: one cash-flow row per kernel ERC-20 transfer —
         //    each commit pulls both deposits, the resolve refunds the buyer and

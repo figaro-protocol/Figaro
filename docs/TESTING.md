@@ -201,7 +201,14 @@ commit-ready relay from /orders, settlement exact, the LOSER nets zero;
 courier authors their OWN price on /sign, the counter-draft verifies by
 reconstruction and answers on the REQUEST's conversation id, the cheapest
 QUOTE commits (not the ceiling, not the posted price), the losing quoter
-nets zero; `kit-diamond` — the
+nets zero, and the settled process renders full audit financials (one
+statement per seller + consolidation — market-formed = ordinary to the
+audit); `mixed-pairing` — HUMAN buyer × AGENT candidate in ONE race: the
+agent is a headless Node service (real key, `services.rest` declared, the
+HttpChannel wire) that counter-signs over HTTP while a human courier
+counter-signs on /sign, wins on price, receives the commit-ready payload at
+its endpoint, and BROADCASTS THE COMMIT ITSELF — no browser ever acts for
+the agent wallet; the losing human nets zero; `kit-diamond` — the
 multi-PARENT topology: the diamond drawn on the canvas (select-add-parent),
 four orders, the leaf committing BOTH parents' real hashes in its topology
 section and bonding 2× the entire upstream value, one atomic 4-order

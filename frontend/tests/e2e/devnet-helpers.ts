@@ -141,6 +141,9 @@ export interface SeedSellerProfile {
         assemblySlug: string;
         counterpartyBindings: Array<{ clauseId: string; addresses: string[] }>;
     }>;
+    /** Agent service endpoints (`SellerAgentServices`) — a declared `rest`
+     *  makes the wallet an AGENT candidate: race/quote drafts POST there. */
+    services?: { mcp?: string; a2a?: string; rest?: string; did?: string; ens?: string };
 }
 
 /** Result of `seedRegisteredSeller`. Includes the on-chain address (derived
