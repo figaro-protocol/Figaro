@@ -278,7 +278,10 @@ test.describe('THE PAYMENT TOKEN — the buyer picks the denomination; swap is t
         if (await approveBond.isVisible()) {
             await approveBond.click();
         }
-        // The seller's on-ramp: fund the 2× bond from the default token.
+        // The seller's on-ramp: collapsed by default (the treasury choice —
+        // this seller HOLDS the denomination and still opts to bond from the
+        // default token); the toggle discloses the panel.
+        await page.getByTestId('seller-funding-toggle').click();
         await page.getByTestId('swap-funding-panel').waitFor({ state: 'visible', timeout: 30000 });
         await page.getByTestId(`funding-token-option-${defaultToken.toLowerCase()}`).click();
         const authorize = page.getByTestId('funding-authorize');

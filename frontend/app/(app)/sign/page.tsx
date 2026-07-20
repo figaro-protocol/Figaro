@@ -11,7 +11,7 @@
 
 import { Suspense, useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { useAccount, useWalletClient } from "wagmi";
+import { useAccount, useReadContract, useWalletClient } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
@@ -28,6 +28,7 @@ import { TokenApprovalFlow } from "@/components/runtime/TokenApprovalFlow";
 import { SwapFundingPanel } from "@/app/(app)/s/checkout/_components/SwapFundingPanel";
 import { resolveSwapFundingContracts } from "@/lib/composition/swapFunding";
 import useTokenApproval from "@/hooks/useTokenApproval";
+import { ERC20_ABI } from "@/lib/kernel/contracts";
 import { useSellerProfile } from "@/lib/seller/useSellerRegistry";
 import { fetchSellerProfile } from "@/lib/seller/profileFetcher";
 import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
@@ -238,6 +239,19 @@ function SignPageContent() {
         [swapContracts, approvalCurrency, isSeller, ownProfile],
     );
     const [sellerFundingToken, setSellerFundingToken] = useState<`0x${string}` | null>(null);
+    // Progressive disclosure: the on-ramp is a TREASURY choice (which balance
+    // gets locked — the denomination arrived chosen by the buyer or the pin),
+    // collapsed on the common path so visibility never reads as expectation.
+    // A seller SHORT of the denomination has no other way through accept, so
+    // insufficiency auto-opens it.
+    const [fundingOpen, setFundingOpen] = useState(false);
+    const { data: myDenominationBalance } = useReadContract({
+        address: approvalCurrency ?? undefined,
+        abi: ERC20_ABI,
+        functionName: "balanceOf",
+        args: address ? [address] : undefined,
+        query: { enabled: !!approvalCurrency && !!address && isSeller },
+    });
     const permit2SellerFunding = useTokenApproval({
         tokenAddress: sellerFundingToken ?? undefined,
         owner: isSeller ? address : undefined,
@@ -249,6 +263,14 @@ function SignPageContent() {
         if (isBuyer) return calculateBonds(commitment.expectedCumulativeValue, commitment.payment).buyerBond;
         return 0n;
     })();
+    // A seller short of the denomination has no other way through accept —
+    // insufficiency auto-opens the collapsed on-ramp.
+    const sellerShortOfDenomination = isSeller
+        && myDenominationBalance !== undefined
+        && (myDenominationBalance as bigint) < myBondAmount;
+    useEffect(() => {
+        if (sellerShortOfDenomination && sellerFundingCandidates.length > 0) setFundingOpen(true);
+    }, [sellerShortOfDenomination, sellerFundingCandidates.length]);
 
     // Layer A over what was pasted/relayed: does the inline agreement merkle
     // to the signed agreementHash and conform to its clause specs? Computed at
@@ -414,19 +436,38 @@ function SignPageContent() {
                     {/* SELLER on-ramp: fund the 2× bond from another of the
                         seller's own accepted tokens — the coordinator swaps it
                         into the process denomination in the same atomic
-                        swapAndCommit. Optional; absent when unconfigured. */}
+                        swapAndCommit. Optional and collapsed by default (the
+                        treasury choice); auto-opened when the seller is short
+                        of the denomination. Absent when unconfigured. */}
                     {needsMySignature && isSeller && sellerFundingCandidates.length > 0 && (
-                        <SwapFundingPanel
-                            candidates={sellerFundingCandidates}
-                            party={address as `0x${string}`}
-                            currencySymbol={currencySymbol ?? ""}
-                            decimals={tokenDecimals}
-                            fundingToken={sellerFundingToken}
-                            onSelect={setSellerFundingToken}
-                            needsAuthorization={permit2SellerFunding.needsApproval(myBondAmount)}
-                            onAuthorize={() => permit2SellerFunding.approve(maxUint256)}
-                            isAuthorizing={permit2SellerFunding.isApprovePending || permit2SellerFunding.isApproveConfirming}
-                        />
+                        <div className="space-y-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    // Collapsing withdraws the choice — a closed
+                                    // panel never engages a leg silently.
+                                    if (fundingOpen) setSellerFundingToken(null);
+                                    setFundingOpen(!fundingOpen);
+                                }}
+                                className="text-xs text-neutral-500 underline hover:text-neutral-700"
+                                data-testid="seller-funding-toggle"
+                            >
+                                {fundingOpen ? "Bond from the order's token instead" : "Fund bond from another token"}
+                            </button>
+                            {fundingOpen && (
+                                <SwapFundingPanel
+                                    candidates={sellerFundingCandidates}
+                                    party={address as `0x${string}`}
+                                    currencySymbol={currencySymbol ?? ""}
+                                    decimals={tokenDecimals}
+                                    fundingToken={sellerFundingToken}
+                                    onSelect={setSellerFundingToken}
+                                    needsAuthorization={permit2SellerFunding.needsApproval(myBondAmount)}
+                                    onAuthorize={() => permit2SellerFunding.approve(maxUint256)}
+                                    isAuthorizing={permit2SellerFunding.isApprovePending || permit2SellerFunding.isApproveConfirming}
+                                />
+                            )}
+                        </div>
                     )}
 
                     {/* Counter-sign button */}
