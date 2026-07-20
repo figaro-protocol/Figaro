@@ -144,29 +144,19 @@ test.describe('/s/view (devnet)', () => {
         await page.goto(`/s/view?seller=${seeded.address}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
 
         // The page mounts SellerDetailView and queries
-        // useRegisteredCatalogues, which iterates registered sellers
-        // and fetches profile+catalogue from IPFS. First-mount race
-        // with discovery: reload once if the menu hasn't rendered.
+        // useRegisteredCatalogues, which iterates registered sellers and
+        // fetches profile+catalogue from IPFS. NO reload fallbacks: the
+        // seeding awaited its receipts and pins before navigation, so the
+        // first mount MUST discover the seller — a reload here would mask a
+        // real discovery bug (the loop that used to sit here did exactly
+        // that; removed 2026-07-20, punch-list e2e hygiene).
         const detailView = page.getByTestId('seller-detail-view');
-        try {
-            await detailView.waitFor({ state: 'visible', timeout: 30000 });
-        } catch {
-            await page.reload({ waitUntil: 'domcontentloaded' });
-            await detailView.waitFor({ state: 'visible', timeout: 30000 });
-        }
+        await detailView.waitFor({ state: 'visible', timeout: 30000 });
 
         await expect(detailView).toHaveAttribute('data-seller-address', seeded.address.toLowerCase());
 
         const catalogueItem = page.getByTestId(`catalogue-item-${seeded.itemId}`);
-        try {
-            await catalogueItem.waitFor({ state: 'visible', timeout: 15000 });
-        } catch {
-            // Catalogue fetch lagged behind the detail-view mount; one
-            // more reload to give the discovery loop a fresh attempt.
-            await page.reload({ waitUntil: 'domcontentloaded' });
-            await detailView.waitFor({ state: 'visible', timeout: 30000 });
-            await catalogueItem.waitFor({ state: 'visible', timeout: 30000 });
-        }
+        await catalogueItem.waitFor({ state: 'visible', timeout: 30000 });
         await expect(catalogueItem).toContainText(seeded.itemName);
 
         // Cart starts empty; clicking the Add button lands a cart line

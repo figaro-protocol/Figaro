@@ -5,13 +5,15 @@
  * fixture data.
  *
  * The profile example's `subjectAddress` is deliberately not a standard
- * Anvil account so it can't collide with a developer's test wallet.
+ * Anvil account so it can't collide with a developer's test wallet — but it
+ * IS valid hex: an invalid-hex example teaches consumers that garbage passes,
+ * and any address-validating reader would reject the whole fixture.
  */
 
 import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
 
 export const SELLER_PROFILE_METADATA_EXAMPLE: SellerProfileMetadata = {
-    subjectAddress: "0xeXAMPLeeXAMPLeeXAMPLeeXAMPLeeXAMPLe0001" as `0x${string}`,
+    subjectAddress: "0x00000000000000000000000000000000000e0001",
     name: "Example Seller",
     description: "Synthetic seller profile used as a documentation example.",
     specialty: "Example specialty",

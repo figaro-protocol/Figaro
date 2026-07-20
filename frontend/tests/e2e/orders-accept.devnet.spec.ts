@@ -9,8 +9,9 @@
  * no toast — one actor-neutral orders surface carrying the action.
  *
  * Single page, two wallets (the multi-wallet fixture): buyer (anvil[0]) places +
- * relays; switch to the seller (anvil[13], "Wizard Test Bakery", bound to the
- * seed assembly by the authoring gate); the mock coordination channel
+ * relays; switch to the seller — DISCOVERED from chain as the wallet bound to
+ * the single-order anchored assembly (the authoring gate binds one), never a
+ * hardcoded roster; the mock coordination channel
  * (localStorage-backed, same origin) replays the relayed commitment into the
  * seller's /orders, where `awaitsMyCounterSign` surfaces the "Your turn" card.
  *
@@ -21,7 +22,7 @@
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
 import { calculateBonds } from '@figaro/sdk';
-import { readLocalDeploymentConfig } from './devnet-helpers';
+import { discoverAnchoredAssemblies, discoverSellers, readLocalDeploymentConfig } from './devnet-helpers';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import type { Page } from '@playwright/test';
 
@@ -44,12 +45,27 @@ const LOCAL_ANVIL = defineChain({
     rpcUrls: { default: { http: [RPC_URL] } },
 });
 
-// anvil[13] — the wizard-registered seller, bound to the seed assembly.
-const SELLER = '0x1cbd3b2770909d4e10f157cabc84c7264073c9ec' as Hex;
-
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
-// anvil[0] — the fixture's default buyer.
+// anvil[0] — the fixture's default buyer (the multi-wallet FIXTURE's own
+// wallet, not world-state — the world's sellers are discovered from chain).
 const BUYER = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as Hex;
+
+/** The seller under test, DISCOVERED from chain → IPFS (never a roster): the
+ *  registered seller bound to the single-order anchored assembly — the same
+ *  binding the checkout resolves. Runtime e2e discovers its world; a spec that
+ *  imports a seller address is not testing mainnet usage. The discovered
+ *  wallet must be one the multi-wallet fixture can drive (the wizard-seeded
+ *  sellers are Anvil accounts by construction). */
+async function discoverBoundSeller(): Promise<Hex> {
+    const singleOrderSlugs = new Set(
+        (await discoverAnchoredAssemblies()).filter((a) => a.agreements.length === 1).map((a) => a.slug),
+    );
+    const seller = (await discoverSellers()).find((s) =>
+        s.assemblyBindings.some((b) => singleOrderSlugs.has(b.assemblySlug)),
+    );
+    expect(seller, 'a registered seller is bound to a single-order anchored assembly (run populate-test-data + the authoring gate)').toBeTruthy();
+    return seller!.address;
+}
 
 test.describe('Orders consolidation — buyer orders → seller accepts on /orders (devnet)', () => {
     test.setTimeout(180_000);
@@ -58,6 +74,7 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
         // Resolve raises a native window.confirm — auto-accept it (the deleted
         // direct-sale-runtime spec did the same), or the capability blocks.
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
+        const SELLER = await discoverBoundSeller();
         const config = readLocalDeploymentConfig();
         const core = config.figaroCore as Hex;
         const token = config.tokenAddress as Hex;
@@ -109,7 +126,7 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
         await page.getByTestId('send-commitment-xmtp').click();
         await expect(page.getByTestId('commitment-xmtp-status')).toBeVisible({ timeout: 30000 });
 
-        // ── Switch to the seller (anvil[13]) → /orders "Your turn" ──
+        // ── Switch to the discovered seller → /orders "Your turn" ──
         await gotoAsWallet(page, SELLER, '/orders?e2e=devnet');
         await page.getByTestId('orders-list').waitFor({ timeout: 30000 });
         await waitForConnected(page);
