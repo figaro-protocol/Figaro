@@ -43,6 +43,9 @@ const COMMERCIAL_INVOICE: DocumentTemplate = {
         ],
         total: { label: "Net total (BT-106)", ref: { sumPayments: true } },
     },
+    leafSections: [
+        { label: "Delivery terms (Incoterms 2020)", byField: "incotermsRule" },
+    ],
     note: "Derived from the committed record — not separately authored. The interpretive VAT class is jurisdiction/graph-supplied and absent from this core projection (applicable, with a stablecoin denomination, to the EU e-invoice profile).",
 };
 
@@ -65,6 +68,7 @@ const BILL_OF_LADING: DocumentTemplate = {
     leafSections: [
         { label: "Cargo", byField: "massGrams" },
         { label: "Freight class", byField: "nmfcClass" },
+        { label: "Incoterms 2020", byField: "incotermsRule" },
         { label: "Mode of carriage", byField: "handoff" },
     ],
     note: "NON-NEGOTIABLE — not a document of title. The consignee is fixed at signing; FigaroCore forbids substituting a bonded order's parties mid-flight. The precise addressee is party-private (ECDH channel); only the public geohash is committed.",

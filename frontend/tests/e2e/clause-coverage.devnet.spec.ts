@@ -304,6 +304,21 @@ const RUNGS: ClauseRung[] = [
         leaf: (data) => expect(data.nmfcClass).toBe('70'),
     },
     {
+        // Trade-delivery terms per the ICC's Incoterms® 2020 — a per-deal
+        // commercial term (NOT catalogue-sourced product master data), so the
+        // BUYER fills rule + named place at checkout like applicable-law.
+        clauseId: 'figaro-incoterms',
+        checkout: all(
+            checkoutPick('figaro-incoterms', 'incotermsRule', 'FOB'),
+            checkoutFill('figaro-incoterms', 'incotermsNamedPlace', 'Port of Shanghai'),
+        ),
+        auditTexts: ['Incoterms 2020', 'FOB', 'Port of Shanghai'],
+        leaf: (data) => {
+            expect(data.incotermsRule).toBe('FOB');
+            expect(data.incotermsNamedPlace).toBe('Port of Shanghai');
+        },
+    },
+    {
         clauseId: 'figaro-emissions',
         checkout: checkoutFill('figaro-emissions', 'standard', 'GHG Protocol Product Standard'),
         auditTexts: ['Emissions disclosure', 'GHG Protocol Product Standard'],

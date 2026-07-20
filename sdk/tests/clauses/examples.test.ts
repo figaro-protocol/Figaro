@@ -14,6 +14,7 @@ import cargoSpecRaw from "../../../clauses/figaro-cargo.json" with { type: "json
 import hazmatSpecRaw from "../../../clauses/figaro-hazmat.json" with { type: "json" };
 import coldChainSpecRaw from "../../../clauses/figaro-cold-chain.json" with { type: "json" };
 import freightClassSpecRaw from "../../../clauses/figaro-freight-class.json" with { type: "json" };
+import incotermsSpecRaw from "../../../clauses/figaro-incoterms.json" with { type: "json" };
 import arbitrationKlerosSpecRaw from "../../../clauses/figaro-arbitration-kleros.json" with { type: "json" };
 import applicableLawSpecRaw from "../../../clauses/figaro-applicable-law.json" with { type: "json" };
 import emissionsSpecRaw from "../../../clauses/figaro-emissions.json" with { type: "json" };
@@ -300,6 +301,33 @@ describe("example clause specs — parse + validate sample content", () => {
         const parsed = parseClauseSpec(freightClassSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ nmfcClass: "73" }, parsed.spec).ok).toBe(false);
+    });
+
+    // ── figaro-incoterms (ICC Incoterms® 2020) ──
+
+    it("figaro-incoterms accepts a declared rule with its named place", () => {
+        const parsed = parseClauseSpec(incotermsSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({
+            incotermsRule: "FOB",
+            incotermsNamedPlace: "Port of Shanghai",
+        }, parsed.spec).ok).toBe(true);
+    });
+
+    it("figaro-incoterms rejects a rule outside the standard's 11", () => {
+        const parsed = parseClauseSpec(incotermsSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        // DAT was retired by the 2020 edition (replaced by DPU).
+        expect(validateContent({
+            incotermsRule: "DAT",
+            incotermsNamedPlace: "Rotterdam Terminal 4",
+        }, parsed.spec).ok).toBe(false);
+    });
+
+    it("figaro-incoterms rejects a rule without the named place", () => {
+        const parsed = parseClauseSpec(incotermsSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ incotermsRule: "EXW" }, parsed.spec).ok).toBe(false);
     });
 
     // ── figaro-modalities ──
