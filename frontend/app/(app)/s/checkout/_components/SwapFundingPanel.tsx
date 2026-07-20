@@ -1,14 +1,15 @@
 "use client";
 
 /**
- * SwapFundingPanel — the buyer's swap-funded bond leg, offered when their
- * bond-currency balance can't cover the locked total. Candidates are the
- * seller's OTHER accepted tokens — the set the buyer may swap into the
- * process currency (the swap-and-commit path): the coordinator swaps the
- * chosen token at commit time and the kernel pulls the bond as always. The
- * process stays denominated in the assembly's one currency; only the buyer's
- * funding source changes. Selection + the one-time Permit2 authorization
- * live here; the witness signing itself rides the sign step.
+ * SwapFundingPanel — a party's swap-funded bond leg: the ON-RAMP into the
+ * process denomination, offered when the party's balance can't cover their
+ * bond. The buyer mounts it at checkout (candidates = the seller's other
+ * accepted tokens); the seller mounts it at accept (candidates = their own
+ * accepted set). The coordinator swaps the chosen token at commit time and
+ * the kernel pulls the bond as always — the order stays denominated in the
+ * one process token; only the funding source changes. Selection + the
+ * one-time Permit2 authorization live here; the witness signing itself rides
+ * the sign/accept step.
  */
 import { useReadContract } from "wagmi";
 import { Button } from "@/components/ui/Button";
@@ -18,13 +19,13 @@ import { formatToken } from "@/lib/shared/utils";
 
 function FundingTokenOption({
     token,
-    buyer,
+    party,
     selected,
     onSelect,
     decimals,
 }: {
     token: AcceptedTokenMetadata;
-    buyer: `0x${string}`;
+    party: `0x${string}`;
     selected: boolean;
     onSelect: () => void;
     decimals: number;
@@ -33,7 +34,7 @@ function FundingTokenOption({
         address: token.address as `0x${string}`,
         abi: ERC20_ABI,
         functionName: "balanceOf",
-        args: [buyer],
+        args: [party],
     });
     return (
         <label
@@ -59,7 +60,7 @@ function FundingTokenOption({
 
 export function SwapFundingPanel({
     candidates,
-    buyer,
+    party,
     currencySymbol,
     decimals,
     fundingToken,
@@ -69,7 +70,8 @@ export function SwapFundingPanel({
     isAuthorizing,
 }: {
     candidates: AcceptedTokenMetadata[];
-    buyer: `0x${string}`;
+    /** The wallet funding its bond — buyer at checkout, seller at accept. */
+    party: `0x${string}`;
     currencySymbol: string;
     decimals: number;
     fundingToken: `0x${string}` | null;
@@ -96,7 +98,7 @@ export function SwapFundingPanel({
                     <FundingTokenOption
                         key={t.address}
                         token={t}
-                        buyer={buyer}
+                        party={party}
                         decimals={decimals}
                         selected={!!fundingToken && fundingToken.toLowerCase() === t.address.toLowerCase()}
                         onSelect={() => onSelect(t.address as `0x${string}`)}

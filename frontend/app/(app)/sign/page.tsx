@@ -19,15 +19,23 @@ import {
     deserializeCommitmentPayload,
     type CommitmentPayload,
 } from "@figaro/sdk/agent";
-import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
+import { ZERO_ADDRESS, ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
+import { useTokenSymbol } from "@/components/sellers/TokenAddressInput";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { calculateBonds, validateCommitmentAgreement } from "@figaro/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { TokenApprovalFlow } from "@/components/runtime/TokenApprovalFlow";
+import { SwapFundingPanel } from "@/app/(app)/s/checkout/_components/SwapFundingPanel";
+import { resolveSwapFundingContracts } from "@/lib/composition/swapFunding";
+import useTokenApproval from "@/hooks/useTokenApproval";
+import { useSellerProfile } from "@/lib/seller/useSellerRegistry";
+import { fetchSellerProfile } from "@/lib/seller/profileFetcher";
+import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
 import { AgreementReview } from "@/components/runtime/AgreementReview";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import useProcessResolveCapacity from "@/hooks/useProcessResolveCapacity";
 import { formatToken } from "@/lib/shared/utils";
+import { maxUint256 } from "viem";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { fetchCommitmentPayloadJsonByCid } from "@/lib/checkout/orderPendingSellerSignature";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -166,8 +174,11 @@ function SignPageContent() {
     const handleCounterSign = async () => {
         if (!parsed) return;
         try {
-            // acceptOrder counter-signs AND broadcasts (bond already approved above).
-            await acceptOrder(parsed);
+            // acceptOrder counter-signs AND broadcasts (bond already approved
+            // above). A chosen funding token adds the seller's witness-signed
+            // on-ramp leg — swapped into the process denomination in the same
+            // atomic swapAndCommit.
+            await acceptOrder(parsed, sellerFundingToken ? { inputToken: sellerFundingToken } : undefined);
         } catch {
             // Error state handled by the order commitment flow.
         }
@@ -200,6 +211,38 @@ function SignPageContent() {
     // Token and bond amount for approval flow
     const approvalCurrency = commitment?.currency as `0x${string}` | undefined;
     const { decimals: tokenDecimals } = useTokenDecimals(approvalCurrency);
+    const { data: currencySymbol } = useTokenSymbol(approvalCurrency ?? "");
+
+    // SELLER-side swap funding — the on-ramp into the process denomination
+    // (the buyer picked it; the seller can't have known in advance). The
+    // candidate set is the seller's OWN accepted array (their social layer),
+    // minus the denomination itself; available only where the swap
+    // composition is configured. The witness-signed leg is built at accept.
+    const swapContracts = resolveSwapFundingContracts();
+    const { data: sellerRegistryData } = useSellerProfile(isSeller ? address : undefined);
+    const [ownProfile, setOwnProfile] = useState<SellerProfileMetadata | null>(null);
+    useEffect(() => {
+        let cancelled = false;
+        setOwnProfile(null);
+        const metadataURI = sellerRegistryData?.[0];
+        if (!metadataURI) return;
+        fetchSellerProfile(metadataURI)
+            .then((parsed_) => { if (!cancelled && parsed_) setOwnProfile(parsed_); })
+            .catch(() => { /* absence — the funding panel simply doesn't render */ });
+        return () => { cancelled = true; };
+    }, [sellerRegistryData]);
+    const sellerFundingCandidates = useMemo(
+        () => (swapContracts && approvalCurrency && isSeller
+            ? (ownProfile?.acceptedTokens ?? []).filter((t) => !hexEqual(t.address, approvalCurrency))
+            : []),
+        [swapContracts, approvalCurrency, isSeller, ownProfile],
+    );
+    const [sellerFundingToken, setSellerFundingToken] = useState<`0x${string}` | null>(null);
+    const permit2SellerFunding = useTokenApproval({
+        tokenAddress: sellerFundingToken ?? undefined,
+        owner: isSeller ? address : undefined,
+        spender: (swapContracts?.permit2 ?? ZERO_ADDRESS) as `0x${string}`,
+    });
     const myBondAmount = (() => {
         if (!commitment) return 0n;
         if (isSeller) return calculateBonds(commitment.expectedCumulativeValue, commitment.payment).sellerBond;
@@ -366,6 +409,24 @@ function SignPageContent() {
                                 onApprovalComplete={() => setApprovalDone(true)}
                             />
                         </div>
+                    )}
+
+                    {/* SELLER on-ramp: fund the 2× bond from another of the
+                        seller's own accepted tokens — the coordinator swaps it
+                        into the process denomination in the same atomic
+                        swapAndCommit. Optional; absent when unconfigured. */}
+                    {needsMySignature && isSeller && sellerFundingCandidates.length > 0 && (
+                        <SwapFundingPanel
+                            candidates={sellerFundingCandidates}
+                            party={address as `0x${string}`}
+                            currencySymbol={currencySymbol ?? ""}
+                            decimals={tokenDecimals}
+                            fundingToken={sellerFundingToken}
+                            onSelect={setSellerFundingToken}
+                            needsAuthorization={permit2SellerFunding.needsApproval(myBondAmount)}
+                            onAuthorize={() => permit2SellerFunding.approve(maxUint256)}
+                            isAuthorizing={permit2SellerFunding.isApprovePending || permit2SellerFunding.isApproveConfirming}
+                        />
                     )}
 
                     {/* Counter-sign button */}

@@ -1,13 +1,17 @@
 /**
- * lib/composition/swapFunding.ts — build the buyer's swap-funded bond leg.
+ * lib/composition/swapFunding.ts — build a swap-funded bond leg (buyer OR
+ * seller) and read the venue rate the checkout converts prices at.
  *
- * The buyer holds an accepted token that is not the process bond currency;
- * the WitnessSwapAndCommitCoordinator swaps it at commit time and the kernel
- * pulls the bond as always. This module quotes the venue, builds the exact
- * swap route, and produces the witness-signed `SwapFundingLeg` that rides the
- * `CommitmentPayload` to whoever broadcasts (`@figaro/sdk` owns the leg type
- * and the Permit2 witness typed data; the route is bound into the buyer's
- * signature, so the relayer is untrusted by construction).
+ * A party holds a token that is not the process denomination; the
+ * WitnessSwapAndCommitCoordinator swaps it at commit time (the buyer's leg at
+ * commit, the seller's leg at accept — the same atomic call) and the kernel
+ * pulls the bond as always: swap-and-commit is the ON-RAMP into the process
+ * denomination, never the order's denomination itself. This module quotes the
+ * venue, builds the exact swap route, and produces the witness-signed
+ * `SwapFundingLeg` that rides the `CommitmentPayload` to whoever broadcasts
+ * (`@figaro/sdk` owns the leg type and the Permit2 witness typed data; the
+ * route is bound into the signing party's signature, so the relayer is
+ * untrusted by construction).
  *
  * Route building is inherently VENUE-specific: this is the devnet venue
  * (`MockUniversalRouter` — `swap(tokenIn, tokenOut, amountIn, recipient)` at a
@@ -48,20 +52,43 @@ export function resolveSwapFundingContracts(): {
     return { coordinator, permit2, router };
 }
 
+/** The venue's live rate (amountOut = amountIn·num/den). */
+export interface VenueRate {
+    num: bigint;
+    den: bigint;
+}
+
+/** Read the devnet venue's live rate. Throws on a zero numerator (a venue
+ *  that yields nothing can neither fund a bond nor quote a price). */
+export async function readVenueRate(
+    publicClient: PublicClient,
+    router: `0x${string}`,
+): Promise<VenueRate> {
+    const [num, den] = await Promise.all([
+        publicClient.readContract({ address: router, abi: SWAP_VENUE_ABI, functionName: "rateNumerator" }),
+        publicClient.readContract({ address: router, abi: SWAP_VENUE_ABI, functionName: "rateDenominator" }),
+    ]);
+    if (num === 0n) throw new Error("Swap venue rate is zero — cannot fund or quote through it.");
+    return { num, den };
+}
+
+/** Input amount the venue needs to yield at least `amountOut` of the target
+ *  token (amountOut = in·num/den ⇒ in = ceil(out·den/num)). This is ALSO the
+ *  checkout's price conversion, default → picked payment token: the converted
+ *  price is the amount of the picked token that swaps into the default-quoted
+ *  amount, so a seller quoting in their default is made whole in it. */
+export function inputForOutput(amountOut: bigint, rate: VenueRate): bigint {
+    return (amountOut * rate.den + rate.num - 1n) / rate.num;
+}
+
 /** Input amount the venue needs to yield at least `bondAmount` of the bond
- *  currency, from the devnet venue's live rate (amountOut = in·num/den ⇒
- *  in = ceil(out·den/num)). */
+ *  currency, from the live rate. */
 async function quoteInputForBond(
     publicClient: PublicClient,
     router: `0x${string}`,
     bondAmount: bigint,
 ): Promise<bigint> {
-    const [num, den] = await Promise.all([
-        publicClient.readContract({ address: router, abi: SWAP_VENUE_ABI, functionName: "rateNumerator" }),
-        publicClient.readContract({ address: router, abi: SWAP_VENUE_ABI, functionName: "rateDenominator" }),
-    ]);
-    if (num === 0n) throw new Error("Swap venue rate is zero — cannot fund the bond by swap.");
-    return (bondAmount * den + num - 1n) / num;
+    return inputForOutput(bondAmount, await readVenueRate(publicClient, router));
 }
 
 /** A never-used unordered Permit2 nonce: 256 bits of client randomness. */
@@ -73,34 +100,37 @@ function randomPermitNonce(): bigint {
     );
 }
 
-export interface BuildBuyerFundingLegArgs {
+export interface BuildFundingLegArgs {
     publicClient: PublicClient;
     chainId: number;
-    /** The accepted token the buyer funds from. */
+    /** The token the party funds from. */
     inputToken: Hex;
-    /** The process bond currency the swap must yield. */
+    /** The process denomination the swap must yield. */
     currency: Hex;
-    /** The buyer's bond for this order (2·payment — the kernel pull). */
+    /** The signing party's bond for this order (the kernel pull: 2·payment
+     *  for the buyer, 2·expectedCumulativeValue for the seller). */
     bondAmount: bigint;
     /** Signature window — the order's own deadline. */
     deadline: bigint;
-    /** The wallet's typed-data signer (wagmi `signTypedDataAsync`). */
+    /** The party's typed-data signer (wagmi `signTypedDataAsync`). */
     signTypedData: (typedData: ReturnType<typeof buildSwapWitnessTypedData>) => Promise<Hex>;
 }
 
 /** Quote the venue, build the exact route, and witness-sign it: one
- *  swap-funded bond leg, ready to ride the payload. Throws when the
- *  composition addresses are unconfigured. */
-export async function buildBuyerFundingLeg(args: BuildBuyerFundingLegArgs): Promise<SwapFundingLeg> {
+ *  swap-funded bond leg — buyer's or seller's, the shape is identical —
+ *  ready to ride the payload or the accept. Throws when the composition
+ *  addresses are unconfigured. */
+export async function buildFundingLeg(args: BuildFundingLegArgs): Promise<SwapFundingLeg> {
     const contracts = resolveSwapFundingContracts();
     if (!contracts) {
         throw new Error(
-            "Swap-funded checkout is not available: coordinator, Permit2, or venue address is unconfigured.",
+            "Swap funding is not available: coordinator, Permit2, or venue address is unconfigured.",
         );
     }
     const maxInput = await quoteInputForBond(args.publicClient, contracts.router, args.bondAmount);
-    // The exact route the witness binds: input → bond currency, proceeds to
-    // the coordinator (it forwards them to the buyer before the kernel pull).
+    // The exact route the witness binds: input → the process denomination,
+    // proceeds to the coordinator (it forwards them to the funded party
+    // before the kernel pull).
     const swapData = encodeFunctionData({
         abi: SWAP_VENUE_ABI,
         functionName: "swap",

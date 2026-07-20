@@ -2,11 +2,12 @@
 
 /**
  * useSwapAndCommitActions — broadcast a fully-signed commitment through the
- * WitnessSwapAndCommitCoordinator when the payload carries a swap-funded bond
- * leg. Same shape as `useFigaroActions.commit` (simulate → write), but the
- * write targets the coordinator: it pulls the buyer's input token via the
+ * WitnessSwapAndCommitCoordinator when either party carries a swap-funded
+ * bond leg (the buyer's rides the payload; the seller's is built at accept).
+ * Same shape as `useFigaroActions.commit` (simulate → write), but the write
+ * targets the coordinator: it pulls each funded party's input token via their
  * witness-signed Permit2 permit, swaps it at the immutable venue, forwards
- * the proceeds to the buyer, then calls the kernel's `commit`. Composition
+ * the proceeds to that party, then calls the kernel's `commit`. Composition
  * layer — the coordinator is a contract the frontend composes with, never
  * core (`lib/kernel` carries only the five core ABIs).
  */
@@ -26,13 +27,14 @@ export function useSwapAndCommitActions() {
     const { address: account } = useAccount();
     const publicClient = usePublicClient();
 
-    /** Broadcast `swapAndCommit` with the buyer's funding leg (seller leg
-     *  disabled — the seller self-funds, exactly as in the plain flow). */
+    /** Broadcast `swapAndCommit` with either party's funding leg (an absent
+     *  leg is passed disabled — that party self-funds, as in the plain flow). */
     const swapAndCommit = async (
         commitment: Commitment,
         buyerSig: Hex,
         sellerSig: Hex,
-        buyerFunding: SwapFundingLeg,
+        buyerFunding?: SwapFundingLeg,
+        sellerFunding?: SwapFundingLeg,
     ): Promise<Hex> => {
         const coordinator = getWitnessSwapAndCommitCoordinator();
         if (!coordinator) {
@@ -40,7 +42,11 @@ export function useSwapAndCommitActions() {
                 "Swap-and-commit coordinator address is unconfigured — cannot broadcast a swap-funded order.",
             );
         }
-        const args = [commitment, buyerSig, sellerSig, buyerFunding, DISABLED_SWAP_FUNDING_LEG] as const;
+        const args = [
+            commitment, buyerSig, sellerSig,
+            buyerFunding ?? DISABLED_SWAP_FUNDING_LEG,
+            sellerFunding ?? DISABLED_SWAP_FUNDING_LEG,
+        ] as const;
         // Same pre-flight dry-run as the kernel commit path: any coordinator or
         // kernel revert (witness mismatch, output below bond, allowance gap)
         // surfaces BEFORE the wallet prompt opens.

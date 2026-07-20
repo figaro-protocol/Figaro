@@ -226,11 +226,13 @@ const RUNGS: ClauseRung[] = [
         },
     },
     {
-        // THE PRIVILEGED TOKEN: the designer PINS the one token the whole
+        // THE DENOMINATION PIN: the designer pins the one ERC-20 the whole
         // assembly's processes run in — a SPECIFIC-T&C drawer fill (like
-        // consent's affix), identity-bearing in the compositionHash. Checkout
-        // resolves the process currency from the pin, ahead of the seller
-        // default; the committed root carries the denomination section.
+        // consent's affix), identity-bearing in the compositionHash. Generic:
+        // the clause names no token and carries no economics. Checkout
+        // resolves the process currency from the pin, ahead of the buyer's
+        // payment-token pick and the seller default; the committed root
+        // carries the denomination section.
         clauseId: 'figaro-denomination',
         design: async (page) => {
             const token = readLocalDeploymentConfig().tokenAddress as string;

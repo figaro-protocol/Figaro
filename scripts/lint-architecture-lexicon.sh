@@ -138,6 +138,9 @@ for file in "$@"; do
     check "$file" FAIL "florin-pinned|florin.*structural demand|structural demand.*florin" \
         '(^|/)docs/LEXICON\.md$' "" \
         "the florin has NO structural demand mechanism — it is a pure Schelling point."
+    check "$file" FAIL "privileged token.*figaro-denomination|figaro-denomination.*privileged token|PRIVILEGED TOKEN.*pin|pin.*PRIVILEGED TOKEN" \
+        '(^|/)(docs/LEXICON\.md|docs/VISION\.md)$' "" \
+        "privileged token ≠ figaro-denomination: the pin is a generic slot (any ERC-20, no economics); the privileged token is VISION doctrine — an author's STRATEGY that may use the slot. The denomination birth commit carried this conflation; do not reintroduce it."
 done
 
 if (( fail > 0 )); then

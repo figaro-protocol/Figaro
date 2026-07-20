@@ -42,6 +42,21 @@ pin carrying no economics; the **privileged token** is an assembly-author's own 
 token (`VISION.md` § "Value Capture After the Firm" — which itself says "distinct from
 denomination"). Writing any of these in terms of another — "the florin's structural demand",
 "florin-pinned" as a strategy object, the pin as "THE privileged token" — is drift.
+**THE TOKEN-LAYER GRID** (operator Q&A, 2026-07-20 — each layer answers a DIFFERENT question;
+naming one with another's word is the recurring drift):
+
+| Layer | Token | Role |
+|---|---|---|
+| Unit of account | the seller's **default** (`defaultTokenAddress`, one of the accepted array) | what the catalogue QUOTES in; the conversion basis |
+| Medium of payment & bond | the buyer's **pick** from the seller's **accepted array** (`acceptedTokens[]` — the SOCIAL layer: each entry declares a value system the seller coordinates with) | THE process denomination: recorded in the commitment, bonds 2×, payment — the seller RECEIVES it and SPENDS it onward. Circulation is the point: velocity and market liquidity for the accepted token, never mere LP demand |
+| Designer override | the **denomination pin** (`figaro-denomination`, root order, specific-T&C) | replaces the buyer's pick; the whole assembly is valued in the pinned token |
+| On-ramp | **swap-and-commit** (`WitnessSwapAndCommitCoordinator`, buyer and/or seller funding legs) | either party short of the process denomination converts what they hold INTO it, atomically at commit/accept. A funding input is never the order's denomination |
+| No structural role | the **florin** | one more ERC-20 on the network — may be accepted, picked, or pinned like any other; nothing is conditioned on it |
+| Doctrine, not machinery | the **privileged token** | VISION § "Value Capture After the Firm": an assembly-author's own ERC-20 doing the work of a corporate stock certificate, priced through USE — a strategy that may use the pin, never the pin itself |
+
+Resolution precedence: **pin ?? buyer's pick ?? seller default**. Every token decision happens at
+or before `commit`; `resolveProcess` inherits what the commit recorded and decides nothing.
+
 **REGISTER ≠ registry** (2026-07-20, with `figaro-credential`): a **register** is an EXTERNAL
 authority's public record (the NYC TLC's active-drivers dataset, an airman registry, a state
 medical board) — referenced by a clause's committed content (`credentialRegisterUri`), read by

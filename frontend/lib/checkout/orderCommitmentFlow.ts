@@ -31,6 +31,7 @@ import {
     type Agreement,
     type Commitment,
     type Hex,
+    type SwapFundingLeg,
 } from "@figaro/sdk";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { assertAgreementSignable } from "@figaro/sdk";
@@ -48,7 +49,7 @@ import {
 import { shareSignedOrder } from "@/lib/checkout/orderSignedAndShared";
 import type { CommitmentPayload } from "@figaro/sdk/agent";
 import { commitSignedOrder } from "@/lib/kernel/orderCommitted";
-import { buildBuyerFundingLeg } from "@/lib/composition/swapFunding";
+import { buildFundingLeg } from "@/lib/composition/swapFunding";
 import { useSwapAndCommitActions } from "@/lib/composition/useSwapAndCommitActions";
 
 /** The buyer's checkout-time choice to fund their bond by swap: which
@@ -56,6 +57,13 @@ import { useSwapAndCommitActions } from "@/lib/composition/useSwapAndCommitActio
  *  payload the checkout produces (root and sub-orders alike) carries its own
  *  witness-signed leg. */
 export interface BuyerFundingRequest {
+    inputToken: Hex;
+}
+
+/** The seller's accept-time choice to fund their bond by swap: which token
+ *  to on-ramp from into the process denomination. Built and witness-signed
+ *  at accept, riding the same atomic `swapAndCommit`. */
+export interface SellerFundingRequest {
     inputToken: Hex;
 }
 
@@ -154,7 +162,7 @@ export function useOrderCommitmentFlow() {
             let buyerFunding: CommitmentPayload["buyerFunding"];
             if (funding) {
                 if (!publicClient) throw new Error("No chain connection — cannot quote the funding swap.");
-                buyerFunding = await buildBuyerFundingLeg({
+                buyerFunding = await buildFundingLeg({
                     publicClient,
                     chainId,
                     inputToken: funding.inputToken,
@@ -215,15 +223,18 @@ export function useOrderCommitmentFlow() {
     }, [address, chainId, walletClient, services, signCommitment]);
 
     // Broadcast routing: a payload carrying a witness-signed buyer funding
-    // leg goes through the coordinator's `swapAndCommit` (which swaps, funds
-    // the buyer in-place, then calls the kernel); every other payload goes
-    // straight to the kernel's `commit`. The route is signature-bound, so
-    // either party (or anyone) may safely broadcast the funded form.
-    const broadcasterFor = useCallback((payload: CommitmentPayload) => {
-        const funding = payload.buyerFunding;
-        if (funding?.enabled) {
+    // leg — or an accept carrying the seller's — goes through the
+    // coordinator's `swapAndCommit` (which swaps, funds each party in-place,
+    // then calls the kernel); everything else goes straight to the kernel's
+    // `commit`. The routes are signature-bound, so either party (or anyone)
+    // may safely broadcast the funded form.
+    const broadcasterFor = useCallback((payload: CommitmentPayload, sellerFunding?: SwapFundingLeg) => {
+        const buyerFunding = payload.buyerFunding;
+        if (buyerFunding?.enabled || sellerFunding?.enabled) {
             return (c: Commitment, buyerSig: Hex, sellerSig: Hex) =>
-                swapAndCommit(c, buyerSig, sellerSig, funding);
+                swapAndCommit(c, buyerSig, sellerSig,
+                    buyerFunding?.enabled ? buyerFunding : undefined,
+                    sellerFunding?.enabled ? sellerFunding : undefined);
         }
         return commit;
     }, [commit, swapAndCommit]);
@@ -231,10 +242,14 @@ export function useOrderCommitmentFlow() {
     /**
      * COUNTER-PARTY side (usually the seller): an incoming pending payload →
      * counter-sign → broadcast on-chain. The bond is already approved (the page
-     * gated this on `useTokenApproval`). Returns the tx hash.
+     * gated this on `useTokenApproval`). A seller short of the process
+     * denomination may pass `funding` — their swap-funded bond leg is quoted,
+     * route-built, and witness-signed here at accept, then rides the same
+     * atomic `swapAndCommit`. Returns the tx hash.
      */
     const acceptOrder = useCallback(async (
         incoming: CommitmentPayload,
+        funding?: SellerFundingRequest,
     ): Promise<Hex> => {
         setError(null);
         try {
@@ -249,10 +264,29 @@ export function useOrderCommitmentFlow() {
                 sellerSig: role === "seller" ? sig : incoming.sellerSig,
             };
 
+            // The seller's optional on-ramp into the process denomination:
+            // 2·expectedCumulativeValue is the kernel's seller pull.
+            let sellerFunding: SwapFundingLeg | undefined;
+            if (funding && role === "seller") {
+                if (!publicClient) throw new Error("No chain connection — cannot quote the funding swap.");
+                sellerFunding = await buildFundingLeg({
+                    publicClient,
+                    chainId,
+                    inputToken: funding.inputToken,
+                    currency: payload.commitment.currency as Hex,
+                    bondAmount: calculateBonds(
+                        payload.commitment.payment,
+                        payload.commitment.expectedCumulativeValue,
+                    ).sellerBond,
+                    deadline: payload.commitment.deadline,
+                    signTypedData: (typedData) => signTypedDataAsync(typedData) as Promise<Hex>,
+                });
+            }
+
             setStep("committing");
             const hash = await commitSignedOrder({
                 payload,
-                commit: broadcasterFor(payload),
+                commit: broadcasterFor(payload, sellerFunding),
                 publicClient,
                 waitForReceipt: true,
             });
@@ -264,7 +298,7 @@ export function useOrderCommitmentFlow() {
             setStep("error");
             throw e;
         }
-    }, [address, broadcasterFor, publicClient, signAs]);
+    }, [address, broadcasterFor, publicClient, signAs, chainId, signTypedDataAsync]);
 
     /**
      * Broadcast an ALREADY fully-signed payload — no signature added. For the

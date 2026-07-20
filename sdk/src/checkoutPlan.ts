@@ -101,7 +101,8 @@ export function fillCommerceSection(
  * clause id; commerce no longer declares one), with a non-empty designer
  * value. The pin is SPECIFIC-T&C content: it survives the value-free build
  * and is part of the compositionHash — the assembly's one-token tailoring.
- * Undefined = unpinned (the seller's default denominates) or spec cache cold.
+ * Undefined = unpinned (the buyer's payment-token pick, else the seller's
+ * default, denominates) or spec cache cold.
  */
 export function readDenominationPin(
     clauses: ClauseFields,

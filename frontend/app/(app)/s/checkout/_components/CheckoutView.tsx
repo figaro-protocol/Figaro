@@ -31,7 +31,7 @@ import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel";
 import { SellerCataloguePicker, type SellerSelection } from "@/components/runtime/SellerCataloguePicker";
 import { useCompositionActions } from "@/lib/composition/useCompositionActions";
-import { resolveSwapFundingContracts } from "@/lib/composition/swapFunding";
+import { inputForOutput, readVenueRate, resolveSwapFundingContracts, type VenueRate } from "@/lib/composition/swapFunding";
 import { SwapFundingPanel } from "./SwapFundingPanel";
 import useTokenApproval from "@/hooks/useTokenApproval";
 import { maxUint256 } from "viem";
@@ -118,17 +118,45 @@ export function CheckoutView({ sellerAddress }: Props) {
         ? boundAssemblies[0]
         : boundAssemblies.find((a) => a.slug === selectedSlug);
 
-    // The process currency. Resolution order: the assembly's DENOMINATION PIN
-    // (the designer's specific-T&C tailoring on the root agreement — the one
-    // token the whole assembly runs in, part of its identity), else the
-    // seller's declared default. `acceptedTokens` is the set the buyer may
-    // swap into (the swap-and-commit path). Neither ⇒ undefined — never a
+    // The process denomination. Resolution order: the assembly's DENOMINATION
+    // PIN (the designer's specific-T&C tailoring on the root agreement — the
+    // one token the whole assembly runs in, part of its identity), else the
+    // BUYER'S PICK from the seller's accepted array (the social layer — the
+    // seller is PAID in the picked token and spends it onward; the pick is
+    // what the commitment records), else the seller's declared default (the
+    // unit of account the catalogue quotes in). None ⇒ undefined — never a
     // coined default (resolved-empty = absence); ordering is gated off below.
     const pinRoot = pickedAssembly?.assemblyTemplate.agreements.find(
         (o) => templateParentOrderHashes(o).length === 0,
     );
     const denominationPin = pinRoot ? readDenominationPin(pinRoot.clauses, specSource()) : undefined;
-    const currency = denominationPin ?? (sellerCatalogue?.defaultTokenAddress as `0x${string}` | undefined);
+    const sellerDefault = sellerCatalogue?.defaultTokenAddress as `0x${string}` | undefined;
+    const [paymentPick, setPaymentPick] = useState<`0x${string}` | null>(null);
+    const currency = denominationPin ?? paymentPick ?? sellerDefault;
+    // Price conversion, unit of account → the process denomination: catalogue
+    // prices are quoted in the seller's default; when the pick/pin differs,
+    // every amount converts at the venue's live rate BEFORE display and
+    // commit (the converted price is the input the venue needs to yield the
+    // default-quoted amount — the seller is made whole in their quote basis).
+    // Devnet venue = one global rate, same-decimals mocks; a production venue
+    // quotes per-pair behind this same seam. No venue while conversion is
+    // needed ⇒ ordering is gated off (resolved-empty = absence).
+    const swapFundingContracts = resolveSwapFundingContracts();
+    const needsConversion = !!currency && !!sellerDefault && !hexEqual(currency, sellerDefault);
+    const [venueRate, setVenueRate] = useState<VenueRate | null>(null);
+    useEffect(() => {
+        let cancelled = false;
+        setVenueRate(null);
+        if (!needsConversion || !publicClient || !swapFundingContracts) return;
+        readVenueRate(publicClient, swapFundingContracts.router)
+            .then((r) => { if (!cancelled) setVenueRate(r); })
+            .catch(() => { if (!cancelled) setVenueRate(null); });
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [needsConversion, publicClient, swapFundingContracts?.router]);
+    const priceRate = needsConversion ? venueRate : { num: 1n, den: 1n };
+    const conversionBlocked = needsConversion && !priceRate;
+    const toCurrency = (amount: bigint) => (priceRate ? inputForOutput(amount, priceRate) : amount);
     const { data: resolvedSymbol } = useTokenSymbol(currency ?? "");
     const tokenSymbol = resolvedSymbol
         ?? (currency ? sellerCatalogue?.acceptedTokens?.find((t) => hexEqual(t.address, currency))?.symbol : undefined)
@@ -144,6 +172,20 @@ export function CheckoutView({ sellerAddress }: Props) {
         signAndShare,
         order: { step: commitStep, error: commitError, payload },
     } = useCheckout(currency);
+    // The catalogue projections re-quoted into the process denomination —
+    // sub-order pricing, picker options, and the commit walk read prices
+    // already converted, so shown = committed in ONE basis. Identity when no
+    // conversion applies.
+    const pricedCatalogues = useMemo(() => {
+        if (!priceRate || (priceRate.num === 1n && priceRate.den === 1n)) return sellerCatalogues;
+        return sellerCatalogues.map((c) => ({
+            ...c,
+            items: c.items.map((it) => ({
+                ...it,
+                price: formatToken(inputForOutput(parseToken(it.price || "0", tokenDecimals), priceRate), tokenDecimals),
+            })),
+        }));
+    }, [sellerCatalogues, priceRate, tokenDecimals]);
     // Runtime inputs for any order that composes an on-network contract — the
     // clause's `block.fields`, filled at checkout (like the cart line items),
     // keyed by template node id then field name. Interface-agnostic: the form
@@ -186,13 +228,13 @@ export function CheckoutView({ sellerAddress }: Props) {
     const isApproving = isApprovePending || isApproveConfirming;
     const pendingCheckout = useRef(false);
     const [checkoutError, setCheckoutError] = useState<string | null>(null);
-    // Swap-funded bond leg (buyer side): when the buyer's bond-currency
-    // balance can't cover the locked total, they may fund from another of the
-    // seller's accepted tokens — the coordinator swaps it at commit time. The
-    // candidate set IS the seller's acceptedTokens minus the process currency;
-    // available only where the swap composition (coordinator + Permit2 +
-    // venue) is configured. Resolved-empty = the path is absent.
-    const swapFundingContracts = resolveSwapFundingContracts();
+    // Swap-funded bond leg (buyer side): the ON-RAMP into the process
+    // denomination — a buyer short of the picked/pinned token funds from
+    // another of the seller's accepted tokens, and the coordinator swaps it
+    // at commit time. Funding is never the order's denomination; the
+    // candidate set IS the seller's acceptedTokens minus the process
+    // denomination; available only where the swap composition (coordinator +
+    // Permit2 + venue) is configured. Resolved-empty = the path is absent.
     const fundingCandidates = useMemo(
         () => (swapFundingContracts && currency
             ? (sellerCatalogue?.acceptedTokens ?? []).filter((t) => !hexEqual(t.address, currency))
@@ -301,6 +343,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     const orderReady = !!pickedAssembly
         && !!currency
         && decimalsReady
+        && !conversionBlocked
         && (!buyerChoosesCounterparty || !!sellerSelection)
         && compositionsReady;
     // The root order carries the design-time clauses the buyer is bonding to.
@@ -312,7 +355,7 @@ export function CheckoutView({ sellerAddress }: Props) {
             ?? pickedAssembly.assemblyTemplate.agreements[0])
         : undefined;
     const cartTotal = cartItems.reduce(
-        (sum, item) => sum + parseToken(item.price || "0", tokenDecimals) * BigInt(item.quantity),
+        (sum, item) => sum + toCurrency(parseToken(item.price || "0", tokenDecimals)) * BigInt(item.quantity),
         0n,
     );
 
@@ -345,7 +388,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                     // Same merge the commit walk performs, so shown = committed.
                     const pricing = resolveSubOrderPricing({
                         node: { ...node, clauses: { ...node.clauses, ...clauseFills[node.id] } },
-                        seller, sellerCatalogues, tokenDecimals,
+                        seller, sellerCatalogues: pricedCatalogues, tokenDecimals,
                         specs: specSource(),
                         checkoutQuantity: subOrderQuantities[node.id],
                     });
@@ -354,7 +397,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                 // Unbound node: the buyer's checkout-time choice fills it — the
                 // shown figure is the SAME selection the commit will use.
                 return sellerSelection
-                    ? { name: nameOf(sellerSelection.seller), payment: parseToken(sellerSelection.price, tokenDecimals) }
+                    ? { name: nameOf(sellerSelection.seller), payment: toCurrency(parseToken(sellerSelection.price, tokenDecimals)) }
                     : { name: "(choose below)", payment: 0n };
             }),
         ];
@@ -482,7 +525,10 @@ export function CheckoutView({ sellerAddress }: Props) {
                         itemId: item.catalogueItemId,
                         name: item.name,
                         quantity: item.quantity,
-                        unitPrice: parseToken(item.price, tokenDecimals).toString(),
+                        // Cart prices were snapshotted in the seller's default
+                        // (the unit of account); the committed unit price is in
+                        // the process denomination.
+                        unitPrice: toCurrency(parseToken(item.price, tokenDecimals)).toString(),
                         massGrams: item.massGrams,
                         volumeMl: item.volumeMl,
                         lengthMm: item.lengthMm,
@@ -491,14 +537,14 @@ export function CheckoutView({ sellerAddress }: Props) {
                         clauseValues: item.clauseValues,
                     })),
                     assembly: pickedAssembly,
-                    sellerCatalogues,
+                    sellerCatalogues: pricedCatalogues,
                     tokenDecimals,
                     subOrderSelections: buyerChoosesCounterparty && sellerSelection
                         ? Object.fromEntries(buyerPickSubOrders.map(({ node }) => [
                             node.id,
                             {
                                 seller: sellerSelection.seller,
-                                price: sellerSelection.price,
+                                price: formatToken(toCurrency(parseToken(sellerSelection.price, tokenDecimals)), tokenDecimals),
                                 item: { id: sellerSelection.item.id, name: sellerSelection.item.name },
                             },
                         ]))
@@ -615,6 +661,51 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 </li>
                             ))}
                         </ul>
+
+                        {/* THE PAYMENT TOKEN — the buyer's pick from the seller's
+                            accepted array (the social layer). The pick IS the
+                            process denomination: recorded in the commitment,
+                            bonded 2×, received by the seller. Quoted prices
+                            convert at the venue rate. A designer's denomination
+                            pin replaces the pick entirely; a single-entry array
+                            offers no choice. */}
+                        {!denominationPin && currency && (sellerCatalogue?.acceptedTokens?.length ?? 0) > 1 && (
+                            <div className="border-t border-neutral-200 pt-3 space-y-1" data-testid="payment-token-picker">
+                                <p className="text-xs font-semibold text-neutral-500">Pay in</p>
+                                <div className="flex flex-wrap gap-3 text-sm">
+                                    {sellerCatalogue!.acceptedTokens!.map((t) => (
+                                        <label key={t.address} className="flex items-center gap-1.5 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="payment-token"
+                                                data-testid={`payment-token-${t.symbol}`}
+                                                checked={hexEqual(currency, t.address)}
+                                                onChange={() => setPaymentPick(
+                                                    sellerDefault && hexEqual(t.address, sellerDefault)
+                                                        ? null
+                                                        : (t.address as `0x${string}`),
+                                                )}
+                                            />
+                                            <span>{t.symbol}</span>
+                                            {sellerDefault && hexEqual(t.address, sellerDefault) && (
+                                                <span className="text-xs text-neutral-400">(list price)</span>
+                                            )}
+                                        </label>
+                                    ))}
+                                </div>
+                                {conversionBlocked && (
+                                    <p className="text-xs text-red-600" data-testid="payment-token-no-venue">
+                                        No conversion venue is configured — prices can&apos;t be quoted in this
+                                        token. Pick the list-price token to order.
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                        {denominationPin && (
+                            <p className="text-xs text-neutral-500 border-t border-neutral-200 pt-3" data-testid="payment-token-pinned">
+                                This assembly is denominated by design{tokenSymbol ? ` — every bond and payment moves in ${tokenSymbol}` : ""}.
+                            </p>
+                        )}
 
                         <div className="border-t border-neutral-200 pt-3 space-y-1.5 text-sm">
                             {kitBreakdown ? (
@@ -828,7 +919,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                         {hasInsufficientBalance && fundingCandidates.length > 0 && buyer && (
                             <SwapFundingPanel
                                 candidates={fundingCandidates}
-                                buyer={buyer}
+                                party={buyer}
                                 currencySymbol={tokenSymbol}
                                 decimals={tokenDecimals}
                                 fundingToken={fundingToken}
