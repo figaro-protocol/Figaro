@@ -173,6 +173,28 @@ const reply = await counterSignDraft(courierWallet, draft, { chainId, core }, ac
 const check = await verifyRaceReply(reply!, draft, { chainId, core });
 const winner = selectRaceWinner(replies); // cheapest countersigner; ties by arrival
 
+// The RFQ leg — same choreography, the CANDIDATE authors the price (bespoke
+// jobs, thin markets — no posted figure fits). The request goes out at the
+// buyer's CEILING (their reservation price, inside the signed struct so the
+// cap is enforceable); the candidate's pricing function quotes below it; the
+// counter-draft re-prices ONLY the fields the buyer named (`pricedFields` —
+// the buyer names their own clause, the SDK names none). The buyer verifies
+// by RECONSTRUCTION: the same substitution applied to their OWN draft must
+// reproduce the reply hash-for-hash — a quote can change the price and
+// nothing else. Cheapest verified quote wins; the buyer signs exactly one.
+import { buildQuoteRequest, requestQuotes, makeSellerQuoteHandler } from "@figaro/sdk/agent";
+channel.register(courierAddr, makeSellerQuoteHandler(courierWallet, { chainId, core }, {
+    quote: (draft) => myPriceFor(draft),           // null declines; > ceiling declines
+    policy: { requireRootShape: true, currencyAllowlist: [myToken], maxValue: myMaxBond },
+}));
+const drafts = candidates.map((seller) => buildQuoteRequest({
+    template, buyer, seller, currency, ceiling, chainId, core,
+    pricedFields: [{ clause: "figaro-commerce", path: "payment" },
+                   { clause: "figaro-commerce", path: "lineItems.0.unitPrice" }],
+    overrides,
+}));
+const { winner: quoted } = await requestQuotes(channel, drafts, { chainId, core });
+
 // A relayed offer envelope is untrusted input. `deserializeCommitmentPayload`
 // parses through the root-exported `strippingReviver`, dropping any
 // `__proto__` / `constructor` / `prototype` keys at parse time — a malicious

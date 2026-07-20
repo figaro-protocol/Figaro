@@ -2,9 +2,15 @@ import { describe, it, expect } from "vitest";
 import { createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { buildBuyerOffer, type AssemblyTemplate, type OfferPolicy } from "../src/agent/originate.js";
-import { validateDraft, counterSignDraft, verifyRaceReply, selectRaceWinner, type RaceReply } from "../src/agent/dispatchRace.js";
-import type { CommitmentPayload } from "../src/agent/coordination.js";
-import type { Address } from "../src/types.js";
+import {
+    validateDraft, counterSignDraft, verifyRaceReply, selectRaceWinner,
+    substitutePricedValue, buildQuoteRequest, quoteDraft, verifyQuoteReply, requestQuotes, makeSellerQuoteHandler,
+    type RaceReply,
+} from "../src/agent/dispatchRace.js";
+import { InProcessChannel, type CommitmentPayload, type PricedField } from "../src/agent/coordination.js";
+import { buildDomain, hashCommitmentStruct, COMMITMENT_TYPES } from "../src/commitments.js";
+import { computeAgreementHash } from "../src/agreement.js";
+import type { Address, Hex } from "../src/types.js";
 
 const BUYER = privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"); // anvil[0]
 const COURIER_A = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"); // anvil[1]
@@ -154,5 +160,160 @@ describe("selectRaceWinner", () => {
 
     it("returns null with no replies", () => {
         expect(selectRaceWinner([])).toBeNull();
+    });
+});
+
+// ── RFQ — the quote leg ──────────────────────────────────────────────────────
+
+const PRICED: readonly PricedField[] = [
+    { clause: "figaro-commerce", path: "payment" },
+    { clause: "figaro-commerce", path: "lineItems.0.unitPrice" },
+];
+const CEILING = 1000n;
+
+/** A quote request to `candidate` at the buyer's ceiling — commerce carries
+ *  the priced fields the request names. */
+function requestFor(candidate: Address): CommitmentPayload {
+    return buildQuoteRequest({
+        template, buyer: BUYER.address, seller: candidate, currency: CURRENCY,
+        ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: PRICED,
+        overrides: {
+            "figaro-commerce": {
+                currency: CURRENCY,
+                payment: "0",
+                lineItems: [{ itemId: "job", name: "Bespoke job", quantity: 1, unitPrice: "0" }],
+            },
+        },
+    });
+}
+
+const quotePolicy: OfferPolicy = { requireRootShape: true, currencyAllowlist: [CURRENCY], maxValue: 10_000n };
+
+describe("buildQuoteRequest + substitutePricedValue", () => {
+    it("prices the draft at the ceiling through the shared substitution — unsigned, terms attached", () => {
+        const req = requestFor(COURIER_A.address);
+        expect(req.buyerSig).toBeUndefined();
+        expect(req.sellerSig).toBeUndefined();
+        expect(req.commitment.payment).toBe(CEILING);
+        expect(req.commitment.expectedCumulativeValue).toBe(CEILING);
+        expect(req.quoteRequest?.pricedFields).toEqual(PRICED);
+        const commerce = req.agreement.sections.find((s) => s.clause === "figaro-commerce")!;
+        expect(commerce.data.payment).toBe(CEILING.toString());
+        expect((commerce.data.lineItems as Array<{ unitPrice: string }>)[0].unitPrice).toBe(CEILING.toString());
+        expect(validateDraft(req, COURIER_A.address).ok).toBe(true);
+    });
+
+    it("throws when a priced path does not exist — substitution never invents structure", () => {
+        const req = requestFor(COURIER_A.address);
+        expect(() => substitutePricedValue(req.agreement, [{ clause: "figaro-commerce", path: "surcharge" }], 5n))
+            .toThrow(/no field "surcharge"/);
+        expect(() => substitutePricedValue(req.agreement, [{ clause: "figaro-nope", path: "payment" }], 5n))
+            .toThrow(/no "figaro-nope" section/);
+    });
+});
+
+describe("quoteDraft (real signatures, no chain)", () => {
+    it("quotes under the ceiling and the reply verifies by reconstruction", async () => {
+        const req = requestFor(COURIER_A.address);
+        const reply = await quoteDraft(courierAW, req, CTX, () => 700n, quotePolicy);
+        expect(reply?.sellerSig).toBeDefined();
+        expect(reply?.commitment.payment).toBe(700n);
+        expect(reply?.commitment.expectedCumulativeValue).toBe(700n);
+        const commerce = reply!.agreement.sections.find((s) => s.clause === "figaro-commerce")!;
+        expect(commerce.data.payment).toBe("700");
+        expect((commerce.data.lineItems as Array<{ unitPrice: string }>)[0].unitPrice).toBe("700");
+        expect((await verifyQuoteReply(reply!, req, CTX)).ok).toBe(true);
+    });
+
+    it("declines without a policy, without a pricing function, on a null quote, and above the ceiling", async () => {
+        const req = requestFor(COURIER_A.address);
+        expect(await quoteDraft(courierAW, req, CTX, () => 700n)).toBeNull();
+        expect(await quoteDraft(courierAW, req, CTX, undefined, quotePolicy)).toBeNull();
+        expect(await quoteDraft(courierAW, req, CTX, () => null, quotePolicy)).toBeNull();
+        expect(await quoteDraft(courierAW, req, CTX, () => CEILING + 1n, quotePolicy)).toBeNull();
+        expect(await quoteDraft(courierAW, req, CTX, () => 0n, quotePolicy)).toBeNull();
+    });
+
+    it("the legs never cross: quoteDraft refuses a race draft, counterSignDraft refuses a quote request", async () => {
+        const raceDraft = await draftFor(COURIER_A.address, 1000n);
+        await expect(quoteDraft(courierAW, raceDraft, CTX, () => 700n, quotePolicy))
+            .rejects.toThrow(/no quote request/);
+        const req = requestFor(COURIER_A.address);
+        await expect(counterSignDraft(courierAW, req, CTX, () => true, policy))
+            .rejects.toThrow(/quote request/);
+    });
+});
+
+describe("verifyQuoteReply — the reconstruction gate", () => {
+    /** A DISHONEST candidate: builds their own artifacts and signs them —
+     *  recovery succeeds, so only reconstruction can catch the smuggle. */
+    async function signedBy(candidate: typeof courierAW, commitment: CommitmentPayload["commitment"]): Promise<Hex> {
+        return await candidate.signTypedData({
+            account: candidate.account!,
+            domain: buildDomain(CHAIN, CORE),
+            types: COMMITMENT_TYPES, primaryType: "Commitment", message: commitment,
+        }) as Hex;
+    }
+
+    it("rejects a quote that smuggles a non-price term change inside the re-hash", async () => {
+        const req = requestFor(COURIER_A.address);
+        // The candidate re-prices AND doctors another commerce field, then
+        // re-hashes consistently and signs — internally coherent, but not the
+        // buyer's reconstruction.
+        const agreement = substitutePricedValue(req.agreement, PRICED, 700n);
+        const doctored = {
+            ...agreement,
+            sections: agreement.sections.map((s) =>
+                s.clause === "figaro-commerce"
+                    ? { ...s, data: { ...s.data, lineItems: [{ ...(s.data.lineItems as Array<Record<string, unknown>>)[0], quantity: 3 }] } }
+                    : s),
+        };
+        const commitment = {
+            ...req.commitment, payment: 700n, expectedCumulativeValue: 700n,
+            agreementHash: computeAgreementHash(doctored),
+        };
+        const reply: CommitmentPayload = { commitment, agreement: doctored, sellerSig: await signedBy(courierAW, commitment) };
+        const check = await verifyQuoteReply(reply, req, CTX);
+        expect(check.ok).toBe(false);
+        expect(check.reason).toMatch(/does not match the reconstruction/);
+    });
+
+    it("rejects a signed quote above the ceiling — the cap lives in the buyer's copy", async () => {
+        const req = requestFor(COURIER_A.address);
+        const agreement = substitutePricedValue(req.agreement, PRICED, CEILING + 500n);
+        const commitment = {
+            ...req.commitment, payment: CEILING + 500n, expectedCumulativeValue: CEILING + 500n,
+            agreementHash: computeAgreementHash(agreement),
+        };
+        const reply: CommitmentPayload = { commitment, agreement, sellerSig: await signedBy(courierAW, commitment) };
+        const check = await verifyQuoteReply(reply, req, CTX);
+        expect(check.ok).toBe(false);
+        expect(check.reason).toMatch(/exceeds the request's ceiling/);
+    });
+
+    it("rejects a quote signed by a wallet other than the drafted candidate", async () => {
+        const req = requestFor(COURIER_A.address);
+        const honest = await quoteDraft(courierAW, req, CTX, () => 700n, quotePolicy);
+        const forged: CommitmentPayload = { ...honest!, sellerSig: await signedBy(courierBW, honest!.commitment) };
+        const check = await verifyQuoteReply(forged, req, CTX);
+        expect(check.ok).toBe(false);
+        expect(check.reason).toMatch(/does not recover to the drafted candidate/);
+    });
+});
+
+describe("requestQuotes over the coordination channel", () => {
+    it("collects verified quotes and the cheapest wins; silent candidates drop out", async () => {
+        const channel = new InProcessChannel();
+        channel.register(COURIER_A.address, makeSellerQuoteHandler(courierAW, CTX, { quote: () => 700n, policy: quotePolicy }));
+        channel.register(COURIER_B.address, makeSellerQuoteHandler(courierBW, CTX, { quote: () => 500n, policy: quotePolicy }));
+        const silent = "0x000000000000000000000000000000000000dEaD" as Address;
+        const drafts = [requestFor(COURIER_A.address), requestFor(COURIER_B.address), requestFor(silent)];
+        const { replies, winner } = await requestQuotes(channel, drafts, CTX);
+        expect(replies).toHaveLength(2);
+        expect(winner?.reply.commitment.seller.toLowerCase()).toBe(COURIER_B.address.toLowerCase());
+        expect(winner?.reply.commitment.payment).toBe(500n);
+        // The winner's struct hash is exactly the buyer's reconstruction at 500.
+        expect(hashCommitmentStruct(winner!.reply.commitment))
+            .toBe(hashCommitmentStruct((await quoteDraft(courierBW, drafts[1], CTX, () => 500n, quotePolicy))!.commitment));
     });
 });

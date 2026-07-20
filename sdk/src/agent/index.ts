@@ -69,7 +69,7 @@ export {
     deserializeCommitmentPayload,
     InProcessChannel,
 } from "./coordination.js";
-export type { CommitmentPayload, CoordinationChannel, OfferHandler } from "./coordination.js";
+export type { CommitmentPayload, CoordinationChannel, OfferHandler, PricedField, QuoteRequestTerms } from "./coordination.js";
 
 // HTTP transport — the first real (off-process) CoordinationChannel
 export {
@@ -113,14 +113,22 @@ export type {
 
 // The dispatch race — market formation with zero contracts: countersign-first
 // choreography over unsigned drafts (the seller-signs-first inverse of the
-// origination handshake).
+// origination handshake). The RFQ leg is the same choreography with the
+// CANDIDATE authoring the price: request at the buyer's ceiling, counter-draft
+// at the quote, verified by reconstruction.
 export {
     validateDraft,
     counterSignDraft,
     verifyRaceReply,
     selectRaceWinner,
+    substitutePricedValue,
+    buildQuoteRequest,
+    quoteDraft,
+    verifyQuoteReply,
+    requestQuotes,
+    makeSellerQuoteHandler,
 } from "./dispatchRace.js";
-export type { RaceReply } from "./dispatchRace.js";
+export type { RaceReply, BuildQuoteRequestParams } from "./dispatchRace.js";
 
 // did:web identity — agents bind their on-chain address to a resolvable DID
 export {

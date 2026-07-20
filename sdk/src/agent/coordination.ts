@@ -38,6 +38,28 @@ export interface CommitmentPayload {
     buyerSig?: Hex;
     sellerSig?: Hex;
     buyerFunding?: SwapFundingLeg;
+    /** Present on an RFQ quote-request draft: the candidate authors the price.
+     *  `commitment.payment` is the buyer's CEILING (their reservation price —
+     *  a quote above it is invalid), and `pricedFields` names where the figure
+     *  lives in the agreement — the BUYER names their own clause (the SDK
+     *  names none); both sides apply the same mechanical substitution, so the
+     *  buyer verifies a quote by RECONSTRUCTION, never by diffing. Absent on
+     *  every other payload (a race draft prices at the candidate's posted
+     *  figure; an offer is already priced). */
+    quoteRequest?: QuoteRequestTerms;
+}
+
+/** A field of the agreement that carries the transaction figure — named by
+ *  the BUYER in their quote request. `path` is dotted into the section's
+ *  `data` (numeric segments index arrays, e.g. `lineItems.0.unitPrice`); the
+ *  substituted value is the quote's decimal string in raw token units. */
+export interface PricedField {
+    clause: string;
+    path: string;
+}
+
+export interface QuoteRequestTerms {
+    pricedFields: readonly PricedField[];
 }
 
 /** Serialize a payload to compact JSON (bigints → hex strings). */

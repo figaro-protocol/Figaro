@@ -32,8 +32,17 @@ import {
     buildCommitment,
     buildDomain,
     calculateBonds,
+    COMMITMENT_TYPES,
     OrderState,
 } from "../src/index.js";
+import {
+    buildQuoteRequest,
+    requestQuotes,
+    makeSellerQuoteHandler,
+    InProcessChannel,
+    type AssemblyTemplate,
+    type OfferPolicy,
+} from "../src/agent/index.js";
 import type { FigaroAddresses } from "../src/types.js";
 
 // ── Skip unless Anvil is reachable ──────────────────────────────────────────
@@ -261,4 +270,115 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
         expect(resolvedOrder).toBeDefined();
         expect(resolvedOrder!.state).toBe(OrderState.Resolved);
     }, 60_000);
+
+    it("RFQ round-trip: quote request → counter-drafts → cheapest wins → commit → resolve; the loser holds NOTHING", async () => {
+        if (!alive) return;
+
+        const MOCK_ABI = parseAbi([
+            "function mint(address to, uint256 amount) external",
+            "function approve(address spender, uint256 amount) external returns (bool)",
+            "function balanceOf(address account) external view returns (uint256)",
+        ]);
+        const balanceOf = (who: Address) => publicClient.readContract({
+            address: tokenAddress, abi: MOCK_ABI, functionName: "balanceOf", args: [who],
+        }) as Promise<bigint>;
+
+        // The LOSING quoter: a wallet with ZERO tokens and ZERO approvals —
+        // quoting is signature-only exposure, so it needs nothing to bid.
+        const loserAccount = privateKeyToAccount("0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a" as Hex); // anvil[2]
+        const loserWallet = createWalletClient({ chain: foundry, transport, account: loserAccount });
+
+        const CEILING = 1000n * 10n ** 18n;
+        const WINNING_QUOTE = 500n * 10n ** 18n;
+        const LOSING_QUOTE = 700n * 10n ** 18n;
+        const ctx = { chainId: 31337, core: coreAddress };
+
+        // ── 1. The buyer drafts one quote request per candidate at their
+        //       ceiling; the priced fields name the buyer's OWN clause. ──
+        const chainNow = (await publicClient.getBlock({ blockTag: "latest" })).timestamp;
+        const template: AssemblyTemplate = {
+            agreements: [{ id: "order-0", clauses: { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: [] } } }],
+        };
+        const pricedFields = [
+            { clause: "figaro-commerce", path: "payment" },
+            { clause: "figaro-commerce", path: "lineItems.0.unitPrice" },
+        ];
+        const requestFor = (candidate: Address) => buildQuoteRequest({
+            template, buyer: buyerAccount.address, seller: candidate, currency: tokenAddress,
+            ceiling: CEILING, chainId: 31337, core: coreAddress, pricedFields,
+            deadline: chainNow + 3600n,
+            overrides: {
+                "figaro-commerce": {
+                    currency: tokenAddress, payment: "0",
+                    lineItems: [{ itemId: "job", name: "Bespoke job", quantity: 1, unitPrice: "0" }],
+                },
+            },
+        });
+
+        // ── 2. Both candidates price and countersign over the channel. ──
+        const quotePolicy: OfferPolicy = { requireRootShape: true, currencyAllowlist: [tokenAddress], maxValue: CEILING };
+        const channel = new InProcessChannel();
+        channel.register(sellerAccount.address, makeSellerQuoteHandler(sellerWallet, ctx, { quote: () => WINNING_QUOTE, policy: quotePolicy }));
+        channel.register(loserAccount.address, makeSellerQuoteHandler(loserWallet, ctx, { quote: () => LOSING_QUOTE, policy: quotePolicy }));
+        const drafts = [requestFor(sellerAccount.address), requestFor(loserAccount.address)];
+        const { replies, winner } = await requestQuotes(channel, drafts, ctx);
+        expect(replies).toHaveLength(2);
+        expect(winner!.reply.commitment.seller.toLowerCase()).toBe(sellerAccount.address.toLowerCase());
+        expect(winner!.reply.commitment.payment).toBe(WINNING_QUOTE);
+
+        // ── 3. Fund + approve ONLY the parties that commit; baselines. ──
+        const bonds = calculateBonds(WINNING_QUOTE, WINNING_QUOTE);
+        await buyerWallet.writeContract({ address: tokenAddress, abi: MOCK_ABI, functionName: "mint", args: [buyerAccount.address, bonds.buyerBond] })
+            .then((h) => publicClient.waitForTransactionReceipt({ hash: h }));
+        await buyerWallet.writeContract({ address: tokenAddress, abi: MOCK_ABI, functionName: "mint", args: [sellerAccount.address, bonds.sellerBond] })
+            .then((h) => publicClient.waitForTransactionReceipt({ hash: h }));
+        await buyerWallet.writeContract({ address: tokenAddress, abi: MOCK_ABI, functionName: "approve", args: [coreAddress, bonds.buyerBond] })
+            .then((h) => publicClient.waitForTransactionReceipt({ hash: h }));
+        await sellerWallet.writeContract({ address: tokenAddress, abi: MOCK_ABI, functionName: "approve", args: [coreAddress, bonds.sellerBond] })
+            .then((h) => publicClient.waitForTransactionReceipt({ hash: h }));
+        const [buyer0, winner0, loser0, core0] = await Promise.all([
+            balanceOf(buyerAccount.address), balanceOf(sellerAccount.address), balanceOf(loserAccount.address), balanceOf(coreAddress),
+        ]);
+        expect(loser0, "the losing quoter holds ZERO tokens — quoting needed none").toBe(0n);
+
+        // ── 4. The buyer signs EXACTLY ONE quote — the selection — and
+        //       commits it. The winner's countersignature is already on the
+        //       struct; the losing quote expires inert at its deadline. ──
+        const domain = buildDomain(31337, coreAddress);
+        const buyerSig = await buyerWallet.signTypedData({
+            domain, types: COMMITMENT_TYPES, primaryType: "Commitment", message: winner!.reply.commitment,
+        });
+        const commitReceipt = await buyerWallet.writeContract({
+            address: coreAddress, abi: CORE_ABI, functionName: "commit",
+            args: [winner!.reply.commitment, buyerSig, winner!.reply.sellerSig!],
+        }).then((h) => publicClient.waitForTransactionReceipt({ hash: h }));
+        expect(commitReceipt.status).toBe("success");
+        {
+            const [b, w, c] = await Promise.all([balanceOf(buyerAccount.address), balanceOf(sellerAccount.address), balanceOf(coreAddress)]);
+            expect(buyer0 - b, "buyer bonded 2× the QUOTED price, not the ceiling").toBe(bonds.buyerBond);
+            expect(winner0 - w, "winner bonded 2× the quoted cumulative value").toBe(bonds.sellerBond);
+            expect(c - core0, "escrow holds both bonds in the quote's denomination").toBe(bonds.buyerBond + bonds.sellerBond);
+        }
+
+        // ── 5. Resolve; settlement at the QUOTE — and the loser is
+        //       bit-identically untouched. ──
+        const events = await fetchCoreEvents(publicClient, addresses, 0n);
+        const topology = new Topology();
+        topology.applyEvents(events);
+        const proc = topology.getActiveProcesses().find((p) =>
+            Array.from(p.orders.values()).some((o) => o.payment === WINNING_QUOTE));
+        expect(proc, "the quoted order's process is live on-chain").toBeDefined();
+        const resolveReceipt = await buyerWallet.writeContract({
+            address: coreAddress, abi: CORE_ABI, functionName: "resolveProcess",
+            args: [proc!.processId, [winner!.reply.commitment]],
+        }).then((h) => publicClient.waitForTransactionReceipt({ hash: h }));
+        expect(resolveReceipt.status).toBe("success");
+        const [buyerF, winnerF, loserF, coreF] = await Promise.all([
+            balanceOf(buyerAccount.address), balanceOf(sellerAccount.address), balanceOf(loserAccount.address), balanceOf(coreAddress),
+        ]);
+        expect(buyer0 - buyerF, "buyer net paid exactly the winning quote").toBe(WINNING_QUOTE);
+        expect(winnerF - winner0, "winner net earned exactly their quote").toBe(WINNING_QUOTE);
+        expect(loserF - loser0, "the losing quoter is untouched — signature-only exposure").toBe(0n);
+        expect(coreF - core0, "escrow returned to baseline").toBe(0n);
+    }, 90_000);
 });
