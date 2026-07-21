@@ -27,6 +27,7 @@
         {
             "name": "evidenceUri",
             "type": "string",
+            "format": "evidence-capture",
             "required": false,
             "minLength": 0,
             "maxLength": 512,
@@ -35,6 +36,9 @@
     ],
     "block": {
         "article": "attestations",
-        "handoffStages": ["arrived-pickup", "arrived-dropoff"]
+        "handoffStages": [
+            "arrived-pickup",
+            "arrived-dropoff"
+        ]
     }
 }

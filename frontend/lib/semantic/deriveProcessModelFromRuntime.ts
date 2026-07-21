@@ -130,6 +130,13 @@ function roleCapabilities(
                 if (stage < 0) continue;                               // ladder fully attested
                 const eventCode = ladder.values[stage];
                 const capId = `${order.processId}:${orderIdStr}:${clauseId}-${party}-${eventCode}`;
+                // The ladder's COMPANION fields (every declared field that
+                // isn't the ladder enum itself — an evidence pointer, a note)
+                // ride the same generic form the witness stages use: the spec
+                // declares, the rail renders, the fill lands in the encoded
+                // content beside the event code. No field is named here.
+                const companions = getClauseSpec(clauseId, section.version)
+                    ?.fields.filter((f) => f.name !== ladder.name) ?? [];
                 out.push({
                     id: capId,
                     label: labelEnumValue(ladder, eventCode),
@@ -145,6 +152,7 @@ function roleCapabilities(
                         ladderField: ladder.name,
                         party,
                     },
+                    ...(companions.length > 0 ? { inputFields: companions } : {}),
                     mechanismId: "attestation-coordinator",
                     scopeType: "order",
                     scopeId: orderIdStr,

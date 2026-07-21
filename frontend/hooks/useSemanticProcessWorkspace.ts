@@ -259,7 +259,15 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                         // bytes under the agreementHash merkle binding.
                         content = undefined;
                     } else if (isLadder) {
-                        content = encodeContentFromSpec(spec, { [action.ladderField!]: action.eventCode });
+                        // LADDER: the event code plus any companion-field fills
+                        // from the rail's generic form (e.g. an evidence
+                        // pointer), gated by the same Layer-A validator.
+                        const ladderValues = { ...(values ?? {}), [action.ladderField!]: action.eventCode };
+                        const validation = validateContent(ladderValues, spec);
+                        if (!validation.ok) {
+                            throw new Error(validation.errors.map((e) => `${e.path}: ${e.message}`).join("; "));
+                        }
+                        content = encodeContentFromSpec(spec, ladderValues);
                     } else {
                         // WITNESS: values from the rail's generic form, gated by the
                         // same Layer-A validator that gates every sign point.
