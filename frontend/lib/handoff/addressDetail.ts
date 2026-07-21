@@ -38,19 +38,10 @@
  * accepting (it is bonded on); the exact door AFTER.
  */
 import { keccak256, toHex } from "viem";
-import {
-    deriveSharedSecretAsReceiver,
-    deriveSharedSecretAsSender,
-    ecdhAuthText,
-    unwrapWithSharedSecret,
-    wrapWithSharedSecret,
-} from "@figaro/sdk/handoff";
 import type { HandoffChannel } from "@figaro/sdk/handoff";
-import { getOrCreateOrderEcdhKeypair } from "./ecdh";
+import { decryptCeremonyBlob, requestCeremonyKey, sendCeremonyBlob, type SignChannelAuth } from "./ceremony";
 
-/** Wallet capability that signs the EIP-191 auth text for a channel message
- *  — the sender's identity on an untrusted transport. */
-export type SignChannelAuth = (message: string) => Promise<`0x${string}`>;
+export type { SignChannelAuth };
 
 /** The precise-address payload — everything a label/door needs and the chain
  *  never learns. All fields free-form; `name` is the addressee (names are
@@ -112,20 +103,14 @@ export async function requestAddressDetail(
         signAuth: SignChannelAuth;
     },
 ): Promise<string> {
-    const keypair = getOrCreateOrderEcdhKeypair(params.myAddress, params.orderId);
-    // The transport proves nothing — the wallet signature IS the sender
-    // identity the receiver verifies against the order's counterparty.
-    const sig = await params.signAuth(
-        ecdhAuthText("ECDH_PUBKEY", params.orderId, keypair.publicKeyHex),
-    );
-    await channel.sendEcdhPubkey({
+    // The address ceremony correlates on the BARE order hash (the content
+    // ceremony scopes its own id — `./ceremony` owns the isolation rule).
+    return requestCeremonyKey(channel, {
+        myAddress: params.myAddress,
         recipientAddress: params.recipientAddress,
-        orderId: params.orderId,
-        pubKeyHex: keypair.publicKeyHex,
-        senderAddress: params.myAddress,
-        sig,
+        ceremonyId: params.orderId,
+        signAuth: params.signAuth,
     });
-    return keypair.publicKeyHex;
 }
 
 /** Step 2 — the answering party encrypts ITS addressee block against the
@@ -143,31 +128,14 @@ export async function sendAddressDetail(
         signAuth: SignChannelAuth;
     },
 ): Promise<{ blobB64: string }> {
-    const keypair = getOrCreateOrderEcdhKeypair(params.myAddress, params.orderId);
-    // The answering party SENDS the encrypted payload → sender-side derivation.
-    const secret = deriveSharedSecretAsSender(keypair.privateKeyHex, params.recipientPubKeyHex);
-    const blobB64 = await wrapWithSharedSecret(encodeAddresseeBlock(params.block), secret);
-    const pubkeySig = await params.signAuth(
-        ecdhAuthText("ECDH_PUBKEY", params.orderId, keypair.publicKeyHex),
-    );
-    await channel.sendEcdhPubkey({
+    return sendCeremonyBlob(channel, {
+        myAddress: params.myAddress,
         recipientAddress: params.recipientAddress,
-        orderId: params.orderId,
-        pubKeyHex: keypair.publicKeyHex,
-        senderAddress: params.myAddress,
-        sig: pubkeySig,
+        ceremonyId: params.orderId,
+        recipientPubKeyHex: params.recipientPubKeyHex,
+        plain: encodeAddresseeBlock(params.block),
+        signAuth: params.signAuth,
     });
-    const blobSig = await params.signAuth(
-        ecdhAuthText("ECDH_WRAPPED_KEY", params.orderId, blobB64),
-    );
-    await channel.sendWrappedKey({
-        recipientAddress: params.recipientAddress,
-        orderId: params.orderId,
-        wrappedKeyB64: blobB64,
-        senderAddress: params.myAddress,
-        sig: blobSig,
-    });
-    return { blobB64 };
 }
 
 /** Step 3 — the receiving party decrypts a received blob with the SENDER's
@@ -179,13 +147,11 @@ export async function decryptAddressDetail(params: {
     senderPubKeyHex: string;
     blobB64: string;
 }): Promise<AddresseeBlock | null> {
-    const keypair = getOrCreateOrderEcdhKeypair(params.myAddress, params.orderId);
-    try {
-        // Receiver-side derivation against the sender's pubkey.
-        const secret = deriveSharedSecretAsReceiver(params.senderPubKeyHex, keypair.privateKeyHex);
-        const plain = await unwrapWithSharedSecret(params.blobB64, secret);
-        return tryDecodeAddresseeBlock(plain);
-    } catch {
-        return null;
-    }
+    const plain = await decryptCeremonyBlob({
+        myAddress: params.myAddress,
+        ceremonyId: params.orderId,
+        senderPubKeyHex: params.senderPubKeyHex,
+        blobB64: params.blobB64,
+    });
+    return plain === null ? null : tryDecodeAddresseeBlock(plain);
 }

@@ -20,6 +20,7 @@
 import type { ComponentType } from "react";
 import { QrChallengePanel } from "@/components/runtime/QrChallengePanel";
 import { AddressDetailPanel } from "@/components/runtime/AddressDetailPanel";
+import { ContentDeliveryPanel } from "@/components/runtime/ContentDeliveryPanel";
 
 /** The contract an interaction surface satisfies: the order it mounts on,
  *  identified — nothing clause-specific crosses this boundary. The order's
@@ -38,6 +39,7 @@ export interface InteractionSurfaceProps {
 const REGISTRY = new Map<string, ComponentType<InteractionSurfaceProps>>([
     ["qr-challenge", QrChallengePanel],
     ["ecdh-address", AddressDetailPanel],
+    ["ecdh-content", ContentDeliveryPanel],
 ]);
 
 /** Register a surface for a declared interaction interface. Last write wins —
