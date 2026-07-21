@@ -165,6 +165,30 @@ export function fillProvenanceSection(
     };
 }
 
+/** The field names this module's fills write MECHANICALLY — derived or
+ *  rewritten by the checkout walk regardless of any buyer input: the
+ *  commercial terms (`fillCommerceSection`), the provenance anchor
+ *  (`fillProvenanceSection`), the topology rewrite (`writeTopologySection`),
+ *  and the dimweight derivation (`fillDimweightSection`). ONE list, owned
+ *  beside the fills it describes. */
+const MECHANICAL_FILL_FIELDS = ["payment", "lineItems", "compositionHash", "parentOrderHashes", "billedMassGrams"] as const;
+
+/**
+ * The field names the checkout walk fills mechanically for THIS composed
+ * clause set — the subset of `MECHANICAL_FILL_FIELDS` some composed clause
+ * actually declares (declared-field discovery, never a clause id). A
+ * fillable surface subtracts these: rendering a buyer input the walk will
+ * overwrite is a false affordance, not a fill.
+ */
+export function mechanicallyFilledFieldNames(
+    clauses: ClauseFields,
+    specs: SpecSource,
+): Set<string> {
+    return new Set(
+        MECHANICAL_FILL_FIELDS.filter((field) => composedClauseDeclaring(clauses, field, specs) !== undefined),
+    );
+}
+
 /**
  * Write the REAL parent-order hashes into the topology section, found by its
  * declared `parentOrderHashes` field (never by clause id). The template's

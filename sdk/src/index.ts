@@ -228,6 +228,7 @@ export {
     fillDerivedSections,
     fillDimweightSection,
     getRateQuantityResolver,
+    mechanicallyFilledFieldNames,
     planSubOrderSellers,
     registerRateQuantitySource,
     resolveSubOrderPricing,

@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/Button";
 import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
-import { fillProfileSections, planSubOrderSellers, profileValuesFor, readDenominationPin, resolveSubOrderPricing, type SubOrderPricing } from "@figaro/sdk";
+import { fillProfileSections, mechanicallyFilledFieldNames, planSubOrderSellers, profileValuesFor, readDenominationPin, resolveSubOrderPricing, type SubOrderPricing } from "@figaro/sdk";
 import { executeAssemblyCheckout, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import { postToAgentEndpoint, useDispatchRace } from "@/lib/checkout/dispatchRace";
 import { DispatchRacePanel, type RaceStartPolicy } from "@/components/runtime/DispatchRacePanel";
@@ -454,30 +454,42 @@ export function CheckoutView({ sellerAddress }: Props) {
                 assigned ? profileValuesFor(assigned, sellerCatalogues) : undefined,
                 specSource(),
             );
+            // Fields the checkout walk fills MECHANICALLY (the provenance
+            // anchor, the topology rewrite, …) — a buyer input the walk
+            // would overwrite is a false affordance, so a clause whose
+            // declared fields are ALL mechanical is not fillable. Derived
+            // from the planner's own fill set, never a clause id.
+            const mechanicalFields = mechanicallyFilledFieldNames(previewClauses, specSource());
             return {
                 key: String(order.id ?? i),
                 label: assigned ? nameOf(assigned) : "(to be assigned)",
                 clauses: Object.entries(previewClauses)
-                    .map(([clauseId, fields]) => ({
-                        clauseId,
-                        values: clauseValueSummary(fields),
-                        data: fields as Record<string, unknown>,
-                        // A GENERAL clause's fields are transaction particulars
-                        // the buyer authors here. Not fillable: specific-T&C
-                        // values (the designer's tailoring, from the template),
-                        // process-log anchors (attested at runtime, empty at
-                        // commit), catalogue-sourced sections (the seller's
-                        // items fill them), and profile-sourced sections (the
-                        // seller's standing declarations fill them). A COMPOSING
-                        // clause's content fields ARE fillable — the composition
-                        // surface collects only its block.fields runtime params,
-                        // never its content.
-                        fillable: !clauseIsSpecificTerms(clauseId)
-                            && !clauseIsProcessLog(clauseId)
-                            && !clauseIsCatalogueSourced(clauseId)
-                            && !clauseIsProfileSourced(clauseId)
-                            && (getClauseSpec(clauseId)?.fields.length ?? 0) > 0,
-                    })),
+                    .map(([clauseId, fields]) => {
+                        const specFields = getClauseSpec(clauseId)?.fields ?? [];
+                        return {
+                            clauseId,
+                            values: clauseValueSummary(fields),
+                            data: fields as Record<string, unknown>,
+                            // A GENERAL clause's fields are transaction particulars
+                            // the buyer authors here. Not fillable: specific-T&C
+                            // values (the designer's tailoring, from the template),
+                            // process-log anchors (attested at runtime, empty at
+                            // commit), catalogue-sourced sections (the seller's
+                            // items fill them), profile-sourced sections (the
+                            // seller's standing declarations fill them), and
+                            // sections whose every field the walk fills
+                            // mechanically. A COMPOSING clause's content fields
+                            // ARE fillable — the composition surface collects
+                            // only its block.fields runtime params, never its
+                            // content.
+                            fillable: !clauseIsSpecificTerms(clauseId)
+                                && !clauseIsProcessLog(clauseId)
+                                && !clauseIsCatalogueSourced(clauseId)
+                                && !clauseIsProfileSourced(clauseId)
+                                && specFields.length > 0
+                                && !specFields.every((f) => mechanicalFields.has(f.name)),
+                        };
+                    }),
             };
         });
     })();
