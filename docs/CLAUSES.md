@@ -85,6 +85,18 @@ Two on-chain touch points remain:
   content hash (identity + integrity only — no group field; grouping is `block.article`
   in the spec JSON). No validator is registered or bound; a registered clause is
   immediately attestable.
+  **Versioning convention (RULED 2026-07-21): `version` is an integer lineage counter,
+  never semver.** Semver's three-part contract (MAJOR.MINOR.PATCH) is a compatibility
+  promise for consumers that resolve version *ranges* and auto-upgrade within them —
+  machinery that does not and should not exist here: consumers pin an exact
+  `(clauseId, version)` identity, every content change produces a different hash (so
+  every change is "breaking" from the verifier's standpoint), and in a permissionless
+  first-write-wins registry a compatibility claim is unverifiable data. If compatibility
+  between two versions ever matters it is **derived** by diffing the two immutable specs,
+  never stored in the author's numbering. Assemblies follow the same rule. The npm
+  packages (`@figaro/sdk`, the frontend) are conventional mutable-name software and keep
+  semver; the project as a whole versions by deployment lineage (V3/V4/V5). Three layers,
+  three conventions — never collapsed.
 - **`AttestationCoordinator`** merkle-binds each attestation: it verifies an OZ-style
   inclusion proof of `leaf = keccak256(keccak256(clauseId ++ keccak256(sectionData)))` (double-hashed — leaf/node domain separation) against the
   signed `agreementHash`, content-hashes the evidence (`contentRef = keccak256(content)`),

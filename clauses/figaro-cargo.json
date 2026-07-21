@@ -76,7 +76,7 @@
             "required": false,
             "minLength": 1,
             "maxLength": 256,
-            "description": "Shipping marks & numbers — the identifiers and handling marks on the package(s) (consignee marks, order references, handling symbols). Free text; the 'Marks & Numbers' column on a bill of lading / packing list."
+            "description": "Shipping marks & numbers — the identifiers and handling marks on the package(s) (consignee marks, order references, handling symbols). Free text; the 'Marks & Numbers' column on a bill of lading / packing list. A committed PUBLIC field: use reference codes per bill-of-lading practice, never personal names — party particulars travel the encrypted address channel."
         }
     ],
     "block": {

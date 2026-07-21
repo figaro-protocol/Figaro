@@ -97,6 +97,37 @@ Three recurring questions collapse to "which side of the seam?":
    read-time concerns, never on-chain validators. There is no on-chain content validation at all —
    the chain registers clauses and merkle-binds attestations, nothing more. (See `CLAUSES.md`.)
 
+## The other boundary — public vs confidential data (RULED 2026-07-21)
+
+The seam divides protocol from presentation; a second boundary divides what the network
+learns from what only the parties learn. The rule, stated once and owned here:
+
+> **A datum is a committed public field iff the mechanism needs it beyond the two order
+> endpoints** — bond/price verification, document derivation (invoice, BoL), or
+> read-time/dispute verification — **and it is committed at no finer grain than that need
+> requires** (a neighborhood geohash cell, never a door; a keccak hash, never the
+> plaintext). **A datum only the counterparty operationally needs** (door-grade address,
+> addressee name, floor, instructions) **travels the per-order ECDH channel**
+> (`@figaro/sdk/handoff`), **with a wallet-signed hash anchor on-chain for tamper
+> evidence** — revealed to a dispute forum by the party who holds it, verifiable against
+> the anchor, and crypto-shreddable until then.
+
+Corollaries:
+
+- **Evidence follows the same layered pattern**: the public artifact carries the coarsest
+  mechanism-sufficient grain (the geohash *cell*, hashed device identifiers) plus the hash
+  of the raw capture; full fidelity stays party-held for dispute-time revelation. Raw
+  coordinates and stable device identifiers never land on a public artifact.
+- **Non-derivable ≠ confidential — the axes are orthogonal.** "Only cart + ECDH addresses
+  are non-derivable" is a statement about derivability *from the catalogue*: the cart is
+  non-derivable AND public once signed (committed `lineItems`); the address is
+  non-derivable AND confidential (channel-carried, hash-anchored). Do not conflate the
+  two axes.
+- **Grain caps are protocol, not presentation.** Where the rule caps a public field's
+  precision (e.g. `figaro-geolocation`'s neighborhood-grade geohash), the cap belongs in
+  the **spec** (`maxLength`) — the verified side of the seam — never only in one
+  replaceable frontend's constant.
+
 ## Composing the kernel — the coordinator pattern
 
 The fifth noun (composition with other on-network contracts) has a contract-side shape,

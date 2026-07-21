@@ -424,6 +424,30 @@ Questioned and ruled KEEP 2026-07-02.
 
 ---
 
+## 14. Committed `lineItems.name` and `cargo.marks` are public — accepted
+
+**Pattern**: `figaro-commerce.lineItems[].name` (and free-text `figaro-cargo.marks`)
+are committed public fields, so a wallet's purchase content is publicly linkable to
+that wallet in an immutable, IPFS-pinned agreement. There is no hash-only line-item
+variant.
+
+**Why it looks wrong**: sensitive purchase categories leak by design; a privacy
+audit reads this as a GDPR-shaped defect next to the ECDH address channel, which
+keeps its plaintext off-chain.
+
+**Why it is correct**: the public/confidential boundary rule
+(`ARCHITECTURE.md` § "The other boundary") puts a datum on the committed side iff
+the mechanism needs it beyond the two endpoints — and line items are exactly that:
+invoices and audit documents derive from them, disputes verify against them, and
+bond/price checks read them. Mitigation is compositional, not mechanical: item
+*names* are the seller's catalogue authoring choice, so a discreet catalogue names
+discreetly ("item #123" — `itemId` is already committed alongside), and `marks`
+follows bill-of-lading practice (reference codes, never personal names — the spec
+description says so). Pseudonymity of the wallet does the rest. Ruled ACCEPT
+2026-07-21 (public/confidential boundary audit).
+
+---
+
 ## Summary Table
 
 | # | Pattern | Looks wrong because | Is correct because |
@@ -441,3 +465,4 @@ Questioned and ruled KEEP 2026-07-02.
 | 11 | Single currency per process | Can't do multi-token commerce | 2:1 bond ratio is Nash-stable only in one currency; multi-token lives at composition layer (process / wallet swap / Level-3 bundler) |
 | 12 | No `transferTitle` / `endorse` / `nominate` for BoLs | Industry-standard MLETR-aligned eBLs are negotiable; CargoX / TradeTrust / TradeLens all implement this | Single-buyer invariant + parties-fixed-at-commit + no-escape-hatches each separately rule it out; cargo doesn't carry rights, the commitment does |
 | 13 | `deadline` alongside `salt` | Redundant / auction residue | Salt is identity, deadline is expiry of the unconsummated signature window; no-cancel kernel needs signatures to age out |
+| 14 | Committed `lineItems.name` / `cargo.marks` are public | Wallet-linkable purchase content leaks | Mechanism needs line items beyond the endpoints (invoices, disputes, price checks); mitigation is compositional (discreet catalogue naming, coded marks) + wallet pseudonymity |
