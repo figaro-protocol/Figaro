@@ -17,6 +17,12 @@ export type {
 } from "./messages.js";
 
 export {
+    ecdhAuthText,
+    verifyEcdhMessageAuth,
+    type AuthenticatedEcdhMessage,
+} from "./auth.js";
+
+export {
     deriveSharedSecretAsReceiver,
     deriveSharedSecretAsSender,
     generateOrderKeypair,

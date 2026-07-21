@@ -40,23 +40,34 @@ export interface HandoffKeyMessage {
 }
 
 /** ECDH public key offer: the key-receiving party sends its per-order
- *  ephemeral public key. */
+ *  ephemeral public key. Wallet-authenticated (`./auth.js`): the transport
+ *  proves nothing, so the sender's wallet signs (type ‖ orderId ‖ pubKeyHex)
+ *  and receivers verify + match `senderAddress` against the order's
+ *  counterparty before trusting the key. */
 export interface EcdhPubkeyMessage {
     type: "ECDH_PUBKEY";
     orderId: string;
     /** Compressed secp256k1 public key hex (66 chars, unprefixed). */
     pubKeyHex: string;
+    /** Sender's wallet address — the identity the signature proves. */
+    senderAddress: string;
+    /** EIP-191 wallet signature over `ecdhAuthText(type, orderId, pubKeyHex)`. */
+    sig: string;
     ts: number;
 }
 
 /** ECDH wrapped key: the AES handoff key wrapped with the ECDH shared
- *  secret. */
+ *  secret. Wallet-authenticated like the pubkey offer (`./auth.js`). */
 export interface EcdhWrappedKeyMessage {
     type: "ECDH_WRAPPED_KEY";
     orderId: string;
     /** Base64url blob: 12-byte IV || AES-256-GCM ciphertext of the handoff
      *  key. Safe to expose publicly. */
     wrappedKeyB64: string;
+    /** Sender's wallet address — the identity the signature proves. */
+    senderAddress: string;
+    /** EIP-191 wallet signature over `ecdhAuthText(type, orderId, wrappedKeyB64)`. */
+    sig: string;
     ts: number;
 }
 
@@ -96,30 +107,40 @@ export interface HandoffChannel {
         callback: (keyB64: string, senderIdentity: string) => void,
     ): () => void;
 
-    /** Send a per-order ephemeral ECDH public key (safe to expose). */
+    /** Send a per-order ephemeral ECDH public key (safe to expose; the
+     *  sender pre-signs — see `./auth.js`). */
     sendEcdhPubkey(params: {
         recipientAddress: string;
         orderId: string;
         pubKeyHex: string;
+        senderAddress: string;
+        sig: string;
     }): Promise<void>;
 
-    /** Subscribe to incoming ECDH public keys for `orderId`. */
+    /** Subscribe to incoming ECDH public keys for `orderId`. Delivers the
+     *  FULL message and keeps listening — the receiver verifies each one
+     *  (`verifyEcdhMessageAuth` + counterparty match) and skips failures;
+     *  a forged message must never end the subscription. `senderIdentity`
+     *  is transport metadata only — NEVER identity. */
     onEcdhPubkey(
         orderId: string,
-        callback: (pubKeyHex: string, senderIdentity: string) => void,
+        callback: (msg: EcdhPubkeyMessage, senderIdentity: string) => void,
     ): () => void;
 
-    /** Send an ECDH-wrapped handoff key (safe to expose). */
+    /** Send an ECDH-wrapped handoff key (safe to expose; pre-signed). */
     sendWrappedKey(params: {
         recipientAddress: string;
         orderId: string;
         wrappedKeyB64: string;
+        senderAddress: string;
+        sig: string;
     }): Promise<void>;
 
-    /** Subscribe to incoming ECDH-wrapped keys for `orderId`. */
+    /** Subscribe to incoming ECDH-wrapped keys for `orderId` — same
+     *  full-message, verify-and-skip contract as `onEcdhPubkey`. */
     onWrappedKey(
         orderId: string,
-        callback: (wrappedKeyB64: string, senderIdentity: string) => void,
+        callback: (msg: EcdhWrappedKeyMessage, senderIdentity: string) => void,
     ): () => void;
 
     /** Send the IPFS CID of a pinned commitment payload for dual-signature

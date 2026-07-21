@@ -114,11 +114,21 @@ export async function createXmtpChannel(
     // Track active stream cleanups.
     const streamCleanups: Array<() => void> = [];
 
-    /** Generic listener for typed channel messages over XMTP. */
+    /** Generic listener for typed channel messages over XMTP.
+     *
+     *  `once` stops after the first match (single-shot exchanges). The
+     *  authenticated ECDH listeners pass `once: false` and deliver EVERY
+     *  match: order hashes are public, so any inbox can inject a matching
+     *  envelope — the CONSUMER verifies each message's wallet signature and
+     *  skips failures, and a listener that stopped at the first match would
+     *  hand garbage a denial-of-ceremony win. `msg.senderInboxId` is passed
+     *  through as transport metadata only (an XMTP inbox id, NOT a wallet
+     *  address) — identity lives in the message signature, never here. */
     function listenForMessage<T extends ChannelMessage>(
         type: T["type"],
         orderId: string,
         onMatch: (msg: T, senderInboxId: string) => void,
+        { once = true }: { once?: boolean } = {},
     ): () => void {
         let cancelled = false;
 
@@ -133,7 +143,7 @@ export async function createXmtpChannel(
                         const parsed = parseChannelMessage(msg.content);
                         if (parsed?.type === type && parsed.orderId === orderId) {
                             onMatch(parsed as T, msg.senderInboxId);
-                            return;
+                            if (once) return;
                         }
                     }
                 }
@@ -143,7 +153,7 @@ export async function createXmtpChannel(
                     const parsed = parseChannelMessage(msg.content);
                     if (parsed?.type === type && parsed.orderId === orderId) {
                         onMatch(parsed as T, msg.senderInboxId);
-                        break;
+                        if (once) break;
                     }
                 }
             } catch (err) {
@@ -183,7 +193,7 @@ export async function createXmtpChannel(
 
         // ── ECDH pubkey exchange via XMTP DM ──
 
-        async sendEcdhPubkey({ recipientAddress, orderId, pubKeyHex }) {
+        async sendEcdhPubkey({ recipientAddress, orderId, pubKeyHex, senderAddress, sig }) {
             const dm = await client.conversations.createDmWithIdentifier({
                 identifier: recipientAddress.toLowerCase(),
                 identifierKind: IdentifierKind.Ethereum,
@@ -192,6 +202,8 @@ export async function createXmtpChannel(
                 type: "ECDH_PUBKEY",
                 orderId,
                 pubKeyHex,
+                senderAddress,
+                sig,
                 ts: Date.now(),
             };
             await dm.sendText(JSON.stringify(payload));
@@ -201,13 +213,14 @@ export async function createXmtpChannel(
             return listenForMessage<EcdhPubkeyMessage>(
                 "ECDH_PUBKEY",
                 orderId,
-                (msg, senderInboxId) => callback(msg.pubKeyHex, senderInboxId),
+                (msg, senderInboxId) => callback(msg, senderInboxId),
+                { once: false },
             );
         },
 
         // ── ECDH wrapped key via XMTP DM ──
 
-        async sendWrappedKey({ recipientAddress, orderId, wrappedKeyB64 }) {
+        async sendWrappedKey({ recipientAddress, orderId, wrappedKeyB64, senderAddress, sig }) {
             const dm = await client.conversations.createDmWithIdentifier({
                 identifier: recipientAddress.toLowerCase(),
                 identifierKind: IdentifierKind.Ethereum,
@@ -216,6 +229,8 @@ export async function createXmtpChannel(
                 type: "ECDH_WRAPPED_KEY",
                 orderId,
                 wrappedKeyB64,
+                senderAddress,
+                sig,
                 ts: Date.now(),
             };
             await dm.sendText(JSON.stringify(payload));
@@ -225,7 +240,8 @@ export async function createXmtpChannel(
             return listenForMessage<EcdhWrappedKeyMessage>(
                 "ECDH_WRAPPED_KEY",
                 orderId,
-                (msg, senderInboxId) => callback(msg.wrappedKeyB64, senderInboxId),
+                (msg, senderInboxId) => callback(msg, senderInboxId),
+                { once: false },
             );
         },
 

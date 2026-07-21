@@ -20,9 +20,9 @@
  * the title, never a dispatch.
  */
 import { useCallback, useEffect, useState } from "react";
-import { useAccount, useChainId, usePublicClient } from "wagmi";
+import { useAccount, useChainId, usePublicClient, useWalletClient } from "wagmi";
 import { getCoordinationChannel } from "@/lib/handoff/channel";
-import type { HandoffChannel } from "@figaro/sdk/handoff";
+import { verifyEcdhMessageAuth, type AuthenticatedEcdhMessage, type HandoffChannel } from "@figaro/sdk/handoff";
 import {
     addressDetailAnchorRef,
     addressDetailBlobHash,
@@ -44,6 +44,7 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
     const { address } = useAccount();
     const chainId = useChainId();
     const publicClient = usePublicClient();
+    const { data: walletClient } = useWalletClient();
     const attestationActions = useAttestationCoordinatorActions();
 
     const role: "buyer" | "seller" | null =
@@ -64,22 +65,32 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
     const [form, setForm] = useState<AddresseeBlock>({ name: "", street: "", unit: "", instructions: "" });
 
     // The channel (mock in e2e, XMTP live) + subscriptions. Both parties send
-    // ECDH pubkeys on the same order id — each side keeps the one that isn't
-    // its own message (the mock replays to late subscribers).
+    // ECDH pubkeys on the same order id. Transport identity is UNTRUSTED —
+    // every message must (1) carry a wallet signature that verifies against
+    // its claimed sender and (2) claim exactly this order's counterparty.
+    // Failures are SKIPPED, never terminal: the listener keeps listening, so
+    // an injected message can neither impersonate the counterparty nor end
+    // the ceremony. (The counterparty check also drops our own messages.)
     useEffect(() => {
         if (!address || !role) return;
         let disposed = false;
         const unsubs: Array<() => void> = [];
+        const acceptFromCounterparty = async (msg: AuthenticatedEcdhMessage): Promise<boolean> => {
+            if (!hexEqual(msg.senderAddress, counterparty)) return false;
+            return verifyEcdhMessageAuth(msg);
+        };
         void getCoordinationChannel(address).then((ch) => {
             if (disposed) return;
             setChannel(ch);
-            unsubs.push(ch.onEcdhPubkey(orderHash, (pubKeyHex, senderIdentity) => {
-                if (hexEqual(senderIdentity, address)) return; // my own message
-                setPeerPubKey(pubKeyHex);
+            unsubs.push(ch.onEcdhPubkey(orderHash, (msg) => {
+                void acceptFromCounterparty(msg).then((ok) => {
+                    if (ok && !disposed) setPeerPubKey(msg.pubKeyHex);
+                });
             }));
-            unsubs.push(ch.onWrappedKey(orderHash, (wrappedKeyB64, senderIdentity) => {
-                if (hexEqual(senderIdentity, address)) return;
-                setBlob(wrappedKeyB64);
+            unsubs.push(ch.onWrappedKey(orderHash, (msg) => {
+                void acceptFromCounterparty(msg).then((ok) => {
+                    if (ok && !disposed) setBlob(msg.wrappedKeyB64);
+                });
             }));
         });
         // A keypair in sessionStorage marks a request already sent this session.
@@ -88,7 +99,7 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
             disposed = true;
             for (const u of unsubs) u();
         };
-    }, [address, role, orderHash]);
+    }, [address, role, orderHash, counterparty]);
 
     // Decrypt the counterparty's blob once both halves arrived, then verify
     // against the on-chain anchor (the attestation whose contentRef is
@@ -128,21 +139,26 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
     }, [role, address, peerPubKey, blob, orderHash, publicClient, chainId]);
 
     const handleRequest = useCallback(async () => {
-        if (!channel || !address) return;
+        if (!channel || !address || !walletClient) return;
         setBusy(true);
         setError(null);
         try {
-            await requestAddressDetail(channel, { myAddress: address, recipientAddress: counterparty, orderId: orderHash });
+            await requestAddressDetail(channel, {
+                myAddress: address,
+                recipientAddress: counterparty,
+                orderId: orderHash,
+                signAuth: (message) => walletClient.signMessage({ message }),
+            });
             setRequested(true);
         } catch (e) {
             setError(extractErrorMessage(e, "Request failed."));
         } finally {
             setBusy(false);
         }
-    }, [channel, address, counterparty, orderHash]);
+    }, [channel, address, walletClient, counterparty, orderHash]);
 
     const handleSend = useCallback(async () => {
-        if (!channel || !address || !peerPubKey) return;
+        if (!channel || !address || !peerPubKey || !walletClient) return;
         setBusy(true);
         setError(null);
         try {
@@ -155,6 +171,7 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
             const { blobB64 } = await sendAddressDetail(channel, {
                 myAddress: address, recipientAddress: counterparty, orderId: orderHash,
                 recipientPubKeyHex: peerPubKey, block,
+                signAuth: (message) => walletClient.signMessage({ message }),
             });
             // Anchor keccak256(blob) on-chain AS the attestation content —
             // hash-only, so the ciphertext never reaches calldata and stays
@@ -176,7 +193,7 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
         } finally {
             setBusy(false);
         }
-    }, [channel, address, peerPubKey, counterparty, orderHash, clauseId, form, attestationActions, role]);
+    }, [channel, address, peerPubKey, walletClient, counterparty, orderHash, clauseId, form, attestationActions, role]);
 
     if (!role) return null;
     const clauseTitle = getClauseSpec(clauseId)?.title ?? clauseId;

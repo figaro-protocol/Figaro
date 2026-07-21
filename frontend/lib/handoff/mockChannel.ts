@@ -115,10 +115,10 @@ function notifyMessage(
             notify("HANDOFF_KEY", message.orderId, message.keyB64, message.senderIdentity);
             return;
         case "ECDH_PUBKEY":
-            notify("ECDH_PUBKEY", message.orderId, message.pubKeyHex, message.senderIdentity);
+            notify("ECDH_PUBKEY", message.orderId, message, message.senderIdentity);
             return;
         case "ECDH_WRAPPED_KEY":
-            notify("ECDH_WRAPPED_KEY", message.orderId, message.wrappedKeyB64, message.senderIdentity);
+            notify("ECDH_WRAPPED_KEY", message.orderId, message, message.senderIdentity);
             return;
         case "COMMITMENT_PAYLOAD":
             notify("COMMITMENT_PAYLOAD", message.orderId, message.payloadCid, message.senderIdentity, message.orderId);
@@ -208,11 +208,13 @@ export function createMockChannel(ownerAddress: string): HandoffChannel {
 
         // ── ECDH pubkey exchange ──
 
-        async sendEcdhPubkey({ recipientAddress: _, orderId, pubKeyHex }) {
+        async sendEcdhPubkey({ recipientAddress: _, orderId, pubKeyHex, senderAddress, sig }) {
             const msg: StoredMockMessage = {
                 type: "ECDH_PUBKEY",
                 orderId,
                 pubKeyHex,
+                senderAddress,
+                sig,
                 ts: Date.now(),
                 senderIdentity: ownerAddress,
             };
@@ -223,23 +225,26 @@ export function createMockChannel(ownerAddress: string): HandoffChannel {
             // Replay EVERY persisted message — both parties send a pubkey on
             // the same orderId (a two-message exchange); replaying only the
             // first starves a late subscriber of the counterparty's key.
-            // Mirrors XMTP's full-DM-history delivery.
+            // Mirrors XMTP's full-DM-history delivery. Full message out —
+            // the consumer verifies the wallet auth and skips failures.
             const existing = readPersistedMessages().filter(
                 (message): message is StoredEcdhPubkeyMessage => isStoredEcdhPubkeyMessage(message) && message.orderId === orderId,
             );
             for (const message of existing) {
-                queueMicrotask(() => callback(message.pubKeyHex, message.senderIdentity));
+                queueMicrotask(() => callback(message, message.senderIdentity));
             }
-            return subscribe("ECDH_PUBKEY", (pk, s) => callback(pk as string, s as string), orderId);
+            return subscribe("ECDH_PUBKEY", (m, s) => callback(m as StoredEcdhPubkeyMessage, s as string), orderId);
         },
 
         // ── ECDH wrapped key ──
 
-        async sendWrappedKey({ recipientAddress: _, orderId, wrappedKeyB64 }) {
+        async sendWrappedKey({ recipientAddress: _, orderId, wrappedKeyB64, senderAddress, sig }) {
             const msg: StoredMockMessage = {
                 type: "ECDH_WRAPPED_KEY",
                 orderId,
                 wrappedKeyB64,
+                senderAddress,
+                sig,
                 ts: Date.now(),
                 senderIdentity: ownerAddress,
             };
@@ -252,9 +257,9 @@ export function createMockChannel(ownerAddress: string): HandoffChannel {
                 (message): message is StoredEcdhWrappedKeyMessage => isStoredEcdhWrappedKeyMessage(message) && message.orderId === orderId,
             );
             for (const message of existing) {
-                queueMicrotask(() => callback(message.wrappedKeyB64, message.senderIdentity));
+                queueMicrotask(() => callback(message, message.senderIdentity));
             }
-            return subscribe("ECDH_WRAPPED_KEY", (wk, s) => callback(wk as string, s as string), orderId);
+            return subscribe("ECDH_WRAPPED_KEY", (m, s) => callback(m as StoredEcdhWrappedKeyMessage, s as string), orderId);
         },
 
         // ── Commitment payload exchange ──

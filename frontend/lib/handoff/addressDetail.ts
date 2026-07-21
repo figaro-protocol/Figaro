@@ -14,7 +14,9 @@
  * is encrypted). The same per-order keypairs serve both directions.
  *
  * The 2-message ceremony over the coordination channel (all channel data safe
- * to expose publicly — no transport-layer trust):
+ * to expose publicly — no transport-layer trust; sender identity rides IN each
+ * message as a wallet signature the receiver verifies against the order's
+ * counterparty, `@figaro/sdk/handoff` auth):
  *
  *   1. The order's SELLER (e.g. the courier), after accepting, requests the
  *      detail: generates a per-order ephemeral keypair and sends its public
@@ -39,11 +41,16 @@ import { keccak256, toHex } from "viem";
 import {
     deriveSharedSecretAsReceiver,
     deriveSharedSecretAsSender,
+    ecdhAuthText,
     unwrapWithSharedSecret,
     wrapWithSharedSecret,
 } from "@figaro/sdk/handoff";
 import type { HandoffChannel } from "@figaro/sdk/handoff";
 import { getOrCreateOrderEcdhKeypair } from "./ecdh";
+
+/** Wallet capability that signs the EIP-191 auth text for a channel message
+ *  — the sender's identity on an untrusted transport. */
+export type SignChannelAuth = (message: string) => Promise<`0x${string}`>;
 
 /** The precise-address payload — everything a label/door needs and the chain
  *  never learns. All fields free-form; `name` is the addressee (names are
@@ -98,13 +105,25 @@ export function addressDetailAnchorRef(blobB64: string): `0x${string}` {
  *  precise pickup point the same way. Returns the public key sent. */
 export async function requestAddressDetail(
     channel: HandoffChannel,
-    params: { myAddress: string; recipientAddress: string; orderId: string },
+    params: {
+        myAddress: string;
+        recipientAddress: string;
+        orderId: string;
+        signAuth: SignChannelAuth;
+    },
 ): Promise<string> {
     const keypair = getOrCreateOrderEcdhKeypair(params.myAddress, params.orderId);
+    // The transport proves nothing — the wallet signature IS the sender
+    // identity the receiver verifies against the order's counterparty.
+    const sig = await params.signAuth(
+        ecdhAuthText("ECDH_PUBKEY", params.orderId, keypair.publicKeyHex),
+    );
     await channel.sendEcdhPubkey({
         recipientAddress: params.recipientAddress,
         orderId: params.orderId,
         pubKeyHex: keypair.publicKeyHex,
+        senderAddress: params.myAddress,
+        sig,
     });
     return keypair.publicKeyHex;
 }
@@ -121,21 +140,32 @@ export async function sendAddressDetail(
         orderId: string;
         recipientPubKeyHex: string;
         block: AddresseeBlock;
+        signAuth: SignChannelAuth;
     },
 ): Promise<{ blobB64: string }> {
     const keypair = getOrCreateOrderEcdhKeypair(params.myAddress, params.orderId);
     // The answering party SENDS the encrypted payload → sender-side derivation.
     const secret = deriveSharedSecretAsSender(keypair.privateKeyHex, params.recipientPubKeyHex);
     const blobB64 = await wrapWithSharedSecret(encodeAddresseeBlock(params.block), secret);
+    const pubkeySig = await params.signAuth(
+        ecdhAuthText("ECDH_PUBKEY", params.orderId, keypair.publicKeyHex),
+    );
     await channel.sendEcdhPubkey({
         recipientAddress: params.recipientAddress,
         orderId: params.orderId,
         pubKeyHex: keypair.publicKeyHex,
+        senderAddress: params.myAddress,
+        sig: pubkeySig,
     });
+    const blobSig = await params.signAuth(
+        ecdhAuthText("ECDH_WRAPPED_KEY", params.orderId, blobB64),
+    );
     await channel.sendWrappedKey({
         recipientAddress: params.recipientAddress,
         orderId: params.orderId,
         wrappedKeyB64: blobB64,
+        senderAddress: params.myAddress,
+        sig: blobSig,
     });
     return { blobB64 };
 }

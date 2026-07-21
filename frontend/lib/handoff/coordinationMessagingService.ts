@@ -1,5 +1,5 @@
 import { getCoordinationChannel } from "@/lib/handoff/channel";
-import type { HandoffChannel } from "@figaro/sdk/handoff";
+import type { EcdhPubkeyMessage, EcdhWrappedKeyMessage, HandoffChannel } from "@figaro/sdk/handoff";
 
 interface WalletMessageSignerSource {
     signMessage(params: { message: string }): Promise<`0x${string}`>;
@@ -30,12 +30,14 @@ export interface CoordinationMessagingService {
             recipientAddress: string;
             orderId: string;
             pubKeyHex: string;
+            senderAddress: string;
+            sig: string;
         },
     ): Promise<void>;
     subscribeEcdhPubkey(
         params: CoordinationMessagingContext & {
             orderId: string;
-            callback: (pubKeyHex: string, senderIdentity: string) => void;
+            callback: (msg: EcdhPubkeyMessage, senderIdentity: string) => void;
         },
     ): Promise<() => void>;
     sendWrappedKey(
@@ -43,12 +45,14 @@ export interface CoordinationMessagingService {
             recipientAddress: string;
             orderId: string;
             wrappedKeyB64: string;
+            senderAddress: string;
+            sig: string;
         },
     ): Promise<void>;
     subscribeWrappedKey(
         params: CoordinationMessagingContext & {
             orderId: string;
-            callback: (wrappedKeyB64: string, senderIdentity: string) => void;
+            callback: (msg: EcdhWrappedKeyMessage, senderIdentity: string) => void;
         },
     ): Promise<() => void>;
     sendCommitmentPayload(
@@ -101,35 +105,39 @@ class DefaultCoordinationMessagingService implements CoordinationMessagingServic
         return channel.onHandoffKey(orderId, callback);
     }
 
-    async sendEcdhPubkey({ recipientAddress, orderId, pubKeyHex, ...context }: CoordinationMessagingContext & {
+    async sendEcdhPubkey({ recipientAddress, orderId, pubKeyHex, senderAddress, sig, ...context }: CoordinationMessagingContext & {
         recipientAddress: string;
         orderId: string;
         pubKeyHex: string;
+        senderAddress: string;
+        sig: string;
     }): Promise<void> {
         const channel = await this.getChannel(context);
-        await channel.sendEcdhPubkey({ recipientAddress, orderId, pubKeyHex });
+        await channel.sendEcdhPubkey({ recipientAddress, orderId, pubKeyHex, senderAddress, sig });
     }
 
     async subscribeEcdhPubkey({ orderId, callback, ...context }: CoordinationMessagingContext & {
         orderId: string;
-        callback: (pubKeyHex: string, senderIdentity: string) => void;
+        callback: (msg: EcdhPubkeyMessage, senderIdentity: string) => void;
     }): Promise<() => void> {
         const channel = await this.getChannel(context);
         return channel.onEcdhPubkey(orderId, callback);
     }
 
-    async sendWrappedKey({ recipientAddress, orderId, wrappedKeyB64, ...context }: CoordinationMessagingContext & {
+    async sendWrappedKey({ recipientAddress, orderId, wrappedKeyB64, senderAddress, sig, ...context }: CoordinationMessagingContext & {
         recipientAddress: string;
         orderId: string;
         wrappedKeyB64: string;
+        senderAddress: string;
+        sig: string;
     }): Promise<void> {
         const channel = await this.getChannel(context);
-        await channel.sendWrappedKey({ recipientAddress, orderId, wrappedKeyB64 });
+        await channel.sendWrappedKey({ recipientAddress, orderId, wrappedKeyB64, senderAddress, sig });
     }
 
     async subscribeWrappedKey({ orderId, callback, ...context }: CoordinationMessagingContext & {
         orderId: string;
-        callback: (wrappedKeyB64: string, senderIdentity: string) => void;
+        callback: (msg: EcdhWrappedKeyMessage, senderIdentity: string) => void;
     }): Promise<() => void> {
         const channel = await this.getChannel(context);
         return channel.onWrappedKey(orderId, callback);
