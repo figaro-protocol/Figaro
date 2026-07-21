@@ -1,0 +1,210 @@
+/**
+ * checkoutDerivations — the checkout review's pure derivations, lifted out
+ * of the view's render path (they were recompute-every-render IIFEs): the
+ * multi-order price breakdown and the per-order agreement review rows.
+ * Everything here is a pure function of its inputs — the SAME sdk fills and
+ * plans the commit walk runs, so what the buyer reviews equals what
+ * commits; the view memoizes the calls.
+ */
+import {
+    fillProfileSections,
+    mechanicallyFilledFieldNames,
+    planSubOrderSellers,
+    profileValuesFor,
+    resolveSubOrderPricing,
+    type SubOrderPricing,
+} from "@figaro/sdk";
+import { displayNameForAddress } from "@/lib/seller/sellerListing";
+import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
+import {
+    clauseIsCatalogueSourced,
+    clauseIsMandatory,
+    clauseIsProcessLog,
+    clauseIsProfileSourced,
+    clauseIsSpecificTerms,
+    getClauseSpec,
+    specSource,
+} from "@/lib/shared/clauseSpecSource";
+import { parseToken } from "@/lib/shared/utils";
+
+type PlanAssembly = Parameters<typeof planSubOrderSellers>[0];
+type PricingCatalogues = Parameters<typeof resolveSubOrderPricing>[0]["sellerCatalogues"];
+type ListingCatalogues = Parameters<typeof displayNameForAddress>[0];
+
+/** A candidate pick (the buyer's manual choice or a race winner's) — the
+ *  structural shape both surfaces share; no component type crosses into lib. */
+export interface CandidatePick {
+    seller: `0x${string}`;
+    price: string;
+}
+
+/** Compact, spec-agnostic value summary of a clause's composed fields — the
+ *  leaf scalar/enum values the buyer actually chose ("delivery",
+ *  "zone-wifi"), joined for inline display. Empty objects (runtime anchors
+ *  like a proof clause) and booleans summarize to "" — title-only rows. */
+function clauseValueSummary(fields: unknown): string {
+    const leaves: string[] = [];
+    const walk = (value: unknown): void => {
+        if (value === null || value === undefined || value === "") return;
+        if (Array.isArray(value)) { value.forEach(walk); return; }
+        if (typeof value === "object") { Object.values(value as Record<string, unknown>).forEach(walk); return; }
+        if (typeof value === "boolean") return;
+        leaves.push(String(value));
+    };
+    walk(fields);
+    return leaves.join(" · ");
+}
+
+export interface KitBreakdown {
+    rows: Array<{ name: string; payment: bigint; nodeId?: string; pricing?: SubOrderPricing }>;
+    total: bigint;
+}
+
+/**
+ * Multi-order price transparency: the buyer pays the lead's cut plus every
+ * contributor's cut, each priced LIVE from that contributor's own catalogue.
+ * Built from the SAME planSubOrderSellers + resolveSubOrderPricing the
+ * commit walks (same checkout-entered quantities included), so the shown
+ * figures — rate derivations and all — equal what commits. Null for a
+ * single-order assembly (no breakdown to show).
+ */
+export function deriveKitBreakdown(args: {
+    pickedAssembly: (PlanAssembly & { assemblyTemplate: { agreements: readonly unknown[] } }) | undefined;
+    leadAddress: `0x${string}`;
+    sellerCatalogues: ListingCatalogues;
+    pricedCatalogues: PricingCatalogues;
+    cartTotal: bigint;
+    clauseFills: Record<string, Record<string, Record<string, unknown>>>;
+    subOrderQuantities: Record<string, Parameters<typeof resolveSubOrderPricing>[0]["checkoutQuantity"]>;
+    tokenDecimals: number;
+    /** A race winner's overlay for its node — its price is already in the
+     *  process denomination. */
+    raceOutcome: { nodeId: string; selection: CandidatePick } | null;
+    /** The buyer's manual pick for an unbound node. */
+    sellerSelection: CandidatePick | null;
+    /** Venue conversion into the process denomination for manual picks. */
+    toCurrency: (amount: bigint) => bigint;
+}): KitBreakdown | null {
+    const assembly = args.pickedAssembly;
+    if (!assembly || assembly.assemblyTemplate.agreements.length <= 1) return null;
+    const nameOf = (addr: `0x${string}`) => displayNameForAddress(args.sellerCatalogues, addr);
+    let plan: ReturnType<typeof planSubOrderSellers>;
+    try {
+        plan = planSubOrderSellers(assembly);
+    } catch {
+        return null;
+    }
+    const rows = [
+        { name: nameOf(args.leadAddress), payment: args.cartTotal },
+        ...plan.map(({ node, seller }) => {
+            if (seller) {
+                // The buyer's checkout fills join the node BEFORE pricing —
+                // a rate source (order-geodistance) derives from clause
+                // content, and templates arrive value-free by construction.
+                // Same merge the commit walk performs, so shown = committed.
+                const pricing = resolveSubOrderPricing({
+                    node: { ...node, clauses: { ...node.clauses, ...args.clauseFills[node.id] } },
+                    seller, sellerCatalogues: args.pricedCatalogues, tokenDecimals: args.tokenDecimals,
+                    specs: specSource(),
+                    checkoutQuantity: args.subOrderQuantities[node.id],
+                });
+                return { name: nameOf(seller), payment: pricing.payment, nodeId: node.id, pricing };
+            }
+            // Unbound node: the buyer's checkout-time choice fills it — the
+            // shown figure is the SAME selection the commit will use. A
+            // race winner overlays the manual pick for its node (matching
+            // the commit mapping's overlay order); its price is already in
+            // the process denomination.
+            if (args.raceOutcome && args.raceOutcome.nodeId === node.id) {
+                return { name: nameOf(args.raceOutcome.selection.seller), payment: parseToken(args.raceOutcome.selection.price, args.tokenDecimals) };
+            }
+            return args.sellerSelection
+                ? { name: nameOf(args.sellerSelection.seller), payment: args.toCurrency(parseToken(args.sellerSelection.price, args.tokenDecimals)) }
+                : { name: "(choose below)", payment: 0n };
+        }),
+    ];
+    return { rows, total: rows.reduce((s, r) => s + r.payment, 0n) };
+}
+
+export interface AgreementGroup {
+    key: string;
+    label: string;
+    clauses: Array<{ clauseId: string; values: string; data: Record<string, unknown>; fillable: boolean }>;
+}
+
+/**
+ * The per-order agreement review rows: every order in the assembly — root +
+ * sub-orders — surfaced for review, each clause rendering its COMPOSED
+ * values, spec-driven. Mandatory clauses are protocol-composed and stay out
+ * of the review; the profile fold and the mechanical-fill subtraction are
+ * the SAME ones the order build applies, so the buyer reviews what will
+ * actually commit.
+ */
+export function deriveAgreementGroups(args: {
+    pickedAssembly: (PlanAssembly & {
+        assemblyTemplate: { agreements: Array<{ id?: string | number; clauses: Record<string, Record<string, unknown>> }> };
+    }) | undefined;
+    leadAddress: `0x${string}`;
+    sellerCatalogues: ListingCatalogues & Parameters<typeof profileValuesFor>[1];
+}): AgreementGroup[] {
+    const { pickedAssembly, leadAddress, sellerCatalogues } = args;
+    if (!pickedAssembly) return [];
+    const orders = pickedAssembly.assemblyTemplate.agreements;
+    const nameOf = (addr: `0x${string}`) => displayNameForAddress(sellerCatalogues, addr);
+    let plan: ReturnType<typeof planSubOrderSellers> = [];
+    if (orders.length > 1) {
+        try { plan = planSubOrderSellers(pickedAssembly); } catch { plan = []; }
+    }
+    const sellerOf = new Map(plan.map(({ node, seller }) => [node.id, seller]));
+    return orders.map((order, i) => {
+        const isRoot = templateParentOrderHashes(order).length === 0;
+        const assigned = isRoot ? leadAddress : sellerOf.get(String(order.id));
+        // Fold the assigned seller's PROFILE master data (dimweight's
+        // divisor, a declared credential id) onto the preview leaves —
+        // the same fold the order build applies, so the buyer reviews
+        // what will actually commit (and can Verify a declared
+        // credential before placing the order).
+        const previewClauses = fillProfileSections(
+            Object.fromEntries(Object.entries(order.clauses).filter(([clauseId]) => !clauseIsMandatory(clauseId))),
+            assigned ? profileValuesFor(assigned, sellerCatalogues) : undefined,
+            specSource(),
+        );
+        // Fields the checkout walk fills MECHANICALLY (the provenance
+        // anchor, the topology rewrite, …) — a buyer input the walk
+        // would overwrite is a false affordance, so a clause whose
+        // declared fields are ALL mechanical is not fillable. Derived
+        // from the planner's own fill set, never a clause id.
+        const mechanicalFields = mechanicallyFilledFieldNames(previewClauses, specSource());
+        return {
+            key: String(order.id ?? i),
+            label: assigned ? nameOf(assigned) : "(to be assigned)",
+            clauses: Object.entries(previewClauses)
+                .map(([clauseId, fields]) => {
+                    const specFields = getClauseSpec(clauseId)?.fields ?? [];
+                    return {
+                        clauseId,
+                        values: clauseValueSummary(fields),
+                        data: fields as Record<string, unknown>,
+                        // A GENERAL clause's fields are transaction particulars
+                        // the buyer authors here. Not fillable: specific-T&C
+                        // values (the designer's tailoring, from the template),
+                        // process-log anchors (attested at runtime, empty at
+                        // commit), catalogue-sourced sections (the seller's
+                        // items fill them), profile-sourced sections (the
+                        // seller's standing declarations fill them), and
+                        // sections whose every field the walk fills
+                        // mechanically. A COMPOSING clause's content fields
+                        // ARE fillable — the composition surface collects
+                        // only its block.fields runtime params, never its
+                        // content.
+                        fillable: !clauseIsSpecificTerms(clauseId)
+                            && !clauseIsProcessLog(clauseId)
+                            && !clauseIsCatalogueSourced(clauseId)
+                            && !clauseIsProfileSourced(clauseId)
+                            && specFields.length > 0
+                            && !specFields.every((f) => mechanicalFields.has(f.name)),
+                    };
+                }),
+        };
+    });
+}

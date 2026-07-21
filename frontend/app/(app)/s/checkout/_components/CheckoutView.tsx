@@ -25,8 +25,9 @@ import { Button } from "@/components/ui/Button";
 import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
-import { fillProfileSections, mechanicallyFilledFieldNames, planSubOrderSellers, profileValuesFor, readDenominationPin, resolveSubOrderPricing, type SubOrderPricing } from "@figaro/sdk";
+import { planSubOrderSellers, readDenominationPin, resolveSubOrderPricing } from "@figaro/sdk";
 import { executeAssemblyCheckout, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
+import { deriveAgreementGroups, deriveKitBreakdown } from "@/lib/checkout/checkoutDerivations";
 import { postToAgentEndpoint, useDispatchRace } from "@/lib/checkout/dispatchRace";
 import { DispatchRacePanel, type RaceStartPolicy } from "@/components/runtime/DispatchRacePanel";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
@@ -62,23 +63,6 @@ interface OrderComposition {
     clauseId: string;
     interface: string;
     fields: readonly FieldSpec[];
-}
-
-/** Compact, spec-agnostic value summary of a clause's composed fields — the
- *  leaf scalar/enum values the buyer actually chose ("delivery",
- *  "zone-wifi"), joined for inline display. Empty objects (runtime anchors
- *  like a proof clause) and booleans summarize to "" — title-only rows. */
-function clauseValueSummary(fields: unknown): string {
-    const leaves: string[] = [];
-    const walk = (value: unknown): void => {
-        if (value === null || value === undefined || value === "") return;
-        if (Array.isArray(value)) { value.forEach(walk); return; }
-        if (typeof value === "object") { Object.values(value as Record<string, unknown>).forEach(walk); return; }
-        if (typeof value === "boolean") return;
-        leaves.push(String(value));
-    };
-    walk(fields);
-    return leaves.join(" · ");
 }
 
 export function CheckoutView({ sellerAddress }: Props) {
@@ -367,56 +351,24 @@ export function CheckoutView({ sellerAddress }: Props) {
         0n,
     );
 
-    // Multi-order price transparency: the buyer pays the lead's cut plus every
-    // contributor's cut, each priced LIVE from that contributor's own catalogue.
-    // Built from the SAME planSubOrderSellers + resolveSubOrderPricing the commit
-    // walks (same checkout-entered quantities included), so the shown figures —
-    // rate derivations and all — equal what commits.
-    const kitBreakdown = ((): {
-        rows: Array<{ name: string; payment: bigint; nodeId?: string; pricing?: SubOrderPricing }>;
-        total: bigint;
-    } | null => {
-        const assembly = pickedAssembly;
-        if (!assembly || assembly.assemblyTemplate.agreements.length <= 1) return null;
-        const lead = sellerCatalogue.address as `0x${string}`;
-        const nameOf = (addr: `0x${string}`) => displayNameForAddress(sellerCatalogues, addr);
-        let plan: ReturnType<typeof planSubOrderSellers>;
-        try {
-            plan = planSubOrderSellers(assembly);
-        } catch {
-            return null;
-        }
-        const rows = [
-            { name: nameOf(lead), payment: cartTotal },
-            ...plan.map(({ node, seller }) => {
-                if (seller) {
-                    // The buyer's checkout fills join the node BEFORE pricing —
-                    // a rate source (order-geodistance) derives from clause
-                    // content, and templates arrive value-free by construction.
-                    // Same merge the commit walk performs, so shown = committed.
-                    const pricing = resolveSubOrderPricing({
-                        node: { ...node, clauses: { ...node.clauses, ...clauseFills[node.id] } },
-                        seller, sellerCatalogues: pricedCatalogues, tokenDecimals,
-                        specs: specSource(),
-                        checkoutQuantity: subOrderQuantities[node.id],
-                    });
-                    return { name: nameOf(seller), payment: pricing.payment, nodeId: node.id, pricing };
-                }
-                // Unbound node: the buyer's checkout-time choice fills it — the
-                // shown figure is the SAME selection the commit will use. A
-                // race winner overlays the manual pick for its node (matching
-                // the commit mapping's overlay order); its price is already in
-                // the process denomination.
-                if (raceOutcome && raceOutcome.nodeId === node.id) {
-                    return { name: nameOf(raceOutcome.selection.seller), payment: parseToken(raceOutcome.selection.price, tokenDecimals) };
-                }
-                return sellerSelection
-                    ? { name: nameOf(sellerSelection.seller), payment: toCurrency(parseToken(sellerSelection.price, tokenDecimals)) }
-                    : { name: "(choose below)", payment: 0n };
-            }),
-        ];
-        return { rows, total: rows.reduce((s, r) => s + r.payment, 0n) };
-    })();
+    // Multi-order price transparency — derived in lib/checkout/checkoutDerivations
+    // from the SAME plans + fills the commit walks, memoized here.
+    // Plain call (not useMemo): this section sits below the page's early
+    // returns, where hooks can't run — and the pre-extraction code
+    // recomputed per render too. The win is the PURITY, in lib.
+    const kitBreakdown = deriveKitBreakdown({
+        pickedAssembly,
+        leadAddress: sellerCatalogue.address as `0x${string}`,
+        sellerCatalogues,
+        pricedCatalogues,
+        cartTotal,
+        clauseFills,
+        subOrderQuantities,
+        tokenDecimals,
+        raceOutcome,
+        sellerSelection,
+        toCurrency,
+    });
 
     // The buyer commits EVERY order in the plan (buyer == rootBuyer on each
     // — the kernel star shape): 2× payment locked per order, payment to that
@@ -431,68 +383,11 @@ export function CheckoutView({ sellerAddress }: Props) {
     // values (the terms the buyer is agreeing to), spec-driven. Mandatory
     // clauses (e.g. the topology clause) are protocol-composed, not
     // buyer-chosen terms; they stay out of the review.
-    const agreementGroups = ((): Array<{ key: string; label: string; clauses: Array<{ clauseId: string; values: string; data: Record<string, unknown>; fillable: boolean }> }> => {
-        if (!pickedAssembly) return [];
-        const orders = pickedAssembly.assemblyTemplate.agreements;
-        const lead = sellerCatalogue.address as `0x${string}`;
-        const nameOf = (addr: `0x${string}`) => displayNameForAddress(sellerCatalogues, addr);
-        let plan: ReturnType<typeof planSubOrderSellers> = [];
-        if (orders.length > 1) {
-            try { plan = planSubOrderSellers(pickedAssembly); } catch { plan = []; }
-        }
-        const sellerOf = new Map(plan.map(({ node, seller }) => [node.id, seller]));
-        return orders.map((order, i) => {
-            const isRoot = templateParentOrderHashes(order).length === 0;
-            const assigned = isRoot ? lead : sellerOf.get(order.id);
-            // Fold the assigned seller's PROFILE master data (dimweight's
-            // divisor, a declared credential id) onto the preview leaves —
-            // the same fold the order build applies, so the buyer reviews
-            // what will actually commit (and can Verify a declared
-            // credential before placing the order).
-            const previewClauses = fillProfileSections(
-                Object.fromEntries(Object.entries(order.clauses).filter(([clauseId]) => !clauseIsMandatory(clauseId))),
-                assigned ? profileValuesFor(assigned, sellerCatalogues) : undefined,
-                specSource(),
-            );
-            // Fields the checkout walk fills MECHANICALLY (the provenance
-            // anchor, the topology rewrite, …) — a buyer input the walk
-            // would overwrite is a false affordance, so a clause whose
-            // declared fields are ALL mechanical is not fillable. Derived
-            // from the planner's own fill set, never a clause id.
-            const mechanicalFields = mechanicallyFilledFieldNames(previewClauses, specSource());
-            return {
-                key: String(order.id ?? i),
-                label: assigned ? nameOf(assigned) : "(to be assigned)",
-                clauses: Object.entries(previewClauses)
-                    .map(([clauseId, fields]) => {
-                        const specFields = getClauseSpec(clauseId)?.fields ?? [];
-                        return {
-                            clauseId,
-                            values: clauseValueSummary(fields),
-                            data: fields as Record<string, unknown>,
-                            // A GENERAL clause's fields are transaction particulars
-                            // the buyer authors here. Not fillable: specific-T&C
-                            // values (the designer's tailoring, from the template),
-                            // process-log anchors (attested at runtime, empty at
-                            // commit), catalogue-sourced sections (the seller's
-                            // items fill them), profile-sourced sections (the
-                            // seller's standing declarations fill them), and
-                            // sections whose every field the walk fills
-                            // mechanically. A COMPOSING clause's content fields
-                            // ARE fillable — the composition surface collects
-                            // only its block.fields runtime params, never its
-                            // content.
-                            fillable: !clauseIsSpecificTerms(clauseId)
-                                && !clauseIsProcessLog(clauseId)
-                                && !clauseIsCatalogueSourced(clauseId)
-                                && !clauseIsProfileSourced(clauseId)
-                                && specFields.length > 0
-                                && !specFields.every((f) => mechanicalFields.has(f.name)),
-                        };
-                    }),
-            };
-        });
-    })();
+    const agreementGroups = deriveAgreementGroups({
+        pickedAssembly,
+        leadAddress: sellerCatalogue.address as `0x${string}`,
+        sellerCatalogues,
+    });
 
     const cartUnitSystem = sellerCatalogue.unitSystem ?? "metric";
     const cartMassGrams = cartItems.reduce((sum, cartItem) => {

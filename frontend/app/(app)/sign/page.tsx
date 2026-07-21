@@ -14,15 +14,16 @@ import { useSearchParams } from "next/navigation";
 import { useAccount, useReadContract, useWalletClient } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { deriveSignState } from "@/lib/checkout/signState";
 import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
 import {
     deserializeCommitmentPayload,
     type CommitmentPayload,
 } from "@figaro/sdk/agent";
-import { ZERO_ADDRESS, ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
+import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { calculateBonds, validateCommitmentAgreement } from "@figaro/sdk";
+import { validateCommitmentAgreement } from "@figaro/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { TokenApprovalFlow } from "@/components/runtime/TokenApprovalFlow";
 import { SwapFundingPanel } from "@/app/(app)/s/checkout/_components/SwapFundingPanel";
@@ -240,24 +241,15 @@ function SignPageContent() {
     };
 
     const commitment = parsed?.commitment;
-    const isRoot = commitment?.processId === ZERO_PROCESS_ID;
+    // The pure half of this surface — signature-absence semantics (draft /
+    // RFQ), seat discrimination, and the seat's 2× bond — lives in
+    // lib/checkout/signState; this page keeps only the React-bound rest.
+    const {
+        isRoot, hasBuyerSig, hasSellerSig, isDraft, quoteTerms, isQuoteRequest,
+        isBuyer, isSeller, needsMySignature, myBondLabel, myBondAmount,
+    } = useMemo(() => deriveSignState(parsed, address), [parsed, address]);
     // Sub-orders only — the hook itself returns null for roots/zero ids.
     const processCapacity = useProcessResolveCapacity(commitment?.processId);
-    const hasBuyerSig = !!parsed?.buyerSig;
-    const hasSellerSig = !!parsed?.sellerSig;
-    // No signatures at all = a race draft: counter-sign RETURNS to the buyer
-    // instead of broadcasting (derived from signature absence, never stored).
-    // A draft carrying quote-request terms is the RFQ leg — this wallet names
-    // its price under the buyer's ceiling instead of countersigning as-is.
-    const isDraft = !!parsed && !hasBuyerSig && !hasSellerSig;
-    const quoteTerms = isDraft ? parsed?.quoteRequest : undefined;
-    const isQuoteRequest = !!quoteTerms && quoteTerms.pricedFields.length > 0;
-
-    // Determine which role the current wallet would fill
-    const isBuyer = hexEqual(address, commitment?.buyer);
-    const isSeller = hexEqual(address, commitment?.seller);
-    const needsMySignature = (isBuyer && !hasBuyerSig) || (isSeller && !hasSellerSig);
-    const myBondLabel = isBuyer ? "Your Buyer Bond (2x)" : isSeller ? "Your Seller Bond (2x)" : "Your Bond (2x)";
 
     // Token and bond amount for approval flow
     const approvalCurrency = commitment?.currency as `0x${string}` | undefined;
@@ -307,12 +299,6 @@ function SignPageContent() {
         owner: isSeller ? address : undefined,
         spender: (swapContracts?.permit2 ?? ZERO_ADDRESS) as `0x${string}`,
     });
-    const myBondAmount = (() => {
-        if (!commitment) return 0n;
-        if (isSeller) return calculateBonds(commitment.expectedCumulativeValue, commitment.payment).sellerBond;
-        if (isBuyer) return calculateBonds(commitment.expectedCumulativeValue, commitment.payment).buyerBond;
-        return 0n;
-    })();
     // A seller short of the denomination has no other way through accept —
     // insufficiency auto-opens the collapsed on-ramp.
     const sellerShortOfDenomination = isSeller
