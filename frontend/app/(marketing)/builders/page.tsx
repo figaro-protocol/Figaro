@@ -73,7 +73,7 @@ export default function BuildersPage() {
                 </div>
             </dl>
             <p className="text-base text-ink-body leading-relaxed mb-12">
-                Be clear-eyed about the stage. Figaro is a working protocol, still in development &mdash; <Link href="/security#verification" className="text-ink-heading font-medium hover:underline">not yet independently audited</Link>. The reward tranches unlock at years two, five, and nine &mdash; built to reward durable contribution, not a quick flip. What you can do today is read the code, write a clause against the live off-chain validator, and watch the whole thing settle a deal end to end on a local network.
+                Be clear-eyed about the stage. Figaro is a working protocol, still in development &mdash; <Link href="/security#verification" className="text-ink-heading font-medium hover:underline">not yet independently audited</Link>. The reward tranches unlock on a schedule fixed at deployment &mdash; the reference plan is years two, five, and nine &mdash; built to reward durable contribution, not a quick flip. What you can do today is read the code, write a clause against the live off-chain validator, and watch the whole thing settle a deal end to end on a local network.
             </p>
             <h2 className="text-base font-semibold text-ink-heading mb-4">
                 Where to start
