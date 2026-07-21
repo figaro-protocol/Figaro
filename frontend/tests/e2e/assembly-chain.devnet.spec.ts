@@ -21,10 +21,13 @@
  *              and places ONE order — the buyer signs all THREE orders through
  *              the same confirm gate, sub-orders auto-relayed to their bound
  *              sellers, the root relayed from the share panel
- *   accept   → each of the three sellers accepts its OWN order on /orders, in
- *              walk order (root creates the process, subs extend it — the
- *              kernel's exact-match cumulative accumulator enforces the
- *              sequence); after EVERY commit the exact bond deltas are
+ *   accept   → each of the three sellers accepts its OWN order, in walk order
+ *              (root creates the process, subs extend it — the kernel's
+ *              exact-match cumulative accumulator enforces the sequence); the
+ *              lead + supplier accept plain on /orders, the COURIER accepts
+ *              with a SWAP-FUNDED bond on /sign — the sub-order funding
+ *              regression (the funded quote must be 2×cumulativeValue, not
+ *              2×payment); after EVERY commit the exact bond deltas are
  *              asserted for every party (buyer 2× payment per order, each
  *              seller 2× its cumulative value, escrow up by both)
  *   attest   → every seller advances its own process ladder through the ONE
@@ -53,7 +56,7 @@
  * Requires Anvil + ./scripts/deploy-local.sh + populate-test-data + Kubo + :3100.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { createPublicClient, defineChain, http, parseAbi, parseEther, type Hex } from 'viem';
+import { createPublicClient, createWalletClient, defineChain, http, parseAbi, parseEther, type Hex } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
 import {
     confirmAgreementPreviews,
@@ -76,7 +79,10 @@ const LOCAL_ANVIL = defineChain({
 });
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 
-const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
+const ERC20_ABI = parseAbi([
+    'function balanceOf(address) view returns (uint256)',
+    'function mint(address, uint256)',
+]);
 
 const BUYER = ANVIL_ACCOUNTS[0] as Hex; // anvil[0] — the fixture's default buyer
 
@@ -119,9 +125,16 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         const config = readLocalDeploymentConfig();
         const core = config.figaroCore as Hex;
         const token = config.tokenAddress as Hex;
+        // The courier's funding source (MPMT) + the swap coordinator — the
+        // courier leg below accepts WITH a swap-funded bond, the sub-order
+        // regression for the calculateBonds arg order (ecv ≠ payment).
+        const permitToken = config.permitTokenAddress as Hex;
+        const coordinator = config.witnessSwapAndCommitCoordinator as Hex;
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const balanceOf = (who: Hex) =>
             publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
+        const balanceOfPermit = (who: Hex) =>
+            publicClient.readContract({ address: permitToken, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
 
         // ── DISCOVER from chain + IPFS (never a roster): resolve every anchored
         //    assembly's template and pick the two by SHAPE — the multi-order
@@ -236,8 +249,27 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         const committedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: BUYER }, fromBlock: 0n,
         })).length;
-        const [buyer0, lead0, courier0, supplier0, core0] = await Promise.all([
+        // Scenario pre-population (NOT the action under test): the courier's
+        // funding source — a floor of MPMT to swap-fund its bond from. The
+        // mock token's mint is permissionless; idempotent across runs.
+        {
+            const held = await balanceOfPermit(COURIER);
+            const floor = parseEther('100');
+            if (held < floor) {
+                const courierWallet = createWalletClient({
+                    account: mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 8 }),
+                    chain: LOCAL_ANVIL, transport: http(RPC_URL),
+                });
+                const hash = await courierWallet.writeContract({
+                    address: permitToken, abi: ERC20_ABI, functionName: 'mint', args: [COURIER, floor - held],
+                });
+                await publicClient.waitForTransactionReceipt({ hash });
+            }
+        }
+
+        const [buyer0, lead0, courier0, supplier0, core0, courierPermit0] = await Promise.all([
             balanceOf(BUYER), balanceOf(LEAD.address), balanceOf(COURIER), balanceOf(SUPPLIER), balanceOf(core),
+            balanceOfPermit(COURIER),
         ]);
 
         // ── CHECKOUT: the buyer orders from the lead, PICKS the chain assembly
@@ -330,17 +362,79 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         }
 
         // First sub — the courier. Extends the process to cumulative 2; the
-        // courier bonds against the CUMULATIVE upstream value, not just its own cut.
-        const courierEvent = await acceptAs(COURIER, 'courier');
+        // courier bonds against the CUMULATIVE upstream value, not just its own
+        // cut — and accepts WITH A SWAP-FUNDED BOND on /sign. This is the
+        // sub-order funding regression (the swapped-calculateBonds-args bug):
+        // the funded quote must be 2×cumulativeValue, not 2×payment, or the
+        // coordinator's swap under-produces and swapAndCommit reverts. The
+        // plain sub-order accept path stays covered by the supplier below and
+        // by kit-diamond.
+        const courierEvent = await (async () => {
+            const before = (await queryCommitted()).length;
+            await gotoAsWallet(page, COURIER, '/sign?e2e=devnet');
+            await waitForConnected(page);
+            await page.getByTestId('agreement-review').waitFor({ state: 'visible', timeout: 60000 });
+            // Bond authorization auto-completes when a prior run's allowance
+            // survives — the click is conditional (devnet persists).
+            const counterSign = page.getByTestId('btn-counter-sign');
+            const approveBond = page.getByRole('button', { name: /Authorize Payment/ });
+            await expect(counterSign.or(approveBond), 'either the authorize step or the counter-sign renders')
+                .toBeVisible({ timeout: 60000 });
+            if (await approveBond.isVisible()) {
+                await approveBond.click();
+            }
+            // The on-ramp: fund the cumulative-scaled bond from MPMT. The
+            // panel AUTO-SURFACES when the seller's denomination balance is
+            // short of the bond — toggle it open only when it hasn't (the
+            // treasury-choice case); driving state, not a fixed script.
+            const fundingPanel = page.getByTestId('swap-funding-panel');
+            if (!(await fundingPanel.isVisible().catch(() => false))) {
+                await page.getByTestId('seller-funding-toggle').click();
+            }
+            await fundingPanel.waitFor({ state: 'visible', timeout: 30000 });
+            await page.getByTestId(`funding-token-option-${permitToken.toLowerCase()}`).click();
+            // Permit2 authorization is conditional on the persisted chain
+            // (prior runs' approvals survive) AND its button can re-render as
+            // the quote settles — the click may race a detach, so the asserted
+            // POSTCONDITION is the button going hidden, not the click landing.
+            const authorize = page.getByTestId('funding-authorize');
+            if (await authorize.isVisible().catch(() => false)) {
+                await authorize.click().catch(() => {});
+                await authorize.waitFor({ state: 'hidden', timeout: 30000 });
+            }
+            await counterSign.waitFor({ state: 'visible', timeout: 60000 });
+            await counterSign.click();
+            await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
+            await page.getByTestId('preview-confirm').click();
+            await expect.poll(async () => (await queryCommitted()).length, {
+                timeout: 60000, message: "the courier's funded accept lands OrderCommitted on-chain",
+            }).toBe(before + 1);
+            const events = await queryCommitted();
+            const event = events[events.length - 1];
+            const receipt = await publicClient.getTransactionReceipt({ hash: event.transactionHash });
+            expect(receipt.status, "the courier's funded commit transaction succeeded").toBe('success');
+            expect(event.args.seller?.toLowerCase(), "the courier's order committed against the courier")
+                .toBe(COURIER.toLowerCase());
+            expect(receipt.to?.toLowerCase(), 'the funded accept routed through WitnessSwapAndCommitCoordinator')
+                .toBe(coordinator.toLowerCase());
+            return event;
+        })();
         expect(courierEvent.args.processId, 'the courier order extends the SAME process').toBe(processId);
         expect(courierEvent.args.payment, "courier payment = the courier's own catalogue price").toBe(parseEther('1'));
+        // THE regression condition: a sub-order's cumulative value exceeds its
+        // own payment — the two calculateBonds args are NOT interchangeable here.
+        expect(courierEvent.args.cumulativeValue! > courierEvent.args.payment!,
+            'the courier order is a true sub-order: cumulative value > own payment').toBe(true);
         const rootBonds = calculateBonds(rootEvent.args.cumulativeValue!, rootEvent.args.payment!);
         {
             const { buyerBond, sellerBond } = calculateBonds(courierEvent.args.cumulativeValue!, courierEvent.args.payment!);
-            const [b, c2, c] = await Promise.all([balanceOf(BUYER), balanceOf(COURIER), balanceOf(core)]);
+            const [b, c2, c, c2Permit] = await Promise.all([
+                balanceOf(BUYER), balanceOf(COURIER), balanceOf(core), balanceOfPermit(COURIER),
+            ]);
             expect(buyer0 - b, 'after courier: buyer down by both buyer bonds').toBe(rootBonds.buyerBond + buyerBond);
-            expect(courier0 - c2, 'after courier: courier down by its cumulative-scaled bond').toBe(sellerBond);
-            expect(c - core0, 'after courier: escrow up by all four bonds')
+            expect(courier0 - c2, 'after courier: the denomination balance is untouched — the bond came from the swap').toBe(0n);
+            expect(courierPermit0 - c2Permit, 'after courier: MPMT down by the CUMULATIVE-scaled bond (1:1 venue)').toBe(sellerBond);
+            expect(c - core0, 'after courier: escrow up by all four bonds, in the denomination')
                 .toBe(rootBonds.buyerBond + rootBonds.sellerBond + buyerBond + sellerBond);
         }
 
@@ -408,12 +502,21 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         // ── SETTLEMENT (the whole point): the atomic resolve pays EVERY party —
         //    each seller net +its payment, the buyer net −the chain total, the
         //    escrow back to its baseline. A complete P&L, settled by one signature. ──
-        const [buyerF, leadF, courierF, supplierF, coreF] = await Promise.all([
+        const [buyerF, leadF, courierF, supplierF, coreF, courierPermitF] = await Promise.all([
             balanceOf(BUYER), balanceOf(LEAD.address), balanceOf(COURIER), balanceOf(SUPPLIER), balanceOf(core),
+            balanceOfPermit(COURIER),
         ]);
         expect(buyer0 - buyerF, 'buyer net paid exactly the chain total').toBe(parseEther('3'));
         expect(leadF - lead0, 'lead net earned exactly its payment').toBe(parseEther('1'));
-        expect(courierF - courier0, 'courier net earned exactly its payment').toBe(parseEther('1'));
+        // The courier funded its bond FROM MPMT, and the settlement returns
+        // bond + payment IN the denomination: the two token legs must close to
+        // a net of exactly the courier's payment (the 1:1 venue makes the
+        // wealth identity exact).
+        const courierBondsF = calculateBonds(courierEvent.args.cumulativeValue!, courierEvent.args.payment!);
+        expect(courierF - courier0, 'courier denomination up by payment + its returned bond').toBe(parseEther('1') + courierBondsF.sellerBond);
+        expect(courierPermit0 - courierPermitF, 'courier MPMT down by exactly the bond it swap-funded').toBe(courierBondsF.sellerBond);
+        expect((courierF - courier0) - (courierPermit0 - courierPermitF),
+            'courier net wealth across both tokens = exactly its payment').toBe(parseEther('1'));
         expect(supplierF - supplier0, 'supplier net earned exactly its payment').toBe(parseEther('1'));
         expect(coreF, 'FigaroCore escrow returned to its baseline').toBe(core0);
 

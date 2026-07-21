@@ -172,9 +172,13 @@ export function useOrderCommitmentFlow() {
                     chainId,
                     inputToken: funding.inputToken,
                     currency: preview.commitment.currency as Hex,
+                    // calculateBonds(cumulativeValue, payment) — the buyer
+                    // bond is 2×payment; on a SUB-ORDER ecv ≠ payment, so the
+                    // arg order is load-bearing (a swap here mis-quotes the
+                    // kernel's pull and swapAndCommit reverts at simulate).
                     bondAmount: calculateBonds(
-                        preview.commitment.payment,
                         preview.commitment.expectedCumulativeValue,
+                        preview.commitment.payment,
                     ).buyerBond,
                     deadline: preview.commitment.deadline,
                     signTypedData: (typedData) => signTypedDataAsync(typedData) as Promise<Hex>,
@@ -284,9 +288,13 @@ export function useOrderCommitmentFlow() {
                     chainId,
                     inputToken: funding.inputToken,
                     currency: payload.commitment.currency as Hex,
+                    // calculateBonds(cumulativeValue, payment) — the seller
+                    // bond is 2×expectedCumulativeValue (the comment above:
+                    // the kernel's seller pull); on a SUB-ORDER ecv ≠ payment,
+                    // so the arg order is load-bearing.
                     bondAmount: calculateBonds(
-                        payload.commitment.payment,
                         payload.commitment.expectedCumulativeValue,
+                        payload.commitment.payment,
                     ).sellerBond,
                     deadline: payload.commitment.deadline,
                     signTypedData: (typedData) => signTypedDataAsync(typedData) as Promise<Hex>,
