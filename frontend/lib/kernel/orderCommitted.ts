@@ -9,6 +9,7 @@
  * `commit` is injected (useFigaroActions) so this stays a pure, testable step.
  */
 import { assertOrderFitsResolveCap } from "@figaro/sdk";
+import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import type { Commitment, Hex } from "@figaro/sdk";
 import type { CommitmentPayload } from "@figaro/sdk/agent";
 import { CONTRACTS } from "@/lib/kernel/contracts";
@@ -68,10 +69,7 @@ export async function commitSignedOrder(params: {
     const hash = await commit(payload.commitment, payload.buyerSig, payload.sellerSig);
 
     if (waitForReceipt && publicClient && hash) {
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-        if (receipt.status !== "success") {
-            throw new Error(`Commit transaction reverted on-chain (tx ${hash}).`);
-        }
+        await verifyTxSuccess(publicClient, hash, "The order was not committed.");
     }
 
     return hash;

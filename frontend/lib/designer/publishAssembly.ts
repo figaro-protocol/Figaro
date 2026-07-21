@@ -26,6 +26,7 @@
  */
 
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
+import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { buildAssemblyTemplate, serializeAssemblyTemplate } from "@figaro/sdk";
@@ -129,12 +130,7 @@ export function usePublishAssembly() {
         // on-chain. `writeContractAsync` only confirms wallet submission;
         // without this wait the UI could declare success on a transaction
         // that the chain ultimately rejected.
-        const receipt = await client.waitForTransactionReceipt({ hash: txHash });
-        if (receipt.status !== "success") {
-            throw new Error(
-                `Publish transaction reverted on-chain (tx ${txHash}). The composition binding was not created.`,
-            );
-        }
+        await verifyTxSuccess(client, txHash, "The composition binding was not created.");
 
         return { hash: txHash, ipfsURI: ipfs.uri, slug };
     }

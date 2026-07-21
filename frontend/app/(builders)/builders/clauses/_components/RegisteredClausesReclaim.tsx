@@ -17,6 +17,7 @@
  */
 
 import { useState } from "react";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import Link from "next/link";
 import { useAccount } from "wagmi";
 import { useMounted } from "@/hooks/useMounted";
@@ -111,7 +112,7 @@ function ReclaimClauseRow({
             setLocallyWithdrawn(true);
             onReclaimed();
         } catch (err) {
-            setError(err instanceof Error ? err.message : String(err));
+            setError(extractErrorMessage(err, "Reclaiming the deposit failed."));
         } finally {
             setWithdrawing(false);
         }

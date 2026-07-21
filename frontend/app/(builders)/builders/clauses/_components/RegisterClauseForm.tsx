@@ -16,6 +16,7 @@
  */
 
 import { useMemo, useState } from "react";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import Link from "next/link";
 import { parseClauseSpec, type SpecParseError } from "@figaro/sdk/clauses";
 import { WalletGate } from "@/components/runtime/WalletGate";
@@ -41,7 +42,7 @@ export function validate(specText: string): Validation {
     try {
         raw = JSON.parse(text);
     } catch (err) {
-        return { state: "syntax", message: err instanceof Error ? err.message : String(err) };
+        return { state: "syntax", message: extractErrorMessage(err, "The spec is not valid JSON.") };
     }
     const parsed = parseClauseSpec(raw);
     if (!parsed.ok) return { state: "invalid", errors: parsed.errors };
@@ -67,7 +68,7 @@ export function RegisterClauseForm() {
             const outcome = await register(validation.raw);
             setReceipt(outcome);
         } catch (err) {
-            setSubmitError(err instanceof Error ? err.message : String(err));
+            setSubmitError(extractErrorMessage(err, "Registering the clause failed."));
         } finally {
             setSubmitting(false);
         }

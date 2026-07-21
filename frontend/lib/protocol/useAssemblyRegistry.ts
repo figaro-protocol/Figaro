@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { toError } from "@/lib/shared/errors";
 import { BaseError, ContractFunctionRevertedError } from "viem";
@@ -161,10 +162,7 @@ export function useWithdrawAssembly() {
             args: [compositionHash],
         });
 
-        const receipt = await client.waitForTransactionReceipt({ hash: txHash });
-        if (receipt.status !== "success") {
-            throw new Error(`Withdrawal transaction reverted on-chain (tx ${txHash}). The stake was not reclaimed.`);
-        }
+        await verifyTxSuccess(client, txHash, "The stake was not reclaimed.");
         return txHash;
     }
 

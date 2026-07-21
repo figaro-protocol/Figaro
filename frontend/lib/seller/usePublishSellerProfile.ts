@@ -26,6 +26,7 @@
  */
 
 import { useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
+import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import { toError } from "@/lib/shared/errors";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import {
@@ -190,12 +191,7 @@ export function usePublishSellerProfile() {
         //     resolves once the tx is broadcast; without an explicit
         //     wait the UI could declare success on a tx that the chain
         //     ultimately reverted.
-        const receipt = await client.waitForTransactionReceipt({ hash: txHash });
-        if (receipt.status !== "success") {
-            throw new Error(
-                `Publish transaction reverted on-chain (tx ${txHash}).`,
-            );
-        }
+        await verifyTxSuccess(client, txHash, "The profile was not published.");
 
         return { hash: txHash, profileURI, catalogueURI };
     }

@@ -18,6 +18,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import { BaseError, ContractFunctionRevertedError, type Log } from "viem";
 import { computeClauseKey, parseClauseRegistryLogs } from "@figaro/sdk";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
@@ -369,10 +370,7 @@ export function useRegisterClause() {
             value: deposit,
         });
 
-        const receipt = await client.waitForTransactionReceipt({ hash: txHash });
-        if (receipt.status !== "success") {
-            throw new Error(`Registration transaction reverted on-chain (tx ${txHash}). The clause was not registered.`);
-        }
+        await verifyTxSuccess(client, txHash, "The clause was not registered.");
         return { hash: txHash, clauseId, version, idHash, contentURI: uri };
     }
 
@@ -421,10 +419,7 @@ export function useWithdrawClause() {
             args: [idHash],
         });
 
-        const receipt = await client.waitForTransactionReceipt({ hash: txHash });
-        if (receipt.status !== "success") {
-            throw new Error(`Withdrawal transaction reverted on-chain (tx ${txHash}). The stake was not reclaimed.`);
-        }
+        await verifyTxSuccess(client, txHash, "The stake was not reclaimed.");
         return txHash;
     }
 

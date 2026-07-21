@@ -12,6 +12,7 @@
  * not registry state.
  */
 import { useCallback, useState, useEffect } from "react";
+import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId, useReadContract } from "wagmi";
 import { getSellerRegistry } from "@/lib/kernel/contracts";
 import { SELLER_REGISTRY_ABI } from "@figaro/sdk";
@@ -156,10 +157,7 @@ export function useRegisterSeller() {
             args: [metadataURI],
             value: value ?? 0n,
         });
-        const r = await client.waitForTransactionReceipt({ hash: txHash });
-        if (r.status !== "success") {
-            throw new Error(`Register transaction reverted on-chain (tx ${txHash}).`);
-        }
+        await verifyTxSuccess(client, txHash, "The seller was not registered.");
         return txHash;
     }
 
@@ -194,10 +192,7 @@ export function useUpdateProfile() {
             functionName: "updateProfile",
             args: [metadataURI],
         });
-        const r = await client.waitForTransactionReceipt({ hash: txHash });
-        if (r.status !== "success") {
-            throw new Error(`Profile update reverted on-chain (tx ${txHash}).`);
-        }
+        await verifyTxSuccess(client, txHash, "The profile was not updated.");
         return txHash;
     }
 
@@ -230,10 +225,7 @@ export function useWithdrawDeposit() {
             abi: SELLER_REGISTRY_ABI,
             functionName: "withdraw",
         });
-        const r = await client.waitForTransactionReceipt({ hash: txHash });
-        if (r.status !== "success") {
-            throw new Error(`Withdraw transaction reverted on-chain (tx ${txHash}).`);
-        }
+        await verifyTxSuccess(client, txHash, "The deposit was not withdrawn.");
         return txHash;
     }
 

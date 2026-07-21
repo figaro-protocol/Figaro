@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
@@ -48,7 +49,7 @@ export function PublishedList() {
                 if (!outcome) return;
                 router.push(`/builders/designer/edit?slug=${encodeURIComponent(outcome.finalSlug)}`);
             } catch (err) {
-                const message = err instanceof Error ? err.message : String(err);
+                const message = extractErrorMessage(err, "Loading the published assemblies failed.");
                 window.alert(`Fork failed: ${message}`);
             } finally {
                 setForking(null);

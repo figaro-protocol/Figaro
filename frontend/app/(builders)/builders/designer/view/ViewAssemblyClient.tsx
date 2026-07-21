@@ -25,6 +25,7 @@
  */
 
 import Link from "next/link";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAccount, usePublicClient } from "wagmi";
@@ -228,7 +229,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     // a 500 from the provider, that's a different failure.
                     setResolved({
                         kind: "error",
-                        message: err instanceof Error ? err.message : String(err),
+                        message: extractErrorMessage(err, "Loading the assembly failed."),
                     });
                     return;
                 }
@@ -257,7 +258,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 slug: outcome.slug,
             });
         } catch (err) {
-            setPublishError(err instanceof Error ? err.message : String(err));
+            setPublishError(extractErrorMessage(err, "Publishing the assembly failed."));
             // Stay on the review page so the user can hit "← Back to editor"
             // and fix the underlying problem (e.g. rename the slug).
         } finally {
@@ -283,7 +284,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
             // Reflect the reclaim locally — the binding stays; only the stake moved.
             setResolved((prev) => (prev.kind === "published" ? { ...prev, stakeWithdrawn: true } : prev));
         } catch (err) {
-            setWithdrawError(err instanceof Error ? err.message : String(err));
+            setWithdrawError(extractErrorMessage(err, "Withdrawing the deposit failed."));
         } finally {
             setWithdrawing(false);
         }
@@ -297,7 +298,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
             if (!outcome) return;
             router.push(`/builders/designer/edit?slug=${encodeURIComponent(outcome.finalSlug)}`);
         } catch (err) {
-            window.alert(`Fork failed: ${err instanceof Error ? err.message : String(err)}`);
+            window.alert(`Fork failed: ${extractErrorMessage(err, "unknown error")}`);
         } finally {
             setForking(false);
         }

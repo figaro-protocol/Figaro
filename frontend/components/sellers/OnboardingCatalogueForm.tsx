@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import Link from "next/link";
 import { listRateQuantitySources } from "@figaro/sdk";
 import { useRouter } from "next/navigation";
@@ -295,7 +296,7 @@ export function OnboardingCatalogueForm({
             });
             setImportedCount(parsed.length);
         } catch (err) {
-            setImportErrors([err instanceof Error ? err.message : String(err)]);
+            setImportErrors([extractErrorMessage(err, "Importing the catalogue failed.")]);
         }
     }
 
