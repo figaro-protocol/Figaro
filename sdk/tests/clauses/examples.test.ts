@@ -121,9 +121,18 @@ describe("example clause specs — parse + validate sample content", () => {
         const parsed = parseClauseSpec(geolocationSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
-            originGeohash: "u4pruydqqv",
-            destinationGeohash: "9q8yyk8yvr",
+            originGeohash: "u4pruy",
+            destinationGeohash: "9q8yyk",
         }, parsed.spec).ok).toBe(true);
+    });
+
+    it("figaro-geolocation rejects door-grade precision — the neighborhood cap is the SPEC's, not a frontend's", () => {
+        const parsed = parseClauseSpec(geolocationSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({
+            originGeohash: "u4pruydqqv",
+            destinationGeohash: "9q8yyk",
+        }, parsed.spec).ok).toBe(false);
     });
 
     it("figaro-geolocation rejects geohash with disallowed characters", () => {

@@ -406,7 +406,7 @@ test.describe('RPGF rewards — optimistic post / challenge / finalize / claim (
                 },
                 {
                     clause: 'figaro-geolocation', version: 1,
-                    data: { originGeohash: 'u4pruyd', destinationGeohash: 'u4pruyf' },
+                    data: { originGeohash: 'u4pruy', destinationGeohash: 'u4pruz' },
                 },
                 { clause: 'figaro-assembly-provenance', version: 1, data: { compositionHash } },
             ],

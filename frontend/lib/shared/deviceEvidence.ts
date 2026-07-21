@@ -19,19 +19,28 @@
  * Richer ranging (UWB, BSSID, continuous BLE RSSI) arrives via the
  * agent/operator seam (a device daemon feeding the SDK), never the page.
  *
- * The captured artifact is a small JSON document; the caller pins it and the
- * resulting URI is the evidence value. Capture DESCRIBES what the device saw
- * — sufficiency of witnessing stays derived at read time against the
+ * TWO artifacts per capture — the public/confidential boundary rule
+ * (`docs/ARCHITECTURE.md` § "The other boundary") applied to evidence:
+ *   - The RAW capture (`DeviceEvidence`) is the device's full-fidelity truth
+ *     — coordinates, tag serials, device names. It NEVER leaves the device:
+ *     retained in localStorage for dispute-time revelation, purgeable.
+ *   - The PUBLIC artifact (`PublicDeviceEvidence`) is what gets pinned and
+ *     becomes the evidence URI: the mechanism grain only (the geohash CELL,
+ *     keccak-hashed identifiers) plus `rawCaptureHash` — keccak256 of the
+ *     raw JSON — so a party can later reveal the raw capture verifiably.
+ * Sufficiency of witnessing stays derived at read time against the
  * committed bands (the clause's own rule), never enforced here.
  */
 
+import { keccak256, toHex } from "viem";
 import { getDeviceLocation } from "@/lib/shared/deviceLocation";
 import { encodeGeohash } from "@figaro/sdk/derive";
 import { PUBLIC_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
 
 export type DeviceEvidenceKind = "geolocation-cross-check" | "nfc-tap" | "ble-sighting";
 
-/** The pinned artifact's shape — kind + capture time + what the device saw. */
+/** The RAW capture — the device's full-fidelity truth. Device-held only;
+ *  never pinned, never committed. */
 export interface DeviceEvidence {
     kind: DeviceEvidenceKind;
     capturedAt: string;
@@ -46,6 +55,91 @@ export interface DeviceEvidence {
     /** BLE sighting. */
     deviceName?: string;
     deviceId?: string;
+}
+
+/** The PUBLIC artifact — pinned, so committed at mechanism grain only:
+ *  the neighborhood cell, hashed identifiers, and the raw capture's hash. */
+export interface PublicDeviceEvidence {
+    kind: DeviceEvidenceKind;
+    capturedAt: string;
+    /** Geolocation cross-check: the CELL (≤6 chars), never coordinates. */
+    geohash?: string;
+    accuracyM?: number;
+    /** NFC tap: keccak256 of the tag serial — counterparty-consistency
+     *  checkable by re-hashing, never linkable. */
+    tagSerialHash?: string;
+    /** Record TYPES only (e.g. "text", "url") — contents stay raw-side. */
+    recordTypes?: string[];
+    /** BLE sighting: keccak256 of the chooser's device id. */
+    deviceIdHash?: string;
+    /** keccak256 of the raw capture JSON, retained device-side — the
+     *  dispute-time revelation binds to this. */
+    rawCaptureHash: string;
+}
+
+/** Derive the pinnable public artifact from a raw capture. */
+export function toPublicEvidence(raw: DeviceEvidence): PublicDeviceEvidence {
+    const rawCaptureHash = keccak256(toHex(JSON.stringify(raw)));
+    return {
+        kind: raw.kind,
+        capturedAt: raw.capturedAt,
+        ...(raw.geohash ? { geohash: raw.geohash } : {}),
+        ...(raw.accuracyM !== undefined ? { accuracyM: raw.accuracyM } : {}),
+        ...(raw.tagSerialNumber ? { tagSerialHash: keccak256(toHex(raw.tagSerialNumber)) } : {}),
+        ...(raw.tagRecords ? { recordTypes: raw.tagRecords.map((r) => r.recordType) } : {}),
+        ...(raw.deviceId ? { deviceIdHash: keccak256(toHex(raw.deviceId)) } : {}),
+        rawCaptureHash,
+    };
+}
+
+// ── Raw-capture retention — the device-held half of the layered pattern ──
+// localStorage (NOT sessionStorage): evidence must outlive the tab and
+// survive until a dispute would need it; only the party purges it.
+
+const RAW_CAPTURE_STORE_KEY = "figaro-evidence-raw-captures";
+
+/** A retained raw capture, keyed by the pinned public artifact's URI. */
+export interface RetainedRawCapture {
+    uri: string;
+    cid: string;
+    rawCaptureHash: string;
+    raw: DeviceEvidence;
+}
+
+function readRetained(): RetainedRawCapture[] {
+    if (typeof window === "undefined") return [];
+    try {
+        const parsed = JSON.parse(window.localStorage.getItem(RAW_CAPTURE_STORE_KEY) ?? "[]");
+        return Array.isArray(parsed) ? (parsed as RetainedRawCapture[]) : [];
+    } catch {
+        return [];
+    }
+}
+
+function writeRetained(entries: RetainedRawCapture[]): void {
+    if (typeof window === "undefined") return;
+    try {
+        window.localStorage.setItem(RAW_CAPTURE_STORE_KEY, JSON.stringify(entries));
+    } catch {
+        // Storage can fail in restricted contexts; the capture still works —
+        // the party just holds no revealable raw.
+    }
+}
+
+/** Retain a raw capture against its pinned public artifact. */
+export function retainRawCapture(entry: RetainedRawCapture): void {
+    writeRetained([...readRetained().filter((e) => e.uri !== entry.uri), entry]);
+}
+
+/** The retained raw capture behind a pinned URI, if this device made it. */
+export function findRetainedRawCapture(uri: string): RetainedRawCapture | null {
+    return readRetained().find((e) => e.uri === uri) ?? null;
+}
+
+/** Forget a retained raw capture (the purge path's local half — the caller
+ *  unpins the public artifact via the IPFS service). */
+export function forgetRetainedRawCapture(uri: string): void {
+    writeRetained(readRetained().filter((e) => e.uri !== uri));
 }
 
 /** The capture kinds THIS device supports right now — detected, never

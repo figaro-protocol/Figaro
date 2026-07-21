@@ -9,20 +9,20 @@
             "type": "string",
             "required": true,
             "minLength": 1,
-            "maxLength": 12,
+            "maxLength": 6,
             "pattern": "^[0123456789bcdefghjkmnpqrstuvwxyz]+$",
             "format": "geohash",
-            "description": "Origin geohash (base32). 1–12 characters; longer = higher precision. A transaction particular: filled at checkout like every general-clause field (a frontend may fill it from the device location); the composed clause is generic."
+            "description": "Origin geohash (base32), 1–6 characters — neighborhood grade, the cap is the spec's (grain caps are protocol, not presentation). A transaction particular: filled at checkout like every general-clause field (a frontend may fill it from the device location); the composed clause is generic. Door-grade location travels the encrypted address channel (the ecdh-address interaction), never a committed field."
         },
         {
             "name": "destinationGeohash",
             "type": "string",
             "required": true,
             "minLength": 1,
-            "maxLength": 12,
+            "maxLength": 6,
             "pattern": "^[0123456789bcdefghjkmnpqrstuvwxyz]+$",
             "format": "geohash",
-            "description": "Destination geohash (base32). 1–12 characters; longer = higher precision. A transaction particular: filled at checkout like every general-clause field (a frontend may fill it from the device location); the composed clause is generic."
+            "description": "Destination geohash (base32), 1–6 characters — neighborhood grade, the cap is the spec's (grain caps are protocol, not presentation). A transaction particular: filled at checkout like every general-clause field (a frontend may fill it from the device location); the composed clause is generic. Door-grade location travels the encrypted address channel (the ecdh-address interaction), never a committed field."
         }
     ],
     "block": {

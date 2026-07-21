@@ -97,6 +97,7 @@ import { CORE_ABI } from '@/lib/kernel/contracts';
 import { computeClauseKey } from '@figaro/sdk';
 import { ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI } from '@figaro/sdk';
 import { calculateBonds, computeSectionLeaf, type AgreementSection } from '@figaro/sdk';
+import { encodeGeohash } from '@figaro/sdk/derive';
 import type { Page } from '@playwright/test';
 
 const RPC_URL = 'http://127.0.0.1:8545';
@@ -583,15 +584,22 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         }).toMatch(/^ipfs:\/\/.+/);
         const evidenceUri = await evidenceField.inputValue();
         // Out-of-band: the pinned artifact is REAL — fetch it straight from
-        // the Kubo API and match the mocked device's coordinates.
+        // the Kubo API. The PUBLIC artifact carries the mechanism grain only:
+        // the mocked device's position appears as its ≤6-char geohash CELL
+        // plus the raw capture's hash — raw coordinates never leave the device
+        // (the boundary rule, ARCHITECTURE.md § "The other boundary").
         {
             const cid = evidenceUri.replace('ipfs://', '');
             const res = await fetch(`http://127.0.0.1:5001/api/v0/cat?arg=${encodeURIComponent(cid)}`, { method: 'POST' });
             expect(res.ok, 'the evidence artifact is fetchable from Kubo').toBe(true);
-            const evidence = await res.json() as { kind: string; lat: number; lon: number; geohash?: string };
+            const evidence = await res.json() as { kind: string; lat?: number; lon?: number; geohash?: string; rawCaptureHash?: string };
             expect(evidence.kind, 'the artifact records the capture kind').toBe('geolocation-cross-check');
-            expect(evidence.lat, "the capture is the DEVICE's position (the mocked geolocation)").toBeCloseTo(DELIVERY_DEVICE.lat, 4);
-            expect(evidence.lon).toBeCloseTo(DELIVERY_DEVICE.lon, 4);
+            expect(evidence.geohash, "the capture is the DEVICE's CELL (the mocked geolocation, neighborhood grade)")
+                .toBe(encodeGeohash(DELIVERY_DEVICE.lat, DELIVERY_DEVICE.lon, 6));
+            expect(evidence.lat, 'raw coordinates never reach the public artifact').toBeUndefined();
+            expect(evidence.lon).toBeUndefined();
+            expect(evidence.rawCaptureHash, 'the device-held raw capture is bound for dispute-time revelation')
+                .toMatch(/^0x[0-9a-f]{64}$/);
         }
 
         await buyerWitnessCap.getByTestId('capability-execute-submit-clause-attestation').click();

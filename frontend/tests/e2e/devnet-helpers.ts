@@ -536,7 +536,7 @@ export const DELIVERY_CLAUSES = {
 
 /** The Playwright-pinned device location the geolocation clause's device
  *  affordance reads at authoring time, and the typed destination cell. */
-export const DELIVERY_DEVICE = { lat: 37.7749, lon: -122.4194, destinationGeohash: '9q8yyk8yu' } as const;
+export const DELIVERY_DEVICE = { lat: 37.7749, lon: -122.4194, destinationGeohash: '9q8yyk' } as const;
 
 /** A checkout-view general-clause field control, suffix-matched — the testid
  *  is `checkout-field-<orderId>-<clauseId>-<field>[-<option>]` and the

@@ -57,7 +57,7 @@
                 "minLength": 0,
                 "maxLength": 512,
                 "label": "Witness evidence",
-                "description": "Optional reference to the detection artifact — Wi-Fi BSSID, BLE beacon id, UWB ranging report, NFC tap payload, a device-captured evidence document, or a counterparty co-signature."
+                "description": "Optional reference to the detection artifact at mechanism grain — a device-captured evidence document (geohash cell, keccak-hashed tag/device identifiers, raw-capture hash) or a counterparty co-signature. Raw identifiers (Wi-Fi BSSIDs, BLE beacon ids, NFC tap payloads) and coordinates stay device-held for dispute-time revelation, bound by the raw-capture hash — never pinned publicly."
             }
         ]
     },
