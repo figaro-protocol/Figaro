@@ -84,6 +84,21 @@ export type {
     DidWebResolverOptions,
 } from "./httpChannel.js";
 
+// A2A transport — the Agent2Agent-shaped CoordinationChannel (same seam,
+// A2A wire): the offer envelope rides as an A2A message's data part.
+export {
+    A2aChannel,
+    makeA2aOfferResponder,
+    a2aMessageFromOffer,
+    offerFromA2aMessage,
+} from "./a2aChannel.js";
+export type {
+    A2aChannelOptions,
+    A2aMessage,
+    A2aOfferResponse,
+    A2aPart,
+} from "./a2aChannel.js";
+
 // Assembly instantiation + origination handshake + the two loops
 export {
     instantiateRootAgreement,
