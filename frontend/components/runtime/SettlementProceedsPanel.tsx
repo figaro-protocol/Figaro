@@ -3,7 +3,7 @@
 import { useAccount } from "wagmi";
 import { formatToken } from "@/lib/shared/utils";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
-import { useTokenSymbol } from "@/components/sellers/TokenAddressInput";
+import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 // ── Types ─────────────────────────────────────────────────────────────────────

@@ -20,7 +20,7 @@ import {
     type CommitmentPayload,
 } from "@figaro/sdk/agent";
 import { ZERO_ADDRESS, ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
-import { useTokenSymbol } from "@/components/sellers/TokenAddressInput";
+import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { calculateBonds, validateCommitmentAgreement } from "@figaro/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";

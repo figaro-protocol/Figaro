@@ -38,7 +38,7 @@ import { SwapFundingPanel } from "./SwapFundingPanel";
 import useTokenApproval from "@/hooks/useTokenApproval";
 import { maxUint256 } from "viem";
 import { FieldControl } from "@/components/runtime/FieldControl";
-import { useTokenSymbol } from "@/components/sellers/TokenAddressInput";
+import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { calculateBonds } from "@figaro/sdk";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual, normalizeAddressParam, ZERO_ADDRESS } from "@/lib/shared/evm";

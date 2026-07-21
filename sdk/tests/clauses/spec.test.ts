@@ -97,6 +97,22 @@ describe("parseClauseSpec — meta-clause validation", () => {
         expect(result.ok).toBe(false);
     });
 
+    it("rejects an enum past the uint8 encode ceiling AT PARSE TIME — never after first-write-wins registration", () => {
+        const values = Array.from({ length: 257 }, (_, i) => `v${i}`);
+        const result = parseClauseSpec({
+            clauseId: "t", version: 1, title: "T", description: "D",
+            fields: [{ name: "x", type: "enum", required: true, values }],
+        });
+        expect(result.ok).toBe(false);
+        if (!result.ok) expect(result.errors[0].message).toMatch(/256/);
+        // Exactly 256 still parses — the full uint8 range is legitimate.
+        const atCap = parseClauseSpec({
+            clauseId: "t", version: 1, title: "T", description: "D",
+            fields: [{ name: "x", type: "enum", required: true, values: values.slice(0, 256) }],
+        });
+        expect(atCap.ok).toBe(true);
+    });
+
     it("parses stage overrides", () => {
         const result = parseClauseSpec({
             clauseId: "t", version: 1, title: "T", description: "D",

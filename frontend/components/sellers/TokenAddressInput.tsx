@@ -1,18 +1,7 @@
 "use client";
 
-import { useReadContract } from "wagmi";
 import { isValidAddress } from "@/lib/shared/evm";
-import { ERC20_ABI } from "@/lib/kernel/contracts";
-
-export function useTokenSymbol(address: string) {
-    const addr = isValidAddress(address) ? (address as `0x${string}`) : undefined;
-    return useReadContract({
-        address: addr,
-        abi: ERC20_ABI,
-        functionName: "symbol",
-        query: { enabled: !!addr },
-    });
-}
+import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 
 /**
  * Classify a `useTokenSymbol` failure so callers can show an

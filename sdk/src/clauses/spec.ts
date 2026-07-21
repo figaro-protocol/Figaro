@@ -341,6 +341,14 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
                 errors.push({ path: `${path}.values`, message: "enum requires a non-empty values array" });
                 return null;
             }
+            // Enums encode as uint8 (the 0-based position in `values`), so a
+            // spec with more than 256 values would parse here and then throw
+            // at the first ENCODE — after registration, when first-write-wins
+            // has already made it permanent. Refuse at parse time instead.
+            if (raw.values.length > 256) {
+                errors.push({ path: `${path}.values`, message: `enum encodes as uint8 — at most 256 values (got ${raw.values.length})` });
+                return null;
+            }
             for (let i = 0; i < raw.values.length; i++) {
                 if (typeof raw.values[i] !== "string") {
                     errors.push({ path: `${path}.values[${i}]`, message: "enum values must be strings" });

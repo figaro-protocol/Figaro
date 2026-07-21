@@ -26,7 +26,7 @@ import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogues } from "@/lib/seller/useRegisteredCatalogues";
 import { SellerTrackRecord } from "@/components/runtime/SellerTrackRecord";
 import { useSellerTrackRecord } from "@/lib/seller/useSellerTrackRecord";
-import { useTokenSymbol } from "@/components/sellers/TokenAddressInput";
+import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { hexEqual, normalizeAddressParam } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";

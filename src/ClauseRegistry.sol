@@ -113,8 +113,10 @@ contract ClauseRegistry {
 
     /// @notice Emitted when a mechanism declares which clause it uses.
     /// @param mechanism  The declaring contract address (msg.sender).
-    /// @param clauseId   The clause the mechanism declares.
-    event MechanismClauseSet(address indexed mechanism, bytes32 indexed clauseId);
+    /// @param idHash     The declared clause's identity HASH —
+    ///                   `keccak256(abi.encode(clauseId, version))`, never
+    ///                   the raw name string.
+    event MechanismClauseSet(address indexed mechanism, bytes32 indexed idHash);
 
     // ── Errors ──────────────────────────────────────────────────────
 
@@ -190,9 +192,12 @@ contract ClauseRegistry {
 
     /// @notice Declare which clause this mechanism uses. Any contract can call.
     ///         Reverts if the clause has not been registered.
-    /// @param clauseId  A registered clause ID.
-    function setMechanismClause(bytes32 clauseId) external {
-        if (!registered[clauseId]) revert NotRegistered(clauseId);
-        emit MechanismClauseSet(msg.sender, clauseId);
+    /// @param idHash  A registered clause's identity HASH —
+    ///                `keccak256(abi.encode(clauseId, version))` (the SDK's
+    ///                `computeClauseKey`), NOT the raw name `registerClause`
+    ///                takes as its string parameter.
+    function setMechanismClause(bytes32 idHash) external {
+        if (!registered[idHash]) revert NotRegistered(idHash);
+        emit MechanismClauseSet(msg.sender, idHash);
     }
 }

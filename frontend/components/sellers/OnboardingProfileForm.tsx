@@ -14,8 +14,8 @@ import { Textarea } from "@/components/ui/Textarea";
 import {
     TokenAddressInput,
     classifyTokenError,
-    useTokenSymbol,
 } from "@/components/sellers/TokenAddressInput";
+import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { addressIntegrity, isValidAddress } from "@/lib/shared/evm";
 import { IpfsImageUpload } from "@/components/sellers/IpfsImageUpload";
 import { ProfileClauseValues, type ProfileClauseValuesMap } from "@/components/sellers/ProfileClauseValues";

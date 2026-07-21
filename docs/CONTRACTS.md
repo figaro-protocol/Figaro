@@ -27,7 +27,7 @@ expires post-commit). See `DESIGN_DECISIONS.md` §13.
 **merkle-only**, receipt-bound to the signed `agreementHash`. Three modes:
 - `attestAsSeller(Commitment role, Commitment target, bytes32 clauseId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content)` — role + target commitments; pass the same commitment twice for same-order attestation, or distinct commitments for cross-order within a process.
 - `attestAsBuyer(Commitment target, bytes32 clauseId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content)` — caller must equal `target.buyer` (which equals rootBuyer by commit invariant).
-- `attestViaResolver(Commitment target, ...)` — caller authorized by `IRoleResolver(target.seller).isAuthorized`.
+- `attestViaResolver(Commitment target, ...)` — caller authorized by `IRoleResolver(target.seller).isAuthorized`. **EIP-7702-only precondition**: kernel parties are ECDSA EOAs, so `target.seller` can expose `isAuthorized` code only via 7702 delegation — without it the staticcall finds no code and the path reverts.
 
 For every call, the coordinator verifies an OZ-style merkle inclusion proof of
 `leaf = keccak256(keccak256(clauseId || keccak256(sectionData)))` (double-hashed — leaf/node domain separation) against
