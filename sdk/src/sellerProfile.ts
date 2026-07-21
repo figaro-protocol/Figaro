@@ -14,10 +14,11 @@
  * alignment (ETH), or value anchoring (commodity-backed). It is not a
  * financial-market position.
  *
- * Carries no role / archetype / category / cuisine / specialty taxonomy
- * field. Buyers infer what the seller does from the items in the
- * catalogue; protocol-tier role attribution is event-derived via the
- * indexer.
+ * Carries no role / archetype / category / cuisine taxonomy field —
+ * `specialty` below is free PROSE (a self-description), never a closed
+ * vocabulary, and nothing dispatches on it. Buyers infer what the seller
+ * does from the items in the catalogue; protocol-tier role attribution is
+ * event-derived via the indexer.
  *
  * This module owns the document TYPES and the strict + lenient PARSERS.
  * After `reconstructDiscovery` hands you a `RegisteredSeller.metadataURI`,

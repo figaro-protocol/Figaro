@@ -27,6 +27,7 @@ which is what makes each contract's bonded challenge game work.
 
 ```ts
 import {
+  addressesFromDeploymentRecord,
   fetchCoreEvents,
   reconstruct,
   calculateBonds,
@@ -35,6 +36,11 @@ import {
   Topology,
   maxOrdersResolvablePerProcess,
 } from "@figaro/sdk";
+
+// `addresses` everywhere below is a `FigaroAddresses` ({ core, token, … }).
+// A PUBLISHED DEPLOYMENT RECORD uses different key names (`figaroCore`,
+// `tokenAddress`, …) — do not spread it verbatim; map it once:
+const addresses = addressesFromDeploymentRecord(deploymentRecord);
 
 // Fetch all FigaroCore events from a block range
 const events = await fetchCoreEvents(client, addresses, 0n);
@@ -140,6 +146,11 @@ const parsed = parseClauseSpec(specJson);
 if (!parsed.ok) throw new Error(parsed.errors[0].message);
 const content = encodeContentFromSpec(parsed.spec, section.data);
 // 4. Attest. `clauseId` is the bytes32 HASH — NOT the raw name from step 1.
+// `stage` vocabulary: 0 = the clause's COMMITTED content (encode with no
+// stage option); N ≥ 1 = a runtime witness whose field shape is the spec's
+// own `stages[N]` declaration (encode with `{ stage: N }`); a process-log
+// ladder attests its enum's index as the stage. The vocabulary is the
+// clause spec's data — the SDK and the chain assign it no meaning.
 const clauseId = computeClauseKey(section.clause, section.version);
 await attestAsSeller(
   walletClient, addresses.attestationCoordinator!,
@@ -534,7 +545,12 @@ const orders = await reconstructOrdersFromTemplate(template, {
     overrides: { "figaro-commerce": { payment: paymentFor(node.nodeId).toString(), lineItems } },
   }),
   // Per-node seam, invoked in commit order as each order is realized — sign,
-  // pin the party-private agreement, share, or compose here.
+  // pin the party-private agreement, share, or compose here. SHARING is
+  // out-of-band by design: hand the counterparty the pinned agreement URI +
+  // the signed commitment over any channel you both reach (the handoff
+  // coordination channel, a link, a QR); whoever ends up holding both
+  // signatures may broadcast the commit — the kernel checks signatures,
+  // never the sender.
   onOrder: async (order) => {
     const buyerSig = await buyerWallet.signTypedData(order.typedData);
     // order.isRoot ⇒ processId ZERO on the signed struct (kernel derives it);

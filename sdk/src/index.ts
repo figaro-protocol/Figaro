@@ -84,7 +84,7 @@ export type {
     RegisteredSeller,
     RegisteredAssembly,
 } from "./types.js";
-export { OrderState } from "./types.js";
+export { OrderState, addressesFromDeploymentRecord, type FigaroDeploymentRecord } from "./types.js";
 
 // Event parsers
 export {

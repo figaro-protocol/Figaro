@@ -239,6 +239,40 @@ export interface FigaroAddresses {
     assemblyRegistry?: Address;
 }
 
+/** The key names a PUBLISHED DEPLOYMENT RECORD uses (the etherscan-equivalent
+ *  document a live deployment publishes: chain id, RPC, contract addresses).
+ *  They are NOT the `FigaroAddresses` field names — `figaroCore` vs `core`,
+ *  `tokenAddress` vs `token` — so a record spread verbatim into an SDK call
+ *  yields undefined contract addresses. Map it through
+ *  `addressesFromDeploymentRecord` instead. A record may carry more keys
+ *  (coordinators, routers, governance tokens); the SDK reads only these. */
+export interface FigaroDeploymentRecord {
+    figaroCore: Address;
+    tokenAddress?: Address;
+    attestationCoordinator?: Address;
+    clauseRegistry?: Address;
+    sellerRegistry?: Address;
+    assemblyRegistry?: Address;
+}
+
+/** Map a published deployment record to the SDK's `FigaroAddresses` — the
+ *  ONE place the two vocabularies meet. Throws when `figaroCore` is absent:
+ *  nothing works without the kernel address, and a silent undefined here
+ *  surfaces later as an opaque transport error. */
+export function addressesFromDeploymentRecord(record: FigaroDeploymentRecord): FigaroAddresses {
+    if (!record.figaroCore) {
+        throw new Error("Deployment record has no figaroCore address — not a Figaro deployment record?");
+    }
+    return {
+        core: record.figaroCore,
+        ...(record.tokenAddress ? { token: record.tokenAddress } : {}),
+        ...(record.attestationCoordinator ? { attestationCoordinator: record.attestationCoordinator } : {}),
+        ...(record.clauseRegistry ? { clauseRegistry: record.clauseRegistry } : {}),
+        ...(record.sellerRegistry ? { sellerRegistry: record.sellerRegistry } : {}),
+        ...(record.assemblyRegistry ? { assemblyRegistry: record.assemblyRegistry } : {}),
+    };
+}
+
 // ── Bond breakdown ──────────────────────────────────────────────────────────
 
 export interface BondBreakdown {

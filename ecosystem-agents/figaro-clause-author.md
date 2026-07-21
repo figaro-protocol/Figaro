@@ -82,7 +82,9 @@ check. A malformed spec is caught here, at author time.
    whitespace). Anchor `contentHash = canonicalContentHash(spec)`. Pin *that* serialization,
    never a pretty-printed variant — readers re-canonicalize the fetched JSON and recompute
    the hash to verify it, so pinned bytes must equal the hashed form or the clause never
-   surfaces.
+   surfaces. The IPFS add options (CID version, chunker) do NOT matter: the registry binds
+   the keccak CONTENT HASH, not the CID, and verification is always
+   fetch → re-canonicalize → re-hash.
 2. Register: `ClauseRegistry.registerClause(clauseId, version, contentHash, contentURI)`
    with the deposit, signed by the **user's** key. First-write-wins: the id binds
    permanently. A behaviour change is a NEW `version` (never mutate a registered id).

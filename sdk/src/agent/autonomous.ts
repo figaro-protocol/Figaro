@@ -31,7 +31,9 @@ export interface TxResult {
 
 /**
  * Submit a commitment to FigaroCore.commit.
- * Both signatures must be provided (obtained via signTypedData).
+ * Both signatures must be provided (obtained via signTypedData). EITHER
+ * party — or any relayer holding the signed payload — may broadcast: the
+ * kernel verifies the two signatures, never the sender.
  *
  * Refuses a sub-order commit that would push the live process past the
  * chain's resolve ceiling (`assertOrderFitsResolveCap`) — past it, every
