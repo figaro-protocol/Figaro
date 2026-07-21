@@ -32,7 +32,7 @@ import {
     type Agreement,
     type AgreementSection,
 } from "@figaro/sdk";
-import { useProcessOrders } from "@/hooks/useProcessOrders";
+import { useWalletOrders } from "@/hooks/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual } from "@/lib/shared/evm";
@@ -257,7 +257,7 @@ interface HashHit {
 
 function SearchMode() {
     const [hash, setHash] = useState("");
-    const orders = useProcessOrders(null); // all orders the wallet can see
+    const orders = useWalletOrders(); // every order the connected wallet is a party to
     const agreementHashes = useMemo(
         () => orders.map((o) => o.agreementHash).filter((h): h is string => Boolean(h)),
         [orders],

@@ -3,7 +3,9 @@
 /**
  * useProcessOrders — central event-based order hook.
  *
- * Returns the live Order[] for a given processId (or all orders when null).
+ * Returns the live Order[] for a given processId. A null processId loads
+ * NOTHING (the hook is per-process) — for every order the connected wallet
+ * is a party to, use `useWalletOrders` below.
  *
  * Loads history via getLogs on mount, then streams live updates via
  * watchContractEvent — reads come from the indexer only, no mock source.
@@ -15,7 +17,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { usePublicClient, useWatchContractEvent } from "wagmi";
+import { useAccount, usePublicClient, useWatchContractEvent } from "wagmi";
 import type { WatchContractEventOnLogsParameter } from "viem";
 import { CORE_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { Order, OrderState, useOrderStore } from "@/lib/kernel/store";
@@ -202,6 +204,69 @@ export function useProcessOrders(processId: string | null): Order[] {
         onLogs: onResolvedLogs,
         enabled: realEnabled,
     });
+
+    return orders;
+}
+
+/**
+ * useWalletOrders — every full Order the connected wallet is a party to
+ * (buyer OR seller), across ALL its processes, loaded from the indexer.
+ *
+ * `useProcessOrders(null)` looks like it would do this — its doc even said
+ * "all orders when null" — but it hard-gates loading on a truthy processId
+ * and returns [] for null, so the hash-search verifier that relied on it
+ * had nothing to search. This hook is that missing wallet-wide loader:
+ * bounded (party-filtered, never the whole chain), full Orders (agreementHash
+ * + parties), reload-key aware.
+ */
+export function useWalletOrders(): Order[] {
+    const [orders, setOrders] = useState<Order[]>([]);
+    const publicClient = usePublicClient();
+    const { address } = useAccount();
+    const contractAddr = CONTRACTS.core || undefined;
+    const processReloadKey = useOrderStore((s) => s.processReloadKey);
+
+    useEffect(() => {
+        if (!publicClient || !contractAddr || !address) {
+            setOrders([]);
+            return;
+        }
+        let cancelled = false;
+        const chainId = publicClient.chain?.id ?? 31337;
+        const mine = (a?: string) => !!a && a.toLowerCase() === address.toLowerCase();
+
+        (async () => {
+            try {
+                const committed = await getAllOrderCommitted(publicClient, chainId);
+                if (cancelled) return;
+                // Party-filter to what THIS wallet can see — buyer or seller.
+                let result: Order[] = [];
+                for (const log of committed) {
+                    const args = log.args as unknown as OrderCommittedArgs | undefined;
+                    if (!args || !(mine(args.buyer) || mine(args.seller))) continue;
+                    result = applyLogToOrders(
+                        result, "OrderCommitted", args, null,
+                        typeof log.blockNumber === "bigint" ? Number(log.blockNumber) : undefined,
+                    );
+                }
+                if (result.length === 0) { if (!cancelled) setOrders([]); return; }
+
+                const resolved = await getAllOrderResolved(publicClient, chainId);
+                if (cancelled) return;
+                const mineHashes = new Set(result.map((o) => o.orderHash.toLowerCase()));
+                for (const log of resolved) {
+                    const args = log.args as unknown as OrderResolvedArgs | undefined;
+                    if (!args || !mineHashes.has(String(args.orderHash).toLowerCase())) continue;
+                    result = applyLogToOrders(result, "OrderResolved", args, null);
+                }
+                if (!cancelled) setOrders(result);
+            } catch (err) {
+                if (!cancelled) console.error("useWalletOrders indexer error:", err);
+            }
+        })();
+
+        return () => { cancelled = true; };
+    }, [publicClient, contractAddr, address, processReloadKey]);
 
     return orders;
 }
