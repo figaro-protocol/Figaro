@@ -596,15 +596,37 @@ const REGISTRY = new Map<string, RateQuantityResolver>([
     ["order-geodistance", resolveOrderGeodistance],
 ]);
 
+/** Human labels for registered sources — REGISTRY DATA like a clause spec's
+ *  title, not frontend copy: an authoring surface enumerating the sources
+ *  (the wizard's rate-source picker) renders these, falling back to the
+ *  source id for an unlabeled tenant. */
+const LABELS = new Map<string, string>([
+    ["checkout-quantity", "Entered at checkout"],
+    ["order-geodistance", "Distance between the order's committed endpoints (km)"],
+]);
+
 /** Register a resolver for a declared quantity source. Last write wins —
  *  the registry's extension point: a booking-window derivation or a routed-
- *  distance composition registers here without touching checkout code.
+ *  distance composition registers here without touching checkout code. An
+ *  optional human label surfaces the tenant on authoring pickers.
  *  @public */
 export function registerRateQuantitySource(
     source: string,
     resolver: RateQuantityResolver,
+    options: { label?: string } = {},
 ): void {
     REGISTRY.set(source, resolver);
+    if (options.label) LABELS.set(source, options.label);
+}
+
+/** Enumerate the registered quantity sources — the authoring picker's data
+ *  source, so a permissionlessly registered tenant surfaces with zero
+ *  picker-code changes. Label falls back to the source id. */
+export function listRateQuantitySources(): { source: string; label: string }[] {
+    return Array.from(REGISTRY.keys()).map((source) => ({
+        source,
+        label: LABELS.get(source) ?? source,
+    }));
 }
 
 /** The resolver for a declared quantity source, or null — the pricing site

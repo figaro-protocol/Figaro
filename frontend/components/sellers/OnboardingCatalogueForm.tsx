@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { listRateQuantitySources } from "@figaro/sdk";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/Button";
@@ -583,6 +584,9 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogueClauses, onCha
                             />
                         </FormField>
                         <FormField label="Quantity from" inputId={`${idPrefix}-rate-source`}>
+                            {/* The options ARE the SDK's rate-quantity registry —
+                                a permissionlessly registered tenant surfaces here
+                                with zero picker changes; nothing is hardcoded. */}
                             <select
                                 id={`${idPrefix}-rate-source`}
                                 value={item.rateQuantitySource}
@@ -590,8 +594,9 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogueClauses, onCha
                                 className="w-full rounded border border-neutral-300 px-3 py-2 text-sm"
                                 data-testid={`${idPrefix}-rate-source`}
                             >
-                                <option value="checkout-quantity">Entered at checkout</option>
-                                <option value="order-geodistance">Distance between the order&apos;s committed endpoints (km)</option>
+                                {listRateQuantitySources().map(({ source, label }) => (
+                                    <option key={source} value={source}>{label}</option>
+                                ))}
                             </select>
                         </FormField>
                     </>

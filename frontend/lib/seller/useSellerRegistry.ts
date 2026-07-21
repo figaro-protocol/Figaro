@@ -15,9 +15,10 @@ import { useCallback, useState, useEffect } from "react";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId, useReadContract } from "wagmi";
 import { getSellerRegistry } from "@/lib/kernel/contracts";
 import { SELLER_REGISTRY_ABI } from "@figaro/sdk";
-import { getSellerState, getSellerMetadataURI } from "@/lib/protocol/sellerRegistryIndexer";
+import { getSellerState } from "@/lib/protocol/sellerRegistryIndexer";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { fetchCappedContent, resolveContentUri } from "@/lib/shared/ipfsService";
+import { useAsyncSellerResource } from "@/lib/seller/useAsyncSellerResource";
 import {
     AgentServiceInfo,
     SellerAgentServices,
@@ -249,62 +250,38 @@ export function useRegistrationDeposit() {
 
 // ── Agent service discovery hook ─────────────────────────────────────────────
 
+/** The absence value: a human-operated participant (no services key). */
+const NO_AGENT_SERVICES: AgentServiceInfo = { services: {}, capabilities: [], isAgent: false };
+
 /**
  * Fetches a seller's metadataURI and parses ERC-8004-compatible
  * agent service endpoints if present. Returns { isAgent: false } for
- * human-operated participants (no services key in metadata).
+ * human-operated participants (no services key in metadata). Absence
+ * semantics all the way down: a missing/unfetchable/unparsable document is
+ * a human participant, never an error. Built on the ONE seller-resource
+ * fetcher (`useAsyncSellerResource`).
  */
 export function useAgentServices(address: `0x${string}` | undefined) {
-    const client = usePublicClient();
-    const chainId = useChainId();
-    const [data, setData] = useState<AgentServiceInfo | undefined>(undefined);
-    const [isLoading, setIsLoading] = useState(false);
-
-    useEffect(() => {
-        if (!client || !address) {
-            setData(undefined);
-            return;
-        }
-
-        let cancelled = false;
-        setIsLoading(true);
-
-        getSellerMetadataURI(client, chainId, address)
-            .then((uri) => {
-                // The on-chain metadataURI is an `ipfs://` URI; the browser
-                // cannot fetch that scheme directly — resolve it to the
-                // gateway URL first. `resolveContentUri` returns null for an
-                // unrecognised scheme, handled here like a missing URI.
-                const url = uri ? resolveContentUri(uri) : null;
-                if (cancelled || !url) {
-                    if (!cancelled) {
-                        setData({ services: {}, capabilities: [], isAgent: false });
-                        setIsLoading(false);
-                    }
-                    return;
-                }
-                // Size-capped fetch (F4): the seller-pinned metadata document is
-                // external-party-controlled — oversize throws → the catch below.
-                return fetchCappedContent(url).then((r) => safeJsonFromResponse(r));
-            })
-            .then((json) => {
-                if (cancelled) return;
-                if (json && typeof json === "object") {
-                    setData(parseAgentServices(json as Record<string, unknown>));
-                } else {
-                    setData({ services: {}, capabilities: [], isAgent: false });
-                }
-                setIsLoading(false);
-            })
-            .catch(() => {
-                if (!cancelled) {
-                    setData({ services: {}, capabilities: [], isAgent: false });
-                    setIsLoading(false);
-                }
-            });
-
-        return () => { cancelled = true; };
-    }, [client, chainId, address]);
-
-    return { data, isLoading };
+    const { data, isLoading } = useAsyncSellerResource<AgentServiceInfo>(address, {
+        fetcher: async (metadataURI) => {
+            // The on-chain metadataURI is an `ipfs://` URI; the browser
+            // cannot fetch that scheme directly — resolve it to the gateway
+            // URL first. `resolveContentUri` returns null for an
+            // unrecognised scheme, handled like a missing URI.
+            const url = resolveContentUri(metadataURI);
+            if (!url) return NO_AGENT_SERVICES;
+            try {
+                // Size-capped fetch (F4): the seller-pinned metadata document
+                // is external-party-controlled — oversize throws → absence.
+                const json = await fetchCappedContent(url).then((r) => safeJsonFromResponse(r));
+                return json && typeof json === "object"
+                    ? parseAgentServices(json as Record<string, unknown>)
+                    : NO_AGENT_SERVICES;
+            } catch {
+                return NO_AGENT_SERVICES;
+            }
+        },
+        failureMessage: "Agent services unavailable",
+    });
+    return { data: data ?? undefined, isLoading };
 }
