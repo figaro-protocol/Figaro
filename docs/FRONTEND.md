@@ -131,12 +131,16 @@ Y", not as an open-ended build.)
   standard, the sibling of `block.composes` — → order-page surfaces via
   `OrderInteractionSurfaces`, mounted on every order the wallet is a party
   to; tenants: `qr-challenge` → `QrChallengePanel` (order identity over
-  the visual channel at a hand-off) and `ecdh-address` →
+  the visual channel at a hand-off), `ecdh-address` →
   `AddressDetailPanel` (the private-address ceremony on the geolocation
   clause: seller requests, buyer answers with the ECDH-encrypted addressee
   block over the coordination channel — `lib/handoff/addressDetail.ts` —
   its keccak anchored on-chain as a buyer attestation; the chain never
-  learns the plaintext)).
+  learns the plaintext), and `ecdh-content` → `ContentDeliveryPanel` (the
+  digital-hand-off twin: the artifact itself travels the same encrypted
+  channel — `lib/handoff/contentDelivery.ts` — and its keccak256 files as
+  the clause's stage-1 completion evidence; both ceremonies share the
+  two-message core in `lib/handoff/ceremony.ts`)).
 - **Clause-composition UI** — `app/(builders)/builders/designer/_components/AgreementDrawer.tsx`
   (reads ClauseRegistry live; grouping word is `block.article`).
 - **On-chain write flow** — `lib/seller/usePublishSellerProfile.ts`
