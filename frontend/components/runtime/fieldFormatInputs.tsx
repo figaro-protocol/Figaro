@@ -20,6 +20,7 @@ import type { ComponentType } from "react";
 import { GeohashFieldInput } from "@/components/runtime/GeohashFieldInput";
 import { ContentAnchorFieldInput } from "@/components/runtime/ContentAnchorFieldInput";
 import { EvidenceCaptureInput } from "@/components/runtime/EvidenceCaptureInput";
+import { DatetimeFieldInput } from "@/components/runtime/DatetimeFieldInput";
 
 /** The contract a format input satisfies — the same props FieldControl's
  *  plain scalar input serves. */
@@ -53,6 +54,10 @@ const REGISTRY = new Map<string, ComponentType<FieldFormatInputProps>>([
     // — browser and mobile, one surface) pin the artifact and fill the URI;
     // manual URI entry stays (the field is an open pointer).
     ["evidence-capture", EvidenceCaptureInput],
+    // iso-datetime = an absolute instant (a booked window bound, a reporting
+    // period). A native datetime picker storing ISO 8601 UTC, replacing the
+    // raw text box for every iso-datetime content field on any clause.
+    ["iso-datetime", DatetimeFieldInput],
 ]);
 
 /** Register an input component for a declared format. Last write wins —
