@@ -8,7 +8,24 @@
 #   feedback_*.md / project_*.md  200 lines  — beyond this is changelog masquerade
 set -euo pipefail
 
-file_path=$(jq -r '.tool_input.file_path // empty')
+payload=$(cat)
+file_path=$(printf '%s' "$payload" | jq -r '.tool_input.file_path // empty')
+
+# ── FORWARD POINTERS at write time — the content being written must not point
+# at expiring locations (session scratchpads die with the session; the pointer
+# fossilizes). Complements the SessionStart sweep in punchlist-hygiene.sh.
+case "$file_path" in
+  */memory/*.md)
+    written=$(printf '%s' "$payload" | jq -r '.tool_input.content // .tool_input.new_string // empty')
+    if printf '%s' "$written" | grep -qE '/private/tmp/claude|/tmp/claude-|[Ss]ession scratchpad'; then
+        cat <<'EOF'
+⚠ MEMORY FORWARD-POINTER: this write references a session scratchpad or other
+expiring location. Scratchpads die with the session — inline the content into
+the memory itself, or move it to a tracked repo file, and point there instead.
+EOF
+    fi
+    ;;
+esac
 
 case "$file_path" in
   */memory/MEMORY.md)

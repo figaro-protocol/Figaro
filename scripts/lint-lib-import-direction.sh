@@ -31,7 +31,9 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FEATURE_LAYERS='checkout|composition|semantic|designer|seller|handoff|audit|agent'
 
 files=("$@")
+whole_tree=0
 if [[ ${#files[@]} -eq 0 ]]; then
+    whole_tree=1
     while IFS= read -r f; do files+=("$f"); done \
         < <(find "$REPO_ROOT/frontend/lib" -type f \( -name '*.ts' -o -name '*.tsx' \))
 fi
@@ -68,6 +70,37 @@ for file in "${files[@]}"; do
             ;;
     esac
 done
+
+# ── READER COUNT — a shared/ module must be genuinely shared. ──
+# Whole-tree mode only (per-file staged runs can't count readers). A module in
+# lib/shared/ whose NON-TEST readers all live in ONE feature layer belongs in
+# that layer — shared/ is the generic leaf, not a dumping ground. Zero readers
+# is knip's territory (ahead-of-UI @public is legitimate); readers spanning
+# multiple layers, or app/, or components/, are what "shared" means.
+if [[ $whole_tree -eq 1 ]]; then
+    for mod in "$REPO_ROOT"/frontend/lib/shared/*.ts "$REPO_ROOT"/frontend/lib/shared/*.tsx; do
+        [[ -f "$mod" ]] || continue
+        base="$(basename "$mod")"
+        name="${base%.tsx}"; name="${name%.ts}"
+        # The DI composition seam assembles feature services by design.
+        [[ "$name" == "runtimeServices" || "$name" == "runtimeServicesContext" ]] && continue
+        # `|| true`: a zero-reader module (knip's territory) exits the grep
+        # non-zero, and pipefail+set -e would otherwise kill the whole lint.
+        layers=$(grep -rlE "from [\"']@/lib/shared/${name}[\"']" \
+                "$REPO_ROOT/frontend/lib" "$REPO_ROOT/frontend/app" "$REPO_ROOT/frontend/components" \
+                --include='*.ts' --include='*.tsx' 2>/dev/null \
+            | grep -v "/lib/shared/" \
+            | sed -E "s|.*/frontend/lib/([a-z]+)/.*|lib:\1|; s|.*/frontend/app/.*|app|; s|.*/frontend/components/.*|components|" \
+            | sort -u || true)
+        [[ -z "$layers" ]] && continue
+        count=$(printf '%s\n' "$layers" | grep -c .)
+        if [[ $count -eq 1 ]] && printf '%s' "$layers" | grep -qE "^lib:(${FEATURE_LAYERS})$"; then
+            echo "[lib-import-direction] lib/shared/${base} — single-layer reader (${layers#lib:}/ only):"
+            echo "    shared/ is the generic leaf; a module read by one feature layer belongs IN that layer."
+            violations=1
+        fi
+    done
+fi
 
 if [[ $violations -ne 0 ]]; then
     echo ""
