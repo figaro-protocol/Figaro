@@ -21,6 +21,62 @@ import type { CommitmentPayload, CoordinationChannel, OfferHandler } from "./coo
 import { serializeCommitmentPayload, deserializeCommitmentPayload } from "./coordination.js";
 import { resolveDidWeb, didDocumentMatchesAddress, extractServiceEndpoints } from "./did.js";
 
+/**
+ * Byte ceiling on an offer-endpoint response. The endpoint is a counterparty's
+ * ADVERTISED `service` URL — attacker-controllable by any registered
+ * participant. Buffering its response whole (`res.text()`) before the
+ * content-verification that would reject it lets a hostile candidate stream an
+ * unbounded body and OOM the buyer's tab / an agent process (frontend security
+ * audit 2026-07-22, finding 6). An offer envelope is KB-scale; 8 MB clears every
+ * real reply with margin. Mirrors the IPFS document cap.
+ */
+export const MAX_OFFER_RESPONSE_BYTES = 8 * 1024 * 1024;
+
+/**
+ * Read a fetch `Response` body as text with a hard byte ceiling, streaming and
+ * aborting mid-download once the cap is exceeded, and rejecting an over-declared
+ * `Content-Length` up front. Falls back to a capped `res.text()` when the body
+ * is not a readable stream (injected test doubles / non-stream environments).
+ */
+export async function readCappedResponseText(
+    res: Response,
+    maxBytes: number = MAX_OFFER_RESPONSE_BYTES,
+): Promise<string> {
+    const declared = res.headers?.get?.("content-length");
+    if (declared && Number(declared) > maxBytes) {
+        throw new Error(`offer response exceeds ${maxBytes}-byte cap (declared ${declared})`);
+    }
+    const body = res.body as ReadableStream<Uint8Array> | null | undefined;
+    if (!body || typeof body.getReader !== "function") {
+        const text = await res.text();
+        if (text.length > maxBytes) {
+            throw new Error(`offer response exceeds ${maxBytes}-byte cap`);
+        }
+        return text;
+    }
+    const reader = body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!value) continue;
+        total += value.byteLength;
+        if (total > maxBytes) {
+            await reader.cancel();
+            throw new Error(`offer response exceeds ${maxBytes}-byte cap`);
+        }
+        chunks.push(value);
+    }
+    const joined = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+        joined.set(chunk, offset);
+        offset += chunk.byteLength;
+    }
+    return new TextDecoder().decode(joined);
+}
+
 // ── Endpoint resolution ───────────────────────────────────────────────────────
 
 /**
@@ -104,7 +160,7 @@ export class HttpChannel implements CoordinationChannel {
         });
         if (res.status === 204) return null;
         if (!res.ok) throw new Error(`HttpChannel: offer to ${url} failed — HTTP ${res.status}`);
-        return deserializeCommitmentPayload(await res.text());
+        return deserializeCommitmentPayload(await readCappedResponseText(res));
     }
 }
 

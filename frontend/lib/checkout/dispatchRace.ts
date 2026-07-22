@@ -49,6 +49,7 @@ import {
     selectRaceWinner,
     verifyQuoteReply,
     verifyRaceReply,
+    readCappedResponseText,
     type CommitmentPayload,
     type RaceReply,
 } from "@figaro/sdk/agent";
@@ -152,7 +153,10 @@ export async function postToAgentEndpoint(
     });
     if (res.status === 204) return null;
     if (!res.ok) throw new Error(`Agent endpoint ${endpoint} refused the payload — HTTP ${res.status}`);
-    const text = await res.text();
+    // Size-capped, streamed read (finding 6): the endpoint is the candidate's
+    // own advertised URL, so an unbounded body would OOM the buyer's tab before
+    // reply-verification ever runs.
+    const text = await readCappedResponseText(res);
     return text ? deserializeCommitmentPayload(text) : null;
 }
 

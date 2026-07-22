@@ -76,6 +76,8 @@ export {
     HttpChannel,
     makeHttpOfferResponder,
     didWebEndpointResolver,
+    readCappedResponseText,
+    MAX_OFFER_RESPONSE_BYTES,
 } from "./httpChannel.js";
 export type {
     EndpointResolver,

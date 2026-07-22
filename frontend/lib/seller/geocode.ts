@@ -24,6 +24,7 @@
 
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { fetchCappedContent, type CappedContentResponse } from "@/lib/shared/ipfsService";
+import { safeJsonParse } from "@/lib/shared/safeJson";
 import { readUserEndpoints } from "@/lib/shared/userEndpoints";
 
 interface GeocodeResult {
@@ -87,7 +88,9 @@ export async function geocodeAddress(query: string): Promise<GeocodeOutcome> {
 
     let data: unknown;
     try {
-        data = JSON.parse(await res.text());
+        // Prototype-pollution-safe parse (finding 7): the response comes from a
+        // user-configurable geocoding endpoint — untrusted network JSON.
+        data = safeJsonParse(await res.text());
     } catch (err) {
         return {
             ok: false,
@@ -96,7 +99,7 @@ export async function geocodeAddress(query: string): Promise<GeocodeOutcome> {
         };
     }
 
-    if (!Array.isArray(data)) {
+    if (data === null || !Array.isArray(data)) {
         return { ok: false, reason: "malformed", detail: "expected array" };
     }
     if (data.length === 0) {

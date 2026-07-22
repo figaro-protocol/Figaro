@@ -11,6 +11,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchCappedContent, resolveContentUri } from "@/lib/shared/ipfsService";
+import { safeJsonParse } from "@/lib/shared/safeJson";
 import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { useSellerProfile } from "@/lib/seller/useSellerRegistry";
 import {
@@ -98,7 +99,10 @@ export function useSellerBoundAssemblies(
                 // external-party-controlled — oversize throws → the catch below.
                 const response = await fetchCappedContent(url);
                 if (!response.ok) throw new Error("seller profile fetch failed");
-                const doc = JSON.parse(await response.text());
+                // Prototype-pollution-safe parse (finding 7): the profile is an
+                // external-party-pinned document; the stripping reviver drops
+                // __proto__/constructor keys before any downstream record copy.
+                const doc = safeJsonParse(await response.text());
                 const profile = tryParseSellerProfileDocument(doc);
                 if (cancelled) return;
                 if (!profile?.assemblyBindings || profile.assemblyBindings.length === 0) {
