@@ -16,6 +16,8 @@
  * `Date` round-trip that would re-zone the value.
  */
 
+import { useId } from "react";
+
 import type { FieldFormatInputProps } from "@/components/runtime/fieldFormatInputs";
 
 /** "2026-07-22T09:00:00Z" → "2026-07-22T09:00" (the datetime-local value). */
@@ -34,6 +36,7 @@ function localToIso(local: string): string | undefined {
 }
 
 export function DatetimeFieldInput({ value, onChange, testId }: FieldFormatInputProps) {
+    const utcHintId = useId();
     return (
         <div className="flex items-center gap-2">
             <input
@@ -41,9 +44,10 @@ export function DatetimeFieldInput({ value, onChange, testId }: FieldFormatInput
                 value={isoToLocal(value ?? "")}
                 onChange={(e) => onChange(localToIso(e.target.value))}
                 data-testid={testId}
+                aria-describedby={utcHintId}
                 className="w-full rounded border border-neutral-300 bg-white px-2 py-1 text-xs text-black focus:outline-none focus:ring-1 focus:ring-accent"
             />
-            <span className="text-[11px] text-neutral-400" aria-hidden="true">UTC</span>
+            <span id={utcHintId} className="text-[11px] text-neutral-400">UTC</span>
         </div>
     );
 }
