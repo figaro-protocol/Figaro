@@ -122,10 +122,14 @@ describe("the private-address ceremony", () => {
         const sellerOffer = asWireMessage(sent.find((m) => m.value === sellerPub)!);
         expect(await verifyEcdhMessageAuth({ ...sellerOffer, senderAddress: BUYER })).toBe(false);
         // A tampered body (key substitution under a replayed signature) fails.
+        // Guard the flip so the "tampered" byte always actually differs (the
+        // ciphertext's last base64 char is uniform — an unguarded "A" is a
+        // 1-in-64 no-op that makes the message identical and the test flake).
         const blobMsg = asWireMessage(sent.find((m) => m.kind === "blob")!);
         expect(blobMsg.type).toBe("ECDH_WRAPPED_KEY");
         if (blobMsg.type === "ECDH_WRAPPED_KEY") {
-            expect(await verifyEcdhMessageAuth({ ...blobMsg, wrappedKeyB64: blobMsg.wrappedKeyB64.slice(0, -1) + "A" })).toBe(false);
+            const flipped = blobMsg.wrappedKeyB64.slice(0, -1) + (blobMsg.wrappedKeyB64.endsWith("A") ? "B" : "A");
+            expect(await verifyEcdhMessageAuth({ ...blobMsg, wrappedKeyB64: flipped })).toBe(false);
         }
         // A cross-order replay of a valid message fails.
         expect(await verifyEcdhMessageAuth({ ...sellerOffer, orderId: "0x" + "cd".repeat(32) })).toBe(false);
