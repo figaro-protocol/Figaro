@@ -1,17 +1,21 @@
 /**
  * components/shared/ContentImage.tsx
  *
- * Renders either an <img> (for IPFS/HTTP URIs) or an emoji <span>,
+ * Renders either an <img> (for IPFS content URIs) or an emoji <span>,
  * detecting the source format automatically. When an `<img>` fails to
  * load (network error, missing IPFS gateway, broken pin), an optional
  * `fallback` ReactNode is rendered in its place — typically an initials
  * block or a neutral placeholder.
+ *
+ * Images resolve IPFS-only (`resolveImageUri`): a raw http(s) locator from
+ * permissionless seller/catalogue data is a tracking-pixel / IP-deanonymization
+ * vector, so it renders the fallback rather than hotlinking (finding 3).
  */
 "use client";
 
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { resolveContentUri } from "@/lib/shared/ipfsService";
+import { resolveImageUri } from "@/lib/shared/ipfsService";
 
 export function ContentImage({
     src,
@@ -35,9 +39,11 @@ export function ContentImage({
         if (hasFailed && fallback !== undefined) {
             return <>{fallback}</>;
         }
-        const resolved = resolveContentUri(src);
+        // IPFS-only: a raw http(s) locator resolves to null and renders the
+        // fallback, never a hotlink to an attacker-chosen host (finding 3).
+        const resolved = resolveImageUri(src);
         if (!resolved) return fallback !== undefined ? <>{fallback}</> : null;
-        // eslint-disable-next-line @next/next/no-img-element -- This renderer intentionally supports arbitrary IPFS/HTTP content URIs at runtime.
+        // eslint-disable-next-line @next/next/no-img-element -- This renderer intentionally supports arbitrary IPFS content URIs at runtime.
         return (
             <img
                 src={resolved}

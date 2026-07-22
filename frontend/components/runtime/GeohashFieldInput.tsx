@@ -17,6 +17,7 @@
 import { useState } from "react";
 import { getDeviceLocation } from "@/lib/shared/deviceLocation";
 import { encodeGeohash } from "@figaro/sdk/derive";
+import { safeRegexTest } from "@figaro/sdk/clauses";
 import { clampPublicGeohash, PUBLIC_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
 import type { FieldFormatInputProps } from "@/components/runtime/fieldFormatInputs";
 
@@ -41,7 +42,8 @@ export function GeohashFieldInput({ value, onChange, testId, pattern }: FieldFor
     }
 
     const trimmed = value.trim();
-    const shapeOk = trimmed === "" || !pattern || new RegExp(pattern).test(trimmed);
+    // ReDoS-safe against an attacker-authored spec `pattern` (finding 5).
+    const shapeOk = trimmed === "" || !pattern || safeRegexTest(pattern, trimmed);
 
     return (
         <div className="space-y-1">

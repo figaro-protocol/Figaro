@@ -6,6 +6,7 @@ import {
     fetchCappedContent,
     ipfsTimeoutForBytes,
     resolveContentUri,
+    resolveImageUri,
 } from "@/lib/shared/ipfsService";
 
 describe("ipfsService", () => {
@@ -111,6 +112,28 @@ describe("ipfsService", () => {
             expect(resolveContentUri("data:image/png;base64,abc")).toBeNull();
             expect(resolveContentUri("javascript:alert(1)")).toBeNull();
             expect(resolveContentUri("blob:http://evil.com/abc")).toBeNull();
+        });
+    });
+
+    describe("resolveImageUri — IPFS-only (finding 3)", () => {
+        it("resolves ipfs:// and bare CIDs through the gateway", () => {
+            const cid = "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG";
+            expect(resolveImageUri(`ipfs://${cid}`)).toBe(`http://127.0.0.1:8080/ipfs/${cid}`);
+            expect(resolveImageUri(cid)).toBe(`http://127.0.0.1:8080/ipfs/${cid}`);
+            expect(resolveImageUri(`/ipfs/${cid}`)).toBe(`http://127.0.0.1:8080/ipfs/${cid}`);
+        });
+
+        it("REJECTS raw http(s) locators — no hotlink to an attacker-chosen host", () => {
+            // The deanonymization vector: an attacker-authored branding/catalogue
+            // image pointing at their own server. Must never become an <img src>.
+            expect(resolveImageUri("https://tracker.evil/px.png?v=victim")).toBeNull();
+            expect(resolveImageUri("http://tracker.evil/px.png")).toBeNull();
+        });
+
+        it("rejects dangerous schemes and empty just like resolveContentUri", () => {
+            expect(resolveImageUri("")).toBeNull();
+            expect(resolveImageUri("javascript:alert(1)")).toBeNull();
+            expect(resolveImageUri("data:image/png;base64,abc")).toBeNull();
         });
     });
 

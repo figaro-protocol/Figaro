@@ -45,6 +45,23 @@ export function resolveContentUri(uri: string, gatewayUrl: string = activeIpfsGa
 }
 
 /**
+ * Resolve a content URI for use as an IMAGE `src`, IPFS-only. Identical to
+ * `resolveContentUri` EXCEPT a raw `http(s)://` locator returns `null` instead
+ * of passing through. Permissionless seller/catalogue/branding data is
+ * attacker-authorable, and a hotlinked `<img src="https://attacker/px.png">`
+ * beacons every viewer's IP, User-Agent, and load timing to a host the attacker
+ * picked — a tracking-pixel / deanonymization vector (frontend security audit
+ * 2026-07-22, finding 3). Routing images through IPFS sends every fetch to the
+ * user's OWN gateway instead, so the attacker never chooses the host. Callers
+ * render their fallback (initials / neutral placeholder) when this returns null.
+ */
+export function resolveImageUri(uri: string): string | null {
+    if (!uri) return null;
+    if (uri.startsWith("http://") || uri.startsWith("https://")) return null;
+    return resolveContentUri(uri);
+}
+
+/**
  * Extract the bare CID from an `ipfs://CID`, `/ipfs/CID` path, or bare CID.
  * Returns `null` for http(s) and unrecognised schemes — only IPFS content is
  * unpinnable, so this is the erasure path's admission check.

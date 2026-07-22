@@ -36,6 +36,14 @@ export type {
 
 export { validateContent } from "./validate.js";
 
+// ReDoS-safe matching of an attacker-authored field `pattern` — the single
+// source both Layer-A validation and the frontend field inputs use.
+export {
+    safeRegexTest,
+    isPotentiallyCatastrophicRegex,
+    MAX_PATTERN_TEST_INPUT,
+} from "./safeRegex.js";
+
 // ── Content encoding (generic, spec-driven) ─────────────────────────────────
 // No per-clause types are exported — the encoder is clause-agnostic and takes
 // a parsed `ClauseSpec` + a plain `Record<string, unknown>`.

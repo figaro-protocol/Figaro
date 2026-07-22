@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { useSellerBranding } from "@/lib/seller/useSellerBranding";
+import { resolveImageUri } from "@/lib/shared/ipfsService";
 
 /**
  * SellerLogo — renders the seller's logo from IPFS/HTTP, with two
@@ -36,12 +37,15 @@ export function SellerLogo({
     size = 48,
 }: SellerLogoProps) {
     const { branding, isLoading } = useSellerBranding(sellerAddress);
-    const logoURL = branding?.logoURL;
+    // IPFS-only: a raw http(s) branding locator is attacker-authorable and
+    // hotlinking it deanonymizes the viewer (finding 3). Non-IPFS logos resolve
+    // to null and fall through to the initials / neutral placeholder below.
+    const logoSrc = branding?.logoURL ? resolveImageUri(branding.logoURL) : null;
     const [imageFailed, setImageFailed] = useState(false);
 
     useEffect(() => {
         setImageFailed(false);
-    }, [logoURL]);
+    }, [logoSrc]);
 
     if (isLoading) {
         return (
@@ -55,11 +59,11 @@ export function SellerLogo({
         );
     }
 
-    if (logoURL && !imageFailed) {
+    if (logoSrc && !imageFailed) {
         return (
-            // eslint-disable-next-line @next/next/no-img-element -- Seller branding uses arbitrary IPFS/HTTP assets with runtime fallback handling.
+            // eslint-disable-next-line @next/next/no-img-element -- Seller branding uses arbitrary IPFS assets with runtime fallback handling.
             <img
-                src={logoURL}
+                src={logoSrc}
                 alt="Seller logo"
                 width={size}
                 height={size}

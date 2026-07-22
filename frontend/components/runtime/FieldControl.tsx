@@ -30,6 +30,7 @@
 
 import { useRef } from "react";
 import type { FieldSpec } from "@figaro/sdk/clauses";
+import { safeRegexTest } from "@figaro/sdk/clauses";
 import { getFieldFormatInput } from "@/components/runtime/fieldFormatInputs";
 
 export type FieldControlMode = "design" | "runtime";
@@ -94,12 +95,12 @@ function scalarConstraintIssue(field: FieldSpec, raw: string): string | null {
         return `Must be at most ${field.maxLength} characters.`;
     }
     if (field.pattern) {
-        try {
-            if (!new RegExp(field.pattern).test(raw)) {
-                return `Doesn't match the spec's required format (${field.pattern}).`;
-            }
-        } catch {
-            // An unparseable spec pattern is the validator's finding, not the input's.
+        // ReDoS-safe: `field.pattern` is attacker-authored (permissionless clause
+        // spec), and this runs on every keystroke — a catastrophic pattern would
+        // hang the tab. `safeRegexTest` screens the exponential shape and bounds
+        // the input, treating an unsafe/invalid pattern as satisfied (finding 5).
+        if (!safeRegexTest(field.pattern, raw)) {
+            return `Doesn't match the spec's required format (${field.pattern}).`;
         }
     }
     return null;
