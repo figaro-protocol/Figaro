@@ -27,6 +27,20 @@ import { publishAgreement } from "@/lib/kernel/agreementFetch";
 import { fetchCappedContent, type IpfsService } from "@/lib/shared/ipfsService";
 
 /**
+ * Am I (buyer or seller) a party to this commitment? Signature-state-agnostic
+ * membership — the gate for any SIDE EFFECT taken on a received payload (the
+ * agreement pin below). `COMMITMENT_PAYLOAD` carries no wallet-auth, so any
+ * inbox that can DM this wallet can deliver one; without this gate a stranger's
+ * payload gets pinned to THIS wallet's own IPFS node before any trust filter
+ * (frontend security audit 2026-07-22, finding 2 — pin-to-stranger's-node +
+ * storage-amplification). Display filters (`match`) are narrower still; this is
+ * the coarse "am I even involved" floor.
+ */
+export function isCommitmentParty(p: CommitmentPayload, address: string): boolean {
+    return hexEqual(address, p.commitment.buyer) || hexEqual(address, p.commitment.seller);
+}
+
+/**
  * Awaiting MY counter-signature: I am a party, the OTHER party has signed, I
  * have not. The seller's /orders pending filter. (A seller-initiated order
  * reaches the BUYER's pending view the same way, so this is symmetric in the
@@ -142,11 +156,18 @@ export function usePendingSellerSignature(
                         if (!res.ok || cancelled) return;
                         const payload = deserializeCommitmentPayload(await res.text());
                         if (!payload.commitment?.buyer || !payload.commitment?.seller) return;
+                        // GATE the pin behind party membership. `COMMITMENT_PAYLOAD`
+                        // is unauthenticated, so a stranger's inbox can deliver one;
+                        // pinning it to THIS wallet's own IPFS node before checking
+                        // involvement is a pin-to-stranger's-node + storage-amplification
+                        // primitive (finding 2). A NON-party has no witness claim to
+                        // hydrate later, so it has no reason to pin.
+                        if (!isCommitmentParty(payload, address)) return;
                         // Persist the witnessed-URI pointer (+ standalone agreement
-                        // pin) for EVERY payload this wallet receives — it witnessed
-                        // the order, so its order/audit pages must be able to hydrate
-                        // the agreement by hash after a fresh navigation. Before the
-                        // `match` filter: a wallet witnesses inbound AND outbound orders.
+                        // pin) for every payload where this wallet IS a party — it
+                        // witnessed the order, so its order/audit pages must be able to
+                        // hydrate the agreement by hash after a fresh navigation. Before
+                        // the `match` filter: a party witnesses inbound AND outbound orders.
                         await publishAgreement(payload.agreement, { evidenceTransport: services.evidenceTransport });
                         if (!matchRef.current(payload, address)) return;
                         receivedOrderIds.current.add(orderId);

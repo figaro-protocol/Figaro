@@ -42,33 +42,46 @@ function formatPayment(payment: bigint, decimals: number): string {
     }
 }
 
-function commerceLineItems(agreement: Agreement | null): Array<{
+export function commerceLineItems(agreement: Agreement | null): Array<{
     name: string;
     quantity: string;
     unitPrice: string;
 }> {
     if (!agreement) return [];
-    // Structural, not nominal: the line-item table renders from whichever
-    // section carries a `lineItems` array — no clause is named, so a
-    // third-party commerce-equivalent clause gets the same rendering.
-    const commerce = agreement.sections.find((s) => Array.isArray(s.data?.lineItems));
-    if (!commerce) return [];
-    const items = commerce.data?.lineItems;
-    if (!Array.isArray(items)) return [];
-    return items.map((item: Record<string, unknown>) => ({
-        name: typeof item.name === "string" ? item.name : "(unnamed item)",
-        quantity: typeof item.quantity === "string" || typeof item.quantity === "number"
-            ? String(item.quantity)
-            : "?",
-        unitPrice: typeof item.unitPrice === "string" || typeof item.unitPrice === "number"
-            ? String(item.unitPrice)
-            : "?",
-    }));
+    // Structural, not nominal: the line-item table renders from EVERY section
+    // that carries a `lineItems` array — no clause is named, so a third-party
+    // commerce-equivalent clause gets the same rendering. All such sections are
+    // flattened (not just the first): the table is a readability layer, and the
+    // exhaustive JSON dump below is what guarantees nothing signed is hidden.
+    return agreement.sections.flatMap((s) => {
+        const items = s.data?.lineItems;
+        if (!Array.isArray(items)) return [];
+        return items.map((item: Record<string, unknown>) => ({
+            name: typeof item.name === "string" ? item.name : "(unnamed item)",
+            quantity: typeof item.quantity === "string" || typeof item.quantity === "number"
+                ? String(item.quantity)
+                : "?",
+            unitPrice: typeof item.unitPrice === "string" || typeof item.unitPrice === "number"
+                ? String(item.unitPrice)
+                : "?",
+        }));
+    });
 }
 
-function nonCommerceSections(agreement: Agreement | null): AgreementSection[] {
+/**
+ * EVERY section, dumped in full as canonical JSON — the exhaustive rendering
+ * that closes the "sign what you didn't see" gap. The pretty line-item table
+ * and the consent-terms block are additive readability layers ON TOP of this;
+ * this dump is the guarantee that no author-controlled key (an extra field on
+ * a commerce section, a second `lineItems`-bearing section) can suppress
+ * merkle-committed content from the review. Do NOT filter by section shape:
+ * the whole `section.data` is bound into `agreementHash`
+ * (`getSectionDataBytes` hashes every key), so the whole `section.data` is
+ * shown.
+ */
+export function fullDumpSections(agreement: Agreement | null): AgreementSection[] {
     if (!agreement) return [];
-    return agreement.sections.filter((s) => !Array.isArray(s.data?.lineItems));
+    return agreement.sections;
 }
 
 /** Sections whose clause declares the `consent` ARTICLE — the spec's own
@@ -94,7 +107,7 @@ function ConsentValueToken({ token }: { token: string }) {
 export function AgreementReview({ commitment, agreement }: Props) {
     const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     const lineItems = commerceLineItems(agreement);
-    const otherSections = nonCommerceSections(agreement);
+    const dumpedSections = fullDumpSections(agreement);
     const consented = consentSections(agreement);
     const hasAgreement = agreement !== null;
 
@@ -187,12 +200,14 @@ export function AgreementReview({ commitment, agreement }: Props) {
                 </section>
             )}
 
-            {/* Other agreement sections */}
-            {otherSections.length > 0 && (
+            {/* Every agreement section, dumped in full — the exhaustive view
+                that makes the readability layers above safe: no committed key
+                can be hidden from what the signer binds. */}
+            {dumpedSections.length > 0 && (
                 <section>
                     <h3 className="text-xs font-semibold text-neutral-500 mb-2">Clauses</h3>
                     <ul className="space-y-2 text-xs" data-testid="preview-clauses">
-                        {otherSections.map((section) => (
+                        {dumpedSections.map((section) => (
                             <li key={section.clause} className="border border-neutral-200 rounded px-3 py-2">
                                 <p className="font-mono text-neutral-500 mb-1">{section.clause}</p>
                                 <pre className="text-black whitespace-pre-wrap break-words">
