@@ -199,6 +199,26 @@ fn enforces_pattern() {
     assert!(!ok(&json!({ "un": "UN12" }), &spec));
 }
 
+#[test]
+fn skips_catastrophic_pattern_matching_layer_a() {
+    // A ReDoS-shaped pattern (nested quantifiers) is SKIPPED, not run — the
+    // field validates as satisfied. Layer A's `safeRegexTest` does the same, so
+    // both engines accept; the catastrophic pattern can never hang the prover.
+    // This is the conformance case for the coordinated ReDoS screen.
+    let spec = spec_of(json!([
+        { "name": "s", "type": "string", "required": true, "pattern": "(a+)+$" },
+    ]));
+    // Both a would-match and a would-not-match input are accepted (screen skips).
+    assert!(ok(&json!({ "s": "aaaa" }), &spec));
+    assert!(ok(&json!({ "s": &"a".repeat(40).to_string() }), &spec));
+    // A safe pattern still enforces normally.
+    let safe = spec_of(json!([
+        { "name": "s", "type": "string", "required": true, "pattern": "^a+$" },
+    ]));
+    assert!(ok(&json!({ "s": "aaa" }), &safe));
+    assert!(!ok(&json!({ "s": "aab" }), &safe));
+}
+
 // ── String formats — the four canonical + the open axis ──────────────
 
 #[test]

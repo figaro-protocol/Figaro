@@ -85,6 +85,21 @@ describe("validateContent — happy paths", () => {
         expect(validateContent({ tags: ["a", ""] }, spec).ok).toBe(false);
     });
 
+    it("enforces a safe pattern, but SKIPS a catastrophic one (ReDoS screen — Rust-mirror conformance)", () => {
+        // A safe pattern is enforced.
+        const safe = specOf([{ name: "s", type: "string", required: true, pattern: "^a+$" }]);
+        expect(validateContent({ s: "aaa" }, safe).ok).toBe(true);
+        expect(validateContent({ s: "aab" }, safe).ok).toBe(false);
+
+        // A ReDoS-shaped pattern (nested quantifiers) is skipped → satisfied,
+        // for both a would-match and a would-not-match input. The Rust prover
+        // mirror (prover/clause conformance test) accepts the same cases, so
+        // the batch-settlement path stays conformant.
+        const evil = specOf([{ name: "s", type: "string", required: true, pattern: "(a+)+$" }]);
+        expect(validateContent({ s: "aaaa" }, evil).ok).toBe(true);
+        expect(validateContent({ s: "a".repeat(40) }, evil).ok).toBe(true);
+    });
+
     it("validates nested objects", () => {
         const spec = specOf([
             {

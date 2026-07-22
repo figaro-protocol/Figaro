@@ -21,6 +21,7 @@ import type {
     ArrayFieldSpec,
     ObjectFieldSpec,
 } from "./spec.js";
+import { safeRegexTest } from "./safeRegex.js";
 
 export interface ValidationError {
     /** JSON-pointer-style path to the problem. */
@@ -63,8 +64,13 @@ function validateString(value: unknown, spec: StringFieldSpec, path: string, err
         errors.push({ path, message: `string longer than maxLength ${spec.maxLength}` });
     }
     if (spec.pattern !== undefined) {
-        const re = new RegExp(spec.pattern);
-        if (!re.test(value)) {
+        // ReDoS-safe: `pattern` is attacker-authored (permissionless clause
+        // spec). `safeRegexTest` screens the catastrophic-backtracking shape and
+        // bounds the input, treating an unsafe/over-long/invalid pattern as
+        // satisfied. The Rust prover mirror (prover/clause/src/validate.rs)
+        // applies the SAME screen with identical skip semantics — the two are
+        // conformance-locked, so this must not diverge (see safeRegex.ts).
+        if (!safeRegexTest(spec.pattern, value)) {
             errors.push({ path, message: `string does not match pattern ${spec.pattern}` });
         }
     }

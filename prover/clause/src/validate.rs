@@ -127,6 +127,84 @@ fn utf16_len(s: &str) -> usize {
     s.chars().map(char::len_utf16).sum()
 }
 
+/// Inputs longer than this (UTF-16 units, matching Layer A) are not
+/// pattern-tested. Mirror of `MAX_PATTERN_TEST_INPUT` in
+/// `sdk/src/clauses/safeRegex.ts`.
+const MAX_PATTERN_TEST_INPUT: usize = 4096;
+
+/// Conservatively detect the exponential-backtracking shape — a quantified
+/// group whose body is itself quantified. EXACT port of
+/// `isPotentiallyCatastrophicRegex` in `sdk/src/clauses/safeRegex.ts`; the two
+/// are conformance-locked, so the skip decision must be byte-for-byte identical.
+fn is_potentially_catastrophic_regex(pattern: &str) -> bool {
+    let chars: Vec<char> = pattern.chars().collect();
+    let mut group_has_quantifier: Vec<bool> = Vec::new();
+    let mut i = 0usize;
+    while i < chars.len() {
+        let c = chars[i];
+        if c == '\\' {
+            i += 1; // skip the escaped character
+            i += 1;
+            continue;
+        }
+        if c == '[' {
+            // Skip a character class wholesale.
+            i += 1;
+            while i < chars.len() && chars[i] != ']' {
+                if chars[i] == '\\' {
+                    i += 1;
+                }
+                i += 1;
+            }
+            i += 1;
+            continue;
+        }
+        if c == '(' {
+            group_has_quantifier.push(false);
+            i += 1;
+            continue;
+        }
+        let is_quantifier = c == '*' || c == '+' || c == '{';
+        if c == ')' {
+            let body_had_quantifier = group_has_quantifier.pop().unwrap_or(false);
+            let next = chars.get(i + 1).copied();
+            let group_quantified = matches!(next, Some('*') | Some('+') | Some('{'));
+            if body_had_quantifier && group_quantified {
+                return true;
+            }
+            if (body_had_quantifier || group_quantified) && !group_has_quantifier.is_empty() {
+                let last = group_has_quantifier.len() - 1;
+                group_has_quantifier[last] = true;
+            }
+            i += 1;
+            continue;
+        }
+        if is_quantifier && !group_has_quantifier.is_empty() {
+            let last = group_has_quantifier.len() - 1;
+            group_has_quantifier[last] = true;
+        }
+        i += 1;
+    }
+    false
+}
+
+/// ReDoS-safe `pattern.test(value)`. Returns `true` (satisfied) when the pattern
+/// matches, when it is unsafe to run, when it is not a valid regex, or when the
+/// input is over-long. Mirror of `safeRegexTest` in
+/// `sdk/src/clauses/safeRegex.ts`.
+fn safe_regex_test(pattern: &str, value: &str) -> bool {
+    if utf16_len(value) > MAX_PATTERN_TEST_INPUT {
+        return true;
+    }
+    if is_potentially_catastrophic_regex(pattern) {
+        return true;
+    }
+    match regex::Regex::new(pattern) {
+        Ok(re) => re.is_match(value),
+        Err(_) => true,
+    }
+}
+
 fn validate_string(
     value: &Value,
     spec: &StringFieldSpec,
@@ -160,9 +238,12 @@ fn validate_string(
         }
     }
     if let Some(pat) = &spec.pattern {
-        // pattern was validated as a parseable regex at spec-parse time.
-        let re = regex::Regex::new(pat).expect("pattern parsed at spec-parse time");
-        if !re.is_match(s) {
+        // ReDoS-safe, conformance-locked with Layer A (`safeRegexTest` in
+        // sdk/src/clauses/safeRegex.ts): screen the catastrophic-backtracking
+        // shape and bound the input, treating an unsafe/over-long/invalid
+        // pattern as satisfied. Both engines must skip identically or the
+        // batch-settlement conformance diverges.
+        if !safe_regex_test(pat, s) {
             errors.push(ValidationError {
                 path: path.to_string(),
                 message: format!("string does not match pattern {pat}"),
