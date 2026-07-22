@@ -355,3 +355,41 @@ Any Solidity edit after the freeze commit must be:
 
 Changes to `test/`, `frontend/`, or `sdk/` do not require
 re-audit unless they expose a new on-chain attack surface.
+
+## Freeze Notice — Frontend + SDK Surface Frozen for Security Audit
+
+**Freeze**: 2026-07-22 at commit `79b4e728`. This is the FE/SDK sibling of the
+Solidity external audit above, which excludes these surfaces by declaration.
+Open-world places the trust boundary in the client — the frontend is a static
+export with zero server routes; it renders permissionless, attacker-authored
+network state (clause specs, seller metadata, agreements, XMTP messages) and is
+the what-you-see-is-what-you-sign surface. The audit covers eight domains:
+signing integrity, dispatch-race/RFQ market formation, untrusted-content
+rendering, IPFS content-integrity, the ECDH/XMTP coordination channel,
+client-side key material, app hardening + supply chain, and the
+ecosystem-agent tier.
+
+### Frozen scope
+
+| Directory | Contents |
+|---|---|
+| `frontend/` | The static-export client — routes, components, `lib/`, `shared/`, `public/_headers` |
+| `sdk/` | `@figaro/sdk` — all five subpath exports |
+| `ecosystem-agents/` | Public ecosystem-agent specifications |
+
+### Not freeze violations
+
+- New clause specs in `clauses/` plus their lockstep Layer-A entries — witness
+  data flowing through the generic pipeline, not engine changes.
+- Test additions that pin an audit finding as a regression spec, after the
+  finding is ruled.
+- Fixes for ruled audit findings, each scoped to its finding (same post-audit
+  policy as the Solidity freeze).
+
+### Verifying the freeze
+
+```bash
+git diff 79b4e728 -- frontend/ sdk/ ecosystem-agents/
+```
+
+Expected output: empty, minus edits admitted under "Not freeze violations."
