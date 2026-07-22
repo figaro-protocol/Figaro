@@ -330,13 +330,16 @@ export function composesForumUrl(clauseId: string): string | undefined {
 
 /** The STANDARD composition interface a clause binds to, from its
  *  `block.composes.interface` — the open-world discriminator for WHICH on-network
- *  contract an order composes with (e.g. "carbon-aggregator", "dispute-forum").
+ *  contract an order composes with (e.g. an auction standard, an NFT credential
+ *  check — never a dispute forum, which is `forumUrl`, a link and not a tenant).
  *  Generic surfaces derive composition behaviour from this string, never a
  *  bundled clause-id. Undefined when the clause composes with nothing, or its
  *  spec isn't loaded.
  *  @public pending consumer: the composes-seam reader (kept by operator ruling
- *  2026-07-02); its next consumer is the emissions cluster's carbon-aggregator
- *  interface gate. */
+ *  2026-07-02); its next consumer is the first on-chain-invoke tenant to land a
+ *  handler in `useCompositionActions` (the earlier carbon-aggregator candidate
+ *  is gone — no live mainnet retirement router; CONTRACTS.md § "Carbon-offset
+ *  apparatus — DELETED"). */
 export function composesInterface(clauseId: string): string | undefined {
     return getClauseSpec(clauseId)?.block?.composes?.interface;
 }
