@@ -75,6 +75,7 @@ export interface HandoffPersistenceService {
     purgeHandoffArtifacts(address: string, processId: string, orderId: string): void;
     schedulePurge(address: string, processId: string, orderId: string, gracePeriodMs: number): void;
     sweepDuePurges(address: string, now?: number): void;
+    sweepStaleKeys(address: string, maxAgeMs: number, now?: number): void;
 }
 
 export const HANDOFF_KEY_STORAGE_KEY = "figaro-handoff-keys";
@@ -300,6 +301,31 @@ class DefaultHandoffPersistenceService implements HandoffPersistenceService {
 
         if (remaining.length !== queue.length) {
             writePurgeQueue(remaining);
+        }
+    }
+
+    /**
+     * Purge handoff key records older than `maxAgeMs` — the abandoned-order
+     * sweep for the buyer-side key store. An order that never resolves has no
+     * terminal event to trigger `schedulePurge`, so its key record (and the
+     * matching ECDH keypair + intent, via `purgeHandoffArtifacts`) would
+     * otherwise sit for the life of the tab. The precise per-order signature
+     * `deadline` is NOT surfaced in the client's reconstructed order model, so
+     * this uses the record's own `createdAt` as a coarse age bound rather than
+     * widening the interaction-surface contract to thread the deadline through.
+     */
+    sweepStaleKeys(address: string, maxAgeMs: number, now = Date.now()): void {
+        const normalizedAddress = address.toLowerCase();
+        const stale: OrderRef[] = [];
+        for (const [entryKey, record] of Object.entries(readKeyStorage())) {
+            if (!entryKey.startsWith(`${normalizedAddress}:`)) continue;
+            if (typeof record.createdAt !== "number") continue;
+            if (now - record.createdAt > maxAgeMs) {
+                stale.push({ processId: record.processId, orderId: record.orderId });
+            }
+        }
+        for (const ref of stale) {
+            this.purgeHandoffArtifacts(address, ref.processId, ref.orderId);
         }
     }
 }

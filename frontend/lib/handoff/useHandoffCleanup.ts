@@ -23,7 +23,18 @@ import { CORE_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { ensureRpc } from "@/lib/handoff/rpc";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import type { HandoffPersistenceService } from "@/lib/handoff/handoffPersistenceService";
+import { sweepStaleEcdhKeypairs } from "@/lib/handoff/ecdh";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
+
+/** Age bound for ABANDONED-ceremony ephemeral key material. An order that never
+ *  resolves has no terminal event to trigger the resolution-path purge; this
+ *  bounds its key residue within a long-lived tab. Chosen generously so it
+ *  never races a slow-but-live ceremony (a counterparty taking hours to answer
+ *  a delivery-address exchange): 24h is far beyond any real handoff, and
+ *  sessionStorage already clears everything on tab close. The precise per-order
+ *  signature deadline is not surfaced in the client order model — see
+ *  handoffPersistenceService.sweepStaleKeys. */
+const EPHEMERAL_HANDOFF_KEY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -43,10 +54,14 @@ export function useHandoffCleanup(opts: UseHandoffCleanupOpts = {}) {
     const isE2EMock = isE2EMockSession();
     const processedRef = useRef<Set<string>>(new Set());
 
-    // ── Sweep deferred purges on mount ──────────────────────────────
+    // ── Sweep deferred purges + stale abandoned-order keys on mount ──
     useEffect(() => {
         if (!address) return;
         handoffPersistence.sweepDuePurges(address);
+        // Abandoned-order sweep: purge key records + orphaned ECDH keypairs whose
+        // ceremony never resolved and is now definitively stale by age.
+        handoffPersistence.sweepStaleKeys(address, EPHEMERAL_HANDOFF_KEY_MAX_AGE_MS);
+        sweepStaleEcdhKeypairs(Date.now(), EPHEMERAL_HANDOFF_KEY_MAX_AGE_MS);
     }, [address, handoffPersistence]);
 
     // ── Watch OrderResolved ─────────────────────────────────────────

@@ -15,8 +15,17 @@ import { readSessionStorage, writeSessionStorage } from "@/lib/shared/storage";
 
 const ECDH_KEYS_STORAGE_KEY = "figaro-ecdh-keys";
 
+/** A stored keypair carries a creation stamp so an ABANDONED ceremony's key
+ *  material can be swept by age (an order that never resolves has no terminal
+ *  event to trigger the resolution-path purge; sessionStorage still bounds it
+ *  to the tab, this bounds it within the tab). Entries written before this
+ *  field existed have no `createdAt` and are left to tab-close, never swept. */
+interface StoredEcdhKeypair extends EphemeralKeypair {
+    createdAt?: number;
+}
+
 interface EcdhKeyStore {
-    [addressOrderKey: string]: EphemeralKeypair;
+    [addressOrderKey: string]: StoredEcdhKeypair;
 }
 
 function ecdhStoreKey(address: string, orderId: string): string {
@@ -28,7 +37,8 @@ function ecdhStoreKey(address: string, orderId: string): string {
  * handoff ECDH exchange.
  *
  * Idempotent: if a keypair already exists for this address+order, it is
- * returned. Otherwise a fresh keypair is generated and persisted.
+ * returned. Otherwise a fresh keypair is generated and persisted with a
+ * creation stamp (for the age sweep).
  */
 export function getOrCreateOrderEcdhKeypair(
     address: string,
@@ -39,9 +49,28 @@ export function getOrCreateOrderEcdhKeypair(
     if (store[key]) return store[key];
 
     const kp = generateOrderKeypair();
-    store[key] = kp;
+    store[key] = { ...kp, createdAt: Date.now() };
     writeSessionStorage(ECDH_KEYS_STORAGE_KEY, store);
     return kp;
+}
+
+/**
+ * Purge ephemeral keypairs older than `maxAgeMs` — the abandoned-ceremony
+ * sweep. An order that never reaches OrderResolved/ProcessResolved never
+ * triggers the resolution-path purge, so without this its keypair lingers for
+ * the life of the tab; this bounds that to `maxAgeMs`. Entries without a
+ * `createdAt` (pre-upgrade) are NOT swept — only definitely-stale keys go.
+ */
+export function sweepStaleEcdhKeypairs(now: number, maxAgeMs: number): void {
+    const store = readSessionStorage<EcdhKeyStore>(ECDH_KEYS_STORAGE_KEY, {});
+    let changed = false;
+    for (const [key, kp] of Object.entries(store)) {
+        if (typeof kp.createdAt === "number" && now - kp.createdAt > maxAgeMs) {
+            delete store[key];
+            changed = true;
+        }
+    }
+    if (changed) writeSessionStorage(ECDH_KEYS_STORAGE_KEY, store);
 }
 
 /** Retrieve a previously stored ECDH keypair (null if missing). */

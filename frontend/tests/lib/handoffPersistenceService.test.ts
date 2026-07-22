@@ -74,6 +74,36 @@ describe("handoffPersistenceService", () => {
         expect(localStorage.getItem(PENDING_HANDOFF_INTENT_STORAGE_KEY)).toBeTruthy();
     });
 
+    it("sweeps stale abandoned-order key records by age, keeping fresh ones (item 2)", () => {
+        const NOW = 10_000_000;
+        const MAX_AGE = 24 * 60 * 60 * 1000;
+        // A stale record (older than maxAge) and a fresh one.
+        DEFAULT_HANDOFF_PERSISTENCE_SERVICE.saveHandoffKey("0xABC", {
+            keyB64: "stale", txHash: "0x1", processId: "p-stale", orderId: "o-stale",
+            createdAt: NOW - MAX_AGE - 1,
+        });
+        DEFAULT_HANDOFF_PERSISTENCE_SERVICE.saveHandoffKey("0xABC", {
+            keyB64: "fresh", txHash: "0x2", processId: "p-fresh", orderId: "o-fresh",
+            createdAt: NOW - 1000,
+        });
+
+        DEFAULT_HANDOFF_PERSISTENCE_SERVICE.sweepStaleKeys("0xABC", MAX_AGE, NOW);
+
+        expect(DEFAULT_HANDOFF_PERSISTENCE_SERVICE.getHandoffKey("0xabc", "p-stale", "o-stale")).toBeNull();
+        expect(DEFAULT_HANDOFF_PERSISTENCE_SERVICE.getHandoffKey("0xabc", "p-fresh", "o-fresh"))
+            .toEqual(expect.objectContaining({ keyB64: "fresh" }));
+        // The stale order's ECDH keypair is purged too (via purgeHandoffArtifacts).
+        expect(removeOrderEcdhKeypairMock).toHaveBeenCalledWith("0xABC", "o-stale");
+    });
+
+    it("does not sweep a record that predates the createdAt field", () => {
+        const store = { "0xabc:p-old:o-old": { keyB64: "old", txHash: "0x0", processId: "p-old", orderId: "o-old" } };
+        sessionStorage.setItem(HANDOFF_KEY_STORAGE_KEY, JSON.stringify(store));
+        DEFAULT_HANDOFF_PERSISTENCE_SERVICE.sweepStaleKeys("0xABC", 1, 9_999_999_999);
+        expect(DEFAULT_HANDOFF_PERSISTENCE_SERVICE.getHandoffKey("0xabc", "p-old", "o-old"))
+            .toEqual(expect.objectContaining({ keyB64: "old" }));
+    });
+
     it("persists handoff artifacts from an OrderCommitted receipt", async () => {
         const publicClient = {
             waitForTransactionReceipt: vi.fn().mockResolvedValue({
