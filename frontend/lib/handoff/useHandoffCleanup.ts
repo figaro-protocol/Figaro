@@ -1,20 +1,18 @@
 "use client";
 
 /**
- * Watches for the ONE terminal order event — OrderResolved / ProcessResolved
- * (the kernel has NO cancel) — and purges handoff encryption artifacts.
+ * Watches for the terminal order event — OrderResolved (the kernel has NO
+ * cancel, and `resolveProcess` emits OrderResolved for EVERY order before the
+ * one ProcessResolved) — and purges the order's ECDH ephemeral keypair
+ * (sessionStorage ecdh store) via handoffPersistenceService: the
+ * crypto-shredding leg of the layered-evidence pattern.
  *
- * Cleans up (all via handoffPersistenceService):
- *   - Buyer-side AES handoff key + ephemeral private key (sessionStorage)
- *   - Receiving-side ECDH ephemeral keypair (sessionStorage ecdh store)
- *   - Pending handoff intent (localStorage) + the purge queue (localStorage)
- *
- * The ephemeral key material is sessionStorage-backed, so it auto-clears on tab
- * close even for an order that is abandoned rather than resolved; this hook is
- * the same-session purge on the resolution path. A grace period (default 0 —
- * immediate) can be configured per-instance: during it the key record is marked
- * `purgeAfter` but not yet deleted, and a sweep on hook mount handles deferred
- * deletions.
+ * The key material is sessionStorage-backed, so it auto-clears on tab close
+ * even for an order that is abandoned rather than resolved; this hook is the
+ * same-session purge on the resolution path, and the mount-time sweeps bound
+ * abandoned-ceremony residue by age. A grace period (default 0 — immediate)
+ * can be configured per-instance: during it the purge sits queued under
+ * `purgeAfter`, and the mount-time sweep executes deferred deletions.
  */
 
 import { useEffect, useRef } from "react";
@@ -32,8 +30,8 @@ import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
  *  never races a slow-but-live ceremony (a counterparty taking hours to answer
  *  a delivery-address exchange): 24h is far beyond any real handoff, and
  *  sessionStorage already clears everything on tab close. The precise per-order
- *  signature deadline is not surfaced in the client order model — see
- *  handoffPersistenceService.sweepStaleKeys. */
+ *  signature deadline is not surfaced in the client order model, so the sweep
+ *  (`sweepStaleEcdhKeypairs`) uses the keypair's own creation stamp. */
 const EPHEMERAL_HANDOFF_KEY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
@@ -54,13 +52,12 @@ export function useHandoffCleanup(opts: UseHandoffCleanupOpts = {}) {
     const isE2EMock = isE2EMockSession();
     const processedRef = useRef<Set<string>>(new Set());
 
-    // ── Sweep deferred purges + stale abandoned-order keys on mount ──
+    // ── Sweep deferred purges + stale abandoned-ceremony keypairs on mount ──
     useEffect(() => {
         if (!address) return;
         handoffPersistence.sweepDuePurges(address);
-        // Abandoned-order sweep: purge key records + orphaned ECDH keypairs whose
-        // ceremony never resolved and is now definitively stale by age.
-        handoffPersistence.sweepStaleKeys(address, EPHEMERAL_HANDOFF_KEY_MAX_AGE_MS);
+        // Abandoned-ceremony sweep: an order that never resolves has no
+        // terminal event, so its keypair is bounded by age instead.
         sweepStaleEcdhKeypairs(Date.now(), EPHEMERAL_HANDOFF_KEY_MAX_AGE_MS);
     }, [address, handoffPersistence]);
 
@@ -81,12 +78,15 @@ export function useHandoffCleanup(opts: UseHandoffCleanupOpts = {}) {
                 onLogs: (logs) => {
                     if (!mounted) return;
                     for (const log of logs) {
-                        const { orderId, processId } = (log.args ?? {}) as Partial<{
-                            orderId: string | bigint;
+                        // The kernel event's field is `orderHash` — destructuring
+                        // `orderId` here was a silent no-op that killed the
+                        // per-order purge path (every log skipped on the guard).
+                        const { orderHash, processId } = (log.args ?? {}) as Partial<{
+                            orderHash: string | bigint;
                             processId: string;
                         }>;
-                        if (!orderId || !processId) continue;
-                        const oid = orderId.toString();
+                        if (!orderHash || !processId) continue;
+                        const oid = orderHash.toString();
                         const pid = processId as string;
                         const key = `${pid}:${oid}`;
                         if (processedRef.current.has(key)) continue;
@@ -104,41 +104,10 @@ export function useHandoffCleanup(opts: UseHandoffCleanupOpts = {}) {
         };
     }, [publicClient, address, isE2EMock, gracePeriodMs, handoffPersistence]);
 
-    // ── Watch ProcessResolved (no cancel — only resolution triggers cleanup) ──
-    useEffect(() => {
-        if (!publicClient || !address || isE2EMock) return;
-        let unwatch: (() => void) | undefined;
-        let mounted = true;
-
-        const start = async () => {
-            const rpc = await ensureRpc(publicClient);
-            if (!rpc.ok || !mounted) return;
-
-            unwatch = publicClient.watchContractEvent({
-                address: CONTRACTS.core as `0x${string}`,
-                abi: CORE_ABI,
-                eventName: "ProcessResolved",
-                onLogs: (logs) => {
-                    if (!mounted) return;
-                    for (const log of logs) {
-                        const { processId } = (log.args ?? {}) as Partial<{ processId: string }>;
-                        if (!processId) continue;
-                        const pid = processId as string;
-                        const key = `resolved:${pid}`;
-                        if (processedRef.current.has(key)) continue;
-                        processedRef.current.add(key);
-                        // Resolution → purge after grace period
-                        handoffPersistence.schedulePurge(address, pid, "all", 0);
-                    }
-                },
-            });
-        };
-
-        start();
-        return () => {
-            mounted = false;
-            unwatch?.();
-        };
-    }, [publicClient, address, isE2EMock, handoffPersistence]);
+    // No ProcessResolved watcher: `resolveProcess` emits OrderResolved for
+    // every order in the same transaction (FigaroCore.sol — per-order event
+    // inside the loop, ProcessResolved once after), so the per-order watcher
+    // above already purges the whole process. The former "all"-scope branch
+    // enumerated the deleted durable key/intent stores and died with them.
 }
 

@@ -31,14 +31,6 @@ const defaultSubscribeEcdhPubkeyMock = vi.fn();
 const defaultSendWrappedKeyMock = vi.fn();
 const defaultSendEcdhPubkeyMock = vi.fn();
 const defaultSubscribeWrappedKeyMock = vi.fn();
-const defaultSaveHandoffKeyMock = vi.fn();
-const defaultGetHandoffKeyMock = vi.fn();
-const defaultRemoveHandoffKeyMock = vi.fn();
-const defaultSavePendingHandoffIntentMock = vi.fn();
-const defaultGetPendingHandoffIntentMock = vi.fn();
-const defaultRemovePendingHandoffIntentMock = vi.fn();
-const defaultPersistHandoffArtifactsForOrderMock = vi.fn();
-const defaultRecoverHandoffKeysMock = vi.fn();
 const defaultSchedulePurgeMock = vi.fn();
 const defaultSweepDuePurgesMock = vi.fn();
 const walletClientMock = { signMessage: vi.fn() };
@@ -98,16 +90,8 @@ vi.mock("@/lib/handoff/coordinationMessagingService", () => ({
 }));
 
 vi.mock("@/lib/handoff/handoffPersistenceService", () => ({
-    HANDOFF_KEY_STORAGE_KEY: "figaro-handoff-keys",
+    HANDOFF_PURGE_QUEUE_KEY: "figaro-handoff-purge-queue",
     DEFAULT_HANDOFF_PERSISTENCE_SERVICE: {
-        saveHandoffKey: (...args: unknown[]) => defaultSaveHandoffKeyMock(...args),
-        getHandoffKey: (...args: unknown[]) => defaultGetHandoffKeyMock(...args),
-        removeHandoffKey: (...args: unknown[]) => defaultRemoveHandoffKeyMock(...args),
-        savePendingHandoffIntent: (...args: unknown[]) => defaultSavePendingHandoffIntentMock(...args),
-        getPendingHandoffIntent: (...args: unknown[]) => defaultGetPendingHandoffIntentMock(...args),
-        removePendingHandoffIntent: (...args: unknown[]) => defaultRemovePendingHandoffIntentMock(...args),
-        persistHandoffArtifactsForOrder: (...args: unknown[]) => defaultPersistHandoffArtifactsForOrderMock(...args),
-        recoverHandoffKeys: (...args: unknown[]) => defaultRecoverHandoffKeysMock(...args),
         schedulePurge: (...args: unknown[]) => defaultSchedulePurgeMock(...args),
         sweepDuePurges: (...args: unknown[]) => defaultSweepDuePurgesMock(...args),
         purgeHandoffArtifacts: vi.fn(),
@@ -189,14 +173,6 @@ describe("runtime service hook injection", () => {
         defaultSendWrappedKeyMock.mockReset();
         defaultSendEcdhPubkeyMock.mockReset();
         defaultSubscribeWrappedKeyMock.mockReset();
-        defaultSaveHandoffKeyMock.mockReset();
-        defaultGetHandoffKeyMock.mockReset();
-        defaultRemoveHandoffKeyMock.mockReset();
-        defaultSavePendingHandoffIntentMock.mockReset();
-        defaultGetPendingHandoffIntentMock.mockReset();
-        defaultRemovePendingHandoffIntentMock.mockReset();
-        defaultPersistHandoffArtifactsForOrderMock.mockReset();
-        defaultRecoverHandoffKeysMock.mockReset();
         defaultSchedulePurgeMock.mockReset();
         defaultSweepDuePurgesMock.mockReset();
         walletClientMock.signMessage.mockReset();
@@ -268,12 +244,10 @@ describe("runtime service hook injection", () => {
     it("uses injected handoff persistence from runtime context in useHandoffCleanup", async () => {
         const sweepDuePurges = vi.fn();
         const schedulePurge = vi.fn();
-        const sweepStaleKeys = vi.fn();
         const services = createRuntimeServices({
             handoffPersistence: {
                 sweepDuePurges,
                 schedulePurge,
-                sweepStaleKeys,
             } as unknown as RuntimeServices["handoffPersistence"],
         });
         const wrapper = createWrapper(services);
@@ -283,16 +257,11 @@ describe("runtime service hook injection", () => {
         await waitFor(() => {
             expect(sweepDuePurges).toHaveBeenCalledWith("0x1234567890123456789012345678901234567890");
         });
-        // The abandoned-order age sweep runs on the same mount (item 2).
-        await waitFor(() => {
-            expect(sweepStaleKeys).toHaveBeenCalledWith(
-                "0x1234567890123456789012345678901234567890",
-                expect.any(Number),
-            );
-        });
 
+        // ONE watcher: OrderResolved only — resolveProcess emits it per order,
+        // so the former ProcessResolved "all" watcher is gone.
         await waitFor(() => {
-            expect(watchContractEventMock).toHaveBeenCalledTimes(2);
+            expect(watchContractEventMock).toHaveBeenCalledTimes(1);
         });
 
         expect(defaultSweepDuePurgesMock).not.toHaveBeenCalled();
