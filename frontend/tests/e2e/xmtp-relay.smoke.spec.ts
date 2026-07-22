@@ -33,9 +33,19 @@
  *     and prints every console warning/error for the operator to review.
  *     Run HEADED to watch: add `--headed`.
  */
-import type { Page } from '@playwright/test';
+import path from 'path';
+import { chromium, type BrowserContext, type Page } from '@playwright/test';
 import { test, expect, gotoAsWallet, newWalletPage, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import { discoverSellers, discoverAnchoredAssemblies, confirmAgreementPreviews, waitForConnected } from './devnet-helpers';
+
+/** PERSISTENT profiles, one per party, reused ACROSS smoke runs — this is
+ *  load-bearing, not convenience. XMTP's model is ONE installation per
+ *  browser+origin, reused forever (the app's OPFS comment). A fresh context
+ *  per run mints a new installation, revokes all others (dev housekeeping),
+ *  and creates a new DM group every run — churn real usage never has, and it
+ *  desyncs MLS group state ("Ciphertext generation out of bounds", run 6).
+ *  Profiles live outside test-results/ (Playwright wipes that per run). */
+const SMOKE_PROFILES_DIR = path.resolve(__dirname, '../../.smoke-profiles');
 
 /** Console/page-error capture — the smoke's diagnostic channel. */
 function watchPage(page: Page, label: string, errors: string[]) {
@@ -51,7 +61,24 @@ function watchPage(page: Page, label: string, errors: string[]) {
 test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev network, the seller\'s /orders receives (smoke)', () => {
     test.setTimeout(600_000);
 
-    test('a commitment crosses real XMTP once — no duplicates, no page errors', async ({ page, browser }) => {
+    test('a commitment crosses real XMTP once — no duplicates, no page errors', async ({ baseURL }) => {
+        // The profile must persist ONLY the XMTP identity (OPFS database).
+        // Everything else it could persist is contamination: the HTTP cache
+        // serves stale Next.js chunks across rebuilds (empty catalogue, run
+        // 8), and app localStorage carries cart state between attempts —
+        // so the disk cache is disabled and app storage cleared per launch.
+        const launchProfile = async (name: string): Promise<BrowserContext> => {
+            const ctx = await chromium.launchPersistentContext(
+                path.join(SMOKE_PROFILES_DIR, name),
+                { baseURL, args: ['--disk-cache-size=1'] },
+            );
+            const p = ctx.pages()[0] ?? await ctx.newPage();
+            await p.goto('/', { waitUntil: 'domcontentloaded' });
+            await p.evaluate(() => window.localStorage.clear());
+            return ctx;
+        };
+        const buyerContext = await launchProfile('buyer');
+        const page = await newWalletPage(buyerContext);
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
 
         // ── Adopt a seeded seller from CHAIN state (no roster): any seller
@@ -73,7 +100,14 @@ test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev netwo
             }
         }
         expect(sellerAddr, 'a seeded, anvil-controlled seller with a bound anchored assembly exists').toBeTruthy();
-        const BUYER = ANVIL_ACCOUNTS[0] as `0x${string}`;
+        // Index 19: unused by every other spec AND — load-bearing for the dev
+        // network — a wallet pair with NO prior XMTP history. The churn era of
+        // this smoke's early runs left the [0]↔seller inbox pair with several
+        // half-dead DM groups on the hosted dev network (permanent state), and
+        // the seller's ratchet view of that pair is pinned ("Ciphertext
+        // generation out of bounds N", N advancing per run). A poisoned pair
+        // cannot be repaired from here; a fresh pair is the honest baseline.
+        const BUYER = ANVIL_ACCOUNTS[19] as `0x${string}`;
         expect(sellerAddr!.toLowerCase()).not.toBe(BUYER.toLowerCase());
 
         const errors: string[] = [];
@@ -91,7 +125,7 @@ test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev netwo
         //    same-context tabs; the real transport needs the opposite. Each
         //    context has its own storage, so each party flips its own
         //    /settings opt-in. ──
-        const sellerContext = await browser.newContext();
+        const sellerContext = await launchProfile('seller');
         const sellerPage = await newWalletPage(sellerContext);
         watchPage(sellerPage, 'seller', errors);
         await gotoAsWallet(sellerPage, sellerAddr!, '/settings');
@@ -147,5 +181,6 @@ test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev netwo
 
         expect(errors, `no page errors on either side:\n${errors.join('\n')}`).toHaveLength(0);
         await sellerContext.close();
+        await buyerContext.close();
     });
 });

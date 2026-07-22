@@ -138,8 +138,122 @@ export async function createXmtpChannel(
         console.warn("[xmtp] stale-installation housekeeping failed (continuing)", housekeepingErr);
     }
 
-    // Track active stream cleanups.
-    const streamCleanups: Array<() => void> = [];
+    // ── THE ONE MESSAGE PUMP ────────────────────────────────────────────
+    //
+    // Receive-path rewrite (2026-07-22, the smoke-reproduced bug): the prior
+    // shape gave EVERY subscriber its own sync→list→scan→streamAllMessages
+    // loop. Three structural failures, each observed or implied on the real
+    // dev network:
+    //   1. /orders mounts three subscribers → three concurrent WASM streams
+    //      on one client (the stream-sharing question).
+    //   2. A loop error KILLED its listener permanently behind a console.warn.
+    //   3. A healthy streamAllMessages can miss the FIRST message of a
+    //      brand-new DM when the MLS welcome isn't processed — exactly the
+    //      smoke's symptom: the buyer's send reports delivered, the seller's
+    //      /orders never hears it.
+    // Now the channel owns ONE pump: a resilient stream loop (rebuilds on
+    // death) plus a periodic sync+scan sweep (processes welcomes, closes the
+    // startup window). Message-id dedup makes the overlap harmless; a bounded
+    // replay buffer preserves the old semantics where every subscriber —
+    // however late it mounts — sees recent history before live traffic.
+
+    interface PumpedMessage {
+        parsed: ChannelMessage;
+        senderInboxId: string;
+    }
+    type PumpSubscriber = (msg: PumpedMessage) => void;
+
+    const subscribers = new Set<PumpSubscriber>();
+    const seenMessageIds = new Set<string>();
+    const replayBuffer: PumpedMessage[] = [];
+    const REPLAY_BUFFER_MAX = 200;
+    const SEEN_IDS_MAX = 2000;
+    /** Catch-up cadence — each sweep runs conversations.sync() (processes
+     *  pending MLS welcomes → new DMs join) and re-scans recent messages.
+     *  The live stream carries the common case; the sweep is the safety net. */
+    const CATCH_UP_INTERVAL_MS = 5_000;
+    let pumpStarted = false;
+    let destroyed = false;
+
+    function deliver(msg: { id?: string; content: unknown; senderInboxId: string }): void {
+        const parsed = parseChannelMessage(msg.content);
+        if (!parsed) return;
+        // Dedup on the wire message id (catch-up and stream overlap by
+        // design); fall back to a content-derived key for safety.
+        const key = msg.id ?? `${parsed.type}:${"orderId" in parsed ? parsed.orderId : ""}:${parsed.ts}`;
+        if (seenMessageIds.has(key)) return;
+        seenMessageIds.add(key);
+        if (seenMessageIds.size > SEEN_IDS_MAX) {
+            const oldest = seenMessageIds.values().next().value;
+            if (oldest !== undefined) seenMessageIds.delete(oldest);
+        }
+        const pumped: PumpedMessage = { parsed, senderInboxId: msg.senderInboxId };
+        replayBuffer.push(pumped);
+        if (replayBuffer.length > REPLAY_BUFFER_MAX) replayBuffer.shift();
+        for (const sub of [...subscribers]) sub(pumped);
+    }
+
+    async function catchUpSweep(): Promise<void> {
+        // syncAll, not sync: `conversations.sync()` processes WELCOMES only —
+        // it never pulls the messages inside a joined group, and
+        // `convo.messages()` reads the LOCAL store. A message sent before the
+        // live stream covered its group is history nothing back-fills, which
+        // was the actual receive-side bug (smoke run 5: the seller logs
+        // "already in group …" yet the message never surfaces). syncAll
+        // syncs welcomes AND every conversation's message history.
+        await client.conversations.syncAll();
+        const convos = await client.conversations.list();
+        for (const convo of convos) {
+            if (destroyed) return;
+            const msgs = await convo.messages({ limit: XMTP_MESSAGE_FETCH_LIMIT });
+            for (const msg of msgs) deliver(msg);
+        }
+    }
+
+    function ensurePump(): void {
+        if (pumpStarted) return;
+        pumpStarted = true;
+        // Loop A — the live stream, rebuilt whenever it ends or errors.
+        void (async () => {
+            while (!destroyed) {
+                try {
+                    const stream = await client.conversations.streamAllMessages();
+                    for await (const msg of stream) {
+                        if (destroyed) break;
+                        deliver(msg);
+                    }
+                } catch (err) {
+                    console.warn("[xmtp] message stream died — rebuilding:", err);
+                }
+                if (!destroyed) await new Promise((r) => setTimeout(r, 2_000));
+            }
+        })();
+        // Loop B — the periodic catch-up sweep (welcomes + missed windows).
+        void (async () => {
+            while (!destroyed) {
+                try {
+                    await catchUpSweep();
+                } catch (err) {
+                    console.warn("[xmtp] catch-up sweep failed (next sweep retries):", err);
+                }
+                if (!destroyed) await new Promise((r) => setTimeout(r, CATCH_UP_INTERVAL_MS));
+            }
+        })();
+    }
+
+    /** Subscribe a filter to the pump; replays buffered history first so a
+     *  late-mounting subscriber keeps the old scan-history semantics. */
+    function subscribe(filter: PumpSubscriber): () => void {
+        ensurePump();
+        let active = true;
+        const guarded: PumpSubscriber = (m) => { if (active) filter(m); };
+        for (const pumped of [...replayBuffer]) guarded(pumped);
+        subscribers.add(guarded);
+        return () => {
+            active = false;
+            subscribers.delete(guarded);
+        };
+    }
 
     /** Generic listener for typed channel messages over XMTP.
      *
@@ -148,7 +262,7 @@ export async function createXmtpChannel(
      *  match: order hashes are public, so any inbox can inject a matching
      *  envelope — the CONSUMER verifies each message's wallet signature and
      *  skips failures, and a listener that stopped at the first match would
-     *  hand garbage a denial-of-ceremony win. `msg.senderInboxId` is passed
+     *  hand garbage a denial-of-ceremony win. `senderInboxId` is passed
      *  through as transport metadata only (an XMTP inbox id, NOT a wallet
      *  address) — identity lives in the message signature, never here. */
     function listenForMessage<T extends ChannelMessage>(
@@ -157,41 +271,17 @@ export async function createXmtpChannel(
         onMatch: (msg: T, senderInboxId: string) => void,
         { once = true }: { once?: boolean } = {},
     ): () => void {
-        let cancelled = false;
-
-        const run = async () => {
-            try {
-                await client.conversations.sync();
-                const convos = await client.conversations.list();
-                for (const convo of convos) {
-                    const msgs = await convo.messages({ limit: XMTP_MESSAGE_FETCH_LIMIT });
-                    for (const msg of msgs) {
-                        if (cancelled) return;
-                        const parsed = parseChannelMessage(msg.content);
-                        if (parsed?.type === type && parsed.orderId === orderId) {
-                            onMatch(parsed as T, msg.senderInboxId);
-                            if (once) return;
-                        }
-                    }
-                }
-                const stream = await client.conversations.streamAllMessages();
-                for await (const msg of stream) {
-                    if (cancelled) break;
-                    const parsed = parseChannelMessage(msg.content);
-                    if (parsed?.type === type && parsed.orderId === orderId) {
-                        onMatch(parsed as T, msg.senderInboxId);
-                        if (once) break;
-                    }
-                }
-            } catch (err) {
-                console.warn(`[xmtp] ${type} listener error:`, err);
+        let done = false;
+        const unsubscribe = subscribe(({ parsed, senderInboxId }) => {
+            if (done) return;
+            if (parsed.type !== type || !("orderId" in parsed) || parsed.orderId !== orderId) return;
+            onMatch(parsed as T, senderInboxId);
+            if (once) {
+                done = true;
+                unsubscribe();
             }
-        };
-
-        void run();
-        const cleanup = () => { cancelled = true; };
-        streamCleanups.push(cleanup);
-        return cleanup;
+        });
+        return unsubscribe;
     }
 
     return {
@@ -297,67 +387,22 @@ export async function createXmtpChannel(
         },
 
         onAnyCommitmentPayload(callback) {
-            let cancelled = false;
+            // Per-subscriber dedup on (orderId, ts): the pump's message-id
+            // dedup is transport-level; this keeps the consumer contract that
+            // one logical payload fires once even if relayed twice.
             const seen = new Set<string>();
-
-            const run = async () => {
-                try {
-                    await client.conversations.sync();
-                    const convos = await client.conversations.list();
-                    for (const convo of convos) {
-                        const msgs = await convo.messages({ limit: XMTP_MESSAGE_FETCH_LIMIT });
-                        for (const msg of msgs) {
-                            if (cancelled) return;
-                            const parsed = parseChannelMessage(msg.content);
-                            if (parsed?.type !== "COMMITMENT_PAYLOAD") {
-                                continue;
-                            }
-
-                            const messageKey = `${parsed.orderId}:${parsed.ts}`;
-                            if (seen.has(messageKey)) {
-                                continue;
-                            }
-
-                            seen.add(messageKey);
-                            callback(parsed.payloadCid, parsed.orderId);
-                        }
-                    }
-
-                    const stream = await client.conversations.streamAllMessages();
-                    for await (const msg of stream) {
-                        if (cancelled) {
-                            break;
-                        }
-
-                        const parsed = parseChannelMessage(msg.content);
-                        if (parsed?.type !== "COMMITMENT_PAYLOAD") {
-                            continue;
-                        }
-
-                        const messageKey = `${parsed.orderId}:${parsed.ts}`;
-                        if (seen.has(messageKey)) {
-                            continue;
-                        }
-
-                        seen.add(messageKey);
-                        callback(parsed.payloadCid, parsed.orderId);
-                    }
-                } catch (err) {
-                    console.warn("[xmtp] commitment channel listener error:", err);
-                }
-            };
-
-            void run();
-            const cleanup = () => {
-                cancelled = true;
-            };
-            streamCleanups.push(cleanup);
-            return cleanup;
+            return subscribe(({ parsed }) => {
+                if (parsed.type !== "COMMITMENT_PAYLOAD") return;
+                const messageKey = `${parsed.orderId}:${parsed.ts}`;
+                if (seen.has(messageKey)) return;
+                seen.add(messageKey);
+                callback(parsed.payloadCid, parsed.orderId);
+            });
         },
 
         destroy() {
-            for (const fn of streamCleanups) fn();
-            streamCleanups.length = 0;
+            destroyed = true;
+            subscribers.clear();
             try {
                 client.close();
             } catch { /* already closed */ }
