@@ -38,6 +38,20 @@ vi.mock('wagmi', () => ({
     createConfig() {
         return {};
     },
+    // The connector transport (connectorFirstTransport's default wallet leg):
+    // in unit tests there is never a connected wallet, so the leg rejects —
+    // exactly what the real unstable_connector does when disconnected —
+    // and callers fall through to the http leg. Tests that exercise the
+    // wallet leg inject their own fake Transport instead.
+    unstable_connector() {
+        return () => ({
+            config: {},
+            request: async () => {
+                throw new Error('unit tests have no connected wallet');
+            },
+            value: undefined,
+        });
+    },
     useAccount() {
         return {
             address: '0x1234567890123456789012345678901234567890',

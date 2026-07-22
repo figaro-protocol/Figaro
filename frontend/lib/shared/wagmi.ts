@@ -9,7 +9,7 @@ import { createConfig } from "wagmi";
 import { createPublicClient } from "viem";
 import { localAnvil, hardhat, activeChain, chains } from "./chains";
 import { connectors } from "./connectors";
-import { mockAwareHttp } from "./mockTransport";
+import { mockAwareHttp, connectorFirstTransport } from "./mockTransport";
 import { readUserEndpoints } from "./userEndpoints";
 import {
     attachDebugClient,
@@ -33,8 +33,9 @@ export {   activeChain,  };
 // hosted deploy never bills every visitor's reads to the operator's key.
 // wagmi's config is created once at module load, so an override change
 // applies on the next reload.
+const userRpcOverride = readUserEndpoints().rpcUrl;
 const rpcUrl =
-    readUserEndpoints().rpcUrl ??
+    userRpcOverride ??
     process.env.NEXT_PUBLIC_RPC_URL ??
     activeChain.rpcUrls.default.http[0];
 
@@ -54,7 +55,16 @@ export const config = createConfig({
         // Disable batch multicall: multicall3 may not be deployed on the target
         // chain, so wagmi's default batching (which uses multicall3) could cause
         // readContract calls to fail with "Cannot decode zero data".
-        [activeChain.id]: mockAwareHttp(rpcUrl, { batch: false }),
+        //
+        // Read-cost precedence: an EXPLICIT /settings RPC override is the
+        // user's deliberate pick and wins outright; otherwise a CONNECTED
+        // wallet's own EIP-1193 provider serves reads first (the wallet's
+        // infrastructure, not the operator's endpoint), with the http default
+        // as fallback. e2e sessions short-circuit to the http/mock leg inside
+        // the transport — the devnet suite never touches the wallet leg.
+        [activeChain.id]: userRpcOverride
+            ? mockAwareHttp(rpcUrl, { batch: false })
+            : connectorFirstTransport(rpcUrl, { batch: false }),
     } as Record<number, ReturnType<typeof mockAwareHttp>>,
     connectors,
     // EIP-6963 multi-injected-provider discovery. Default in wagmi v2 is `true`;

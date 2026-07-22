@@ -7,9 +7,11 @@ import {
     type HttpTransportConfig,
     type Transport,
 } from "viem";
+import { unstable_connector } from "wagmi";
+import { injected } from "wagmi/connectors";
 import { ZERO_ADDRESS, ZERO_BYTES32 } from "./evm";
 import { DEVNET_CHAIN_ID } from "./chains";
-import { isE2EMockSession } from "./e2e";
+import { isE2EMockSession, isE2EDevnetSession } from "./e2e";
 
 class MockRpcBlockedError extends Error {
     constructor(method: string) {
@@ -183,6 +185,59 @@ export function mockAwareHttp(
                         return mockResponse(args.method, args.params, chainId) as never;
                     }
                     throw err;
+                }
+            },
+        };
+    };
+}
+
+/**
+ * Transport that routes a CONNECTED wallet's reads through its own EIP-1193
+ * provider, falling back to `mockAwareHttp` — so a participant's reads ride
+ * the infrastructure their wallet already pays for (MetaMask's RPC, etc.),
+ * never the operator's default endpoint.
+ *
+ * Per-request policy, decided at this one chokepoint (same discipline as
+ * `mockAwareHttp`'s mock short-circuit):
+ *  - e2e sessions (`?e2e=mock` / `?e2e=devnet`) go straight to the http leg —
+ *    byte-identical to today; the dev/test `window.ethereum` shims serve only
+ *    account/sign methods and must never be asked to read.
+ *  - Otherwise the wallet leg is tried first. wagmi's `unstable_connector`
+ *    guards the two hazards itself: no connected injected connector →
+ *    ProviderDisconnectedError; wallet on a different chain than the request →
+ *    ChainDisconnectedError (verified against @wagmi/core: it checks
+ *    `eth_chainId` before forwarding). ANY wallet-leg failure falls through to
+ *    http — the http leg is the arbiter, so a revert re-raised there still
+ *    propagates with its payload (mockAwareHttp's rule), and a wallet that
+ *    doesn't serve a method (e.g. eth_sendRawTransaction on MetaMask) costs
+ *    one rejected attempt, never a broken call.
+ *
+ * The injected connector type covers bare `injected()` and every EIP-6963
+ * discovered wallet; a RainbowKit-typed connector (e.g. walletConnect) simply
+ * falls through to http.
+ *
+ * `walletTransport` is injectable for tests only — the default is the real
+ * wagmi connector transport.
+ */
+export function connectorFirstTransport(
+    url: string,
+    config?: HttpTransportConfig,
+    walletTransport: Transport = unstable_connector(injected, { retryCount: 0 }),
+): Transport {
+    const viaHttp = mockAwareHttp(url, config);
+    return (opts) => {
+        const walletInstance = walletTransport(opts);
+        const httpInstance = viaHttp(opts);
+        return {
+            ...httpInstance,
+            request: async (args) => {
+                if (isE2EMockSession() || isE2EDevnetSession()) {
+                    return httpInstance.request(args);
+                }
+                try {
+                    return await walletInstance.request(args);
+                } catch {
+                    return httpInstance.request(args);
                 }
             },
         };
