@@ -45,13 +45,14 @@ import {
     requestSignConfirmation,
     requestCommitConfirmation,
     type OrderPreview,
+    type SwapConfirmationDetails,
 } from "@/lib/checkout/orderPreview";
 import { shareSignedOrder } from "@/lib/checkout/orderSignedAndShared";
 import { relayRacePayload } from "@/lib/checkout/dispatchRace";
 import { buildCounterDraft, validateDraft, type CommitmentPayload } from "@figaro/sdk/agent";
 import { commitSignedOrder } from "@/lib/kernel/orderCommitted";
 import { commitmentOrderHash } from "@/lib/kernel/signedCommitment";
-import { buildFundingLeg } from "@/lib/composition/swapFunding";
+import { quoteFundingLeg, signFundingLeg } from "@/lib/composition/swapFunding";
 import { useSwapAndCommitActions } from "@/lib/composition/useSwapAndCommitActions";
 
 /** The buyer's checkout-time choice to fund their bond by swap: which
@@ -80,6 +81,15 @@ export type OrderFlowStep =
     | "committing"
     | "done"
     | "error";
+
+/** Project a funding quote to the confirm-gate's swap summary (null passes
+ *  through — no swap leg, no swap section in the modal). */
+function swapDetails(
+    quote: { inputToken: string; currency: string; maxInput: bigint } | null,
+): SwapConfirmationDetails | null {
+    if (!quote) return null;
+    return { inputToken: quote.inputToken, currency: quote.currency, maxInput: quote.maxInput };
+}
 
 function assertSigningDomain(core: string | undefined, chainId: number): asserts core is `0x${string}` {
     if (!core || core === ZERO_ADDRESS || !isValidAddress(core)) {
@@ -115,6 +125,7 @@ export function useOrderCommitmentFlow() {
     const signAs = useCallback(async (
         commitment: Commitment,
         agreement: Agreement,
+        swap: SwapConfirmationDetails | null = null,
     ): Promise<Hex> => {
         assertSigningDomain(CONTRACTS.core, chainId);
         // Layer A — the FULL gate at the sign step, so no caller can bypass
@@ -123,7 +134,10 @@ export function useOrderCommitmentFlow() {
         // accept card, /sign, and the buyer's checkout sign all route through
         // here — both sides of the bilateral commit get the same check.
         assertAgreementSignable(agreement, commitment.agreementHash, specSource());
-        const approved = await requestSignConfirmation(commitment, agreement);
+        // When the bond is swap-funded, `swap` surfaces the leg's maxInput in
+        // the SAME confirm — one approval covers the commitment sign AND the
+        // Permit2 witness sign the caller does right after.
+        const approved = await requestSignConfirmation(commitment, agreement, swap);
         if (!approved) throw new Error("Signing cancelled by user.");
         const sig = await signTypedDataAsync({
             domain: buildDomain(chainId, CONTRACTS.core),
@@ -159,15 +173,14 @@ export function useOrderCommitmentFlow() {
         setError(null);
         try {
             setStep("signing");
-            const buyerSig = await signAs(preview.commitment, preview.agreement);
-            // The buyer's optional swap-funded bond leg: quoted, route-built,
-            // and witness-signed HERE so it rides the payload to whoever
-            // broadcasts. The route is bound into the buyer's Permit2 witness
-            // signature — the relayer is untrusted by construction.
-            let buyerFunding: CommitmentPayload["buyerFunding"];
+            // The buyer's optional swap-funded bond leg is QUOTED before the
+            // sign so its maxInput rides into the SAME confirm as the agreement
+            // (one approval, both signatures); it is then witness-signed against
+            // that exact quote so the relayer is untrusted by construction.
+            let fundingQuote: Awaited<ReturnType<typeof quoteFundingLeg>> | null = null;
             if (funding) {
                 if (!publicClient) throw new Error("No chain connection — cannot quote the funding swap.");
-                buyerFunding = await buildFundingLeg({
+                fundingQuote = await quoteFundingLeg({
                     publicClient,
                     chainId,
                     inputToken: funding.inputToken,
@@ -181,9 +194,12 @@ export function useOrderCommitmentFlow() {
                         preview.commitment.payment,
                     ).buyerBond,
                     deadline: preview.commitment.deadline,
-                    signTypedData: (typedData) => signTypedDataAsync(typedData) as Promise<Hex>,
                 });
             }
+            const buyerSig = await signAs(preview.commitment, preview.agreement, swapDetails(fundingQuote));
+            const buyerFunding: CommitmentPayload["buyerFunding"] = fundingQuote
+                ? await signFundingLeg(fundingQuote, (typedData) => signTypedDataAsync(typedData) as Promise<Hex>)
+                : undefined;
             setStep("awaiting-seller");
             return {
                 commitment: preview.commitment,
@@ -270,7 +286,28 @@ export function useOrderCommitmentFlow() {
             const role: PartyRole = hexEqual(address, incoming.commitment.buyer) ? "buyer" : "seller";
 
             setStep("signing");
-            const sig = await signAs(incoming.commitment, incoming.agreement);
+            // The seller's optional on-ramp is quoted before the sign so its
+            // maxInput shows in the same confirm as the agreement.
+            // 2·expectedCumulativeValue is the kernel's seller pull.
+            let sellerQuote: Awaited<ReturnType<typeof quoteFundingLeg>> | null = null;
+            if (funding && role === "seller") {
+                if (!publicClient) throw new Error("No chain connection — cannot quote the funding swap.");
+                sellerQuote = await quoteFundingLeg({
+                    publicClient,
+                    chainId,
+                    inputToken: funding.inputToken,
+                    currency: incoming.commitment.currency as Hex,
+                    // calculateBonds(cumulativeValue, payment) — the seller
+                    // bond is 2×expectedCumulativeValue (the kernel's seller
+                    // pull); on a SUB-ORDER ecv ≠ payment, so arg order matters.
+                    bondAmount: calculateBonds(
+                        incoming.commitment.expectedCumulativeValue,
+                        incoming.commitment.payment,
+                    ).sellerBond,
+                    deadline: incoming.commitment.deadline,
+                });
+            }
+            const sig = await signAs(incoming.commitment, incoming.agreement, swapDetails(sellerQuote));
 
             const payload: CommitmentPayload = {
                 ...incoming,
@@ -278,28 +315,9 @@ export function useOrderCommitmentFlow() {
                 sellerSig: role === "seller" ? sig : incoming.sellerSig,
             };
 
-            // The seller's optional on-ramp into the process denomination:
-            // 2·expectedCumulativeValue is the kernel's seller pull.
-            let sellerFunding: SwapFundingLeg | undefined;
-            if (funding && role === "seller") {
-                if (!publicClient) throw new Error("No chain connection — cannot quote the funding swap.");
-                sellerFunding = await buildFundingLeg({
-                    publicClient,
-                    chainId,
-                    inputToken: funding.inputToken,
-                    currency: payload.commitment.currency as Hex,
-                    // calculateBonds(cumulativeValue, payment) — the seller
-                    // bond is 2×expectedCumulativeValue (the comment above:
-                    // the kernel's seller pull); on a SUB-ORDER ecv ≠ payment,
-                    // so the arg order is load-bearing.
-                    bondAmount: calculateBonds(
-                        payload.commitment.expectedCumulativeValue,
-                        payload.commitment.payment,
-                    ).sellerBond,
-                    deadline: payload.commitment.deadline,
-                    signTypedData: (typedData) => signTypedDataAsync(typedData) as Promise<Hex>,
-                });
-            }
+            const sellerFunding: SwapFundingLeg | undefined = sellerQuote
+                ? await signFundingLeg(sellerQuote, (typedData) => signTypedDataAsync(typedData) as Promise<Hex>)
+                : undefined;
 
             setStep("committing");
             const hash = await commitSignedOrder({

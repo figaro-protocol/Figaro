@@ -55,6 +55,28 @@ describe("orderPreview confirm gate", () => {
         await expect(promise).resolves.toBe(false);
     });
 
+    it("carries swap details into the pending preview (item 1)", async () => {
+        const seen: unknown[] = [];
+        const unsubscribe = subscribeToPendingSign((p) => seen.push(p?.swap ?? null));
+        const swap = { inputToken: "0x" + "11".repeat(20), currency: COMMITMENT.currency, maxInput: 4200n };
+        const promise = requestSignConfirmation(COMMITMENT, AGREEMENT, swap);
+        // The latest emitted pending preview carries the swap leg for the modal.
+        expect(seen.at(-1)).toEqual(swap);
+        confirmPendingSign();
+        await expect(promise).resolves.toBe(true);
+        unsubscribe();
+    });
+
+    it("carries no swap when the bond is not swap-funded", async () => {
+        let lastSwap: unknown = "unset";
+        const unsubscribe = subscribeToPendingSign((p) => { if (p) lastSwap = p.swap ?? null; });
+        const promise = requestSignConfirmation(COMMITMENT, AGREEMENT);
+        expect(lastSwap).toBeNull();
+        cancelPendingSign();
+        await promise;
+        unsubscribe();
+    });
+
     it("subscribeToPendingSign fires immediately with current state, then on changes", async () => {
         const subscriber = vi.fn();
         const unsubscribe = subscribeToPendingSign(subscriber);

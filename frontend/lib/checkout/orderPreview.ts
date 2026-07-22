@@ -63,6 +63,16 @@ export async function chainDeadline(ttlSeconds = 3600n): Promise<bigint> {
 /** Which wallet act the confirmation gates — the modal words itself by this. */
 export type ConfirmationIntent = "sign" | "commit";
 
+/** A swap-funded bond leg the party is about to witness-sign, surfaced in the
+ *  SAME confirm as the agreement so `maxInput` (the Permit2 cap they authorize)
+ *  is reviewed on the Figaro side, not only in the wallet's native prompt. */
+export interface SwapConfirmationDetails {
+    inputToken: string;
+    currency: string;
+    /** The maximum input the swap may consume — the figure being authorized. */
+    maxInput: bigint;
+}
+
 export interface PendingPreview {
     id: number;
     intent: ConfirmationIntent;
@@ -70,6 +80,9 @@ export interface PendingPreview {
     /** May be null when the agreement isn't recoverable; the modal still shows
      *  the commitment fields and the hash, and should warn when it's missing. */
     agreement: Agreement | null;
+    /** Present when this order's bond is swap-funded — the modal shows the swap
+     *  leg alongside the agreement so one confirm covers both signatures. */
+    swap?: SwapConfirmationDetails | null;
 }
 
 type Subscriber = (pending: PendingPreview | null) => void;
@@ -88,12 +101,13 @@ function requestConfirmation(
     intent: ConfirmationIntent,
     commitment: Commitment,
     agreement: Agreement | null,
+    swap: SwapConfirmationDetails | null = null,
 ): Promise<boolean> {
     if (testMode === "auto-approve") return Promise.resolve(true);
     if (testMode === "auto-reject") return Promise.resolve(false);
     if (current !== null) return Promise.resolve(false); // concurrent — reject the new one
     return new Promise<boolean>((resolve) => {
-        current = { id: nextId++, intent, commitment, agreement };
+        current = { id: nextId++, intent, commitment, agreement, swap };
         resolveCurrent = (approved) => {
             current = null;
             resolveCurrent = null;
@@ -107,12 +121,16 @@ function requestConfirmation(
 /**
  * Request confirmation before signing. Resolves `true` on Confirm, `false` on
  * Cancel. The Provider must be mounted; otherwise the promise pends forever.
+ * When the bond is swap-funded, pass `swap` so the modal surfaces the swap leg
+ * (its `maxInput`) alongside the agreement — one confirm gates BOTH the
+ * commitment sign and the Permit2 witness sign that follows.
  */
 export function requestSignConfirmation(
     commitment: Commitment,
     agreement: Agreement | null,
+    swap: SwapConfirmationDetails | null = null,
 ): Promise<boolean> {
-    return requestConfirmation("sign", commitment, agreement);
+    return requestConfirmation("sign", commitment, agreement, swap);
 }
 
 /**

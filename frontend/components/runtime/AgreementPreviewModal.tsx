@@ -22,12 +22,16 @@
 import type { Commitment, Agreement } from "@figaro/sdk";
 import { ModalChrome } from "@/components/ui/ModalChrome";
 import { AgreementReview } from "@/components/runtime/AgreementReview";
-import type { ConfirmationIntent } from "@/lib/checkout/orderPreview";
+import type { ConfirmationIntent, SwapConfirmationDetails } from "@/lib/checkout/orderPreview";
 
 interface Props {
     commitment: Commitment;
     agreement: Agreement | null;
     intent: ConfirmationIntent;
+    /** Present when this order's bond is swap-funded — surfaced so the party
+     *  reviews the swap's maxInput on the Figaro side, not only in the wallet's
+     *  native Permit2 prompt. */
+    swap?: SwapConfirmationDetails | null;
     onConfirm: () => void;
     onCancel: () => void;
 }
@@ -56,7 +60,7 @@ const INTENT_COPY: Record<ConfirmationIntent, { eyebrow: string; lede: React.Rea
     },
 };
 
-export function AgreementPreviewModal({ commitment, agreement, intent, onConfirm, onCancel }: Props) {
+export function AgreementPreviewModal({ commitment, agreement, intent, swap, onConfirm, onCancel }: Props) {
     const copy = INTENT_COPY[intent];
 
     return (
@@ -82,6 +86,28 @@ export function AgreementPreviewModal({ commitment, agreement, intent, onConfirm
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto px-6 py-4">
                     <AgreementReview commitment={commitment} agreement={agreement} />
+                    {swap && (
+                        <section className="mt-5 border-t border-neutral-200 pt-4" data-testid="preview-swap">
+                            <h3 className="text-xs font-semibold text-neutral-500 mb-2">
+                                Swap-funded bond
+                            </h3>
+                            <p className="text-sm text-neutral-600 mb-2">
+                                Your bond is funded by swapping another token into the process
+                                currency. You are also authorizing a Permit2 transfer of up to
+                                the amount below — your wallet will show it as a second signature.
+                            </p>
+                            <dl className="grid grid-cols-[90px_1fr] gap-y-1 text-sm">
+                                <dt className="text-neutral-500">Max input</dt>
+                                <dd className="text-black" data-testid="preview-swap-max-input">
+                                    <span className="font-mono text-xs">{swap.maxInput.toString()}</span>
+                                </dd>
+                                <dt className="text-neutral-500">From token</dt>
+                                <dd className="font-mono text-xs text-black break-all">{swap.inputToken}</dd>
+                                <dt className="text-neutral-500">Into</dt>
+                                <dd className="font-mono text-xs text-black break-all">{swap.currency}</dd>
+                            </dl>
+                        </section>
+                    )}
                 </div>
 
                 {/* Footer */}

@@ -100,7 +100,7 @@ function randomPermitNonce(): bigint {
     );
 }
 
-export interface BuildFundingLegArgs {
+export interface QuoteFundingLegArgs {
     publicClient: PublicClient;
     chainId: number;
     /** The token the party funds from. */
@@ -112,15 +112,32 @@ export interface BuildFundingLegArgs {
     bondAmount: bigint;
     /** Signature window — the order's own deadline. */
     deadline: bigint;
-    /** The party's typed-data signer (wagmi `signTypedDataAsync`). */
-    signTypedData: (typedData: ReturnType<typeof buildSwapWitnessTypedData>) => Promise<Hex>;
 }
 
-/** Quote the venue, build the exact route, and witness-sign it: one
- *  swap-funded bond leg — buyer's or seller's, the shape is identical —
- *  ready to ride the payload or the accept. Throws when the composition
- *  addresses are unconfigured. */
-export async function buildFundingLeg(args: BuildFundingLegArgs): Promise<SwapFundingLeg> {
+/** Everything about a swap-funded leg EXCEPT the party's witness signature —
+ *  the quote surfaced to the confirm gate before the wallet opens. `maxInput`
+ *  is the cap the party is about to authorize (the Permit2 `permitted.amount`),
+ *  so it is the figure a Figaro-side review must show. */
+export interface FundingQuote {
+    inputToken: Hex;
+    currency: Hex;
+    router: Hex;
+    maxInput: bigint;
+    nonce: bigint;
+    deadline: bigint;
+    chainId: number;
+    permit2: Hex;
+    coordinator: Hex;
+    swapData: Hex;
+}
+
+/** Quote the venue and build the exact route — NO signature yet. This is the
+ *  half whose `maxInput` the confirm gate surfaces; `signFundingLeg` binds the
+ *  SAME quote, so what the party reviews is exactly what they witness-sign.
+ *  Throws when the composition addresses are unconfigured. */
+export async function quoteFundingLeg(
+    args: QuoteFundingLegArgs,
+): Promise<FundingQuote> {
     const contracts = resolveSwapFundingContracts();
     if (!contracts) {
         throw new Error(
@@ -136,27 +153,47 @@ export async function buildFundingLeg(args: BuildFundingLegArgs): Promise<SwapFu
         functionName: "swap",
         args: [args.inputToken, args.currency, maxInput, contracts.coordinator],
     });
-    const nonce = randomPermitNonce();
-    const permitSignature = await args.signTypedData(
+    return {
+        inputToken: args.inputToken,
+        currency: args.currency,
+        router: contracts.router,
+        maxInput,
+        nonce: randomPermitNonce(),
+        deadline: args.deadline,
+        chainId: args.chainId,
+        permit2: contracts.permit2,
+        coordinator: contracts.coordinator,
+        swapData,
+    };
+}
+
+/** Witness-sign a previously quoted leg. The signature binds the quote's exact
+ *  route + `maxInput`, so the relayer is untrusted by construction and the
+ *  party signs precisely what the confirm gate showed. */
+export async function signFundingLeg(
+    quote: FundingQuote,
+    signTypedData: (typedData: ReturnType<typeof buildSwapWitnessTypedData>) => Promise<Hex>,
+): Promise<SwapFundingLeg> {
+    const permitSignature = await signTypedData(
         buildSwapWitnessTypedData({
-            chainId: args.chainId,
-            permit2: contracts.permit2,
-            coordinator: contracts.coordinator,
-            router: contracts.router,
-            inputToken: args.inputToken,
-            maxInput,
-            nonce,
-            deadline: args.deadline,
-            swapData,
+            chainId: quote.chainId,
+            permit2: quote.permit2,
+            coordinator: quote.coordinator,
+            router: quote.router,
+            inputToken: quote.inputToken,
+            maxInput: quote.maxInput,
+            nonce: quote.nonce,
+            deadline: quote.deadline,
+            swapData: quote.swapData,
         }),
     );
     return {
         enabled: true,
-        inputToken: args.inputToken,
-        maxInput,
-        permitNonce: nonce,
-        permitDeadline: args.deadline,
+        inputToken: quote.inputToken,
+        maxInput: quote.maxInput,
+        permitNonce: quote.nonce,
+        permitDeadline: quote.deadline,
         permitSignature,
-        swapData,
+        swapData: quote.swapData,
     };
 }
