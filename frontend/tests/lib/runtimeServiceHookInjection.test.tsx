@@ -268,10 +268,12 @@ describe("runtime service hook injection", () => {
     it("uses injected handoff persistence from runtime context in useHandoffCleanup", async () => {
         const sweepDuePurges = vi.fn();
         const schedulePurge = vi.fn();
+        const sweepStaleKeys = vi.fn();
         const services = createRuntimeServices({
             handoffPersistence: {
                 sweepDuePurges,
                 schedulePurge,
+                sweepStaleKeys,
             } as unknown as RuntimeServices["handoffPersistence"],
         });
         const wrapper = createWrapper(services);
@@ -280,6 +282,13 @@ describe("runtime service hook injection", () => {
 
         await waitFor(() => {
             expect(sweepDuePurges).toHaveBeenCalledWith("0x1234567890123456789012345678901234567890");
+        });
+        // The abandoned-order age sweep runs on the same mount (item 2).
+        await waitFor(() => {
+            expect(sweepStaleKeys).toHaveBeenCalledWith(
+                "0x1234567890123456789012345678901234567890",
+                expect.any(Number),
+            );
         });
 
         await waitFor(() => {
