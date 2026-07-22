@@ -103,6 +103,11 @@ export function attachDebugClient(rpcUrl: string): void {
 // ---------------------------------------------------------------------------
 export function attachDevProvider(): void {
     if (typeof window === "undefined") return;
+    // Parity with attachTestSigner (finding 8): a production build must never
+    // inject a fake provider, even if NEXT_PUBLIC_DEV_ADDRESS leaked into the
+    // bundle. Belt-and-suspenders behind the build-time flag guard in
+    // next.config.mjs.
+    if (process.env.NODE_ENV === "production") return;
     const devAddr = process.env.NEXT_PUBLIC_DEV_ADDRESS;
     if (!devAddr) return;
     try {

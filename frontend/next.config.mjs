@@ -1,5 +1,43 @@
 /** @type {import('next').NextConfig} */
 
+// BUILD-TIME SAFETY GATE (security audit 2026-07-22, finding 4).
+//
+// The test-helper / test-signer paths (?e2e=mock, the injected test private key,
+// the fake dev provider) are all gated OFF in code by a `NODE_ENV==='production'`
+// check — BUT those gates pivot on `NEXT_PUBLIC_*` flags that are compiled INTO
+// the bundle at build time. A `.env.local` carrying `NEXT_PUBLIC_ENABLE_TEST_HELPERS=true`
+// is gitignored, so a clean CI build is safe; but a production build accidentally
+// run from a developer's working tree would inline `true` and ship a reachable
+// mock/test path. No runtime check can catch a compile-time inline, so it must be
+// caught here, at build time, and FAIL LOUD.
+//
+// The Playwright e2e harness legitimately runs a production build WITH these flags;
+// it opts in explicitly via `FIGARO_ALLOW_TEST_HELPERS=1`. A real deploy build
+// never sets that escape, so a stray test flag aborts the build.
+{
+    const TEST_FLAGS = [
+        'NEXT_PUBLIC_ENABLE_TEST_HELPERS',
+        'NEXT_PUBLIC_USE_TEST_SIGNER',
+        'NEXT_PUBLIC_TEST_PRIVATE_KEY',
+        'NEXT_PUBLIC_DEV_ADDRESS',
+    ];
+    const isProd = process.env.NODE_ENV === 'production';
+    const allowed = process.env.FIGARO_ALLOW_TEST_HELPERS === '1';
+    if (isProd && !allowed) {
+        const leaked = TEST_FLAGS.filter((f) => {
+            const v = process.env[f];
+            return v !== undefined && v !== '' && v !== '0' && v !== 'false';
+        });
+        if (leaked.length > 0) {
+            throw new Error(
+                `Refusing to build: test-helper flag(s) set in a production build: ${leaked.join(', ')}. ` +
+                `These inline into the bundle and expose ?e2e=mock / the test signer. Unset them for a deploy ` +
+                `build (or set FIGARO_ALLOW_TEST_HELPERS=1 for the e2e harness).`,
+            );
+        }
+    }
+}
+
 // STATIC EXPORT. The frontend is a protocol surface with ZERO server routes —
 // every page reads chain + IPFS client-side (reads-at-edge). `output: 'export'`
 // prerenders each route to static HTML at build time (real content for

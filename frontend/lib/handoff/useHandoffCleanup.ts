@@ -1,17 +1,20 @@
 "use client";
 
 /**
- * Watches for terminal order events (Resolved / Cancelled) and purges
- * handoff encryption artifacts from localStorage.
+ * Watches for the ONE terminal order event — OrderResolved / ProcessResolved
+ * (the kernel has NO cancel) — and purges handoff encryption artifacts.
  *
  * Cleans up (all via handoffPersistenceService):
- *   - Buyer-side AES handoff key + ephemeral private key
- *   - Receiving-side ECDH ephemeral keypair (ecdh store)
- *   - Pending handoff intent
+ *   - Buyer-side AES handoff key + ephemeral private key (sessionStorage)
+ *   - Receiving-side ECDH ephemeral keypair (sessionStorage ecdh store)
+ *   - Pending handoff intent (localStorage) + the purge queue (localStorage)
  *
- * A grace period (default 0 — immediate) can be configured per-instance.
- * During the grace period the key record is marked with `purgeAfter` but
- * not yet deleted; a sweep on hook mount handles deferred deletions.
+ * The ephemeral key material is sessionStorage-backed, so it auto-clears on tab
+ * close even for an order that is abandoned rather than resolved; this hook is
+ * the same-session purge on the resolution path. A grace period (default 0 —
+ * immediate) can be configured per-instance: during it the key record is marked
+ * `purgeAfter` but not yet deleted, and a sweep on hook mount handles deferred
+ * deletions.
  */
 
 import { useEffect, useRef } from "react";

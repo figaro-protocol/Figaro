@@ -71,7 +71,11 @@ export default defineConfig({
                 // unhandled EMFILE mid-suite, taking every later test down with
                 // CONNECTION_REFUSED. Our server destroys each file stream on
                 // response close, so fds are released and no request can crash it.
-                ? `NEXT_DISTDIR=.next-e2e npm run build && SERVE_DIR=.next-e2e PORT=${PLAYWRIGHT_PORT} npm run serve:export`
+                // FIGARO_ALLOW_TEST_HELPERS=1 opts this e2e build out of the
+                // next.config.mjs production test-flag guard (finding 4): the
+                // suite legitimately needs ?e2e=mock in a prod build; a real
+                // deploy never sets this escape.
+                ? `FIGARO_ALLOW_TEST_HELPERS=1 NEXT_DISTDIR=.next-e2e npm run build && SERVE_DIR=.next-e2e PORT=${PLAYWRIGHT_PORT} npm run serve:export`
                 : `NEXT_DISTDIR=.next-e2e PORT=${PLAYWRIGHT_PORT} npm run dev`,
         url: PLAYWRIGHT_BASE_URL,
         reuseExistingServer: !process.env.CI,

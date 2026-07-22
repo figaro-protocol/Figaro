@@ -7,8 +7,27 @@
  */
 
 import type { HandoffChannel, HandoffKeyMessage, EcdhPubkeyMessage, EcdhWrappedKeyMessage, CommitmentSignatureMessage, ChannelMessage } from "@figaro/sdk/handoff";
+import { keccak256 } from "viem";
 import { safeJsonParse } from "@/lib/shared/safeJson";
 import { hexToBytes } from "@/lib/shared/evm";
+
+/** Domain-separated message the wallet signs to DERIVE the OPFS database
+ *  encryption key. A wallet's ECDSA signature over a fixed message is
+ *  deterministic (RFC 6979), so this yields the SAME 32-byte key every session
+ *  without ever storing it — the key is re-derived, never persisted beside the
+ *  encrypted database it protects (finding 8). */
+const XMTP_DB_KEY_DERIVATION_MESSAGE =
+    "Figaro: derive the local XMTP database encryption key for this device. " +
+    "This signature never leaves your browser.";
+
+/** Derive the 32-byte OPFS db-encryption key from a wallet signature over the
+ *  fixed derivation message. */
+async function deriveDbEncryptionKey(
+    signMessage: (message: string) => Promise<`0x${string}`>,
+): Promise<Uint8Array> {
+    const sig = await signMessage(XMTP_DB_KEY_DERIVATION_MESSAGE);
+    return hexToBytes(keccak256(sig));
+}
 
 function parseChannelMessage(content: unknown): ChannelMessage | null {
     return safeJsonParse<ChannelMessage>(content);
@@ -63,6 +82,13 @@ export async function createXmtpChannel(
         signMessage: async (message: string) => hexToBytes(await signMessage(message)),
     };
 
+    // Encrypt the OPFS database at rest (finding 8): without a dbEncryptionKey
+    // the MLS installation key + cleartext DM history (ceremony ciphertext blobs
+    // and public keys) sit unencrypted in OPFS, readable by any same-origin
+    // script or local attacker. The key is derived from a wallet signature —
+    // deterministic across sessions, never stored.
+    const dbEncryptionKey = await deriveDbEncryptionKey(signMessage);
+
     // OPFS persistence (the SDK default dbPath): ONE installation per
     // browser+origin, reused across sessions. The prior `dbPath: null`
     // (ephemeral) minted a NEW installation keypair on every page session
@@ -71,6 +97,7 @@ export async function createXmtpChannel(
     const createClient = () => Client.create(signer, {
         env: "dev",
         disableAutoRegister: false,
+        dbEncryptionKey,
     } as Parameters<typeof Client.create>[1]);
 
     let client: Awaited<ReturnType<typeof createClient>>;
