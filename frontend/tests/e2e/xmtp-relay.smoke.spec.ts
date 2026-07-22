@@ -17,8 +17,10 @@
  *    uses (fixtures/inject-ethereum-multi.js): real EIP-191/712 signatures via
  *    anvil's unlocked accounts — XMTP's identity signature included. Chromium
  *    is Playwright's bundled browser; no extension wallet is needed.
- *  - The `/settings` XMTP opt-in is flipped through the real settings form
- *    (select + save; per-origin, so one tab's opt-in covers both parties).
+ *  - The `/settings` XMTP opt-in is flipped through the real settings form in
+ *    EACH party's own browser context — separate contexts are load-bearing:
+ *    XMTP's WASM store uses exclusive OPFS sync access handles, so two clients
+ *    in one context corrupt each other (found by this smoke's first run).
  *
  * What it proves (punch-list block 6, the real-path smoke):
  *  1. `Client.create` succeeds against XMTP dev for both wallets (identity
@@ -49,7 +51,7 @@ function watchPage(page: Page, label: string, errors: string[]) {
 test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev network, the seller\'s /orders receives (smoke)', () => {
     test.setTimeout(600_000);
 
-    test('a commitment crosses real XMTP once — no duplicates, no page errors', async ({ page, context }) => {
+    test('a commitment crosses real XMTP once — no duplicates, no page errors', async ({ page, browser }) => {
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
 
         // ── Adopt a seeded seller from CHAIN state (no roster): any seller
@@ -79,12 +81,19 @@ test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev netwo
         // ── SELLER first: /orders with the REAL transport. Loading this page
         //    creates the seller's XMTP identity (Client.create) — it must
         //    exist before the buyer can DM it — and mounts the triple
-        //    subscription under observation. ──
-        const sellerPage = await newWalletPage(context);
+        //    subscription under observation.
+        //
+        //    OWN BROWSER CONTEXT, not a same-context tab: XMTP's WASM store
+        //    lives in the origin-private file system, and OPFS sync access
+        //    handles are EXCLUSIVE — two XMTP clients in one context fight
+        //    over one database ("An error occurred while creating sync access
+        //    handle", first smoke run 2026-07-22). The mock channel needed
+        //    same-context tabs; the real transport needs the opposite. Each
+        //    context has its own storage, so each party flips its own
+        //    /settings opt-in. ──
+        const sellerContext = await browser.newContext();
+        const sellerPage = await newWalletPage(sellerContext);
         watchPage(sellerPage, 'seller', errors);
-        // Opt into XMTP through the real settings form — per-origin config,
-        // so this one save covers the buyer tab too ("applies on next
-        // reload"; both parties navigate after it).
         await gotoAsWallet(sellerPage, sellerAddr!, '/settings');
         await sellerPage.getByTestId('settings-transport').selectOption('xmtp');
         await sellerPage.getByTestId('settings-save').click();
@@ -94,8 +103,12 @@ test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev netwo
         const baseline = await yourTurnCards.count();
 
         // ── BUYER: checkout on the adopted seller, sign every order, send
-        //    the root over REAL XMTP. ──
+        //    the root over REAL XMTP. The buyer's context flips its own
+        //    /settings opt-in (per-context storage). ──
         watchPage(page, 'buyer', errors);
+        await gotoAsWallet(page, BUYER, '/settings');
+        await page.getByTestId('settings-transport').selectOption('xmtp');
+        await page.getByTestId('settings-save').click();
         await gotoAsWallet(page, BUYER, `/s/view?seller=${sellerAddr}`);
         await sellerPage.waitForTimeout(5000); // XMTP identity publication latency
         await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
@@ -111,10 +124,13 @@ test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev netwo
         await place.click();
         await confirmAgreementPreviews(page, orderCount);
         await page.getByTestId('send-commitment-xmtp').click();
+        // The status testid renders for BOTH the sent and the error state —
+        // assert the success TEXT, so a send failure surfaces its message
+        // here instead of sailing past a visible error paragraph.
         await expect(
             page.getByTestId('commitment-xmtp-status'),
-            'the buyer\'s relay over REAL XMTP reports sent',
-        ).toBeVisible({ timeout: 120_000 });
+            'the buyer\'s relay over REAL XMTP reports sent (a failure prints its error text here)',
+        ).toContainText(/sent over XMTP/, { timeout: 120_000 });
 
         // ── SELLER receives: exactly ONE new "Your turn" card. The triple
         //    subscription delivering duplicates would surface as >1. Real
@@ -130,5 +146,6 @@ test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev netwo
         expect(await yourTurnCards.count(), 'no duplicate delivery from the triple subscription').toBe(baseline + 1);
 
         expect(errors, `no page errors on either side:\n${errors.join('\n')}`).toHaveLength(0);
+        await sellerContext.close();
     });
 });
