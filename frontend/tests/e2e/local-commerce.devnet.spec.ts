@@ -134,6 +134,12 @@ const ADDRESSEE = {
     street: '12 Rue du Marché',
     unit: '3rd floor, door B',
     instructions: 'Ring twice.',
+    // Notify-party + special-handling ride the SAME block (a BOL's consignee
+    // block carries all three) — private detail, never committed clause
+    // content; the notify party is data, never a participant.
+    notifyName: 'Nonna Lucia',
+    notifyContact: '+39 055 123 456',
+    handling: 'Fragile — keep the box level',
 };
 
 // The REVERSE direction of the same ceremony — the courier's precise pickup
@@ -143,6 +149,8 @@ const PICKUP = {
     name: 'Cardinal Couriers depot',
     street: '4 Market Lane',
     unit: 'rear door',
+    // Handling marks travel the reverse direction the same way.
+    handling: 'This way up',
 };
 
 // The two transfer ladders' stage labels are DERIVED from the registered
@@ -476,6 +484,9 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         await page.getByTestId('interaction-address-street').fill(ADDRESSEE.street);
         await page.getByTestId('interaction-address-unit').fill(ADDRESSEE.unit);
         await page.getByTestId('interaction-address-instructions').fill(ADDRESSEE.instructions);
+        await page.getByTestId('interaction-address-handling').fill(ADDRESSEE.handling);
+        await page.getByTestId('interaction-address-notifyName').fill(ADDRESSEE.notifyName);
+        await page.getByTestId('interaction-address-notifyContact').fill(ADDRESSEE.notifyContact);
         await page.getByTestId('interaction-address-send').click();
         await expect(
             page.getByTestId('interaction-address-sent'),
@@ -507,6 +518,14 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         await expect(addressDetail).toContainText(ADDRESSEE.name);
         await expect(addressDetail).toContainText(ADDRESSEE.unit);
         await expect(
+            page.getByTestId('interaction-address-detail-handling'),
+            'the courier reads the special-handling marks',
+        ).toContainText(ADDRESSEE.handling);
+        await expect(
+            page.getByTestId('interaction-address-detail-notify'),
+            'the courier reads who to notify on arrival, contact included',
+        ).toContainText(`${ADDRESSEE.notifyName} — ${ADDRESSEE.notifyContact}`);
+        await expect(
             page.getByTestId('interaction-address-verified'),
             'the decrypted detail matches the on-chain anchor',
         ).toBeVisible({ timeout: 30000 });
@@ -525,6 +544,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         await page.getByTestId('interaction-address-name').fill(PICKUP.name);
         await page.getByTestId('interaction-address-street').fill(PICKUP.street);
         await page.getByTestId('interaction-address-unit').fill(PICKUP.unit);
+        await page.getByTestId('interaction-address-handling').fill(PICKUP.handling);
         await page.getByTestId('interaction-address-send').click();
         await expect(
             page.getByTestId('interaction-address-sent'),
@@ -556,6 +576,10 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             .toContainText(PICKUP.street);
         await expect(pickupDetail).toContainText(PICKUP.name);
         await expect(pickupDetail).toContainText(PICKUP.unit);
+        await expect(
+            page.getByTestId('interaction-address-detail-handling'),
+            'handling marks travel the reverse direction too',
+        ).toContainText(PICKUP.handling);
         await expect(
             page.getByTestId('interaction-address-verified'),
             "the pickup point matches the courier's on-chain anchor",
