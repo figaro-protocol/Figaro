@@ -360,6 +360,17 @@ re-audit unless they expose a new on-chain attack surface.
 
 ## Freeze Notice — Frontend + SDK Surface Frozen for Security Audit
 
+**FREEZE LIFTED 2026-07-22.** The security audit this freeze was declared for is
+complete: eight domains audited (findings independently verified), all findings
+ruled and fixed with regressions, the three deferred items closed (Permit2
+swap-confirm, abandoned-key sweep, the JS+Rust ReDoS conformance fix), the
+ecosystem-agent specs hardened, and the full devnet e2e green (37/37). Frontend
+and SDK are now open for feature work again. Post-audit hygiene: a change that
+exposes a NEW client-side trust-boundary surface (a new untrusted-content render
+path, a new signing path, a new coordination-channel message type) warrants a
+scoped re-review against the eight domains — not a full re-freeze. The freeze
+record below is retained for history.
+
 **Freeze**: 2026-07-22 at commit `79b4e728`. This is the FE/SDK sibling of the
 Solidity external audit above, which excludes these surfaces by declaration.
 Open-world places the trust boundary in the client — the frontend is a static
