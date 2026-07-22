@@ -269,8 +269,11 @@ const RUNGS: ClauseRung[] = [
         // range vs committed window), never stored.
         witness: {
             fill: all(
-                witnessFill('figaro-cold-chain', 'periodStart', '2026-07-10T08:00:00Z'),
-                witnessFill('figaro-cold-chain', 'periodEnd', '2026-07-10T12:00:00Z'),
+                // iso-datetime fields render the datetime picker (datetime-local
+                // value: minute precision, no Z); the input normalises back to
+                // ISO 8601 UTC, so the committed value is unchanged.
+                witnessFill('figaro-cold-chain', 'periodStart', '2026-07-10T08:00'),
+                witnessFill('figaro-cold-chain', 'periodEnd', '2026-07-10T12:00'),
                 witnessFill('figaro-cold-chain', 'observedMinC', '-24'),
                 witnessFill('figaro-cold-chain', 'observedMaxC', '-19'),
             ),
