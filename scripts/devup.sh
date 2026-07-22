@@ -49,7 +49,7 @@ if cast block-number --rpc-url "$RPC_URL" >/dev/null 2>&1; then
     echo "  already reachable at $RPC_URL"
 else
     echo "  starting anvil (detached → /tmp/figaro-anvil.log)…"
-    nohup anvil --port 8545 --accounts 20 >/tmp/figaro-anvil.log 2>&1 &
+    nohup anvil --port 8545 --accounts 22 >/tmp/figaro-anvil.log 2>&1 &
     for _ in $(seq 1 40); do
         if cast block-number --rpc-url "$RPC_URL" >/dev/null 2>&1; then break; fi
         sleep 0.5
