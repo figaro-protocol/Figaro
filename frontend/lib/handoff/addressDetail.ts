@@ -4,8 +4,9 @@
  * The geolocation clause commits the PUBLIC half of where an order goes
  * (origin/destination geohashes — coarse cells on the agreement). This module
  * carries the PRECISE half — the ADDRESSEE BLOCK: recipient name, street
- * address, floor/door, special instructions — which cannot be derived at
- * order time and is nobody's business but the party who must navigate there.
+ * address, floor/door, delivery instructions, notify-party lines, handling
+ * marks — which cannot be derived at order time and is nobody's business but
+ * the party who must navigate there.
  *
  * SYMMETRIC over the order edge: either party may request and either may
  * answer — a courier requests the buyer's drop-off door; in a private
@@ -45,13 +46,25 @@ export type { SignChannelAuth };
 
 /** The precise-address payload — everything a label/door needs and the chain
  *  never learns. All fields free-form; `name` is the addressee (names are
- *  non-derivable, like the address). */
+ *  non-derivable, like the address). Like a bill of lading's consignee block,
+ *  it also carries the notify-party lines and the handling marks — private
+ *  operational detail, never committed clause content (ruled): the notify
+ *  party is NOT a participant (no wallet, no channel message — the
+ *  counterparty notifies by the off-protocol contact given here), and
+ *  `instructions` (door: gate code, ring twice) stays distinct from
+ *  `handling` (cargo marks: fragile, this-way-up, live animal). */
 export interface AddresseeBlock {
     name: string;
     street: string;
     /** Floor / apartment / door — the part a geohash can never carry. */
     unit?: string;
     instructions?: string;
+    /** Third party to notify at arrival — distinct from the addressee. */
+    notifyName?: string;
+    /** How to reach the notify party (phone/email — free-form, off-protocol). */
+    notifyContact?: string;
+    /** Special-handling marks for the cargo — fragile, orientation, live animal. */
+    handling?: string;
 }
 
 function encodeAddresseeBlock(block: AddresseeBlock): string {
@@ -67,6 +80,9 @@ export function tryDecodeAddresseeBlock(raw: string): AddresseeBlock | null {
             street: parsed.street,
             ...(typeof parsed.unit === "string" && { unit: parsed.unit }),
             ...(typeof parsed.instructions === "string" && { instructions: parsed.instructions }),
+            ...(typeof parsed.notifyName === "string" && { notifyName: parsed.notifyName }),
+            ...(typeof parsed.notifyContact === "string" && { notifyContact: parsed.notifyContact }),
+            ...(typeof parsed.handling === "string" && { handling: parsed.handling }),
         };
     } catch {
         return null;

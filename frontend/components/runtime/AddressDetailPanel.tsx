@@ -9,7 +9,8 @@
  * this order's buyer↔seller ARE the two parties who need the detail).
  * Either party may REQUEST (ephemeral pubkey over the coordination channel)
  * and either may ANSWER (the addressee block — name, street, floor/door,
- * instructions — ECDH-encrypted to the counterparty and hash-anchored
+ * delivery instructions, notify-party lines, handling marks —
+ * ECDH-encrypted to the counterparty and hash-anchored
  * on-chain as that party's attestation on the declaring clause's section;
  * tamper-evidence, corrections supersede). The courier requests the buyer's
  * drop-off door; in a private transaction the buyer requests the seller's
@@ -62,7 +63,10 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
     const [sent, setSent] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [form, setForm] = useState<AddresseeBlock>({ name: "", street: "", unit: "", instructions: "" });
+    const [form, setForm] = useState<AddresseeBlock>({
+        name: "", street: "", unit: "", instructions: "",
+        notifyName: "", notifyContact: "", handling: "",
+    });
 
     // The channel (mock in e2e, XMTP live) + subscriptions. Both parties send
     // ECDH pubkeys on the same order id. Transport identity is UNTRUSTED —
@@ -167,6 +171,9 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
                 street: form.street.trim(),
                 ...(form.unit?.trim() ? { unit: form.unit.trim() } : {}),
                 ...(form.instructions?.trim() ? { instructions: form.instructions.trim() } : {}),
+                ...(form.notifyName?.trim() ? { notifyName: form.notifyName.trim() } : {}),
+                ...(form.notifyContact?.trim() ? { notifyContact: form.notifyContact.trim() } : {}),
+                ...(form.handling?.trim() ? { handling: form.handling.trim() } : {}),
             };
             const { blobB64 } = await sendAddressDetail(channel, {
                 myAddress: address, recipientAddress: counterparty, orderId: orderHash,
@@ -241,6 +248,17 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
                     {detail.instructions && (
                         <p className="text-xs text-neutral-500 italic">{detail.instructions}</p>
                     )}
+                    {detail.handling && (
+                        <p className="text-xs font-semibold text-amber-800" data-testid="interaction-address-detail-handling">
+                            ⚠ {detail.handling}
+                        </p>
+                    )}
+                    {detail.notifyName && (
+                        <p className="text-xs text-neutral-700" data-testid="interaction-address-detail-notify">
+                            Notify on arrival: {detail.notifyName}
+                            {detail.notifyContact ? ` — ${detail.notifyContact}` : ""}
+                        </p>
+                    )}
                     {anchored === "verified" && (
                         <p className="text-xs font-semibold text-green-700" data-testid="interaction-address-verified">
                             ✓ Matches the on-chain anchor
@@ -265,7 +283,10 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
                         ["name", "Addressee name", form.name],
                         ["street", "Street address", form.street],
                         ["unit", "Floor / door (optional)", form.unit ?? ""],
-                        ["instructions", "Special instructions (optional)", form.instructions ?? ""],
+                        ["instructions", "Delivery instructions (optional)", form.instructions ?? ""],
+                        ["handling", "Special handling (optional)", form.handling ?? ""],
+                        ["notifyName", "Notify on arrival (optional)", form.notifyName ?? ""],
+                        ["notifyContact", "Notify contact (optional)", form.notifyContact ?? ""],
                     ] as const).map(([key, label, value]) => (
                         <label key={key} className="block text-xs font-semibold text-neutral-700">
                             {label}

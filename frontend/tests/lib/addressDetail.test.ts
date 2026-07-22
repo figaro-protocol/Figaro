@@ -38,6 +38,9 @@ const BLOCK: AddresseeBlock = {
     street: "12 Rue du Marché",
     unit: "3rd floor, door B",
     instructions: "Ring twice; dog is friendly.",
+    notifyName: "Nonna Lucia",
+    notifyContact: "+39 055 123 456",
+    handling: "Fragile — keep level",
 };
 
 interface SentMessage {
@@ -90,8 +93,10 @@ describe("the private-address ceremony", () => {
         });
         const buyerPub = sent.find((m) => m.kind === "pubkey" && m.value !== sellerPub)!.value;
         expect(sent.find((m) => m.kind === "blob")!.value).toBe(blobB64);
-        // The blob is ciphertext — the plaintext never crosses the channel.
+        // The blob is ciphertext — the plaintext never crosses the channel,
+        // the notify party's PII included.
         expect(blobB64).not.toContain("Rue du Marché");
+        expect(blobB64).not.toContain("Nonna Lucia");
 
         const decrypted = await decryptAddressDetail({
             myAddress: SELLER, orderId: ORDER, senderPubKeyHex: buyerPub, blobB64,
@@ -198,5 +203,15 @@ describe("the private-address ceremony", () => {
         expect(tryDecodeAddresseeBlock("not json")).toBeNull();
         expect(tryDecodeAddresseeBlock('{"name":"x"}')).toBeNull();
         expect(tryDecodeAddresseeBlock(toHex("junk"))).toBeNull();
+    });
+
+    it("notify-party + handling are optional: a block without them still decodes, non-string values are omitted", () => {
+        const withoutThem = JSON.stringify({ name: "x", street: "y" });
+        expect(tryDecodeAddresseeBlock(withoutThem)).toEqual({ name: "x", street: "y" });
+        const mixed = JSON.stringify({
+            name: "x", street: "y",
+            notifyName: 7, notifyContact: null, handling: "Fragile — this way up",
+        });
+        expect(tryDecodeAddresseeBlock(mixed)).toEqual({ name: "x", street: "y", handling: "Fragile — this way up" });
     });
 });

@@ -400,8 +400,8 @@ These appear on traditional BoLs and in the supply-chain BoL conventions
 TradeTrust documents but have no current clause in Figaro:
 
 - **Cargo-type / transport-category beyond hazmat.** Hazmat / dangerous-goods declarations are now expressible via `figaro-hazmat` (UN number, proper shipping name, hazard class 1–9, packing group, anchored to the UN Recommendations / ADR / IMDG / IATA-DGR). Broader cargo-type / transport-category taxonomies beyond dangerous goods remain unmodelled. (The earlier `figaro-class-of-service` sketch was deleted as conflating four orthogonal axes; hazard and temperature are now separate standard-anchored electives.)
-- **Special-handling instructions.** Fragile / orientation-sensitive / live-animal — none of these have a clause slot. (Temperature-controlled handling is covered by `figaro-cold-chain`.)
-- **Notify party.** A third party who is to be notified at arrival, distinct from the consignee. Figaro's data model does not currently carry a notify address separate from the consignee address.
+- **Special-handling instructions — RESOLVED (2026-07-22, ruled: private detail, never clause content).** Fragile / orientation-sensitive / live-animal marks ride the addressee block on the ECDH private-detail channel (`frontend/lib/handoff/addressDetail.ts`, `handling` field) — like a BoL's handling marks, they travel with the label, encrypted to the order's counterparty, hash-anchored on-chain. Distinct from door-level delivery `instructions`. (Temperature-controlled handling remains committed clause content via `figaro-cold-chain`.)
+- **Notify party — RESOLVED (2026-07-22, same ruling).** The addressee block carries `notifyName`/`notifyContact` — the BoL notify-party lines, distinct from the consignee. The notify party is DATA, never a participant: no wallet, no channel message, no kernel involvement; the counterparty notifies by the off-protocol contact given.
 - **Cargo-detail beyond SKU.** `figaro-cargo` now carries the shipment's mass and volume, and `figaro-commerce.lineItems` carries `quantity` and `name`. Marks, numbers, and packaging type per shipment remain unmodelled.
 - **Liability terms / freight-paid status / freight-collect.** Whether the freight is prepaid by the shipper or collect-from-consignee. In Figaro this is implicit (the buyer pays the seller in the bonded payment); making it explicit is a labelling concern, not a clause concern.
 
@@ -442,12 +442,15 @@ references this document for the full comparison. A reviewer
 encountering the absence now has a written answer instead of treating
 it as a gap.
 
-**8.4 Defer the cargo-description / hazmat / notify-party decisions.**
-None of these block local commerce. They become live questions when the
-supply-chain assembly enters build phase. At that point the question is
-per-field: extend an existing clause, fork a new one, or document an
-out-of-scope decision. A pre-emptive `figaro-cargo-description` fork would
-be premature design — `figaro-cargo` already covers mass and volume.
+**8.4 Defer the cargo-description decision; hazmat and notify-party are
+now resolved.** Hazmat became `figaro-hazmat` (committed clause content —
+a declaration the chain of custody bonds on); notify-party and
+special-handling went the OTHER side of the seam (2026-07-22): private
+operational detail on the addressee block over the ECDH channel, never
+clause content (§7.1). The remaining cargo-description question becomes
+live when the supply-chain assembly enters build phase; a pre-emptive
+`figaro-cargo-description` fork would be premature design — `figaro-cargo`
+already covers mass and volume.
 
 **8.5 No interoperability with CargoX / TradeTrust title flows.** Because
 the underlying transferability semantics differ structurally, a Figaro
@@ -489,9 +492,11 @@ leader. Each participant is bonded independently; the protocol takes no
 position on the commercial relationship between them.
 
 **Cargo-detail clauses may be the deliverable.** When the assembly is
-built, the live design questions are: hazmat declarations? notify party?
-packed-shipment dimensions? Each is a clause-design call following the
-procedure in `CLAUDE.md` § "Adding a new clause — checklist". The
+built, the remaining live design question is packed-shipment dimensions
+(hazmat became `figaro-hazmat`; notify party rides the private addressee
+block — §7.1). Each such call follows the procedure in `docs/CLAUSES.md`
+§ "Adding a new clause — checklist", or lands on the private-detail side
+of the seam when it is operational data rather than bonded commitment. The
 research above lists the candidates without prejudging them.
 
 **The TradeTrust document model is a useful reference, not a target.**
