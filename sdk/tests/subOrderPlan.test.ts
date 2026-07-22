@@ -33,6 +33,7 @@ const parents = (ids: string[]) => ({ [TOPO]: { parentOrderHashes: ids } });
 
 const NO_SPECS = specSourceFromFixtures([]);
 const GEO_SPECS = specSourceFromFixtures(["figaro-geolocation"]);
+const SCHEDULE_SPECS = specSourceFromFixtures(["figaro-schedule"]);
 
 const assembly: BoundAssemblyPlanInput = {
     counterpartyBindings: [
@@ -137,6 +138,7 @@ describe("resolveSubOrderPricing — fixed items", () => {
 // ── Rate pricing: payment = rate × billed units (per started unit) ──────────
 
 const GEO = "figaro-geolocation";
+const SCHEDULE = "figaro-schedule";
 // 9q8yy ≈ San Francisco, 9q5ct ≈ Los Angeles — several hundred km apart.
 const SF = "9q8yy";
 const LA = "9q5ct";
@@ -227,6 +229,64 @@ describe("resolveSubOrderPricing — rate items", () => {
         });
         expect(p.payment).toBe(0n);
         expect(p.issue).toBe("unresolvable-quantity");
+    });
+
+    it("booking-window: payment = rate × ceil(hours), from the order's committed window", () => {
+        // A 3.5-hour window (09:00 → 12:30) bills 4 started hours.
+        const p = resolveSubOrderPricing({
+            node: nodeWithClauses({
+                [SCHEDULE]: { windowStart: "2026-07-22T09:00:00Z", windowEnd: "2026-07-22T12:30:00Z" },
+            }),
+            seller: SWIFT,
+            sellerCatalogues: rateCatalogue({
+                id: "consulting", name: "Consulting", price: "0.5", available: true,
+                pricingPolicy: "rate", rateUnit: "hour", rateQuantitySource: "booking-window",
+            }),
+            tokenDecimals: 18,
+            specs: SCHEDULE_SPECS,
+        });
+        expect(p.resolvedUnits).toBeCloseTo(3.5, 6);
+        expect(p.billedQuantity).toBe(4); // per started hour
+        expect(p.unitPrice).toBe(500000000000000000n);
+        expect(p.payment).toBe(p.unitPrice * BigInt(p.billedQuantity)); // replayable
+    });
+
+    it("booking-window bills min 1 hour for a sub-hour window", () => {
+        const p = resolveSubOrderPricing({
+            node: nodeWithClauses({
+                [SCHEDULE]: { windowStart: "2026-07-22T09:00:00Z", windowEnd: "2026-07-22T09:20:00Z" },
+            }),
+            seller: SWIFT,
+            sellerCatalogues: rateCatalogue({
+                id: "consulting", name: "Consulting", price: "0.5", available: true,
+                pricingPolicy: "rate", rateUnit: "hour", rateQuantitySource: "booking-window",
+            }),
+            tokenDecimals: 18,
+            specs: SCHEDULE_SPECS,
+        });
+        expect(p.billedQuantity).toBe(1);
+        expect(p.payment).toBe(500000000000000000n);
+    });
+
+    it("booking-window with a reversed or malformed window is unresolvable, never junk-priced", () => {
+        for (const window of [
+            { windowStart: "2026-07-22T12:00:00Z", windowEnd: "2026-07-22T09:00:00Z" }, // reversed
+            { windowStart: "not-a-date", windowEnd: "2026-07-22T12:00:00Z" },            // malformed
+            {},                                                                          // no window
+        ]) {
+            const p = resolveSubOrderPricing({
+                node: nodeWithClauses({ [SCHEDULE]: window }),
+                seller: SWIFT,
+                sellerCatalogues: rateCatalogue({
+                    id: "consulting", name: "Consulting", price: "0.5", available: true,
+                    pricingPolicy: "rate", rateUnit: "hour", rateQuantitySource: "booking-window",
+                }),
+                tokenDecimals: 18,
+                specs: SCHEDULE_SPECS,
+            });
+            expect(p.payment).toBe(0n);
+            expect(p.issue).toBe("unresolvable-quantity");
+        }
     });
 
     it("an unregistered quantity source is unresolvable — never silently fixed-priced", () => {

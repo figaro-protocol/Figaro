@@ -539,14 +539,23 @@ export function resolveSubOrderPricing(args: {
 //    endpoints — great-circle distance in km between the two geohash cell
 //    centroids, found by their declared fields (`originGeohash` +
 //    `destinationGeohash`), never by clause id. ANY order that composes both
-//    endpoints has a derivable distance; no sector is named. Crow-flies is
-//    the only distance derivable from committed data alone — routed distance
-//    is an external source, i.e. a future composition tenant, as is a
-//    booking-window clause deriving hours (fill-where-composed).
+//    endpoints has a derivable distance; no sector is named.
+//  - "booking-window": derived from the order's OWN committed time window —
+//    hours between the two ISO date-times, found by their declared fields
+//    (`windowStart` + `windowEnd`), never by clause id. ANY order that commits
+//    a window (an appointment, a timeslot, a rental period alike) has derivable
+//    hours; no sector is named. This is the time dual of geodistance: both
+//    derive a quantity from committed data alone.
+//
+// Crow-flies distance and window-hours are the derivations available from
+// committed data alone; a ROUTED distance (a maps API) is an external source —
+// a future composition tenant that fills where composed, registered via
+// `registerRateQuantitySource` without touching this file.
 
-/** @public pending consumer: external resolver tenants (a booking-window
- *  derivation, a routed-distance composition) type their context with this;
- *  remove the tag when the first out-of-file tenant lands. */
+/** @public pending consumer: an out-of-file resolver tenant (a routed-distance
+ *  composition against a maps API) types its context with this; remove the tag
+ *  when the first such tenant lands. The in-file derivations (checkout-quantity,
+ *  order-geodistance, booking-window) already consume it. */
 export interface RateQuantityContext {
     /** The order's clause fields (template values + checkout fills), keyed by
      *  clause id — the same map the agreement commits. */
@@ -591,9 +600,34 @@ function resolveOrderGeodistance(ctx: RateQuantityContext): number | null {
     }
 }
 
+function resolveBookingWindowHours(ctx: RateQuantityContext): number | null {
+    const scheduleClauseId = Object.keys(ctx.clauses).find((clauseId) => {
+        const spec = ctx.specs.get(clauseId);
+        return spec
+            ? specDeclaresField(spec, "windowStart") && specDeclaresField(spec, "windowEnd")
+            : false;
+    });
+    if (!scheduleClauseId) return null;
+    const section = ctx.clauses[scheduleClauseId];
+    const start = section?.windowStart;
+    const end = section?.windowEnd;
+    if (typeof start !== "string" || typeof end !== "string" || !start || !end) {
+        return null;
+    }
+    const startMs = Date.parse(start);
+    const endMs = Date.parse(end);
+    // Malformed date-time or a non-positive window is unresolvable — the pricing
+    // site refuses to price rather than junk-price (resolved-empty = absence).
+    if (Number.isNaN(startMs) || Number.isNaN(endMs) || endMs <= startMs) {
+        return null;
+    }
+    return (endMs - startMs) / 3_600_000; // ms → hours (fractional; billing rounds per started hour)
+}
+
 const REGISTRY = new Map<string, RateQuantityResolver>([
     ["checkout-quantity", resolveCheckoutQuantity],
     ["order-geodistance", resolveOrderGeodistance],
+    ["booking-window", resolveBookingWindowHours],
 ]);
 
 /** Human labels for registered sources — REGISTRY DATA like a clause spec's
@@ -603,6 +637,7 @@ const REGISTRY = new Map<string, RateQuantityResolver>([
 const LABELS = new Map<string, string>([
     ["checkout-quantity", "Entered at checkout"],
     ["order-geodistance", "Distance between the order's committed endpoints (km)"],
+    ["booking-window", "Hours from the order's committed schedule window"],
 ]);
 
 /** Register a resolver for a declared quantity source. Last write wins —

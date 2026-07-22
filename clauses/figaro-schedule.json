@@ -1,0 +1,27 @@
+{
+    "clauseId": "figaro-schedule",
+    "version": 1,
+    "title": "Schedule",
+    "description": "Commits the agreed time window for the order — a single [start, end) interval that expresses an appointment, a booked timeslot, or a rental period equally (one representation, the parties agree its meaning). The window is a transaction particular: it fills at checkout, never at design time. Duration is DERIVED, never stored — a rate-priced catalogue item derives its billed hours from this window at the pricing site (windowEnd − windowStart); there is no separate hours field to keep in sync. This clause records only the AGREED window; the ACTUAL start/finish is a runtime attestation on the relevant process clause (the sovereign event log), and any return or hand-off leg is a second co-equal order, never encoded here. windowEnd must be after windowStart — checked off-chain at read time, never on chain.",
+    "fields": [
+        {
+            "name": "windowStart",
+            "type": "string",
+            "format": "iso-datetime",
+            "required": true,
+            "label": "Start",
+            "description": "Start of the agreed window (ISO 8601 date-time). The instant the booking, appointment, or rental period begins."
+        },
+        {
+            "name": "windowEnd",
+            "type": "string",
+            "format": "iso-datetime",
+            "required": true,
+            "label": "End",
+            "description": "End of the agreed window (ISO 8601 date-time). Must be after windowStart. Billed hours are derived as windowEnd − windowStart at the pricing site, never stored here."
+        }
+    ],
+    "block": {
+        "article": "coordination"
+    }
+}

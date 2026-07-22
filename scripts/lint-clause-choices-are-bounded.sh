@@ -45,7 +45,14 @@ for file in "$@"; do
         const out = [];
         const walk = (fields, prefix) => {
             for (const f of fields || []) {
-                if (f.type === "string" && f.required === true && f.default === undefined && !free.test(f.name))
+                // A field declaring a `format` (iso-datetime, address-hex, bytes-hex,
+                // …) is format-constrained free content, NEVER a choice-from-a-set: it
+                // renders its format input (a datetime picker, not a text box) and is
+                // validated by the format gate. Exempt it, the same as a named free
+                // field — a bounded choice must still be a `type:"enum"`, never a
+                // `string` with a bogus format.
+                if (f.type === "string" && f.required === true && f.default === undefined
+                    && f.format === undefined && !free.test(f.name))
                     out.push(prefix + f.name);
                 if (f.type === "object") walk(f.fields, prefix + f.name + ".");
             }

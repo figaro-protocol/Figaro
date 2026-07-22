@@ -24,6 +24,7 @@ import merchantSpecRaw from "../../../clauses/figaro-merchant-process.json" with
 import courierSpecRaw from "../../../clauses/figaro-courier-process.json" with { type: "json" };
 import dimweightSpecRaw from "../../../clauses/figaro-dimweight.json" with { type: "json" };
 import handoffSpecRaw from "../../../clauses/figaro-handoff.json" with { type: "json" };
+import scheduleSpecRaw from "../../../clauses/figaro-schedule.json" with { type: "json" };
 
 describe("example clause specs — parse + validate sample content", () => {
     it("figaro-topology spec parses cleanly", () => {
@@ -660,6 +661,33 @@ describe("example clause specs — parse + validate sample content", () => {
         const compositionHash = ("0x" + "cd".repeat(32)) as `0x${string}`;
         const encoded = encodeContentFromSpec(parsed.spec, { compositionHash });
         expect(encoded).toBe(encodeAbiParameters([{ type: "bytes32" }], [compositionHash]));
+    });
+
+    // ── figaro-schedule ──
+
+    it("figaro-schedule spec parses cleanly", () => {
+        expect(parseClauseSpec(scheduleSpecRaw).ok).toBe(true);
+    });
+
+    it("figaro-schedule accepts a valid committed window", () => {
+        const parsed = parseClauseSpec(scheduleSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({
+            windowStart: "2026-07-22T09:00:00Z",
+            windowEnd: "2026-07-22T12:30:00Z",
+        }, parsed.spec).ok).toBe(true);
+    });
+
+    it("figaro-schedule rejects a non-datetime bound and a missing bound", () => {
+        const parsed = parseClauseSpec(scheduleSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        // The iso-datetime format is the SPEC's gate, not a frontend's.
+        expect(validateContent({
+            windowStart: "tomorrow morning",
+            windowEnd: "2026-07-22T12:30:00Z",
+        }, parsed.spec).ok).toBe(false);
+        // windowEnd is required.
+        expect(validateContent({ windowStart: "2026-07-22T09:00:00Z" }, parsed.spec).ok).toBe(false);
     });
 
 });
