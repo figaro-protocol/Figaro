@@ -114,13 +114,23 @@ test.describe('THE PAYMENT TOKEN — the buyer picks the denomination; swap is t
         await page.getByTestId('payment-token-MPMT').check();
     }
 
-    /** Place the order and relay it over the channel. */
-    async function placeAndShare(page: Page) {
+    /** Place the order and relay it over the channel. `expectSwap` asserts the
+     *  confirm modal's swap-funded-bond section (the Permit2 leg's maxInput) is
+     *  surfaced BEFORE the single approval — the WYSIWYS parity added for the
+     *  swap witness; when false, it asserts that section is ABSENT (no swap ⇒ no
+     *  swap section). */
+    async function placeAndShare(page: Page, { expectSwap = false }: { expectSwap?: boolean } = {}) {
         const place = page.getByTestId('btn-place-order');
         await expect(place, 'buyer connected + order ready → "Place order"')
             .toHaveText(/Place order/, { timeout: 20000 });
         await place.click();
         await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
+        if (expectSwap) {
+            await expect(page.getByTestId('preview-swap'), 'swap-funded bond surfaced in the confirm').toBeVisible();
+            await expect(page.getByTestId('preview-swap-max-input'), 'the authorized maxInput is shown').not.toBeEmpty();
+        } else {
+            await expect(page.getByTestId('preview-swap'), 'no swap leg ⇒ no swap section').toHaveCount(0);
+        }
         await page.getByTestId('preview-confirm').click();
         await page.getByTestId('buyer-share-panel').waitFor({ timeout: 60000 });
         await page.getByTestId('send-commitment-xmtp').click();
@@ -227,7 +237,8 @@ test.describe('THE PAYMENT TOKEN — the buyer picks the denomination; swap is t
             await authorize.waitFor({ state: 'hidden', timeout: 30000 });
         }
 
-        await placeAndShare(page);
+        // Buyer's swap-funded bond: the confirm surfaces the swap leg (item 1).
+        await placeAndShare(page, { expectSwap: true });
 
         await gotoAsWallet(page, SELLER, '/orders?e2e=devnet');
         await page.getByTestId('orders-list').waitFor({ timeout: 30000 });
@@ -298,6 +309,9 @@ test.describe('THE PAYMENT TOKEN — the buyer picks the denomination; swap is t
         await counterSign.waitFor({ state: 'visible', timeout: 60000 });
         await counterSign.click();
         await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
+        // Seller's on-ramp: the confirm surfaces the swap leg's maxInput (item 1).
+        await expect(page.getByTestId('preview-swap'), 'swap-funded bond surfaced in the seller confirm').toBeVisible();
+        await expect(page.getByTestId('preview-swap-max-input'), 'the authorized maxInput is shown').not.toBeEmpty();
         await page.getByTestId('preview-confirm').click();
 
         const { receipt, buyerBond, sellerBond } = await committedEvent(committedBefore);
