@@ -147,7 +147,11 @@ export function useMatchRound(pool: `0x${string}` | null) {
                     erc20(donationToken, "decimals") as Promise<number>,
                     erc20(matchToken, "symbol") as Promise<string>,
                     erc20(matchToken, "decimals") as Promise<number>,
-                    fetchMatchDonationEvents(publicClient, donationRail, await publicClient.getBlockNumber()),
+                    // cacheTime: 0 — a refresh fires immediately after a donate's
+                    // receipt, and viem caches getBlockNumber (~pollingInterval),
+                    // so a stale number would set toBlock BEFORE the donation's
+                    // block and drop it (the count stuck at 0 after a UI donation).
+                    fetchMatchDonationEvents(publicClient, donationRail, await publicClient.getBlockNumber({ cacheTime: 0 })),
                 ]);
             // The case track, event-sourced: RootChallenged births a case; its
             // live status comes from the bondCases(caseId) read; concession
