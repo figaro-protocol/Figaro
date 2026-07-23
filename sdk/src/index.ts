@@ -127,6 +127,7 @@ export {
     buildCommitment,
     buildCommitmentSafe,
     hashCommitmentStruct,
+    verifyCommitmentSignature,
     computeCommitmentProcessId,
     computeOrderHash,
     orderToCommitment,

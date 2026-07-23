@@ -17,9 +17,22 @@ const useWalletClientMock = vi.fn();
 vi.mock("wagmi", () => ({
     useAccount: () => useAccountMock(),
     useWalletClient: () => useWalletClientMock(),
+    useChainId: () => 31337,
 }));
 
 vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));
+
+// The pin gate verifies a counterparty signature before pinning (audit
+// 2026-07-23); these tests exercise dismiss/resubscription with fixture
+// sigs, so treat the signature as valid and give the gate a core domain.
+vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/kernel/contracts")>();
+    return { ...actual, CONTRACTS: { ...actual.CONTRACTS, core: "0x00000000000000000000000000000000000000c0" } };
+});
+vi.mock("@figaro/sdk", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@figaro/sdk")>();
+    return { ...actual, verifyCommitmentSignature: vi.fn().mockResolvedValue(true) };
+});
 
 // The payload fetch: return the serialized payload JSON so the REAL
 // deserializeCommitmentPayload runs (never mock the parse itself).

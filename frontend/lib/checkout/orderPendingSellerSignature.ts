@@ -15,7 +15,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { create } from "zustand";
-import { useAccount, useWalletClient } from "wagmi";
+import { useAccount, useChainId, useWalletClient } from "wagmi";
 import { hexEqual } from "@/lib/shared/evm";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
@@ -23,8 +23,11 @@ import {
     deserializeCommitmentPayload,
     type CommitmentPayload,
 } from "@figaro/sdk/agent";
+import { verifyCommitmentSignature } from "@figaro/sdk";
+import { CONTRACTS } from "@/lib/kernel/contracts";
 import { publishAgreement } from "@/lib/kernel/agreementFetch";
 import { fetchCappedContent, type IpfsService } from "@/lib/shared/ipfsService";
+import type { Hex } from "viem";
 
 /**
  * Am I (buyer or seller) a party to this commitment? Signature-state-agnostic
@@ -119,7 +122,11 @@ export function usePendingSellerSignature(
 ): { pending: CommitmentPayload[]; dismiss: (index: number) => void } {
     const { address } = useAccount();
     const { data: walletClient } = useWalletClient();
+    const chainId = useChainId();
     const services = useRuntimeServices();
+    // Read at callback time without re-subscribing (mirrors walletClientRef).
+    const chainIdRef = useRef(chainId);
+    chainIdRef.current = chainId;
 
     const [entries, setEntries] = useState<PendingEntry[]>([]);
     const dismissed = useDismissedPending((s) => s.dismissed);
@@ -174,6 +181,26 @@ export function usePendingSellerSignature(
                         // primitive (finding 2). A NON-party has no witness claim to
                         // hydrate later, so it has no reason to pin.
                         if (!isCommitmentParty(payload, address)) return;
+                        // `isCommitmentParty` reads the sender-controlled buyer/seller
+                        // fields, so it alone lets a TARGETED attacker who simply NAMES
+                        // this wallet cause an ≤8 MB pin (audit 2026-07-23,
+                        // pin-amplification). Require a REAL signature: at least one
+                        // present signature must recover to its named party — proving a
+                        // genuine counterparty signed, not fabricated JSON. This keeps
+                        // both legitimate legs pinning (an outbound order carries this
+                        // wallet's OWN signature; an inbound one carries the
+                        // counterparty's) while dropping unsigned/forged payloads.
+                        const core = CONTRACTS.core;
+                        const cid = chainIdRef.current;
+                        const recovers = async (sig: string | undefined, party: string) =>
+                            !!sig && !!core && !!cid
+                            && await verifyCommitmentSignature(
+                                payload.commitment, sig as Hex, party as Hex, { chainId: cid, core },
+                            ).catch(() => false);
+                        const signedByAParty =
+                            (await recovers(payload.buyerSig, payload.commitment.buyer))
+                            || (await recovers(payload.sellerSig, payload.commitment.seller));
+                        if (!signedByAParty) return;
                         // Persist the witnessed-URI pointer (+ standalone agreement
                         // pin) for every payload where this wallet IS a party — it
                         // witnessed the order, so its order/audit pages must be able to

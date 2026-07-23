@@ -48,6 +48,11 @@ function asDebugClientLike(client: DebugClient): DebugClientLike {
 // ---------------------------------------------------------------------------
 export function attachDebugClient(rpcUrl: string): void {
     if (typeof window === "undefined") return;
+    // Parity with attachDevProvider / attachTestSigner: never ship the debug
+    // global + the global fetch monkey-patch to a production build (audit
+    // 2026-07-23 — read-only, so not a theft risk, but it's overhead + a debug
+    // surface prod has no reason to carry).
+    if (process.env.NODE_ENV === "production") return;
     try {
         const client = createPublicClient({
             chain: localAnvil,

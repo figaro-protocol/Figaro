@@ -19,7 +19,7 @@
  */
 
 import type { PublicClient } from "viem";
-import { keccak256, encodeAbiParameters, encodePacked, hashTypedData, toBytes } from "viem";
+import { keccak256, encodeAbiParameters, encodePacked, hashTypedData, toBytes, verifyTypedData } from "viem";
 import { CORE_ABI } from "./abis.js";
 import type {
     Hex,
@@ -86,6 +86,38 @@ export function hashCommitmentStruct(c: Commitment): Hex {
         ...COMMITMENT_TYPES.Commitment.map((f) => c[f.name as keyof Commitment]),
     ];
     return keccak256(encodeAbiParameters(params, values as never));
+}
+
+/**
+ * Does `signature` over `commitment` recover to `signer`? The canonical
+ * EIP-712 Commitment signature check — the kernel re-verifies on-chain, so a
+ * caller uses this to REFUSE early (a relayed payload carrying a forged or
+ * unsigned counterparty signature) rather than pay gas on a guaranteed revert,
+ * or to gate a side effect (an IPFS pin) on a real counterparty having signed.
+ * `verifyRaceReply`/`verifyQuoteReply` inline the same three fields; this is the
+ * shared home so no site re-wires the domain/types.
+ */
+export async function verifyCommitmentSignature(
+    commitment: Commitment,
+    signature: Hex,
+    signer: Address,
+    ctx: { chainId: number; core: Address },
+): Promise<boolean> {
+    // A predicate: a structurally-malformed signature (e.g. r=0) makes
+    // verifyTypedData THROW during recovery — for a "did this verify?" check
+    // that is a `false`, not an exception the caller must guard.
+    try {
+        return await verifyTypedData({
+            address: signer,
+            domain: buildDomain(ctx.chainId, ctx.core),
+            types: COMMITMENT_TYPES,
+            primaryType: "Commitment",
+            message: commitment,
+            signature,
+        });
+    } catch {
+        return false;
+    }
 }
 
 /** The order's process id: a root order (processId == 0) uses the full EIP-712

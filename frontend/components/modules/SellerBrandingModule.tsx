@@ -40,7 +40,7 @@ export function SellerLogo({
     // IPFS-only: a raw http(s) branding locator is attacker-authorable and
     // hotlinking it deanonymizes the viewer (finding 3). Non-IPFS logos resolve
     // to null and fall through to the initials / neutral placeholder below.
-    const logoSrc = branding?.logoURL ? resolveImageUri(branding.logoURL) : null;
+    const logoSrc = branding?.logoURI ? resolveImageUri(branding.logoURI) : null;
     const [imageFailed, setImageFailed] = useState(false);
 
     useEffect(() => {

@@ -14,7 +14,6 @@
 
 import type { SellerBrandingMetadata } from "@/lib/seller/sellerBrandingMetadata";
 import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
-import { resolveContentUri } from "@/lib/shared/ipfsService";
 import { createUriFetcher } from "@/lib/seller/uriFetcher";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -26,8 +25,11 @@ interface SellerAssets {
 export interface ResolvedSellerBranding {
     branding: SellerBrandingMetadata;
     assets: SellerAssets;
-    /** Gateway-resolved logo URL (ready for <img src>) */
-    logoURL?: string;
+    /** Raw logo LOCATOR (e.g. `ipfs://…`) — the render layer resolves it once
+     *  through `resolveImageUri` (ipfs→gateway, rejects raw http as an
+     *  anti-tracking gate). NOT pre-resolved here: pre-resolving to a gateway
+     *  http URL made the render gate reject legitimate ipfs logos. */
+    logoURI?: string;
     /** Raw seller name (top-level). */
     name?: string;
 }
@@ -53,7 +55,7 @@ function resolveSellerBrandingDocument(input: {
     return {
         branding: b,
         assets: a,
-        logoURL: b.logoURI ? (resolveContentUri(b.logoURI) ?? undefined) : undefined,
+        logoURI: typeof b.logoURI === "string" ? b.logoURI : undefined,
         name: typeof input.name === "string" ? input.name : undefined,
     };
 }

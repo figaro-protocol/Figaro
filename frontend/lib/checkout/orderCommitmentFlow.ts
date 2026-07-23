@@ -28,6 +28,7 @@ import {
     COMMITMENT_TYPES,
     buildDomain,
     calculateBonds,
+    verifyCommitmentSignature,
     type Agreement,
     type Commitment,
     type Hex,
@@ -284,6 +285,21 @@ export function useOrderCommitmentFlow() {
         setError(null);
         try {
             const role: PartyRole = hexEqual(address, incoming.commitment.buyer) ? "buyer" : "seller";
+
+            // Verify the COUNTERPARTY's existing signature before we sign and
+            // broadcast (audit 2026-07-23, acceptOrder): a relayed payload
+            // carrying a forged/absent counterparty sig would revert on-chain
+            // after we spent gas — refuse early with a clean error. The kernel
+            // re-verifies; this only moves the failure off-chain.
+            assertSigningDomain(CONTRACTS.core, chainId);
+            const counterSig = role === "seller" ? incoming.buyerSig : incoming.sellerSig;
+            const counterparty = role === "seller" ? incoming.commitment.buyer : incoming.commitment.seller;
+            if (!counterSig || !(await verifyCommitmentSignature(
+                incoming.commitment, counterSig as Hex, counterparty as Hex,
+                { chainId, core: CONTRACTS.core },
+            ))) {
+                throw new Error("The relayed order's counterparty signature is missing or invalid — refusing to counter-sign.");
+            }
 
             setStep("signing");
             // The seller's optional on-ramp is quoted before the sign so its

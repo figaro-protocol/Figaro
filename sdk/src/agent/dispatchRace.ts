@@ -25,8 +25,7 @@
  */
 
 import type { WalletClient } from "viem";
-import { verifyTypedData } from "viem";
-import { buildCommitment, buildDomain, hashCommitmentStruct, COMMITMENT_TYPES } from "../commitments.js";
+import { buildCommitment, buildDomain, hashCommitmentStruct, verifyCommitmentSignature, COMMITMENT_TYPES } from "../commitments.js";
 import { computeAgreementHash, type Agreement } from "../agreement.js";
 import type { Hex, Address } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, PricedField, QuoteRequestTerms } from "./coordination.js";
@@ -130,12 +129,11 @@ export async function verifyRaceReply(
     if (hashCommitmentStruct(reply.commitment) !== hashCommitmentStruct(draft.commitment)) {
         return { ok: false, reason: "reply commitment does not match the drafted struct" };
     }
-    const domain = buildDomain(ctx.chainId, ctx.core);
-    const valid = await verifyTypedData({
-        address: draft.commitment.seller,
-        domain, types: COMMITMENT_TYPES, primaryType: "Commitment", message: draft.commitment,
-        signature: reply.sellerSig as Hex,
-    });
+    // Verify against the buyer's OWN drafted struct (never the reply's echoed
+    // fields), recovering to the drafted candidate seller.
+    const valid = await verifyCommitmentSignature(
+        draft.commitment, reply.sellerSig as Hex, draft.commitment.seller, ctx,
+    );
     if (!valid) return { ok: false, reason: "seller signature does not recover to the drafted candidate" };
     return { ok: true };
 }
@@ -375,12 +373,10 @@ export async function verifyQuoteReply(
     if (computeAgreementHash(reply.agreement).toLowerCase() !== expected.commitment.agreementHash.toLowerCase()) {
         return { ok: false, reason: "quote's inline agreement does not hash to its committed agreementHash" };
     }
-    const domain = buildDomain(ctx.chainId, ctx.core);
-    const valid = await verifyTypedData({
-        address: draft.commitment.seller,
-        domain, types: COMMITMENT_TYPES, primaryType: "Commitment", message: expected.commitment,
-        signature: reply.sellerSig as Hex,
-    });
+    // Recover against the buyer's OWN reconstruction of the quoted struct.
+    const valid = await verifyCommitmentSignature(
+        expected.commitment, reply.sellerSig as Hex, draft.commitment.seller, ctx,
+    );
     if (!valid) return { ok: false, reason: "seller signature does not recover to the drafted candidate" };
     return { ok: true };
 }

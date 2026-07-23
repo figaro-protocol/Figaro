@@ -64,6 +64,7 @@ import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { formatToken } from "@/lib/shared/utils";
 import { hexEqual } from "@/lib/shared/evm";
+import { getE2EModeSession } from "@/lib/shared/e2e";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { IpfsService } from "@/lib/shared/ipfsService";
 
@@ -146,6 +147,25 @@ export async function postToAgentEndpoint(
     endpoint: string,
     payload: CommitmentPayload,
 ): Promise<CommitmentPayload | null> {
+    // `endpoint` is an attacker-authorable `services.rest` from a permissionless
+    // seller profile — the buyer's browser POSTs to it. Restrict to https so it
+    // can't be aimed at an internal/loopback/link-local host or a non-http
+    // scheme (audit 2026-07-23, SSRF-shaped fan-out). new URL() rejects
+    // malformed values; the CORS preflight already blocks reading a cross-origin
+    // response, this stops the request from firing at a non-web target at all.
+    // The e2e agent runs an http-loopback node server — relaxed ONLY inside a
+    // test session, which getE2EModeSession() forces null in a production build
+    // (so the loopback carve-out cannot exist in prod).
+    let parsed: URL;
+    try {
+        parsed = new URL(endpoint);
+    } catch {
+        throw new Error(`Agent endpoint is not a valid URL: ${endpoint}`);
+    }
+    const testSession = getE2EModeSession() !== null;
+    if (parsed.protocol !== "https:" && !testSession) {
+        throw new Error(`Agent endpoint must be https — refusing ${parsed.protocol}//`);
+    }
     const res = await fetch(endpoint, {
         method: "POST",
         headers: { "content-type": "application/json", accept: "application/json" },

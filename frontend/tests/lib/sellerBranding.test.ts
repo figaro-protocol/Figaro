@@ -47,7 +47,7 @@ describe('sellerBranding', () => {
 
             expect(result).not.toBeNull();
             expect(result!.branding.logoURI).toBe('ipfs://QmLogo123');
-            expect(result!.logoURL).toBe('http://127.0.0.1:8080/ipfs/QmLogo123');
+            expect(result!.logoURI).toBe('ipfs://QmLogo123'); // raw locator; render layer resolves once via resolveImageUri
             expect(result!.name).toBe("Bob's Pizza Palace");
         });
 
@@ -70,7 +70,7 @@ describe('sellerBranding', () => {
             expect(result).not.toBeNull();
             expect(result!.assets.imageBaseURI).toBe('ipfs://QmBase');
             expect(result!.branding.logoURI).toBeUndefined();
-            expect(result!.logoURL).toBeUndefined();
+            expect(result!.logoURI).toBeUndefined();
         });
 
         it('returns null when fetch fails', async () => {
@@ -172,7 +172,7 @@ describe('sellerBranding', () => {
             const result = resolveSellerBrandingFromSellerProfile(SELLER_PROFILE_METADATA_EXAMPLE);
 
             expect(result).not.toBeNull();
-            expect(result!.logoURL).toBe('http://127.0.0.1:8080/ipfs/example/logo.png');
+            expect(result!.logoURI).toBe('ipfs://example/logo.png');
         });
     });
 });

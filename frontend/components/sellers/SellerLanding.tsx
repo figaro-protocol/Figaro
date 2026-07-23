@@ -30,9 +30,9 @@ import {
 } from "@/lib/seller/useSellerRegistry";
 import { getSellerRegistry } from "@/lib/kernel/contracts";
 import { SELLER_REGISTRY_ABI } from "@figaro/sdk";
-import { DEFAULT_IPFS_SERVICE, fetchCappedContent, resolveContentUri } from "@/lib/shared/ipfsService";
+import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
+import { fetchSellerProfile } from "@/lib/seller/profileFetcher";
 import { unpinSupersededProfileArtifacts } from "@/lib/seller/profileErasure";
-import { tryParseSellerProfileDocument } from "@/lib/seller/sellerProfileMetadata";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
 import { formatEther } from "viem";
@@ -114,22 +114,15 @@ function RegisteredCard({
         let cancelled = false;
         setProfile(null);
         setProfileError(null);
-        const url = resolveContentUri(metadataURI);
-        if (!url) {
-            setProfileError("Profile URI couldn't be resolved.");
-            return;
-        }
-        fetchCappedContent(url)
-            .then((r) => r.text())
-            .then((text) => JSON.parse(text))
-            .then((doc) => {
+        // The shared reviver-backed, size-capped, cached fetcher — NOT a
+        // hand-rolled fetch+JSON.parse (audit 2026-07-23): a seller profile is
+        // permissionless untrusted network JSON, so it routes through the same
+        // prototype-pollution-stripping path every other profile read uses.
+        fetchSellerProfile(metadataURI)
+            .then((parsed) => {
                 if (cancelled) return;
-                const parsed = tryParseSellerProfileDocument(doc);
-                if (parsed) {
-                    setProfile(parsed);
-                } else {
-                    setProfileError("Profile JSON didn't parse as a seller profile.");
-                }
+                if (parsed) setProfile(parsed);
+                else setProfileError("Couldn't load a seller profile from that URI.");
             })
             .catch(() => {
                 if (!cancelled) setProfileError("Couldn't fetch profile from IPFS.");

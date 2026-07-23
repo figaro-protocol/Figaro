@@ -20,6 +20,7 @@ import { parseAssemblyRegistryLogs } from "@figaro/sdk";
 import { publicClient } from "@/lib/shared/wagmi";
 import { ASSEMBLY_REGISTRY_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { DEFAULT_IPFS_SERVICE, fetchCappedContent } from "@/lib/shared/ipfsService";
+import { safeJsonParse } from "@/lib/shared/safeJson";
 import {
     deriveAssemblySlug,
     templateCompositionHash,
@@ -290,7 +291,13 @@ export async function fetchAssemblyTemplate(
         // the catch below → null) before the hash check would buffer it.
         const response = await fetchCappedContent(url);
         if (!response.ok) return null;
-        const template = JSON.parse(await response.text()) as AssemblyTemplate;
+        // Reviver-backed parse: the compositionHash proves author-INTEGRITY,
+        // not prototype-pollution safety — the author is untrusted (the
+        // AssemblyRegistry is permissionless), so a hostile template can be
+        // anchored under its own hash and pass verification (audit 2026-07-23).
+        // Matches the clause-spec path; strips __proto__/constructor/prototype.
+        const template = safeJsonParse<AssemblyTemplate>(await response.text());
+        if (!template) return null;
         const recomputed = templateCompositionHash(template);
         if (recomputed.toLowerCase() !== expectedCompositionHash.toLowerCase()) {
             console.warn(
