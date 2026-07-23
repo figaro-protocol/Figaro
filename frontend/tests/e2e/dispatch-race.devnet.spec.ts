@@ -76,8 +76,8 @@ const MERCHANT = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 6 }).address 
 // The racing couriers — seeded sellers no spec references, re-seeded here
 // with distinct posted prices (the canonical seeder is idempotent; other
 // specs DISCOVER sellers, never assume their catalogues).
-const COURIER_CHEAP_KEY = ANVIL_KEYS[10];
-const COURIER_DEAR_KEY = ANVIL_KEYS[11];
+const COURIER_CHEAP_KEY = ANVIL_KEYS[25];
+const COURIER_DEAR_KEY = ANVIL_KEYS[26];
 const COURIER_CHEAP = privateKeyToAccount(COURIER_CHEAP_KEY).address as Hex; // 2 MOCK
 const COURIER_DEAR = privateKeyToAccount(COURIER_DEAR_KEY).address as Hex;   // 3 MOCK
 const CHEAP_PRICE = '2';

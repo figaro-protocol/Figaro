@@ -20,7 +20,8 @@
  * `--no-deps` once the gate has seeded the chain.
  */
 import { test, expect, gotoAsWallet, ANVIL_ACCOUNTS } from './devnet-multi-test';
-import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
+import { createPublicClient, createWalletClient, defineChain, http, parseAbi, parseEther, type Hex } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
 import { calculateBonds } from '@figaro/sdk';
 import {
     discoverAnchoredAssemblies,
@@ -64,7 +65,7 @@ const BUYER = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as Hex;
  *  signature), and the POS seller is seeded in-spec, bound to it (the
  *  shared-world idempotent re-assert every spec uses; the wallet must be
  *  anvil-held so the fixture can drive its accept). */
-const POS_SELLER = ANVIL_ACCOUNTS[12] as Hex;
+const POS_SELLER = ANVIL_ACCOUNTS[31] as Hex;
 async function findPosAssembly(): Promise<string> {
     const pos = (await discoverAnchoredAssemblies()).find((t) =>
         t.agreements.length === 1
@@ -92,7 +93,7 @@ async function ensurePosSeller(token: Hex): Promise<Hex> {
             }],
         });
         await seedRegisteredSeller({
-            walletKey: ANVIL_KEYS[12] as Hex,
+            walletKey: ANVIL_KEYS[31] as Hex,
             profile: {
                 name: 'Corner Counter',
                 description: 'POS reference seller — seeded by orders-accept.devnet.spec.ts',
@@ -129,6 +130,18 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const balanceOf = (who: Hex) =>
             publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
+        // The POS seller is a DEDICATED index (31) past Deploy.s.sol's mint range
+        // (anvil[0..19]), so it holds no MOCK — mint it enough to lock its 2×
+        // bond on accept (permissionless MockERC20.mint). Without this the accept
+        // reverts on the bond pull and the order never commits.
+        {
+            const minter = createWalletClient({ account: privateKeyToAccount(ANVIL_KEYS[0]), chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+            const h = await minter.writeContract({
+                address: token, abi: parseAbi(['function mint(address to, uint256 amount) external']),
+                functionName: 'mint', args: [SELLER, parseEther('1000')],
+            });
+            await publicClient.waitForTransactionReceipt({ hash: h });
+        }
         // `seller` is NOT indexed in OrderCommitted (the kernel hit the EVM 3-index
         // limit with orderHash/processId/buyer) — filter on the indexed `buyer`.
         const committedBefore = await publicClient.getContractEvents({

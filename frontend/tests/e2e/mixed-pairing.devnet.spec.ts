@@ -73,8 +73,8 @@ const ERC20_ABI = parseAbi([
 
 const BUYER = ANVIL_ACCOUNTS[14] as Hex;
 const MERCHANT = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 6 }).address as Hex;
-const HUMAN_COURIER = privateKeyToAccount(ANVIL_KEYS[10]).address as Hex;  // posted 2, countersigns in a tab
-const AGENT_ACCOUNT = privateKeyToAccount(ANVIL_KEYS[12]);                 // posted 1.5, answers over HTTP
+const HUMAN_COURIER = privateKeyToAccount(ANVIL_KEYS[29]).address as Hex;  // posted 2, countersigns in a tab
+const AGENT_ACCOUNT = privateKeyToAccount(ANVIL_KEYS[30]);                 // posted 1.5, answers over HTTP
 const AGENT_COURIER = AGENT_ACCOUNT.address as Hex;
 const AGENT_PORT = 8993;
 const AGENT_ENDPOINT = `http://127.0.0.1:${AGENT_PORT}`;
@@ -196,8 +196,8 @@ test.describe('MIXED PAIRING — a human buyer races an agent service and a huma
                     },
                 });
             };
-            await seedCourier(ANVIL_KEYS[10], HUMAN_COURIER, 'Race Courier (cheap)', '2');
-            await seedCourier(ANVIL_KEYS[12], AGENT_COURIER, 'Race Courier (agent)', '1.5', { rest: AGENT_ENDPOINT });
+            await seedCourier(ANVIL_KEYS[29], HUMAN_COURIER, 'Race Courier (cheap)', '2');
+            await seedCourier(ANVIL_KEYS[30], AGENT_COURIER, 'Race Courier (agent)', '1.5', { rest: AGENT_ENDPOINT });
             const minter = createWalletClient({
                 account: privateKeyToAccount(ANVIL_KEYS[0]), chain: LOCAL_ANVIL, transport: http(RPC_URL),
             });

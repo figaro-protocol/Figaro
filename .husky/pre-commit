@@ -31,6 +31,9 @@ bash scripts/lint-no-base-chain.sh
 # XSS floor: no new untrusted-HTML sink (the CSP ships 'unsafe-inline' and
 # cannot backstop one — audit 2026-07-23 F5). Whole-tree: certifies state.
 bash scripts/lint-no-dangerous-html.sh
+# Devnet seed isolation: no spec re-seeds a populate-owned seller (anvil 5-12);
+# a full-profile-replace stomps every adopter (reference_e2e_wallet_index_allocation).
+bash scripts/lint-no-populate-index-reseed.sh
 # SDK dist freshness: the frontend EXECUTES sdk/dist, and tsc never deletes
 # outputs of deleted sources — a stale dist ships deleted APIs into builds and
 # poisons audits. Whole-tree: certifies every dist artifact traces to a live

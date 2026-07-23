@@ -67,8 +67,8 @@ const DISPUTE_WINDOW = 20n;
 
 // Dedicated wallets (no other spec drives these): treasury owners are anvil
 // [0..2]; rpgf claims [16..19]. This spec uses [10..15].
-const DONOR_A = ANVIL_KEYS[10];
-const DONOR_B = ANVIL_KEYS[11];
+const DONOR_A = ANVIL_KEYS[32];
+const DONOR_B = ANVIL_KEYS[33];
 const RECIPIENT = ANVIL_ACCOUNTS[12] as Hex;
 const POSTER = ANVIL_ACCOUNTS[14] as Hex;
 const DEPLOYER_KEY = ANVIL_KEYS[15];
@@ -180,6 +180,17 @@ async function donate(
     amount: bigint,
 ) {
     const donor = walletFor(donorKey);
+    // Donors are DEDICATED indices (32/33) past Deploy.s.sol's mint range
+    // (anvil[0..19]), so they hold no donation token — mint what they'll
+    // donate (permissionless MockERC20.mint; the donor has ETH for gas from
+    // anvil's launch funding).
+    const mint = await donor.writeContract({
+        address: token,
+        abi: parseAbi(['function mint(address to, uint256 amount) external']),
+        functionName: 'mint',
+        args: [donor.account.address, amount],
+    });
+    await publicClient.waitForTransactionReceipt({ hash: mint });
     const approve = await donor.writeContract({
         address: token,
         abi: ERC20_ABI,
@@ -305,7 +316,18 @@ test.describe('match round — donate / post / finalize / claim (devnet)', () =>
             publicClient.readContract({ address: donationToken, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
         const recipientBefore = await balanceOfToken(RECIPIENT);
 
-        await gotoAsWallet(page, ANVIL_ACCOUNTS[10] as Hex, `/rounds?pool=${pool}&e2e=devnet`);
+        // The UI donor (DONOR_A / index 32) is past the deploy-mint range — mint
+        // it the donation token so the UI donate (5) has balance to approve+send.
+        {
+            const donor = walletFor(DONOR_A);
+            const h = await donor.writeContract({
+                address: donationToken, abi: parseAbi(['function mint(address to, uint256 amount) external']),
+                functionName: 'mint', args: [donor.account.address, parseEther('1000')],
+            });
+            await publicClient.waitForTransactionReceipt({ hash: h });
+        }
+
+        await gotoAsWallet(page, ANVIL_ACCOUNTS[32] as Hex, `/rounds?pool=${pool}&e2e=devnet`);
         await page.getByTestId('round-page').waitFor({ timeout: 30000 });
         await waitConnected(page);
         await expect(page.getByTestId('round-donations'), 'starts empty').toContainText('0 donations');

@@ -56,8 +56,8 @@ const ERC20_ABI = parseAbi([
 
 const BUYER = ANVIL_ACCOUNTS[14] as Hex;
 const MERCHANT = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 6 }).address as Hex;
-const COURIER_CHEAP = privateKeyToAccount(ANVIL_KEYS[10]).address as Hex; // will QUOTE 2.5
-const COURIER_DEAR = privateKeyToAccount(ANVIL_KEYS[11]).address as Hex;  // will QUOTE 4
+const COURIER_CHEAP = privateKeyToAccount(ANVIL_KEYS[27]).address as Hex; // will QUOTE 2.5
+const COURIER_DEAR = privateKeyToAccount(ANVIL_KEYS[28]).address as Hex;  // will QUOTE 4
 const CEILING = '5';
 const CHEAP_QUOTE = '2.5';
 const DEAR_QUOTE = '4';
@@ -124,8 +124,8 @@ test.describe('RFQ AT CHECKOUT — the candidates author the price (devnet)', ()
                 },
             });
         };
-        await seedCourier(ANVIL_KEYS[10], COURIER_CHEAP, 'Race Courier (cheap)', '2');
-        await seedCourier(ANVIL_KEYS[11], COURIER_DEAR, 'Race Courier (dear)', '3');
+        await seedCourier(ANVIL_KEYS[27], COURIER_CHEAP, 'Race Courier (cheap)', '2');
+        await seedCourier(ANVIL_KEYS[28], COURIER_DEAR, 'Race Courier (dear)', '3');
         const minter = createWalletClient({
             account: privateKeyToAccount(ANVIL_KEYS[0]), chain: LOCAL_ANVIL, transport: http(RPC_URL),
         });
