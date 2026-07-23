@@ -211,12 +211,19 @@ async function main() {
             console.log(`  · document ${file} — pinned ipfs://${cid}`);
         }
     }
+    // The inline TEST-SCAFFOLDING seeds anchor FIRST so the blank stays the
+    // EARLIEST anchored single-order assembly — specs that discover "the
+    // single-order seed" by `agreements.length === 1` (sellers-onboarding,
+    // sign-countersign, checkout-assembly-choice, …) must resolve the blank,
+    // not a single-order REFERENCE (pos/freelancer). The references anchor
+    // after and are discovered by their OWN specific shapes, so order doesn't
+    // affect them. (Regression fixed 2026-07-23: refs-first shadowed the blank.)
+    await anchorAssembly({ ...anchorArgs, template: seedTemplateBlank() });
+    await anchorAssembly({ ...anchorArgs, template: seedTemplateChain() });
     for (const file of fs.readdirSync(ASSEMBLIES_DIR).filter((f) => f.endsWith('.json')).sort()) {
         const template = JSON.parse(fs.readFileSync(path.join(ASSEMBLIES_DIR, file), 'utf8'));
         await anchorAssembly({ ...anchorArgs, template });
     }
-    await anchorAssembly({ ...anchorArgs, template: seedTemplateBlank() });
-    await anchorAssembly({ ...anchorArgs, template: seedTemplateChain() });
 
     // ── 2. Sellers (catalogue → profile → register, all pinned + anchored) ──
     const [tokenSymbol, tokenName] = await Promise.all([
