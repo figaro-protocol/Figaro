@@ -89,13 +89,14 @@ import {
     DELIVERY_DEVICE,
     ensureDeliveryAssembly,
     fillDeliveryCheckout,
+    ladderLabelsFromChain,
     readLocalDeploymentConfig,
     sellerProfileBindings,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import { computeClauseKey } from '@figaro/sdk';
-import { ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI } from '@figaro/sdk';
+import { ATTESTATION_COORDINATOR_ABI } from '@figaro/sdk';
 import { calculateBonds, computeSectionLeaf, type AgreementSection } from '@figaro/sdk';
 import { encodeGeohash } from '@figaro/sdk/derive';
 import type { Page } from '@playwright/test';
@@ -165,30 +166,6 @@ async function waitForConnected(page: Page) {
         null,
         { timeout: 30000 },
     );
-}
-
-/** The ladder labels of a registered clause, read the network way —
- *  ClauseRegistered → contentURI → IPFS → the first enum field's ordered
- *  valueLabels. The story the timeline tells comes from the spec; no stage
- *  roster lives in this file. */
-async function ladderLabelsFromChain(
-    publicClient: ReturnType<typeof createPublicClient>,
-    registry: Hex,
-    clauseId: string,
-): Promise<string[]> {
-    const events = await publicClient.getContractEvents({
-        address: registry, abi: CLAUSE_REGISTRY_ABI, eventName: 'ClauseRegistered', fromBlock: 0n,
-    });
-    const reg = events.filter((e) => e.args.clauseId === clauseId).pop();
-    if (!reg) throw new Error(`${clauseId} is not anchored on ClauseRegistry`);
-    const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
-    const cid = (reg.args.contentURI as string).replace(/^ipfs:\/\//, '');
-    const spec = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${cid}`, { method: 'POST' })).json() as {
-        fields: { type: string; values?: string[]; valueLabels?: Record<string, string> }[];
-    };
-    const ladder = spec.fields.find((f) => f.type === 'enum');
-    if (!ladder?.values) throw new Error(`${clauseId} declares no enum ladder`);
-    return ladder.values.map((v) => ladder.valueLabels?.[v] ?? v);
 }
 
 test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → attest → one resolve pays both (devnet)', () => {

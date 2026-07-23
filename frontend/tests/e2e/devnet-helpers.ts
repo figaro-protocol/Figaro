@@ -11,7 +11,7 @@ import {
     parseEther,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { ASSEMBLY_REGISTRY_ABI } from '@figaro/sdk';
+import { ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from '@figaro/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 
 export const RPC_URL = 'http://127.0.0.1:8545';
@@ -506,6 +506,31 @@ export async function discoverAnchoredAssemblies(): Promise<DiscoveredAssembly[]
         }
     }
     return out;
+}
+
+/** A process-log LADDER's stage labels, read from the clause's chain-anchored
+ *  spec (registry event → IPFS): the enum field's values via its valueLabels.
+ *  The labels the capability rail renders — walk a ladder by asserting them
+ *  in order. (Lifted from local-commerce; consumers: local-commerce,
+ *  tradelens-runtime.) */
+export async function ladderLabelsFromChain(
+    publicClient: ReturnType<typeof createPublicClient>,
+    registry: `0x${string}`,
+    clauseId: string,
+): Promise<string[]> {
+    const events = await publicClient.getContractEvents({
+        address: registry, abi: CLAUSE_REGISTRY_ABI, eventName: 'ClauseRegistered', fromBlock: 0n,
+    });
+    const reg = events.filter((e) => (e.args as { clauseId?: string }).clauseId === clauseId).pop();
+    if (!reg) throw new Error(`${clauseId} is not anchored on ClauseRegistry`);
+    const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
+    const cid = ((reg.args as { contentURI?: string }).contentURI as string).replace(/^ipfs:\/\//, '');
+    const spec = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${cid}`, { method: 'POST' })).json() as {
+        fields: { type: string; values?: string[]; valueLabels?: Record<string, string> }[];
+    };
+    const ladder = spec.fields.find((f) => f.type === 'enum');
+    if (!ladder?.values) throw new Error(`${clauseId} declares no enum ladder`);
+    return ladder.values.map((v) => ladder.valueLabels?.[v] ?? v);
 }
 
 /** Resolve an `ipfs://` URI to a Kubo-gateway URL. */
