@@ -1,7 +1,7 @@
 {
     "name": "Freelance value chain",
     "summary": "A lead freelancer and their contributors, each bonded, paid in one settlement.",
-    "description": "Digital work is rarely one person: a lead deliverable draws on contributors — an editor and a translator, a developer and a designer, a producer and a session musician. Here each contributor is a co-equal bonded order in the same process: everyone delivers over the encrypted hand-off channel, everyone's stake secures everyone else's work, and the client's single resolution pays the whole chain at once. The agency without the agency.",
+    "description": "Digital work is rarely one person: a lead deliverable draws on contributors — an editor and a translator, a developer and a designer, a producer and a session musician. Here each contributor is an equal, bonded partner in the same job: everyone delivers over the encrypted hand-off, everyone's stake secures everyone else's work, and the client's single payment settles the whole chain at once. The agency without the agency.",
     "agreements": [
         {
             "id": "order-0",

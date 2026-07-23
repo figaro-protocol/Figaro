@@ -100,7 +100,7 @@
             "id": "order-5"
         }
     ],
-    "description": "The TradeLens perimeter as a permissionless bonded composition: shipper, pre-shipment inspection, freight forwarder, reefer ocean carrier, customs agent, and destination inland carrier — each independently bonded, settled atomically by the importer-of-record.",
+    "description": "A containerised import moved end to end without a platform sitting between the parties: shipper, pre-shipment inspection, freight forwarder, reefer ocean carrier, customs agent, and destination drayage. Each is bonded for more than its own leg is worth, so each has every reason to perform. The importer of record settles the entire chain with a single signature.",
     "name": "Containerised import chain",
-    "summary": "Six bonded value-adders move a reefer container from shipper to consignee."
+    "summary": "Six bonded parties move a reefer container from shipper to consignee."
 }

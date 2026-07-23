@@ -22,7 +22,14 @@
 import { test, expect, gotoAsWallet, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
 import { calculateBonds } from '@figaro/sdk';
-import { discoverAnchoredAssemblies, discoverSellers, readLocalDeploymentConfig } from './devnet-helpers';
+import {
+    discoverAnchoredAssemblies,
+    pinJSONToIPFS,
+    readLocalDeploymentConfig,
+    seedRegisteredSeller,
+    sellerProfileBindings,
+} from './devnet-helpers';
+import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import type { Page } from '@playwright/test';
 
@@ -50,26 +57,62 @@ const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)'
 // wallet, not world-state — the world's sellers are discovered from chain).
 const BUYER = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as Hex;
 
-/** The seller under test, DISCOVERED from chain → IPFS (never a roster): the
- *  registered seller bound to the single-order anchored assembly — the same
- *  binding the checkout resolves. Runtime e2e discovers its world; a spec that
- *  imports a seller address is not testing mainnet usage. The discovered
- *  wallet must be one the multi-wallet fixture can drive, so the pick is
- *  FILTERED to anvil-held accounts — foreign sellers legitimately bind the
- *  same anchored assemblies on the persisted devnet (the relay smoke's
- *  device-unique seller was the first), and selection-by-capability is not a
- *  roster: the world stays discovered, the wallet driven stays drivable. */
-async function discoverBoundSeller(): Promise<Hex> {
-    const anvilAddrs = new Set(ANVIL_ACCOUNTS.map((a) => a.toLowerCase()));
-    const singleOrderSlugs = new Set(
-        (await discoverAnchoredAssemblies()).filter((a) => a.agreements.length === 1).map((a) => a.slug),
-    );
-    const seller = (await discoverSellers()).find((s) =>
-        anvilAddrs.has(s.address.toLowerCase())
-        && s.assemblyBindings.some((b) => singleOrderSlugs.has(b.assemblySlug)),
-    );
-    expect(seller, 'an anvil-held seller is bound to a single-order anchored assembly (run populate-test-data + the authoring gate)').toBeTruthy();
-    return seller!.address;
+/** The scenario under test is the POS reference (`assemblies/pos.json` — the
+ *  onboarding set's one-order counter sale; this spec is its named test in
+ *  assemblies/README.md). The assembly is DISCOVERED by shape from chain →
+ *  IPFS (single order composing modalities but not content-handoff — the pos
+ *  signature), and the POS seller is seeded in-spec, bound to it (the
+ *  shared-world idempotent re-assert every spec uses; the wallet must be
+ *  anvil-held so the fixture can drive its accept). */
+const POS_SELLER = ANVIL_ACCOUNTS[12] as Hex;
+async function findPosAssembly(): Promise<string> {
+    const pos = (await discoverAnchoredAssemblies()).find((t) =>
+        t.agreements.length === 1
+        && 'figaro-modalities' in (t.agreements[0].clauses ?? {})
+        && !('figaro-content-handoff' in (t.agreements[0].clauses ?? {})));
+    expect(pos, 'the pos reference is anchored (assemblies/pos.json — run populate-test-data)').toBeTruthy();
+    return pos!.slug;
+}
+async function ensurePosSeller(token: Hex): Promise<Hex> {
+    const slug = await findPosAssembly();
+    const bound = (await sellerProfileBindings(POS_SELLER)).some((b) => b.assemblySlug === slug);
+    if (!bound) {
+        const { uri: catalogueURI } = await pinJSONToIPFS({
+            subjectAddress: POS_SELLER,
+            version: '1.0.0',
+            unitSystem: 'metric' as const,
+            items: [{
+                id: 'pos-counter-sale',
+                name: 'Counter sale',
+                description: 'One item, sold at the counter — the pos reference scenario.',
+                price: '1',
+                category: 'retail',
+                image: '🧾',
+                available: true,
+            }],
+        });
+        await seedRegisteredSeller({
+            walletKey: ANVIL_KEYS[12] as Hex,
+            profile: {
+                name: 'Corner Counter',
+                description: 'POS reference seller — seeded by orders-accept.devnet.spec.ts',
+                catalogueURI,
+                acceptedTokens: [{ address: token, symbol: 'MOCK', chainId: 31337 }],
+                defaultTokenAddress: token,
+                assemblyBindings: [{
+                    bindingId: 'pos-reference',
+                    subjectAddress: POS_SELLER,
+                    assemblySlug: slug,
+                    counterpartyBindings: [],
+                }],
+            },
+        });
+        await expect.poll(async () =>
+            (await sellerProfileBindings(POS_SELLER)).some((b) => b.assemblySlug === slug), {
+            timeout: 60000, message: "the POS seller's pinned profile carries the pos binding",
+        }).toBe(true);
+    }
+    return POS_SELLER;
 }
 
 test.describe('Orders consolidation — buyer orders → seller accepts on /orders (devnet)', () => {
@@ -79,10 +122,10 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
         // Resolve raises a native window.confirm — auto-accept it (the deleted
         // direct-sale-runtime spec did the same), or the capability blocks.
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
-        const SELLER = await discoverBoundSeller();
         const config = readLocalDeploymentConfig();
         const core = config.figaroCore as Hex;
         const token = config.tokenAddress as Hex;
+        const SELLER = await ensurePosSeller(token);
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const balanceOf = (who: Hex) =>
             publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
@@ -111,6 +154,11 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
 
         // ── Checkout → place order (signs + relays the commitment) ──
         await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
+        // The pos reference's transaction particulars: the buyer takes the
+        // goods at the counter — consume-onsite, origin = destination.
+        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-modalities-modality-consume-onsite"]').first().check();
+        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-originGeohash"]').first().fill('9q8yyk');
+        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-destinationGeohash"]').first().fill('9q8yyk');
         const place = page.getByTestId('btn-place-order');
         await place.waitFor({ state: 'visible', timeout: 20000 });
         // The label tells the truth: "Connect wallet to order" (not connected) /

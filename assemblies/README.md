@@ -16,9 +16,9 @@ the scenario driven end to end, money legs included:
 | Reference | Composition | The story | Proven by |
 |---|---|---|---|
 | `pos.json` | 1 order | A buyer and a seller at the counter — no processor between them | `orders-accept.devnet.spec.ts` (single-order accept) |
-| `local-delivery.json` | 2 orders | Merchant + gig courier replace the delivery platforms | `local-commerce.devnet.spec.ts` (full cycle incl. dispute-free settlement) |
+| `local-delivery.json` | 2 orders | Merchant + gig courier deal direct, both bonded, keeping the platform's cut | `local-commerce.devnet.spec.ts` (full cycle incl. dispute-free settlement) |
 | `freelancer.json` | 1 order | A digital deliverable over the encrypted hand-off — no marketplace fee | `content-delivery.devnet.spec.ts` |
-| `freelancer-value-chain.json` | 3 orders | A lead freelancer + contributors, one settlement | (e2e pending — the one open gap) |
+| `freelancer-value-chain.json` | 3 orders | A lead freelancer + contributors, one settlement | `freelancer-chain.devnet.spec.ts` (full cycle: three encrypted deliveries, one settlement) |
 | `tradelens.json` | 6 orders | The containerised import chain: shipper → inspection → forwarder → reefer carrier → customs → drayage | `scenario-tradelens` + `tradelens-runtime` |
 
 `documents/` ships the raw bytes of every document a template affixes (consent

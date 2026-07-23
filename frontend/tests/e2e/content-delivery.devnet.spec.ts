@@ -126,7 +126,14 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         const checkbox = page.getByTestId(`drawer-registry-clause-${TARGET_CLAUSE}`);
         await expect(checkbox, `the drawer surfaces ${TARGET_CLAUSE} from the live registry`).toHaveCount(1, { timeout: 20000 });
         await checkbox.check();
-        await page.getByTestId('designer-name-input').fill('Digital deliverable');
+        // The composition IS the freelancer reference (assemblies/freelancer.json):
+        // content-handoff + modalities + geolocation. Identity is the
+        // composition, so publishing collapses onto the reference's anchor —
+        // this spec is the freelancer reference's named test
+        // (assemblies/README.md).
+        await page.getByTestId('drawer-registry-clause-figaro-modalities').check();
+        await page.getByTestId('drawer-registry-clause-figaro-geolocation').check();
+        await page.getByTestId('designer-name-input').fill('Freelance deliverable');
         await page.getByTestId('designer-summary-input').fill('A single-order digital hand-off: the artifact travels the encrypted channel.');
         await page.getByTestId('designer-description-input').fill('Composes the content hand-off clause; the deliverable is counterparty-private and completion-evidenced by content hash.');
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
@@ -200,6 +207,11 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         await page.getByTestId('btn-review-order').click();
         await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
         await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${TARGET_CLAUSE}-contentHandoff-encrypted-transfer"]`).first().check();
+        // The freelancer reference's remaining particulars: a virtual
+        // deliverable; the geolocation endpoints carry jurisdiction, typed.
+        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-modalities-modality-virtual"]').first().check();
+        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-originGeohash"]').first().fill('9q8yyk');
+        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-destinationGeohash"]').first().fill('u15pk4');
         const place = page.getByTestId('btn-place-order');
         await expect(place, 'buyer connected + order ready → "Place order"').toHaveText(/Place order/, { timeout: 20000 });
         await place.click();
