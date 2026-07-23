@@ -129,9 +129,20 @@ export function usePendingSellerSignature(
     const isMock = isE2EMockSession();
 
     // Keep the latest predicate without re-subscribing — callers pass an inline
-    // closure, but the subscription effect runs only on `address`.
+    // closure, but the subscription effect runs only on `address` (and wallet
+    // availability, below).
     const matchRef = useRef(match);
     matchRef.current = match;
+
+    // The real-XMTP channel can only be CREATED with the wallet signer, and
+    // wagmi resolves `walletClient` asynchronously — an instance whose effect
+    // runs before it resolves fails channel creation and would stay silently
+    // dead (the badge-vs-orders-list divergence the relay smoke caught). So
+    // the effect also re-runs when the wallet arrives; the ref keeps the
+    // effect from re-subscribing on every render in between.
+    const walletClientRef = useRef(walletClient);
+    walletClientRef.current = walletClient;
+    const hasWalletClient = !!walletClient;
 
     useEffect(() => {
         if (isMock || !address || subscribed.current) return;
@@ -142,7 +153,7 @@ export function usePendingSellerSignature(
         void services.coordinationMessaging
             .subscribeAnyCommitmentPayload({
                 address,
-                walletClient: walletClient ?? null,
+                walletClient: walletClientRef.current ?? null,
                 callback: async (payloadCid, orderId) => {
                     if (cancelled || receivedOrderIds.current.has(orderId)) return;
                     try {
@@ -194,7 +205,7 @@ export function usePendingSellerSignature(
             subscribed.current = false;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [address]);
+    }, [address, hasWalletClient]);
 
     // Hide entries dismissed (or accepted) on ANY instance — the shared store
     // is the single source of that decision. `pending`/`dismiss` index into

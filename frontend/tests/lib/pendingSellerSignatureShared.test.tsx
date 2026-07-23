@@ -75,20 +75,20 @@ function wrapper(services: RuntimeServices) {
     );
 }
 
-describe("usePendingSellerSignature shared dismiss state", () => {
-    beforeEach(() => {
-        callbacks = [];
-        useAccountMock.mockReset();
-        useWalletClientMock.mockReset();
-        fetchCappedContentMock.mockReset();
-        useAccountMock.mockReturnValue({ address: SELLER });
-        useWalletClientMock.mockReturnValue({ data: null });
-        fetchCappedContentMock.mockResolvedValue({
-            ok: true,
-            text: async () => JSON.stringify(PAYLOAD),
-        });
+beforeEach(() => {
+    callbacks = [];
+    useAccountMock.mockReset();
+    useWalletClientMock.mockReset();
+    fetchCappedContentMock.mockReset();
+    useAccountMock.mockReturnValue({ address: SELLER });
+    useWalletClientMock.mockReturnValue({ data: null });
+    fetchCappedContentMock.mockResolvedValue({
+        ok: true,
+        text: async () => JSON.stringify(PAYLOAD),
     });
+});
 
+describe("usePendingSellerSignature shared dismiss state", () => {
     it("a dismissal in one instance immediately clears the pending order in the other", async () => {
         const services = makeServices();
         const w = wrapper(services);
@@ -117,5 +117,49 @@ describe("usePendingSellerSignature shared dismiss state", () => {
             expect(a.result.current.pending).toHaveLength(0);
             expect(b.result.current.pending).toHaveLength(0);
         });
+    });
+});
+
+describe("usePendingSellerSignature wallet-arrival resubscription", () => {
+    it("an instance whose subscription failed before the wallet client resolved re-subscribes when it arrives", async () => {
+        // Mirror the real channel factory: the XMTP channel can only be
+        // CREATED with the wallet signer, so a subscribe attempt without one
+        // rejects. (The mock/devnet channel never rejects — which is why only
+        // the real-transport smoke caught the silently-dead instance: badge
+        // counting 1 while /orders rendered its empty state.)
+        const services = makeServices();
+        const subscribeAttempts: Array<unknown> = [];
+        services.coordinationMessaging = {
+            subscribeAnyCommitmentPayload: (params: {
+                walletClient: unknown;
+                callback: (cid: string, orderId: string) => Promise<void> | void;
+            }) => {
+                subscribeAttempts.push(params.walletClient);
+                if (!params.walletClient) {
+                    return Promise.reject(new Error("signMessage callback required for XMTP channel outside test mode"));
+                }
+                callbacks.push(params.callback);
+                return Promise.resolve(() => undefined);
+            },
+        } as unknown as RuntimeServices["coordinationMessaging"];
+
+        const h = renderHook(() => usePendingSellerSignature(awaitsMyCounterSign), {
+            wrapper: wrapper(services),
+        });
+
+        // First attempt ran without a signer and died — no live callback.
+        await waitFor(() => expect(subscribeAttempts).toHaveLength(1));
+        expect(callbacks).toHaveLength(0);
+
+        // wagmi resolves the wallet client → the hook must retry, not stay dead.
+        useWalletClientMock.mockReturnValue({ data: { signMessage: async () => "0xsig" } });
+        h.rerender();
+        await waitFor(() => expect(callbacks).toHaveLength(1));
+
+        // The relayed order now reaches this (previously dead) surface.
+        await act(async () => {
+            for (const cb of callbacks) await cb("cid-order-2", "order-2");
+        });
+        await waitFor(() => expect(h.result.current.pending).toHaveLength(1));
     });
 });

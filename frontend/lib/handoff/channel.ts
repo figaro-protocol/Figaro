@@ -15,6 +15,32 @@ import { readUserTransport } from "@/lib/shared/userTransport";
 /** Cached channel instances keyed by address. */
 const channelCache = new Map<string, HandoffChannel>();
 
+/** In-flight channel creations keyed by address — the single-flight gate.
+ *  Multiple subscribers (the header badge + both /orders subscriptions) can
+ *  request the channel on the SAME render pass; without this, each await gap
+ *  before `channelCache.set` admits another creation. For XMTP that is not
+ *  just waste: two concurrent `Client.create` calls fight over the same
+ *  exclusive OPFS sync access handle ("Access Handles cannot be created…",
+ *  relay smoke 2026-07-23) and can mint spurious installations. A failed
+ *  flight is removed so the next caller (e.g. one that now HAS the wallet
+ *  signer) retries cleanly. */
+const pendingChannel = new Map<string, Promise<HandoffChannel>>();
+
+/** Join the in-flight creation for `key`, or start one. The resolved channel
+ *  lands in `channelCache`; rejection propagates to every joiner and clears
+ *  the flight. */
+function sharedCreate(key: string, create: () => Promise<HandoffChannel>): Promise<HandoffChannel> {
+    const pending = pendingChannel.get(key);
+    if (pending) return pending;
+    const creating = create().then((ch) => {
+        channelCache.set(key, ch);
+        return ch;
+    });
+    pendingChannel.set(key, creating);
+    void creating.catch(() => {}).finally(() => pendingChannel.delete(key));
+    return creating;
+}
+
 /**
  * Get or create a HandoffChannel for the given wallet.
  *
@@ -36,10 +62,10 @@ export async function getCoordinationChannel(
     // sessionStorage-backed detector so the mode survives param-dropping
     // <Link> navigations (e.g. browse → /checkout), not just the entry URL.
     if (isE2EMockSession() || isE2EDevnetSession()) {
-        const { createMockChannel } = await import("./mockChannel");
-        const ch = createMockChannel(address);
-        channelCache.set(key, ch);
-        return ch;
+        return sharedCreate(key, async () => {
+            const { createMockChannel } = await import("./mockChannel");
+            return createMockChannel(address);
+        });
     }
 
     // Outside test mode the transport is the WALLET'S choice, defaulting to
@@ -48,10 +74,10 @@ export async function getCoordinationChannel(
     // chunk is NEVER loaded or initialized unless the wallet opted in on
     // /settings. (Applies on reload — the channel is a cached singleton.)
     if (readUserTransport() !== "xmtp") {
-        const { createNullChannel } = await import("./nullChannel");
-        const ch = createNullChannel();
-        channelCache.set(key, ch);
-        return ch;
+        return sharedCreate(key, async () => {
+            const { createNullChannel } = await import("./nullChannel");
+            return createNullChannel();
+        });
     }
 
     if (!signMessage) {
@@ -65,10 +91,10 @@ export async function getCoordinationChannel(
     // the real XMTP path never worked in any bundled build. The module
     // itself already lazy-imports @xmtp/browser-sdk to keep WASM out of
     // the server bundle; no pragma is needed for that.)
-    const { createXmtpChannel } = await import("./xmtpChannel");
-    const ch = await createXmtpChannel(address, signMessage);
-    channelCache.set(key, ch);
-    return ch;
+    return sharedCreate(key, async () => {
+        const { createXmtpChannel } = await import("./xmtpChannel");
+        return createXmtpChannel(address, signMessage);
+    });
 }
 
 /** Remove a cached channel (e.g. on wallet disconnect). */
