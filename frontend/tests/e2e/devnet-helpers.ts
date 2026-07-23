@@ -509,7 +509,7 @@ export async function discoverAnchoredAssemblies(): Promise<DiscoveredAssembly[]
 }
 
 /** Resolve an `ipfs://` URI to a Kubo-gateway URL. */
-function resolveIpfsURI(uri: string): string {
+export function resolveIpfsURI(uri: string): string {
     const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080';
     return uri.startsWith('ipfs://')
         ? `${gateway}/ipfs/${uri.slice('ipfs://'.length)}`
