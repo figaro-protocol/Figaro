@@ -47,17 +47,17 @@ fi
 note "Anvil"
 if cast block-number --rpc-url "$RPC_URL" >/dev/null 2>&1; then
     echo "  already reachable at $RPC_URL"
-    # A reused anvil may predate the --accounts 22 bump; e2e wallets past index
-    # 19 (booking-window's lead/provider) would be unfunded and fail confusingly
-    # mid-spec. Warn, don't kill — the running chain may be in use.
-    HIGHEST_E2E_WALLET=$(cast wallet address --mnemonic "test test test test test test test test test test test junk" --mnemonic-index 21 2>/dev/null || true)
+    # A reused anvil may predate the --accounts 25 bump; e2e wallets past index
+    # 21 (freelancer-chain's dedicated 22-24) would be unfunded and fail
+    # confusingly mid-spec. Warn, don't kill — the running chain may be in use.
+    HIGHEST_E2E_WALLET=$(cast wallet address --mnemonic "test test test test test test test test test test test junk" --mnemonic-index 24 2>/dev/null || true)
     if [[ -n "$HIGHEST_E2E_WALLET" ]] && [[ "$(cast balance "$HIGHEST_E2E_WALLET" --rpc-url "$RPC_URL" 2>/dev/null || echo 0)" == "0" ]]; then
-        echo "  ⚠ account index 21 is unfunded — this anvil predates --accounts 22."
-        echo "    Kill it and re-run devup for a fresh 22-account chain."
+        echo "  ⚠ account index 24 is unfunded — this anvil predates --accounts 25."
+        echo "    Kill it and re-run devup for a fresh 25-account chain."
     fi
 else
     echo "  starting anvil (detached → /tmp/figaro-anvil.log)…"
-    nohup anvil --port 8545 --accounts 22 >/tmp/figaro-anvil.log 2>&1 &
+    nohup anvil --port 8545 --accounts 25 >/tmp/figaro-anvil.log 2>&1 &
     for _ in $(seq 1 40); do
         if cast block-number --rpc-url "$RPC_URL" >/dev/null 2>&1; then break; fi
         sleep 0.5

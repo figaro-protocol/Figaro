@@ -52,10 +52,15 @@ const ATTESTATION_EVENT_ABI = parseAbi([
 const BUYER = ANVIL_ACCOUNTS[0] as Hex;
 // Shared-world wallets, re-seeded unconditionally each run (the
 // dispatch-race idempotency style — other specs re-assert their own).
+// Indices 22-24: DEDICATED to this spec, past the populate-seeded sellers
+// (5-12) and every other spec's self-seeded range. Self-seeding a
+// populate-owned index (this spec once used 9/10/11 = Saffron/Pomodoro/Harbor)
+// STOMPS the shared catalogue that adopters like assembly-chain read
+// read-only — the wallet-index-collision class. anvil runs --accounts 25.
 const CHAIN_SELLERS: Array<{ index: number; label: string; item: string; price: string }> = [
-    { index: 10, label: 'lead', item: 'Lead deliverable', price: '2' },
-    { index: 11, label: 'contributor-1', item: 'Edit pass', price: '0.5' },
-    { index: 9, label: 'contributor-2', item: 'Translation', price: '0.5' },
+    { index: 22, label: 'lead', item: 'Lead deliverable', price: '2' },
+    { index: 23, label: 'contributor-1', item: 'Edit pass', price: '0.5' },
+    { index: 24, label: 'contributor-2', item: 'Translation', price: '0.5' },
 ];
 const EXPECTED_TOTAL = parseUnits('3', 18);
 
