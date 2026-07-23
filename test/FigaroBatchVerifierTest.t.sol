@@ -6,6 +6,7 @@ import "../src/FigaroBatchVerifier.sol";
 import "../src/ClauseRegistry.sol";
 import "../src/mocks/MockSP1Verifier.sol";
 import "../src/mocks/MockERC20.sol";
+import {MockERC20FeeOnTransfer} from "../src/mocks/MockERC20FeeOnTransfer.sol";
 
 /// @dev Unit tests for the realigned batch verifier: 7-word public values,
 ///      the spec-binding anchor check against the live ClauseRegistry, and
@@ -264,5 +265,213 @@ contract FigaroBatchVerifierTest is Test {
 
         vm.expectRevert(FigaroBatchVerifier.ZeroClauseRegistry.selector);
         new FigaroBatchVerifier(address(sp1), VKEY, address(0), GENESIS);
+    }
+
+    function test_constructor_setsImmutablesAndGenesis() public view {
+        assertEq(address(verifier.verifier()), address(sp1));
+        assertEq(verifier.programVKey(), VKEY);
+        assertEq(address(verifier.clauseRegistry()), address(registry));
+        assertEq(verifier.stateRoot(), GENESIS);
+        assertEq(verifier.batchCount(), 0);
+    }
+
+    // ── Empty batch: keccak("") channels + BatchSettled emission ────
+
+    function test_settleBatch_emptyBatch_emitsBatchSettled() public {
+        FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](0);
+        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
+            new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
+        );
+        bytes32 newRoot = keccak256("empty-batch-root");
+        // Empty arrays must hash to keccak256("") on all three channels.
+        bytes memory pv = abi.encode(
+            GENESIS, newRoot, uint64(block.chainid), address(verifier), keccak256(""), keccak256(""), keccak256("")
+        );
+
+        vm.expectEmit(true, true, true, true, address(verifier));
+        emit FigaroBatchVerifier.BatchSettled(1, GENESIS, newRoot, 0);
+        verifier.settleBatch(hex"", pv, positions, events);
+
+        assertEq(verifier.stateRoot(), newRoot, "root advances on empty batch");
+        assertEq(verifier.batchCount(), 1);
+    }
+
+    // ── Net-zero position: deposit == payout moves nothing ──────────
+
+    function test_settleBatch_netZeroPosition_movesNoTokens() public {
+        FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](1);
+        positions[0] = FigaroBatchVerifier.NetPosition(address(token), buyer, 700 ether, 700 ether);
+        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
+            new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
+        );
+        bytes memory pv = abi.encode(
+            GENESIS,
+            keccak256("net-zero-root"),
+            uint64(block.chainid),
+            address(verifier),
+            _hashPositions(positions),
+            keccak256(""),
+            keccak256("")
+        );
+
+        uint256 buyerBefore = token.balanceOf(buyer);
+        uint256 contractBefore = token.balanceOf(address(verifier));
+        verifier.settleBatch(hex"", pv, positions, events);
+        assertEq(token.balanceOf(buyer), buyerBefore, "deposit == payout must move nothing");
+        assertEq(token.balanceOf(address(verifier)), contractBefore, "contract balance untouched");
+    }
+
+    // ── Sequential batches: root chains, counter increments, and the
+    //    stage-255 boundary packs identically to abi.encodePacked ────
+
+    function test_settleBatch_rootChainsAcrossBatches_andStageBoundaryPacks() public {
+        (bytes memory pv1, FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events, bytes32 root2) = _canonicalBatch();
+        verifier.settleBatch(hex"", pv1, positions, events);
+
+        // Batch 2 chains root2 → root3 and carries a stage-255 attestation:
+        // the contract's assembly packing (mstore8 for the uint8) must match
+        // this mirror's abi.encodePacked at the boundary or the hash check reverts.
+        FigaroBatchVerifier.NetPosition[] memory none = new FigaroBatchVerifier.NetPosition[](0);
+        FigaroBatchVerifier.AttestationData[] memory atts = new FigaroBatchVerifier.AttestationData[](1);
+        atts[0] = FigaroBatchVerifier.AttestationData(
+            keccak256("order-2"), keccak256("process-2"), buyer, clauseKey, 255, keccak256("content-2")
+        );
+        FigaroBatchVerifier.BatchEventData memory events2 =
+            FigaroBatchVerifier.BatchEventData(atts, new FigaroBatchVerifier.SpecBinding[](0));
+        bytes32 root3 = keccak256("root-3");
+        bytes memory pv2 = abi.encode(
+            root2, root3, uint64(block.chainid), address(verifier), keccak256(""), _hashAttestations(atts), keccak256("")
+        );
+
+        vm.expectEmit(true, true, true, true, address(verifier));
+        emit FigaroBatchVerifier.Attestation(
+            keccak256("order-2"), keccak256("process-2"), buyer, clauseKey, 255, keccak256("content-2")
+        );
+        verifier.settleBatch(hex"", pv2, none, events2);
+
+        assertEq(verifier.stateRoot(), root3, "root chains across batches");
+        assertEq(verifier.batchCount(), 2, "batch counter increments per batch");
+    }
+
+    // ── Verifying-contract binding revert ───────────────────────────
+
+    function test_settleBatch_revertsOnVerifyingContractMismatch() public {
+        (, FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events, bytes32 newRoot) = _canonicalBatch();
+        address impostor = address(0xBEEF);
+        bytes memory pv = abi.encode(
+            GENESIS, newRoot, uint64(block.chainid), impostor,
+            _hashPositions(positions), _hashAttestations(events.attestations), _hashBindings(events.specBindings)
+        );
+        vm.expectRevert(
+            abi.encodeWithSelector(FigaroBatchVerifier.VerifyingContractMismatch.selector, address(verifier), impostor)
+        );
+        verifier.settleBatch(hex"", pv, positions, events);
+    }
+
+    // ── Fee-on-transfer deposit revert ──────────────────────────────
+
+    function test_settleBatch_revertsOnFeeOnTransferDeposit() public {
+        MockERC20FeeOnTransfer feeToken = new MockERC20FeeOnTransfer("Fee Token", "FEE");
+        feeToken.mint(buyer, 1_000 ether);
+        vm.prank(buyer);
+        feeToken.approve(address(verifier), type(uint256).max);
+
+        FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](1);
+        positions[0] = FigaroBatchVerifier.NetPosition(address(feeToken), buyer, 100 ether, 0);
+        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
+            new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
+        );
+        bytes memory pv = abi.encode(
+            GENESIS,
+            keccak256("fee-root"),
+            uint64(block.chainid),
+            address(verifier),
+            _hashPositions(positions),
+            keccak256(""),
+            keccak256("")
+        );
+
+        vm.expectRevert(FigaroBatchVerifier.FeeOnTransferDetected.selector);
+        verifier.settleBatch(hex"", pv, positions, events);
+    }
+
+    // ── Atomicity: a failed pull reverts the WHOLE batch ────────────
+    //
+    // The sequencer-DoS scenario in the contract NatSpec: approval verified
+    // pre-submission, revoked (or balance drained) before the batch lands.
+    // The batch must revert atomically — no partial payout leg, no root
+    // advance, no counter bump.
+
+    function test_settleBatch_atomicRevert_onRevokedApproval() public {
+        (bytes memory pv, FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,) = _canonicalBatch();
+        uint256 sellerBefore = token.balanceOf(seller);
+
+        vm.prank(buyer);
+        token.approve(address(verifier), 0);
+
+        vm.expectRevert();
+        verifier.settleBatch(hex"", pv, positions, events);
+
+        assertEq(verifier.stateRoot(), GENESIS, "root must not advance on failed settle");
+        assertEq(verifier.batchCount(), 0, "counter must not bump on failed settle");
+        assertEq(token.balanceOf(seller), sellerBefore, "no partial payout leg");
+    }
+
+    function test_settleBatch_atomicRevert_onInsufficientBalance() public {
+        address pauper = makeAddr("pauper");
+        token.mint(pauper, 1 ether); // far below the 50-ether deposit
+        vm.prank(pauper);
+        token.approve(address(verifier), type(uint256).max);
+
+        FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](1);
+        positions[0] = FigaroBatchVerifier.NetPosition(address(token), pauper, 50 ether, 0);
+        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
+            new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
+        );
+        bytes memory pv = abi.encode(
+            GENESIS,
+            keccak256("pauper-root"),
+            uint64(block.chainid),
+            address(verifier),
+            _hashPositions(positions),
+            keccak256(""),
+            keccak256("")
+        );
+
+        vm.expectRevert();
+        verifier.settleBatch(hex"", pv, positions, events);
+        assertEq(verifier.stateRoot(), GENESIS, "root must not advance on failed settle");
+        assertEq(verifier.batchCount(), 0, "counter must not bump on failed settle");
+    }
+
+    // ── Capacity guard: a wide batch fits the L1 block budget ───────
+
+    function test_Gas_settleBatch_100Payouts_underBlockGasBudget() public {
+        uint256 n = 100;
+        FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](n);
+        for (uint256 i = 0; i < n; i++) {
+            positions[i] = FigaroBatchVerifier.NetPosition(address(token), address(uint160(0x1000 + i)), 0, 1 ether);
+        }
+        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
+            new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
+        );
+        bytes memory pv = abi.encode(
+            GENESIS,
+            keccak256("wide-root"),
+            uint64(block.chainid),
+            address(verifier),
+            _hashPositions(positions),
+            keccak256(""),
+            keccak256("")
+        );
+
+        uint256 gasBefore = gasleft();
+        verifier.settleBatch(hex"", pv, positions, events);
+        uint256 gasUsed = gasBefore - gasleft();
+        emit log_named_uint("settleBatch_100_payouts_gas", gasUsed);
+        assertLt(gasUsed, 30_000_000, "100-position batch must fit the 30M block budget");
     }
 }
