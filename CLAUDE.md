@@ -325,15 +325,21 @@ All contracts live in `src/` (Solidity 0.8.26, Foundry); V3 in `archive-v3/`. No
 
 A clause's spec ships in two lockstep surfaces: **Layer A** (TypeScript, `@figaro/sdk/clauses`) — the off-chain spec + content encoders + the well-formedness validator — and **on-chain registration** (`ClauseRegistry.registerClause` — permissionless, first-write-wins, immutable). **On-chain content validation exists on the BATCHED path only** (`CONTRACTS.md` § "Teardown state — CLOSED" owns it): the prover's generic engine validates against the spec as witness input; `FigaroBatchVerifier` settles only if its hash matches `ClauseRegistry.contentHashOf`. The DIRECT path merkle-binds and content-hashes but validates no shape. Per-clause validator contracts do not exist, permanently; a never-seen clause is attestable — and batch-settleable — with **zero per-clause code**.
 
-The protocol clauses are the specs in `clauses/` (the canonical Layer-A specs / `ClauseRegistry` seed data; nothing bundles a copy — every consumer loads them from ClauseRegistry → IPFS at runtime). **The count is derived, never stored** — `ls clauses/*.json | wc -l`; all are runtime-attestable except `figaro-topology` (agreement-only), so runtime-attestable = that count minus one. The full clause table, the **adding-a-new-clause checklist**, and registration discipline → `CLAUSES.md`.
+The protocol clauses are the specs in `clauses/` (the canonical Layer-A specs / `ClauseRegistry` seed data; nothing bundles a copy — every consumer loads them from ClauseRegistry → IPFS at runtime). **The count is derived, never stored** (`ls clauses/*.json | wc -l`); the agreement-only `figaro-topology` exception, the full clause table, the **adding-a-new-clause checklist**, and registration discipline → `CLAUSES.md`.
+
+### Reference assemblies (user onboarding)
+
+`assemblies/` = user onboarding — `clauses/`' sibling, DISTINCT from the e2e scenario
+machinery (which proves the frontend generic); anchored at deploy, each reference
+e2e-tested → `assemblies/README.md`.
 
 ### Frontend
 
-**`frontend/` is the only active frontend.** The V4 frontend was untracked in `a6110c6` (2026-05-24); not present in fresh clones. Always audit live state with `ls "app/(marketing)/" "app/(app)/"` — the directory listing is the source of truth, not prose. Route catalogue, lib map, designer surface, block model, component tree, and wallet-provider scope rules → `FRONTEND.md`.
+**`frontend/` is the only active frontend** (the V4 history, the audit-by-`ls` rule, route catalogue, lib map, designer surface, block model, component tree, and wallet-provider scope rules → `FRONTEND.md` — the directory listing, not prose, is the source of truth).
 
 ### Agent SDK
 
-`@figaro/sdk` — TypeScript SDK for reading, analyzing, and proposing Figaro transactions. Runtime deps: `viem ^2.0.0` + `@noble/curves`/`@noble/hashes` (the handoff ECDH — the versions viem itself resolves). ESM; five subpath exports (root, `/agent`, `/derive`, `/clauses` — the lockstep clause source-of-truth — and `/handoff`, the runtime handoff wire protocol). Root also owns the promoted choreography: agreement/template projection behind `SpecSource`, the ONE template→orders walk (`reconstructOrdersFromTemplate`), and checkout planning. Full entry-point map + build/test commands → `sdk/README.md`.
+`@figaro/sdk` — TypeScript SDK for reading, analyzing, and proposing Figaro transactions (runtime deps → `sdk/README.md`). ESM; five subpath exports (root, `/agent`, `/derive`, `/clauses` — the lockstep clause source-of-truth — and `/handoff`, the runtime handoff wire protocol). Root also owns the promoted choreography: agreement/template projection behind `SpecSource`, the ONE template→orders walk (`reconstructOrdersFromTemplate`), and checkout planning. Full entry-point map + build/test commands → `sdk/README.md`.
 
 **"Agent" = two worlds; pin the referent.** Default = OPERATOR-PRIVATE (`.claude/agents/`, the operator's repo tools; no SDK). The exception: PUBLIC ECOSYSTEM agents (`ecosystem-agents/`) act for a USER's wallet, NEVER the repo — `figaro-operator` (operate a wallet) + `figaro-clause-author`/`figaro-assembly-designer`. Full split → `docs/AI_AGENT_COORDINATION.md` + the agent-seam memory.
 

@@ -1,0 +1,33 @@
+{
+    "agreements": [
+        {
+            "clauses": {
+                "figaro-commerce": {},
+                "figaro-merchant-process": {},
+                "figaro-modalities": {},
+                "figaro-topology": {
+                    "parentOrderHashes": []
+                }
+            },
+            "id": "order-0"
+        },
+        {
+            "clauses": {
+                "figaro-commerce": {},
+                "figaro-courier-process": {},
+                "figaro-geolocation": {},
+                "figaro-handoff": {},
+                "figaro-proximity-policy": {},
+                "figaro-topology": {
+                    "parentOrderHashes": [
+                        "order-0"
+                    ]
+                }
+            },
+            "id": "order-1"
+        }
+    ],
+    "description": "The local-commerce runtime: the buyer orders with the delivery modality; the courier order carries the goods; each transfer is attested; one resolve pays both.",
+    "name": "Local delivery",
+    "summary": "Meal/grocery delivery: a merchant order plus one co-equal courier order."
+}

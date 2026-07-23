@@ -1,0 +1,37 @@
+# Reference assemblies — the onboarding set
+
+Each file here is a canonical `AssemblyTemplate` — a real-world composition a
+newcomer can recognize, fork, and bind to on day one. They pre-populate the
+`AssemblyRegistry` at deploy (the populate path pins and anchors them; identity
+is the content-derived `compositionHash`, first-write-wins, so re-anchoring is
+a no-op and independently authoring the same composition collapses onto the
+same on-chain binding). This directory is `clauses/`' sibling: clauses are the
+vocabulary, these are worked sentences.
+
+**This is a user-onboarding surface, distinct from the e2e scenario machinery**
+(which exists to prove the frontend generic). Every reference scenario is also
+e2e-tested, and those tests are part of the onboarding story — read them to see
+the scenario driven end to end, money legs included:
+
+| Reference | Composition | The story | Proven by |
+|---|---|---|---|
+| `pos.json` | 1 order | A buyer and a seller at the counter — no processor between them | `orders-accept.devnet.spec.ts` (single-order accept) |
+| `local-delivery.json` | 2 orders | Merchant + gig courier replace the delivery platforms | `local-commerce.devnet.spec.ts` (full cycle incl. dispute-free settlement) |
+| `freelancer.json` | 1 order | A digital deliverable over the encrypted hand-off — no marketplace fee | `content-delivery.devnet.spec.ts` |
+| `freelancer-value-chain.json` | 3 orders | A lead freelancer + contributors, one settlement | (e2e pending — the one open gap) |
+| `tradelens.json` | 6 orders | The containerised import chain: shipper → inspection → forwarder → reefer carrier → customs → drayage | `scenario-tradelens` + `tradelens-runtime` |
+
+`documents/` ships the raw bytes of every document a template affixes (consent
+anchors commit the document's keccak256 and `ipfs://` locator INSIDE the
+composition — the bytes must pin byte-identical on any network for the
+composition hash to reproduce; the populate path pins them first).
+
+Conformance: `frontend/tests/lib/referenceAssemblies.test.ts` — every template
+parses, hashes, resolves its topology, composes only registered clauses,
+carries the mandatory clauses on every order, carries its editorial identity
+(the name/summary/description a stranger reads first), and every affixed
+document reproduces its committed hash from the shipped bytes.
+
+Editorial prose here is audience-owned (the general-public register). Adding a
+reference: compose it (the designer canvas or by hand), verify with the
+conformance test, and give it the story a newcomer would recognize.

@@ -1,0 +1,17 @@
+{
+    "name": "Freelance deliverable",
+    "summary": "A digital work product, delivered hand-to-hand with cryptographic proof — no platform fee.",
+    "description": "A client commissions a digital deliverable — a design file, a production cut, a dataset, an access credential — from an independent professional. The virtual hand-off travels an encrypted channel between the two wallets, and the artifact's fingerprint lands on-chain as completion evidence. Both parties are bonded, so the client's payment and the freelancer's delivery secure each other; the freelancer's catalogue can price fixed or by the hour. No marketplace sits in the middle.",
+    "agreements": [
+        {
+            "id": "order-0",
+            "clauses": {
+                "figaro-commerce": {},
+                "figaro-topology": { "parentOrderHashes": [] },
+                "figaro-modalities": {},
+                "figaro-content-handoff": {},
+                "figaro-geolocation": {}
+            }
+        }
+    ]
+}

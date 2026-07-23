@@ -40,6 +40,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Canonical Layer-A specs / ClauseRegistry seed data — the single origin,
 // pinned to IPFS and anchored on-chain. Nothing bundles a copy.
 export const CLAUSES_DIR = path.resolve(__dirname, '../../clauses');
+/** The reference assemblies — the user-onboarding set, `clauses/`' sibling:
+ *  canonical AssemblyTemplate JSONs anchored on AssemblyRegistry at populate
+ *  time (affixed documents in `assemblies/documents/`). */
+export const ASSEMBLIES_DIR = path.resolve(__dirname, '../../assemblies');
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545';
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 
@@ -81,6 +85,22 @@ export async function pinJSON(apiUrl, json) {
         throw new Error('IPFS pin returned no CID');
     }
     return `ipfs://${result.Hash}`;
+}
+
+/** Pin a file's RAW BYTES (byte-exact — an affixed document's keccak and CID
+ *  must reproduce wherever it pins). Returns the bare CID. */
+export async function pinFile(apiUrl, filePath) {
+    const form = new FormData();
+    form.append('file', new Blob([fs.readFileSync(filePath)]), path.basename(filePath));
+    const res = await fetch(`${apiUrl}/api/v0/add?pin=true`, { method: 'POST', body: form });
+    if (!res.ok) {
+        throw new Error(`IPFS pin failed: ${res.status} ${res.statusText} (is Kubo running at ${apiUrl}?)`);
+    }
+    const result = await res.json();
+    if (!result || typeof result.Hash !== 'string' || !result.Hash) {
+        throw new Error('IPFS pin returned no CID');
+    }
+    return result.Hash;
 }
 
 /** Resolve the signing account: REGISTRAR_PRIVATE_KEY, else anvil[0] (devnet). */

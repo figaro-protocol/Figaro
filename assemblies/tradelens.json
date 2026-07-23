@@ -1,0 +1,106 @@
+{
+    "agreements": [
+        {
+            "clauses": {
+                "figaro-acceptance-criteria": {},
+                "figaro-applicable-law": {},
+                "figaro-arbitration-kleros": {},
+                "figaro-cargo": {},
+                "figaro-chain-of-custody": {},
+                "figaro-commerce": {},
+                "figaro-geolocation": {},
+                "figaro-incoterms": {},
+                "figaro-modalities": {},
+                "figaro-topology": {
+                    "parentOrderHashes": []
+                }
+            },
+            "id": "order-0"
+        },
+        {
+            "clauses": {
+                "figaro-acceptance-criteria": {},
+                "figaro-commerce": {},
+                "figaro-merchant-process": {},
+                "figaro-topology": {
+                    "parentOrderHashes": [
+                        "order-0"
+                    ]
+                }
+            },
+            "id": "order-1"
+        },
+        {
+            "clauses": {
+                "figaro-commerce": {},
+                "figaro-geolocation": {},
+                "figaro-merchant-process": {},
+                "figaro-topology": {
+                    "parentOrderHashes": [
+                        "order-0"
+                    ]
+                }
+            },
+            "id": "order-2"
+        },
+        {
+            "clauses": {
+                "figaro-chain-of-custody": {},
+                "figaro-cold-chain": {},
+                "figaro-commerce": {},
+                "figaro-courier-process": {},
+                "figaro-emissions": {},
+                "figaro-freight-class": {},
+                "figaro-geolocation": {},
+                "figaro-handoff": {},
+                "figaro-proximity-policy": {},
+                "figaro-topology": {
+                    "parentOrderHashes": [
+                        "order-2"
+                    ]
+                }
+            },
+            "id": "order-3"
+        },
+        {
+            "clauses": {
+                "figaro-commerce": {},
+                "figaro-consent": {
+                    "documents": [
+                        {
+                            "documentHash": "0xe49094a6583b4935f7d53541c4683012f64610a2b3cb6083e98f3bb8314a403a",
+                            "documentTitle": "Customs filing terms",
+                            "documentUri": "ipfs://QmaHowCLmAoND656D3q9aoQ6CVDjLsNXiCyyPMGqSi7KJj",
+                            "documentVersion": "1.0"
+                        }
+                    ]
+                },
+                "figaro-merchant-process": {},
+                "figaro-topology": {
+                    "parentOrderHashes": [
+                        "order-3"
+                    ]
+                }
+            },
+            "id": "order-4"
+        },
+        {
+            "clauses": {
+                "figaro-commerce": {},
+                "figaro-courier-process": {},
+                "figaro-geolocation": {},
+                "figaro-handoff": {},
+                "figaro-proximity-policy": {},
+                "figaro-topology": {
+                    "parentOrderHashes": [
+                        "order-4"
+                    ]
+                }
+            },
+            "id": "order-5"
+        }
+    ],
+    "description": "The TradeLens perimeter as a permissionless bonded composition: shipper, pre-shipment inspection, freight forwarder, reefer ocean carrier, customs agent, and destination inland carrier — each independently bonded, settled atomically by the importer-of-record.",
+    "name": "Containerised import chain",
+    "summary": "Six bonded value-adders move a reefer container from shipper to consignee."
+}

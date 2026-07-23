@@ -30,7 +30,7 @@ import {
     canonicalize, templateCompositionHash, deriveAssemblySlug,
 } from '@figaro/sdk';
 import {
-    CLAUSES_DIR, LOCAL_ANVIL, pinJSON, populateClauses, readEnvLocal, registrarAccount,
+    ASSEMBLIES_DIR, CLAUSES_DIR, LOCAL_ANVIL, pinFile, pinJSON, populateClauses, readEnvLocal, registrarAccount,
 } from './populate-clauses.mjs';
 
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545';
@@ -193,9 +193,28 @@ async function main() {
     console.log('Clauses:');
     await populateClauses({ publicClient, walletClient: registrarClient, account: registrar, registry: clauseRegistry, ipfsApiUrl });
 
-    // ── 1b. Seed assemblies (blank + multi-order chain, idempotent) ─────────
+    // ── 1b. Seed assemblies (idempotent) ────────────────────────────────────
+    //  The REFERENCE assemblies (`assemblies/*.json` — the user-onboarding
+    //  set, the sibling of `clauses/`) anchor first: each is a canonical
+    //  AssemblyTemplate whose compositionHash is content-derived, so
+    //  re-anchoring is a no-op and an e2e that authors the same composition
+    //  collapses onto the same on-chain binding. Their affixed documents
+    //  (`assemblies/documents/*`) pin beforehand so every in-template
+    //  ipfs:// reference resolves. The two inline templates below are
+    //  devnet TEST SCAFFOLDING, not references.
     console.log('\nAssemblies:');
     const anchorArgs = { publicClient, walletClient: registrarClient, account: registrar, registry: assemblyRegistry, ipfsApiUrl };
+    const documentsDir = path.join(ASSEMBLIES_DIR, 'documents');
+    if (fs.existsSync(documentsDir)) {
+        for (const file of fs.readdirSync(documentsDir).sort()) {
+            const cid = await pinFile(ipfsApiUrl, path.join(documentsDir, file));
+            console.log(`  · document ${file} — pinned ipfs://${cid}`);
+        }
+    }
+    for (const file of fs.readdirSync(ASSEMBLIES_DIR).filter((f) => f.endsWith('.json')).sort()) {
+        const template = JSON.parse(fs.readFileSync(path.join(ASSEMBLIES_DIR, file), 'utf8'));
+        await anchorAssembly({ ...anchorArgs, template });
+    }
     await anchorAssembly({ ...anchorArgs, template: seedTemplateBlank() });
     await anchorAssembly({ ...anchorArgs, template: seedTemplateChain() });
 
