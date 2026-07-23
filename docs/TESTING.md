@@ -256,7 +256,7 @@ Four workflows gate `main`/`develop` on push + PR, path-filtered:
 - **`frontend-ci`** — type-check, ESLint, Vitest (+coverage), the **mobile**
   Playwright project, production build.
 - **`devnet-e2e-ci`** — the **bilateral spine** (`orders-accept`) end to end in
-  the runner: Kubo (IPFS, CORS-configured), Anvil (`--accounts 20`), a full
+  the runner: Kubo (IPFS, CORS-configured), Anvil (`--accounts 34`), a full
   `deploy-local.sh` stack, `populate-test-data`, then the `orders-accept` devnet
   spec against the production static export. The highest-catch layer, no longer
   operator-discipline-only. Broader devnet specs stay operator-run.

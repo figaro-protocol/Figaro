@@ -84,11 +84,14 @@ jobs:
               run: cd frontend && npx playwright install --with-deps chromium
 
             # ── Chain ────────────────────────────────────────────────────
-            # --accounts 20: indices 10-19 must be unlocked signers (sellers
-            # beyond anvil[9]); deploy-local.sh's gas top-up assumes it.
+            # --accounts 34: matches the local stack (devup/deploy-local). The
+            # unlocked+funded range must cover every index a spec self-seeds —
+            # orders-accept's POS seller is a dedicated wallet at index 31, and
+            # a smaller --accounts leaves it with zero ETH for gas. deploy-local's
+            # setBalance loop only tops up 10-19; 22-33 rely on launch funding.
             - name: Start Anvil
               run: |
-                  anvil --port 8545 --accounts 20 >/tmp/anvil.log 2>&1 &
+                  anvil --port 8545 --accounts 34 >/tmp/anvil.log 2>&1 &
                   for _ in $(seq 1 60); do
                       if cast block-number --rpc-url http://127.0.0.1:8545 >/dev/null 2>&1; then break; fi
                       sleep 0.5
