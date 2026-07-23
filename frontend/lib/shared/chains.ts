@@ -1,6 +1,6 @@
 import { defineChain } from "viem";
 import { hardhat as _hardhat } from "wagmi/chains";
-import { baseSepolia } from "viem/chains";
+import { sepolia } from "viem/chains";
 
 /** Anvil's default chainId — the single source for the devnet chain id. */
 export const DEVNET_CHAIN_ID = 31337;
@@ -30,7 +30,7 @@ export const hardhat = _hardhat;
 /**
  * Active chain selection — controlled by NEXT_PUBLIC_CHAIN env var.
  *
- *   NEXT_PUBLIC_CHAIN=base-sepolia  → Base Sepolia testnet
+ *   NEXT_PUBLIC_CHAIN=sepolia       → Ethereum Sepolia testnet
  *   (default / unset)               → local Anvil
  *
  * The wagmi transport (lib/shared/wagmi.ts) points straight at this chain's
@@ -38,7 +38,7 @@ export const hardhat = _hardhat;
  * server).
  */
 export const activeChain =
-    process.env.NEXT_PUBLIC_CHAIN === "base-sepolia" ? baseSepolia : localAnvil;
+    process.env.NEXT_PUBLIC_CHAIN === "sepolia" ? sepolia : localAnvil;
 
 /** All chains supported by the dapp, in preference order. */
 export const chains = [activeChain, hardhat] as const;

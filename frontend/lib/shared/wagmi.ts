@@ -47,7 +47,7 @@ export const publicClient = createPublicClient({
 // ---------------------------------------------------------------------------
 // wagmi config
 // ---------------------------------------------------------------------------
-// activeChain.id is a type union (localAnvil | baseSepolia) — TS can't narrow
+// activeChain.id is a type union (localAnvil | sepolia) — TS can't narrow
 // computed property keys from unions, so the transports record appears incomplete.
 export const config = createConfig({
     chains: [activeChain],
