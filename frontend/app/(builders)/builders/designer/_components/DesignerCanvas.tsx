@@ -8,7 +8,7 @@
  * autosave, drawer, toolbar) is identical.
  *
  * Toolbar surface (left → right):
- *   ← Assemblies | saved hint | Save | Review | Reset
+ *   ← Assemblies | Agent assist | saved hint | Save | Review | Reset
  *
  * Buttons are weighted by the action we want to incentivize:
  *   - Publish:  filled primary    — irreversible, costs the registration deposit
@@ -49,6 +49,9 @@ import {
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "./AgreementDrawer";
+import { CompositionAssist } from "./CompositionAssist";
+import { assemblyTemplateToDraft } from "@/lib/designer/assemblyTemplateToDraft";
+import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { maxCommitsLandableInOneBlock, maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { useChainId, usePublicClient } from "wagmi";
@@ -402,6 +405,40 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         clearCurrentSession();
     }, [session]);
 
+    /** Apply a template imported through composition-assist to the live
+     *  canvas — the same hydration the draft seed and the fork bridge use.
+     *  Replaces the current composition (confirmed when it's non-trivial);
+     *  the result is ordinary unsaved canvas state, so review/edit/publish
+     *  stay the designer's act. Throws on a template the chain-loaded specs
+     *  can't project — the assist panel surfaces it before state is touched.
+     *  Returns false when the designer declines the replace-confirmation. */
+    const handleImportTemplate = useCallback((template: AssemblyTemplate): boolean => {
+        // Hydrate FIRST — a throw here (unregistered clause, bad topology)
+        // must leave the canvas untouched.
+        const draft = assemblyTemplateToDraft(template, { slug: "", name: template.name ?? "" });
+        const nonTrivial = orders.length > 1
+            || Object.values(clausesByOrderId).some((c) => Object.keys(c).length > 0);
+        if (nonTrivial) {
+            const ok = typeof window === "undefined"
+                ? true
+                : window.confirm("Replace the current canvas with the imported template? The current state stays autosaved until then.");
+            if (!ok) return false;
+        }
+        const restored = snapshotToInitial(draft);
+        Object.assign(session, restored.session);
+        setOrders(restored.orders);
+        // The agent fills the editorial identity per the template shape —
+        // carry it; blanks fall back exactly like a hand-typed draft.
+        setName(template.name ?? "");
+        setSummary(template.summary ?? "");
+        setDescription(template.description ?? "");
+        setSlug(null);
+        setClausesByOrderId(restored.clausesByOrderId);
+        setClauseVersionsByOrderId(restored.clauseVersionsByOrderId);
+        setSelectedOrderId(null);
+        return true;
+    }, [session, orders, clausesByOrderId]);
+
     /** Validation result for `buildSnapshot`. Distinguishes the failure
      *  modes so the caller can surface a specific error before opening
      *  the wallet. */
@@ -551,6 +588,13 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 >
                     ← Assemblies
                 </Link>
+                <CompositionAssist
+                    getSnapshot={() => {
+                        const result = buildSnapshot();
+                        return result.ok ? result.snapshot : null;
+                    }}
+                    onImportTemplate={handleImportTemplate}
+                />
                 {savedHint && (
                     <span className="ml-auto text-[11px] text-ink-muted truncate" data-testid="designer-saved-hint">
                         {savedHint}

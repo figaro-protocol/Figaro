@@ -15,8 +15,9 @@
 
 import { planTemplateOrders } from "@figaro/sdk";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
-import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
+import { templateCompositionHash, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
+import { extractErrorMessage } from "@/lib/shared/errors";
 import type { DesignSnapshot } from "./syntheticDesignStore";
 import { Order } from "@/lib/kernel/store";
 import { buildSyntheticOrder, syntheticAddress } from "./syntheticProcess";
@@ -68,7 +69,60 @@ export function assemblyTemplateToDraft(
         clausesByOrderId: Object.fromEntries(
             template.agreements.map((to) => [to.id, to.clauses]),
         ),
+        // The template's sparse non-1 version picks are part of the clause's
+        // identity — a draft that dropped them would silently re-compose
+        // against v1.
+        clauseVersionsByOrderId: Object.fromEntries(
+            template.agreements
+                .filter((to) => to.clauseVersions && Object.keys(to.clauseVersions).length > 0)
+                .map((to) => [to.id, to.clauseVersions as Record<string, number>]),
+        ),
         createdAt: Date.now(),
         updatedAt: Date.now(),
     };
+}
+
+/** Result of parsing pasted template JSON (the composition-assist import). */
+export type ParsedTemplateResult =
+    | { ok: true; template: AssemblyTemplate }
+    | { ok: false; error: string };
+
+/**
+ * Parse text pasted as an `AssemblyTemplate` — the composition-assist import
+ * surface, where the JSON comes from the designer's own agent rather than a
+ * chain-anchored URI (so there is no compositionHash to check integrity
+ * against; soundness is the bar). Shape-checks the agreements array, then
+ * probes the composition through `templateCompositionHash` — the same walk
+ * the registry key uses — so anything it cannot hash is rejected here with a
+ * message instead of failing later at publish.
+ */
+export function parseAssemblyTemplateJson(text: string): ParsedTemplateResult {
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(text);
+    } catch {
+        return { ok: false, error: "Not valid JSON." };
+    }
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        return { ok: false, error: "A template is a JSON object with an `agreements` array." };
+    }
+    const agreements = (parsed as { agreements?: unknown }).agreements;
+    if (!Array.isArray(agreements) || agreements.length === 0) {
+        return { ok: false, error: "A template carries a non-empty `agreements` array — one entry per order." };
+    }
+    for (const entry of agreements) {
+        const id = (entry as { id?: unknown } | null)?.id;
+        const clauses = (entry as { clauses?: unknown } | null)?.clauses;
+        if (typeof entry !== "object" || entry === null || typeof id !== "string"
+            || typeof clauses !== "object" || clauses === null || Array.isArray(clauses)) {
+            return { ok: false, error: "Each agreement needs a string `id` and a `clauses` object (clauseId → fields)." };
+        }
+    }
+    const template = parsed as AssemblyTemplate;
+    try {
+        templateCompositionHash(template);
+    } catch (cause) {
+        return { ok: false, error: `The composition does not hash: ${extractErrorMessage(cause, "malformed template")}` };
+    }
+    return { ok: true, template };
 }
