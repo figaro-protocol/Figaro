@@ -26,7 +26,7 @@ set -euo pipefail
 # this is legitimately free-form. `unNumber`/`properShippingName` are the UN dangerous-
 # goods number + official shipping name: regulated values anchored to an external standard
 # (the clause references the standard rather than enumerating its thousands of entries).
-FREE_CONTENT='^(currency|nonce|.*[Ss]ig|.*[Uu]ri|.*[Hh]ash|.*[Gg]eohash|description|name|properShippingName|unNumber|incotermsNamedPlace|credentialId|tagline|specialty|notes?)$'
+FREE_CONTENT='^(currency|nonce|.*[Ss]ig|.*[Uu]ri|.*[Hh]ash|.*[Gg]eohash|description|name|properShippingName|unNumber|incotermsNamedPlace|credentialId|tagline|specialty|notes?|custodyScheme|acceptanceBasis)$'
 
 # Known violations pending conversion to enums (tracked in the backlog UI/UX audit). Allowed
 # for now so the guard doesn't block existing work; REMOVE each as it becomes an enum — then

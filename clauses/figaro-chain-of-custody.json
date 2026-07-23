@@ -1,0 +1,93 @@
+{
+    "clauseId": "figaro-chain-of-custody",
+    "version": 1,
+    "title": "Chain of custody",
+    "description": "Goods-level custody and integrity regime for an order whose goods pass through identifiable custodians. Elective and NEVER default-on: composed when the parties need a single canonical custody record (sealed containers, tamper-evident packaging, bonded warehousing). Commits the integrity REGIME the parties agree at signing — the scheme (the external standard is the source of truth; this clause references it) and, when already assigned, the custody unit's identifier. The custody EVENTS produced while the goods move (seal applied, inspected intact, transferred, breached, removed) are filed as runtime attestations at stage 1 — one attestation per event, by whichever party witnessed it; the attesting wallet is recorded by the attestation itself and never duplicated as a field. Custody continuity, gaps, and breach exposure are derived at read time from the witnessed event sequence against the committed regime, never stored.",
+    "fields": [
+        {
+            "name": "custodyScheme",
+            "type": "string",
+            "required": true,
+            "minLength": 1,
+            "label": "Custody scheme",
+            "description": "Free-form reference to the integrity regime the parties follow (e.g. \"ISO 17712 high-security bolt seal on ISO 6346 container\", \"tamper-evident courier bag\", \"rail wagon seal per UIC 592\") — any regime, existing or future; the protocol takes no closed list."
+        },
+        {
+            "name": "unitIdentifier",
+            "type": "string",
+            "required": false,
+            "minLength": 1,
+            "maxLength": 64,
+            "label": "Custody unit identifier",
+            "description": "Identifier of the custody unit under the scheme (e.g. an ISO 6346 container number), when already assigned at signing. A unit assigned later arrives on the stage-1 events instead."
+        }
+    ],
+    "stages": {
+        "1": [
+            {
+                "name": "event",
+                "type": "enum",
+                "required": true,
+                "values": ["applied", "inspected-intact", "transferred", "breached", "removed"],
+                "valueLabels": {
+                    "applied": "Integrity device applied",
+                    "inspected-intact": "Inspected intact",
+                    "transferred": "Custody transferred",
+                    "breached": "Integrity breached",
+                    "removed": "Integrity device removed"
+                },
+                "label": "Custody event",
+                "description": "The custody event being witnessed. \"Removed\" covers authorized removal (customs examination, destination unsealing); an unauthorized removal is \"breached\"."
+            },
+            {
+                "name": "unitIdentifier",
+                "type": "string",
+                "required": true,
+                "minLength": 1,
+                "maxLength": 64,
+                "label": "Custody unit identifier",
+                "description": "Identifier of the custody unit this event concerns, under the committed scheme."
+            },
+            {
+                "name": "sealIdentifier",
+                "type": "string",
+                "required": false,
+                "minLength": 1,
+                "maxLength": 64,
+                "label": "Seal identifier",
+                "description": "Identifier of the integrity device (seal number) where the scheme uses one."
+            },
+            {
+                "name": "locationGeohash",
+                "type": "string",
+                "format": "geohash",
+                "required": false,
+                "minLength": 1,
+                "maxLength": 12,
+                "label": "Event location",
+                "description": "Geohash of where the event was witnessed."
+            },
+            {
+                "name": "occurredAt",
+                "type": "string",
+                "format": "iso-datetime",
+                "required": true,
+                "label": "Occurred at",
+                "description": "When the event occurred."
+            },
+            {
+                "name": "evidenceUri",
+                "type": "string",
+                "format": "evidence-capture",
+                "required": false,
+                "minLength": 0,
+                "maxLength": 512,
+                "label": "Event evidence",
+                "description": "Optional reference to captured evidence of the event (photo of the seal, inspection report)."
+            }
+        ]
+    },
+    "block": {
+        "article": "logistics"
+    }
+}
