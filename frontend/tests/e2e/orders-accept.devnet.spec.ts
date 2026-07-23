@@ -19,7 +19,7 @@
  * the published assembly and the bound seller must already exist. Iterate with
  * `--no-deps` once the gate has seeded the chain.
  */
-import { test, expect, gotoAsWallet } from './devnet-multi-test';
+import { test, expect, gotoAsWallet, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
 import { calculateBonds } from '@figaro/sdk';
 import { discoverAnchoredAssemblies, discoverSellers, readLocalDeploymentConfig } from './devnet-helpers';
@@ -54,16 +54,21 @@ const BUYER = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as Hex;
  *  registered seller bound to the single-order anchored assembly — the same
  *  binding the checkout resolves. Runtime e2e discovers its world; a spec that
  *  imports a seller address is not testing mainnet usage. The discovered
- *  wallet must be one the multi-wallet fixture can drive (the wizard-seeded
- *  sellers are Anvil accounts by construction). */
+ *  wallet must be one the multi-wallet fixture can drive, so the pick is
+ *  FILTERED to anvil-held accounts — foreign sellers legitimately bind the
+ *  same anchored assemblies on the persisted devnet (the relay smoke's
+ *  device-unique seller was the first), and selection-by-capability is not a
+ *  roster: the world stays discovered, the wallet driven stays drivable. */
 async function discoverBoundSeller(): Promise<Hex> {
+    const anvilAddrs = new Set(ANVIL_ACCOUNTS.map((a) => a.toLowerCase()));
     const singleOrderSlugs = new Set(
         (await discoverAnchoredAssemblies()).filter((a) => a.agreements.length === 1).map((a) => a.slug),
     );
     const seller = (await discoverSellers()).find((s) =>
-        s.assemblyBindings.some((b) => singleOrderSlugs.has(b.assemblySlug)),
+        anvilAddrs.has(s.address.toLowerCase())
+        && s.assemblyBindings.some((b) => singleOrderSlugs.has(b.assemblySlug)),
     );
-    expect(seller, 'a registered seller is bound to a single-order anchored assembly (run populate-test-data + the authoring gate)').toBeTruthy();
+    expect(seller, 'an anvil-held seller is bound to a single-order anchored assembly (run populate-test-data + the authoring gate)').toBeTruthy();
     return seller!.address;
 }
 

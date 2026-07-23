@@ -119,12 +119,17 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
         // ── The COURIER the buyer will pick — DISCOVERED from SellerRegistry
         //    events + IPFS (never a roster): the first bound seller that is
         //    not the merchant (a binding is what admits a catalogue to every
-        //    read — the even-surfacing rule). ──
+        //    read — the even-surfacing rule). Filtered to anvil-held wallets:
+        //    the spec later DRIVES the courier (accept + bond), and foreign
+        //    sellers (the relay smoke's device-unique seller) legitimately
+        //    live on the persisted devnet. ──
+        const anvilAddrs = new Set(ANVIL_ACCOUNTS.map((a) => a.toLowerCase()));
         const sellers = await discoverSellers();
         const courier = sellers.find(
-            (s) => s.address.toLowerCase() !== MERCHANT.toLowerCase() && s.assemblyBindings.length > 0,
+            (s) => anvilAddrs.has(s.address.toLowerCase())
+                && s.address.toLowerCase() !== MERCHANT.toLowerCase() && s.assemblyBindings.length > 0,
         );
-        expect(courier, 'a bound, non-merchant seller exists on-chain to pick').toBeTruthy();
+        expect(courier, 'a bound, non-merchant, anvil-held seller exists on-chain to pick').toBeTruthy();
         const COURIER = courier!.address;
 
         // ── BASELINES before any commit pulls bonds (deltas, never absolutes). ──

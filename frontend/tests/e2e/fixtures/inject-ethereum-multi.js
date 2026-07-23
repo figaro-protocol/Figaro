@@ -84,6 +84,28 @@
             if (method === 'wallet_getPermissions' || method === 'wallet_requestPermissions') {
                 return [{ parentCapability: 'eth_accounts' }];
             }
+            // Local-key signer bridge (real-transport smokes only). Anvil's
+            // junk-mnemonic wallets are globally shared identities on public
+            // networks (XMTP dev), so the smoke signs with device-unique keys
+            // anvil does not hold: the spec exposes a node-side signer
+            // (context.exposeFunction '__FIGARO_LOCAL_SIGN__') and announces
+            // its addresses in '__FIGARO_LOCAL_ACCOUNTS__' (lowercase). The
+            // devnet suite sets neither global — this block never fires there.
+            var localSign = window.__FIGARO_LOCAL_SIGN__;
+            var localAccounts = window.__FIGARO_LOCAL_ACCOUNTS__;
+            if (typeof localSign === 'function' && Array.isArray(localAccounts)) {
+                var signerAddr = null;
+                if (method === 'personal_sign') {
+                    signerAddr = params && params[1];
+                } else if (method === 'eth_sign' || method === 'eth_signTypedData' || method === 'eth_signTypedData_v4') {
+                    signerAddr = params && params[0];
+                } else if (method === 'eth_sendTransaction') {
+                    signerAddr = params && params[0] && params[0].from;
+                }
+                if (signerAddr && localAccounts.indexOf(String(signerAddr).toLowerCase()) !== -1) {
+                    return localSign(method, params);
+                }
+            }
             return rpcCall(method, params);
         },
 

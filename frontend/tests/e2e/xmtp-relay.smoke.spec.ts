@@ -5,18 +5,30 @@
  *
  *     npx playwright test --project=smoke
  *
- * Preconditions: the standard devup stack (anvil + Kubo + deployed contracts +
- * seeded sellers — a prior devnet suite run or populate-test-data.mjs), plus
- * INTERNET: the channel is @xmtp/browser-sdk against XMTP's hosted `dev`
- * network, exactly what production uses.
+ * Preconditions: the standard devup stack (anvil + Kubo + deployed contracts
+ * + at least one anchored assembly — a prior devnet suite run or
+ * populate-test-data.mjs), plus INTERNET: the channel is @xmtp/browser-sdk
+ * against XMTP's hosted `dev` network, exactly what production uses.
  *
  * How this stays the REAL path (the devnet suite deliberately mocks it):
  *  - Navigation carries NO `?e2e=` param, so `getCoordinationChannel` selects
  *    the real XMTP transport — the in-memory mock is keyed on the e2e session.
- *  - The wallet is the same anvil-backed injected provider the devnet suite
- *    uses (fixtures/inject-ethereum-multi.js): real EIP-191/712 signatures via
- *    anvil's unlocked accounts — XMTP's identity signature included. Chromium
- *    is Playwright's bundled browser; no extension wallet is needed.
+ *  - The parties are DEVICE-UNIQUE wallets, not anvil accounts. Anvil's
+ *    junk-mnemonic wallets are a GLOBAL COMMONS on XMTP's hosted dev network
+ *    — every dev on earth shares those inboxes (a probe found 9 foreign
+ *    installations on a "fresh" index), and foreign group state pins the MLS
+ *    ratchet ("Ciphertext generation out of bounds"), which no app code can
+ *    repair. Keys are generated once into `.smoke-profiles/keys.json`
+ *    (gitignored) and REUSED across runs — a stable pair, like real usage.
+ *  - Signatures come from a node-side viem signer bridged into the injected
+ *    provider (fixtures/inject-ethereum-multi.js routes personal_sign /
+ *    signTypedData / sendTransaction for announced local accounts to a
+ *    `context.exposeFunction` handler) — XMTP's identity signature included.
+ *    Chromium is Playwright's bundled browser; no extension wallet is needed.
+ *  - The seller is onboarded IN-SPEC from chain state: `seedRegisteredSeller`
+ *    (the dispatch-race pattern) pins a catalogue + profile bound to the
+ *    simplest anchored assembly; `anvil_setBalance` funds the registration
+ *    deposit. Idempotent — re-runs route through updateProfile.
  *  - The `/settings` XMTP opt-in is flipped through the real settings form in
  *    EACH party's own browser context — separate contexts are load-bearing:
  *    XMTP's WASM store uses exclusive OPFS sync access handles, so two clients
@@ -24,7 +36,7 @@
  *
  * What it proves (punch-list block 6, the real-path smoke):
  *  1. `Client.create` succeeds against XMTP dev for both wallets (identity
- *     signature through the wallet, WASM under the prod CSP).
+ *     signature through the wallet bridge, WASM under the prod CSP).
  *  2. A commitment relayed buyer→seller over REAL XMTP arrives and surfaces
  *     as the seller's "Your turn" card — exactly ONE new card.
  *  3. Diagnostics for the open stream-sharing question (whether the /orders
@@ -33,10 +45,22 @@
  *     and prints every console warning/error for the operator to review.
  *     Run HEADED to watch: add `--headed`.
  */
+import fs from 'fs';
 import path from 'path';
 import { chromium, type BrowserContext, type Page } from '@playwright/test';
-import { test, expect, gotoAsWallet, newWalletPage, ANVIL_ACCOUNTS } from './devnet-multi-test';
-import { discoverSellers, discoverAnchoredAssemblies, confirmAgreementPreviews, waitForConnected } from './devnet-helpers';
+import { createWalletClient, http, parseAbi, parseUnits, type Hex } from 'viem';
+import { generatePrivateKey, privateKeyToAccount, type PrivateKeyAccount } from 'viem/accounts';
+import { test, expect, gotoAsWallet, newWalletPage } from './devnet-multi-test';
+import {
+    LOCAL_ANVIL,
+    RPC_URL,
+    confirmAgreementPreviews,
+    discoverAnchoredAssemblies,
+    pinJSONToIPFS,
+    readLocalDeploymentConfig,
+    seedRegisteredSeller,
+    waitForConnected,
+} from './devnet-helpers';
 
 /** PERSISTENT profiles, one per party, reused ACROSS smoke runs — this is
  *  load-bearing, not convenience. XMTP's model is ONE installation per
@@ -44,8 +68,80 @@ import { discoverSellers, discoverAnchoredAssemblies, confirmAgreementPreviews, 
  *  per run mints a new installation, revokes all others (dev housekeeping),
  *  and creates a new DM group every run — churn real usage never has, and it
  *  desyncs MLS group state ("Ciphertext generation out of bounds", run 6).
- *  Profiles live outside test-results/ (Playwright wipes that per run). */
+ *  Profiles live outside test-results/ (Playwright wipes that per run), and
+ *  each profile dir is keyed by its wallet address, so regenerating
+ *  keys.json automatically starts from fresh XMTP stores. */
 const SMOKE_PROFILES_DIR = path.resolve(__dirname, '../../.smoke-profiles');
+const KEYS_PATH = path.join(SMOKE_PROFILES_DIR, 'keys.json');
+
+/** The device-unique wallet pair: generated ONCE on this machine, persisted
+ *  beside the profiles (gitignored), reused every run. Never derived from the
+ *  anvil mnemonic — that is the shared-identity landmine this smoke exists to
+ *  avoid. */
+function loadOrCreateSmokeKeys(): { buyer: Hex; seller: Hex } {
+    if (fs.existsSync(KEYS_PATH)) {
+        return JSON.parse(fs.readFileSync(KEYS_PATH, 'utf8')) as { buyer: Hex; seller: Hex };
+    }
+    const keys = { buyer: generatePrivateKey(), seller: generatePrivateKey() };
+    fs.mkdirSync(SMOKE_PROFILES_DIR, { recursive: true });
+    fs.writeFileSync(KEYS_PATH, `${JSON.stringify(keys, null, 4)}\n`);
+    return keys;
+}
+
+/** Node-side wallet for the injected provider's local-signer bridge: handles
+ *  the signing methods inject-ethereum-multi.js routes here for announced
+ *  local accounts. viem fills nonce/gas for sendTransaction. */
+function makeLocalSignHandler(accounts: PrivateKeyAccount[]) {
+    const byAddress = new Map(accounts.map((a) => [a.address.toLowerCase(), a]));
+    const resolve = (addr: unknown): PrivateKeyAccount => {
+        const account = byAddress.get(String(addr).toLowerCase());
+        if (!account) throw new Error(`local signer bridge: unknown account ${String(addr)}`);
+        return account;
+    };
+    return async (method: string, params: unknown[]): Promise<string> => {
+        if (method === 'personal_sign' || method === 'eth_sign') {
+            // personal_sign: [data, address]; eth_sign: [address, data].
+            const [data, addr] = method === 'personal_sign' ? [params[0], params[1]] : [params[1], params[0]];
+            const message = typeof data === 'string' && data.startsWith('0x')
+                ? { raw: data as Hex }
+                : String(data);
+            return resolve(addr).signMessage({ message });
+        }
+        if (method === 'eth_signTypedData' || method === 'eth_signTypedData_v4') {
+            const [addr, json] = params as [string, string];
+            const typed = typeof json === 'string' ? JSON.parse(json) : json;
+            return resolve(addr).signTypedData(typed);
+        }
+        if (method === 'eth_sendTransaction') {
+            const tx = params[0] as { from: string; to?: Hex; data?: Hex; value?: Hex; gas?: Hex };
+            const account = resolve(tx.from);
+            const client = createWalletClient({ account, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+            return client.sendTransaction({
+                to: tx.to,
+                data: tx.data,
+                value: tx.value ? BigInt(tx.value) : undefined,
+                gas: tx.gas ? BigInt(tx.gas) : undefined,
+            });
+        }
+        throw new Error(`local signer bridge: unhandled method ${method}`);
+    };
+}
+
+/** Fund a device-unique wallet with ETH (anvil cheatcode) — the seller pays
+ *  the SellerRegistry registration deposit; both parties stay funded so no
+ *  future gas-bearing step starts from zero. */
+async function fundWithEth(address: Hex): Promise<void> {
+    const res = await fetch(RPC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            jsonrpc: '2.0', id: 1, method: 'anvil_setBalance',
+            params: [address, '0x8AC7230489E80000'], // 10 ETH
+        }),
+    });
+    const body = await res.json() as { error?: { message?: string } };
+    if (body.error) throw new Error(`anvil_setBalance failed: ${body.error.message}`);
+}
 
 /** Console/page-error capture — the smoke's diagnostic channel. */
 function watchPage(page: Page, label: string, errors: string[]) {
@@ -62,53 +158,89 @@ test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev netwo
     test.setTimeout(600_000);
 
     test('a commitment crosses real XMTP once — no duplicates, no page errors', async ({ baseURL }) => {
+        const keys = loadOrCreateSmokeKeys();
+        const buyerAccount = privateKeyToAccount(keys.buyer);
+        const sellerAccount = privateKeyToAccount(keys.seller);
+        const BUYER = buyerAccount.address;
+        const SELLER = sellerAccount.address;
+        const signHandler = makeLocalSignHandler([buyerAccount, sellerAccount]);
+        const localAccounts = [BUYER.toLowerCase(), SELLER.toLowerCase()];
+        await Promise.all([fundWithEth(BUYER), fundWithEth(SELLER)]);
+
+        // ── ONBOARD the smoke seller from chain state (no roster): bind the
+        //    SIMPLEST anchored assembly (fewest orders — the seeded blank
+        //    single-agreement composition when present). Node-side with the
+        //    seller's own key; idempotent (re-runs route to updateProfile). ──
+        const assemblies = await discoverAnchoredAssemblies();
+        expect(assemblies.length, 'an anchored assembly exists — run the devnet suite or populate-test-data.mjs first').toBeGreaterThan(0);
+        const assembly = assemblies.reduce((min, a) => (a.agreements.length < min.agreements.length ? a : min));
+        const orderCount = assembly.agreements.length;
+        const token = readLocalDeploymentConfig().tokenAddress;
+        expect(token, 'NEXT_PUBLIC_TOKEN_ADDRESS resolves — run ./deploy-local.sh').toBeTruthy();
+        // Checkout gates place-order on buyer solvency (payment + bond), and
+        // MintTokens.s.sol funds anvil accounts only — mint to the
+        // device-unique buyer (MockERC20.mint is permissionless on devnet;
+        // the buyer pays its own gas from the ETH funding above).
+        const buyerWallet = createWalletClient({ account: buyerAccount, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+        await buyerWallet.writeContract({
+            address: token!,
+            abi: parseAbi(['function mint(address to, uint256 amount) external']),
+            functionName: 'mint',
+            args: [BUYER, parseUnits('1000', 18)],
+        });
+        const { uri: catalogueURI } = await pinJSONToIPFS({
+            subjectAddress: SELLER,
+            version: '1.0.0',
+            unitSystem: 'metric' as const,
+            items: [{
+                id: 'xmtp-smoke-relay',
+                name: 'Relay smoke order',
+                description: 'Single item the XMTP relay smoke checks out and relays.',
+                price: '1',
+                category: 'test',
+                image: '📡',
+                available: true,
+            }],
+        });
+        await seedRegisteredSeller({
+            walletKey: keys.seller,
+            profile: {
+                name: 'XMTP Smoke Seller',
+                description: 'Device-unique seller onboarded by xmtp-relay.smoke.spec.ts',
+                catalogueURI,
+                acceptedTokens: [{ address: token!, symbol: 'MOCK', chainId: 31337 }],
+                defaultTokenAddress: token!,
+                assemblyBindings: [{
+                    bindingId: `xmtp-smoke-${SELLER.slice(2, 8).toLowerCase()}`,
+                    subjectAddress: SELLER,
+                    assemblySlug: assembly.slug,
+                    counterpartyBindings: [],
+                }],
+            },
+        });
+
         // The profile must persist ONLY the XMTP identity (OPFS database).
         // Everything else it could persist is contamination: the HTTP cache
         // serves stale Next.js chunks across rebuilds (empty catalogue, run
         // 8), and app localStorage carries cart state between attempts —
         // so the disk cache is disabled and app storage cleared per launch.
-        const launchProfile = async (name: string): Promise<BrowserContext> => {
+        const launchProfile = async (name: string, address: Hex): Promise<BrowserContext> => {
             const ctx = await chromium.launchPersistentContext(
-                path.join(SMOKE_PROFILES_DIR, name),
+                path.join(SMOKE_PROFILES_DIR, `${name}-${address.slice(2, 10).toLowerCase()}`),
                 { baseURL, args: ['--disk-cache-size=1'] },
             );
+            await ctx.exposeFunction('__FIGARO_LOCAL_SIGN__', signHandler);
+            await ctx.addInitScript((addrs: string[]) => {
+                (window as unknown as { __FIGARO_LOCAL_ACCOUNTS__: string[] }).__FIGARO_LOCAL_ACCOUNTS__ = addrs;
+            }, localAccounts);
             const p = ctx.pages()[0] ?? await ctx.newPage();
             await p.goto('/', { waitUntil: 'domcontentloaded' });
             await p.evaluate(() => window.localStorage.clear());
             return ctx;
         };
-        const buyerContext = await launchProfile('buyer');
+        const buyerContext = await launchProfile('buyer', BUYER);
         const page = await newWalletPage(buyerContext);
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
-
-        // ── Adopt a seeded seller from CHAIN state (no roster): any seller
-        //    whose wallet anvil controls and whose profile binds an anchored
-        //    assembly — the SIMPLEST such assembly (fewest orders). ──
-        const anvilAddrs = new Set(ANVIL_ACCOUNTS.map((a) => a.toLowerCase()));
-        const [sellers, assemblies] = await Promise.all([discoverSellers(), discoverAnchoredAssemblies()]);
-        const orderCountBySlug = new Map(assemblies.map((a) => [a.slug, a.agreements.length]));
-        let sellerAddr: `0x${string}` | undefined;
-        let orderCount = Number.POSITIVE_INFINITY;
-        for (const s of sellers) {
-            if (!anvilAddrs.has(s.address.toLowerCase())) continue;
-            for (const b of s.assemblyBindings) {
-                const n = orderCountBySlug.get(b.assemblySlug);
-                if (n !== undefined && n < orderCount) {
-                    sellerAddr = s.address;
-                    orderCount = n;
-                }
-            }
-        }
-        expect(sellerAddr, 'a seeded, anvil-controlled seller with a bound anchored assembly exists').toBeTruthy();
-        // Index 19: unused by every other spec AND — load-bearing for the dev
-        // network — a wallet pair with NO prior XMTP history. The churn era of
-        // this smoke's early runs left the [0]↔seller inbox pair with several
-        // half-dead DM groups on the hosted dev network (permanent state), and
-        // the seller's ratchet view of that pair is pinned ("Ciphertext
-        // generation out of bounds N", N advancing per run). A poisoned pair
-        // cannot be repaired from here; a fresh pair is the honest baseline.
-        const BUYER = ANVIL_ACCOUNTS[19] as `0x${string}`;
-        expect(sellerAddr!.toLowerCase()).not.toBe(BUYER.toLowerCase());
 
         const errors: string[] = [];
 
@@ -125,25 +257,36 @@ test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev netwo
         //    same-context tabs; the real transport needs the opposite. Each
         //    context has its own storage, so each party flips its own
         //    /settings opt-in. ──
-        const sellerContext = await launchProfile('seller');
+        const sellerContext = await launchProfile('seller', SELLER);
         const sellerPage = await newWalletPage(sellerContext);
         watchPage(sellerPage, 'seller', errors);
-        await gotoAsWallet(sellerPage, sellerAddr!, '/settings');
+        await gotoAsWallet(sellerPage, SELLER, '/settings');
         await sellerPage.getByTestId('settings-transport').selectOption('xmtp');
         await sellerPage.getByTestId('settings-save').click();
-        await gotoAsWallet(sellerPage, sellerAddr!, '/orders');
+        await gotoAsWallet(sellerPage, SELLER, '/orders');
         await waitForConnected(sellerPage);
         const yourTurnCards = sellerPage.getByTestId('order-your-turn-card');
-        const baseline = await yourTurnCards.count();
+        // Baseline AFTER the back-fill settles: `syncAll()` replays prior
+        // smoke runs' relayed commitments from the network asynchronously
+        // (localStorage was cleared), so a count taken at first paint could
+        // inflate mid-test and read as a false delivery. Stable = unchanged
+        // across one full sync sweep.
+        let baseline = await yourTurnCards.count();
+        for (;;) {
+            await sellerPage.waitForTimeout(7_000);
+            const n = await yourTurnCards.count();
+            if (n === baseline) break;
+            baseline = n;
+        }
 
-        // ── BUYER: checkout on the adopted seller, sign every order, send
-        //    the root over REAL XMTP. The buyer's context flips its own
-        //    /settings opt-in (per-context storage). ──
+        // ── BUYER: checkout on the smoke seller, sign every order, send the
+        //    root over REAL XMTP. The buyer's context flips its own /settings
+        //    opt-in (per-context storage). ──
         watchPage(page, 'buyer', errors);
         await gotoAsWallet(page, BUYER, '/settings');
         await page.getByTestId('settings-transport').selectOption('xmtp');
         await page.getByTestId('settings-save').click();
-        await gotoAsWallet(page, BUYER, `/s/view?seller=${sellerAddr}`);
+        await gotoAsWallet(page, BUYER, `/s/view?seller=${SELLER}`);
         await sellerPage.waitForTimeout(5000); // XMTP identity publication latency
         await page.getByTestId('seller-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);

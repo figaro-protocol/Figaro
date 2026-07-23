@@ -214,8 +214,12 @@ export async function seedRegisteredSeller(opts: {
         }),
     ]);
     if (priorRegistrations.length > priorWithdrawals.length) {
+        // account = the ACCOUNT OBJECT, not the address: viem then signs
+        // locally and broadcasts raw, so the helper works for any walletKey —
+        // an address-only account asks the node to sign, which only succeeds
+        // for anvil's own unlocked (globally shared) accounts.
         const { request } = await publicClient.simulateContract({
-            account: seller.address,
+            account: seller,
             address: sellerRegistry,
             abi: SELLER_REGISTRY_REGISTER_ABI,
             functionName: 'updateProfile',
@@ -224,7 +228,7 @@ export async function seedRegisteredSeller(opts: {
         await publicClient.waitForTransactionReceipt({ hash: await sellerClient.writeContract(request) });
     } else {
         const { request } = await publicClient.simulateContract({
-            account: seller.address,
+            account: seller,
             address: sellerRegistry,
             abi: SELLER_REGISTRY_REGISTER_ABI,
             functionName: 'register',
