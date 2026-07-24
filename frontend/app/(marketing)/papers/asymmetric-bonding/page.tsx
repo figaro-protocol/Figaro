@@ -70,6 +70,7 @@ export default function AsymmetricBondingPaper() {
                     <li>Stiglitz, J. E. Peer Monitoring and Credit Markets. <em>World Bank Economic Review</em>, 4(3):351&ndash;366, 1990.</li>
                     <li>UMA Project. <em>The Optimistic Oracle</em>. UMA Technical Documentation, 2020.</li>
                     <li>Van Huyck, J. B., Battalio, R. C., &amp; Beil, R. O. Tacit Coordination Games, Strategic Uncertainty, and Coordination Failure. <em>American Economic Review</em>, 80(1):234&ndash;248, 1990.</li>
+                    <li>Williamson, O. E. Credible Commitments: Using Hostages to Support Exchange. <em>American Economic Review</em>, 73(4):519&ndash;540, 1983.</li>
                     <li>Yunus, M. <em>Banker to the Poor: Micro-Lending and the Battle Against World Poverty</em>. PublicAffairs, New York, 1999.</li>
                     <li>Zimbeck, D. <em>Two-Party Double-Deposit Trustless Escrow in Cryptographic Networks and Bitcoin</em>. BitHalo White Paper, 2014.</li>
                 </>
@@ -380,6 +381,18 @@ export default function AsymmetricBondingPaper() {
                 </p>
                 <p>
                     For the marginal cases where internal pressure does not resolve a dispute, the bonded commitment is compatible with external legal and arbitral forums &mdash; but the composition is asymmetric. Such forums adjudicate <em>outside</em> the bonding game, consuming the evidence record the mechanism produces; they cannot serve as a constitutive resolution path within it without breaking the equilibrium (escape-hatch weakness, Case 2). Parties may name a forum in their composed graph, and the choice does not affect the bonding equilibrium.
+                </p>
+                <PaperRun title="Post-delivery extraction.">
+                    A residual concern targets the buyer&rsquo;s resolve monopoly head-on: once the seller has delivered, the buyer alone holds the key to settlement, and a strategic buyer might withhold resolution as leverage &mdash; resolving only if the seller concedes something beyond the agreed terms. This is the classical objection to a unilaterally held hostage (Williamson, 1983): the party holding the hostage is tempted to expropriate it. Under asymmetric bonding the temptation is self-defeating, for three composing reasons, and post-delivery renegotiation is not a viable strategy. First, the threat is never free to make. A buyer who withholds after delivery does not sit at zero; it forfeits its own bond above the payment &mdash; resolving returns the buyer to <Math>{"-P"}</Math>, withholding holds it at <Math>{"-2P"}</Math> &mdash; so the leverage is financed out of the very <Math>{"2P"}</Math> the mechanism locked as the buyer&rsquo;s own deterrent, and it decays for exactly as long as the buyer wields it.
+                </PaperRun>
+                <p>
+                    Second, the attempt is permanently and publicly evidenced. The bonded process is recorded on chain as an evidence event (&sect;3.2); a process the buyer leaves unresolved after performance persists there indefinitely, its locked bonds and the buyer&rsquo;s address plainly attached. A non-resolution standing against a delivered order is legible to anyone who reads that address&rsquo;s history, and a counterparty deciding whether to bond into a future process with this buyer reads exactly that. The extracting buyer therefore spends its own future access to the network &mdash; the standing record does the work a reputation system would do, without the mechanism containing one.
+                </p>
+                <p>
+                    Third, recourse is never foreclosed. The same evidence record supports adjudication by an external forum &mdash; arbitration such as Kleros, or an ordinary legal system &mdash; acting on the extraction attempt from outside the bonding game, exactly as the external-forum composition above provides and without weakening the equilibrium (escape-hatch weakness, Case 2). No clause need be named in the agreement for that recourse to exist; the mechanism pushes dispute resolution to the periphery, it does not eliminate it.
+                </p>
+                <p>
+                    Taken together, the resolve monopoly is not a bargaining chip. Using it as one converts the buyer&rsquo;s protective instrument &mdash; the power to withhold settlement from a non-performing seller &mdash; into a self-financed, self-documenting act against the buyer&rsquo;s own bond and future standing. The monopoly is safe to concentrate in the buyer precisely because exercising it abusively is self-defeating on every margin at once.
                 </p>
             </PaperSection>
 
