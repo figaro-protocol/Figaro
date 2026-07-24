@@ -17,7 +17,7 @@ export default function LocalCommercePage() {
                     One meal, three strangers, no platform.
                 </h1>
                 <p className="text-body-lead text-ink-body max-w-2xl">
-                    It is seven in the evening and you order dinner. A kitchen you have never dealt with accepts. A courier you have never met carries it. Twenty minutes later you confirm it arrived &mdash; and in that single stroke the kitchen is paid, the courier is paid, and every deposit goes home. No company sat in the middle. Nothing held the deal together but the deal itself.
+                    It is seven in the evening and you order dinner. A kitchen you have never dealt with accepts. A courier you have never met carries it. Twenty minutes later you confirm it arrived &mdash; and in that single stroke the kitchen is paid, the courier is paid, and every stake goes home. No company sat in the middle. Nothing held the deal together but the deal itself.
                 </p>
             </section>
 
@@ -26,7 +26,7 @@ export default function LocalCommercePage() {
                     How the evening actually went
                 </h2>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    When you placed the order, you locked a deposit worth twice what you were paying &mdash; the payment itself, plus a stake of your own. The kitchen locked a matching stake to accept. When the courier took the delivery leg, they staked against the whole running value of the deal &mdash; food and delivery both &mdash; because by then they were carrying everyone&apos;s work, not just their own.
+                    When you placed the order, you locked a stake worth twice what you were paying &mdash; the payment itself, plus a stake of your own. The kitchen locked a matching stake to accept. When the courier took the delivery leg, they staked against the whole running value of the deal &mdash; food and delivery both &mdash; because by then they were carrying everyone&apos;s work, not just their own.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     That is the whole trick, repeated once per participant: every stake is bigger than anything its owner could gain by walking away. The kitchen wants the courier to succeed &mdash; its own stake rides on the delivery. The courier wants the kitchen to have cooked what you ordered &mdash; their stake rides on your confirmation. Nobody supervises anybody, and everybody is invested in everybody. A platform does this with dispatchers, ratings, and support tickets. Here the shape of the deal does it.
@@ -48,6 +48,9 @@ export default function LocalCommercePage() {
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     In the real world things go wrong, and most people are ready to put them right. What the deal adds is a reason that isn&apos;t goodwill: the kitchen and the courier each staked more than they stand to make, and none of it comes back until you are satisfied. Fixing your problem is their winning move &mdash; not a favour, just where the arithmetic points. And the remedy rarely rests on one pair of shoulders: settlement is all-or-nothing, nobody is paid until you confirm, so when the courier fails the kitchen has its own money-backed reason to help make it right. The willingness people usually have to set things right is the same willingness the deal turns into the paying strategy.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    And the hardest case, the one no button softens: the kitchen simply vanishes. Nothing gets remade, nothing gets resent, there is no one left to put it right &mdash; so the deal never closes, your stake stays locked, and you eat that loss. We can say it out loud, because the math is what makes it rare: whoever vanished walked away from double what you lost, forfeited forever. Walking away is never the profitable move, so it is never the rational one &mdash; what is left is the irrational residue every system carries, and the record marks the address that did it, permanently. No refund button appears here, and that is the design: the same wall that keeps anyone from prying the stakes out is the wall that leaves this loss standing.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     Some things a dinner can&apos;t settle by itself &mdash; a real dispute, a loss that runs past the meal, a question only a court or an insurer can answer. The deal doesn&apos;t pretend to absorb those. What it leaves instead is a clean record: every step it wrote down, timestamped and unforgeable, is there for whatever outside forum the parties turn to. Ordinary agreements open by asking both sides for good faith. This one asks each side to put its money where its mouth is &mdash; and then there is nothing left to take on trust.

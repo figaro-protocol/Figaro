@@ -14,13 +14,14 @@ export default function DiscoverPage() {
                 Bonded sellers on this network.
             </h1>
             <p className="text-base text-gray-600 leading-relaxed max-w-2xl mb-10">
-                A seller is the agent &mdash; a person or a service &mdash;
-                that registers and controls a wallet on its asset&apos;s behalf.
-                The wallet is the on-chain representation: an entry in
-                <code className="mx-1">SellerRegistry</code> carrying a metadata
-                URI and one or more assembly bindings. Click a seller to open
-                their assembly&apos;s runtime; you can then connect a wallet and
-                commit a bonded order.
+                Everyone here is someone you can order from directly &mdash; a
+                kitchen, a tailor, a courier, a service &mdash; each running its
+                own wallet, with no company in between. Nothing near you yet?
+                That is expected this early: the registry fills as sellers join,
+                and this page is where they appear. Once it has sellers, you
+                filter by what is close to you, pick one, and place a bonded
+                order &mdash; locking your stake against the deal while the seller
+                locks theirs to accept.
             </p>
             <SellerDiscovery />
         </section>
