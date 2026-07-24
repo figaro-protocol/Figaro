@@ -38,6 +38,24 @@ export default function LocalCommercePage() {
 
             <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-default pt-12">
                 <h2 className="text-heading-h2 text-ink-heading mb-6">
+                    When the evening goes wrong
+                </h2>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Sometimes it doesn&apos;t arrive. The kitchen runs out; the courier takes a wrong turn; the food shows up cold, or on the floor. In an ordinary evening this is where you start arguing with a support line. Here one fact settles it before it starts: nothing closes until you say it closed. You have the final say.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    The deal is not finished when the food is cooked, or when it reaches your door. It is finished when you confirm &mdash; and whatever the two of you agreed to has to be met before you do. If the meal is wrong, it gets remade. If it never came, it gets sent again, or the delivery is put right. Whatever the agreement called for is what happens first. There is no button that simply hands your money back, no timer that quietly releases it, no arbitrator who rules on the night. None of those exist here, on purpose &mdash; and their absence is exactly what leaves the call with you.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    In the real world things go wrong, and most people are ready to put them right. What the deal adds is a reason that isn&apos;t goodwill: the kitchen and the courier each staked more than they stand to make, and none of it comes back until you are satisfied. Fixing your problem is their winning move &mdash; not a favour, just where the arithmetic points. The willingness people usually have to set things right is the same willingness the deal turns into the paying strategy.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    Some things a dinner can&apos;t settle by itself &mdash; a real dispute, a loss that runs past the meal, a question only a court or an insurer can answer. The deal doesn&apos;t pretend to absorb those. What it leaves instead is a clean record: every step it wrote down, timestamped and unforgeable, is there for whatever outside forum the parties turn to. Ordinary agreements open by asking both sides for good faith. This one asks each side to put its money where its mouth is &mdash; and then there is nothing left to take on trust.
+                </p>
+            </section>
+
+            <section className="container mx-auto px-6 pb-12 max-w-3xl border-t border-default pt-12">
+                <h2 className="text-heading-h2 text-ink-heading mb-6">
                     Who is at the table
                 </h2>
                 <p className="text-base text-ink-body leading-relaxed mb-6">

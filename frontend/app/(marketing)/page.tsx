@@ -32,7 +32,7 @@ export default function Home() {
                     Most real work is more than two people. A delivered meal is a cook, whoever supplied the ingredients, and a courier &mdash; each posts their own stake, all linked into one deal that settles in one stroke. If any one of them fails, every stake is on the line, so each has a direct, money-backed reason to want the others to deliver. No platform assigns the work. The shape of the deal does.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Nobody runs it. There is no company behind it and no account that can be closed &mdash; shared infrastructure, the way the internet is. The TCP/IP of trade.
+                    Nobody runs it. There is no company behind it and no account that can be closed &mdash; shared infrastructure, the way the internet is. The TCP/IP of trade: like email, anyone can build an app on it, and no one can shut it down.
                 </p>
                 <p className="text-sm text-ink-muted italic mt-6">
                     <Link href="/protocol" className="hover:underline">
