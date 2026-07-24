@@ -213,6 +213,26 @@ phone, special instructions) are never stored on-chain. They are:
 3. Exchanged out-of-band between buyer and assigned driver only
 4. Decryptable only by the buyer and the assigned driver for that specific order
 
+### The private side is the owner's asset
+
+The split above generalizes: everything the chain anchors is a fingerprint, and
+the content behind the fingerprint — agreement bodies, evidence bundles, the
+books a process leaves behind — stays with the wallets that produced it,
+disclosed only by the owner's choice. The public graphs (see "Why Public?") are
+the free public good; the private content is each owner's own asset. Because a
+data sale is an ordinary trade, an owner who chooses to sell access to their
+private data can already do so through the same bonded commitment as any other
+sale — the content-handoff clause family names datasets and access credentials
+as digital value-added, delivered over the sealed channel.
+
+Whether a fuller VOLUNTARY DATA MARKET should form around that capacity is an
+open operator question (2026-07-24), not a shipped design. The candidate under
+consideration is kernel-native — data products as catalogue items, terms as a
+not-yet-authored license clause, delivery over the existing sealed channel, the
+sustainable product being the evolving stream rather than a snapshot. No
+data-market contract exists and none is promised; nothing here changes the
+posture that the protocol itself holds no user data to sell.
+
 ---
 
 ## Graph Separation in the UI
