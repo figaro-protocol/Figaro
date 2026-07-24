@@ -59,6 +59,9 @@ export default function Why() {
                     As a primitive, Figaro is the substrate for any economic system grounded in value-added. Supply chains. Manufacturing &mdash; physical or digital. Internal corporate processes. The substrate takes no position on where value flows or under what conditions; the participants in each process decide.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
+                    There is a deeper point in that neutrality. Everyday life has no ready category for money that is neither spent nor invested &mdash; yet that missing third category sits at the heart of every economic system, and each system answers it differently. The kernel answers for none of them. The graph tier above it can express any of them &mdash; a market arrangement, a cooperative one, mutual aid, and others still. And because every process is transparent and every participant self-sovereign, free to choose what they join and which token carries it, people can fuse elements of different traditions by their own preference, one deal at a time, without a polity choosing for them. The &ldquo;-isms&rdquo; stop being package deals.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
                     Above the kernel: clauses carrying the general terms-and-conditions that recur across processes, and a consent clause carrying the special terms that would otherwise sit in a written contract. Clauses compose into processes &mdash; what the protocol calls assemblies. Sellers index processes freely; buyers negotiate the terms directly, with no intermediary in the path.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">

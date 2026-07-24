@@ -26,13 +26,16 @@ export default function Home() {
                 }
             >
                 <p className="text-base text-ink-body leading-relaxed mt-8 mb-5">
-                    Two deposits, each bigger than the deal. One rule for who opens the box. That is the entire machine. Both sides put a stake into a lockbox &mdash; a small program that runs in the open, owned by no one. Cheat, and you forfeit a stake worth more than anything you could have taken. Honor the deal, and the box opens: the seller is paid and both stakes come home. Nobody has to trust anybody. The arithmetic does it.
+                    Two stakes, each bigger than the deal. One rule for who opens the box. That is the entire machine. Both sides put a stake into a lockbox &mdash; a small program that runs in the open, owned by no one. Cheat, and you forfeit a stake worth more than anything you could have taken. Honor the deal, and the box opens: the seller is paid and both stakes come home. Nobody has to trust anybody. The arithmetic does it.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Most real work is more than two people. A delivered meal is a cook, whoever supplied the ingredients, and a courier &mdash; each posts their own stake, all linked into one deal that settles in one stroke. If any one of them fails, every stake is on the line, so each has a direct, money-backed reason to want the others to deliver. No platform assigns the work. The shape of the deal does.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     Nobody runs it. There is no company behind it and no account that can be closed &mdash; shared infrastructure, the way the internet is. The TCP/IP of trade: like email, anyone can build an app on it, and no one can shut it down.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mt-5">
+                    And it is built to grow. The deal-shapes, the terms, the ready-made compositions are a public commons: anyone can extend them without asking permission, and the network pays back the people whose work it comes to rely on. Figaro is a seed that compounds, not a finished product.
                 </p>
                 <p className="text-sm text-ink-muted italic mt-6">
                     <Link href="/protocol" className="hover:underline">

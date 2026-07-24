@@ -130,6 +130,18 @@ export default function Security() {
                 </p>
             </MarketingSection>
 
+            <MarketingSection title="Who owns Figaro?" sectionId="ownership">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    No one owns the protocol; a few things around it are held, and it is worth being exact about which. The code is released under the MIT license &mdash; anyone can copy all of it, run it, and change it, including running a different rewards program or none at all. Nothing about the protocol depends on this site continuing to exist.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    This site&apos;s app is one interface, not the protocol. The seam between the protocol and its presentation is deliberate: the registries live on-chain, and any developer can build their own interface against the same ones. Because there is no fee anywhere in the kernel, an interface captures no value from the deals that flow through it &mdash; the value lives in the use of the shared registries, not in any single window onto them. And because participants hold their own data, the usual platform business model &mdash; monetizing the people who use it &mdash; is structurally unavailable here; there is no user data to sell.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    What is actually held comes down to two things. A trademark on the name, so it points at one protocol rather than being borrowed to mislead. And a token allocation &mdash; a share of the florins &mdash; whose worth depends entirely on whether the network is used, and on nothing else. Neither is a lever over anyone&apos;s deal: no holding controls settlement, and nothing about either can reach into a lockbox.
+                </p>
+            </MarketingSection>
+
             <MarketingSection title="What if one participant in a multi-party process fails?" sectionId="multi-party">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Multi-party processes resolve atomically &mdash; either every commitment in the process settles together or none of them does. Each seller is bonded against the cumulative value flowing through them, so a participant who fails to perform has their own bond at risk, and the participants downstream have material reason to coordinate before resolution. The phenomenon &mdash; peer pressure across co-sellers, emerging from bond architecture rather than from any platform&apos;s enforcement &mdash; is described as the protocol&apos;s social mechanism. It reproduces the joint-liability behavior of community-bound lending circles without requiring a shared community, repeated interaction, or exogenous punishment.
