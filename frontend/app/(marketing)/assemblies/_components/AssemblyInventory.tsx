@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -53,9 +54,13 @@ export function AssemblyInventory() {
                         className="flex flex-col gap-1 scroll-mt-24"
                     >
                         <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-3">
-                            <span className="text-sm font-semibold text-ink-heading">
+                            <Link
+                                href={`/builders/designer/view?slug=${encodeURIComponent(choice.slug)}`}
+                                className="text-sm font-semibold text-ink-heading hover:underline"
+                                data-testid={`assembly-view-${choice.slug}`}
+                            >
                                 {choice.name}
-                            </span>
+                            </Link>
                             <code className="font-mono text-xs text-ink-muted">
                                 {choice.slug}
                             </code>

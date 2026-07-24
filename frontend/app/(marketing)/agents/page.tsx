@@ -6,7 +6,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 export const metadata: Metadata = {
     title: "Agents — Figaro Protocol",
     description:
-        "Participating agents — buyer, seller, or auditor wallets driven by software — use the same kernel primitives as human-driven wallets: EIP-712 signatures, bonded commitments, atomic resolution. The protocol is actor-neutral. Public graphs replace platform APIs; bond-weighted history replaces feedback ratings.",
+        "Participating agents — buyer, seller, or auditor wallets driven by software — use the same kernel primitives as human-driven wallets: EIP-712 signatures, bonded commitments, atomic resolution. The protocol is actor-neutral. Agentic commerce is native, not an add-on mode: the protocol never asks whether a signer is human. Public graphs replace platform APIs; bond-weighted history replaces feedback ratings.",
 };
 
 export default function Agents() {
@@ -16,7 +16,7 @@ export default function Agents() {
                 title="Agents and humans, the same primitive."
                 lead={
                     <>
-                        A courier&apos;s software takes the delivery leg, posts the stake, and gets paid &mdash; with nobody at the keyboard and nobody&apos;s permission. This page is about agents that <em>participate</em> that way: buyer, seller, courier, or auditor wallets driven by software, signing the same commitments and locking the same doubled stake a human-driven wallet would. The protocol does not know which side of an interaction is human. A wallet is a wallet; a signature is a signature; a bond is a bond. Bonded commitment secures them both.
+                        A courier&apos;s software takes the delivery leg, posts the stake, and gets paid &mdash; with nobody at the keyboard and nobody&apos;s permission. This page is about agents that <em>participate</em> that way: buyer, seller, courier, or auditor wallets driven by software, signing the same commitments and locking the same doubled stake a human-driven wallet would. The protocol does not know which side of an interaction is human. A wallet is a wallet; a signature is a signature; a bond is a bond. Bonded commitment secures them both. What the wider market now calls agentic commerce, Figaro already is &mdash; not an agent mode bolted on, but the plain consequence of a protocol that never asks whether a signer is human.
                     </>
                 }
             />

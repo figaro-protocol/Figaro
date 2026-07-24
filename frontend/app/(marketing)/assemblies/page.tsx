@@ -30,6 +30,26 @@ export default function Assemblies() {
                 }
             />
 
+            <MarketingSection title="The complete P&L of a purchase, at checkout.">
+                <p className="text-sm text-ink-body leading-relaxed mb-4">
+                    Traditionally you pay one company a single lump sum, and where that
+                    money goes &mdash; to the cooks, the courier, the farm that grew the
+                    tomatoes, the landlord, the owner&apos;s cut &mdash; is decided inside
+                    the company, privately, after the fact. The firm is where that
+                    breakdown stays hidden. An assembly turns it inside out and puts it in
+                    front of you before you commit: pay 8.40 to the kitchen, 2.10 to the
+                    courier, 0.30 to the farm &mdash; the complete P&amp;L of the purchase,
+                    line by line, at checkout.
+                </p>
+                <p className="text-sm text-ink-body leading-relaxed">
+                    Every line is its own bonded commitment, and at resolve they settle
+                    together or none of them do. The multi-seller version is the ordinary
+                    case &mdash; a restaurant, a warehouse-to-door chain, a farm-to-consumer chain
+                    all have this shape at any scale. A single-merchant purchase is simply
+                    the shortest one: a P&amp;L with a single line.
+                </p>
+            </MarketingSection>
+
             <MarketingSection title="Document-anchored, not catalogue-listed.">
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
                     The registry stores the slug, the author, the content hash, and an
