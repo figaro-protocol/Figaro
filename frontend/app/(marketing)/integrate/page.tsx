@@ -250,10 +250,10 @@ for (const [processId, process] of processes) {
                         <strong>Polymarket, Augur.</strong> Compositional target for outcome-resolution oracles that feed attestations gating a process.
                     </LabelledListRow>
                     <LabelledListRow label="Insurance" uppercase>
-                        <strong>Nexus Mutual, Sherlock.</strong> Compositional target for counterparty-default or smart-contract-failure cover wrapping a process against Figaro&apos;s evidence bundle.
+                        <strong>Nexus Mutual, Sherlock.</strong> Compositional target for smart-contract-failure cover, or cover on the real-world goods a process carries, priced against Figaro&apos;s evidence bundle. The bond itself is not an insurable position &mdash; a policy on bond forfeiture would hedge away the deterrent.
                     </LabelledListRow>
                     <LabelledListRow label="Lending" uppercase>
-                        <strong>Aave, Compound, Morpho.</strong> Compositional target for bond-financing when a seller lacks collateral upfront. Lender is a separate counterparty in a separate process.
+                        <strong>Aave, Compound, Morpho.</strong> Compositional target for ordinary treasury borrowing &mdash; a lender is a separate counterparty in a separate process. The bond itself is never financed: it is the party&apos;s own staked deterrent.
                     </LabelledListRow>
                     <LabelledListRow label="Tax / reporting" uppercase>
                         <strong>TaxBit, Koinly, Cryptio.</strong> Compositional target for jurisdictional reports derived from chain state. No reconciliation &mdash; the chain is the primary record.

@@ -770,7 +770,7 @@ Result: Irrational attack → Extremely rare
 
 **Note**: The `salt` field in the `Commitment` struct is the bilateral nonce — replay protection and collision resistance. `block.prevrandao` is deliberately NOT used: under proof-of-stake the block proposer knows `prevrandao` up to an epoch ahead, which would make it a weaker source than a party-chosen salt bound into the signed struct.
 
-#### 4. Capital Efficiency Attack
+#### 4. Bond-Minimization Attack
 
 **Attack**: Lock minimal bonds by creating many small orders.
 
