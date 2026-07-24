@@ -232,7 +232,7 @@ export default function ProtocolExtensionPaper() {
                         </p>
                     </FormalBlock>
                     <p>
-                        The asymmetric read/write structure is the load-bearing constraint: <Math>{"\\mathcal{M}"}</Math> may consult kernel state but cannot modify it, and the kernel is composition-blind &mdash; it neither knows nor needs to know about <Math>{"\\mathcal{M}"}</Math>. The extended state space matches the operational semantics of EVM contracts: cumulative upstream bonding involves <Math>{"\\beta_{\\mathcal{K}}"}</Math> (the kernel&rsquo;s escrow balance) as well as <Math>{"\\mathcal{S}_{\\mathcal{K}}"}</Math>, and the immutable-evidence invariant is over <Math>{"E_{\\mathcal{K}}"}</Math> rather than purely over state mappings.
+                        The asymmetric read/write structure is the load-bearing constraint: <Math>{"\\mathcal{M}"}</Math> may consult kernel state but cannot modify it, and the kernel is composition-blind &mdash; it neither knows nor needs to know about <Math>{"\\mathcal{M}"}</Math>. The extended state space matches the operational semantics of EVM contracts: cumulative upstream bonding involves <Math>{"\\beta_{\\mathcal{K}}"}</Math> (the kernel&rsquo;s bonded balance) as well as <Math>{"\\mathcal{S}_{\\mathcal{K}}"}</Math>, and the immutable-evidence invariant is over <Math>{"E_{\\mathcal{K}}"}</Math> rather than purely over state mappings.
                     </p>
                 </PaperSubsection>
                 <PaperSubsection title="5.2 The coordinator pattern, formally">
@@ -241,7 +241,7 @@ export default function ProtocolExtensionPaper() {
                         <ul className="space-y-1 list-none pl-0 text-sm">
                             <li>(i) <em>Read-only on kernel state.</em> No <Math>{"\\mathcal{M}"}</Math> operation can mutate kernel state: the call frame on which <Math>{"\\mathcal{M}.f"}</Math> executes does not invoke the kernel&rsquo;s commit or resolution operations in a way that produces unauthorized state mutation.</li>
                             <li>(ii) <em>No alternative settlement path.</em> <Math>{"\\mathcal{M}"}</Math> does not provide an operation that produces value flows equivalent to the kernel&rsquo;s atomic resolution but bypasses it or modifies its preconditions.</li>
-                            <li>(iii) <em>No discretionary lock-bypass.</em> <Math>{"\\mathcal{M}"}</Math> does not release bonded capital from <Math>{"\\mathcal{K}"}</Math>&rsquo;s escrow under conditions different from those the kernel&rsquo;s resolution enforces.</li>
+                            <li>(iii) <em>No discretionary lock-bypass.</em> <Math>{"\\mathcal{M}"}</Math> does not release bonded funds from <Math>{"\\mathcal{K}"}</Math>&rsquo;s bonded balance under conditions different from those the kernel&rsquo;s resolution enforces.</li>
                             <li>(iv) <em>Agreement-bound content (where applicable).</em> If <Math>{"\\mathcal{M}"}</Math> accepts content typed by a registered clauseId, it admits the content only against an order whose signed agreement included that clause, verified by a merkle-inclusion proof of the clause section against the agreement hash; content for a clause not present in the bilateral agreement is rejected.</li>
                         </ul>
                     </FormalBlock>
@@ -254,7 +254,7 @@ export default function ProtocolExtensionPaper() {
                         The attestation coordinator is the canonical worked example: it accepts attestations against bonded orders and emits typed events without ever modifying kernel state, with the merkle-inclusion proof of Section 4 plus a content hash of the supplied evidence as its admission gate. It validates no clause content shape and invokes no per-clause validator, and its verification surface discharges Proposition 5.2&rsquo;s conditions explicitly.
                     </p>
                     <p>
-                        Condition (i) is discharged by parametric kernel-immutability properties: over every public function of the coordinator, kernel state before and after execution is unchanged, universally quantified over the coordinator&rsquo;s methods and over kernel-state values. Conditions (ii) and (iii) are discharged by construction: the coordinator has no operation that transfers tokens from the kernel&rsquo;s escrow and none that invokes any kernel state-changing function. Condition (iv) is discharged by the merkle-inclusion gate. The four conditions thus reduce to verification requirements a candidate coordinator can be checked against mechanically.
+                        Condition (i) is discharged by parametric kernel-immutability properties: over every public function of the coordinator, kernel state before and after execution is unchanged, universally quantified over the coordinator&rsquo;s methods and over kernel-state values. Conditions (ii) and (iii) are discharged by construction: the coordinator has no operation that transfers tokens from the kernel&rsquo;s bonded balance and none that invokes any kernel state-changing function. Condition (iv) is discharged by the merkle-inclusion gate. The four conditions thus reduce to verification requirements a candidate coordinator can be checked against mechanically.
                     </p>
                 </PaperSubsection>
                 <PaperSubsection title="5.4 What the pattern is not">
@@ -266,7 +266,7 @@ export default function ProtocolExtensionPaper() {
 
             <PaperSection title="6. Runtime Composition">
                 <p>
-                    We turn now to the runtime tier: the layer above the protocol where institutional shapes are composed and rendered. The runtime tier is not part of the protocol&rsquo;s verification surface (it does not affect kernel state or the equilibrium) but is part of its deployment surface (without a runtime, the protocol has no users, only contracts). The discipline here is software architecture: composing institutional shapes from reusable parts without re-implementing the protocol per deployment.
+                    We turn now to the runtime tier: the layer above the protocol where institutional shapes are composed and rendered. The runtime tier is not part of the protocol&rsquo;s verification surface (it does not affect kernel state or the equilibrium) but is part of its deployment surface (without a runtime, the protocol has no participants, only contracts). The discipline here is software architecture: composing institutional shapes from reusable parts without re-implementing the protocol per deployment.
                 </p>
                 <PaperSubsection title="6.1 Seven-layer composition pipeline">
                     <p>The runtime composes institutional surfaces through seven layers.</p>
