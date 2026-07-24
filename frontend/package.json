@@ -5,6 +5,7 @@
     "scripts": {
         "dev": "NODE_OPTIONS=--no-deprecation next dev",
         "build": "next build",
+        "postbuild": "node scripts/prettify-export.mjs",
         "start": "node scripts/serve-export.mjs out 3000",
         "serve:export": "node scripts/serve-export.mjs",
         "lint": "next lint",
