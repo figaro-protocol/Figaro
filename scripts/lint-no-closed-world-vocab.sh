@@ -45,6 +45,10 @@ FAIL_WORD='[Ff]ulfil+ment'
 # 2× is doctrine: no ">1x"/">1×", no "1+ε"/"1+epsilon" bonding bound, no
 # reputation-weighted/adjusted bonds, no lower/reduced/variable/tunable multiplier.
 FAIL_DOCTRINE='>[[:space:]]*1(\.[0-9]+)?[x×]|1[[:space:]]*\+[[:space:]]*(ε|epsilon)|[Rr]eputation[- ]?weighted|reputationMultiplier|adjustedBond|(lower|reduced|variable|tunable)[[:space:]]+(bond[[:space:]]+)?multiplier'
+# Bonds are DETERRENTS, not assets (operator ruling 2026-07-24): never financeable
+# ("bond-financing"), never a credit instrument ("bond-default" — bonds forfeit, they
+# cannot default), never measured by capital efficiency, never "bonds are capital".
+FAIL_DETERRENT='[Bb]ond[- ]financ|[Bb]ond[- ]default|[Cc]apital[- ][Ee]fficien|bonds are capital'
 
 violations=0
 
@@ -65,6 +69,13 @@ for file in "$@"; do
     hits=$(grep -nE "$FAIL_DOCTRINE" "$file" || true)
     if [[ -n "$hits" ]]; then
         echo "[closed-world] $file — bonding-multiplier drift: 2× is mechanism-design DOCTRINE (ruled 2026-07-14), never '>1×'/'1+ε'/reputation-weighted/variable"
+        echo "$hits" | head -3 | sed 's/^/    /'
+        violations=$((violations + 1))
+    fi
+
+    hits=$(grep -nE "$FAIL_DETERRENT" "$file" || true)
+    if [[ -n "$hits" ]]; then
+        echo "[closed-world] $file — bonds-as-assets drift: bonds are DETERRENTS, not assets (ruled 2026-07-24) — never bond-financing / bond-default / capital-efficiency / 'bonds are capital'"
         echo "$hits" | head -3 | sed 's/^/    /'
         violations=$((violations + 1))
     fi
