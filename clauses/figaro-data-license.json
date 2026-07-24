@@ -1,0 +1,68 @@
+{
+    "clauseId": "figaro-data-license",
+    "version": 1,
+    "title": "Data license",
+    "description": "The terms of a DATA SALE — a bonded order whose value-added IS access to records (a dataset, a stream, the books behind settled processes). Composes alongside figaro-commerce (the sale itself) and figaro-content-handoff (the delivery — encrypted-transfer for counterparty-private data); the seller's offer, price, whitelist, and calendar are catalogue and profile concerns, never fields here. Licensed records are self-authenticating when sourceProcesses is set: each disclosed leaf travels with its merkle inclusion proof against that process's on-chain agreementHash, so the licensee verifies provenance against the chain rather than the licensor's word — and the 2× bond replaces pre-inspection, which is what makes pricing data possible without first revealing it. Redistribution cannot be prevented on-chain; the term creates timestamped, co-signed EVIDENCE for the outer recourse layers (co-seller pressure, arbitration forums, ordinary courts), the same posture as every off-chain obligation. The sustainable product is the stream, not the snapshot: a stream licensee who breaches loses the continuing stream. Compose figaro-schedule alongside for time-bounded access windows and figaro-geolocation for territory — those are their clauses' concerns, never fields here.",
+    "fields": [
+        {
+            "name": "licenseScope",
+            "type": "string",
+            "required": true,
+            "minLength": 1,
+            "maxLength": 512,
+            "description": "What is licensed, named editorially — the dataset, stream, or record family this sale grants access to. The invoice-legible name of the data product."
+        },
+        {
+            "name": "purpose",
+            "type": "string",
+            "required": false,
+            "minLength": 0,
+            "maxLength": 512,
+            "description": "The permitted use, stated as a restriction the licensee co-signs (e.g. internal analytics only, model training excluded). Omit for unrestricted use within the redistribution term."
+        },
+        {
+            "name": "access",
+            "type": "enum",
+            "required": true,
+            "values": [
+                "snapshot",
+                "stream"
+            ],
+            "valueLabels": {
+                "snapshot": "Snapshot — the records as of delivery",
+                "stream": "Stream — continuing access"
+            },
+            "description": "snapshot = a one-time delivery of the records as they stand, verified by content hash; stream = continuing access to the growing record, the repeated-game form — each period's delivery is a further bonded order or hand-off under this same agreement's terms."
+        },
+        {
+            "name": "redistribution",
+            "type": "enum",
+            "required": true,
+            "values": [
+                "prohibited",
+                "permitted"
+            ],
+            "valueLabels": {
+                "prohibited": "No redistribution",
+                "permitted": "Redistribution permitted"
+            },
+            "description": "Whether the licensee may pass the records onward. prohibited is an off-chain obligation: the chain cannot prevent copying, but this co-signed term is the timestamped evidence an outside forum reads."
+        },
+        {
+            "name": "sourceProcesses",
+            "type": "array",
+            "required": false,
+            "minItems": 0,
+            "items": {
+                "type": "string",
+                "format": "bytes32-hex",
+                "name": "processId",
+                "required": true
+            },
+            "description": "The settled processes whose records are licensed — provenance anchors. Each disclosed leaf verifies by merkle inclusion proof against the named process's on-chain agreementHash. Omit for data products not anchored to specific processes."
+        }
+    ],
+    "block": {
+        "article": "data"
+    }
+}

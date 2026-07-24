@@ -225,13 +225,17 @@ private data can already do so through the same bonded commitment as any other
 sale — the content-handoff clause family names datasets and access credentials
 as digital value-added, delivered over the sealed channel.
 
-Whether a fuller VOLUNTARY DATA MARKET should form around that capacity is an
-open operator question (2026-07-24), not a shipped design. The candidate under
-consideration is kernel-native — data products as catalogue items, terms as a
-not-yet-authored license clause, delivery over the existing sealed channel, the
-sustainable product being the evolving stream rather than a snapshot. No
-data-market contract exists and none is promised; nothing here changes the
-posture that the protocol itself holds no user data to sell.
+The voluntary data market around that capacity is kernel-native and needs no
+contract of its own (operator-ruled 2026-07-24): data products are catalogue
+items; the disclosure regime for a process's own records is the composable
+`figaro-data-terms` clause (designer-set regime, buyer-committed choice over
+their own half); the terms of a specific sale are the `figaro-data-license`
+clause (scope, purpose, snapshot-vs-stream, redistribution-as-evidence, and
+process-anchored provenance — disclosed leaves verify by merkle proof against
+the source process's on-chain agreementHash); delivery rides the sealed
+content-handoff channel. The sustainable product is the evolving stream rather
+than a snapshot. Nothing here changes the posture that the protocol itself
+holds no user data to sell — the owner holds everything and chooses.
 
 ---
 
