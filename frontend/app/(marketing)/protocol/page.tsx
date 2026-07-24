@@ -23,6 +23,9 @@ export default function Protocol() {
                 Why twice the value, and not the payment plus a small margin? Because the size of the stake is the whole mechanism. If a side could cheat and still come out level, some would. At twice the value, cheating always ends in a loss &mdash; you give up a stake worth more than anything you could have walked away with. There is no amount that is clever to steal. So both sides do the plain thing: they honor the deal. When they do, the lockbox opens &mdash; each side gets its stake back, and the seller is paid.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">
+                It is worth being exact about what &ldquo;forfeit&rdquo; means, because it is not what it sounds like. No one judges the cheating, and nothing is ever seized &mdash; there is no authority here with the power to take anything. A forfeited stake is simply money that never comes home: the lockbox opens only when the buyer is satisfied, so if the other side abandons the deal entirely, it never closes &mdash; your own locked money stays locked, you eat that loss, and the one who walked away forfeits a stake worth double the deal, gone for good. That forfeited stake is not handed over to you; it stays locked in the box, benefiting no one. The math is exactly why this is rare: abandoning a deal always costs the one who abandons it more than finishing it ever could, so almost no one does.
+            </p>
+            <p className="text-base text-ink-body leading-relaxed mb-5">
                 It is worth pausing on what kind of money the stake is. Money has always had two modes: spent, or invested. The stake is a third thing. It is neither consumed nor put to work earning &mdash; it is a promise made expensive to break, and it comes home intact every honest time.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-5">

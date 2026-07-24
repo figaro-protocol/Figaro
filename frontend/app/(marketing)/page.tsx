@@ -29,6 +29,9 @@ export default function Home() {
                     Two stakes, each bigger than the deal. One rule for who opens the box. That is the entire machine. Both sides put a stake into a lockbox &mdash; a small program that runs in the open, owned by no one. Cheat, and you forfeit a stake worth more than anything you could have taken. Honor the deal, and the box opens: the seller is paid and both stakes come home. Nobody has to trust anybody. The arithmetic does it.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
+                    It runs on Ethereum: you take part with a wallet app and digital tokens, nothing to sign up for. Your stake is real money set aside &mdash; a dinner worth thirty tokens locks sixty of them until you confirm it arrived, and thirty comes home the moment you do.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
                     Most real work is more than two people. A delivered meal is a cook, whoever supplied the ingredients, and a courier &mdash; each posts their own stake, all linked into one deal that settles in one stroke. If any one of them fails, every stake is on the line, so each has a direct, money-backed reason to want the others to deliver. No platform assigns the work. The shape of the deal does.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">

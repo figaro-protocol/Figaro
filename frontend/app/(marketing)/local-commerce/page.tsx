@@ -52,6 +52,9 @@ export default function LocalCommercePage() {
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     And the hardest case, the one no button softens: the kitchen simply vanishes. Nothing gets remade, nothing gets resent, there is no one left to put it right &mdash; so the deal never closes, your stake stays locked, and you eat that loss. We can say it out loud, because the math is what makes it rare: whoever vanished walked away from double what you lost, forfeited forever. Walking away is never the profitable move, so it is never the rational one &mdash; what is left is the irrational residue every system carries, and the record marks the address that did it, permanently. No refund button appears here, and that is the design: the same wall that keeps anyone from prying the stakes out is the wall that leaves this loss standing.
                 </p>
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    The mirror of that case turns it on the kitchen: a buyer who eats the meal and then, out of pure spite, never confirms. This too is a real loss, said out loud &mdash; the kitchen cooked and the courier carried, the payment sits frozen in the box, and the kitchen is out the food it made and the stake it locked. But spite here has a price paid in advance. To freeze the kitchen&apos;s stake, the buyer has to abandon their own, locked in the very same box &mdash; twice what the dinner was worth, gone for good, in exchange for a single meal. There are no anonymous free shots: the same doubled stake that lets you close a deal is the stake you forfeit by refusing to, so griefing costs the griefer their whole stake up front. And the record marks the address that did it, permanently &mdash; so the kitchen carries a clean, timestamped account into whatever outside forum it turns to.
+                </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     Some things a dinner can&apos;t settle by itself &mdash; a real dispute, a loss that runs past the meal, a question only a court or an insurer can answer. The deal doesn&apos;t pretend to absorb those. What it leaves instead is a clean record: every step it wrote down, timestamped and unforgeable, is there for whatever outside forum the parties turn to. Ordinary agreements open by asking both sides for good faith. This one asks each side to put its money where its mouth is &mdash; and then there is nothing left to take on trust.
                 </p>
@@ -108,9 +111,9 @@ export default function LocalCommercePage() {
                 <ul className="space-y-3 text-base">
                     <li>
                         <Link href="/discover" data-testid="reference-runtime-link" className="text-ink-heading font-medium hover:underline">
-                            Try it
+                            Look at the registry
                         </Link>
-                        <span className="text-ink-body"> &mdash; browse the sellers on the registry and place a bonded order.</span>
+                        <span className="text-ink-body"> &mdash; before launch it opens as an empty room. Browse who has enrolled so far and place a bonded order &mdash; or be the first name in it.</span>
                     </li>
                     <li>
                         <Link href="/builders" className="text-ink-heading font-medium hover:underline">Builders</Link>
