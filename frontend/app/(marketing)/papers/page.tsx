@@ -32,6 +32,13 @@ export default function Papers() {
                 <p className="text-sm text-ink-body leading-relaxed max-w-2xl">
                     Figaro makes cooperation the dominant strategy between strangers and lets institutions dissolve into transaction-scoped processes &mdash; a genuinely different way to coordinate. It is hard to see at first, because the assumptions it sets aside are the ones nearly everyone arrives with: that durable coordination needs a firm, fixed roles, or a trusted party in the middle. Bonded commitments make those structurally unnecessary. The corpus exists to ease the crossing &mdash; each paper meets a reader inside one discipline&rsquo;s vocabulary and carries them from the inherited model to the bonded one. Not to settle the question, but to start the conversation a working group takes from there.
                 </p>
+                <p className="text-sm text-ink-body leading-relaxed max-w-2xl mt-4">
+                    New readers should start with{" "}
+                    <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">
+                        Asymmetric Bonding and Buyer Dominance
+                    </Link>
+                    , the mechanism-design paper that derives the two composing mechanisms and their equilibrium from first principles; every other paper in the corpus takes those results as given.
+                </p>
             </MarketingSection>
 
             <MarketingSection title="By discipline." bottomPad="wide">
