@@ -141,7 +141,7 @@ export {
     calculateBonds,
     calculateSettlement,
     calculateRootApproval,
-    calculateSubOrderSellerApproval,
+    calculateSubOrderApproval,
     validateBonds,
 } from "./bonds.js";
 

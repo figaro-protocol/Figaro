@@ -59,6 +59,18 @@ export const CORE_ABI = parseAbi([
     "error FeeOnTransferDetected()",
     "error InvalidRootCumulativeValue()",
     "error ProcessAlreadyResolved()",
+
+    // ── Settlement-token errors (ERC-6093, OpenZeppelin ERC-20) ──────
+    // Not kernel errors: the kernel pulls bonds with safeTransferFrom, so a
+    // shortfall reverts inside the token contract and its selector bubbles
+    // up through the kernel call. Carried here so viem decodes e.g.
+    // ERC20InsufficientAllowance by name instead of a raw 4-byte selector.
+    "error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed)",
+    "error ERC20InvalidSender(address sender)",
+    "error ERC20InvalidReceiver(address receiver)",
+    "error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed)",
+    "error ERC20InvalidApprover(address approver)",
+    "error ERC20InvalidSpender(address spender)",
 ]);
 
 // ── Individual event ABIs (for log filtering) ───────────────────────────────

@@ -3,7 +3,7 @@ import {
     calculateBonds,
     calculateSettlement,
     calculateRootApproval,
-    calculateSubOrderSellerApproval,
+    calculateSubOrderApproval,
     validateBonds,
 } from "../src/bonds.js";
 
@@ -59,11 +59,13 @@ describe("calculateRootApproval", () => {
     });
 });
 
-describe("calculateSubOrderSellerApproval", () => {
-    it("calculates incremental bond from cumulative value delta", () => {
-        // Process started with cumVal 100, sub-order adds to 300
-        const result = calculateSubOrderSellerApproval(300n, 100n);
-        expect(result).toBe(400n); // (300-100) * 2
+describe("calculateSubOrderApproval", () => {
+    it("returns full per-order bonds — the kernel offsets nothing", () => {
+        // FigaroCore pulls 2×payment from the buyer and 2×cumulativeValue
+        // from the seller on EVERY commit (root bonds stay held in parallel).
+        const result = calculateSubOrderApproval(5n, 27n);
+        expect(result.buyerApproval).toBe(10n);
+        expect(result.sellerApproval).toBe(54n);
     });
 });
 

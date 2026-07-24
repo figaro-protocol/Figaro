@@ -47,18 +47,15 @@ export function calculateSettlement(
 }
 
 /**
- * How much ERC-20 token approval the party needs before committing.
+ * How much ERC-20 token approval each party needs before committing a
+ * ROOT order.
  *
- * For root orders:
- *   Buyer must approve:  2 × payment
- *   Seller must approve: 2 × payment  (= 2 × cumulativeValue when cumulativeValue == payment)
+ * The kernel pulls the FULL bonds on every commit (FigaroCore `_pullExact`):
+ *   Buyer:  2 × payment
+ *   Seller: 2 × cumulativeValue  (== 2 × payment on a root order)
  *
- * For sub-orders:
- *   Seller must approve: 2 × newCumulativeValue − previousSellerBond
- *   Buyer:  0  (already bonded via root order)
- *
- * This function handles the root-order case. Sub-order incremental
- * approval depends on process state — use `calculateSubOrderSellerApproval`.
+ * There is no incremental approval anywhere in the kernel — sub-orders
+ * pull full per-order bonds too; use `calculateSubOrderApproval`.
  */
 export function calculateRootApproval(payment: bigint): {
     buyerApproval: bigint;
@@ -71,17 +68,32 @@ export function calculateRootApproval(payment: bigint): {
 }
 
 /**
- * Calculate the incremental seller bond needed for a sub-order.
+ * How much ERC-20 token approval each party needs before committing a
+ * SUB-order.
  *
- * When a sub-order is committed, the seller's bond increases to 2× the
- * new cumulative value. The increment is the difference.
+ * Every commit — root or sub — pulls full per-order bonds; nothing is
+ * offset against bonds the kernel already holds from earlier orders in
+ * the process:
+ *   Buyer:  2 × payment            (pulled again, per order)
+ *   Seller: 2 × newCumulativeValue (the whole cumulative bond for this
+ *                                   order, NOT the increment over the
+ *                                   previous order's bond)
+ *
+ * Approving less than these amounts makes `commit` revert inside the
+ * settlement token with `ERC20InsufficientAllowance` (carried in
+ * `CORE_ABI` so the revert decodes by name).
  */
-export function calculateSubOrderSellerApproval(
+export function calculateSubOrderApproval(
+    payment: bigint,
     newCumulativeValue: bigint,
-    currentCumulativeValue: bigint,
-): bigint {
-    const increment = newCumulativeValue - currentCumulativeValue;
-    return increment * 2n;
+): {
+    buyerApproval: bigint;
+    sellerApproval: bigint;
+} {
+    return {
+        buyerApproval: payment * 2n,
+        sellerApproval: newCumulativeValue * 2n,
+    };
 }
 
 /**
