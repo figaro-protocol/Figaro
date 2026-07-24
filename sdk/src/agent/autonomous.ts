@@ -99,9 +99,15 @@ export async function resolveProcess(
  * Submit an attestation as a seller.
  *
  * @param role   Commitment proving seller identity in the target's process.
+ *               Pass the SIGNED commitment struct (a root order carries
+ *               `processId = 0`), not the reconstruction-derived form whose
+ *               root `processId` is the DERIVED id — the coordinator re-hashes
+ *               and recovery would miss.
  * @param target Commitment for the order being attested (carries the
- *               `agreementHash` the merkle proof opens against). Pass the
- *               same commitment twice for same-order attestation.
+ *               `agreementHash` the merkle proof opens against). Also the SIGNED
+ *               struct (root: `processId = 0`). For SAME-ORDER attestation pass
+ *               the SAME commitment as both `role` and `target` — one struct in
+ *               both args, not two distinct commitments.
  * @param clauseId The `computeClauseKey(clause, version)` bytes32 HASH — NOT
  *               the raw clause name that `buildSectionInclusionProof` takes as
  *               its `clauseKey`. Same value used as the merkle leaf id.
@@ -137,6 +143,10 @@ export async function attestAsSeller(
  * Submit an attestation as a buyer. Caller must equal `target.buyer` (which
  * equals `rootBuyer` of the process by commit invariant).
  *
+ * @param target Pass the SIGNED commitment struct (a root order carries
+ *               `processId = 0`), not the reconstruction-derived form whose
+ *               root `processId` is the DERIVED id — the coordinator re-hashes
+ *               the struct, and a derived-id root would miss.
  * @param clauseId The `computeClauseKey(clause, version)` bytes32 HASH — NOT
  *               the raw clause name that `buildSectionInclusionProof` takes as
  *               its `clauseKey`. Same value used as the merkle leaf id.

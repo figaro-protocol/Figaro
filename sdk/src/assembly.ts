@@ -25,7 +25,8 @@ export interface TemplateAgreement {
      *  topology clause's `{ parentOrderHashes }` (root = [] — the DAG, the
      *  design itself) and SPECIFIC-T&C clauses (`block.terms: "specific"`,
      *  consent today) whose values are the designer's tailoring.
-     *  `buildAssemblyTemplate` enforces this by construction. */
+     *  `buildAssemblyTemplate` (exported from the root `@figaro/sdk`; defined
+     *  in `projection.ts`, not here) enforces this by construction. */
     clauses: Record<string, Record<string, unknown>>;
     /** clauseId → the registered VERSION composed, when it isn't 1. A clause's
      *  identity is (name, version) — two live versions are two clauses; this

@@ -76,6 +76,25 @@ const { commitment, typedData } = buildCommitment(
 );
 ```
 
+**Calling the kernel without the SDK.** A `cast`-only participant talks to
+`FigaroCore` directly with two functions:
+
+```
+commit((bytes32 processId, address buyer, address seller, address currency,
+        uint256 payment, uint256 expectedCumulativeValue, bytes32 agreementHash,
+        uint256 salt, uint256 deadline) c, bytes buyerSig, bytes sellerSig)
+resolveProcess(bytes32 processId, <that same tuple>[] commitments)   // buyer only
+```
+
+A ROOT commitment signs `processId = 0` (the kernel derives the real id and
+returns it); a sub-order carries the root's derived `processId`. `buyerSig` /
+`sellerSig` are EIP-712 signatures over the `Commitment` struct under domain
+`{ name: "FigaroCore", version: "3", chainId, verifyingContract: <core> }`. The
+SDK wrappers (`buildDomain` + `buildCommitment`) encode exactly these EIP-712
+type/domain details — a raw caller must reproduce them byte-for-byte or the
+kernel's on-chain recovery rejects the bond. Reach for the wrappers unless you
+have a reason not to; this sketch is only enough to orient a raw caller.
+
 ### `@figaro/sdk/agent` — Agent Coordination
 
 Context sync, network discovery, action proposer, human-in-the-loop queue,
@@ -152,6 +171,11 @@ const content = encodeContentFromSpec(parsed.spec, section.data);
 // ladder attests its enum's index as the stage. The vocabulary is the
 // clause spec's data — the SDK and the chain assign it no meaning.
 const clauseId = computeClauseKey(section.clause, section.version);
+// `roleCommitment`/`targetCommitment` are the SIGNED commitment structs (a root
+// order carries processId = 0), NOT the reconstruction-derived form. For
+// SAME-ORDER attestation pass the SAME commitment as both role and target
+// (one struct in both slots) — two distinct commitments are only the
+// cross-order case (seller attesting from a different order in the process).
 await attestAsSeller(
   walletClient, addresses.attestationCoordinator!,
   roleCommitment, targetCommitment, clauseId, /* stage */ 0, sectionData, proof, content,
@@ -690,6 +714,12 @@ The catalogue follows the same shape: `parseSellerCatalogueDocument(cat)` →
 `pinJSON(cat)` → set the resulting URI as the profile's `catalogueURI` and
 `updateProfile`. First-write-wins binding means the wallet→profile edge is
 permanent; `updateProfile` swaps only the pointer.
+
+There is no on-chain getter for a profile — `SellerRegistry` has
+`register`/`updateProfile`/`withdraw` and no view returning a seller's current
+`metadataURI`, by design (state is event-derived; discovery reconstructs it).
+The event log is the read path: verify an update landed by re-running discovery
+(`reconstructDiscovery(await fetchDiscoveryEvents(client, addresses, 0n))`).
 
 ## Design Principles
 

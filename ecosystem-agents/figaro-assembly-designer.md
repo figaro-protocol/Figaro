@@ -92,6 +92,15 @@ canvas sketch. `templateCompositionHash(template)` is the registry key, so any o
 computes a hash that matches nothing and cannot be registered. The template is
 `{ name?, summary?, description?, agreements: [...] }`:
 
+**Canonicalization asymmetry — unlike clauses.** For an assembly the pinned
+template bytes need NOT be byte-canonical: `templateCompositionHash` recomputes
+over the composition SUBSET (agreements only; editorial prose excluded), so the
+exact serialization you pin does not enter the hash. This is the OPPOSITE of a
+clause, where the registered `contentHash` covers the WHOLE pinned document, so
+a clause's pinned bytes MUST equal its canonical bytes. Pin readable JSON here;
+let `templateCompositionHash` — never a hand-rolled hash over the raw bytes —
+derive identity.
+
 - **One `agreement` per future kernel order**, labelled `"order-<index>"` (`order-0`,
   `order-1`, …). The label is the topology reference target — stable within the template,
   not a chain id and not a party (the template is party-agnostic; addresses bind at

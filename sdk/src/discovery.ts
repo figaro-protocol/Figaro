@@ -228,7 +228,15 @@ export async function fetchDiscoveryEvents(
 
 // ── One-shot reconstruction ──────────────────────────────────────────────────
 
-/** Reconstruct the live discovery view from a batch of registry events. */
+/**
+ * Reconstruct the live discovery view from a batch of registry events.
+ *
+ * A seller's current `metadataURI` is EVENT-DERIVED — `SellerRegistry` exposes
+ * `register`/`updateProfile`/`withdraw` and NO view returning a seller's current
+ * profile URI. There is no on-chain getter for a profile; the event log is the
+ * read path — verify an `updateProfile` landed by re-running discovery (re-fetch
+ * events, reconstruct, read the seller's folded latest-wins `metadataURI`).
+ */
 export function reconstructDiscovery(events: DiscoveryEvents): DiscoveryGraph {
     const graph = new DiscoveryGraph();
     graph.applyEvents(events);
