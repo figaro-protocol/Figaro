@@ -258,7 +258,7 @@ by submitting directly to `FigaroCore` on-chain.
    hashing sorted key-value pairs from each mapping. On-chain state
    root chain prevents fabricated state transitions.
 
-3. **Sequencing**: Single-seller sequencer for devnet. Collects
+3. **Sequencing**: Single-instance sequencer for devnet. Collects
    EIP-712 signed operations, validates pre-checks (approvals, state
    consistency), assembles `BatchInput`, runs prover, submits to
    verifier contract. Cannot fabricate, steal, or violate invariants.
@@ -691,7 +691,7 @@ The verifier contract:
 2. Checks state root continuity (`prevRoot == stateRoot`)
 3. Checks chain binding (`chainId`, `verifyingContract`)
 4. Verifies auxiliary data hashes match proof commitments
-5. Executes net token transfers (mints florins directly when the settlement token is the florin)
+5. Executes net token transfers
 6. Re-emits protocol-compatible events
 7. Advances the state root
 
@@ -804,7 +804,7 @@ The prototype was a Rust crate in `prover/sequencer/` — 6 modules, 22 tests.
 - Shared sequencer set with leader rotation
 - MEV protection (not currently a concern — the kernel has no MEV surface,
   but worth monitoring as usage patterns evolve)
-- Economic incentives for sequencer sellers (potentially florin-denominated)
+- Economic incentives for sequencers
 
 ---
 
@@ -815,7 +815,7 @@ Date: 2026-04-20
 
 This document defines what must be trusted about the batch sequencer, what is
 guaranteed by the ZK proof regardless of sequencer behavior, and what operational
-procedures the sequencer seller must follow.
+procedures the sequencer must follow.
 
 ---
 
@@ -863,7 +863,6 @@ Security (correctness of what gets settled) does **not** require trusting the se
 **Liveness** — the property that valid resolved orders eventually get settled —
 does require trusting the sequencer. A non-submitting or slow sequencer:
 
-- Delays florin distribution (if/when emissions are live)
 - Delays net-position settlement for participants who are waiting on batch settlement
 - Does not affect FigaroCore directly (FigaroCore settlement is independent of batches)
 
@@ -871,8 +870,9 @@ The protocol's safety invariants (bond math, buyer dominance, atomic resolution)
 are enforced entirely by FigaroCore. Batch settlement is an additional coordination
 layer, not a prerequisite for process resolution.
 
-**Implication**: the sequencer should be treated as a liveness-trusted seller,
-not a safety-trusted seller.
+**Implication**: the sequencer is liveness-trusted infrastructure, never
+safety-trusted — an off-protocol convenience with a permanent direct-path
+fallback, not a trade party.
 
 ---
 
@@ -933,17 +933,21 @@ materially worse:
    approval revocation, the sequencer should re-batch the non-attacker
    participants and exclude addresses that revoked. Repeated revocation
    from the same address within a window is a strong signal of adversarial
-   behavior — exclude that address from future batches at sequencer discretion.
-3. **Optional rate-limit on settlement participation**: a sequencer may
-   require an off-chain stake or reputation gate before including a
-   participant in a batch, to make repeat griefing economically costly.
+   behavior — the sequencer re-batches without that address; the direct
+   `FigaroCore` path remains open to it, always.
+3. **Optional stake-based rate limiting**: a sequencer may require an
+   off-chain stake before including a participant in a batch, to make
+   repeat griefing economically costly. This stays within the sequencer's
+   scope: it is an off-protocol liveness convenience with a permanent
+   direct-path fallback — a participant it declines to batch settles
+   directly on `FigaroCore`.
 
 **Why no on-chain fix**: per DESIGN_DECISIONS.md §10, on-chain redundant
 guards are rejected — the SP1 program is the single authority. Per-participant
 state on-chain (e.g., a "revoked-recently" flag) breaks the stateless design
 and creates new attack surface. The mitigation lives at the sequencer layer
 where it belongs: detect adversarial revocations, re-batch around them,
-optionally rate-limit known offenders.
+optionally apply stake-based rate limiting.
 
 ---
 
@@ -954,13 +958,13 @@ optionally rate-limit known offenders.
 | State transition correctness | None | SP1 ZK proof + on-chain verifier |
 | Chain continuity | None | `prevStateRoot == currentStateRoot` check |
 | Cross-chain replay prevention | None | `chainId` + `verifyingContract` in proof public inputs |
-| Batch liveness | Yes — sequencer seller | Operational SLA; no on-chain enforcement |
-| Approval integrity before batch | Yes — sequencer seller | Pre-submission approval check (operational) |
+| Batch liveness | Yes — sequencer | Operational SLA; no on-chain enforcement |
+| Approval integrity before batch | Yes — sequencer | Pre-submission approval check (operational) |
 | Ordering of settlements within a batch | None (up to SP1 program) | Deterministic kernel execution |
 
 ---
 
-## Sequencer Seller Requirements
+## Sequencer Operational Requirements
 
 1. **Monitor FigaroCore events**: watch for `ProcessResolved` and `OrderCommitted`
    events in real time to avoid falling behind.
@@ -994,5 +998,5 @@ invariants:
 - It cannot forge ZK proofs (Groth16/Plonk computational security)
 
 The worst outcome of a compromised or stopped sequencer is delayed batch
-settlement and delayed florin distribution — both recoverable by deploying a new
-sequencer against the same on-chain state root.
+settlement — recoverable by deploying a new sequencer against the same
+on-chain state root.

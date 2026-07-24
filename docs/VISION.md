@@ -24,8 +24,10 @@ wasteful because it adds capital burden without improving the equilibrium).
 Only the buyer can trigger resolution — not as a power asymmetry, but as a
 coordination property that prevents deadlock (the buyer is also locked at 2×,
 so griefing is self-destructive). If either party defects, both lose. This
-creates a Nash equilibrium where cooperation is strictly dominant — not as a
-hopeful social outcome, but as a mathematical certainty.
+creates a Nash equilibrium where cooperation weakly dominates defection —
+the all-cooperate profile is the unique one surviving iterated elimination
+of weakly dominated strategies — not as a hopeful social outcome, but as a
+mathematical certainty.
 
 In legal terms, this is a **self-executing bilateral performance bond** — a
 known legal instrument, with one innovation: the counterparty is the surety.
@@ -78,7 +80,7 @@ Everything in Figaro derives from six protocol properties (see THEORY.md):
 | 2 | **Cumulative upstream bonding** | Hierarchical authority, management chains |
 | 3 | **Buyer dominance** | Arbitrators, dispute resolution, governance |
 | 4 | **Atomic resolution** | Partial payments, individual accountability |
-| 5 | **Immutable evidence** | Courts, discovery, forensic audits |
+| 5 | **Immutable evidence** | Discovery, forensic audits — courts are not replaced; they consume the evidence from outside |
 | 6 | **No escape hatches** | Timeouts, admin overrides, emergency pauses |
 
 These six properties are the **starting point** for all reasoning. Contracts
@@ -107,10 +109,11 @@ tokens identically; the meaning flows from the participants' choices.
 
 **Geolocation (geohash)** — Public spatial coordination graph. Geohashes
 function as economic pheromones: a fulfiller sees active orders clustered in a
-6-char cell and routes toward them; a market maker sees demand concentration
-and opens a vault in that zone. Agents coordinate by intersecting multiple
-graphs simultaneously — spatial density (geo graph) × clearing prices (capital
-graph) × settlement history (process graph) — and the coordination emerges
+6-char cell and routes toward them; a seller (human or agent) sees demand
+concentration and registers a catalogue serving that zone. Agents coordinate by
+intersecting multiple graphs simultaneously — spatial density (geo graph) ×
+bond flows and settlement payouts (capital graph) × settlement history
+(process graph) — and the coordination emerges
 from graph intersection, not from a single signal. Private details (exact
 address, notes) are sealed with per-order AES-256-GCM keys and exchanged
 out-of-band. The public layer coordinates; the private layer protects.
@@ -201,48 +204,64 @@ jurisdiction over the parties.
 
 Figaro inverts this. Enforcement happens *before* work begins, imposed by
 mathematics, not authority. The protocol's defense-in-depth operates across
-three layers:
+five layers:
 
-**Layer 1: Economic — Primary Nash Equilibrium (MAD via asymmetric bonding)**
-— Both parties lock collateral at exactly 2× the transaction value. Defection
-destroys more capital than it could capture. Cooperation is the strictly
-dominant strategy — not as a social aspiration, but as a mathematical fact.
-This handles the vast majority of bilateral interactions. The enforcement is
-ex-ante (capital locked before work begins), not ex-post (courts invoked
-after breach). Asymmetric bonding replaces trust, reputation, credit history,
-and most forms of contractual enforcement at the bilateral level — and scales
-the bilateral primitive to N-party DAGs
-(each seller bonds against cumulative upstream value, creating a mesh of
-independently secured edges).
+**Layer 0: Foundation — Blockchain Security** — Everything above rests on the
+host chain's consensus: signature verification, transaction ordering,
+immutability of committed state. This layer is not Figaro's to build, but it
+is named because it is load-bearing — the bonds are only as locked, and the
+record only as immutable, as the chain that holds them.
+
+**Layer 1: Economic — Primary Nash Equilibrium (MAD via asymmetric bonding),
+plus the evidence record** — Both parties lock collateral at exactly 2× the
+transaction value. Defection destroys more capital than it could capture.
+Cooperation weakly dominates defection, and the all-cooperate profile is the
+unique one surviving iterated elimination of weakly dominated strategies —
+not a social aspiration, a mathematical fact. This handles the vast majority
+of bilateral interactions. The enforcement is ex-ante (capital locked before
+work begins), not ex-post (courts invoked after breach). Asymmetric bonding
+replaces trust, reputation, credit history, and most forms of contractual
+enforcement at the bilateral level — and scales the bilateral primitive to
+N-party DAGs (each seller bonds against cumulative upstream value, creating a
+mesh of independently secured edges). Co-resident at this layer is the
+evidence record: every commit and resolution, and every lifecycle event
+emitted by coordinators, is an immutable, role-gated, block-timestamped
+attestation on-chain — produced always, as a by-product of ordinary
+operation, not only when something goes wrong. The upper layers consume this
+record; none of them produces it.
 
 **Layer 2: Social — Buyer Dominance + Atomic Resolution (the micro-lending
 circle effect)** — Layer 1 produces the mesh; Layer 2 enforces coordination
 across it. Only the buyer can trigger resolution, and resolution is atomic —
-all orders in the process settle together or not at all. This means every
-seller sinks or swims with every other seller: if one node defects, the
-entire process fails and all bonds are lost. The atomic-resolution rule is
-buyer dominance's forcing function, inducing a weakest-link subgame among
-sellers with endogenous peer pressure of magnitude P_i + 2G_i on every
-co-seller. The empirical parallel is Grameen Bank's group lending model,
-which reduced default rates from ~20% (individual lending) to ~2% (group
-accountability). Figaro reproduces that pressure structure without requiring
-repeated interaction or social relationships — the bond geometry plus
-atomic resolution does it. The buyer does not need to manage the sellers.
-This replaces management hierarchies, quality control departments, and
-supervisory authority.
+all orders in the process settle together or not at all. So nobody is paid
+until the buyer resolves, and the remedy comes first: when one seller's work
+is faulty, every co-seller's cheapest move is to help fix the fault, because
+that is the only path back to settlement. The pressure is the backing behind
+the remedy — the atomic-resolution rule is buyer dominance's forcing
+function, inducing a weakest-link subgame among sellers with endogenous peer
+pressure of magnitude P_i + 2G_i on every co-seller. The empirical parallel
+is Grameen Bank's group lending model, which reduced default rates from ~20%
+(individual lending) to ~2% (group accountability). Figaro reproduces that
+structure without requiring repeated interaction or social relationships —
+the bond geometry plus atomic resolution does it. The buyer does not need to
+manage the sellers. This replaces management hierarchies, quality control
+departments, and supervisory authority.
 
-**Layer 3: Legal — Timestamped Evidence (bridge to legacy systems)** — We
-recognize that the transition from legacy dispute resolution to bonded
-coordination will not happen overnight. For the edge cases where Layers 1 and
-2 are insufficient — and for the transition period where participants may still
-seek recourse in traditional forums — every lifecycle event emitted by
-coordinators is an immutable, role-gated, block-timestamped attestation
-on-chain. These events serve as tamper-proof evidence in whatever dispute forum
-the parties choose (arbitration, court, community governance). The forum and
-jurisdiction are for the parties to determine. The deterrence loop: because
-evidence is already on-chain and unforgeable, bringing frivolous claims is
-self-defeating. This layer handles the remaining fraction of irrational actors
-who defect despite economic and social pressure.
+**Layer 3: Arbitration** — A standing layer, not a transition aid. For the
+edge cases Layers 1 and 2 do not resolve, the parties can bring the dispute
+to an arbitration forum (e.g. Kleros) that consumes the Layer-1 evidence
+record as input. This recourse exists with no clause named: nothing in the
+agreement has to designate a forum for the parties to seek one. The forum is
+for the parties to determine; the protocol supplies only the tamper-proof
+record it adjudicates over.
+
+**Layer 4: Traditional Legal Systems** — Equally standing: courts, too,
+consume the on-chain evidence from outside the protocol — jurisdiction and
+venue are for the parties to determine, and no clause has to name them
+either. The deterrence loop: because the evidence is already on-chain and
+unforgeable, bringing frivolous claims is self-defeating. Layers 3 and 4
+together handle the remaining fraction of irrational actors who defect
+despite economic and social pressure.
 
 The result is a system that returns **self-sovereignty to the wallet holder**.
 Your economic protection comes from the capital you locked, not from the
@@ -333,7 +352,7 @@ superimposable). Anyone can fork the code; the value is in the shared
 coordination network.
 
 The singleton stays safe because of a critical architectural separation:
-**bonds are capital; payments are income.** The core bonding mechanism locks
+**bonds are deterrents; payments are income.** The core bonding mechanism locks
 and releases collateral — that is all it does. Compositions (attestation
 coordinators, auctions, disclosure modules, seller registries) operate on
 coordination, discovery, and evidence surfaces around the process. They can
@@ -374,8 +393,8 @@ immutable: no owner, no upgrade path, no parameter changes. If one is wrong, a
 new one is deployed and the community migrates.
 
 This design is deliberate. The florin is not required for participation. It is not
-staked, slashed, or voted with. The 98% cooperation rate comes from the
-bonding equilibrium, not from token incentives. The florin exists because people
+staked, slashed, or voted with. Cooperation comes from the bonding
+equilibrium — defection is never profitable — not from token incentives. The florin exists because people
 will ask for a token — and when they do, they should receive one whose
 issuance is fixed, transparent, and free of discretionary control. See
 `FLORIN_TOKEN.md` for the full design.
@@ -571,12 +590,14 @@ master database to steal.
 ### Who's in charge?
 
 Nobody. There's no company running Figaro, no CEO, no customer
-support, no one who can freeze your account. Three things protect you,
-in order: the money (cheating costs more than cooperating, handles
-~99% of cases), peer pressure with teeth (everyone in the process loses
-if one cheats, so everyone watches everyone else), and receipts
-(everything is permanently recorded on chain, ready to be evidence in
-any forum).
+support, no one who can freeze your account. What protects you, in
+order: the money (cheating always costs more than playing fair, so
+almost every deal never needs anything else), teammates who fix
+problems (nobody gets paid until you say the job is done, so everyone
+in the process pitches in to put a fault right — the shared stake is
+what backs that up), and receipts (everything is permanently recorded
+on chain, ready to be evidence before an arbitrator or a court if it
+ever comes to that).
 
 ---
 

@@ -31,7 +31,7 @@ content. (This is the instruction-system form of "derive, don't store.")
 | Commands, env vars, services, deploy scripts | `LOCAL_DEV.md` |
 | Canonical names per tier | `LEXICON.md` |
 | The florin, allocations | `FLORIN_TOKEN.md` |
-| Batch-scaling design (deferred) | `SCALING_STRATEGY.md` |
+| Batch-scaling design (BUILT — witness prover/verifier/sequencer beside the direct path) | `SCALING_STRATEGY.md` |
 | Release gates, frozen audit surface | `RELEASE_READINESS.md` |
 | Public-graph / RPGF incentive rationale | `PUBLIC_GRAPH_MODEL.md` |
 | Operator preferences, incidents, rulings | memory dir (`MEMORY.md` index) |

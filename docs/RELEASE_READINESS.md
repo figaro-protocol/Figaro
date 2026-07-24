@@ -342,7 +342,7 @@ Expected output: empty.
 
 | Document | Purpose |
 |---|---|
-| `docs/DESIGN_DECISIONS.md` | 13 intentional patterns that look like vulnerabilities (read first) |
+| `docs/DESIGN_DECISIONS.md` | The catalogued intentional patterns that look like vulnerabilities (read first; count them there, never quote a stored number) |
 | `docs/VERIFICATION_MAP.md` | Every invariant → code → test → formal layer |
 | `docs/RELEASE_READINESS.md` (this file) | Gate criteria, remaining tasks, frozen scope |
 | `docs/SCALING_STRATEGY.md` | Proof-based scaling, batch sequencer architecture, and what the sequencer is trusted for (consolidated from former `BATCH_SEQUENCER.md` + `SEQUENCER_TRUST_MODEL.md`) |

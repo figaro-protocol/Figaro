@@ -28,10 +28,13 @@ they make the mesh resolvable from a single signature with cooperation
 pressure propagating through it. The architecture makes trusted intermediaries
 — escrows, arbitrators, platform sellers — structurally unnecessary.
 
-Enforcement operates across three layers: economic self-interest (bonding),
-social pressure among co-dependent sellers (atomic resolution as buyer
-dominance's forcing function), and legal deterrence backed by immutable
-on-chain evidence. This paper presents the game-theoretic foundations, the
+Enforcement operates across five layers: blockchain security as the named
+foundation; economic self-interest (bonding, with the evidence record
+co-resident); remedy-first coordination among co-dependent sellers (atomic
+resolution as buyer dominance's forcing function — nobody is paid until the
+buyer resolves, so co-sellers help fix faults); arbitration; and traditional
+legal systems — the last two standing layers that consume the on-chain
+evidence from outside. This paper presents the game-theoretic foundations, the
 N-party scaling model, the enforcement architecture, and a security analysis
 of the protocol.
 
@@ -71,7 +74,7 @@ Figaro achieves multi-party coordination through two composing mechanisms:
 6. **Sellers must coordinate among themselves** to satisfy the buyer (weakest-link subgame; endogenous peer pressure of magnitude P_i + 2G_i on every co-seller)
 7. **Buyer accountability** through locked capital + self-destructive griefing economics
 
-**Key Insight**: Capital lockup creates the bilateral equilibrium and scales the mesh; buyer dominance enforces coordination across the mesh. Either mechanism alone is insufficient — bonding without buyer dominance gives a mesh that can't multi-party coordinate; buyer dominance without bonding is worthless. Together they replace external enforcement.
+**Key Insight**: Bond lockup creates the bilateral equilibrium and scales the mesh; buyer dominance enforces coordination across the mesh. Either mechanism alone is insufficient — bonding without buyer dominance gives a mesh that can't multi-party coordinate; buyer dominance without bonding is worthless. Together they replace external enforcement.
 
 ### Philosophy: The Post-Firm Economy
 
@@ -80,7 +83,7 @@ Figaro is **NOT DeFi**. It is not a financial protocol for trading, lending, or 
 #### 1. The Coasean Collapse (Death of the Firm)
 Nobel laureate Ronald Coase theorized that firms exist because the transaction costs of vetting, trusting, and contracting external partners are too high.
 *   **The Shift**: Figaro prices the cost of trust at $2x$ — the bond each party locks. Trust is not eliminated; it is made unnecessary. A rational actor who prefers $2x$ return over $0x$ will cooperate. The Penalty is pre-paid; the "lawsuit" is resolved before work begins.
-*   **The Result**: The standing firm is no longer the compulsory unit of organization. Each process can assemble a transaction-scoped institution of autonomous agents (human or AI) coordinating via economic pheromones (Dutch auctions, RFQs), then dissolve at settlement. The **Bond** acts as the immune system, isolating defectors instantly without management overhead.
+*   **The Result**: The standing firm is no longer the compulsory unit of organization. Each process can assemble a transaction-scoped institution of autonomous agents (human or AI) coordinating via economic pheromones (RFQs, public graph signals), then dissolve at settlement. The **Bond** acts as the immune system, isolating defectors instantly without management overhead.
 
 #### 2. Universal Rule of Law (Space-Grade Institutions)
 In the legacy world, legal enforcement is defined by geography. A contract is only as good as the local court system.
@@ -220,7 +223,7 @@ Position n: Seller bonds 2×∑Pᵢ
 - Bob loses $20 bond (his delivery was good, but Alice can't approve)
 - **Bob will pressure Charlie** to fix the problem → Self-organizing coordination
 
-### Capital Efficiency
+### Why 2× Is the Minimum Deterrent
 
 **Theorem**: Minimum viable bond is `2×` the transaction value.
 
@@ -382,7 +385,15 @@ Position in chain determines bond asymmetry:
 
 ## Enforcement Model
 
-Figaro's coordination mechanism operates across three primary game-theoretic layers (plus a critical scaling bridge between 2-party and N-party). Understanding each layer explains why the protocol works without timeouts, arbitrators, or governance backstops — not as a temporary simplification, but as a permanent design property.
+Figaro's coordination mechanism operates across five layers (plus a critical scaling bridge between 2-party and N-party). Understanding each layer explains why the protocol works without timeouts, protocol-run arbitrators, or governance backstops — not as a temporary simplification, but as a permanent design property.
+
+The stack, bottom to top: **Layer 0** — blockchain security, the named foundation; **Layer 1** — the bonding equilibrium, with the evidence/audit/event record co-resident (produced always, by ordinary operation); **Layer 2** — the co-seller coordination game, told remedy-first; **Layer 3** — arbitration (e.g. Kleros); **Layer 4** — traditional legal systems. Layers 3 and 4 are standing layers that consume the Layer-1 record from outside the protocol — recourse there exists with no clause named.
+
+### Layer 0: Blockchain Security (The Named Foundation)
+
+**Mechanism**: The host chain's consensus — signature verification, transaction ordering, immutability of committed state.
+
+This layer is not Figaro's to build, but it is load-bearing and therefore named: the bonds are only as locked, and the event record only as immutable, as the chain that holds them. Every guarantee in the layers above inherits from it.
 
 ### Layer 1: Primary Nash Equilibrium (2-Party Game)
 
@@ -412,6 +423,8 @@ Figaro's coordination mechanism operates across three primary game-theoretic lay
 - **Result**: Bob delivers, Alice approves (rational outcome)
 
 This layer is well-understood and thoroughly documented in existing game theory literature.
+
+**Co-resident at Layer 1: the evidence record.** Every `commit` and `resolveProcess` emits immutable, block-timestamped events (`OrderCommitted`, `OrderResolved`, `ProcessResolved`) — produced always, as a by-product of ordinary operation, not only when something goes wrong. The record lives here, beside the bonds; Layers 3 and 4 consume it from outside, and neither produces anything of its own.
 
 ---
 
@@ -545,20 +558,26 @@ Result: Dave fixes the packaging (cheapest option for everyone)
 
 **Game Theory**:
 
-This is a **repeated game with reputation**:
+This is a **one-shot weakest-link game** — no repeated interaction and no
+local information required:
 
 ```
-Single transaction: Dave might defect (lose $30 once)
+Single transaction: Dave might consider defecting (lose $30 bond once)
 
-But with reputation:
-  - Bob blacklists Dave (won't work with him again)
-  - Charlie blacklists Dave
-  - Alice flags Dave in reviews
-  - Other sellers see Dave's failure rate → avoid him
-  - Dave's future income stream: $0
+But nobody is paid until the buyer resolves:
+  - Dave's cheapest move is the remedy: fix the packaging (cost: $5)
+  - Every co-seller's cheapest move is to help him fix it — their own
+    locked bonds are what back the remedy
+  - The weakest-link stakes (P_i + 2G_i on every co-seller) are the
+    pressure; the fix is the play
 
-Rational Dave: Fix the issue (cost: $5) vs. Get blacklisted (cost: $5,000+ future earnings)
+Rational Dave: Fix the issue (cost: $5) vs. burn his $30 bond and every co-seller's with it
 ```
+
+Periphery, not mechanism: settlement history is public and permanent, so any
+future counterparty can read how a process settled — but the protocol keeps no
+score, no reviews, and no blacklist, and the coordination pressure above needs
+none of them.
 
 **Why Atomic Resolution Is Critical**:
 
@@ -587,15 +606,27 @@ Result: Sellers self-organize into quality control networks
 
 ---
 
-### Layer 3: Legal System + Blockchain Transparency (Edge Case Deterrence)
+### Layer 3: Arbitration (Standing Recourse, e.g. Kleros)
+
+**Players**: Parties + an arbitration forum of their choosing  
+**Mechanism**: Third-party adjudication consuming the Layer-1 evidence record  
+**Outcome**: Disputes the economics did not dissolve are decided on an unforgeable record
+
+Arbitration is a standing layer, not a transition aid — and recourse here exists with no clause named: nothing in the agreement has to designate a forum for the parties to seek one. A decentralized arbitration protocol such as Kleros — or any forum the parties choose — takes the timestamped event record produced at Layer 1 as evidentiary input and renders a decision. The protocol composes with the forum from outside: no forum holds any on-chain power over bonds; an award operates on the parties, who execute it through ordinary resolution (or a compensating reverse commitment). Because arbitration is cheaper and faster than court, it is the natural first stop for the residue of cases Layers 1–2 leave; Layer 4 stands behind it.
+
+---
+
+### Layer 4: Traditional Legal Systems (Edge Case Deterrence)
 
 **Players**: Parties + legal system + public observers  
-**Mechanism**: Court enforcement backed by immutable on-chain evidence  
-**Outcome**: Frivolous abuse deterred by legal precedent + reputation damage
+**Mechanism**: Court enforcement backed by the immutable on-chain evidence produced at Layer 1  
+**Outcome**: Frivolous abuse deterred by legal precedent + the permanent public record
+
+Courts, too, are a standing layer — they consume the Layer-1 record from outside the protocol, and no clause has to name a jurisdiction or venue for the parties to reach one.
 
 **The SSoT (Single Source of Truth) Argument**:
 
-Blockchain provides **tamper-proof evidence** for legal proceedings:
+The Layer-1 record provides **tamper-proof evidence** for legal proceedings:
 
 ```
 Scenario: Buyer refuses to resolve despite good delivery
@@ -641,11 +672,10 @@ Result: After 3-5 cases, buyers stop trying (known losing strategy)
 Buyer considering frivolous block:
 
 Costs:
-  - Own bond locked: $20 (opportunity cost)
+  - Own bond locked: $20 (recoverable only by resolving)
   - Legal fees: $5,000-$50,000
   - Court-ordered damages: Variable
-  - Reputation damage: Permanent on-chain record
-  - Future business loss: No seller will work with known abuser
+  - Permanent public record of the refusal — read by every future counterparty
 
 Benefits:
   - Annoy sellers: $0 economic value
@@ -656,47 +686,49 @@ Rational decision: Don't abuse the system
 
 **Why This Works**:
 
-1. **Immutable evidence**: Blockchain creates perfect audit trail
-2. **Public record**: All transactions visible, reputation is permanent
+1. **Immutable evidence**: The Layer-1 event record is a perfect audit trail
+2. **Public record**: All transactions visible; settlement history is permanent and derived — never a score, but readable by anyone
 3. **Precedent cascade**: Early cases deter future abuse
 4. **Economic irrationality**: Abuse costs more than cooperation
 
 **Real-World Parallel**: Similar to credit card chargebacks. Early in credit card history, some buyers abused chargebacks. After legal precedents established fraudulent chargebacks as illegal, abuse dropped to <0.1%.
 
-**Layer 3 Handles Edge Cases Layers 1-2 Don't**:
+**Layers 3–4 Handle Edge Cases Layers 1–2 Don't**:
 
 - Truly irrational actors (rare but possible)
 - Buyers who value spite > money (psychologically abnormal)
 - Systemic attacks by bad-faith actors
 
-For these cases, the legal system provides **deterrent enforcement**. The kernel's event log — `OrderCommitted`, `OrderResolved`, `ProcessResolved`, each carrying its block timestamp — supplies the irrefutable audit trail courts need. No on-chain governance assists them — the protocol is inert and immutable; the off-chain legal system does the rest.
+For these cases, arbitration and the legal system provide **deterrent enforcement**. The kernel's event log — `OrderCommitted`, `OrderResolved`, `ProcessResolved`, each carrying its block timestamp — supplies the irrefutable audit trail both forums need. No on-chain governance assists them — the protocol is inert and immutable; the off-chain forums do the rest.
 
 ---
 
 ### Summary: Defense-in-Depth
 
-The three enforcement layers work together. The goal is not redundancy for its own sake — it is overlap: each layer catches what the previous one cannot.
+The five enforcement layers work together. The goal is not redundancy for its own sake — it is overlap: each layer catches what the previous one cannot.
 
 | Layer | Mechanism | Primary Cases |
 |-------|-----------|---------------|
-| **1 + 1.5** | Asymmetric bonding — cooperation is Nash dominant at every chain position | 99%+ of all orders |
-| **2. Seller Coordination** | Atomic resolution — sellers police each other (micro-lending circle effect) | Multi-seller failures |
-| **3. Legal + Transparency** | Immutable on-chain evidence — courts handle the 0.x% that economics cannot | Irrational or adversarial actors |
+| **0. Blockchain security** | Host-chain consensus — signatures, ordering, immutability | The foundation everything above inherits |
+| **1 + 1.5** | Asymmetric bonding (evidence record co-resident) — cooperation weakly dominates at every chain position; all-cooperate is the unique IEWDS survivor | The default: defection is never profitable for an economically rational party |
+| **2. Co-Seller Remedy** | Atomic resolution — nobody is paid until the buyer resolves, so co-sellers help fix faults (micro-lending circle effect) | Multi-seller failures |
+| **3. Arbitration** | A forum of the parties' choosing (e.g. Kleros) consumes the Layer-1 record | Disputes the economics did not dissolve |
+| **4. Courts** | Traditional legal systems consume the same record from outside | Irrational or adversarial actors |
 
-**Note on what Figaro does NOT include**: No governance layer. No timeout. No dispute arbitration. No insurance tranche. No oracle. The locked capital is the enforcement mechanism; the immutable record is the evidence trail. Any feature that introduces a unilateral escape hatch from a committed order destroys Layer 1. Any feature that introduces partial resolution destroys Layer 2. These are hard constraints.
+**Note on what Figaro does NOT include**: No governance layer. No timeout. No protocol-run dispute machinery. No insurance tranche. No oracle. The locked bonds are the enforcement mechanism; the immutable record is the evidence trail. Any feature that introduces a unilateral escape hatch from a committed order destroys Layer 1. Any feature that introduces partial resolution destroys Layer 2. These are hard constraints.
 
 **Why This Is Superior to Traditional Approaches**:
 
-Traditional protocols pick one enforcement mechanism — an arbitrator, a timeout, a validator. Each creates a single point of failure. Figaro layers three orthogonal mechanisms:
+Traditional protocols pick one enforcement mechanism — an arbitrator, a timeout, a validator. Each creates a single point of failure. Figaro layers orthogonal mechanisms:
 
 ```
 Problem: Buyer tries to abuse system
 
-Layer 1: Loses capital (economic deterrence) — irrational unless spite > money
-Layer 2: Loses seller relationships (social deterrence) — on-chain history is permanent
-Layer 3: Loses in court (legal deterrence) — immutable evidence, unforgeable timeline
+Layer 1: Forfeits their own bond (economic deterrence) — irrational unless spite > money
+Layer 2: Co-sellers remedy any real fault, leaving a pretextless refusal exposed in the permanent record
+Layers 3–4: Loses in arbitration or court (legal deterrence) — immutable evidence, unforgeable timeline
 
-Must beat ALL THREE mechanisms simultaneously → Economically and legally irrational
+Must beat ALL of these simultaneously → Economically and legally irrational
 ```
 
 
@@ -711,13 +743,12 @@ Must beat ALL THREE mechanisms simultaneously → Economically and legally irrat
 **Attack**: Buyer refuses to approve to lock seller funds.
 
 **Defense**:
-- Buyer's capital also locked (opportunity cost)
-- Buyer's reputation damaged (on-chain history)
-- Buyer loses future business access (no seller works with known griefer)
+- Buyer's own bond (2×P) stays locked for as long as they refuse — resolving is the only way to recover it
+- The refusal is permanently visible: settlement history is public and derived, and every future counterparty can read it
 
 **Economic Analysis**:
 ```
-Attacker cost: 2×P (bond) + R (reputation) + F (future business)
+Attacker cost: 2×P forfeited (recoverable only by resolving) + a permanent public record of the refusal
 Attacker gain: 0 (just griefs, no financial benefit)
 
 Result: Irrational attack → Extremely rare
@@ -752,15 +783,14 @@ Result: Irrational attack → Extremely rare
 **Proof**:
 ```
 Assume: Buyer refuses to resolve indefinitely
-Result: Buyer's capital locked forever
-Cost to buyer: Opportunity cost compounds continuously
-Rational strategy: Resolve (recover capital)
+Result: Buyer's own stake stays locked forever — withholding forfeits it permanently
+Rational strategy: Resolve (the only path that recovers the stake)
 
 Contradiction: Indefinite refusal is irrational
 Therefore: Rational buyers always resolve eventually
 ```
 
-**Caveat**: Assumes buyers value capital > grudge. True for economic actors, may fail for irrational agents.
+**Caveat**: Withholding costs the buyer their own stake, permanently. The deterrent prices a grudge; it does not prevent an irrational agent from paying that price.
 
 ---
 
@@ -774,7 +804,7 @@ Therefore: Rational buyers always resolve eventually
 | Timeouts | Yes (complex calibration) | No (indefinite pressure) |
 | Edge Cases | Manual intervention | Economic resolution |
 | Complexity | High (dispute system) | Low (pure game theory) |
-| Capital Efficiency | ~1× transaction value | 2× transaction value |
+| Stake posted | ~1× transaction value | 2× transaction value |
 | Trust Model | Trust arbitrator | Trust code + incentives |
 
 ### Payment Channels
@@ -920,22 +950,24 @@ Figaro represents a paradigm shift in multi-party coordination:
 
 **Figaro Approach**: Design incentives so edge cases never occur. When they do occur, the immutable on-chain record provides the evidence trail that existing legal systems need.
 
-**Core Thesis**: Locked capital creates sufficient economic pressure to force cooperation without external enforcement.
+**Core Thesis**: Locked bonds create sufficient economic pressure to force cooperation without external enforcement.
 
 **Defense-in-Depth**:
-1. **Layer 1 - Primary Nash Equilibrium**: 2-party game theory with symmetric bonding ensures cooperation
-2. **Layer 1.5 - Asymmetric Bonding**: cumulative upstream bonding maintains Nash equilibrium at scale (2→N parties)
-3. **Layer 2 - Seller Coordination**: Atomic resolution creates micro-lending circle effect (social pressure)
-4. **Layer 3 - Legal + Transparency**: Blockchain SSoT + court precedents deter edge case abuse
+1. **Layer 0 - Blockchain Security**: the host chain's consensus is the named foundation everything above inherits
+2. **Layer 1 - Primary Nash Equilibrium**: 2-party game theory with symmetric bonding ensures cooperation; the evidence record is co-resident here, produced by ordinary operation
+3. **Layer 1.5 - Asymmetric Bonding**: cumulative upstream bonding maintains Nash equilibrium at scale (2→N parties)
+4. **Layer 2 - Co-Seller Remedy**: Atomic resolution — nobody is paid until the buyer resolves, so co-sellers help fix faults (micro-lending circle effect)
+5. **Layer 3 - Arbitration**: a forum of the parties' choosing (e.g. Kleros) consumes the on-chain record
+6. **Layer 4 - Courts**: traditional legal systems consume the same record from outside the protocol
 
 **Key Innovations**:
 1. **Asymmetric bonding**: cumulative upstream bonding ensures deep-chain coordination while preserving Nash equilibrium at every position
 2. **No escape hatches**: Capital lockup is the enforcement mechanism (no timeouts, no partial payments)
-3. **Buyer as sole resolver**: Accountability through reputation + locked capital
+3. **Buyer as sole resolver**: Accountability through the buyer's own locked bond + the permanent public settlement record
 4. **Atomic resolution**: All-or-nothing payment creates seller coordination pressure (like micro-lending groups)
 5. **Pure game theory**: Security from incentives, not validators
 
-**Result**: Simpler, more secure, more capital-efficient coordination protocol with redundant enforcement layers.
+**Result**: A simpler, more secure coordination protocol with redundant enforcement layers. The deterrent's price is posted openly — 2× on both sides — versus the recurring extraction of intermediated coordination.
 
 ---
 

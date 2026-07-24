@@ -154,10 +154,9 @@ Automated compliance agents can:
 
 ### Capital Graph → Economic Decision-Making
 
-Agents optimize capital allocation by monitoring:
-- Bond flows and settlement payouts over time (capital efficiency)
+Agents make economic decisions by monitoring:
+- Bond flows and settlement payouts over time (settlement flows)
 - Settled courier payments over time (market rate for delivery services)
-- Bond sizes relative to order values (risk assessment)
 - Settlement velocity (time from Active to Resolved)
 
 ### Cross-Process Graph → Process Provenance Intelligence
@@ -195,10 +194,10 @@ firms would dissolve when transaction costs reach zero.
 | Agent Type | Graph Consumed | Action Taken |
 |------------|---------------|--------------|
 | Driver (human) | Geo, Process, Capital | Filter jobs by zone, accept work |
-| Driver (AI) | Geo, Process, Capital | Optimize multi-stop routes, dynamic pricing |
+| Driver (AI) | Geo, Process, Capital | Optimize multi-stop routes, update its own catalogue rate |
 | Food preparer | Process | Accept/decline orders, manage prep pipeline |
 | Buyer | Process, GHG | Place orders, verify disclosures |
-| Capital allocator | Capital | Monitor settlement flows and working-capital use |
+| Market observer | Capital, Geo | Monitor settlement flows, demand density, catalogue coverage |
 | Compliance | GHG, Cross-Process | Audit disclosure completeness |
 | Analytics | All | Generate reports, predict demand |
 
@@ -221,8 +220,9 @@ firms would dissolve when transaction costs reach zero.
 
 ERC-8004 ("Trustless Agents", DRAFT Aug 2025) defines a standard for
 agent discoverability via service endpoint declarations. Figaro does not
-depend on ERC-8004 — the bonding mechanism already provides trust, and
-settlement history already provides reputation. However, autonomous agents
+depend on ERC-8004 — the bonding mechanism already provides trust, and the
+public, derived settlement history already provides the track record (never
+a score, never a gate). However, autonomous agents
 that want cross-protocol discoverability can declare ERC-8004-compatible
 service endpoints in their `SellerRegistry.metadataURI` JSON.
 
@@ -243,7 +243,7 @@ No new contracts are needed:
 
 An autonomous agent includes a `services` section in its seller metadata.
 The clause can be anchored in `ClauseRegistry` as
-`erc8004-agent-services-v1` for reference integrity.
+`erc8004-agent-services` for reference integrity.
 
 ```json
 {

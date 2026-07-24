@@ -285,7 +285,7 @@ Not final APIs — the shapes the frontend should represent:
 - **MechanismModel** — semantic wrapper for one coordination mechanism (what it does, what
   it secures, what it can touch, who acts through it, where it's attached).
 - **RoleContext** — a role held by a *specific actor in a specific context* (buyer-of-this-
-  order, assigned-fulfiller-of-this-suborder, eligible-bidder-in-this-auction). A wallet
+  order, assigned-fulfiller-of-this-suborder, attesting-seller-of-this-order). A wallet
   alone is not a sufficient semantic object; role is **derived in context**, not stored.
 - **ProcessModel** — a FigaroCore process + attached mechanisms (orders, topology, state +
   economic summary, upstream/downstream links).

@@ -359,41 +359,9 @@ See `docs/BOL_RESEARCH.md` for the full comparison against CargoX,
 TradeTrust, MLETR, and TradeLens, including the field-level mapping of
 what *is* expressible (non-negotiable BoLs in any DAG the buyer commits
 upfront, including multi-leg supply-chain carriage) and what is closed
-off.
-
-> **Scope note (2026-04-28)**: this entry covers the **kernel layer**
-> only — a single bonded order's parties cannot be substituted, by the
-> three invariants above. Whether the same economic event (cargo title
-> transfer mid-flight) can be expressed at the **protocol layer** via
-> composition is an **open research question, parked pending mechanism
-> design**.
->
-> Working hypothesis (2026-04-28 late session): the
-> **CancellableSeller wrapper + counter-process pattern** appears
-> viable. Buyer commits a parallel `P_cancel` process where each
-> sub-order pays a small cancellation fee back via a CancellableSeller
-> wrapper that programmatically signs the acknowledgment under a
-> pre-agreed fee schedule. Arithmetic netting across P1 + P_cancel
-> produces the same effect as a partial DAG resolve, with cash flow
-> equal to just the cancellation fees rather than full downstream
-> payments. All three kernel invariants survive: same buyer at root of
-> both processes, parties fixed at each commit, cancellation
-> acknowledgments are bilateral signatures encoded in the wrapper's
-> code (not unbonded third-party authorizations). The new buyer's side
-> is a separate `P2` process committed independently.
->
-> The closing paragraph above ("Cargo does not carry rights in Figaro;
-> the *commitment* carries rights ... Figaro is the wrong tool, by
-> design") should be read as scoped to the kernel layer; do **not**
-> extend it to the protocol layer. The initial framing in
-> `BOL_RESEARCH.md` §5/§6 dismissed the protocol-layer question as "out
-> of scope by design" on flawed economics (the rejected "early
-> `resolveProcess` + new process" pattern doubles DAG cost) — that
-> dismissal is incorrect-as-written. The BoL-transferability question is
-> tracked in the punch-list (FORKS / open questions); the full sketch and
-> open design points are in `BOL_RESEARCH.md` §5/§6 and its status header.
-> V3 reference material at `archive-v3/src/composability/` +
-> `archive-v5/COMPOSABILITY.md`.
+off. Its canonical header settles the question this entry records: the
+kernel forbids mid-flight resale — a structural property, not a parked
+design.
 
 ---
 

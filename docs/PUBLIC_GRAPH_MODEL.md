@@ -84,8 +84,7 @@ itself lives off-chain. The protocol ensures *referential integrity*, not
 The capital graph tracks where economic value flows: bonds locked, payments
 settled.
 
-**Contents:** Bond amounts per order, settlement payouts, clearing
-prices.
+**Contents:** Bond amounts per order, settlement payouts.
 
 **Truth boundary:** Protocol-enforced. All capital flows are on-chain and
 verified by contract invariants.
@@ -221,7 +220,7 @@ different trust model, update frequency, and audience:
 | Process | Protocol-enforced | All participants | Per lifecycle event |
 | Geo | Institution-declared | Drivers, agents, analytics | Per order creation |
 | GHG | Protocol-derived | Reporters, auditors | Per disclosure event |
-| Capital | Protocol-enforced | LPs, sellers, analytics | Per settlement |
+| Capital | Protocol-enforced | Sellers, analytics | Per settlement |
 | Cross-Process | Protocol-derived | Process provenance tools | Per link creation |
 
 Making these boundaries explicit in the UI — through visual separation,
