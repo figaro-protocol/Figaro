@@ -152,7 +152,7 @@ Automated compliance agents can:
 - Aggregate emissions data across reporting boundaries
 - Generate audit-ready reports from on-chain anchors + off-chain content
 
-### Capital Graph → Economic Decision-Making
+### Settlement Graph → Economic Decision-Making
 
 Agents make economic decisions by monitoring:
 - Bond flows and settlement payouts over time (settlement flows)
@@ -197,7 +197,7 @@ firms would dissolve when transaction costs reach zero.
 | Driver (AI) | Geo, Process, Capital | Optimize multi-stop routes, update its own catalogue rate |
 | Food preparer | Process | Accept/decline orders, manage prep pipeline |
 | Buyer | Process, GHG | Place orders, verify disclosures |
-| Market observer | Capital, Geo | Monitor settlement flows, demand density, catalogue coverage |
+| Market observer | Settlement, Geo | Monitor settlement flows, demand density, catalogue coverage |
 | Compliance | GHG, Cross-Process | Audit disclosure completeness |
 | Analytics | All | Generate reports, predict demand |
 

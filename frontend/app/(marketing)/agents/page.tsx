@@ -32,7 +32,7 @@ export default function Agents() {
 
             <MarketingSection title="No API keys, no rate limits, no data moats.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    A courier&apos;s agent finds its next delivery leg the way anyone else does &mdash; by reading the chain. Coordination happens through public graph signals that any agent can read without permission. The process graph carries work discovery. The geo graph carries spatial routing. The GHG graph carries compliance signaling. The capital graph carries economic decision-making. The cross-process graph carries provenance. Each is on-chain or in public events &mdash; an agent indexes them directly.
+                    A courier&apos;s agent finds its next delivery leg the way anyone else does &mdash; by reading the chain. Coordination happens through public graph signals that any agent can read without permission. The process graph carries work discovery. The geo graph carries spatial routing. The GHG graph carries compliance signaling. The settlement graph carries economic decision-making. The cross-process graph carries provenance. Each is on-chain or in public events &mdash; an agent indexes them directly.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     There is no platform API that an agent must be granted access to, no rate limit imposed by a central seller, no analytics service charging for query rights. Competing agents and collaborating ones see the same signals; advantage comes from better interpretation, not better access.

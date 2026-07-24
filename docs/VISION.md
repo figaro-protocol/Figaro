@@ -112,7 +112,7 @@ function as economic pheromones: a fulfiller sees active orders clustered in a
 6-char cell and routes toward them; a seller (human or agent) sees demand
 concentration and registers a catalogue serving that zone. Agents coordinate by
 intersecting multiple graphs simultaneously — spatial density (geo graph) ×
-bond flows and settlement payouts (capital graph) × settlement history
+bond flows and settlement payouts (settlement graph) × settlement history
 (process graph) — and the coordination emerges
 from graph intersection, not from a single signal. Private details (exact
 address, notes) are sealed with per-order AES-256-GCM keys and exchanged
@@ -141,7 +141,7 @@ that constitute the information layer of the public coordination economy:
 1. **Process graph** (protocol-enforced) — orders, bonds, settlement, DAG
 2. **Spatial graph** (institution-declared) — geohashes, routing signals, zones
 3. **Disclosure graph** (protocol-derived) — clauses, requirements, submissions
-4. **Capital graph** (protocol-enforced) — bond flows, settlement payouts
+4. **Settlement graph** (protocol-enforced) — per-order bonds, settlement payouts (linear; topology is the process graph's)
 5. **Cross-process graph** (protocol-derived) — template provenance, settlement links
 
 Each graph has its own truth boundary:

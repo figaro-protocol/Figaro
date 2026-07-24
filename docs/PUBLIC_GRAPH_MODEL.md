@@ -77,16 +77,22 @@ clause references, timestamped submissions), but the disclosure content
 itself lives off-chain. The protocol ensures *referential integrity*, not
 *substantive accuracy*. See `CLAUSES.md` §"When something deserves a clause — payload vs anchor".
 
-### 4. Capital Graph (Protocol-Enforced)
+### 4. Settlement Graph (Protocol-Enforced)
 
-**Source:** Bond mechanics in `FigaroCore`.
+**Source:** Bond and settlement events in `FigaroCore`.
 
-The capital graph tracks where economic value flows: bonds locked, payments
-settled.
+The settlement graph is the per-order record of kernel settlement events:
+bonds locked at commit, payouts at resolve. It is LINEAR per process — the
+kernel's own view (a chain of commits against a monotonic cumulative-value
+accumulator). It carries no topology: how orders relate as a DAG is the
+process graph's business, reconstructed off-chain, and the two layers are
+independent of one another. (This entry was formerly named the "capital
+graph" — a name that collapsed the linear bond record into the topology
+layer and read bonds as capital; bonds are deterrents.)
 
 **Contents:** Bond amounts per order, settlement payouts.
 
-**Truth boundary:** Protocol-enforced. All capital flows are on-chain and
+**Truth boundary:** Protocol-enforced. Every bond and payout is on-chain and
 verified by contract invariants.
 
 ### 5. Cross-Process Graph (Protocol-Derived)
@@ -220,7 +226,7 @@ different trust model, update frequency, and audience:
 | Process | Protocol-enforced | All participants | Per lifecycle event |
 | Geo | Institution-declared | Drivers, agents, analytics | Per order creation |
 | GHG | Protocol-derived | Reporters, auditors | Per disclosure event |
-| Capital | Protocol-enforced | Sellers, analytics | Per settlement |
+| Settlement | Protocol-enforced | Sellers, analytics | Per settlement |
 | Cross-Process | Protocol-derived | Process provenance tools | Per link creation |
 
 Making these boundaries explicit in the UI — through visual separation,
