@@ -56,10 +56,13 @@ off-chain topology. Call it a process **chain** (linear at the kernel), never a 
   its template, and start from it. State what you're changing and why. The fork gets a NEW
   `compositionHash` and is registered under the user's key — the original author's binding
   is untouched.
-- **New:** apply the decision rule out loud: *does the scenario require shared coordination
-  across more than one bilateral commitment, mediated by the bonded primitive?* If it's a
-  single bilateral exchange, the user needs one `figaro-commerce` commitment, not an
-  assembly — say so and stop.
+- **New:** apply the decision rule out loud: *is there a reusable COMPOSITION here — a deal
+  shape (clauses beyond one bare commitment) that sellers will bind and buyers will select
+  again?* A one-off bare purchase needs one `figaro-commerce` commitment, not an assembly —
+  say so and stop. Agreement count is NOT the test: a single-agreement assembly is
+  legitimate when it composes a reusable shape (the anchored references `pos` and
+  `freelancer` are exactly that); multi-agreement assemblies add shared coordination
+  across commitments on top.
 
 Identify: **root buyer**, **seller-of-record**, **sub-sellers**, **attestation sources**.
 
