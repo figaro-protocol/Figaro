@@ -342,6 +342,33 @@ distinct from the seller's denomination/accepted tokens, which are a community
 is the moat as competitor-controlled gatekeeping — the anti-pattern the
 ownerless, use-priced token replaces.
 
+**The chain, told whole.** A wallet address is an asset — real-world, human or
+machine, tangible or intangible — participating in value-added processes. *Which*
+processes is not an attribute stored anywhere: it is defined by the assemblies
+the wallet subscribes — the bindings a seller holds in the `AssemblyRegistry`
+are the asset's book of business. Because assemblies are compositions of
+clauses, they are **public contracts**, usable anywhere in the world, and every
+use produces fiscal, legal, and regulatory data — the itemized P&L above, the
+audit trail, the e-invoice projection — shaped to satisfy existing *and future*
+requirements, all of it self-sovereign to the wallets that produced it. The
+kernel's mechanism design plus the coordination and attestation clauses push the
+coordination overhead of the corporation and the institution to the periphery
+(the Coasean Collapse, above), and **value capture reallocates from the top,
+down**. What remains at the top is only the moat, tokenized and use-priced;
+every commodity cost-line is competed toward its cost of capital.
+
+**Where the equilibrium settles.** The tokens in a wallet split into the
+**social** (the denomination — a community-alignment signal) and the **moated**
+(the privileged token — a claim on scarce access), and both are valued against
+the same measure: the value-added processes between them, the **constant
+currency** in which every token's worth is discovered through use. Shares become
+tokens; the tokens a wallet holds signal the communities it participates in. The
+equilibrium does not settle at the reallocation itself — no particular
+distribution of value capture is the terminal state. It settles where each asset
+earns whatever rate of return it needs to continue participating in value-added
+processes: **a productive life**. The market enforces this the way it enforces
+going-concern everywhere — through ordinary rational exit.
+
 ### The Singleton Thesis
 
 Figaro's shared-kernel design (one deployment, no owner, no fee) is not a
@@ -353,7 +380,7 @@ coordination network.
 
 The singleton stays safe because of a critical architectural separation:
 **bonds are deterrents; payments are income.** The core bonding mechanism locks
-and releases collateral — that is all it does. Compositions (attestation
+and releases bonds — that is all it does. Compositions (attestation
 coordinators, auctions, disclosure modules, seller registries) operate on
 coordination, discovery, and evidence surfaces around the process. They can
 inform routing, allocation, and attestations, but they do not alter the bond
