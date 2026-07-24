@@ -86,6 +86,9 @@ export default function VerifiedSettlementKernelPaper() {
                     <p>
                         Both parties sign an EIP-712 typed commitment (Bloemen, Logvinov, &amp; Evans, 2017) off-chain. A single on-chain commit call verifies both signatures against the typed-data digest and pulls both bonds atomically. Root commitments create a new process; sub-order commitments extend an existing one by carrying the inherited process identifier and the next expected cumulative value. This eliminates the accept-reject pattern of traditional escrow protocols (which front-run on acceptance) and makes the act of committing simultaneous from the chain&rsquo;s point of view.
                     </p>
+                    <PaperRun title="Parties are externally-owned accounts.">
+                        Both signatures are checked by ECDSA public-key recovery against the claimed buyer and seller addresses: the commit call recovers a signer from each signature and reverts unless it equals the corresponding party. Each party is therefore an externally-owned account whose private key produced the signature; a contract wallet, which cannot yield a signature that recovers to its own address, cannot hold a party role. A DAO, multisig, or other contract authorizes an externally-owned signer upstream, and the kernel sees only that account&rsquo;s signature. One implementation consequence is load-bearing: key custody sits above the verified surface with no timeout and no recovery path, so a permanently lost buyer key strands that process&rsquo;s bonds &mdash; only the root buyer may trigger resolution, and the root buyer is fixed at commitment to the recovered signing address.
+                    </PaperRun>
                 </PaperSubsection>
                 <PaperSubsection title="2.3 Identifier Derivation">
                     <p>Process and order identifiers are content-addressed:</p>
