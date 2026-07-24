@@ -84,6 +84,7 @@ RPGF_ARBITRATOR_ADDR=$(echo "$FORGE_OUT" | grep 'MockArbitrator deployed at:'   
 DAO_TREASURY_ADDR=$(echo "$FORGE_OUT" | grep 'MockTreasuryMultisig deployed at:' | grep -oE '0x[0-9a-fA-F]+')
 DONATION_RAIL_ADDR=$(echo "$FORGE_OUT" | grep 'DonationRail deployed at:' | grep -oE '0x[0-9a-fA-F]+')
 BATCH_VERIFIER_ADDR=$(echo "$FORGE_OUT" | grep 'FigaroBatchVerifier deployed at:' | grep -oE '0x[0-9a-fA-F]+')
+MULTISENDER_ADDR=$(echo "$FORGE_OUT" | grep 'MockDisperse deployed at:' | grep -oE '0x[0-9a-fA-F]+')
 
 if [ -z "$CORE_ADDR" ]; then
   echo "❌ Could not parse FigaroCore address from forge output. Aborting env update."
@@ -160,6 +161,7 @@ update_env "$CORE_ENV" "NEXT_PUBLIC_RPGF_ARBITRATOR"           "$RPGF_ARBITRATOR
 update_env "$CORE_ENV" "NEXT_PUBLIC_DAO_TREASURY"              "$DAO_TREASURY_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_DONATION_RAIL"             "$DONATION_RAIL_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_BATCH_VERIFIER"            "$BATCH_VERIFIER_ADDR"
+update_env "$CORE_ENV" "NEXT_PUBLIC_MULTISENDER"               "$MULTISENDER_ADDR"
 
 # IPFS service endpoints — default to the local Kubo daemon. Set only if
 # absent, so a custom endpoint configured by hand survives a redeploy.
@@ -187,7 +189,8 @@ cat > "$CORE_DEPLOYMENT" <<EOF
   "batchVerifier": "$BATCH_VERIFIER_ADDR",
   "rpgfArbitrator": "$RPGF_ARBITRATOR_ADDR",
   "daoTreasury": "$DAO_TREASURY_ADDR",
-  "donationRail": "$DONATION_RAIL_ADDR"
+  "donationRail": "$DONATION_RAIL_ADDR",
+  "multisender": "$MULTISENDER_ADDR"
 }
 EOF
 

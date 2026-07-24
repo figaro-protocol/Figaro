@@ -255,6 +255,9 @@ for (const [processId, process] of processes) {
                     <LabelledListRow label="Lending" uppercase>
                         <strong>Aave, Compound, Morpho.</strong> Compositional target for ordinary treasury borrowing &mdash; a lender is a separate counterparty in a separate process. The bond itself is never financed: it is the party&apos;s own staked deterrent.
                     </LabelledListRow>
+                    <LabelledListRow label="Payout routing" uppercase>
+                        <strong>Disperse.</strong> Compositional target for post-settlement batch dispersal &mdash; one payment, many recipients, one transaction; a wallet splits its own receipts to earmarked addresses (fiscal remittance, savings, obligations), and the self-sovereign fiscal trail falls out as a byproduct. Canonical ownerless deployment, same address across chains; the devnet stack rehearses it with an interface-matching mock.
+                    </LabelledListRow>
                     <LabelledListRow label="Tax / reporting" uppercase>
                         <strong>TaxBit, Koinly, Cryptio.</strong> Compositional target for jurisdictional reports derived from chain state. No reconciliation &mdash; the chain is the primary record.
                     </LabelledListRow>

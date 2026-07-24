@@ -147,6 +147,19 @@ copyable exemplar of the coordinator pattern — canonical statement in
 `ARCHITECTURE.md` § "Composing the kernel". EIP-7702 and ERC-4337 variants are
 out of scope.
 
+**Multisender — composed, not owned.** Batch dispersal (one payment, many
+recipients, one transaction) is post-settlement fiscal routing: a wallet
+splits its own receipts — fiscal remittance, savings, obligations — to
+earmarked addresses, producing a self-sovereign fiscal trail as a byproduct.
+It never reads FigaroCore, bonds, or any registry, and the network already
+supplies it: mainnet composes the canonical public **Disperse** deployment
+(`0xD152f549545093347A162Dce210e7293f1452150` — verified, ownerless, live
+since 2018 at the same address across 16 chains) — fifth-noun composition,
+never a Figaro-owned duplicate. `src/mocks/MockDisperse.sol` mirrors its
+verified interface so devnet rehearses the composition; `Deploy.s.sol`
+deploys it as `NEXT_PUBLIC_MULTISENDER` (mainnet points the same variable at
+the canonical address).
+
 **`src/FigaroBatchVerifier.sol`** — Proof-based batch settlement (the Track-2
 scaling path, `SCALING_STRATEGY.md`; rebuilt 2026-07-16 from the pre-teardown
 prototype, upgraded to the witness model). One external function,
@@ -286,6 +299,7 @@ then renounces — the minter must exist at genesis because `registerMinter` pre
 - `src/mocks/MockArbitrator.sol` — devnet/test stand-in for the composed bond-settlement forum behind `RpgfMinter`'s `IRpgfArbitrator` seam: accepts disputes at zero fee, lets anyone deliver a ruling back to the arbitrable contract. Mainnet composes a real arbitration provider (Kleros via `KlerosRpgfAdapter`) behind the same seam — the forum is deployment config, never protocol code.
 - `src/mocks/MockKlerosCourt.sol` — Foundry-tests-only stand-in for a Kleros court on the arbitrator side of ERC-792 (`createDispute` paid at least `arbitrationCost`, `executeRuling` plays the jurors' final decision calling `rule` back). Used by `KlerosRpgfAdapterTest`; records the routed `extraData` so the adapter's config passthrough is assertable. Never deployed.
 - `src/mocks/MockTreasuryMultisig.sol` — devnet/test stand-in for the DAO treasury Safe (mainnet composes a canonical Safe at `DAO_WALLET` — config, never authored code): Safe's approveHash flow (propose → threshold approvals → anyone executes), no owner acts alone. Deployed by `Deploy.s.sol` as `NEXT_PUBLIC_DAO_TREASURY` (anvil[0..2] placeholder owners, 2-of-3) and the 300M devnet genesis mint target; `TreasuryProcurementTest` rehearses the funded operator-EOA procurement loop against it.
+- `src/mocks/MockDisperse.sol` — devnet stand-in for the canonical public multisender (Disperse.app, `0xD152f549545093347A162Dce210e7293f1452150`); mirrors its verified interface and behavior — `disperseEther` (legs + remainder refund), `disperseToken` (aggregate pull then legs), `disperseTokenSimple` (per-leg pulls), every batch atomic. Used by `MockDisperseTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_MULTISENDER`; mainnet composes the canonical deployment.
 - `src/mocks/MockUniversalRouter.sol` — test stand-in for a swap venue; `swap(tokenIn, tokenOut, amountIn, recipient)` at a settable rate, paying out of pre-funded liquidity. Used by `WitnessSwapAndCommitCoordinatorTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_SWAP_ROUTER` (pre-funded with both devnet tokens); mainnet uses the real Uniswap Universal Router.
 - `src/mocks/MockSP1Verifier.sol` — devnet/test stand-in for Succinct's SP1 verifier gateway behind `ISP1Verifier`: accepts any proof, so the batch path runs end-to-end on Anvil without proving hardware. Deployed by `Deploy.s.sol` for `FigaroBatchVerifier`; mainnet wires the canonical gateway (`SP1_VERIFIER_GATEWAY`).
 - `src/mocks/MockReentrantToken.sol` — Foundry-tests-only malicious ERC-20 that re-enters an armed target on `transfer`/`transferFrom` (the fee-on-transfer / ERC-777 hook an attacker gets). Used by `ReentrancyAdversarialTest` to prove the `nonReentrant` guards on `FigaroCore.commit`/`resolveProcess` and `FigaroBatchVerifier.settleBatch` actually fire under a live re-entry attempt. Never deployed.

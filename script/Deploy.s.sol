@@ -22,6 +22,7 @@ import "../src/FigaroBatchVerifier.sol";
 // Named import: the coordinator declares its own local-minimal `IFigaroCore`
 // (the coordinator exemplar), which would collide with AttestationCoordinator's.
 import {WitnessSwapAndCommitCoordinator} from "../src/WitnessSwapAndCommitCoordinator.sol";
+import {MockDisperse} from "../src/mocks/MockDisperse.sol";
 import "../src/AssemblyRegistry.sol";
 
 /// @title Deploy — Full protocol stack to local Anvil
@@ -130,6 +131,17 @@ contract Deploy is Script {
         // the reasoning there.
         SellerRegistry sellers = new SellerRegistry(0.001 ether);
         console.log("SellerRegistry deployed at:", address(sellers));
+
+        // ── Multisender (composition target; mock on devnet) ────────
+        // Batch dispersal — one payment, many recipients, one transaction;
+        // post-settlement fiscal routing (a wallet splits its own receipts
+        // to earmarked addresses) — is COMPOSED, not owned: mainnet uses
+        // the canonical public Disperse deployment
+        // (0xD152f549545093347A162Dce210e7293f1452150, same address across
+        // 16 chains, ownerless since 2018). MockDisperse mirrors its
+        // verified interface so devnet rehearses the composition.
+        MockDisperse multisender = new MockDisperse();
+        console.log("MockDisperse deployed at:", address(multisender));
 
         // ── Batch-settlement proof path (mock verifier on devnet) ──
         // MockSP1Verifier accepts any proof; the real deployment wires
