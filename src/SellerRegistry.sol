@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 /// @title SellerRegistry — Seller self-declaration with reclaimable deposit
-/// @custom:security-contact security@figaro.org
+/// @custom:security-contact figarosecurity@gmail.com
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 /// @notice Sellers register with a metadata URI and an ETH deposit — staked
 ///         intent to generate transactions. Surfacing derives from the live

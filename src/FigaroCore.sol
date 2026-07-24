@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./CommitmentTypes.sol";
 
 /// @title FigaroCore — Self-enforcing agreements between strangers
-/// @custom:security-contact security@figaro.org
+/// @custom:security-contact figarosecurity@gmail.com
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 /// @notice The protocol kernel. Two external functions: commit() and
 ///         resolveProcess(). No owner, no fee, no escape hatches.

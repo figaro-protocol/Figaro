@@ -12,7 +12,7 @@ interface IFigaroCore {
 }
 
 /// @title AttestationCoordinator — Merkle-gated stateless attestation
-/// @custom:security-contact security@figaro.org
+/// @custom:security-contact figarosecurity@gmail.com
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 /// @notice Zero-storage, role-gated, merkle-gated attestation coordinator.
 ///         Emits clause-typed attestation events for lifecycle, emissions, proximity,

@@ -13,7 +13,7 @@ interface IClauseRegistryAnchor {
 }
 
 /// @title FigaroBatchVerifier — Settles batched Figaro operations via SP1 proof
-/// @custom:security-contact security@figaro.org
+/// @custom:security-contact figarosecurity@gmail.com
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 /// @notice Accepts a zero-knowledge proof that a batch of protocol operations
 ///         (commits, resolves, attestations) produces a valid state transition.

@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 /// @title ClauseRegistry — Permissionless clause anchoring with reclaimable deposit
-/// @custom:security-contact security@figaro.org
+/// @custom:security-contact figarosecurity@gmail.com
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 /// @notice On-chain dedup guard + event emission for clause registration.
 ///         No owner, minimal storage. Indexers reconstruct the full

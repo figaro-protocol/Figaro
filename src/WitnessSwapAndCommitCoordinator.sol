@@ -48,7 +48,7 @@ interface IPermit2WitnessTransfer {
 }
 
 /// @title WitnessSwapAndCommitCoordinator — swap-route-bound pay-in-any-token executor
-/// @custom:security-contact security@figaro.org
+/// @custom:security-contact figarosecurity@gmail.com
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 /// @notice Off-protocol executor that lets a buyer and/or seller post their
 ///         FigaroCore bond in a token other than the process bond currency, by

@@ -6,7 +6,7 @@ import {IRpgfArbitrator} from "./IRpgfArbitrator.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 /// @title RpgfMinter — optimistic three-tranche retroactive public-goods minter for the florin
-/// @custom:security-contact security@figaro.org
+/// @custom:security-contact figarosecurity@gmail.com
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 /// @notice Distributes the 600M florins reserved for clause authors and assembly
 ///         designers of record, in three tranches, via an OPTIMISTIC posted-root

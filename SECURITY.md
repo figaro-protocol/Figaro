@@ -9,7 +9,7 @@ locked funds. Disclosure is taken seriously.
 **Report privately. Do not open a public issue, pull request, or discussion
 for a suspected vulnerability.**
 
-Email **security@figaro.org** with:
+Email **figarosecurity@gmail.com** with:
 
 - the affected file(s), with line numbers where possible;
 - the impact — what an attacker gains, and whose funds or state is at risk;
