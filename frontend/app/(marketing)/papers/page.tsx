@@ -42,6 +42,9 @@ export default function Papers() {
             </MarketingSection>
 
             <MarketingSection title="By discipline." bottomPad="wide">
+                <p className="text-sm text-ink-muted leading-relaxed max-w-2xl mb-8">
+                    Papers marked <span className="text-xs text-ink-faint uppercase tracking-wide">Formal</span> are the mechanism-design and engineering core &mdash; the equilibrium proof, the verified kernel, the composition discipline, and the behavioral analysis. The rest are interpretive essays that read those results through a discipline&rsquo;s own vocabulary.
+                </p>
                 <div className="space-y-10">
                     {groups.map((g) => (
                         <div key={g.slug}>
@@ -52,17 +55,25 @@ export default function Papers() {
                                     const isPdf = p.href.endsWith(".pdf");
                                     return (
                                         <li key={p.href}>
-                                            {isPdf ? (
-                                                <a href={p.href} className="text-ink-heading font-medium hover:underline">
-                                                    {p.title}
-                                                </a>
-                                            ) : (
-                                                <Link href={p.href} className="text-ink-heading font-medium hover:underline">
-                                                    {p.title}
-                                                </Link>
-                                            )}
-                                            {isPdf && (
-                                                <span className="ml-2 text-xs text-ink-faint uppercase tracking-wide">PDF</span>
+                                            <div className="flex flex-wrap items-baseline gap-x-2">
+                                                {isPdf ? (
+                                                    <a href={p.href} className="text-ink-heading font-medium hover:underline">
+                                                        {p.title}
+                                                    </a>
+                                                ) : (
+                                                    <Link href={p.href} className="text-ink-heading font-medium hover:underline">
+                                                        {p.title}
+                                                    </Link>
+                                                )}
+                                                {p.formalCore && (
+                                                    <span className="text-xs text-ink-faint uppercase tracking-wide">Formal</span>
+                                                )}
+                                                {isPdf && (
+                                                    <span className="text-xs text-ink-faint uppercase tracking-wide">PDF</span>
+                                                )}
+                                            </div>
+                                            {p.blurb && (
+                                                <p className="text-sm text-ink-muted leading-snug mt-0.5 max-w-2xl">{p.blurb}</p>
                                             )}
                                         </li>
                                     );
