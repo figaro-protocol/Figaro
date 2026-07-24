@@ -34,7 +34,7 @@ export default function VerifiedSettlementKernelPaper() {
             abstract={
                 <>
                     <p>
-                        We describe a reference implementation of the two-mechanism bonded commitment settlement primitive &mdash; <em>asymmetric bonding</em> (each party locks <Math>{"2\\times"}</Math> collateral, with the seller bonding against cumulative upstream value) and <em>buyer dominance with atomic resolution</em> (only the root buyer may extend or resolve, and resolution settles every active order in the process simultaneously or not at all) &mdash; together with the formal-verification methodology used to audit it. The kernel is <strong>ownerless, fee-less, and admin-less</strong>: two external entry points, a minimal storage footprint, no upgrade path, no escape hatch from the bonded state.
+                        We describe a reference implementation of the two-mechanism bonded commitment settlement primitive &mdash; <em>asymmetric bonding</em> (each party locks a <Math>{"2\\times"}</Math> bond, with the seller bonding against cumulative upstream value) and <em>buyer dominance with atomic resolution</em> (only the root buyer may extend or resolve, and resolution settles every active order in the process simultaneously or not at all) &mdash; together with the formal-verification methodology used to audit it. The kernel is <strong>ownerless, fee-less, and admin-less</strong>: two external entry points, a minimal storage footprint, no upgrade path, no escape hatch from the bonded state.
                     </p>
                     <p>
                         Verification is layered: exhaustive model checking explores the full reachable state space under bounded parameters; property-based fuzzing exercises the deployed bytecode against randomized adversarial call sequences; symbolic execution discharges the kernel safety properties over all inputs in the modeled traces; and SMT-based specification checking proves method-quantified rules across the kernel, the attestation surface, and a token-operations conservation surface covering every value-transfer call site. The properties established are token conservation, contract solvency, the asymmetric-bonding amounts, monotonic cumulative value, buyer-dominant atomic resolution, and the no-state-change guarantee on the attestation surface.
@@ -241,7 +241,7 @@ export default function VerifiedSettlementKernelPaper() {
                             <tbody>
                                 {[
                                     ["0. Chain", "Consensus and finality", "All on-chain state", "Chain halt, censorship, deep reorg"],
-                                    ["1. Bonding + record", "Asymmetric collateral; immutable log emitted by construction", "Rational actors", "Irrational actors"],
+                                    ["1. Bonding + record", "Asymmetric bonds; immutable log emitted by construction", "Rational actors", "Irrational actors"],
                                     ["2. Coordination", "Atomic resolution (co-sellers remedy)", "Multi-seller faults", "Uncoordinated sellers"],
                                     ["3. Arbitration", "On-chain record read in a decentralized forum", "Adversarial actors", "Forum reach"],
                                     ["4. Legal systems", "On-chain record read in courts", "Adversarial actors", "Jurisdictional limits"],
