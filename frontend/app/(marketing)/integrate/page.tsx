@@ -156,22 +156,54 @@ for (const [processId, process] of processes) {
                     tabIndex={0}
                     className="font-mono text-xs bg-subtle border border-default rounded px-3 py-3 mb-4 overflow-x-auto whitespace-pre"
                 >
-                    <code>{`// .deployments/local.json
+                    <code>{`// .deployments/local.json — the full devnet record
 {
   "chainId": 31337,
   "figaroCore": "0x…",
   "tokenAddress": "0x…",
   "permitTokenAddress": "0x…",
   "attestationCoordinator": "0x…",
+  "witnessSwapAndCommitCoordinator": "0x…",
+  "permit2": "0x…",
+  "swapRouter": "0x…",
   "clauseRegistry": "0x…",
   "sellerRegistry": "0x…",
   "assemblyRegistry": "0x…",
-  "florinToken": "0x…"
+  "florinToken": "0x…",
+  "rpgfMinter": "0x…",
+  "batchVerifier": "0x…",
+  "rpgfArbitrator": "0x…",
+  "daoTreasury": "0x…",
+  "donationRail": "0x…",
+  "multisender": "0x…"
 }`}</code>
                 </pre>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    The record&apos;s keys map onto the SDK&apos;s <code>FigaroAddresses</code> with one rename: <code>figaroCore</code> &rarr; <code>core</code>, <code>tokenAddress</code> &rarr; <code>token</code>, and <code>attestationCoordinator</code> / <code>clauseRegistry</code> / <code>sellerRegistry</code> / <code>assemblyRegistry</code> keep their names. <code>permitTokenAddress</code> and <code>florinToken</code> are <em>not</em> part of <code>FigaroAddresses</code>.
+                    The record&apos;s keys map onto the SDK&apos;s <code>FigaroAddresses</code> with one rename: <code>figaroCore</code> &rarr; <code>core</code>, <code>tokenAddress</code> &rarr; <code>token</code>, and <code>attestationCoordinator</code> / <code>clauseRegistry</code> / <code>sellerRegistry</code> / <code>assemblyRegistry</code> keep their names. Those six are the <em>only</em> keys <code>FigaroAddresses</code> carries &mdash; <code>addressesFromDeploymentRecord</code> reads them and ignores the rest. Every other key (<code>permitTokenAddress</code>, <code>florinToken</code>, and the composition/funding contracts below) is read directly by name when you compose against it; the SDK does not fold them into its address map.
                 </p>
+                <p className="text-sm text-ink-body leading-relaxed mb-4">
+                    The composition and funding keys, one line each &mdash; catalogued in full on <Link href="/spec" className="underline">/spec</Link>:
+                </p>
+                <ul className="space-y-3 mb-4">
+                    <LabelledListRow label="witnessSwapAndCommitCoordinator" labelWidth="wide">
+                        Off-protocol swap-and-commit: swaps a permit-signed input token into the settlement currency and commits in one transaction, so a buyer can bond in a token the process isn&apos;t denominated in. Pairs with <code>permit2</code> (the witness-permit layer) and <code>swapRouter</code> (the swap venue) &mdash; devnet mocks; mainnet the canonical Permit2 + Uniswap Universal Router.
+                    </LabelledListRow>
+                    <LabelledListRow label="rpgfMinter · rpgfArbitrator" labelWidth="wide">
+                        The optimistic RPGF distribution (<code>rpgfMinter</code>) and the composed bond-settlement forum it routes challenges to (<code>rpgfArbitrator</code>, behind the <code>IRpgfArbitrator</code> seam; devnet <code>MockArbitrator</code>).
+                    </LabelledListRow>
+                    <LabelledListRow label="batchVerifier" labelWidth="wide">
+                        <code>FigaroBatchVerifier</code> &mdash; the proof-based batch settlement path (SP1 validity proof + the <code>ClauseRegistry</code>-anchored content check). Not a florin minter.
+                    </LabelledListRow>
+                    <LabelledListRow label="daoTreasury" labelWidth="wide">
+                        Holds the DAO&apos;s genesis florin allocation (a multisig / Safe). It never signs kernel commitments &mdash; it buys through a funded operator EOA, because the kernel is ECDSA-only.
+                    </LabelledListRow>
+                    <LabelledListRow label="donationRail" labelWidth="wide">
+                        The no-custody donation surface for match rounds &mdash; <code>donate</code> moves tokens straight through to the recipient and emits the one event a match formula consumes; the rail holds nothing.
+                    </LabelledListRow>
+                    <LabelledListRow label="multisender" labelWidth="wide">
+                        Composed post-settlement batch dispersal (one payment, many recipients, one transaction). Mainnet composes the canonical ownerless Disperse (<code>0xD152f549545093347A162Dce210e7293f1452150</code>, same address across chains); devnet mirrors it with <code>MockDisperse</code>.
+                    </LabelledListRow>
+                </ul>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
                     Three token addresses appear; only one is a trade currency:
                 </p>

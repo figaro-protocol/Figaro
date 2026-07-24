@@ -123,6 +123,58 @@ export default function Specifications() {
                 </ul>
             </MarketingSection>
 
+            <MarketingSection title="Funding, payout &amp; composition contracts">
+                <p className="text-base text-ink-body leading-relaxed mb-4">
+                    The deployment record ships more than the kernel and the registries. These are the composed primitives around them &mdash; each an ordinary contract the kernel neither knows nor depends on. Where a canonical public deployment already exists on mainnet (Uniswap&apos;s Permit2 and router, the ownerless Disperse), the devnet stack rehearses the composition with an interface-matching mock and mainnet wires the real one.
+                </p>
+                <ul className="space-y-4">
+                    <ContractEntry
+                        id="WitnessSwapAndCommitCoordinator"
+                        title="WitnessSwapAndCommitCoordinator.sol"
+                        href={`${GH}/WitnessSwapAndCommitCoordinator.sol`}
+                        meta="off-protocol · swap-and-commit"
+                        desc="Off-protocol multi-token bond funding. A buyer holding a token the process isn't denominated in signs a Permit2 witness permit; the coordinator pulls that token, swaps it into the settlement currency, and commits in one transaction — the kernel still sees a single-currency commitment. It reads no kernel state and holds no bond; the kernel is untouched (record key: witnessSwapAndCommitCoordinator)."
+                    />
+                    <ContractEntry
+                        id="Permit2"
+                        title="Permit2 (witness SignatureTransfer)"
+                        meta="devnet mock · mainnet canonical"
+                        desc="The permit layer the swap coordinator pulls the input token through — permitWitnessTransferFrom folds the authorized swap route into the digest the owner signed. Mainnet wires Uniswap's canonical Permit2; devnet wires MockWitnessPermit2, whose digest parity with the canonical deployment is proven by the mainnet-fork suite (record key: permit2)."
+                    />
+                    <ContractEntry
+                        id="swapRouter"
+                        title="swapRouter (Uniswap Universal Router)"
+                        meta="devnet mock · mainnet canonical"
+                        desc="The swap venue the coordinator routes the input token through into the settlement currency. Mainnet wires the real Uniswap Universal Router; devnet wires MockUniversalRouter, pre-funded with bond-token liquidity and a settable rate (1:1 default) so buyer legs can swap deterministically in tests (record key: swapRouter)."
+                    />
+                    <ContractEntry
+                        id="rpgfArbitrator"
+                        title="rpgfArbitrator (IRpgfArbitrator forum)"
+                        meta="devnet mock · composed forum"
+                        desc="The composed bond-settlement forum the RPGF distribution routes challenges to. RpgfMinter posts a payout root optimistically; a challenger bonds against it; if disputed, this forum settles the bonded game behind the IRpgfArbitrator seam. Devnet wires MockArbitrator; a real deployment composes an arbitration provider (record key: rpgfArbitrator)."
+                    />
+                    <ContractEntry
+                        id="daoTreasury"
+                        title="daoTreasury (multisig)"
+                        meta="devnet mock · genesis custody"
+                        desc="Holds the 300M-florin DAO genesis allocation. Mainnet is a canonical Safe at the DAO wallet — config, never code; devnet is MockTreasuryMultisig (2-of-3 anvil placeholders). The treasury never signs kernel commitments (the kernel is ECDSA-only); it buys through a per-procurement funded operator EOA (record key: daoTreasury)."
+                    />
+                    <ContractEntry
+                        id="donationRail"
+                        title="DonationRail.sol"
+                        href={`${GH}/DonationRail.sol`}
+                        meta="no-custody · event-only"
+                        desc="The no-custody donation surface for crowd-steered match rounds. donate moves the donor's tokens straight through to the recipient and emits the one Donation event a match formula consumes — it holds nothing, owns nothing, gates nothing. The recipient set of a round is emergent from these events, filtered by the round's token and window (record key: donationRail)."
+                    />
+                    <ContractEntry
+                        id="multisender"
+                        title="multisender (Disperse)"
+                        meta="devnet mock · mainnet canonical"
+                        desc="Composed post-settlement batch dispersal — one payment, many recipients, one transaction; a wallet splits its own receipts to earmarked addresses. Mainnet composes the canonical ownerless Disperse deployment (0xD152f549545093347A162Dce210e7293f1452150, the same address across chains, unowned since 2018); devnet wires MockDisperse mirroring its verified interface (record key: multisender)."
+                    />
+                </ul>
+            </MarketingSection>
+
             <MarketingSection title="Canonical deployments">
                 <div className="overflow-x-auto -mx-6 px-6">
                     <table className="w-full text-sm">

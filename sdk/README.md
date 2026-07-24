@@ -42,7 +42,11 @@ import {
 // `tokenAddress`, …) — do not spread it verbatim; map it once:
 const addresses = addressesFromDeploymentRecord(deploymentRecord);
 
-// Fetch all FigaroCore events from a block range
+// Fetch all FigaroCore events from a block range. The return is a GROUPED
+// object — { orderCommitted, orderResolved, processResolved }, each a typed
+// array — NOT one flat log list. (Attestations are NOT in here: they live on
+// the AttestationCoordinator, a separate contract — read those with
+// EV_ATTESTATION + parseAttestationLogs; see @figaro/sdk/derive.)
 const events = await fetchCoreEvents(client, addresses, 0n);
 
 // Reconstruct full process/order state from events
@@ -94,6 +98,53 @@ SDK wrappers (`buildDomain` + `buildCommitment`) encode exactly these EIP-712
 type/domain details — a raw caller must reproduce them byte-for-byte or the
 kernel's on-chain recovery rejects the bond. Reach for the wrappers unless you
 have a reason not to; this sketch is only enough to orient a raw caller.
+
+**Token approvals before commit — the whole per-order bond, every time.** The
+kernel pulls the FULL per-order bonds on EVERY `commit`, root or sub-order, and
+nets nothing against bonds it already holds from earlier orders in the process
+(`src/FigaroCore.sol:208-209` — `payment × 2` from the buyer, `expectedCumulativeValue × 2`
+from the seller). Approve the settlement ERC-20 for both legs before each commit:
+
+```ts
+import { calculateRootApproval, calculateSubOrderApproval } from "@figaro/sdk";
+
+// Root order:
+const { buyerApproval, sellerApproval } = calculateRootApproval(payment);
+// → buyerApproval = 2 × payment,  sellerApproval = 2 × payment
+
+// Sub-order (extends an existing process):
+const approvals = calculateSubOrderApproval(payment, newCumulativeValue);
+// → buyerApproval  = 2 × payment
+//   sellerApproval = 2 × newCumulativeValue  — the WHOLE cumulative bond for
+//   this order, NOT the increment over the previous order's bond.
+```
+
+Approving the *increment* instead of the full `2 × newCumulativeValue` is the
+reverting mistake: `commit` reverts inside the settlement token with
+`ERC20InsufficientAllowance`, and the bonds already pulled for the earlier
+orders stay locked in the kernel until the buyer resolves the process. (The
+helper was `calculateSubOrderSellerApproval` before; it is now
+`calculateSubOrderApproval` and returns both legs.)
+
+## Recovering an in-flight process
+
+A half-committed process — the root landed but a sub-order's counter-signature
+never arrived, or a client crashed mid-checkout — is recoverable from chain
+state alone, because `OrderCommitted` carries the FULL commitment payload
+(`processId, buyer, seller, currency, payment, cumulativeValue, agreementHash,
+salt, deadline` — everything except the two signatures).
+
+1. `const events = await fetchCoreEvents(client, addresses, fromBlock)` and read
+   `events.orderCommitted` for the process (or `reconstruct(events)` for the live
+   `ProcessState`).
+2. Re-derive the `Commitment` struct from an event's fields — the payload IS the
+   struct. `reconstruct` also gives you the running `cumulativeValue` and
+   `activeOrderCount`, so a resuming sub-order signs the correct
+   `expectedCumulativeValue` (previous cumulative + this order's payment).
+3. Continue: re-request the missing counter-signature for that struct and
+   re-broadcast the `commit`, or — as the buyer — `resolveProcess` the orders
+   that DID commit. Nothing the chain can't re-derive is stranded; the bonds the
+   kernel already pulled stay against their orders until the buyer resolves.
 
 ### `@figaro/sdk/agent` — Agent Coordination
 
@@ -180,6 +231,19 @@ await attestAsSeller(
   walletClient, addresses.attestationCoordinator!,
   roleCommitment, targetCommitment, clauseId, /* stage */ 0, sectionData, proof, content,
 );
+// The coordinator has THREE attest entry points, all merkle-binding identically
+// to the signed agreement — they differ only in how caller authority is proven:
+//   • attestAsSeller     — the order's seller attests (role + target commitments;
+//                          pass the same struct twice for same-order attestation).
+//   • attestAsBuyer      — the root buyer attests (target commitment only; the
+//                          commit invariant makes msg.sender == c.buyer the check).
+//   • attestViaResolver  — the order's seller is a MECHANISM CONTRACT implementing
+//                          IRoleResolver, which authorizes msg.sender via
+//                          isAuthorized(orderHash, caller): delegated attestation
+//                          for contract-seller mechanisms.
+// The SDK ships wrappers for the first two (attestAsSeller / attestAsBuyer, both
+// from @figaro/sdk/agent); attestViaResolver is in ATTESTATION_COORDINATOR_ABI —
+// call it directly (writeContract) when the seller is a resolver contract.
 
 // Autonomous origination — the two-party handshake over a coordination channel:
 // buyer instantiates a discovered assembly + signs; seller validates + counter-signs.
@@ -659,6 +723,16 @@ is bundled — each is pinned to IPFS and read at runtime.
   acceptance is an identity declaration, not a market position. Carries no
   role / archetype / category taxonomy — what a seller does is inferred from the
   catalogue.
+  - `assemblyBindings` is an array of `AssemblyBindingRecord` — one entry per
+    assembly the wallet participates in, each
+    `{ bindingId, subjectAddress, assemblySlug, counterpartyBindings? }`. Each
+    `counterpartyBindings` entry is `{ clauseId, addresses[] }`: the wallets the
+    seller designates for a sub-order carrying that process clause (e.g. a
+    courier-process clause → the courier wallets checkout fills the courier
+    sub-order from; order is significant — checkout takes the first reachable, or
+    surfaces the list). Without this field the cart has nowhere to read a
+    sub-order counterparty's wallet from. The seller's ROLE in the assembly is
+    event-derived, never declared here.
 - **Catalogue** (`SellerCatalogueMetadata`) — the volatile item list pinned at
   `profile.catalogueURI`. Required: `subjectAddress`, `items[]`, `version`.
   Each item requires `id`, `name`, `price`, `available`; optional are
@@ -710,6 +784,27 @@ const metadataURI = await pinJSON(doc);          // your IPFS pin → "ipfs://�
 //   SellerRegistry.updateProfile(metadataURI)
 ```
 
+**All three registries take the same reclaimable ETH deposit.** `SellerRegistry`,
+`ClauseRegistry`, and `AssemblyRegistry` each require a `registrationDeposit` on
+the registering call (`register` / `registerClause` / `registerAssembly`, all
+`payable`) — a spam-deterrent stake, not a fee: no party can seize it, and `msg.value`
+must equal it EXACTLY (there is no sweep). The amount is a deploy-time immutable;
+read it from the contract's `registrationDeposit()` view rather than hardcoding a
+figure. The depositor reclaims the exact amount by withdrawing (`withdraw` for a
+seller, `withdrawDeposit(idHash | compositionHash)` for a clause / assembly), which
+de-surfaces the artifact. Withdrawing a seller CLEARS its dedup guard so the wallet
+can register again; a clause's clauseId binding and an assembly's composition binding
+are permanent — never cleared — because agreements committed against them keep
+resolving forever.
+
+**Reading an assembly binding.** `AssemblyRegistry.bindings(compositionHash)` returns
+the tuple `(address author, uint64 registeredAt, bool depositWithdrawn, string contentURI)`.
+The existence check is `registeredAt != 0`, NOT the bool: after a normal registration
+`depositWithdrawn` is `false` and stays false while the deposit is still staked (the
+surfaced state) — it flips to `true` only once the author reclaims the deposit. So a
+freshly registered assembly correctly reads `depositWithdrawn == false`; that false is
+"deposit still held," not "registration failed."
+
 The catalogue follows the same shape: `parseSellerCatalogueDocument(cat)` →
 `pinJSON(cat)` → set the resulting URI as the profile's `catalogueURI` and
 `updateProfile`. First-write-wins binding means the wallet→profile edge is
@@ -727,7 +822,14 @@ The event log is the read path: verify an update landed by re-running discovery
   for the handoff key-agreement (both audited, zero-dependency). No ethers, no
   web3.js, no framework lock-in.
 - **Pure where possible** — price curves, bond math, and state reconstruction are pure functions. Chain reads are isolated and clearly marked.
-- **Signing-agnostic** — builds EIP-712 typed data; you sign however you want (EOA, Safe, MPC, hardware wallet).
+- **ECDSA signers only** — the SDK builds EIP-712 typed data, and any signer that
+  produces a standard secp256k1 ECDSA signature works: an EOA, a hardware wallet, or
+  an MPC / threshold scheme that outputs one signature. `FigaroCore` verifies both
+  commitment signatures by `ECDSA.recover` alone (`src/FigaroCore.sol:161-166`) — it
+  runs no ERC-1271 check — so an ERC-1271 contract wallet (a Safe or other smart
+  account) CANNOT hold a kernel party role. A contract that must transact routes
+  through a funded EOA it controls (this is how the DAO treasury buys — it never
+  signs a commitment itself).
 - **Event-sourced state** — `Topology` reconstructs the full process/order topology from on-chain events. No subgraph dependency.
 - **Live kernel event contract** — reconstruction assumes `OrderCommitted` carries the full commitment payload (`agreementHash`, `salt`, `deadline`) and that order/process closure is derived from `OrderResolved` plus `ProcessResolved`.
 - **Agent-native** — the proposer generates typed actions; the HITL queue and autonomous gateway are two execution modes for the same action type.

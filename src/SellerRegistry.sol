@@ -82,8 +82,8 @@ contract SellerRegistry {
 
     /// @notice Update the metadata URI of a registered seller. Caller-only:
     ///         only the registered address can update its own profile. No
-    ///         deposit change, no lock reset — the deposit + lock are
-    ///         spam-protection knobs, not metadata-binding knobs.
+    ///         deposit change — the deposit is a spam-protection knob, not a
+    ///         metadata-binding knob; there is no time lock anywhere.
     /// @dev Emits a distinct `SellerProfileUpdated` event so off-chain
     ///      indexers can distinguish registrations from profile updates
     ///      (analytics) while still computing "current metadataURI" as the
