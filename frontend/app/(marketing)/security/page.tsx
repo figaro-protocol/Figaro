@@ -51,6 +51,22 @@ export default function Security() {
                 </p>
             </MarketingSection>
 
+            <MarketingSection title="What stands behind a deal?" sectionId="layers">
+                <p className="text-base text-ink-body leading-relaxed mb-5">
+                    Five things, each a reason the deal goes right, stacked from the inside out. The bonds behind them are not a fund anyone draws on and not property anyone seizes &mdash; they are deterrents, and the innermost layers do almost all the work. The outer layers exist only for the residue the inner ones cannot reach.
+                </p>
+                <ul className="space-y-3 text-base text-ink-body mb-5 ml-6">
+                    <li>&mdash; <strong className="text-ink-heading font-medium">The chain.</strong> The deal runs on Ethereum. Once its record is written, no one can rewrite it &mdash; not a counterparty, not Figaro, not the party who wrote it.</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">The lockbox and its record.</strong> FigaroCore holds both sides&apos; doubled stakes by fixed rule, and writes an unforgeable, timestamped record of every step as it happens &mdash; always, not on request. Nothing leaves the lockbox until the buyer signs the close.</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">The other sellers.</strong> Settlement is all-or-nothing: no one is paid until the buyer confirms the whole deal. So everyone bonded into it has their own money-backed reason to help set right whatever went wrong, before there is anything to dispute.</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">Arbitration.</strong> A forum the parties chose &mdash; Kleros is one &mdash; can weigh the record from outside the deal.</li>
+                    <li>&mdash; <strong className="text-ink-heading font-medium">Ordinary courts.</strong> Always available, whether or not the agreement names a forum. The record is evidence any legal system can read. Naming a forum in the agreement is a matter of clarity, never a limit on recourse.</li>
+                </ul>
+                <p className="text-base text-ink-body leading-relaxed">
+                    The outer two layers act on the record from outside the deal; neither can reach into the lockbox. That is the point of the no-escape-hatch design &mdash; the same wall that keeps anyone from prying the stakes out also keeps every step legible to whoever reads the record later.
+                </p>
+            </MarketingSection>
+
             <MarketingSection title="What if you lose your keys?" sectionId="keys">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Key loss is a wallet concern, not a protocol concern &mdash; with one sharp qualifier. The kernel verifies every commitment signature by ECDSA recovery, so a buyer or seller is always an externally-owned account: a Safe or other contract wallet cannot hold the role directly. The durable posture is decided before you commit: keep the key in hardware-grade custody, and set up a recovery path on the account in advance. On Ethereum today that path is a feature called EIP-7702 &mdash; it lets you authorise, ahead of time, a backup way to act for your account, so that if the key is lost you can still close out your active deals from the same address. Figaro inherits whatever your account provides; it adds no recovery surface and removes none.
