@@ -1,19 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { encodeAbiParameters, keccak256, type Address, type Hex } from "viem";
+import { encodePacked, keccak256, type Address, type Hex } from "viem";
 import {
-    buildRpgfTree,
     computeRpgfAllocations,
+    computeUsageAccruals,
     icbrt,
-    provenanceContentRef,
-    rpgfLeaf,
-    waterFill,
-    RPGF_EMPTY_ROOT,
+    usageScore,
+    usageWeightOf,
+    RPGF_BASE_WEIGHT,
+    RPGF_BOOSTED_WEIGHT,
+    RPGF_CAP_DENOMINATOR,
+    RPGF_CAP_NUMERATOR,
     RPGF_PAIR_CAP,
-    RPGF_PROVENANCE_CLAUSE,
-    type RpgfEventStream,
-    type RpgfSpecClassification,
+    RPGF_SCORE_SCALE,
+    type UsagePeriodAccrual,
+    type UsageRecord,
 } from "../src/rpgf/index.js";
-import { computeClauseKey } from "../src/discovery.js";
 
 // ── Integer math ─────────────────────────────────────────────────────
 
@@ -30,310 +31,299 @@ describe("icbrt", () => {
         expect(icbrt(big * big * big)).toBe(big);
         expect(icbrt(big * big * big - 1n)).toBe(big - 1n);
     });
-});
 
-describe("waterFill", () => {
-    const a = "0x00000000000000000000000000000000000000a1" as Address;
-    const b = "0x00000000000000000000000000000000000000b2" as Address;
-    const c = "0x00000000000000000000000000000000000000c3" as Address;
-
-    it("cascades the cap as redistribution pushes later wallets over it", () => {
-        const scores = new Map<Address, bigint>([
-            [a, 1n],
-            [b, 1n],
-            [c, 8n],
-        ]);
-        // c takes 80% > 15% → capped; the remainder re-splits to a and b at
-        // 425 each — still > 15% → they cap too. 550 stays unminted (the
-        // tranche amount is a ceiling, not a target).
-        const out = waterFill(scores, 1000n);
-        expect(out.get(c)).toBe(150n);
-        expect(out.get(a)).toBe(150n);
-        expect(out.get(b)).toBe(150n);
-    });
-
-    it("splits proportionally when nobody hits the cap", () => {
-        const scores = new Map<Address, bigint>(
-            Array.from({ length: 10 }, (_, i) => [`0x${(i + 1).toString(16).padStart(40, "0")}` as Address, 1n]),
-        );
-        const out = waterFill(scores, 1000n);
-        for (const amount of out.values()) expect(amount).toBe(100n);
-    });
-
-    it("caps every wallet when all overflow, leaving the remainder unallocated", () => {
-        const scores = new Map<Address, bigint>([
-            [a, 5n],
-            [b, 5n],
-        ]);
-        const out = waterFill(scores, 1000n);
-        expect(out.get(a)).toBe(150n);
-        expect(out.get(b)).toBe(150n);
-    });
-
-    it("drops zero scores and floors dust", () => {
-        const scores = new Map<Address, bigint>([
-            [a, 0n],
-            [b, 3n],
-            [c, 3n],
-        ]);
-        const out = waterFill(scores, 301n);
-        expect(out.has(a)).toBe(false);
-        // both overflow 15%? 301*3/6 = 150 > cap 45 → both capped at 45.
-        expect(out.get(b)).toBe(45n);
-        expect(out.get(c)).toBe(45n);
+    it("agrees with UsageCounter.icbrt's binary search at its overflow guard", () => {
+        // The Solidity side clamps candidates at 2642245 (the largest x whose
+        // cube fits a uint256). At and around that bound the two must agree.
+        const bound = 2642245n;
+        expect(icbrt(bound * bound * bound)).toBe(bound);
+        expect(icbrt(bound * bound * bound - 1n)).toBe(bound - 1n);
+        // The counter's own inputs are c * d^2 * 1e18 — well inside the bound
+        // for any realistic accrual, and exact for a perfect cube.
+        expect(icbrt(8n * RPGF_SCORE_SCALE)).toBe(2n * 10n ** 6n);
     });
 });
 
-// ── Merkle ───────────────────────────────────────────────────────────
-
-/** Independent sorted-pair verifier mirroring OZ MerkleProof.verify. */
-function verify(proof: Hex[], root: Hex, leaf: Hex): boolean {
-    let node = leaf;
-    for (const sibling of proof) {
-        const [lo, hi] = node.toLowerCase() < sibling.toLowerCase() ? [node, sibling] : [sibling, node];
-        node = keccak256(`0x${lo.slice(2)}${hi.slice(2)}` as Hex);
-    }
-    return node.toLowerCase() === root.toLowerCase();
-}
-
-describe("buildRpgfTree", () => {
-    const acct = (n: number) => `0x${n.toString(16).padStart(40, "0")}` as Address;
-
-    it("returns the canonical empty root for no leaves", () => {
-        const tree = buildRpgfTree([]);
-        expect(tree.root).toBe(RPGF_EMPTY_ROOT);
-        expect(() => tree.proofOf(rpgfLeaf(acct(1), 1n))).toThrow();
+describe("usageScore", () => {
+    it("is zero without both a process and a pair", () => {
+        expect(usageScore(RPGF_BASE_WEIGHT, 0n, 3n)).toBe(0n);
+        expect(usageScore(RPGF_BASE_WEIGHT, 3n, 0n)).toBe(0n);
     });
 
-    it("single leaf is its own root", () => {
-        const leaf = rpgfLeaf(acct(1), 42n);
-        const tree = buildRpgfTree([leaf]);
-        expect(tree.root).toBe(leaf);
-        expect(tree.proofOf(leaf)).toEqual([]);
+    it("weights breadth twice as heavily as volume", () => {
+        // c^(1/3) * d^(2/3): doubling d must beat doubling c.
+        const moreProcesses = usageScore(RPGF_BASE_WEIGHT, 4n, 2n);
+        const morePairs = usageScore(RPGF_BASE_WEIGHT, 2n, 4n);
+        expect(morePairs).toBeGreaterThan(moreProcesses);
     });
 
-    it("proofs verify against the root for odd and even leaf counts", () => {
-        for (const count of [2, 3, 5, 8]) {
-            const leaves = Array.from({ length: count }, (_, i) => rpgfLeaf(acct(i + 1), BigInt(i + 1) * 10n));
-            const tree = buildRpgfTree(leaves);
-            for (const leaf of leaves) {
-                expect(verify(tree.proofOf(leaf), tree.root, leaf)).toBe(true);
-            }
-            // A leaf outside the tree does not verify.
-            const alien = rpgfLeaf(acct(99), 999n);
-            expect(verify(tree.proofOf(leaves[0]), tree.root, alien)).toBe(false);
-        }
-    });
-
-    it("leaf shape matches the contract: keccak(bytes.concat(keccak(abi.encode(account, amount))))", () => {
-        const account = acct(7);
-        const inner = keccak256(
-            encodeAbiParameters([{ type: "address" }, { type: "uint256" }], [account, 123n]),
-        );
-        expect(rpgfLeaf(account, 123n)).toBe(keccak256(inner));
+    it("scales linearly in the weight", () => {
+        expect(usageScore(RPGF_BOOSTED_WEIGHT, 5n, 3n)).toBe(3n * usageScore(RPGF_BASE_WEIGHT, 5n, 3n));
     });
 });
 
-// ── Aggregation ──────────────────────────────────────────────────────
+describe("usageWeightOf", () => {
+    const GEO = keccak256(encodePacked(["string"], ["geo"]));
+    const OTHER = keccak256(encodePacked(["string"], ["other"]));
+    const CLAUSE = "0x00000000000000000000000000000000000000000000000000000000000000a1" as Hex;
 
-const BUYER = "0x1000000000000000000000000000000000000001" as Address;
-const SELLER = "0x2000000000000000000000000000000000000002" as Address;
-const SELLER2 = "0x3000000000000000000000000000000000000003" as Address;
-const GEO_AUTHOR = "0x4000000000000000000000000000000000000004" as Address;
-const PLAIN_AUTHOR = "0x5000000000000000000000000000000000000005" as Address;
-const DESIGNER = "0x6000000000000000000000000000000000000006" as Address;
-const COMPOSITION = keccak256(stringToBytes32Seed("assembly-under-test"));
+    it("boosts only artifacts carrying the counter's boosted tag", () => {
+        const tags = new Map<Hex, Hex>([[CLAUSE, GEO]]);
+        expect(usageWeightOf(CLAUSE, tags, GEO)).toBe(RPGF_BOOSTED_WEIGHT);
+        expect(usageWeightOf(CLAUSE, tags, OTHER)).toBe(RPGF_BASE_WEIGHT);
+    });
 
-function stringToBytes32Seed(s: string): Hex {
-    return `0x${Buffer.from(s).toString("hex").padEnd(64, "0").slice(0, 64)}` as Hex;
-}
+    it("gives the base weight to untagged artifacts and to every assembly", () => {
+        const tags = new Map<Hex, Hex>();
+        expect(usageWeightOf(CLAUSE, tags, GEO)).toBe(RPGF_BASE_WEIGHT);
+    });
+
+    it("never boosts when the counter's boostedTag is zero", () => {
+        const zero = `0x${"0".repeat(64)}` as Hex;
+        const tags = new Map<Hex, Hex>([[CLAUSE, zero]]);
+        expect(usageWeightOf(CLAUSE, tags, zero)).toBe(RPGF_BASE_WEIGHT);
+        expect(usageWeightOf(CLAUSE, tags, undefined)).toBe(RPGF_BASE_WEIGHT);
+    });
+});
+
+// ── The counter's counting rules ─────────────────────────────────────
+
+const CLAUSE_A = "0x00000000000000000000000000000000000000000000000000000000000000a1" as Hex;
+const CLAUSE_B = "0x00000000000000000000000000000000000000000000000000000000000000b2" as Hex;
+const ASSEMBLY = "0x00000000000000000000000000000000000000000000000000000000000000c3" as Hex;
+
+const AUTHOR_A = "0x1000000000000000000000000000000000000001" as Address;
+const AUTHOR_B = "0x2000000000000000000000000000000000000002" as Address;
+const DESIGNER = "0x3000000000000000000000000000000000000003" as Address;
+
+const seed = (s: string): Hex => `0x${Buffer.from(s).toString("hex").padEnd(64, "0").slice(0, 64)}` as Hex;
+const pair = (buyer: string, seller: string): Hex => keccak256(encodePacked(["string", "string"], [buyer, seller]));
 
 let logCounter = 0;
-function at(block: number): { blockNumber: bigint; logIndex: number } {
-    return { blockNumber: BigInt(block), logIndex: logCounter++ };
-}
-
-function emptyStream(): RpgfEventStream {
+function record(
+    artifact: Hex,
+    processId: string,
+    pairKey: Hex,
+    overrides: Partial<UsageRecord> = {},
+): UsageRecord {
+    // c/d/score on the event are the chain's own running values; the mirror
+    // recomputes them, so the fixtures leave them at zero unless a test cares.
     return {
-        orders: [],
-        resolved: [],
-        attestations: [],
-        clausesRegistered: [],
-        clauseWithdrawals: [],
-        assembliesRegistered: [],
-        assemblyWithdrawals: [],
-        sellerStakeEvents: [],
+        blockNumber: 100n,
+        logIndex: logCounter++,
+        artifact,
+        period: 0,
+        processId: seed(processId),
+        pairKey,
+        c: 0n,
+        d: 0n,
+        score: 0n,
+        ...overrides,
     };
 }
 
-const SPECS = new Map<string, RpgfSpecClassification>([
-    ["figaro-geolocation", { article: "logistics" }],
-    ["figaro-plain", { article: "settlement" }],
-    ["figaro-commerce", { article: "mandatory" }],
-]);
-
-function process(
-    stream: RpgfEventStream,
-    processId: Hex,
-    block: number,
-    opts: { staked?: boolean; subOrder?: boolean } = {},
-): { rootOrder: Hex; subOrder?: Hex } {
-    const rootOrder = keccak256(stringToBytes32Seed(`${processId}-root`));
-    if (opts.staked !== false) {
-        stream.sellerStakeEvents.push({ ...at(1), seller: SELLER, kind: "registered" });
-    }
-    stream.orders.push({ ...at(block), orderHash: rootOrder, processId, buyer: BUYER, seller: SELLER });
-    let subOrder: Hex | undefined;
-    if (opts.subOrder) {
-        subOrder = keccak256(stringToBytes32Seed(`${processId}-sub`));
-        stream.orders.push({ ...at(block), orderHash: subOrder, processId, buyer: BUYER, seller: SELLER2 });
-    }
-    stream.resolved.push({ ...at(block + 1), processId });
-    return { rootOrder, subOrder };
-}
-
-function registerClauses(stream: RpgfEventStream) {
-    stream.clausesRegistered.push(
-        { ...at(1), clauseId: "figaro-geolocation", version: 1n, contentHash: "0x01" as Hex, contentURI: "u", registrar: GEO_AUTHOR },
-        { ...at(1), clauseId: "figaro-plain", version: 1n, contentHash: "0x02" as Hex, contentURI: "u", registrar: PLAIN_AUTHOR },
-        { ...at(1), clauseId: "figaro-commerce", version: 1n, contentHash: "0x03" as Hex, contentURI: "u", registrar: GEO_AUTHOR },
-        { ...at(1), clauseId: RPGF_PROVENANCE_CLAUSE, version: 1n, contentHash: "0x04" as Hex, contentURI: "u", registrar: GEO_AUTHOR },
-    );
-}
-
-function attest(stream: RpgfEventStream, clauseId: string, orderHash: Hex, processId: Hex, block: number, contentRef: Hex = "0x00" as Hex) {
-    stream.attestations.push({
-        ...at(block),
-        orderHash,
-        processId,
-        clauseKey: computeClauseKey(clauseId, 1n),
-        contentRef,
+describe("computeUsageAccruals", () => {
+    it("counts distinct processes and distinct pairs per artifact per period", () => {
+        const p1 = pair("buyer1", "seller1");
+        const p2 = pair("buyer2", "seller1");
+        const accruals = computeUsageAccruals([
+            record(CLAUSE_A, "p1", p1),
+            record(CLAUSE_A, "p2", p2),
+            record(CLAUSE_B, "p1", p1),
+        ]);
+        const period = accruals.get(0)!;
+        expect(period.byArtifact.get(CLAUSE_A)).toMatchObject({ c: 2n, d: 2n });
+        expect(period.byArtifact.get(CLAUSE_B)).toMatchObject({ c: 1n, d: 1n });
+        expect(period.totalScore).toBe(
+            usageScore(RPGF_BASE_WEIGHT, 2n, 2n) + usageScore(RPGF_BASE_WEIGHT, 1n, 1n),
+        );
     });
+
+    it("is idempotent per (artifact, period, process) — a replay adds nothing", () => {
+        const p1 = pair("buyer1", "seller1");
+        const once = computeUsageAccruals([record(CLAUSE_A, "p1", p1)]);
+        const twice = computeUsageAccruals([record(CLAUSE_A, "p1", p1), record(CLAUSE_A, "p1", p1)]);
+        expect(twice.get(0)!.byArtifact.get(CLAUSE_A)).toEqual(once.get(0)!.byArtifact.get(CLAUSE_A));
+    });
+
+    it("drops a process entirely once its pair hits PAIR_CAP", () => {
+        const repeat = pair("buyer1", "seller1");
+        const capped = computeUsageAccruals(
+            Array.from({ length: RPGF_PAIR_CAP + 3 }, (_, i) => record(CLAUSE_A, `pc-${i}`, repeat)),
+        );
+        const five = computeUsageAccruals(
+            Array.from({ length: RPGF_PAIR_CAP }, (_, i) => record(CLAUSE_A, `pd-${i}`, repeat)),
+        );
+        // Beyond the cap the process feeds NEITHER c NOR d.
+        expect(capped.get(0)!.byArtifact.get(CLAUSE_A)).toEqual({
+            c: BigInt(RPGF_PAIR_CAP),
+            d: 1n,
+            score: usageScore(RPGF_BASE_WEIGHT, BigInt(RPGF_PAIR_CAP), 1n),
+        });
+        expect(capped.get(0)!.totalScore).toBe(five.get(0)!.totalScore);
+    });
+
+    it("caps per pair, not per artifact — a fresh pair keeps counting", () => {
+        const repeat = pair("buyer1", "seller1");
+        const fresh = pair("buyer9", "seller9");
+        const accruals = computeUsageAccruals([
+            ...Array.from({ length: RPGF_PAIR_CAP + 2 }, (_, i) => record(CLAUSE_A, `pe-${i}`, repeat)),
+            record(CLAUSE_A, "pe-fresh", fresh),
+        ]);
+        expect(accruals.get(0)!.byArtifact.get(CLAUSE_A)).toMatchObject({
+            c: BigInt(RPGF_PAIR_CAP + 1),
+            d: 2n,
+        });
+    });
+
+    it("buckets accrual by period — the same pair starts over in the next one", () => {
+        const p1 = pair("buyer1", "seller1");
+        const accruals = computeUsageAccruals([
+            record(CLAUSE_A, "pf-0", p1, { period: 0 }),
+            record(CLAUSE_A, "pf-1", p1, { period: 1 }),
+        ]);
+        expect(accruals.get(0)!.byArtifact.get(CLAUSE_A)).toMatchObject({ c: 1n, d: 1n });
+        expect(accruals.get(1)!.byArtifact.get(CLAUSE_A)).toMatchObject({ c: 1n, d: 1n });
+    });
+
+    it("applies the artifact's weight to the score and the period total", () => {
+        const tags = new Map<Hex, Hex>([[CLAUSE_A, keccak256(encodePacked(["string"], ["geo"]))]]);
+        const boosted = keccak256(encodePacked(["string"], ["geo"]));
+        const accruals = computeUsageAccruals(
+            [record(CLAUSE_A, "pg-0", pair("b", "s")), record(CLAUSE_B, "pg-0", pair("b", "s"))],
+            (artifact) => usageWeightOf(artifact, tags, boosted),
+        );
+        const period = accruals.get(0)!;
+        expect(period.byArtifact.get(CLAUSE_A)!.score).toBe(
+            3n * period.byArtifact.get(CLAUSE_B)!.score,
+        );
+    });
+
+    it("reproduces the running score the chain emitted", () => {
+        // The event carries the artifact's score AFTER the record; the mirror
+        // must land on the same number from the counting rules alone.
+        const p1 = pair("buyer1", "seller1");
+        const p2 = pair("buyer2", "seller2");
+        const emitted = [
+            record(CLAUSE_A, "ph-0", p1, { c: 1n, d: 1n, score: usageScore(RPGF_BASE_WEIGHT, 1n, 1n) }),
+            record(CLAUSE_A, "ph-1", p2, { c: 2n, d: 2n, score: usageScore(RPGF_BASE_WEIGHT, 2n, 2n) }),
+        ];
+        const accrual = computeUsageAccruals(emitted).get(0)!.byArtifact.get(CLAUSE_A)!;
+        const last = emitted[emitted.length - 1];
+        expect(accrual).toEqual({ c: last.c, d: last.d, score: last.score });
+    });
+
+    it("replays in (blockNumber, logIndex) order regardless of input order", () => {
+        const repeat = pair("buyer1", "seller1");
+        const records = Array.from({ length: RPGF_PAIR_CAP + 2 }, (_, i) =>
+            record(CLAUSE_A, `pi-${i}`, repeat, { blockNumber: BigInt(100 + i) }),
+        );
+        const forward = computeUsageAccruals(records).get(0)!;
+        const reversed = computeUsageAccruals([...records].reverse()).get(0)!;
+        expect(reversed.byArtifact.get(CLAUSE_A)).toEqual(forward.byArtifact.get(CLAUSE_A));
+        expect(reversed.totalScore).toBe(forward.totalScore);
+    });
+});
+
+// ── The payout (RpgfMinter.claim, mirrored) ──────────────────────────
+
+function periodOf(entries: Array<[Hex, bigint]>): UsagePeriodAccrual {
+    const byArtifact = new Map<Hex, { c: bigint; d: bigint; score: bigint }>();
+    let totalScore = 0n;
+    for (const [artifact, score] of entries) {
+        byArtifact.set(artifact, { c: 1n, d: 1n, score });
+        totalScore += score;
+    }
+    return { byArtifact, totalScore };
 }
 
 describe("computeRpgfAllocations", () => {
-    it("scores attested clauses on resolved staked processes; excludes mandatory, unstaked, and unresolved", () => {
-        const stream = emptyStream();
-        registerClauses(stream);
+    const authors = new Map<Hex, Address>([
+        [CLAUSE_A, AUTHOR_A],
+        [CLAUSE_B, AUTHOR_B],
+        [ASSEMBLY, DESIGNER],
+    ]);
 
-        // P1: resolved, staked root seller, geo attested on root + sub.
-        const p1 = keccak256(stringToBytes32Seed("p1"));
-        const o1 = process(stream, p1, 10, { subOrder: true });
-        attest(stream, "figaro-geolocation", o1.rootOrder, p1, 12);
-        attest(stream, "figaro-geolocation", o1.subOrder!, p1, 12);
-        // Mandatory clause attested — must earn nothing.
-        attest(stream, "figaro-commerce", o1.rootOrder, p1, 12);
-
-        // P2: resolved but root seller never staked — everything on it is excluded.
-        const p2 = keccak256(stringToBytes32Seed("p2"));
-        stream.orders.push({ ...at(20), orderHash: keccak256(stringToBytes32Seed("p2-root")), processId: p2, buyer: BUYER, seller: SELLER2 });
-        stream.resolved.push({ ...at(21), processId: p2 });
-        attest(stream, "figaro-plain", keccak256(stringToBytes32Seed("p2-root")), p2, 22);
-
-        // P3: committed, attested, never resolved — excluded.
-        const p3 = keccak256(stringToBytes32Seed("p3"));
-        const o3 = keccak256(stringToBytes32Seed("p3-root"));
-        stream.orders.push({ ...at(30), orderHash: o3, processId: p3, buyer: BUYER, seller: SELLER });
-        attest(stream, "figaro-plain", o3, p3, 31);
-
-        const allocations = computeRpgfAllocations(stream, SPECS, 1000_000n);
-        const byAccount = new Map(allocations.map((a) => [a.account, a.amount]));
-
-        // Only the geo author earns (sole scorer → capped at 15%).
-        expect(byAccount.get(GEO_AUTHOR.toLowerCase() as Address)).toBe(150_000n);
-        expect(byAccount.has(PLAIN_AUTHOR.toLowerCase() as Address)).toBe(false);
-        expect(allocations.length).toBe(1);
-    });
-
-    it("credits the assembly designer via provenance attestations", () => {
-        const stream = emptyStream();
-        registerClauses(stream);
-        stream.assembliesRegistered.push({ ...at(1), compositionHash: COMPOSITION, author: DESIGNER });
-
-        const p1 = keccak256(stringToBytes32Seed("pa"));
-        const o1 = process(stream, p1, 10, { subOrder: true });
-        attest(stream, RPGF_PROVENANCE_CLAUSE, o1.rootOrder, p1, 12, provenanceContentRef(COMPOSITION));
-
-        const allocations = computeRpgfAllocations(stream, SPECS, 1000n);
-        expect(allocations).toEqual([{ account: DESIGNER.toLowerCase() as Address, amount: 150n }]);
-    });
-
-    it("ignores provenance attestations whose contentRef matches no registered assembly", () => {
-        const stream = emptyStream();
-        registerClauses(stream);
-        const p1 = keccak256(stringToBytes32Seed("pb"));
-        const o1 = process(stream, p1, 10);
-        attest(stream, RPGF_PROVENANCE_CLAUSE, o1.rootOrder, p1, 12, keccak256("0x1234"));
-        expect(computeRpgfAllocations(stream, SPECS, 1000n)).toEqual([]);
-    });
-
-    it("caps repeated root-pair processes at RPGF_PAIR_CAP", () => {
-        const stream = emptyStream();
-        registerClauses(stream);
-        for (let i = 0; i < RPGF_PAIR_CAP + 3; i++) {
-            const pid = keccak256(stringToBytes32Seed(`pc-${i}`));
-            const o = process(stream, pid, 10 + i);
-            attest(stream, "figaro-geolocation", o.rootOrder, pid, 40 + i);
+    it("splits a tranche pro rata over the period's total score", () => {
+        // Ten equal artifacts, ten authors: each takes 10% — under the ceiling,
+        // so the raw pro-rata share is observable.
+        const artifacts = Array.from(
+            { length: 10 },
+            (_, i) => `0x${(i + 1).toString(16).padStart(64, "0")}` as Hex,
+        );
+        const period = periodOf(artifacts.map((artifact) => [artifact, 100n] as [Hex, bigint]));
+        const tenAuthors = new Map<Hex, Address>(
+            artifacts.map((artifact, i) => [artifact, `0x${(i + 1).toString(16).padStart(40, "0")}` as Address]),
+        );
+        const out = computeRpgfAllocations(period, tenAuthors, 10_000n);
+        expect(out.length).toBe(10);
+        for (const allocation of out) {
+            expect(allocation.amount).toBe(1_000n);
+            expect(allocation.capped).toBe(false);
         }
-        // All processes share the same (BUYER, SELLER) root pair → c = 5, d = 1.
-        // With one distinct pair, score = w * icbrt(5 * 1 * 1e18) — nonzero, and
-        // identical to what 5 processes alone would produce.
-        const capped = computeRpgfAllocations(stream, SPECS, 1000n);
-
-        const streamFive = emptyStream();
-        registerClauses(streamFive);
-        for (let i = 0; i < RPGF_PAIR_CAP; i++) {
-            const pid = keccak256(stringToBytes32Seed(`pd-${i}`));
-            const o = process(streamFive, pid, 10 + i);
-            attest(streamFive, "figaro-geolocation", o.rootOrder, pid, 40 + i);
-        }
-        const five = computeRpgfAllocations(streamFive, SPECS, 1000n);
-        expect(capped).toEqual(five);
     });
 
-    it("scores zero for clauses with unavailable specs and for withdrawn stakes", () => {
-        const stream = emptyStream();
-        registerClauses(stream);
-        const p1 = keccak256(stringToBytes32Seed("pe"));
-        const o1 = process(stream, p1, 10);
-        attest(stream, "figaro-plain", o1.rootOrder, p1, 12);
-
-        // Unavailable spec → zero.
-        const noSpec = new Map(SPECS);
-        noSpec.set("figaro-plain", null);
-        expect(computeRpgfAllocations(stream, noSpec, 1000n)).toEqual([]);
-
-        // Withdrawn clause stake → zero.
-        stream.clauseWithdrawals.push({ ...at(13), key: computeClauseKey("figaro-plain", 1n) });
-        expect(computeRpgfAllocations(stream, SPECS, 1000n)).toEqual([]);
+    it("sums a wallet's artifacts — clause and assembly families merge", () => {
+        const period = periodOf([
+            [CLAUSE_A, 50n],
+            [ASSEMBLY, 50n],
+            [CLAUSE_B, 900n],
+        ]);
+        const merged = new Map<Hex, Address>([
+            [CLAUSE_A, AUTHOR_A],
+            [ASSEMBLY, AUTHOR_A],
+            [CLAUSE_B, AUTHOR_B],
+        ]);
+        const out = computeRpgfAllocations(period, merged, 1_000_000n);
+        const a = out.find((x) => x.account === (AUTHOR_A.toLowerCase() as Address))!;
+        // One wallet, two families, one capped total — 100/1000 of the tranche.
+        expect(a.score).toBe(100n);
+        expect(a.amount).toBe(100_000n);
+        expect(a.capped).toBe(false);
     });
 
-    it("weights tier-1 articles and deeper chains higher", () => {
-        // Same shape twice: one geo (tier-1) clause vs one plain clause, each
-        // attested once on the root order of its own process; the geo author's
-        // score must strictly exceed the plain author's.
-        const stream = emptyStream();
-        registerClauses(stream);
+    it("caps a wallet at 15% and does NOT redistribute the excess", () => {
+        // One dominant author would take 90%; the cap binds and the other
+        // author's share is untouched — the excess simply stays unminted.
+        const period = periodOf([
+            [CLAUSE_A, 900n],
+            [CLAUSE_B, 100n],
+        ]);
+        const out = computeRpgfAllocations(period, authors, 1_000n);
+        const byAccount = new Map(out.map((x) => [x.account, x]));
+        const cap = (1_000n * RPGF_CAP_NUMERATOR) / RPGF_CAP_DENOMINATOR;
+        expect(byAccount.get(AUTHOR_A.toLowerCase() as Address)!.amount).toBe(cap);
+        expect(byAccount.get(AUTHOR_A.toLowerCase() as Address)!.capped).toBe(true);
+        expect(byAccount.get(AUTHOR_B.toLowerCase() as Address)!.amount).toBe(100n);
+        const minted = out.reduce((sum, x) => sum + x.amount, 0n);
+        expect(minted).toBeLessThan(1_000n); // the capped excess is never minted
+    });
 
-        const pGeo = keccak256(stringToBytes32Seed("pf-geo"));
-        const oGeo = process(stream, pGeo, 10);
-        attest(stream, "figaro-geolocation", oGeo.rootOrder, pGeo, 12);
+    it("ignores artifacts with no author of record but keeps them in the denominator", () => {
+        const period = periodOf([
+            [CLAUSE_A, 100n],
+            [CLAUSE_B, 900n],
+        ]);
+        const onlyA = new Map<Hex, Address>([[CLAUSE_A, AUTHOR_A]]);
+        const out = computeRpgfAllocations(period, onlyA, 1_000_000n);
+        // The unauthored artifact's 900 stays in the denominator: A takes
+        // 100/1000, not 100/100.
+        expect(out).toEqual([
+            { account: AUTHOR_A.toLowerCase() as Address, amount: 100_000n, score: 100n, capped: false },
+        ]);
+    });
 
-        const pPlain = keccak256(stringToBytes32Seed("pf-plain"));
-        const oPlain = process(stream, pPlain, 20);
-        attest(stream, "figaro-plain", oPlain.rootOrder, pPlain, 22);
+    it("returns nothing for a period with no score", () => {
+        expect(computeRpgfAllocations({ byArtifact: new Map(), totalScore: 0n }, authors, 1_000n)).toEqual([]);
+    });
 
-        // Both are capped at 15% of a large tranche unless the tranche is small
-        // relative to score ratios — use proportions instead: no cap binding at
-        // tiny tranche? The cap is proportional, so compare raw water-fill input
-        // via a tranche where neither binds: 3 wallets can't exceed 15% only if
-        // scores are near-equal, which they are not. Assert ordering instead.
-        const allocations = computeRpgfAllocations(stream, SPECS, 10_000n);
-        const byAccount = new Map(allocations.map((a) => [a.account, a.amount]));
-        const geo = byAccount.get(GEO_AUTHOR.toLowerCase() as Address) ?? 0n;
-        const plain = byAccount.get(PLAIN_AUTHOR.toLowerCase() as Address) ?? 0n;
-        expect(geo).toBeGreaterThan(0n);
-        expect(plain).toBeGreaterThan(0n);
-        expect(geo > plain || geo === (10_000n * 15n) / 100n).toBe(true);
+    it("floors dust rather than over-allocating", () => {
+        const period = periodOf([
+            [CLAUSE_A, 1n],
+            [CLAUSE_B, 2n],
+        ]);
+        const out = computeRpgfAllocations(period, authors, 100n);
+        const minted = out.reduce((sum, x) => sum + x.amount, 0n);
+        expect(minted).toBeLessThanOrEqual(100n);
     });
 });

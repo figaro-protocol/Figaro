@@ -10,6 +10,8 @@ import "../src/protocol/registries/ClauseRegistry.sol";
 import "../src/protocol/registries/SellerRegistry.sol";
 import "../src/florin/FlorinToken.sol";
 import {RpgfMinter} from "../src/rpgf/RpgfMinter.sol";
+import {UsageCounter} from "../src/protocol/usage/UsageCounter.sol";
+import {AssemblyRegistry} from "../src/protocol/registries/AssemblyRegistry.sol";
 import "../src/protocol/verifier/FigaroBatchVerifier.sol";
 
 /// @title DeployMainnet — Mainnet deployment of the full Figaro V5 protocol stack
@@ -22,14 +24,13 @@ import "../src/protocol/verifier/FigaroBatchVerifier.sol";
 ///   PRIVATE_KEY                — deployer private key (or use hardware wallet via flags)
 ///   FOUNDER_WALLET             — address receiving the 100M founder allocation at genesis
 ///   DAO_WALLET                 — address receiving the 300M DAO allocation at genesis
-///   RPGF_ARBITRATOR            — the composed bond-settlement forum (an arbitration
-///                                provider adapter implementing IRpgfArbitrator; the
-///                                forum is deployment config, never protocol code)
-///   RPGF_BOND                  — post/challenge bond in wei
-///   RPGF_CHALLENGE_WINDOW      — seconds a posted root must survive to finalize
-///   RPGF_DISPUTE_WINDOW        — seconds the poster has to escalate a challenge
-///   RPGF_EARLIEST_POST_1/2/3   — ascending unix timestamps for the tranche
-///                                earliest-post times (testnet compresses years
+///   RPGF_BOOSTED_TAG           — the label whose keccak earns the substrate-
+///                                broadening weight (e.g. "geo"). WHICH tag pays
+///                                is frozen here; membership stays permissionless
+///                                on ClauseRegistry.rpgfTagOf
+///   RPGF_PERIOD_END_1/2/3      — ascending unix timestamps closing each accrual
+///                                period. Tranche i pays for period i, so these
+///                                are ONE schedule (testnet compresses years
 ///                                2/5/9 to weeks 2/5/9 — time compresses when
 ///                                time is involved; ruled 2026-07-15)
 ///
@@ -38,8 +39,9 @@ import "../src/protocol/verifier/FigaroBatchVerifier.sol";
 ///   300M  (30%)  DAO      — genesis mint to DAO_WALLET     (no vesting, no unlock)
 ///   600M  (60%)  RPGF     — RpgfMinter registered at genesis (registerMinter
 ///                           precedes renounce, so the minter MUST exist here);
-///                           optimistic post/challenge/finalize/claim distribution
-///                           to clause authors + assembly designers of record.
+///                           paid pro rata from UsageCounter accrual to clause
+///                           authors + assembly designers of record, capped at
+///                           15% per wallet.
 ///
 /// @dev There is NO on-chain clause-content validation and NO batch settlement
 ///      proof path. The chain binds an attestation to its signed agreement
@@ -60,6 +62,8 @@ contract DeployMainnet is Script {
     address internal _clauses;
     address internal _sellers;
     address internal _florin;
+    address internal _assemblies;
+    address internal _usageCounter;
     address internal _rpgfMinter;
     address internal _batchVerifier;
 
@@ -83,15 +87,12 @@ contract DeployMainnet is Script {
     function _validateEnv() internal view {
         require(vm.envAddress("FOUNDER_WALLET") != address(0), "FOUNDER_WALLET not set");
         require(vm.envAddress("DAO_WALLET") != address(0), "DAO_WALLET not set");
-        require(vm.envAddress("RPGF_ARBITRATOR") != address(0), "RPGF_ARBITRATOR not set");
-        require(vm.envUint("RPGF_BOND") > 0, "RPGF_BOND not set");
-        require(vm.envUint("RPGF_CHALLENGE_WINDOW") > 0, "RPGF_CHALLENGE_WINDOW not set");
-        require(vm.envUint("RPGF_DISPUTE_WINDOW") > 0, "RPGF_DISPUTE_WINDOW not set");
+        require(bytes(vm.envString("RPGF_BOOSTED_TAG")).length > 0, "RPGF_BOOSTED_TAG not set");
         require(
-            vm.envUint("RPGF_EARLIEST_POST_1") > block.timestamp
-                && vm.envUint("RPGF_EARLIEST_POST_2") > vm.envUint("RPGF_EARLIEST_POST_1")
-                && vm.envUint("RPGF_EARLIEST_POST_3") > vm.envUint("RPGF_EARLIEST_POST_2"),
-            "RPGF_EARLIEST_POST_1/2/3 must be ascending future timestamps"
+            vm.envUint("RPGF_PERIOD_END_1") > block.timestamp
+                && vm.envUint("RPGF_PERIOD_END_2") > vm.envUint("RPGF_PERIOD_END_1")
+                && vm.envUint("RPGF_PERIOD_END_3") > vm.envUint("RPGF_PERIOD_END_2"),
+            "RPGF_PERIOD_END_1/2/3 must be ascending future timestamps"
         );
     }
 
@@ -111,6 +112,13 @@ contract DeployMainnet is Script {
         ClauseRegistry clauses = new ClauseRegistry(0.001 ether);
         _clauses = address(clauses);
         console.log("ClauseRegistry:         ", _clauses);
+
+        // AssemblyRegistry — the assembly artifact family's anchor, parallel to
+        // ClauseRegistry and SellerRegistry. RpgfMinter reads it for the
+        // assembly author of record.
+        AssemblyRegistry assemblies = new AssemblyRegistry(0.001 ether);
+        _assemblies = address(assemblies);
+        console.log("AssemblyRegistry:       ", _assemblies);
 
         // Clauses are NOT registered here. Their content is pinned to IPFS +
         // anchored on ClauseRegistry by frontend/scripts/populate-clauses.mjs —
@@ -167,23 +175,32 @@ contract DeployMainnet is Script {
         console.log("FlorinToken:               ", _florin);
 
         // The RPGF minter must exist at genesis: registerMinter only works
-        // before renounce, and renounce is irreversible. formulaHash anchors
-        // the exact bytes of the canonical formula spec; the composed forum
-        // and every timing/bond parameter arrive via environment (config,
-        // never code).
-        bytes32 formulaHash = keccak256(bytes(vm.readFile("sdk/src/rpgf/formula.json")));
+        // before renounce, and renounce is irreversible. Accrual periods and
+        // tranches are ONE schedule — tranche i pays for period i — so the
+        // counter is deployed here from the same environment timestamps.
+        // Nothing is posted, bonded, or challenged: the counter records
+        // verified usage as it happens and the minter pays pro rata from a
+        // period that has closed.
+        uint64[] memory periods = new uint64[](3);
+        periods[0] = uint64(vm.envUint("RPGF_PERIOD_END_1"));
+        periods[1] = uint64(vm.envUint("RPGF_PERIOD_END_2"));
+        periods[2] = uint64(vm.envUint("RPGF_PERIOD_END_3"));
+
+        UsageCounter usageCounter = new UsageCounter(
+            _core,
+            _clauses,
+            keccak256(bytes(vm.envString("RPGF_BOOSTED_TAG"))),
+            keccak256(abi.encode("figaro-assembly-provenance", uint64(1))),
+            periods
+        );
+        _usageCounter = address(usageCounter);
+        console.log("UsageCounter:           ", _usageCounter);
+
         RpgfMinter rpgfMinter = new RpgfMinter(
             address(florin),
-            vm.envAddress("RPGF_ARBITRATOR"),
-            formulaHash,
-            vm.envUint("RPGF_BOND"),
-            uint64(vm.envUint("RPGF_CHALLENGE_WINDOW")),
-            uint64(vm.envUint("RPGF_DISPUTE_WINDOW")),
-            [
-                uint64(vm.envUint("RPGF_EARLIEST_POST_1")),
-                uint64(vm.envUint("RPGF_EARLIEST_POST_2")),
-                uint64(vm.envUint("RPGF_EARLIEST_POST_3"))
-            ],
+            _usageCounter,
+            _clauses,
+            _assemblies,
             [uint256(300_000_000 ether), 200_000_000 ether, 100_000_000 ether]
         );
         _rpgfMinter = address(rpgfMinter);
@@ -216,8 +233,10 @@ contract DeployMainnet is Script {
         console.log("  NEXT_PUBLIC_FIGARO_CORE=              ", _core);
         console.log("  NEXT_PUBLIC_ATTESTATION_COORDINATOR=  ", _attestation);
         console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=          ", _clauses);
+        console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=        ", _assemblies);
         console.log("  NEXT_PUBLIC_SELLER_REGISTRY=        ", _sellers);
         console.log("  NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=        ", _florin);
+        console.log("  NEXT_PUBLIC_USAGE_COUNTER=            ", _usageCounter);
         console.log("  NEXT_PUBLIC_RPGF_MINTER=              ", _rpgfMinter);
         console.log("  NEXT_PUBLIC_BATCH_VERIFIER=           ", _batchVerifier);
         console.log("---");

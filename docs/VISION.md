@@ -412,11 +412,12 @@ The florin has a fixed supply of one billion tokens, set at genesis and never
 inflated. There is no settlement-anchored emission: the florin is not minted on
 `resolveProcess`, and there is no per-settlement reward path. The allocation
 is 100M (10%) to founders and 300M (30%) to the DAO — both minted at genesis,
-no vesting — and 600M (60%) reserved for clause-author retroactive
-public-goods funding. The proof-gated distribution mechanism was removed in the
-proof-apparatus teardown, so the 600M currently has no wired minter (the
-rationale survives in `PUBLIC_GRAPH_MODEL.md`). The surviving florin contracts are
-immutable: no owner, no upgrade path, no parameter changes. If one is wrong, a
+no vesting — and 600M (60%) reserved for retroactive public-goods funding to
+clause authors and assembly designers of record. That 600M has a wired minter,
+registered at florin genesis: usage is counted on chain as trade happens, and
+each of three declining tranches is claimed pro rata from a closed accrual
+period (mechanism in `CONTRACTS.md`, rationale in `PUBLIC_GRAPH_MODEL.md`).
+The florin contracts are immutable: no owner, no upgrade path, no parameter changes. If one is wrong, a
 new one is deployed and the community migrates.
 
 This design is deliberate. The florin is not required for participation. It is not

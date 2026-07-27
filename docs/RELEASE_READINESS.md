@@ -2,7 +2,7 @@
 
 Status: canonical release gate note for the live V5 kernel, protocol, and runtime.
 
-Last updated: 2026-07-16 (no-beta ruling: the `cloudflare/` closed-beta apparatus was deleted — Task 7 is a plain testnet rehearsal now. The proof apparatus teardown was REVERSED: `RpgfMinter`, `FigaroBatchVerifier`, and the Rust `prover/` were rebuilt witness-based 2026-07-15/16 — Task 8 is live again; `CONTRACTS.md` § "Teardown state — CLOSED" owns the status).
+Last updated: 2026-07-27 (the optimistic reward apparatus — posted roots, ETH bonds, challenge windows, the arbitrator seam and its mocks, the standalone donation rail — was DELETED and replaced by `UsageCounter` + a rewritten `RpgfMinter` and self-railed `MatchPool`; `CONTRACTS.md` § "Teardown state — CLOSED" owns the status. Earlier: the `cloudflare/` closed-beta apparatus was deleted — Task 7 is a plain testnet rehearsal now; `FigaroBatchVerifier` and the Rust `prover/` were rebuilt witness-based 2026-07-16, so Task 8 is live).
 
 This note is the current answer to a simple question: what is ready now, what is still open, and what must happen before a public release is treated as complete.
 
@@ -73,18 +73,16 @@ Required output:
 1. mainnet `registrationDeposit` chosen against an explicit deploy-time ETH/USD anchor — bonded-participation cost is the floor of attacker discouragement; too low enables cheap Sybil farms, too high locks out small sellers
 2. reasoning recorded inline in `DeployMainnet.s.sol` at the constructor call sites
 3. PLACEHOLDER comments removed from the script
-4. same exercise repeated for `AssemblyRegistry` and `ClauseRegistry` deposits if Task 4 lands mainnet deployments for them (the binding-permanence asymmetry — clause/assembly bindings are permanent, the SellerRegistry dedup guard clears on withdraw — should be reflected in the deposit choice)
+4. same exercise repeated for the `AssemblyRegistry` and `ClauseRegistry` deposits, both of which now deploy to mainnet (Task 4) with the devnet placeholder (the binding-permanence asymmetry — clause/assembly bindings are permanent, the SellerRegistry dedup guard clears on withdraw — should be reflected in the deposit choice)
 
 ### Task 4: AssemblyRegistry Mainnet-Parity Decision
 
-`src/protocol/registries/AssemblyRegistry.sol` exists and is deployed by `script/Deploy.s.sol:167` (devnet), but `script/DeployMainnet.s.sol` does not import or deploy it. The CLAUDE.md doctrine and the separation-of-concerns rule treat `AssemblyRegistry` as a protocol-tier artifact-family anchor parallel to `ClauseRegistry` / `SellerRegistry`. The devnet/mainnet asymmetry is currently undocumented.
+**Disposition taken: deploy it (2026-07-27).** `script/DeployMainnet.s.sol` now imports and deploys `AssemblyRegistry` alongside `ClauseRegistry` and `SellerRegistry` — the parity the separation-of-concerns rule requires, and a hard dependency of `RpgfMinter`, which reads it for the assembly author of record. The devnet/mainnet asymmetry is closed.
 
-Required output (one of):
+Remaining output:
 
-1. add `AssemblyRegistry` to `script/DeployMainnet.s.sol` with reasoned constructor values per Task 3; add `NEXT_PUBLIC_ASSEMBLY_REGISTRY` to the deployer log and to the Pre-Mainnet Deployment Verification checks below; OR
-2. document an explicit deferral with the runtime consequence — assemblies cannot be published or referenced on the mainnet runtime until a later deploy — and the planned timeline for closing the gap
-
-Either way: reflect the chosen disposition in `docs/CONTRACTS.md` and `CLAUDE.md` so the mainnet contract inventory is unambiguous.
+1. ~~`NEXT_PUBLIC_ASSEMBLY_REGISTRY` and `NEXT_PUBLIC_USAGE_COUNTER` deployer-log lines~~ — DONE 2026-07-27: both are printed by `_logAddresses()`.
+2. Its `registrationDeposit` reasoned per Task 3 (it currently carries the devnet `0.001 ether` placeholder, same as the other two registries).
 
 ### Task 5: Launch Scenario — Assembly Seeding Decision
 
@@ -140,8 +138,9 @@ Required output:
 ### Task 8: SP1 Prover End-to-End — REBUILT (2026-07-16)
 
 The proof apparatus deleted in the 2026-06-25 teardown was rebuilt witness-based
-and is live: `RpgfMinter` (optimistic, 2026-07-15) and `FigaroBatchVerifier` +
-the Rust `prover/` (2026-07-16). Canonical state: `CONTRACTS.md` § "Teardown
+and is live: `FigaroBatchVerifier` + the Rust `prover/` (2026-07-16). (The RPGF
+distribution returned on a separate track and needs no proving at all — see
+`CONTRACTS.md` § RPGF.) Canonical state: `CONTRACTS.md` § "Teardown
 state — CLOSED". A real local SP1 Core proof of the canonical batch generates
 and verifies; the cross-language batch e2e (`sdk/tests/batch-e2e.test.ts`) and
 `BatchVerifierTokenOps.spec` are green. Mainnet deploy wires Succinct's SP1
@@ -295,7 +294,8 @@ external-audit gates above:
 - `FlorinToken.deployer` == the expected deployer EOA; `FlorinToken.deployerMintRenounced` == `true` after minter setup; `FlorinToken.totalSupply()` == the expected genesis allocation; every registered minter is an intended allocation contract.
 - `AttestationCoordinator.core` == the deployed `FigaroCore` address.
 - `SellerRegistry.registrationDeposit` and `ClauseRegistry.registrationDeposit` == the mainnet values picked per Task 3 (NOT the devnet `0.001 ether` placeholder).
-- `AssemblyRegistry.registrationDeposit` == the mainnet value picked per Task 3 — if Task 4 disposition (1) is taken. If disposition (2) is taken, `AssemblyRegistry` is not deployed and this check does not apply.
+- `AssemblyRegistry.registrationDeposit` == the mainnet value picked per Task 3 (NOT the devnet `0.001 ether` placeholder).
+- `UsageCounter.boostedTag` == `keccak256(RPGF_BOOSTED_TAG)` for the intended label, and `UsageCounter.periodEnd(0..2)` == the intended `RPGF_PERIOD_END_1/2/3` — these are immutable and cannot be corrected after deploy. `RpgfMinter.counter` / `.clauses` / `.assemblies` point at the deployed instances, and `.trancheAmount` sums to 600M.
 - All settlement tokens are non-rebasing and non-fee-on-transfer.
 - Kleros subcourt IDs in the deployed dispute config match the target chain on klerosboard.com (Gnosis subcourt IDs differ from Ethereum mainnet) — verify before the deployment is treated as live.
 - Agreement / assembly-template / profile content is pinned for durable retrieval per Task 6 — on mainnet via sovereign per-party pinning (Option 3), never only a single Kubo node — and is fetchable by CID across the 6-year (5 + 1) retrieval-availability floor.
@@ -317,12 +317,21 @@ narrow follow-up review or a repeat audit decision.
 
 ### Frozen scope
 
+Paths follow the 2026-07-27 directory reorganisation (`CONTRACTS.md` § header — the
+directory IS the tier map); the frozen *contracts* are unchanged by the move.
+
 | Directory / file | Contents |
 |---|---|
-| `src/` | `FigaroCore.sol`, `AttestationCoordinator.sol`, `CommitmentTypes.sol`, `IRoleResolver.sol`, `ClauseRegistry.sol`, `SellerRegistry.sol`, `AssemblyRegistry.sol` |
+| `src/kernel/` | `FigaroCore.sol`, `CommitmentTypes.sol` |
+| `src/protocol/registries/` | `ClauseRegistry.sol`, `SellerRegistry.sol`, `AssemblyRegistry.sol` |
+| `src/protocol/coordinators/` | `AttestationCoordinator.sol`, `IRoleResolver.sol` |
 | `src/florin/` | `FlorinToken.sol`, `IFlorinMinter.sol` |
 | `script/Deploy.s.sol` | Devnet deploy (defines the devnet surface) |
 | `script/DeployMainnet.s.sol` | Mainnet deploy (defines the audited mainnet surface) |
+
+`src/protocol/usage/`, `src/rpgf/`, `src/match/`, and `src/protocol/verifier/` are
+NOT yet in the frozen scope — extending it to cover them is the pre-mainnet
+re-establishment task noted under Task 8.
 
 ### Explicitly out of scope (not frozen)
 

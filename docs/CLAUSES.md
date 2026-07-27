@@ -149,7 +149,7 @@ which is agreement-only — so runtime-attestable = that count minus one.
 | `figaro-topology` | DAG lineage (parent order hashes) | **Agreement-only** (no runtime attestation) |
 | `figaro-commerce` | Payment + line items (the settlement currency is NOT here — it is signed in the kernel commitment, resolved from the denomination pin or the seller default) | Layer A (off-chain) |
 | `figaro-denomination` | The one ERC-20 the whole assembly's processes bond and settle in — ANY token; the clause names no token and carries no economics. SPECIFIC-T&C (`block.terms: "specific"`, `settlement` article): the designer pins the token address into the template (identity-bearing — the pin is part of the compositionHash), tailoring the generic assembly; every bond (2×) and payment then moves in it. Elective, composed on the ROOT order (process-scoped; the kernel enforces one currency per process); absent = the BUYER'S PICK from the seller's accepted array denominates (checkout re-quotes at the venue rate), else the seller's default. The token-layer grid in `LEXICON.md` owns the full model | Layer A (off-chain) |
-| `figaro-assembly-provenance` | The process→assembly link: the AssemblyRegistry `compositionHash` this agreement instantiates (`provenance` article). The designer composes it; the field fills MECHANICALLY at checkout from the loaded template's own identity (`fillProvenanceSection` — the hash cannot appear inside the composition it hashes, so it is never a designer value). A buyer attestation of the section is the on-chain event the RPGF recompute credits assembly designers of record from; the provenance article is scoring infrastructure and itself EXCLUDED from RPGF scoring | Layer A (off-chain) |
+| `figaro-assembly-provenance` | The process→assembly link: the AssemblyRegistry `compositionHash` this agreement instantiates (`provenance` article). The designer composes it; the field fills MECHANICALLY at checkout from the loaded template's own identity (`fillProvenanceSection` — the hash cannot appear inside the composition it hashes, so it is never a designer value). It is how a process declares which assembly it instantiates, and so how the RPGF path reaches the assembly's designer of record (`UsageCounter`) | Layer A (off-chain) |
 | `figaro-geolocation` | Origin / destination geohash — where an order originates/terminates (any modality, incl. virtual). Default-on | Layer A (off-chain) |
 | `figaro-content-handoff` | THE DIGITAL TWIN of `figaro-handoff` — how a digital deliverable (production cut, design file, dataset, access credential) hands off: mode set (encrypted-transfer / repository-grant / public-release, the buyer's checkout pick), completion evidence = the artifact's keccak256 filed as the stage-1 witness (merkle-bound; verify by rehashing). Declares the `ecdh-content` interaction (the per-order ECDH channel carries counterparty-private transfers; surface = progressive enhancement). Compose `figaro-geolocation` alongside for territory/jurisdiction geofencing | Layer A (off-chain) |
 | `figaro-cargo` | Physical shipment measure at the GDSN LOGISTIC-UNIT level (distinct from per-item trade-item measures on the catalogue) — gross/net mass, volume, packaged L×W×H, and packaging type/count/marks. Elective; hazmat / cold-chain / freight-class / dimweight are co-equal sibling logistics clauses (no spec-level nesting) | Layer A (off-chain) |
@@ -221,12 +221,11 @@ A clause is an *anchored artifact family*: an off-chain definition whose
 meaning must stay stable across parties, tools, and time, anchored on-chain by
 a minimal reference point — `clauseId` + `contentHash` + `contentURI` in
 `ClauseRegistry` (identity + integrity only). Not every value
-that flows through an order deserves one. The RPGF substrate-broadening
-formula, when rebuilt, derives a clause's group key as
-`keccak256(block.article)` from the contentHash-verified spec
-(derive, don't store). (The on-chain RPGF distribution mechanism was removed in
-the proof-apparatus teardown; the group-weighting rationale survives in
-`docs/PUBLIC_GRAPH_MODEL.md`.)
+that flows through an order deserves one. The RPGF substrate-broadening weight
+reads neither the spec nor `block.article`: it reads the `rpgfTag` the registrar
+declared at registration, against the single `boostedTag` frozen at
+`UsageCounter`'s deploy. Rationale in `docs/PUBLIC_GRAPH_MODEL.md`; the
+article-vs-tag distinction in `docs/LEXICON.md`.
 
 Separate two kinds of data:
 

@@ -38,6 +38,7 @@ contract UsageCounterTest is Test {
     bytes32 constant CARGO_KEY = keccak256(abi.encode("figaro-cargo", uint64(1)));
 
     bytes32 constant GEO_TAG = keccak256("geo");
+    bytes32 constant PROV_KEY = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
     bytes constant SECTION = hex"c0ffee";
 
     uint64 constant P0_END = 1_000_000;
@@ -60,7 +61,7 @@ contract UsageCounterTest is Test {
         uint64[] memory periods = new uint64[](2);
         periods[0] = P0_END;
         periods[1] = P1_END;
-        counter = new UsageCounter(address(core), address(clauses), GEO_TAG, periods);
+        counter = new UsageCounter(address(core), address(clauses), GEO_TAG, PROV_KEY, periods);
 
         address[4] memory ppl = [buyer, buyer2, seller1, seller2];
         for (uint256 i = 0; i < ppl.length; i++) {
@@ -358,14 +359,14 @@ contract UsageCounterTest is Test {
         uint64[] memory p = new uint64[](1);
         p[0] = P0_END;
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(0), address(clauses), GEO_TAG, p);
+        new UsageCounter(address(0), address(clauses), GEO_TAG, PROV_KEY, p);
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(core), address(0), GEO_TAG, p);
+        new UsageCounter(address(core), address(0), GEO_TAG, PROV_KEY, p);
     }
 
     function test_constructor_rejectsEmptyPeriods() public {
         vm.expectRevert(UsageCounter.EmptyPeriods.selector);
-        new UsageCounter(address(core), address(clauses), GEO_TAG, new uint64[](0));
+        new UsageCounter(address(core), address(clauses), GEO_TAG, PROV_KEY, new uint64[](0));
     }
 
     function test_constructor_rejectsUnorderedPeriods() public {
@@ -373,6 +374,6 @@ contract UsageCounterTest is Test {
         p[0] = P1_END;
         p[1] = P0_END;
         vm.expectRevert(UsageCounter.PeriodsNotAscending.selector);
-        new UsageCounter(address(core), address(clauses), GEO_TAG, p);
+        new UsageCounter(address(core), address(clauses), GEO_TAG, PROV_KEY, p);
     }
 }

@@ -232,13 +232,22 @@ can learn an artifact's usage after the fact. Reconstructing it later is what fo
 the posting/bond/challenge/referee apparatus in the RPGF and match designs; recording
 the fact as it happens leaves no claim to believe and nothing to adjudicate.
 
-One permissionless function, `recordUsage(order, artifact, sectionData, proof)`, which
+Two permissionless functions. `recordUsage(order, artifact, sectionData, proof)`
 proves two things from data the chain already holds: the order is real and **RESOLVED**
 (`core.orderStatus == 2`), and the artifact was committed in that order's signed
 agreement (merkle inclusion against `agreementHash`). Same check
 `AttestationCoordinator` performs, with the status gate inverted — attestation is
 evidence *during* an open process, usage is counted only once it has settled. Nobody is
 trusted; recording is opt-in and gas-paid by whoever benefits.
+
+`recordAssemblyUsage(order, compositionHash, sectionData, proof)` credits an **assembly**,
+and it exists because the two families are proved differently: an agreement's merkle leaves
+are keyed by CLAUSE (`agreement.ts`), so a `compositionHash` is never itself a leaf key. What
+IS a leaf is `figaro-assembly-provenance`, whose committed section content is exactly the
+compositionHash — so the counter proves that leaf and matches its content against the assembly
+claimed. The provenance clause key is fixed at deploy, which stops a caller substituting some
+other clause whose 32-byte section happens to equal an assembly's hash. Without that clause in
+the agreement, no process can credit its designer.
 
 Per artifact per period it keeps `c` (distinct settled processes), `d` (distinct
 (buyer, seller) pairs), and `score = weight · icbrt(c·d²·1e18)` — breadth weighted
@@ -279,56 +288,56 @@ then renounces — the minter must exist at genesis because `registerMinter` pre
 
 ## RPGF (`src/rpgf/`)
 
-The **600M retroactive distribution** — three declining tranches (300M / 200M / 100M) paid to clause authors and assembly designers, scored by how much real trade their artifacts carried (`sdk/src/rpgf/formula.json`). No donors, no pool: the opposite direction from the match rounds below. No buyer or seller touches it.
+The **600M retroactive distribution** — three declining tranches (300M / 200M / 100M) paid to clause authors and assembly designers of record, in proportion to the trade their artifacts actually carried. No donors, no pool: the opposite direction from the match rounds below. No buyer or seller touches it.
 
-**`src/rpgf/RpgfMinter.sol`** — the optimistic 600M distribution (rebuilt 2026-07-15, replacing the SP1-proof-gated, submitter-role minter removed in the teardown). Permissionless bonded `postRoot` per tranche (3 tranches; window recorded for public recompute; `formulaHash` anchors the canonical formula spec), `challenge` ALWAYS voids the posting (minting stays purely mechanical — only a root surviving its full challenge window finalizes), merkle `claim` (OZ standard-tree leaves) mints through the FlorinToken cap with a per-tranche budget backstop. Bond cases settle on a separate track: poster `disputeChallenge`s to the composed forum (`IRpgfArbitrator`) or concedes; the forum routes bonds only, never mints. No owner, no sweep, no claim expiry; pull-payment bond withdrawal.
+**`src/rpgf/RpgfMinter.sol`** — `claim(trancheId, artifacts)` mints `trancheAmount · callerScore / totalScoreInPeriod`, once per wallet per tranche (a wallet passes every artifact it authored in that one call).
 
-**`src/rpgf/IRpgfArbitrator.sol`** — the minimal provider-agnostic forum seam (`createDispute` + a `rule` callback on the minter). The forum choice is deployment config, never protocol code.
+**There is nothing to post, nothing to bond, and nothing to dispute.** `UsageCounter` (above) records verified usage as it happens, so a tranche is arithmetic over numbers that are already final. Tranche `i` pays for accrual period `i` — the counter's periods and these tranches are ONE schedule, configured consistently at deploy — and `claim` requires `counter.periodClosed(trancheId)`, which is why no snapshot, checkpoint array, or history walk is needed.
 
-**`src/rpgf/KlerosRpgfAdapter.sol`** — the Kleros composition behind the seam (built to
-Kleros's developer docs — their ERC-792 Arbitration Standard — per the 2026-07-17 operator
-instruction; re-check the docs before changing it). Translates `createDispute(caseId)` into a
-2-choice court dispute (`extraData` = opaque court-routing bytes, fixed at deployment) and the
-court's final `rule(disputeID, ruling)` back into `minter.rule(caseId, ruling)` — the 0/1/2
-ruling codes (refused/poster/challenger) align on both sides by construction. Bond cases only;
-no forum ever touches mints. Deploy order: court → adapter → minter(adapter) →
-`bindMinter(minter)` (deployer-gated one-shot, the FlorinToken registerMinter pattern). Appeals
-live on the court; parties reach them via `disputeOf(caseId)`. Mainnet composes a live Kleros
-court; devnet/testnet keep MockArbitrator directly behind the seam.
+Each artifact in the caller's list is verified against its own registry — `ClauseRegistry.depositOf` for a clause, `AssemblyRegistry.bindings` for an assembly — so the list is a lookup key, never a claim of ownership (the families are parallel; both anchors are consulted because neither knows the other exists). The **15% per-wallet cap is applied at claim time** and the excess stays **unminted**: water-filling it back over the other recipients would need every wallet's score at once, the global step this design exists to avoid. The cap binds identically for everyone; only the redistribution is gone.
+
+No owner, no pause, no sweep, no claim expiry — a closed period's arithmetic is stable forever. The budget is enforced twice: `minted` per tranche here, and the outer FlorinToken minter cap (600M registered at genesis before `renounceDeployerMint`, which is why this contract must exist at florin genesis). Foundry: `test/rpgf/RpgfMinterTest.t.sol` (16) + `test/rpgf/RpgfIntegrationTest.t.sol` (4, no stubs — real process → real counter → real mint).
+
+`sdk/src/rpgf/` mirrors the scoring off-chain for display and verification (and `sdk/src/rpgf/formula.json` states the mechanism normatively). It **recomputes what the chain already holds** — nothing is anchored, so there is no `formulaHash` and no posted answer for the mirror to assert.
 
 ## Match rounds (`src/match/`)
 
-A **Gitcoin-modelled** matching programme, funded from the DAO's 300M — a distinct object from the RPGF distribution above, with its own formula spec (`sdk/src/match/formula.json`). **Modelled, not composed:** Gitcoin/Allo is the reference design, never a dependency — Allo is no longer maintained, so the tooling here is ours end to end (`src/match/` + `sdk/src/match/`). Two design facts follow from that lineage rather than from convenience: donations are **multi-token** (a round's `donationToken` and `matchToken` are deliberately different currencies, because donors give what they hold), and the split is by **quadratic funding** (match by breadth of independent support, not by amount). The DAO is not encoded in either contract — anyone deploys a round, anyone funds it, and the DAO treasury is one funder among all.
+A **Gitcoin-modelled** matching programme, funded from the DAO's 300M — a distinct object from the RPGF distribution above. **Modelled, not composed:** Gitcoin/Allo is the reference design, never a dependency — Allo is no longer maintained, so the tooling here is ours end to end. Two design facts follow from that lineage rather than from convenience: a round's `donationToken` and `matchToken` are deliberately **different currencies** (donors give what they hold; the pool pays what it holds), and the split is by **quadratic funding** (match by breadth of independent support, not by amount). The DAO is not encoded in the contract — anyone deploys a round, anyone funds it, and the DAO treasury is one funder among all.
 
-**`src/match/DonationRail.sol`** — the no-custody donation event surface for crowd-steered match
-rounds (the QF-venue BUILD ruling, 2026-07-17). One function: `donate(token, recipient,
-amount)` moves the donor's tokens STRAIGHT THROUGH to the recipient (strict-amount balance
-check — fee-on-transfer reverts, house rule) and emits `Donation(token, donor, recipient,
-amount)` — the event stream a round's match formula consumes. There is NO recipient
-registry: a round's recipient set is EMERGENT from these events; the rail holds nothing and
-gates nothing.
+**`src/match/MatchPool.sol`** — one crowd-steered round. One contract instance IS one round —
+a transaction-scoped institution that dissolves into claims.
 
-**`src/match/OptimisticMatchPool.sol`** — one crowd-steered match round, optimistically settled:
-the RpgfMinter shape minus minting. One contract instance IS one round (anyone deploys,
-anyone funds by ordinary transfer — the DAO treasury is one funder among all). An anchored
-`formulaHash` names the match formula — the contract is formula-agnostic; the canonical v1
-spec is `sdk/src/match/formula.json` (surplus-form QF: single-donor recipients score zero;
-donation floor + per-donor-per-recipient cap + 15% water-filled recipient cap — ratified
-2026-07-17; reference recompute `sdk/src/match/`); anyone recomputes over the rail's events
-for the round's donation token + window and posts the merkle root under an ETH bond; challenge ALWAYS
-voids; bond cases settle via the SAME `IRpgfArbitrator` seam (MockArbitrator devnet,
-`KlerosRpgfAdapter` mainnet); finalization snapshots the pool balance as the budget;
-merkle claims (OZ standard-tree leaves) transfer the match out, budget-capped. No owner,
-no sweep, no claim expiry. Foundry: `test/match/OptimisticMatchPool.t.sol` (round end-to-end,
-challenge-voids, forum routing, budget backstop, rail strictness).
+**The pool IS its own donation rail, and that is what removes the posting apparatus.**
+`donate(recipient, amount)` moves the donor's tokens STRAIGHT THROUGH to the recipient
+(strict-amount balance check — fee-on-transfer reverts, house rule; self-donation refused
+outright; the round never holds a donation) and accumulates the quadratic-funding sums AS THE
+DONATION LANDS. The match is then arithmetic over state the chain already has: no root, no
+bond, no challenge window, no referee. There is NO recipient registry — a round's recipient
+set is EMERGENT from its donations.
+
+A recipient's weight is the coordination **surplus form** `sumSqrt² − sumOf`, maintained in
+O(1) alongside a running `totalWeight`, so many small independent donors outweigh one large
+one. **The surplus form is the sybil floor:** a recipient funded by a single donor scores zero
+up to integer truncation, so the cheapest sybil shape — a donor funding their own recipient —
+earns nothing, and the immutable `donationFloor` prices each counted donor in real capital.
+
+`finalize()` is permissionless once the donation window has ended (no privileged closer) and
+snapshots `matchToken.balanceOf(pool)` as the budget. `claim(recipient)` pays
+`budget · weight / totalWeight`, capped at 15% of the budget, always to the recipient — anyone
+may call it on their behalf. Single donation token per round keeps the arithmetic deterministic
+(no oracle, no FX); a round in another currency is another round. No owner, no pause, no sweep,
+no claim expiry; overfunding beyond the finalized budget stays put by the same no-escape-hatch
+doctrine as everywhere else — fund exactly. Foundry: `test/match/MatchPoolTest.t.sol` (19).
+
+`sdk/src/match/` mirrors the round arithmetic off-chain — for display, and for predicting what
+a planned donation would do — never for asserting an answer to the chain. Same posture as the
+RPGF mirror: nothing anchored, no `formulaHash`.
 
 ## Test / Mock Contracts
 
 - `src/mocks/MockERC20.sol` — the devnet payment/bond token. Plain ERC-20 with a permissionless `mint(to, amount)`; constructor takes `(name, symbol)`. Deployed by `Deploy.s.sol` as `NEXT_PUBLIC_TOKEN_ADDRESS` (minted 100k to anvil[0..19]) and used by the Foundry tests — one mock, not a per-file inline copy. (Mainnet uses a real ERC-20, e.g. USDC.e.)
 - `src/mocks/MockERC20FeeOnTransfer.sol`, `MockPermitToken.sol` — fee-on-transfer ERC-20 (Foundry tests only) and a second devnet ERC-20 (EIP-2612-capable, incidental — `Deploy.s.sol` deploys it as `NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS`; used as the swap-funding input token and the MOCKP seller-catalogue token; the V3 `*WithPermit` flow it once served is gone).
 - `src/mocks/MockWitnessPermit2.sol` — devnet/test stand-in for Uniswap Permit2's `permitWitnessTransferFrom`, WITH witness-signature verification (reconstructs the exact digest real Permit2 builds; deadline + amount enforced), pulling the owner's input token under the standard one-time Permit2 approval. Used by `WitnessSwapAndCommitCoordinatorTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_PERMIT2`; mainnet uses the canonical Permit2.
-- `src/mocks/MockArbitrator.sol` — devnet/test stand-in for the composed bond-settlement forum behind `RpgfMinter`'s `IRpgfArbitrator` seam: accepts disputes at zero fee, lets anyone deliver a ruling back to the arbitrable contract. Mainnet composes a real arbitration provider (Kleros via `KlerosRpgfAdapter`) behind the same seam — the forum is deployment config, never protocol code.
-- `src/mocks/MockKlerosCourt.sol` — Foundry-tests-only stand-in for a Kleros court on the arbitrator side of ERC-792 (`createDispute` paid at least `arbitrationCost`, `executeRuling` plays the jurors' final decision calling `rule` back). Used by `KlerosRpgfAdapterTest`; records the routed `extraData` so the adapter's config passthrough is assertable. Never deployed.
 - `src/mocks/MockTreasuryMultisig.sol` — devnet/test stand-in for the DAO treasury Safe (mainnet composes a canonical Safe at `DAO_WALLET` — config, never authored code): Safe's approveHash flow (propose → threshold approvals → anyone executes), no owner acts alone. Deployed by `Deploy.s.sol` as `NEXT_PUBLIC_DAO_TREASURY` (anvil[0..2] placeholder owners, 2-of-3) and the 300M devnet genesis mint target; `TreasuryProcurementTest` rehearses the funded operator-EOA procurement loop against it.
 - `src/mocks/MockDisperse.sol` — devnet stand-in for the canonical public multisender (Disperse.app, `0xD152f549545093347A162Dce210e7293f1452150`); mirrors its verified interface and behavior — `disperseEther` (legs + remainder refund), `disperseToken` (aggregate pull then legs), `disperseTokenSimple` (per-leg pulls), every batch atomic. Used by `MockDisperseTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_MULTISENDER`; mainnet composes the canonical deployment.
 - `src/mocks/MockUniversalRouter.sol` — test stand-in for a swap venue; `swap(tokenIn, tokenOut, amountIn, recipient)` at a settable rate, paying out of pre-funded liquidity. Used by `WitnessSwapAndCommitCoordinatorTest` and deployed by `Deploy.s.sol` as `NEXT_PUBLIC_SWAP_ROUTER` (pre-funded with both devnet tokens); mainnet uses the real Uniswap Universal Router.
@@ -374,6 +383,19 @@ against witness specs anchored by `contentHashOf`, so no clause ever needs a
 contract. On the DIRECT path, validation remains off-chain Layer-A (SDK
 `validate.ts`/`encode.ts`) + the coordinator's merkle/content-hash binding.
 
+**The optimistic posting apparatus — DELETED 2026-07-27, permanently.** `IRpgfArbitrator`,
+`KlerosRpgfAdapter`, `MockArbitrator`, `MockKlerosCourt`, `DonationRail`, and
+`OptimisticMatchPool` are gone, along with every posted root, ETH bond, challenge window,
+dispute window, and forum callback in the reward path. They existed because the chain
+cannot look backwards — `FigaroCore` never calls the registries, the kernel is frozen, and
+contracts cannot read events — so usage had to be reconstructed off-chain, POSTED, made
+costly with a BOND, contestable with a CHALLENGE, and settled by a FORUM. `UsageCounter`
+and the self-railed `MatchPool` count the fact as it happens instead, and every layer of
+that apparatus disappears with it. **This does not touch clause-tier arbitration:**
+`figaro-arbitration-kleros`, the `composesForumUrl` recourse seam, and the evidence bundle
+are a different object at a different tier and are untouched (`CLAUSES.md`,
+`THEORY.md` Layer 3).
+
 Also absent: `FigaroFactory.sol`, `FigaroRouter.sol`, `governance/`, `compliance/`,
 `FigEmission.sol`, `FigTimeLock.sol`, `MerkleAirdrop.sol`, `StagedMerkleAirdrop.sol`,
 `TrancheVesting.sol` (founder and DAO receive tokens at genesis with no vesting),
@@ -390,9 +412,14 @@ as a summary plus a pointer here.
 **Every surface removed in the 2026-06-25 proof-apparatus teardown has been rebuilt;
 nothing remains deferred:**
 
-- **The RPGF distribution** returned 2026-07-15 as the optimistic `RpgfMinter`
-  (recipients = clause authors + assembly designers of record; mandatory-article
-  clauses excluded from scoring; the minter ships in TESTNET and gates florin genesis).
+- **The RPGF distribution** is live as `UsageCounter` + `RpgfMinter` (recipients =
+  clause authors + assembly designers of record; usage counted on chain as it happens,
+  paid pro rata from a closed accrual period; the minter ships in TESTNET and gates
+  florin genesis). The 2026-07-15 optimistic intermediate — posted merkle root under an
+  ETH bond, challenge window, arbitrator seam (`IRpgfArbitrator`, `KlerosRpgfAdapter`,
+  `MockArbitrator`, `MockKlerosCourt`) — was **deleted 2026-07-27** and does not return:
+  the whole apparatus existed only to make the chain believe a claim about the past, and
+  recording the fact as it happens leaves no claim to believe.
   `FLORIN_TOKEN.md` carries the allocation; `PUBLIC_GRAPH_MODEL.md` the rationale.
 - **On-chain clause-content validation + the batch prover/verifier/sequencer**
   returned 2026-07-16 as the witness-based proof apparatus (`prover/` +

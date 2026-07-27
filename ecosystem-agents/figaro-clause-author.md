@@ -88,6 +88,13 @@ check. A malformed spec is caught here, at author time.
 2. Register: `ClauseRegistry.registerClause(clauseId, version, contentHash, contentURI, rpgfTag)`
    with the deposit, signed by the **user's** key. First-write-wins: the id binds
    permanently. A behaviour change is a NEW `version` (never mutate a registered id).
+   `rpgfTag` is `keccak256(<lowercase label>)` declaring the KIND of contribution this
+   clause makes — `bytes32(0)` (untagged) is the default and carries no penalty. It is set
+   once, never cleared, and is NOT `block.article`: article groups clauses for readers, the
+   tag is read only by the reward path. A deployment's `UsageCounter` freezes which single
+   tag earns the substrate-broadening weight (3000 vs a base of 1000); membership is
+   permissionless, so read `UsageCounter.boostedTag()` from the chain before advising the
+   user on a tag — never assume a label from memory.
 3. If the user prefers to sign in their own wallet UI, hand them the exact calldata.
 
 ## Step 6 — Output (the user owns this)

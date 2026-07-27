@@ -13,10 +13,9 @@ import "../src/mocks/MockPermitToken.sol";
 import "../src/mocks/MockERC20.sol";
 import "../src/mocks/MockWitnessPermit2.sol";
 import "../src/mocks/MockUniversalRouter.sol";
-import "../src/mocks/MockArbitrator.sol";
 import "../src/mocks/MockTreasuryMultisig.sol";
 import {RpgfMinter} from "../src/rpgf/RpgfMinter.sol";
-import {DonationRail} from "../src/match/DonationRail.sol";
+import {UsageCounter} from "../src/protocol/usage/UsageCounter.sol";
 import "../src/mocks/MockSP1Verifier.sol";
 import "../src/protocol/verifier/FigaroBatchVerifier.sol";
 // Named import: the coordinator declares its own local-minimal `IFigaroCore`
@@ -35,9 +34,11 @@ import "../src/protocol/registries/AssemblyRegistry.sol";
 ///
 ///         Devnet florin allocation: 100M → deployer's wallet (stands in for founder
 ///         + DAO on devnet; the mainnet split is in script/DeployMainnet.s.sol),
-///         plus the RpgfMinter registered at 600M before renounce — the
-///         optimistic RPGF distribution (post/challenge/finalize/claim) is live
-///         on devnet with seconds-scale windows and a MockArbitrator forum.
+///         plus UsageCounter + the RpgfMinter registered at 600M before
+///         renounce. Nothing is posted, bonded, or challenged: the counter
+///         records verified usage as it happens and the minter pays pro rata
+///         from a period that has closed. Devnet compresses the tranche
+///         schedule to +14d/+35d/+60d so a period can close in a test run.
 contract Deploy is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -161,21 +162,14 @@ contract Deploy is Script {
         console.log("FlorinToken deployed at:", address(florin));
 
         // The RPGF minter must exist AT GENESIS: FlorinToken.registerMinter only
-        // works before renounceDeployerMint, and renounce is irreversible —
-        // so the optimistic 600M distribution registers here, before any
-        // other genesis step. The composed bond-settlement forum is a mock on
-        // devnet (a real deployment composes an arbitration provider behind
-        // the same IRpgfArbitrator seam). formulaHash anchors the exact bytes
-        // of the canonical formula spec so any observer can recompute posted
-        // roots. Devnet windows are seconds, not days, so the e2e suite can
-        // run the full post -> challenge -> finalize -> claim cycle in real
-        // time (testnet compresses years 2/5/9 to weeks; devnet compresses
-        // further to now/+14d/+35d with 20s windows).
-        _deployRpgf(florin);
+        // works before renounceDeployerMint, and renounce is irreversible — so
+        // the 600M distribution registers here, before any other genesis step.
+        // Nothing is posted, bonded, or challenged: UsageCounter records verified
+        // usage as it happens and the minter pays pro rata from a closed period.
+        _deployRpgf(florin, core, clauses, assemblies);
 
         _deployTreasuryGenesis(florin, vm.addr(deployerPrivateKey));
 
-        _deployDonationRail();
 
         // ── Mint test tokens to Anvil accounts ──────────────────────
         // anvil[0..19] — all 20 accounts minted EXPLICITLY. The deployer is
@@ -274,34 +268,40 @@ contract Deploy is Script {
     }
 
     /// @dev Own frame: keeps run()'s stack shallow (via_ir=false by design).
-    ///      The no-custody donation event surface for crowd-steered match
-    ///      rounds: a permissionless singleton like the registries. Match
-    ///      pools (OptimisticMatchPool) are NOT genesis contracts — one
-    ///      instance IS one round, deployed by whoever opens the round and
-    ///      pointed at this rail (the e2e suite deploys its own per run).
-    function _deployDonationRail() internal {
-        DonationRail donationRail = new DonationRail();
-        console.log("DonationRail deployed at:", address(donationRail));
-        console.log("  NEXT_PUBLIC_DONATION_RAIL=", address(donationRail));
-    }
-
-    /// @dev Own frame: keeps run()'s stack shallow (via_ir=false by design).
     ///      Logs its own address lines — deploy-local.sh parses the
-    ///      "deployed at:" lines, and the NEXT_PUBLIC_ summary for these two
-    ///      prints here rather than in run().
-    function _deployRpgf(FlorinToken florin) internal {
-        MockArbitrator rpgfArbitrator = new MockArbitrator();
-        console.log("MockArbitrator deployed at:", address(rpgfArbitrator));
+    ///      "deployed at:" lines, and the NEXT_PUBLIC_ summary prints here
+    ///      rather than in run().
+    ///
+    ///      There is no donation rail to deploy: a MatchPool IS its own rail,
+    ///      and a pool is NOT a genesis contract — one instance is one round,
+    ///      deployed by whoever opens it (the e2e suite deploys its own per run).
+    function _deployRpgf(FlorinToken florin, FigaroCore core, ClauseRegistry clauses, AssemblyRegistry assemblies)
+        internal
+    {
+        // Accrual periods and RPGF tranches are ONE schedule, configured
+        // consistently: tranche i pays for period i. Devnet compresses years
+        // 2/5/9 to +14d/+35d/+60d so the e2e suite can close a period and claim
+        // in real time.
+        uint64[] memory periods = new uint64[](3);
+        periods[0] = uint64(block.timestamp + 14 days);
+        periods[1] = uint64(block.timestamp + 35 days);
+        periods[2] = uint64(block.timestamp + 60 days);
 
-        bytes32 formulaHash = keccak256(bytes(vm.readFile("sdk/src/rpgf/formula.json")));
+        UsageCounter counter = new UsageCounter(
+            address(core),
+            address(clauses),
+            keccak256("geo"), // the substrate-broadening tag; membership stays permissionless
+            keccak256(abi.encode("figaro-assembly-provenance", uint64(1))), // proves the assembly leg
+            periods
+        );
+        console.log("UsageCounter deployed at:", address(counter));
+        console.log("  NEXT_PUBLIC_USAGE_COUNTER=", address(counter));
+
         RpgfMinter rpgfMinter = new RpgfMinter(
             address(florin),
-            address(rpgfArbitrator),
-            formulaHash,
-            0.05 ether, // post/challenge bond — devnet-sized
-            20, // challenge window (seconds)
-            20, // dispute window (seconds)
-            [uint64(block.timestamp), uint64(block.timestamp + 14 days), uint64(block.timestamp + 35 days)],
+            address(counter),
+            address(clauses),
+            address(assemblies),
             [uint256(300_000_000 ether), 200_000_000 ether, 100_000_000 ether]
         );
         console.log("RpgfMinter deployed at:", address(rpgfMinter));

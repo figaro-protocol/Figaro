@@ -1,42 +1,43 @@
 import { describe, expect, it } from "vitest";
-import { encodeAbiParameters, keccak256, type Address, type Hex } from "viem";
+import type { Address } from "viem";
 import {
-    buildMatchTree,
+    computeMatchAccruals,
     computeMatchAllocations,
     isqrt,
-    matchLeaf,
-    MATCH_DONATION_FLOOR,
-    MATCH_DONOR_RECIPIENT_CAP,
-    MATCH_EMPTY_ROOT,
-    MATCH_SQRT_SCALE,
+    MATCH_CAP_DENOMINATOR,
+    MATCH_CAP_NUMERATOR,
     type MatchDonationEvent,
+    type MatchFormulaParameters,
     type MatchRoundConfig,
 } from "../src/match/index.js";
 
 // ── Fixture round ────────────────────────────────────────────────────
 
-const RAIL = "0x000000000000000000000000000000000000aa11" as Address;
 const POOL = "0x000000000000000000000000000000000000bb22" as Address;
 const USDC = "0x000000000000000000000000000000000000cc33" as Address;
 const FLORIN = "0x000000000000000000000000000000000000dd44" as Address;
-const OTHER_TOKEN = "0x000000000000000000000000000000000000ee55" as Address;
 
 const donorA = "0x000000000000000000000000000000000000d0a1" as Address;
 const donorB = "0x000000000000000000000000000000000000d0b2" as Address;
 const donorC = "0x000000000000000000000000000000000000d0c3" as Address;
+const donorD = "0x000000000000000000000000000000000000d0d4" as Address;
 const recipientX = "0x000000000000000000000000000000000000ec01" as Address;
 const recipientY = "0x000000000000000000000000000000000000ec02" as Address;
 
+const ONE = 10n ** 18n;
+
 const ROUND: MatchRoundConfig = {
-    donationRail: RAIL,
-    matchPool: POOL,
+    pool: POOL,
     donationToken: USDC,
     matchToken: FLORIN,
     donationStart: 1_000n,
     donationEnd: 2_000n,
+    donationFloor: ONE,
 };
 
-const ONE = 10n ** 18n; // the v1 instance's floor unit (18-decimals token)
+/** Cap disabled, so the raw pro-rata split is observable. */
+const NO_CAP: MatchFormulaParameters = { capNumerator: 1n, capDenominator: 1n };
+
 let logCounter = 0;
 function donation(
     donor: Address,
@@ -48,10 +49,10 @@ function donation(
         blockNumber: 100n,
         logIndex: logCounter++,
         timestamp: 1_500n,
-        token: USDC,
         donor,
         recipient,
         amount,
+        weightAfter: 0n,
         ...overrides,
     };
 }
@@ -72,144 +73,160 @@ describe("isqrt", () => {
         expect(isqrt(big * big - 1n)).toBe(big - 1n);
         expect(isqrt(big * big + 1n)).toBe(big);
     });
+
+    it("mirrors MatchPool.sqrt's Babylonian iteration at uint256 scale", () => {
+        const max = (1n << 256n) - 1n;
+        const root = isqrt(max);
+        expect(root * root).toBeLessThanOrEqual(max);
+        expect((root + 1n) * (root + 1n)).toBeGreaterThan(max);
+    });
 });
 
 // ── The surplus form ─────────────────────────────────────────────────
 
-describe("computeMatchAllocations — surplus-form QF", () => {
-    it("gives a single-donor recipient exactly zero match", () => {
-        const out = computeMatchAllocations([donation(donorA, recipientX, 50n * ONE)], ROUND, 1_000_000n);
-        expect(out).toEqual([]);
+describe("computeMatchAccruals — surplus form", () => {
+    it("gives a single-donor recipient zero weight", () => {
+        const accruals = computeMatchAccruals([donation(donorA, recipientX, 50n * ONE)], ROUND);
+        // sqrt(a)^2 - a is zero up to integer truncation — the cheapest sybil
+        // shape earns nothing.
+        expect(accruals.get(recipientX)!.weight).toBe(0n);
     });
 
-    it("matches coordination: same total, more donors, exact 3:1 surplus split", () => {
-        // X: 4 donors × 25 → surplus (4·√25)²−100 = 300 exactly (√25 is
-        // integral). Y: 2 donors × 50 → surplus (2·√50)²−100 ≈ 100, floored
-        // to 99 by isqrt (√50 is irrational; flooring dust stays unclaimed).
-        // Same donated total — the match splits ~3:1 on coordination. The cap
-        // is disabled via parameters so the raw ratio is observable.
-        const donors = [donorA, donorB, donorC, "0x000000000000000000000000000000000000d0d4" as Address];
-        const events = [
-            ...donors.map((d) => donation(d, recipientX, 25n * ONE)),
-            donation(donorA, recipientY, 50n * ONE),
-            donation(donorB, recipientY, 50n * ONE),
-        ];
-        const out = computeMatchAllocations(events, ROUND, 400n, {
-            donationFloor: MATCH_DONATION_FLOOR,
-            donorRecipientCap: MATCH_DONOR_RECIPIENT_CAP,
-            capNumerator: 100n,
-            capDenominator: 100n,
-            sqrtScale: MATCH_SQRT_SCALE,
-        });
-        const x = out.find((a) => a.account.toLowerCase() === recipientX.toLowerCase())!;
-        const y = out.find((a) => a.account.toLowerCase() === recipientY.toLowerCase())!;
-        expect(x.amount).toBe(300n);
-        expect(y.amount).toBe(99n);
+    it("accumulates per (donor, recipient) pair — splitting a cheque is neutral", () => {
+        // The sybil floor depends on this. Roots are taken PER DONOR, so one
+        // wallet splitting a cheque across n transactions scores exactly what it
+        // would have scored paying once — zero. Rooting per CALL instead would
+        // let a donor manufacture surplus from nothing.
+        const split = computeMatchAccruals(
+            [donation(donorA, recipientX, 25n * ONE), donation(donorA, recipientX, 25n * ONE)],
+            ROUND,
+        );
+        const single = computeMatchAccruals([donation(donorA, recipientY, 50n * ONE)], ROUND);
+        expect(split.get(recipientX)!.weight).toBe(single.get(recipientY)!.weight);
+        expect(split.get(recipientX)!.weight).toBe(0n);
+        expect(split.get(recipientX)!.sumOf).toBe(single.get(recipientY)!.sumOf);
+        // One wallet, two transactions — one donor.
+        expect(split.get(recipientX)!.donors).toBe(1n);
     });
 
-    it("sums a donor's repeat donations into one pair before the sqrt", () => {
-        // A donating 25+25 to X is ONE pair of 50 — not two sqrt terms.
-        const repeat = [
-            donation(donorA, recipientX, 25n * ONE),
-            donation(donorA, recipientX, 25n * ONE),
-            donation(donorB, recipientX, 50n * ONE),
-        ];
-        const single = [donation(donorA, recipientY, 50n * ONE), donation(donorB, recipientY, 50n * ONE)];
-        const out = computeMatchAllocations([...repeat, ...single], ROUND, 1_000n, {
-            donationFloor: MATCH_DONATION_FLOOR,
-            donorRecipientCap: MATCH_DONOR_RECIPIENT_CAP,
-            capNumerator: 100n,
-            capDenominator: 100n,
-            sqrtScale: MATCH_SQRT_SCALE,
-        });
-        const x = out.find((a) => a.account.toLowerCase() === recipientX.toLowerCase())!;
-        const y = out.find((a) => a.account.toLowerCase() === recipientY.toLowerCase())!;
-        expect(x.amount).toBe(y.amount);
+    it("computes the coordination surplus sumSqrt^2 - sumOf", () => {
+        const accruals = computeMatchAccruals(
+            [donation(donorA, recipientX, 25n * ONE), donation(donorB, recipientX, 25n * ONE)],
+            ROUND,
+        );
+        const each = isqrt(25n * ONE);
+        const accrual = accruals.get(recipientX)!;
+        expect(accrual.sumSqrt).toBe(2n * each);
+        expect(accrual.sumOf).toBe(50n * ONE);
+        expect(accrual.weight).toBe(2n * each * (2n * each) - 50n * ONE);
+        expect(accrual.donors).toBe(2n);
+    });
+
+    it("rewards breadth: same total, more donors, more weight", () => {
+        const four = computeMatchAccruals(
+            [donorA, donorB, donorC, donorD].map((d) => donation(d, recipientX, 25n * ONE)),
+            ROUND,
+        );
+        const two = computeMatchAccruals(
+            [donorA, donorB].map((d) => donation(d, recipientY, 50n * ONE)),
+            ROUND,
+        );
+        expect(four.get(recipientX)!.sumOf).toBe(two.get(recipientY)!.sumOf);
+        expect(four.get(recipientX)!.weight).toBeGreaterThan(two.get(recipientY)!.weight);
+        // 4x25 vs 2x50 is a 3:1 surplus ratio (300 vs 100 in whole-token terms).
+        const ratio = (four.get(recipientX)!.weight * 100n) / two.get(recipientY)!.weight;
+        expect(ratio).toBeGreaterThanOrEqual(299n);
+        expect(ratio).toBeLessThanOrEqual(301n);
     });
 });
 
-// ── Floor, cap, scope ────────────────────────────────────────────────
+// ── The contract's donate gates ──────────────────────────────────────
 
-describe("computeMatchAllocations — eligibility", () => {
-    it("drops donor-recipient pairs below the donation floor", () => {
-        // B's dust does not create a second donor for X — X stays single-donor
-        // and scores zero.
-        const events = [
-            donation(donorA, recipientX, 50n * ONE),
-            donation(donorB, recipientX, MATCH_DONATION_FLOOR - 1n),
-        ];
-        expect(computeMatchAllocations(events, ROUND, 1_000n)).toEqual([]);
+describe("computeMatchAccruals — the donate gates", () => {
+    it("drops donations below the round's floor", () => {
+        const accruals = computeMatchAccruals(
+            [
+                donation(donorA, recipientX, 50n * ONE),
+                donation(donorB, recipientX, ROUND.donationFloor - 1n),
+            ],
+            ROUND,
+        );
+        // B's dust never lands on chain (BelowFloor), so X stays single-donor.
+        expect(accruals.get(recipientX)!.donors).toBe(1n);
+        expect(accruals.get(recipientX)!.weight).toBe(0n);
     });
 
-    it("counts a pair at exactly the floor", () => {
-        const events = [
-            donation(donorA, recipientX, 50n * ONE),
-            donation(donorB, recipientX, MATCH_DONATION_FLOOR),
-        ];
-        const out = computeMatchAllocations(events, ROUND, 1_000n);
-        expect(out.length).toBe(1);
+    it("counts a donation at exactly the floor", () => {
+        const accruals = computeMatchAccruals(
+            [donation(donorA, recipientX, 50n * ONE), donation(donorB, recipientX, ROUND.donationFloor)],
+            ROUND,
+        );
+        expect(accruals.get(recipientX)!.donors).toBe(2n);
+        expect(accruals.get(recipientX)!.weight).toBeGreaterThan(0n);
     });
 
-    it("saturates a pair at the donor-recipient cap", () => {
-        // A whale's 10_000 counts as the cap (100) — X and Y end up identical.
-        const events = [
-            donation(donorA, recipientX, 10_000n * ONE),
-            donation(donorB, recipientX, 100n * ONE),
-            donation(donorA, recipientY, 100n * ONE),
-            donation(donorB, recipientY, 100n * ONE),
-        ];
-        const out = computeMatchAllocations(events, ROUND, 1_000n, {
-            donationFloor: MATCH_DONATION_FLOOR,
-            donorRecipientCap: MATCH_DONOR_RECIPIENT_CAP,
-            capNumerator: 100n,
-            capDenominator: 100n,
-            sqrtScale: MATCH_SQRT_SCALE,
-        });
-        const x = out.find((a) => a.account.toLowerCase() === recipientX.toLowerCase())!;
-        const y = out.find((a) => a.account.toLowerCase() === recipientY.toLowerCase())!;
-        expect(x.amount).toBe(y.amount);
-    });
-
-    it("ignores donations outside the timestamp window (inclusive bounds)", () => {
+    it("gates the window with start inclusive and end EXCLUSIVE", () => {
         const events = [
             donation(donorA, recipientX, 50n * ONE, { timestamp: ROUND.donationStart }),
-            donation(donorB, recipientX, 50n * ONE, { timestamp: ROUND.donationEnd }),
-            donation(donorC, recipientX, 50n * ONE, { timestamp: ROUND.donationEnd + 1n }),
-            donation(donorC, recipientY, 50n * ONE, { timestamp: ROUND.donationStart - 1n }),
+            donation(donorB, recipientX, 50n * ONE, { timestamp: ROUND.donationEnd - 1n }),
+            donation(donorC, recipientX, 50n * ONE, { timestamp: ROUND.donationEnd }),
+            donation(donorD, recipientY, 50n * ONE, { timestamp: ROUND.donationStart - 1n }),
         ];
-        const out = computeMatchAllocations(events, ROUND, 1_000n);
-        // X keeps two in-window donors; Y's only donation is out of window.
-        expect(out.length).toBe(1);
-        expect(out[0].account.toLowerCase()).toBe(recipientX.toLowerCase());
+        const accruals = computeMatchAccruals(events, ROUND);
+        expect(accruals.get(recipientX)!.donors).toBe(2n);
+        expect(accruals.has(recipientY)).toBe(false);
     });
 
-    it("ignores donations in a token other than the round's donation token", () => {
+    it("refuses self-donation", () => {
+        const accruals = computeMatchAccruals([donation(recipientX, recipientX, 50n * ONE)], ROUND);
+        expect(accruals.has(recipientX)).toBe(false);
+    });
+});
+
+// ── The payout ───────────────────────────────────────────────────────
+
+describe("computeMatchAllocations", () => {
+    it("splits the budget by weight over totalWeight", () => {
         const events = [
-            donation(donorA, recipientX, 50n * ONE),
-            donation(donorB, recipientX, 50n * ONE, { token: OTHER_TOKEN }),
+            donation(donorA, recipientX, 25n * ONE),
+            donation(donorB, recipientX, 25n * ONE),
+            donation(donorC, recipientX, 25n * ONE),
+            donation(donorD, recipientX, 25n * ONE),
+            donation(donorA, recipientY, 50n * ONE),
+            donation(donorB, recipientY, 50n * ONE),
         ];
-        expect(computeMatchAllocations(events, ROUND, 1_000n)).toEqual([]);
+        const out = computeMatchAllocations(events, ROUND, 400n, NO_CAP);
+        const x = out.find((a) => a.account === recipientX)!;
+        const y = out.find((a) => a.account === recipientY)!;
+        // 3:1 on coordination at equal donated totals. X's surplus is exactly
+        // 300e18 (√25 is integral); Y's is 100e18 minus the flooring of √50,
+        // which is irrational — so Y's share floors to 99 and the dust stays in
+        // the pool. The chain floors identically, using the same sqrt.
+        expect(x.amount).toBe(300n);
+        expect(y.amount).toBe(99n);
+        expect(x.amount + y.amount).toBeLessThanOrEqual(400n);
     });
 
-    it("drops the round's own machinery as recipients", () => {
-        for (const machinery of [RAIL, POOL, USDC, FLORIN]) {
-            const events = [donation(donorA, machinery, 50n * ONE), donation(donorB, machinery, 50n * ONE)];
-            expect(computeMatchAllocations(events, ROUND, 1_000n)).toEqual([]);
-        }
-    });
-
-    it("applies the 15% water-fill cap per recipient wallet", () => {
-        // One dominant recipient caps at 150 of 1_000; the rest re-splits.
+    it("caps a recipient at 15% and does NOT redistribute the overflow", () => {
         const events = [
             donation(donorA, recipientX, 100n * ONE),
             donation(donorB, recipientX, 100n * ONE),
             donation(donorC, recipientX, 100n * ONE),
-            donation(donorA, recipientY, MATCH_DONATION_FLOOR),
-            donation(donorB, recipientY, MATCH_DONATION_FLOOR),
+            donation(donorA, recipientY, ROUND.donationFloor),
+            donation(donorB, recipientY, ROUND.donationFloor),
         ];
         const out = computeMatchAllocations(events, ROUND, 1_000n);
-        const x = out.find((a) => a.account.toLowerCase() === recipientX.toLowerCase())!;
-        expect(x.amount).toBe(150n);
+        const x = out.find((a) => a.account === recipientX)!;
+        const cap = (1_000n * MATCH_CAP_NUMERATOR) / MATCH_CAP_DENOMINATOR;
+        expect(x.amount).toBe(cap);
+        expect(x.capped).toBe(true);
+        // Y's share is untouched by X's overflow, which stays in the pool.
+        const paid = out.reduce((sum, a) => sum + a.amount, 0n);
+        expect(paid).toBeLessThan(1_000n);
+    });
+
+    it("returns nothing when no recipient has positive weight", () => {
+        expect(computeMatchAllocations([donation(donorA, recipientX, 50n * ONE)], ROUND, 1_000n)).toEqual([]);
     });
 
     it("is order-independent over the event stream", () => {
@@ -224,29 +241,34 @@ describe("computeMatchAllocations — eligibility", () => {
         const reversed = computeMatchAllocations([...events].reverse(), ROUND, 123_456n);
         expect(reversed).toEqual(forward);
     });
-});
 
-// ── Merkle parity with OptimisticMatchPool.claim ─────────────────────
-
-describe("buildMatchTree", () => {
-    it("produces the pool's leaf shape and a verifying proof", () => {
-        const leafX = matchLeaf(recipientX, 75_000n);
-        // The contract side: keccak256(bytes.concat(keccak256(abi.encode(account, amount)))).
-        const inner = keccak256(
-            encodeAbiParameters([{ type: "address" }, { type: "uint256" }], [recipientX, 75_000n]),
+    it("is independent of the donation token's decimals", () => {
+        // weight is homogeneous of degree one, so a 6-decimals round with the
+        // same shape splits the budget identically.
+        const sixDecimals: MatchRoundConfig = { ...ROUND, donationFloor: 10n ** 6n };
+        const scale = 10n ** 6n;
+        const shape: Array<[Address, Address, bigint]> = [
+            [donorA, recipientX, 25n],
+            [donorB, recipientX, 25n],
+            [donorC, recipientX, 25n],
+            [donorD, recipientX, 25n],
+            [donorA, recipientY, 50n],
+            [donorB, recipientY, 50n],
+        ];
+        const big = computeMatchAllocations(
+            shape.map(([d, r, a]) => donation(d, r, a * ONE)),
+            ROUND,
+            400n,
+            NO_CAP,
         );
-        expect(leafX).toBe(keccak256(inner));
-
-        const leafY = matchLeaf(recipientY, 25_000n);
-        const tree = buildMatchTree([leafX, leafY]);
-        const [lo, hi] = [leafX, leafY].sort((a, b) => (a.toLowerCase() < b.toLowerCase() ? -1 : 1));
-        expect(tree.root).toBe(keccak256(`0x${lo.slice(2)}${hi.slice(2)}` as Hex));
-        expect(tree.proofOf(leafX)).toEqual([leafY]);
-    });
-
-    it("returns the canonical match empty root for an empty allocation set", () => {
-        const tree = buildMatchTree([]);
-        expect(tree.root).toBe(MATCH_EMPTY_ROOT);
-        expect(MATCH_EMPTY_ROOT).not.toBe(keccak256(new TextEncoder().encode("figaro-rpgf:empty"))); // distinct formulas, distinct roots
+        const small = computeMatchAllocations(
+            shape.map(([d, r, a]) => donation(d, r, a * scale)),
+            sixDecimals,
+            400n,
+            NO_CAP,
+        );
+        // The weights carry the token's units; the SPLIT does not.
+        const payouts = (out: typeof big) => out.map((a) => [a.account, a.amount]);
+        expect(payouts(small)).toEqual(payouts(big));
     });
 });

@@ -17,8 +17,8 @@ The organizational consequence: each process assembles a temporary institution o
 `Figaro` is the canonical runtime. It owns:
 
 - **Kernel** — `FigaroCore.sol`: 2 external functions, 3 mappings, no owner
-- **Mechanism modules** — attestation, clause registry, seller registry, assembly registry, swap-and-commit coordinator
-- **The florin** — 1B fixed supply, 10/30/60 split (founders / DAO / clause-author RPGF); founder + DAO mint at genesis with no vesting; the clause-author RPGF distribution mechanism is deferred (no wired mint path for the 600M yet — see `docs/CONTRACTS.md` § "Deferred vs permanent")
+- **Mechanism modules** — attestation, clause registry, seller registry, assembly registry, swap-and-commit coordinator, usage counter, batch verifier
+- **The florin** — 1B fixed supply, 10/30/60 split (founders / DAO / RPGF); founder + DAO mint at genesis with no vesting; the 600M RPGF is wired and registered at genesis — `UsageCounter` counts verified artifact usage on chain as it happens, and `RpgfMinter` pays clause authors + assembly designers of record pro rata across three declining tranches (see `docs/CONTRACTS.md` § RPGF)
 - **SDK** — `@figaro/sdk`: TypeScript, event-sourced state, agent coordination
 - **Runtime frontend** — Next.js 14, institution assembly, builder surfaces, reference assemblies
 - **Formal verification** — TLA+ safety invariants, Echidna fuzzing, Halmos symbolic proofs, Certora CVL rules
@@ -171,7 +171,7 @@ Core theory + design:
 
 - [VISION.md](docs/VISION.md) — Post-firm economy, Coasean collapse, token denomination
 - [THEORY.md](docs/THEORY.md) — Game-theoretic derivation of six protocol properties
-- [FLORIN_TOKEN.md](docs/FLORIN_TOKEN.md) — Token design: allocation, RPGF emission
+- [FLORIN_TOKEN.md](docs/FLORIN_TOKEN.md) — Token design: allocation, RPGF distribution
 - [SCALING_STRATEGY.md](docs/SCALING_STRATEGY.md) — Proof-based batching, SP1 (deferred design baseline)
 - [OPEN_WORLD.md](docs/OPEN_WORLD.md) — Why this is a runtime, not just contracts (paradigm + frontend composition model + semantic layer; consolidates the former RUNTIME.md)
 - [DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md) — 13 intentional patterns that look like vulnerabilities (read before auditing)

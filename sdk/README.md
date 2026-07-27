@@ -18,12 +18,16 @@ npm install @figaro/sdk
 ### `@figaro/sdk` — Protocol Primitives
 
 Event parsing, state reconstruction, EIP-712 commitments, bond calculations,
-chain gas ceilings. Also home to the two optimistic-distribution reference
-recomputes — `computeRpgfAllocations` (`src/rpgf/formula.json`, anchored as
-`RpgfMinter.formulaHash`) and `computeMatchAllocations`
-(`src/match/formula.json`, anchored as `OptimisticMatchPool.formulaHash`):
-deterministic integer pipelines that reproduce a posted payout root exactly,
-which is what makes each contract's bonded challenge game work.
+chain gas ceilings. Also home to the two distribution mirrors —
+`computeRpgfAllocations` (`src/rpgf/formula.json`) and
+`computeMatchAllocations` (`src/match/formula.json`): deterministic integer
+pipelines that reproduce, off chain, what `UsageCounter` + `RpgfMinter` and a
+`MatchPool` round compute on chain. Both mechanisms count as the facts happen —
+usage is recorded against a resolved order, donations accrue as they land — so
+**there is nothing to post, nothing to bond and nothing to dispute**. The
+mirrors exist to display a distribution, predict a claim, and verify a recorded
+accrual; the formula files are the normative prose statement of the mechanism
+and the source of every constant the mirrors use.
 
 ```ts
 import {

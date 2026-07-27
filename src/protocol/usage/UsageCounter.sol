@@ -65,6 +65,19 @@ contract UsageCounter {
     ///         without touching this contract or the kernel.
     bytes32 public immutable boostedTag;
 
+    /// @notice The clause key whose committed section names the assembly a
+    ///         process ran under — `figaro-assembly-provenance`'s
+    ///         `keccak256(abi.encode(clauseId, version))`.
+    /// @dev    Why this is needed at all: an agreement's merkle leaves are keyed
+    ///         by CLAUSE key (`agreement.ts`), so a compositionHash is never
+    ///         itself a leaf key and an assembly can never be proved the way a
+    ///         clause is. It is proved INDIRECTLY — the provenance clause is a
+    ///         leaf, and its section content IS the compositionHash. Fixing the
+    ///         clause key here rather than taking it per call is what stops a
+    ///         caller passing some other clause whose 32-byte section happens to
+    ///         equal an assembly's hash.
+    bytes32 public immutable provenanceClause;
+
     /// @notice Period boundaries (unix seconds, strictly ascending). Usage lands
     ///         in the first period whose end is still in the future; after the
     ///         last one, accrual is closed forever.
@@ -141,14 +154,22 @@ contract UsageCounter {
     error AlreadyCounted();
     error PairCapReached();
     error InvalidInclusionProof();
+    error ProvenanceMismatch();
 
     // ── Constructor ─────────────────────────────────────────────────
 
     /// @param _core        FigaroCore — the order-status and domain source.
     /// @param _clauses     ClauseRegistry — the `rpgfTagOf` source.
     /// @param _boostedTag  The tag earning `BOOSTED_WEIGHT` (e.g. keccak256("geo")).
+    /// @param _provenanceClause  `figaro-assembly-provenance`'s clause key.
     /// @param _periodEnd   Strictly ascending period boundaries (unix seconds).
-    constructor(address _core, address _clauses, bytes32 _boostedTag, uint64[] memory _periodEnd) {
+    constructor(
+        address _core,
+        address _clauses,
+        bytes32 _boostedTag,
+        bytes32 _provenanceClause,
+        uint64[] memory _periodEnd
+    ) {
         if (_core == address(0) || _clauses == address(0)) revert ZeroAddress();
         if (_periodEnd.length == 0) revert EmptyPeriods();
         for (uint256 i = 1; i < _periodEnd.length; ++i) {
@@ -157,6 +178,7 @@ contract UsageCounter {
         core = IFigaroCore(_core);
         clauses = IClauseTags(_clauses);
         boostedTag = _boostedTag;
+        provenanceClause = _provenanceClause;
         periodEnd = _periodEnd;
     }
 
@@ -220,13 +242,52 @@ contract UsageCounter {
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(artifact, keccak256(sectionData)))));
         if (!MerkleProof.verify(proof, order.agreementHash, leaf)) revert InvalidInclusionProof();
 
-        // 3. Idempotence: one process counts once per artifact per period.
+        _accrue(artifact, period, processId, order.buyer, order.seller);
+    }
+
+    /// @notice Record one settled process's use of an ASSEMBLY. Same guarantees
+    ///         as `recordUsage`, proved one step differently: an agreement's
+    ///         leaves are keyed by CLAUSE, so a compositionHash is never a leaf
+    ///         key. What IS a leaf is the provenance clause, whose committed
+    ///         section content is exactly the compositionHash — so proving that
+    ///         leaf and matching its content proves the process ran under this
+    ///         assembly, with no new trust and no change to `agreementHash`.
+    ///
+    /// @param order            The order's commitment struct, exactly as signed.
+    /// @param compositionHash  The AssemblyRegistry composition being credited.
+    /// @param sectionData      The provenance section's committed bytes — a
+    ///                         single `bytes32` field, so exactly 32 bytes.
+    /// @param proof            Merkle proof of that section against `agreementHash`.
+    function recordAssemblyUsage(
+        CommitmentTypes.Commitment calldata order,
+        bytes32 compositionHash,
+        bytes calldata sectionData,
+        bytes32[] calldata proof
+    ) external {
+        uint8 period = currentPeriod();
+        (, bytes32 processId) = _requireResolvedOrder(order);
+
+        // The leaf is the PROVENANCE clause — fixed at deploy, so no other
+        // clause can stand in for it.
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(provenanceClause, keccak256(sectionData)))));
+        if (!MerkleProof.verify(proof, order.agreementHash, leaf)) revert InvalidInclusionProof();
+
+        // …and its content must BE the assembly claimed. `figaro-assembly-provenance`
+        // carries one bytes32-hex field, so the section is exactly 32 bytes.
+        if (sectionData.length != 32 || bytes32(sectionData) != compositionHash) {
+            revert ProvenanceMismatch();
+        }
+
+        _accrue(compositionHash, period, processId, order.buyer, order.seller);
+    }
+
+    /// @dev The counting itself, shared by both routes. Idempotent per (artifact,
+    ///      period, process); the pair cap drops a process entirely once reached,
+    ///      so it feeds neither `c` nor `d`.
+    function _accrue(bytes32 artifact, uint8 period, bytes32 processId, address buyer, address seller) internal {
         if (processCounted[artifact][period][processId]) revert AlreadyCounted();
 
-        // 4. The pair cap. Breadth is the signal, so repeat trade between the
-        //    same two wallets stops contributing once the cap is reached — the
-        //    process is dropped entirely rather than counted at reduced weight.
-        bytes32 pairKey = keccak256(abi.encodePacked(order.buyer, order.seller));
+        bytes32 pairKey = keccak256(abi.encodePacked(buyer, seller));
         uint8 seen = pairCount[artifact][period][pairKey];
         if (seen >= PAIR_CAP) revert PairCapReached();
 

@@ -240,75 +240,133 @@ export const FLORIN_TOKEN_ABI = parseAbi([
     "function deployer() view returns (address)",
 ]);
 
+// ── UsageCounter ABI ──────────────────────────────────────────────────────
+//
+// Verified artifact usage, counted when it happens. `recordUsage` is
+// permissionless: it proves the order is RESOLVED (`core.orderStatus == 2`)
+// and that the artifact is merkle-included in the signed `agreementHash` —
+// the same leaf shape `computeSectionLeaf` builds. Accrual buckets into fixed
+// periods; a period's counts are final once `periodClosed` is true.
+
+export const USAGE_COUNTER_ABI = parseAbi([
+    // ── Recording (permissionless) ──────────────────────────────────
+    `function recordUsage(${COMMITMENT_TUPLE} order, bytes32 artifact, bytes sectionData, bytes32[] proof) external`,
+
+    // ── Composition + schedule ──────────────────────────────────────
+    "function core() view returns (address)",
+    "function clauses() view returns (address)",
+    "function boostedTag() view returns (bytes32)",
+    "function periodEnd(uint256) view returns (uint64)",
+    "function periodCount() view returns (uint256)",
+    "function currentPeriod() view returns (uint8)",
+    "function periodClosed(uint8 period) view returns (bool)",
+
+    // ── Weights (milli — integer thousandths) ───────────────────────
+    "function BOOSTED_WEIGHT() view returns (uint32)",
+    "function BASE_WEIGHT() view returns (uint32)",
+    "function PAIR_CAP() view returns (uint8)",
+    "function weightOf(bytes32 artifact) view returns (uint32)",
+
+    // ── Accrual ─────────────────────────────────────────────────────
+    "function accrualOf(bytes32 artifact, uint8 period) view returns (uint64 c, uint64 d, uint256 score)",
+    "function totalScoreIn(uint8 period) view returns (uint256)",
+    "function processCounted(bytes32 artifact, uint8 period, bytes32 processId) view returns (bool)",
+    "function pairCount(bytes32 artifact, uint8 period, bytes32 pairKey) view returns (uint8)",
+    "function icbrt(uint256 n) pure returns (uint256)",
+
+    // ── Events ──────────────────────────────────────────────────────
+    "event UsageRecorded(bytes32 indexed artifact, uint8 indexed period, bytes32 indexed processId, bytes32 pairKey, uint64 c, uint64 d, uint256 score)",
+
+    // ── Errors ──────────────────────────────────────────────────────
+    "error ZeroAddress()",
+    "error EmptyPeriods()",
+    "error PeriodsNotAscending()",
+    "error AccrualClosed()",
+    "error UnknownOrder()",
+    "error OrderNotResolved()",
+    "error AlreadyCounted()",
+    "error PairCapReached()",
+    "error InvalidInclusionProof()",
+]);
+
+export const EV_USAGE_RECORDED = parseAbiItem(
+    "event UsageRecorded(bytes32 indexed artifact, uint8 indexed period, bytes32 indexed processId, bytes32 pairKey, uint64 c, uint64 d, uint256 score)",
+);
+
+// ── RpgfMinter ABI ────────────────────────────────────────────────────────
+//
+// The 600M retroactive distribution: three declining tranches, tranche `i`
+// paying for UsageCounter period `i`. There is nothing to post, nothing to
+// bond and nothing to dispute — a claim is arithmetic over a closed period's
+// final counts, capped at 15% of the tranche per wallet.
+
 export const RPGF_MINTER_ABI = parseAbi([
-    "function postRoot(uint8 trancheId, bytes32 root, uint64 fromBlock, uint64 toBlock) external payable",
-    "function challenge(uint8 trancheId) external payable returns (uint256 caseId)",
-    "function disputeChallenge(uint256 caseId) external payable",
-    "function concede(uint256 caseId) external",
-    "function finalize(uint8 trancheId) external",
-    "function claim(uint8 trancheId, address account, uint256 amount, bytes32[] proof) external",
-    "function withdrawBonds() external",
-    "function bond() view returns (uint256)",
-    "function challengeWindow() view returns (uint64)",
-    "function disputeWindow() view returns (uint64)",
-    "function formulaHash() view returns (bytes32)",
-    "function tranches(uint256) view returns (uint256 amount, uint64 earliestPost, bytes32 root, uint64 fromBlock, uint64 toBlock, bool finalized, uint256 minted)",
-    "function postings(uint256) view returns (address poster, bytes32 root, uint64 fromBlock, uint64 toBlock, uint64 postedAt)",
+    "function claim(uint8 trancheId, bytes32[] artifacts) external",
+    "function claimable(uint8 trancheId, address account, bytes32[] artifacts) view returns (uint256)",
+    "function trancheAmount(uint256) view returns (uint256)",
+    "function minted(uint8 trancheId) view returns (uint256)",
     "function claimed(uint8 trancheId, address account) view returns (bool)",
-    "function withdrawable(address account) view returns (uint256)",
-    "function arbitrator() view returns (address)",
-    "function bondCases(uint256) view returns (address poster, address challenger, uint64 challengedAt, uint8 status)",
-    "event RootPosted(uint8 indexed trancheId, address indexed poster, bytes32 root, uint64 fromBlock, uint64 toBlock)",
-    "event RootChallenged(uint8 indexed trancheId, uint256 indexed caseId, address indexed challenger, bytes32 root)",
-    "event ChallengeDisputed(uint256 indexed caseId, uint256 fee)",
-    "event ChallengeConceded(uint256 indexed caseId)",
-    "event CaseRuled(uint256 indexed caseId, uint8 ruling)",
-    "event BondsWithdrawn(address indexed account, uint256 amount)",
-    "event TrancheFinalizedRoot(uint8 indexed trancheId, bytes32 root, uint64 fromBlock, uint64 toBlock)",
-    "event Claimed(uint8 indexed trancheId, address indexed account, uint256 amount)",
+    "function TRANCHE_COUNT() view returns (uint8)",
+    "function CAP_NUMERATOR() view returns (uint256)",
+    "function CAP_DENOMINATOR() view returns (uint256)",
+    "function florin() view returns (address)",
+    "function counter() view returns (address)",
+    "function clauses() view returns (address)",
+    "function assemblies() view returns (address)",
+    "event Claimed(uint8 indexed trancheId, address indexed account, uint256 amount, uint256 score, bool capped)",
+    "error ZeroAddress()",
+    "error UnknownTranche(uint8 trancheId)",
+    "error TrancheStillAccruing(uint8 trancheId)",
+    "error AlreadyClaimed(uint8 trancheId, address account)",
+    "error NoArtifacts()",
+    "error NotAuthorOfRecord(bytes32 artifact, address caller)",
+    "error NothingToClaim()",
+    "error TrancheBudgetExceeded(uint8 trancheId)",
 ]);
 
-export const DONATION_RAIL_ABI = parseAbi([
-    "function donate(address token, address recipient, uint256 amount) external",
-    "event Donation(address indexed token, address indexed donor, address indexed recipient, uint256 amount)",
-]);
+// ── MatchPool ABI ─────────────────────────────────────────────────────────
+//
+// One instance IS one round, and the round IS its own donation rail:
+// `donate` passes the tokens straight through to the recipient while the
+// contract accumulates the quadratic-funding sums as each donation lands.
+// A recipient's weight is the coordination surplus `sumSqrt^2 - sumOf`;
+// the match is `budget * weight / totalWeight`, capped at 15%.
 
-export const OPTIMISTIC_MATCH_POOL_ABI = parseAbi([
-    "function postRoot(bytes32 root, uint64 fromBlock, uint64 toBlock) external payable",
-    "function challenge() external payable returns (uint256 caseId)",
-    "function disputeChallenge(uint256 caseId) external payable",
-    "function concede(uint256 caseId) external",
+export const MATCH_POOL_ABI = parseAbi([
+    "function donate(address recipient, uint256 amount) external",
     "function finalize() external",
-    "function claim(address account, uint256 amount, bytes32[] proof) external",
-    "function withdrawBonds() external",
+    "function claim(address recipient) external",
+    "function matchOf(address recipient) view returns (uint256)",
+    "function weightOf(address recipient) view returns (uint256)",
+    "function sqrt(uint256 n) pure returns (uint256)",
+    "function recipientOf(address recipient) view returns (uint256 sumSqrt, uint256 sumOf, uint64 donors, bool claimed)",
+    "function hasDonated(address recipient, address donor) view returns (bool)",
+    "function totalWeight() view returns (uint256)",
+    "function budget() view returns (uint256)",
+    "function finalized() view returns (bool)",
+    "function paid() view returns (uint256)",
     "function matchToken() view returns (address)",
     "function donationToken() view returns (address)",
-    "function donationRail() view returns (address)",
-    "function formulaHash() view returns (bytes32)",
-    "function arbitrator() view returns (address)",
-    "function bond() view returns (uint256)",
-    "function challengeWindow() view returns (uint64)",
-    "function disputeWindow() view returns (uint64)",
     "function donationStart() view returns (uint64)",
     "function donationEnd() view returns (uint64)",
-    "function posting() view returns (address poster, bytes32 root, uint64 fromBlock, uint64 toBlock, uint64 postedAt)",
-    "function bondCases(uint256) view returns (address poster, address challenger, uint64 challengedAt, uint8 status)",
-    "function finalRoot() view returns (bytes32)",
-    "function finalFromBlock() view returns (uint64)",
-    "function finalToBlock() view returns (uint64)",
-    "function finalized() view returns (bool)",
-    "function budget() view returns (uint256)",
-    "function claimedTotal() view returns (uint256)",
-    "function claimed(address account) view returns (bool)",
-    "function withdrawable(address account) view returns (uint256)",
-    "event RootPosted(address indexed poster, bytes32 root, uint64 fromBlock, uint64 toBlock)",
-    "event RootChallenged(uint256 indexed caseId, address indexed challenger, bytes32 root)",
-    "event ChallengeDisputed(uint256 indexed caseId, uint256 fee)",
-    "event ChallengeConceded(uint256 indexed caseId)",
-    "event CaseRuled(uint256 indexed caseId, uint8 ruling)",
-    "event MatchFinalized(bytes32 root, uint64 fromBlock, uint64 toBlock, uint256 budget)",
-    "event Claimed(address indexed account, uint256 amount)",
-    "event BondsWithdrawn(address indexed account, uint256 amount)",
+    "function donationFloor() view returns (uint256)",
+    "function CAP_NUMERATOR() view returns (uint256)",
+    "function CAP_DENOMINATOR() view returns (uint256)",
+    "event Donation(address indexed donor, address indexed recipient, uint256 amount, uint256 weightAfter)",
+    "event Finalized(uint256 budget, uint256 totalWeight)",
+    "event MatchClaimed(address indexed recipient, uint256 amount, uint256 weight)",
+    "error ZeroAddress()",
+    "error BadWindow()",
+    "error DonationsNotOpen()",
+    "error DonationsStillOpen()",
+    "error BelowFloor(uint256 amount, uint256 floor)",
+    "error SelfDonation()",
+    "error AmountMismatch(uint256 expected, uint256 received)",
+    "error AlreadyFinalized()",
+    "error NotFinalized()",
+    "error NothingToClaim()",
+    "error AlreadyClaimed()",
+    "error BudgetExceeded()",
 ]);
 
 // ── FigaroBatchVerifier ABI ──────────────────────────────────────────────────

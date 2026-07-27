@@ -10,9 +10,9 @@ optimizer_runs = 200
 via_ir = false               # Legacy codegen — stack-depth managed by scoping blocks.
                              # Build time: ~4s vs ~17min with via_ir=true.
 force = false
-# Deploy scripts hash the canonical RPGF formula spec into RpgfMinter.formulaHash.
+# Deploy scripts read no off-chain spec: the RPGF scoring lives on chain in
+# src/protocol/usage/UsageCounter.sol, so nothing is hashed into a contract.
 fs_permissions = [
-    { access = "read", path = "sdk/src/rpgf/formula.json" },
     { access = "read", path = "test/fixtures/eip712-vectors.json" },
 ]
 build_info = false

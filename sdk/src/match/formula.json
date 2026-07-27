@@ -1,57 +1,49 @@
 {
     "formula": "figaro-match",
-    "version": 1,
-    "description": "Canonical scoring formula for a crowd-steered match round on the OptimisticMatchPool. keccak256 of this file's exact bytes is anchored on-chain as OptimisticMatchPool.formulaHash at round creation. The formula is deterministic over public chain events: any observer recomputes a posted match root exactly, and a mismatch is challengeable. Integer arithmetic throughout — no floating point anywhere. The machine-readable half is `parameters`; the reference implementation (sdk/src/match) derives its constants from it — the prose sections are the normative statement of the algorithm. A round is ONE pool instance; a round whose donation token, floor, or caps differ anchors a sibling instance of this file with adjusted parameter values (the hash binds exact bytes, so every round's formula is self-describing).",
+    "version": 2,
+    "description": "The mechanism of one crowd-steered matching round on MatchPool, stated in one place. NOTHING IS POSTED AND NOTHING IS ANCHORED: the pool IS its own donation rail, so it accumulates the quadratic-funding sums AS EACH DONATION LANDS and the match is arithmetic over numbers the chain already holds — no root, no bond, no challenge window, no referee, no formulaHash. This file is therefore the normative PROSE statement of what the contract computes, and the machine-readable `parameters` the off-chain mirror (sdk/src/match) derives its constants from. The mirror exists for display and verification — and for predicting what a planned donation would do — never for asserting an answer to the chain. Integer arithmetic throughout; no floating point anywhere. One contract instance IS one round: anyone deploys one, anyone funds it, and it dissolves into claims.",
     "parameters": {
-        "donationFloor": "1000000000000000000",
-        "donorRecipientCap": "100000000000000000000",
         "capNumerator": 15,
-        "capDenominator": 100,
-        "sqrtScale": "1000000000000000000",
-        "emptyRootPreimage": "figaro-match:empty"
+        "capDenominator": 100
     },
     "parameterUnits": {
-        "donationFloor": "Raw smallest units of the round's donation token. This v1 instance carries one whole 18-decimals token (chosen as the roughly-one-dollar mark for a dollar-stable donation token); a 6-decimals round anchors a sibling instance with '1000000'.",
-        "donorRecipientCap": "Raw smallest units of the round's donation token; 100x the floor in this instance.",
-        "sqrtScale": "Fixed-point scale applied inside the integer square root so flooring error is negligible against the coordination surplus."
+        "capNumerator/capDenominator": "MatchPool.CAP_NUMERATOR / CAP_DENOMINATOR — the per-recipient ceiling on the match, as a fraction of the budget. Contract constants, identical for every round."
     },
     "round": {
-        "binding": "All round constants are the pool's immutables, read from the OptimisticMatchPool instance whose formulaHash anchors this file: donationRail, donationToken, matchToken, donationStart, donationEnd. Nothing round-specific lives anywhere else.",
-        "budget": "The allocation budget is matchToken.balanceOf(pool) AT BLOCK toBlock — deterministic chain state any observer reads, so a posted root is exactly recomputable. Nothing moves the match token out of the pool before finalization, so the contract's finalized budget (the balance snapshot finalize() takes) can only equal or exceed the allocation budget — the claim-side budget cap holds by construction."
+        "binding": "Every other round constant is an immutable of the MatchPool instance and is read from it: matchToken, donationToken, donationStart, donationEnd, donationFloor. Nothing round-specific lives anywhere else, and a round with a different token, window or floor is a different instance — there is no registry of rounds and no shared configuration.",
+        "singleToken": "A round counts donations in ONE token. Single-token rounds keep the arithmetic deterministic — no oracle, no FX. A round in another currency is another round. The match pays out in matchToken, which is deliberately a different currency from what donors give.",
+        "budget": "MatchPool.finalize() (permissionless, once the donation window has ended) snapshots matchToken.balanceOf(pool) as the budget and freezes it. Overfunding beyond the finalized budget stays put, by the same no-escape-hatch doctrine as everywhere else — fund exactly."
     },
-    "window": {
-        "fromBlock": "MUST be 0.",
-        "toBlock": "MUST equal (block number of the postRoot transaction) - 1. postRoot is only callable after donationEnd, so every in-window donation is inside the scan range.",
-        "scope": "A Donation event is in scope iff it was emitted by the round's donationRail, its token equals the round's donationToken, and the timestamp of its containing block is within [donationStart, donationEnd] inclusive. Block timestamps are consensus data — the filter is deterministic."
-    },
-    "events": {
-        "description": "The ONLY input is the DonationRail event stream — recipients are EMERGENT from donations (there is no recipient registry, and no other event carries signal). Log order is (blockNumber, logIndex) ascending.",
-        "consumed": ["DonationRail.Donation(address indexed token, address indexed donor, address indexed recipient, uint256 amount)"]
-    },
-    "eligibility": {
-        "recipients": "Any address MAY be a recipient, EXCEPT the round's own machinery: a donation whose recipient is the donationRail, the OptimisticMatchPool instance, the donationToken contract, or the matchToken contract is dropped (a match allocated to those addresses would be unclaimable or burnt). Self-donations (donor == recipient) cannot occur — the rail's strict-amount balance check reverts them mechanically.",
-        "donationFloor": "Per (donor, recipient) pair, the pair's in-scope donation total must be at least donationFloor or the pair is dropped entirely. The floor is what makes the surplus form's two-donor requirement cost real capital per counted donor wallet.",
-        "donorRecipientCap": "Per (donor, recipient) pair, the counted value is min(pair total, donorRecipientCap) — a single donor's steering toward one recipient saturates. This is the plutocracy bound; the sybil bound is the surplus form itself."
-    },
-    "aggregation": {
-        "pairTotal": "c_dr = the sum of in-scope donation amounts from donor d to recipient r (all Donation events of the pair, summed before the floor and cap apply).",
-        "counted": "counted_dr = min(c_dr, donorRecipientCap), defined only for pairs with c_dr >= donationFloor."
+    "donating": {
+        "call": "MatchPool.donate(recipient, amount). The tokens go STRAIGHT THROUGH to the recipient — the contract never holds a donation on anyone's behalf — while the round records the weight the donation earns.",
+        "window": "block.timestamp must be >= donationStart and < donationEnd. Start inclusive, end EXCLUSIVE. A donation outside the window is refused (DonationsNotOpen) rather than silently uncounted.",
+        "floor": "amount must be >= donationFloor (BelowFloor). The floor is what makes each counted donor real capital rather than a free vote.",
+        "selfDonation": "recipient == msg.sender is refused outright (SelfDonation), and recipient == address(0) is refused (ZeroAddress).",
+        "strictAmount": "The recipient's balance delta must equal `amount` exactly (AmountMismatch) — a fee-on-transfer donation token reverts rather than silently under-crediting.",
+        "recipients": "EMERGENT from donations. There is no recipient registry and no eligibility list: any address a donation reaches is a recipient."
     },
     "score": {
-        "form": "Surplus-form quadratic funding: a recipient's raw match is the coordination surplus (sum of square roots, squared) minus (sum), so a recipient funded by a single donor scores exactly zero — the cheapest sybil shape (donor funding their own sock-puppet recipient) earns nothing unless at least two floor-clearing donor wallets participate.",
-        "integerForm": "Per counted pair: s_dr = isqrt(counted_dr * sqrtScale), where isqrt is the floor integer square root over arbitrary-precision integers. Per recipient: S_r = sum over d of s_dr; T_r = sum over d of counted_dr; rawMatch_r = max(0, S_r^2 - T_r * sqrtScale). The max(0, ...) clamp absorbs isqrt flooring on single-donor recipients; for multi-donor recipients the surplus dominates the flooring error by construction.",
-        "homogeneity": "rawMatch is homogeneous of degree one in donation units, so the pro-rata split below is independent of the donation token's decimals."
+        "form": "Surplus-form quadratic funding: a recipient's weight is the coordination surplus (sum of square roots, squared) minus (sum of donations), so many small independent donors outweigh one large cheque.",
+        "integerForm": "For each (donor, recipient) pair the contract keeps that donor's running total (MatchPool.donatedBy). On donation d: donatedBy[r][donor] goes from `was` to `was + amount_d`, and sumSqrt_r is corrected by -sqrt(was) +sqrt(was + amount_d), where sqrt is the floor integer square root (Babylonian, MatchPool.sqrt). sumOf_r += amount_d. weight_r = max(0, sumSqrt_r^2 - sumOf_r). The roots are taken PER DONOR, NOT per donation call — this is what makes the surplus form a sybil floor: splitting one cheque across n transactions is exactly neutral, so a recipient with a single donor scores zero however many times that donor pays. There is no per-donor cap and no fixed-point scale — the sqrt is taken on raw token units.",
+        "sybilFloor": "A recipient funded by a single donation scores sqrt(a)^2 - a, which is zero up to integer truncation — so the cheapest sybil shape, a donor funding their own recipient, earns nothing. Self-donation is refused outright, and the floor prices every counted donation in real capital.",
+        "totalWeight": "The summed weight across all recipients — the claim divisor. Maintained in O(1) as a delta on every donation, so a claim is a division rather than a sweep over donors.",
+        "homogeneity": "weight is homogeneous of degree one in donation units, so the pro-rata split is independent of the donation token's decimals."
     },
-    "recipients": {
-        "aggregation": "A wallet's score IS its rawMatch as a recipient — recipients are wallets, there is no artifact layer in a match round.",
-        "cap": "capNumerator/capDenominator (15/100) of the finalized budget per wallet, applied by water-filling: repeatedly compute alloc_i = floor(remaining * score_i / sum(scores of uncapped wallets)) over uncapped wallets; any wallet whose alloc exceeds the cap is fixed at the cap and removed from the pool (with remaining reduced by the cap) before recomputing; terminate when no wallet exceeds the cap. Flooring dust stays unclaimed (the budget is a ceiling, not a target).",
-        "leaves": "One leaf per wallet with a positive allocation: keccak256(bytes.concat(keccak256(abi.encode(address account, uint256 amount))))."
+    "payout": {
+        "gate": "MatchPool.claim(recipient) requires finalized. Anyone may call on a recipient's behalf; the tokens always go to the recipient. Claims never expire and there is no sweep.",
+        "match": "matchOf(r) = floor(budget * weight_r / totalWeight), then clamped to floor(budget * 15 / 100).",
+        "cap": "THE EXCESS IS NOT REDISTRIBUTED — a capped recipient's overflow simply stays in the pool, and flooring dust likewise stays unclaimed: the budget is a ceiling, not a target. The cap binds identically for every recipient.",
+        "onceOnly": "One claim per recipient; the running `paid` total is checked against `budget` (BudgetExceeded)."
     },
-    "merkle": {
-        "tree": "Sort leaves ascending as byte strings. Build levels bottom-up: each adjacent pair hashes as keccak256(min(a,b) || max(a,b)); an unpaired last node is promoted unchanged. A single leaf is its own root.",
-        "emptyRoot": "If no wallet has a positive allocation, the canonical root is keccak256('figaro-match:empty') — postable, finalizable, unclaimable."
+    "reads": {
+        "description": "Everything the mirror needs is public chain state, emitted by the round itself. Log order is (blockNumber, logIndex) ascending; the window filter's input is the containing block's timestamp, which is consensus data.",
+        "consumed": [
+            "MatchPool.Donation(address indexed donor, address indexed recipient, uint256 amount, uint256 weightAfter)",
+            "MatchPool.Finalized(uint256 budget, uint256 totalWeight)",
+            "MatchPool.recipientOf(address) / weightOf(address) / matchOf(address) / totalWeight() / budget()"
+        ]
     },
     "sybilPosture": {
-        "statement": "Resistance is BOUNDED, encoded entirely in this formula (surplus form + floor + donor cap + recipient cap) — not identity-based and not MACI-grade, accepted as the round's posture. A ring of k floor-funded donor wallets can still manufacture surplus for a fake recipient; the floor prices each ring wallet in real parked capital, the recipient cap bounds any single wallet's extraction to capNumerator/capDenominator of the budget, and the round runs when the match token has no market price — the farming incentive's lifetime minimum. Pairwise/cluster dampening is the recorded v2 lever if round-one events show ring behavior."
+        "statement": "Resistance is BOUNDED, encoded entirely in the mechanism above (surplus form + donation floor + recipient cap) — not identity-based and not MACI-grade, accepted as the round's posture. A ring of k floor-funded donor wallets can still manufacture surplus for a fake recipient; the floor prices each ring wallet in real parked capital, the recipient cap bounds any single wallet's extraction to 15% of the budget, and a round runs when the match token has no market price — the farming incentive's lifetime minimum."
     }
 }

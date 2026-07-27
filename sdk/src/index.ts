@@ -31,8 +31,7 @@ export {
     ERC20_ABI, SELLER_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI,
     FLORIN_TOKEN_ABI,
     WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI, SWAP_FUNDING_TUPLE,
-    RPGF_MINTER_ABI,
-    DONATION_RAIL_ABI, OPTIMISTIC_MATCH_POOL_ABI,
+    USAGE_COUNTER_ABI, RPGF_MINTER_ABI, MATCH_POOL_ABI,
     BATCH_VERIFIER_ABI,
     // Kernel Commitment struct tuple — a core primitive, used by composition-layer
     // contract ABIs that take a Commitment as a calldata arg.
@@ -55,6 +54,7 @@ export {
     EV_ORDER_RESOLVED,
     EV_PROCESS_RESOLVED,
     EV_ATTESTATION,
+    EV_USAGE_RECORDED,
 } from "./abis.js";
 
 // Types
@@ -285,62 +285,50 @@ export type {
     SellerCatalogueMetadata,
 } from "./sellerCatalogue.js";
 
-// RPGF recompute — the reference implementation of sdk/src/rpgf/formula.json.
-// Deterministic over public chain events: anyone reproduces a posted
-// tranche root exactly, which is what makes the optimistic challenge work.
+// RPGF mirror — the off-chain reference implementation of
+// sdk/src/rpgf/formula.json. UsageCounter counts verified artifact usage on
+// chain as it happens and RpgfMinter pays from those already-final numbers;
+// this mirrors the arithmetic for display, prediction and verification.
 export {
     computeRpgfAllocations,
-    fetchRpgfEventStream,
-    buildRpgfTree,
-    provenanceContentRef,
-    rpgfLeaf,
+    computeUsageAccruals,
+    fetchUsageRecords,
+    usageScore,
+    usageWeightOf,
     icbrt,
-    waterFill,
+    RPGF_FORMULA,
     RPGF_PAIR_CAP,
-    RPGF_TIER1_ARTICLES,
-    RPGF_EXCLUDED_ARTICLES,
+    RPGF_BOOSTED_WEIGHT,
+    RPGF_BASE_WEIGHT,
+    RPGF_SCORE_SCALE,
     RPGF_CAP_NUMERATOR,
     RPGF_CAP_DENOMINATOR,
-    RPGF_PROVENANCE_CLAUSE,
-    RPGF_EMPTY_ROOT,
+    RPGF_TRANCHE_COUNT,
 } from "./rpgf/index.js";
 export type {
-    RpgfEventStream,
     RpgfAllocation,
-    RpgfSpecClassification,
-    RpgfContractAddresses,
-    RpgfTree,
-    RpgfOrderEvent,
-    RpgfResolvedEvent,
-    RpgfAttestationEvent,
-    RpgfClauseRegisteredEvent,
-    RpgfAssemblyRegisteredEvent,
-    RpgfWithdrawalEvent,
-    RpgfSellerStakeEvent,
+    UsageRecord,
+    UsageAccrual,
+    UsagePeriodAccrual,
 } from "./rpgf/index.js";
 
-// Match recompute — the reference implementation of sdk/src/match/formula.json.
-// A match round (DonationRail + OptimisticMatchPool) distributes a funded
-// budget by surplus-form quadratic funding over the rail's donation events;
-// this recompute reproduces a posted match root exactly, which is what makes
-// the optimistic challenge work.
+// Match mirror — the off-chain reference implementation of
+// sdk/src/match/formula.json. A MatchPool round is its own donation rail: it
+// accumulates the surplus-form quadratic-funding sums as each donation lands,
+// and this mirrors that arithmetic (and predicts a planned donation's effect).
 export {
     computeMatchAllocations,
+    computeMatchAccruals,
     fetchMatchDonationEvents,
-    buildMatchTree,
-    matchLeaf,
     isqrt,
     MATCH_FORMULA,
-    MATCH_DONATION_FLOOR,
-    MATCH_DONOR_RECIPIENT_CAP,
     MATCH_CAP_NUMERATOR,
     MATCH_CAP_DENOMINATOR,
-    MATCH_SQRT_SCALE,
-    MATCH_EMPTY_ROOT,
 } from "./match/index.js";
 export type {
     MatchRoundConfig,
     MatchDonationEvent,
     MatchAllocation,
+    MatchRecipientAccrual,
     MatchFormulaParameters,
 } from "./match/index.js";

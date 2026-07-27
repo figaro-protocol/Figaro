@@ -1,199 +1,211 @@
 /**
- * Match recompute — the reference implementation of `sdk/src/match/formula.json`.
+ * Match mirror — the off-chain reference implementation of
+ * `sdk/src/match/formula.json`.
  *
- * A match round's distribution is OPTIMISTIC (the OptimisticMatchPool):
- * anyone posts the round's payout Merkle root, anyone recomputes it from the
- * public DonationRail event stream and challenges a mismatch. This module IS
- * that recompute: deterministic integer arithmetic (no floats anywhere), one
- * canonical answer for any round. The formula-spec file's exact bytes are
- * anchored on-chain as `OptimisticMatchPool.formulaHash`; this implementation
- * mirrors it and the two must move in lockstep.
+ * There is NOTHING TO POST here. A `MatchPool` instance IS its own donation
+ * rail: it accumulates the quadratic-funding sums as each donation lands, so
+ * the match is arithmetic over numbers the chain already holds. This module
+ * MIRRORS that arithmetic — to display a round, to verify a recipient's weight,
+ * or to predict what a planned donation would do — never to assert an answer to
+ * the chain. Deterministic integer arithmetic (no floats anywhere); `isqrt`
+ * matches `MatchPool.sqrt` value for value.
  *
- * Pipeline: `fetchMatchDonationEvents` (rail logs + block timestamps) →
- * `computeMatchAllocations` (pure: scope filter, floor/cap, surplus-form QF,
- * water-filled recipient cap) → `buildMatchTree` (leaves, root, claim proofs).
- *
- * The tree/leaf shape is shared with the RPGF formula (OZ standard tree —
- * both contracts verify the same leaf); the empty-root preimage is the one
- * formula-specific constant.
+ * Pipeline: `fetchMatchDonationEvents` (the pool's Donation logs + block
+ * timestamps) → `computeMatchAllocations` (pure: window/floor/self-donation
+ * gates, surplus-form weights, pro-rata split, 15% cap).
  */
 
-import type { Address, Hex, PublicClient } from "viem";
-import { decodeEventLog, keccak256, stringToHex } from "viem";
-import { DONATION_RAIL_ABI } from "../abis.js";
-import { buildRpgfTree, rpgfLeaf, waterFill, type RpgfTree } from "../rpgf/index.js";
+import type { Address, PublicClient } from "viem";
+import { decodeEventLog } from "viem";
+import { MATCH_POOL_ABI } from "../abis.js";
 import formula from "./formula.json" with { type: "json" };
 
 // ── Formula constants — derived from the canonical artifact, never
-//    restated in code. Floor, caps, and scale live in formula.json; this
-//    module only executes what the anchored spec declares. ────────────
+//    restated in code. The only formula-wide constants are the pool's
+//    cap constants; every other round parameter is an immutable of the
+//    round instance and lives in `MatchRoundConfig`. ────────────────────
 
 export const MATCH_FORMULA = formula;
-export const MATCH_DONATION_FLOOR = BigInt(formula.parameters.donationFloor);
-export const MATCH_DONOR_RECIPIENT_CAP = BigInt(formula.parameters.donorRecipientCap);
 export const MATCH_CAP_NUMERATOR = BigInt(formula.parameters.capNumerator);
 export const MATCH_CAP_DENOMINATOR = BigInt(formula.parameters.capDenominator);
-export const MATCH_SQRT_SCALE = BigInt(formula.parameters.sqrtScale);
-
-/** Canonical root for a round with no positive allocations. */
-export const MATCH_EMPTY_ROOT: Hex = keccak256(stringToHex(formula.parameters.emptyRootPreimage));
 
 // ── Round + event types ──────────────────────────────────────────────
 
-/** The round constants — the OptimisticMatchPool instance's immutables.
+/** The round constants — the MatchPool instance's immutables, read from it.
  *  Nothing round-specific lives anywhere else (formula.json § round). */
 export interface MatchRoundConfig {
-    donationRail: Address;
-    matchPool: Address;
+    pool: Address;
     donationToken: Address;
     matchToken: Address;
-    /** Unix seconds, inclusive bounds — the pool's donationStart/donationEnd. */
+    /** Unix seconds. Start INCLUSIVE, end EXCLUSIVE — the contract's gate. */
     donationStart: bigint;
     donationEnd: bigint;
+    /** Minimum donation that counts, in the donation token's smallest units. */
+    donationFloor: bigint;
 }
 
+/** One `MatchPool.Donation` log. `weightAfter` is the recipient's running weight
+ *  AFTER the donation — the mirror recomputes it independently, so a divergence
+ *  is visible without a second data source. */
 export interface MatchDonationEvent {
     blockNumber: bigint;
     logIndex: number;
     /** The containing block's timestamp — the window filter's input. */
     timestamp: bigint;
-    token: Address;
     donor: Address;
     recipient: Address;
     amount: bigint;
+    weightAfter: bigint;
 }
 
+/** A recipient's accrual — `MatchPool.recipientOf` plus the derived weight. */
+export interface MatchRecipientAccrual {
+    sumSqrt: bigint;
+    sumOf: bigint;
+    donors: bigint;
+    weight: bigint;
+}
+
+/** What one recipient can claim — mirrors `matchOf` and the `MatchClaimed` event. */
 export interface MatchAllocation {
     account: Address;
     amount: bigint;
+    weight: bigint;
+    /** True when the 15% ceiling bound (the excess stays in the pool). */
+    capped: boolean;
 }
 
-/** The per-round parameter set, defaulting to the canonical v1 instance. A
- *  round anchoring a sibling formula file passes its own values here. */
+/** The formula-wide parameters. A caller inspecting the raw pro-rata split can
+ *  disable the ceiling by passing `capNumerator === capDenominator`. */
 export interface MatchFormulaParameters {
-    donationFloor: bigint;
-    donorRecipientCap: bigint;
     capNumerator: bigint;
     capDenominator: bigint;
-    sqrtScale: bigint;
 }
 
 const CANONICAL_PARAMETERS: MatchFormulaParameters = {
-    donationFloor: MATCH_DONATION_FLOOR,
-    donorRecipientCap: MATCH_DONOR_RECIPIENT_CAP,
     capNumerator: MATCH_CAP_NUMERATOR,
     capDenominator: MATCH_CAP_DENOMINATOR,
-    sqrtScale: MATCH_SQRT_SCALE,
 };
 
 // ── Integer math ─────────────────────────────────────────────────────
 
-/** Floor square root over non-negative bigints (binary search). */
+/** Floor square root over non-negative bigints. Babylonian, iterated exactly as
+ *  `MatchPool.sqrt` does, so the mirror's weights equal the chain's. */
 export function isqrt(n: bigint): bigint {
     if (n < 0n) throw new Error("isqrt: negative input");
-    if (n < 2n) return n;
-    let lo = 1n;
-    let hi = 1n << (BigInt(n.toString(2).length) / 2n + 1n);
-    while (lo < hi) {
-        const mid = (lo + hi + 1n) >> 1n;
-        if (mid * mid <= n) lo = mid;
-        else hi = mid - 1n;
+    if (n === 0n) return 0n;
+    let x = n;
+    let y = (x + 1n) >> 1n;
+    while (y < x) {
+        x = y;
+        y = (x + n / x) >> 1n;
     }
-    return lo;
+    return x;
 }
 
-// ── Merkle (the shared OZ standard-tree shape, match empty root) ─────
+// ── The mechanism (pure) ─────────────────────────────────────────────
 
-export const matchLeaf = rpgfLeaf;
+/** Replay the pool's accrual over a donation stream: the window, floor and
+ *  self-donation gates the contract enforces at `donate` time, then the
+ *  surplus-form sums.
+ *
+ *  Accumulation is PER DONATION CALL, not per (donor, recipient) pair — a donor
+ *  who donates twice contributes two sqrt terms, exactly as on chain. There is
+ *  no per-donor cap and no fixed-point scale: the sqrt is taken on raw units. */
+export function computeMatchAccruals(
+    donations: readonly MatchDonationEvent[],
+    round: MatchRoundConfig,
+): Map<Address, MatchRecipientAccrual> {
+    const byRecipient = new Map<Address, MatchRecipientAccrual>();
+    // recipient -> donor -> that donor's running total. Mirrors the contract's
+    // `donatedBy`: roots are taken PER DONOR, so `sumSqrt` swaps a donor's old
+    // root for their new one on each donation. Rooting per CALL instead would
+    // let one wallet split a cheque and manufacture surplus from nothing.
+    const donorTotals = new Map<Address, Map<string, bigint>>();
 
-/** Sorted-leaf, sorted-pair tree per the formula spec; empty leaf set → the
- *  canonical match empty root (unclaimable). */
-export function buildMatchTree(leaves: readonly Hex[]): RpgfTree {
-    return buildRpgfTree(leaves, MATCH_EMPTY_ROOT);
+    for (const d of donations) {
+        if (d.timestamp < round.donationStart || d.timestamp >= round.donationEnd) continue;
+        if (d.amount < round.donationFloor) continue;
+        if (d.donor.toLowerCase() === d.recipient.toLowerCase()) continue;
+
+        const key = d.recipient.toLowerCase() as Address;
+        const accrual = byRecipient.get(key) ?? { sumSqrt: 0n, sumOf: 0n, donors: 0n, weight: 0n };
+
+        const totals = donorTotals.get(key) ?? new Map<string, bigint>();
+        const donor = d.donor.toLowerCase();
+        const was = totals.get(donor) ?? 0n;
+        const now = was + d.amount;
+        totals.set(donor, now);
+        donorTotals.set(key, totals);
+
+        accrual.sumSqrt = accrual.sumSqrt - isqrt(was) + isqrt(now);
+        accrual.sumOf += d.amount;
+        if (was === 0n) accrual.donors += 1n;
+
+        const squared = accrual.sumSqrt * accrual.sumSqrt;
+        accrual.weight = squared > accrual.sumOf ? squared - accrual.sumOf : 0n;
+        byRecipient.set(key, accrual);
+    }
+    return byRecipient;
 }
 
-// ── The formula (pure) ───────────────────────────────────────────────
-
-/** The formula: turn a round's donation events into per-wallet match
- *  allocations of `budget` — per the spec, matchToken.balanceOf(pool) at the
- *  posting's toBlock (deterministic chain state; the finalized budget can
- *  only equal or exceed it). Scope filtering (token, window, machinery
- *  recipients) happens here so the input can be the raw fetched stream. */
+/** The payout: a round's donations plus its finalized budget give every
+ *  recipient's match — `floor(budget * weight / totalWeight)`, clamped to
+ *  `floor(budget * 15 / 100)`.
+ *
+ *  THE CAP IS NOT WATER-FILLED. `MatchPool` applies it at claim time and the
+ *  overflow stays in the pool, so a capped recipient takes nothing from anyone
+ *  else's share — the mirror must not redistribute it either. */
 export function computeMatchAllocations(
     donations: readonly MatchDonationEvent[],
     round: MatchRoundConfig,
     budget: bigint,
     parameters: MatchFormulaParameters = CANONICAL_PARAMETERS,
 ): MatchAllocation[] {
-    const machinery = new Set(
-        [round.donationRail, round.matchPool, round.donationToken, round.matchToken].map((a) => a.toLowerCase()),
-    );
-    const donationToken = round.donationToken.toLowerCase();
+    const accruals = computeMatchAccruals(donations, round);
+    let totalWeight = 0n;
+    for (const accrual of accruals.values()) totalWeight += accrual.weight;
+    if (totalWeight === 0n) return [];
 
-    // Pair totals over in-scope donations: c_dr summed before floor and cap.
-    const pairTotals = new Map<string, { donor: Address; recipient: Address; total: bigint }>();
-    for (const d of donations) {
-        if (d.token.toLowerCase() !== donationToken) continue;
-        if (d.timestamp < round.donationStart || d.timestamp > round.donationEnd) continue;
-        if (machinery.has(d.recipient.toLowerCase())) continue;
-        const key = `${d.donor.toLowerCase()}|${d.recipient.toLowerCase()}`;
-        const entry = pairTotals.get(key) ?? { donor: d.donor, recipient: d.recipient, total: 0n };
-        entry.total += d.amount;
-        pairTotals.set(key, entry);
+    const ceiling = (budget * parameters.capNumerator) / parameters.capDenominator;
+    const allocations: MatchAllocation[] = [];
+    for (const [account, accrual] of accruals) {
+        if (accrual.weight === 0n) continue;
+        const share = (budget * accrual.weight) / totalWeight;
+        const amount = share > ceiling ? ceiling : share;
+        if (amount === 0n) continue;
+        allocations.push({ account, amount, weight: accrual.weight, capped: amount === ceiling });
     }
-
-    // Surplus-form QF per recipient: S_r = Σ isqrt(counted·scale);
-    // rawMatch_r = max(0, S_r² − T_r·scale) — single-donor recipients zero.
-    const perRecipient = new Map<Address, { sqrtSum: bigint; countedSum: bigint }>();
-    for (const { recipient, total } of pairTotals.values()) {
-        if (total < parameters.donationFloor) continue;
-        const counted = total > parameters.donorRecipientCap ? parameters.donorRecipientCap : total;
-        const key = recipient.toLowerCase() as Address;
-        const acc = perRecipient.get(key) ?? { sqrtSum: 0n, countedSum: 0n };
-        acc.sqrtSum += isqrt(counted * parameters.sqrtScale);
-        acc.countedSum += counted;
-        perRecipient.set(key, acc);
-    }
-    const scores = new Map<Address, bigint>();
-    for (const [recipient, acc] of perRecipient) {
-        const surplus = acc.sqrtSum * acc.sqrtSum - acc.countedSum * parameters.sqrtScale;
-        if (surplus > 0n) scores.set(recipient, surplus);
-    }
-
-    const allocations = waterFill(scores, budget, parameters.capNumerator, parameters.capDenominator);
-    return [...allocations.entries()]
-        .filter(([, amount]) => amount > 0n)
-        .sort(([a], [b]) => (a < b ? -1 : 1))
-        .map(([account, amount]) => ({ account, amount }));
+    return allocations.sort((a, b) => (a.account < b.account ? -1 : 1));
 }
 
 // ── Chain fetcher ────────────────────────────────────────────────────
 
-/** Fetch the round's full formula input from the rail's logs over
+/** Fetch the round's donation stream from the pool's own logs over
  *  `[0, toBlock]`, resolving each containing block's timestamp (the window
  *  filter's input — filtering itself happens in the compute step). */
 export async function fetchMatchDonationEvents(
     client: PublicClient,
-    donationRail: Address,
+    pool: Address,
     toBlock: bigint,
 ): Promise<MatchDonationEvent[]> {
-    const logs = await client.getLogs({ address: donationRail, fromBlock: 0n, toBlock });
+    const logs = await client.getLogs({ address: pool, fromBlock: 0n, toBlock });
     const raw: Array<Omit<MatchDonationEvent, "timestamp">> = [];
     for (const log of logs) {
         try {
-            const d = decodeEventLog({ abi: DONATION_RAIL_ABI, data: log.data, topics: log.topics });
-            if (d.eventName !== "Donation") continue;
-            const a = d.args as Record<string, unknown>;
+            const decoded = decodeEventLog({ abi: MATCH_POOL_ABI, data: log.data, topics: log.topics });
+            if (decoded.eventName !== "Donation") continue;
+            const a = decoded.args as Record<string, unknown>;
             raw.push({
                 blockNumber: log.blockNumber ?? 0n,
                 logIndex: log.logIndex ?? 0,
-                token: a.token as Address,
                 donor: a.donor as Address,
                 recipient: a.recipient as Address,
                 amount: a.amount as bigint,
+                weightAfter: a.weightAfter as bigint,
             });
         } catch {
-            /* the rail emits nothing else */
+            /* the round's other events are not accrual inputs */
         }
     }
     const timestamps = new Map<bigint, bigint>();

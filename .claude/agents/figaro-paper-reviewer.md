@@ -44,7 +44,7 @@ Walk the paper. Surface every claim that touches code. Categories to look for:
 | **Clause claim** | "N runtime-attestable clauses" | Derive from `ls clauses/*.json` (all runtime-attestable except `figaro-topology`) — never a stored count |
 | **Mechanism claim** | "Kernel runs two mechanisms: asymmetric bonding + buyer dominance" | Verify against the actual mechanism implementation |
 | **Anti-pattern claim** | "No admin, no escape hatch" | Verify by grep — no admin functions, no upgradeability |
-| **Token allocation** | "10% founder, 30% DAO, 60% RPGF" | Match against `docs/FLORIN_TOKEN.md` + `src/florin/FlorinToken.sol` (genesis mints only; the RPGF reserve has NO wired minter — the distribution mechanism is deferred/under redesign) |
+| **Token allocation** | "10% founder, 30% DAO, 60% RPGF" | Match against `docs/FLORIN_TOKEN.md` + `src/florin/FlorinToken.sol`. The RPGF reserve HAS a wired minter: `src/rpgf/RpgfMinter.sol` over `src/protocol/usage/UsageCounter.sol`, registered at florin genesis, three declining tranches paid pro rata from closed accrual periods. Nothing posted, bonded, or arbitrated — flag "optimistic"/"challenge window"/"deferred" as stale |
 | **Numerical bound** | "MAX_SUPPLY = 1B florins" | Match against the constant |
 
 Don't try to verify every adjective. Verify every *quantitative* or *named* claim.

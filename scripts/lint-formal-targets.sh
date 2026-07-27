@@ -7,8 +7,9 @@
 #   scripts/test-echidna.sh  → --contract Echidna<X> + src/echidna/<X>.sol
 #   scripts/test-tla.sh      → -config <M>.cfg + <M>.tla  (under formal/)
 #
-# When a contract is deleted (the proof-apparatus / RPGF teardown removed
-# RpgfMinter) a runner keeps pointing at the corpse — a "Pass 3/3 … RpgfMinter"
+# When a contract is deleted (the 2026-07-27 System B rebuild removed
+# IRpgfArbitrator, KlerosRpgfAdapter and DonationRail) a runner keeps pointing
+# at the corpse — a "Pass 3/3 … RpgfMinter"
 # step that errors ONLY when someone with the paid/heavy toolchain (Z3, a Certora
 # key, TLC, echidna) actually runs it. This is the cheap, toolchain-free floor:
 # it fails if any target a runner names no longer exists in the tree, so the drift

@@ -53,7 +53,7 @@ Full harness inventory (file lists, property names, rule counts) → `TESTING.md
 ## Deployment scripts (`script/`)
 
 - `script/Deploy.s.sol` — devnet (Anvil); uses mock verifier and mock tokens. The wrapper deploys from a RANDOMIZED throwaway deployer (funded from anvil[0]) so contract addresses are per-machine unique — the universal Anvil-default addresses trip MetaMask/Blockaid threat lists ("deceptive request" on the commit signature). Explicit `PRIVATE_KEY` env overrides (testnet/mainnet path). Mints MOCK/permit tokens to anvil[0..19] explicitly.
-- `script/DeployMainnet.s.sol` — mainnet; no mocks; reads all sensitive params from env. Deploys the kernel + protocol contracts + FlorinToken (400M founder/DAO genesis mint, then deployer-mint renounce). No proof/batch path — it was removed in the teardown.
+- `script/DeployMainnet.s.sol` — mainnet; no mocks; reads all sensitive params from env (`PRIVATE_KEY`, `FOUNDER_WALLET`, `DAO_WALLET`, `SP1_VERIFIER_GATEWAY`, `SP1_PROGRAM_VKEY`, `RPGF_BOOSTED_TAG`, `RPGF_PERIOD_END_1/2/3`). Deploys the kernel, all three registries (Clause / Seller / Assembly), the coordinators, `FigaroBatchVerifier`, then FlorinToken with UsageCounter + RpgfMinter registered at genesis (400M founder/DAO genesis mint, then deployer-mint renounce). No match pool: a round is not a genesis contract.
 - `script/MintTokens.s.sol` — utility: mint test tokens to existing devnet accounts.
 
 `forge script` is harness-denied; deploy via the `.sh` wrappers, not by calling `forge script` directly.
@@ -108,18 +108,18 @@ NEXT_PUBLIC_SWAP_ROUTER=0x...
 # canonical Disperse deployment (0xD152f5…2150, same address across chains)
 NEXT_PUBLIC_MULTISENDER=0x...
 
-# The florin + the optimistic RPGF distribution (minter registered at genesis;
-# the arbitrator is the composed bond-settlement forum — MockArbitrator on
-# devnet, a real arbitration-provider adapter elsewhere)
+# The florin + the RPGF distribution. UsageCounter records verified artifact
+# usage as it happens; the minter (registered at genesis) pays each tranche pro
+# rata from a closed accrual period. Nothing is posted, bonded, or challenged,
+# so there is no arbitrator address.
 NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=0x...
+NEXT_PUBLIC_USAGE_COUNTER=0x...
 NEXT_PUBLIC_RPGF_MINTER=0x...
-NEXT_PUBLIC_RPGF_ARBITRATOR=0x...
 NEXT_PUBLIC_DAO_TREASURY=0x...
 
-# The no-custody donation rail for crowd-steered match rounds (a genesis
-# singleton like the registries; match pools are per-round, deployed by
-# whoever opens a round — the /rounds page reads the pool's own rail)
-NEXT_PUBLIC_DONATION_RAIL=0x...
+# No donation-rail address: a MatchPool IS its own rail, and a pool is not a
+# genesis contract — one instance is one round, deployed by whoever opens it and
+# addressed directly (`/rounds?pool=<address>`).
 
 # Batch-settlement proof path (FigaroBatchVerifier; MockSP1Verifier accepts
 # any proof on devnet — a real deployment wires Succinct's SP1 verifier

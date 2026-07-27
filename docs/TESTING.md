@@ -4,11 +4,29 @@ CLAUDE.md keeps the run commands; this file is the full inventory of test files,
 
 ## Foundry (`test/`)
 
-`FigaroCoreTest`, `FigaroCoreRevertBranchTest`, `FigaroCoreEventEmissionTest`,
-`AttestationCoordinatorTest`, `ClauseRegistryTest`, `AssemblyRegistryTest`,
-`SellerRegistryTest`, `GasCeilingTest`, `WitnessSwapAndCommitCoordinatorTest`,
-`WitnessSwapAndCommitCoordinatorForkTest`, `FigaroBatchVerifierTest`,
-`ReentrancyAdversarialTest`, `Eip712ParityTest`, `HalmosFigaroCore`, `fig/FlorinToken.t.sol`.
+The test tree mirrors `src/` (`test/kernel/`, `test/protocol/{registries,coordinators,usage,verifier}/`,
+`test/florin/`, `test/rpgf/`, `test/match/`, `test/mocks/`); audit by `find test -name '*.t.sol'`,
+not by this paragraph. Current: `FigaroCoreTest`, `FigaroCoreRevertBranchTest`,
+`FigaroCoreEventEmissionTest`, `AttestationCoordinatorTest`, `ClauseRegistryTest`,
+`AssemblyRegistryTest`, `SellerRegistryTest`, `GasCeilingTest`,
+`WitnessSwapAndCommitCoordinatorTest`, `WitnessSwapAndCommitCoordinatorForkTest`,
+`FigaroBatchVerifierTest`, `UsageCounterTest`, `RpgfMinterTest`, `RpgfIntegrationTest`,
+`MatchPoolTest`, `TreasuryProcurementTest`, `MockDisperseTest`, `ReentrancyAdversarialTest`,
+`Eip712ParityTest`, `HalmosFigaroCore`, `FlorinToken.t.sol`.
+
+`UsageCounterTest` (22) covers the reward-accrual counter: the RESOLVED-order gate, merkle
+inclusion against the signed `agreementHash`, per-(artifact, period, process) idempotence, the
+pair cap of 5, boosted-vs-base weighting off `ClauseRegistry.rpgfTagOf`, period boundaries and
+`periodClosed`, `totalScoreIn` delta maintenance, and a fuzzed floor-cube-root property on
+`icbrt`. `RpgfMinterTest` (16) exercises the payout maths against a counter stub — pro-rata
+share, the 15% claim-time cap with the excess left unminted, author-of-record verification
+against both registries, the closed-period requirement, and the per-tranche budget backstop.
+`RpgfIntegrationTest` (4) proves the two compose with NO stubs: a real bonded process settles,
+its usage is recorded against the real counter, the period closes, and the real minter pays
+real florins. `MatchPoolTest` (19) covers one round end to end — pass-through donation
+(strict-amount, self-donation refused, floor), surplus-form QF weight with a single-donor
+recipient scoring zero, permissionless `finalize` snapshotting the budget, and the capped
+budget-bounded claim.
 
 `ReentrancyAdversarialTest` hands the protocol a `MockReentrantToken` that
 re-enters mid-transfer and asserts the `nonReentrant` guard fires (nested call

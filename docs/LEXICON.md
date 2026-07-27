@@ -66,10 +66,11 @@ record — or anchoring an authority's record in a protocol registry — is drif
 **The clause's GROUP is `block.article`** (geo, coordination, emissions…) — ONE word, ONE home. The
 earlier `categories` array and on-chain `family` (`= keccak256(categories[0])`) were a closed-world
 duplicate of the same concept that drifted across clauses; both were removed 2026-06-26, leaving
-`block.article` as the sole classification. The RPGF substrate-broadening weight, when rebuilt,
-derives its group key as `keccak256(block.article)` from the contentHash-verified spec — nothing is
-stored on-chain (see `PUBLIC_GRAPH_MODEL.md`). The guard `lint-no-clause-grouping-synonyms` blocks any
-re-introduced `category`/`family` grouper.
+`block.article` as the sole classification. **The RPGF substrate-broadening weight does NOT read it**
+— it reads `ClauseRegistry.rpgfTagOf`, a declared incentive tag on a different axis (restored
+2026-07-27 after the `family` deletion took it out; see the failure-mode entry below and
+`PUBLIC_GRAPH_MODEL.md`). The guard `lint-no-clause-grouping-synonyms` blocks any re-introduced
+`category`/`family` grouper.
 
 ## Drift status (conformance check, 2026-06-22)
 
@@ -118,6 +119,9 @@ canonical across kernel + SDK + frontend (225 uses), rivals (`agreementId`/`Ref`
    protocol could pay ×3 for the contributions it wanted more of. Deleting it as a synonym left the
    incentive with no narrow tag to aim at; the 07-15 rebuild had only `article` to reach for and
    picked two ENTIRE articles, turning a mechanism aimed at one clause into a boost for 14 of 27.
+   **Repaired 2026-07-27:** the field is back as `ClauseRegistry.rpgfTagOf` — renamed for its one
+   consumer so the resemblance to `article` stops misleading — and `UsageCounter.boostedTag` is the
+   single tag that pays.
    **The lesson: a terminology consolidation must sort synonyms (merge) from homonyms (keep, and
    rename so the resemblance stops misleading).** Two fields that both "group clauses" are not the
    same field if one groups for documentation and the other for reward. Before deleting a field as

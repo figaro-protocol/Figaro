@@ -140,15 +140,13 @@ participants that other agents learn from, without centralized orchestration.
 
 ## Why the substrate-broadening weight exists — the geo/coordination incentive
 
-This section is load-bearing. Without it, the RPGF `w_category` weight
+This section is load-bearing. Without it, the RPGF substrate-broadening weight
 (`FLORIN_TOKEN.md`) reads as an unexplained category privilege in a
 neutrality-preaching system, is mistaken for closed-world cruft, and is removed.
 It is not cruft. (The `lint-substrate-broadening-weight.sh` guard that once kept
-parallel formula files in sync was retired with the RPGF prover; the 2026-07-15
-optimistic rebuild replaced enforcement with derivation — the weight now lives in
-exactly ONE artifact, `sdk/src/rpgf/formula.json`, anchored on-chain as
-`RpgfMinter.formulaHash`, and the reference implementation derives every constant
-from it, so there are no parallel copies left to drift.)
+parallel formula files in sync was retired with the RPGF prover; there is nothing
+left for it to guard — the weight now lives in exactly ONE artifact,
+`src/protocol/usage/UsageCounter.sol`, as two constants and one immutable tag.)
 
 **The must-haves see value, not place.** Every Figaro agreement composes the core
 protocol plus two clauses present in essentially all of them: **topology** (the
@@ -166,23 +164,31 @@ it must be *attested* by clauses that carry it — geolocation, proximity, hand-
 It is the Geo graph above, and nothing forces it into existence.
 
 **So the protocol pays more for the clauses that draw the map.** To make the
-flow-graph exist, the substrate-broadening formula weights a **category of work** —
-the physical/virtual-flow article groups — above the rest (`w_category = 3.0`).
-The tier-1 article set is finalized by formula v1 as **logistics + coordination**
-(`sdk/src/rpgf/formula.json`, the canonical artifact `RpgfMinter.formulaHash`
-anchors). The group is read as `block.article` from the contentHash-verified spec
-— nothing is stored on-chain (there is no `family` field; derive, don't store).
-Mandatory-article clauses are excluded entirely (committed on every order, their
-usage carries no signal), as is the provenance article (scoring infrastructure).
-It is a deliberate incentive: contribute and use the clauses that emit
-physical/virtual-flow data, and earn more of the supply reserved for the
-substrate's contributors — clause authors and assembly designers of record.
+flow-graph exist, `UsageCounter` weights a **category of work** — the
+physical/virtual-flow contributions — at `BOOSTED_WEIGHT = 3000` against a
+`BASE_WEIGHT` of 1000 for everything else and for every assembly.
+
+**The category is a DECLARED TAG, not an article.** A clause names its
+contribution at registration through `ClauseRegistry.rpgfTagOf` (`rpgfTag =
+keccak256("geo")` and the like); the counter's `boostedTag` immutable names the
+one tag that pays. The split is deliberate and is the correction of the costliest
+naming failure in this repo (`LEXICON.md` § "Failure modes"): `block.article`
+groups clauses for READERS and stays off-chain; `rpgfTag` marks what the protocol
+pays more for and has exactly one consumer. Weighting by article instead — the
+2026-07-15 attempt — aimed a mechanism meant for a handful of clauses at 14 of 27.
+
+*Which* tag pays is frozen at the counter's deploy; *membership* stays
+permissionless on the registry, so anyone registering under it inherits the weight
+without touching the counter or the kernel. It is a deliberate incentive:
+contribute and use the clauses that emit physical/virtual-flow data, and earn more
+of the supply reserved for the substrate's contributors — clause authors and
+assembly designers of record.
 
 **This privileges a kind of public good, not a set of authors.** The weight attaches
-to the *article group*, never to a wallet: any author who registers a clause under a
-tier-1 article inherits the boost — permissionlessly, no committee, no application.
-The formula is fixed and discretion-free — *the same rule for every author* — and
-that rule happens to reward the data the network most needs. Procedural neutrality
+to the *declared kind of contribution*, never to a wallet: any author who registers a
+clause under the boosted tag inherits it — permissionlessly, no committee, no
+application. The rule is fixed and discretion-free — *the same rule for every author*
+— and it happens to reward the data the network most needs. Procedural neutrality
 (no one decides who deserves what) and a non-flat weighting (some work is worth more
 to the substrate) are not in tension. Conflating them is the **neutrality ≠
 flat-weighting error** — and the error that keeps getting this deleted.

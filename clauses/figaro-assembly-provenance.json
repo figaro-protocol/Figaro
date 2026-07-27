@@ -2,7 +2,7 @@
     "clauseId": "figaro-assembly-provenance",
     "version": 1,
     "title": "Assembly provenance",
-    "description": "Declares which registered assembly this agreement instantiates — the composition's identity, committed under agreementHash and attestable as on-chain evidence. The designer composes this clause into the assembly; the field fills mechanically at checkout with the template's own compositionHash (it cannot be a designer value: the hash cannot appear inside the composition it hashes). A buyer attestation of this section is the on-chain event that links a process to its assembly — the linkage the RPGF distribution credits assembly designers of record from. The provenance article is scoring infrastructure and is itself excluded from RPGF scoring.",
+    "description": "Declares which registered assembly this agreement instantiates — the composition's identity, committed under agreementHash. The designer composes this clause into the assembly; the field fills mechanically at checkout with the template's own compositionHash (it cannot be a designer value: the hash cannot appear inside the composition it hashes). This section is what makes an assembly creditable at all: agreement leaves are keyed by CLAUSE, so a compositionHash is never itself a leaf key — UsageCounter.recordAssemblyUsage proves THIS leaf and matches its content against the assembly claimed. Without this clause in the agreement, no process can credit its designer.",
     "fields": [
         {
             "name": "compositionHash",

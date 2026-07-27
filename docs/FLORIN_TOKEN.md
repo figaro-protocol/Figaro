@@ -9,10 +9,10 @@ Implemented. Two contracts:
 - `src/florin/IFlorinMinter.sol` — minimal `mint(address,uint256)` interface, implemented
   by `FlorinToken`.
 
-The RPGF distribution is `src/rpgf/RpgfMinter.sol` (rebuilt optimistic 2026-07-15
-— the SP1-proof-gated predecessor was removed in the proof-apparatus teardown)
-plus `src/rpgf/IRpgfArbitrator.sol`, the provider-agnostic bond-settlement forum
-seam. Contract surfaces are inventoried in `docs/CONTRACTS.md`.
+The RPGF distribution is `src/rpgf/RpgfMinter.sol`, paying from the accrual
+`src/protocol/usage/UsageCounter.sol` records on chain as trade happens. Nothing
+is posted, bonded, challenged, or adjudicated. Contract surfaces are inventoried
+in `docs/CONTRACTS.md`.
 
 Deployment: `script/DeployMainnet.s.sol` (mainnet) and `script/Deploy.s.sol` (devnet)
 deploy the minter, register it at 600M, perform the genesis distribution, and
@@ -88,11 +88,11 @@ the initial of Figaro — the visual protocol↔unit bridge.
 |---|---|---|---|
 | **Founders** | **10%** | **100,000,000** | Genesis mint to founder wallet — **no vesting, no unlock** |
 | **DAO**      | **30%** | **300,000,000** | Genesis mint to DAO wallet — **no vesting, no unlock** |
-| **RPGF** | **60%** | **600,000,000** | `RpgfMinter` — optimistic three-tranche distribution to clause authors + assembly designers of record |
+| **RPGF** | **60%** | **600,000,000** | `RpgfMinter` — three declining tranches (300M/200M/100M) claimed pro rata by clause authors + assembly designers of record |
 | **Total** | **100%** | **1,000,000,000** | |
 
 Founders and DAO receive tokens directly to their wallets at deploy time. The
-600M mints only through the `RpgfMinter`'s finalized merkle claims — the minter
+600M mints only through the `RpgfMinter`'s per-tranche claims — the minter
 is registered at genesis (before `renounceDeployerMint`, which is why it must
 exist at deploy time), capped at exactly 600M by the FlorinToken minter registry.
 
@@ -106,7 +106,7 @@ bonded commitment except its buyer.
 **The DAO can spend its 300M three ways.** Nothing gates which — these are treasury acts,
 DAO-decided at any time, nothing hardcoded (ruled 2026-07-17):
 
-1. **Fund a match round** — an ordinary token transfer into an `OptimisticMatchPool`.
+1. **Fund a match round** — an ordinary token transfer into a `MatchPool`.
    Anyone may fund a round; the DAO is one funder among all.
 2. **Pay a third party directly** for services rendered — marketing, design, audits,
    anything — as an ordinary token transfer. No protocol involvement, no bond: this is
@@ -132,22 +132,35 @@ upgrade for the buyer key, rehearsed on testnet before adoption.
 The *intent* of this allocation is unchanged: 60% of the supply is reserved for
 the people whose artifacts broaden the protocol's substrate — clause authors
 and assembly designers of record (recipients widened by the 2026-07-09
-redesign) — distributed by a category-weighted formula favoring the tier-1
-article groups (logistics, coordination) that produce the public
-physical/virtual-flow graph dissolving platform value-capture. Mandatory-article
-clauses are excluded: their usage is unconditional and carries no signal.
+redesign) — weighted toward the kind of contribution that produces the public
+physical/virtual-flow graph dissolving platform value-capture.
 
-**The mechanism (rebuilt 2026-07-15, replacing the SP1-proof-gated minter
-removed in the teardown) is OPTIMISTIC** — see `RpgfMinter` in
-`docs/CONTRACTS.md`: anyone posts a tranche's payout Merkle root under an ETH
-bond; the formula is deterministic over public chain events and anchored by
-`formulaHash` (keccak256 of `sdk/src/rpgf/formula.json`, whose reference
-implementation ships in the SDK), so anyone recomputes and challenges a wrong
-root; a challenge always voids; only a root surviving its full challenge window
-unchallenged mints, via merkle claims that never expire. A 15% per-wallet
-water-filled cap spans both recipient families. Three tranches (300M/200M/100M)
-at deployment-set times — testnet compresses the years-2/5/9 schedule (time
-compresses when time is involved; ruled 2026-07-15).
+**The mechanism COUNTS USAGE WHEN IT HAPPENS** — see `UsageCounter` and
+`RpgfMinter` in `docs/CONTRACTS.md`. `UsageCounter.recordUsage` is permissionless
+and proves, from data the chain already holds, that an order is RESOLVED and that
+the artifact was merkle-committed in the agreement both parties signed. Accrual
+buckets into fixed **periods**; a period's counts are final once it ends. Tranche
+`i` then pays for period `i`: `claim(trancheId, artifacts)` mints
+`trancheAmount · yourScore / totalScoreInPeriod`, with authorship verified against
+`ClauseRegistry` / `AssemblyRegistry`. A 15% per-wallet cap applies at claim time
+and spans both recipient families; the excess stays unminted. Claims never expire —
+a closed period's arithmetic is stable forever. Three tranches (300M/200M/100M);
+devnet and testnet compress the years-2/5/9 schedule (time compresses when time is
+involved; ruled 2026-07-15).
+
+**Nothing is posted, bonded, challenged, or adjudicated.** The predecessor
+reconstructed usage after the fact, which forced someone to POST the answer, a BOND
+to make posting costly, a CHALLENGE to contest it, and a FORUM to award the bonds —
+an entire apparatus for making the chain believe a claim about the past. It was
+deleted 2026-07-27 and does not return.
+
+**The weight is a DECLARED TAG, not an article.** A clause registered with the
+`rpgfTag` the counter's `boostedTag` names earns 3000 against a base of 1000;
+everything else, and every assembly, earns 1000. *Which* tag pays is frozen at the
+counter's deploy (`keccak256("geo")` on devnet); *membership* stays permissionless
+on `ClauseRegistry` — anyone registering under it inherits the weight without
+touching the counter or the kernel. A **pair cap of 5** drops further processes
+from the same (buyer, seller) pair entirely, so breadth has to be real.
 
 The incentive rationale — why the substrate-broadening weight exists — lives in
 `docs/PUBLIC_GRAPH_MODEL.md` § "Why the substrate-broadening weight exists".
@@ -206,8 +219,9 @@ allocation, then seals minting. `FOUNDER_ALLOC = 100M`, `DAO_ALLOC = 300M`,
 
 ```
 1. Deploy FlorinToken (deployer becomes the constructor deployer).
-2. Deploy RpgfMinter (forum, bond, windows, tranche times via environment;
-   formulaHash = keccak256 of the canonical formula-spec bytes).
+2. Deploy UsageCounter (accrual period ends + the boosted tag via environment:
+   `RPGF_PERIOD_END_1/2/3`, `RPGF_BOOSTED_TAG`), then RpgfMinter over it
+   (florin + counter + ClauseRegistry + AssemblyRegistry; tranches 300M/200M/100M).
 3. fig.registerMinter(rpgfMinter, 600M) — MUST precede renounce (irreversible).
 4. Register the deployer as a one-shot genesis minter with cap 400M (= FOUNDER_ALLOC + DAO_ALLOC).
 5. fig.mint(FOUNDER_WALLET, 100M)  — founder genesis mint.
@@ -219,15 +233,17 @@ After renounce:
 
 - Deployer minter: `cap = 400M, minted = 400M`. Exhausted. Cannot mint more.
 - `totalRegisteredCap = 1B` — the full cap is spoken for: 400M exhausted at
-  genesis, 600M mintable only through the RpgfMinter's finalized merkle claims.
+  genesis, 600M mintable only through the RpgfMinter's per-tranche claims.
 - Deployer mint renounced. **No further minter registration is possible.**
 
 ### Devnet — `script/Deploy.s.sol`
 
-On devnet the deployer registers the RpgfMinter at 600M (MockArbitrator forum,
-seconds-scale windows so the e2e runs the full post → challenge → finalize →
-claim cycle in real time), registers itself with a 100M cap, mints 100M to its
-own wallet (standing in for founder + DAO), and renounces.
+On devnet `Deploy.s.sol` stands up the UsageCounter with accrual periods
+compressed to +14d/+35d/+60d (so the e2e suite can close a period and claim in
+real time) and the boosted tag `keccak256("geo")`, registers the RpgfMinter over
+it at 600M, then registers itself with a 400M cap, mints 100M to its own wallet
+(founder stand-in) and 300M to `MockTreasuryMultisig` (DAO stand-in), and
+renounces.
 
 ---
 
@@ -239,11 +255,11 @@ All resolved. Each item is a **decision**, not an open question.
 2. **Founder + DAO at genesis, no vesting.** See "Rationale" above.
 3. **Florin token standard: ERC-20 + EIP-2612 permit.**
 4. **No emission contract, no settlement-anchored minting.**
-5. **Optimistic RPGF distribution.** Posted-window + bonded challenge +
-   deterministic public recompute (ruled 2026-07-15, replacing the removed
-   proof-gated minter): input provenance is covered by anyone's recompute —
-   strictly stronger than the SP1 version, with zero proving infrastructure
-   and no recurring cost to anyone but disputing parties.
+5. **RPGF distribution counts usage on chain, as it happens** (2026-07-27,
+   replacing the optimistic posted-root design): the chain cannot look backwards,
+   so recording the fact when it occurs is what removes the posting, the bond, the
+   challenge window, and the forum entirely. Nothing to believe, nothing to
+   adjudicate, and no recurring cost to anyone.
 6. **Immutability.** Once deployed, no contract in the florin stack can be
    upgraded, paused, or reconfigured. If any contract is wrong, a new one
    is deployed and the community migrates. There is no admin.

@@ -221,7 +221,7 @@ Full treatment → memory `feedback_fulfilment_retired_modality_derived`; clause
 
 Mechanically enforced: `scripts/lint-no-closed-world-vocab.sh` (pre-commit, lint-staged) fails any commit reintroducing a stored role/archetype/category identifier in code (`roleKind`, `archetypeId`, `clauseCategories`, `documentKind`) and warns on retired `fulfilment` vocabulary until the de-hardcoding migration lands — then the warn list promotes to fail.
 
-**The `w_category` substrate-broadening weight** (the RPGF geo·coordination boost) is a *category-of-work* incentive, not author-favoritism — retiring it as "a privileged category breaks neutrality" is the **neutrality ≠ flat-weighting error**. Rationale + rebuild notes → `docs/PUBLIC_GRAPH_MODEL.md` (the owner); teardown status → `CONTRACTS.md` § "Teardown state — CLOSED".
+**The substrate-broadening weight** (`UsageCounter.BOOSTED_WEIGHT`, aimed by the declared `ClauseRegistry.rpgfTag` — never by `block.article`) is a *category-of-work* incentive, not author-favoritism: retiring it as "a privileged category breaks neutrality" is the **neutrality ≠ flat-weighting error**. Which tag pays is deploy-frozen; membership is permissionless. Owner → `docs/PUBLIC_GRAPH_MODEL.md`; status → `CONTRACTS.md` § "Teardown state — CLOSED".
 
 ### Dispute Resolution — Three Layers
 

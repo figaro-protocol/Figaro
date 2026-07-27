@@ -169,9 +169,9 @@ NEVER a signature.**
   Figaro never pulls its token.
 - **Placement 4 constraint — read, never intercept.** A frozen kernel is a frozen ABI: its
   events and getters ARE the standard API, so a settlement consumer is a parallel contract family
-  that reads it (`AttestationCoordinator` reads `core.orderStatus`; `RpgfMinter` scores settled
-  history). A consumer that inserts itself into the money leg is placement-4 cosplay for
-  contract-as-party.
+  that reads it (`AttestationCoordinator` reads `core.orderStatus` for an OPEN process;
+  `UsageCounter` reads the same getter for a RESOLVED one). A consumer that inserts itself into
+  the money leg is placement-4 cosplay for contract-as-party.
 
 #### The seller problem is a boundary detector, not a composability defect
 

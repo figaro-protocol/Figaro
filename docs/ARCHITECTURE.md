@@ -17,8 +17,12 @@ mapping in `VERIFICATION_MAP.md`. Do not duplicate those here.
 │ FigaroCore — the frozen kernel.  Bonding + buyer-dominance + atomic resolve.  │
 │ Sees only LINEAR commit chains + an opaque `agreementHash` fingerprint.       │  ── protocol
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ Registries (Clause / Seller / Assembly) + RPGF.  Permissionless, content-     │
-│ addressed anchors; first-write-wins; RPGF rewards contribution.               │  ── protocol
+│ Registries (Clause / Seller / Assembly).  Permissionless, content-addressed    │
+│ anchors; first-write-wins.  Coordinators + verifier read the kernel.           │  ── protocol
+├─────────────────────────────────────────────────────────────────────────────┤
+│ UsageCounter → RpgfMinter.  Verified usage counted as it happens; the florin   │
+│ pays contribution from a closed accrual period.  MatchPool is the crowd's      │  ── protocol
+│ parallel: donations pass straight through, QF sums accrue as they land.        │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ clause.fields  →  the verified substance                                       │
 │   • fields → ABI-encoded → validated (Layer A, off-chain) →                    │  ── protocol
@@ -43,10 +47,19 @@ Arrows point **up**: the UI reads the registries; the registries don't know the 
   buyer-dominance with atomic resolution — plus the no-escape-hatch constraint. It sees a
   monotonic cumulative-value accumulator and an opaque `agreementHash`; it takes no position
   on currency, identity, topology, or contribution. Frozen. (`THEORY.md`, `CONTRACTS.md`.)
-- **Registries + RPGF.** Three parallel families, each its own anchor/identity/event stream
+- **Registries.** Three parallel families, each its own anchor/identity/event stream
   (never nested): `ClauseRegistry`, `SellerRegistry`, `AssemblyRegistry`. Permissionless,
-  first-write-wins, content-addressed. RPGF rewards how much a contribution helps the network
-  evolve. (`CONTRACTS.md`, `PUBLIC_GRAPH_MODEL.md`, `FLORIN_TOKEN.md`.)
+  first-write-wins, content-addressed. (`CONTRACTS.md`.)
+- **RPGF (`src/protocol/usage/` → `src/rpgf/`).** RPGF rewards how much a contribution helps
+  the network evolve. `UsageCounter` counts verified artifact usage AS IT HAPPENS — the chain
+  cannot look backwards, so the fact is recorded when it occurs rather than reconstructed,
+  which is what leaves nothing to post, bond, challenge, or adjudicate. `RpgfMinter` pays each
+  tranche pro rata from a closed accrual period. It reads the registries and the kernel and is
+  read by nothing: the arrows still point one way. (`PUBLIC_GRAPH_MODEL.md`, `FLORIN_TOKEN.md`.)
+- **Match rounds (`src/match/`).** The crowd's parallel to RPGF, funded by donors instead of
+  by issuance. One `MatchPool` instance IS one round — its own donation rail, quadratic-funding
+  sums accrued as each donation lands. Not part of the trade path; no buyer or seller touches
+  it. (`CONTRACTS.md`, `FLORIN_TOKEN.md`.)
 - **The clause** — the unit that straddles the seam (below).
 - **UI + IPFS.** One frontend that composes catalogues and renders network state. The signed
   agreement and the clause/assembly specs live in IPFS, pinned; the chain keeps only

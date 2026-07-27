@@ -59,11 +59,12 @@ agrees at all three sites.
 
 ## Two-tense discipline
 
-The validator/prover apparatus is DEFERRED (owner:
-`docs/CONTRACTS.md` § "Teardown state — CLOSED"). Papers describe the LAUNCH
-state in the timeless present only where that section's two-tense rule says
-so — read it before writing any sentence about on-chain validation, proofs, or
-RPGF distribution.
+Nothing is deferred: the witness-based prover/verifier is built, and the RPGF
+distribution is wired (`UsageCounter` + `RpgfMinter`, registered at florin
+genesis). What remains two-tense is DEPLOYMENT — no public network deployment
+exists yet, so no paper may claim a live mainnet or testnet. Owner:
+`docs/CONTRACTS.md` § "Teardown state — CLOSED" — read it before writing any
+sentence about on-chain validation, proofs, or RPGF distribution.
 
 ## Boundaries
 

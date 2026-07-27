@@ -104,7 +104,7 @@ If a claim doesn't fit any class with a real source, refuse and rewrite. **Marke
 - Never imply the florin will appreciate, generate yield, or pay returns.
 - Never frame florin holding as "investment," "early entry," "buy now," or any urgency-shaped phrasing.
 - Distinguish *use of the florin* (governance Schelling, retroactive PGF distribution to protocol participants) from *value of the florin* (market-determined; no project claim).
-- Allocation: 10% founder / 30% DAO / 60% RPGF reserve (clause authors + assembly designers; tranches at years 2/5/9). Only the genesis mints (founder + DAO) are wired; the RPGF distribution mechanism is deferred/under redesign — `docs/FLORIN_TOKEN.md` is the canonical source, and the two-tense rule in `docs/CONTRACTS.md` § "Teardown state — CLOSED" governs how to phrase it.
+- Allocation: 10% founder / 30% DAO / 60% RPGF reserve (clause authors + assembly designers; three declining tranches, 300M/200M/100M, at years 2/5/9). All three are wired: the genesis mints plus `RpgfMinter`, registered at florin genesis and paying pro rata from the usage `UsageCounter` records on chain. Nothing is posted, bonded, challenged, or arbitrated — do not describe the RPGF path as optimistic, disputable, or deferred. `docs/FLORIN_TOKEN.md` is the canonical source; the two-tense rule in `docs/CONTRACTS.md` § "Teardown state — CLOSED" governs how to phrase deployment state (no public network deployment exists yet).
 
 ### Protocol claims — specific guidance
 

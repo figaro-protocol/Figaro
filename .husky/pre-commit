@@ -15,14 +15,12 @@ bash scripts/lint-clause-counts.sh
 # conflation (grouping is article's job; nestsUnder is sub-clause refinement). Whole-tree:
 # it resolves each target across the full clauses/ set, so it can't be a per-diff check.
 bash scripts/lint-clause-nests-under-a-field.sh
-# NOTE: the RPGF substrate-broadening-weight guard (retired with the RPGF
-# prover) is NOT reinstated with the 2026-07-15 optimistic rebuild — by design:
-# the guard kept parallel formula files (Rust + TS mirrors) in sync, and the
-# rebuild replaced enforcement with derivation. The formula lives in exactly
-# ONE artifact (sdk/src/rpgf/formula.json, anchored on-chain as
-# RpgfMinter.formulaHash) and sdk/src/rpgf derives every constant from it —
-# there are no parallel copies left to drift. The incentive's RATIONALE lives
-# in docs/PUBLIC_GRAPH_MODEL.md.
+# NOTE: there is no RPGF formula-mirror guard, by design. The scoring now lives
+# ON CHAIN in src/protocol/usage/UsageCounter.sol — that contract IS the
+# formula, and sdk/src/rpgf mirrors it for display and verification rather than
+# for posting anything. A drifted mirror is visible in the SDK's own tests
+# against the contract, not in a file-diff guard. The incentive's RATIONALE
+# lives in docs/PUBLIC_GRAPH_MODEL.md.
 bash scripts/lint-chain-gas.sh
 # Deployment-target floor: no Coinbase Base chain wiring anywhere in the live
 # tree (operator ruling 2026-07-23: targets are Ethereum Sepolia → mainnet, NOT
