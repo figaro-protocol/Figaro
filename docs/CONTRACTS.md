@@ -2,7 +2,7 @@
 
 All contracts in `src/`. Solidity 0.8.26, Foundry. V3 in `archive-v3/`.
 
-**The directory IS the tier map** (reorganised 2026-07-27) — `src/kernel/` · `src/protocol/{registries,coordinators,verifier}/` · `src/florin/` · `src/rpgf/` · `src/match/` · `src/mocks/` · `src/echidna/`. The sections below mirror those directories exactly; if they ever diverge, the filesystem is right. Establish a contract's tier from its path before citing any doctrine at it — `docs/LEXICON.md` § "Failure modes" (Folding).
+**The directory IS the tier map** (reorganised 2026-07-27) — `src/kernel/` · `src/protocol/{registries,coordinators,verifier,usage}/` · `src/florin/` · `src/rpgf/` · `src/match/` · `src/mocks/` · `src/echidna/`. The sections below mirror those directories exactly; if they ever diverge, the filesystem is right. Establish a contract's tier from its path before citing any doctrine at it — `docs/LEXICON.md` § "Failure modes" (Folding).
 
 No contract belongs to a dapp. Every contract is a permissionless primitive.
 
@@ -220,6 +220,43 @@ the fallback path. Its two token-moving sites are tracked in
 **`src/protocol/verifier/ISP1Verifier.sol`** — the Succinct SP1 verifier-gateway ABI
 (`verifyProof(programVKey, publicValues, proof)`); devnet wires
 `MockSP1Verifier`, mainnet the canonical gateway (env `SP1_VERIFIER_GATEWAY`).
+
+## Usage accounting (`src/protocol/usage/`)
+
+**`src/protocol/usage/UsageCounter.sol`** — counts how much real trade a clause or
+assembly carried, **on chain, at the moment it happens**.
+
+It exists because the chain cannot look backwards: `FigaroCore` never calls the
+registries, the kernel is frozen, and contracts cannot read events — so no contract
+can learn an artifact's usage after the fact. Reconstructing it later is what forced
+the posting/bond/challenge/referee apparatus in the RPGF and match designs; recording
+the fact as it happens leaves no claim to believe and nothing to adjudicate.
+
+One permissionless function, `recordUsage(order, artifact, sectionData, proof)`, which
+proves two things from data the chain already holds: the order is real and **RESOLVED**
+(`core.orderStatus == 2`), and the artifact was committed in that order's signed
+agreement (merkle inclusion against `agreementHash`). Same check
+`AttestationCoordinator` performs, with the status gate inverted — attestation is
+evidence *during* an open process, usage is counted only once it has settled. Nobody is
+trusted; recording is opt-in and gas-paid by whoever benefits.
+
+Per artifact per period it keeps `c` (distinct settled processes), `d` (distinct
+(buyer, seller) pairs), and `score = weight · icbrt(c·d²·1e18)` — breadth weighted
+twice as heavily as volume, value deliberately not a term. A **pair cap of 5** drops
+further processes from the same pair entirely, so repeat trade between two wallets
+cannot farm an artifact. `weight` is `BOOSTED_WEIGHT` (3000) when the clause carries the
+counter's `boostedTag` in `ClauseRegistry.rpgfTagOf`, else `BASE_WEIGHT` (1000) —
+*which* tag pays is frozen here while *membership* stays permissionless on the registry.
+
+**Accrual buckets into fixed periods, not checkpoints.** A period's counts are final
+once it ends, so a consumer paying out for it reads a number that can no longer move —
+no snapshots, no checkpoint arrays, no history walk. Periods are generic: this contract
+knows nothing about tranches, rewards, or who pays. A running `totalScoreIn(period)` is
+maintained as an O(1) delta on every record.
+
+No owner, no admin, no pause; records are idempotent per (artifact, period, process).
+Foundry tests in `test/protocol/usage/UsageCounterTest.t.sol` (22, incl. a fuzzed
+`icbrt` floor-cube-root property).
 
 ## The florin (`src/florin/`)
 
