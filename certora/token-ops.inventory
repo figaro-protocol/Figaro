@@ -13,8 +13,8 @@
 # be followed by a spec PR within the same sprint.
 
 src/kernel/FigaroCore.sol:132 | _pullExact (commit bond pull) | commitBuyerExactDelta, commitSellerExactDelta, commitContractExactDelta, commitAllowanceDrainSafety, commitTokenConservation
-src/rpgf/DonationRail.sol:37 | donate (no-custody donor→recipient pass-through; strict-amount balance check) | [PENDING: donationRailExactPassThrough]
-src/rpgf/OptimisticMatchPool.sol:310 | claim (finalized match payout; budget-capped) | [PENDING: matchPoolClaimBudgetConservation]
+src/match/DonationRail.sol:37 | donate (no-custody donor→recipient pass-through; strict-amount balance check) | [PENDING: donationRailExactPassThrough]
+src/match/OptimisticMatchPool.sol:310 | claim (finalized match payout; budget-capped) | [PENDING: matchPoolClaimBudgetConservation]
 src/kernel/FigaroCore.sol:293 | resolveProcess (seller payout) | resolveSingleOrderPayout, resolveSingleOrderConservation
 src/kernel/FigaroCore.sol:294 | resolveProcess (buyer payout)  | resolveSingleOrderPayout, resolveSingleOrderConservation
 

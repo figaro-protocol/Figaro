@@ -16,7 +16,7 @@ import "../src/mocks/MockUniversalRouter.sol";
 import "../src/mocks/MockArbitrator.sol";
 import "../src/mocks/MockTreasuryMultisig.sol";
 import {RpgfMinter} from "../src/rpgf/RpgfMinter.sol";
-import {DonationRail} from "../src/rpgf/DonationRail.sol";
+import {DonationRail} from "../src/match/DonationRail.sol";
 import "../src/mocks/MockSP1Verifier.sol";
 import "../src/protocol/verifier/FigaroBatchVerifier.sol";
 // Named import: the coordinator declares its own local-minimal `IFigaroCore`

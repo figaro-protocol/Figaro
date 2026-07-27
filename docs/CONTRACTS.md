@@ -2,7 +2,7 @@
 
 All contracts in `src/`. Solidity 0.8.26, Foundry. V3 in `archive-v3/`.
 
-**The directory IS the tier map** (reorganised 2026-07-27) — `src/kernel/` · `src/protocol/{registries,coordinators,verifier}/` · `src/florin/` · `src/rpgf/` · `src/mocks/` · `src/echidna/`. The sections below mirror those directories exactly; if they ever diverge, the filesystem is right. Establish a contract's tier from its path before citing any doctrine at it — `docs/LEXICON.md` § "Failure modes" (Folding).
+**The directory IS the tier map** (reorganised 2026-07-27) — `src/kernel/` · `src/protocol/{registries,coordinators,verifier}/` · `src/florin/` · `src/rpgf/` · `src/match/` · `src/mocks/` · `src/echidna/`. The sections below mirror those directories exactly; if they ever diverge, the filesystem is right. Establish a contract's tier from its path before citing any doctrine at it — `docs/LEXICON.md` § "Failure modes" (Folding).
 
 No contract belongs to a dapp. Every contract is a permissionless primitive.
 
@@ -242,7 +242,7 @@ then renounces — the minter must exist at genesis because `registerMinter` pre
 
 ## RPGF (`src/rpgf/`)
 
-The funding commons — distribution and match rounds. Pays the people who build the protocol; no buyer or seller touches it.
+The **600M retroactive distribution** — three declining tranches (300M / 200M / 100M) paid to clause authors and assembly designers, scored by how much real trade their artifacts carried (`sdk/src/rpgf/formula.json`). No donors, no pool: the opposite direction from the match rounds below. No buyer or seller touches it.
 
 **`src/rpgf/RpgfMinter.sol`** — the optimistic 600M distribution (rebuilt 2026-07-15, replacing the SP1-proof-gated, submitter-role minter removed in the teardown). Permissionless bonded `postRoot` per tranche (3 tranches; window recorded for public recompute; `formulaHash` anchors the canonical formula spec), `challenge` ALWAYS voids the posting (minting stays purely mechanical — only a root surviving its full challenge window finalizes), merkle `claim` (OZ standard-tree leaves) mints through the FlorinToken cap with a per-tranche budget backstop. Bond cases settle on a separate track: poster `disputeChallenge`s to the composed forum (`IRpgfArbitrator`) or concedes; the forum routes bonds only, never mints. No owner, no sweep, no claim expiry; pull-payment bond withdrawal.
 
@@ -259,7 +259,11 @@ no forum ever touches mints. Deploy order: court → adapter → minter(adapter)
 live on the court; parties reach them via `disputeOf(caseId)`. Mainnet composes a live Kleros
 court; devnet/testnet keep MockArbitrator directly behind the seam.
 
-**`src/rpgf/DonationRail.sol`** — the no-custody donation event surface for crowd-steered match
+## Match rounds (`src/match/`)
+
+A **Gitcoin-modelled** matching programme, funded from the DAO's 300M — a distinct object from the RPGF distribution above, with its own formula spec (`sdk/src/match/formula.json`). Two design facts follow from that lineage rather than from convenience: donations are **multi-token** (a round's `donationToken` and `matchToken` are deliberately different currencies, because donors give what they hold), and the split is by **quadratic funding** (match by breadth of independent support, not by amount). The DAO is not encoded in either contract — anyone deploys a round, anyone funds it, and the DAO treasury is one funder among all.
+
+**`src/match/DonationRail.sol`** — the no-custody donation event surface for crowd-steered match
 rounds (the QF-venue BUILD ruling, 2026-07-17). One function: `donate(token, recipient,
 amount)` moves the donor's tokens STRAIGHT THROUGH to the recipient (strict-amount balance
 check — fee-on-transfer reverts, house rule) and emits `Donation(token, donor, recipient,
@@ -267,7 +271,7 @@ amount)` — the event stream a round's match formula consumes. There is NO reci
 registry: a round's recipient set is EMERGENT from these events; the rail holds nothing and
 gates nothing.
 
-**`src/rpgf/OptimisticMatchPool.sol`** — one crowd-steered match round, optimistically settled:
+**`src/match/OptimisticMatchPool.sol`** — one crowd-steered match round, optimistically settled:
 the RpgfMinter shape minus minting. One contract instance IS one round (anyone deploys,
 anyone funds by ordinary transfer — the DAO treasury is one funder among all). An anchored
 `formulaHash` names the match formula — the contract is formula-agnostic; the canonical v1
