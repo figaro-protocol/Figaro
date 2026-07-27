@@ -96,9 +96,29 @@ Founders and DAO receive tokens directly to their wallets at deploy time. The
 is registered at genesis (before `renounceDeployerMint`, which is why it must
 exist at deploy time), capped at exactly 600M by the FlorinToken minter registry.
 
+**DAO governance is NOT kernel governance.** The kernel has no governance and never will —
+no admin, no owner, no vote decides a resolution. The DAO governs its own treasury: what
+the 300M is spent on, which match rounds get funded and how large, who gets paid for what.
+Those are two different objects at two different tiers, and collapsing them is the error
+this section exists to prevent. A DAO vote can move the DAO's money; nothing can move a
+bonded commitment except its buyer.
+
+**The DAO can spend its 300M three ways.** Nothing gates which — these are treasury acts,
+DAO-decided at any time, nothing hardcoded (ruled 2026-07-17):
+
+1. **Fund a match round** — an ordinary token transfer into an `OptimisticMatchPool`.
+   Anyone may fund a round; the DAO is one funder among all.
+2. **Pay a third party directly** for services rendered — marketing, design, audits,
+   anything — as an ordinary token transfer. No protocol involvement, no bond: this is
+   trust-based payment, the same as any organisation paying an invoice.
+3. **Procure through the protocol as buyer** (below) when the payment should be bonded
+   and atomically resolved rather than trusted.
+
 **DAO custody**: the DAO wallet is a **multisig** (mainnet: a canonical Safe instance —
-deployment config via `DAO_WALLET`, never authored code). The DAO buys through a
-**per-procurement funded operator-EOA** — the treasury itself can never sign kernel
+deployment config via `DAO_WALLET`, never authored code). *No vault contract exists or is
+needed* — custody is composed, not authored. For path 3 the DAO **procures** through a
+**per-procurement funded operator-EOA** (it *procures services*; it never buys tokens —
+the issuer never touches a market) — the treasury itself can never sign kernel
 commitments (the kernel is ECDSA-only), so governance gates the *funding* and the EOA's
 blast radius is only ever the current procurement. Devnet rehearses the whole shape:
 `Deploy.s.sol` stands up `MockTreasuryMultisig` (anvil-placeholder 2-of-3) as the 300M

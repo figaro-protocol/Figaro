@@ -161,7 +161,7 @@ These each break a specific protocol property. **The tier tag is load-bearing** 
 - **(kernel) Timeout or recovery path for locked bonds** → breaks buyer dominance (MAD)
 - **(kernel) Admin, owner, or pause function** → breaks no-escape-hatch invariant
 - **(kernel) Yield on locked bonds / bond-lending pools** → breaks asymmetric bonding
-- **(kernel) Governance DAO for disputes** → reintroduces discretionary power
+- **(kernel) Governance DAO for disputes** → reintroduces discretionary power. Scope note: this bars governance over *kernel resolution* — nothing votes on a bonded commitment but its buyer. The **florin DAO's** governance over its own treasury (what the 300M funds, which match rounds run, who gets paid) is a different object at a different tier and is DESIGNED IN — `FLORIN_TOKEN.md` § "DAO governance is NOT kernel governance" owns the distinction.
 - **(copy — all audiences) "Kill Uber" / platform-tax framing** → defines Figaro by elimination
 - **(kernel) Green-bond fee discounts** → breaks Nash equilibrium ($2x$ ratio)
 - **(protocol) Soulbound reputation score** → reifies platform credential. Scope note: this forbids a *protocol-issued standing credential*, not participant self-declaration — the registries' published profiles are declarations, and they are the designed surface.
