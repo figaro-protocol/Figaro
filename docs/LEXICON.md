@@ -109,6 +109,20 @@ canonical across kernel + SDK + frontend (225 uses), rivals (`agreementId`/`Ref`
 2. **Over-collapsing** — merging concepts that exist for a reason. `figaro-merchant-process` and
    `figaro-courier-process` are TWO clauses (byte-identical validator logic except `MAX_EVENT_INDEX`;
    different event vocabularies = different work lifecycles) — clause-bound, NOT party names.
+   **The costliest instance — `family` vs `article` (2026-06-26 `256ff522`, diagnosed 07-27).**
+   The clause-classification consolidation was RIGHT: three fields (`block.article`, a duplicate
+   `categories` array, and on-chain `family`) were smeared across one job. But `family` was not a
+   fourth synonym for that job — it was a **different axis**: `article` groups clauses for READERS
+   (the drawer's headings), `family` was the RPGF **incentive tag** — a tiny deploy-frozen set
+   (`keccak256("geo")`, `keccak256("fulfilment")`) whose *membership* grew permissionlessly, so the
+   protocol could pay ×3 for the contributions it wanted more of. Deleting it as a synonym left the
+   incentive with no narrow tag to aim at; the 07-15 rebuild had only `article` to reach for and
+   picked two ENTIRE articles, turning a mechanism aimed at one clause into a boost for 14 of 27.
+   **The lesson: a terminology consolidation must sort synonyms (merge) from homonyms (keep, and
+   rename so the resemblance stops misleading).** Two fields that both "group clauses" are not the
+   same field if one groups for documentation and the other for reward. Before deleting a field as
+   redundant, name its CONSUMER — `family`'s only consumer was the reward formula, which is exactly
+   what made it a separate axis rather than a duplicate.
 
 **Homonym (not a synonym):** `provider` = the wallet provider · the arbitration/ODR provider (the
 `figaro-arbitration-<provider>` sister-clause pattern) — distinct concepts, intentionally same word.
