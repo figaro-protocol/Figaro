@@ -131,7 +131,7 @@ When in doubt, ask. Cheap question, expensive cleanup.
 
 **Figaro is not an app, a firm, or an economic system. It is the TCP/IP of Trade.** A stateless, ownerless protocol defining the smallest unit of a secure handshake: **the Bonded Commitment**. Two parties who have never met transact with mathematical certainty that cooperation is the dominant strategy — no arbitrator, no timeout, no admin backdoor.
 
-**The spine — read it before any architectural reasoning; do not re-derive or duplicate it.** Figaro is one object, the boundary, read four ways: it **HOLDS** (the chain keeps only a fingerprint; agreements, clauses, and proofs live off-chain and are *pinned*, not reconstructed), **COUPLES** (data, identity, compute/agents, and law stay in their native medium and attach through the same boundary), **EMERGES** (a minimal law is silent alone — meaning lives one level up in clauses/assemblies/processes, which the florin/RPGF token funds), and **ADMITS** (no keeper governs; anyone or anything that can sign and bond participates). The frontend is a **reader of network state, never the custodian in the middle**. Canonical source: `/physics` + `/why` (`frontend/app/(marketing)/{physics,why}/page.tsx`) + the `project_physics_spine` memory.
+**The spine — read it before any architectural reasoning; do not re-derive or duplicate it.** Figaro is one object, the boundary, read four ways: it **HOLDS** (the chain keeps only a fingerprint; agreements, clauses, and proofs live off-chain and are *pinned*, not reconstructed), **COUPLES** (data, identity, compute/agents, and law stay in their native medium and attach through the same boundary), **EMERGES** (a minimal law is silent alone — meaning lives one level up in clauses/assemblies/processes, which the florin/RPGF token funds), and **ADMITS** (no keeper governs; anyone or anything that can sign and bond participates). **All four bind the KERNEL ONLY, never the tiers above** — see § "Three-Tier Naming". The frontend is a **reader of network state, never the custodian in the middle**. Canonical source: `/physics` + `/why` (`frontend/app/(marketing)/{physics,why}/page.tsx`) + the `project_physics_spine` memory.
 
 The kernel runs **two mechanisms that compose, not substitute**, plus one security constraint:
 
@@ -156,18 +156,18 @@ Full game-theoretic derivation → `THEORY.md`. Post-firm economy, Coasean colla
 
 ### Common Misframings — Do Not Propose
 
-These each break a specific protocol property:
+These each break a specific protocol property. **The tier tag is load-bearing** — a kernel-tier prohibition says nothing about what the tiers above may define (§ "Three-Tier Naming").
 
-- **Timeout or recovery path for locked bonds** → breaks buyer dominance (MAD)
-- **Admin, owner, or pause function** → breaks no-escape-hatch invariant
-- **Yield on locked bonds / bond-lending pools** → breaks asymmetric bonding
-- **Governance DAO for disputes** → reintroduces discretionary power
-- **"Kill Uber" / platform-tax framing** → defines Figaro by elimination
-- **Green-bond fee discounts** → breaks Nash equilibrium ($2x$ ratio)
-- **Soulbound reputation score** → reifies platform credential
-- **Bond-multiplier tuning (">1× suffices", reputation-weighted bonds, capital-efficiency discounts)** → 2× is mechanism-design DOCTRINE (ruled 2026-07-14), not a parameter — TradFi reasoning re-entering; delete on sight (`lint-no-closed-world-vocab.sh` enforces)
-- **Zero-payment "non-market" commitments** → zero stake = no equilibrium (+ free Sybil/RPGF farming); `figaro-commerce` `payment ≥ 1` is a mechanism floor (ruled 2026-07-14) — non-market graphs use their own ERC-20 denomination instead
-- **Multi-currency bonding within one process** → breaks the same-unit comparability that makes the 2:1 bond ratio Nash-stable from chain state alone (would need an oracle, DEX, or pre-agreed FX rate — each reintroduces a trusted/discretionary actor). Multi-token vendor UX is achievable through composition: N independent monotoken processes, or a wallet-side swap before commit.
+- **(kernel) Timeout or recovery path for locked bonds** → breaks buyer dominance (MAD)
+- **(kernel) Admin, owner, or pause function** → breaks no-escape-hatch invariant
+- **(kernel) Yield on locked bonds / bond-lending pools** → breaks asymmetric bonding
+- **(kernel) Governance DAO for disputes** → reintroduces discretionary power
+- **(copy — all audiences) "Kill Uber" / platform-tax framing** → defines Figaro by elimination
+- **(kernel) Green-bond fee discounts** → breaks Nash equilibrium ($2x$ ratio)
+- **(protocol) Soulbound reputation score** → reifies platform credential. Scope note: this forbids a *protocol-issued standing credential*, not participant self-declaration — the registries' published profiles are declarations, and they are the designed surface.
+- **(kernel) Bond-multiplier tuning (">1× suffices", reputation-weighted bonds, capital-efficiency discounts)** → 2× is mechanism-design DOCTRINE (ruled 2026-07-14), not a parameter — TradFi reasoning re-entering; delete on sight (`lint-no-closed-world-vocab.sh` enforces)
+- **(protocol — clause tier) Zero-payment "non-market" commitments** → zero stake = no equilibrium (+ free Sybil/RPGF farming); `figaro-commerce` `payment ≥ 1` is a mechanism floor (ruled 2026-07-14) — non-market graphs use their own ERC-20 denomination instead
+- **(kernel) Multi-currency bonding within one process** → breaks the same-unit comparability that makes the 2:1 bond ratio Nash-stable from chain state alone (would need an oracle, DEX, or pre-agreed FX rate — each reintroduces a trusted/discretionary actor). Multi-token vendor UX is achievable through composition: N independent monotoken processes, or a wallet-side swap before commit.
 
 Verify 3× before suggesting any change to kernel invariants. The MAD equilibrium is fragile — any single escape hatch degrades it.
 
@@ -192,6 +192,8 @@ The kernel is ideologically agnostic; the graph is the politics. FigaroCore take
 - **Runtime** = protocol + semantic layer + builder surfaces + UI.
 
 Use the correct tier. "Add yield to locked bonds" → kernel concern. "Add a new attestation mode" → protocol composition. "Change how roles display" → runtime concern.
+
+**The separation is explicit; each tier is independently usable — so kernel neutrality does NOT propagate upward.** Name an artifact's tier (`LEXICON.md` grid — the authority; all three on-chain anchors are **protocol** tier) before citing any doctrine at it. Citing a kernel law at a protocol/runtime artifact is the **Folding** error → `LEXICON.md` § "Failure modes" owns it.
 
 ### Separation of Concerns — Artifact Families
 
@@ -293,17 +295,7 @@ When a code change makes a doc statement stale, fix the doc in the same session.
 
 ### Paper Authorship Discipline
 
-Every paper (now a `/papers/<slug>` page) must stand on its own. The corpus was derived from a single archive paper, retained in git history, and the derivative-paper artifacts must not survive into the published page. When authoring or revising any paper, audit against all of the following — and surface any drift before declaring the paper done:
-
-- **No companion-paper references.** No "in the companion implementation paper", no "developed in the institutional-economics paper", no `\Cref` to sections in other files. If a claim isn't in this paper, it isn't in this paper. Refer to results by their substance — "the escape-hatch theorem", "the bonding equilibrium", "the verification stack" — not by which paper carries them. The rule applies to every paper in the corpus, including synthesis papers; if synthesis is what a paper does, it must do so by re-stating or naming-by-result, not by punting to other papers.
-- **Topic discipline.** A mechanism-design paper contains mechanism design — no Solidity, no DAG, no legal/normative framing, no overlays (interest-bearing bonds, time-varying multipliers, etc.). A kernel-implementation paper doesn't contain economics. An institutional-economics paper doesn't contain Solidity. Match the paper's stated subject and stop there.
-- **Process chains are LINEAR at the kernel level.** The kernel sees a sequence of `commit` calls updating a monotonic cumulative-value accumulator. There is no parent-child structure on-chain (`src/FigaroCore.sol:82-89`: `ProcessState` carries `rootBuyer`, `currency`, `cumulativeValue`, `activeOrderCount` — no DAG fields). DAG topology lives at the assembly/topology layer (off-chain agreement, reconstructed by indexers), never in the kernel. Mechanism papers must use **"process chain"**, never "process tree" or "DAG".
-- **No "open questions" / "future work" / scope-padding sections.** Papers stand finished. Open questions belong in private notes or in subsequent papers, not as scope-padding in the current one. A "scope exclusion" paragraph is fine when it's a kernel-level exclusion (e.g., single-denomination per process); a "scope note on what we didn't address" is not.
-- **No corresponding-author / contact-email footers.** Author name only. No `\thanks{Corresponding author. ...}`, no contact-email footnote, no ORCID block.
-- **Attribution consistency.** Citation key ↔ `\bibitem` author label ↔ acknowledgement language must all agree. If the bibitem credits "Solidity Team", the cite key shouldn't be `buterin2016` and the acknowledgement shouldn't credit Vitalik. Pick one attribution and align all three sites.
-- **No "actors are legally free" framing in mechanism-design papers.** Actors have agency — that's the mechanism-design assumption. Don't dilute it with legality framing or punt to companion labor-law/institutional-economics papers; either the assumption is in scope (and stated as agency) or it's out of scope (and unstated).
-
-The corpus is web-native (each paper a `/papers/<slug>` page rendered with server-side KaTeX; no LaTeX remains in the repo — the archive origin lives in git history). AI-drafted papers fabricate acknowledgements and citations; every migration needs a **truth pass** (strip acks, verify cites against web/repo), not just a conformance pass. `/papers/asymmetric-bonding` is the canonical example of this audit applied end-to-end.
+**Owner: `.claude/agents/figaro-papers-editor.md` § "The authorship ruleset"** — the seven binding rules (no companion-paper references; topic discipline; process chains are LINEAR at the kernel — never "tree"/"DAG"; no open-questions/future-work padding; no corresponding-author footers; attribution consistency; no "legally free" framing). AI-drafted papers fabricate acknowledgements and citations, so every migration needs a **truth pass**, not just a conformance pass. Read the ruleset before authoring or reviewing any `/papers/<slug>` page.
 
 ### Test Layers — Separation of Concerns
 

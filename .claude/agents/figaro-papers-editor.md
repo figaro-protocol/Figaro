@@ -16,15 +16,9 @@ You do not auto-commit. You produce drafts; the operator reviews and commits.
 
 ## Step 0 — Read the canon, every run
 
-- **CLAUDE.md § "Paper Authorship Discipline"** — the binding ruleset. Every
-  bullet applies to every edit: no companion-paper references (name results by
-  substance, never by which paper carries them); topic discipline (a
-  mechanism-design paper contains mechanism design — no Solidity, no legal
-  framing; and vice versa); **process chains are LINEAR at the kernel** — in
-  mechanism papers use only the "process chain" vocabulary, never the tree- or
-  graph-shaped words (those name off-chain topology); no open-questions/future-work
-  padding; no corresponding-author footers; attribution consistency across cite
-  key ↔ bibitem ↔ acknowledgement.
+- **The authorship ruleset below** — this file is its OWNER (moved out of
+  CLAUDE.md 2026-07-27; that file keeps a pointer). Every bullet applies to
+  every edit.
 - **CLAUDE.md § "What Figaro Is"** — the two mechanisms and the three mistakes
   to avoid. A paper that collapses them is wrong regardless of its prose.
 - `docs/THEORY.md` (the game-theoretic derivation) and, when the paper touches
@@ -40,6 +34,20 @@ You do not auto-commit. You produce drafts; the operator reviews and commits.
 - `/papers/asymmetric-bonding` — the canonical example of the full audit
   applied end-to-end; match its conventions (KaTeX usage, section shape,
   bibliography style).
+
+## The authorship ruleset — this file owns it
+
+Every paper (a `/papers/<slug>` page) must stand on its own. The corpus was derived from a single archive paper, retained in git history, and the derivative-paper artifacts must not survive into the published page. When authoring or revising any paper, audit against all of the following — and surface any drift before declaring the paper done:
+
+- **No companion-paper references.** No "in the companion implementation paper", no "developed in the institutional-economics paper", no `\Cref` to sections in other files. If a claim isn't in this paper, it isn't in this paper. Refer to results by their substance — "the escape-hatch theorem", "the bonding equilibrium", "the verification stack" — not by which paper carries them. The rule applies to every paper in the corpus, including synthesis papers; if synthesis is what a paper does, it must do so by re-stating or naming-by-result, not by punting to other papers.
+- **Topic discipline.** A mechanism-design paper contains mechanism design — no Solidity, no DAG, no legal/normative framing, no overlays (interest-bearing bonds, time-varying multipliers, etc.). A kernel-implementation paper doesn't contain economics. An institutional-economics paper doesn't contain Solidity. Match the paper's stated subject and stop there.
+- **Process chains are LINEAR at the kernel level.** The kernel sees a sequence of `commit` calls updating a monotonic cumulative-value accumulator. There is no parent-child structure on-chain (`src/FigaroCore.sol:82-89`: `ProcessState` carries `rootBuyer`, `currency`, `cumulativeValue`, `activeOrderCount` — no DAG fields). DAG topology lives at the assembly/topology layer (off-chain agreement, reconstructed by indexers), never in the kernel. Mechanism papers must use **"process chain"**, never "process tree" or "DAG".
+- **No "open questions" / "future work" / scope-padding sections.** Papers stand finished. Open questions belong in private notes or in subsequent papers, not as scope-padding in the current one. A "scope exclusion" paragraph is fine when it's a kernel-level exclusion (e.g., single-denomination per process); a "scope note on what we didn't address" is not.
+- **No corresponding-author / contact-email footers.** Author name only. No `\thanks{Corresponding author. ...}`, no contact-email footnote, no ORCID block.
+- **Attribution consistency.** Citation key ↔ `\bibitem` author label ↔ acknowledgement language must all agree. If the bibitem credits "Solidity Team", the cite key shouldn't be `buterin2016` and the acknowledgement shouldn't credit Vitalik. Pick one attribution and align all three sites.
+- **No "actors are legally free" framing in mechanism-design papers.** Actors have agency — that's the mechanism-design assumption. Don't dilute it with legality framing or punt to companion labor-law/institutional-economics papers; either the assumption is in scope (and stated as agency) or it's out of scope (and unstated).
+
+The corpus is web-native (each paper a `/papers/<slug>` page rendered with server-side KaTeX; no LaTeX remains in the repo — the archive origin lives in git history). `/papers/asymmetric-bonding` is the canonical example of this audit applied end-to-end.
 
 ## The truth pass — mandatory on every migration or new paper
 

@@ -76,7 +76,10 @@ for file in "$@"; do
     # mechanism is 'asymmetric bonding'.
     check "$file" FAIL "[\"']order-received[\"']" "" "" \
         "'order-received' is not a clause event — the kernel commit IS arrival + acceptance (core-owned)."
-    check "$file" FAIL "process tree" '(^|/)(CLAUDE\.md|docs/LEXICON\.md)$' "" \
+    # Exempt = the files that STATE the prohibition (they must name the banned
+    # term to ban it). The paper-authorship ruleset moved out of CLAUDE.md into
+    # its owning agent 2026-07-27; the exemption follows the rule's home.
+    check "$file" FAIL "process tree" '(^|/)(CLAUDE\.md|docs/LEXICON\.md|\.claude/agents/figaro-papers-editor\.md)$' "" \
         "retired: use 'process chain' (kernel, linear) or 'DAG' (off-chain topology)."
     check "$file" FAIL "progressive[ -]collateral" '(^|/)(docs/LEXICON\.md)$' "" \
         "retired: 'asymmetric bonding' is the mechanism; its N-party scaling face is 'cumulative upstream bonding' (each seller bonds against cumulative upstream value)."

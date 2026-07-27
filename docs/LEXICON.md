@@ -96,6 +96,16 @@ canonical across kernel + SDK + frontend (225 uses), rivals (`agreementId`/`Ref`
 
 1. **Folding** — flattening tiers ("operator IS just seller, delete it"). Translate up/down; never
    equate. Honest form: "an operator that holds the sell side of an order *acts as* a seller."
+   **Second form — folding a tier's LAW onto another tier's artifact** (the reasoning face of the
+   same error, and the more expensive one): citing a kernel property — `ADMITS`/"anyone who can
+   sign and bond participates", no-escape-hatches, "role is never stored" — against a protocol- or
+   runtime-tier artifact, and calling it a finding. The three tiers are independently usable, so
+   **the kernel's neutrality is the kernel's job description, not the system's thesis; it does not
+   propagate upward.** The tiers above exist in order to be defined. The grid above is the
+   authority on which tier an artifact sits at: establish the tier from it BEFORE citing doctrine
+   at the artifact — look it up, never infer it. Enforced at proposal time by
+   `figaro-assumption-auditor` (pattern 11), not by a lint guard: this error lives in reasoning,
+   before any code exists to scan.
 2. **Over-collapsing** — merging concepts that exist for a reason. `figaro-merchant-process` and
    `figaro-courier-process` are TWO clauses (byte-identical validator logic except `MAX_EVENT_INDEX`;
    different event vocabularies = different work lifecycles) — clause-bound, NOT party names.
