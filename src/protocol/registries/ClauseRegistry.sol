@@ -42,11 +42,18 @@ pragma solidity 0.8.26;
 ///         it uses. Frontends read these events to determine encoding.
 ///
 ///         Grouping: a clause's group is `block.article` in its off-chain spec
-///         JSON (integrity-bound by contentHash). The registry stores identity +
-///         integrity only — there is NO on-chain group field. The RPGF substrate-
-///         broadening formula, when restored, derives its group key as
-///         keccak256(article) from the contentHash-verified spec; nothing is
-///         stored on-chain for it (derive, don't store).
+///         JSON (integrity-bound by contentHash). There is NO on-chain group
+///         field and never will be — grouping is a READER concern (the drawer's
+///         headings), derived from the spec, never stored.
+///
+///         `rpgfTag` is NOT that field and must never be merged with it. It is a
+///         DECLARED INCENTIVE INPUT on a different axis: `article` groups clauses
+///         for readers; `rpgfTag` marks the kind of contribution the protocol pays
+///         more for. They resemble each other only in that both sort clauses —
+///         which is exactly the resemblance that deleted this field's predecessor
+///         (`family`, removed 2026-06-26 as a duplicate of `article`, taking the
+///         geolocation incentive with it; `docs/LEXICON.md` § "Failure modes"
+///         owns the post-mortem). The distinguishing question is WHO READS IT.
 ///
 /// @dev V3's clause registry had: Ownable, Clause struct storage,
 ///      activate/deactivate state machine, getters, counter. All removed.
@@ -83,6 +90,26 @@ contract ClauseRegistry {
     /// @notice clause key (keccak256(abi.encode(clauseId, version))) → stake state.
     mapping(bytes32 => DepositState) public depositOf;
 
+    /// @notice Declared incentive tag per clause key — `keccak256(<lowercase label>)`,
+    ///         e.g. `keccak256("geo")`. `bytes32(0)` means untagged, which is the
+    ///         default and carries no penalty. Set once at registration, never
+    ///         cleared (the binding outlives the stake, like `contentHashOf`).
+    /// @dev    WHAT READS THIS: the RPGF reward formula, and nothing else — that is
+    ///         the whole reason the field exists and why it is named for its
+    ///         consumer. A neutral name is what got its predecessor deleted.
+    ///
+    ///         NOT `block.article`. Article groups clauses for readers and stays
+    ///         off-chain; this marks what the protocol pays more for. Never merge
+    ///         the two, and never add a sibling field for a second consumer —
+    ///         REUSE this one, or the split becomes the mirror-image mistake.
+    ///
+    ///         The registry stores the tag and interprets NOTHING: which tags earn
+    ///         a boost, and how much, lives entirely in the reward formula. So the
+    ///         SET of paying tags is the formula's to freeze, while MEMBERSHIP is
+    ///         permissionless here — anyone registering under an existing tag
+    ///         inherits its treatment without touching the kernel or this contract.
+    mapping(bytes32 => bytes32) public rpgfTagOf;
+
     // ── Events ──────────────────────────────────────────────────────
 
     /// @notice Emitted when a new clause is registered.
@@ -98,8 +125,14 @@ contract ClauseRegistry {
     ///                    SellerRegistry keeps that name because its mutable profile
     ///                    genuinely is metadata about a wallet-keyed identity.)
     /// @param registrar   Address that registered the clause.
+    /// @param rpgfTag     The declared incentive tag (see `rpgfTagOf`); `bytes32(0)` = untagged.
     event ClauseRegistered(
-        string clauseId, uint64 version, bytes32 contentHash, string contentURI, address indexed registrar
+        string clauseId,
+        uint64 version,
+        bytes32 contentHash,
+        string contentURI,
+        bytes32 rpgfTag,
+        address indexed registrar
     );
 
     /// @notice Emitted when a registrar withdraws their deposit. The clause
@@ -147,11 +180,22 @@ contract ClauseRegistry {
     /// @param version     Clause version number.
     /// @param contentHash keccak256 of the canonical spec JSON (integrity).
     /// @param contentURI  Off-chain spec document URI (IPFS) — readers FETCH the spec from it.
-    function registerClause(string calldata clauseId, uint64 version, bytes32 contentHash, string calldata contentURI)
-        external
-        payable
-    {
-        if (msg.value != registrationDeposit) revert WrongDeposit(msg.value, registrationDeposit);
+    /// @param rpgfTag     Declared incentive tag (`rpgfTagOf`) — `keccak256(<label>)`, e.g.
+    ///                    `keccak256("geo")`. Pass `bytes32(0)` for untagged, the default.
+    ///                    Self-declared and NOT verified here: the registry interprets no
+    ///                    content. A false tag is publicly checkable against the
+    ///                    contentHash-bound spec, and it multiplies a score that is zero
+    ///                    without real adoption — so the incentive to lie is weak.
+    function registerClause(
+        string calldata clauseId,
+        uint64 version,
+        bytes32 contentHash,
+        string calldata contentURI,
+        bytes32 rpgfTag
+    ) external payable {
+        if (msg.value != registrationDeposit) {
+            revert WrongDeposit(msg.value, registrationDeposit);
+        }
         if (bytes(clauseId).length == 0) revert EmptyClauseId();
         if (bytes(contentURI).length == 0) revert EmptyContentURI();
         if (contentHash == bytes32(0)) revert ZeroContentHash();
@@ -160,7 +204,8 @@ contract ClauseRegistry {
         registered[idHash] = true;
         contentHashOf[idHash] = contentHash;
         depositOf[idHash] = DepositState({registrar: msg.sender, withdrawn: false});
-        emit ClauseRegistered(clauseId, version, contentHash, contentURI, msg.sender);
+        if (rpgfTag != bytes32(0)) rpgfTagOf[idHash] = rpgfTag;
+        emit ClauseRegistered(clauseId, version, contentHash, contentURI, rpgfTag, msg.sender);
     }
 
     // ── Deposit withdrawal (registrar-only) ─────────────────────────

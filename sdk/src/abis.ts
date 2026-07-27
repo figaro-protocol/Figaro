@@ -155,12 +155,12 @@ export const WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI = parseAbi([
 
 export const CLAUSE_REGISTRY_ABI = parseAbi([
     "function registered(bytes32 clauseId) view returns (bool)",
-    "function registerClause(string clauseId, uint64 version, bytes32 contentHash, string contentURI) external payable",
+    "function registerClause(string clauseId, uint64 version, bytes32 contentHash, string contentURI, bytes32 rpgfTag) external payable",
     "function withdrawDeposit(bytes32 idHash) external",
     "function registrationDeposit() view returns (uint256)",
     "function depositOf(bytes32 idHash) view returns (address registrar, bool withdrawn)",
     "function setMechanismClause(bytes32 idHash) external",
-    "event ClauseRegistered(string clauseId, uint64 version, bytes32 contentHash, string contentURI, address indexed registrar)",
+    "event ClauseRegistered(string clauseId, uint64 version, bytes32 contentHash, string contentURI, bytes32 rpgfTag, address indexed registrar)",
     "event DepositWithdrawn(bytes32 indexed clauseId, address indexed registrar, uint256 amount)",
     "event MechanismClauseSet(address indexed mechanism, bytes32 indexed idHash)",
     "error AlreadyRegistered(bytes32 clauseId)",

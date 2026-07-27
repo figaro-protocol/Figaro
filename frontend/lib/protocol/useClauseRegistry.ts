@@ -19,7 +19,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
-import { BaseError, ContractFunctionRevertedError, type Log } from "viem";
+import { BaseError, ContractFunctionRevertedError, keccak256, stringToHex, type Log } from "viem";
 import { computeClauseKey, parseClauseRegistryLogs } from "@figaro/sdk";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
@@ -27,6 +27,7 @@ import { publicClient } from "@/lib/shared/wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { canonicalContentHash } from "@/lib/shared/canonicalJson";
 import { toError } from "@/lib/shared/errors";
+import { ZERO_BYTES32 } from "@/lib/shared/evm";
 
 
 /** The ClauseRegistry address if it's a well-formed address, else null.
@@ -343,6 +344,16 @@ export function useRegisterClause() {
         const contentHash = canonicalContentHash(rawSpec);
         const { uri } = await DEFAULT_IPFS_SERVICE.publishJSON(rawSpec);
 
+        // The incentive tag is DECLARED IN THE SPEC (`block.rpgfTag`), not typed
+        // into a form — so `contentHash` binds it: the label the author published
+        // and the tag anchored on-chain cannot diverge. Absent = untagged, the
+        // default, which carries no penalty. Read by the RPGF reward formula and
+        // nothing else; NOT `block.article` (that groups clauses for readers and
+        // stays off-chain entirely).
+        const specBlock = (rawSpec.block ?? {}) as Record<string, unknown>;
+        const tagLabel = typeof specBlock.rpgfTag === "string" ? specBlock.rpgfTag.trim() : "";
+        const rpgfTag = tagLabel ? keccak256(stringToHex(tagLabel)) : ZERO_BYTES32;
+
         const deposit = await client.readContract({
             address: registry,
             abi: CLAUSE_REGISTRY_ABI,
@@ -354,7 +365,7 @@ export function useRegisterClause() {
                 address: registry,
                 abi: CLAUSE_REGISTRY_ABI,
                 functionName: "registerClause",
-                args: [clauseId, BigInt(version), contentHash, uri],
+                args: [clauseId, BigInt(version), contentHash, uri, rpgfTag],
                 value: deposit,
                 account: address,
             });
@@ -366,7 +377,7 @@ export function useRegisterClause() {
             address: registry,
             abi: CLAUSE_REGISTRY_ABI,
             functionName: "registerClause",
-            args: [clauseId, BigInt(version), contentHash, uri],
+            args: [clauseId, BigInt(version), contentHash, uri, rpgfTag],
             value: deposit,
         });
 

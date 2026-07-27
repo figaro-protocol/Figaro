@@ -40,7 +40,7 @@ contract FigaroBatchVerifierTest is Test {
 
         clauseKey = keccak256(abi.encode(CLAUSE_ID, uint64(1)));
         vm.deal(address(this), 1 ether);
-        registry.registerClause{value: DEPOSIT}(CLAUSE_ID, 1, SPEC_HASH, "ipfs://spec");
+        registry.registerClause{value: DEPOSIT}(CLAUSE_ID, 1, SPEC_HASH, "ipfs://spec", bytes32(0));
 
         token.mint(buyer, 1_000 ether);
         token.mint(address(verifier), 1_000 ether); // settlement liquidity for payout legs
@@ -185,7 +185,7 @@ contract FigaroBatchVerifierTest is Test {
         // redeploy, no code change anywhere.
         string memory novelId = "acme-cold-brew-terms";
         bytes32 novelSpecHash = keccak256("acme spec bytes");
-        registry.registerClause{value: DEPOSIT}(novelId, 1, novelSpecHash, "ipfs://acme");
+        registry.registerClause{value: DEPOSIT}(novelId, 1, novelSpecHash, "ipfs://acme", bytes32(0));
         bytes32 novelKey = keccak256(abi.encode(novelId, uint64(1)));
 
         (, FigaroBatchVerifier.NetPosition[] memory positions,

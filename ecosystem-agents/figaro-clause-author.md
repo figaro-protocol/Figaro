@@ -85,7 +85,7 @@ check. A malformed spec is caught here, at author time.
    surfaces. The IPFS add options (CID version, chunker) do NOT matter: the registry binds
    the keccak CONTENT HASH, not the CID, and verification is always
    fetch → re-canonicalize → re-hash.
-2. Register: `ClauseRegistry.registerClause(clauseId, version, contentHash, contentURI)`
+2. Register: `ClauseRegistry.registerClause(clauseId, version, contentHash, contentURI, rpgfTag)`
    with the deposit, signed by the **user's** key. First-write-wins: the id binds
    permanently. A behaviour change is a NEW `version` (never mutate a registered id).
 3. If the user prefers to sign in their own wallet UI, hand them the exact calldata.

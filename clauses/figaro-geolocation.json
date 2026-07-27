@@ -27,6 +27,7 @@
     ],
     "block": {
         "article": "coordination",
+        "rpgfTag": "geo",
         "interaction": {
             "interface": "ecdh-address"
         }
