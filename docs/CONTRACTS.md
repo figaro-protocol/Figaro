@@ -261,7 +261,7 @@ court; devnet/testnet keep MockArbitrator directly behind the seam.
 
 ## Match rounds (`src/match/`)
 
-A **Gitcoin-modelled** matching programme, funded from the DAO's 300M — a distinct object from the RPGF distribution above, with its own formula spec (`sdk/src/match/formula.json`). Two design facts follow from that lineage rather than from convenience: donations are **multi-token** (a round's `donationToken` and `matchToken` are deliberately different currencies, because donors give what they hold), and the split is by **quadratic funding** (match by breadth of independent support, not by amount). The DAO is not encoded in either contract — anyone deploys a round, anyone funds it, and the DAO treasury is one funder among all.
+A **Gitcoin-modelled** matching programme, funded from the DAO's 300M — a distinct object from the RPGF distribution above, with its own formula spec (`sdk/src/match/formula.json`). **Modelled, not composed:** Gitcoin/Allo is the reference design, never a dependency — Allo is no longer maintained, so the tooling here is ours end to end (`src/match/` + `sdk/src/match/`). Two design facts follow from that lineage rather than from convenience: donations are **multi-token** (a round's `donationToken` and `matchToken` are deliberately different currencies, because donors give what they hold), and the split is by **quadratic funding** (match by breadth of independent support, not by amount). The DAO is not encoded in either contract — anyone deploys a round, anyone funds it, and the DAO treasury is one funder among all.
 
 **`src/match/DonationRail.sol`** — the no-custody donation event surface for crowd-steered match
 rounds (the QF-venue BUILD ruling, 2026-07-17). One function: `donate(token, recipient,
