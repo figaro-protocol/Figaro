@@ -279,19 +279,36 @@ contract Deploy is Script {
         internal
     {
         // Accrual periods and RPGF tranches are ONE schedule, configured
-        // consistently: tranche i pays for period i. Devnet compresses years
-        // 2/5/9 to +14d/+35d/+60d so the e2e suite can close a period and claim
-        // in real time.
+        // consistently: tranche i pays for period i.
+        //
+        // TIME IS COMPRESSED ON DEVNET — minutes, not years. The claim path
+        // gates on `periodClosed`, so a schedule measured in days makes the
+        // whole reward leg undrivable in a test run: usage accrues and nothing
+        // can ever be claimed. (Testnet compresses years 2/5/9 to weeks; this
+        // compresses further.)
+        //
+        // Ten minutes, not seconds: deploy + clause population alone takes over
+        // a minute, so a seconds-scale period 0 is already closed before any
+        // test can record into it — measured, not guessed. Ten minutes leaves
+        // the whole suite inside period 0, and the rewards spec advances the
+        // chain past the boundary itself rather than sleeping through it.
         uint64[] memory periods = new uint64[](3);
-        periods[0] = uint64(block.timestamp + 14 days);
-        periods[1] = uint64(block.timestamp + 35 days);
-        periods[2] = uint64(block.timestamp + 60 days);
+        periods[0] = uint64(block.timestamp + 10 minutes);
+        periods[1] = uint64(block.timestamp + 20 minutes);
+        periods[2] = uint64(block.timestamp + 30 minutes);
+
+        // The two MANDATORY clauses earn nothing: committed on every order, so
+        // their count is the process count and carries no adoption signal.
+        bytes32[] memory excluded = new bytes32[](2);
+        excluded[0] = keccak256(abi.encode("figaro-commerce", uint64(1)));
+        excluded[1] = keccak256(abi.encode("figaro-topology", uint64(1)));
 
         UsageCounter counter = new UsageCounter(
             address(core),
             address(clauses),
             keccak256("geo"), // the substrate-broadening tag; membership stays permissionless
             keccak256(abi.encode("figaro-assembly-provenance", uint64(1))), // proves the assembly leg
+            excluded,
             periods
         );
         console.log("UsageCounter deployed at:", address(counter));

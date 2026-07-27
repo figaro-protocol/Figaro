@@ -78,6 +78,17 @@ contract UsageCounter {
     ///         equal an assembly's hash.
     bytes32 public immutable provenanceClause;
 
+    /// @notice Artifacts that earn nothing, set once at deploy and never written
+    ///         again — the MANDATORY clauses (`figaro-commerce`, `figaro-topology`).
+    /// @dev    They are excluded because they are committed on EVERY order, so
+    ///         their count is just "how many processes settled" and carries no
+    ///         signal about merit. Scoring them would pay their authors for the
+    ///         protocol's own floor. This is deploy-frozen for the same reason
+    ///         `boostedTag` is: WHICH artifacts the reward ignores is a reward
+    ///         decision, not something a registrar declares about itself — a
+    ///         self-declared exclusion would simply never be declared.
+    mapping(bytes32 => bool) public excludedArtifact;
+
     /// @notice Period boundaries (unix seconds, strictly ascending). Usage lands
     ///         in the first period whose end is still in the future; after the
     ///         last one, accrual is closed forever.
@@ -155,6 +166,7 @@ contract UsageCounter {
     error PairCapReached();
     error InvalidInclusionProof();
     error ProvenanceMismatch();
+    error ArtifactExcluded(bytes32 artifact);
 
     // ── Constructor ─────────────────────────────────────────────────
 
@@ -162,12 +174,14 @@ contract UsageCounter {
     /// @param _clauses     ClauseRegistry — the `rpgfTagOf` source.
     /// @param _boostedTag  The tag earning `BOOSTED_WEIGHT` (e.g. keccak256("geo")).
     /// @param _provenanceClause  `figaro-assembly-provenance`'s clause key.
+    /// @param _excluded    Artifacts that earn nothing — the mandatory clauses.
     /// @param _periodEnd   Strictly ascending period boundaries (unix seconds).
     constructor(
         address _core,
         address _clauses,
         bytes32 _boostedTag,
         bytes32 _provenanceClause,
+        bytes32[] memory _excluded,
         uint64[] memory _periodEnd
     ) {
         if (_core == address(0) || _clauses == address(0)) revert ZeroAddress();
@@ -179,6 +193,9 @@ contract UsageCounter {
         clauses = IClauseTags(_clauses);
         boostedTag = _boostedTag;
         provenanceClause = _provenanceClause;
+        for (uint256 i = 0; i < _excluded.length; ++i) {
+            excludedArtifact[_excluded[i]] = true;
+        }
         periodEnd = _periodEnd;
     }
 
@@ -285,6 +302,9 @@ contract UsageCounter {
     ///      period, process); the pair cap drops a process entirely once reached,
     ///      so it feeds neither `c` nor `d`.
     function _accrue(bytes32 artifact, uint8 period, bytes32 processId, address buyer, address seller) internal {
+        // A mandatory clause rides every order; counting it would pay for the
+        // floor rather than for adoption.
+        if (excludedArtifact[artifact]) revert ArtifactExcluded(artifact);
         if (processCounted[artifact][period][processId]) revert AlreadyCounted();
 
         bytes32 pairKey = keccak256(abi.encodePacked(buyer, seller));

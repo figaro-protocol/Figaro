@@ -61,7 +61,7 @@ contract UsageCounterTest is Test {
         uint64[] memory periods = new uint64[](2);
         periods[0] = P0_END;
         periods[1] = P1_END;
-        counter = new UsageCounter(address(core), address(clauses), GEO_TAG, PROV_KEY, periods);
+        counter = new UsageCounter(address(core), address(clauses), GEO_TAG, PROV_KEY, _excluded(), periods);
 
         address[4] memory ppl = [buyer, buyer2, seller1, seller2];
         for (uint256 i = 0; i < ppl.length; i++) {
@@ -72,6 +72,13 @@ contract UsageCounterTest is Test {
 
         // Start inside period 0.
         vm.warp(P0_END - 1000);
+    }
+
+    /// @dev The mandatory clauses, excluded from scoring on every deployment.
+    function _excluded() internal pure returns (bytes32[] memory e) {
+        e = new bytes32[](2);
+        e[0] = keccak256(abi.encode("figaro-commerce", uint64(1)));
+        e[1] = keccak256(abi.encode("figaro-topology", uint64(1)));
     }
 
     // ── Helpers ─────────────────────────────────────────────────────
@@ -248,6 +255,36 @@ contract UsageCounterTest is Test {
         _record(sixth, CARGO_KEY);
     }
 
+    // ── Exclusions ──────────────────────────────────────────────────
+
+    function test_mandatoryClausesEarnNothing() public {
+        // figaro-commerce and figaro-topology are committed on EVERY order, so
+        // their count is just the process count and says nothing about adoption.
+        // Scoring them would pay their authors for the protocol's own floor.
+        string memory commerceId = "figaro-commerce";
+        bytes32 commerceKey = keccak256(abi.encode("figaro-commerce", uint64(1)));
+        clauses.registerClause(commerceId, 1, keccak256("commerce-spec"), "ipfs://commerce", bytes32(0));
+
+        CommitmentTypes.Commitment memory c =
+            _settledOrder(commerceKey, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ArtifactExcluded.selector, commerceKey));
+        _record(c, commerceKey);
+
+        (uint64 cCount,, uint256 score) = counter.accrualOf(commerceKey, 0);
+        assertEq(cCount, 0);
+        assertEq(score, 0);
+        assertEq(counter.totalScoreIn(0), 0);
+    }
+
+    function test_exclusionIsDeployFrozenNotSelfDeclared() public view {
+        // A registrar cannot opt their own clause out or in — the set is fixed
+        // at deploy, because a self-declared exclusion would never be declared.
+        assertTrue(counter.excludedArtifact(keccak256(abi.encode("figaro-commerce", uint64(1)))));
+        assertTrue(counter.excludedArtifact(keccak256(abi.encode("figaro-topology", uint64(1)))));
+        assertFalse(counter.excludedArtifact(CARGO_KEY));
+        assertFalse(counter.excludedArtifact(GEO_KEY));
+    }
+
     // ── Weighting ───────────────────────────────────────────────────
 
     function test_taggedArtifactEarnsBoostedWeight() public {
@@ -359,14 +396,14 @@ contract UsageCounterTest is Test {
         uint64[] memory p = new uint64[](1);
         p[0] = P0_END;
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(0), address(clauses), GEO_TAG, PROV_KEY, p);
+        new UsageCounter(address(0), address(clauses), GEO_TAG, PROV_KEY, _excluded(), p);
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(core), address(0), GEO_TAG, PROV_KEY, p);
+        new UsageCounter(address(core), address(0), GEO_TAG, PROV_KEY, _excluded(), p);
     }
 
     function test_constructor_rejectsEmptyPeriods() public {
         vm.expectRevert(UsageCounter.EmptyPeriods.selector);
-        new UsageCounter(address(core), address(clauses), GEO_TAG, PROV_KEY, new uint64[](0));
+        new UsageCounter(address(core), address(clauses), GEO_TAG, PROV_KEY, _excluded(), new uint64[](0));
     }
 
     function test_constructor_rejectsUnorderedPeriods() public {
@@ -374,6 +411,6 @@ contract UsageCounterTest is Test {
         p[0] = P1_END;
         p[1] = P0_END;
         vm.expectRevert(UsageCounter.PeriodsNotAscending.selector);
-        new UsageCounter(address(core), address(clauses), GEO_TAG, PROV_KEY, p);
+        new UsageCounter(address(core), address(clauses), GEO_TAG, PROV_KEY, _excluded(), p);
     }
 }

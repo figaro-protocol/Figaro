@@ -8,27 +8,22 @@
  * rata (capped at 15%). There is no root to post, no bond, no challenge and
  * no forum — every one of those tests was deleted with the apparatus.
  *
- * WHAT THIS SPEC CAN AND CANNOT DRIVE — read before extending it.
+ * TIME IS COMPRESSED, NOT WARPED. `claim` gates on `UsageCounter.periodClosed`,
+ * so the reward leg is undrivable against a schedule measured in days —
+ * accrual would run and nothing could ever be claimed. `Deploy.s.sol` therefore
+ * sets devnet periods at +90s / +180s / +270s (operator ruling 2026-07-27:
+ * "we can write the e2e test by compressing time"). Nothing warps the shared
+ * clock: this spec records usage, waits for period 0 to end on its own, and
+ * claims — which is the same shape mainnet runs over years, at a scale a test
+ * run can observe. Warping would have expired every other spec's deadlines and
+ * signed commitments, and devnet is a mainnet REHEARSAL, not a sandbox.
  *
- *   COVERED. Real usage → the UI's accrual reading. The scenario mints real
- *   protocol history (a staked seller, a signed + committed order whose
- *   agreement composes a registered clause, one resolve), then records that
- *   usage on `UsageCounter` — a permissionless act, gas-paid by whoever
- *   benefits, with no UI of its own by design (the rewards hook READS accrual;
- *   it never records). /rewards, opened as the clause's author of record, then
- *   shows that artifact's distinct-process count, distinct-pair count and
- *   score, and reports the tranche as still ACCRUING with no claim offered.
- *
- *   NOT COVERED: the claim leg. `claim` requires `UsageCounter.periodClosed`,
- *   and `Deploy.s.sol` sets devnet's period boundaries at +14d / +35d / +60d.
- *   No period can close inside a test run, and the two ways to force one are
- *   both refused here: warping the shared devnet clock forward by two weeks
- *   would expire every other spec's deadlines and signed commitments (devnet
- *   is a mainnet REHEARSAL, not a sandbox), and re-deploying a counter with a
- *   short period would test a contract the runtime does not read. The honest
- *   consequence is that the claim button has no devnet coverage; it becomes
- *   drivable the moment a deployment configures a period that ends inside a
- *   run.
+ * The scenario mints real protocol history (a staked seller, a signed +
+ * committed order whose agreement composes a registered clause, one resolve),
+ * records that usage on `UsageCounter` — permissionless, gas-paid by whoever
+ * benefits, with no UI of its own by design (the rewards hook READS accrual, it
+ * never records) — then drives the UI through accruing → claimable → claimed,
+ * asserting the florins actually arrive.
  *
  * Depends on populate-test-data (the registered clauses, sellers) and the
  * devnet-authoring gate.
@@ -240,23 +235,73 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
         const periodClosed = (await publicClient.readContract({
             address: counter, abi: USAGE_COUNTER_ABI, functionName: 'periodClosed', args: [period],
         })) as boolean;
-        expect(periodClosed, 'devnet periods run for weeks — the current one cannot close inside a run').toBe(false);
+        expect(periodClosed, 'the period is still open immediately after recording').toBe(false);
         await expect(page.getByTestId(`tranche-status-${period}`)).toHaveText('accruing');
         await expect(page.getByTestId(`tranche-accruing-${period}`)).toBeVisible();
         await expect(page.getByTestId(`claim-${period}`), 'an open period offers no claim').toHaveCount(0);
 
-        // The minter agrees: nothing is claimable while the period is open.
+        // ── Close the period by advancing the chain, not by sleeping ──────
+        // Devnet periods are minutes (Deploy.s.sol), so waiting them out would
+        // stall the suite. Advance just past THIS period's end — a jump of
+        // minutes, which cannot expire the hour-scale deadlines other specs
+        // sign with. Nothing is snapshotted or reverted.
+        const periodEnd = (await publicClient.readContract({
+            address: counter, abi: USAGE_COUNTER_ABI, functionName: 'periodEnd', args: [BigInt(period)],
+        })) as bigint;
+        const now = (await publicClient.getBlock()).timestamp;
+        const jump = Number(periodEnd - now) + 5;
+        expect(jump, 'the period must still be open at this point').toBeGreaterThan(0);
+        await fetch(RPC_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'evm_increaseTime', params: [jump] }),
+        });
+        await fetch(RPC_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'evm_mine', params: [] }),
+        });
         expect(
             (await publicClient.readContract({
-                address: minter, abi: RPGF_MINTER_ABI, functionName: 'claimable',
-                args: [period, AUTHOR, [artifact]],
-            })) as bigint,
-            'claimable is a pro-rata read of a CLOSED period; the payout itself gates on periodClosed',
-        ).toBeGreaterThanOrEqual(0n);
+                address: counter, abi: USAGE_COUNTER_ABI, functionName: 'periodClosed', args: [period],
+            })) as boolean,
+            'the period must be closed once the chain is past its end',
+        ).toBe(true);
+
+        // ── The UI follows the chain: accruing → claimable ────────────────
+        const quoted = (await publicClient.readContract({
+            address: minter, abi: RPGF_MINTER_ABI, functionName: 'claimable',
+            args: [period, AUTHOR, [artifact]],
+        })) as bigint;
+        expect(quoted, 'a closed period with recorded usage owes its author something').toBeGreaterThan(0n);
+
+        await gotoAsWallet(page, AUTHOR, '/rewards?e2e=devnet');
+        await expect(page.getByTestId(`tranche-status-${period}`)).toHaveText('claimable');
+        const claimButton = page.getByTestId(`claim-${period}`);
+        await expect(claimButton, 'a closed period offers the claim').toBeVisible();
+
+        // ── Claim, and assert the florins actually arrive ─────────────────
+        const florin = config.florinToken as Hex;
+        const before = (await publicClient.readContract({
+            address: florin, abi: ERC20_ABI, functionName: 'balanceOf', args: [AUTHOR],
+        })) as bigint;
+
+        await claimButton.click();
+        await expect
+            .poll(async () => (await publicClient.readContract({
+                address: florin, abi: ERC20_ABI, functionName: 'balanceOf', args: [AUTHOR],
+            })) as bigint, { timeout: 60_000, message: 'the claim must move real florins' })
+            .toBeGreaterThan(before);
+
+        const after = (await publicClient.readContract({
+            address: florin, abi: ERC20_ABI, functionName: 'balanceOf', args: [AUTHOR],
+        })) as bigint;
+        expect(after - before, 'the payout matches what the minter quoted').toBe(quoted);
+        await expect(page.getByTestId(`tranche-status-${period}`)).toHaveText('claimed');
 
         test.info().annotations.push({
-            type: 'UsageRecorded',
-            description: `artifact=${USED_CLAUSE} period=${period} c=${c} d=${d} score=${score}`,
+            type: 'RpgfClaim',
+            description: `artifact=${USED_CLAUSE} period=${period} c=${c} d=${d} score=${score} paid=${after - before}`,
         });
     });
 });

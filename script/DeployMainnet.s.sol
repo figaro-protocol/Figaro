@@ -186,11 +186,17 @@ contract DeployMainnet is Script {
         periods[1] = uint64(vm.envUint("RPGF_PERIOD_END_2"));
         periods[2] = uint64(vm.envUint("RPGF_PERIOD_END_3"));
 
+        // The two MANDATORY clauses earn nothing (see UsageCounter.excludedArtifact).
+        bytes32[] memory excluded = new bytes32[](2);
+        excluded[0] = keccak256(abi.encode("figaro-commerce", uint64(1)));
+        excluded[1] = keccak256(abi.encode("figaro-topology", uint64(1)));
+
         UsageCounter usageCounter = new UsageCounter(
             _core,
             _clauses,
             keccak256(bytes(vm.envString("RPGF_BOOSTED_TAG"))),
             keccak256(abi.encode("figaro-assembly-provenance", uint64(1))),
+            excluded,
             periods
         );
         _usageCounter = address(usageCounter);

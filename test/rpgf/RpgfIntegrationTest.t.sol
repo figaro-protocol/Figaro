@@ -64,7 +64,7 @@ contract RpgfIntegrationTest is Test {
         periods[0] = P0_END;
         periods[1] = P0_END * 2;
         periods[2] = P0_END * 3;
-        counter = new UsageCounter(address(core), address(clauses), keccak256("geo"), PROV_KEY, periods);
+        counter = new UsageCounter(address(core), address(clauses), keccak256("geo"), PROV_KEY, _excluded(), periods);
 
         minter = new RpgfMinter(
             address(florin),
@@ -83,6 +83,13 @@ contract RpgfIntegrationTest is Test {
         token.approve(address(core), type(uint256).max);
 
         vm.warp(P0_END - 1000);
+    }
+
+    /// @dev The mandatory clauses, excluded from scoring on every deployment.
+    function _excluded() internal pure returns (bytes32[] memory e) {
+        e = new bytes32[](2);
+        e[0] = keccak256(abi.encode("figaro-commerce", uint64(1)));
+        e[1] = keccak256(abi.encode("figaro-topology", uint64(1)));
     }
 
     function _sign(CommitmentTypes.Commitment memory c, uint256 key) internal view returns (bytes memory) {
