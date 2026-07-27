@@ -4,7 +4,7 @@
  * The canonical implementation (empirical constants + pure math + client
  * wrappers) lives in `@figaro/sdk` (`sdk/src/gasCeilings.ts`) so agents
  * and the frontend share ONE ceiling. `scripts/lint-chain-gas.sh` locks
- * the SDK constants to `test/GasCeilingTest.t.sol`. This module exists
+ * the SDK constants to `test/kernel/GasCeilingTest.t.sol`. This module exists
  * only to keep the frontend's stable `@/lib/shared/chainGasCeilings`
  * import path.
  */

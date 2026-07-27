@@ -3,8 +3,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../src/mocks/MockDisperse.sol";
-import "../src/mocks/MockERC20.sol";
+import "src/mocks/MockDisperse.sol";
+import "src/mocks/MockERC20.sol";
 
 /// @notice Recipient that rejects ETH — proves the batch is atomic.
 contract EtherRejector {

@@ -25,7 +25,7 @@
 // equals pre-transfer + amount exactly — matching a well-behaved ERC20.
 //
 // Complements:
-//   - Halmos (test/HalmosFigaroCore.t.sol): 4 symbolic properties on root
+//   - Halmos (test/kernel/HalmosFigaroCore.t.sol): 4 symbolic properties on root
 //     orders only. These rules generalize to arbitrary sub-orders.
 //   - FigaroCore.spec: state-machine invariants (status, cumulative, buyer
 //     dominance). No balance-flow coverage there.

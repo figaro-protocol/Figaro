@@ -2,13 +2,13 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import "../src/kernel/FigaroCore.sol";
-import "../src/kernel/CommitmentTypes.sol";
-import "../src/protocol/coordinators/AttestationCoordinator.sol";
-import "../src/protocol/registries/ClauseRegistry.sol";
-import "../src/protocol/coordinators/IRoleResolver.sol";
-import "../src/mocks/MockPermitToken.sol";
-import {AgreementTestHelper} from "./helpers/AgreementTestHelper.sol";
+import "src/kernel/FigaroCore.sol";
+import "src/kernel/CommitmentTypes.sol";
+import "src/protocol/coordinators/AttestationCoordinator.sol";
+import "src/protocol/registries/ClauseRegistry.sol";
+import "src/protocol/coordinators/IRoleResolver.sol";
+import "src/mocks/MockPermitToken.sol";
+import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
 
 /// @title AttestationCoordinatorTest
 /// @notice Tests for the rewritten zero-storage attestation coordinator.

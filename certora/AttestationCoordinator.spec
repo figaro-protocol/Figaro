@@ -15,7 +15,7 @@
 //
 // The seller path (attestAsSeller — takes role + target commitments) and the
 // mechanism path (attestViaResolver) are covered by the Foundry suite in
-// test/AttestationCoordinatorTest.t.sol.
+// test/protocol/coordinators/AttestationCoordinatorTest.t.sol.
 //
 // Foundry-covered invariants NOT re-proven here:
 //   • contentRef == keccak256(content) → test_contentRefIsKeccakOfContent

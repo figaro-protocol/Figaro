@@ -2,11 +2,11 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import "../src/kernel/FigaroCore.sol";
-import "../src/kernel/CommitmentTypes.sol";
-import "../src/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol";
-import "../src/mocks/MockERC20.sol";
-import "../src/mocks/MockUniversalRouter.sol";
+import "src/kernel/FigaroCore.sol";
+import "src/kernel/CommitmentTypes.sol";
+import "src/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol";
+import "src/mocks/MockERC20.sol";
+import "src/mocks/MockUniversalRouter.sol";
 
 /// @notice The one Permit2 surface this suite needs beyond the coordinator's
 ///         own interface: the live domain separator.

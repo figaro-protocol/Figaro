@@ -6,7 +6,7 @@
 // so they hold for commit(), resolveProcess(), and any future function.
 //
 // Token conservation and resolution payouts are proved by Halmos
-// symbolic execution (test/HalmosFigaroCore.t.sol, 7/7 proved with z3).
+// symbolic execution (test/kernel/HalmosFigaroCore.t.sol, 7/7 proved with z3).
 
 methods {
     function orderStatus(bytes32) external returns (uint8) envfree;

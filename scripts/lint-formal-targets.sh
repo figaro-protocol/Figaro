@@ -112,7 +112,7 @@ if [ -f "$VMAP" ]; then
         if contract_defined "$name"; then continue; fi
         if git grep -qE "function[[:space:]]+$name[[:space:]]*\(" -- '*.sol' 2>/dev/null; then continue; fi
         # Tracked file: exact basename, or the Foundry suite-file convention
-        # (`FigaroCoreRevertBranchTest` → test/FigaroCoreRevertBranchTest.t.sol —
+        # (`FigaroCoreRevertBranchTest` → test/kernel/FigaroCoreRevertBranchTest.t.sol —
         # suite cites name the FILE; the contract inside may differ).
         if git ls-files "*/$name" "$name" "*/$name.t.sol" "*/$name.sol" | grep -q .; then continue; fi
         note "$VMAP cites \`$name\`: but no contract, function, or tracked file with that name exists"

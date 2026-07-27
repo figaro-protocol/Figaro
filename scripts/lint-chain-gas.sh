@@ -2,7 +2,7 @@
 # lint-chain-gas.sh — Gate: the per-order gas constants in
 # sdk/src/gasCeilings.ts (the canonical TS home; the frontend's
 # chainGasCeilings.ts is a re-export) must byte-match the Foundry
-# anchor constants in test/GasCeilingTest.t.sol.
+# anchor constants in test/kernel/GasCeilingTest.t.sol.
 #
 # Source of truth is the Foundry test — that's where the empirical
 # measurement happens (binary-search of max orders that fit in 30M
@@ -23,7 +23,7 @@
 set -u
 
 TS_FILE="sdk/src/gasCeilings.ts"
-SOL_FILE="test/GasCeilingTest.t.sol"
+SOL_FILE="test/kernel/GasCeilingTest.t.sol"
 
 if [ ! -f "$TS_FILE" ]; then
     echo "[chain-gas] TS module not found: $TS_FILE" >&2

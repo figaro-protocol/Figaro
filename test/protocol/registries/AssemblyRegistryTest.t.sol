@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import {AssemblyRegistry} from "../src/protocol/registries/AssemblyRegistry.sol";
+import {AssemblyRegistry} from "src/protocol/registries/AssemblyRegistry.sol";
 
 contract AssemblyRegistryTest is Test {
     AssemblyRegistry registry;

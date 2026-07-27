@@ -96,7 +96,7 @@ Sybil-resistance stake, not a fee, and the surfacing readers derive
 visibility from it. No owner, no admin, no fee, no `transferAssembly`, no
 `removeAssembly`. The contract does not validate content — well-formedness is an
 off-chain (Layer-A SDK + read-time) concern, never an on-chain check. Foundry
-tests in `test/AssemblyRegistryTest.t.sol`.
+tests in `test/protocol/registries/AssemblyRegistryTest.t.sol`.
 
 ## Coordinators (`src/protocol/coordinators/`)
 
@@ -174,12 +174,12 @@ witness-signed buyer leg (`@figaro/sdk` `buildSwapWitnessTypedData` +
 through `swapAndCommit` (`lib/composition/useSwapAndCommitActions.ts`). Its two
 token-forwarding sites are tracked in `certora/token-ops.inventory` — both
 `[PENDING]` a CVL rule.
-Foundry tests in `test/WitnessSwapAndCommitCoordinatorTest.t.sol` cover both
+Foundry tests in `test/protocol/coordinators/WitnessSwapAndCommitCoordinatorTest.t.sol` cover both
 funding legs, residual refunds, and
 `test_RevertWhen_SwapDataSubstituted_FrontRunImpossible` (a substituted route
 fails witness verification) using `src/mocks/MockWitnessPermit2.sol`, which
 verifies the witness signature; digest parity with the canonical Permit2
-deployment is proven by `test/WitnessSwapAndCommitCoordinatorForkTest.t.sol`
+deployment is proven by `test/protocol/coordinators/WitnessSwapAndCommitCoordinatorForkTest.t.sol`
 (mainnet fork, `MAINNET_RPC_URL`-gated). Its local-minimal `IFigaroCore` binding is the
 copyable exemplar of the coordinator pattern — canonical statement in
 `ARCHITECTURE.md` § "Composing the kernel". EIP-7702 and ERC-4337 variants are
@@ -282,7 +282,7 @@ for the round's donation token + window and posts the merkle root under an ETH b
 voids; bond cases settle via the SAME `IRpgfArbitrator` seam (MockArbitrator devnet,
 `KlerosRpgfAdapter` mainnet); finalization snapshots the pool balance as the budget;
 merkle claims (OZ standard-tree leaves) transfer the match out, budget-capped. No owner,
-no sweep, no claim expiry. Foundry: `test/OptimisticMatchPool.t.sol` (round end-to-end,
+no sweep, no claim expiry. Foundry: `test/match/OptimisticMatchPool.t.sol` (round end-to-end,
 challenge-voids, forum routing, budget backstop, rail strictness).
 
 ## Test / Mock Contracts

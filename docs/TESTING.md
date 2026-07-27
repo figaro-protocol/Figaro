@@ -118,7 +118,7 @@ only before a move).
 `sdk/tests/eip712Parity.test.ts` freezes SDK-computed EIP-712 vectors (domain
 separator, struct hash, root digest/processId, order hash) into
 `test/fixtures/eip712-vectors.json` and self-checks the SDK still reproduces
-them (`HARVEST_EIP712_VECTORS=1` re-records). `test/Eip712ParityTest.t.sol`
+them (`HARVEST_EIP712_VECTORS=1` re-records). `test/kernel/Eip712ParityTest.t.sol`
 reads that same fixture and asserts the Solidity kernel reproduces every hash —
 `CommitmentTypes.hashStruct` directly, the order-hash derivation verbatim, and
 the domain separator both ways (SDK vector == formula, and a live

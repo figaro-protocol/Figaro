@@ -3,10 +3,10 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "../src/kernel/FigaroCore.sol";
-import "../src/kernel/CommitmentTypes.sol";
-import "../src/mocks/MockPermitToken.sol";
-import "../src/mocks/MockERC20FeeOnTransfer.sol";
+import "src/kernel/FigaroCore.sol";
+import "src/kernel/CommitmentTypes.sol";
+import "src/mocks/MockPermitToken.sol";
+import "src/mocks/MockERC20FeeOnTransfer.sol";
 
 /// @title FigaroCore_RevertBranch — Negative-path coverage for the
 ///        enforcement-only kernel. No SelfDeal tests (removed from kernel).

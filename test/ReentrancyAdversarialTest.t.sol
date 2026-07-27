@@ -3,12 +3,12 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../src/kernel/FigaroCore.sol";
-import "../src/kernel/CommitmentTypes.sol";
-import "../src/protocol/verifier/FigaroBatchVerifier.sol";
-import "../src/protocol/registries/ClauseRegistry.sol";
-import "../src/mocks/MockSP1Verifier.sol";
-import "../src/mocks/MockReentrantToken.sol";
+import "src/kernel/FigaroCore.sol";
+import "src/kernel/CommitmentTypes.sol";
+import "src/protocol/verifier/FigaroBatchVerifier.sol";
+import "src/protocol/registries/ClauseRegistry.sol";
+import "src/mocks/MockSP1Verifier.sol";
+import "src/mocks/MockReentrantToken.sol";
 
 /// @title ReentrancyAdversarialTest — a malicious settlement token tries to
 ///        re-enter the kernel and the batch verifier during a token movement.

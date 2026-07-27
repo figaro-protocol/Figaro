@@ -8,7 +8,7 @@
  * — nothing ran in CI without a chain.
  *
  * This file freezes a set of SDK-computed vectors into
- * `test/fixtures/eip712-vectors.json`; `test/Eip712ParityTest.t.sol` reads that
+ * `test/fixtures/eip712-vectors.json`; `test/kernel/Eip712ParityTest.t.sol` reads that
  * same file and asserts the Solidity kernel reproduces every hash. Foundry CI
  * runs it unconditionally — no chain, no skipIf.
  *

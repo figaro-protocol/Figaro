@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import {ClauseRegistry} from "../src/protocol/registries/ClauseRegistry.sol";
+import {ClauseRegistry} from "src/protocol/registries/ClauseRegistry.sol";
 
 contract ClauseRegistryTest is Test {
     ClauseRegistry registry;

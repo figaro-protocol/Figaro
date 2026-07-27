@@ -2,8 +2,8 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import "../src/kernel/FigaroCore.sol";
-import "../src/kernel/CommitmentTypes.sol";
+import "src/kernel/FigaroCore.sol";
+import "src/kernel/CommitmentTypes.sol";
 
 /// @title Eip712ParityTest — the SDK↔kernel EIP-712 lock, UNCONDITIONAL
 /// @notice Reads `test/fixtures/eip712-vectors.json` (frozen by the SDK's
