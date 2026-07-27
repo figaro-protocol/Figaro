@@ -41,7 +41,7 @@ Every paper (a `/papers/<slug>` page) must stand on its own. The corpus was deri
 
 - **No companion-paper references.** No "in the companion implementation paper", no "developed in the institutional-economics paper", no `\Cref` to sections in other files. If a claim isn't in this paper, it isn't in this paper. Refer to results by their substance — "the escape-hatch theorem", "the bonding equilibrium", "the verification stack" — not by which paper carries them. The rule applies to every paper in the corpus, including synthesis papers; if synthesis is what a paper does, it must do so by re-stating or naming-by-result, not by punting to other papers.
 - **Topic discipline.** A mechanism-design paper contains mechanism design — no Solidity, no DAG, no legal/normative framing, no overlays (interest-bearing bonds, time-varying multipliers, etc.). A kernel-implementation paper doesn't contain economics. An institutional-economics paper doesn't contain Solidity. Match the paper's stated subject and stop there.
-- **Process chains are LINEAR at the kernel level.** The kernel sees a sequence of `commit` calls updating a monotonic cumulative-value accumulator. There is no parent-child structure on-chain (`src/FigaroCore.sol:82-89`: `ProcessState` carries `rootBuyer`, `currency`, `cumulativeValue`, `activeOrderCount` — no DAG fields). DAG topology lives at the assembly/topology layer (off-chain agreement, reconstructed by indexers), never in the kernel. Mechanism papers must use **"process chain"**, never "process tree" or "DAG".
+- **Process chains are LINEAR at the kernel level.** The kernel sees a sequence of `commit` calls updating a monotonic cumulative-value accumulator. There is no parent-child structure on-chain (`src/kernel/FigaroCore.sol:82-89`: `ProcessState` carries `rootBuyer`, `currency`, `cumulativeValue`, `activeOrderCount` — no DAG fields). DAG topology lives at the assembly/topology layer (off-chain agreement, reconstructed by indexers), never in the kernel. Mechanism papers must use **"process chain"**, never "process tree" or "DAG".
 - **No "open questions" / "future work" / scope-padding sections.** Papers stand finished. Open questions belong in private notes or in subsequent papers, not as scope-padding in the current one. A "scope exclusion" paragraph is fine when it's a kernel-level exclusion (e.g., single-denomination per process); a "scope note on what we didn't address" is not.
 - **No corresponding-author / contact-email footers.** Author name only. No `\thanks{Corresponding author. ...}`, no contact-email footnote, no ORCID block.
 - **Attribution consistency.** Citation key ↔ `\bibitem` author label ↔ acknowledgement language must all agree. If the bibitem credits "Solidity Team", the cite key shouldn't be `buterin2016` and the acknowledgement shouldn't credit Vitalik. Pick one attribution and align all three sites.
@@ -69,7 +69,7 @@ RPGF distribution.
 
 - A paper never authorizes doctrine changes — if a paper's argument implies the
   repo should change, that is a finding for the operator, not an edit you make.
-- Kernel claims must trace to `src/FigaroCore.sol` / `formal/FigaroCore.tla`;
+- Kernel claims must trace to `src/kernel/FigaroCore.sol` / `formal/FigaroCore.tla`;
   when in doubt, state the claim and flag it for `figaro-paper-reviewer`
   verification rather than softening it.
 - Never import marketing voice ("no platform takes a cut") or builder voice

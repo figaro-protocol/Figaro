@@ -4,7 +4,7 @@
  * so the audit bundle includes the seller's claimed off-chain identity at
  * registration time.
  *
- * Note on kernel design: `src/FigaroCore.sol` does NOT enforce that
+ * Note on kernel design: `src/kernel/FigaroCore.sol` does NOT enforce that
  * sellers be registered in the SellerRegistry — the kernel "does not
  * gate any operation on seller state" (CLAUDE.md). Registration is an
  * off-chain discovery convention, not a settlement precondition.

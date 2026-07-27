@@ -93,8 +93,8 @@ Agents — human-driven or autonomous — have bounded write scope. These are ha
 
 ### Never edit, ever
 
-- **`src/FigaroCore.sol`** — the kernel is frozen. The `.claude/hooks/kernel-warn.sh` hook surfaces this at edit time; do not bypass.
-- **`src/CommitmentTypes.sol`** — kernel structs and EIP-712 hashing.
+- **`src/kernel/FigaroCore.sol`** — the kernel is frozen. The `.claude/hooks/kernel-warn.sh` hook surfaces this at edit time; do not bypass.
+- **`src/kernel/CommitmentTypes.sol`** — kernel structs and EIP-712 hashing.
 - **Any deployed contract on a chain anyone is using.** First-write-wins binding in `SellerRegistry`, `ClauseRegistry`, and the validator-contract pattern means redeployment is incompatible with prior state. To change behavior, write a *new* contract with a *new* identifier; never mutate the existing one.
 - **Reference assemblies** in the runtime that are shared infrastructure. New assemblies go in new files; treat existing reference assemblies as immutable for any agent.
 
@@ -118,7 +118,7 @@ An agent may NOT:
 
 ### Where these rules are enforced
 
-- **Path-level rules** (e.g., "never edit `src/FigaroCore.sol`") can be enforced at the Claude Code harness level via `.claude/settings.json` `permissions.deny` entries plus the existing `.claude/hooks/kernel-warn.sh` hook. The harness blocks (or prompts on) the tool call before it reaches the file.
+- **Path-level rules** (e.g., "never edit `src/kernel/FigaroCore.sol`") can be enforced at the Claude Code harness level via `.claude/settings.json` `permissions.deny` entries plus the existing `.claude/hooks/kernel-warn.sh` hook. The harness blocks (or prompts on) the tool call before it reaches the file.
 - **Ownership-level rules** (e.g., "do not edit another user's assembly") cannot be enforced by the harness — the harness has no notion of which wallet owns which file. They live in agent prompts, in CLAUDE.md, and in human review at PR/commit time.
 
 See `.claude/skills/figaro-kernel-discipline/SKILL.md` for the kernel-specific anti-patterns; that skill is the canonical source the kernel-reviewer subagent reads.

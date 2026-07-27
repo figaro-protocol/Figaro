@@ -4,10 +4,10 @@ pragma solidity ^0.8.24;
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
 
-import "../src/FigaroCore.sol";
-import "../src/AttestationCoordinator.sol";
-import "../src/ClauseRegistry.sol";
-import "../src/SellerRegistry.sol";
+import "../src/kernel/FigaroCore.sol";
+import "../src/protocol/coordinators/AttestationCoordinator.sol";
+import "../src/protocol/registries/ClauseRegistry.sol";
+import "../src/protocol/registries/SellerRegistry.sol";
 import "../src/florin/FlorinToken.sol";
 import "../src/mocks/MockPermitToken.sol";
 import "../src/mocks/MockERC20.sol";
@@ -15,15 +15,15 @@ import "../src/mocks/MockWitnessPermit2.sol";
 import "../src/mocks/MockUniversalRouter.sol";
 import "../src/mocks/MockArbitrator.sol";
 import "../src/mocks/MockTreasuryMultisig.sol";
-import {RpgfMinter} from "../src/florin/RpgfMinter.sol";
-import {DonationRail} from "../src/DonationRail.sol";
+import {RpgfMinter} from "../src/rpgf/RpgfMinter.sol";
+import {DonationRail} from "../src/rpgf/DonationRail.sol";
 import "../src/mocks/MockSP1Verifier.sol";
-import "../src/FigaroBatchVerifier.sol";
+import "../src/protocol/verifier/FigaroBatchVerifier.sol";
 // Named import: the coordinator declares its own local-minimal `IFigaroCore`
 // (the coordinator exemplar), which would collide with AttestationCoordinator's.
-import {WitnessSwapAndCommitCoordinator} from "../src/WitnessSwapAndCommitCoordinator.sol";
+import {WitnessSwapAndCommitCoordinator} from "../src/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol";
 import {MockDisperse} from "../src/mocks/MockDisperse.sol";
-import "../src/AssemblyRegistry.sol";
+import "../src/protocol/registries/AssemblyRegistry.sol";
 
 /// @title Deploy — Full protocol stack to local Anvil
 /// @notice Deploys: FigaroCore, AttestationCoordinator, ClauseRegistry,

@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import {FlorinToken} from "src/florin/FlorinToken.sol";
-import {RpgfMinter} from "src/florin/RpgfMinter.sol";
+import {RpgfMinter} from "src/rpgf/RpgfMinter.sol";
 import {MockArbitrator} from "src/mocks/MockArbitrator.sol";
 
 /// @title RpgfMinterTest

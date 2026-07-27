@@ -230,7 +230,7 @@ metadata — not through bespoke app forks.)
 
 - **Assembly** — the structural declaration (roles, mechanisms, view definitions, module
   placement, narrative defaults). Authored in `frontend/lib/designer/`, anchored on-chain
-  via `src/AssemblyRegistry.sol`.
+  via `src/protocol/registries/AssemblyRegistry.sol`.
 - **Mechanism package** — the reusable unit the runtime composes: contract bindings/writes,
   semantic adapters, capability mappings, default inspector/action modules, guarantee +
   risk copy.

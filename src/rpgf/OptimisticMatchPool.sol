@@ -5,7 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {IRpgfArbitrator} from "./florin/IRpgfArbitrator.sol";
+import {IRpgfArbitrator} from "src/rpgf/IRpgfArbitrator.sol";
 
 /// @title OptimisticMatchPool — one crowd-steered match round, optimistically settled
 /// @notice The RpgfMinter shape minus minting: a deterministic, ANCHORED match

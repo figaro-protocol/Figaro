@@ -2,7 +2,7 @@
 #
 # lint-kernel-frozen.sh — THE KERNEL IS FROZEN. This FAILS the commit.
 #
-# `src/FigaroCore.sol` and `src/CommitmentTypes.sol` are the two frozen kernel
+# `src/kernel/FigaroCore.sol` and `src/kernel/CommitmentTypes.sol` are the two frozen kernel
 # files (CLAUDE.md § Agent Permissions § "Never edit, ever"). Two softer guards
 # already exist and are both bypassable by a human:
 #   • .claude/hooks/kernel-warn.sh — WARNS the agent at edit time (advisory).
@@ -28,8 +28,26 @@ cd "$ROOT"
 staged=$(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null)
 [ -z "$staged" ] && exit 0
 
-frozen=$(printf '%s\n' "$staged" | grep -E '(^|/)src/(FigaroCore|CommitmentTypes)\.sol$' || true)
+frozen=$(printf '%s\n' "$staged" | grep -E '(^|/)src/kernel/(FigaroCore|CommitmentTypes)\.sol$' || true)
 [ -z "$frozen" ] && exit 0
+
+# A pure RENAME is not a mutation. The kernel may be relocated (the 2026-07-27
+# tier reorganisation moved both files into src/kernel/) as long as the CONTENT
+# is byte-identical to its blob in HEAD. Anything that changes a byte still
+# REFUSES below. Content equality is the invariant, not the path.
+unmoved=""
+for f in $frozen; do
+    base="${f##*/}"
+    old=$(git rev-parse "HEAD:src/$base" 2>/dev/null || git rev-parse "HEAD:$f" 2>/dev/null || true)
+    new=$(git rev-parse ":$f" 2>/dev/null || true)
+    if [ -n "$old" ] && [ "$old" = "$new" ]; then
+        echo "[kernel-frozen] relocation OK — $f is byte-identical to HEAD (moved, not edited)." >&2
+        continue
+    fi
+    unmoved="$unmoved $f"
+done
+frozen=$(printf '%s\n' $unmoved)
+[ -z "${frozen// /}" ] && exit 0
 
 if [ "${FIGARO_KERNEL_EDIT:-0}" = "1" ]; then
     echo "[kernel-frozen] OVERRIDE — FIGARO_KERNEL_EDIT=1; allowing staged kernel edit:" >&2

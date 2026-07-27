@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import "./CommitmentTypes.sol";
+import "src/kernel/CommitmentTypes.sol";
 import "./IRoleResolver.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 

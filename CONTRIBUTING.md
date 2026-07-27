@@ -67,7 +67,7 @@ The project ships agent-shaped tooling — usable by humans, AI assistants, or a
 
 ### Claude Code subagents — `.claude/agents/`
 
-- **`figaro-kernel-reviewer`** — read-only review of any diff that touches `src/FigaroCore.sol`, `src/CommitmentTypes.sol`, or kernel storage. Returns findings cited to the six invariants and the canonical anti-pattern list. Invoke before merging anything kernel-adjacent.
+- **`figaro-kernel-reviewer`** — read-only review of any diff that touches `src/kernel/FigaroCore.sol`, `src/kernel/CommitmentTypes.sol`, or kernel storage. Returns findings cited to the six invariants and the canonical anti-pattern list. Invoke before merging anything kernel-adjacent.
 - **`figaro-clause-lockstep`** — verifies a new or changed clause is in sync across all required surfaces (Layer A spec, TS encoder, on-chain validator contract, `ClauseRegistry` registration, listing pages). Invoke after authoring a clause.
 - **`figaro-runtime-ui`** — authors runtime-tier UI for new clauses and assemblies (lens panels, attestation forms, per-role routes). Stays strictly within `frontend/`. Halts for marketing-expert review on user-facing pages. Invoke when a new clause or assembly needs a UI surface.
 - **`figaro-paper-reviewer`** — read-only verifier for academic-paper claims against the canonical code. Catches drift between `paper/*.tex` and `src/` / `formal/`. Cites both paper passages and source line numbers. Invoke when reviewing paper edits, when the kernel changes, or before publication.

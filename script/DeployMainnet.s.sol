@@ -4,13 +4,13 @@ pragma solidity ^0.8.24;
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
 
-import "../src/FigaroCore.sol";
-import "../src/AttestationCoordinator.sol";
-import "../src/ClauseRegistry.sol";
-import "../src/SellerRegistry.sol";
+import "../src/kernel/FigaroCore.sol";
+import "../src/protocol/coordinators/AttestationCoordinator.sol";
+import "../src/protocol/registries/ClauseRegistry.sol";
+import "../src/protocol/registries/SellerRegistry.sol";
 import "../src/florin/FlorinToken.sol";
-import {RpgfMinter} from "../src/florin/RpgfMinter.sol";
-import "../src/FigaroBatchVerifier.sol";
+import {RpgfMinter} from "../src/rpgf/RpgfMinter.sol";
+import "../src/protocol/verifier/FigaroBatchVerifier.sol";
 
 /// @title DeployMainnet — Mainnet deployment of the full Figaro V5 protocol stack
 ///

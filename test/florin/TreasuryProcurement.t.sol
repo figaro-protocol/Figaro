@@ -2,8 +2,8 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import {FigaroCore} from "src/FigaroCore.sol";
-import {CommitmentTypes} from "src/CommitmentTypes.sol";
+import {FigaroCore} from "src/kernel/FigaroCore.sol";
+import {CommitmentTypes} from "src/kernel/CommitmentTypes.sol";
 import {FlorinToken} from "src/florin/FlorinToken.sol";
 import {MockTreasuryMultisig} from "src/mocks/MockTreasuryMultisig.sol";
 

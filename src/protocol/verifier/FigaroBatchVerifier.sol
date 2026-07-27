@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "./interfaces/ISP1Verifier.sol";
+import "src/protocol/verifier/ISP1Verifier.sol";
 
 /// @notice Minimal ClauseRegistry surface the verifier reads — the
 ///         integrity anchor for witness specs.

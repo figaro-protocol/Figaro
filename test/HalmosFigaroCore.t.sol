@@ -3,8 +3,8 @@ pragma solidity 0.8.26;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../src/FigaroCore.sol";
-import "../src/CommitmentTypes.sol";
+import "../src/kernel/FigaroCore.sol";
+import "../src/kernel/CommitmentTypes.sol";
 import "../src/mocks/MockPermitToken.sol";
 
 /// @title HalmosFigaroCore — Symbolic verification of FigaroCore invariants

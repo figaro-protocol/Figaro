@@ -3,8 +3,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import {FlorinToken} from "src/florin/FlorinToken.sol";
-import {RpgfMinter} from "src/florin/RpgfMinter.sol";
-import {KlerosRpgfAdapter} from "src/florin/KlerosRpgfAdapter.sol";
+import {RpgfMinter} from "src/rpgf/RpgfMinter.sol";
+import {KlerosRpgfAdapter} from "src/rpgf/KlerosRpgfAdapter.sol";
 import {MockKlerosCourt} from "src/mocks/MockKlerosCourt.sol";
 
 /// @title KlerosRpgfAdapterTest

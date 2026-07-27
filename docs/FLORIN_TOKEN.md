@@ -9,9 +9,9 @@ Implemented. Two contracts:
 - `src/florin/IFlorinMinter.sol` — minimal `mint(address,uint256)` interface, implemented
   by `FlorinToken`.
 
-The RPGF distribution is `src/florin/RpgfMinter.sol` (rebuilt optimistic 2026-07-15
+The RPGF distribution is `src/rpgf/RpgfMinter.sol` (rebuilt optimistic 2026-07-15
 — the SP1-proof-gated predecessor was removed in the proof-apparatus teardown)
-plus `src/florin/IRpgfArbitrator.sol`, the provider-agnostic bond-settlement forum
+plus `src/rpgf/IRpgfArbitrator.sol`, the provider-agnostic bond-settlement forum
 seam. Contract surfaces are inventoried in `docs/CONTRACTS.md`.
 
 Deployment: `script/DeployMainnet.s.sol` (mainnet) and `script/Deploy.s.sol` (devnet)

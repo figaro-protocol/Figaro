@@ -17,7 +17,7 @@ case "$file_path" in
   */sdk/src/clauses/spec.ts|\
   */sdk/src/clauses/index.ts|\
   */sdk/src/clauses/clause-spec.schema.json|\
-  */src/ClauseRegistry.sol)
+  */src/protocol/registries/ClauseRegistry.sol)
     cat <<EOF
 ⚠ CLAUSE SURFACE EDIT: $file_path
 

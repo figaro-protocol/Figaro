@@ -4,8 +4,8 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../src/FigaroCore.sol";
-import "../src/CommitmentTypes.sol";
+import "../src/kernel/FigaroCore.sol";
+import "../src/kernel/CommitmentTypes.sol";
 import "../src/mocks/MockPermitToken.sol";
 
 /// @title FigaroCoreTest — Core invariant tests for the enforcement-only kernel

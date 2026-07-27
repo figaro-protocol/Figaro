@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {IRpgfArbitrator} from "../florin/IRpgfArbitrator.sol";
+import {IRpgfArbitrator} from "src/rpgf/IRpgfArbitrator.sol";
 
 interface IRulable {
     function rule(uint256 caseId, uint8 ruling) external;

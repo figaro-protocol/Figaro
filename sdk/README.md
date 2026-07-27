@@ -102,7 +102,7 @@ have a reason not to; this sketch is only enough to orient a raw caller.
 **Token approvals before commit — the whole per-order bond, every time.** The
 kernel pulls the FULL per-order bonds on EVERY `commit`, root or sub-order, and
 nets nothing against bonds it already holds from earlier orders in the process
-(`src/FigaroCore.sol:208-209` — `payment × 2` from the buyer, `expectedCumulativeValue × 2`
+(`src/kernel/FigaroCore.sol:208-209` — `payment × 2` from the buyer, `expectedCumulativeValue × 2`
 from the seller). Approve the settlement ERC-20 for both legs before each commit:
 
 ```ts
@@ -825,7 +825,7 @@ The event log is the read path: verify an update landed by re-running discovery
 - **ECDSA signers only** — the SDK builds EIP-712 typed data, and any signer that
   produces a standard secp256k1 ECDSA signature works: an EOA, a hardware wallet, or
   an MPC / threshold scheme that outputs one signature. `FigaroCore` verifies both
-  commitment signatures by `ECDSA.recover` alone (`src/FigaroCore.sol:161-166`) — it
+  commitment signatures by `ECDSA.recover` alone (`src/kernel/FigaroCore.sol:161-166`) — it
   runs no ERC-1271 check — so an ERC-1271 contract wallet (a Safe or other smart
   account) CANNOT hold a kernel party role. A contract that must transact routes
   through a funded EOA it controls (this is how the DAO treasury buys — it never

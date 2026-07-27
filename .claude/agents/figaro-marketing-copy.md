@@ -92,7 +92,7 @@ For every quantitative, named, or load-bearing claim in any draft, classify it. 
 
 | Class | Language | Source required | Example |
 |---|---|---|---|
-| **Currently true** | Present tense | Code line / formal spec / deployed contract | "FigaroCore has two external functions" → cite `src/FigaroCore.sol:147,254` |
+| **Currently true** | Present tense | Code line / formal spec / deployed contract | "FigaroCore has two external functions" → cite `src/kernel/FigaroCore.sol:147,254` |
 | **Projected** | Conditional ("if X, then Y") | ETHICS.md section / paper theorem / scenario analysis | "If the protocol scales as designed, the coordination firm becomes structurally unnecessary in coordination-heavy sectors" → cite `archive-v5/v5/ETHICS.md` §"What Actually Dissolves" |
 | **Aspirational** | Explicit "we aim to" / "the goal is" / "the project intends" | Project-intent doc OR explicit operator commitment | "Our aim is to make legal documents cryptographically anchored" — never written as if it's already true |
 
@@ -108,7 +108,7 @@ If a claim doesn't fit any class with a real source, refuse and rewrite. **Marke
 
 ### Protocol claims — specific guidance
 
-- **"Immutable kernel"** — currently true; cite `src/FigaroCore.sol` (no admin, no upgrade, no escape hatches).
+- **"Immutable kernel"** — currently true; cite `src/kernel/FigaroCore.sol` (no admin, no upgrade, no escape hatches).
 - **"Six invariants"** — currently true; cite `formal/FigaroCore.tla`.
 - **"Formally verified"** — currently true *for specified properties*; name the layer (TLA⁺ for which invariants, Halmos for which contracts, Echidna for fuzzing, Certora for which CVL rules). Don't claim a blanket "formally verified" — name what is and isn't covered.
 - **"Dispute resolution via Kleros"** — currently true *on testnet via mock*; on mainnet pending real wiring. Distinguish in copy.

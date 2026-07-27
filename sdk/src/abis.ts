@@ -40,7 +40,7 @@ export const CORE_ABI = parseAbi([
     "event OrderResolved(bytes32 indexed orderHash, bytes32 indexed processId, uint256 sellerPayout, uint256 buyerPayout)",
     "event ProcessResolved(bytes32 indexed processId, address indexed buyer, uint256 orderCount)",
 
-    // ── Errors (must mirror src/FigaroCore.sol) ──────────────────────
+    // ── Errors (must mirror src/kernel/FigaroCore.sol) ──────────────────────
     // Carried in the ABI so viem can decode reverts by name rather than
     // surfacing raw 4-byte selectors. Order matches the contract.
     "error DeadlineExpired()",

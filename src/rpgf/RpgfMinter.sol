@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {IFlorinMinter} from "./IFlorinMinter.sol";
+import {IFlorinMinter} from "src/florin/IFlorinMinter.sol";
 import {IRpgfArbitrator} from "./IRpgfArbitrator.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 

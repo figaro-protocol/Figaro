@@ -9,7 +9,7 @@ set -euo pipefail
 file_path=$(jq -r '.tool_input.file_path // empty')
 
 case "$file_path" in
-  */src/FigaroCore.sol|*/src/CommitmentTypes.sol)
+  */src/kernel/FigaroCore.sol|*/src/kernel/CommitmentTypes.sol)
     cat <<EOF
 ⚠ KERNEL EDIT: $file_path
 

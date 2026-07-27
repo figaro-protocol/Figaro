@@ -2,8 +2,8 @@
 pragma solidity 0.8.26;
 
 import "forge-std/Test.sol";
-import "../src/FigaroBatchVerifier.sol";
-import "../src/ClauseRegistry.sol";
+import "../src/protocol/verifier/FigaroBatchVerifier.sol";
+import "../src/protocol/registries/ClauseRegistry.sol";
 import "../src/mocks/MockSP1Verifier.sol";
 import "../src/mocks/MockERC20.sol";
 import {MockERC20FeeOnTransfer} from "../src/mocks/MockERC20FeeOnTransfer.sol";

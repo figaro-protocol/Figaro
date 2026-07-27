@@ -2,28 +2,107 @@
 
 All contracts in `src/`. Solidity 0.8.26, Foundry. V3 in `archive-v3/`.
 
+**The directory IS the tier map** (reorganised 2026-07-27) — `src/kernel/` · `src/protocol/{registries,coordinators,verifier}/` · `src/florin/` · `src/rpgf/` · `src/mocks/` · `src/echidna/`. The sections below mirror those directories exactly; if they ever diverge, the filesystem is right. Establish a contract's tier from its path before citing any doctrine at it — `docs/LEXICON.md` § "Failure modes" (Folding).
+
 No contract belongs to a dapp. Every contract is a permissionless primitive.
 
 This file is the canonical inventory. CLAUDE.md indexes it; agents must not reference contracts not listed here.
 
-## Core Protocol
+## Kernel (`src/kernel/`)
 
-**`src/FigaroCore.sol`** — The protocol kernel. No owner, no fee, no escape hatches.
+The frozen settlement primitive. Never edited — see CLAUDE.md § Agent Permissions.
+
+**`src/kernel/FigaroCore.sol`** — The protocol kernel. No owner, no fee, no escape hatches.
 - 2 external functions: `commit` (unified dual-signed), `resolveProcess`
 - 3 mappings: `processes` (ProcessState), `orderStatus` (uint8), `orderProcessId` (bytes32)
 - EIP-712 dual-signed commitments; asymmetric bonding; direct transfer at resolution
 - Covered by Foundry unit tests, 7 Echidna properties (EchidnaFuzzer), 7 Halmos symbolic proofs (HalmosFigaroCore), and 4 Certora CVL specs across the protocol (FigaroCore, AttestationCoordinator, TokenOpsVerification, FlorinToken — see `docs/VERIFICATION_MAP.md` for the current per-contract verification coverage)
 
-**`src/CommitmentTypes.sol`** — EIP-712 typed structs and hash functions.
+**`src/kernel/CommitmentTypes.sol`** — EIP-712 typed structs and hash functions.
 Single `Commitment` struct for both root and sub-orders; `processId` zero for root.
 `salt` is identity (repeat orders hash distinctly); `deadline` is expiry of the
 unconsummated dual-signature window — a signature cannot be revoked (no cancel,
 by doctrine), so it must age out (`DeadlineExpired` gates commit; nothing
 expires post-commit). See `DESIGN_DECISIONS.md` §13.
 
-## Attestation & Clause
+## Registries (`src/protocol/registries/`)
 
-**`src/AttestationCoordinator.sol`** — Unified zero-storage attestation,
+The three artifact-family anchors — **parallel, not nested**. Each has its own identity scheme, evolution path, and event stream; none references another's existence.
+
+**`src/protocol/registries/ClauseRegistry.sol`** — Permissionless clause anchoring with a
+reclaimable ETH deposit (staked intent — K4).
+`clauseId` is the bare human-readable name; the on-chain dedup key is `keccak256(abi.encode(clauseId, version))` (details in CLAUSES.md). `contentHash` is keccak256 of the canonical off-chain spec JSON (integrity); `contentURI` is the pointer readers fetch it from. `contentHashOf[idHash]` stores the anchor (never cleared) — the trust anchor the batch verifier checks each proof's witness-spec binding against when the proof apparatus lands.
+`registerClause` is first-write-wins, immutable, and `payable` (requires the
+immutable `registrationDeposit`); `withdrawDeposit(idHash)` (registrar-only,
+once, no time lock) returns the stake and emits `DepositWithdrawn` — the
+binding stays permanent, but readers DE-SURFACE the clause for new
+compositions (surfacing derives from the live stake; committed agreements
+keep resolving it). Version migration = withdraw the old version's stake +
+register the new. The commits == resolves withdraw gate is protocol-surface:
+the count lives in the indexer (the same count RPGF pays on) and hardens
+on-chain when the RPGF proof apparatus returns. There is **no on-chain
+clause-content validation** — registration anchors the spec locator (IPFS) +
+content hash, and well-formedness is the off-chain Layer-A SDK's job
+(`@figaro/sdk/clauses` `validate.ts`/`encode.ts`) plus a read-time concern.
+
+Note: `figaro-topology` is an **agreement-only clause** — parties commit to
+it at contract-signing time inside the off-chain agreement, and it's
+never fired as a runtime attestation. It is *not* off-chain-only, though: the
+topology section is a merkle leaf under the on-chain `agreementHash`,
+inclusion-provable via OpenZeppelin `MerkleProof` (`buildSectionInclusionProof`
+in `agreement.ts`) — "no runtime attestation" is not "no on-chain verification".
+Its `ClauseRegistry` entry anchors the clauseId as off-chain vocabulary; the DAG
+itself is reconstructed by indexers/frontend reading topology sections from the
+signed agreement.
+
+**`src/protocol/registries/SellerRegistry.sol`** — Permissionless seller self-registration with
+reclaimable ETH deposit (staked intent — K4, no time lock). Three external
+functions: `register(metadataURI)` (sets the dedup guard, consumes the
+deposit, emits `SellerRegistered`), `updateProfile(metadataURI)` (caller-only
+metadata replacement, no deposit movement, emits `SellerProfileUpdated`), and
+`withdraw()` (returns the deposit and clears the dedup guard — allowed at any
+time; withdrawing DE-SURFACES the seller, so pollution costs deposit ×
+time-surfaced rather than calendar time). Three events: `SellerRegistered`,
+`SellerProfileUpdated`, `SellerWithdrawn`. State is dedup-only
+(`_registered: address → bool`). **No `_active` flag, no role enum, no
+`deactivate` / `reactivate`**: seller availability is signal-by-availability
+off-chain, not registry state, and a seller's role is DERIVED from the orders
+it holds and the clauses they carry — never a stored field. The deposit is a
+spam-protection knob only; profile updates do not require withdrawing. The
+kernel does not gate any operation on seller state — this registry is
+advisory metadata for off-chain discovery surfaces.
+
+**`src/protocol/registries/AssemblyRegistry.sol`** — Permissionless assembly anchoring with a
+reclaimable ETH deposit. An assembly is a composition template that USES
+clauses; this registry is the assembly artifact family's anchor, parallel to
+`ClauseRegistry` (clauses) and `SellerRegistry` (sellers) per the
+separation-of-concerns doctrine. Two external functions:
+`registerAssembly(compositionHash, contentURI)` (first-write-wins, requires the
+immutable `registrationDeposit`, emits `AssemblyRegistered`) and
+`withdrawDeposit(compositionHash)` (author-only, callable once, no time lock —
+K4: withdrawing DE-SURFACES the assembly; the commits == resolves gate is
+protocol-surface against the indexer's count, emits `DepositWithdrawn`). Identity IS the
+composition: `compositionHash` = keccak256 of the template's canonical
+composition subset (the composed agreements — clauses, values, topology;
+editorial prose excluded), so identical compositions collapse to one binding
+and no caller-chosen name exists on-chain to squat; the human-readable slug is
+presentation, derived off-chain as a pure function of the hash
+(`deriveAssemblySlug`). State is one mapping `bindings: compositionHash →
+AssemblyBinding` {author, registeredAt, depositWithdrawn, contentURI}. The
+composition binding is permanent — `withdrawDeposit` returns only the ETH and
+never clears the binding, because buyers and sellers that reference the
+assembly rely on its content staying stable; the deposit is a reclaimable
+Sybil-resistance stake, not a fee, and the surfacing readers derive
+visibility from it. No owner, no admin, no fee, no `transferAssembly`, no
+`removeAssembly`. The contract does not validate content — well-formedness is an
+off-chain (Layer-A SDK + read-time) concern, never an on-chain check. Foundry
+tests in `test/AssemblyRegistryTest.t.sol`.
+
+## Coordinators (`src/protocol/coordinators/`)
+
+Contracts that compose the kernel without becoming a party to it — the coordinator pattern (`ARCHITECTURE.md` § "Composing the kernel").
+
+**`src/protocol/coordinators/AttestationCoordinator.sol`** — Unified zero-storage attestation,
 **merkle-only**, receipt-bound to the signed `agreementHash`. Three modes:
 - `attestAsSeller(Commitment role, Commitment target, bytes32 clauseId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content)` — role + target commitments; pass the same commitment twice for same-order attestation, or distinct commitments for cross-order within a process.
 - `attestAsBuyer(Commitment target, bytes32 clauseId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content)` — caller must equal `target.buyer` (which equals rootBuyer by commit invariant).
@@ -55,50 +134,9 @@ A mechanism contract adopting it must have its seller address implement
 `IRoleResolver.isAuthorized(orderHash, caller)`; the inclusion-proof gate fires
 before the resolver check.
 
-**`src/ClauseRegistry.sol`** — Permissionless clause anchoring with a
-reclaimable ETH deposit (staked intent — K4).
-`clauseId` is the bare human-readable name; the on-chain dedup key is `keccak256(abi.encode(clauseId, version))` (details in CLAUSES.md). `contentHash` is keccak256 of the canonical off-chain spec JSON (integrity); `contentURI` is the pointer readers fetch it from. `contentHashOf[idHash]` stores the anchor (never cleared) — the trust anchor the batch verifier checks each proof's witness-spec binding against when the proof apparatus lands.
-`registerClause` is first-write-wins, immutable, and `payable` (requires the
-immutable `registrationDeposit`); `withdrawDeposit(idHash)` (registrar-only,
-once, no time lock) returns the stake and emits `DepositWithdrawn` — the
-binding stays permanent, but readers DE-SURFACE the clause for new
-compositions (surfacing derives from the live stake; committed agreements
-keep resolving it). Version migration = withdraw the old version's stake +
-register the new. The commits == resolves withdraw gate is protocol-surface:
-the count lives in the indexer (the same count RPGF pays on) and hardens
-on-chain when the RPGF proof apparatus returns. There is **no on-chain
-clause-content validation** — registration anchors the spec locator (IPFS) +
-content hash, and well-formedness is the off-chain Layer-A SDK's job
-(`@figaro/sdk/clauses` `validate.ts`/`encode.ts`) plus a read-time concern.
+**`src/protocol/coordinators/IRoleResolver.sol`** — Role-authorization interface for mechanism-delegated attestation.
 
-Note: `figaro-topology` is an **agreement-only clause** — parties commit to
-it at contract-signing time inside the off-chain agreement, and it's
-never fired as a runtime attestation. It is *not* off-chain-only, though: the
-topology section is a merkle leaf under the on-chain `agreementHash`,
-inclusion-provable via OpenZeppelin `MerkleProof` (`buildSectionInclusionProof`
-in `agreement.ts`) — "no runtime attestation" is not "no on-chain verification".
-Its `ClauseRegistry` entry anchors the clauseId as off-chain vocabulary; the DAG
-itself is reconstructed by indexers/frontend reading topology sections from the
-signed agreement.
-
-**`src/IRoleResolver.sol`** — Role-authorization interface for mechanism-delegated attestation.
-
-## Mechanism Modules
-
-**Dutch auction — DELETED 2026-07-02.** Competitive pricing was abandoned: a mid-chain order whose price or counterparty is unknown at signing is structurally incompatible with the kernel's exact-match cumulative accumulator, and the V3-style workaround (contract-as-seller + float-vault bond lending) is banned three ways. Pricing is a catalogue concern (e.g. rate × geohash distance).
-
-**Carbon-offset apparatus — DELETED 2026-07-03.** `ProcessOffsetReceipt.sol`,
-`MockOffsetAggregator.sol`, the aggregator bridge, and the
-`figaro-offset-policy` clause were removed: the deployment network (Ethereum
-Mainnet) has no live documented retirement router to compose with (Toucan is
-Polygon/Celo; Klima's aggregator is deprecated in favor of an off-network REST
-API; Moss has none), and a cross-chain retirement can't be verified from the
-process's chain without a trusted bridge. Emissions *disclosure*
-(`figaro-emissions` + attestations) survives — it never depended on a router. An
-offset re-enters, permissionlessly, as a new clause naming a mainnet router's
-interface when one exists.
-
-**`src/WitnessSwapAndCommitCoordinator.sol`** — Off-protocol executor letting a
+**`src/protocol/coordinators/WitnessSwapAndCommitCoordinator.sol`** — Off-protocol executor letting a
 buyer and/or seller post their FigaroCore bond in a token other than the process
 bond currency. One external function, `swapAndCommit(c, buyerSig, sellerSig,
 buyerFunding, sellerFunding)`: for each enabled leg it pulls the party's input
@@ -147,20 +185,11 @@ copyable exemplar of the coordinator pattern — canonical statement in
 `ARCHITECTURE.md` § "Composing the kernel". EIP-7702 and ERC-4337 variants are
 out of scope.
 
-**Multisender — composed, not owned.** Batch dispersal (one payment, many
-recipients, one transaction) is post-settlement fiscal routing: a wallet
-splits its own receipts — fiscal remittance, savings, obligations — to
-earmarked addresses, producing a self-sovereign fiscal trail as a byproduct.
-It never reads FigaroCore, bonds, or any registry, and the network already
-supplies it: mainnet composes the canonical public **Disperse** deployment
-(`0xD152f549545093347A162Dce210e7293f1452150` — verified, ownerless, live
-since 2018 at the same address across 16 chains) — fifth-noun composition,
-never a Figaro-owned duplicate. `src/mocks/MockDisperse.sol` mirrors its
-verified interface so devnet rehearses the composition; `Deploy.s.sol`
-deploys it as `NEXT_PUBLIC_MULTISENDER` (mainnet points the same variable at
-the canonical address).
+## Verifier (`src/protocol/verifier/`)
 
-**`src/FigaroBatchVerifier.sol`** — Proof-based batch settlement (the Track-2
+The proof-based settlement path that runs beside the direct kernel path (`SCALING_STRATEGY.md`).
+
+**`src/protocol/verifier/FigaroBatchVerifier.sol`** — Proof-based batch settlement (the Track-2
 scaling path, `SCALING_STRATEGY.md`; rebuilt 2026-07-16 from the pre-teardown
 prototype, upgraded to the witness model). One external function,
 `settleBatch(proof, publicValues, positions, events)`: verifies an SP1 proof of
@@ -188,66 +217,49 @@ the fallback path. Its two token-moving sites are tracked in
 `certora/token-ops.inventory` (`[PENDING]` the realigned
 `BatchVerifierTokenOps.spec` cloud run).
 
-**`src/interfaces/ISP1Verifier.sol`** — the Succinct SP1 verifier-gateway ABI
+**`src/protocol/verifier/ISP1Verifier.sol`** — the Succinct SP1 verifier-gateway ABI
 (`verifyProof(programVKey, publicValues, proof)`); devnet wires
 `MockSP1Verifier`, mainnet the canonical gateway (env `SP1_VERIFIER_GATEWAY`).
 
-**`src/SellerRegistry.sol`** — Permissionless seller self-registration with
-reclaimable ETH deposit (staked intent — K4, no time lock). Three external
-functions: `register(metadataURI)` (sets the dedup guard, consumes the
-deposit, emits `SellerRegistered`), `updateProfile(metadataURI)` (caller-only
-metadata replacement, no deposit movement, emits `SellerProfileUpdated`), and
-`withdraw()` (returns the deposit and clears the dedup guard — allowed at any
-time; withdrawing DE-SURFACES the seller, so pollution costs deposit ×
-time-surfaced rather than calendar time). Three events: `SellerRegistered`,
-`SellerProfileUpdated`, `SellerWithdrawn`. State is dedup-only
-(`_registered: address → bool`). **No `_active` flag, no role enum, no
-`deactivate` / `reactivate`**: seller availability is signal-by-availability
-off-chain, not registry state, and a seller's role is DERIVED from the orders
-it holds and the clauses they carry — never a stored field. The deposit is a
-spam-protection knob only; profile updates do not require withdrawing. The
-kernel does not gate any operation on seller state — this registry is
-advisory metadata for off-chain discovery surfaces.
-
-**`src/AssemblyRegistry.sol`** — Permissionless assembly anchoring with a
-reclaimable ETH deposit. An assembly is a composition template that USES
-clauses; this registry is the assembly artifact family's anchor, parallel to
-`ClauseRegistry` (clauses) and `SellerRegistry` (sellers) per the
-separation-of-concerns doctrine. Two external functions:
-`registerAssembly(compositionHash, contentURI)` (first-write-wins, requires the
-immutable `registrationDeposit`, emits `AssemblyRegistered`) and
-`withdrawDeposit(compositionHash)` (author-only, callable once, no time lock —
-K4: withdrawing DE-SURFACES the assembly; the commits == resolves gate is
-protocol-surface against the indexer's count, emits `DepositWithdrawn`). Identity IS the
-composition: `compositionHash` = keccak256 of the template's canonical
-composition subset (the composed agreements — clauses, values, topology;
-editorial prose excluded), so identical compositions collapse to one binding
-and no caller-chosen name exists on-chain to squat; the human-readable slug is
-presentation, derived off-chain as a pure function of the hash
-(`deriveAssemblySlug`). State is one mapping `bindings: compositionHash →
-AssemblyBinding` {author, registeredAt, depositWithdrawn, contentURI}. The
-composition binding is permanent — `withdrawDeposit` returns only the ETH and
-never clears the binding, because buyers and sellers that reference the
-assembly rely on its content staying stable; the deposit is a reclaimable
-Sybil-resistance stake, not a fee, and the surfacing readers derive
-visibility from it. No owner, no admin, no fee, no `transferAssembly`, no
-`removeAssembly`. The contract does not validate content — well-formedness is an
-off-chain (Layer-A SDK + read-time) concern, never an on-chain check. Foundry
-tests in `test/AssemblyRegistryTest.t.sol`.
-
 ## The florin (`src/florin/`)
 
-**`FlorinToken.sol`** — ERC-20 + EIP-2612 permit. 1B MAX_SUPPLY hard cap on every mint.
+**`src/florin/FlorinToken.sol`** — ERC-20 + EIP-2612 permit. 1B MAX_SUPPLY hard cap on every mint.
 Reentrancy-guarded. Minter registry with `totalRegisteredCap` (sum of all registered
 caps enforced not to exceed MAX_SUPPLY). Deployer registers capped minters, then renounces.
 
-**`IFlorinMinter.sol`** — `mint(address, uint256)` interface florin minter modules implement; `FlorinToken.registerMinter` is where implementations attach (before renounce).
+**`src/florin/IFlorinMinter.sol`** — `mint(address, uint256)` interface florin minter modules implement; `FlorinToken.registerMinter` is where implementations attach (before renounce).
 
-**`RpgfMinter.sol`** — the optimistic 600M distribution (rebuilt 2026-07-15, replacing the SP1-proof-gated, submitter-role minter removed in the teardown). Permissionless bonded `postRoot` per tranche (3 tranches; window recorded for public recompute; `formulaHash` anchors the canonical formula spec), `challenge` ALWAYS voids the posting (minting stays purely mechanical — only a root surviving its full challenge window finalizes), merkle `claim` (OZ standard-tree leaves) mints through the FlorinToken cap with a per-tranche budget backstop. Bond cases settle on a separate track: poster `disputeChallenge`s to the composed forum (`IRpgfArbitrator`) or concedes; the forum routes bonds only, never mints. No owner, no sweep, no claim expiry; pull-payment bond withdrawal.
+**Florin allocation (canonical, 1B total):**
+- **100M (10%) founders** — genesis mint, no vesting, no unlock
+- **300M (30%) DAO**       — genesis mint, no vesting, no unlock
+- **600M (60%) RPGF** — clause authors + assembly designers of record, distributed by
+  `RpgfMinter` below. The incentive rationale lives in `docs/PUBLIC_GRAPH_MODEL.md`.
 
-**`IRpgfArbitrator.sol`** — the minimal provider-agnostic forum seam (`createDispute` + a `rule` callback on the minter). The forum choice is deployment config, never protocol code.
+Deploy flow: deployer deploys `RpgfMinter`, registers it with cap 600M, registers itself
+as a one-shot genesis minter with cap 400M, mints 100M+300M to the founder/DAO wallets,
+then renounces — the minter must exist at genesis because `registerMinter` precedes
+`renounceDeployerMint`. No settlement-anchored emission.
 
-**`src/DonationRail.sol`** — the no-custody donation event surface for crowd-steered match
+## RPGF (`src/rpgf/`)
+
+The funding commons — distribution and match rounds. Pays the people who build the protocol; no buyer or seller touches it.
+
+**`src/rpgf/RpgfMinter.sol`** — the optimistic 600M distribution (rebuilt 2026-07-15, replacing the SP1-proof-gated, submitter-role minter removed in the teardown). Permissionless bonded `postRoot` per tranche (3 tranches; window recorded for public recompute; `formulaHash` anchors the canonical formula spec), `challenge` ALWAYS voids the posting (minting stays purely mechanical — only a root surviving its full challenge window finalizes), merkle `claim` (OZ standard-tree leaves) mints through the FlorinToken cap with a per-tranche budget backstop. Bond cases settle on a separate track: poster `disputeChallenge`s to the composed forum (`IRpgfArbitrator`) or concedes; the forum routes bonds only, never mints. No owner, no sweep, no claim expiry; pull-payment bond withdrawal.
+
+**`src/rpgf/IRpgfArbitrator.sol`** — the minimal provider-agnostic forum seam (`createDispute` + a `rule` callback on the minter). The forum choice is deployment config, never protocol code.
+
+**`src/rpgf/KlerosRpgfAdapter.sol`** — the Kleros composition behind the seam (built to
+Kleros's developer docs — their ERC-792 Arbitration Standard — per the 2026-07-17 operator
+instruction; re-check the docs before changing it). Translates `createDispute(caseId)` into a
+2-choice court dispute (`extraData` = opaque court-routing bytes, fixed at deployment) and the
+court's final `rule(disputeID, ruling)` back into `minter.rule(caseId, ruling)` — the 0/1/2
+ruling codes (refused/poster/challenger) align on both sides by construction. Bond cases only;
+no forum ever touches mints. Deploy order: court → adapter → minter(adapter) →
+`bindMinter(minter)` (deployer-gated one-shot, the FlorinToken registerMinter pattern). Appeals
+live on the court; parties reach them via `disputeOf(caseId)`. Mainnet composes a live Kleros
+court; devnet/testnet keep MockArbitrator directly behind the seam.
+
+**`src/rpgf/DonationRail.sol`** — the no-custody donation event surface for crowd-steered match
 rounds (the QF-venue BUILD ruling, 2026-07-17). One function: `donate(token, recipient,
 amount)` moves the donor's tokens STRAIGHT THROUGH to the recipient (strict-amount balance
 check — fee-on-transfer reverts, house rule) and emits `Donation(token, donor, recipient,
@@ -255,7 +267,7 @@ amount)` — the event stream a round's match formula consumes. There is NO reci
 registry: a round's recipient set is EMERGENT from these events; the rail holds nothing and
 gates nothing.
 
-**`src/OptimisticMatchPool.sol`** — one crowd-steered match round, optimistically settled:
+**`src/rpgf/OptimisticMatchPool.sol`** — one crowd-steered match round, optimistically settled:
 the RpgfMinter shape minus minting. One contract instance IS one round (anyone deploys,
 anyone funds by ordinary transfer — the DAO treasury is one funder among all). An anchored
 `formulaHash` names the match formula — the contract is formula-agnostic; the canonical v1
@@ -268,28 +280,6 @@ voids; bond cases settle via the SAME `IRpgfArbitrator` seam (MockArbitrator dev
 merkle claims (OZ standard-tree leaves) transfer the match out, budget-capped. No owner,
 no sweep, no claim expiry. Foundry: `test/OptimisticMatchPool.t.sol` (round end-to-end,
 challenge-voids, forum routing, budget backstop, rail strictness).
-
-**`src/florin/KlerosRpgfAdapter.sol`** — the Kleros composition behind the seam (built to
-Kleros's developer docs — their ERC-792 Arbitration Standard — per the 2026-07-17 operator
-instruction; re-check the docs before changing it). Translates `createDispute(caseId)` into a
-2-choice court dispute (`extraData` = opaque court-routing bytes, fixed at deployment) and the
-court's final `rule(disputeID, ruling)` back into `minter.rule(caseId, ruling)` — the 0/1/2
-ruling codes (refused/poster/challenger) align on both sides by construction. Bond cases only;
-no forum ever touches mints. Deploy order: court → adapter → minter(adapter) →
-`bindMinter(minter)` (deployer-gated one-shot, the FlorinToken registerMinter pattern). Appeals
-live on the court; parties reach them via `disputeOf(caseId)`. Mainnet composes a live Kleros
-court; devnet/testnet keep MockArbitrator directly behind the seam.
-
-**Florin allocation (canonical, 1B total):**
-- **100M (10%) founders** — genesis mint, no vesting, no unlock
-- **300M (30%) DAO**       — genesis mint, no vesting, no unlock
-- **600M (60%) RPGF** — clause authors + assembly designers of record, distributed by
-  `RpgfMinter` above. The incentive rationale lives in `docs/PUBLIC_GRAPH_MODEL.md`.
-
-Deploy flow: deployer deploys `RpgfMinter`, registers it with cap 600M, registers itself
-as a one-shot genesis minter with cap 400M, mints 100M+300M to the founder/DAO wallets,
-then renounces — the minter must exist at genesis because `registerMinter` precedes
-`renounceDeployerMint`. No settlement-anchored emission.
 
 ## Test / Mock Contracts
 
@@ -306,6 +296,32 @@ then renounces — the minter must exist at genesis because `registerMinter` pre
 - `src/echidna/EchidnaFuzzer.sol`, `EchidnaFlorinToken.sol`, `EchidnaToken.sol`
 
 ## What Does NOT Exist
+
+**Dutch auction — DELETED 2026-07-02.** Competitive pricing was abandoned: a mid-chain order whose price or counterparty is unknown at signing is structurally incompatible with the kernel's exact-match cumulative accumulator, and the V3-style workaround (contract-as-seller + float-vault bond lending) is banned three ways. Pricing is a catalogue concern (e.g. rate × geohash distance).
+
+**Carbon-offset apparatus — DELETED 2026-07-03.** `ProcessOffsetReceipt.sol`,
+`MockOffsetAggregator.sol`, the aggregator bridge, and the
+`figaro-offset-policy` clause were removed: the deployment network (Ethereum
+Mainnet) has no live documented retirement router to compose with (Toucan is
+Polygon/Celo; Klima's aggregator is deprecated in favor of an off-network REST
+API; Moss has none), and a cross-chain retirement can't be verified from the
+process's chain without a trusted bridge. Emissions *disclosure*
+(`figaro-emissions` + attestations) survives — it never depended on a router. An
+offset re-enters, permissionlessly, as a new clause naming a mainnet router's
+interface when one exists.
+
+**Multisender — composed, not owned.** Batch dispersal (one payment, many
+recipients, one transaction) is post-settlement fiscal routing: a wallet
+splits its own receipts — fiscal remittance, savings, obligations — to
+earmarked addresses, producing a self-sovereign fiscal trail as a byproduct.
+It never reads FigaroCore, bonds, or any registry, and the network already
+supplies it: mainnet composes the canonical public **Disperse** deployment
+(`0xD152f549545093347A162Dce210e7293f1452150` — verified, ownerless, live
+since 2018 at the same address across 16 chains) — fifth-noun composition,
+never a Figaro-owned duplicate. `src/mocks/MockDisperse.sol` mirrors its
+verified interface so devnet rehearses the composition; `Deploy.s.sol`
+deploys it as `NEXT_PUBLIC_MULTISENDER` (mainnet points the same variable at
+the canonical address).
 
 **Per-clause validator contracts — permanently.** The 17 `src/clauseValidators/*`
 validators, `IClauseValidator.sol`, `MockClauseValidator.sol`,

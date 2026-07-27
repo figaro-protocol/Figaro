@@ -76,8 +76,8 @@ fi
 # deliberate edit, mirroring MIRROR_DENYLIST. SCALING_STRATEGY.md is excluded
 # wholesale: its charter is describing the removed batch-scaling prototype.
 HISTORICAL_ALLOW=(
-    "src/interfaces/ISP1Verifier.sol"
-    "src/florin/RpgfMinter.sol"
+    "src/protocol/verifier/ISP1Verifier.sol"
+    "src/rpgf/RpgfMinter.sol"
     "frontend/scripts/seed-devnet.mjs"
 )
 

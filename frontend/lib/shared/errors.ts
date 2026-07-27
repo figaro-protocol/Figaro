@@ -2,7 +2,7 @@ import { BaseError, ContractFunctionRevertedError } from "viem";
 
 /**
  * Map a FigaroCore error name to a user-facing message. 1:1 with
- * `src/FigaroCore.sol:64-79` — keep aligned when the kernel error set
+ * `src/kernel/FigaroCore.sol:64-79` — keep aligned when the kernel error set
  * changes (the kernel is frozen, so changes are rare).
  */
 const FIGARO_ERROR_MESSAGES: Readonly<Record<string, string>> = {

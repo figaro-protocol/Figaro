@@ -2,8 +2,8 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import {DonationRail} from "src/DonationRail.sol";
-import {OptimisticMatchPool} from "src/OptimisticMatchPool.sol";
+import {DonationRail} from "src/rpgf/DonationRail.sol";
+import {OptimisticMatchPool} from "src/rpgf/OptimisticMatchPool.sol";
 import {MockERC20} from "src/mocks/MockERC20.sol";
 import {MockERC20FeeOnTransfer} from "src/mocks/MockERC20FeeOnTransfer.sol";
 import {MockArbitrator} from "src/mocks/MockArbitrator.sol";

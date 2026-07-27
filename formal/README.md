@@ -91,7 +91,7 @@ The TLA+ spec mirrors the two external functions of `FigaroCore.sol`:
 
 A resolved process is terminal in the model AND in the contract: `commit()`
 reverts `ProcessAlreadyResolved` on a sub-order naming a resolved process
-(`src/FigaroCore.sol` — the `activeOrderCount == 0` gate), so the model's
+(`src/kernel/FigaroCore.sol` — the `activeOrderCount == 0` gate), so the model's
 single-resolution-per-process shape is a faithful mirror, not an abstraction.
 
 ### Bond Math

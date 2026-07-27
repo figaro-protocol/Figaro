@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {CommitmentTypes} from "./CommitmentTypes.sol";
+import {CommitmentTypes} from "src/kernel/CommitmentTypes.sol";
 
 /// @notice Minimal FigaroCore surface the coordinator calls. Local-minimal
 ///         binding, per the coordinator exemplar (ARCHITECTURE.md § "Composing

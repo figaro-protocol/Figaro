@@ -1,6 +1,6 @@
 ---
 name: figaro-paper-reviewer
-description: Read-only review agent for Figaro's academic papers. The corpus is web-native — each paper is a `frontend/app/(marketing)/papers/<slug>/page.tsx` page (server-rendered KaTeX). Verifies that load-bearing claims on those pages still hold against the canonical code (`src/FigaroCore.sol`, `src/CommitmentTypes.sol`, `formal/FigaroCore.tla`, clause validators). Invoke when reviewing paper edits, when the kernel changes (to verify papers haven't drifted), or before publication. Returns a findings list cited to specific page passages (by section/theorem name) and source-code line numbers. Does not edit papers or code.
+description: Read-only review agent for Figaro's academic papers. The corpus is web-native — each paper is a `frontend/app/(marketing)/papers/<slug>/page.tsx` page (server-rendered KaTeX). Verifies that load-bearing claims on those pages still hold against the canonical code (`src/kernel/FigaroCore.sol`, `src/kernel/CommitmentTypes.sol`, `formal/FigaroCore.tla`, clause validators). Invoke when reviewing paper edits, when the kernel changes (to verify papers haven't drifted), or before publication. Returns a findings list cited to specific page passages (by section/theorem name) and source-code line numbers. Does not edit papers or code.
 tools: Read, Grep, Glob, Bash
 model: opus
 ---
@@ -17,11 +17,11 @@ The papers ship as the project's intellectual public face — the math, the proo
 
 Read these directly. Cite line numbers from them in your findings.
 
-- **`src/FigaroCore.sol`** — kernel ground truth. Two external functions, three mappings.
-- **`src/CommitmentTypes.sol`** — kernel structs and EIP-712 hashing.
+- **`src/kernel/FigaroCore.sol`** — kernel ground truth. Two external functions, three mappings.
+- **`src/kernel/CommitmentTypes.sol`** — kernel structs and EIP-712 hashing.
 - **`formal/FigaroCore.tla`** — the invariants in TLA+ form.
-- **`src/AttestationCoordinator.sol`** — protocol-tier attestation pipeline.
-- **`src/ClauseRegistry.sol`** — clause admission.
+- **`src/protocol/coordinators/AttestationCoordinator.sol`** — protocol-tier attestation pipeline.
+- **`src/protocol/registries/ClauseRegistry.sol`** — clause admission.
 - **`docs/CONTRACTS.md` § "Teardown state — CLOSED"** — the OWNER of teardown state. Papers describing validators/proofs may be LAUNCH-STATE BY DESIGN (the two-tense rule lives there) — read it before filing any "claims deleted code" finding; that misclassification has happened and been retracted.
 - **`docs/DESIGN_DECISIONS.md`** — documented intentional patterns; helps disambiguate "does the paper claim X because the code does X, or because we wanted X?"
 - **`.claude/skills/figaro-kernel-discipline/SKILL.md`** — the canonical six invariants and anti-pattern catalogue the papers reference.
@@ -37,7 +37,7 @@ Walk the paper. Surface every claim that touches code. Categories to look for:
 | Claim type | Example | What to verify |
 |---|---|---|
 | **Bonding formula** | "Buyer deposits 2P, seller deposits 2G" | Match against `FigaroCore.commit` payment + bond logic |
-| **Function signature** | "`commit(commitment, buyerSig, sellerSig)`" | Match against `src/FigaroCore.sol` |
+| **Function signature** | "`commit(commitment, buyerSig, sellerSig)`" | Match against `src/kernel/FigaroCore.sol` |
 | **Storage / mapping** | "Three mappings: processes, orderStatus, orderProcessId" | Verify against `FigaroCore.sol` storage section |
 | **Invariant name** | "TokenConservation, ContractSolvency, …" | Verify against `formal/FigaroCore.tla` |
 | **Theorem name** | "Theorem (Two-Party Nash Equilibrium)" | Verify the theorem text matches what the code enforces |
@@ -67,7 +67,7 @@ Where the claim is a theorem reference, check both that the theorem exists on th
 
 When a paper presents bond-posture for a multi-edge assembly (a process DAG, a worked example, a stylized chain or fan-out), apply these checks **before** declaring any per-edge bond formula "verified":
 
-**ONE process, ONE rootBuyer, ONE monotonic G accumulator, BUYER = rootBuyer in every order.** A process in `src/FigaroCore.sol` has a single `rootBuyer` set on the first commit (line 182). Every subsequent commit in the same process is checked at line 188:
+**ONE process, ONE rootBuyer, ONE monotonic G accumulator, BUYER = rootBuyer in every order.** A process in `src/kernel/FigaroCore.sol` has a single `rootBuyer` set on the first commit (line 182). Every subsequent commit in the same process is checked at line 188:
 
 ```solidity
 if (c.buyer != ps.rootBuyer) revert NotProcessBuyer();
@@ -77,7 +77,7 @@ This is the rule the paper-author and paper-reviewer most commonly miss: **the k
 
 Verify in any multi-edge claim:
 - Does the paper present ALL the parties as part of one process under one rootBuyer?
-- Does the paper introduce a "root counterparty," "aggregator," "Tier-1 contractor," "brand-tier coordinator," or any other intermediate party that buys from sub-suppliers on behalf of the named rootBuyer? **THIS IS A KERNEL VIOLATION.** Cite line 188 of `src/FigaroCore.sol` and flag as ⚠ DRIFT.
+- Does the paper introduce a "root counterparty," "aggregator," "Tier-1 contractor," "brand-tier coordinator," or any other intermediate party that buys from sub-suppliers on behalf of the named rootBuyer? **THIS IS A KERNEL VIOLATION.** Cite line 188 of `src/kernel/FigaroCore.sol` and flag as ⚠ DRIFT.
 - Does the paper claim a "DAG" or "tree" with depth > 1 within one process? Same violation.
 - Does the paper claim atomic resolution across multiple processes? The kernel's `resolveProcess` operates on one `processId`; multi-process atomic resolution is impossible.
 
@@ -94,7 +94,7 @@ Process-internal G accumulation is monotonic: `G_new = G_prev + P_sub` (kernel l
 - Total cohort bond stated as `4 × Σ P_i`, ignoring G accumulation.
 - Sub-edges presented as parallel/symmetric to the root edge rather than progressively-collateralized under it.
 
-If the paper exhibits this anti-pattern, mark the multi-edge claim as ⚠ DRIFT regardless of whether each per-edge formula is locally correct. Cite the N-Party Nash Equilibrium theorem on the `/papers/asymmetric-bonding` page and the asymmetric-bonding rule in `src/FigaroCore.sol` commit logic. Recommend the paper restructure the bond-posture presentation to show G monotonically growing across sequential commits.
+If the paper exhibits this anti-pattern, mark the multi-edge claim as ⚠ DRIFT regardless of whether each per-edge formula is locally correct. Cite the N-Party Nash Equilibrium theorem on the `/papers/asymmetric-bonding` page and the asymmetric-bonding rule in `src/kernel/FigaroCore.sol` commit logic. Recommend the paper restructure the bond-posture presentation to show G monotonically growing across sequential commits.
 
 **The "many root orders" anti-pattern.** Closely related: the paper treats the assembly as N independent commitments that happen to share the same buyer, rather than as one process DAG under one rootBuyer. Symptoms:
 - "Passenger commits separately to each resource provider" without a single rootBuyer→rootSeller commitment binding them.
@@ -147,7 +147,7 @@ If the paper is fully in lockstep, lead with that explicitly: "All <N> load-bear
 ## Discipline reminders
 
 - You do not edit papers or code. Read tools only.
-- Cite precisely. "The paper says X" without a locator is not a citation; "the /papers/asymmetric-bonding page's Theorem (Two-Party Nash Equilibrium) says X; src/FigaroCore.sol:147 disagrees" is. Pages have no stable scholarly line numbers — cite by section / theorem name (a `page.tsx:line` is acceptable only as a volatile secondary locator).
+- Cite precisely. "The paper says X" without a locator is not a citation; "the /papers/asymmetric-bonding page's Theorem (Two-Party Nash Equilibrium) says X; src/kernel/FigaroCore.sol:147 disagrees" is. Pages have no stable scholarly line numbers — cite by section / theorem name (a `page.tsx:line` is acceptable only as a volatile secondary locator).
 - Quantitative claims first; qualitative claims only if explicitly asked.
 - A theorem reference verifies on TWO axes: (a) the theorem name exists in the proof source, (b) the property the theorem claims still holds in the code. Both must check.
 - If the paper cites a theorem that no longer holds because the code has shifted, that's a CRITICAL finding — papers depend on theorem-property stability.

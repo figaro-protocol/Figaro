@@ -2,8 +2,8 @@
 pragma solidity 0.8.26;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {FigaroCore} from "../FigaroCore.sol";
-import {CommitmentTypes} from "../CommitmentTypes.sol";
+import {FigaroCore} from "src/kernel/FigaroCore.sol";
+import {CommitmentTypes} from "src/kernel/CommitmentTypes.sol";
 import {EchidnaToken} from "./EchidnaToken.sol";
 
 // ── HEVM cheatcodes (Echidna 2.0+ / Foundry) ────────────────────────

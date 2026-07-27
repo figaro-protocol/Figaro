@@ -2,8 +2,8 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import "../src/FigaroCore.sol";
-import "../src/CommitmentTypes.sol";
+import "../src/kernel/FigaroCore.sol";
+import "../src/kernel/CommitmentTypes.sol";
 import "../src/mocks/MockPermitToken.sol";
 
 /// @title GasCeilingTest — resolveProcess per-order gas regression guard

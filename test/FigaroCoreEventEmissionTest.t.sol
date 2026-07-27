@@ -3,8 +3,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "../src/FigaroCore.sol";
-import "../src/CommitmentTypes.sol";
+import "../src/kernel/FigaroCore.sol";
+import "../src/kernel/CommitmentTypes.sol";
 import "../src/mocks/MockPermitToken.sol";
 
 /// @title FigaroCore_EventEmission — Slim events, no derivable data

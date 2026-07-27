@@ -115,12 +115,12 @@ for file in "$@"; do
     # 'off-chain agreement' / 'pinned content' / 'sealed payload'. Carve-outs:
     # Cargo's own names (CARGO_MANIFEST_DIR / --manifest-path), the English VERB
     # (manifestation / will|would manifest), and the FROZEN kernel
-    # (src/FigaroCore.sol keeps its original comments untouched).
+    # (src/kernel/FigaroCore.sol keeps its original comments untouched).
     check "$file" FAIL "category-1\\b|category-2\\b|manifest-only|manifestOnly" \
         '(^|/)docs/LEXICON\.md$' "" \
         "retired clause tier: block.tier is dead — clauses are uniformly merkle-committed; lifecycle (agreement-only vs runtime-attested) is derived in code, not a stored tier."
     check "$file" FAIL "\\bmanifest" \
-        '(^|/)(docs/LEXICON\.md|src/FigaroCore\.sol)$' \
+        '(^|/)(docs/LEXICON\.md|src/kernel/FigaroCore\.sol)$' \
         'CARGO_MANIFEST|--manifest-path|manifestation|will manifest|would manifest' \
         "retired: 'manifest' is dead — use 'off-chain agreement' / 'pinned content' / 'sealed payload'."
 

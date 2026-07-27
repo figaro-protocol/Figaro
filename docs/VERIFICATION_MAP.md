@@ -22,7 +22,7 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 
 ### In-scope (this document)
 
-- **Kernel**: `src/FigaroCore.sol` — 2 external functions, 3 mappings, no owner, no fee
+- **Kernel**: `src/kernel/FigaroCore.sol` — 2 external functions, 3 mappings, no owner, no fee
 - **Protocol compositions**: `AttestationCoordinator`, `ClauseRegistry`, `SellerRegistry`, `AssemblyRegistry`, `WitnessSwapAndCommitCoordinator`
 - **Florin ecosystem**: `FlorinToken` (`IFlorinMinter` interface; no implementation wired)
 - **Formal model**: `formal/FigaroCore.tla`, `formal/MC.tla`, `formal/MC.cfg`
@@ -123,14 +123,14 @@ This section tracks features that are not protocol invariants but are significan
 | **Kleros dispute / evidence** | `frontend/lib/audit/` + `frontend/lib/semantic/processRecourse.ts` | — (frontend-local; SDK carries no Kleros helpers) | `/builders` → Kleros integration | `/evidence-display` (full rendering for jurors) | — |
 | **Agent SDK** | `sdk/` (root + `/agent`, `/derive`, `/clauses`) | Self-referential (`npx vitest run` in `sdk/` is the census) | `/builders` → Agent SDK section | — | — |
 | **Semantic derivation** | `frontend/lib/semantic/` | — | `/builders` → How the runtime renders institutions | `TopologyCanvas` in the design canvas (`/builders/designer/*`); `CapabilityRail` + `RecoursePanel` at runtime | — |
-| **Institution assembly** | `frontend/lib/designer/`; `src/AssemblyRegistry.sol` | — | `/builders` → Level 1 assembly config; `/local-commerce` → "Fork Local Commerce" | `/builders/designer/new`, `/builders/designer/edit?slug=<slug>`, `/builders/designer/view?slug=<slug>` | — |
+| **Institution assembly** | `frontend/lib/designer/`; `src/protocol/registries/AssemblyRegistry.sol` | — | `/builders` → Level 1 assembly config; `/local-commerce` → "Fork Local Commerce" | `/builders/designer/new`, `/builders/designer/edit?slug=<slug>`, `/builders/designer/view?slug=<slug>` | — |
 | **Agreement publication** | `frontend/lib/kernel/agreementFetch.ts`, `@figaro/sdk` `projection.ts` | — | `/builders` → Agreement publication | — | — |
 | **Commerce checkout** | `frontend/lib/checkout/` | — | — | `CartModule` (interactive) | — |
 | **Process topology** | `frontend/lib/semantic/processTopology.ts` | SDK: `reconstruct()`, `Topology` | `/builders` → Composability (the graph above the kernel) | `TopologyCanvas` (`/builders/designer/new`, `/builders/designer/view?slug=<slug>`) | — |
 | **Bond math** | `sdk/src/bonds.ts` | SDK: `calculateBonds`, `calculateSettlement` | `/builders` → bond math formulas | checkout/order surfaces render via the SDK (the dedicated `BondCalculator` component was deleted) | — |
 | **EIP-2612 permit** | removed (permit path deleted 2026-07-02; frontend limbs buried 2026-07-17; approve-only) | — | — | — | — |
-| **Single-currency binding** | `src/FigaroCore.sol` | — | `/builders` → Composability → Single-Currency Binding | — | — |
-| **Fee-on-transfer rejection** | `src/FigaroCore.sol` `_pullExact()` | — | `/builders` → Composability → Fee-on-Transfer Guard | — | — |
+| **Single-currency binding** | `src/kernel/FigaroCore.sol` | — | `/builders` → Composability → Single-Currency Binding | — | — |
+| **Fee-on-transfer rejection** | `src/kernel/FigaroCore.sol` `_pullExact()` | — | `/builders` → Composability → Fee-on-Transfer Guard | — | — |
 
 ---
 

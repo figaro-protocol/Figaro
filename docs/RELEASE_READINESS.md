@@ -75,7 +75,7 @@ Required output:
 
 ### Task 4: AssemblyRegistry Mainnet-Parity Decision
 
-`src/AssemblyRegistry.sol` exists and is deployed by `script/Deploy.s.sol:167` (devnet), but `script/DeployMainnet.s.sol` does not import or deploy it. The CLAUDE.md doctrine and the separation-of-concerns rule treat `AssemblyRegistry` as a protocol-tier artifact-family anchor parallel to `ClauseRegistry` / `SellerRegistry`. The devnet/mainnet asymmetry is currently undocumented.
+`src/protocol/registries/AssemblyRegistry.sol` exists and is deployed by `script/Deploy.s.sol:167` (devnet), but `script/DeployMainnet.s.sol` does not import or deploy it. The CLAUDE.md doctrine and the separation-of-concerns rule treat `AssemblyRegistry` as a protocol-tier artifact-family anchor parallel to `ClauseRegistry` / `SellerRegistry`. The devnet/mainnet asymmetry is currently undocumented.
 
 Required output (one of):
 

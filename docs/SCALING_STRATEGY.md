@@ -113,7 +113,7 @@ attest-buyer + resolve) with the k256 SP1 precompile patched in
 (`prover/Cargo.toml`); a real Core proof of that batch generates and
 verifies locally.
 
-**On-chain verifier** (`src/FigaroBatchVerifier.sol`): Accepts SP1 proofs,
+**On-chain verifier** (`src/protocol/verifier/FigaroBatchVerifier.sol`): Accepts SP1 proofs,
 verifies state root continuity and chain binding, hash-verifies auxiliary
 data (positions, attestation events, clause events, seller events),
 executes net token transfers, and re-emits protocol-compatible events.
@@ -124,7 +124,7 @@ Uses `BatchEventData` struct to avoid stack-too-deep.
 **Mock verifier** (`src/mocks/MockSP1Verifier.sol`): Accepts any proof
 for devnet/Anvil testing. Drop-in replacement for the real SP1 gateway.
 
-**SP1 verifier interface** (`src/interfaces/ISP1Verifier.sol`): Matches
+**SP1 verifier interface** (`src/protocol/verifier/ISP1Verifier.sol`): Matches
 the Succinct SP1 verifier gateway ABI.
 
 ### What The Proof Must Verify
