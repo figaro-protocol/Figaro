@@ -49,10 +49,9 @@ type DeploymentConfig = {
     sellerRegistry?: `0x${string}`;
     assemblyRegistry?: `0x${string}`;
     florinToken?: `0x${string}`;
+    usageCounter?: `0x${string}`;
     rpgfMinter?: `0x${string}`;
-    rpgfArbitrator?: `0x${string}`;
     daoTreasury?: `0x${string}`;
-    donationRail?: `0x${string}`;
 };
 
 export function readLocalDeploymentConfig(): DeploymentConfig {
@@ -81,10 +80,9 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
             if (key === 'NEXT_PUBLIC_SELLER_REGISTRY') config.sellerRegistry = value;
             if (key === 'NEXT_PUBLIC_ASSEMBLY_REGISTRY') config.assemblyRegistry = value;
             if (key === 'NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS') config.florinToken = value;
+            if (key === 'NEXT_PUBLIC_USAGE_COUNTER') config.usageCounter = value;
             if (key === 'NEXT_PUBLIC_RPGF_MINTER') config.rpgfMinter = value;
-            if (key === 'NEXT_PUBLIC_RPGF_ARBITRATOR') config.rpgfArbitrator = value;
             if (key === 'NEXT_PUBLIC_DAO_TREASURY') config.daoTreasury = value;
-            if (key === 'NEXT_PUBLIC_DONATION_RAIL') config.donationRail = value;
         }
     }
 

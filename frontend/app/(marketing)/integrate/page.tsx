@@ -170,11 +170,10 @@ for (const [processId, process] of processes) {
   "sellerRegistry": "0x…",
   "assemblyRegistry": "0x…",
   "florinToken": "0x…",
+  "usageCounter": "0x…",
   "rpgfMinter": "0x…",
   "batchVerifier": "0x…",
-  "rpgfArbitrator": "0x…",
   "daoTreasury": "0x…",
-  "donationRail": "0x…",
   "multisender": "0x…"
 }`}</code>
                 </pre>
@@ -188,17 +187,14 @@ for (const [processId, process] of processes) {
                     <LabelledListRow label="witnessSwapAndCommitCoordinator" labelWidth="wide">
                         Off-protocol swap-and-commit: swaps a permit-signed input token into the settlement currency and commits in one transaction, so a buyer can bond in a token the process isn&apos;t denominated in. Pairs with <code>permit2</code> (the witness-permit layer) and <code>swapRouter</code> (the swap venue) &mdash; devnet mocks; mainnet the canonical Permit2 + Uniswap Universal Router.
                     </LabelledListRow>
-                    <LabelledListRow label="rpgfMinter · rpgfArbitrator" labelWidth="wide">
-                        The optimistic RPGF distribution (<code>rpgfMinter</code>) and the composed bond-settlement forum it routes challenges to (<code>rpgfArbitrator</code>, behind the <code>IRpgfArbitrator</code> seam; devnet <code>MockArbitrator</code>).
+                    <LabelledListRow label="usageCounter · rpgfMinter" labelWidth="wide">
+                        <code>UsageCounter</code> counts a settled process&apos;s use of a clause or assembly at the moment it happens: <code>recordUsage</code> is permissionless and verifies for itself that the order resolved and that the artifact was merkle-committed in the signed <code>agreementHash</code>, so nothing about the caller is trusted. Accrual buckets into fixed periods and a period&apos;s counts are final once it ends. <code>RpgfMinter</code> pays each tranche pro rata from its closed period. Nothing is posted, bonded, or challenged, so there is no forum to wire.
                     </LabelledListRow>
                     <LabelledListRow label="batchVerifier" labelWidth="wide">
                         <code>FigaroBatchVerifier</code> &mdash; the proof-based batch settlement path (SP1 validity proof + the <code>ClauseRegistry</code>-anchored content check). Not a florin minter.
                     </LabelledListRow>
                     <LabelledListRow label="daoTreasury" labelWidth="wide">
                         Holds the DAO&apos;s genesis florin allocation (a multisig / Safe). It never signs kernel commitments &mdash; it buys through a funded operator EOA, because the kernel is ECDSA-only.
-                    </LabelledListRow>
-                    <LabelledListRow label="donationRail" labelWidth="wide">
-                        The no-custody donation surface for match rounds &mdash; <code>donate</code> moves tokens straight through to the recipient and emits the one event a match formula consumes; the rail holds nothing.
                     </LabelledListRow>
                     <LabelledListRow label="multisender" labelWidth="wide">
                         Composed post-settlement batch dispersal (one payment, many recipients, one transaction). Mainnet composes the canonical ownerless Disperse (<code>0xD152f549545093347A162Dce210e7293f1452150</code>, same address across chains); devnet mirrors it with <code>MockDisperse</code>.

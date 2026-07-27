@@ -1,53 +1,41 @@
 "use client";
 
 /**
- * RewardsView — the optimistic RPGF minter's runtime surface at `/rewards`.
- * Every act is PERMISSIONLESS network participation, not an admin panel:
- * anyone recomputes a tranche's payout from public chain events (the SDK's
- * reference implementation of the anchored formula), posts the root under a
- * bond, challenges a wrong one (a challenge always voids — minting stays
- * purely mechanical), finalizes an unchallenged one, and claims a finalized
- * allocation. The marketing telling lives at /clause-rewards; this page is
- * the doing surface.
+ * RewardsView — the RPGF minter's runtime surface at `/rewards`. Not an admin
+ * panel and not an application form: usage is COUNTED ON CHAIN as it happens
+ * (a settled order, the artifact proven present in the agreement both parties
+ * signed), a period's counts stop moving the moment it ends, and the wallet
+ * then claims its artifacts' pro-rata share of that period's tranche — capped
+ * at 15%. There is nothing to post, bond, challenge or adjudicate. The
+ * marketing telling lives at /clause-rewards; this page is the doing surface.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
-import { formatEther, formatUnits } from "viem";
+import { formatUnits } from "viem";
 import { FLORIN_TOKEN_ABI } from "@figaro/sdk";
 import { Button } from "@/components/ui/Button";
 import { WalletGate } from "@/components/runtime/WalletGate";
 import { useMounted } from "@/hooks/useMounted";
-import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { useRpgfRewards, type RpgfTrancheState } from "@/lib/composition/useRpgfRewards";
-import { bondCaseRulingLabel, deriveBondCasePhase } from "@/lib/composition/bondCases";
-import { getRpgfArbitrator } from "@/lib/composition/contracts";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { hexEqual } from "@/lib/shared/evm";
-import { truncateHex } from "@/lib/shared/formatHex";
-import { useEffect } from "react";
 
-function trancheStatus(t: RpgfTrancheState, nowSeconds: number): string {
-    if (t.finalized) return "finalized";
-    if (t.posting) return "posted";
-    if (BigInt(nowSeconds) < t.earliestPost) return "not yet open";
-    return "open";
+/** The tranche's phase, DERIVED from chain state — never stored. */
+function trancheStatus(t: RpgfTrancheState): string {
+    if (t.claimed) return "claimed";
+    if (!t.periodClosed) return "accruing";
+    return "claimable";
 }
 
 export function RewardsView() {
     const mounted = useMounted();
-    // Warm the spec cache: the recompute classifies clauses by their
-    // contentHash-verified specs (chain → IPFS), never a bundled list. The
-    // post action gates on `loaded` — a cold-cache recompute would classify
-    // every clause null and post a wrong (empty) root.
-    const specs = useClauseSpecs();
     const rewards = useRpgfRewards();
     const { address: account } = useAccount();
     const publicClient = usePublicClient();
     const [busy, setBusy] = useState<string | null>(null);
     const [error, setError] = useState("");
-    const [florinBalance, setFigBalance] = useState<bigint | null>(null);
+    const [florinBalance, setFlorinBalance] = useState<bigint | null>(null);
 
     useEffect(() => {
         if (!publicClient || !account || !CONTRACTS.florinToken) return;
@@ -60,7 +48,7 @@ export function RewardsView() {
                 args: [account],
             })
             .then((v) => {
-                if (!cancelled) setFigBalance(v as bigint);
+                if (!cancelled) setFlorinBalance(v as bigint);
             })
             .catch(() => {});
         return () => {
@@ -82,17 +70,17 @@ export function RewardsView() {
         }
     };
 
-    const nowSeconds = Math.floor(Date.now() / 1000);
-
     return (
         <section className="container mx-auto px-6 pt-24 pb-16 max-w-3xl" data-testid="rewards-page">
             <h1 className="text-heading-h1 text-ink-heading mb-3">Rewards</h1>
             <p className="text-base text-ink-body leading-relaxed mb-8">
-                The 600M florins reserved for clause authors and assembly designers of record,
-                distributed optimistically: anyone recomputes a tranche&apos;s payout from public
-                chain events and posts it under a bond; a challenge voids the posting; only a
-                root that survives its full challenge window unchallenged mints. The formula is
-                anchored on-chain and fixed — no committee, no application.
+                The 600M florins reserved for clause authors and assembly designers of record.
+                Usage is counted on chain as it happens — a settled process, the artifact proven
+                present in the agreement both parties signed — and buckets into fixed periods.
+                Once a period ends its counts are final, and each author claims their artifacts&apos;
+                share of that period&apos;s tranche: their score over the period&apos;s total, capped
+                per wallet{rewards.capPercent > 0 ? ` at ${rewards.capPercent}%` : ""}. Nothing is
+                posted, bonded, or disputed; there is no committee and no application.
             </p>
 
             {!rewards.available && (
@@ -101,7 +89,7 @@ export function RewardsView() {
                 </p>
             )}
 
-            <WalletGate hint="Connect a wallet to recompute, post, challenge, finalize, or claim.">
+            <WalletGate hint="Connect a wallet to read your accrual and claim a closed tranche.">
                 {account && florinBalance !== null && (
                     <p className="text-sm text-ink-muted mb-6" data-testid="florin-balance">
                         Your florin balance: <span className="font-mono">{formatUnits(florinBalance, 18)}</span>
@@ -110,7 +98,7 @@ export function RewardsView() {
 
                 <div className="space-y-6">
                     {rewards.tranches.map((t) => {
-                        const status = trancheStatus(t, nowSeconds);
+                        const status = trancheStatus(t);
                         return (
                             <div
                                 key={t.trancheId}
@@ -125,158 +113,63 @@ export function RewardsView() {
                                         {status}
                                     </span>
                                 </div>
-                                {t.posting && (
-                                    <p className="text-sm text-ink-muted mb-3 font-mono break-all" data-testid={`tranche-posted-root-${t.trancheId}`}>
-                                        posted root {t.posting.root} (window → block {t.posting.toBlock.toString()})
+                                <p className="text-sm text-ink-muted mb-1" data-testid={`tranche-total-score-${t.trancheId}`}>
+                                    period score across all artifacts:{" "}
+                                    <span className="font-mono">{t.totalScore.toString()}</span> · minted so far{" "}
+                                    {formatUnits(t.minted, 18)} FLORIN · per-wallet ceiling {formatUnits(t.cap, 18)} FLORIN
+                                </p>
+                                {t.accruals.length > 0 && (
+                                    <div className="mt-3 mb-3" data-testid={`tranche-accruals-${t.trancheId}`}>
+                                        <p className="text-sm text-ink-body mb-1">
+                                            Your artifacts in this period (score{" "}
+                                            <span className="font-mono">{t.myScore.toString()}</span>):
+                                        </p>
+                                        <ul className="text-sm text-ink-muted space-y-1">
+                                            {t.accruals.map((a) => (
+                                                <li key={a.artifact} className="font-mono break-all">
+                                                    {a.label} — {a.c.toString()} settled process
+                                                    {a.c === 1n ? "" : "es"}, {a.d.toString()} distinct pair
+                                                    {a.d === 1n ? "" : "s"}, score {a.score.toString()}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                                {account && t.accruals.length === 0 && (
+                                    <p className="text-sm text-ink-muted mb-3" data-testid={`tranche-no-accrual-${t.trancheId}`}>
+                                        Nothing you authored has carried trade in this period yet.
                                     </p>
                                 )}
-                                {t.finalized && (
-                                    <p className="text-sm text-ink-muted mb-3 font-mono break-all">
-                                        finalized root {t.root} · minted {formatUnits(t.minted, 18)} FLORIN
+                                {t.periodClosed && !t.claimed && t.claimable > 0n && (
+                                    <p className="text-sm text-ink-body mb-3" data-testid={`tranche-claimable-${t.trancheId}`}>
+                                        Claimable: <span className="font-mono">{formatUnits(t.claimable, 18)}</span> FLORIN
                                     </p>
                                 )}
                                 <div className="flex flex-wrap gap-3">
-                                    {status === "open" && (
-                                        <Button
-                                            data-testid={`post-root-${t.trancheId}`}
-                                            disabled={busy !== null || !specs.loaded}
-                                            onClick={() => act("post", () => rewards.postRoot(t))}
-                                        >
-                                            {busy === "post"
-                                                ? "Computing + posting…"
-                                                : specs.loaded
-                                                    ? `Compute + post root (${formatEther(rewards.bondWei)} ETH bond)`
-                                                    : "Loading clause specs…"}
-                                        </Button>
+                                    {!t.periodClosed && (
+                                        <p className="text-sm text-ink-muted" data-testid={`tranche-accruing-${t.trancheId}`}>
+                                            Still accruing — this tranche opens for claims when its period ends.
+                                        </p>
                                     )}
-                                    {status === "posted" && (
-                                        <>
-                                            <Button
-                                                data-testid={`challenge-${t.trancheId}`}
-                                                variant="secondary"
-                                                disabled={busy !== null}
-                                                onClick={() => act("challenge", () => rewards.challenge(t.trancheId))}
-                                            >
-                                                {busy === "challenge" ? "Challenging…" : `Challenge (${formatEther(rewards.bondWei)} ETH bond)`}
-                                            </Button>
-                                            <Button
-                                                data-testid={`finalize-${t.trancheId}`}
-                                                disabled={busy !== null}
-                                                onClick={() => act("finalize", () => rewards.finalize(t.trancheId))}
-                                            >
-                                                {busy === "finalize" ? "Finalizing…" : "Finalize"}
-                                            </Button>
-                                        </>
-                                    )}
-                                    {t.finalized && (
+                                    {t.periodClosed && !t.claimed && (
                                         <Button
                                             data-testid={`claim-${t.trancheId}`}
-                                            disabled={busy !== null || !specs.loaded}
-                                            onClick={() => act("claim", () => rewards.claim(t))}
+                                            disabled={busy !== null || t.claimable === 0n}
+                                            onClick={() => act("claim", () => rewards.claim(t.trancheId))}
                                         >
-                                            {busy === "claim" ? "Claiming…" : "Claim my allocation"}
+                                            {busy === "claim" ? "Claiming…" : "Claim my share"}
                                         </Button>
+                                    )}
+                                    {t.claimed && (
+                                        <p className="text-sm text-ink-muted" data-testid={`tranche-claimed-${t.trancheId}`}>
+                                            Claimed — one claim per wallet per tranche.
+                                        </p>
                                     )}
                                 </div>
                             </div>
                         );
                     })}
                 </div>
-
-                {rewards.bondCases.length > 0 && (
-                    <div className="mt-10" data-testid="bond-cases">
-                        <h2 className="text-base font-semibold text-ink-heading mb-2">Bond cases</h2>
-                        <p className="text-sm text-ink-muted mb-4">
-                            A challenge always voids its posting — minting is never at stake here.
-                            Each case settles only the two bonds: the poster may escalate to the
-                            composed forum inside the dispute window; an unescalated case closes
-                            as a concession, the challenger taking both bonds.
-                        </p>
-                        <div className="space-y-4">
-                            {rewards.bondCases.map((c) => {
-                                const phase = deriveBondCasePhase(c, BigInt(nowSeconds), rewards.disputeWindowSeconds);
-                                const viewerIsPoster = !!account && hexEqual(account, c.poster);
-                                const id = c.caseId.toString();
-                                return (
-                                    <div
-                                        key={id}
-                                        className="border border-edge-muted rounded-lg p-5"
-                                        data-testid={`bond-case-${id}`}
-                                    >
-                                        <div className="flex items-baseline justify-between mb-2">
-                                            <h3 className="text-sm font-semibold text-ink-heading">
-                                                Case {id} — tranche {c.trancheId + 1}
-                                            </h3>
-                                            <span className="text-sm text-ink-muted" data-testid={`bond-case-status-${id}`}>
-                                                {phase}
-                                            </span>
-                                        </div>
-                                        <p className="text-sm text-ink-muted mb-1 font-mono break-all">
-                                            voided root {c.root}
-                                        </p>
-                                        <p className="text-sm text-ink-muted mb-3">
-                                            poster <span className="font-mono">{truncateHex(c.poster)}</span> · challenger{" "}
-                                            <span className="font-mono">{truncateHex(c.challenger)}</span>
-                                        </p>
-                                        {phase === "escalatable" && viewerIsPoster && (
-                                            <Button
-                                                data-testid={`dispute-${id}`}
-                                                disabled={busy !== null}
-                                                onClick={() => act("dispute", () => rewards.disputeChallenge(c.caseId))}
-                                            >
-                                                {busy === "dispute" ? "Escalating…" : "Escalate to the forum"}
-                                            </Button>
-                                        )}
-                                        {phase === "escalatable" && !viewerIsPoster && (
-                                            <p className="text-sm text-ink-muted">
-                                                Awaiting the poster: escalate or concede by silence.
-                                            </p>
-                                        )}
-                                        {phase === "concedable" && (
-                                            <Button
-                                                data-testid={`concede-${id}`}
-                                                variant="secondary"
-                                                disabled={busy !== null}
-                                                onClick={() => act("concede", () => rewards.concede(c.caseId))}
-                                            >
-                                                {busy === "concede" ? "Closing…" : "Close conceded case"}
-                                            </Button>
-                                        )}
-                                        {phase === "disputed" && (
-                                            <p className="text-sm text-ink-muted" data-testid={`bond-case-forum-${id}`}>
-                                                Escalated to the composed forum
-                                                {getRpgfArbitrator() ? (
-                                                    <> at <span className="font-mono">{truncateHex(getRpgfArbitrator())}</span></>
-                                                ) : null}{" "}
-                                                — awaiting its ruling.
-                                            </p>
-                                        )}
-                                        {phase === "closed" && (
-                                            <p className="text-sm text-ink-body" data-testid={`bond-case-ruling-${id}`}>
-                                                {bondCaseRulingLabel(c)}
-                                            </p>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-
-                {rewards.withdrawableWei > 0n && (
-                    <div className="mt-8">
-                        <Button
-                            data-testid="withdraw-bonds"
-                            variant="secondary"
-                            disabled={busy !== null}
-                            onClick={() => act("withdraw", () => rewards.withdrawBonds())}
-                        >
-                            {busy === "withdraw"
-                                ? "Withdrawing…"
-                                : `Withdraw bonds (${formatEther(rewards.withdrawableWei)} ETH)`}
-                        </Button>
-                    </div>
-                )}
 
                 {error && (
                     <p className="text-sm text-red-600 mt-6 break-all" data-testid="rewards-error">

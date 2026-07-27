@@ -100,7 +100,7 @@ export default function Specifications() {
                     />
                 </ul>
                 <p className="text-xs text-ink-muted mt-4">
-                    Allocation: 100M founders (genesis), 300M DAO (genesis), 600M RPGF to clause authors + assembly designers of record (RpgfMinter &mdash; registered at genesis; optimistic post / challenge / finalize / claim). See <Link href="/papers/florin-schelling-point-token" className="underline">the florin</Link>.
+                    Allocation: 100M founders (genesis), 300M DAO (genesis), 600M RPGF to clause authors + assembly designers of record (RpgfMinter &mdash; registered at genesis; three declining tranches, each paying pro rata from a UsageCounter period that has closed &mdash; nothing posted, bonded, or challenged). See <Link href="/papers/florin-schelling-point-token" className="underline">the florin</Link>.
                 </p>
             </MarketingSection>
 
@@ -148,10 +148,18 @@ export default function Specifications() {
                         desc="The swap venue the coordinator routes the input token through into the settlement currency. Mainnet wires the real Uniswap Universal Router; devnet wires MockUniversalRouter, pre-funded with bond-token liquidity and a settable rate (1:1 default) so buyer legs can swap deterministically in tests (record key: swapRouter)."
                     />
                     <ContractEntry
-                        id="rpgfArbitrator"
-                        title="rpgfArbitrator (IRpgfArbitrator forum)"
-                        meta="devnet mock · composed forum"
-                        desc="The composed bond-settlement forum the RPGF distribution routes challenges to. RpgfMinter posts a payout root optimistically; a challenger bonds against it; if disputed, this forum settles the bonded game behind the IRpgfArbitrator seam. Devnet wires MockArbitrator; a real deployment composes an arbitration provider (record key: rpgfArbitrator)."
+                        id="UsageCounter"
+                        title="UsageCounter.sol"
+                        href={`${GH}/protocol/usage/UsageCounter.sol`}
+                        meta="permissionless · no owner"
+                        desc="Verified artifact usage, counted when it happens. recordUsage proves from state the chain already holds that the order is RESOLVED (FigaroCore.orderStatus) and that the artifact was merkle-committed in the signed agreementHash — the AttestationCoordinator leaf, byte for byte, with the status gate inverted. Anyone may call; the proof is what is trusted, never the caller. Accrual buckets into fixed periods and a period's counts are final once it ends, so a consumer reads a number that can no longer move. Score = weight · icbrt(c·d²·1e18) — breadth over volume; one buyer/seller pair feeds at most 5 processes; value is not a term. Exists because the chain cannot look backwards: the kernel is frozen, never calls the registries, and no contract can read an event — so reconstructing usage afterwards is what forced the posting/bond/challenge/forum apparatus this replaces (record key: usageCounter)."
+                    />
+                    <ContractEntry
+                        id="RpgfMinter"
+                        title="RpgfMinter.sol"
+                        href={`${GH}/rpgf/RpgfMinter.sol`}
+                        meta="600M cap · no owner"
+                        desc="The retroactive distribution: three declining tranches (300M / 200M / 100M) to clause authors and assembly designers of record. Tranche i pays for UsageCounter period i and claim() requires that period closed, so a share is score-over-total against numbers that stopped moving — no snapshot, no checkpoint array, no history walk. 15% per-wallet cap applied at claim time; the excess stays unminted (no water-filling). One claim per wallet per tranche, every artifact passed in that call and each verified against its own registry. No owner, no pause, no sweep, no claim expiry; the budget is bounded twice (minted[tranche] here, and the FlorinToken minter cap registered at genesis) (record key: rpgfMinter)."
                     />
                     <ContractEntry
                         id="daoTreasury"
@@ -160,11 +168,11 @@ export default function Specifications() {
                         desc="Holds the 300M-florin DAO genesis allocation. Mainnet is a canonical Safe at the DAO wallet — config, never code; devnet is MockTreasuryMultisig (2-of-3 anvil placeholders). The treasury never signs kernel commitments (the kernel is ECDSA-only); it buys through a per-procurement funded operator EOA (record key: daoTreasury)."
                     />
                     <ContractEntry
-                        id="donationRail"
-                        title="DonationRail.sol"
-                        href={`${GH}/DonationRail.sol`}
-                        meta="no-custody · event-only"
-                        desc="The no-custody donation surface for crowd-steered match rounds. donate moves the donor's tokens straight through to the recipient and emits the one Donation event a match formula consumes — it holds nothing, owns nothing, gates nothing. The recipient set of a round is emergent from these events, filtered by the round's token and window (record key: donationRail)."
+                        id="MatchPool"
+                        title="MatchPool.sol"
+                        href={`${GH}/match/MatchPool.sol`}
+                        meta="one instance = one round · its own rail"
+                        desc="A Gitcoin-modelled matching round; Gitcoin/Allo is the MODEL, never a dependency. The pool IS its own donation rail: donate moves the donor's tokens straight through to the recipient — nothing is ever held on their behalf — while the round accumulates the quadratic-funding sums as each donation lands, so the match is arithmetic at claim time with nothing posted, bonded, or challenged. Weight is the coordination surplus sumSqrt² − sumOf, so a single donation earns no match; a donation floor prices each one in real capital and self-donation reverts. finalize() is permissionless once the window ends and snapshots the budget; claim pays budget·weight/totalWeight, capped at 15% per recipient. No owner, no pause, no sweep. Not a genesis contract and not in the deployment record — one instance is one round, deployed by whoever opens it."
                     />
                     <ContractEntry
                         id="multisender"

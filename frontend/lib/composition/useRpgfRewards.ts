@@ -1,308 +1,246 @@
 "use client";
 
 /**
- * useRpgfRewards — read + act on the optimistic RPGF minter (the 600M
- * distribution). Composition layer: the minter is a contract the frontend
+ * useRpgfRewards — read + act on the RPGF minter (the 600M distribution).
+ * Composition layer: the minter and the counter are contracts the frontend
  * composes with, never core.
  *
- * The distribution is OPTIMISTIC and every act here is permissionless: anyone
- * recomputes a tranche's payout from public chain events (the SDK's
- * `computeRpgfAllocations` — the reference implementation of the anchored
- * formula spec) and can post the root, challenge a wrong one, finalize an
- * unchallenged one, and claim any finalized allocation. The clause
- * classification the formula needs (`block.article`) comes from the warmed
- * spec cache — chain → IPFS, contentHash-verified — never a bundled list.
+ * THERE IS NOTHING TO POST AND NOTHING TO DISPUTE. `UsageCounter` records
+ * verified usage as it happens — a settled order plus merkle inclusion of the
+ * artifact in the agreement both parties signed — so a tranche is arithmetic
+ * over numbers that are already final. A period's counts stop moving the
+ * moment it ends; the minter pays a wallet its artifacts' score over the
+ * period's total, capped at 15% of the tranche. The one act is `claim`.
+ *
+ * The wallet's artifacts are DISCOVERED from the two registries' own event
+ * streams (clauses by registrar, assemblies by author) — the same open-world
+ * read the minter's `_isAuthor` performs on chain, never a bundled list.
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
-import {
-    buildRpgfTree,
-    computeRpgfAllocations,
-    fetchRpgfEventStream,
-    rpgfLeaf,
-    RPGF_MINTER_ABI,
-    type RpgfAllocation,
-    type RpgfSpecClassification,
-} from "@figaro/sdk";
-import { CONTRACTS } from "@/lib/kernel/contracts";
-import { getAttestationCoordinator, getRpgfMinter } from "@/lib/composition/contracts";
-import { getClauseSpec, listKnownClauses } from "@/lib/shared/clauseSpecSource";
-import { type RpgfBondCase } from "@/lib/composition/bondCases";
+import { computeClauseKey, RPGF_MINTER_ABI, USAGE_COUNTER_ABI } from "@figaro/sdk";
+import { CONTRACTS, ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
+import { getRpgfMinter, getUsageCounter } from "@/lib/composition/contracts";
+
+/** One artifact the connected wallet is author of record for, with the
+ *  accrual it carried in a given period. `c` = distinct settled processes,
+ *  `d` = distinct (buyer, seller) pairs, `score` = the weighted breadth
+ *  measure the payout divides by. */
+export interface RpgfArtifactAccrual {
+    /** Clause idHash or assembly compositionHash — the artifact key. */
+    artifact: `0x${string}`;
+    /** Human label: the clause id, or the truncated hash for an assembly. */
+    label: string;
+    family: "clause" | "assembly";
+    c: bigint;
+    d: bigint;
+    score: bigint;
+}
 
 export interface RpgfTrancheState {
     trancheId: number;
+    /** The tranche's florin budget. */
     amount: bigint;
-    earliestPost: bigint;
-    root: `0x${string}`;
-    finalized: boolean;
+    /** Florins already minted from it. */
     minted: bigint;
-    /** Active posting, when one is live. */
-    posting: {
-        poster: `0x${string}`;
-        root: `0x${string}`;
-        toBlock: bigint;
-        postedAt: bigint;
-    } | null;
-}
-
-export interface RpgfRecompute {
-    root: `0x${string}`;
-    toBlock: bigint;
-    allocations: RpgfAllocation[];
-}
-
-/** The formula's classification input, derived from the warmed spec cache —
- *  every known clause's `block.article`. A clause whose spec failed to load
- *  is absent (→ scores zero), exactly the formula's unavailable-spec rule. */
-function classificationFromSpecCache(): Map<string, RpgfSpecClassification> {
-    const out = new Map<string, RpgfSpecClassification>();
-    for (const { clauseId } of listKnownClauses()) {
-        const article = getClauseSpec(clauseId)?.block?.article;
-        out.set(clauseId, article ? { article } : null);
-    }
-    return out;
+    /** The per-wallet ceiling — `amount × 15 / 100`. */
+    cap: bigint;
+    /** True once the matching accrual period has ended: counts are final and
+     *  the tranche is claimable. */
+    periodClosed: boolean;
+    /** Every artifact's score in this period — the payout denominator. */
+    totalScore: bigint;
+    /** The connected wallet's artifacts and their accrual in this period. */
+    accruals: RpgfArtifactAccrual[];
+    /** Summed score of those artifacts. */
+    myScore: bigint;
+    /** What the minter says the wallet can take right now (0 once claimed,
+     *  or while the period is still accruing). */
+    claimable: bigint;
+    /** True once the wallet has claimed this tranche. */
+    claimed: boolean;
 }
 
 export function useRpgfRewards() {
     const minter = getRpgfMinter();
+    const counter = getUsageCounter();
     const publicClient = usePublicClient();
     const { address: account } = useAccount();
     const { writeContractAsync } = useWriteContract();
 
     const [tranches, setTranches] = useState<RpgfTrancheState[]>([]);
-    const [bondCases, setBondCases] = useState<RpgfBondCase[]>([]);
-    const [bondWei, setBondWei] = useState<bigint>(0n);
-    const [disputeWindowSeconds, setDisputeWindowSeconds] = useState<bigint>(0n);
-    const [withdrawableWei, setWithdrawableWei] = useState<bigint>(0n);
+    const [capPercent, setCapPercent] = useState<number>(0);
     const [refreshNonce, setRefreshNonce] = useState(0);
 
     const refresh = useCallback(() => setRefreshNonce((n) => n + 1), []);
 
+    /** Every artifact the wallet is author of record for, from the registries'
+     *  event streams. Empty (not an error) when the wallet authored nothing —
+     *  resolved-empty is absence. */
+    const discoverArtifacts = useCallback(async (): Promise<
+        Array<Pick<RpgfArtifactAccrual, "artifact" | "label" | "family">>
+    > => {
+        if (!publicClient || !account) return [];
+        const [clauseEvents, assemblyEvents] = await Promise.all([
+            publicClient.getContractEvents({
+                address: CONTRACTS.clauseRegistry,
+                abi: CLAUSE_REGISTRY_ABI,
+                eventName: "ClauseRegistered",
+                args: { registrar: account },
+                fromBlock: 0n,
+            }),
+            publicClient.getContractEvents({
+                address: CONTRACTS.assemblyRegistry,
+                abi: ASSEMBLY_REGISTRY_ABI,
+                eventName: "AssemblyRegistered",
+                args: { author: account },
+                fromBlock: 0n,
+            }),
+        ]);
+        const out = new Map<string, Pick<RpgfArtifactAccrual, "artifact" | "label" | "family">>();
+        for (const ev of clauseEvents) {
+            const clauseId = ev.args.clauseId;
+            const version = ev.args.version;
+            if (!clauseId || version === undefined) continue;
+            const artifact = computeClauseKey(clauseId, version);
+            out.set(artifact.toLowerCase(), { artifact, label: clauseId, family: "clause" });
+        }
+        for (const ev of assemblyEvents) {
+            const artifact = ev.args.compositionHash;
+            if (!artifact) continue;
+            out.set(artifact.toLowerCase(), {
+                artifact,
+                label: `${artifact.slice(0, 10)}…`,
+                family: "assembly",
+            });
+        }
+        return [...out.values()];
+    }, [publicClient, account]);
+
     useEffect(() => {
-        if (!minter || !publicClient) return;
+        if (!minter || !counter || !publicClient) return;
         let cancelled = false;
         (async () => {
-            const base = { address: minter, abi: RPGF_MINTER_ABI } as const;
-            const [bond, disputeWindow, withdrawable, challengedEvents, concededEvents, ruledEvents, ...rest] =
-                await Promise.all([
-                    publicClient.readContract({ ...base, functionName: "bond" }),
-                    publicClient.readContract({ ...base, functionName: "disputeWindow" }),
-                    account
-                        ? publicClient.readContract({ ...base, functionName: "withdrawable", args: [account] })
-                        : Promise.resolve(0n),
-                    publicClient.getContractEvents({ ...base, eventName: "RootChallenged", fromBlock: 0n }),
-                    publicClient.getContractEvents({ ...base, eventName: "ChallengeConceded", fromBlock: 0n }),
-                    publicClient.getContractEvents({ ...base, eventName: "CaseRuled", fromBlock: 0n }),
-                    ...[0, 1, 2].map((t) =>
-                        Promise.all([
-                            publicClient.readContract({ ...base, functionName: "tranches", args: [BigInt(t)] }),
-                            publicClient.readContract({ ...base, functionName: "postings", args: [BigInt(t)] }),
-                        ]),
-                    ),
-                ]);
-            // The case track, event-sourced: RootChallenged births a case; its
-            // live status comes from the bondCases(caseId) read; concession and
-            // ruling attach from their own events.
-            const cases = await Promise.all(
-                challengedEvents.map(async (ev) => {
-                    const caseId = ev.args.caseId as bigint;
-                    const onChain = await publicClient.readContract({
-                        ...base,
-                        functionName: "bondCases",
-                        args: [caseId],
-                    });
-                    const ruled = ruledEvents.find((r) => (r.args.caseId as bigint) === caseId);
+            const minterBase = { address: minter, abi: RPGF_MINTER_ABI } as const;
+            const counterBase = { address: counter, abi: USAGE_COUNTER_ABI } as const;
+            const [trancheCount, capNumerator, capDenominator, mine] = await Promise.all([
+                publicClient.readContract({ ...minterBase, functionName: "TRANCHE_COUNT" }),
+                publicClient.readContract({ ...minterBase, functionName: "CAP_NUMERATOR" }),
+                publicClient.readContract({ ...minterBase, functionName: "CAP_DENOMINATOR" }),
+                discoverArtifacts(),
+            ]);
+            const artifacts = mine.map((m) => m.artifact);
+            const ids = Array.from({ length: Number(trancheCount) }, (_, i) => i);
+            const rows = await Promise.all(
+                ids.map(async (trancheId) => {
+                    const period = trancheId;
+                    const [amount, minted, periodClosed, totalScore, claimed, claimable, accrualRows] =
+                        await Promise.all([
+                            publicClient.readContract({
+                                ...minterBase,
+                                functionName: "trancheAmount",
+                                args: [BigInt(trancheId)],
+                            }),
+                            publicClient.readContract({
+                                ...minterBase,
+                                functionName: "minted",
+                                args: [trancheId],
+                            }),
+                            publicClient.readContract({
+                                ...counterBase,
+                                functionName: "periodClosed",
+                                args: [period],
+                            }),
+                            publicClient.readContract({
+                                ...counterBase,
+                                functionName: "totalScoreIn",
+                                args: [period],
+                            }),
+                            account
+                                ? publicClient.readContract({
+                                      ...minterBase,
+                                      functionName: "claimed",
+                                      args: [trancheId, account],
+                                  })
+                                : Promise.resolve(false),
+                            account && artifacts.length > 0
+                                ? publicClient.readContract({
+                                      ...minterBase,
+                                      functionName: "claimable",
+                                      args: [trancheId, account, artifacts],
+                                  })
+                                : Promise.resolve(0n),
+                            Promise.all(
+                                mine.map(async (m) => {
+                                    const [c, d, score] = await publicClient.readContract({
+                                        ...counterBase,
+                                        functionName: "accrualOf",
+                                        args: [m.artifact, period],
+                                    });
+                                    return { ...m, c, d, score };
+                                }),
+                            ),
+                        ]);
+                    const accruals = accrualRows.filter((a) => a.score > 0n);
                     return {
-                        caseId,
-                        trancheId: Number(ev.args.trancheId),
-                        root: ev.args.root as `0x${string}`,
-                        poster: onChain[0],
-                        challenger: onChain[1],
-                        challengedAt: onChain[2] as bigint,
-                        status: Number(onChain[3]),
-                        ruling: ruled ? Number(ruled.args.ruling) : null,
-                        conceded: concededEvents.some((c) => (c.args.caseId as bigint) === caseId),
-                    } satisfies RpgfBondCase;
+                        trancheId,
+                        amount,
+                        minted,
+                        cap: (amount * capNumerator) / capDenominator,
+                        periodClosed,
+                        totalScore,
+                        accruals,
+                        myScore: accruals.reduce((sum, a) => sum + a.score, 0n),
+                        claimable,
+                        claimed,
+                    } satisfies RpgfTrancheState;
                 }),
             );
             if (cancelled) return;
-            setBondWei(bond);
-            setDisputeWindowSeconds(disputeWindow as bigint);
-            setBondCases(cases);
-            setWithdrawableWei(withdrawable);
-            setTranches(
-                (rest as Array<[
-                    readonly [bigint, bigint, `0x${string}`, bigint, bigint, boolean, bigint],
-                    readonly [`0x${string}`, `0x${string}`, bigint, bigint, bigint],
-                ]>).map(([tr, p], t) => ({
-                    trancheId: t,
-                    amount: tr[0],
-                    earliestPost: tr[1],
-                    root: tr[2],
-                    finalized: tr[5],
-                    minted: tr[6],
-                    posting:
-                        p[4] > 0n
-                            ? { poster: p[0], root: p[1], toBlock: p[3], postedAt: p[4] }
-                            : null,
-                })),
-            );
+            setCapPercent(Number((capNumerator * 100n) / capDenominator));
+            setTranches(rows);
         })().catch(() => {
             /* resolved-empty: the page renders the unavailable state */
         });
         return () => {
             cancelled = true;
         };
-    }, [minter, publicClient, account, refreshNonce]);
+    }, [minter, counter, publicClient, account, discoverArtifacts, refreshNonce]);
 
-    /** Run the formula over `[0, toBlock]` (defaults to the latest block) —
-     *  the same recompute any observer runs. */
-    const recompute = useCallback(
-        async (trancheAmount: bigint, toBlock?: bigint): Promise<RpgfRecompute> => {
-            if (!publicClient) throw new Error("No chain connection.");
-            const attestationCoordinator = getAttestationCoordinator();
-            if (!attestationCoordinator) throw new Error("Attestation coordinator unconfigured.");
-            const window = toBlock ?? (await publicClient.getBlockNumber());
-            const stream = await fetchRpgfEventStream(
-                publicClient,
-                {
-                    figaroCore: CONTRACTS.core,
-                    attestationCoordinator,
-                    clauseRegistry: CONTRACTS.clauseRegistry,
-                    assemblyRegistry: CONTRACTS.assemblyRegistry,
-                    sellerRegistry: CONTRACTS.sellerRegistry,
-                },
-                window,
-            );
-            const allocations = computeRpgfAllocations(stream, classificationFromSpecCache(), trancheAmount);
-            const tree = buildRpgfTree(allocations.map((a) => rpgfLeaf(a.account, a.amount)));
-            return { root: tree.root, toBlock: window, allocations };
-        },
-        [publicClient],
-    );
-
-    /** simulate → write → receipt → refresh, per the publish-flow pattern.
-     *  `request` is a fully-typed contract call (viem narrows per function). */
-    const send = useCallback(
-        async (request: {
-            functionName:
-                | "postRoot"
-                | "challenge"
-                | "disputeChallenge"
-                | "concede"
-                | "finalize"
-                | "claim"
-                | "withdrawBonds";
-            args?: readonly unknown[];
-            value?: bigint;
-        }) => {
+    /** Claim a closed tranche: one call per wallet per tranche, carrying every
+     *  artifact the wallet authored. simulate → write → receipt → refresh, per
+     *  the publish-flow pattern — any minter revert (still accruing, already
+     *  claimed, not author of record) surfaces BEFORE the wallet prompt. */
+    const claim = useCallback(
+        async (trancheId: number) => {
             if (!minter) throw new Error("RPGF minter unconfigured.");
+            if (!account) throw new Error("Connect a wallet to claim.");
+            const tranche = tranches.find((t) => t.trancheId === trancheId);
+            const artifacts = tranche?.accruals.map((a) => a.artifact) ?? [];
+            if (artifacts.length === 0) throw new Error("This wallet authored nothing that accrued in this period.");
             const call = {
                 address: minter,
                 abi: RPGF_MINTER_ABI,
-                functionName: request.functionName,
-                args: request.args,
-                value: request.value,
+                functionName: "claim" as const,
+                args: [trancheId, artifacts] as const,
             };
-            if (publicClient) {
-                // Pre-flight dry-run: any minter revert (window, bond, proof)
-                // surfaces BEFORE the wallet prompt opens.
-                await publicClient.simulateContract({ ...call, account } as never);
-            }
-            const hash = await writeContractAsync(call as never);
+            if (publicClient) await publicClient.simulateContract({ ...call, account });
+            const hash = await writeContractAsync(call);
             if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
             refresh();
             return hash;
         },
-        [minter, publicClient, account, writeContractAsync, refresh],
+        [minter, account, tranches, publicClient, writeContractAsync, refresh],
     );
-
-    /** Recompute and post a tranche's root, staking the bond. */
-    const postRoot = useCallback(
-        async (tranche: RpgfTrancheState) => {
-            const { root, toBlock } = await recompute(tranche.amount);
-            return send({
-                functionName: "postRoot",
-                args: [tranche.trancheId, root, 0n, toBlock],
-                value: bondWei,
-            });
-        },
-        [recompute, send, bondWei],
-    );
-
-    /** Void the active posting, staking an equal bond (the bond case settles
-     *  on its own track — minting stays purely mechanical). */
-    const challenge = useCallback(
-        (trancheId: number) => send({ functionName: "challenge", args: [trancheId], value: bondWei }),
-        [send, bondWei],
-    );
-
-    /** Escalate a challenge to the composed forum (poster-only, inside the
-     *  dispute window). `feeWei` is the forum's fee, forwarded verbatim —
-     *  provider-defined; the devnet mock accepts zero. */
-    const disputeChallenge = useCallback(
-        (caseId: bigint, feeWei: bigint = 0n) =>
-            send({ functionName: "disputeChallenge", args: [caseId], value: feeWei }),
-        [send],
-    );
-
-    /** Close an unescalated challenge after the dispute window: the poster
-     *  conceded by silence, the challenger takes both bonds. Anyone may call. */
-    const concede = useCallback(
-        (caseId: bigint) => send({ functionName: "concede", args: [caseId] }),
-        [send],
-    );
-
-    const finalize = useCallback(
-        (trancheId: number) => send({ functionName: "finalize", args: [trancheId] }),
-        [send],
-    );
-
-    /** Claim the connected wallet's allocation from a finalized tranche: the
-     *  proof rebuilds from the finalized window's recompute. */
-    const claim = useCallback(
-        async (tranche: RpgfTrancheState) => {
-            if (!account) throw new Error("Connect a wallet to claim.");
-            if (!publicClient || !minter) throw new Error("No chain connection.");
-            const onChain = await publicClient.readContract({
-                address: minter,
-                abi: RPGF_MINTER_ABI,
-                functionName: "tranches",
-                args: [BigInt(tranche.trancheId)],
-            });
-            if (!onChain[5]) throw new Error("Tranche not finalized.");
-            const { allocations } = await recompute(tranche.amount, onChain[4]);
-            const mine = allocations.find((a) => a.account.toLowerCase() === account.toLowerCase());
-            if (!mine) throw new Error("No allocation for this wallet in the finalized window.");
-            const tree = buildRpgfTree(allocations.map((a) => rpgfLeaf(a.account, a.amount)));
-            const proof = tree.proofOf(rpgfLeaf(mine.account, mine.amount));
-            return send({
-                functionName: "claim",
-                args: [tranche.trancheId, account, mine.amount, proof],
-            });
-        },
-        [account, publicClient, minter, recompute, send],
-    );
-
-    const withdrawBonds = useCallback(() => send({ functionName: "withdrawBonds" }), [send]);
 
     return {
-        available: !!minter,
+        available: !!minter && !!counter,
         account,
         tranches,
-        bondCases,
-        bondWei,
-        disputeWindowSeconds,
-        withdrawableWei,
-        recompute,
-        postRoot,
-        challenge,
-        disputeChallenge,
-        concede,
-        finalize,
+        /** The per-wallet ceiling as a percentage of a tranche (15). */
+        capPercent,
         claim,
-        withdrawBonds,
         refresh,
     };
 }

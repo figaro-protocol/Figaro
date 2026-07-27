@@ -156,7 +156,7 @@ export default function Cryptoeconomics() {
                             <Link href="/match-rounds" className="hover:underline">Match rounds</Link>
                         </dt>
                         <dd className="text-ink-body leading-relaxed mt-1">
-                            The DAO funds a match in florins for work it wants done, and a crowd of donors steers who earns it by a published quadratic-funding rule &mdash; no committee, no application, settled the same optimistic way as the author reward. This is how the first florins reach strangers&apos; hands, and how the issuer funds work without ever touching a market.
+                            The DAO funds a match in florins for work it wants done, and a crowd of donors steers who earns it by a quadratic-funding rule the round applies as each donation lands &mdash; no committee, no application, and nothing to submit or contest at the end. This is how the first florins reach strangers&apos; hands, and how the issuer funds work without ever touching a market.
                         </dd>
                     </div>
                     <div className="border-l-2 border-default pl-4">

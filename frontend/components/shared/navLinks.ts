@@ -53,9 +53,10 @@ export const NAV_LINKS_APP_PRIMARY: NavLink[] = [
     { href: "/discover", label: "Discover" },
     { href: "/sellers", label: "Sellers" },
     { href: "/audit", label: "Audit" },
-    // The RPGF distribution's runtime surface (post / challenge / finalize /
-    // claim) — a protocol surface (the composed RpgfMinter), not a product
-    // feature; every act on it is permissionless network participation.
+    // The RPGF distribution's runtime surface (read your accrual, claim a
+    // closed tranche) — a protocol surface (the composed UsageCounter +
+    // RpgfMinter), not a product feature; claiming is permissionless network
+    // participation.
     { href: "/rewards", label: "Rewards" },
     // The wallet's own runtime infrastructure (RPC provider, IPFS node) —
     // actor-neutral, no operator service in the middle.

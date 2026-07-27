@@ -4,7 +4,7 @@ import { RewardsView } from "./_components/RewardsView";
 export const metadata: Metadata = {
     title: "Rewards — Figaro",
     description:
-        "The optimistic RPGF distribution: recompute a tranche's payout from public chain events, post it under a bond, challenge, finalize, claim.",
+        "The RPGF distribution: usage is counted on chain as it happens, a period's counts go final when it ends, and each author claims their pro-rata share of that tranche.",
 };
 
 export default function RewardsPage() {

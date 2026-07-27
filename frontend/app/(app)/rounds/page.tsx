@@ -6,8 +6,8 @@ import { MatchRoundView } from "./_components/MatchRoundView";
 import { isValidAddress } from "@/lib/shared/evm";
 
 /**
- * /rounds?pool=<address> — one crowd-steered match round (an
- * OptimisticMatchPool instance), addressed directly.
+ * /rounds?pool=<address> — one crowd-steered match round (a MatchPool
+ * instance), addressed directly.
  *
  * There is NO round registry: a round is emergent from its deployment the way
  * recipients are emergent from donations, so the pool address is an
@@ -23,9 +23,9 @@ function RoundsContent() {
         return (
             <div className="container mx-auto px-6 py-12">
                 <p className="text-sm text-ink-muted" data-testid="round-no-pool">
-                    No round address in URL. A match round is one OptimisticMatchPool
-                    instance — open this page as /rounds?pool=&lt;address&gt; from the
-                    round&apos;s announcement.
+                    No round address in URL. A match round is one MatchPool instance —
+                    open this page as /rounds?pool=&lt;address&gt; from the round&apos;s
+                    announcement.
                 </p>
             </div>
         );

@@ -2,34 +2,39 @@
  * match-round.devnet.spec.ts
  *
  * A crowd-steered match round, end to end and UI on both ends, on /rounds.
- * Two scenarios — each deploys its OWN round (a fresh DonationRail + a fresh
- * OptimisticMatchPool), so the formula's event scan is isolated and the
- * specs never cross-contaminate through the shared genesis rail:
+ * Two scenarios — each deploys its OWN round (a fresh MatchPool), so the
+ * donation stream is isolated and the specs never cross-contaminate:
  *
  *   1. THE VALUE ROUND-TRIP — the phase-one rehearsal. The DAO treasury (the
- *      2-of-3 MockTreasuryMultisig) funds the match in florins through a
- *      real propose/approve/execute (money leg #1: treasury → pool). Two
- *      donors steer the match toward one recipient (surplus-form QF: two
- *      floor-clearing donors give a positive score; the sole recipient caps
- *      at the 15% water-fill). The poster drives the UI: compute + post →
- *      wait out the challenge window → finalize; the recipient claims
- *      (money leg #2: pool → recipient, EXACTLY 15% of the funded budget,
- *      asserted from the chain).
+ *      2-of-3 MockTreasuryMultisig) funds the match in florins through a real
+ *      propose/approve/execute (money leg #1: treasury → pool). Two donors
+ *      steer the match toward one recipient (surplus-form QF: two
+ *      floor-clearing donors give a positive weight; the sole recipient caps
+ *      at 15%). The round is then driven through the UI: finalize once the
+ *      donation window has ended, then pay the recipient (money leg #2:
+ *      pool → recipient, EXACTLY 15% of the funded budget, asserted from the
+ *      chain).
  *
  *   2. THE DONATE SURFACE — a donation driven through the donate-card: the
- *      donor fills recipient + amount and submits (approve + donate through
- *      the rail). Action → reaction, both in the UI: the recipient's balance
- *      rises on-chain AND the round card's donation summary increments.
+ *      donor fills recipient + amount and submits (approve + donate, both
+ *      against the POOL — a MatchPool IS its own rail, nothing is held on the
+ *      recipient's behalf). Action → reaction, both in the UI: the recipient's
+ *      balance rises on-chain AND the round card's donation summary increments.
+ *
+ * There is no root to post, no bond, no challenge window and no referee: the
+ * pool accumulates the quadratic-funding weight as each donation lands, so the
+ * match is arithmetic over numbers the chain already holds.
  *
  * The round address is an open-world id — there is no round registry; the
  * spec deploys a pool and opens /rounds?pool=<address>, exactly as a real
  * round's announcement would link it.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { createWalletClient, encodeFunctionData, http, keccak256, parseAbi, parseEther, type Hex } from 'viem';
+import { createWalletClient, encodeFunctionData, http, parseAbi, parseEther, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { localPublicClient, readLocalDeploymentConfig, LOCAL_ANVIL, RPC_URL } from './devnet-helpers';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
+import { MATCH_POOL_ABI } from "@figaro/sdk";
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import type { Page } from '@playwright/test';
@@ -40,8 +45,6 @@ const ERC20_ABI = parseAbi([
     'function transfer(address, uint256) returns (bool)',
 ]);
 
-const RAIL_ABI = parseAbi(['function donate(address token, address recipient, uint256 amount) external']);
-
 const TREASURY_ABI = parseAbi([
     'function nonce() view returns (uint256)',
     'function transactionHash(address to, uint256 value, bytes data, uint256 nonce) view returns (bytes32)',
@@ -50,27 +53,22 @@ const TREASURY_ABI = parseAbi([
     'function execute(address to, uint256 value, bytes data, uint256 nonce) external',
 ]);
 
-// Foundry artifacts — the round's two contracts are deployed per run (a round
-// is emergent from its deployment, not a genesis singleton).
+// Foundry artifact — the round's ONE contract is deployed per run (a round is
+// emergent from its deployment, not a genesis singleton; and there is no
+// separate rail to deploy — the pool is its own).
 const REPO_ROOT = resolve(__dirname, '../../..');
-const RAIL_ARTIFACT = JSON.parse(readFileSync(resolve(REPO_ROOT, 'out/DonationRail.sol/DonationRail.json'), 'utf8'));
-const POOL_ARTIFACT = JSON.parse(
-    readFileSync(resolve(REPO_ROOT, 'out/OptimisticMatchPool.sol/OptimisticMatchPool.json'), 'utf8'),
-);
-// The anchored formula hash = keccak256 of the canonical spec's exact bytes,
-// the same anchor a real round posts (the UI recompute uses the SDK mirror).
-const FORMULA_HASH = keccak256(new Uint8Array(readFileSync(resolve(REPO_ROOT, 'sdk/src/match/formula.json'))));
+const POOL_ARTIFACT = JSON.parse(readFileSync(resolve(REPO_ROOT, 'out/MatchPool.sol/MatchPool.json'), 'utf8'));
 
-const BOND = parseEther('0.05');
-const CHALLENGE_WINDOW = 20n;
-const DISPUTE_WINDOW = 20n;
+const ONE = parseEther('1'); // the donation token is 18-decimals here
+/** The sybil floor: a counted donation must be real capital, not a free vote. */
+const DONATION_FLOOR = ONE;
 
 // Dedicated wallets (no other spec drives these): treasury owners are anvil
-// [0..2]; rpgf claims [16..19]. This spec uses [10..15].
+// [0..2]; rpgf claims [16..19]. This spec uses [12], [14], [15], [32], [33].
 const DONOR_A = ANVIL_KEYS[32];
 const DONOR_B = ANVIL_KEYS[33];
 const RECIPIENT = ANVIL_ACCOUNTS[12] as Hex;
-const POSTER = ANVIL_ACCOUNTS[14] as Hex;
+const FINALIZER = ANVIL_ACCOUNTS[14] as Hex;
 const DEPLOYER_KEY = ANVIL_KEYS[15];
 const TREASURY_OWNER_A = ANVIL_KEYS[0];
 const TREASURY_OWNER_B = ANVIL_KEYS[1];
@@ -91,35 +89,16 @@ async function mineBlock(publicClient: ReturnType<typeof localPublicClient>) {
 
 async function deployRound(
     publicClient: ReturnType<typeof localPublicClient>,
-    opts: { matchToken: Hex; donationToken: Hex; arbitrator: Hex; donationWindowSeconds: bigint },
-): Promise<{ rail: Hex; pool: Hex }> {
+    opts: { matchToken: Hex; donationToken: Hex; donationWindowSeconds: bigint },
+): Promise<Hex> {
     const deployer = walletFor(DEPLOYER_KEY);
-    const railHash = await deployer.deployContract({
-        abi: RAIL_ARTIFACT.abi,
-        bytecode: RAIL_ARTIFACT.bytecode.object as Hex,
-        args: [],
-    });
-    const rail = (await publicClient.waitForTransactionReceipt({ hash: railHash })).contractAddress as Hex;
-
     const now = (await publicClient.getBlock({ blockTag: 'latest' })).timestamp;
     const poolHash = await deployer.deployContract({
         abi: POOL_ARTIFACT.abi,
         bytecode: POOL_ARTIFACT.bytecode.object as Hex,
-        args: [
-            opts.matchToken,
-            opts.donationToken,
-            rail,
-            FORMULA_HASH,
-            opts.arbitrator,
-            BOND,
-            CHALLENGE_WINDOW,
-            DISPUTE_WINDOW,
-            now,
-            now + opts.donationWindowSeconds,
-        ],
+        args: [opts.matchToken, opts.donationToken, now, now + opts.donationWindowSeconds, DONATION_FLOOR],
     });
-    const pool = (await publicClient.waitForTransactionReceipt({ hash: poolHash })).contractAddress as Hex;
-    return { rail, pool };
+    return (await publicClient.waitForTransactionReceipt({ hash: poolHash })).contractAddress as Hex;
 }
 
 /** The DAO treasury funds the match in florins through the 2-of-3 multisig —
@@ -171,10 +150,12 @@ async function treasuryFundsPool(
     await publicClient.waitForTransactionReceipt({ hash: execHash });
 }
 
+/** Donate straight at the pool — it IS the rail: the tokens pass through to
+ *  the recipient in the same call that records the weight. */
 async function donate(
     publicClient: ReturnType<typeof localPublicClient>,
     donorKey: Hex,
-    rail: Hex,
+    pool: Hex,
     token: Hex,
     recipient: Hex,
     amount: bigint,
@@ -195,14 +176,14 @@ async function donate(
         address: token,
         abi: ERC20_ABI,
         functionName: 'approve',
-        args: [rail, amount],
+        args: [pool, amount],
     });
     await publicClient.waitForTransactionReceipt({ hash: approve });
     const hash = await donor.writeContract({
-        address: rail,
-        abi: RAIL_ABI,
+        address: pool,
+        abi: MATCH_POOL_ABI,
         functionName: 'donate',
-        args: [token, recipient, amount],
+        args: [recipient, amount],
     });
     await publicClient.waitForTransactionReceipt({ hash });
 }
@@ -215,28 +196,24 @@ async function waitConnected(page: Page) {
     );
 }
 
-const ONE = parseEther('1'); // the donation token is 18-decimals here
-
-test.describe('match round — donate / post / finalize / claim (devnet)', () => {
+test.describe('match round — donate / finalize / claim (devnet)', () => {
     test.setTimeout(300_000);
 
-    test('the value round-trip: treasury funds florins, donors steer, the recipient claims the 15% cap', async ({
+    test('the value round-trip: treasury funds florins, donors steer, the recipient is paid the 15% cap', async ({
         page,
     }) => {
         const config = readLocalDeploymentConfig();
         const florin = config.florinToken as Hex;
         const donationToken = config.tokenAddress as Hex; // the devnet MockERC20 (18 decimals)
         const treasury = config.daoTreasury as Hex;
-        const arbitrator = config.rpgfArbitrator as Hex;
-        expect(florin && donationToken && treasury && arbitrator, 'genesis addresses present').toBeTruthy();
+        expect(florin && donationToken && treasury, 'genesis addresses present').toBeTruthy();
         const publicClient = localPublicClient();
 
         // A short donation window: the donations land via viem in ~2s, then it
-        // closes so the poster can post. (The donate-card UI itself is scenario 2.)
-        const { rail, pool } = await deployRound(publicClient, {
+        // closes so the round can finalize. (The donate-card UI is scenario 2.)
+        const pool = await deployRound(publicClient, {
             matchToken: florin,
             donationToken,
-            arbitrator,
             donationWindowSeconds: 12n,
         });
 
@@ -248,40 +225,44 @@ test.describe('match round — donate / post / finalize / claim (devnet)', () =>
             publicClient.readContract({ address: florin, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
         expect(await balanceOfFlorin(pool), 'the treasury funded the pool in florins').toBe(MATCH_AMOUNT);
 
-        // ── Two floor-clearing donors steer the match to one recipient,
-        //    through THIS round's rail (isolated from every other spec) ──
-        await donate(publicClient, DONOR_A, rail, donationToken, RECIPIENT, 4n * ONE);
-        await donate(publicClient, DONOR_B, rail, donationToken, RECIPIENT, 4n * ONE);
+        // ── Two floor-clearing donors steer the match to one recipient. Two
+        //    independent donors are what makes the surplus form positive — a
+        //    single donor scores zero, which is the sybil floor. ──
+        await donate(publicClient, DONOR_A, pool, donationToken, RECIPIENT, 4n * ONE);
+        await donate(publicClient, DONOR_B, pool, donationToken, RECIPIENT, 4n * ONE);
+        expect(
+            (await publicClient.readContract({
+                address: pool, abi: MATCH_POOL_ABI, functionName: 'weightOf', args: [RECIPIENT],
+            })) as bigint,
+            'two independent donors give the recipient positive coordination surplus',
+        ).toBeGreaterThan(0n);
 
-        // ── Wait out the donation window, then the poster drives the UI ──
+        // ── Wait out the donation window, then drive the UI ──
         await page.waitForTimeout(13_000);
         await mineBlock(publicClient);
 
         const recipientFlorinBefore = await balanceOfFlorin(RECIPIENT);
-        await gotoAsWallet(page, POSTER, `/rounds?pool=${pool}&e2e=devnet`);
+        await gotoAsWallet(page, FINALIZER, `/rounds?pool=${pool}&e2e=devnet`);
         await page.getByTestId('round-page').waitFor({ timeout: 30000 });
         await waitConnected(page);
-        await expect(page.getByTestId('round-status'), 'window closed → awaiting a root').toHaveText('awaiting root', {
-            timeout: 60000,
-        });
+        await expect(page.getByTestId('round-status'), 'window closed → awaiting finalize').toHaveText(
+            'awaiting finalize',
+            { timeout: 60000 },
+        );
         await expect(page.getByTestId('round-donations')).toContainText('2 donations');
+        await expect(page.getByTestId(`recipient-${RECIPIENT.toLowerCase()}`), 'the recipient is emergent from the donations')
+            .toBeVisible();
 
-        await page.getByTestId('post-root').click();
-        await expect(page.getByTestId('round-status')).toHaveText('posted', { timeout: 60000 });
-
-        // ── Wait out the challenge window, then finalize ──
-        await page.waitForTimeout(Number(CHALLENGE_WINDOW) * 1000 + 2000);
-        await mineBlock(publicClient);
+        // Finalize is PERMISSIONLESS — a wallet that neither donated nor
+        // receives drives it, and the budget snapshots from the pool's balance.
         await page.getByTestId('finalize').click();
-        await expect(page.getByTestId('round-status'), 'unchallenged → finalized').toHaveText('finalized', {
+        await expect(page.getByTestId('round-status'), 'window ended → finalized').toHaveText('finalized', {
             timeout: 60000,
         });
 
-        // ── Money leg #2: the recipient claims exactly the 15% cap ──
-        await gotoAsWallet(page, RECIPIENT, `/rounds?pool=${pool}&e2e=devnet`);
-        await page.getByTestId('round-page').waitFor({ timeout: 30000 });
-        await waitConnected(page);
-        await page.getByTestId('claim').click();
+        // ── Money leg #2: the recipient is paid exactly the 15% cap. Anyone
+        //    may call claim on their behalf; the tokens go to the recipient. ──
+        await page.getByTestId(`claim-${RECIPIENT.toLowerCase()}`).click();
         await expect
             .poll(async () => (await balanceOfFlorin(RECIPIENT)) - recipientFlorinBefore, {
                 timeout: 60000,
@@ -299,16 +280,14 @@ test.describe('match round — donate / post / finalize / claim (devnet)', () =>
         const config = readLocalDeploymentConfig();
         const florin = config.florinToken as Hex;
         const donationToken = config.tokenAddress as Hex;
-        const arbitrator = config.rpgfArbitrator as Hex;
         const publicClient = localPublicClient();
 
         // A long donation window so the donate-card stays open through the UI
         // interaction. No match funding needed — the donate path never touches
         // the match token.
-        const { pool } = await deployRound(publicClient, {
+        const pool = await deployRound(publicClient, {
             matchToken: florin,
             donationToken,
-            arbitrator,
             donationWindowSeconds: 600n,
         });
 
