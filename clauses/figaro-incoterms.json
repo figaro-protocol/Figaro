@@ -2,7 +2,7 @@
     "clauseId": "figaro-incoterms",
     "version": 1,
     "title": "Incoterms 2020",
-    "description": "Trade-delivery terms anchored to the ICC's Incoterms® 2020 (ICC publication 723E) — the named, versioned external standard allocating costs, transfer of risk, and carriage/insurance obligations between buyer and seller. Elective and NEVER default-on: composed only when a shipment's commercial terms name an Incoterms rule. Carries the declared rule (one of the standard's 11) plus the named place or port every rule requires, stated with the precision the rule demands. The external standard is the source of truth; this clause references it, it does not restate or compute its obligations. The FAS/FOB/CFR/CIF mode restriction (sea and inland waterway only) is the standard's, verified off-chain. A future ICC edition is new meaning — a new clauseId, never a mutation of this one. Compose figaro-geolocation alongside for the machine-readable origin/destination.",
+    "description": "Trade-delivery terms anchored to the ICC's Incoterms\u00ae 2020 (ICC publication 723E) \u2014 the named, versioned external standard allocating costs, transfer of risk, and carriage/insurance obligations between buyer and seller. Elective and NEVER default-on: composed only when a shipment's commercial terms name an Incoterms rule. Carries the declared rule (one of the standard's 11) plus the named place or port every rule requires, stated with the precision the rule demands. The external standard is the source of truth; this clause references it, it does not restate or compute its obligations. The FAS/FOB/CFR/CIF mode restriction (sea and inland waterway only) is the standard's, verified off-chain. A future ICC edition is new meaning \u2014 a new clauseId, never a mutation of this one. Compose figaro-geolocation alongside for the machine-readable origin/destination.",
     "rpgfTag": null,
     "fields": [
         {
@@ -23,20 +23,20 @@
                 "CIF"
             ],
             "valueLabels": {
-                "EXW": "EXW — Ex Works (any mode): minimum seller obligation; buyer takes risk and cost at the seller's premises",
-                "FCA": "FCA — Free Carrier (any mode): seller delivers to the buyer's nominated carrier at the named place; risk transfers on delivery to the carrier",
-                "CPT": "CPT — Carriage Paid To (any mode): seller contracts and pays carriage to the named destination; risk transfers on handover to the first carrier",
-                "CIP": "CIP — Carriage and Insurance Paid To (any mode): CPT plus seller-procured all-risks insurance (Institute Cargo Clauses A) to the named destination",
-                "DAP": "DAP — Delivered at Place (any mode): seller bears risk and cost to the named destination, ready for unloading",
-                "DPU": "DPU — Delivered at Place Unloaded (any mode): seller bears risk and cost to the named destination, unloaded",
-                "DDP": "DDP — Delivered Duty Paid (any mode): maximum seller obligation; seller bears risk, cost, and import clearance to the named destination",
-                "FAS": "FAS — Free Alongside Ship (sea/inland waterway): seller delivers alongside the vessel at the named port of shipment",
-                "FOB": "FOB — Free on Board (sea/inland waterway): risk transfers when the goods are on board at the named port of shipment",
-                "CFR": "CFR — Cost and Freight (sea/inland waterway): seller pays freight to the named port of destination; risk transfers on board at shipment",
-                "CIF": "CIF — Cost, Insurance and Freight (sea/inland waterway): CFR plus seller-procured minimum-cover insurance (Institute Cargo Clauses C) to the named port of destination"
+                "EXW": "EXW \u2014 Ex Works (any mode): minimum seller obligation; buyer takes risk and cost at the seller's premises",
+                "FCA": "FCA \u2014 Free Carrier (any mode): seller delivers to the buyer's nominated carrier at the named place; risk transfers on delivery to the carrier",
+                "CPT": "CPT \u2014 Carriage Paid To (any mode): seller contracts and pays carriage to the named destination; risk transfers on handover to the first carrier",
+                "CIP": "CIP \u2014 Carriage and Insurance Paid To (any mode): CPT plus seller-procured all-risks insurance (Institute Cargo Clauses A) to the named destination",
+                "DAP": "DAP \u2014 Delivered at Place (any mode): seller bears risk and cost to the named destination, ready for unloading",
+                "DPU": "DPU \u2014 Delivered at Place Unloaded (any mode): seller bears risk and cost to the named destination, unloaded",
+                "DDP": "DDP \u2014 Delivered Duty Paid (any mode): maximum seller obligation; seller bears risk, cost, and import clearance to the named destination",
+                "FAS": "FAS \u2014 Free Alongside Ship (sea/inland waterway): seller delivers alongside the vessel at the named port of shipment",
+                "FOB": "FOB \u2014 Free on Board (sea/inland waterway): risk transfers when the goods are on board at the named port of shipment",
+                "CFR": "CFR \u2014 Cost and Freight (sea/inland waterway): seller pays freight to the named port of destination; risk transfers on board at shipment",
+                "CIF": "CIF \u2014 Cost, Insurance and Freight (sea/inland waterway): CFR plus seller-procured minimum-cover insurance (Institute Cargo Clauses C) to the named port of destination"
             },
             "label": "Incoterms 2020 rule",
-            "description": "The declared Incoterms® 2020 rule (the standard's 11 three-letter rules). Seven apply to any mode of transport; FAS, FOB, CFR, and CIF apply to sea and inland-waterway transport only — a restriction of the standard itself, verified off-chain."
+            "description": "The declared Incoterms\u00ae 2020 rule (the standard's 11 three-letter rules). Seven apply to any mode of transport; FAS, FOB, CFR, and CIF apply to sea and inland-waterway transport only \u2014 a restriction of the standard itself, verified off-chain."
         },
         {
             "name": "incotermsNamedPlace",
@@ -45,7 +45,7 @@
             "minLength": 1,
             "maxLength": 140,
             "label": "Named place or port",
-            "description": "The named place or port the declared rule requires (e.g. \"FCA Warehouse 4, Port of Rotterdam\"), stated with the precision the rule demands — the point where delivery occurs or to which carriage is contracted. Textual, per the standard's own citation form; compose figaro-geolocation alongside for the machine-readable location."
+            "description": "The named place or port the declared rule requires (e.g. \"FCA Warehouse 4, Port of Rotterdam\"), stated with the precision the rule demands \u2014 the point where delivery occurs or to which carriage is contracted. Textual, per the standard's own citation form; compose figaro-geolocation alongside for the machine-readable location."
         }
     ],
     "stages": {},
@@ -62,8 +62,7 @@
         },
         "runtime": {
             "interaction": null,
-            "fields": [],
-            "handoffStages": []
+            "fields": []
         }
     }
 }

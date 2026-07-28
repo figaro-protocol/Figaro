@@ -2,7 +2,7 @@
     "clauseId": "figaro-freight-class",
     "version": 1,
     "title": "Freight class",
-    "description": "Freight classification anchored to the National Motor Freight Classification (NMFC), published by the NMFTA. Elective and NEVER default-on: composed only when an LTL / road shipment needs a declared freight class. Carries the declared NMFC class — the parties' assertion, verified off-chain against the NMFC standard (density is the primary driver, alongside stowability, handling, and liability) — plus the optional NMFC item number. The external standard is the source of truth; this clause references it, it does not compute the class.",
+    "description": "Freight classification anchored to the National Motor Freight Classification (NMFC), published by the NMFTA. Elective and NEVER default-on: composed only when an LTL / road shipment needs a declared freight class. Carries the declared NMFC class \u2014 the parties' assertion, verified off-chain against the NMFC standard (density is the primary driver, alongside stowability, handling, and liability) \u2014 plus the optional NMFC item number. The external standard is the source of truth; this clause references it, it does not compute the class.",
     "rpgfTag": null,
     "fields": [
         {
@@ -30,27 +30,27 @@
                 "500"
             ],
             "valueLabels": {
-                "50": "Class 50 — ≥ 50 lb/ft³ (densest, lowest cost)",
-                "55": "Class 55 — 35–50 lb/ft³",
-                "60": "Class 60 — 30–35 lb/ft³",
-                "65": "Class 65 — 22.5–30 lb/ft³",
-                "70": "Class 70 — 15–22.5 lb/ft³",
-                "85": "Class 85 — 12–13.5 lb/ft³",
-                "100": "Class 100 — 9–10.5 lb/ft³",
-                "110": "Class 110 — 8–9 lb/ft³",
-                "125": "Class 125 — 7–8 lb/ft³",
-                "150": "Class 150 — 6–7 lb/ft³",
-                "175": "Class 175 — 5–6 lb/ft³",
-                "200": "Class 200 — 4–5 lb/ft³",
-                "250": "Class 250 — 3–4 lb/ft³",
-                "300": "Class 300 — 2–3 lb/ft³",
-                "400": "Class 400 — 1–2 lb/ft³",
-                "500": "Class 500 — < 1 lb/ft³ (lightest, highest cost)",
-                "77.5": "Class 77.5 — 13.5–15 lb/ft³",
-                "92.5": "Class 92.5 — 10.5–12 lb/ft³"
+                "50": "Class 50 \u2014 \u2265 50 lb/ft\u00b3 (densest, lowest cost)",
+                "55": "Class 55 \u2014 35\u201350 lb/ft\u00b3",
+                "60": "Class 60 \u2014 30\u201335 lb/ft\u00b3",
+                "65": "Class 65 \u2014 22.5\u201330 lb/ft\u00b3",
+                "70": "Class 70 \u2014 15\u201322.5 lb/ft\u00b3",
+                "85": "Class 85 \u2014 12\u201313.5 lb/ft\u00b3",
+                "100": "Class 100 \u2014 9\u201310.5 lb/ft\u00b3",
+                "110": "Class 110 \u2014 8\u20139 lb/ft\u00b3",
+                "125": "Class 125 \u2014 7\u20138 lb/ft\u00b3",
+                "150": "Class 150 \u2014 6\u20137 lb/ft\u00b3",
+                "175": "Class 175 \u2014 5\u20136 lb/ft\u00b3",
+                "200": "Class 200 \u2014 4\u20135 lb/ft\u00b3",
+                "250": "Class 250 \u2014 3\u20134 lb/ft\u00b3",
+                "300": "Class 300 \u2014 2\u20133 lb/ft\u00b3",
+                "400": "Class 400 \u2014 1\u20132 lb/ft\u00b3",
+                "500": "Class 500 \u2014 < 1 lb/ft\u00b3 (lightest, highest cost)",
+                "77.5": "Class 77.5 \u2014 13.5\u201315 lb/ft\u00b3",
+                "92.5": "Class 92.5 \u2014 10.5\u201312 lb/ft\u00b3"
             },
             "label": "NMFC class",
-            "description": "Declared National Motor Freight Classification class (the 18 NMFC classes, 50–500). Density is the primary driver but not the only one — stowability, handling, and liability also bear on the class. The declaration is verified off-chain against the NMFC standard."
+            "description": "Declared National Motor Freight Classification class (the 18 NMFC classes, 50\u2013500). Density is the primary driver but not the only one \u2014 stowability, handling, and liability also bear on the class. The declaration is verified off-chain against the NMFC standard."
         },
         {
             "name": "nmfcItem",
@@ -79,8 +79,7 @@
         },
         "runtime": {
             "interaction": null,
-            "fields": [],
-            "handoffStages": []
+            "fields": []
         }
     }
 }

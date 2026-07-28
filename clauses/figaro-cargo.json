@@ -2,7 +2,7 @@
     "clauseId": "figaro-cargo",
     "version": 1,
     "title": "Cargo",
-    "description": "Physical shipment measure — the LOGISTIC-UNIT description of the goods as shipped (the package/shipment level, distinct from the per-item TRADE-ITEM measures a seller authors on its catalogue): gross/net mass, volume, packaged dimensions, and the kind / number / marks of the packages. Elective and NEVER default-on: composed only when an order moves physical goods. Density (mass ÷ volume) informs freight classification (declared NMFC class lives in figaro-freight-class); the packaged dimensions drive dimensional (billed) weight (figaro-dimweight).",
+    "description": "Physical shipment measure \u2014 the LOGISTIC-UNIT description of the goods as shipped (the package/shipment level, distinct from the per-item TRADE-ITEM measures a seller authors on its catalogue): gross/net mass, volume, packaged dimensions, and the kind / number / marks of the packages. Elective and NEVER default-on: composed only when an order moves physical goods. Density (mass \u00f7 volume) informs freight classification (declared NMFC class lives in figaro-freight-class); the packaged dimensions drive dimensional (billed) weight (figaro-dimweight).",
     "rpgfTag": null,
     "fields": [
         {
@@ -12,7 +12,7 @@
             "min": 1,
             "max": 4294967295,
             "default": 1,
-            "description": "Shipment GROSS mass in whole grams (contents + packaging — the physical weight carriers bill against). Must be at least 1 g; capped at uint32 max (≈4.29 million kg)."
+            "description": "Shipment GROSS mass in whole grams (contents + packaging \u2014 the physical weight carriers bill against). Must be at least 1 g; capped at uint32 max (\u22484.29 million kg)."
         },
         {
             "name": "netMassGrams",
@@ -20,7 +20,7 @@
             "required": false,
             "min": 1,
             "max": 4294967295,
-            "description": "NET mass in whole grams (contents only, excluding packaging). Optional — declared when gross and net differ materially (customs / duty). GDSN net weight."
+            "description": "NET mass in whole grams (contents only, excluding packaging). Optional \u2014 declared when gross and net differ materially (customs / duty). GDSN net weight."
         },
         {
             "name": "volumeMl",
@@ -29,7 +29,7 @@
             "min": 1,
             "max": 4294967295,
             "default": 1,
-            "description": "Shipment volume in whole millilitres. Must be at least 1 ml; capped at uint32 max (≈4.29 million L). Derivable from the packaged dimensions below when those are present."
+            "description": "Shipment volume in whole millilitres. Must be at least 1 ml; capped at uint32 max (\u22484.29 million L). Derivable from the packaged dimensions below when those are present."
         },
         {
             "name": "lengthMm",
@@ -37,7 +37,7 @@
             "required": false,
             "min": 1,
             "max": 4294967295,
-            "description": "Packaged LENGTH in whole millimetres — the logistic-unit dimension (the shipped package, not the trade item). Optional; drives dimensional weight and oversize/girth rules, which read each dimension separately (a single volume cannot reproduce per-dimension rounding or longest-side surcharges)."
+            "description": "Packaged LENGTH in whole millimetres \u2014 the logistic-unit dimension (the shipped package, not the trade item). Optional; drives dimensional weight and oversize/girth rules, which read each dimension separately (a single volume cannot reproduce per-dimension rounding or longest-side surcharges)."
         },
         {
             "name": "widthMm",
@@ -61,7 +61,7 @@
             "required": false,
             "minLength": 1,
             "maxLength": 64,
-            "description": "Kind of package — e.g. carton / pallet / crate / drum / bag. Free text referencing the UN/CEFACT Recommendation 21 package-type codes; the external standard is the source of truth. GDSN packaging type."
+            "description": "Kind of package \u2014 e.g. carton / pallet / crate / drum / bag. Free text referencing the UN/CEFACT Recommendation 21 package-type codes; the external standard is the source of truth. GDSN packaging type."
         },
         {
             "name": "packageCount",
@@ -77,7 +77,7 @@
             "required": false,
             "minLength": 1,
             "maxLength": 256,
-            "description": "Shipping marks & numbers — the identifiers and handling marks on the package(s) (consignee marks, order references, handling symbols). Free text; the 'Marks & Numbers' column on a bill of lading / packing list. A committed PUBLIC field: use reference codes per bill-of-lading practice, never personal names — party particulars travel the encrypted address channel."
+            "description": "Shipping marks & numbers \u2014 the identifiers and handling marks on the package(s) (consignee marks, order references, handling symbols). Free text; the 'Marks & Numbers' column on a bill of lading / packing list. A committed PUBLIC field: use reference codes per bill-of-lading practice, never personal names \u2014 party particulars travel the encrypted address channel."
         }
     ],
     "stages": {},
@@ -94,8 +94,7 @@
         },
         "runtime": {
             "interaction": null,
-            "fields": [],
-            "handoffStages": []
+            "fields": []
         }
     }
 }

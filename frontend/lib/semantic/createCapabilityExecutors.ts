@@ -18,12 +18,7 @@ import { computeClauseKey, type Agreement } from "@figaro/sdk";
 import { encodeContentFromSpec, validateContent } from "@figaro/sdk/clauses";
 import { OrderState, type Order } from "@/lib/kernel/store";
 import { restoreSignedProcessId } from "@/lib/kernel/signedCommitment";
-import {
-    clauseHandoffStages,
-    clauseWitnessStages,
-    deriveStageValuesFromCommitted,
-    getClauseSpec,
-} from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import type { SubmitClauseAttestationCapabilityAction } from "@/lib/semantic/models";
 
 /** The attestation submitter's argument shape (both parties share it). */
@@ -141,44 +136,12 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         const submit = (a: AttestationSubmitArgs) => action.party === "buyer"
             ? deps.submitBuyerAttestation(a)
             : deps.submitSellerAttestation(a);
-        const txHash = await submit(args);
-
-        // HAND-OFF PAIRING (one action, two attestations): a ladder
-        // stage the clause declares in block.runtime.handoffStages pairs the
-        // witness stage of any co-composed clause nesting under
-        // `handoff` on the SAME order — when the witness's required
-        // values derive unambiguously from the committed content (a
-        // single committed band). Ambiguous → the standalone witness
-        // capability (with its form) carries the choice instead.
-        let lastTx = txHash;
-        if (isLadder && clauseHandoffStages(action.clauseId).includes(action.eventCode!)) {
-            const order = deps.processOrders.find((o) => o.orderHash.toString() === action.orderHash);
-            const agreement = order?.agreementHash ? deps.processAgreements.get(order.agreementHash) : undefined;
-            for (const section of agreement?.sections ?? []) {
-                const witnessSpec = getClauseSpec(section.clause, section.version);
-                // Field-name vocabulary, not a clause name: the witness
-                // clause declares it REFINES the `handoff` field.
-                if (witnessSpec?.block?.design.nestsUnder !== "handoff") continue;
-                for (const witness of clauseWitnessStages(section.clause, section.version)) {
-                    const derived = deriveStageValuesFromCommitted(
-                        section.clause,
-                        witness.stage,
-                        section.data as Record<string, unknown> | undefined,
-                        section.version,
-                    );
-                    if (!derived) continue;
-                    await waitForTransactionConfirmation(lastTx as Hex | undefined);
-                    lastTx = await submit({
-                        orderHash: action.orderHash as Hex,
-                        clauseId: computeClauseKey(section.clause, witnessSpec.version),
-                        stage: witness.stage,
-                        content: encodeContentFromSpec(witnessSpec, derived, { stage: witness.stage }),
-                        failureMessage: `${section.clause} stage-${witness.stage} paired witness failed`,
-                    });
-                }
-            }
-        }
-        return lastTx;
+        // Custody is READER-DERIVED (ruled 2026-07-28): a diary event is one
+        // custodian's own record, and any transfer-evidence witness (e.g. the
+        // proximity clause's) is filed by a party through its OWN standalone
+        // capability — the engine declares no pairing and reads no
+        // presentation metadata at runtime.
+        return submit(args);
     };
 
     /** The callback bag `executeTransactionCapabilityAction` dispatches on. */

@@ -53,14 +53,13 @@ describe("parseBlockBinding — clause block-binding (sectioned UI half)", () =>
         expect(block?.checkout.profileFills).toEqual([]);
         expect(block?.runtime.interaction).toBeNull();
         expect(block?.runtime.fields).toEqual([]);
-        expect(block?.runtime.handoffStages).toEqual([]);
     });
 
     it("parses explicit empty values identically to absence (expressed-not-absent standard)", () => {
         const { block, errors } = parse({
             design: { article: "logistics", nestsUnder: null, fills: [], composes: null },
             checkout: { catalogueFills: [], profileFills: [] },
-            runtime: { interaction: null, fields: [], handoffStages: [] },
+            runtime: { interaction: null, fields: [] },
         });
         expect(errors).toEqual([]);
         expect(block?.design.nestsUnder).toBeNull();
@@ -108,13 +107,12 @@ describe("parseBlockBinding — clause block-binding (sectioned UI half)", () =>
         expect(block).toBeNull();
     });
 
-    it("preserves runtime.interaction and runtime.handoffStages", () => {
+    it("preserves runtime.interaction", () => {
         const { block } = parse({
             design: { article: "logistics" },
-            runtime: { interaction: { interface: "qr-challenge" }, handoffStages: ["handed-off"] },
+            runtime: { interaction: { interface: "qr-challenge" } },
         });
         expect(block?.runtime.interaction?.interface).toBe("qr-challenge");
-        expect(block?.runtime.handoffStages).toEqual(["handed-off"]);
     });
 
     it("parses runtime.fields through the SDK field parser (one parser for both halves)", () => {

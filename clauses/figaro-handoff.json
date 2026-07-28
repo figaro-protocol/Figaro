@@ -44,8 +44,7 @@
             "interaction": {
                 "interface": "qr-challenge"
             },
-            "fields": [],
-            "handoffStages": []
+            "fields": []
         }
     }
 }

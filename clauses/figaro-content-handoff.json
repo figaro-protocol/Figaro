@@ -62,8 +62,7 @@
             "interaction": {
                 "interface": "ecdh-content"
             },
-            "fields": [],
-            "handoffStages": []
+            "fields": []
         }
     }
 }

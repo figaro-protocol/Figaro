@@ -2,7 +2,7 @@
     "clauseId": "figaro-dimweight",
     "version": 1,
     "title": "Dimensional weight",
-    "description": "Dimensional (volumetric) billed weight for a PARCEL — a DERIVED value the checkout computes, not seller-authored: billed = max(actual gross mass, volumetric weight), where volumetric = packaged volume ÷ a divisor, with each packaged dimension rounded up before multiplying, and the divisor read from the seller's shipping profile. Elective and NEVER default-on: composed only when a parcel is billed by dimensional weight. Carries the computed billed weight plus the divisor applied, so a reader reproduces the calculation from the packaged dimensions on the same order's figaro-cargo leaf. PARCELS ONLY — transporting people (ride-hailing) is a different, per-mile future clause; dimensional weight is not its concern.",
+    "description": "Dimensional (volumetric) billed weight for a PARCEL \u2014 a DERIVED value the checkout computes, not seller-authored: billed = max(actual gross mass, volumetric weight), where volumetric = packaged volume \u00f7 a divisor, with each packaged dimension rounded up before multiplying, and the divisor read from the seller's shipping profile. Elective and NEVER default-on: composed only when a parcel is billed by dimensional weight. Carries the computed billed weight plus the divisor applied, so a reader reproduces the calculation from the packaged dimensions on the same order's figaro-cargo leaf. PARCELS ONLY \u2014 transporting people (ride-hailing) is a different, per-mile future clause; dimensional weight is not its concern.",
     "rpgfTag": null,
     "fields": [
         {
@@ -11,7 +11,7 @@
             "required": true,
             "min": 1,
             "max": 4294967295,
-            "description": "The billed dimensional weight in whole grams — max(actual gross mass, volumetric weight), the greater of the physical and volumetric mass, per carrier practice."
+            "description": "The billed dimensional weight in whole grams \u2014 max(actual gross mass, volumetric weight), the greater of the physical and volumetric mass, per carrier practice."
         },
         {
             "name": "divisor",
@@ -19,7 +19,7 @@
             "required": true,
             "min": 1,
             "max": 4294967295,
-            "description": "The dimensional divisor applied (the seller's shipping convention, e.g. ~5000 metric). Committed so the billed weight is reproducible: volumetric = packaged volume ÷ divisor."
+            "description": "The dimensional divisor applied (the seller's shipping convention, e.g. ~5000 metric). Committed so the billed weight is reproducible: volumetric = packaged volume \u00f7 divisor."
         }
     ],
     "stages": {},
@@ -38,8 +38,7 @@
         },
         "runtime": {
             "interaction": null,
-            "fields": [],
-            "handoffStages": []
+            "fields": []
         }
     }
 }

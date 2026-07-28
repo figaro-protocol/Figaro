@@ -120,14 +120,6 @@ interface ClauseBlockRuntime {
      *  attestation's witness. Same `FieldSpec` shape as content fields — one
      *  parser, one renderer. Empty for clauses with no runtime input. */
     fields: readonly FieldSpec[];
-    /** For a clause whose runtime evidence is a coordination event log: the
-     *  eventType values at which a hand-off occurs. Executing one of these
-     *  stages pairs the witness stage of ANY co-composed clause declaring
-     *  `design.nestsUnder: "handoff"` on the same order — one action, two
-     *  attestations. A field-name vocabulary, deliberately not a clause
-     *  list; physical and digital hand-offs alike. Empty for clauses with no
-     *  hand-off semantics. */
-    handoffStages: readonly string[];
 }
 
 /**
@@ -253,7 +245,6 @@ export function parseBlockBinding(
     // ── runtime ─────────────────────────────────────────────────────────
     let interaction: ClauseBlockRuntime["interaction"] = null;
     let runtimeFields: readonly FieldSpec[] = [];
-    let handoffStages: readonly string[] = [];
     if (raw.runtime !== undefined) {
         if (!isObject(raw.runtime)) {
             errors.push({ path: `${path}.runtime`, message: "runtime section must be an object when present" });
@@ -285,14 +276,11 @@ export function parseBlockBinding(
             }
             runtimeFields = parsed;
         }
-        const parsedHandoff = parseFieldNameList(raw.runtime.handoffStages, `${path}.runtime.handoffStages`, errors);
-        if (parsedHandoff === null) return null;
-        handoffStages = parsedHandoff;
     }
 
     return {
         design: { article: rawDesign.article as ClauseArticle, nestsUnder, fills: designFills, composes },
         checkout: { catalogueFills, profileFills },
-        runtime: { interaction, fields: runtimeFields, handoffStages },
+        runtime: { interaction, fields: runtimeFields },
     };
 }

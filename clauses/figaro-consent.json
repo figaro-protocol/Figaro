@@ -2,7 +2,7 @@
     "clauseId": "figaro-consent",
     "version": 1,
     "title": "Cryptographic consent attestations",
-    "description": "Records that a wallet has cryptographically attested to one or more off-chain legal documents identified by their keccak256 content hashes. Pattern: off-chain document semantics, on-chain anchor for shared reference integrity. Multi-valued — an agreement can bind to several documents simultaneously (e.g., ToS + Privacy Policy + NDA + custom merchant-buyer terms). The designer AFFIXES each document at design time (pinned off-chain, anchored by hash); the parties' EIP-712 signatures over the agreement root that merkle-includes this section ARE the acceptance — consent as an agreement term, no separate ceremony. Each entry preserves the (documentHash, documentVersion, documentTitle) tuple needed by counterparties, auditors, and arbitrators to reason about shared references over time; the consenter is recoverable from the signatures on the commitment. Append-only: revocation is a separate off-chain process, not a content mutation.",
+    "description": "Records that a wallet has cryptographically attested to one or more off-chain legal documents identified by their keccak256 content hashes. Pattern: off-chain document semantics, on-chain anchor for shared reference integrity. Multi-valued \u2014 an agreement can bind to several documents simultaneously (e.g., ToS + Privacy Policy + NDA + custom merchant-buyer terms). The designer AFFIXES each document at design time (pinned off-chain, anchored by hash); the parties' EIP-712 signatures over the agreement root that merkle-includes this section ARE the acceptance \u2014 consent as an agreement term, no separate ceremony. Each entry preserves the (documentHash, documentVersion, documentTitle) tuple needed by counterparties, auditors, and arbitrators to reason about shared references over time; the consenter is recoverable from the signatures on the commitment. Append-only: revocation is a separate off-chain process, not a content mutation.",
     "rpgfTag": null,
     "fields": [
         {
@@ -43,7 +43,7 @@
                         "required": false,
                         "minLength": 0,
                         "maxLength": 512,
-                        "description": "Optional locator for the affixed document (e.g. ipfs://…) so a counterparty can fetch and verify it by rehashing. The hash is the binding anchor; the locator is readability."
+                        "description": "Optional locator for the affixed document (e.g. ipfs://\u2026) so a counterparty can fetch and verify it by rehashing. The hash is the binding anchor; the locator is readability."
                     }
                 ]
             },
@@ -66,8 +66,7 @@
         },
         "runtime": {
             "interaction": null,
-            "fields": [],
-            "handoffStages": []
+            "fields": []
         }
     }
 }

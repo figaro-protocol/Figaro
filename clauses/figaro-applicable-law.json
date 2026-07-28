@@ -2,7 +2,7 @@
     "clauseId": "figaro-applicable-law",
     "version": 1,
     "title": "Applicable law and forum",
-    "description": "State / ADR / traditional-jurisdiction recourse layer. Identifies the body of law governing the order and, optionally, the named adjudication venue and proceedings language. Provider-agnostic by construction: every field is a free-form string whose pattern enforces SHAPE only — the named external standard (ISO 3166 for jurisdiction, ISO 639 / BCP 47 for language) remains the source of truth, and the clause never holds a closed list of jurisdictions, forums, or languages. Compose with `figaro-arbitration-kleros` (or another `figaro-arbitration-<provider>`) to add a decentralized ODR layer.",
+    "description": "State / ADR / traditional-jurisdiction recourse layer. Identifies the body of law governing the order and, optionally, the named adjudication venue and proceedings language. Provider-agnostic by construction: every field is a free-form string whose pattern enforces SHAPE only \u2014 the named external standard (ISO 3166 for jurisdiction, ISO 639 / BCP 47 for language) remains the source of truth, and the clause never holds a closed list of jurisdictions, forums, or languages. Compose with `figaro-arbitration-kleros` (or another `figaro-arbitration-<provider>`) to add a decentralized ODR layer.",
     "rpgfTag": null,
     "fields": [
         {
@@ -13,7 +13,7 @@
             "maxLength": 16,
             "pattern": "^[A-Za-z][A-Za-z0-9-]{1,15}$",
             "label": "Applicable law",
-            "description": "Identifier for the body of law that governs the contract. Conventionally an ISO 3166-1 alpha-2 country code (e.g. 'US', 'NL', 'JP'), optionally with an ISO 3166-2 subdivision (e.g. 'US-CA', 'CA-ON'); 'EU' for European Union law; 'INTL' for international / treaty law. Free-form for non-state legal orders (e.g. 'Sharia', 'ICANN-UDRP'). The pattern admits a hyphen-joined alphanumeric token that starts with a letter — it enforces shape only, never a fixed list of jurisdictions; the cited standard is the source of truth."
+            "description": "Identifier for the body of law that governs the contract. Conventionally an ISO 3166-1 alpha-2 country code (e.g. 'US', 'NL', 'JP'), optionally with an ISO 3166-2 subdivision (e.g. 'US-CA', 'CA-ON'); 'EU' for European Union law; 'INTL' for international / treaty law. Free-form for non-state legal orders (e.g. 'Sharia', 'ICANN-UDRP'). The pattern admits a hyphen-joined alphanumeric token that starts with a letter \u2014 it enforces shape only, never a fixed list of jurisdictions; the cited standard is the source of truth."
         },
         {
             "name": "forum",
@@ -23,7 +23,7 @@
             "maxLength": 64,
             "pattern": "^[A-Za-z0-9][A-Za-z0-9 ./-]{0,63}$",
             "label": "Adjudication forum",
-            "description": "Named adjudication venue (e.g. 'JAMS-arbitration', 'AAA-arbitration', 'ICC-arbitration', 'us-federal-court', 'small-claims-court', or a spelled-out court such as 'Courts of England and Wales'). OMIT the field to mean: courts of competent jurisdiction within applicableLaw — absence, not a stored blank."
+            "description": "Named adjudication venue (e.g. 'JAMS-arbitration', 'AAA-arbitration', 'ICC-arbitration', 'us-federal-court', 'small-claims-court', or a spelled-out court such as 'Courts of England and Wales'). OMIT the field to mean: courts of competent jurisdiction within applicableLaw \u2014 absence, not a stored blank."
         },
         {
             "name": "language",
@@ -50,8 +50,7 @@
         },
         "runtime": {
             "interaction": null,
-            "fields": [],
-            "handoffStages": []
+            "fields": []
         }
     }
 }

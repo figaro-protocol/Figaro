@@ -51,7 +51,7 @@
                 "9": "Miscellaneous dangerous goods"
             },
             "label": "UN hazard class",
-            "description": "UN hazard class (1–9) per the UN Recommendations. Divisions (e.g. 2.1) are carried in the proper shipping name where applicable."
+            "description": "UN hazard class (1\u20139) per the UN Recommendations. Divisions (e.g. 2.1) are carried in the proper shipping name where applicable."
         },
         {
             "name": "packingGroup",
@@ -63,12 +63,12 @@
                 "III"
             ],
             "valueLabels": {
-                "I": "I — high danger",
-                "II": "II — medium danger",
-                "III": "III — low danger"
+                "I": "I \u2014 high danger",
+                "II": "II \u2014 medium danger",
+                "III": "III \u2014 low danger"
             },
             "label": "Packing group",
-            "description": "UN packing group indicating degree of danger. Optional — classes 1, 2, and 7 are not assigned a packing group."
+            "description": "UN packing group indicating degree of danger. Optional \u2014 classes 1, 2, and 7 are not assigned a packing group."
         }
     ],
     "stages": {},
@@ -90,8 +90,7 @@
         },
         "runtime": {
             "interaction": null,
-            "fields": [],
-            "handoffStages": []
+            "fields": []
         }
     }
 }

@@ -2,7 +2,7 @@
     "clauseId": "figaro-cold-chain",
     "version": 1,
     "title": "Cold chain",
-    "description": "Temperature-controlled handling requirement anchored to Good Distribution Practice (GDP) cold-chain classes. Elective and NEVER default-on: composed only when the goods require temperature control. Commits the cold-chain class, the agreed temperature window in whole degrees Celsius, and the agreed recording interval — no external standard mandates a single interval (GDP says continuous, EU 37/2005 says frequent and regular, WHO PQS allows 1–15 min), so the interval is a term the parties commit. The external standard is the source of truth; this clause references it. The temperature RECORD produced during custody is filed as a runtime attestation at stage 1 (one attestation per reporting period); excursion and MKT are derived at read time from the witnessed range against the committed window, never stored.",
+    "description": "Temperature-controlled handling requirement anchored to Good Distribution Practice (GDP) cold-chain classes. Elective and NEVER default-on: composed only when the goods require temperature control. Commits the cold-chain class, the agreed temperature window in whole degrees Celsius, and the agreed recording interval \u2014 no external standard mandates a single interval (GDP says continuous, EU 37/2005 says frequent and regular, WHO PQS allows 1\u201315 min), so the interval is a term the parties commit. The external standard is the source of truth; this clause references it. The temperature RECORD produced during custody is filed as a runtime attestation at stage 1 (one attestation per reporting period); excursion and MKT are derived at read time from the witnessed range against the committed window, never stored.",
     "rpgfTag": null,
     "fields": [
         {
@@ -16,10 +16,10 @@
                 "controlled-room-temp"
             ],
             "valueLabels": {
-                "frozen": "Frozen (≤ -18 °C)",
-                "refrigerated": "Refrigerated (2–8 °C)",
-                "cool": "Cool (8–15 °C)",
-                "controlled-room-temp": "Controlled room temperature (15–25 °C)"
+                "frozen": "Frozen (\u2264 -18 \u00b0C)",
+                "refrigerated": "Refrigerated (2\u20138 \u00b0C)",
+                "cool": "Cool (8\u201315 \u00b0C)",
+                "controlled-room-temp": "Controlled room temperature (15\u201325 \u00b0C)"
             },
             "label": "Cold-chain class",
             "description": "GDP cold-chain class. The explicit min/max window below pins the agreed range within the class."
@@ -30,7 +30,7 @@
             "required": true,
             "min": -273,
             "max": 100,
-            "label": "Min temperature (°C)",
+            "label": "Min temperature (\u00b0C)",
             "description": "Minimum allowable temperature in whole degrees Celsius."
         },
         {
@@ -39,8 +39,8 @@
             "required": true,
             "min": -273,
             "max": 100,
-            "label": "Max temperature (°C)",
-            "description": "Maximum allowable temperature in whole degrees Celsius. Must be ≥ tempMinC (checked off-chain at read time)."
+            "label": "Max temperature (\u00b0C)",
+            "description": "Maximum allowable temperature in whole degrees Celsius. Must be \u2265 tempMinC (checked off-chain at read time)."
         },
         {
             "name": "recordingIntervalSeconds",
@@ -48,7 +48,7 @@
             "required": true,
             "min": 1,
             "label": "Recording interval (seconds)",
-            "description": "The agreed temperature-recording interval in seconds. Fit-for-purpose per the referenced standard (data loggers commonly record every 300–900 s); compliance of the filed record against this interval is derived at read time."
+            "description": "The agreed temperature-recording interval in seconds. Fit-for-purpose per the referenced standard (data loggers commonly record every 300\u2013900 s); compliance of the filed record against this interval is derived at read time."
         },
         {
             "name": "monitoringStandard",
@@ -56,7 +56,7 @@
             "required": false,
             "minLength": 1,
             "label": "Monitoring standard",
-            "description": "Free-form reference to the recording/monitoring standard the parties follow (e.g. \"EN 12830\", \"USP <1079>\", \"WHO PQS E006\") — any standard, existing or future; the protocol takes no closed list."
+            "description": "Free-form reference to the recording/monitoring standard the parties follow (e.g. \"EN 12830\", \"USP <1079>\", \"WHO PQS E006\") \u2014 any standard, existing or future; the protocol takes no closed list."
         }
     ],
     "stages": {
@@ -83,7 +83,7 @@
                 "required": true,
                 "min": -273,
                 "max": 100,
-                "label": "Observed min (°C)",
+                "label": "Observed min (\u00b0C)",
                 "description": "Lowest temperature recorded over the period, whole degrees Celsius."
             },
             {
@@ -92,7 +92,7 @@
                 "required": true,
                 "min": -273,
                 "max": 100,
-                "label": "Observed max (°C)",
+                "label": "Observed max (\u00b0C)",
                 "description": "Highest temperature recorded over the period, whole degrees Celsius."
             },
             {
@@ -125,8 +125,7 @@
         },
         "runtime": {
             "interaction": null,
-            "fields": [],
-            "handoffStages": []
+            "fields": []
         }
     }
 }

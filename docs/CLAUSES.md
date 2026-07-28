@@ -62,12 +62,12 @@ per-clause code — certified by the witness probe in
 (`DESIGN_DECISIONS.md` §7): attestation is runtime evidence within an open
 process, on-chain and in the derivation both. Process-log LADDERS
 (`attestations` article) are the other runtime-evidence shape — their stage is
-the enum ordinal, no `stages` key needed; a ladder stage listed in the clause's
-`block.runtime.handoffStages` additionally PAIRS the witness stage of a
-co-composed clause nesting under `handoff` when the witness's required values
-derive unambiguously from the committed content (a single committed band) — one
-action, two attestations; the pairing is a field-name vocabulary, physical and
-digital hand-offs alike.
+the enum ordinal, no `stages` key needed. A diary event is one custodian's own
+record; evidence of a custodial transfer (e.g. the proximity clause's witness)
+is filed by a party through that clause's OWN standalone capability — there is
+no declared pairing and the engine reads no presentation metadata at runtime
+(custody is READER-DERIVED from the composed clauses' events; ruled
+2026-07-28, retiring `handoffStages`).
 
 Frontend wiring: `clauseSpecSource.ts` loads each spec live from `ClauseRegistry`
 → IPFS (no bundled copy); form gates and previews validate against the parsed spec.
@@ -127,8 +127,8 @@ ratified 2026-07-28; the published definition is
   are the runtime-evidence shapes.
 - **`block` = the UI half**, organized into PHASE SECTIONS named for their
   reader: `design` (`article`, `nestsUnder`, `fills`, `composes`), `checkout`
-  (`catalogueFills`, `profileFills`), `runtime` (`interaction`, `fields`,
-  `handoffStages`). Nothing on-chain or in the SDK's content layer reads it;
+  (`catalogueFills`, `profileFills`), `runtime` (`interaction`, `fields`).
+  Nothing on-chain or in the SDK's content layer reads it;
   the reference parser is `ClauseBlockBinding`
   (`frontend/lib/shared/clauseBlockBinding.ts`) — derive the attribute list
   from that type, don't quote a remembered one. **One verb — `fills` — says

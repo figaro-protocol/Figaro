@@ -387,46 +387,6 @@ export function clauseWitnessStages(
     return Object.entries(stages).map(([key, fields]) => ({ stage: Number(key), fields }));
 }
 
-/** The event-log stages at which a hand-off occurs — physical and digital
- *  alike — read from the clause's own `block.runtime.handoffStages`
- *  declaration. Executing one of these stages pairs the witness stage of ANY
- *  co-composed clause nesting under `handoff` on the same order (one action,
- *  two attestations). Empty for clauses declaring none. */
-export function clauseHandoffStages(clauseId: string, version?: number): readonly string[] {
-    return getClauseSpec(clauseId, version)?.block?.runtime.handoffStages ?? [];
-}
-
-/** Derive a witness stage's values from the clause's COMMITTED content, for
- *  the one-action-two-attestations hand-off pairing: a required enum witness
- *  field resolves iff the committed data carries an array of the SAME enum
- *  vocabulary narrowed to exactly one element (e.g. a single committed
- *  proximity band); optional fields stay absent. Returns null when any
- *  required field is unresolvable — the pairing skips and the standalone
- *  witness capability (with its form) carries the choice instead. */
-export function deriveStageValuesFromCommitted(
-    clauseId: string,
-    stage: number,
-    committedData: Record<string, unknown> | undefined,
-    version?: number,
-): Record<string, unknown> | null {
-    const spec = getClauseSpec(clauseId, version);
-    const stageFields = spec?.stages?.[stage];
-    if (!spec || !stageFields) return null;
-    const out: Record<string, unknown> = {};
-    for (const field of stageFields) {
-        if (!field.required) continue;
-        if (field.type !== "enum") return null;
-        const committedMatch = spec.fields.find((f) =>
-            f.type === "array" && f.items.type === "enum"
-            && f.items.values.length === field.values.length
-            && f.items.values.every((v) => field.values.includes(v)));
-        const committed = committedMatch ? committedData?.[committedMatch.name] : undefined;
-        if (!Array.isArray(committed) || committed.length !== 1) return null;
-        out[field.name] = committed[0];
-    }
-    return out;
-}
-
 // ── Spec-derived reads ───────────────────────────────────────────────────────
 
 /** The first enum field on a spec — the eventType ladder (merchant / courier)

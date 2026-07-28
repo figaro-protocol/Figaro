@@ -16,14 +16,14 @@
             ],
             "valueLabels": {
                 "general": "General Court",
-                "blockchain-nontechnical": "Blockchain — Non-Technical",
-                "blockchain-technical": "Blockchain — Technical",
+                "blockchain-nontechnical": "Blockchain \u2014 Non-Technical",
+                "blockchain-technical": "Blockchain \u2014 Technical",
                 "english-language": "English Language"
             },
             "required": true,
             "default": "general",
             "label": "Subcourt",
-            "description": "Kleros subcourt, encoded position-as-index: general = 0 (catch-all, the default); blockchain-nontechnical = 1 / blockchain-technical = 2 (on-chain-agreement disputes); english-language = 3 (disputes hinging on English-language interpretation). To pre-agree no specific forum, omit this whole clause — there is no placeholder court to select."
+            "description": "Kleros subcourt, encoded position-as-index: general = 0 (catch-all, the default); blockchain-nontechnical = 1 / blockchain-technical = 2 (on-chain-agreement disputes); english-language = 3 (disputes hinging on English-language interpretation). To pre-agree no specific forum, omit this whole clause \u2014 there is no placeholder court to select."
         },
         {
             "name": "klerosMinJurors",
@@ -53,8 +53,7 @@
         },
         "runtime": {
             "interaction": null,
-            "fields": [],
-            "handoffStages": []
+            "fields": []
         }
     }
 }

@@ -35,11 +35,12 @@
  *              DERIVED from the registered specs (chain → IPFS), never a
  *              roster in this file — each stage through the ONE generic
  *              capability rail, each event landing on the timeline. The
- *              courier's arrival stages are declared hand-off stages
- *              (block.runtime.handoffStages), so each arrival click PAIRS the zone
- *              witness of the committed single-band proximity policy — one
- *              action, two attestations. The BUYER then co-witnesses through
- *              the rail's standalone witness form (who must witness is never
+ *              COURIER then files the zone witness of the committed
+ *              single-band proximity policy through the rail's standalone
+ *              witness form — evidence of the custodial transfer is the
+ *              proximity clause's own capability, never engine pairing
+ *              (custody is reader-derived; ruled 2026-07-28). The BUYER
+ *              co-witnesses through the same form (who must witness is never
  *              engine policy). The hand-off clause's DECLARED
  *              interaction (block.runtime.interaction: qr-challenge) mounts the
  *              QR order-identity panel on the courier's page — presented
@@ -380,20 +381,24 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         ).toHaveCount(0);
         await walkLadder(COURIER, COURIER_CLAUSE, courierStages, 'the courier');
 
-        // ── THE PAIRED HAND-OFF WITNESSES (one action, two attestations): the
-        //    courier ladder declares its arrival stages as hand-off stages
-        //    (block.runtime.handoffStages), and the committed proximity policy carries
-        //    a SINGLE band — so each arrival click ALSO filed the zone witness
-        //    automatically. Two arrivals → two witnesses on the timeline,
-        //    labelled by the policy clause's own title, and two Attestation
-        //    events at the declared witness stage, read fresh from the chain. ──
+        // ── THE COURIER'S HAND-OFF WITNESS: evidence of the custodial
+        //    transfer is the proximity clause's OWN standalone capability —
+        //    the courier picks the detected band and files. No engine
+        //    pairing: custody is reader-derived from the composed clauses'
+        //    events (ruled 2026-07-28), and the diary stays a pure diary. ──
+        const courierWitnessCap = page.locator(
+            `[data-testid="capability-submit-clause-attestation"][data-clause-id="${PROXIMITY_CLAUSE}"]`,
+        );
+        await expect(courierWitnessCap, 'the witness capability derives for the courier').toBeVisible({ timeout: 30000 });
+        await page.getByTestId(`capability-input-${PROXIMITY_CLAUSE}-band-zone-wifi`).check();
+        await courierWitnessCap.getByTestId('capability-execute-submit-clause-attestation').click();
         // Witness rows carry the stable `timeline-event-stage-1` testid (the
         // spec title renders twice per row — eventLabel + clause line — so a
         // text count would double-count).
         await expect(
             page.getByTestId('timeline-event-stage-1'),
-            'each hand-off ladder stage paired a zone witness onto the timeline',
-        ).toHaveCount(2, { timeout: 60000 });
+            "the courier's zone witness lands on the timeline",
+        ).toHaveCount(1, { timeout: 60000 });
         // (clauseId, stage) is the on-chain discriminator: the courier LADDER's
         // arrived-pickup is ALSO ordinal 1, so the witness filter must pin the
         // proximity clause's id hash, not the stage alone.
@@ -406,8 +411,8 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             && (e.args.orderHash as string).toLowerCase() === courierEvent.args.orderHash!.toLowerCase());
         await expect.poll(async () => (await proximityWitnessEvents())
             .filter((e) => (e.args.attester as string).toLowerCase() === COURIER.toLowerCase()).length, {
-            timeout: 60000, message: 'two courier-attested witness events land at the declared stage',
-        }).toBe(2);
+            timeout: 60000, message: 'the courier-attested witness event lands at the declared stage',
+        }).toBe(1);
 
         // ── DECLARED INTERACTION (block.runtime.interaction → registered surface):
         //    the hand-off clause on the courier order declares the
@@ -606,8 +611,8 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         await buyerWitnessCap.getByTestId('capability-execute-submit-clause-attestation').click();
         await expect(
             page.getByTestId('timeline-event-stage-1'),
-            "the buyer's co-witness joins the two paired witnesses on the timeline",
-        ).toHaveCount(3, { timeout: 60000 });
+            "the buyer's co-witness joins the courier's witness on the timeline",
+        ).toHaveCount(2, { timeout: 60000 });
         await expect.poll(async () => (await proximityWitnessEvents())
             .filter((e) => (e.args.attester as string).toLowerCase() === BUYER.toLowerCase()).length, {
             timeout: 60000, message: 'the buyer-attested witness event lands at the declared stage',
@@ -651,7 +656,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
 
         // ── AUDIT: the full evidentiary record — the financial statements
         //    (one per seller + the consolidation), the cash-flow log, every
-        //    committed leaf, all EIGHT ladder stages and the THREE decoded witnesses, read from network
+        //    committed leaf, all EIGHT ladder stages and the TWO decoded witnesses, read from network
         //    state. The statements are documents drawn by the one generic
         //    renderer — no bespoke financials layout, no per-order "line item"
         //    breakdown (that is the invoice, carried in the audit bundle). ──
@@ -690,11 +695,11 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             ).toBeVisible({ timeout: 30000 });
         }
 
-        // The three hand-off witnesses (2 paired + 1 buyer co-witness), their
-        // detected band DECODED from transaction calldata against the declared
-        // stage and rendered with the spec's own labels.
+        // The two hand-off witnesses (the courier's + the buyer's co-witness),
+        // their detected band DECODED from transaction calldata against the
+        // declared stage and rendered with the spec's own labels.
         const witnessDl = evidence.locator(`[data-testid="audit-witness-${PROXIMITY_CLAUSE}-1"]`);
-        await expect(witnessDl, 'every witness record decodes in the audit').toHaveCount(3, { timeout: 60000 });
+        await expect(witnessDl, 'every witness record decodes in the audit').toHaveCount(2, { timeout: 60000 });
         await expect(witnessDl.first().getByText('Detected band')).toBeVisible();
         await expect(witnessDl.first().getByText('Zone (Wi-Fi)')).toBeVisible();
         // The DEVICE-CAPTURED evidence URI — pinned at the buyer's co-witness

@@ -73,7 +73,7 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
         for (const key of ["catalogueFills", "profileFills"]) {
             expect(key in spec.block.checkout, `${file}: block.checkout.${key} must be expressed`).toBe(true);
         }
-        for (const key of ["interaction", "fields", "handoffStages"]) {
+        for (const key of ["interaction", "fields"]) {
             expect(key in spec.block.runtime, `${file}: block.runtime.${key} must be expressed`).toBe(true);
         }
     });

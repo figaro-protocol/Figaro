@@ -149,11 +149,6 @@
                     "type": "array",
                     "items": { "$ref": "#/$defs/field" },
                     "description": "Runtime-input field specs — values a party supplies at RUNTIME that are NOT committed content (e.g. a composed contract's opening parameters, paired with design.composes). Rendered by ONE generic form; the surface reads no interface name. Same field shape as content fields — one parser, one renderer. Express as [] when the clause takes no runtime input."
-                },
-                "handoffStages": {
-                    "type": "array",
-                    "items": { "type": "string", "minLength": 1 },
-                    "description": "For a clause whose runtime evidence is a coordination event log: the eventType values at which a hand-off occurs. Executing one of these stages pairs the witness stage of ANY co-composed clause declaring design.nestsUnder: \"handoff\" on the same order — one action, two attestations. The pairing is a field-name vocabulary, deliberately not a clause list, and applies to physical and digital hand-offs alike. Express as [] when the clause has no hand-off semantics."
                 }
             }
         }

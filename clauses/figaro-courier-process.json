@@ -32,7 +32,7 @@
             "required": false,
             "minLength": 0,
             "maxLength": 512,
-            "description": "Optional PUBLIC evidence pointer, mechanism-grain only: a device-captured evidence document (geohash cell, hashed identifiers, raw-capture hash) or any coarse artifact. Full-fidelity records — GPS logs, photos, signed receipts — stay party-held for dispute-time revelation, bound by the raw-capture hash, never pinned publicly."
+            "description": "Optional PUBLIC evidence pointer, mechanism-grain only: a device-captured evidence document (geohash cell, hashed identifiers, raw-capture hash) or any coarse artifact. Full-fidelity records \u2014 GPS logs, photos, signed receipts \u2014 stay party-held for dispute-time revelation, bound by the raw-capture hash, never pinned publicly."
         }
     ],
     "stages": {},
@@ -49,11 +49,7 @@
         },
         "runtime": {
             "interaction": null,
-            "fields": [],
-            "handoffStages": [
-                "arrived-pickup",
-                "arrived-dropoff"
-            ]
+            "fields": []
         }
     }
 }
