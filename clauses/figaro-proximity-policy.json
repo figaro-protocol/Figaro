@@ -2,7 +2,7 @@
     "clauseId": "figaro-proximity-policy",
     "version": 1,
     "title": "Proximity-verification policy",
-    "description": "The proximity-detection bands accepted for verifying a physical hand-off on this order, committed at agreement signing. Each band corresponds to a standard short-range detection technology — Wi-Fi presence, Bluetooth Low Energy, ultra-wideband ranging, or NFC contact. Multi-valued: the designer commits the set the assembly accepts; an order carrying no proximity-policy clause requires no proximity verification. The runtime proof that a hand-off actually occurred within an accepted band is filed as a runtime attestation at stage 1 — by either party (a counterparty may be absent, e.g. a dead drop: the attester carries the device/network identifier as evidence in lieu of the counterparty). Sufficiency of witnessing is derived at read time against the committed bands, never enforced by the protocol.",
+    "description": "The proximity-detection bands accepted for verifying a physical hand-off on this order, committed at agreement signing. Each band corresponds to a standard short-range detection technology \u2014 Wi-Fi presence, Bluetooth Low Energy, ultra-wideband ranging, or NFC contact. Multi-valued: a transaction particular \u2014 the buyer authors the accepted set at checkout, like every field named in no fills list; an order carrying no proximity-policy clause requires no proximity verification. The runtime proof that a hand-off actually occurred within an accepted band is filed as a runtime attestation at stage 1 \u2014 by either party (a counterparty may be absent, e.g. a dead drop: the attester carries the device/network identifier as evidence in lieu of the counterparty). Sufficiency of witnessing is derived at read time against the committed bands, never enforced by the protocol.",
     "rpgfTag": null,
     "fields": [
         {
@@ -48,7 +48,7 @@
                     "contact-nfc": "Contact (NFC)"
                 },
                 "label": "Detected band",
-                "description": "The band the hand-off was witnessed within. Must be one of the committed bands — checked at read time, like every content/policy comparison."
+                "description": "The band the hand-off was witnessed within. Must be one of the committed bands \u2014 checked at read time, like every content/policy comparison."
             },
             {
                 "name": "evidenceUri",
@@ -58,7 +58,7 @@
                 "minLength": 0,
                 "maxLength": 512,
                 "label": "Witness evidence",
-                "description": "Optional reference to the detection artifact at mechanism grain — a device-captured evidence document (geohash cell, keccak-hashed tag/device identifiers, raw-capture hash) or a counterparty co-signature. Raw identifiers (Wi-Fi BSSIDs, BLE beacon ids, NFC tap payloads) and coordinates stay device-held for dispute-time revelation, bound by the raw-capture hash — never pinned publicly."
+                "description": "Optional reference to the detection artifact at mechanism grain \u2014 a device-captured evidence document (geohash cell, keccak-hashed tag/device identifiers, raw-capture hash) or a counterparty co-signature. Raw identifiers (Wi-Fi BSSIDs, BLE beacon ids, NFC tap payloads) and coordinates stay device-held for dispute-time revelation, bound by the raw-capture hash \u2014 never pinned publicly."
             }
         ]
     },

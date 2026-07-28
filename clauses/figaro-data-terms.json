@@ -2,7 +2,7 @@
     "clauseId": "figaro-data-terms",
     "version": 1,
     "title": "Data terms",
-    "description": "The disclosure regime for THIS process's own records — the co-produced private data behind the agreement's merkle leaves (the agreement content, the evidence, the books each side keeps). Absent this clause the paper-contract default applies: each party holds its own copy and may disclose it. Composing this clause makes the regime an explicit, co-signed agreement term: the designer sets the regime at design time (the design-canvas card's disclosure toggle writes the disclosure field into the template), and the buyer commits a per-order choice over their own half at checkout — the same fill pattern as the modality clause. Sealed per-order encrypted fields (delivery addresses, counterparty-private hand-off content) sit outside every regime by construction and are never disclosable through this clause. What a party then DOES with its disclosable records — what is offered for sale, to whom, when, at what price — is a catalogue and profile concern, never fields here; the terms of a specific data sale are the data-license clause's concern. This clause is composed by designers and selected by buyers; it is never article-mandatory — a disclosure regime is a choice, and regime variants are sibling assemblies.",
+    "description": "The disclosure regime for THIS process's own records \u2014 the co-produced private data behind the agreement's merkle leaves (the agreement content, the evidence, the books each side keeps). Absent this clause the paper-contract default applies: each party holds its own copy and may disclose it. Composing this clause makes the regime an explicit, co-signed agreement term: the designer sets the regime at design time (`disclosure` is a design fill \u2014 the drawer's generic field editor writes it into the template), and the buyer commits a per-order choice over their own half at checkout \u2014 the same fill pattern as the modality clause. Sealed per-order encrypted fields (delivery addresses, counterparty-private hand-off content) sit outside every regime by construction and are never disclosable through this clause. What a party then DOES with its disclosable records \u2014 what is offered for sale, to whom, when, at what price \u2014 is a catalogue and profile concern, never fields here; the terms of a specific data sale are the data-license clause's concern. This clause is composed by designers and selected by buyers; it is never article-mandatory \u2014 a disclosure regime is a choice, and regime variants are sibling assemblies.",
     "rpgfTag": null,
     "fields": [
         {
@@ -15,11 +15,11 @@
                 "open"
             ],
             "valueLabels": {
-                "closed": "Closed — parties only",
+                "closed": "Closed \u2014 parties only",
                 "each-own": "Each party may disclose its own copy",
-                "open": "Open — either party may publish"
+                "open": "Open \u2014 either party may publish"
             },
-            "description": "The regime for the process's co-produced records, fixed by the designer at design time. closed = neither party discloses beyond the parties (the composed confidentiality term); each-own = each party may disclose the copy it holds (the paper-contract default, made explicit and co-signed); open = either party may publish the process record."
+            "description": "The regime for the process's co-produced records, fixed by the designer at design time (declared in design.fills; part of the compositionHash \u2014 regime variants are sibling assemblies). closed = neither party discloses beyond the parties (the composed confidentiality term); each-own = each party may disclose the copy it holds (the paper-contract default, made explicit and co-signed); open = either party may publish the process record."
         },
         {
             "name": "buyerDisclosure",
@@ -33,7 +33,7 @@
                 "withhold": "Withhold my half",
                 "permit": "Permit my half"
             },
-            "description": "The buyer's per-order choice over their own half of the record, filled at checkout and committed at signing. withhold = content the buyer contributed must be excluded or redacted from any disclosure the regime otherwise allows; permit = it may travel with the disclosed record. Moot under a closed regime, but always committed — consent is explicit, never inferred."
+            "description": "The buyer's per-order choice over their own half of the record, filled at checkout and committed at signing. withhold = content the buyer contributed must be excluded or redacted from any disclosure the regime otherwise allows; permit = it may travel with the disclosed record. Moot under a closed regime, but always committed \u2014 consent is explicit, never inferred."
         }
     ],
     "stages": {},
@@ -41,7 +41,9 @@
         "design": {
             "article": "data",
             "nestsUnder": null,
-            "fills": [],
+            "fills": [
+                "disclosure"
+            ],
             "composes": null
         },
         "checkout": {
