@@ -251,6 +251,7 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 export const USAGE_COUNTER_ABI = parseAbi([
     // ── Recording (permissionless) ──────────────────────────────────
     `function recordUsage(${COMMITMENT_TUPLE} order, bytes32 artifact, bytes sectionData, bytes32[] proof) external`,
+    `function recordAssemblyUsage(${COMMITMENT_TUPLE} order, bytes32 compositionHash, bytes sectionData, bytes32[] proof) external`,
 
     // ── Composition + schedule ──────────────────────────────────────
     "function core() view returns (address)",

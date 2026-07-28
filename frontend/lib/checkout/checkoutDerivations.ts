@@ -167,7 +167,9 @@ export function deriveAgreementGroups(args: {
     const assemblyGroup: AgreementGroup[] = Object.keys(assemblySections).length === 0 ? [] : [{
         key: "assembly",
         label: "Assembly terms (every agreement)",
-        clauses: Object.entries(assemblySections).map(([clauseId, fields]) => {
+        clauses: Object.entries(assemblySections)
+            .filter(([clauseId]) => !clauseIsMandatory(clauseId))
+            .map(([clauseId, fields]) => {
             const specFields = getClauseSpec(clauseId)?.fields ?? [];
             return {
                 clauseId,

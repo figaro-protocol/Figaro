@@ -25,6 +25,7 @@ import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import {
     clauseDesignFills,
     clauseIsAssemblyScoped,
+    clauseIsMandatory,
     getClauseSpec,
     listKnownClauses,
 } from "@/lib/shared/clauseSpecSource";
@@ -52,8 +53,12 @@ export function AssemblyTermsPanel({
         const live = new Set(
             (registered ?? []).filter((e) => !e.stakeWithdrawn).map((e) => `${e.clauseId}#${e.version}`),
         );
+        // Mandatory assembly-scoped clauses (assembly-provenance) fold in
+        // automatically at publish — never a choice, so never offered here.
         return listKnownClauses().filter(
-            (c) => live.has(`${c.clauseId}#${c.version}`) && clauseIsAssemblyScoped(c.clauseId, c.version),
+            (c) => live.has(`${c.clauseId}#${c.version}`)
+                && clauseIsAssemblyScoped(c.clauseId, c.version)
+                && !clauseIsMandatory(c.clauseId, c.version),
         );
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [registered, specsVersion]);

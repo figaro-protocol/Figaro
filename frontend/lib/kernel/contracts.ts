@@ -34,6 +34,8 @@ export interface ChainConfig {
     assemblyRegistry: `0x${string}`;
     /** The florin — the protocol's own token. */
     florinToken: `0x${string}`;
+    /** UsageCounter — RPGF's verified-usage ledger (record at resolve, claim per period). */
+    usageCounter: `0x${string}`;
 }
 
 export const CONTRACTS: ChainConfig = {
@@ -42,6 +44,7 @@ export const CONTRACTS: ChainConfig = {
     sellerRegistry: (process.env.NEXT_PUBLIC_SELLER_REGISTRY || "") as `0x${string}`,
     assemblyRegistry: (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY || "") as `0x${string}`,
     florinToken: (process.env.NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS || "") as `0x${string}`,
+    usageCounter: (process.env.NEXT_PUBLIC_USAGE_COUNTER || "") as `0x${string}`,
 };
 
 /** The SellerRegistry address if it's a well-formed address, else null. */

@@ -1,13 +1,18 @@
 {
     "name": "Freelance deliverable",
-    "summary": "A digital work product handed over privately, with proof of delivery — and no marketplace fee.",
-    "description": "A client commissions a digital deliverable — a design file, a production cut, a dataset, an access credential — from an independent professional. The hand-off travels an encrypted channel straight between the two of them, and a fingerprint of the file is recorded as proof it arrived. Both sides are bonded, so the client's payment and the freelancer's delivery secure each other; the freelancer's catalogue can price a fixed fee or by the hour. No marketplace takes a cut.",
+    "summary": "A digital work product handed over privately, with proof of delivery \u2014 and no marketplace fee.",
+    "description": "A client commissions a digital deliverable \u2014 a design file, a production cut, a dataset, an access credential \u2014 from an independent professional. The hand-off travels an encrypted channel straight between the two of them, and a fingerprint of the file is recorded as proof it arrived. Both sides are bonded, so the client's payment and the freelancer's delivery secure each other; the freelancer's catalogue can price a fixed fee or by the hour. No marketplace takes a cut.",
+    "assemblyClauses": {
+        "figaro-assembly-provenance": {}
+    },
     "agreements": [
         {
             "id": "order-0",
             "clauses": {
                 "figaro-commerce": {},
-                "figaro-topology": { "parentOrderHashes": [] },
+                "figaro-topology": {
+                    "parentOrderHashes": []
+                },
                 "figaro-modalities": {},
                 "figaro-content-handoff": {},
                 "figaro-geolocation": {}

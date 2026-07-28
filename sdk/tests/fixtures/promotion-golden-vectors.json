@@ -23,7 +23,7 @@
     }
   },
   "assemblyTemplate": {
-    "canonicalJson": "{\"agreements\":[{\"clauses\":{\"figaro-commerce\":{},\"figaro-topology\":{\"parentOrderHashes\":[]}},\"id\":\"order-0\"},{\"clauses\":{\"figaro-commerce\":{},\"figaro-topology\":{\"parentOrderHashes\":[\"order-0\"]}},\"id\":\"order-1\"}],\"assemblyClauses\":{\"figaro-applicable-law\":{\"applicableLaw\":\"US-NY\"}},\"name\":\"Golden Vector Chain\"}",
-    "compositionHash": "0x72250a22d6472be61b3ac1d634269e778930ff13b6d264c3d3722cbc8a05f57b"
+    "canonicalJson": "{\"agreements\":[{\"clauses\":{\"figaro-commerce\":{},\"figaro-topology\":{\"parentOrderHashes\":[]}},\"id\":\"order-0\"},{\"clauses\":{\"figaro-commerce\":{},\"figaro-topology\":{\"parentOrderHashes\":[\"order-0\"]}},\"id\":\"order-1\"}],\"assemblyClauses\":{\"figaro-applicable-law\":{\"applicableLaw\":\"US-NY\"},\"figaro-assembly-provenance\":{}},\"name\":\"Golden Vector Chain\"}",
+    "compositionHash": "0x1baed6e15396776ffe236e9a945af49cfdccf0a953e60f85a9778a9827931e64"
   }
 }

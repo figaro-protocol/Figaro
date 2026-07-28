@@ -29,7 +29,7 @@
  *   audit     the new clauses' evidence surfaces in the audit bundle.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { calculateBonds } from '@figaro/sdk';
+import { USAGE_COUNTER_ABI, calculateBonds } from '@figaro/sdk';
 import { mnemonicToAccount } from 'viem/accounts';
 import { createPublicClient, createWalletClient, http, parseAbi, parseUnits, type Hex } from 'viem';
 import type { Page } from '@playwright/test';
@@ -37,6 +37,7 @@ import {
     LOCAL_ANVIL,
     RPC_URL,
     confirmAgreementPreviews,
+    discoverAnchoredAssemblies,
     ladderLabelsFromChain,
     readLocalDeploymentConfig,
     waitForConnected,
@@ -198,12 +199,22 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         ).first();
         const witnessInput = (clauseId: string, field: string) =>
             page.getByTestId(`capability-input-${clauseId}-${field}`);
-        const executeWitness = async (clauseId: string, label: string) => {
+        const executeWitness = async (clauseId: string, label: string, settleProbe?: string) => {
             const before = await attestationCount();
             await witnessCap(clauseId).getByTestId('capability-execute-submit-clause-attestation').click();
             await expect.poll(attestationCount, {
                 timeout: 60000, message: `${label} lands on the AttestationCoordinator`,
             }).toBe(before + 1);
+            // SAME-PAGE SETTLE: the app's post-success reload re-derives the
+            // model and REMOUNTS the capability forms (resetting them). A next
+            // witness typed on this page before that reload lands gets wiped
+            // mid-fill — so wait for the reset to be VISIBLE (the field we
+            // just filled reads empty) before the caller types the next form.
+            // Both ends in the UI: the chain poll alone is not "settled".
+            if (settleProbe) {
+                await expect(witnessInput(clauseId, settleProbe), `${label}: the rail settles (form reset) before the next witness`)
+                    .toHaveValue('', { timeout: 30000 });
+            }
         };
 
         // The shipper seals the container — custody "applied" on the root.
@@ -251,11 +262,11 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         await witnessInput(C.coldChain, 'periodEnd').fill('2026-07-23T22:00');
         await witnessInput(C.coldChain, 'observedMinC').fill('3');
         await witnessInput(C.coldChain, 'observedMaxC').fill('6');
-        await executeWitness(C.coldChain, "the carrier's reefer period record");
+        await executeWitness(C.coldChain, "the carrier's reefer period record", 'periodStart');
         await witnessInput(C.custody, 'event-transferred').check();
         await witnessInput(C.custody, 'unitIdentifier').fill('MSKU1234565');
         await witnessInput(C.custody, 'occurredAt').fill('2026-07-23T10:30');
-        await executeWitness(C.custody, "the carrier's custody-transferred event");
+        await executeWitness(C.custody, "the carrier's custody-transferred event", 'unitIdentifier');
         await witnessInput(C.emissions, 'gramsCO2e').fill('480000');
         await executeWitness(C.emissions, "the carrier's voyage emissions disclosure");
 
@@ -278,6 +289,34 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         await expect.poll(async () => (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length, { timeout: 60000, message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
+
+        // ── RPGF USAGE RECORDING (count usage when it happens, ruled
+        //    2026-07-28): the resolve capability records every committed
+        //    artifact's use on the UsageCounter — one UsageRecorded per
+        //    DISTINCT artifact in the process (duplicates AlreadyCounted by
+        //    design), INCLUDING the assembly's compositionHash via the
+        //    mechanically-folded provenance section. Verified out-of-band
+        //    from the chain, never from the UI. ──
+        const usageCounter = config.usageCounter as Hex;
+        expect(usageCounter, 'UsageCounter address is deployed + recorded').toBeTruthy();
+        const usageEvents = () => publicClient.getContractEvents({
+            address: usageCounter, abi: USAGE_COUNTER_ABI, eventName: 'UsageRecorded',
+            args: { processId }, fromBlock: 0n,
+        });
+        await expect.poll(async () => (await usageEvents()).length, {
+            timeout: 120000, message: 'the resolve capability records the process artifacts on the UsageCounter',
+        }).toBeGreaterThanOrEqual(15);
+        // The provenance section carries the adopted assembly's own
+        // compositionHash, so the ASSEMBLY artifact itself must be among the
+        // recorded artifacts — the assembly-designer credit leg, previously
+        // dead end-to-end.
+        const adopted = (await discoverAnchoredAssemblies()).find((t) => t.slug === slug);
+        expect(adopted?.compositionHash, 'the adopted assembly re-discovers from chain').toBeTruthy();
+        const artifacts = (await usageEvents()).map((e) => (e.args.artifact as string).toLowerCase());
+        expect(
+            artifacts,
+            "the assembly's compositionHash is a recorded artifact (designer credit)",
+        ).toContain(adopted!.compositionHash!.toLowerCase());
 
         // ── SETTLEMENT: the chain total left the buyer; each value-adder
         //    earned exactly its price; the escrow returned to baseline. ──

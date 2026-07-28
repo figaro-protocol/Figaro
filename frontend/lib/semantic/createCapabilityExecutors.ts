@@ -14,7 +14,7 @@
  * copy; this factory only decides WHEN to ask.
  */
 import { type Hex } from "viem";
-import { computeClauseKey, type Agreement } from "@figaro/sdk";
+import { buildSectionInclusionProof, computeClauseKey, getSectionDataBytes, type Agreement, type Commitment } from "@figaro/sdk";
 import { encodeContentFromSpec, validateContent } from "@figaro/sdk/clauses";
 import { OrderState, type Order } from "@/lib/kernel/store";
 import { restoreSignedProcessId } from "@/lib/kernel/signedCommitment";
@@ -39,6 +39,11 @@ export interface CapabilityExecutorDeps {
     processAgreements: Map<string, Agreement>;
     /** The kernel resolve — buyer dominance's single signature. */
     resolveProcess: (processId: string, commitments: ReturnType<typeof restoreSignedProcessId>[]) => Promise<Hex | undefined | void>;
+    /** RPGF usage recording (permissionless; UsageCounter re-verifies every
+     *  fact, so a revert is bookkeeping, not failure). Fired after resolve —
+     *  count usage when it happens. */
+    recordUsage: (order: Commitment, artifact: Hex, sectionData: Hex, proof: readonly Hex[]) => Promise<Hex | undefined>;
+    recordAssemblyUsage: (order: Commitment, compositionHash: Hex, sectionData: Hex, proof: readonly Hex[]) => Promise<Hex | undefined>;
     submitBuyerAttestation: (args: AttestationSubmitArgs) => Promise<Hex | undefined>;
     submitSellerAttestation: (args: AttestationSubmitArgs) => Promise<Hex | undefined>;
     registerSeller: (metadataURI: string) => Promise<Hex | undefined | void>;
@@ -86,7 +91,68 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             deadline: order.deadline,
         }, chainId));
 
-        return deps.resolveProcess(targetProcessId, commitments);
+        const resolveTx = await deps.resolveProcess(targetProcessId, commitments);
+
+        // ── RPGF USAGE RECORDING (ruled 2026-07-28): count usage when it
+        // happens — the buyer's app, holding every agreement and proof at
+        // the moment of resolve, records each committed artifact's use.
+        // Spec-routed and name-free: every section records; a section whose
+        // spec declares a `compositionHash` field additionally records
+        // ASSEMBLY usage (once per process). Best-effort by design: the
+        // resolve has already settled, recording is permissionless
+        // bookkeeping anyone can redo, so a failed call logs and moves on.
+        if (!deps.isE2EMock) {
+            await waitForTransactionConfirmation(resolveTx as Hex | undefined);
+            let assemblyRecorded = false;
+            let recorded = 0;
+            let attempted = 0;
+            for (let i = 0; i < activeOrders.length; i++) {
+                const agreementHash = activeOrders[i].agreementHash;
+                const agreement = agreementHash ? deps.processAgreements.get(agreementHash) : undefined;
+                if (!agreement) {
+                    // Loud by doctrine (silent success is the enemy): a missing
+                    // agreement means this order's artifacts go unrecorded.
+                    console.error(`[usage-recording] no hydrated agreement for order ${activeOrders[i].orderHash} (hash ${agreementHash}) — skipping its artifacts`);
+                    continue;
+                }
+                for (const section of agreement.sections) {
+                    attempted++;
+                    try {
+                        const { proof } = buildSectionInclusionProof(agreement, section.clause);
+                        const data = getSectionDataBytes(section);
+                        const tx = await deps.recordUsage(
+                            commitments[i] as Commitment,
+                            computeClauseKey(section.clause, section.version) as Hex,
+                            data as Hex,
+                            proof as readonly Hex[],
+                        );
+                        await waitForTransactionConfirmation(tx);
+                        recorded++;
+                        const composition = (section.data as Record<string, unknown> | undefined)?.compositionHash;
+                        if (!assemblyRecorded && composition !== undefined
+                            && !(typeof composition === "string" && /^0x[0-9a-fA-F]{64}$/.test(composition))) {
+                            // Loud: a committed compositionHash that fails the
+                            // shape check means the assembly leg silently dies.
+                            console.error(`[usage-recording] ${section.clause}: compositionHash present but malformed: ${JSON.stringify(composition)}`);
+                        }
+                        if (!assemblyRecorded && typeof composition === "string" && /^0x[0-9a-fA-F]{64}$/.test(composition)) {
+                            const atx = await deps.recordAssemblyUsage(
+                                commitments[i] as Commitment,
+                                composition as Hex,
+                                data as Hex,
+                                proof as readonly Hex[],
+                            );
+                            await waitForTransactionConfirmation(atx);
+                            assemblyRecorded = true;
+                        }
+                    } catch (error) {
+                        console.error(`[usage-recording] ${section.clause} on order ${activeOrders[i].orderHash}: ${error instanceof Error ? error.message : String(error)}`);
+                    }
+                }
+            }
+            console.error(`[usage-recording] recorded ${recorded}/${attempted} sections${assemblyRecorded ? " + assembly" : ""} for process ${targetProcessId}`);
+        }
+        return resolveTx;
     };
 
     // ONE generic attestation path — the clause spec drives the on-chain

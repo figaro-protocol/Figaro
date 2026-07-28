@@ -76,6 +76,10 @@ function mandatoryClauseFold(parents = []) {
     for (const file of fs.readdirSync(CLAUSES_DIR).filter((f) => f.endsWith('.json')).sort()) {
         const spec = JSON.parse(fs.readFileSync(path.join(CLAUSES_DIR, file), 'utf8'));
         if (spec.block?.design?.article !== 'mandatory') continue;
+        // Mandatory folds at the level its scope names (ruled 2026-07-28):
+        // assembly-scoped mandatory (assembly-provenance) is a template-level
+        // fold, not a per-agreement one.
+        if (spec.block?.design?.scope === 'assembly') continue;
         const data = {};
         for (const field of spec.fields ?? []) {
             if (field.name in bag) data[field.name] = bag[field.name];

@@ -287,15 +287,21 @@ contract Deploy is Script {
         // can ever be claimed. (Testnet compresses years 2/5/9 to weeks; this
         // compresses further.)
         //
-        // Ten minutes, not seconds: deploy + clause population alone takes over
-        // a minute, so a seconds-scale period 0 is already closed before any
-        // test can record into it — measured, not guessed. Ten minutes leaves
-        // the whole suite inside period 0, and the rewards spec advances the
-        // chain past the boundary itself rather than sleeping through it.
+        // Thirty-minute periods, not seconds or ten minutes: deploy + clause
+        // population alone takes over a minute, and RESOLVE-TIME USAGE
+        // RECORDING (ruled 2026-07-28: the resolve capability records every
+        // committed artifact) needs accrual OPEN for every money-legs spec in
+        // a full suite run — a 3×10-minute schedule closed the book ~30
+        // minutes after deploy and every later recordUsage reverted
+        // AccrualClosed (measured, not guessed: the tradelens batch). Thirty
+        // -minute periods give a 90-minute accrual life; the rewards spec
+        // still advances the chain past its own period boundary rather than
+        // sleeping through it, and its minutes-scale jump cannot expire the
+        // hour-scale deadlines other specs sign with.
         uint64[] memory periods = new uint64[](3);
-        periods[0] = uint64(block.timestamp + 10 minutes);
-        periods[1] = uint64(block.timestamp + 20 minutes);
-        periods[2] = uint64(block.timestamp + 30 minutes);
+        periods[0] = uint64(block.timestamp + 30 minutes);
+        periods[1] = uint64(block.timestamp + 60 minutes);
+        periods[2] = uint64(block.timestamp + 90 minutes);
 
         // The two MANDATORY clauses earn nothing: committed on every order, so
         // their count is the process count and carries no adoption signal.

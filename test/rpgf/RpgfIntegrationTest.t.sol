@@ -134,7 +134,9 @@ contract RpgfIntegrationTest is Test {
         internal
         returns (CommitmentTypes.Commitment memory c, bytes memory sectionData)
     {
-        sectionData = abi.encode(compositionHash);
+        // Sections commit as CANONICAL JSON bytes — the same convention the
+        // runtime's agreements use (the merkle leaf hashes exactly these).
+        sectionData = _provJson(compositionHash);
         c = CommitmentTypes.Commitment({
             processId: bytes32(0),
             buyer: buyer,
@@ -227,6 +229,11 @@ contract RpgfIntegrationTest is Test {
         assertEq(florin.balanceOf(author) - afterFirst, (200_000_000 ether * 15) / 100);
     }
 
+    /// @dev The provenance section's canonical-JSON bytes for a composition.
+    function _provJson(bytes32 compositionHash) internal pure returns (bytes memory) {
+        return abi.encodePacked('{"compositionHash":"', vm.toString(compositionHash), '"}');
+    }
+
     function test_assemblyCannotBeCreditedWithoutItsProvenanceSection() public {
         // An agreement that never committed the provenance clause cannot credit
         // an assembly — there is no leaf to open. This is the path that looked
@@ -240,7 +247,7 @@ contract RpgfIntegrationTest is Test {
         (CommitmentTypes.Commitment memory p,) = _settleUnderAssembly(ASM, 1);
         // The leaf opens, but for a different composition than the one claimed.
         vm.expectRevert(UsageCounter.ProvenanceMismatch.selector);
-        counter.recordAssemblyUsage(p, keccak256("other-assembly"), abi.encode(ASM), new bytes32[](0));
+        counter.recordAssemblyUsage(p, keccak256("other-assembly"), _provJson(ASM), new bytes32[](0));
     }
 
     function test_nonAuthorCannotClaimSomeoneElsesArtifact() public {

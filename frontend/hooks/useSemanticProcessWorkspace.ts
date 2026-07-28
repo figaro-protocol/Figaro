@@ -10,6 +10,7 @@ import useTokenApproval from "@/hooks/useTokenApproval";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { OrderState, useOrderStore } from "@/lib/kernel/store";
 import { useFigaroActions } from "@/lib/kernel/useFigaroActions";
+import { useUsageRecorder } from "@/lib/protocol/useUsageRecorder";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
@@ -62,6 +63,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     // specs warm; reading it here re-renders + re-derives processModel below.
     const { version: clauseSpecsVersion } = useClauseSpecs();
     const { resolveProcess, hash, isPending } = useFigaroActions();
+    const { recordUsage, recordAssemblyUsage } = useUsageRecorder();
     const attestationActions = useAttestationCoordinatorActions();
     const registerSeller = useRegisterSeller();
     const updateSellerProfile = useUpdateProfile();
@@ -179,6 +181,8 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         processOrders,
         processAgreements,
         resolveProcess,
+        recordUsage,
+        recordAssemblyUsage,
         submitBuyerAttestation: attestationActions.submitBuyerAttestation,
         submitSellerAttestation: attestationActions.submitSellerAttestation,
         registerSeller: (metadataURI) => registerSeller.register(metadataURI, (registrationDeposit.data as bigint | undefined) ?? 0n),

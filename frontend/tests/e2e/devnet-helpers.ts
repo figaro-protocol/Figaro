@@ -475,6 +475,7 @@ export async function confirmAgreementPreviews(
  *  instead of a hardcoded slug. */
 export interface DiscoveredAssembly {
     slug: string;
+    compositionHash: `0x${string}`;
     agreements: Array<{ id?: string; clauses?: Record<string, unknown> }>;
 }
 
@@ -497,7 +498,7 @@ export async function discoverAnchoredAssemblies(): Promise<DiscoveredAssembly[]
         try {
             const doc = await (await fetch(resolveIpfsURI(contentURI))).json() as { agreements?: DiscoveredAssembly['agreements'] };
             if (Array.isArray(doc.agreements) && doc.agreements.length > 0) {
-                out.push({ slug: deriveAssemblySlug(compositionHash), agreements: doc.agreements });
+                out.push({ slug: deriveAssemblySlug(compositionHash), compositionHash, agreements: doc.agreements });
             }
         } catch {
             continue; // unresolvable / non-JSON template — not discoverable

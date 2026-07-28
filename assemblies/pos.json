@@ -1,13 +1,18 @@
 {
     "name": "Point of sale",
     "summary": "One bonded order at the counter: buyer and seller, no processor in between.",
-    "description": "The simplest trade Figaro secures: a buyer and a seller settle a purchase directly. Both lock a stake worth more than the deal, so honoring it is the only profitable move — no card network, no payment processor, no chargeback department. The buyer picks how the goods change hands (on-site, pickup) at checkout; one signature settles it.",
+    "description": "The simplest trade Figaro secures: a buyer and a seller settle a purchase directly. Both lock a stake worth more than the deal, so honoring it is the only profitable move \u2014 no card network, no payment processor, no chargeback department. The buyer picks how the goods change hands (on-site, pickup) at checkout; one signature settles it.",
+    "assemblyClauses": {
+        "figaro-assembly-provenance": {}
+    },
     "agreements": [
         {
             "id": "order-0",
             "clauses": {
                 "figaro-commerce": {},
-                "figaro-topology": { "parentOrderHashes": [] },
+                "figaro-topology": {
+                    "parentOrderHashes": []
+                },
                 "figaro-modalities": {},
                 "figaro-geolocation": {}
             }

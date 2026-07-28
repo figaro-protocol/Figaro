@@ -30,6 +30,7 @@ const SPECS = specSourceFromFixtures([
     "figaro-commerce",
     "figaro-topology",
     "figaro-applicable-law",
+    "figaro-assembly-provenance",
     "figaro-geolocation",
     "figaro-merchant-process",
 ]);

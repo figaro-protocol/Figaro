@@ -23,10 +23,18 @@ const referenceFiles = readdirSync(ASSEMBLIES_DIR).filter((f) => f.endsWith(".js
 const registeredClauseIds = new Set(
     readdirSync(CLAUSES_DIR).filter((f) => f.endsWith(".json")).map((f) => f.replace(/\.json$/u, "")),
 );
-const mandatoryClauseIds = readdirSync(CLAUSES_DIR)
+// Mandatory folds at the level its scope names (ruled 2026-07-28):
+// agreement-scoped mandatory on every ORDER; assembly-scoped mandatory
+// (assembly-provenance) once in the template's assemblyClauses.
+const mandatorySpecs = readdirSync(CLAUSES_DIR)
     .filter((f) => f.endsWith(".json"))
-    .map((f) => JSON.parse(readFileSync(path.join(CLAUSES_DIR, f), "utf8")) as { clauseId: string; block?: { design?: { article?: string } } })
-    .filter((s) => s.block?.design?.article === "mandatory")
+    .map((f) => JSON.parse(readFileSync(path.join(CLAUSES_DIR, f), "utf8")) as { clauseId: string; block?: { design?: { article?: string; scope?: string } } })
+    .filter((s) => s.block?.design?.article === "mandatory");
+const mandatoryClauseIds = mandatorySpecs
+    .filter((s) => s.block?.design?.scope !== "assembly")
+    .map((s) => s.clauseId);
+const assemblyMandatoryClauseIds = mandatorySpecs
+    .filter((s) => s.block?.design?.scope === "assembly")
     .map((s) => s.clauseId);
 
 describe("reference assemblies — the onboarding set", () => {
@@ -61,6 +69,12 @@ describe("reference assemblies — the onboarding set", () => {
                     for (const mandatory of mandatoryClauseIds) {
                         expect(order.clauses, `${order.id} carries mandatory ${mandatory}`).toHaveProperty(mandatory);
                     }
+                }
+                for (const mandatory of assemblyMandatoryClauseIds) {
+                    expect(
+                        (template as { assemblyClauses?: Record<string, unknown> }).assemblyClauses ?? {},
+                        `the template carries assembly-mandatory ${mandatory} once, at the assembly level`,
+                    ).toHaveProperty(mandatory);
                 }
             });
 

@@ -440,12 +440,18 @@ export function buildAssemblyTemplate(args: {
         }
     }
     // Dedupe by clauseId (list() is per-version): the fold wants each
-    // mandatory clause once, at its highest loaded version.
+    // mandatory clause once, at its highest loaded version. A MANDATORY
+    // clause folds AT THE LEVEL ITS SCOPE NAMES (ruled 2026-07-28):
+    // agreement-scoped mandatory (commerce, topology) folds into every
+    // agreement; assembly-scoped mandatory (assembly-provenance) folds into
+    // every published assembly's terms below.
     const mandatory = new Map<string, ProjectionSpecView>();
+    const assemblyMandatory = new Map<string, ProjectionSpecView>();
     for (const spec of specs.list()) {
         if (!specIsMandatory(spec)) continue;
-        const seen = mandatory.get(spec.clauseId);
-        if (!seen || spec.version > seen.version) mandatory.set(spec.clauseId, spec);
+        const target = specIsAssemblyScoped(spec) ? assemblyMandatory : mandatory;
+        const seen = target.get(spec.clauseId);
+        if (!seen || spec.version > seen.version) target.set(spec.clauseId, spec);
     }
     if (mandatory.size === 0) {
         // Without the chain→IPFS spec set the mandatory clauses cannot be
@@ -462,9 +468,17 @@ export function buildAssemblyTemplate(args: {
     // them), keyed by these local labels.
     const idToLocal = new Map(orders.map((o, i) => [o.orderHash, `order-${i}`]));
     // Assembly-scoped sections keep the same value-free rule as agreements:
-    // only design.fills values survive into the template.
+    // only design.fills values survive into the template. Assembly-scoped
+    // MANDATORY clauses fold in automatically first (empty sections — the
+    // provenance hash cannot appear inside the composition it hashes; the
+    // checkout fills it mechanically); the designer's own composition merges
+    // over them.
     const assemblySelection: Record<string, Record<string, unknown>> = {};
     const assemblyVersions: Record<string, number> = {};
+    for (const spec of assemblyMandatory.values()) {
+        assemblySelection[spec.clauseId] = {};
+        if (spec.version !== 1) assemblyVersions[spec.clauseId] = spec.version;
+    }
     for (const [clauseId, values] of Object.entries(assemblyClauses ?? {})) {
         const spec = specs.get(clauseId, assemblyClauseVersions?.[clauseId]);
         assemblySelection[clauseId] = spec && specDesignFills(spec).length > 0 ? values : {};

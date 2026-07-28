@@ -289,13 +289,32 @@ contract UsageCounter {
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(provenanceClause, keccak256(sectionData)))));
         if (!MerkleProof.verify(proof, order.agreementHash, leaf)) revert InvalidInclusionProof();
 
-        // …and its content must BE the assembly claimed. `figaro-assembly-provenance`
-        // carries one bytes32-hex field, so the section is exactly 32 bytes.
-        if (sectionData.length != 32 || bytes32(sectionData) != compositionHash) {
-            revert ProvenanceMismatch();
-        }
+        // …and its content must BE the assembly claimed. Sections commit as
+        // CANONICAL JSON bytes — the very bytes the merkle leaf hashes — and
+        // the provenance section carries exactly one field, so the claimed
+        // compositionHash must REPRODUCE the committed bytes verbatim:
+        //   {"compositionHash":"0x<64 lowercase hex>"}
+        // Reproduction, never parsing: no new trust enters. (The earlier
+        // raw-32-byte check contradicted the section-encoding convention and
+        // made every honest runtime call revert — caught by the first
+        // end-to-end exercise, 2026-07-28.)
+        bytes memory expected = abi.encodePacked('{"compositionHash":"', _toLowerHexString(compositionHash), '"}');
+        if (keccak256(sectionData) != keccak256(expected)) revert ProvenanceMismatch();
 
         _accrue(compositionHash, period, processId, order.buyer, order.seller);
+    }
+
+    /// @dev 0x-prefixed lowercase hex of a bytes32 — the canonical-JSON
+    ///      rendering of a bytes32-hex field value.
+    function _toLowerHexString(bytes32 value) private pure returns (bytes memory out) {
+        bytes16 alphabet = 0x30313233343536373839616263646566; // "0123456789abcdef"
+        out = new bytes(66);
+        out[0] = "0";
+        out[1] = "x";
+        for (uint256 i = 0; i < 32; i++) {
+            out[2 + i * 2] = alphabet[uint8(value[i]) >> 4];
+            out[3 + i * 2] = alphabet[uint8(value[i]) & 0x0f];
+        }
     }
 
     /// @dev The counting itself, shared by both routes. Idempotent per (artifact,

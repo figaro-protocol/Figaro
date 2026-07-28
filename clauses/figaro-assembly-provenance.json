@@ -2,7 +2,7 @@
     "clauseId": "figaro-assembly-provenance",
     "version": 1,
     "title": "Assembly provenance",
-    "description": "Declares which registered assembly this agreement instantiates \u2014 the composition's identity, committed under agreementHash. The designer composes this clause into the assembly; the field fills mechanically at checkout with the template's own compositionHash (it cannot be a designer value: the hash cannot appear inside the composition it hashes). This section is what makes an assembly creditable at all: agreement leaves are keyed by CLAUSE, so a compositionHash is never itself a leaf key \u2014 UsageCounter.recordAssemblyUsage proves THIS leaf and matches its content against the assembly claimed. Without this clause in the agreement, no process can credit its designer.",
+    "description": "Declares which registered assembly this agreement instantiates \u2014 the composition's identity, committed under agreementHash. The designer composes this clause into the assembly; the field fills mechanically at checkout with the template's own compositionHash (it cannot be a designer value: the hash cannot appear inside the composition it hashes). This section is what makes an assembly creditable at all: agreement leaves are keyed by CLAUSE, so a compositionHash is never itself a leaf key \u2014 UsageCounter.recordAssemblyUsage proves THIS leaf and matches its content against the assembly claimed. Without this clause in the agreement, no process can credit its designer. MANDATORY AT ASSEMBLY SCOPE (ruled 2026-07-28: there are no ad-hoc processes \u2014 every process instantiates an assembly): the template build folds this clause into every published assembly automatically (never a designer choice, like commerce/topology at agreement scope), the assembly-scope fold carries it into every agreement, and checkout fills the hash mechanically. This is how every process becomes creditable to its assembly's designer of record (UsageCounter.recordAssemblyUsage).",
     "rpgfTag": null,
     "fields": [
         {
@@ -16,8 +16,8 @@
     "stages": {},
     "block": {
         "design": {
-            "article": "provenance",
-            "scope": "agreement",
+            "article": "mandatory",
+            "scope": "assembly",
             "nestsUnder": null,
             "fills": [],
             "composes": null

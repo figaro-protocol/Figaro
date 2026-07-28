@@ -1,4 +1,7 @@
 {
+    "assemblyClauses": {
+        "figaro-assembly-provenance": {}
+    },
     "agreements": [
         {
             "clauses": {
@@ -27,7 +30,7 @@
             "id": "order-1"
         }
     ],
-    "description": "A buyer orders a meal; the merchant makes it and a courier carries it to the door. Both work directly with the buyer, so neither loses a slice to a delivery platform. Each hand-off is receipted, and both are bonded for more than they are owed — so a single payment settles the kitchen and the ride together.",
+    "description": "A buyer orders a meal; the merchant makes it and a courier carries it to the door. Both work directly with the buyer, so neither loses a slice to a delivery platform. Each hand-off is receipted, and both are bonded for more than they are owed \u2014 so a single payment settles the kitchen and the ride together.",
     "name": "Local delivery",
     "summary": "A meal to the door: the merchant and the courier deal direct, and keep the platform's cut."
 }

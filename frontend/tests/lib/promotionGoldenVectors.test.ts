@@ -149,6 +149,7 @@ beforeAll(async () => {
         "figaro-commerce",
         "figaro-topology",
         "figaro-applicable-law",
+        "figaro-assembly-provenance",
         "figaro-merchant-process",
     ]);
 
