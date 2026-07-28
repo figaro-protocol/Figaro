@@ -87,7 +87,10 @@ function projectionCases() {
 }
 
 /** Two-node parent-edged design (root + child) exercising the mandatory
- *  auto-fold, the local relabeling, and the sparse-version normalization. */
+ *  auto-fold, the local relabeling, the sparse-version normalization, and the
+ *  ASSEMBLY-SCOPE placement (applicable-law declares design.scope "assembly"
+ *  — ruled 2026-07-28 — so it composes once at the assembly level and its
+ *  typed value strips to {}). */
 function templateCase() {
     const orders = [
         { orderHash: "synthetic-root", parentOrderHashes: [] },
@@ -97,9 +100,8 @@ function templateCase() {
         buildAssemblyTemplate({
             name: "Golden Vector Chain",
             orders,
-            clausesByOrderId: {
-                "synthetic-child": { "figaro-applicable-law": { applicableLaw: "US-NY" } },
-            },
+            clausesByOrderId: {},
+            assemblyClauses: { "figaro-applicable-law": { applicableLaw: "US-NY" } },
             specs: specSource(),
         }),
     );

@@ -77,6 +77,14 @@ export function assemblyTemplateToDraft(
                 .filter((to) => to.clauseVersions && Object.keys(to.clauseVersions).length > 0)
                 .map((to) => [to.id, to.clauseVersions as Record<string, number>]),
         ),
+        // Assembly-scoped sections travel as their own level — never smeared
+        // onto an order (scope placement is verified at build/publish).
+        ...(template.assemblyClauses && Object.keys(template.assemblyClauses).length > 0
+            ? { assemblyClauses: template.assemblyClauses }
+            : {}),
+        ...(template.assemblyClauseVersions && Object.keys(template.assemblyClauseVersions).length > 0
+            ? { assemblyClauseVersions: template.assemblyClauseVersions }
+            : {}),
         createdAt: Date.now(),
         updatedAt: Date.now(),
     };

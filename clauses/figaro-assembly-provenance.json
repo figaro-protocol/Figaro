@@ -17,6 +17,7 @@
     "block": {
         "design": {
             "article": "provenance",
+            "scope": "agreement",
             "nestsUnder": null,
             "fills": [],
             "composes": null

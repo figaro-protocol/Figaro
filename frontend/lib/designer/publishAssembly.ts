@@ -86,6 +86,9 @@ export function usePublishAssembly() {
         // Publish the no-hash assembly template: per order, who's bound, its
         // topology parents, and the selected clauses. The fingerprint forms later
         // at checkout when the parties fill the clause fields.
+        // buildAssemblyTemplate VERIFIES scope placement (ruled 2026-07-28):
+        // an assembly-scoped clause on an order, or an agreement-scoped one at
+        // assembly level, throws here — publish refuses, never a silent no-op.
         const template = buildAssemblyTemplate({
             name: snapshot.name.trim() || undefined,
             summary: snapshot.summary?.trim() || undefined,
@@ -93,6 +96,8 @@ export function usePublishAssembly() {
             orders: snapshot.orders,
             clausesByOrderId: snapshot.clausesByOrderId ?? {},
             clauseVersionsByOrderId: snapshot.clauseVersionsByOrderId,
+            assemblyClauses: snapshot.assemblyClauses,
+            assemblyClauseVersions: snapshot.assemblyClauseVersions,
             specs: specSource(),
         });
         const { json, compositionHash } = serializeAssemblyTemplate(template);

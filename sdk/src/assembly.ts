@@ -45,6 +45,17 @@ export interface AssemblyTemplate {
     name?: string;
     summary?: string;
     description?: string;
+    /** ASSEMBLY-SCOPED clause sections — clauses declaring
+     *  `design.scope: "assembly"`, composed ONCE for the whole design
+     *  (clauseId → the designer's values, `design.fills` only — same
+     *  value-free rule as agreements). At checkout every one of these folds
+     *  into EVERY agreement, so every party signs the assembly-wide term in
+     *  their own agreement. Sparse: absent when none composed (the hash of an
+     *  assembly without them is unchanged). */
+    assemblyClauses?: Record<string, Record<string, unknown>>;
+    /** clauseId → registered version for assembly-scoped clauses (sparse;
+     *  absent = 1, mirroring `TemplateAgreement.clauseVersions`). */
+    assemblyClauseVersions?: Record<string, number>;
     /** The composition: the agreements the designer composed, one per future
      *  kernel order. */
     agreements: TemplateAgreement[];
@@ -86,8 +97,22 @@ export function templateClauseVersionMap(agreement: TemplateAgreement): Record<s
  *  editorial prose excluded, so renaming never forks identity). This is the
  *  hash `AssemblyRegistry` keys bindings on. Publishers anchor it; readers
  *  recompute it from a fetched document to verify integrity. */
-export function templateCompositionHash(template: Pick<AssemblyTemplate, "agreements">): Hex {
-    return canonicalContentHash({ agreements: template.agreements });
+export function templateCompositionHash(
+    template: Pick<AssemblyTemplate, "agreements" | "assemblyClauses" | "assemblyClauseVersions">,
+): Hex {
+    // Assembly-scoped sections are IDENTITY-BEARING (a differently-termed
+    // assembly is a different assembly) — included in the hash whenever
+    // composed; omitted entirely when none, so every pre-existing assembly's
+    // hash is unchanged.
+    const assemblyClauses = template.assemblyClauses;
+    const hasAssemblyClauses = assemblyClauses && Object.keys(assemblyClauses).length > 0;
+    return canonicalContentHash({
+        agreements: template.agreements,
+        ...(hasAssemblyClauses && { assemblyClauses }),
+        ...(hasAssemblyClauses && template.assemblyClauseVersions
+            && Object.keys(template.assemblyClauseVersions).length > 0
+            && { assemblyClauseVersions: template.assemblyClauseVersions }),
+    });
 }
 
 /** The published slug — presentation only, a deterministic pure function of

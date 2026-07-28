@@ -67,6 +67,7 @@
     "block": {
         "design": {
             "article": "data",
+            "scope": "agreement",
             "nestsUnder": null,
             "fills": [],
             "composes": null

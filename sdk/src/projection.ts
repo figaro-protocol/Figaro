@@ -44,6 +44,12 @@ import { validateContent, type ClauseSpec } from "./clauses/index.js";
 export interface ProjectionHints {
     /** The spec's `block.design.article` (e.g. `"mandatory"`, `"attestations"`). */
     article?: string;
+    /** The spec's `block.design.scope` — `"assembly"` marks a clause composed
+     *  ONCE for the whole design (a term of the composition: a denomination
+     *  pin, a dispute forum) and folded into EVERY agreement at checkout so
+     *  every party signs it. Absent/`"agreement"` = the default: composed
+     *  per-order, a term of one relationship. */
+    scope?: string;
     /** The spec's `block.design.fills` — the content fields (by name) the
      *  DESIGNER authors into the template (the tailoring: a pinned consent
      *  document, a pinned settlement token); their values survive into the
@@ -87,6 +93,7 @@ export function parseProjectionHints(rawSpec: unknown): ProjectionHints {
     if (design && typeof design === "object" && !Array.isArray(design)) {
         const d = design as Record<string, unknown>;
         if (typeof d.article === "string") hints.article = d.article;
+        if (typeof d.scope === "string") hints.scope = d.scope;
         const fills = parseFillList(d.fills);
         if (fills) hints.designFills = fills;
     }
@@ -139,6 +146,15 @@ export function specDesignFills(spec: ProjectionSpecView): readonly string[] {
  *  empty anchors at commit whose content is attested later. */
 export function specIsProcessLog(spec: ProjectionSpecView): boolean {
     return spec.hints?.article === "attestations";
+}
+
+/** True for ASSEMBLY-SCOPED clauses (`block.design.scope: "assembly"`) —
+ *  terms of the composition itself (a denomination pin, a dispute forum),
+ *  composed ONCE for the whole design and folded into EVERY agreement at
+ *  checkout so every party signs them. Every other clause is agreement-scoped:
+ *  a term of one relationship, composed per-order. */
+export function specIsAssemblyScoped(spec: ProjectionSpecView): boolean {
+    return spec.hints?.scope === "assembly";
 }
 
 /** The CATALOGUE-authored field names of a clause
@@ -387,10 +403,42 @@ export function buildAssemblyTemplate(args: {
     /** orderId → clauseId → the registered version the designer composed.
      *  Optional; absent entries mean version 1. */
     clauseVersionsByOrderId?: Readonly<Record<string, Readonly<Record<string, number>>>>;
+    /** ASSEMBLY-SCOPED composition — clauses declaring
+     *  `block.design.scope: "assembly"`, composed ONCE for the whole design
+     *  (clauseId → the designer's values). Optional; absent = none. */
+    assemblyClauses?: Readonly<Record<string, Record<string, unknown>>>;
+    /** clauseId → registered version for the assembly-scoped clauses. */
+    assemblyClauseVersions?: Readonly<Record<string, number>>;
     specs: SpecSource;
 }): AssemblyTemplate {
-    const { name, summary, description, orders, clausesByOrderId, clauseVersionsByOrderId, specs } =
-        args;
+    const { name, summary, description, orders, clausesByOrderId, clauseVersionsByOrderId,
+        assemblyClauses, assemblyClauseVersions, specs } = args;
+    // SCOPE VERIFICATION (ruled 2026-07-28): a clause binds where its spec
+    // declares — an assembly-scoped clause composed on an order (or an
+    // agreement-scoped clause composed at assembly level) is a build error,
+    // never a silent no-op. Duplicates across levels are impossible once both
+    // directions are refused.
+    for (const [orderId, clauseMap] of Object.entries(clausesByOrderId)) {
+        for (const clauseId of Object.keys(clauseMap)) {
+            const spec = specs.get(clauseId, clauseVersionsByOrderId?.[orderId]?.[clauseId]);
+            if (spec && specIsAssemblyScoped(spec)) {
+                throw new Error(
+                    `${clauseId} declares design.scope "assembly" — compose it once at the assembly level, not on an order`,
+                );
+            }
+        }
+    }
+    for (const clauseId of Object.keys(assemblyClauses ?? {})) {
+        const spec = specs.get(clauseId, assemblyClauseVersions?.[clauseId]);
+        if (!spec) {
+            throw new Error(`${clauseId} is composed at the assembly level but its spec is not loaded`);
+        }
+        if (!specIsAssemblyScoped(spec)) {
+            throw new Error(
+                `${clauseId} does not declare design.scope "assembly" — compose it on an order, not at the assembly level`,
+            );
+        }
+    }
     // Dedupe by clauseId (list() is per-version): the fold wants each
     // mandatory clause once, at its highest loaded version.
     const mandatory = new Map<string, ProjectionSpecView>();
@@ -413,10 +461,22 @@ export function buildAssemblyTemplate(args: {
     // and no party addresses — only the clauses (the mandatory ones among
     // them), keyed by these local labels.
     const idToLocal = new Map(orders.map((o, i) => [o.orderHash, `order-${i}`]));
+    // Assembly-scoped sections keep the same value-free rule as agreements:
+    // only design.fills values survive into the template.
+    const assemblySelection: Record<string, Record<string, unknown>> = {};
+    const assemblyVersions: Record<string, number> = {};
+    for (const [clauseId, values] of Object.entries(assemblyClauses ?? {})) {
+        const spec = specs.get(clauseId, assemblyClauseVersions?.[clauseId]);
+        assemblySelection[clauseId] = spec && specDesignFills(spec).length > 0 ? values : {};
+        const v = assemblyClauseVersions?.[clauseId] ?? specs.get(clauseId)?.version ?? 1;
+        if (v !== 1) assemblyVersions[clauseId] = v;
+    }
     return {
         ...(name ? { name } : {}),
         ...(summary ? { summary } : {}),
         ...(description ? { description } : {}),
+        ...(Object.keys(assemblySelection).length > 0 ? { assemblyClauses: assemblySelection } : {}),
+        ...(Object.keys(assemblyVersions).length > 0 ? { assemblyClauseVersions: assemblyVersions } : {}),
         agreements: orders.map((order, i) => {
             // Design time is STRUCTURAL (ruled 2026-07-14): the template keeps
             // the designer's clause SELECTION, but a clause's field values are

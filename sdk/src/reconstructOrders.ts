@@ -70,15 +70,24 @@ export function planTemplateOrders(template: AssemblyTemplate): PlannedTemplateO
         (id) => [...templateParentOrderHashes(byId.get(id) as TemplateAgreement)],
         "throw",
     );
+    // THE ASSEMBLY-SCOPE FOLD (ruled 2026-07-28): the template's
+    // assembly-scoped sections — terms of the composition itself (a
+    // denomination pin, a dispute forum) — fold into EVERY node's clause bag,
+    // so every agreement carries them and every party signs them. Mechanical:
+    // neither the designer nor any party repeats anything.
+    const assemblyClauses = template.assemblyClauses ?? {};
+    const assemblyVersions = Object.fromEntries(
+        Object.keys(assemblyClauses).map((c) => [c, template.assemblyClauseVersions?.[c] ?? 1]),
+    );
     return orderedIds.map((id, index) => {
         const node = byId.get(id) as TemplateAgreement;
-        const clauseVersions: Record<string, number> = {};
+        const clauseVersions: Record<string, number> = { ...assemblyVersions };
         for (const clauseId of Object.keys(node.clauses)) {
             clauseVersions[clauseId] = templateClauseVersion(node, clauseId);
         }
         return {
             nodeId: id,
-            clauses: node.clauses,
+            clauses: { ...assemblyClauses, ...node.clauses },
             clauseVersions,
             parentLocalIds: [...templateParentOrderHashes(node)],
             index,

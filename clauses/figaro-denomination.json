@@ -17,6 +17,7 @@
     "block": {
         "design": {
             "article": "settlement",
+            "scope": "assembly",
             "nestsUnder": null,
             "fills": [
                 "currency"

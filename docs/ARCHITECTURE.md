@@ -73,7 +73,7 @@ the spec, not around it:
 | Part | Who reads it | Verified? |
 |---|---|---|
 | **`fields`/`stages`** (the content; stage 0 IS the committed content) | Layer A (`validate.ts`, off-chain) | **Yes (off-chain)** — validated against the spec off-chain; the section is merkle-bound to `agreementHash` and the attestation is secured by bonds. The chain validates no content shape. |
-| **all of `block`** — sectioned by reader: `design` (`article`, `nestsUnder`, `fills`, `composes`), `checkout` (`catalogueFills`, `profileFills`), `runtime` (`interaction`, `fields`) | the UI only (drawer grouping + editors, checkout folds, composition dispatch, runtime-input forms, the capability rail) | **No** — every on-chain and verification path ignores it |
+| **all of `block`** — sectioned by reader: `design` (`article`, `scope`, `nestsUnder`, `fills`, `composes`), `checkout` (`catalogueFills`, `profileFills`), `runtime` (`interaction`, `fields`) | the UI only (drawer grouping + editors, checkout folds, composition dispatch, runtime-input forms, the capability rail) | **No** — every on-chain and verification path ignores it |
 | **`rpgfTag`** (top-level) | the registration tooling — the ONE spec attribute that reaches the chain (`registerClause`) | anchored at registration; `UsageCounter` compares it to its deploy-frozen `boostedTag` |
 
 There is **no `block.tier`** (it was ripped from the block model). Verification is **uniform**:

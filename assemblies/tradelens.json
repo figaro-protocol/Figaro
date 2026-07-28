@@ -1,10 +1,12 @@
 {
+    "assemblyClauses": {
+        "figaro-applicable-law": {},
+        "figaro-arbitration-kleros": {}
+    },
     "agreements": [
         {
             "clauses": {
                 "figaro-acceptance-criteria": {},
-                "figaro-applicable-law": {},
-                "figaro-arbitration-kleros": {},
                 "figaro-cargo": {},
                 "figaro-chain-of-custody": {},
                 "figaro-commerce": {},

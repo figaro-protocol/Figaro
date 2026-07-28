@@ -39,6 +39,7 @@
     "block": {
         "design": {
             "article": "attestations",
+            "scope": "agreement",
             "nestsUnder": null,
             "fills": [],
             "composes": null

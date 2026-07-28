@@ -187,6 +187,7 @@ export {
     specCatalogueFills,
     specProfileFills,
     specIsProcessLog,
+    specIsAssemblyScoped,
     specIsMandatory,
     specDesignFills,
     validateCommitmentAgreement,

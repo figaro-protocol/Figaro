@@ -84,6 +84,7 @@
     "block": {
         "design": {
             "article": "logistics",
+            "scope": "agreement",
             "nestsUnder": null,
             "fills": [],
             "composes": null

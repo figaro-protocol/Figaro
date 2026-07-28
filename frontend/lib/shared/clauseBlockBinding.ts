@@ -50,6 +50,14 @@ interface ClauseBlockDesign {
     /** Drawer grouping heading — the contract-document section this clause
      *  reads under. REQUIRED: every clause declares exactly one. */
     article: ClauseArticle;
+    /** What the clause binds. `"agreement"` (the default) = a term of ONE
+     *  relationship, composed per-order in the drawer. `"assembly"` = a term
+     *  of the COMPOSITION itself (a denomination pin, a dispute forum):
+     *  composed once at the assembly level, carried once in the template
+     *  (part of the compositionHash), folded into EVERY agreement at checkout
+     *  so every party signs it. Wrong-level composition is a build/publish
+     *  error, never a silent no-op. */
+    scope: "agreement" | "assembly";
     /** The FIELD name (on another, parent clause) this clause nests under in
      *  the designer drawer — a containment relationship read from the spec,
      *  never a hardcoded tree (e.g. a proximity-policy clause nests under a
@@ -178,6 +186,14 @@ export function parseBlockBinding(
         errors.push({ path: `${path}.design.article`, message: "article is required and must be a non-empty string (the drawer grouping heading)" });
         return null;
     }
+    let scope: "agreement" | "assembly" = "agreement";
+    if (rawDesign.scope !== undefined) {
+        if (rawDesign.scope !== "agreement" && rawDesign.scope !== "assembly") {
+            errors.push({ path: `${path}.design.scope`, message: 'scope must be "agreement" or "assembly" when present' });
+            return null;
+        }
+        scope = rawDesign.scope;
+    }
     let nestsUnder: string | null = null;
     if (rawDesign.nestsUnder !== undefined && rawDesign.nestsUnder !== null) {
         if (typeof rawDesign.nestsUnder !== "string" || rawDesign.nestsUnder.length === 0) {
@@ -279,7 +295,7 @@ export function parseBlockBinding(
     }
 
     return {
-        design: { article: rawDesign.article as ClauseArticle, nestsUnder, fills: designFills, composes },
+        design: { article: rawDesign.article as ClauseArticle, scope, nestsUnder, fills: designFills, composes },
         checkout: { catalogueFills, profileFills },
         runtime: { interaction, fields: runtimeFields },
     };

@@ -112,10 +112,12 @@ export function CheckoutView({ sellerAddress }: Props) {
     // what the commitment records), else the seller's declared default (the
     // unit of account the catalogue quotes in). None ⇒ undefined — never a
     // coined default (resolved-empty = absence); ordering is gated off below.
-    const pinRoot = pickedAssembly?.assemblyTemplate.agreements.find(
-        (o) => templateParentOrderHashes(o).length === 0,
-    );
-    const denominationPin = pinRoot ? readDenominationPin(pinRoot.clauses, specSource()) : undefined;
+    // The pin lives at the ASSEMBLY level of the template (design.scope:
+    // "assembly", ruled 2026-07-28) — a term of the composition, folded into
+    // every agreement at checkout; the old root-order convention is dead.
+    const denominationPin = pickedAssembly
+        ? readDenominationPin(pickedAssembly.assemblyTemplate.assemblyClauses ?? {}, specSource())
+        : undefined;
     const sellerDefault = sellerCatalogue?.defaultTokenAddress as `0x${string}` | undefined;
     const [paymentPick, setPaymentPick] = useState<`0x${string}` | null>(null);
     const currency = denominationPin ?? paymentPick ?? sellerDefault;
@@ -356,13 +358,30 @@ export function CheckoutView({ sellerAddress }: Props) {
     // Plain call (not useMemo): this section sits below the page's early
     // returns, where hooks can't run — and the pre-extraction code
     // recomputed per render too. The win is the PURITY, in lib.
+    // Assembly-level fills (the "assembly" review group) apply to EVERY
+    // node: expand them under each template order id, designer values under
+    // buyer values, so the walk and the price preview see one merged map.
+    const assemblySections = pickedAssembly?.assemblyTemplate.assemblyClauses ?? {};
+    const assemblyFills = clauseFills["assembly"] ?? {};
+    const mergedAssemblyEntries = Object.fromEntries(
+        Object.keys(assemblySections).map((clauseId) => [
+            clauseId,
+            { ...assemblySections[clauseId], ...(assemblyFills[clauseId] ?? {}) },
+        ]),
+    );
+    const expandedClauseFills: typeof clauseFills = Object.fromEntries(
+        (pickedAssembly?.assemblyTemplate.agreements ?? []).map((o, i) => {
+            const nodeId = String(o.id ?? i);
+            return [nodeId, { ...mergedAssemblyEntries, ...(clauseFills[nodeId] ?? {}) }];
+        }),
+    );
     const kitBreakdown = deriveKitBreakdown({
         pickedAssembly,
         leadAddress: sellerCatalogue.address as `0x${string}`,
         sellerCatalogues,
         pricedCatalogues,
         cartTotal,
-        clauseFills,
+        clauseFills: expandedClauseFills,
         subOrderQuantities,
         tokenDecimals,
         raceOutcome,
@@ -454,7 +473,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                 ]))
                 : undefined,
             subOrderQuantities,
-            clauseFills,
+            clauseFills: expandedClauseFills,
         };
     };
 

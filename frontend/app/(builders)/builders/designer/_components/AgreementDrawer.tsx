@@ -25,7 +25,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Order } from "@/lib/kernel/store";
 import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/protocol/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsMandatory, clauseDesignFills } from "@/lib/shared/clauseSpecSource";
+import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsMandatory, clauseIsAssemblyScoped, clauseDesignFills } from "@/lib/shared/clauseSpecSource";
 import { ClausesByArticle } from "@/components/runtime/ClausesByArticle";
 import { FieldControl } from "@/components/runtime/FieldControl";
 
@@ -378,7 +378,13 @@ function ClauseRegistryPanel({
             .map((g) => ({
                 article: g.article,
                 entries: g.clauses
-                    .filter((c) => !clauseIsMandatory(c.clauseId, c.version))
+                    // Mandatory clauses fold in automatically; ASSEMBLY-SCOPED
+                    // clauses (design.scope: "assembly") compose once at the
+                    // assembly level, never per order — the drawer offering
+                    // them here is how duplicates would happen (ruled
+                    // 2026-07-28).
+                    .filter((c) => !clauseIsMandatory(c.clauseId, c.version)
+                        && !clauseIsAssemblyScoped(c.clauseId, c.version))
                     .map((c) => eventByIdentity.get(`${c.clauseId}#${c.version}`))
                     .filter((e): e is RegisteredClauseEvent => e !== undefined),
             }))

@@ -49,7 +49,7 @@ naming one with another's word is the recurring drift):
 |---|---|---|
 | Unit of account | the seller's **default** (`defaultTokenAddress`, one of the accepted array) | what the catalogue QUOTES in; the conversion basis |
 | Medium of payment & bond | the buyer's **pick** from the seller's **accepted array** (`acceptedTokens[]` — the SOCIAL layer: each entry declares a value system the seller coordinates with) | THE process denomination: recorded in the commitment, bonds 2×, payment — the seller RECEIVES it and SPENDS it onward. Circulation is the point: velocity and market liquidity for the accepted token, never mere LP demand |
-| Designer override | the **denomination pin** (`figaro-denomination`, root order, a designer fill — `block.design.fills`) | replaces the buyer's pick; the whole assembly is valued in the pinned token |
+| Designer override | the **denomination pin** (`figaro-denomination`, assembly-scoped — `design.scope: "assembly"`, a designer fill folded into every agreement) | replaces the buyer's pick; the whole assembly is valued in the pinned token |
 | On-ramp | **swap-and-commit** (`WitnessSwapAndCommitCoordinator`, buyer and/or seller funding legs) | either party short of the process denomination converts what they hold INTO it, atomically at commit/accept. A funding input is never the order's denomination |
 | No structural role | the **florin** | one more ERC-20 on the network — may be accepted, picked, or pinned like any other; nothing is conditioned on it |
 | Doctrine, not machinery | the **privileged token** | VISION § "Value Capture After the Firm": an assembly-author's own ERC-20 doing the work of a corporate stock certificate, priced through USE — a strategy that may use the pin, never the pin itself |

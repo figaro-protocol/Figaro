@@ -65,6 +65,7 @@
     "block": {
         "design": {
             "article": "logistics",
+            "scope": "agreement",
             "nestsUnder": "handoff",
             "fills": [],
             "composes": null

@@ -26,6 +26,7 @@
     "block": {
         "design": {
             "article": "coordination",
+            "scope": "agreement",
             "nestsUnder": null,
             "fills": [],
             "composes": null

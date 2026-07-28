@@ -54,6 +54,7 @@
     "block": {
         "design": {
             "article": "consent",
+            "scope": "agreement",
             "nestsUnder": null,
             "fills": [
                 "documents"

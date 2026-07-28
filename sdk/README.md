@@ -519,7 +519,7 @@ import type { SpecSource, ProjectionSpecView } from "@figaro/sdk";
 
 // Build a SpecSource from the raw spec JSON you fetched from the registry.
 // A view is the Layer-A spec PLUS the hash-load-bearing `block` hints
-// (`design.article`, `design.fills`, `checkout.catalogueFills`,
+// (`design.article`, `design.scope`, `design.fills`, `checkout.catalogueFills`,
 // `checkout.profileFills`) that parseProjectionHints extracts — everything
 // else in `block` is presentation the SDK never reads. `design.fills` names
 // the content fields the DESIGNER authors into the template (the tailoring);

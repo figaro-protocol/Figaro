@@ -95,6 +95,10 @@
                     "minLength": 1,
                     "description": "Drawer grouping heading (free-form, never a closed list) — the contract-document section this clause reads under. The set of articles is whatever the registered clauses declare."
                 },
+                "scope": {
+                    "enum": ["agreement", "assembly"],
+                    "description": "What the clause binds. \"agreement\" (the default) = a term of ONE relationship, composed per-order in the drawer. \"assembly\" = a term of the COMPOSITION itself (a denomination pin, a dispute forum): composed ONCE at the assembly level of the designer, carried once in the template (identity-bearing — part of the compositionHash), and folded into EVERY agreement at checkout so every party signs it. Composing an assembly-scoped clause on an order — or an agreement-scoped one at assembly level — is a build/publish ERROR, never a silent no-op."
+                },
                 "nestsUnder": {
                     "type": ["string", "null"],
                     "description": "A field name on a parent clause this clause nests under in the drawer — a containment relationship read from the spec, never a hardcoded tree. Null for top-level clauses."

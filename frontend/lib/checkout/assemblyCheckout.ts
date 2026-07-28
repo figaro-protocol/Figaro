@@ -24,6 +24,7 @@
  */
 
 import {
+    readDenominationPin,
     assertAgreementSignable,
     hashCommitmentStruct,
     profileValuesFor,
@@ -169,6 +170,18 @@ export async function executeAssemblyCheckout(
     const { signRoot, signAndShare } = deps;
     const specs = specSource();
     const template = assembly.assemblyTemplate;
+
+    // DENOMINATION VERIFICATION (ruled 2026-07-28): when the assembly pins
+    // its settlement token (an assembly-scoped term, part of the
+    // compositionHash), the commitment currency MUST be that token — refuse
+    // before any signature rather than let the signed struct contradict the
+    // signed term.
+    const pin = readDenominationPin(template.assemblyClauses ?? {}, specs);
+    if (pin && pin.toLowerCase() !== currency.toLowerCase()) {
+        throw new Error(
+            `this assembly is denominated by design (${pin}); the commitment currency ${currency} contradicts the pinned term`,
+        );
+    }
 
     if (!CONTRACTS.core) {
         throw new Error("Core contract address is not configured, so orders cannot be built.");

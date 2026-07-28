@@ -40,6 +40,7 @@
     "block": {
         "design": {
             "article": "data",
+            "scope": "agreement",
             "nestsUnder": null,
             "fills": [
                 "disclosure"

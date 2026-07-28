@@ -49,6 +49,7 @@ import {
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "./AgreementDrawer";
+import { AssemblyTermsPanel } from "./AssemblyTermsPanel";
 import { CompositionAssist } from "./CompositionAssist";
 import { assemblyTemplateToDraft } from "@/lib/designer/assemblyTemplateToDraft";
 import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
@@ -71,6 +72,8 @@ interface InitialState {
     slug: string | null;
     clausesByOrderId: Record<string, Record<string, Record<string, unknown>>>;
     clauseVersionsByOrderId: Record<string, Record<string, number>>;
+    assemblyClauses: Record<string, Record<string, unknown>>;
+    assemblyClauseVersions: Record<string, number>;
 }
 
 function buildBlankInitial(): InitialState {
@@ -87,6 +90,8 @@ function buildBlankInitial(): InitialState {
         slug: null,
         clausesByOrderId: {},
         clauseVersionsByOrderId: {},
+        assemblyClauses: {},
+        assemblyClauseVersions: {},
     };
 }
 
@@ -105,6 +110,8 @@ function snapshotToInitial(snap: DesignSnapshot): InitialState {
         slug: snap.slug || null,
         clausesByOrderId: snap.clausesByOrderId ?? {},
         clauseVersionsByOrderId: snap.clauseVersionsByOrderId ?? {},
+        assemblyClauses: snap.assemblyClauses ?? {},
+        assemblyClauseVersions: snap.assemblyClauseVersions ?? {},
     };
 }
 
@@ -154,6 +161,12 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     >(() => initial.clausesByOrderId);
     // clauseId → registered version picked, per order — sparse (non-1 only);
     // part of the clause's identity, carried into the template's clauseVersions.
+    const [assemblyClauses, setAssemblyClauses] = useState<
+        Record<string, Record<string, unknown>>
+    >(() => initial.assemblyClauses);
+    const [assemblyClauseVersions, setAssemblyClauseVersions] = useState<
+        Record<string, number>
+    >(() => initial.assemblyClauseVersions);
     const [clauseVersionsByOrderId, setClauseVersionsByOrderId] = useState<
         Record<string, Record<string, number>>
     >(() => initial.clauseVersionsByOrderId);
@@ -223,6 +236,8 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             setSlug(restored.slug);
             setClausesByOrderId(restored.clausesByOrderId);
             setClauseVersionsByOrderId(restored.clauseVersionsByOrderId);
+            setAssemblyClauses(restored.assemblyClauses);
+            setAssemblyClauseVersions(restored.assemblyClauseVersions);
             setHydrated(true);
             return;
         }
@@ -238,6 +253,8 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             setSlug(init.slug);
             setClausesByOrderId(init.clausesByOrderId);
             setClauseVersionsByOrderId(init.clauseVersionsByOrderId);
+            setAssemblyClauses(init.assemblyClauses);
+            setAssemblyClauseVersions(init.assemblyClauseVersions);
         }
         setHydrated(true);
         // Mount-only; subsequent seed changes are ignored.
@@ -259,12 +276,14 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             orders,
             clausesByOrderId,
             clauseVersionsByOrderId,
+            ...(Object.keys(assemblyClauses).length > 0 ? { assemblyClauses } : {}),
+            ...(Object.keys(assemblyClauseVersions).length > 0 ? { assemblyClauseVersions } : {}),
             createdAt: Date.now(),
             updatedAt: Date.now(),
         };
         saveCurrentSession(snap);
         setSavedAt(Date.now());
-    }, [hydrated, seedError, orders, clausesByOrderId, clauseVersionsByOrderId, name, summary, description, slug, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
+    }, [hydrated, seedError, orders, clausesByOrderId, clauseVersionsByOrderId, assemblyClauses, assemblyClauseVersions, name, summary, description, slug, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
 
     // Read both chain gas ceilings (each depends on the live block gas limit, so
     // it's a runtime read; recompute when the chain changes).
@@ -435,6 +454,8 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         setSlug(null);
         setClausesByOrderId(restored.clausesByOrderId);
         setClauseVersionsByOrderId(restored.clauseVersionsByOrderId);
+        setAssemblyClauses(restored.assemblyClauses);
+        setAssemblyClauseVersions(restored.assemblyClauseVersions);
         setSelectedOrderId(null);
         return true;
     }, [session, orders, clausesByOrderId]);
@@ -467,11 +488,13 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 orders,
                 clausesByOrderId,
                 clauseVersionsByOrderId,
+                ...(Object.keys(assemblyClauses).length > 0 ? { assemblyClauses } : {}),
+                ...(Object.keys(assemblyClauseVersions).length > 0 ? { assemblyClauseVersions } : {}),
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
             },
         };
-    }, [slug, name, summary, description, orders, clausesByOrderId, clauseVersionsByOrderId, session]);
+    }, [slug, name, summary, description, orders, clausesByOrderId, clauseVersionsByOrderId, assemblyClauses, assemblyClauseVersions, session]);
 
     function explainSnapshotReason(_reason: "empty-composition"): string {
         return "Add at least one order before publishing.";
@@ -714,6 +737,32 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                         )}
                     </div>
 
+                    {/* Assembly-level composition — clauses declaring
+                        design.scope: "assembly"; the drawer excludes them, so
+                        the two surfaces partition the registry by scope. */}
+                    <AssemblyTermsPanel
+                        values={assemblyClauses}
+                        onToggleClause={(clauseId, next, version) => {
+                            setAssemblyClauses((prev) => {
+                                const out = { ...prev };
+                                if (next) out[clauseId] = out[clauseId] ?? {};
+                                else delete out[clauseId];
+                                return out;
+                            });
+                            setAssemblyClauseVersions((prev) => {
+                                const out = { ...prev };
+                                if (next && version !== undefined && version !== 1) out[clauseId] = version;
+                                else delete out[clauseId];
+                                return out;
+                            });
+                        }}
+                        onSetClauseField={(clauseId, field, value) => {
+                            setAssemblyClauses((prev) => ({
+                                ...prev,
+                                [clauseId]: { ...prev[clauseId], [field]: value },
+                            }));
+                        }}
+                    />
                 </aside>
                 <div className="flex-1 overflow-hidden">
                     <div className="h-full px-6 py-4 flex flex-col">

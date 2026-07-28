@@ -23,6 +23,7 @@
     "block": {
         "design": {
             "article": "mandatory",
+            "scope": "agreement",
             "nestsUnder": null,
             "fills": [],
             "composes": null

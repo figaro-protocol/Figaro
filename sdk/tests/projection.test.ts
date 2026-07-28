@@ -30,6 +30,7 @@ const SPECS = specSourceFromFixtures([
     "figaro-commerce",
     "figaro-topology",
     "figaro-applicable-law",
+    "figaro-geolocation",
     "figaro-merchant-process",
 ]);
 
@@ -118,7 +119,11 @@ describe("projection — golden-vector byte-exactness", () => {
         expect(agreementHash).toBe(vectors.agreementProjection.processLog.agreementHash);
     });
 
-    it("mandatory fold + relabeling reproduce the frozen template + compositionHash", () => {
+    it("mandatory fold + relabeling + assembly-scope fold reproduce the frozen template + compositionHash", () => {
+        // figaro-applicable-law is ASSEMBLY-SCOPED (design.scope: "assembly",
+        // ruled 2026-07-28): composed once at the assembly level. Its typed
+        // value must STRIP to {} in the frozen output (no design.fills — the
+        // value-free rule applies at the assembly level too).
         const template = serializeAssemblyTemplate(
             buildAssemblyTemplate({
                 name: "Golden Vector Chain",
@@ -126,14 +131,30 @@ describe("projection — golden-vector byte-exactness", () => {
                     { orderHash: "synthetic-root", parentOrderHashes: [] },
                     { orderHash: "synthetic-child", parentOrderHashes: ["synthetic-root"] },
                 ],
-                clausesByOrderId: {
-                    "synthetic-child": { "figaro-applicable-law": { applicableLaw: "US-NY" } },
-                },
+                clausesByOrderId: {},
+                assemblyClauses: { "figaro-applicable-law": { applicableLaw: "US-NY" } },
                 specs: SPECS,
             }),
         );
         expect(template.json).toBe(vectors.assemblyTemplate.canonicalJson);
         expect(template.compositionHash).toBe(vectors.assemblyTemplate.compositionHash);
+    });
+
+    it("refuses wrong-level composition (scope verification, ruled 2026-07-28)", () => {
+        // An assembly-scoped clause on an order is a BUILD error, never a
+        // silent no-op…
+        expect(() => buildAssemblyTemplate({
+            orders: [{ orderHash: "synthetic-root", parentOrderHashes: [] }],
+            clausesByOrderId: { "synthetic-root": { "figaro-applicable-law": {} } },
+            specs: SPECS,
+        })).toThrow(/design\.scope "assembly"/);
+        // …and an agreement-scoped clause at the assembly level likewise.
+        expect(() => buildAssemblyTemplate({
+            orders: [{ orderHash: "synthetic-root", parentOrderHashes: [] }],
+            clausesByOrderId: {},
+            assemblyClauses: { "figaro-geolocation": {} },
+            specs: SPECS,
+        })).toThrow(/does not declare design\.scope "assembly"/);
     });
 
     it("sectionByField reads by declared field, with data-key fallback while unloaded", () => {

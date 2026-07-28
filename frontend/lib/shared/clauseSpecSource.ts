@@ -214,6 +214,7 @@ function toProjectionView(spec: ClauseSpecWithBlock): ProjectionSpecView {
     const hints: ProjectionHints = {};
     if (spec.block !== undefined) {
         hints.article = spec.block.design.article;
+        if (spec.block.design.scope === "assembly") hints.scope = "assembly";
         if (spec.block.design.fills.length > 0) hints.designFills = spec.block.design.fills;
         if (spec.block.checkout.catalogueFills.length > 0) hints.catalogueFills = spec.block.checkout.catalogueFills;
         if (spec.block.checkout.profileFills.length > 0) hints.profileFills = spec.block.checkout.profileFills;
@@ -256,6 +257,16 @@ export function clauseNestsUnder(clauseId: string, version?: number): string | n
  *  "mandatory"` participates — including one this codebase has never seen. */
 export function clauseIsMandatory(clauseId: string, version?: number): boolean {
     return getClauseSpec(clauseId, version)?.block?.design.article === "mandatory";
+}
+
+/** True if a clause is ASSEMBLY-SCOPED (`block.design.scope: "assembly"`) —
+ *  a term of the COMPOSITION itself (a denomination pin, a dispute forum):
+ *  composed once at the assembly level of the designer, folded into EVERY
+ *  agreement at checkout so every party signs it. ANY registered clause
+ *  declaring the scope participates — including one this codebase has never
+ *  seen. False = agreement-scoped (the default): a per-order term. */
+export function clauseIsAssemblyScoped(clauseId: string, version?: number): boolean {
+    return getClauseSpec(clauseId, version)?.block?.design.scope === "assembly";
 }
 
 /** The content fields (by name) the DESIGNER authors into the assembly
