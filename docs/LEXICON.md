@@ -16,8 +16,8 @@ name at each tier* — these are PROJECTIONS, not synonyms. Translate across tie
 | paying party | **buyer** | buyer | buyer | `lint-no-product-party-terms` |
 | value-adding party | **seller** | operator · author · provider | merchant · courier · driver · vendor · supplier *(projections)* | `lint-no-product-party-terms` |
 | relationship unit | — | **clause** (+ validator) | clause | `lint-no-clause-grouping-synonyms` (one grouping mechanism, by `article`) |
-| ↳ clause group | — | **`block.article`** — the one grouping word (`categories` array + on-chain `family` removed 2026-06-26) | grouped by `article` | `lint-no-clause-grouping-synonyms` |
-| ↳ clause lifecycle | — | uniform: every section is **merkle-bound** to `agreementHash` (the keccak cross-check — no per-clause verification tier) | derived in code, not stored: **agreement-only** (committed, never attested) vs **runtime-attested** (`clauseIsProcessLog` — empty anchor at commit) | `lint-architecture-lexicon` — retired: **`block.tier`** and its `cross-checked`/`runtime` tiers, `category-1/2`, `manifest-only` |
+| ↳ clause group | — | **`block.design.article`** — the one grouping word (`categories` array + on-chain `family` removed 2026-06-26) | grouped by `article` | `lint-no-clause-grouping-synonyms` |
+| ↳ clause lifecycle | — | uniform: every section is **merkle-bound** to `agreementHash` (the keccak cross-check — no per-clause verification tier) | derived in code, not stored: **runtime event logs** (`clauseIsProcessLog` — empty anchor at commit) and **witness stages** (`spec.stages[N≥1]`) vs content committed at signing (stage 0); all one runtime-evidence category — coordination attestations | `lint-architecture-lexicon` — retired: **`block.tier`** and its `cross-checked`/`runtime` tiers, `category-1/2`, `manifest-only` |
 | reusable composition | — | **assembly** | assembly | `lint-architecture-lexicon` |
 | ↳ serialized form | — | — | **`AssemblyTemplate`** (one name; `AssemblyDocument` retired → 0 occurrences) | — |
 | ↳ template node | — | — | **agreement** (`AssemblyTemplateAgreement`) — the design-time draft of one buyer↔seller relationship; its `id` names the kernel-order slot (`order-<i>`) it commits into at checkout | grep-verified canonical (template `orders` array retired 2026-07-05) |
@@ -49,7 +49,7 @@ naming one with another's word is the recurring drift):
 |---|---|---|
 | Unit of account | the seller's **default** (`defaultTokenAddress`, one of the accepted array) | what the catalogue QUOTES in; the conversion basis |
 | Medium of payment & bond | the buyer's **pick** from the seller's **accepted array** (`acceptedTokens[]` — the SOCIAL layer: each entry declares a value system the seller coordinates with) | THE process denomination: recorded in the commitment, bonds 2×, payment — the seller RECEIVES it and SPENDS it onward. Circulation is the point: velocity and market liquidity for the accepted token, never mere LP demand |
-| Designer override | the **denomination pin** (`figaro-denomination`, root order, specific-T&C) | replaces the buyer's pick; the whole assembly is valued in the pinned token |
+| Designer override | the **denomination pin** (`figaro-denomination`, root order, a designer fill — `block.design.fills`) | replaces the buyer's pick; the whole assembly is valued in the pinned token |
 | On-ramp | **swap-and-commit** (`WitnessSwapAndCommitCoordinator`, buyer and/or seller funding legs) | either party short of the process denomination converts what they hold INTO it, atomically at commit/accept. A funding input is never the order's denomination |
 | No structural role | the **florin** | one more ERC-20 on the network — may be accepted, picked, or pinned like any other; nothing is conditioned on it |
 | Doctrine, not machinery | the **privileged token** | VISION § "Value Capture After the Firm": an assembly-author's own ERC-20 doing the work of a corporate stock certificate, priced through USE — a strategy that may use the pin, never the pin itself |
@@ -63,10 +63,10 @@ medical board) — referenced by a clause's committed content (`credentialRegist
 counterparties at verification time, never mirrored on-chain; a **registry** is one of the
 protocol's three on-chain anchors (Clause/Seller/Assembly). Writing "registry" for an authority's
 record — or anchoring an authority's record in a protocol registry — is drift.
-**The clause's GROUP is `block.article`** (geo, coordination, emissions…) — ONE word, ONE home. The
+**The clause's GROUP is `block.design.article`** (coordination, logistics, emissions…) — ONE word, ONE home. The
 earlier `categories` array and on-chain `family` (`= keccak256(categories[0])`) were a closed-world
 duplicate of the same concept that drifted across clauses; both were removed 2026-06-26, leaving
-`block.article` as the sole classification. **The RPGF substrate-broadening weight does NOT read it**
+the article (today `block.design.article`) as the sole grouping word. **The RPGF substrate-broadening weight does NOT read it**
 — it reads `ClauseRegistry.rpgfTagOf`, a declared incentive tag on a different axis (restored
 2026-07-27 after the `family` deletion took it out; see the failure-mode entry below and
 `PUBLIC_GRAPH_MODEL.md`). The guard `lint-no-clause-grouping-synonyms` blocks any re-introduced
@@ -111,7 +111,7 @@ canonical across kernel + SDK + frontend (225 uses), rivals (`agreementId`/`Ref`
    `figaro-courier-process` are TWO clauses (byte-identical validator logic except `MAX_EVENT_INDEX`;
    different event vocabularies = different work lifecycles) — clause-bound, NOT party names.
    **The costliest instance — `family` vs `article` (2026-06-26 `256ff522`, diagnosed 07-27).**
-   The clause-classification consolidation was RIGHT: three fields (`block.article`, a duplicate
+   The clause-classification consolidation was RIGHT: three fields (the block article, a duplicate
    `categories` array, and on-chain `family`) were smeared across one job. But `family` was not a
    fourth synonym for that job — it was a **different axis**: `article` groups clauses for READERS
    (the drawer's headings), `family` was the RPGF **incentive tag** — a tiny deploy-frozen set

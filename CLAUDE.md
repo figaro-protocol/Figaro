@@ -31,9 +31,12 @@ surface expresses buyer, seller, clause, assembly, or composition — or it is *
 delete**. Ask: *which of the five is this?* If "none," stop — but hold the full model
 first (below); agents keep mislabeling designed surfaces as silt.
 
-**A bonded commitment is a digital contract:** its **consideration** = the **Nash
-equilibrium** from the bonds; its **general T&Cs** = the **clauses**; its **specific
-T&Cs** = the **consents** a designer attaches.
+**A bonded commitment is a digital contract** (model ratified 2026-07-28): its
+**consideration** = the **payment**; its **security** = the **bonds** (whose Nash
+equilibrium makes performance dominant); its **terms and conditions** = the
+**clauses**. The designer's tailoring — the fields named in `block.design.fills`
+(a pinned consent document, a pinned settlement token, a pinned credential
+register) — adapts the generic clauses to a specific application.
 Consent is a first-class agreement layer, NOT boilerplate.
 
 **Agents keep mislabeling these as silt — they are DESIGNED IN:** agents are first-class
@@ -215,13 +218,13 @@ The recurring, weeks-costly failure is modeling a concern as a stored value when
 - **Coordination lives in the process clauses** — `merchant-process` on the merchant order, `courier-process` on the courier order — not in a fulfilment field.
 - **Coordination variants are separate assemblies.** seller-assigned / buyer-assigned are distinct assemblies (composed at the assembly level, like proximity), not a stored field. (Dutch-auction pricing abandoned 2026-07-02; pricing is a catalogue concern.)
 - **Nodes are co-equal** (kernel star-shape: buyer == rootBuyer on every order). The courier order is not a sub-order *owned* by the merchant; the DAG parent edge is value-topology, not dominance.
-- **Clauses are a nestable hierarchy: article → clause → sub-clause → …** Articles = `block.article` in the clause JSON (surfaced by the existing grouping component — do not rebuild it). Sub-clauses are logically placed (e.g. the proximity bands `zone-wifi`/`nearby-ble`/`contact-nfc` nest under `figaro-proximity-policy`; the process clauses have none). **Add sub-clauses to the clause JSON spec, emit the event, and reconstruct the nesting OFF-CHAIN in the drawer (rendered recursively from the spec) — NEVER hardcode the sub-clause tree into the UI.**
+- **Clauses are a nestable hierarchy: article → clause → sub-clause → …** Articles = `block.design.article` in the clause JSON (surfaced by the existing grouping component — do not rebuild it). Sub-clauses are logically placed (e.g. the proximity bands `zone-wifi`/`nearby-ble`/`contact-nfc` nest under `figaro-proximity-policy`; the process clauses have none). **Add sub-clauses to the clause JSON spec, emit the event, and reconstruct the nesting OFF-CHAIN in the drawer (rendered recursively from the spec) — NEVER hardcode the sub-clause tree into the UI.**
 
 Full treatment → memory `feedback_fulfilment_retired_modality_derived`; clause-spec detail → `docs/CLAUSES.md`.
 
 Mechanically enforced: `scripts/lint-no-closed-world-vocab.sh` (pre-commit, lint-staged) fails any commit reintroducing a stored role/archetype/category identifier in code (`roleKind`, `archetypeId`, `clauseCategories`, `documentKind`) and warns on retired `fulfilment` vocabulary until the de-hardcoding migration lands — then the warn list promotes to fail.
 
-**The substrate-broadening weight** (`UsageCounter.BOOSTED_WEIGHT`, aimed by the declared `ClauseRegistry.rpgfTag` — never by `block.article`) is a *category-of-work* incentive, not author-favoritism: retiring it as "a privileged category breaks neutrality" is the **neutrality ≠ flat-weighting error**. Which tag pays is deploy-frozen; membership is permissionless. Owner → `docs/PUBLIC_GRAPH_MODEL.md`; status → `CONTRACTS.md` § "Teardown state — CLOSED".
+**The substrate-broadening weight** (`UsageCounter.BOOSTED_WEIGHT`, aimed by the declared `ClauseRegistry.rpgfTag` — never by `block.design.article`) is a *category-of-work* incentive, not author-favoritism: retiring it as "a privileged category breaks neutrality" is the **neutrality ≠ flat-weighting error**. Which tag pays is deploy-frozen; membership is permissionless. Owner → `docs/PUBLIC_GRAPH_MODEL.md`; status → `CONTRACTS.md` § "Teardown state — CLOSED".
 
 ### Dispute Resolution — Three Layers
 
@@ -283,7 +286,7 @@ When a code change makes a doc statement stale, fix the doc in the same session.
 - `docs/CONTRACTS.md`, `CLAUSES.md`, `FRONTEND.md`, `TESTING.md`, `LOCAL_DEV.md` — the inventories CLAUDE.md indexes
 - `sdk/README.md` — SDK entry points
 - `docs/VERIFICATION_MAP.md` — invariant → test → formal layer map
-- User-facing clause surfaces in `frontend/app/`. The `/clauses` inventory renders from the live `ClauseRegistry` grouped by `block.article`, so a newly registered clause appears automatically. Pages that name clauses in prose still need a manual pass when a new clause lands — `grep -rl "<clauseId>" frontend/app/` finds them.
+- User-facing clause surfaces in `frontend/app/`. The `/clauses` inventory renders from the live `ClauseRegistry` grouped by `block.design.article`, so a newly registered clause appears automatically. Pages that name clauses in prose still need a manual pass when a new clause lands — `grep -rl "<clauseId>" frontend/app/` finds them.
 
 **`docs/` whitelist (exhaustive).** Files not on this list are deletion candidates at every audit. Do not treat absence-from-whitelist as "ambiguous" — treat it as "delete unless restored by explicit user approval." See the Document Index at the bottom for the categorized list.
 

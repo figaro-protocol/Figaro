@@ -65,7 +65,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 **Components (`app/(builders)/builders/designer/_components/`):**
 - `DesignerCanvas.tsx` — the shared editor surface used by `/new` and `/edit?slug=<slug>`. Hosts the toolbar (← Assemblies | Agent assist | saved hint | Save | Review | Reset), the DAG canvas, the agreement drawer, and the autosave loop.
 - `CompositionAssist.tsx` — the composition-assist hand-off surface (toolbar "Agent assist"). The designer's OWN agent (`figaro-assembly-designer`, the public ecosystem seam — `docs/AI_AGENT_COORDINATION.md`) runs in the designer's runtime for the designer's wallet; nothing is invoked from this static export. The panel round-trips the canonical artifact instead: OUT — the live draft serialized by the same `buildAssemblyTemplate` walk publish uses; IN — a pasted template parsed by `parseAssemblyTemplateJson` (`lib/designer/assemblyTemplateToDraft.ts`) and applied to the canvas as ordinary unsaved state (replace-confirmed when the canvas is non-trivial). Composition stays the designer's act — review/edit/publish are unchanged.
-- `AgreementDrawer.tsx` — per-node clause composer. Two tabs: Parties (buyer / seller / DAG position) and a network-driven **Registry** tab listing every clause registered on `ClauseRegistry` (grouped by `block.article`), each a checkbox — design time is STRUCTURAL (ruled 2026-07-14): the designer SELECTS clauses and sub-clauses; field editors render only for SPECIFIC-T&C clauses (`block.terms: "specific"` — consent's affix, the denomination pin: the designer's tailoring). General-clause fields are transaction particulars, filled at checkout (the checkout's spec-routed fill surface → `clauseFills` → `executeAssemblyCheckout`). The selection is captured into the no-hash assembly template (`clausesByOrderId` → `buildAssemblyTemplate`, which strips general-clause values by construction). No hardcoded clause roster. The drawer is **per-order**: a concern that resolves once per PROCESS (resolve, audit bundle, a process-wide declaration) belongs at the process-detail layer, never as a drawer clause group; a genuinely process-scoped declaration anchors on the **root order's** agreement, edited from process-level controls rather than the per-order drawer.
+- `AgreementDrawer.tsx` — per-node clause composer. Two tabs: Parties (buyer / seller / DAG position) and a network-driven **Registry** tab listing every clause registered on `ClauseRegistry` (grouped by `block.design.article`), each a checkbox — design time is STRUCTURAL (ruled 2026-07-14): the designer SELECTS clauses and sub-clauses; field editors render exactly for the fields a clause names in `block.design.fills` (consent's affix, the denomination pin, the credential register: the designer's tailoring). Every other field is a transaction particular, filled at checkout (the checkout's spec-routed fill surface → `clauseFills` → `executeAssemblyCheckout`). The selection is captured into the no-hash assembly template (`clausesByOrderId` → `buildAssemblyTemplate`, which strips general-clause values by construction). No hardcoded clause roster. The drawer is **per-order**: a concern that resolves once per PROCESS (resolve, audit bundle, a process-wide declaration) belongs at the process-detail layer, never as a drawer clause group; a genuinely process-scoped declaration anchors on the **root order's** agreement, edited from process-level controls rather than the per-order drawer.
 - `DraftsList.tsx` — saved-drafts list on the landing.
 - `PublishedList.tsx` — published-assemblies list for the connected wallet.
 - `ClausesList.tsx` — clauses catalogue on the landing.
@@ -73,7 +73,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 
 **State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `mergeSyntheticParent`, `editSyntheticAgreement`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage). Bridge: `lib/designer/forkAssembly.ts` + `lib/designer/assemblyTemplateToDraft.ts` (fork a published assembly's template into an editable draft).
 
-**The agreement build (composition rules).** The published **template is the faithful record** of what the designer composed; `buildOrderAgreement` (`@figaro/sdk`, fed by the live-cache `specSource()` adapter) is a **pure, deterministic projection** of it — the composed clauses, plus the spec-declared mandatory defaults, and nothing more. It synthesizes no meaning the template + specs don't determine and reads no clause by name: mandatory clauses (`block.article: "mandatory"` — commerce, topology) auto-fold into every draft generically (the SDK's fold iterates the loaded spec set, so a never-seen mandatory clause folds in with zero code). Never a hardcoded clause→clause map, a named-clause branch, or a checkout-time guess; and no clause auto-spawns a DAG node — nodes are the designer's, drawn on the canvas.
+**The agreement build (composition rules).** The published **template is the faithful record** of what the designer composed; `buildOrderAgreement` (`@figaro/sdk`, fed by the live-cache `specSource()` adapter) is a **pure, deterministic projection** of it — the composed clauses, plus the spec-declared mandatory defaults, and nothing more. It synthesizes no meaning the template + specs don't determine and reads no clause by name: mandatory clauses (`block.design.article: "mandatory"` — commerce, topology) auto-fold into every draft generically (the SDK's fold iterates the loaded spec set, so a never-seen mandatory clause folds in with zero code). Never a hardcoded clause→clause map, a named-clause branch, or a checkout-time guess; and no clause auto-spawns a DAG node — nodes are the designer's, drawn on the canvas.
 
 ## Clause validation in the frontend
 
@@ -128,8 +128,8 @@ Y", not as an open-ended build.)
   capture pins the artifact and the URI fills the field, manual URI entry
   stays; richer ranging arrives via the agent/operator seam, never the page) and
   `components/runtime/interactionSurfaces.tsx`
-  (`block.interaction.interface` — the party↔party runtime interaction
-  standard, the sibling of `block.composes` — → order-page surfaces via
+  (`block.runtime.interaction.interface` — the party↔party runtime interaction
+  standard, the sibling of `block.design.composes` — → order-page surfaces via
   `OrderInteractionSurfaces`, mounted on every order the wallet is a party
   to; tenants: `qr-challenge` → `QrChallengePanel` (order identity over
   the visual channel at a hand-off), `ecdh-address` →
@@ -143,7 +143,7 @@ Y", not as an open-ended build.)
   the clause's stage-1 completion evidence; both ceremonies share the
   two-message core in `lib/handoff/ceremony.ts`)).
 - **Clause-composition UI** — `app/(builders)/builders/designer/_components/AgreementDrawer.tsx`
-  (reads ClauseRegistry live; grouping word is `block.article`).
+  (reads ClauseRegistry live; grouping word is `block.design.article`).
 - **On-chain write flow** — `lib/seller/usePublishSellerProfile.ts`
   (`simulateContract` → write → `waitForTransactionReceipt` → verify
   `status === "success"` before navigating).

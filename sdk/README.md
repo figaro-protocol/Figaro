@@ -209,7 +209,7 @@ import { buildSectionInclusionProof, getSectionDataBytes, computeClauseKey } fro
 import { attestAsSeller } from "@figaro/sdk/agent";
 import { parseClauseSpec, encodeContentFromSpec } from "@figaro/sdk/clauses";
 
-const section = agreement.sections[0]; // e.g. { clause: "figaro-provenance", version, data }
+const section = agreement.sections[0]; // e.g. { clause: "figaro-assembly-provenance", version, data }
 
 // 1. Inclusion proof — buildSectionInclusionProof takes the RAW section name.
 const { proof } = buildSectionInclusionProof(agreement, section.clause);
@@ -519,11 +519,15 @@ import type { SpecSource, ProjectionSpecView } from "@figaro/sdk";
 
 // Build a SpecSource from the raw spec JSON you fetched from the registry.
 // A view is the Layer-A spec PLUS the hash-load-bearing `block` hints
-// (`article`, `catalogueSourced`, `terms`) that parseProjectionHints extracts —
-// everything else in `block` is presentation the SDK never reads.
+// (`design.article`, `design.fills`, `checkout.catalogueFills`,
+// `checkout.profileFills`) that parseProjectionHints extracts — everything
+// else in `block` is presentation the SDK never reads. `design.fills` names
+// the content fields the DESIGNER authors into the template (the tailoring);
+// the template keeps those values and strips every other clause's to `{}`.
 //
-// `block.article` is normally your clause's own group name (free text: "geo",
-// "logistics", …). TWO values are RESERVED and change agreement semantics:
+// `block.design.article` is normally your clause's own group name (free text:
+// "coordination", "logistics", …). TWO values are RESERVED and change
+// agreement semantics:
 //   "mandatory"    — auto-folds into EVERY template agreement (specIsMandatory)
 //   "attestations" — an empty anchor at commit, content attested later
 //                    (specIsProcessLog)
@@ -598,9 +602,12 @@ value, and derive each order's hash and the process id from the root.
 `reconstructOrdersFromTemplate` (`dist/reconstructOrders.d.ts`) is that walk's
 single home — hand-assembling sections order-by-order is no longer the recipe.
 
-**Who fills what is unchanged**: the designer selected the clauses (often empty),
-the seller filled first-use fields at adoption, and the buyer fills the remaining
-checkout values here as per-node `overrides`. The SDK never fabricates a
+**Who fills what**: the designer selected the clauses and authored any
+`design.fills` values (the tailoring); the seller filled profile/catalogue
+master data at first use (`checkout.profileFills` / `checkout.catalogueFills`,
+folded at checkout); the buyer fills the remaining checkout values here as
+per-node `overrides` — the buyer owns every content field named in no fills
+list. The SDK never fabricates a
 signature — the caller signs each node's `typedData` (per node via `onOrder`).
 
 ```ts
@@ -668,7 +675,7 @@ COMMITTED bytes (agreement sections the merkle root hashes) or the payment
 figures the commitments sign, so a second frontend must reproduce it exactly. **No
 clause is ever named**: sections are found by their DECLARED FIELDS (`lineItems`,
 `parentOrderHashes`, `massGrams`, `billedMassGrams`) or their spec hints
-(`catalogueSourced`) through the caller's `SpecSource` — a fill whose clause isn't
+(`catalogueFills`) through the caller's `SpecSource` — a fill whose clause isn't
 composed is a no-op, so the same call serves the root and every sub-order.
 
 ```ts
@@ -684,10 +691,10 @@ import {
   terms — `lineItems` supplied only for the root cart), `writeTopologySection`
   (the REAL parent-order hashes into `parentOrderHashes`), and the logistics
   fills `fillDerivedSections` folds together — `fillCargoSection` (mass/volume
-  sum × quantity), `fillClassSections` (catalogue-sourced freight-class/hazmat/…),
+  sum × quantity), `fillClassSections` (catalogue-authored freight-class/hazmat/…),
   `fillProfileSections` (the seller's PROFILE-authored master data — dimweight's
   divisor, a declared credential id — restricted to each spec's declared
-  `block.profileSourced` subset, with the template's committed terms winning),
+  `block.checkout.profileFills` subset, with the template's committed terms winning),
   and the DERIVED `fillDimweightSection` (`billed = max(gross, volumetric)`,
   divisor read from the profile-folded leaf).
 - **Sub-order sellers**: `planSubOrderSellers` topologically orders the non-root

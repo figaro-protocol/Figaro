@@ -253,8 +253,8 @@ one rung per protocol clause no other e2e drives: drawer → encode → commit �
 witness → audit through the generic pipeline, values authored via the
 checkout fill surface (general-clause transaction particulars — design time
 is structural, ruled 2026-07-14), the wizard's catalogue clause-values
-editor, the nested sub-clause tree, or the consent AFFIX (the one
-specific-T&C designer fill) (file → IPFS pin → keccak anchor
+editor, the nested sub-clause tree, or the consent AFFIX (a designer
+fill — `block.design.fills`) (file → IPFS pin → keccak anchor
 through the array-of-object repeater; the rung asserts the preview modal's
 consent-terms notice at the signing moment and the document's pin
 out-of-band); the witness leg is DERIVED per rung from the registered

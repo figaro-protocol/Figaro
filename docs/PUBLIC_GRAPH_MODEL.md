@@ -172,8 +172,9 @@ physical/virtual-flow contributions — at `BOOSTED_WEIGHT = 3000` against a
 contribution at registration through `ClauseRegistry.rpgfTagOf` (`rpgfTag =
 keccak256("geo")` and the like); the counter's `boostedTag` immutable names the
 one tag that pays. The split is deliberate and is the correction of the costliest
-naming failure in this repo (`LEXICON.md` § "Failure modes"): `block.article`
-groups clauses for READERS and stays off-chain; `rpgfTag` marks what the protocol
+naming failure in this repo (`LEXICON.md` § "Failure modes"): `block.design.article`
+groups clauses for READERS and stays off-chain; `rpgfTag` (declared top-level in
+the spec — the one spec attribute that reaches the chain) marks what the protocol
 pays more for and has exactly one consumer. Weighting by article instead — the
 2026-07-15 attempt — aimed a mechanism meant for a handful of clauses at 14 of 27.
 

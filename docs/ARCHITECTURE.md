@@ -30,7 +30,7 @@ mapping in `VERIFICATION_MAP.md`. Do not duplicate those here.
 │   • verification is UNIFORM — every section is a merkle leaf under             │
 │     the signed agreementHash (the keccak cross-check). No per-clause tier.     │
 │ ═══════════════════════════  THE SEAM  ═══════════════════════════════════════ │
-│ clause.block.{article, nestsUnder, mechanismKinds, attestation, …}             │  ── presentation
+│ clause.block.{design, checkout, runtime} — phase sections by reader           │  ── presentation
 │   • Layer-A-only metadata.  NO on-chain or verification path reads it.         │     (replaceable)
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ UI + IPFS.  Reads registry → IPFS; uses `block` to present (group by article, │
@@ -72,16 +72,17 @@ the spec, not around it:
 
 | Part | Who reads it | Verified? |
 |---|---|---|
-| **`fields`** (the content) | Layer A (`validate.ts`, off-chain) | **Yes (off-chain)** — validated against the spec off-chain; the section is merkle-bound to `agreementHash` and the attestation is secured by bonds. The chain validates no content shape. |
-| **all of `block`** — `article`, `nestsUnder`, `composes`, `block.fields` (runtime inputs) | the UI only (drawer grouping, sub-clause nesting, composition dispatch, runtime-input forms) | **No** — every on-chain and verification path ignores it |
+| **`fields`/`stages`** (the content; stage 0 IS the committed content) | Layer A (`validate.ts`, off-chain) | **Yes (off-chain)** — validated against the spec off-chain; the section is merkle-bound to `agreementHash` and the attestation is secured by bonds. The chain validates no content shape. |
+| **all of `block`** — sectioned by reader: `design` (`article`, `nestsUnder`, `fills`, `composes`), `checkout` (`catalogueFills`, `profileFills`), `runtime` (`interaction`, `fields`, `handoffStages`) | the UI only (drawer grouping + editors, checkout folds, composition dispatch, runtime-input forms, the capability rail) | **No** — every on-chain and verification path ignores it |
+| **`rpgfTag`** (top-level) | the registration tooling — the ONE spec attribute that reaches the chain (`registerClause`) | anchored at registration; `UsageCounter` compares it to its deploy-frozen `boostedTag` |
 
 There is **no `block.tier`** (it was ripped from the block model). Verification is **uniform**:
 every clause section is a merkle leaf under the signed `agreementHash`, and that keccak binding
 *is* the security cross-check — there is no per-clause "verification posture". What varies is the
 clause's lifecycle, **derived in code, never a stored tier**: a runtime-lifecycle clause
-(`clauseIsProcessLog`) is an empty anchor at commit whose content is attested later; an
-agreement-only clause (topology) is committed but never attested; every
-other clause commits its content at signing. "cross-checked" and "runtime" named the same
+(`clauseIsProcessLog`) is an empty anchor at commit whose content is attested later; every
+other clause commits its content at signing (topology is committed and so far never attested at
+runtime — a current-state fact, not a stored kind). "cross-checked" and "runtime" named the same
 merkle-bound object.
 
 So `fields` are the **protocol**; everything in `block` is **replaceable
@@ -173,7 +174,7 @@ The copyable shape:
 4. **The arrow points one way.** The kernel never knows the coordinator exists (its one
    mention of `AttestationCoordinator`, in the `DOMAIN_SEPARATOR` doc comment, is
    illustrative, not a dependency). Tenant names — Kleros, Uniswap, a lender — live at the
-   edge: in the composing contract, in a clause's `block.composes`, in the UI dispatch.
+   edge: in the composing contract, in a clause's `block.design.composes`, in the UI dispatch.
    Never in the kernel, never in the SDK's protocol modules.
 
 The test before building anything settlement-adjacent: *can this be a parallel contract

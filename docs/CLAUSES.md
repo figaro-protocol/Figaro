@@ -42,7 +42,8 @@ adding-a-clause checklist below.
   `decodeContentFromSpec`, recovers a witness's structured values from calldata for
   readers (audit, timeline). The former per-clause encoders (`encodeCommerceContent`,
   `encodeGeoContent`, … one per clause) were **DELETED** — encoding is generic, not
-  per-clause. Topology has no encoder — it is agreement-only, with no runtime attestation.
+  per-clause. Topology has no encoder — no assembly attests it at runtime yet
+  (a current-state fact, not a design limit; see the topology note below).
 
 **Witness stages — the runtime feedback loop, declared in the spec.** A clause
 whose runtime witness carries *different content* from its committed policy (a
@@ -62,10 +63,11 @@ per-clause code — certified by the witness probe in
 process, on-chain and in the derivation both. Process-log LADDERS
 (`attestations` article) are the other runtime-evidence shape — their stage is
 the enum ordinal, no `stages` key needed; a ladder stage listed in the clause's
-`block.handoffStages` additionally PAIRS the witness stage of a co-composed
-clause nesting under `handoff` when the witness's required values derive
-unambiguously from the committed content (a single committed band) — one
-action, two attestations.
+`block.runtime.handoffStages` additionally PAIRS the witness stage of a
+co-composed clause nesting under `handoff` when the witness's required values
+derive unambiguously from the committed content (a single committed band) — one
+action, two attestations; the pairing is a field-name vocabulary, physical and
+digital hand-offs alike.
 
 Frontend wiring: `clauseSpecSource.ts` loads each spec live from `ClauseRegistry`
 → IPFS (no bundled copy); form gates and previews validate against the parsed spec.
@@ -82,9 +84,12 @@ Two on-chain touch points remain:
   first-write-wins immutable — but this repo is **device-only**: specs in `clauses/`
   are edited **in place** and re-seeded fresh each `devup`. Do not bump `version` or
   mint a `-v2` to change a clause.) It anchors the clauseId, the spec's IPFS locator, and the spec's
-  content hash (identity + integrity only — no group field; grouping is `block.article`
-  in the spec JSON). No validator is registered or bound; a registered clause is
-  immediately attestable.
+  content hash (identity + integrity only — no group field; grouping is
+  `block.design.article` in the spec JSON). The `rpgfTag` argument is declared in
+  the spec as the top-level `rpgfTag` attribute — the ONE spec attribute that
+  reaches the chain (registration data, outside `block`; the seeder and the
+  /clauses register form hash it into the call). No validator is registered or
+  bound; a registered clause is immediately attestable.
   **Versioning convention (RULED 2026-07-21): `version` is an integer lineage counter,
   never semver.** Semver's three-part contract (MAJOR.MINOR.PATCH) is a compatibility
   promise for consumers that resolve version *ranges* and auto-upgrade within them —
@@ -110,14 +115,37 @@ Lives off-chain as JSON at the `contentURI` emitted by `ClauseRegistry`
 (content integrity is the event's `contentHash`). The canonical Layer-A specs
 live at repo-root `clauses/` (the `ClauseRegistry` seed data); nothing bundles a
 copy — every consumer loads each spec from `ClauseRegistry` → IPFS at runtime.
-The spec's `block` object is frontend/composition metadata (nothing on-chain or
-in the SDK reads it) — its live field set is `ClauseBlockBinding`
-(`frontend/lib/shared/clauseBlockBinding.ts`); derive the list from that type,
-don't quote a remembered one.
 
-**`block.article` is the SEMANTIC classifier axis** — it states what KIND of
-thing a clause is; never infer kind from field shape ("has an enum" ≠ "is a
-lifecycle"; every committed-choice clause carries a bounded enum):
+**The spec has two halves either side of the UI/protocol crease** (format
+ratified 2026-07-28; the published definition is
+`sdk/src/clauses/clause-spec.schema.json`):
+
+- **Top level = protocol + registration**: identity (`clauseId`, `version`,
+  `title`, `description`), `rpgfTag` (registration data — the one spec
+  attribute that reaches the chain), and the content `fields`/`stages`.
+  **Stage 0 IS the committed content** (declared by `fields`); `stages[N≥1]`
+  are the runtime-evidence shapes.
+- **`block` = the UI half**, organized into PHASE SECTIONS named for their
+  reader: `design` (`article`, `nestsUnder`, `fills`, `composes`), `checkout`
+  (`catalogueFills`, `profileFills`), `runtime` (`interaction`, `fields`,
+  `handoffStages`). Nothing on-chain or in the SDK's content layer reads it;
+  the reference parser is `ClauseBlockBinding`
+  (`frontend/lib/shared/clauseBlockBinding.ts`) — derive the attribute list
+  from that type, don't quote a remembered one. **One verb — `fills` — says
+  who authors which content fields** (designer / catalogue / profile); the
+  buyer owns every field named in no fills list, derived as the complement,
+  never stored.
+
+**THE STANDARD (operator ruling 2026-07-28): every attribute expressed —
+zero, empty, or `null`, never absent.** The repo's 27 specs comply, enforced
+by the JSON-Schema conformance suite in `sdk/tests/clauses/`; consumers still
+treat an absent attribute as its empty value, so a sparser third-party spec
+surfaces fine (resolved-empty = absence).
+
+**`block.design.article` is the drawer grouping heading** — the
+contract-document section a clause reads under. Classification never infers
+from field shape ("has an enum" ≠ "is a lifecycle"; every committed-choice
+clause carries a bounded enum):
 
 - **`mandatory`** — committed content on every order (commerce, topology),
   never a designer choice. Renamed from `structural` 2026-07-14: that word
@@ -126,34 +154,43 @@ lifecycle"; every committed-choice clause carries a bounded enum):
   generically (`composeMandatoryClauses`).
 - **`attestations`** — runtime TRANSFER ladders the responsible party advances
   (merchant-process, courier-process; a supply chain runs the same structure at
-  length — each transfer attested, each intermediary paid at resolve).
-  `clauseIsProcessLog` = `block.article === "attestations"` — ruled 2026-07-03,
-  replacing a field-shape heuristic ("non-mandatory ∧ has enum") that misread
+  length — each transfer attested, each intermediary paid at resolve). These
+  are **coordination attestations for seller-to-seller coordination**
+  (operator, 2026-07-28) — the same runtime-evidence category as witness
+  stages, differing in shape (an event log the responsible party advances vs a
+  measurement either party files). `clauseIsProcessLog` =
+  `block.design.article === "attestations"` — ruled 2026-07-03, replacing a
+  field-shape heuristic ("non-mandatory ∧ has enum") that misread
   committed-choice clauses as lifecycles.
 - **`coordination`** — committed declarations of WHICH scenario everyone runs
   (modalities). Committed content, not a runtime lifecycle — topology carries an
   enum but never surfaces an attestation capability.
 
-Other articles (geo, logistics, emissions, recourse, consent, …) group the
-drawer/inventory; classification always reads the article, never the shape.
+Other articles (the live set is whatever the registered clauses declare —
+today: logistics, emissions, dispute-resolution, consent, settlement,
+provenance, credential, data) group the drawer/inventory; classification
+always reads the article, never the shape.
 
 ## The protocol clauses
 
 The clause set is the specs in `clauses/` — the count is **derived, never
 stored** (`ls clauses/*.json | wc -l`). All are runtime-attestable (content
 validated off-chain by Layer A; no on-chain validator) except `figaro-topology`,
-which is agreement-only — so runtime-attestable = that count minus one.
+which no assembly has YET used for a runtime attestation — a current-state
+fact, not a design limit (operator, 2026-07-28): a complex assembly can and
+should attest topology as evidence that seller Y performed after X and before
+Z. So runtime-attestable = that count minus one, today.
 
 | clauseId | What it carries | Attestation surface |
 |---|---|---|
 | `figaro-topology` | DAG lineage (parent order hashes) | **Agreement-only** (no runtime attestation) |
 | `figaro-commerce` | Payment + line items (the settlement currency is NOT here — it is signed in the kernel commitment, resolved from the denomination pin or the seller default) | Layer A (off-chain) |
-| `figaro-denomination` | The one ERC-20 the whole assembly's processes bond and settle in — ANY token; the clause names no token and carries no economics. SPECIFIC-T&C (`block.terms: "specific"`, `settlement` article): the designer pins the token address into the template (identity-bearing — the pin is part of the compositionHash), tailoring the generic assembly; every bond (2×) and payment then moves in it. Elective, composed on the ROOT order (process-scoped; the kernel enforces one currency per process); absent = the BUYER'S PICK from the seller's accepted array denominates (checkout re-quotes at the venue rate), else the seller's default. The token-layer grid in `LEXICON.md` owns the full model | Layer A (off-chain) |
+| `figaro-denomination` | The one ERC-20 the whole assembly's processes bond and settle in — ANY token; the clause names no token and carries no economics. Designer-fills (`block.design.fills: ["currency"]`, `settlement` article): the designer pins the token address into the template (identity-bearing — the pin is part of the compositionHash), tailoring the generic assembly; every bond (2×) and payment then moves in it. Elective, composed on the ROOT order (process-scoped; the kernel enforces one currency per process); absent = the BUYER'S PICK from the seller's accepted array denominates (checkout re-quotes at the venue rate), else the seller's default. The token-layer grid in `LEXICON.md` owns the full model | Layer A (off-chain) |
 | `figaro-assembly-provenance` | The process→assembly link: the AssemblyRegistry `compositionHash` this agreement instantiates (`provenance` article). The designer composes it; the field fills MECHANICALLY at checkout from the loaded template's own identity (`fillProvenanceSection` — the hash cannot appear inside the composition it hashes, so it is never a designer value). It is how a process declares which assembly it instantiates, and so how the RPGF path reaches the assembly's designer of record (`UsageCounter`) | Layer A (off-chain) |
 | `figaro-geolocation` | Origin / destination geohash — where an order originates/terminates (any modality, incl. virtual). Default-on | Layer A (off-chain) |
 | `figaro-content-handoff` | THE DIGITAL TWIN of `figaro-handoff` — how a digital deliverable (production cut, design file, dataset, access credential) hands off: mode set (encrypted-transfer / repository-grant / public-release, the buyer's checkout pick), completion evidence = the artifact's keccak256 filed as the stage-1 witness (merkle-bound; verify by rehashing). Declares the `ecdh-content` interaction (the per-order ECDH channel carries counterparty-private transfers; surface = progressive enhancement). Compose `figaro-geolocation` alongside for territory/jurisdiction geofencing | Layer A (off-chain) |
 | `figaro-cargo` | Physical shipment measure at the GDSN LOGISTIC-UNIT level (distinct from per-item trade-item measures on the catalogue) — gross/net mass, volume, packaged L×W×H, and packaging type/count/marks. Elective; hazmat / cold-chain / freight-class / dimweight are co-equal sibling logistics clauses (no spec-level nesting) | Layer A (off-chain) |
-| `figaro-dimweight` | Dimensional (billed) weight for a PARCEL — a DERIVED leaf the checkout computes: billed = max(gross mass, volume ÷ divisor), the divisor a PROFILE-SOURCED seller value (`block.profileSourced: ["divisor"]` — authored once in the generic profile clause-values section, folded onto the leaf, then the derivation computes billed). Carries billedMassGrams + divisor (reproducible from the cargo dimensions). Elective; a co-equal logistics clause | Layer A (off-chain) |
+| `figaro-dimweight` | Dimensional (billed) weight for a PARCEL — a DERIVED leaf the checkout computes: billed = max(gross mass, volume ÷ divisor), the divisor a PROFILE-authored seller value (`block.checkout.profileFills: ["divisor"]` — authored once in the generic profile clause-values section, folded onto the leaf, then the derivation computes billed). Carries billedMassGrams + divisor (reproducible from the cargo dimensions). Elective; a co-equal logistics clause | Layer A (off-chain) |
 | `figaro-hazmat` | Dangerous-goods declaration anchored to the UN Recommendations (ADR / IMDG / IATA-DGR) — UN number, proper shipping name, hazard class, packing group. Elective; a co-equal logistics clause | Layer A (off-chain) |
 | `figaro-cold-chain` | Temperature-controlled handling anchored to GDP cold-chain classes — class + min/max °C window + the committed recording interval (no external standard mandates one) + free-form monitoring standard; the period record (observed range + evidence) is the `stages[1]` witness. Elective; a co-equal logistics clause | Layer A (off-chain) |
 | `figaro-freight-class` | Declared freight classification anchored to the NMFC (NMFTA) — the NMFC class (50–500) + optional item number. Elective; a co-equal logistics clause | Layer A (off-chain) |
@@ -170,7 +207,7 @@ which is agreement-only — so runtime-attestable = that count minus one.
 | `figaro-arbitration-kleros` | Decentralized off-chain arbitration via Kleros (subcourt + minimum jurors). Provider-specific; sister `figaro-arbitration-<provider>` clauses would cover future ODR providers | Layer A (off-chain) |
 | `figaro-applicable-law` | State / ADR / traditional-jurisdiction recourse layer (applicable law + forum + language). Provider-agnostic. Composes with arbitration clauses | Layer A (off-chain) |
 | `figaro-consent` | Cryptographic acceptance of an off-chain document (hash + version + title + optional locator) — supports ToS acceptance, governance vote receipts, and other document-acceptance ceremonies (`consent` article). The designer AFFIXES each document through the drawer repeater (pin → keccak anchor — the only fill path; no paste-hex); the parties' signatures over the agreement root ARE the acceptance, and the preview modal says so in the /security register (EDPB Guidelines 02/2025) | Layer A (off-chain) |
-| `figaro-credential` | A DECLARED credential anchored to an external authority's public register (`credential` article; the NYC-TLC shape). SPECIFIC-T&C + profile-sourced, split by field: the designer pins the REGISTER (a URI template with an `{id}` placeholder) and optional title; the seller declares their identifier once on the profile (`block.profileSourced: ["credentialId"]`), folded at checkout. The register — the authority's own record, distinct from the protocol's on-chain registries — is the source of truth: verification is the READER's act (the per-leaf Verify link-out opens the substituted register URL; nothing gates signing, no status stored; the bond prices a false or lapsed declaration). A token-holding predicate for on-chain issuers is a future sister clause, not this one | Layer A (off-chain) |
+| `figaro-credential` | A DECLARED credential anchored to an external authority's public register (`credential` article; the NYC-TLC shape). Split by fills: the designer pins the REGISTER (a URI template with an `{id}` placeholder) and optional title (`block.design.fills`); the seller declares their identifier once on the profile (`block.checkout.profileFills: ["credentialId"]`), folded at checkout. The register — the authority's own record, distinct from the protocol's on-chain registries — is the source of truth: verification is the READER's act (the per-leaf Verify link-out opens the substituted register URL; nothing gates signing, no status stored; the bond prices a false or lapsed declaration). A token-holding predicate for on-chain issuers is a future sister clause, not this one | Layer A (off-chain) |
 | `figaro-data-terms` | The disclosure regime for THIS process's own records (`data` article) — the co-produced private data behind the agreement's merkle leaves. Absent = the paper-contract default (each party holds and may disclose its own copy); composed = the regime is an explicit co-signed term: designer sets `disclosure` (closed / each-own / open) at design time (the canvas card's toggle writes it — regime variants are sibling assemblies via compositionHash), buyer commits `buyerDisclosure` (withhold / permit) over their own half at checkout (the modality fill pattern). Sealed per-order encrypted fields are outside every regime by construction. Never article-mandatory. What a party SELLS of its disclosable records is a catalogue/profile concern | Layer A (off-chain) |
 | `figaro-data-license` | The terms of a DATA SALE (`data` article) — an order whose value-added IS access to records: `licenseScope` (the named data product), optional `purpose` restriction, `access` (snapshot / stream — the stream is the sustainable, repeated-game product), `redistribution` (prohibited is an off-chain obligation: co-signed timestamped evidence for the outer recourse layers, never on-chain prevention), optional `sourceProcesses` provenance anchors (each disclosed leaf verifies by merkle inclusion proof against the named process's on-chain agreementHash — sold data is self-authenticating; the 2× bond replaces pre-inspection, answering Arrow's information paradox economically). Composes with `figaro-commerce` + `figaro-content-handoff` (delivery); schedule/geolocation compose alongside for windows/territory | Layer A (off-chain) |
 
@@ -205,15 +242,17 @@ relevant order — a new hand-off pair is composition, never a new clause (only
 a genuinely different witness model — multi-witness, on-chain device-sig
 verification — clears the bar for a new primitive).
 
-`figaro-topology` is the one **agreement-only** clause — committed at
-agreement-signing time, never re-asserted as a runtime attestation. It is
-*not* off-chain-only, though. Like every agreement section, an agreement-only
-section is a merkle leaf under the on-chain `agreementHash`,
-inclusion-provable via OpenZeppelin `MerkleProof` (`computeSectionLeaf` /
-`buildSectionInclusionProof` in `sdk/src/agreement.ts` (@figaro/sdk)). "No
-runtime attestation" is not "no on-chain verification": the DAG is
-reconstructed off-chain by indexers reading topology sections from the signed
-agreement.
+`figaro-topology` is committed at agreement-signing time and — so far — never
+re-asserted as a runtime attestation. That is a fact about today's simple
+assemblies, not a design limit (operator, 2026-07-28): a complex assembly
+(Tradelens-grade) can and should attest topology as runtime evidence that
+seller Y performed after X and before Z. It is *not* off-chain-only, either
+way. Like every agreement section, a committed topology section is a merkle
+leaf under the on-chain `agreementHash`, inclusion-provable via OpenZeppelin
+`MerkleProof` (`computeSectionLeaf` / `buildSectionInclusionProof` in
+`sdk/src/agreement.ts` (@figaro/sdk)). "Not yet attested at runtime" is not
+"no on-chain verification": the DAG is reconstructed off-chain by indexers
+reading topology sections from the signed agreement.
 
 ## When something deserves a clause — payload vs anchor
 
@@ -222,7 +261,7 @@ meaning must stay stable across parties, tools, and time, anchored on-chain by
 a minimal reference point — `clauseId` + `contentHash` + `contentURI` in
 `ClauseRegistry` (identity + integrity only). Not every value
 that flows through an order deserves one. The RPGF substrate-broadening weight
-reads neither the spec nor `block.article`: it reads the `rpgfTag` the registrar
+reads neither the spec's block nor `block.design.article`: it reads the `rpgfTag` the registrar
 declared at registration, against the single `boostedTag` frozen at
 `UsageCounter`'s deploy. Rationale in `docs/PUBLIC_GRAPH_MODEL.md`; the
 article-vs-tag distinction in `docs/LEXICON.md`.
@@ -321,7 +360,7 @@ generic and takes the spec as a witness input anchored by the registration's
 2. `populate-clauses.mjs` pins it to IPFS + anchors `(clauseId, version, contentHash, contentURI)` on `ClauseRegistry`; the frontend loads it chain→IPFS via `clauseSpecSource` (no frontend copy, no preload).
 3. **No per-clause encoder is needed** — `sdk/src/clauses/encode.ts` (`encodeContentFromSpec`) is the single generic, spec-driven encoder for ANY clause. A new clause adds a spec, not a code path.
 4. SDK conformance/examples test reads the new spec from `clauses/` as a fixture (e.g. `sdk/tests/clauses/examples.test.ts`); the off-chain validator (`validateContent`) is generic and needs no per-clause case.
-5. Registration via `frontend/scripts/populate-clauses.mjs` (NOT the Solidity deploy — `Deploy.s.sol`/`DeployMainnet.s.sol` deploy the registry but register no clauses): `registerClause(clauseId, version, contentHash, contentURI, rpgfTag)`. No `setValidator` step exists — registration alone makes the clause attestable. No frontend registration step either: the drawer, `/clauses` inventory, and every surface read the clause set live from `ClauseRegistry` events and the spec from IPFS (`clauseSpecSource`); titles, articles, and tiers come from the spec.
+5. Registration via `frontend/scripts/populate-clauses.mjs` (NOT the Solidity deploy — `Deploy.s.sol`/`DeployMainnet.s.sol` deploy the registry but register no clauses): `registerClause(clauseId, version, contentHash, contentURI, rpgfTag)`. No `setValidator` step exists — registration alone makes the clause attestable. No frontend registration step either: the drawer, `/clauses` inventory, and every surface read the clause set live from `ClauseRegistry` events and the spec from IPFS (`clauseSpecSource`); titles and articles come from the spec.
 
 **When to add a seller-process clause vs not** (kernel-participant vs off-chain-seller principle): an off-chain seller needs its own process clause if and only if its state transitions are off-chain. Off-chain sellers (merchants, couriers, locker sellers, etc.) need a process clause because their state transitions happen in physical reality and need a sovereign event log to be tamper-proof evidence. Kernel participants — most importantly the **buyer**, who acts via `commit` and `resolveProcess` — do NOT need a process clause; their evidence IS the kernel event log itself. `merchant-process` and `courier-process` are sovereign-log primitives in this sense. Don't add a `figaro-buyer-process` clause — it would duplicate kernel events.
 

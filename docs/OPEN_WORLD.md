@@ -66,8 +66,8 @@ prohibition-only frame leaves a vacuum the base model fills with its default.
    class treated as mandatory.
 
 6. **Generic code routes by SPEC, not name.** Fixed universal infrastructure over the
-   unbounded set — read the spec (fields, `block` flags, `mechanismKinds`, tier) and
-   route by FIELD / TIER / mechanism; one rule over arbitrary specs
+   unbounded set — read the spec (declared fields, `stages`, the `block` phase
+   sections) and route by FIELD / declaration; one rule over arbitrary specs
    (`encodeContentFromSpec`, `deriveProcessModelFromRuntime`, `describeClause`).
    *Tell:* `if (clause === geo)`, branching on a specific clause/assembly/provider id.
 
