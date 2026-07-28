@@ -83,11 +83,11 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         // ── Design time is STRUCTURAL: a GENERAL clause exposes NO field
         //    editors here — its geohashes are the buyer's, at checkout. ──
         await expect(
-            page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-originGeohash`),
+            page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-origin`),
             'a general clause renders no design-time field editor (ruled 2026-07-14)',
         ).toHaveCount(0);
         await expect(
-            page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-destinationGeohash`),
+            page.getByTestId(`drawer-field-${GEO_CLAUSE_KEY}-destination`),
             'a general clause renders no design-time field editor (ruled 2026-07-14)',
         ).toHaveCount(0);
 

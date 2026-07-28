@@ -170,8 +170,8 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
         // The pos reference's transaction particulars: the buyer takes the
         // goods at the counter — consume-onsite, origin = destination.
         await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-modalities-modality-consume-onsite"]').first().check();
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-originGeohash"]').first().fill('9q8yyk');
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-destinationGeohash"]').first().fill('9q8yyk');
+        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-origin"]').first().fill('9q8yyk');
+        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-destination"]').first().fill('9q8yyk');
         const place = page.getByTestId('btn-place-order');
         await place.waitFor({ state: 'visible', timeout: 20000 });
         // The label tells the truth: "Connect wallet to order" (not connected) /

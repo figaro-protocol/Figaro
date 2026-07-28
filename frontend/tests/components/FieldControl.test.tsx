@@ -16,7 +16,7 @@ import { encodeGeohash } from "@figaro/sdk/derive";
 import { PUBLIC_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
 
 const geohashField: FieldSpec = {
-    name: "originGeohash",
+    name: "origin",
     type: "string",
     required: true,
     pattern: "^[0123456789bcdefghjkmnpqrstuvwxyz]+$",

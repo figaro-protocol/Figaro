@@ -380,9 +380,9 @@ buyer↔courier order's agreement.
 | Carrier | `order.seller` | The committed courier address. |
 | Shipper / consignor (party of contract) | `order.buyer` | The buyer hires the carrier; the buyer is the consignor on the carriage contract. |
 | Tenderer of goods at pickup | merchant (a co-seller in the same process) | Not a party to the carriage contract; a participant in the pickup handoff event. Surfaceable from the topology + the merchant↔buyer order in the same process. |
-| Consignee | `order.buyer` | Same address as the contractual shipper in local commerce. In supply-chain DAGs the buyer may designate the consignee via an encrypted destination address in the order's off-chain content and an address inside `figaro-geolocation.destinationGeohash`. |
-| Origin | `figaro-geolocation.originGeohash` | Geohash, 1–12 chars precision. |
-| Destination | `figaro-geolocation.destinationGeohash` | As above. |
+| Consignee | `order.buyer` | Same address as the contractual shipper in local commerce. In supply-chain DAGs the buyer may designate the consignee via an encrypted destination address in the order's off-chain content and an address inside `figaro-geolocation.destination`. |
+| Origin | `figaro-geolocation.origin` | A locality code under the committed `geocodeStandard` (geohash today). |
+| Destination | `figaro-geolocation.destination` | As above. |
 | Mode of carriage | `figaro-handoff.handoff` | Four handoff points: face-to-face / dead-drop / parking-area / locker; local-commerce focused. |
 | Service class (modality + organizer) | `figaro-modalities.modality` | Modality: consume-onsite / pickup / delivery / virtual (single-select). The organizer/coordination variant — seller-assigned / buyer-assigned — is an assembly-level composition, not a clause field. |
 | Stage progression (loaded / in-transit / delivered) | `figaro-courier-process` | 5 stages: preparationStarted / readyForPickup / courierEnRoute / pickedUp / delivered; per-stage attestations. |

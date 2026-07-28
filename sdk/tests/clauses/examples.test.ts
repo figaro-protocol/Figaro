@@ -120,31 +120,49 @@ describe("example clause specs — parse + validate sample content", () => {
 
     // ── figaro-geolocation ──
 
-    it("figaro-geolocation accepts a valid origin/destination pair", () => {
+    it("figaro-geolocation accepts a valid pair under the default standard", () => {
         const parsed = parseClauseSpec(geolocationSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
-            originGeohash: "u4pruy",
-            destinationGeohash: "9q8yyk",
+            geocodeStandard: "geohash",
+            origin: "u4pruy",
+            destination: "9q8yyk",
         }, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-geolocation rejects door-grade precision — the neighborhood cap is the SPEC's, not a frontend's", () => {
+    it("figaro-geolocation accepts a jurisdiction-grade pair under a declared standard (open axis — digital chains)", () => {
+        const parsed = parseClauseSpec(geolocationSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        // The standards axis is OPEN (ruled 2026-07-28): iso3166-2 territory
+        // codes serve digital-delivery jurisdictions; Layer A checks shape
+        // (length caps), the standard's own grammar is the reader's per-
+        // standard knowledge — exactly the emissions-methodology pattern.
+        expect(validateContent({
+            geocodeStandard: "iso3166-2",
+            origin: "DE-BY",
+            destination: "US-NY",
+        }, parsed.spec).ok).toBe(true);
+    });
+
+    it("figaro-geolocation rejects a code past the shape cap — the cap is the SPEC's, not a frontend's", () => {
         const parsed = parseClauseSpec(geolocationSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
-            originGeohash: "u4pruydqqv",
-            destinationGeohash: "9q8yyk",
+            geocodeStandard: "geohash",
+            origin: "u4pruydqqvj8pr4h4kjkjfa4knvokjhpqrstuv",
+            destination: "9q8yyk",
         }, parsed.spec).ok).toBe(false);
     });
 
-    it("figaro-geolocation rejects geohash with disallowed characters", () => {
+    it("figaro-geolocation rejects a pair with no declared standard — the standard is required", () => {
         const parsed = parseClauseSpec(geolocationSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        // 'a' is not in the geohash base32 alphabet
+        // Character grammar is per-standard and lives with readers/frontends
+        // (the emissions-methodology pattern); what Layer A enforces is the
+        // DECLARATION: no code means anything without its standard.
         expect(validateContent({
-            originGeohash: "abc",
-            destinationGeohash: "abc",
+            origin: "u4pruy",
+            destination: "9q8yyk",
         }, parsed.spec).ok).toBe(false);
     });
 

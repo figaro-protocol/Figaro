@@ -62,8 +62,8 @@ const BILL_OF_LADING: DocumentTemplate = {
         { label: "Carrier", ref: { party: "seller" } },
         { label: "Shipper / consignor", ref: { party: "buyer" } },
         { label: "Consignee", ref: { party: "buyer" } },
-        { label: "Origin (geohash)", ref: { leafField: { byField: "originGeohash", field: "originGeohash" } } },
-        { label: "Destination (geohash)", ref: { leafField: { byField: "originGeohash", field: "destinationGeohash" } } },
+        { label: "Origin (geohash)", ref: { leafField: { byField: "origin", field: "origin" } } },
+        { label: "Destination (geohash)", ref: { leafField: { byField: "origin", field: "destination" } } },
     ],
     leafSections: [
         { label: "Cargo", byField: "massGrams" },

@@ -136,7 +136,7 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
                 },
                 {
                     clause: USED_CLAUSE, version: USED_CLAUSE_VERSION,
-                    data: { originGeohash: 'u4pruy', destinationGeohash: 'u4pruz' },
+                    data: { origin: 'u4pruy', destination: 'u4pruz' },
                 },
             ],
         };

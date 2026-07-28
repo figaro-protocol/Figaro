@@ -275,8 +275,8 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
             .toBeVisible({ timeout: 30000 });
         // The buyer authors the committed endpoints HERE (templates arrive
         // value-free); the rate derivation prices from these fills.
-        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${GEO_CLAUSE}-originGeohash"]`).first().fill(ORIGIN_GEOHASH);
-        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${GEO_CLAUSE}-destinationGeohash"]`).first().fill(DESTINATION_GEOHASH);
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${GEO_CLAUSE}-origin"]`).first().fill(ORIGIN_GEOHASH);
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${GEO_CLAUSE}-destination"]`).first().fill(DESTINATION_GEOHASH);
         // The derivation line: raw km → billed per started km × the rate.
         const derivation = page.locator('[data-testid^="rate-derivation-"]');
         await expect(derivation, 'the rate derivation surfaces in the P&L').toBeVisible({ timeout: 30000 });

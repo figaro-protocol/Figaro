@@ -73,7 +73,7 @@ export const COMMIT_ORDER: Array<{ who: { address: Hex }; label: keyof typeof PR
 export const EXPECTED_TOTAL = Object.values(PRICES)
     .reduce((s, p) => s + parseUnits(p, 18), 0n);
 
-export const DEVICE = { lat: 51.9244, lon: 4.4777, destinationGeohash: 'u15pk4' } as const;
+export const DEVICE = { lat: 51.9244, lon: 4.4777, destination: 'u15pk4' } as const;
 
 /** THE SHAPE — how every consumer recognizes the assembly on-chain without a
  *  slug: exactly six orders, one composing BOTH cold-chain AND
@@ -129,11 +129,11 @@ export async function fillTradelensCheckout(page: Page): Promise<void> {
     await forEachCheckoutField(page, C.emissions, 'standard', (c) => c.fill('EN 16258'));
     await forEachCheckoutField(page, C.handoff, 'handoff-face-to-face', (c) => c.check());
     await forEachCheckoutField(page, C.proximity, 'bands-zone-wifi', (c) => c.check());
-    await forEachCheckoutField(page, C.geo, 'originGeohash-device', (c) => c.click());
-    await forEachCheckoutField(page, C.geo, 'originGeohash', async (c) => {
+    await forEachCheckoutField(page, C.geo, 'origin-device', (c) => c.click());
+    await forEachCheckoutField(page, C.geo, 'origin', async (c) => {
         await expect(c).toHaveValue(/^[0-9b-hj-km-np-z]+$/, { timeout: 10000 });
     });
-    await forEachCheckoutField(page, C.geo, 'destinationGeohash', (c) => c.fill(DEVICE.destinationGeohash));
+    await forEachCheckoutField(page, C.geo, 'destination', (c) => c.fill(DEVICE.destination));
     // Second instances (the carrier's custody leg, the inspector's acceptance
     // basis) — fill every remaining required free-text control.
     await forEachCheckoutField(page, C.custody, 'custodyScheme', async (c) => {

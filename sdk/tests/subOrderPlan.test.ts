@@ -185,7 +185,7 @@ describe("resolveSubOrderPricing — rate items", () => {
 
     it("order-geodistance: payment = rate × ceil(centroid km), from the order's own committed endpoints", () => {
         const p = resolveSubOrderPricing({
-            node: nodeWithClauses({ [GEO]: { originGeohash: SF, destinationGeohash: LA } }),
+            node: nodeWithClauses({ [GEO]: { geocodeStandard: "geohash", origin: SF, destination: LA } }),
             seller: SWIFT,
             sellerCatalogues: rateCatalogue({
                 id: "haul", name: "Haul", price: "0.01", available: true,
@@ -203,7 +203,7 @@ describe("resolveSubOrderPricing — rate items", () => {
 
     it("order-geodistance bills min 1 unit for a same-cell (zero-distance) order", () => {
         const p = resolveSubOrderPricing({
-            node: nodeWithClauses({ [GEO]: { originGeohash: SF, destinationGeohash: SF } }),
+            node: nodeWithClauses({ [GEO]: { geocodeStandard: "geohash", origin: SF, destination: SF } }),
             seller: SWIFT,
             sellerCatalogues: rateCatalogue({
                 id: "haul", name: "Haul", price: "0.01", available: true,

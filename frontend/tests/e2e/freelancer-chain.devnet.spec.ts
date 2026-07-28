@@ -167,8 +167,8 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
             for (let i = 0; i < n; i++) await action(controls.nth(i));
         };
         await everyField(`${CONTENT_CLAUSE}-contentHandoff-encrypted-transfer`, (c) => c.check());
-        await everyField('figaro-geolocation-originGeohash', (c) => c.fill('9q8yyk'));
-        await everyField('figaro-geolocation-destinationGeohash', (c) => c.fill('u15pk4'));
+        await everyField('figaro-geolocation-origin', (c) => c.fill('9q8yyk'));
+        await everyField('figaro-geolocation-destination', (c) => c.fill('u15pk4'));
         await expect(page.getByTestId('checkout-view')).toContainText('3', { timeout: 20000 });
         const place = page.getByTestId('btn-place-order');
         await expect(place, 'client connected + assembly bound → "Place order"').toHaveText(/Place order/, { timeout: 20000 });

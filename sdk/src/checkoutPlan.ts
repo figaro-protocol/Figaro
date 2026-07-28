@@ -538,8 +538,8 @@ export function resolveSubOrderPricing(args: {
 //    seats, GB — the unit is the seller's editorial `rateUnit` label).
 //  - "order-geodistance": derived from the order's OWN committed geolocation
 //    endpoints — great-circle distance in km between the two geohash cell
-//    centroids, found by their declared fields (`originGeohash` +
-//    `destinationGeohash`), never by clause id. ANY order that composes both
+//    centroids, found by their declared fields (`origin` +
+//    `destination`), never by clause id. ANY order that composes both
 //    endpoints has a derivable distance; no sector is named.
 //  - "booking-window": derived from the order's OWN committed time window —
 //    hours between the two ISO date-times, found by their declared fields
@@ -580,23 +580,32 @@ function resolveCheckoutQuantity(ctx: RateQuantityContext): number | null {
 }
 
 function resolveOrderGeodistance(ctx: RateQuantityContext): number | null {
+    // Found by declared fields, never by clause id: any clause carrying a
+    // geocodeStandard with origin/destination participates. Distance is
+    // derivable only for standards this resolver knows — geohash today
+    // (2026-07-28: the geolocation clause is standards-agnostic; the
+    // standard is committed content, so the gate reads the SECTION, not the
+    // spec). An unknown standard is unresolvable, never junk-priced.
     const geoClauseId = Object.keys(ctx.clauses).find((clauseId) => {
         const spec = ctx.specs.get(clauseId);
         return spec
-            ? specDeclaresField(spec, "originGeohash") && specDeclaresField(spec, "destinationGeohash")
+            ? specDeclaresField(spec, "geocodeStandard")
+                && specDeclaresField(spec, "origin") && specDeclaresField(spec, "destination")
             : false;
     });
     if (!geoClauseId) return null;
     const section = ctx.clauses[geoClauseId];
-    const origin = section?.originGeohash;
-    const destination = section?.destinationGeohash;
+    const standard = section?.geocodeStandard;
+    if (typeof standard === "string" && standard !== "" && standard !== "geohash") return null;
+    const origin = section?.origin;
+    const destination = section?.destination;
     if (typeof origin !== "string" || typeof destination !== "string" || !origin || !destination) {
         return null;
     }
     try {
         return geohashCentroidDistanceKm(origin, destination);
     } catch {
-        // Malformed committed geohash — unresolvable, never junk-priced.
+        // Malformed committed code — unresolvable, never junk-priced.
         return null;
     }
 }

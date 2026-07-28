@@ -55,7 +55,7 @@ describe("projectDocuments — generic engine over declared templates", () => {
         const carriage = agreement([
             { clause: "figaro-topology", data: { parentOrderHashes: ["0xPARENT"] } },
             { clause: "figaro-courier-process", data: {} },
-            { clause: "figaro-geolocation", data: { originGeohash: "9q8yy", destinationGeohash: "9q8yyk8yu" } },
+            { clause: "figaro-geolocation", data: { origin: "9q8yy", destination: "9q8yyk8yu" } },
             { clause: "figaro-cargo", data: { massGrams: 500, volumeMl: 1000 } },
             { clause: "figaro-freight-class", data: { nmfcClass: "100" } },
             { clause: "figaro-handoff", data: { handoff: "face-to-face" } },

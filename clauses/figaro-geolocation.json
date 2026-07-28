@@ -2,28 +2,36 @@
     "clauseId": "figaro-geolocation",
     "version": 1,
     "title": "Geolocation",
-    "description": "Origin and destination geohashes \u2014 where an order originates and terminates. Composed for ANY modality: a physical shipment route, a service jurisdiction, or geofenced digital delivery. Carries no physical-shipment assumption; mass and volume live in the elective figaro-cargo clause.",
+    "description": "Origin and destination locality codes under a DECLARED geocode standard \u2014 where an order originates and terminates. Composed for ANY modality and BOTH physical and digital value chains: a shipment route (cell-grid codes: geohash, H3, S2, Open Location Code), a service jurisdiction or digital-delivery territory (jurisdiction codes: ISO 3166-1/-2, UN/LOCODE; endpoint territory in digital chains is evidenced per RFC 8805/9632 geofeeds). The standard is the source of truth \u2014 referenced, never restated; the axis is OPEN (any standard, existing or future). Carries no physical-shipment assumption; mass and volume live in the elective figaro-cargo clause.",
     "rpgfTag": "geo",
     "fields": [
         {
-            "name": "originGeohash",
+            "name": "geocodeStandard",
             "type": "string",
             "required": true,
             "minLength": 1,
-            "maxLength": 6,
-            "pattern": "^[0123456789bcdefghjkmnpqrstuvwxyz]+$",
-            "format": "geohash",
-            "description": "Origin geohash (base32), 1\u20136 characters \u2014 neighborhood grade, the cap is the spec's (grain caps are protocol, not presentation). A transaction particular: filled at checkout like every general-clause field (a frontend may fill it from the device location); the composed clause is generic. Door-grade location travels the encrypted address channel (the ecdh-address interaction), never a committed field."
+            "maxLength": 64,
+            "default": "geohash",
+            "label": "Geocode standard",
+            "description": "The encoding standard the origin/destination codes are written in \u2014 an OPEN axis like every standards field (emissions' methodology, cold-chain's monitoring standard): any non-empty declaration is valid; frontends enhance the standards they know. Known examples: geohash (the built frontend's default), h3, s2, olc (Plus Codes) for cell grids; iso3166-1, iso3166-2, unlocode for jurisdiction-grade locality (digital-delivery territories, service jurisdictions)."
         },
         {
-            "name": "destinationGeohash",
+            "name": "origin",
             "type": "string",
             "required": true,
             "minLength": 1,
-            "maxLength": 6,
-            "pattern": "^[0123456789bcdefghjkmnpqrstuvwxyz]+$",
-            "format": "geohash",
-            "description": "Destination geohash (base32), 1\u20136 characters \u2014 neighborhood grade, the cap is the spec's (grain caps are protocol, not presentation). A transaction particular: filled at checkout like every general-clause field (a frontend may fill it from the device location); the composed clause is generic. Door-grade location travels the encrypted address channel (the ecdh-address interaction), never a committed field."
+            "maxLength": 32,
+            "description": "Origin locality code, written in the committed geocodeStandard. A transaction particular, filled at checkout like every field named in no fills list. Commit LOCALITY grain, never door grade \u2014 the privacy rule is doctrine across standards (geohash \u22646 chars = neighborhood; jurisdiction codes are coarse by nature); door-grade location travels the encrypted address channel (the ecdh-address interaction), never a committed field.",
+            "label": "Origin"
+        },
+        {
+            "name": "destination",
+            "type": "string",
+            "required": true,
+            "minLength": 1,
+            "maxLength": 32,
+            "description": "Destination locality code, written in the committed geocodeStandard. A transaction particular, filled at checkout (a frontend may fill it from the device location where the standard supports it); the composed clause is generic. Commit LOCALITY grain, never door grade; door-grade travels the ecdh-address channel.",
+            "label": "Destination"
         }
     ],
     "stages": {},

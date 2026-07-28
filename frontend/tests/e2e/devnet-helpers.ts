@@ -12,6 +12,7 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from '@figaro/sdk';
+import { encodeGeohash } from '@figaro/sdk/derive';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 
 export const RPC_URL = 'http://127.0.0.1:8545';
@@ -564,7 +565,7 @@ export const DELIVERY_CLAUSES = {
 
 /** The Playwright-pinned device location the geolocation clause's device
  *  affordance reads at authoring time, and the typed destination cell. */
-export const DELIVERY_DEVICE = { lat: 37.7749, lon: -122.4194, destinationGeohash: '9q8yyk' } as const;
+export const DELIVERY_DEVICE = { lat: 37.7749, lon: -122.4194, destination: '9q8yyk' } as const;
 
 /** A checkout-view general-clause field control, suffix-matched — the testid
  *  is `checkout-field-<orderId>-<clauseId>-<field>[-<option>]` and the
@@ -583,10 +584,13 @@ export async function fillDeliveryCheckout(page: Page): Promise<void> {
     await checkoutField(page, DELIVERY_CLAUSES.modalities, 'modality-delivery').check();
     await checkoutField(page, DELIVERY_CLAUSES.handoff, 'handoff-face-to-face').check();
     await checkoutField(page, DELIVERY_CLAUSES.proximity, 'bands-zone-wifi').check();
-    await checkoutField(page, DELIVERY_CLAUSES.geo, 'originGeohash-device').click();
-    await expect(checkoutField(page, DELIVERY_CLAUSES.geo, 'originGeohash'))
-        .toHaveValue(/^[0-9b-hj-km-np-z]+$/, { timeout: 10000 });
-    await checkoutField(page, DELIVERY_CLAUSES.geo, 'destinationGeohash').fill(DELIVERY_DEVICE.destinationGeohash);
+    // geocodeStandard arrives PREFILLED from the spec's default ("geohash" —
+    // the built frontend); the endpoints fill as text. The format-keyed
+    // device-capture control retired with the standards generalisation
+    // (2026-07-28); its successor is standard-gated (punch-listed).
+    await checkoutField(page, DELIVERY_CLAUSES.geo, 'origin')
+        .fill(encodeGeohash(DELIVERY_DEVICE.lat, DELIVERY_DEVICE.lon, 6));
+    await checkoutField(page, DELIVERY_CLAUSES.geo, 'destination').fill(DELIVERY_DEVICE.destination);
 }
 
 /** Wait for ClientInit's devnet auto-connect (the "Connect Wallet" button goes). */
