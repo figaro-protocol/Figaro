@@ -10,8 +10,8 @@ import { parseToken } from "@/lib/shared/utils";
  * noun (composition).
  *
  * The checkout surface is fully open-world: it discovers WHICH orders compose an
- * on-network contract by reading `block.composes` off the clause spec, renders
- * each composition's `block.fields` generically (one form, no interface name),
+ * on-network contract by reading `block.design.composes` off the clause spec, renders
+ * each composition's `block.runtime.fields` generically (one form, no interface name),
  * and hands the collected `{ interface, fieldValues }` here. This hook is the
  * single place a standard interface NAME maps to the concrete call — a
  * spec-routed dispatch, never a clause-id switch scattered through the UI.
@@ -27,11 +27,11 @@ import { parseToken } from "@/lib/shared/utils";
 
 /** Context the checkout walk hands each composition invocation. All fields are
  *  DERIVED (order/process/currency) except `fieldValues` (the buyer's
- *  `block.fields` inputs). */
+ *  `block.runtime.fields` inputs). */
 export interface ComposeContext {
-    /** The standard interface named by the clause's `block.composes.interface`. */
+    /** The standard interface named by the clause's `block.design.composes.interface`. */
     interface: string;
-    /** The buyer's `block.fields` values for the composing clause, by field name. */
+    /** The buyer's `block.runtime.fields` values for the composing clause, by field name. */
     fieldValues: Record<string, unknown>;
     processId: `0x${string}`;
     currency: `0x${string}`;

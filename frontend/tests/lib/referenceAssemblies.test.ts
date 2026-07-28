@@ -25,8 +25,8 @@ const registeredClauseIds = new Set(
 );
 const mandatoryClauseIds = readdirSync(CLAUSES_DIR)
     .filter((f) => f.endsWith(".json"))
-    .map((f) => JSON.parse(readFileSync(path.join(CLAUSES_DIR, f), "utf8")) as { clauseId: string; block?: { article?: string } })
-    .filter((s) => s.block?.article === "mandatory")
+    .map((f) => JSON.parse(readFileSync(path.join(CLAUSES_DIR, f), "utf8")) as { clauseId: string; block?: { design?: { article?: string } } })
+    .filter((s) => s.block?.design?.article === "mandatory")
     .map((s) => s.clauseId);
 
 describe("reference assemblies — the onboarding set", () => {

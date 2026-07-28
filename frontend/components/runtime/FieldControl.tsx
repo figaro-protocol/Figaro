@@ -6,7 +6,7 @@
  * checkbox, object → recursive sub-fields, scalar → text/number input). It knows
  * no clause and no interface — the same renderer drives a clause's content
  * `fields` (design-time, in the AgreementDrawer) and a composition's runtime
- * `block.fields` (checkout-time, in the runtime-inputs form). One parser
+ * `block.runtime.fields` (checkout-time, in the runtime-inputs form). One parser
  * (`parseFieldSpec`), one renderer.
  *
  * The one axis that differs between those two uses is the fill-vs-defer policy

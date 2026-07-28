@@ -3,6 +3,7 @@
     "version": 1,
     "title": "Content hand-off",
     "description": "How the DIGITAL hand-off happens for this order's exchange — the twin of the physical hand-off clause, for value added in the digital medium (a production chain's cut, a design file, a dataset, an access credential; the freelancer's deliverable). Each bonded order with a digital deliverable carries its own content hand-off. Completion evidence is the delivered artifact's keccak256 content hash, filed as a runtime attestation at stage 1 and merkle-bound to the agreement — any counterparty verifies by rehashing what it received. Compose figaro-geolocation ALONGSIDE for territory/jurisdiction geofencing (a licensed territory, the jurisdiction of the work) — geofencing is that clause's concern, never fields here.",
+    "rpgfTag": null,
     "fields": [
         {
             "name": "contentHandoff",
@@ -42,9 +43,22 @@
         ]
     },
     "block": {
-        "article": "logistics",
-        "interaction": {
-            "interface": "ecdh-content"
+        "design": {
+            "article": "logistics",
+            "nestsUnder": null,
+            "fills": [],
+            "composes": null
+        },
+        "checkout": {
+            "catalogueFills": [],
+            "profileFills": []
+        },
+        "runtime": {
+            "interaction": {
+                "interface": "ecdh-content"
+            },
+            "fields": [],
+            "handoffStages": []
         }
     }
 }

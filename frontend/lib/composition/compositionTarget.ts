@@ -1,11 +1,11 @@
 /**
  * compositionTarget — the concrete `{ address, abi }` to invoke for a
  * composition, keyed by the standard interface a clause names
- * (`block.composes.interface`).
+ * (`block.design.composes.interface`).
  *
  * A composition is invocable only for interfaces the runtime has a HANDLER for
  * (`useCompositionActions`): invoking an on-network contract needs integration
- * code — which function is the compose action, how `block.fields` map to its
+ * code — which function is the compose action, how `block.runtime.fields` map to its
  * args — which no ABI alone supplies. So this is a small registry of KNOWN
  * standard interfaces: the address is env-looked-up (a deployment fact), the ABI
  * is the standard's own shape (bundled beside the interface's handler). Adding a
@@ -20,7 +20,7 @@ export interface CompositionTarget {
     abi: Abi;
 }
 
-/** Known standard interfaces, keyed by `block.composes.interface`. Currently
+/** Known standard interfaces, keyed by `block.design.composes.interface`. Currently
  *  EMPTY: the descending auction (the first tenant) was abandoned 2026-07-02;
  *  the next expected row is the emissions cluster's `carbon-aggregator`. */
 const STANDARD_INTERFACES: Record<string, { address: () => `0x${string}` | null; abi: Abi }> = {};

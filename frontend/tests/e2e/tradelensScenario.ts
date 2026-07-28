@@ -125,7 +125,7 @@ export async function fillTradelensCheckout(page: Page): Promise<void> {
     await checkoutFields(page, C.law, 'applicableLaw').first().fill('England-Wales');
     await checkoutFields(page, C.kleros, 'klerosCourt-general').first().check();
     // The emissions methodology is committed at signing by the parties — not
-    // catalogue-sourced (no block.catalogueSourced on the spec).
+    // catalogue-sourced (no block.checkout.catalogueFills on the spec).
     await forEachCheckoutField(page, C.emissions, 'standard', (c) => c.fill('EN 16258'));
     await forEachCheckoutField(page, C.handoff, 'handoff-face-to-face', (c) => c.check());
     await forEachCheckoutField(page, C.proximity, 'bands-zone-wifi', (c) => c.check());

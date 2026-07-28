@@ -100,7 +100,7 @@ export interface CatalogueItemMetadata {
     rateQuantitySource?: string;
     /**
      * Catalogue-sourced clause values — product master data authored per item
-     * for clauses that declare `block.catalogueSourced` (freight class, hazmat,
+     * for clauses that declare `block.checkout.catalogueFills` (freight class, hazmat,
      * cold-chain, …). Keyed by clauseId → the clause's content field values
      * (the same `{clause, data}` shape as an agreement section's `data`).
      * Generic and open-world: no clause is named here; the authoring form and

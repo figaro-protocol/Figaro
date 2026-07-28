@@ -38,11 +38,11 @@ describe("validate", () => {
     });
 
     it("optional-field handling: an optional `block` slice survives into raw (so the on-chain contentHash covers it)", () => {
-        const withBlock = { ...WELL_FORMED, block: { article: "logistics" } };
+        const withBlock = { ...WELL_FORMED, block: { design: { article: "logistics" } } };
         const v = validate(JSON.stringify(withBlock));
         expect(v.state).toBe("valid");
         if (v.state === "valid") {
-            expect(v.raw.block).toEqual({ article: "logistics" });
+            expect(v.raw.block).toEqual({ design: { article: "logistics" } });
         }
     });
 

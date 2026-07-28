@@ -3,6 +3,7 @@
     "version": 1,
     "title": "Kleros decentralized arbitration",
     "description": "Off-chain dispute resolution via Kleros, the decentralized juror court. Selects a Kleros subcourt and a minimum juror count for any dispute escalated from this order. This clause covers one specific arbitration provider; sister `figaro-arbitration-<provider>` clauses would cover other decentralized ODR providers as they integrate with Figaro. Compose with `figaro-applicable-law` to add a state-law / ADR recourse layer.",
+    "rpgfTag": null,
     "fields": [
         {
             "name": "klerosCourt",
@@ -35,11 +36,25 @@
             "description": "Minimum jurors for the Kleros subcourt. Kleros default is 3."
         }
     ],
+    "stages": {},
     "block": {
-        "article": "dispute-resolution",
-        "composes": {
-            "interface": "dispute-forum",
-            "forumUrl": "https://resolve.kleros.io"
+        "design": {
+            "article": "dispute-resolution",
+            "nestsUnder": null,
+            "fills": [],
+            "composes": {
+                "interface": "dispute-forum",
+                "forumUrl": "https://resolve.kleros.io"
+            }
+        },
+        "checkout": {
+            "catalogueFills": [],
+            "profileFills": []
+        },
+        "runtime": {
+            "interaction": null,
+            "fields": [],
+            "handoffStages": []
         }
     }
 }

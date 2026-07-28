@@ -3,6 +3,7 @@
     "version": 1,
     "title": "Dangerous goods (hazmat)",
     "description": "Dangerous-goods declaration anchored to the UN Recommendations on the Transport of Dangerous Goods (the \"Orange Book\"), as implemented by ADR (road), IMDG (sea), and IATA-DGR (air). Elective and NEVER default-on: composed only when the goods are regulated dangerous goods. Carries the UN number, the official proper shipping name, the UN hazard class, and the packing group. The external standard is the source of truth; this clause references it.",
+    "rpgfTag": null,
     "fields": [
         {
             "name": "unNumber",
@@ -27,7 +28,17 @@
             "name": "hazardClass",
             "type": "enum",
             "required": true,
-            "values": ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
+            "values": [
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8",
+                "9"
+            ],
             "valueLabels": {
                 "1": "Explosives",
                 "2": "Gases",
@@ -46,7 +57,11 @@
             "name": "packingGroup",
             "type": "enum",
             "required": false,
-            "values": ["I", "II", "III"],
+            "values": [
+                "I",
+                "II",
+                "III"
+            ],
             "valueLabels": {
                 "I": "I — high danger",
                 "II": "II — medium danger",
@@ -56,8 +71,27 @@
             "description": "UN packing group indicating degree of danger. Optional — classes 1, 2, and 7 are not assigned a packing group."
         }
     ],
+    "stages": {},
     "block": {
-        "article": "logistics",
-        "catalogueSourced": true
+        "design": {
+            "article": "logistics",
+            "nestsUnder": null,
+            "fills": [],
+            "composes": null
+        },
+        "checkout": {
+            "catalogueFills": [
+                "unNumber",
+                "properShippingName",
+                "hazardClass",
+                "packingGroup"
+            ],
+            "profileFills": []
+        },
+        "runtime": {
+            "interaction": null,
+            "fields": [],
+            "handoffStages": []
+        }
     }
 }

@@ -17,11 +17,11 @@ import {
 import { displayNameForAddress } from "@/lib/seller/sellerListing";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import {
-    clauseIsCatalogueSourced,
+    clauseCatalogueFills,
+    clauseDesignFills,
     clauseIsMandatory,
     clauseIsProcessLog,
-    clauseIsProfileSourced,
-    clauseIsSpecificTerms,
+    clauseProfileFills,
     getClauseSpec,
     specSource,
 } from "@/lib/shared/clauseSpecSource";
@@ -186,7 +186,7 @@ export function deriveAgreementGroups(args: {
                         values: clauseValueSummary(fields),
                         data: fields as Record<string, unknown>,
                         // A GENERAL clause's fields are transaction particulars
-                        // the buyer authors here. Not fillable: specific-T&C
+                        // the buyer authors here. Not fillable: designer-fills
                         // values (the designer's tailoring, from the template),
                         // process-log anchors (attested at runtime, empty at
                         // commit), catalogue-sourced sections (the seller's
@@ -195,12 +195,12 @@ export function deriveAgreementGroups(args: {
                         // sections whose every field the walk fills
                         // mechanically. A COMPOSING clause's content fields
                         // ARE fillable — the composition surface collects
-                        // only its block.fields runtime params, never its
+                        // only its block.runtime.fields runtime params, never its
                         // content.
-                        fillable: !clauseIsSpecificTerms(clauseId)
+                        fillable: clauseDesignFills(clauseId).length === 0
                             && !clauseIsProcessLog(clauseId)
-                            && !clauseIsCatalogueSourced(clauseId)
-                            && !clauseIsProfileSourced(clauseId)
+                            && clauseCatalogueFills(clauseId).length === 0
+                            && clauseProfileFills(clauseId).length === 0
                             && specFields.length > 0
                             && !specFields.every((f) => mechanicalFields.has(f.name)),
                     };

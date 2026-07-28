@@ -162,7 +162,7 @@ export interface SellerProfileMetadata {
     defaultTokenAddress?: `0x${string}`;
     /**
      * PROFILE-authored clause values — SELLER master data for any registered
-     * clause declaring `block.profileSourced` (the seller-level sibling of the
+     * clause declaring `block.checkout.profileFills` (the seller-level sibling of the
      * catalogue's per-item `clauseValues`): keyed clauseId → field → value,
      * restricted by each spec's declared profile-authored subset. Examples:
      * `figaro-dimweight`'s `divisor` (the seller's shipping convention, e.g.

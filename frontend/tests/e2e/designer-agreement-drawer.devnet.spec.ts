@@ -10,12 +10,12 @@
  *   1. /builders/designer/new?fresh=1 — blank canvas, one root order.
  *   2. Open the drawer → registry tab → compose figaro-geolocation (awaited into
  *      existence: checkboxes render once the spec cache warms chain→IPFS).
- *   3. A GENERAL clause exposes NO field editors in the drawer — its fields
- *      are transaction particulars, authored by the buyer at checkout (the
- *      device affordance and precision clamp live there now; local-commerce
- *      and rate-pricing drive them). A SPECIFIC-T&C clause (figaro-consent,
- *      `block.terms: "specific"`) DOES expose its editors — the designer's
- *      tailoring affix.
+ *   3. A clause with NO designer fills exposes NO field editors in the drawer
+ *      — its fields are transaction particulars, authored by the buyer at
+ *      checkout (the device affordance and precision clamp live there now;
+ *      local-commerce and rate-pricing drive them). A clause declaring
+ *      `block.design.fills` (figaro-consent) DOES expose editors for exactly
+ *      those fields — the designer's tailoring affix.
  *   4. Save; discover the assigned draft handle from the hub's drafts list and
  *      reload via /builders/designer/edit?slug=<slug> — the geolocation checkbox is
  *      STILL CHECKED.
@@ -70,7 +70,7 @@ async function reopenDraft(page: Page, slug: string) {
 test.describe('Designer AgreementDrawer (devnet)', () => {
     test.setTimeout(180_000);
 
-    test('toggling the geo clause persists through save and reload — both directions; editors gate on specific-terms', async ({ page }) => {
+    test('toggling the geo clause persists through save and reload — both directions; editors gate on design.fills', async ({ page }) => {
         await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
         await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
@@ -91,14 +91,15 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
             'a general clause renders no design-time field editor (ruled 2026-07-14)',
         ).toHaveCount(0);
 
-        // ── A SPECIFIC-T&C clause (consent — block.terms: "specific") DOES
-        //    render its editors: the affix repeater is the designer's act. ──
+        // ── A clause declaring designer fills (consent — block.design.fills:
+        //    ["documents"]) DOES render its editors: the affix repeater is the
+        //    designer's act. ──
         const consentToggle = page.getByTestId(`drawer-registry-clause-${CONSENT_CLAUSE_KEY}`);
         await expect(consentToggle, 'drawer surfaces the consent clause').toHaveCount(1, { timeout: 20000 });
         await consentToggle.check();
         await expect(
             page.getByTestId(`drawer-field-${CONSENT_CLAUSE_KEY}-documents-add`),
-            'a specific-T&C clause renders its design-time editors (the tailoring affix)',
+            'a designer-fills clause renders its design-time editors (the tailoring affix)',
         ).toBeVisible({ timeout: 10000 });
         await consentToggle.uncheck();
 

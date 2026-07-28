@@ -146,10 +146,12 @@ export async function populateClauses({ publicClient, walletClient, account, reg
         const deposit = await publicClient.readContract({
             address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registrationDeposit',
         });
-        // Incentive tag: declared in the spec's `block.rpgfTag` so `contentHash`
-        // binds it. Absent = untagged (bytes32(0)), the default for most clauses.
-        const rpgfTag = typeof spec.block?.rpgfTag === 'string' && spec.block.rpgfTag.trim()
-            ? keccak256(stringToHex(spec.block.rpgfTag.trim()))
+        // Incentive tag: declared in the spec's top-level `rpgfTag` (the one
+        // spec attribute that reaches the chain — registration data, outside
+        // `block`) so `contentHash` binds it. Null = untagged (bytes32(0)),
+        // the default for most clauses.
+        const rpgfTag = typeof spec.rpgfTag === 'string' && spec.rpgfTag.trim()
+            ? keccak256(stringToHex(spec.rpgfTag.trim()))
             : `0x${'0'.repeat(64)}`;
         const { request } = await publicClient.simulateContract({
             account: account.address,
@@ -162,7 +164,7 @@ export async function populateClauses({ publicClient, walletClient, account, reg
         const hash = await walletClient.writeContract(request);
         await publicClient.waitForTransactionReceipt({ hash });
         registered += 1;
-        log(`  ✓ ${clauseIdStr} v${version} — pinned ${contentURI} (article ${spec.block?.article ?? '-'})`);
+        log(`  ✓ ${clauseIdStr} v${version} — pinned ${contentURI} (article ${spec.block?.design?.article ?? '-'})`);
     }
     return registered;
 }

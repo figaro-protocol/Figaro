@@ -3,6 +3,7 @@
     "version": 1,
     "title": "Geolocation",
     "description": "Origin and destination geohashes — where an order originates and terminates. Composed for ANY modality: a physical shipment route, a service jurisdiction, or geofenced digital delivery. Carries no physical-shipment assumption; mass and volume live in the elective figaro-cargo clause.",
+    "rpgfTag": "geo",
     "fields": [
         {
             "name": "originGeohash",
@@ -25,11 +26,24 @@
             "description": "Destination geohash (base32), 1–6 characters — neighborhood grade, the cap is the spec's (grain caps are protocol, not presentation). A transaction particular: filled at checkout like every general-clause field (a frontend may fill it from the device location); the composed clause is generic. Door-grade location travels the encrypted address channel (the ecdh-address interaction), never a committed field."
         }
     ],
+    "stages": {},
     "block": {
-        "article": "coordination",
-        "rpgfTag": "geo",
-        "interaction": {
-            "interface": "ecdh-address"
+        "design": {
+            "article": "coordination",
+            "nestsUnder": null,
+            "fills": [],
+            "composes": null
+        },
+        "checkout": {
+            "catalogueFills": [],
+            "profileFills": []
+        },
+        "runtime": {
+            "interaction": {
+                "interface": "ecdh-address"
+            },
+            "fields": [],
+            "handoffStages": []
         }
     }
 }

@@ -61,7 +61,10 @@ export function makeProbeSpec(clauseId: string, title: string, version: number =
                 description: 'Probe lifecycle stage.',
             },
         ],
-        block: { article: 'attestations' },
+        // Deliberately MINIMAL block (design.article only, no other section):
+        // a third-party spec omitting attributes must still surface —
+        // absence degrades to empty values (resolved-empty = absence).
+        block: { design: { article: 'attestations' } },
     };
 }
 
@@ -106,7 +109,8 @@ export function makeProbeWitnessSpec(clauseId: string, title: string, version: n
                 },
             ],
         },
-        block: { article: 'logistics' },
+        // Minimal block on purpose — see makeProbeSpec.
+        block: { design: { article: 'logistics' } },
     };
 }
 

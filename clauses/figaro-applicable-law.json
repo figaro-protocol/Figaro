@@ -3,6 +3,7 @@
     "version": 1,
     "title": "Applicable law and forum",
     "description": "State / ADR / traditional-jurisdiction recourse layer. Identifies the body of law governing the order and, optionally, the named adjudication venue and proceedings language. Provider-agnostic by construction: every field is a free-form string whose pattern enforces SHAPE only — the named external standard (ISO 3166 for jurisdiction, ISO 639 / BCP 47 for language) remains the source of truth, and the clause never holds a closed list of jurisdictions, forums, or languages. Compose with `figaro-arbitration-kleros` (or another `figaro-arbitration-<provider>`) to add a decentralized ODR layer.",
+    "rpgfTag": null,
     "fields": [
         {
             "name": "applicableLaw",
@@ -35,7 +36,22 @@
             "description": "Language for adjudication proceedings as an ISO 639-1 two-letter code (e.g. 'en', 'fr', 'zh', 'ar') or ISO 639-2 three-letter code (e.g. 'eng'), optionally with a BCP 47 region or script subtag (e.g. 'pt-BR', 'zh-Hant'). OMIT the field to mean: official language of the forum."
         }
     ],
+    "stages": {},
     "block": {
-        "article": "dispute-resolution"
+        "design": {
+            "article": "dispute-resolution",
+            "nestsUnder": null,
+            "fills": [],
+            "composes": null
+        },
+        "checkout": {
+            "catalogueFills": [],
+            "profileFills": []
+        },
+        "runtime": {
+            "interaction": null,
+            "fields": [],
+            "handoffStages": []
+        }
     }
 }

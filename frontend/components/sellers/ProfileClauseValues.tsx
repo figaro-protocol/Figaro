@@ -1,15 +1,15 @@
 "use client";
 
 /**
- * ProfileClauseValues — the seller-profile authoring section for PROFILE-SOURCED
- * clause values (seller master data: dimweight's divisor, a declared credential
- * id). The seller-level sibling of the catalogue item's clause-values editor
- * (`OnboardingCatalogueForm`): one spec-driven group per clause declaring
- * `block.profileSourced`, derived live from the registry, never hardcoded —
- * restricted to each spec's DECLARED profile-authored field subset
- * (`profileSourcedFields`; the rest belong to designer pins or checkout
- * derivation). Optional throughout: a seller authors what applies and leaves
- * the rest blank.
+ * ProfileClauseValues — the seller-profile authoring section for
+ * PROFILE-authored clause values (seller master data: dimweight's divisor, a
+ * declared credential id). The seller-level sibling of the catalogue item's
+ * clause-values editor (`OnboardingCatalogueForm`): one spec-driven group per
+ * clause declaring `block.checkout.profileFills`, derived live from the
+ * registry, never hardcoded — restricted to each spec's DECLARED
+ * profile-authored field subset (`clauseProfileFills`; the rest belong to
+ * designer fills or checkout derivation). Optional throughout: a seller
+ * authors what applies and leaves the rest blank.
  *
  * Testids: `profile-clause-<clauseId>-<field>[-<option>]`.
  */
@@ -17,9 +17,9 @@
 import { FieldControl } from "@/components/runtime/FieldControl";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import {
+    clauseProfileFills,
     getClauseSpec,
     listProfileSourcedClauses,
-    profileSourcedFields,
 } from "@/lib/shared/clauseSpecSource";
 
 export type ProfileClauseValuesMap = Record<string, Record<string, unknown>>;
@@ -46,7 +46,7 @@ export function ProfileClauseValues({
             {profileClauses.map(({ clauseId }) => {
                 const spec = getClauseSpec(clauseId);
                 if (!spec) return null;
-                const authorable = profileSourcedFields(clauseId);
+                const authorable = clauseProfileFills(clauseId);
                 const fields = spec.fields.filter((f) => authorable.includes(f.name));
                 if (fields.length === 0) return null;
                 const data = values[clauseId] ?? {};

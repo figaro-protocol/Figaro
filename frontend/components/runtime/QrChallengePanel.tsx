@@ -12,7 +12,7 @@
  * (the search-by-QR affordance).
  *
  * Mounted by the interactionSurfaces registry for any clause declaring
- * `block.interaction.interface = "qr-challenge"` — this component knows
+ * `block.runtime.interaction.interface = "qr-challenge"` — this component knows
  * no clause; `clauseId` is display attribution only.
  */
 import { useEffect, useState } from "react";

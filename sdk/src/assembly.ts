@@ -19,12 +19,13 @@ export interface TemplateAgreement {
      *  party — the template is party-agnostic. */
     id: string;
     /** clauseId → the designer's composed clause map. Design time is
-     *  STRUCTURAL (ruled 2026-07-14): a GENERAL clause carries `{}` — the
-     *  selection only; its fields are transaction particulars filled at
-     *  checkout. Exactly two kinds of values exist here: the mandatory
-     *  topology clause's `{ parentOrderHashes }` (root = [] — the DAG, the
-     *  design itself) and SPECIFIC-T&C clauses (`block.terms: "specific"`,
-     *  consent today) whose values are the designer's tailoring.
+     *  STRUCTURAL (ruled 2026-07-14): a clause with no designer fills carries
+     *  `{}` — the selection only; its fields are transaction particulars
+     *  filled at checkout. Exactly two kinds of values exist here: the
+     *  mandatory topology clause's `{ parentOrderHashes }` (root = [] — the
+     *  DAG, the design itself) and clauses declaring `block.design.fills`
+     *  (the designer's tailoring — a pinned consent document, a pinned
+     *  settlement token) whose values are the designer's fills.
      *  `buildAssemblyTemplate` (exported from the root `@figaro/sdk`; defined
      *  in `projection.ts`, not here) enforces this by construction. */
     clauses: Record<string, Record<string, unknown>>;

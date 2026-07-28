@@ -5,7 +5,7 @@
  * interaction surfaces on an order page.
  *
  * Reads the order's committed agreement (IPFS-hydrated), and for every
- * clause whose spec declares `block.interaction`, mounts the surface this
+ * clause whose spec declares `block.runtime.interaction`, mounts the surface this
  * frontend registered for that interface (`interactionSurfaces`). Names no
  * clause and no interface: the DISPATCH KEY is the spec's own declaration —
  * a never-seen clause declaring a known interaction surfaces here with zero
@@ -34,7 +34,7 @@ export function OrderInteractionSurfaces({
 
     const mounts = agreement.sections
         .map((section) => {
-            const interfaceId = getClauseSpec(section.clause)?.block?.interaction?.interface;
+            const interfaceId = getClauseSpec(section.clause)?.block?.runtime.interaction?.interface;
             const Surface = getInteractionSurface(interfaceId);
             return Surface ? { clauseId: section.clause, Surface } : null;
         })

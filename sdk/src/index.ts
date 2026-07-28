@@ -184,12 +184,11 @@ export {
     sectionsByField,
     serializeAssemblyTemplate,
     specDeclaresField,
-    specIsCatalogueSourced,
-    specIsProfileSourced,
-    profileSourcedFieldNames,
+    specCatalogueFills,
+    specProfileFills,
     specIsProcessLog,
     specIsMandatory,
-    specIsSpecificTerms,
+    specDesignFills,
     validateCommitmentAgreement,
 } from "./projection.js";
 export type {

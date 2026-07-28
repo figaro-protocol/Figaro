@@ -8,7 +8,7 @@
  * root hashes) or the payment figures the commitments sign, so a second
  * frontend must reproduce it exactly. No clause is ever named: sections are
  * found by their DECLARED FIELDS (`lineItems`, `parentOrderHashes`,
- * `massGrams`, `billedMassGrams`) or their spec hints (`catalogueSourced`)
+ * `massGrams`, `billedMassGrams`) or their spec hints (`catalogueFills`)
  * through the caller's `SpecSource` — ANY registered clause carrying the
  * field participates, including clauses this code has never seen. A fill
  * whose clause isn't composed is a no-op, so the same call serves the root
@@ -17,7 +17,7 @@
 
 import { parseUnits } from "viem";
 import { geohashCentroidDistanceKm } from "./derive/geo.js";
-import { specDeclaresField, specIsCatalogueSourced, specIsProfileSourced, profileSourcedFieldNames, type SpecSource } from "./projection.js";
+import { specDeclaresField, specCatalogueFills, specProfileFills, type SpecSource } from "./projection.js";
 import { templateParentOrderHashes, type AssemblyTemplate, type TemplateAgreement } from "./assembly.js";
 import { topologicalOrder } from "./topology.js";
 import type { CounterpartyBinding } from "./sellerProfile.js";
@@ -123,7 +123,7 @@ export function fillCommerceSection(
  * The designer's denomination pin, read from a template agreement's composed
  * clauses — the first composed clause declaring a `currency` field (never a
  * clause id; commerce no longer declares one), with a non-empty designer
- * value. The pin is SPECIFIC-T&C content: it survives the value-free build
+ * value. The pin is designer-fills content (block.design.fills): it survives the value-free build
  * and is part of the compositionHash — the assembly's one-token tailoring.
  * Undefined = unpinned (the buyer's payment-token pick, else the seller's
  * default, denominates) or spec cache cold.
@@ -248,11 +248,11 @@ export function fillCargoSection(
 
 /**
  * Fold the catalogue-authored class values onto their leaves. For each
- * catalogue-sourced clause the order composes (freight-class / hazmat /
- * cold-chain, …, discovered by `block.catalogueSourced`, never by name), write
- * the first line's authored values — a homogeneous-order assumption (mixed
- * classes are a multi-ORDER concern per the aggregate model). Absent when no
- * line carries values for that clause.
+ * clause the order composes with catalogue-authored fields (freight-class /
+ * hazmat / cold-chain, …, discovered by `block.checkout.catalogueFills`, never
+ * by name), write the first line's authored values — a homogeneous-order
+ * assumption (mixed classes are a multi-ORDER concern per the aggregate
+ * model). Absent when no line carries values for that clause.
  */
 export function fillClassSections(
     clauses: ClauseFields,
@@ -262,7 +262,7 @@ export function fillClassSections(
     let out = clauses;
     for (const clauseId of Object.keys(clauses)) {
         const spec = specs.get(clauseId);
-        if (!spec || !specIsCatalogueSourced(spec)) continue;
+        if (!spec || specCatalogueFills(spec).length === 0) continue;
         const line = lines.find(
             (li) => li.clauseValues?.[clauseId] && Object.keys(li.clauseValues[clauseId]).length > 0,
         );
@@ -273,7 +273,7 @@ export function fillClassSections(
 }
 
 /** Merge authored master data UNDER the template's committed values: a field
- *  the template already carries (a designer's specific-T&C pin) is a term and
+ *  the template already carries (a designer's `design.fills` pin) is a term and
  *  WINS; authored values fill the gaps. Empty-string/undefined template
  *  entries do not count as pins — they cannot shadow authored data. */
 function mergeUnderTemplate(
@@ -288,10 +288,10 @@ function mergeUnderTemplate(
 
 /**
  * Fold the seller's PROFILE-authored clause values onto their leaves. For each
- * profile-sourced clause the order composes (dimweight's divisor, a declared
- * credential id, …, discovered by `block.profileSourced`, never by name), write
- * the seller's stored values — restricted to the spec's DECLARED
- * profile-authored subset (`profileSourcedFieldNames`), with the template's
+ * clause the order composes with profile-authored fields (dimweight's divisor,
+ * a declared credential id, …, discovered by `block.checkout.profileFills`,
+ * never by name), write the seller's stored values — restricted to the spec's
+ * DECLARED profile-authored subset (`specProfileFills`), with the template's
  * committed terms winning over authored data. Absent when the seller stores no
  * values for that clause. The seller-level sibling of `fillClassSections`
  * (catalogue = what is sold, profile = who sells).
@@ -305,10 +305,11 @@ export function fillProfileSections(
     let out = clauses;
     for (const clauseId of Object.keys(clauses)) {
         const spec = specs.get(clauseId);
-        if (!spec || !specIsProfileSourced(spec)) continue;
+        if (!spec) continue;
+        const declared = specProfileFills(spec);
+        if (declared.length === 0) continue;
         const stored = profileValues[clauseId];
         if (!stored || Object.keys(stored).length === 0) continue;
-        const declared = profileSourcedFieldNames(spec);
         const authored = Object.fromEntries(
             Object.entries(stored).filter(([k, v]) => declared.includes(k) && v !== undefined && v !== ""),
         );

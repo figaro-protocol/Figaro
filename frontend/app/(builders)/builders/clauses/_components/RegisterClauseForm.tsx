@@ -85,7 +85,7 @@ export function RegisterClauseForm() {
                 <p className="text-sm text-ink-body">
                     <code data-testid="receipt-clause-id">{receipt.clauseId}</code> (version {receipt.version}) is now anchored on the <code>ClauseRegistry</code>. It appears in the live{" "}
                     <Link href="/clauses" className="underline">clauses inventory</Link>{" "}
-                    grouped by its <code>block.article</code>.
+                    grouped by its <code>block.design.article</code>.
                 </p>
                 <dl className="text-xs text-ink-body space-y-2 pt-2 border-t border-default">
                     <div>

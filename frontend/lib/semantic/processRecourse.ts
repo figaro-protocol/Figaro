@@ -8,12 +8,12 @@
  * authored into the order(s).
  *
  * This reader is OPEN-WORLD: it recognises a recourse clause by its
- * `block.article === "dispute-resolution"`, never by a hardcoded field name or
+ * `block.design.article === "dispute-resolution"`, never by a hardcoded field name or
  * clause id. So ANY decentralized-ADR or applicable-law clause — the two that
  * exist today, or a `figaro-arbitration-<provider>` registered tomorrow — is
  * read the instant it declares that article. The runtime surface renders each
  * clause generically from its own spec (`describeClause`); a provider's own
- * dispute UI is deep-linked from the clause spec's `block.composes.forumUrl`
+ * dispute UI is deep-linked from the clause spec's `block.design.composes.forumUrl`
  * (read via `composesForumUrl`) — the forum is named in the clause spec, not in
  * code, so a never-seen `figaro-arbitration-<provider>` surfaces its own forum.
  */
@@ -51,7 +51,7 @@ export function deriveProcessRecourse(
         const agreement = order.agreementHash ? agreements.get(order.agreementHash) : undefined;
         if (!agreement) continue;
         for (const section of agreement.sections) {
-            if (getClauseSpec(section.clause)?.block?.article !== RECOURSE_ARTICLE) continue;
+            if (getClauseSpec(section.clause)?.block?.design.article !== RECOURSE_ARTICLE) continue;
             const data = ((section as { data?: Record<string, unknown> }).data) ?? {};
             const key = `${section.clause}:${JSON.stringify(data)}`;
             if (seen.has(key)) continue;

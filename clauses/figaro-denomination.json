@@ -3,6 +3,7 @@
     "version": 1,
     "title": "Denomination",
     "description": "The ONE token the whole assembly's processes are denominated in — every bond (2×) and every payment moves in it. Any ERC-20; the clause names no token. A SPECIFIC term: the designer composes the token address into the template, tailoring the generic assembly — the pin is part of the assembly's identity (compositionHash), so the same composition in another token is a different assembly. Composed on the ROOT order (denomination is process-scoped; the kernel enforces one currency per process). An assembly without this clause is denominated by the BUYER'S PICK from the seller's accepted tokens at checkout, else the seller's default.",
+    "rpgfTag": null,
     "fields": [
         {
             "name": "currency",
@@ -12,8 +13,24 @@
             "description": "ERC-20 token address the assembly's processes bond and settle in."
         }
     ],
+    "stages": {},
     "block": {
-        "article": "settlement",
-        "terms": "specific"
+        "design": {
+            "article": "settlement",
+            "nestsUnder": null,
+            "fills": [
+                "currency"
+            ],
+            "composes": null
+        },
+        "checkout": {
+            "catalogueFills": [],
+            "profileFills": []
+        },
+        "runtime": {
+            "interaction": null,
+            "fields": [],
+            "handoffStages": []
+        }
     }
 }

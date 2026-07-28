@@ -109,7 +109,7 @@ export interface DesignSnapshot {
     /** All orders in the design. */
     orders: Order[];
     /** Per-order clause selection — keyed by order id, then clauseId → the
-     *  composed values (SPECIFIC-T&C clauses only — consent's affix; general
+     *  composed values (design.fills clauses only — consent's affix; other
      *  clauses carry `{}`, ruled 2026-07-14). Drives the assembly template's
      *  per-order `clauses`; the build strips general values regardless. */
     clausesByOrderId?: Record<string, Record<string, Record<string, unknown>>>;

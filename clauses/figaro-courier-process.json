@@ -3,6 +3,7 @@
     "version": 1,
     "title": "Courier internal process events",
     "description": "Event stream emitted by a courier seller (driver, cyclist, walker, drone, autonomous vehicle, etc.) to coordinate with buyer and merchant. The event log is the SSoT for the courier's role in the order lifecycle. Generic across transport modes; the event vocabulary maps to a transport job's pickup-to-dropoff flow.",
+    "rpgfTag": null,
     "fields": [
         {
             "name": "eventType",
@@ -34,11 +35,25 @@
             "description": "Optional PUBLIC evidence pointer, mechanism-grain only: a device-captured evidence document (geohash cell, hashed identifiers, raw-capture hash) or any coarse artifact. Full-fidelity records — GPS logs, photos, signed receipts — stay party-held for dispute-time revelation, bound by the raw-capture hash, never pinned publicly."
         }
     ],
+    "stages": {},
     "block": {
-        "article": "attestations",
-        "handoffStages": [
-            "arrived-pickup",
-            "arrived-dropoff"
-        ]
+        "design": {
+            "article": "attestations",
+            "nestsUnder": null,
+            "fills": [],
+            "composes": null
+        },
+        "checkout": {
+            "catalogueFills": [],
+            "profileFills": []
+        },
+        "runtime": {
+            "interaction": null,
+            "fields": [],
+            "handoffStages": [
+                "arrived-pickup",
+                "arrived-dropoff"
+            ]
+        }
     }
 }

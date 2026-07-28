@@ -92,10 +92,12 @@ describe("example clause specs — parse + validate sample content", () => {
 
     // ── figaro-denomination ──
 
-    it("figaro-denomination spec parses cleanly and declares specific terms", () => {
+    it("figaro-denomination spec parses cleanly and declares its token pin as a designer fill", () => {
         const parsed = parseClauseSpec(denominationSpecRaw);
         expect(parsed.ok).toBe(true);
-        expect((denominationSpecRaw as { block: { terms?: string } }).block.terms).toBe("specific");
+        // The designer authors the token pin into the template (block.design.fills)
+        // — the tailoring that adapts the generic assembly.
+        expect((denominationSpecRaw as { block: { design: { fills: string[] } } }).block.design.fills).toEqual(["currency"]);
     });
 
     it("figaro-denomination accepts a token address and rejects prose", () => {

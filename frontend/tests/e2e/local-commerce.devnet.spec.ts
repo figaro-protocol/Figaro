@@ -36,12 +36,12 @@
  *              roster in this file — each stage through the ONE generic
  *              capability rail, each event landing on the timeline. The
  *              courier's arrival stages are declared hand-off stages
- *              (block.handoffStages), so each arrival click PAIRS the zone
+ *              (block.runtime.handoffStages), so each arrival click PAIRS the zone
  *              witness of the committed single-band proximity policy — one
  *              action, two attestations. The BUYER then co-witnesses through
  *              the rail's standalone witness form (who must witness is never
  *              engine policy). The hand-off clause's DECLARED
- *              interaction (block.interaction: qr-challenge) mounts the
+ *              interaction (block.runtime.interaction: qr-challenge) mounts the
  *              QR order-identity panel on the courier's page — presented
  *              payload verified round-trip; no panel on the merchant's
  *              order, which declares none. The geolocation clause's declared
@@ -382,7 +382,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
 
         // ── THE PAIRED HAND-OFF WITNESSES (one action, two attestations): the
         //    courier ladder declares its arrival stages as hand-off stages
-        //    (block.handoffStages), and the committed proximity policy carries
+        //    (block.runtime.handoffStages), and the committed proximity policy carries
         //    a SINGLE band — so each arrival click ALSO filed the zone witness
         //    automatically. Two arrivals → two witnesses on the timeline,
         //    labelled by the policy clause's own title, and two Attestation
@@ -409,7 +409,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             timeout: 60000, message: 'two courier-attested witness events land at the declared stage',
         }).toBe(2);
 
-        // ── DECLARED INTERACTION (block.interaction → registered surface):
+        // ── DECLARED INTERACTION (block.runtime.interaction → registered surface):
         //    the hand-off clause on the courier order declares the
         //    qr-challenge standard, so the courier's own order page mounts
         //    the QR panel — the order's public identity over the visual
@@ -432,7 +432,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
             'a scanned matching payload verifies against this order',
         ).toBeVisible({ timeout: 10000 });
 
-        // ── THE PRIVATE-ADDRESS CEREMONY (block.interaction: ecdh-address
+        // ── THE PRIVATE-ADDRESS CEREMONY (block.runtime.interaction: ecdh-address
         //    on the geolocation clause): the agreement committed only the
         //    geohash cells; the door-level ADDRESSEE BLOCK travels the ECDH
         //    channel, and its fingerprint anchors on-chain as a buyer

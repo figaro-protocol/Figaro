@@ -14,7 +14,7 @@
  * Consumers: the pre-sign/pre-commit confirm gate (`AgreementPreviewModal`
  * via `CommitmentSignPreviewProvider`) and the `/sign` counter-party page.
  * Rendering here is identity-blind — sections are read structurally
- * (`lineItems` array) or by the spec's own `block.article`, never by
+ * (`lineItems` array) or by the spec's own `block.design.article`, never by
  * clause name, so a never-seen third-party clause gets the same surface.
  */
 
@@ -89,7 +89,7 @@ export function fullDumpSections(agreement: Agreement | null): AgreementSection[
  *  gets the same notice. */
 function consentSections(agreement: Agreement | null): AgreementSection[] {
     if (!agreement) return [];
-    return agreement.sections.filter((s) => getClauseSpec(s.clause)?.block?.article === "consent");
+    return agreement.sections.filter((s) => getClauseSpec(s.clause)?.block?.design.article === "consent");
 }
 
 /** A described value token, linkified when it is a fetchable locator so the

@@ -7,7 +7,7 @@ import {
     loadClauseSpec,
     setClauseSpecFetcher,
     clauseIsProcessLog,
-    clauseIsCatalogueSourced,
+    clauseCatalogueFills,
     listCatalogueSourcedClauses,
     clauseLadderField,
     labelEnumValue,
@@ -38,16 +38,16 @@ describe("clauseSpecSource — chain-only cache", () => {
     });
 });
 
-describe("clauseSpecSource — catalogue-sourced clauses (derive, not hardcode)", () => {
-    it("reads block.catalogueSourced; the set is derived from the registry", async () => {
+describe("clauseSpecSource — catalogue-authored fills (derive, not hardcode)", () => {
+    it("reads block.checkout.catalogueFills; the set is derived from the registry", async () => {
         await primeClauseSpecs();
-        // The three product-property clauses declare the marker.
-        expect(clauseIsCatalogueSourced("figaro-freight-class")).toBe(true);
-        expect(clauseIsCatalogueSourced("figaro-hazmat")).toBe(true);
-        expect(clauseIsCatalogueSourced("figaro-cold-chain")).toBe(true);
+        // The three product-property clauses declare catalogue-authored fields.
+        expect(clauseCatalogueFills("figaro-freight-class").length).toBeGreaterThan(0);
+        expect(clauseCatalogueFills("figaro-hazmat").length).toBeGreaterThan(0);
+        expect(clauseCatalogueFills("figaro-cold-chain")).toContain("tempClass");
         // A commerce / coordination clause does not.
-        expect(clauseIsCatalogueSourced("figaro-commerce")).toBe(false);
-        expect(clauseIsCatalogueSourced("figaro-geolocation")).toBe(false);
+        expect(clauseCatalogueFills("figaro-commerce")).toEqual([]);
+        expect(clauseCatalogueFills("figaro-geolocation")).toEqual([]);
         expect(listCatalogueSourcedClauses().map((c) => c.clauseId).sort()).toEqual([
             "figaro-cold-chain",
             "figaro-freight-class",
@@ -55,8 +55,8 @@ describe("clauseSpecSource — catalogue-sourced clauses (derive, not hardcode)"
         ]);
     });
 
-    it("an unloaded clause is not catalogue-sourced; the empty cache derives an empty set", () => {
-        expect(clauseIsCatalogueSourced("figaro-never-seen")).toBe(false);
+    it("an unloaded clause has no catalogue fills; the empty cache derives an empty set", () => {
+        expect(clauseCatalogueFills("figaro-never-seen")).toEqual([]);
         expect(listCatalogueSourcedClauses()).toEqual([]);
     });
 });
@@ -78,20 +78,24 @@ describe("clauseSpecSource — async loadClauseSpec via fetcher", () => {
         expect(getClauseSpec("test-remote-v1")?.clauseId).toBe("test-remote-v1");
     });
 
-    it("the SpecSource adapter carries EVERY hash-load-bearing hint — terms included (a dropped hint silently strips specific-T&C values at publish)", async () => {
+    it("the SpecSource adapter carries EVERY hash-load-bearing hint — designFills included (a dropped hint silently strips designer values at publish)", async () => {
         setClauseSpecFetcher(async () => ({
-            clauseId: "test-specific-terms",
+            clauseId: "test-designer-fills",
             version: 1,
-            title: "Test Specific",
-            description: "Specific-T&C spec for the hint-passthrough regression.",
+            title: "Test Designer Fills",
+            description: "Designer-fills spec for the hint-passthrough regression.",
             fields: [{ name: "x", type: "string", required: true }],
-            block: { article: "settlement", terms: "specific", catalogueSourced: true },
+            block: {
+                design: { article: "settlement", nestsUnder: null, fills: ["x"], composes: null },
+                checkout: { catalogueFills: ["x"], profileFills: [] },
+                runtime: { interaction: null, fields: [], handoffStages: [] },
+            },
         }));
-        await loadClauseSpec("test-specific-terms", 1, "ipfs://fake-specific");
-        const view = specSource().get("test-specific-terms");
+        await loadClauseSpec("test-designer-fills", 1, "ipfs://fake-fills");
+        const view = specSource().get("test-designer-fills");
         expect(view?.hints?.article).toBe("settlement");
-        expect(view?.hints?.terms).toBe("specific");
-        expect(view?.hints?.catalogueSourced).toBe(true);
+        expect(view?.hints?.designFills).toEqual(["x"]);
+        expect(view?.hints?.catalogueFills).toEqual(["x"]);
     });
 
     it("rejects when the spec's clauseId does not match the requested ID", async () => {

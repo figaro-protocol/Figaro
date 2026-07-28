@@ -66,7 +66,7 @@ const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Er
 // (composeStructuralClauses) — so the anchored document is indistinguishable
 // from a designer-published one.
 
-/** Fold the MANDATORY clauses (block.article === "mandatory",
+/** Fold the MANDATORY clauses (block.design.article === "mandatory",
  *  read from the canonical Layer-A specs — derived, never named) onto an
  *  order: each takes the subset of the design-time bag it declares. Parents
  *  are LOCAL template ids — mirrors the designer's composeStructuralClauses. */
@@ -75,7 +75,7 @@ function mandatoryClauseFold(parents = []) {
     const out = {};
     for (const file of fs.readdirSync(CLAUSES_DIR).filter((f) => f.endsWith('.json')).sort()) {
         const spec = JSON.parse(fs.readFileSync(path.join(CLAUSES_DIR, file), 'utf8'));
-        if (spec.block?.article !== 'mandatory') continue;
+        if (spec.block?.design?.article !== 'mandatory') continue;
         const data = {};
         for (const field of spec.fields ?? []) {
             if (field.name in bag) data[field.name] = bag[field.name];

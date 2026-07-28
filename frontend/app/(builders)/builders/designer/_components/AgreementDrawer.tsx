@@ -9,7 +9,7 @@
  *   - registry — every clause registered on `ClauseRegistry`, read live from
  *     the chain, grouped by `groupClausesByArticle()` (the single clause
  *     classification, shared with the /clauses inventory — grouping + order come
- *     from the spec's `block.article`, never a hardcoded list), a checkbox
+ *     from the spec's `block.design.article`, never a hardcoded list), a checkbox
  *     per clause.
  *
  * The legacy per-article clause-editing tabs (and their hardcoded option
@@ -25,7 +25,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Order } from "@/lib/kernel/store";
 import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/protocol/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsMandatory, clauseIsSpecificTerms, profileSourcedFields } from "@/lib/shared/clauseSpecSource";
+import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsMandatory, clauseDesignFills } from "@/lib/shared/clauseSpecSource";
 import { ClausesByArticle } from "@/components/runtime/ClausesByArticle";
 import { FieldControl } from "@/components/runtime/FieldControl";
 
@@ -43,14 +43,15 @@ interface Props {
     /** Switch to another node's agreement. Paired with `orders`. */
     onSelectOrder?: (orderId: string) => void;
     /** clauseId → composed clause map for the current order. A clause's
-     *  presence as a key = selected; values exist only for SPECIFIC-T&C
-     *  clauses (the designer's tailoring — consent's affix); general clauses
-     *  carry `{}`, their fields fill at checkout (ruled 2026-07-14). */
+     *  presence as a key = selected; values exist only for clauses declaring
+     *  `block.design.fills` (the designer's tailoring — consent's affix);
+     *  every other clause carries `{}`, its fields fill at checkout (ruled
+     *  2026-07-14). */
     selectedClauseValues?: Record<string, Record<string, unknown>>;
     /** Toggle a clause on/off for the current order. */
     onToggleClause?: (clauseId: string, next: boolean, version?: number) => void;
-    /** Set one field on a selected SPECIFIC-T&C clause (the only clauses the
-     *  drawer renders editors for). */
+    /** Set one field named in a selected clause's `design.fills` (the only
+     *  fields the drawer renders editors for). */
     onSetClauseField?: (clauseId: string, field: string, value: unknown) => void;
 }
 
@@ -327,10 +328,10 @@ export function AgreementDrawer({
 
 /**
  * One registered clause on the registry tab: a checkbox to compose it onto the
- * order, plus — for SPECIFIC-T&C clauses only — its field editors when
+ * order, plus — for fields named in design.fills only — its field editors when
  * selected (general clauses fill at checkout; runtime process clauses
  * toggle whole — no fields). Under any field, renders the clauses that declare
- * `block.nestsUnder === <that field's name>` (read from the spec, never
+ * `block.design.nestsUnder === <that field's name>` (read from the spec, never
  * hardcoded) — e.g. proximity-policy nested under the modality clause's
  * `handoff` field. Recurses, so a nested clause can host deeper nesting.
  */
@@ -498,18 +499,15 @@ function ClauseControl({
                                 (c) => c.clauseId != null && clauseNestsUnder(c.clauseId) === field.name,
                             );
                             // Design time is STRUCTURAL (ruled 2026-07-14): the
-                            // designer edits field values ONLY on specific-T&C
-                            // clauses (block.terms: "specific" — the tailoring
-                            // affix, consent today). General clauses show no
-                            // inputs here — their fields are transaction
-                            // particulars, filled at checkout. A specific
-                            // clause's PROFILE-SOURCED field subset is the
-                            // SELLER's standing declaration (a credential id) —
-                            // not the designer's to pin; the checkout fold
-                            // fills it. Sub-clause NESTING is structure and
+                            // designer edits ONLY the fields a clause names in
+                            // `block.design.fills` — the tailoring (a pinned
+                            // consent document, a pinned settlement token).
+                            // Every other field shows no inputs here: it is a
+                            // transaction particular (the buyer's, at checkout)
+                            // or a seller fill (catalogue/profile, folded at
+                            // checkout). Sub-clause NESTING is structure and
                             // always renders.
-                            const editable = clauseIsSpecificTerms(clauseKey, clause.version)
-                                && !profileSourcedFields(clauseKey, clause.version).includes(field.name);
+                            const editable = clauseDesignFills(clauseKey, clause.version).includes(field.name);
                             if (!editable && nested.length === 0) return null;
                             return (
                                 <div key={field.name}>

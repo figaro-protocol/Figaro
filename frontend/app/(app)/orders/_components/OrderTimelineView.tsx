@@ -165,7 +165,7 @@ export function OrderTimelineView({ processId }: Props) {
 
             {/* Declared interaction surfaces — for every clause, on every order
                 this wallet is a PARTY to, whose spec declares a
-                block.interaction this frontend has a registered surface for
+                block.runtime.interaction this frontend has a registered surface for
                 (a QR order-identity challenge at a hand-off, the private
                 address ceremony on a geolocation-committed order). The buyer
                 is a party to every order (kernel star shape); a seller to its

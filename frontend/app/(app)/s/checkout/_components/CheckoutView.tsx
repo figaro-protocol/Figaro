@@ -48,7 +48,7 @@ import { formatToken, parseToken } from "@/lib/shared/utils";
 import { useSellerBoundAssemblies } from "@/lib/seller/useSellerBoundAssemblies";
 import { displayNameForAddress } from "@/lib/seller/sellerListing";
 import { formatMass, formatVolume } from "@/lib/seller/unitConversion";
-import { getClauseSpec, clauseIsMandatory, clauseIsSpecificTerms, clauseIsProcessLog, clauseIsCatalogueSourced, clauseIsProfileSourced, specSource } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import { CredentialVerifyButton } from "@/components/runtime/CredentialVerifyButton";
 import type { FieldSpec } from "@figaro/sdk/clauses";
 
@@ -57,7 +57,7 @@ interface Props {
 }
 
 /** One order's on-network composition (fifth noun): the composing clause, its
- *  standard interface, and the runtime `block.fields` the buyer fills. */
+ *  standard interface, and the runtime `block.runtime.fields` the buyer fills. */
 interface OrderComposition {
     nodeId: string;
     clauseId: string;
@@ -105,7 +105,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         : boundAssemblies.find((a) => a.slug === selectedSlug);
 
     // The process denomination. Resolution order: the assembly's DENOMINATION
-    // PIN (the designer's specific-T&C tailoring on the root agreement — the
+    // PIN (the designer's design.fills tailoring on the root agreement — the
     // one token the whole assembly runs in, part of its identity), else the
     // BUYER'S PICK from the seller's accepted array (the social layer — the
     // seller is PAID in the picked token and spends it onward; the pick is
@@ -173,7 +173,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         }));
     }, [sellerCatalogues, priceRate, tokenDecimals]);
     // Runtime inputs for any order that composes an on-network contract — the
-    // clause's `block.fields`, filled at checkout (like the cart line items),
+    // clause's `block.runtime.fields`, filled at checkout (like the cart line items),
     // keyed by template node id then field name. Interface-agnostic: the form
     // renders whatever fields the composing clause declares, naming no clause.
     const [compositionInputs, setCompositionInputs] = useState<Record<string, Record<string, unknown>>>({});
@@ -300,18 +300,18 @@ export function CheckoutView({ sellerAddress }: Props) {
         }
     })();
     // Any order that composes an on-network contract (the fifth noun) —
-    // discovered by reading `block.composes` + `block.fields` off the clause
-    // spec, naming no clause and no interface. Applies to ANY order (root, sub,
-    // 136th), not just sub-orders. The buyer fills each composition's runtime
-    // `block.fields` below.
+    // discovered by reading `block.design.composes` + `block.runtime.fields`
+    // off the clause spec, naming no clause and no interface. Applies to ANY
+    // order (root, sub, 136th), not just sub-orders. The buyer fills each
+    // composition's runtime input fields below.
     const orderCompositions = ((): OrderComposition[] => {
         if (!pickedAssembly) return [];
         const out: OrderComposition[] = [];
         for (const order of pickedAssembly.assemblyTemplate.agreements) {
             for (const cid of Object.keys(order.clauses)) {
                 const block = getClauseSpec(cid)?.block;
-                if (block?.composes && block.fields && block.fields.length > 0) {
-                    out.push({ nodeId: order.id, clauseId: cid, interface: block.composes.interface, fields: block.fields });
+                if (block?.design.composes && block.runtime.fields.length > 0) {
+                    out.push({ nodeId: order.id, clauseId: cid, interface: block.design.composes.interface, fields: block.runtime.fields });
                     break; // one composition per order
                 }
             }
@@ -323,7 +323,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // unbound sub-order is the buyer's pick, whether or not it composes.
     const buyerPickSubOrders = unboundSubOrders;
     const buyerChoosesCounterparty = buyerPickSubOrders.length > 0;
-    // Every composition's REQUIRED block.fields must be filled before placing.
+    // Every composition's REQUIRED block.runtime.fields must be filled before placing.
     const isFilled = (v: unknown) =>
         v !== undefined && v !== null && v !== "" && (!Array.isArray(v) || v.length > 0);
     const compositionsReady = orderCompositions.every((c) =>
@@ -921,10 +921,11 @@ export function CheckoutView({ sellerAddress }: Props) {
                         )}
 
                         {/* On-network composition inputs (the fifth noun): any
-                            order whose clause declares block.composes + block.fields
-                            gets those runtime fields rendered here generically —
-                            one form, naming no clause or interface — a novel
-                            composition surfaces its own fields with zero code. */}
+                            order whose clause declares block.design.composes +
+                            block.runtime.fields gets those runtime fields
+                            rendered here generically — one form, naming no
+                            clause or interface — a novel composition surfaces
+                            its own fields with zero code. */}
                         {orderCompositions.map((c) => (
                             <div key={c.nodeId} data-testid={`composition-${c.nodeId}`} className="space-y-2">
                                 {c.fields.map((field) => (

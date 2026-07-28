@@ -3,21 +3,39 @@
     "version": 1,
     "title": "Freight class",
     "description": "Freight classification anchored to the National Motor Freight Classification (NMFC), published by the NMFTA. Elective and NEVER default-on: composed only when an LTL / road shipment needs a declared freight class. Carries the declared NMFC class — the parties' assertion, verified off-chain against the NMFC standard (density is the primary driver, alongside stowability, handling, and liability) — plus the optional NMFC item number. The external standard is the source of truth; this clause references it, it does not compute the class.",
+    "rpgfTag": null,
     "fields": [
         {
             "name": "nmfcClass",
             "type": "enum",
             "required": true,
-            "values": ["50", "55", "60", "65", "70", "77.5", "85", "92.5", "100", "110", "125", "150", "175", "200", "250", "300", "400", "500"],
+            "values": [
+                "50",
+                "55",
+                "60",
+                "65",
+                "70",
+                "77.5",
+                "85",
+                "92.5",
+                "100",
+                "110",
+                "125",
+                "150",
+                "175",
+                "200",
+                "250",
+                "300",
+                "400",
+                "500"
+            ],
             "valueLabels": {
                 "50": "Class 50 — ≥ 50 lb/ft³ (densest, lowest cost)",
                 "55": "Class 55 — 35–50 lb/ft³",
                 "60": "Class 60 — 30–35 lb/ft³",
                 "65": "Class 65 — 22.5–30 lb/ft³",
                 "70": "Class 70 — 15–22.5 lb/ft³",
-                "77.5": "Class 77.5 — 13.5–15 lb/ft³",
                 "85": "Class 85 — 12–13.5 lb/ft³",
-                "92.5": "Class 92.5 — 10.5–12 lb/ft³",
                 "100": "Class 100 — 9–10.5 lb/ft³",
                 "110": "Class 110 — 8–9 lb/ft³",
                 "125": "Class 125 — 7–8 lb/ft³",
@@ -27,7 +45,9 @@
                 "250": "Class 250 — 3–4 lb/ft³",
                 "300": "Class 300 — 2–3 lb/ft³",
                 "400": "Class 400 — 1–2 lb/ft³",
-                "500": "Class 500 — < 1 lb/ft³ (lightest, highest cost)"
+                "500": "Class 500 — < 1 lb/ft³ (lightest, highest cost)",
+                "77.5": "Class 77.5 — 13.5–15 lb/ft³",
+                "92.5": "Class 92.5 — 10.5–12 lb/ft³"
             },
             "label": "NMFC class",
             "description": "Declared National Motor Freight Classification class (the 18 NMFC classes, 50–500). Density is the primary driver but not the only one — stowability, handling, and liability also bear on the class. The declaration is verified off-chain against the NMFC standard."
@@ -42,8 +62,25 @@
             "description": "Optional NMFC item / commodity number assigned by the NMFTA (e.g. \"156600\"). Identifies the specific commodity listing the class is drawn from."
         }
     ],
+    "stages": {},
     "block": {
-        "article": "logistics",
-        "catalogueSourced": true
+        "design": {
+            "article": "logistics",
+            "nestsUnder": null,
+            "fills": [],
+            "composes": null
+        },
+        "checkout": {
+            "catalogueFills": [
+                "nmfcClass",
+                "nmfcItem"
+            ],
+            "profileFills": []
+        },
+        "runtime": {
+            "interaction": null,
+            "fields": [],
+            "handoffStages": []
+        }
     }
 }

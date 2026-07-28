@@ -3,6 +3,7 @@
     "version": 1,
     "title": "Assembly provenance",
     "description": "Declares which registered assembly this agreement instantiates — the composition's identity, committed under agreementHash. The designer composes this clause into the assembly; the field fills mechanically at checkout with the template's own compositionHash (it cannot be a designer value: the hash cannot appear inside the composition it hashes). This section is what makes an assembly creditable at all: agreement leaves are keyed by CLAUSE, so a compositionHash is never itself a leaf key — UsageCounter.recordAssemblyUsage proves THIS leaf and matches its content against the assembly claimed. Without this clause in the agreement, no process can credit its designer.",
+    "rpgfTag": null,
     "fields": [
         {
             "name": "compositionHash",
@@ -12,7 +13,22 @@
             "description": "The AssemblyRegistry compositionHash of the assembly this agreement was instantiated from (bytes32 hex)."
         }
     ],
+    "stages": {},
     "block": {
-        "article": "provenance"
+        "design": {
+            "article": "provenance",
+            "nestsUnder": null,
+            "fills": [],
+            "composes": null
+        },
+        "checkout": {
+            "catalogueFills": [],
+            "profileFills": []
+        },
+        "runtime": {
+            "interaction": null,
+            "fields": [],
+            "handoffStages": []
+        }
     }
 }

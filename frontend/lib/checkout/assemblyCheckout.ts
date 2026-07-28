@@ -125,8 +125,8 @@ export interface AssemblyCheckoutParams {
         item: { id: string; name: string };
     }>;
     /** On-network compositions (the fifth noun) keyed by template node id:
-     *  the composing clause's `interface` (from `block.composes`) plus the
-     *  buyer's `block.fields` values collected at checkout. The composition
+     *  the composing clause's `interface` (from `block.design.composes`) plus the
+     *  buyer's `block.runtime.fields` values collected at checkout. The composition
      *  runs alongside the order's normal commit. Interface-agnostic — the
      *  walk names no clause. */
     subOrderCompositions?: Record<string, { interface: string; fieldValues: Record<string, unknown> }>;
@@ -236,7 +236,7 @@ export async function executeAssemblyCheckout(
                 return;
             }
             // On-network composition (fifth noun): a sub-order whose clause
-            // declares `block.composes` invokes the composed contract ALONGSIDE
+            // declares `block.design.composes` invokes the composed contract ALONGSIDE
             // its normal commit — the interface is routed to its handler by the
             // surface (`deps.compose`); the walk names no clause.
             const composition = compositionByNode.get(order.nodeId);

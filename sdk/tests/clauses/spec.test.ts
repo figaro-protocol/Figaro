@@ -150,7 +150,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
         const result = parseClauseSpec({
             clauseId: "t", version: 1, title: "T", description: "D",
             fields: [{ name: "x", type: "string", required: true }],
-            block: { tier: "runtime", mechanismKinds: [], moduleIds: [], attestation: "seller" },
+            block: { design: { article: "logistics", nestsUnder: null, fills: [], composes: null } },
         });
         expect(result.ok).toBe(true);
         if (result.ok) expect("block" in result.spec).toBe(false);

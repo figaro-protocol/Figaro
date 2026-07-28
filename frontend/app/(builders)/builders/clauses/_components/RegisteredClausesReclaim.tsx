@@ -8,7 +8,7 @@
  * `ClauseRegistered` to `registrar == connected wallet` and folds
  * `DepositWithdrawn` in as `stakeWithdrawn` (the author-scoped read KEEPS
  * withdrawn rows, flagged). The article is read from the warm clause-spec cache
- * (`block.article`) — never a stored field. Each row owns its own
+ * (`block.design.article`) — never a stored field. Each row owns its own
  * `useWithdrawGate({ kind: "clause", clauseId })`, so the reclaim disables while
  * VERIFIED in-flight deals compose the clause and surfaces the party-private
  * caveat otherwise — the same pattern as ViewAssemblyClient's reclaim.
@@ -39,7 +39,7 @@ export function RegisteredClausesReclaim() {
     const mounted = useMounted();
     const { address } = useAccount();
     const { data, isLoading, refetch } = useRegisteredClausesByWallet(address);
-    // Warm the spec cache so each row can read its `block.article`. The returned
+    // Warm the spec cache so each row can read its `block.design.article`. The returned
     // state changes as specs resolve, re-rendering the rows against the cache.
     useClauseSpecs();
 
@@ -99,7 +99,7 @@ function ReclaimClauseRow({
     const [locallyWithdrawn, setLocallyWithdrawn] = useState(false);
     const withdrawn = clause.stakeWithdrawn || locallyWithdrawn;
 
-    const article = getClauseSpec(clause.clauseId, clause.version)?.block?.article ?? "(unclassified)";
+    const article = getClauseSpec(clause.clauseId, clause.version)?.block?.design.article ?? "(unclassified)";
     // Unverifiable in-flight deals are informational only (party-private terms),
     // never disabling — shown while the reclaim is still available.
     const caveat = !withdrawn ? withdrawUnverifiedCaveat(gate) : null;

@@ -36,12 +36,12 @@ const SPEC_CACHE = new Map<string, ClauseSpecWithBlock>();
 const SPEC_LOAD_ERRORS = new Map<string, string>();
 
 /** clauseId → the parent FIELD name it nests under in the drawer, read from the
- *  spec's `block.nestsUnder`. Populated as specs load. Drives the drawer's
+ *  spec's `block.design.nestsUnder`. Populated as specs load. Drives the drawer's
  *  cross-clause nesting (e.g. a proximity policy renders nested under the
  *  handoff clause's `handoff` array field). Read from the spec; never a hardcoded tree.
  *
  *  `nestsUnder` names a field, and means "this clause REFINES that field" — a
- *  DIFFERENT job from `block.article`, which GROUPS co-equal clauses together. Do not
+ *  DIFFERENT job from `block.design.article`, which GROUPS co-equal clauses together. Do not
  *  reach for `nestsUnder` to say "these clauses belong together" (that's `article`); the
  *  target must be a STRUCTURED field (enum/array/object) a sub-clause elaborates, never a
  *  scalar. Enforced by scripts/lint-clause-nests-under-a-field.sh. */
@@ -85,7 +85,7 @@ export function setClauseSpecFetcher(fetcher: ClauseSpecFetcher): void {
 function cacheSpec(spec: ClauseSpecWithBlock): void {
     SPEC_CACHE.set(specKey(spec.clauseId, spec.version), spec);
     HASH_TO_ID.set(computeClauseKey(spec.clauseId, spec.version).toLowerCase(), { clauseId: spec.clauseId, version: spec.version });
-    const nestsUnder = spec.block?.nestsUnder;
+    const nestsUnder = spec.block?.design.nestsUnder;
     if (typeof nestsUnder === "string" && nestsUnder.length > 0) NESTS_UNDER.set(specKey(spec.clauseId, spec.version), nestsUnder);
 }
 
@@ -208,14 +208,16 @@ export function listKnownClauses(): readonly { clauseId: string; version: number
 }
 
 /** A cached spec as the SDK projection sees it: the Layer-A spec plus the
- *  hash-load-bearing `block` hints (article, catalogueSourced, profileSourced,
- *  terms). */
+ *  hash-load-bearing `block` hints (design.article, design.fills,
+ *  checkout.catalogueFills, checkout.profileFills). */
 function toProjectionView(spec: ClauseSpecWithBlock): ProjectionSpecView {
     const hints: ProjectionHints = {};
-    if (spec.block?.article !== undefined) hints.article = spec.block.article;
-    if (spec.block?.catalogueSourced === true) hints.catalogueSourced = true;
-    if (spec.block?.profileSourced !== undefined) hints.profileSourced = spec.block.profileSourced;
-    if (spec.block?.terms !== undefined) hints.terms = spec.block.terms;
+    if (spec.block !== undefined) {
+        hints.article = spec.block.design.article;
+        if (spec.block.design.fills.length > 0) hints.designFills = spec.block.design.fills;
+        if (spec.block.checkout.catalogueFills.length > 0) hints.catalogueFills = spec.block.checkout.catalogueFills;
+        if (spec.block.checkout.profileFills.length > 0) hints.profileFills = spec.block.checkout.profileFills;
+    }
     return { ...spec, hints };
 }
 
@@ -250,86 +252,78 @@ export function clauseNestsUnder(clauseId: string, version?: number): string | n
  *  article `mandatory` (one word for one concept — renamed from `structural`
  *  2026-07-14, which collided with the design/DAG sense); generic surfaces
  *  exclude mandatory clauses from selectable lists and fold them in
- *  automatically. ANY registered clause declaring `block.article: "mandatory"`
- *  participates — including one this codebase has never seen. */
+ *  automatically. ANY registered clause declaring `block.design.article:
+ *  "mandatory"` participates — including one this codebase has never seen. */
 export function clauseIsMandatory(clauseId: string, version?: number): boolean {
-    return getClauseSpec(clauseId, version)?.block?.article === "mandatory";
+    return getClauseSpec(clauseId, version)?.block?.design.article === "mandatory";
 }
 
-/** True if a clause carries SPECIFIC T&Cs (`block.terms: "specific"` — consent
- *  today): the designer composes its field values into the template, tailoring
- *  a generic assembly for a specific application (ruled 2026-07-14). Every
- *  other clause is GENERAL — its fields are transaction particulars, filled at
- *  checkout; the designer only SELECTS it. ANY registered clause declaring the
- *  marker participates — including one this codebase has never seen. */
-export function clauseIsSpecificTerms(clauseId: string, version?: number): boolean {
-    return getClauseSpec(clauseId, version)?.block?.terms === "specific";
+/** The content fields (by name) the DESIGNER authors into the assembly
+ *  template, read from the clause's own `block.design.fills` — the tailoring
+ *  that adapts a generic clause to a specific application (a pinned consent
+ *  document, a pinned settlement token). The drawer exposes field editors
+ *  exactly for these; their values survive into the published template.
+ *  Empty for clauses the designer only selects (whose fields are transaction
+ *  particulars, authored by the buyer at checkout) — and while the spec is
+ *  uncached. ANY registered clause declaring fills participates — including
+ *  one this codebase has never seen. */
+export function clauseDesignFills(clauseId: string, version?: number): readonly string[] {
+    return getClauseSpec(clauseId, version)?.block?.design.fills ?? [];
 }
 
-/** True if a clause is CATALOGUE-SOURCED — its content values are authored
- *  per-item on the seller's catalogue (product master data: freight class,
- *  hazmat, cold-chain), classified by its own `block.catalogueSourced` marker.
- *  Generic surfaces render a spec-driven authoring section per such clause on
- *  the catalogue item and fold the stored values onto the matching leaf at
- *  checkout. ANY registered clause declaring the marker participates —
- *  including one this codebase has never seen. */
-export function clauseIsCatalogueSourced(clauseId: string, version?: number): boolean {
-    return getClauseSpec(clauseId, version)?.block?.catalogueSourced === true;
+/** The content fields (by name) authored per-item on the seller's CATALOGUE
+ *  (item master data: freight class, hazmat, cold-chain), read from the
+ *  clause's own `block.checkout.catalogueFills`. Generic surfaces render a
+ *  spec-driven authoring section per such clause on the catalogue item and
+ *  fold the stored values onto the matching leaf at checkout. Empty for
+ *  clauses with no catalogue-authored fields — and while the spec is
+ *  uncached. ANY registered clause declaring fills participates — including
+ *  one this codebase has never seen. */
+export function clauseCatalogueFills(clauseId: string, version?: number): readonly string[] {
+    return getClauseSpec(clauseId, version)?.block?.checkout.catalogueFills ?? [];
 }
 
-/** Every loaded catalogue-sourced clause identity — the set a catalogue item's
- *  authoring section iterates. Derived from the live registry cache, never a
- *  bundled list; a newly registered product-property clause appears here with
- *  zero code change. */
+/** Every loaded clause identity with catalogue-authored fields — the set a
+ *  catalogue item's authoring section iterates. Derived from the live registry
+ *  cache, never a bundled list; a newly registered product-property clause
+ *  appears here with zero code change. */
 export function listCatalogueSourcedClauses(): readonly { clauseId: string; version: number }[] {
-    return listKnownClauses().filter((c) => clauseIsCatalogueSourced(c.clauseId, c.version));
+    return listKnownClauses().filter((c) => clauseCatalogueFills(c.clauseId, c.version).length > 0);
 }
 
-/** True if a clause is PROFILE-SOURCED — its content values are SELLER master
- *  data, authored once on the seller's profile (a dim-weight divisor, a
- *  declared credential id), classified by its own `block.profileSourced`
- *  marker. The seller-level sibling of `clauseIsCatalogueSourced` (item master
- *  data): catalogue = what is sold, profile = who sells. ANY registered clause
- *  declaring the marker participates — including one this codebase has never
- *  seen. */
-export function clauseIsProfileSourced(clauseId: string, version?: number): boolean {
-    const marker = getClauseSpec(clauseId, version)?.block?.profileSourced;
-    return marker === true || (Array.isArray(marker) && marker.length > 0);
+/** The content fields (by name) authored ONCE on the seller's PROFILE (seller
+ *  master data: a dim-weight divisor, a declared credential id), read from the
+ *  clause's own `block.checkout.profileFills` — the seller-level sibling of
+ *  `clauseCatalogueFills` (item master data): catalogue = what is sold,
+ *  profile = who sells. The profile editor renders exactly these fields; other
+ *  fields belong to other sources (designer fills, checkout derivation). Empty
+ *  for clauses with no profile-authored fields — and while the spec is
+ *  uncached. ANY registered clause declaring fills participates — including
+ *  one this codebase has never seen. */
+export function clauseProfileFills(clauseId: string, version?: number): readonly string[] {
+    return getClauseSpec(clauseId, version)?.block?.checkout.profileFills ?? [];
 }
 
-/** Every loaded profile-sourced clause identity — the set the seller-profile
- *  authoring section iterates. Derived from the live registry cache, never a
- *  bundled list. */
+/** Every loaded clause identity with profile-authored fields — the set the
+ *  seller-profile authoring section iterates. Derived from the live registry
+ *  cache, never a bundled list. */
 export function listProfileSourcedClauses(): readonly { clauseId: string; version: number }[] {
-    return listKnownClauses().filter((c) => clauseIsProfileSourced(c.clauseId, c.version));
-}
-
-/** The PROFILE-AUTHORED field names of a profile-sourced clause, read from its
- *  own `block.profileSourced` marker: the array form names the subset; `true`
- *  means every content field. Empty for clauses that are not profile-sourced.
- *  The profile editor renders exactly these fields; other fields belong to
- *  other sources (designer pins, checkout derivation). */
-export function profileSourcedFields(clauseId: string, version?: number): readonly string[] {
-    const spec = getClauseSpec(clauseId, version);
-    const marker = spec?.block?.profileSourced;
-    if (Array.isArray(marker)) return marker;
-    if (marker === true && spec) return spec.fields.map((f) => f.name);
-    return [];
+    return listKnownClauses().filter((c) => clauseProfileFills(c.clauseId, c.version).length > 0);
 }
 
 /** The deep-link to a composed provider's OWN web UI, read from the clause's
- *  `block.composes.forumUrl` — the open-world replacement for a bundled
+ *  `block.design.composes.forumUrl` — the open-world replacement for a bundled
  *  clause-id→URL switch. Any clause that composes with a URL-only forum (a
  *  dispute-resolution provider like Kleros, or a never-seen
  *  `figaro-arbitration-<provider>`) declares its own forum URL in its spec and
  *  surfaces here with zero code change. Undefined when the clause composes with
  *  no forum, or its spec isn't loaded. */
 export function composesForumUrl(clauseId: string): string | undefined {
-    return getClauseSpec(clauseId)?.block?.composes?.forumUrl;
+    return getClauseSpec(clauseId)?.block?.design.composes?.forumUrl;
 }
 
 /** The STANDARD composition interface a clause binds to, from its
- *  `block.composes.interface` — the open-world discriminator for WHICH on-network
+ *  `block.design.composes.interface` — the open-world discriminator for WHICH on-network
  *  contract an order composes with (e.g. an auction standard, an NFT credential
  *  check — never a dispute forum, which is `forumUrl`, a link and not a tenant).
  *  Generic surfaces derive composition behaviour from this string, never a
@@ -341,7 +335,7 @@ export function composesForumUrl(clauseId: string): string | undefined {
  *  is gone — no live mainnet retirement router; CONTRACTS.md § "Carbon-offset
  *  apparatus — DELETED"). */
 export function composesInterface(clauseId: string): string | undefined {
-    return getClauseSpec(clauseId)?.block?.composes?.interface;
+    return getClauseSpec(clauseId)?.block?.design.composes?.interface;
 }
 
 /** A PROCESS-LOG clause — a runtime TRANSFER ladder the responsible party
@@ -354,7 +348,7 @@ export function composesInterface(clauseId: string): string | undefined {
  *  runs; `attestations`-article clauses record the transfers that run it. A
  *  never-seen process-log clause participates by declaring the article. */
 export function clauseIsProcessLog(clauseId: string, version?: number): boolean {
-    return getClauseSpec(clauseId, version)?.block?.article === "attestations";
+    return getClauseSpec(clauseId, version)?.block?.design.article === "attestations";
 }
 
 /** Whether a clause's spec declares a top-level field named `fieldName`.
@@ -393,12 +387,13 @@ export function clauseWitnessStages(
     return Object.entries(stages).map(([key, fields]) => ({ stage: Number(key), fields }));
 }
 
-/** The ladder stages at which a PHYSICAL hand-off occurs, read from the
- *  clause's own `block.handoffStages` declaration. Executing one of these
- *  ladder stages pairs the witness stage of a co-composed clause nesting under
- *  `handoff` on the same order. Empty for clauses declaring none. */
+/** The event-log stages at which a hand-off occurs — physical and digital
+ *  alike — read from the clause's own `block.runtime.handoffStages`
+ *  declaration. Executing one of these stages pairs the witness stage of ANY
+ *  co-composed clause nesting under `handoff` on the same order (one action,
+ *  two attestations). Empty for clauses declaring none. */
 export function clauseHandoffStages(clauseId: string, version?: number): readonly string[] {
-    return getClauseSpec(clauseId, version)?.block?.handoffStages ?? [];
+    return getClauseSpec(clauseId, version)?.block?.runtime.handoffStages ?? [];
 }
 
 /** Derive a witness stage's values from the clause's COMMITTED content, for
@@ -638,18 +633,19 @@ export interface ClauseArticleGroup {
     clauses: readonly ClauseArticleEntry[];
 }
 
-/** THE single clause classification — every loaded clause grouped by its
- *  `block.article`, derived entirely from the specs. Articles appear in
- *  the order their first clause was loaded (chain/registration order); there is
- *  NO imposed sequence — no hardcoded article list, no alphabetical sort. Both
- *  the /clauses inventory and the designer drawer read this one function, so the
- *  two surfaces classify clauses identically. Clauses with no article fall to
- *  "(unclassified)". Sub-clause nesting is layered on top from `block.nestsUnder`
- *  (see `clauseNestsUnder`). */
+/** THE single clause grouping — every loaded clause grouped by its
+ *  `block.design.article` (the drawer heading), derived entirely from the
+ *  specs. Articles appear in the order their first clause was loaded
+ *  (chain/registration order); there is NO imposed sequence — no hardcoded
+ *  article list, no alphabetical sort. Both the /clauses inventory and the
+ *  designer drawer read this one function, so the two surfaces group clauses
+ *  identically. Clauses with no block fall to "(unclassified)". Sub-clause
+ *  nesting is layered on top from `block.design.nestsUnder` (see
+ *  `clauseNestsUnder`). */
 export function groupClausesByArticle(): readonly ClauseArticleGroup[] {
     const byArticle = new Map<string, ClauseArticleEntry[]>();
     for (const spec of SPEC_CACHE.values()) {
-        const article = spec.block?.article ?? "(unclassified)";
+        const article = spec.block?.design.article ?? "(unclassified)";
         const entry = { clauseId: spec.clauseId, version: spec.version, title: spec.title, description: spec.description };
         const bucket = byArticle.get(article);
         if (bucket) bucket.push(entry);

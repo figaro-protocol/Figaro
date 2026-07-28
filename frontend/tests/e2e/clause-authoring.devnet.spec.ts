@@ -93,7 +93,7 @@ test.describe('CLAUSE AUTHORING — register on /builders/clauses, inventory rea
 
         // Per-run nonce → per-run clause id → fresh first-write-wins binding
         // every run and every retry. The spec shape is the shared probe (a
-        // runtime-attestable ladder carrying `block.article: "attestations"`,
+        // runtime-attestable ladder carrying `block.design.article: "attestations"`,
         // so the inventory grouping renders).
         const runNonce = `${Date.now()}`;
         const CLAUSE_ID = `figaro-authored-${runNonce}`;
@@ -181,7 +181,7 @@ test.describe('CLAUSE AUTHORING — register on /builders/clauses, inventory rea
         ).toBeVisible({ timeout: 60000 });
         await expect(
             inventoryRow.locator('xpath=ancestor::ul[1]/preceding-sibling::h3[1]'),
-            "the clause is grouped under its spec's block.article",
+            "the clause is grouped under its spec's block.design.article",
         ).toHaveText('attestations');
 
         // ── COMPOSE: author an assembly carrying the new clause on the real

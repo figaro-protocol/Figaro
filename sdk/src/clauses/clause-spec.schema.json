@@ -2,7 +2,7 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://figaro.org/schemas/clause-spec.json",
     "title": "Figaro Clause Spec (Layer A)",
-    "description": "The canonical shape of a Figaro clause specification — the off-chain JSON a clause author writes, pins to IPFS, and registers in ClauseRegistry. This schema is the published mirror of the reference parser `parseClauseSpec` (sdk/src/clauses/spec.ts); a conformance test (sdk/tests/clauses/schema-conformance.test.ts) keeps the two in lockstep. Validate your clause against this before registering it — a clause that does not conform is not surfaced by conforming frontends (resolved-empty = absence, never an error). The schema is OPEN (additionalProperties allowed): unknown fields are tolerated and ignored, so the format can grow by versioning without rejecting older clauses.",
+    "description": "The canonical shape of a Figaro clause specification — the off-chain JSON a clause author writes, pins to IPFS, and registers in ClauseRegistry. A clause is one term or condition of an agreement, published once, that anyone can compose. The spec has two halves either side of the UI/protocol crease: the TOP LEVEL is the protocol half (identity, registration, and the content fields that become sections of signed agreements) — its reference parser is `parseClauseSpec` (sdk/src/clauses/spec.ts); `block` is the UI half (instructions to frontends, organized into phase sections by reader: design / checkout / runtime) — its reference parser is the frontend's `parseBlockBinding` (frontend/lib/shared/clauseBlockBinding.ts). Nothing in `block` is ever read on-chain. A conformance test (sdk/tests/clauses/schema-conformance.test.ts) keeps schema and parsers in lockstep. Validate your clause against this before registering it — a clause that does not conform is not surfaced by conforming frontends (resolved-empty = absence, never an error). THE STANDARD: express every attribute explicitly — zero, empty, or null, never absent (the repo's own clause corpus complies, enforced by test); consumers treat an absent attribute as its empty value, so a sparser spec still surfaces. The schema is OPEN (additionalProperties allowed at every level): unknown fields are tolerated and ignored, so the format can grow by versioning without rejecting older clauses.",
     "type": "object",
     "required": ["clauseId", "version", "title", "description", "fields"],
     "additionalProperties": true,
@@ -12,17 +12,21 @@
             "minLength": 1,
             "description": "Human-readable clause name. keccak256(abi.encode(clauseId, version)) is the on-chain bytes32 id."
         },
-        "version": { "type": "integer", "minimum": 0, "description": "Clause version." },
+        "version": { "type": "integer", "minimum": 0, "description": "Clause version — an integer lineage counter, never semver." },
         "title": { "type": "string", "minLength": 1 },
         "description": { "type": "string" },
+        "rpgfTag": {
+            "type": ["string", "null"],
+            "description": "Registration tag for the RPGF program — the ONE spec attribute that reaches the chain: registration tooling (frontend/scripts/populate-clauses.mjs) passes keccak256(rpgfTag) to ClauseRegistry.registerClause, and UsageCounter's substrate-broadening weight compares it against the single boostedTag frozen at its deploy. Membership is permissionless (any author may declare any tag); which tag pays is deploy-frozen. Null = untagged. Distinct from block.design.article (a drawer heading), which the reward mechanism never reads."
+        },
         "fields": {
             "type": "array",
             "items": { "$ref": "#/$defs/field" },
-            "description": "The clause's content fields. The default shape, applied to all stages unless a stage override is set."
+            "description": "The clause's content fields — the terms-and-conditions blanks. Filled in for a transaction, they become one SECTION of the signed agreement (a merkle leaf under the on-chain agreementHash). This is the committed content: stage 0. WHO fills each blank is declared by the block phase sections' `fills` lists; any field named in no list is the buyer's, authored at checkout (the default — always derived as the complement, never stored)."
         },
         "stages": {
             "type": "object",
-            "description": "Optional per-stage field overrides, keyed by stage number (uint8 0..255).",
+            "description": "Runtime-evidence field shapes, keyed by stage number (uint8, matching AttestationCoordinator's stage). Stage 0 IS the committed content and is declared by `fields` — declare entries here only for stages ≥ 1: the coordination attestations filed during execution against the committed term (a measured-grams record, a temperature reading, a detected proximity band). Any composed clause declaring a stage surfaces a repeatable witness capability for it, offered to both parties, with zero per-clause code. Express as {} when the clause declares no runtime-evidence stages.",
             "patternProperties": { "^[0-9]+$": { "type": "array", "items": { "$ref": "#/$defs/field" } } }
         },
         "block": { "$ref": "#/$defs/block" }
@@ -71,16 +75,86 @@
         },
         "block": {
             "type": "object",
-            "description": "Block-binding metadata: how a clause composes into the UI + runtime. Nothing on-chain reads this entire object — it is Layer-A-only.",
+            "description": "The UI half of the spec — instructions to frontends about how the clause presents and composes, organized into PHASE SECTIONS, each named for its reader: `design` (the designer's canvas/drawer), `checkout` (the checkout fold), `runtime` (the capability rail). Nothing on-chain reads any of it; any frontend could present the same clause differently. An attribute read in two phases is declared in the section of its FIRST reader. The one verb `fills` recurs across sections and always means the same thing: the content fields (by name) whose values that phase's actor authors; the buyer owns every content field named in no fills list.",
+            "required": ["design"],
+            "additionalProperties": true,
+            "properties": {
+                "design": { "$ref": "#/$defs/blockDesign" },
+                "checkout": { "$ref": "#/$defs/blockCheckout" },
+                "runtime": { "$ref": "#/$defs/blockRuntime" }
+            }
+        },
+        "blockDesign": {
+            "type": "object",
+            "description": "Read by the designer's canvas and agreement drawer at design time.",
             "required": ["article"],
             "additionalProperties": true,
             "properties": {
                 "article": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "Drawer grouping heading (free-form, never a closed list). The contract-document SECTION this clause reads under, and the clause's sole classification. The RPGF substrate-broadening formula, when active, derives its group key as keccak256(article); nothing is stored on-chain for it."
+                    "description": "Drawer grouping heading (free-form, never a closed list) — the contract-document section this clause reads under. The set of articles is whatever the registered clauses declare."
                 },
-                "nestsUnder": { "type": "string", "minLength": 1, "description": "A field name on a parent clause this clause nests under in the drawer." }
+                "nestsUnder": {
+                    "type": ["string", "null"],
+                    "description": "A field name on a parent clause this clause nests under in the drawer — a containment relationship read from the spec, never a hardcoded tree. Null for top-level clauses."
+                },
+                "fills": {
+                    "type": "array",
+                    "items": { "type": "string", "minLength": 1 },
+                    "description": "The content fields (by name) the DESIGNER authors into the assembly template — the tailoring that adapts a generic clause to a specific application (a pinned consent document, a pinned settlement token). The drawer exposes field editors exactly for these; their values survive into the published template (identity-bearing — part of the compositionHash). Express as [] when the designer only selects the clause."
+                },
+                "composes": {
+                    "type": ["object", "null"],
+                    "description": "Composition binding — the on-network contract or external forum this clause composes with (the fifth noun). `interface` names a STANDARD composition interface (chain-agnostic, read from spec — never a bundled clause-id switch in code); the concrete instance ADDRESS is chain-specific and comes at runtime, not here. `forumUrl` deep-links a provider's own web UI for URL-only compositions (https: only — it renders as a link). Declared here (the designer composes it); dispatched at runtime. Null for clauses that compose with nothing.",
+                    "required": ["interface"],
+                    "properties": {
+                        "interface": { "type": "string", "minLength": 1 },
+                        "forumUrl": { "type": "string", "minLength": 1 }
+                    }
+                }
+            }
+        },
+        "blockCheckout": {
+            "type": "object",
+            "description": "Read by the checkout fold: where declared values come from before the buyer signs. Any content field named in neither list — and not in design.fills — is the buyer's, authored at checkout (the default case; derived as the complement, never stored).",
+            "additionalProperties": true,
+            "properties": {
+                "catalogueFills": {
+                    "type": "array",
+                    "items": { "type": "string", "minLength": 1 },
+                    "description": "The content fields (by name) authored per-item on the seller's CATALOGUE (item master data: freight class, hazmat class, cold-chain window) and folded onto the matching leaf at checkout. Generic surfaces render a spec-driven authoring section on the catalogue item for ANY clause declaring this — including one this codebase has never seen. Express as [] when no field is catalogue-authored."
+                },
+                "profileFills": {
+                    "type": "array",
+                    "items": { "type": "string", "minLength": 1 },
+                    "description": "The content fields (by name) authored ONCE on the seller's PROFILE (seller master data: a dim-weight divisor, a declared credential id) and folded onto the matching leaf at checkout. The seller-level sibling of catalogueFills (catalogue = what is sold, profile = who sells). Express as [] when no field is profile-authored."
+                }
+            }
+        },
+        "blockRuntime": {
+            "type": "object",
+            "description": "Read by the capability rail while the process runs.",
+            "additionalProperties": true,
+            "properties": {
+                "interaction": {
+                    "type": ["object", "null"],
+                    "description": "The party↔party runtime interaction standard this clause's tasks use (e.g. a QR order-identity challenge at a hand-off, a per-order ECDH channel). `interface` names a STANDARD interaction, read from the spec — never a bundled clause-id switch. A frontend that registered a surface for the interface mounts it; one that didn't renders nothing extra — progressive enhancement, the protocol never depends on it. Null for clauses whose tasks need no dedicated interaction.",
+                    "required": ["interface"],
+                    "properties": {
+                        "interface": { "type": "string", "minLength": 1 }
+                    }
+                },
+                "fields": {
+                    "type": "array",
+                    "items": { "$ref": "#/$defs/field" },
+                    "description": "Runtime-input field specs — values a party supplies at RUNTIME that are NOT committed content (e.g. a composed contract's opening parameters, paired with design.composes). Rendered by ONE generic form; the surface reads no interface name. Same field shape as content fields — one parser, one renderer. Express as [] when the clause takes no runtime input."
+                },
+                "handoffStages": {
+                    "type": "array",
+                    "items": { "type": "string", "minLength": 1 },
+                    "description": "For a clause whose runtime evidence is a coordination event log: the eventType values at which a hand-off occurs. Executing one of these stages pairs the witness stage of ANY co-composed clause declaring design.nestsUnder: \"handoff\" on the same order — one action, two attestations. The pairing is a field-name vocabulary, deliberately not a clause list, and applies to physical and digital hand-offs alike. Express as [] when the clause has no hand-off semantics."
+                }
             }
         }
     }

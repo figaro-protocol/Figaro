@@ -6,7 +6,7 @@
  * The on-chain event carries the readable `clauseId` and a `contentURI` (the
  * IPFS locator) directly — so both the human name and the spec location come
  * straight off the chain. No preimage table, no bundled spec set. `registrar` is
- * indexed. (Grouping is `block.article` in the spec JSON — no on-chain group field.)
+ * indexed. (Grouping is `block.design.article` in the spec JSON — no on-chain group field.)
  *
  * Two readers:
  *   - `useRegisteredClausesByWallet` — wallet-scoped (the designer's "clauses you
@@ -344,14 +344,16 @@ export function useRegisterClause() {
         const contentHash = canonicalContentHash(rawSpec);
         const { uri } = await DEFAULT_IPFS_SERVICE.publishJSON(rawSpec);
 
-        // The incentive tag is DECLARED IN THE SPEC (`block.rpgfTag`), not typed
-        // into a form — so `contentHash` binds it: the label the author published
-        // and the tag anchored on-chain cannot diverge. Absent = untagged, the
-        // default, which carries no penalty. Read by the RPGF reward formula and
-        // nothing else; NOT `block.article` (that groups clauses for readers and
-        // stays off-chain entirely).
-        const specBlock = (rawSpec.block ?? {}) as Record<string, unknown>;
-        const tagLabel = typeof specBlock.rpgfTag === "string" ? specBlock.rpgfTag.trim() : "";
+        // The incentive tag is DECLARED IN THE SPEC (top-level `rpgfTag` — the
+        // one spec attribute that reaches the chain, so it sits with the other
+        // registration facts, outside `block`), not typed into a form — so
+        // `contentHash` binds it: the label the author published and the tag
+        // anchored on-chain cannot diverge. Null/absent = untagged, the
+        // default, which carries no penalty. Read by the RPGF reward formula
+        // and nothing else; NOT `block.design.article` (that groups clauses
+        // for readers and stays off-chain entirely).
+        const rawTag = (rawSpec as Record<string, unknown>).rpgfTag;
+        const tagLabel = typeof rawTag === "string" ? rawTag.trim() : "";
         const rpgfTag = tagLabel ? keccak256(stringToHex(tagLabel)) : ZERO_BYTES32;
 
         const deposit = await client.readContract({

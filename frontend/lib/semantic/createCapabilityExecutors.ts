@@ -144,7 +144,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         const txHash = await submit(args);
 
         // HAND-OFF PAIRING (one action, two attestations): a ladder
-        // stage the clause declares in block.handoffStages pairs the
+        // stage the clause declares in block.runtime.handoffStages pairs the
         // witness stage of any co-composed clause nesting under
         // `handoff` on the SAME order — when the witness's required
         // values derive unambiguously from the committed content (a
@@ -158,7 +158,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
                 const witnessSpec = getClauseSpec(section.clause, section.version);
                 // Field-name vocabulary, not a clause name: the witness
                 // clause declares it REFINES the `handoff` field.
-                if (witnessSpec?.block?.nestsUnder !== "handoff") continue;
+                if (witnessSpec?.block?.design.nestsUnder !== "handoff") continue;
                 for (const witness of clauseWitnessStages(section.clause, section.version)) {
                     const derived = deriveStageValuesFromCommitted(
                         section.clause,

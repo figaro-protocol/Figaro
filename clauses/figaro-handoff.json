@@ -3,6 +3,7 @@
     "version": 1,
     "title": "Hand-off point",
     "description": "Where the physical hand-off happens for this order's exchange. Each bonded order with a physical exchange carries its own hand-off (the merchant→courier pickup, the courier→buyer drop-off, the on-site counter). The proximity-verification policy (figaro-proximity-policy) nests under this hand-off — the bands that certify the exchange.",
+    "rpgfTag": null,
     "fields": [
         {
             "name": "handoff",
@@ -21,10 +22,24 @@
             "description": "Where the physical exchange happens. face-to-face = in person; dead-drop = left at an agreed spot; parking-area = curbside/lot; locker = a parcel locker. At least one must be set when this clause is included in an agreement."
         }
     ],
+    "stages": {},
     "block": {
-        "article": "logistics",
-        "interaction": {
-            "interface": "qr-challenge"
+        "design": {
+            "article": "logistics",
+            "nestsUnder": null,
+            "fills": [],
+            "composes": null
+        },
+        "checkout": {
+            "catalogueFills": [],
+            "profileFills": []
+        },
+        "runtime": {
+            "interaction": {
+                "interface": "qr-challenge"
+            },
+            "fields": [],
+            "handoffStages": []
         }
     }
 }

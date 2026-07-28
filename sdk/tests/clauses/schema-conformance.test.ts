@@ -43,10 +43,38 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
 
     // `block` is presentation metadata the SDK parser does NOT own (see spec.ts) —
     // it is validated by this schema and the frontend's clauseBlockBinding, never by
-    // parseClauseSpec. So a malformed block (e.g. missing the required article) is a
-    // SCHEMA-level rejection only; the parser is silent on block by design.
-    it("rejects a block missing the required article at the schema (the parser does not own block)", () => {
-        const spec = { clauseId: "x", version: 1, title: "T", description: "D", fields: [], block: { mechanismKinds: [] } };
-        expect(validateAgainstSchema(spec)).toBe(false);
+    // parseClauseSpec. So a malformed block (e.g. missing the required design
+    // section, or a design without its article) is a SCHEMA-level rejection only;
+    // the parser is silent on block by design.
+    it("rejects a block missing the required design.article at the schema (the parser does not own block)", () => {
+        const noDesign = { clauseId: "x", version: 1, title: "T", description: "D", fields: [], block: {} };
+        expect(validateAgainstSchema(noDesign)).toBe(false);
+        const noArticle = { clauseId: "x", version: 1, title: "T", description: "D", fields: [], block: { design: {} } };
+        expect(validateAgainstSchema(noArticle)).toBe(false);
+    });
+
+    // THE STANDARD (operator ruling 2026-07-28): the repo's own clause corpus
+    // expresses every standard attribute explicitly — zero, empty, or null,
+    // never absent. Consumers still treat an absent attribute as its empty
+    // value (resolved-empty = absence — a sparser third-party spec surfaces
+    // fine); this bar binds OUR specs, so an author reading any of them sees
+    // the full attribute set.
+    it.each(exampleFiles)("%s expresses every standard attribute (zero/empty/null, never absent)", (file) => {
+        const spec = JSON.parse(readFileSync(join(examplesDir, file), "utf8"));
+        for (const key of ["clauseId", "version", "title", "description", "rpgfTag", "fields", "stages", "block"]) {
+            expect(key in spec, `${file}: top-level ${key} must be expressed`).toBe(true);
+        }
+        for (const key of ["design", "checkout", "runtime"]) {
+            expect(key in spec.block, `${file}: block.${key} must be expressed`).toBe(true);
+        }
+        for (const key of ["article", "nestsUnder", "fills", "composes"]) {
+            expect(key in spec.block.design, `${file}: block.design.${key} must be expressed`).toBe(true);
+        }
+        for (const key of ["catalogueFills", "profileFills"]) {
+            expect(key in spec.block.checkout, `${file}: block.checkout.${key} must be expressed`).toBe(true);
+        }
+        for (const key of ["interaction", "fields", "handoffStages"]) {
+            expect(key in spec.block.runtime, `${file}: block.runtime.${key} must be expressed`).toBe(true);
+        }
     });
 });

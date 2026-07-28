@@ -18,7 +18,7 @@
 import type { ReactNode } from "react";
 
 interface ClauseArticleSection<T> {
-    /** The article key (e.g. "coordination"), from `block.article`. */
+    /** The article key (e.g. "coordination"), from `block.design.article`. */
     article: string;
     /** Display label; falls back to the article key. */
     label?: string;

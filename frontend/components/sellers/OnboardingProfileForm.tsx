@@ -477,7 +477,7 @@ export function OnboardingProfileForm({
                 </FormField>
                 {/* Profile-sourced clause values — seller master data (dimweight's
                     divisor, a declared credential id), one spec-driven group per
-                    clause declaring block.profileSourced, from the live registry. */}
+                    clause declaring block.checkout.profileFills, from the live registry. */}
                 <ProfileClauseValues
                     values={form.profileClauseValues}
                     onChange={(next) => setField("profileClauseValues", next)}

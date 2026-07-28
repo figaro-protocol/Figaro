@@ -13,19 +13,18 @@
  * fall back to data-key presence. Consumers that need strictness gate on
  * their cache being warm before projecting.
  *
- * Five `block` hints are HASH-LOAD-BEARING and therefore projection
- * vocabulary, not presentation: `article: "mandatory"` (which clauses
+ * Four `block` hints are HASH-LOAD-BEARING and therefore projection
+ * vocabulary, not presentation: `design.article: "mandatory"` (which clauses
  * auto-fold into every template agreement → compositionHash),
- * `article: "attestations"` (process-log clauses stay empty anchors at
- * commit → agreementHash), `catalogueSourced` (which sections a
- * catalogue fold writes → agreementHash), `profileSourced` (which
- * sections the seller-profile fold writes → agreementHash), and
- * `terms: "specific"` (whose
- * field values the DESIGNER composes into the template — the specific-T&C
- * tailoring clauses, consent today; every other clause is general: the
- * template carries `{}` and the fields fill at checkout → compositionHash).
- * `parseProjectionHints` extracts exactly those from a raw spec document;
- * everything else in `block` remains presentation the SDK never reads.
+ * `design.article: "attestations"` (process-log clauses stay empty anchors at
+ * commit → agreementHash), `design.fills` (the fields whose values the
+ * DESIGNER composes into the template — the tailoring; every other clause's
+ * template values are `{}` and the fields fill at checkout →
+ * compositionHash), and the `checkout` fills (`catalogueFills` /
+ * `profileFills` — which sections the catalogue and seller-profile folds
+ * write → agreementHash). `parseProjectionHints` extracts exactly those from
+ * a raw spec document; everything else in `block` remains presentation the
+ * SDK never reads.
  */
 
 import {
@@ -39,23 +38,27 @@ import { validateContent, type ClauseSpec } from "./clauses/index.js";
 
 // ── The spec seam ───────────────────────────────────────────────────────────
 
-/** The hash-load-bearing slice of a clause spec's `block`. */
+/** The hash-load-bearing slice of a clause spec's `block` — the few
+ *  phase-section attributes whose values decide what ends up committed
+ *  (template values, checkout folds), lifted out of the sectioned block. */
 export interface ProjectionHints {
-    /** The spec's `block.article` (e.g. `"mandatory"`, `"attestations"`). */
+    /** The spec's `block.design.article` (e.g. `"mandatory"`, `"attestations"`). */
     article?: string;
-    /** The spec's `block.catalogueSourced` marker. */
-    catalogueSourced?: boolean;
-    /** The spec's `block.profileSourced` marker — content authored once on
-     *  the seller's PROFILE (seller master data: a divisor, a declared
-     *  credential id), folded onto the matching leaf at checkout. The
-     *  profile sibling of `catalogueSourced` (item master data). `true` =
-     *  every content field; a field-name array = the profile-authored
-     *  subset (the rest belong to other sources — designer pins, checkout
-     *  derivation). */
-    profileSourced?: boolean | readonly string[];
-    /** The spec's `block.terms` marker (`"specific"` = designer-composed
-     *  specific T&Cs; absent = general, filled at checkout). */
-    terms?: string;
+    /** The spec's `block.design.fills` — the content fields (by name) the
+     *  DESIGNER authors into the template (the tailoring: a pinned consent
+     *  document, a pinned settlement token); their values survive into the
+     *  published template. Absent/empty = the designer only selects the
+     *  clause. */
+    designFills?: readonly string[];
+    /** The spec's `block.checkout.catalogueFills` — the content fields (by
+     *  name) authored per-item on the seller's CATALOGUE and folded onto the
+     *  matching leaf at checkout. */
+    catalogueFills?: readonly string[];
+    /** The spec's `block.checkout.profileFills` — the content fields (by
+     *  name) authored once on the seller's PROFILE (seller master data: a
+     *  divisor, a declared credential id), folded onto the matching leaf at
+     *  checkout. The profile sibling of `catalogueFills` (item master data). */
+    profileFills?: readonly string[];
 }
 
 /** A clause spec as the projection sees it: the Layer-A spec plus the
@@ -73,22 +76,37 @@ export interface SpecSource {
 }
 
 /** Extract the hash-load-bearing hints from a raw spec document's `block`
- *  slice (`JSON.parse`d clause JSON). Everything else in `block` is
- *  presentation and deliberately not surfaced here. */
+ *  slice (`JSON.parse`d clause JSON, sectioned by phase: design / checkout /
+ *  runtime). Everything else in `block` is presentation and deliberately not
+ *  surfaced here. */
 export function parseProjectionHints(rawSpec: unknown): ProjectionHints {
     const block = (rawSpec as { block?: Record<string, unknown> } | null)?.block;
     if (!block || typeof block !== "object") return {};
     const hints: ProjectionHints = {};
-    if (typeof block.article === "string") hints.article = block.article;
-    if (block.catalogueSourced === true) hints.catalogueSourced = true;
-    if (
-        block.profileSourced === true ||
-        (Array.isArray(block.profileSourced) && block.profileSourced.every((f) => typeof f === "string" && f.length > 0))
-    ) {
-        hints.profileSourced = block.profileSourced as boolean | readonly string[];
+    const design = block.design;
+    if (design && typeof design === "object" && !Array.isArray(design)) {
+        const d = design as Record<string, unknown>;
+        if (typeof d.article === "string") hints.article = d.article;
+        const fills = parseFillList(d.fills);
+        if (fills) hints.designFills = fills;
     }
-    if (typeof block.terms === "string") hints.terms = block.terms;
+    const checkout = block.checkout;
+    if (checkout && typeof checkout === "object" && !Array.isArray(checkout)) {
+        const c = checkout as Record<string, unknown>;
+        const catalogue = parseFillList(c.catalogueFills);
+        if (catalogue) hints.catalogueFills = catalogue;
+        const profile = parseFillList(c.profileFills);
+        if (profile) hints.profileFills = profile;
+    }
     return hints;
+}
+
+/** A non-empty array of non-empty field names, or undefined. */
+function parseFillList(raw: unknown): readonly string[] | undefined {
+    if (Array.isArray(raw) && raw.length > 0 && raw.every((f) => typeof f === "string" && f.length > 0)) {
+        return raw as string[];
+    }
+    return undefined;
 }
 
 /** Whether a spec declares a top-level field named `fieldName`. Field names —
@@ -98,54 +116,47 @@ export function specDeclaresField(spec: ProjectionSpecView, fieldName: string): 
     return spec.fields.some((f) => f.name === fieldName);
 }
 
-/** True for the MANDATORY clauses (`block.article: "mandatory"` — commerce,
- *  topology) that auto-fold into every template agreement; they are not
- *  designer choices. (Article renamed from "structural" 2026-07-14 — that word
- *  collided with the design/DAG sense and maddened everyone.) */
+/** True for the MANDATORY clauses (`block.design.article: "mandatory"` —
+ *  commerce, topology) that auto-fold into every template agreement; they are
+ *  not designer choices. (Article renamed from "structural" 2026-07-14 — that
+ *  word collided with the design/DAG sense and maddened everyone.) */
 export function specIsMandatory(spec: ProjectionSpecView): boolean {
     return spec.hints?.article === "mandatory";
 }
 
-/** True for SPECIFIC-T&C clauses (`block.terms: "specific"` — consent today):
- *  the clauses whose field values the DESIGNER composes into the template,
- *  tailoring a generic assembly for a specific application (ruled 2026-07-14).
- *  Every other clause is GENERAL: its fields are transaction particulars,
- *  filled at checkout — the template carries `{}` for it. */
-export function specIsSpecificTerms(spec: ProjectionSpecView): boolean {
-    return spec.hints?.terms === "specific";
+/** The DESIGNER-authored field names of a clause (`block.design.fills`) —
+ *  the tailoring that adapts a generic clause to a specific application
+ *  (a pinned consent document, a pinned settlement token). The template
+ *  keeps the designer's values for a clause declaring fills; every other
+ *  clause's fields are transaction particulars, filled at checkout — the
+ *  template carries `{}` for it. Empty for clauses the designer only
+ *  selects. */
+export function specDesignFills(spec: ProjectionSpecView): readonly string[] {
+    return spec.hints?.designFills ?? [];
 }
 
-/** True for process-log clauses (`block.article: "attestations"`) — empty
- *  anchors at commit whose content is attested later. */
+/** True for process-log clauses (`block.design.article: "attestations"`) —
+ *  empty anchors at commit whose content is attested later. */
 export function specIsProcessLog(spec: ProjectionSpecView): boolean {
     return spec.hints?.article === "attestations";
 }
 
-/** True for catalogue-sourced clauses (`block.catalogueSourced`) — content
- *  authored per-item on the seller's catalogue and folded onto the matching
- *  leaf at checkout. */
-export function specIsCatalogueSourced(spec: ProjectionSpecView): boolean {
-    return spec.hints?.catalogueSourced === true;
+/** The CATALOGUE-authored field names of a clause
+ *  (`block.checkout.catalogueFills`) — content authored per-item on the
+ *  seller's catalogue and folded onto the matching leaf at checkout. Empty
+ *  for clauses with no catalogue-authored fields. */
+export function specCatalogueFills(spec: ProjectionSpecView): readonly string[] {
+    return spec.hints?.catalogueFills ?? [];
 }
 
-/** True for profile-sourced clauses (`block.profileSourced`) — content
- *  authored once on the seller's PROFILE (seller master data, the sibling of
- *  the catalogue's per-item data) and folded onto the matching leaf at
- *  checkout. */
-export function specIsProfileSourced(spec: ProjectionSpecView): boolean {
-    const marker = spec.hints?.profileSourced;
-    return marker === true || (Array.isArray(marker) && marker.length > 0);
-}
-
-/** The PROFILE-AUTHORED field names of a profile-sourced clause — the array
- *  form of `block.profileSourced` names the subset; `true` means every
- *  content field. Empty for clauses that are not profile-sourced. Editors
- *  render exactly these fields; the fold folds only these values. */
-export function profileSourcedFieldNames(spec: ProjectionSpecView): readonly string[] {
-    const marker = spec.hints?.profileSourced;
-    if (Array.isArray(marker)) return marker;
-    if (marker === true) return spec.fields.map((f) => f.name);
-    return [];
+/** The PROFILE-authored field names of a clause
+ *  (`block.checkout.profileFills`) — seller master data, authored once on the
+ *  seller's profile (the sibling of the catalogue's per-item data) and folded
+ *  onto the matching leaf at checkout. Editors render exactly these fields;
+ *  the fold folds only these values. Empty for clauses with no
+ *  profile-authored fields. */
+export function specProfileFills(spec: ProjectionSpecView): readonly string[] {
+    return spec.hints?.profileFills ?? [];
 }
 
 // ── Agreement projection ────────────────────────────────────────────────────
@@ -336,7 +347,7 @@ export interface TemplateOrderNode {
 }
 
 /** Fold the MANDATORY clauses into a template agreement's clause set. Each
- *  mandatory clause (`block.article: "mandatory"`) draws the fields it
+ *  mandatory clause (`block.design.article: "mandatory"`) draws the fields it
  *  declares from the design-time value bag — topology gets
  *  `{ parentOrderHashes }` (mode is DERIVED from the edges, never stored);
  *  commerce's currency/payment/lineItems are NOT design-time (the buyer fills
@@ -408,16 +419,16 @@ export function buildAssemblyTemplate(args: {
         ...(description ? { description } : {}),
         agreements: orders.map((order, i) => {
             // Design time is STRUCTURAL (ruled 2026-07-14): the template keeps
-            // the designer's clause SELECTION, but a general clause's field
-            // values are transaction particulars — filled at checkout, never
-            // composed. Only SPECIFIC-T&C clauses (block.terms: "specific" —
-            // the designer's tailoring, consent's affixed documents) keep
-            // their composed values; everything else strips to `{}` here, so
+            // the designer's clause SELECTION, but a clause's field values are
+            // transaction particulars — filled at checkout, never composed.
+            // Only clauses declaring designer fills (block.design.fills — the
+            // designer's tailoring, consent's affixed documents) keep their
+            // composed values; everything else strips to `{}` here, so
             // templates are value-free by construction, not by convention.
             const selection: Record<string, Record<string, unknown>> = {};
             for (const [clauseId, values] of Object.entries(clausesByOrderId[order.orderHash] ?? {})) {
                 const spec = specs.get(clauseId, clauseVersionsByOrderId?.[order.orderHash]?.[clauseId]);
-                selection[clauseId] = spec && specIsSpecificTerms(spec) ? values : {};
+                selection[clauseId] = spec && specDesignFills(spec).length > 0 ? values : {};
             }
             const clauses = {
                 ...selection,

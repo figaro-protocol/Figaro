@@ -10,7 +10,7 @@
  *   drawer  → the target clause surfaces from the live ClauseRegistry → IPFS
  *   encode  → composing it (a selection or nested sub-clause tick at design
  *             time; values from the checkout fill surface, the catalogue, or
- *             a specific-T&C affix — design time is STRUCTURAL, ruled
+ *             a designer-fills affix — design time is STRUCTURAL, ruled
  *             2026-07-14) carries its section into the committed agreement,
  *             past the Layer-A sign gate
  *   commit  → a real bilateral order commits that agreement on-chain, and the
@@ -83,14 +83,14 @@ const SELLER = seller.address;
  *  surface in the audit. All selectors drive the REAL generic surfaces —
  *  the checkout fill surface (`checkout-field-<orderId>-<clauseId>-<field>
  *  [-<option>]` — general-clause transaction particulars), the drawer's
- *  specific-T&C editors (`drawer-field-<clauseId>-<field>` — consent's
+ *  designer-fills editors (`drawer-field-<clauseId>-<field>` — consent's
  *  affix), the wizard's catalogue clause-values editor
  *  (`item-<uid>-clause-<clauseId>-<field>[-<option>]`), and the nested
  *  sub-clause tree (`drawer-nested-<hostField>-<clauseId>`). */
 interface ClauseRung {
     clauseId: string;
     /** Extra drawer work after ticking the target clause. Design time is
-     *  STRUCTURAL (ruled 2026-07-14): this hook is for SPECIFIC-T&C fills only
+     *  STRUCTURAL (ruled 2026-07-14): this hook is for design.fills only
      *  (consent's affix — the designer's tailoring); general clauses have no
      *  drawer editors — their fields fill at checkout (`checkout` below). */
     design?: (page: Page) => Promise<void>;
@@ -227,7 +227,7 @@ const RUNGS: ClauseRung[] = [
     },
     {
         // THE DENOMINATION PIN: the designer pins the one ERC-20 the whole
-        // assembly's processes run in — a SPECIFIC-T&C drawer fill (like
+        // assembly's processes run in — a designer-fills drawer fill (like
         // consent's affix), identity-bearing in the compositionHash. Generic:
         // the clause names no token and carries no economics. Checkout
         // resolves the process currency from the pin, ahead of the buyer's
@@ -327,7 +327,7 @@ const RUNGS: ClauseRung[] = [
     },
     {
         // DECLARED credential (the NYC-TLC shape): the designer pins the
-        // authority's public REGISTER (a URI template, specific-T&C); the
+        // authority's public REGISTER (a URI template, a designer fill); the
         // seller declares their id ONCE on the profile (profile-sourced
         // master data); checkout folds the id onto the leaf and offers the
         // buyer the Verify link-out — the register stays the source of

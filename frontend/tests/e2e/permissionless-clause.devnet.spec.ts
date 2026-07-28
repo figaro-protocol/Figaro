@@ -73,7 +73,7 @@ const NOVEL_FIRST_STAGE_LABEL = 'Probe opened';
 
 // The probe clause spec + its permissionless registration are shared with the
 // other publish specs in `./probeAssembly` (makeProbeSpec / registerProbeClause):
-// a runtime-attestable lifecycle clause carrying only `block.article` —
+// a runtime-attestable lifecycle clause carrying only `block.design.article` —
 // runtime-attestability is DERIVED from its enum ladder, not declared.
 
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);

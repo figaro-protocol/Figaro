@@ -1,8 +1,8 @@
 /**
  * interactionSurfaces — the interaction-interface→surface-component registry.
  *
- * A clause may declare, in its `block.interaction`, the party↔party runtime
- * INTERACTION STANDARD its tasks use (the sibling of `block.composes`, which
+ * A clause may declare, in its `block.runtime.interaction`, the party↔party runtime
+ * INTERACTION STANDARD its tasks use (the sibling of `block.design.composes`, which
  * names an on-network contract interface). This registry is the frontend
  * half of that seam: it maps the interaction interfaces THIS frontend has a
  * surface for (e.g. `"qr-challenge"` → the QR order-identity panel) to

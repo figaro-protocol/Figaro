@@ -108,7 +108,7 @@ describe("fillProfileSections — seller profile master data folded onto their l
         const out = fillProfileSections(
             { "figaro-credential": { credentialRegisterUri: REGISTER } },
             // The register pin is the DESIGNER's field; a profile-stored copy is
-            // outside `profileSourced: ["credentialId"]` and must not fold.
+            // outside `profileFills: ["credentialId"]` and must not fold.
             { "figaro-credential": { credentialId: "500458", credentialRegisterUri: "https://evil.example/{id}" } },
             CREDENTIAL,
         );

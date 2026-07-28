@@ -192,7 +192,7 @@ function defaultMatchesField(spec: FieldSpec, value: unknown): boolean {
 
 /** Parse+validate ONE field spec (the same rules `parseClauseSpec` applies to a
  *  clause's content `fields`). Exported so other surfaces can parse field specs
- *  that live outside a clause's content — e.g. the frontend's `block.fields`
+ *  that live outside a clause's content — e.g. the frontend's `block.runtime.fields`
  *  (a composition's runtime-input fields). Pushes `SpecParseError`s on `errors`
  *  and returns null on any malformed field. */
 /** Max field-spec nesting depth. A real clause field nests a handful deep
