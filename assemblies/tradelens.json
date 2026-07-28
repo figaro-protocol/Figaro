@@ -1,7 +1,11 @@
 {
     "assemblyClauses": {
-        "figaro-applicable-law": {},
-        "figaro-arbitration-kleros": {}
+        "figaro-applicable-law": {
+            "applicableLaw": "England-Wales"
+        },
+        "figaro-arbitration-kleros": {
+            "klerosCourt": "general"
+        }
     },
     "agreements": [
         {

@@ -120,10 +120,10 @@ describe("projection — golden-vector byte-exactness", () => {
     });
 
     it("mandatory fold + relabeling + assembly-scope fold reproduce the frozen template + compositionHash", () => {
-        // figaro-applicable-law is ASSEMBLY-SCOPED (design.scope: "assembly",
-        // ruled 2026-07-28): composed once at the assembly level. Its typed
-        // value must STRIP to {} in the frozen output (no design.fills — the
-        // value-free rule applies at the assembly level too).
+        // figaro-applicable-law is ASSEMBLY-SCOPED (design.scope: "assembly")
+        // and DESIGNER-AUTHORED (design.fills — ruled 2026-07-28: recourse
+        // terms are part of the assembly's identity, never buyer-authored),
+        // so its typed value SURVIVES into the frozen output.
         const template = serializeAssemblyTemplate(
             buildAssemblyTemplate({
                 name: "Golden Vector Chain",

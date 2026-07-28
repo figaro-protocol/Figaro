@@ -62,7 +62,7 @@ const ANVIL_MNEMONIC = 'test test test test test test test test test test test j
 // Per-node clause plan, keyed by draw order (root first). Parents encode the
 // chain: 1←0, 2←0, 3←2, 4←3, 5←4.
 const NODE_PLAN: Array<{ parent: number | null; clauses: string[] }> = [
-    { parent: null, clauses: [C.cargo, C.incoterms, C.custody, C.acceptance, C.law, C.kleros, C.geo, C.modalities] },
+    { parent: null, clauses: [C.cargo, C.incoterms, C.custody, C.acceptance, C.geo, C.modalities] },
     { parent: 0, clauses: [C.merchant, C.acceptance] },
     { parent: 0, clauses: [C.merchant, C.geo] },
     { parent: 2, clauses: [C.courier, C.coldChain, C.custody, C.emissions, C.freightClass, C.handoff, C.proximity, C.geo] },
@@ -114,6 +114,16 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
                 const after = await currentIds();
                 nodeIds.push(after.find((id) => !before.has(id))!);
             }
+
+            // ASSEMBLY TERMS (design.scope: "assembly", ruled 2026-07-28):
+            // the dispute clauses compose ONCE in the AssemblyTermsPanel and
+            // the DESIGNER authors their values — terms of the composition's
+            // identity, folded into every agreement at checkout; never
+            // buyer-authored.
+            await page.getByTestId(`assembly-terms-clause-${C.law}`).check();
+            await page.getByTestId(`assembly-terms-field-${C.law}-applicableLaw`).fill('England-Wales');
+            await page.getByTestId(`assembly-terms-clause-${C.kleros}`).check();
+            await page.getByTestId(`assembly-terms-field-${C.kleros}-klerosCourt-general`).check();
 
             // Compose each node's clauses through the drawer's registry tab.
             for (let i = 0; i < NODE_PLAN.length; i++) {
