@@ -303,11 +303,14 @@ contract Deploy is Script {
         periods[1] = uint64(block.timestamp + 60 minutes);
         periods[2] = uint64(block.timestamp + 90 minutes);
 
-        // The two MANDATORY clauses earn nothing: committed on every order, so
-        // their count is the process count and carries no adoption signal.
-        bytes32[] memory excluded = new bytes32[](2);
+        // Protocol floor earns nothing: the two order-mandatory clauses plus the
+        // assembly-provenance clause — their count is the process count and
+        // carries no adoption signal for the author. (Assembly designers still
+        // accrue via recordAssemblyUsage, which credits the compositionHash.)
+        bytes32[] memory excluded = new bytes32[](3);
         excluded[0] = keccak256(abi.encode("figaro-commerce", uint64(1)));
         excluded[1] = keccak256(abi.encode("figaro-topology", uint64(1)));
+        excluded[2] = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
 
         UsageCounter counter = new UsageCounter(
             address(core),

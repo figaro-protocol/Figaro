@@ -85,11 +85,13 @@ contract RpgfIntegrationTest is Test {
         vm.warp(P0_END - 1000);
     }
 
-    /// @dev The mandatory clauses, excluded from scoring on every deployment.
+    /// @dev The protocol-floor clauses excluded from scoring on every deployment:
+    ///      the two order-mandatory clauses plus assembly-provenance.
     function _excluded() internal pure returns (bytes32[] memory e) {
-        e = new bytes32[](2);
+        e = new bytes32[](3);
         e[0] = keccak256(abi.encode("figaro-commerce", uint64(1)));
         e[1] = keccak256(abi.encode("figaro-topology", uint64(1)));
+        e[2] = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
     }
 
     function _sign(CommitmentTypes.Commitment memory c, uint256 key) internal view returns (bytes memory) {

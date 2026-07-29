@@ -186,10 +186,13 @@ contract DeployMainnet is Script {
         periods[1] = uint64(vm.envUint("RPGF_PERIOD_END_2"));
         periods[2] = uint64(vm.envUint("RPGF_PERIOD_END_3"));
 
-        // The two MANDATORY clauses earn nothing (see UsageCounter.excludedArtifact).
-        bytes32[] memory excluded = new bytes32[](2);
+        // Protocol floor earns nothing — the two order-mandatory clauses plus the
+        // assembly-provenance clause (see UsageCounter.excludedArtifact). Assembly
+        // designers still accrue via recordAssemblyUsage (credits the compositionHash).
+        bytes32[] memory excluded = new bytes32[](3);
         excluded[0] = keccak256(abi.encode("figaro-commerce", uint64(1)));
         excluded[1] = keccak256(abi.encode("figaro-topology", uint64(1)));
+        excluded[2] = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
 
         UsageCounter usageCounter = new UsageCounter(
             _core,

@@ -74,11 +74,13 @@ contract UsageCounterTest is Test {
         vm.warp(P0_END - 1000);
     }
 
-    /// @dev The mandatory clauses, excluded from scoring on every deployment.
+    /// @dev The protocol-floor clauses excluded from scoring on every deployment:
+    ///      the two order-mandatory clauses plus assembly-provenance.
     function _excluded() internal pure returns (bytes32[] memory e) {
-        e = new bytes32[](2);
+        e = new bytes32[](3);
         e[0] = keccak256(abi.encode("figaro-commerce", uint64(1)));
         e[1] = keccak256(abi.encode("figaro-topology", uint64(1)));
+        e[2] = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
     }
 
     // ── Helpers ─────────────────────────────────────────────────────
@@ -281,6 +283,7 @@ contract UsageCounterTest is Test {
         // at deploy, because a self-declared exclusion would never be declared.
         assertTrue(counter.excludedArtifact(keccak256(abi.encode("figaro-commerce", uint64(1)))));
         assertTrue(counter.excludedArtifact(keccak256(abi.encode("figaro-topology", uint64(1)))));
+        assertTrue(counter.excludedArtifact(PROV_KEY));
         assertFalse(counter.excludedArtifact(CARGO_KEY));
         assertFalse(counter.excludedArtifact(GEO_KEY));
     }

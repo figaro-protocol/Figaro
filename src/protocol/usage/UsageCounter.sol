@@ -79,14 +79,20 @@ contract UsageCounter {
     bytes32 public immutable provenanceClause;
 
     /// @notice Artifacts that earn nothing, set once at deploy and never written
-    ///         again — the MANDATORY clauses (`figaro-commerce`, `figaro-topology`).
-    /// @dev    They are excluded because they are committed on EVERY order, so
-    ///         their count is just "how many processes settled" and carries no
-    ///         signal about merit. Scoring them would pay their authors for the
-    ///         protocol's own floor. This is deploy-frozen for the same reason
-    ///         `boostedTag` is: WHICH artifacts the reward ignores is a reward
-    ///         decision, not something a registrar declares about itself — a
-    ///         self-declared exclusion would simply never be declared.
+    ///         again — the two order-mandatory clauses (`figaro-commerce`,
+    ///         `figaro-topology`) plus `figaro-assembly-provenance`.
+    /// @dev    None of the three carries an adoption signal for its author. The
+    ///         mandatory pair rides EVERY order and the provenance clause every
+    ///         ASSEMBLY-composed process, so their counts are just "how many
+    ///         processes settled" — protocol plumbing, not merit. Scoring them
+    ///         would pay their authors for the protocol's own floor. (Assembly
+    ///         usage is unaffected: `recordAssemblyUsage` credits the
+    ///         `compositionHash` — the assembly's designer of record — never the
+    ///         provenance clause, so excluding the clause does not touch it.)
+    ///         This is deploy-frozen for the same reason `boostedTag` is: WHICH
+    ///         artifacts the reward ignores is a reward decision, not something a
+    ///         registrar declares about itself — a self-declared exclusion would
+    ///         simply never be declared.
     mapping(bytes32 => bool) public excludedArtifact;
 
     /// @notice Period boundaries (unix seconds, strictly ascending). Usage lands
@@ -321,8 +327,9 @@ contract UsageCounter {
     ///      period, process); the pair cap drops a process entirely once reached,
     ///      so it feeds neither `c` nor `d`.
     function _accrue(bytes32 artifact, uint8 period, bytes32 processId, address buyer, address seller) internal {
-        // A mandatory clause rides every order; counting it would pay for the
-        // floor rather than for adoption.
+        // An excluded artifact — a mandatory clause on every order, or the
+        // provenance clause on every assembly-composed process — is protocol
+        // floor; counting it would pay for the floor rather than for adoption.
         if (excludedArtifact[artifact]) revert ArtifactExcluded(artifact);
         if (processCounted[artifact][period][processId]) revert AlreadyCounted();
 
