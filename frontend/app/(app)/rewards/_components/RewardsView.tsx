@@ -5,8 +5,8 @@
  * panel and not an application form: usage is COUNTED ON CHAIN as it happens
  * (a settled order, the artifact proven present in the agreement both parties
  * signed), a period's counts stop moving the moment it ends, and the wallet
- * then claims its artifacts' pro-rata share of that period's tranche — capped
- * at 15%. There is nothing to post, bond, challenge or adjudicate. The
+ * then claims its artifacts' UNIFORM pro-rata share of that period's tranche —
+ * no cap. There is nothing to post, bond, challenge or adjudicate. The
  * marketing telling lives at /clause-rewards; this page is the doing surface.
  */
 
@@ -78,8 +78,9 @@ export function RewardsView() {
                 Usage is counted on chain as it happens — a settled process, the artifact proven
                 present in the agreement both parties signed — and buckets into fixed periods.
                 Once a period ends its counts are final, and each author claims their artifacts&apos;
-                share of that period&apos;s tranche: their score over the period&apos;s total, capped
-                per wallet{rewards.capPercent > 0 ? ` at ${rewards.capPercent}%` : ""}. Nothing is
+                share of that period&apos;s tranche: their score over the period&apos;s total, uniform
+                pro rata with no cap. Eligibility is a live ETH stake — you earn only while your
+                artifact&apos;s stake stays live. Nothing is
                 posted, bonded, or disputed; there is no committee and no application.
             </p>
 
@@ -116,7 +117,7 @@ export function RewardsView() {
                                 <p className="text-sm text-ink-muted mb-1" data-testid={`tranche-total-score-${t.trancheId}`}>
                                     period score across all artifacts:{" "}
                                     <span className="font-mono">{t.totalScore.toString()}</span> · minted so far{" "}
-                                    {formatUnits(t.minted, 18)} FLORIN · per-wallet ceiling {formatUnits(t.cap, 18)} FLORIN
+                                    {formatUnits(t.minted, 18)} FLORIN
                                 </p>
                                 {t.accruals.length > 0 && (
                                     <div className="mt-3 mb-3" data-testid={`tranche-accruals-${t.trancheId}`}>

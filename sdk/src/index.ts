@@ -296,15 +296,10 @@ export {
     computeUsageAccruals,
     fetchUsageRecords,
     usageScore,
-    usageWeightOf,
     icbrt,
     RPGF_FORMULA,
     RPGF_PAIR_CAP,
-    RPGF_BOOSTED_WEIGHT,
-    RPGF_BASE_WEIGHT,
     RPGF_SCORE_SCALE,
-    RPGF_CAP_NUMERATOR,
-    RPGF_CAP_DENOMINATOR,
     RPGF_TRANCHE_COUNT,
 } from "./rpgf/index.js";
 export type {

@@ -4,9 +4,9 @@
  * The RPGF distribution's runtime surface at /rewards, against the
  * count-it-when-it-happens design: `UsageCounter` records verified usage of a
  * clause or assembly at the moment a process settles, accrual buckets into
- * fixed periods, and `RpgfMinter.claim` pays a closed period's tranche pro
- * rata (capped at 15%). There is no root to post, no bond, no challenge and
- * no forum — every one of those tests was deleted with the apparatus.
+ * fixed periods, and `RpgfMinter.claim` pays a closed period's tranche UNIFORM
+ * pro rata (no cap), to live-staked authors. There is no root to post, no bond,
+ * no challenge and no forum — every one of those tests was deleted with the apparatus.
  *
  * TIME IS COMPRESSED, NOT WARPED. `claim` gates on `UsageCounter.periodClosed`,
  * so the reward leg is undrivable against a schedule measured in days —

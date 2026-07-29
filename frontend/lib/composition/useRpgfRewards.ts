@@ -10,7 +10,8 @@
  * artifact in the agreement both parties signed — so a tranche is arithmetic
  * over numbers that are already final. A period's counts stop moving the
  * moment it ends; the minter pays a wallet its artifacts' score over the
- * period's total, capped at 15% of the tranche. The one act is `claim`.
+ * period's total, UNIFORM pro rata (no cap), to live-staked authors of record.
+ * The one act is `claim`.
  *
  * The wallet's artifacts are DISCOVERED from the two registries' own event
  * streams (clauses by registrar, assemblies by author) — the same open-world
@@ -25,8 +26,8 @@ import { getRpgfMinter, getUsageCounter } from "@/lib/composition/contracts";
 
 /** One artifact the connected wallet is author of record for, with the
  *  accrual it carried in a given period. `c` = distinct settled processes,
- *  `d` = distinct (buyer, seller) pairs, `score` = the weighted breadth
- *  measure the payout divides by. */
+ *  `d` = distinct (buyer, seller) pairs, `score` = the uniform breadth
+ *  measure (`icbrt(c·d²·1e18)`) the payout divides by. */
 export interface RpgfArtifactAccrual {
     /** Clause idHash or assembly compositionHash — the artifact key. */
     artifact: `0x${string}`;
@@ -44,8 +45,6 @@ export interface RpgfTrancheState {
     amount: bigint;
     /** Florins already minted from it. */
     minted: bigint;
-    /** The per-wallet ceiling — `amount × 15 / 100`. */
-    cap: bigint;
     /** True once the matching accrual period has ended: counts are final and
      *  the tranche is claimable. */
     periodClosed: boolean;
@@ -70,7 +69,6 @@ export function useRpgfRewards() {
     const { writeContractAsync } = useWriteContract();
 
     const [tranches, setTranches] = useState<RpgfTrancheState[]>([]);
-    const [capPercent, setCapPercent] = useState<number>(0);
     const [refreshNonce, setRefreshNonce] = useState(0);
 
     const refresh = useCallback(() => setRefreshNonce((n) => n + 1), []);
@@ -124,10 +122,8 @@ export function useRpgfRewards() {
         (async () => {
             const minterBase = { address: minter, abi: RPGF_MINTER_ABI } as const;
             const counterBase = { address: counter, abi: USAGE_COUNTER_ABI } as const;
-            const [trancheCount, capNumerator, capDenominator, mine] = await Promise.all([
+            const [trancheCount, mine] = await Promise.all([
                 publicClient.readContract({ ...minterBase, functionName: "TRANCHE_COUNT" }),
-                publicClient.readContract({ ...minterBase, functionName: "CAP_NUMERATOR" }),
-                publicClient.readContract({ ...minterBase, functionName: "CAP_DENOMINATOR" }),
                 discoverArtifacts(),
             ]);
             const artifacts = mine.map((m) => m.artifact);
@@ -187,7 +183,6 @@ export function useRpgfRewards() {
                         trancheId,
                         amount,
                         minted,
-                        cap: (amount * capNumerator) / capDenominator,
                         periodClosed,
                         totalScore,
                         accruals,
@@ -198,7 +193,6 @@ export function useRpgfRewards() {
                 }),
             );
             if (cancelled) return;
-            setCapPercent(Number((capNumerator * 100n) / capDenominator));
             setTranches(rows);
         })().catch(() => {
             /* resolved-empty: the page renders the unavailable state */
@@ -238,8 +232,6 @@ export function useRpgfRewards() {
         available: !!minter && !!counter,
         account,
         tranches,
-        /** The per-wallet ceiling as a percentage of a tranche (15). */
-        capPercent,
         claim,
         refresh,
     };

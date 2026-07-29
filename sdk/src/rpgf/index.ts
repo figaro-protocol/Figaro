@@ -11,8 +11,10 @@
  * `UsageCounter.icbrt` value for value.
  *
  * Pipeline: `fetchUsageRecords` (UsageRecorded logs) → `computeUsageAccruals`
- * (pure: idempotence, pair cap, weight, score) → `computeRpgfAllocations`
- * (pure: author-of-record aggregation, pro-rata share, 15% cap).
+ * (pure: idempotence, pair cap, uniform score) → `computeRpgfAllocations`
+ * (pure: author-of-record aggregation, uniform pro-rata share — no cap).
+ * The seller-side live-stake gate is applied ON CHAIN before a UsageRecorded
+ * log exists, so replaying the emitted stream needs no stake check here.
  */
 
 import type { Address, Hex, PublicClient } from "viem";
@@ -27,14 +29,8 @@ import formula from "./formula.json" with { type: "json" };
 export const RPGF_FORMULA = formula;
 /** `UsageCounter.PAIR_CAP` — processes one (buyer, seller) pair contributes. */
 export const RPGF_PAIR_CAP: number = formula.parameters.pairCap;
-/** `UsageCounter.BOOSTED_WEIGHT`, in milli (integer thousandths). */
-export const RPGF_BOOSTED_WEIGHT = BigInt(formula.parameters.boostedWeight);
-/** `UsageCounter.BASE_WEIGHT`, in milli. */
-export const RPGF_BASE_WEIGHT = BigInt(formula.parameters.baseWeight);
 /** The fixed-point scale inside the cube root (10^18). */
 export const RPGF_SCORE_SCALE = BigInt(formula.parameters.scoreScale);
-export const RPGF_CAP_NUMERATOR = BigInt(formula.parameters.capNumerator);
-export const RPGF_CAP_DENOMINATOR = BigInt(formula.parameters.capDenominator);
 /** `RpgfMinter.TRANCHE_COUNT` — tranche `i` pays for accrual period `i`. */
 export const RPGF_TRANCHE_COUNT: number = formula.parameters.trancheCount;
 
@@ -57,11 +53,12 @@ export function icbrt(n: bigint): bigint {
     return lo;
 }
 
-/** `weight * icbrt(c * d^2 * 10^18)` — `UsageCounter._score`. Breadth (distinct
- *  counterparty pairs) weighs twice as heavily as volume. */
-export function usageScore(weight: bigint, c: bigint, d: bigint): bigint {
+/** `icbrt(c * d^2 * 10^18)` — `UsageCounter._score`. Breadth (distinct
+ *  counterparty pairs) weighs twice as heavily as volume. UNIFORM: no weight
+ *  multiplier — every artifact's score is its real usage alone. */
+export function usageScore(c: bigint, d: bigint): bigint {
     if (c === 0n || d === 0n) return 0n;
-    return weight * icbrt(c * d * d * RPGF_SCORE_SCALE);
+    return icbrt(c * d * d * RPGF_SCORE_SCALE);
 }
 
 // ── Usage records (the counter's event stream) ───────────────────────
@@ -96,31 +93,13 @@ export interface UsagePeriodAccrual {
     totalScore: bigint;
 }
 
-/** The weight an artifact carries — `UsageCounter.weightOf`. A clause whose
- *  registered `rpgfTag` equals the counter's (non-zero) `boostedTag` earns the
- *  boosted weight; everything else, and every assembly, earns the base weight.
- *  Tags come from `ClauseRegistered` logs; an unknown artifact is untagged. */
-export function usageWeightOf(
-    artifact: Hex,
-    tagByArtifact: ReadonlyMap<Hex, Hex>,
-    boostedTag: Hex | undefined,
-): bigint {
-    if (!boostedTag || /^0x0*$/.test(boostedTag)) return RPGF_BASE_WEIGHT;
-    const tag = tagByArtifact.get(artifact.toLowerCase() as Hex);
-    return tag && tag.toLowerCase() === boostedTag.toLowerCase() ? RPGF_BOOSTED_WEIGHT : RPGF_BASE_WEIGHT;
-}
-
 /** Replay the counter's counting rules over a record stream: idempotence per
  *  (artifact, period, process), the pair cap (a capped process is dropped
- *  entirely — it feeds neither `c` nor `d`), then weight and score. Records are
+ *  entirely — it feeds neither `c` nor `d`), then the uniform score. Records are
  *  replayed in (blockNumber, logIndex) order, which is the order the chain
- *  applied them in.
- *
- *  `weightOf` defaults to the base weight; pass `usageWeightOf` bound to the
- *  registry's tags to mirror a deployment with a boosted tag. */
+ *  applied them in. */
 export function computeUsageAccruals(
     records: readonly UsageRecord[],
-    weightOf: (artifact: Hex) => bigint = () => RPGF_BASE_WEIGHT,
 ): Map<number, UsagePeriodAccrual> {
     const sorted = [...records].sort((a, b) =>
         a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : a.blockNumber < b.blockNumber ? -1 : 1,
@@ -150,7 +129,7 @@ export function computeUsageAccruals(
         const accrual = period.byArtifact.get(artifact) ?? { c: 0n, d: 0n, score: 0n };
         accrual.c += 1n;
         if (seen === 0) accrual.d += 1n; // first process from this pair
-        const updated = usageScore(weightOf(artifact), accrual.c, accrual.d);
+        const updated = usageScore(accrual.c, accrual.d);
         period.totalScore = period.totalScore + updated - accrual.score;
         accrual.score = updated;
         period.byArtifact.set(artifact, accrual);
@@ -167,28 +146,23 @@ export interface RpgfAllocation {
     amount: bigint;
     /** The wallet's summed artifact score for the period. */
     score: bigint;
-    /** True when the 15% ceiling bound (the excess stays unminted). */
-    capped: boolean;
 }
 
 /** The payout: a period's accrual plus each artifact's author of record gives
- *  every wallet's tranche entitlement — `floor(trancheAmount * score / total)`,
- *  clamped to `floor(trancheAmount * 15 / 100)`.
- *
- *  THE CAP IS NOT WATER-FILLED. `RpgfMinter` applies it at claim time and the
- *  excess stays unminted, so a capped wallet takes nothing from anyone else's
- *  share — the mirror must not redistribute it either.
+ *  every wallet's tranche entitlement — UNIFORM pro rata,
+ *  `floor(trancheAmount * score / total)`, with no cap.
  *
  *  `authorOf` maps artifact key → author of record (clause registrar or
  *  assembly author); an artifact with no author is unclaimable and its score
- *  still counts toward the denominator, exactly as on chain. */
+ *  still counts toward the denominator, exactly as on chain. Author-of-record
+ *  eligibility is gated on a LIVE stake ON CHAIN (`RpgfMinter._isAuthor`); pass
+ *  only live authors here to mirror it. */
 export function computeRpgfAllocations(
     period: UsagePeriodAccrual,
     authorOf: ReadonlyMap<Hex, Address>,
     trancheAmount: bigint,
 ): RpgfAllocation[] {
     if (period.totalScore === 0n) return [];
-    const ceiling = (trancheAmount * RPGF_CAP_NUMERATOR) / RPGF_CAP_DENOMINATOR;
 
     const walletScores = new Map<Address, bigint>();
     for (const [artifact, accrual] of period.byArtifact) {
@@ -201,10 +175,9 @@ export function computeRpgfAllocations(
     const allocations: RpgfAllocation[] = [];
     for (const [account, raw] of walletScores) {
         const score = raw > period.totalScore ? period.totalScore : raw;
-        const share = (trancheAmount * score) / period.totalScore;
-        const amount = share > ceiling ? ceiling : share;
+        const amount = (trancheAmount * score) / period.totalScore;
         if (amount === 0n) continue;
-        allocations.push({ account, amount, score, capped: amount === ceiling });
+        allocations.push({ account, amount, score });
     }
     return allocations.sort((a, b) => (a.account < b.account ? -1 : 1));
 }

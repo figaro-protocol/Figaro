@@ -167,7 +167,7 @@ contract Deploy is Script {
         // the 600M distribution registers here, before any other genesis step.
         // Nothing is posted, bonded, or challenged: UsageCounter records verified
         // usage as it happens and the minter pays pro rata from a closed period.
-        _deployRpgf(florin, core, clauses, assemblies);
+        _deployRpgf(florin, core, clauses, assemblies, sellers);
 
         _deployTreasuryGenesis(florin, vm.addr(deployerPrivateKey));
 
@@ -277,7 +277,13 @@ contract Deploy is Script {
     ///      There is no donation rail to deploy: a MatchPool IS its own rail,
     ///      and a pool is NOT a genesis contract — one instance is one round,
     ///      deployed by whoever opens it (the e2e suite deploys its own per run).
-    function _deployRpgf(FlorinToken florin, FigaroCore core, ClauseRegistry clauses, AssemblyRegistry assemblies)
+    function _deployRpgf(
+        FlorinToken florin,
+        FigaroCore core,
+        ClauseRegistry clauses,
+        AssemblyRegistry assemblies,
+        SellerRegistry sellers
+    )
         internal
     {
         // Accrual periods and RPGF tranches are ONE schedule, configured
@@ -316,8 +322,7 @@ contract Deploy is Script {
 
         UsageCounter counter = new UsageCounter(
             address(core),
-            address(clauses),
-            keccak256("geo"), // the substrate-broadening tag; membership stays permissionless
+            address(sellers), // seller-side live-stake gate: usage counts only for live-staked sellers
             keccak256(abi.encode("figaro-assembly-provenance", uint64(1))), // proves the assembly leg
             excluded,
             periods

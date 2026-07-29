@@ -1,44 +1,36 @@
 {
     "formula": "figaro-rpgf",
-    "version": 2,
-    "description": "The scoring and payout mechanism of the retroactive distribution, stated in one place. NOTHING IS POSTED AND NOTHING IS ANCHORED: usage is counted on chain as it happens by UsageCounter, and RpgfMinter pays from those already-final numbers, so there is no root to post, no bond, no challenge and no formulaHash. This file is therefore the normative PROSE statement of what the contracts compute, and the machine-readable `parameters` the off-chain mirror (sdk/src/rpgf) derives its constants from. The mirror exists for display and verification — recomputing what the chain already holds — never for posting an answer. Integer arithmetic throughout; no floating point anywhere.",
+    "version": 3,
+    "description": "The scoring and payout mechanism of the 600M retroactive distribution, stated in one place. NOTHING IS POSTED AND NOTHING IS ANCHORED: usage is counted on chain as it happens by UsageCounter, and RpgfMinter pays from those already-final numbers, so there is no root to post, no bond, no challenge and no formulaHash. The reward is UNIFORM (no tag, category or weight) and UNCAPPED; Sybil resistance is the two-sided LIVE ETH STAKE, not a formula lever. This file is the normative PROSE statement of what the contracts compute, and the machine-readable `parameters` the off-chain mirror (sdk/src/rpgf) derives its constants from. The mirror exists for display and verification — recomputing what the chain already holds — never for posting an answer. Integer arithmetic throughout; no floating point anywhere.",
     "parameters": {
         "pairCap": 5,
-        "boostedWeight": 3000,
-        "baseWeight": 1000,
         "scoreScale": "1000000000000000000",
-        "capNumerator": 15,
-        "capDenominator": 100,
         "trancheCount": 3
     },
     "parameterUnits": {
-        "boostedWeight": "milli (integer thousandths) — UsageCounter.BOOSTED_WEIGHT",
-        "baseWeight": "milli (integer thousandths) — UsageCounter.BASE_WEIGHT",
         "scoreScale": "10^18, the fixed-point scale inside the cube root so flooring error is negligible",
-        "pairCap": "UsageCounter.PAIR_CAP",
-        "capNumerator/capDenominator": "RpgfMinter.CAP_NUMERATOR / CAP_DENOMINATOR — the per-wallet ceiling on a tranche",
+        "pairCap": "UsageCounter.PAIR_CAP — processes one (buyer, seller) pair contributes to one artifact in one period",
         "trancheCount": "RpgfMinter.TRANCHE_COUNT. Tranche i pays for UsageCounter period i; the two schedules are configured consistently at deploy."
     },
     "recording": {
-        "call": "UsageCounter.recordUsage(order, artifact, sectionData, proof) — permissionless. The proof is what is trusted, never the caller; recording is gas-paid by whoever benefits, usually the artifact's author.",
+        "call": "UsageCounter.recordUsage(order, artifact, sectionHash, proof) — permissionless. Only the section FINGERPRINT (keccak256 of the committed bytes) reaches calldata, never the preimage. The proof is what is trusted, never the caller; recording is gas-paid by whoever benefits, usually the artifact's author.",
         "resolvedOrder": "The order hash is recomputed from the signed Commitment struct and FigaroCore.orderStatus(orderHash) must equal 2 (RESOLVED). Usage is what a settled process leaves behind: an open process counts for nothing, and an unknown order reverts.",
-        "inclusion": "The artifact must be merkle-included in the order's signed agreementHash under AttestationCoordinator's leaf shape, byte for byte: keccak256(bytes.concat(keccak256(abi.encodePacked(artifact, keccak256(sectionData))))). The artifact key is the ClauseRegistry idHash for a clause — keccak256(abi.encode(clauseId, version)) — or the AssemblyRegistry compositionHash for an assembly. There is no attestation, no provenance clause and no article classification in the counting path.",
+        "sellerStake": "SELLER-SIDE LIVE-STAKE GATE: the process's seller-of-record (order.seller) must hold a live SellerRegistry stake — SellerRegistry.registered(order.seller) must be true. An unregistered or withdrawn seller's settled trade does NOT count (SellerNotStaked). This is the breadth Sybil defense: fabricating d distinct pairs costs one base-currency (ETH) stake per fake seller.",
+        "inclusion": "The artifact must be merkle-included in the order's signed agreementHash under AttestationCoordinator's leaf shape, byte for byte: keccak256(bytes.concat(keccak256(abi.encodePacked(artifact, sectionHash)))). The artifact key is the ClauseRegistry idHash for a clause — keccak256(abi.encode(clauseId, version)) — or the AssemblyRegistry compositionHash for an assembly. There is no attestation, no provenance clause and no article classification in the counting path.",
         "period": "Usage lands in UsageCounter.currentPeriod() — the first period whose end is still in the future. Once the last period has ended, accrual is closed forever and recordUsage reverts.",
         "idempotence": "One process counts once per artifact per period; a repeat reverts (AlreadyCounted).",
-        "pairCap": "A single (buyer, seller) pair contributes at most 5 processes to one artifact in one period, keyed by keccak256(abi.encodePacked(order.buyer, order.seller)). Beyond the cap the process is DROPPED ENTIRELY — it feeds neither c nor d — and the call reverts (PairCapReached). Breadth has to be real."
+        "pairCap": "A single (buyer, seller) pair contributes at most 5 processes to one artifact in one period, keyed by keccak256(abi.encodePacked(order.buyer, order.seller)). Beyond the cap the process is DROPPED ENTIRELY — it feeds neither c nor d — and the call reverts (PairCapReached). This bounds repeat trade within a live pair; the seller-stake gate prices fabricating NEW pairs."
     },
     "accrual": {
         "c": "Distinct settled processes that used the artifact in the period.",
         "d": "Distinct (buyer, seller) pairs across those processes — incremented only on a pair's first counted process.",
-        "weight": "weightOf(artifact) = 3000 if ClauseRegistry.rpgfTagOf(artifact) equals the counter's immutable boostedTag (and that tag is non-zero), else 1000. Assemblies carry no tag, so they always weigh 1000. WHICH tag pays is frozen at deploy; MEMBERSHIP of the tag stays permissionless on the registry.",
-        "score": "score = weight * icbrt(c * d * d * 10^18), where icbrt is the floor integer cube root. Breadth is weighted twice as heavily as volume: the score is proportional to c^(1/3) * d^(2/3). Value is deliberately not a term — the protocol's cost to move one unit equals its cost to move a trillion, and the adoption signal is the same per counterparty pair regardless of quanta.",
+        "score": "score = icbrt(c * d * d * 10^18), where icbrt is the floor integer cube root. UNIFORM across artifacts — no tag, category or weight multiplier: every artifact's score is its real usage alone. Breadth is weighted twice as heavily as volume: the score is proportional to c^(1/3) * d^(2/3). Value is deliberately not a term — the protocol's cost to move one unit equals its cost to move a trillion, and the adoption signal is the same per counterparty pair regardless of quanta.",
         "totalScoreIn": "The period's summed artifact scores, maintained in O(1) as a delta on every record. Final once the period ends."
     },
     "payout": {
         "gate": "RpgfMinter.claim(trancheId, artifacts) requires UsageCounter.periodClosed(trancheId): a tranche pays for its own period, whose counts stop moving the moment it ends. No snapshot, no checkpoint array, no history walk — and claims never expire, because a closed period's arithmetic is stable forever.",
-        "authorOfRecord": "Every passed artifact is verified against its own registry — ClauseRegistry.depositOf(idHash).registrar for a clause, AssemblyRegistry.bindings(compositionHash).author for an assembly. The caller's list is a lookup key, never a claim of ownership; an artifact the caller does not author reverts (NotAuthorOfRecord).",
-        "entitlement": "score = sum of the caller's artifacts' scores for the period (clamped to the period total); amount = floor(trancheAmount[trancheId] * score / totalScoreIn(trancheId)).",
-        "cap": "amount is then clamped to floor(trancheAmount * 15 / 100). THE EXCESS IS NOT REDISTRIBUTED — water-filling it back over the other recipients would require every wallet's score at once, the global step this design exists to avoid, so the excess simply stays unminted. The cap binds identically for everyone; only the redistribution is gone. Flooring dust likewise stays unminted: the tranche amount is a ceiling, not a target.",
+        "authorOfRecord": "Every passed artifact is verified against its own registry with a LIVE stake — ClauseRegistry.depositOf(idHash) must have registrar == caller AND withdrawn == false; AssemblyRegistry.bindings(compositionHash) must have author == caller AND depositWithdrawn == false. This is the AUTHOR-SIDE half of the live-ETH-stake gate: you earn RPGF only while your artifact's stake stays live. An artifact the caller does not author, or whose stake is withdrawn, reverts (NotAuthorOfRecord). The caller's list is a lookup key, never a claim of ownership.",
+        "entitlement": "score = sum of the caller's artifacts' scores for the period (clamped to the period total); amount = floor(trancheAmount[trancheId] * score / totalScoreIn(trancheId)). UNIFORM PRO RATA — no per-wallet cap. The reward tracks real usage directly, and the fixed pool is one a farmer dilutes, never inflates. Flooring dust stays unminted: the tranche amount is a ceiling, not a target.",
         "onceOnly": "One claim per wallet per tranche — a wallet passes every artifact it authored in that single call. The budget is enforced twice: RpgfMinter.minted[trancheId] against trancheAmount, and the outer FlorinToken minter cap registered at genesis."
     },
     "reads": {
@@ -46,7 +38,8 @@
         "consumed": [
             "UsageCounter.UsageRecorded(bytes32 indexed artifact, uint8 indexed period, bytes32 indexed processId, bytes32 pairKey, uint64 c, uint64 d, uint256 score)",
             "UsageCounter.accrualOf(artifact, period) / totalScoreIn(period) / periodClosed(period)",
-            "ClauseRegistry.ClauseRegistered — the artifact's rpgfTag and registrar of record",
+            "SellerRegistry.SellerRegistered / SellerWithdrawn — the seller-of-record's live-stake state (the seller-side gate)",
+            "ClauseRegistry.ClauseRegistered — the artifact's registrar of record (author-side gate reads depositOf.withdrawn)",
             "AssemblyRegistry.AssemblyRegistered — the compositionHash's author of record"
         ]
     }

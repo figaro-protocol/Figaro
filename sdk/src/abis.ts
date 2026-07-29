@@ -263,18 +263,14 @@ export const USAGE_COUNTER_ABI = parseAbi([
 
     // ── Composition + schedule ──────────────────────────────────────
     "function core() view returns (address)",
-    "function clauses() view returns (address)",
-    "function boostedTag() view returns (bytes32)",
+    "function sellers() view returns (address)",
     "function periodEnd(uint256) view returns (uint64)",
     "function periodCount() view returns (uint256)",
     "function currentPeriod() view returns (uint8)",
     "function periodClosed(uint8 period) view returns (bool)",
 
-    // ── Weights (milli — integer thousandths) ───────────────────────
-    "function BOOSTED_WEIGHT() view returns (uint32)",
-    "function BASE_WEIGHT() view returns (uint32)",
+    // ── Breadth cap ─────────────────────────────────────────────────
     "function PAIR_CAP() view returns (uint8)",
-    "function weightOf(bytes32 artifact) view returns (uint32)",
 
     // ── Accrual ─────────────────────────────────────────────────────
     "function accrualOf(bytes32 artifact, uint8 period) view returns (uint64 c, uint64 d, uint256 score)",
@@ -296,6 +292,7 @@ export const USAGE_COUNTER_ABI = parseAbi([
     "error AlreadyCounted()",
     "error PairCapReached()",
     "error InvalidInclusionProof()",
+    "error SellerNotStaked(address seller)",
 ]);
 
 export const EV_USAGE_RECORDED = parseAbiItem(
@@ -306,8 +303,8 @@ export const EV_USAGE_RECORDED = parseAbiItem(
 //
 // The 600M retroactive distribution: three declining tranches, tranche `i`
 // paying for UsageCounter period `i`. There is nothing to post, nothing to
-// bond and nothing to dispute — a claim is arithmetic over a closed period's
-// final counts, capped at 15% of the tranche per wallet.
+// bond and nothing to dispute — a claim is UNIFORM pro rata over a closed
+// period's final counts (no cap), to authors of record with a LIVE stake.
 
 export const RPGF_MINTER_ABI = parseAbi([
     "function claim(uint8 trancheId, bytes32[] artifacts) external",
@@ -316,13 +313,11 @@ export const RPGF_MINTER_ABI = parseAbi([
     "function minted(uint8 trancheId) view returns (uint256)",
     "function claimed(uint8 trancheId, address account) view returns (bool)",
     "function TRANCHE_COUNT() view returns (uint8)",
-    "function CAP_NUMERATOR() view returns (uint256)",
-    "function CAP_DENOMINATOR() view returns (uint256)",
     "function florin() view returns (address)",
     "function counter() view returns (address)",
     "function clauses() view returns (address)",
     "function assemblies() view returns (address)",
-    "event Claimed(uint8 indexed trancheId, address indexed account, uint256 amount, uint256 score, bool capped)",
+    "event Claimed(uint8 indexed trancheId, address indexed account, uint256 amount, uint256 score)",
     "error ZeroAddress()",
     "error UnknownTranche(uint8 trancheId)",
     "error TrancheStillAccruing(uint8 trancheId)",

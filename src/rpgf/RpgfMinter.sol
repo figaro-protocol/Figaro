@@ -47,11 +47,13 @@ interface IAssemblyAuthor {
 ///         `claim` therefore requires `periodClosed` and reads a number no later
 ///         record can change. No checkpoints, no history walk.
 ///
-/// @dev    THE CAP IS APPLIED AT CLAIM TIME. A wallet takes at most 15% of a
-///         tranche. Water-filling the excess back over the other recipients
-///         would require every wallet's score at once — the global step this
-///         design exists to avoid — so the excess stays unminted. The cap binds
-///         identically for everyone; only the redistribution is gone.
+/// @dev    UNIFORM PRO RATA — no per-wallet cap. A wallet's share is its
+///         artifacts' score over the period's total, paid straight. Sybil
+///         resistance is the two-sided LIVE ETH STAKE (author eligibility here,
+///         seller-gated usage in `UsageCounter`), not a cap: fabricating breadth
+///         costs one base-currency stake per fake identity, and the 600M is a
+///         FIXED pool a farmer DILUTES, never inflates. The old 15% cap was
+///         arbitrary and left florins unminted; it is gone.
 ///
 /// @dev    No owner, no pause, no sweep, no claim expiry. Claims never expire
 ///         because a closed period's arithmetic is stable forever. The budget is
@@ -70,10 +72,6 @@ contract RpgfMinter {
 
     uint8 public constant TRANCHE_COUNT = 3;
 
-    /// @notice Per-wallet ceiling: 15/100 of the tranche.
-    uint256 public constant CAP_NUMERATOR = 15;
-    uint256 public constant CAP_DENOMINATOR = 100;
-
     /// @notice Florin budget per tranche. Tranche `i` pays for accrual period
     ///         `i` — the counter's periods and these tranches are one schedule,
     ///         configured consistently at deploy.
@@ -88,7 +86,7 @@ contract RpgfMinter {
 
     // ── Events ──────────────────────────────────────────────────────
 
-    event Claimed(uint8 indexed trancheId, address indexed account, uint256 amount, uint256 score, bool capped);
+    event Claimed(uint8 indexed trancheId, address indexed account, uint256 amount, uint256 score);
 
     // ── Errors ──────────────────────────────────────────────────────
 
@@ -160,17 +158,20 @@ contract RpgfMinter {
         claimed[trancheId][msg.sender] = true;
         minted[trancheId] = spent;
 
-        emit Claimed(trancheId, msg.sender, amount, score, amount == _cap(trancheId));
+        emit Claimed(trancheId, msg.sender, amount, score);
 
         florin.mint(msg.sender, amount);
     }
 
     // ── Internals ───────────────────────────────────────────────────
 
-    /// @dev Sum the caller's artifacts' scores for the period, take the pro-rata
-    ///      share of the tranche, then cap. A repeated artifact in the list
-    ///      cannot inflate the result past the cap, and the period's total-score
-    ///      denominator makes aggregate over-allocation impossible.
+    /// @dev Sum the caller's artifacts' scores for the period and take the
+    ///      pro-rata share of the tranche. A repeated artifact in the list cannot
+    ///      inflate the result — each is verified to the caller and scores are
+    ///      read from the counter — and the period's total-score denominator
+    ///      makes aggregate over-allocation impossible. UNIFORM pro rata: no
+    ///      per-wallet cap. The reward tracks real usage directly, and the fixed
+    ///      600M pool is one a farmer DILUTES, never inflates.
     function _entitlement(uint8 trancheId, address account, bytes32[] calldata artifacts)
         internal
         view
@@ -189,21 +190,25 @@ contract RpgfMinter {
         if (score > total) score = total;
 
         amount = (trancheAmount[trancheId] * score) / total;
-        uint256 ceiling = _cap(trancheId);
-        if (amount > ceiling) amount = ceiling;
     }
 
-    /// @dev Author of record — the clause registrar or the assembly author. An
-    ///      artifact is one or the other; both registries are consulted because
-    ///      the families are parallel and neither knows the other exists.
+    /// @dev Author of record with a LIVE stake — the clause registrar or the
+    ///      assembly author, each only while their registration deposit is
+    ///      un-withdrawn. An artifact is one or the other; both registries are
+    ///      consulted because the families are parallel and neither knows the
+    ///      other exists.
+    ///
+    ///      The `!withdrawn` requirement is the AUTHOR-SIDE half of the two-sided
+    ///      live-ETH-stake gate (its seller-side half lives in `UsageCounter`):
+    ///      you earn RPGF only while your artifact's stake stays live. Withdraw
+    ///      and you de-surface AND forfeit future reward — the stake is aligned
+    ///      upside (more trade → more base-currency demand → ETH appreciates for
+    ///      every registry staker), not a cost, so keeping it live is the honest
+    ///      author's default.
     function _isAuthor(bytes32 artifact, address account) internal view returns (bool) {
-        (address registrar,) = clauses.depositOf(artifact);
-        if (registrar != address(0)) return registrar == account;
-        (address author,,,) = assemblies.bindings(artifact);
-        return author != address(0) && author == account;
-    }
-
-    function _cap(uint8 trancheId) internal view returns (uint256) {
-        return (trancheAmount[trancheId] * CAP_NUMERATOR) / CAP_DENOMINATOR;
+        (address registrar, bool withdrawn) = clauses.depositOf(artifact);
+        if (registrar != address(0)) return registrar == account && !withdrawn;
+        (address author,, bool depositWithdrawn,) = assemblies.bindings(artifact);
+        return author != address(0) && author == account && !depositWithdrawn;
     }
 }

@@ -84,8 +84,7 @@ contract RpgfMinterTest is Test {
     // ── Pro-rata payout ─────────────────────────────────────────────
 
     function test_paysProRataOfTheClosedPeriod() public {
-        // Shares kept under the 15% cap so this exercises the division rather
-        // than the ceiling — the cap has its own tests below.
+        // Straight pro-rata of the closed period's total — no cap.
         counter.setScore(A_KEY, 0, 100);
         counter.setScore(B_KEY, 0, 50);
         counter.setScore(ASM, 0, 850);
@@ -105,7 +104,7 @@ contract RpgfMinterTest is Test {
         counter.setClosed(0, true);
         vm.prank(carol);
         minter.claim(0, _one(ASM));
-        assertEq(florin.balanceOf(carol), (T0 * 500) / 500 * 15 / 100); // sole recipient → capped
+        assertEq(florin.balanceOf(carol), T0); // sole recipient → whole tranche (no cap)
     }
 
     function test_multipleArtifactsSumInOneClaim() public {
@@ -155,6 +154,20 @@ contract RpgfMinterTest is Test {
         minter.claim(0, _one(keccak256("never-registered")));
     }
 
+    function test_withdrawnAuthorForfeitsTheReward() public {
+        // Author-side live-stake gate: you earn RPGF only while your stake is
+        // live. Withdraw and the claim fails — the artifact is no longer yours
+        // of record.
+        counter.setScore(A_KEY, 0, 100);
+        counter.setClosed(0, true);
+        vm.prank(alice);
+        clauses.withdrawDeposit(A_KEY);
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, A_KEY, alice));
+        minter.claim(0, _one(A_KEY));
+    }
+
     // ── Once per wallet per tranche ─────────────────────────────────
 
     function test_claimsOncePerTranche() public {
@@ -181,23 +194,25 @@ contract RpgfMinterTest is Test {
         assertEq(florin.balanceOf(alice), (T0 / 10) + (200_000_000 ether / 10));
     }
 
-    // ── The cap ─────────────────────────────────────────────────────
+    // ── Uniform pro rata (no cap) ────────────────────────────────────
 
-    function test_capsAtFifteenPercent() public {
-        // A dominant wallet takes the cap; the excess simply stays unminted
-        // rather than being water-filled back (the global step this design
-        // exists to avoid).
+    function test_noCap_dominantWalletTakesItsFullProRataShare() public {
+        // A dominant wallet takes its FULL pro-rata share — there is no cap. The
+        // reward tracks real usage directly; Sybil resistance is the live ETH
+        // stake, not a ceiling.
         counter.setScore(A_KEY, 0, 900);
         counter.setScore(B_KEY, 0, 100);
         counter.setClosed(0, true);
 
         vm.prank(alice);
         minter.claim(0, _one(A_KEY));
-        assertEq(florin.balanceOf(alice), (T0 * 15) / 100);
-        assertLt(florin.balanceOf(alice), (T0 * 900) / 1000);
+        assertEq(florin.balanceOf(alice), (T0 * 900) / 1000);
     }
 
-    function test_duplicateArtifactCannotExceedTheCap() public {
+    function test_duplicateArtifactCannotInflateTheShare() public {
+        // Passing an artifact repeatedly cannot inflate the score past the
+        // period total (`score > total` clamps to `total`), so a sole recipient
+        // still takes exactly the tranche, never more.
         counter.setScore(A_KEY, 0, 100);
         counter.setClosed(0, true);
         bytes32[] memory dupes = new bytes32[](3);
@@ -206,7 +221,7 @@ contract RpgfMinterTest is Test {
         dupes[2] = A_KEY;
         vm.prank(alice);
         minter.claim(0, dupes);
-        assertEq(florin.balanceOf(alice), (T0 * 15) / 100);
+        assertEq(florin.balanceOf(alice), T0);
     }
 
     // ── Nothing to claim ────────────────────────────────────────────

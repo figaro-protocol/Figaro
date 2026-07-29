@@ -201,8 +201,7 @@ contract DeployMainnet is Script {
 
         UsageCounter usageCounter = new UsageCounter(
             _core,
-            _clauses,
-            keccak256(bytes(vm.envString("RPGF_BOOSTED_TAG"))),
+            _sellers, // seller-side live-stake gate: usage counts only for live-staked sellers
             keccak256(abi.encode("figaro-assembly-provenance", uint64(1))),
             excluded,
             periods

@@ -6,6 +6,7 @@ import {FigaroCore} from "src/kernel/FigaroCore.sol";
 import {CommitmentTypes} from "src/kernel/CommitmentTypes.sol";
 import {ClauseRegistry} from "src/protocol/registries/ClauseRegistry.sol";
 import {AssemblyRegistry} from "src/protocol/registries/AssemblyRegistry.sol";
+import {SellerRegistry} from "src/protocol/registries/SellerRegistry.sol";
 import {UsageCounter} from "src/protocol/usage/UsageCounter.sol";
 import {RpgfMinter} from "src/rpgf/RpgfMinter.sol";
 import {FlorinToken} from "src/florin/FlorinToken.sol";
@@ -24,6 +25,7 @@ contract RpgfIntegrationTest is Test {
     FigaroCore core;
     ClauseRegistry clauses;
     AssemblyRegistry assemblies;
+    SellerRegistry sellers;
     UsageCounter counter;
     RpgfMinter minter;
     FlorinToken florin;
@@ -53,18 +55,23 @@ contract RpgfIntegrationTest is Test {
         token = new MockERC20("Test", "TST");
         clauses = new ClauseRegistry(0);
         assemblies = new AssemblyRegistry(0);
+        sellers = new SellerRegistry(0);
         florin = new FlorinToken();
 
         vm.prank(author);
         clauses.registerClause(GEO_ID, 1, keccak256("geo-spec"), "ipfs://geo", keccak256("geo"));
         vm.prank(designer);
         assemblies.registerAssembly(ASM, "ipfs://asm");
+        // The seller-side live-stake gate: the seller-of-record must be staked
+        // for its settled trades to count toward the reward.
+        vm.prank(seller);
+        sellers.register("ipfs://seller");
 
         uint64[] memory periods = new uint64[](3);
         periods[0] = P0_END;
         periods[1] = P0_END * 2;
         periods[2] = P0_END * 3;
-        counter = new UsageCounter(address(core), address(clauses), keccak256("geo"), PROV_KEY, _excluded(), periods);
+        counter = new UsageCounter(address(core), address(sellers), PROV_KEY, _excluded(), periods);
 
         minter = new RpgfMinter(
             address(florin),
@@ -182,19 +189,19 @@ contract RpgfIntegrationTest is Test {
         (,, uint256 asmScore) = counter.accrualOf(ASM, 0);
         uint256 total = counter.totalScoreIn(0);
         assertEq(total, clauseScore + asmScore);
-        // The tagged clause outweighs the untagged assembly 3:1 on equal usage.
-        assertEq(clauseScore, asmScore * 3);
+        // Uniform scoring: equal usage ⇒ equal score, clause or assembly.
+        assertEq(clauseScore, asmScore);
 
         vm.prank(author);
         minter.claim(0, _one(GEO_KEY));
         vm.prank(designer);
         minter.claim(0, _one(ASM));
 
-        // Both capped at 15% here (only two recipients), and both actually paid.
-        uint256 cap = (T0 * 15) / 100;
-        assertEq(florin.balanceOf(author), cap);
-        assertEq(florin.balanceOf(designer), cap);
-        assertEq(minter.minted(0), cap * 2);
+        // No cap: each takes its pro-rata share. Equal scores ⇒ half the tranche
+        // each, and the whole tranche is minted (nothing stranded by a cap).
+        assertEq(florin.balanceOf(author), T0 / 2);
+        assertEq(florin.balanceOf(designer), T0 / 2);
+        assertEq(minter.minted(0), T0);
         assertLe(minter.minted(0), T0);
     }
 
@@ -225,10 +232,10 @@ contract RpgfIntegrationTest is Test {
         minter.claim(1, _one(GEO_KEY));
         vm.stopPrank();
 
-        // Sole recipient in both periods → capped in both, and the second
-        // tranche is the smaller budget.
-        assertEq(afterFirst, (T0 * 15) / 100);
-        assertEq(florin.balanceOf(author) - afterFirst, (200_000_000 ether * 15) / 100);
+        // Sole recipient in both periods → takes the WHOLE tranche (no cap), and
+        // the second tranche is the smaller budget.
+        assertEq(afterFirst, T0);
+        assertEq(florin.balanceOf(author) - afterFirst, 200_000_000 ether);
     }
 
     /// @dev The provenance section's canonical-JSON bytes for a composition.

@@ -12,9 +12,10 @@ interface IFigaroCore {
     function DOMAIN_SEPARATOR() external view returns (bytes32);
 }
 
-/// @notice The one ClauseRegistry field this contract reads.
-interface IClauseTags {
-    function rpgfTagOf(bytes32 idHash) external view returns (bytes32);
+/// @notice The one SellerRegistry field this contract reads — whether an
+///         address holds a LIVE registration stake (the seller-side gate).
+interface ISellerStake {
+    function registered(address seller) external view returns (bool);
 }
 
 /// @title UsageCounter — verified artifact usage, counted when it happens
@@ -56,14 +57,16 @@ contract UsageCounter {
     // ── Composition (immutable) ─────────────────────────────────────
 
     IFigaroCore public immutable core;
-    IClauseTags public immutable clauses;
 
-    /// @notice The tag that earns the substrate-broadening weight, read from
-    ///         `ClauseRegistry.rpgfTagOf`. Frozen at deploy: WHICH tag pays is a
-    ///         reward decision, while MEMBERSHIP of the tag stays permissionless
-    ///         on the registry — anyone registering under it inherits the weight
-    ///         without touching this contract or the kernel.
-    bytes32 public immutable boostedTag;
+    /// @notice SellerRegistry — the seller-side eligibility gate. A settled
+    ///         process's usage counts toward the reward only while its
+    ///         seller-of-record holds a LIVE ETH stake here (registered and
+    ///         un-withdrawn), so fabricating breadth costs one base-currency
+    ///         stake per Sybil seller. The reward itself is UNIFORM — no tag, no
+    ///         category, no weight: every artifact's score is its real usage
+    ///         alone (`icbrt(c·d²·1e18)`), and the network's own growth, not a
+    ///         privileged class, is what the 600M pays for.
+    ISellerStake public immutable sellers;
 
     /// @notice The clause key whose committed section names the assembly a
     ///         process ran under — `figaro-assembly-provenance`'s
@@ -89,7 +92,7 @@ contract UsageCounter {
     ///         usage is unaffected: `recordAssemblyUsage` credits the
     ///         `compositionHash` — the assembly's designer of record — never the
     ///         provenance clause, so excluding the clause does not touch it.)
-    ///         This is deploy-frozen for the same reason `boostedTag` is: WHICH
+    ///         This is deploy-frozen: WHICH
     ///         artifacts the reward ignores is a reward decision, not something a
     ///         registrar declares about itself — a self-declared exclusion would
     ///         simply never be declared.
@@ -100,17 +103,13 @@ contract UsageCounter {
     ///         last one, accrual is closed forever.
     uint64[] public periodEnd;
 
-    // ── Weights (milli — integer thousandths) ───────────────────────
-
-    /// @notice Substrate-broadening weight for `boostedTag` artifacts.
-    uint32 public constant BOOSTED_WEIGHT = 3000;
-    /// @notice Weight for everything else, including every assembly.
-    uint32 public constant BASE_WEIGHT = 1000;
     /// @notice One (buyer, seller) pair contributes at most this many processes
     ///         to a single artifact in a period. Beyond it the process is
     ///         dropped entirely — it feeds neither `c` nor `d`. This is what
     ///         stops an artifact being farmed by repeat trade between two
-    ///         wallets; breadth has to be real.
+    ///         wallets; breadth has to be real. (Orthogonal to the seller-stake
+    ///         gate: the cap bounds repeat trade within a live pair, the stake
+    ///         gate prices fabricating NEW pairs.)
     uint8 public constant PAIR_CAP = 5;
 
     // ── Accrual ─────────────────────────────────────────────────────
@@ -120,7 +119,7 @@ contract UsageCounter {
         uint64 c;
         /// @dev Distinct (buyer, seller) pairs across those processes.
         uint64 d;
-        /// @dev `weight * icbrt(c * d^2 * 1e18)` — cached so `totalScore` can be
+        /// @dev `icbrt(c * d^2 * 1e18)` — cached so `totalScore` can be
         ///      maintained in O(1) as a delta on every record.
         uint256 score;
     }
@@ -172,31 +171,29 @@ contract UsageCounter {
     error PairCapReached();
     error InvalidInclusionProof();
     error ArtifactExcluded(bytes32 artifact);
+    error SellerNotStaked(address seller);
 
     // ── Constructor ─────────────────────────────────────────────────
 
     /// @param _core        FigaroCore — the order-status and domain source.
-    /// @param _clauses     ClauseRegistry — the `rpgfTagOf` source.
-    /// @param _boostedTag  The tag earning `BOOSTED_WEIGHT` (e.g. keccak256("geo")).
+    /// @param _sellers     SellerRegistry — the seller-side live-stake gate.
     /// @param _provenanceClause  `figaro-assembly-provenance`'s clause key.
     /// @param _excluded    Artifacts that earn nothing — the mandatory clauses.
     /// @param _periodEnd   Strictly ascending period boundaries (unix seconds).
     constructor(
         address _core,
-        address _clauses,
-        bytes32 _boostedTag,
+        address _sellers,
         bytes32 _provenanceClause,
         bytes32[] memory _excluded,
         uint64[] memory _periodEnd
     ) {
-        if (_core == address(0) || _clauses == address(0)) revert ZeroAddress();
+        if (_core == address(0) || _sellers == address(0)) revert ZeroAddress();
         if (_periodEnd.length == 0) revert EmptyPeriods();
         for (uint256 i = 1; i < _periodEnd.length; ++i) {
             if (_periodEnd[i] <= _periodEnd[i - 1]) revert PeriodsNotAscending();
         }
         core = IFigaroCore(_core);
-        clauses = IClauseTags(_clauses);
-        boostedTag = _boostedTag;
+        sellers = ISellerStake(_sellers);
         provenanceClause = _provenanceClause;
         for (uint256 i = 0; i < _excluded.length; ++i) {
             excludedArtifact[_excluded[i]] = true;
@@ -224,13 +221,6 @@ contract UsageCounter {
     ///         A consumer paying out for a period should require this.
     function periodClosed(uint8 period) external view returns (bool) {
         return period < periodEnd.length && block.timestamp >= periodEnd[period];
-    }
-
-    /// @notice The weight an artifact carries. Clauses tagged `boostedTag` earn
-    ///         `BOOSTED_WEIGHT`; everything else, and every assembly, earns
-    ///         `BASE_WEIGHT`.
-    function weightOf(bytes32 artifact) public view returns (uint32) {
-        return clauses.rpgfTagOf(artifact) == boostedTag && boostedTag != bytes32(0) ? BOOSTED_WEIGHT : BASE_WEIGHT;
     }
 
     // ── Recording (permissionless) ──────────────────────────────────
@@ -333,6 +323,12 @@ contract UsageCounter {
         // provenance clause on every assembly-composed process — is protocol
         // floor; counting it would pay for the floor rather than for adoption.
         if (excludedArtifact[artifact]) revert ArtifactExcluded(artifact);
+        // SELLER-SIDE GATE: usage counts only if the process's seller-of-record
+        // holds a LIVE SellerRegistry stake. This is the breadth Sybil defense —
+        // fabricating `d` distinct pairs now costs one base-currency (ETH) stake
+        // per fake seller. Withdrawing the stake de-surfaces the seller AND stops
+        // its future trades conferring reward.
+        if (!sellers.registered(seller)) revert SellerNotStaked(seller);
         if (processCounted[artifact][period][processId]) revert AlreadyCounted();
 
         bytes32 pairKey = keccak256(abi.encodePacked(buyer, seller));
@@ -349,7 +345,7 @@ contract UsageCounter {
         }
 
         uint256 previous = a.score;
-        uint256 updated = _score(weightOf(artifact), a.c, a.d);
+        uint256 updated = _score(a.c, a.d);
         a.score = updated;
         // O(1) maintenance — the running total moves by the delta, never a sum.
         totalScoreIn[period] = totalScoreIn[period] + updated - previous;
@@ -359,17 +355,19 @@ contract UsageCounter {
 
     // ── Scoring ─────────────────────────────────────────────────────
 
-    /// @notice `weight * icbrt(c * d^2 * 1e18)` — breadth (distinct counterparty
-    ///         pairs) weighted twice as heavily as volume, since the score is
-    ///         proportional to `c^(1/3) * d^(2/3)`.
+    /// @notice `icbrt(c * d^2 * 1e18)` — breadth (distinct counterparty pairs)
+    ///         weighted twice as heavily as volume, since the score is
+    ///         proportional to `c^(1/3) * d^(2/3)`. UNIFORM across artifacts: no
+    ///         tag, category, or weight multiplier — every artifact's score is
+    ///         its real usage alone.
     /// @dev    Value is deliberately not a term: the protocol's cost to move one
     ///         unit equals its cost to move a trillion, and the adoption signal
     ///         is the same per counterparty pair regardless of quanta. Weighting
     ///         by value would import a "TVL matters" metric that belongs to a
     ///         different kind of system.
-    function _score(uint32 weight, uint64 c, uint64 d) internal pure returns (uint256) {
+    function _score(uint64 c, uint64 d) internal pure returns (uint256) {
         if (c == 0 || d == 0) return 0;
-        return uint256(weight) * icbrt(uint256(c) * uint256(d) * uint256(d) * 1e18);
+        return icbrt(uint256(c) * uint256(d) * uint256(d) * 1e18);
     }
 
     /// @notice Floor integer cube root. Mirrors the SDK's `icbrt` so the on-chain

@@ -63,6 +63,19 @@ contract SellerRegistry {
         registrationDeposit = _registrationDeposit;
     }
 
+    // ── Views ───────────────────────────────────────────────────────────
+
+    /// @notice Whether `seller` currently holds a LIVE registration stake —
+    ///         registered and not withdrawn. This is the on-chain read the RPGF
+    ///         path gates on: a settled process's usage counts toward the reward
+    ///         only while its seller-of-record keeps a live ETH stake here, so
+    ///         fabricating breadth costs one base-currency stake per Sybil
+    ///         seller. Withdrawing clears the guard, de-surfacing the seller AND
+    ///         forfeiting the reward eligibility its trades would confer.
+    function registered(address seller) external view returns (bool) {
+        return _registered[seller];
+    }
+
     // ── Registration ────────────────────────────────────────────────────
 
     /// @notice Register as a seller. Requires msg.value == registrationDeposit.

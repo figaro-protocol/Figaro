@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import {FigaroCore} from "src/kernel/FigaroCore.sol";
 import {CommitmentTypes} from "src/kernel/CommitmentTypes.sol";
-import {ClauseRegistry} from "src/protocol/registries/ClauseRegistry.sol";
+import {SellerRegistry} from "src/protocol/registries/SellerRegistry.sol";
 import {UsageCounter} from "src/protocol/usage/UsageCounter.sol";
 import {MockERC20} from "src/mocks/MockERC20.sol";
 import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
@@ -18,7 +18,7 @@ contract UsageCounterTest is Test {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
     FigaroCore core;
-    ClauseRegistry clauses;
+    SellerRegistry sellers;
     UsageCounter counter;
     MockERC20 token;
 
@@ -32,12 +32,9 @@ contract UsageCounterTest is Test {
     address seller1;
     address seller2;
 
-    string constant GEO_ID = "figaro-geolocation";
     bytes32 constant GEO_KEY = keccak256(abi.encode("figaro-geolocation", uint64(1)));
-    string constant CARGO_ID = "figaro-cargo";
     bytes32 constant CARGO_KEY = keccak256(abi.encode("figaro-cargo", uint64(1)));
 
-    bytes32 constant GEO_TAG = keccak256("geo");
     bytes32 constant PROV_KEY = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
     bytes constant SECTION = hex"c0ffee";
 
@@ -52,16 +49,19 @@ contract UsageCounterTest is Test {
 
         core = new FigaroCore();
         token = new MockERC20("Test", "TST");
-        clauses = new ClauseRegistry(0);
+        sellers = new SellerRegistry(0);
 
-        // figaro-geolocation carries the boosted tag; figaro-cargo is untagged.
-        clauses.registerClause(GEO_ID, 1, keccak256("geo-spec"), "ipfs://geo", GEO_TAG);
-        clauses.registerClause(CARGO_ID, 1, keccak256("cargo-spec"), "ipfs://cargo", bytes32(0));
+        // The seller-side live-stake gate: only a registered seller's settled
+        // trades count. Both sellers stake here (zero deposit in this suite).
+        vm.prank(seller1);
+        sellers.register("ipfs://seller1");
+        vm.prank(seller2);
+        sellers.register("ipfs://seller2");
 
         uint64[] memory periods = new uint64[](2);
         periods[0] = P0_END;
         periods[1] = P1_END;
-        counter = new UsageCounter(address(core), address(clauses), GEO_TAG, PROV_KEY, _excluded(), periods);
+        counter = new UsageCounter(address(core), address(sellers), PROV_KEY, _excluded(), periods);
 
         address[4] memory ppl = [buyer, buyer2, seller1, seller2];
         for (uint256 i = 0; i < ppl.length; i++) {
@@ -157,8 +157,8 @@ contract UsageCounterTest is Test {
         (uint64 cCount, uint64 d, uint256 score) = counter.accrualOf(CARGO_KEY, 0);
         assertEq(cCount, 1);
         assertEq(d, 1);
-        // BASE_WEIGHT * icbrt(1 * 1 * 1e18) = 1000 * 1e6
-        assertEq(score, 1000 * 1e6);
+        // Uniform score: icbrt(1 * 1 * 1e18) = 1e6 (no weight multiplier).
+        assertEq(score, 1e6);
         assertEq(counter.totalScoreIn(0), score);
     }
 
@@ -207,6 +207,38 @@ contract UsageCounterTest is Test {
         CommitmentTypes.Commitment memory c = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         vm.expectRevert(UsageCounter.InvalidInclusionProof.selector);
         counter.recordUsage(c, CARGO_KEY, keccak256(hex"dead"), new bytes32[](0));
+    }
+
+    // ── Seller-side live-stake gate ──────────────────────────────────
+
+    function test_revertsWhenSellerNotStaked() public {
+        // Usage counts only if the seller-of-record holds a LIVE SellerRegistry
+        // stake — the breadth Sybil defense. An unregistered seller's settled
+        // trade cannot accrue, so fabricating pairs costs a stake per seller.
+        uint256 strangerKey = 0x5757;
+        address stranger = vm.addr(strangerKey);
+        token.mint(stranger, 1_000_000 ether);
+        vm.prank(stranger);
+        token.approve(address(core), type(uint256).max);
+
+        CommitmentTypes.Commitment memory c =
+            _settledOrder(CARGO_KEY, buyer, BUYER_KEY, stranger, strangerKey, 1);
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.SellerNotStaked.selector, stranger));
+        _record(c, CARGO_KEY);
+    }
+
+    function test_withdrawnSellerStopsCounting() public {
+        // A seller who withdraws their stake de-surfaces AND stops conferring
+        // reward: a later trade of theirs no longer counts.
+        CommitmentTypes.Commitment memory a = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
+        _record(a, CARGO_KEY);
+
+        vm.prank(seller1);
+        sellers.withdraw();
+
+        CommitmentTypes.Commitment memory b = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 2);
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.SellerNotStaked.selector, seller1));
+        _record(b, CARGO_KEY);
     }
 
     // ── Counting properties ─────────────────────────────────────────
@@ -265,9 +297,7 @@ contract UsageCounterTest is Test {
         // figaro-commerce and figaro-topology are committed on EVERY order, so
         // their count is just the process count and says nothing about adoption.
         // Scoring them would pay their authors for the protocol's own floor.
-        string memory commerceId = "figaro-commerce";
         bytes32 commerceKey = keccak256(abi.encode("figaro-commerce", uint64(1)));
-        clauses.registerClause(commerceId, 1, keccak256("commerce-spec"), "ipfs://commerce", bytes32(0));
 
         CommitmentTypes.Commitment memory c =
             _settledOrder(commerceKey, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
@@ -290,12 +320,11 @@ contract UsageCounterTest is Test {
         assertFalse(counter.excludedArtifact(GEO_KEY));
     }
 
-    // ── Weighting ───────────────────────────────────────────────────
+    // ── Uniform scoring (no tag / category / weight) ─────────────────
 
-    function test_taggedArtifactEarnsBoostedWeight() public {
-        assertEq(counter.weightOf(GEO_KEY), counter.BOOSTED_WEIGHT());
-        assertEq(counter.weightOf(CARGO_KEY), counter.BASE_WEIGHT());
-
+    function test_scoringIsUniformAcrossArtifacts() public {
+        // Equal usage ⇒ equal score, whatever the artifact: no boosted tag, no
+        // category, no weight. The 600M pays for real usage alone.
         CommitmentTypes.Commitment memory g = _settledOrder(GEO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         _record(g, GEO_KEY);
         CommitmentTypes.Commitment memory k = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 2);
@@ -303,13 +332,7 @@ contract UsageCounterTest is Test {
 
         (,, uint256 geoScore) = counter.accrualOf(GEO_KEY, 0);
         (,, uint256 cargoScore) = counter.accrualOf(CARGO_KEY, 0);
-        assertEq(geoScore, cargoScore * 3);
-    }
-
-    function test_unregisteredArtifactEarnsBaseWeight() public view {
-        // An assembly compositionHash is not in ClauseRegistry — it must not
-        // revert, and it must not earn the clause boost.
-        assertEq(counter.weightOf(keccak256("some-assembly")), counter.BASE_WEIGHT());
+        assertEq(geoScore, cargoScore);
     }
 
     // ── Periods ─────────────────────────────────────────────────────
@@ -401,14 +424,14 @@ contract UsageCounterTest is Test {
         uint64[] memory p = new uint64[](1);
         p[0] = P0_END;
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(0), address(clauses), GEO_TAG, PROV_KEY, _excluded(), p);
+        new UsageCounter(address(0), address(sellers), PROV_KEY, _excluded(), p);
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(core), address(0), GEO_TAG, PROV_KEY, _excluded(), p);
+        new UsageCounter(address(core), address(0), PROV_KEY, _excluded(), p);
     }
 
     function test_constructor_rejectsEmptyPeriods() public {
         vm.expectRevert(UsageCounter.EmptyPeriods.selector);
-        new UsageCounter(address(core), address(clauses), GEO_TAG, PROV_KEY, _excluded(), new uint64[](0));
+        new UsageCounter(address(core), address(sellers), PROV_KEY, _excluded(), new uint64[](0));
     }
 
     function test_constructor_rejectsUnorderedPeriods() public {
@@ -416,6 +439,6 @@ contract UsageCounterTest is Test {
         p[0] = P1_END;
         p[1] = P0_END;
         vm.expectRevert(UsageCounter.PeriodsNotAscending.selector);
-        new UsageCounter(address(core), address(clauses), GEO_TAG, PROV_KEY, _excluded(), p);
+        new UsageCounter(address(core), address(sellers), PROV_KEY, _excluded(), p);
     }
 }
