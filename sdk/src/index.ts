@@ -168,6 +168,8 @@ export {
     buildSectionInclusionProof,
     verifyInclusionProof,
     getSectionDataBytes,
+    sectionDataHash,
+    withholdSectionContent,
 } from "./agreement.js";
 export type { Agreement, AgreementSection } from "./agreement.js";
 

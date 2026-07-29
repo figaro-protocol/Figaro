@@ -143,7 +143,9 @@ contract UsageCounterTest is Test {
     }
 
     function _record(CommitmentTypes.Commitment memory c, bytes32 artifact) internal {
-        counter.recordUsage(c, artifact, SECTION, new bytes32[](0));
+        // The section FINGERPRINT (keccak256 of the committed bytes) — never the
+        // preimage — is what the merkle leaf needs and all the calldata carries.
+        counter.recordUsage(c, artifact, keccak256(SECTION), new bytes32[](0));
     }
 
     // ── What a record proves ────────────────────────────────────────
@@ -201,10 +203,10 @@ contract UsageCounterTest is Test {
         _record(c, GEO_KEY);
     }
 
-    function test_revertsOnWrongSectionData() public {
+    function test_revertsOnWrongSectionHash() public {
         CommitmentTypes.Commitment memory c = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         vm.expectRevert(UsageCounter.InvalidInclusionProof.selector);
-        counter.recordUsage(c, CARGO_KEY, hex"dead", new bytes32[](0));
+        counter.recordUsage(c, CARGO_KEY, keccak256(hex"dead"), new bytes32[](0));
     }
 
     // ── Counting properties ─────────────────────────────────────────

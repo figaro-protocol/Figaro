@@ -167,9 +167,9 @@ contract RpgfIntegrationTest is Test {
     function test_settledTradeBecomesAFlorinPayout() public {
         // Two settled processes use the clause; one uses the assembly.
         CommitmentTypes.Commitment memory p1 = _settle(GEO_KEY, 1);
-        counter.recordUsage(p1, GEO_KEY, SECTION, new bytes32[](0));
-        (CommitmentTypes.Commitment memory p2, bytes memory prov) = _settleUnderAssembly(ASM, 2);
-        counter.recordAssemblyUsage(p2, ASM, prov, new bytes32[](0));
+        counter.recordUsage(p1, GEO_KEY, keccak256(SECTION), new bytes32[](0));
+        (CommitmentTypes.Commitment memory p2,) = _settleUnderAssembly(ASM, 2);
+        counter.recordAssemblyUsage(p2, ASM, new bytes32[](0));
 
         // Nothing is claimable while the period can still move.
         vm.prank(author);
@@ -212,11 +212,11 @@ contract RpgfIntegrationTest is Test {
 
     function test_usageInALaterPeriodPaysTheLaterTranche() public {
         CommitmentTypes.Commitment memory p1 = _settle(GEO_KEY, 1);
-        counter.recordUsage(p1, GEO_KEY, SECTION, new bytes32[](0));
+        counter.recordUsage(p1, GEO_KEY, keccak256(SECTION), new bytes32[](0));
 
         vm.warp(P0_END + 1);
         CommitmentTypes.Commitment memory p2 = _settle(GEO_KEY, 2);
-        counter.recordUsage(p2, GEO_KEY, SECTION, new bytes32[](0));
+        counter.recordUsage(p2, GEO_KEY, keccak256(SECTION), new bytes32[](0));
 
         vm.warp(P0_END * 2 + 1);
         vm.startPrank(author);
@@ -242,19 +242,22 @@ contract RpgfIntegrationTest is Test {
         // like it worked when the artifact key was passed directly.
         CommitmentTypes.Commitment memory p = _settle(GEO_KEY, 1);
         vm.expectRevert(UsageCounter.InvalidInclusionProof.selector);
-        counter.recordAssemblyUsage(p, ASM, abi.encode(ASM), new bytes32[](0));
+        counter.recordAssemblyUsage(p, ASM, new bytes32[](0));
     }
 
     function test_provenanceSectionMustNameTheAssemblyClaimed() public {
         (CommitmentTypes.Commitment memory p,) = _settleUnderAssembly(ASM, 1);
-        // The leaf opens, but for a different composition than the one claimed.
-        vm.expectRevert(UsageCounter.ProvenanceMismatch.selector);
-        counter.recordAssemblyUsage(p, keccak256("other-assembly"), _provJson(ASM), new bytes32[](0));
+        // The section content is DERIVED from the claimed compositionHash, so a
+        // different composition derives a different section hash whose leaf is
+        // simply not in the tree — the old ProvenanceMismatch content-check now
+        // collapses into the one inclusion gate (a stronger, structural check).
+        vm.expectRevert(UsageCounter.InvalidInclusionProof.selector);
+        counter.recordAssemblyUsage(p, keccak256("other-assembly"), new bytes32[](0));
     }
 
     function test_nonAuthorCannotClaimSomeoneElsesArtifact() public {
         CommitmentTypes.Commitment memory p1 = _settle(GEO_KEY, 1);
-        counter.recordUsage(p1, GEO_KEY, SECTION, new bytes32[](0));
+        counter.recordUsage(p1, GEO_KEY, keccak256(SECTION), new bytes32[](0));
         vm.warp(P0_END + 1);
 
         vm.prank(designer);

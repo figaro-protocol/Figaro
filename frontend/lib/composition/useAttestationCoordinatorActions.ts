@@ -10,9 +10,10 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { fetchAgreement } from "@/lib/kernel/agreementFetch";
 import { getAllOrderCommitted, getStringArg } from "@/lib/kernel/indexer";
 import { restoreSignedProcessId } from "@/lib/kernel/signedCommitment";
+import { keccak256 } from "viem";
 import { computeClauseKey } from "@figaro/sdk";
 import { hexEqual } from "@/lib/shared/evm";
-import { buildSectionInclusionProof, getSectionDataBytes, type Commitment } from "@figaro/sdk";
+import { buildSectionInclusionProof, sectionDataHash, type Commitment } from "@figaro/sdk";
 
 type SellerAttestationInput = {
     /** The order being attested — its `agreementHash` anchors the inclusion proof. */
@@ -97,10 +98,13 @@ export function useAttestationCoordinatorActions() {
     }, [publicClient]);
 
     /**
-     * Build the `sectionData` + inclusion `proof` arguments for an attestation
+     * Build the `sectionHash` + inclusion `proof` arguments for an attestation
      * against a target order's `agreementHash`. Hydrates the signed agreement
      * assemblyTemplate (from localStorage or IPFS), finds the clause for `clauseId`,
-     * and produces the merkle inclusion proof the coordinator verifies.
+     * and produces the merkle inclusion proof the coordinator verifies. Returns
+     * the section FINGERPRINT (`keccak256` of its canonical bytes), never the
+     * preimage — the coordinator takes only the hash, so a private section's
+     * plaintext never touches calldata.
      */
     const buildReceipt = useCallback(async (targetAgreementHash: Hex, clauseId: Hex) => {
         const agreement = await fetchAgreement(targetAgreementHash);
@@ -118,9 +122,9 @@ export function useAttestationCoordinatorActions() {
             setError(message);
             throw new Error(message);
         }
-        const sectionData = getSectionDataBytes(section);
+        const sectionHash = sectionDataHash(section);
         const { proof } = buildSectionInclusionProof(agreement, section.clause);
-        return { sectionData, proof };
+        return { sectionHash, proof };
     }, []);
 
     const submitSellerAttestation = useCallback(async ({
@@ -134,13 +138,17 @@ export function useAttestationCoordinatorActions() {
         setError("");
         try {
             const target = await loadCommitment(orderHash);
-            const { sectionData, proof } = await buildReceipt(target.agreementHash as Hex, clauseId);
+            const { sectionHash, proof } = await buildReceipt(target.agreementHash as Hex, clauseId);
+            // Re-assert (content omitted) ⇒ contentRef IS the committed section's
+            // fingerprint; otherwise bind the runtime content by its hash. The
+            // content preimage lives off-chain, never in calldata.
+            const contentRef = content ? keccak256(content) : sectionHash;
 
             return await writeContractAsync({
                 address: attestationCoordinator,
                 abi: ATTESTATION_COORDINATOR_ABI,
                 functionName: "attestAsSeller",
-                args: [target, target, clauseId, stage, sectionData, proof, content ?? sectionData],
+                args: [target, target, clauseId, stage, sectionHash, proof, contentRef],
                 account,
                 chain,
             });
@@ -162,13 +170,16 @@ export function useAttestationCoordinatorActions() {
         setError("");
         try {
             const target = await loadCommitment(orderHash);
-            const { sectionData, proof } = await buildReceipt(target.agreementHash as Hex, clauseId);
+            const { sectionHash, proof } = await buildReceipt(target.agreementHash as Hex, clauseId);
+            // Re-assert (content omitted) ⇒ contentRef IS the committed section's
+            // fingerprint; otherwise bind the runtime content by its hash.
+            const contentRef = content ? keccak256(content) : sectionHash;
 
             return await writeContractAsync({
                 address: attestationCoordinator,
                 abi: ATTESTATION_COORDINATOR_ABI,
                 functionName: "attestAsBuyer",
-                args: [target, clauseId, stage, sectionData, proof, content ?? sectionData],
+                args: [target, clauseId, stage, sectionHash, proof, contentRef],
                 account,
                 chain,
             });

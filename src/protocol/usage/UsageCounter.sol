@@ -171,7 +171,6 @@ contract UsageCounter {
     error AlreadyCounted();
     error PairCapReached();
     error InvalidInclusionProof();
-    error ProvenanceMismatch();
     error ArtifactExcluded(bytes32 artifact);
 
     // ── Constructor ─────────────────────────────────────────────────
@@ -244,12 +243,18 @@ contract UsageCounter {
     /// @param order       The order's commitment struct, exactly as signed.
     /// @param artifact    Clause idHash or assembly compositionHash — must be the
     ///                    bytes32 key committed in the agreement's merkle leaf.
-    /// @param sectionData The clause section's committed bytes.
+    /// @param sectionHash `keccak256` of the clause section's committed bytes —
+    ///                    the FINGERPRINT, never the preimage. The merkle leaf
+    ///                    needs only this hash, so the section CONTENT never
+    ///                    touches public calldata: a `private`-disposition
+    ///                    section's plaintext stays off-chain (encrypted IPFS),
+    ///                    the chain sees the fingerprint alone. Matches the
+    ///                    batched path's `bytes32` convention, byte for byte.
     /// @param proof       Merkle proof of the section against `order.agreementHash`.
     function recordUsage(
         CommitmentTypes.Commitment calldata order,
         bytes32 artifact,
-        bytes calldata sectionData,
+        bytes32 sectionHash,
         bytes32[] calldata proof
     ) external {
         uint8 period = currentPeriod();
@@ -261,8 +266,9 @@ contract UsageCounter {
         // 2. The artifact was committed in the agreement both parties signed.
         //    Leaf shape is AttestationCoordinator's, byte for byte — one leaf
         //    convention across the protocol, double-hashed for leaf/node domain
-        //    separation.
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(artifact, keccak256(sectionData)))));
+        //    separation. A wrong `sectionHash` simply fails to open the proof, so
+        //    taking the hash is exactly as sound as taking the preimage.
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(artifact, sectionHash))));
         if (!MerkleProof.verify(proof, order.agreementHash, leaf)) revert InvalidInclusionProof();
 
         _accrue(artifact, period, processId, order.buyer, order.seller);
@@ -278,34 +284,30 @@ contract UsageCounter {
     ///
     /// @param order            The order's commitment struct, exactly as signed.
     /// @param compositionHash  The AssemblyRegistry composition being credited.
-    /// @param sectionData      The provenance section's committed bytes — a
-    ///                         single `bytes32` field, so exactly 32 bytes.
-    /// @param proof            Merkle proof of that section against `agreementHash`.
+    /// @param proof            Merkle proof of the provenance section against
+    ///                         `agreementHash`.
     function recordAssemblyUsage(
         CommitmentTypes.Commitment calldata order,
         bytes32 compositionHash,
-        bytes calldata sectionData,
         bytes32[] calldata proof
     ) external {
         uint8 period = currentPeriod();
         (, bytes32 processId) = _requireResolvedOrder(order);
 
-        // The leaf is the PROVENANCE clause — fixed at deploy, so no other
-        // clause can stand in for it.
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(provenanceClause, keccak256(sectionData)))));
-        if (!MerkleProof.verify(proof, order.agreementHash, leaf)) revert InvalidInclusionProof();
-
-        // …and its content must BE the assembly claimed. Sections commit as
-        // CANONICAL JSON bytes — the very bytes the merkle leaf hashes — and
-        // the provenance section carries exactly one field, so the claimed
-        // compositionHash must REPRODUCE the committed bytes verbatim:
+        // No section preimage is taken — the provenance section's content is
+        // FULLY DETERMINED by `compositionHash`. Sections commit as CANONICAL
+        // JSON bytes, and the provenance section carries exactly one field, so
+        // the committed bytes are reproducible verbatim from the claimed hash:
         //   {"compositionHash":"0x<64 lowercase hex>"}
-        // Reproduction, never parsing: no new trust enters. (The earlier
-        // raw-32-byte check contradicted the section-encoding convention and
-        // made every honest runtime call revert — caught by the first
-        // end-to-end exercise, 2026-07-28.)
+        // Reproduction, never parsing — the section FINGERPRINT is derived here,
+        // never supplied. This collapses the old two-step check (inclusion +
+        // content-match) into one: a wrong `compositionHash` derives a section
+        // hash whose leaf is simply not in the tree. The leaf is the PROVENANCE
+        // clause, fixed at deploy, so no other clause can stand in for it.
         bytes memory expected = abi.encodePacked('{"compositionHash":"', _toLowerHexString(compositionHash), '"}');
-        if (keccak256(sectionData) != keccak256(expected)) revert ProvenanceMismatch();
+        bytes32 sectionHash = keccak256(expected);
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(provenanceClause, sectionHash))));
+        if (!MerkleProof.verify(proof, order.agreementHash, leaf)) revert InvalidInclusionProof();
 
         _accrue(compositionHash, period, processId, order.buyer, order.seller);
     }

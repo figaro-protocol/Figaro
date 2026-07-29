@@ -28,13 +28,29 @@ import { computeClauseKey } from "./discovery.js";
 /**
  * A single clause in the agreement. The clause key identifies the vocabulary
  * (registered in ClauseRegistry); data is the clause content per that clause.
+ *
+ * A section is one of two forms, and the merkle leaf is identical either way
+ * (`computeSectionLeaf` needs only the data FINGERPRINT):
+ *   - PLAINTEXT — `data` is present. The normal form; used for `public`
+ *     sections (the free coordination commons) and by whoever authored a
+ *     private one.
+ *   - CONTENT-WITHHELD — `dataHash` is present instead of `data`. A `private`
+ *     section's plaintext (the paid edge) stays off every public surface; a
+ *     party carrying only the fingerprint can still build and verify the
+ *     agreement root. Produce one with `withholdSectionContent`.
+ * Exactly one of `data` / `dataHash` is set.
  */
 export interface AgreementSection {
     clause: string;
     /** Clause version — paired with `clause` to form the on-chain id
      *  keccak256(abi.encode(clause, version)). Sourced from the clause spec. */
     version: number;
-    data: Record<string, unknown>;
+    /** The clause content, canonical-JSON-hashed into the merkle leaf. Absent
+     *  for a content-withheld section (see `dataHash`). */
+    data?: Record<string, unknown>;
+    /** The section's data FINGERPRINT (`keccak256` of its canonical-JSON bytes),
+     *  carried in place of `data` for a content-withheld `private` section. */
+    dataHash?: Hex;
 }
 
 /**
@@ -95,30 +111,61 @@ const ZERO_HASH = `0x${"0".repeat(64)}` as Hex;
 
 /**
  * Return the on-chain `sectionData` bytes for an agreement section: the
- * canonical JSON of the section data. The chain merkle-binds `sectionData`
- * and never decodes it, and both the build side (`computeAgreementHash`) and
- * the attest side use this same function, so the leaf is always consistent.
- * No clause spec is consulted — specs live ONLY in `ClauseRegistry` (→ IPFS),
- * never bundled into the SDK. A never-seen clause hashes the same way as any
- * other.
+ * canonical JSON of the section data. The chain merkle-binds the section HASH
+ * and never sees these bytes, but they are what a party pins to IPFS (plaintext
+ * for a public section, encrypted for a private one) and what
+ * `sectionDataHash` fingerprints. No clause spec is consulted — specs live ONLY
+ * in `ClauseRegistry` (→ IPFS), never bundled into the SDK. A never-seen clause
+ * hashes the same way as any other. Throws for a content-withheld section: its
+ * plaintext is not available, only its `dataHash`.
  */
 export function getSectionDataBytes(section: AgreementSection): Hex {
+    if (section.data === undefined) {
+        throw new Error(
+            `Section ${section.clause} is content-withheld (dataHash only) — its plaintext bytes are not available`,
+        );
+    }
     return toHex(new TextEncoder().encode(canonicalizeSectionData(section.data)));
 }
 
 /**
+ * The section's data FINGERPRINT — `keccak256` of its canonical-JSON bytes.
+ * This is the ONLY thing the merkle leaf (and the on-chain `sectionHash`
+ * argument to `recordUsage` / the attest calls) needs, so a `private` section's
+ * plaintext never has to be present to build or verify the agreement root. For
+ * a content-withheld section the fingerprint is carried directly (`dataHash`);
+ * otherwise it is computed from the plaintext.
+ */
+export function sectionDataHash(section: AgreementSection): Hex {
+    if (section.dataHash !== undefined) return section.dataHash;
+    return keccak256(getSectionDataBytes(section));
+}
+
+/**
+ * Convert a section to its CONTENT-WITHHELD form: replace the plaintext `data`
+ * with its fingerprint `dataHash`. The withheld section contributes the exact
+ * same merkle leaf, so the agreement root is unchanged — a party can publish or
+ * verify the agreement's structure while keeping a `private` section's plaintext
+ * (the paid-edge data) off every public surface.
+ */
+export function withholdSectionContent(section: AgreementSection): AgreementSection {
+    return { clause: section.clause, version: section.version, dataHash: sectionDataHash(section) };
+}
+
+/**
  * Compute one merkle leaf:
- * `keccak256(keccak256(clauseId || keccak256(sectionDataBytes)))` — the inner
- * hash binds the section, the outer hash DOMAIN-SEPARATES leaves from internal
- * nodes (OZ double-hash convention: a leaf preimage is 32 bytes, an internal
- * node's is 64, so no internal node can ever be replayed as a leaf).
- * Uses `getSectionDataBytes` so leaves computed off-chain match the coordinator's
+ * `keccak256(keccak256(clauseId || sectionDataHash))` — the inner hash binds the
+ * section, the outer hash DOMAIN-SEPARATES leaves from internal nodes (OZ
+ * double-hash convention: a leaf preimage is 32 bytes, an internal node's is 64,
+ * so no internal node can ever be replayed as a leaf). Uses `sectionDataHash`,
+ * so a plaintext and a content-withheld section for the same content produce the
+ * identical leaf, and leaves computed off-chain match the coordinator's
  * reconstruction during inclusion-proof verification.
  */
 export function computeSectionLeaf(section: AgreementSection): Hex {
     return keccak256(
         keccak256(
-            concat([computeClauseKey(section.clause, section.version), keccak256(getSectionDataBytes(section))]),
+            concat([computeClauseKey(section.clause, section.version), sectionDataHash(section)]),
         ),
     );
 }

@@ -14,7 +14,7 @@
  * copy; this factory only decides WHEN to ask.
  */
 import { type Hex } from "viem";
-import { buildSectionInclusionProof, computeClauseKey, getSectionDataBytes, type Agreement, type Commitment } from "@figaro/sdk";
+import { buildSectionInclusionProof, computeClauseKey, sectionDataHash, type Agreement, type Commitment } from "@figaro/sdk";
 import { encodeContentFromSpec, validateContent } from "@figaro/sdk/clauses";
 import { OrderState, type Order } from "@/lib/kernel/store";
 import { restoreSignedProcessId } from "@/lib/kernel/signedCommitment";
@@ -42,8 +42,8 @@ export interface CapabilityExecutorDeps {
     /** RPGF usage recording (permissionless; UsageCounter re-verifies every
      *  fact, so a revert is bookkeeping, not failure). Fired after resolve —
      *  count usage when it happens. */
-    recordUsage: (order: Commitment, artifact: Hex, sectionData: Hex, proof: readonly Hex[]) => Promise<Hex | undefined>;
-    recordAssemblyUsage: (order: Commitment, compositionHash: Hex, sectionData: Hex, proof: readonly Hex[]) => Promise<Hex | undefined>;
+    recordUsage: (order: Commitment, artifact: Hex, sectionHash: Hex, proof: readonly Hex[]) => Promise<Hex | undefined>;
+    recordAssemblyUsage: (order: Commitment, compositionHash: Hex, proof: readonly Hex[]) => Promise<Hex | undefined>;
     submitBuyerAttestation: (args: AttestationSubmitArgs) => Promise<Hex | undefined>;
     submitSellerAttestation: (args: AttestationSubmitArgs) => Promise<Hex | undefined>;
     registerSeller: (metadataURI: string) => Promise<Hex | undefined | void>;
@@ -119,11 +119,13 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
                     attempted++;
                     try {
                         const { proof } = buildSectionInclusionProof(agreement, section.clause);
-                        const data = getSectionDataBytes(section);
+                        // Only the section FINGERPRINT reaches calldata — never
+                        // the plaintext, so a private section stays off-chain.
+                        const fingerprint = sectionDataHash(section);
                         const tx = await deps.recordUsage(
                             commitments[i] as Commitment,
                             computeClauseKey(section.clause, section.version) as Hex,
-                            data as Hex,
+                            fingerprint as Hex,
                             proof as readonly Hex[],
                         );
                         await waitForTransactionConfirmation(tx);
@@ -136,10 +138,11 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
                             console.error(`[usage-recording] ${section.clause}: compositionHash present but malformed: ${JSON.stringify(composition)}`);
                         }
                         if (!assemblyRecorded && typeof composition === "string" && /^0x[0-9a-fA-F]{64}$/.test(composition)) {
+                            // recordAssemblyUsage takes no section — the provenance
+                            // content is derived on-chain from the compositionHash.
                             const atx = await deps.recordAssemblyUsage(
                                 commitments[i] as Commitment,
                                 composition as Hex,
-                                data as Hex,
                                 proof as readonly Hex[],
                             );
                             await waitForTransactionConfirmation(atx);

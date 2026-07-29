@@ -45,6 +45,10 @@ contract AttestationCoordinatorTest is Test {
     bytes32 constant COMMERCE_CLAUSE = keccak256(abi.encode("figaro-commerce", uint64(1)));
     bytes32 constant MODALITIES_CLAUSE = keccak256(abi.encode("figaro-modalities", uint64(1)));
 
+    /// @dev The section/content FINGERPRINT for an empty section — the coordinator
+    ///      takes hashes, never preimages, so calldata never carries the plaintext.
+    bytes32 constant EMPTY = keccak256("");
+
     function setUp() public {
         core = new FigaroCore();
         coordinator = new AttestationCoordinator(address(core));
@@ -211,7 +215,7 @@ contract AttestationCoordinatorTest is Test {
 
         vm.recordLogs();
         vm.prank(seller1);
-        coordinator.attestAsSeller(c, c, LIFECYCLE_CLAUSE, 1, "", _emptyProof(), "");
+        coordinator.attestAsSeller(c, c, LIFECYCLE_CLAUSE, 1, EMPTY, _emptyProof(), EMPTY);
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
         bytes32 attSig = keccak256("Attestation(bytes32,bytes32,address,bytes32,uint8,bytes32)");
@@ -243,7 +247,7 @@ contract AttestationCoordinatorTest is Test {
         bytes memory ipfsCidContent = "QmSomeIpfsCid";
 
         vm.prank(seller1);
-        coordinator.attestAsSeller(c, c, EMISSIONS_CLAUSE, 2, "", _emptyProof(), ipfsCidContent);
+        coordinator.attestAsSeller(c, c, EMISSIONS_CLAUSE, 2, EMPTY, _emptyProof(), keccak256(ipfsCidContent));
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -254,7 +258,7 @@ contract AttestationCoordinatorTest is Test {
         (, , CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
 
         vm.prank(buyer);
-        coordinator.attestAsBuyer(c, LIFECYCLE_CLAUSE, 5, "", _emptyProof(), "");
+        coordinator.attestAsBuyer(c, LIFECYCLE_CLAUSE, 5, EMPTY, _emptyProof(), EMPTY);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -266,7 +270,7 @@ contract AttestationCoordinatorTest is Test {
 
         vm.prank(buyer); // buyer tries to attest as seller
         vm.expectRevert(AttestationCoordinator.NotAuthorized.selector);
-        coordinator.attestAsSeller(c, c, LIFECYCLE_CLAUSE, 1, "", _emptyProof(), "");
+        coordinator.attestAsSeller(c, c, LIFECYCLE_CLAUSE, 1, EMPTY, _emptyProof(), EMPTY);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -278,7 +282,7 @@ contract AttestationCoordinatorTest is Test {
 
         vm.prank(seller1); // seller tries to attest as buyer
         vm.expectRevert(AttestationCoordinator.NotAuthorized.selector);
-        coordinator.attestAsBuyer(c, LIFECYCLE_CLAUSE, 1, "", _emptyProof(), "");
+        coordinator.attestAsBuyer(c, LIFECYCLE_CLAUSE, 1, EMPTY, _emptyProof(), EMPTY);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -296,7 +300,7 @@ contract AttestationCoordinatorTest is Test {
 
         // seller2 attests ON the root order, using their subC as role proof.
         vm.prank(seller2);
-        coordinator.attestAsSeller(subC, rootC, LIFECYCLE_CLAUSE, 3, "", _emptyProof(), "");
+        coordinator.attestAsSeller(subC, rootC, LIFECYCLE_CLAUSE, 3, EMPTY, _emptyProof(), EMPTY);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -314,7 +318,7 @@ contract AttestationCoordinatorTest is Test {
         // processes — the coordinator must refuse cross-process attestation.
         vm.prank(seller1);
         vm.expectRevert(AttestationCoordinator.ProcessMismatch.selector);
-        coordinator.attestAsSeller(rootA, rootB, LIFECYCLE_CLAUSE, 3, "", _emptyProof(), "");
+        coordinator.attestAsSeller(rootA, rootB, LIFECYCLE_CLAUSE, 3, EMPTY, _emptyProof(), EMPTY);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -328,7 +332,7 @@ contract AttestationCoordinatorTest is Test {
         vm.mockCall(seller1, abi.encodeWithSelector(IRoleResolver.isAuthorized.selector), abi.encode(true));
 
         vm.prank(seller2);
-        coordinator.attestViaResolver(c, LIFECYCLE_CLAUSE, 3, "", _emptyProof(), "");
+        coordinator.attestViaResolver(c, LIFECYCLE_CLAUSE, 3, EMPTY, _emptyProof(), EMPTY);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -342,7 +346,7 @@ contract AttestationCoordinatorTest is Test {
 
         vm.prank(seller2);
         vm.expectRevert(AttestationCoordinator.NotAuthorized.selector);
-        coordinator.attestViaResolver(c, LIFECYCLE_CLAUSE, 3, "", _emptyProof(), "");
+        coordinator.attestViaResolver(c, LIFECYCLE_CLAUSE, 3, EMPTY, _emptyProof(), EMPTY);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -365,7 +369,7 @@ contract AttestationCoordinatorTest is Test {
 
         vm.prank(seller1);
         vm.expectRevert(AttestationCoordinator.UnknownOrder.selector);
-        coordinator.attestAsSeller(fake, fake, LIFECYCLE_CLAUSE, 1, "", _emptyProof(), "");
+        coordinator.attestAsSeller(fake, fake, LIFECYCLE_CLAUSE, 1, EMPTY, _emptyProof(), EMPTY);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -389,7 +393,7 @@ contract AttestationCoordinatorTest is Test {
 
         vm.prank(buyer);
         vm.expectRevert(AttestationCoordinator.UnknownOrder.selector);
-        coordinator.attestAsBuyer(fake, LIFECYCLE_CLAUSE, 1, "", _emptyProof(), "");
+        coordinator.attestAsBuyer(fake, LIFECYCLE_CLAUSE, 1, EMPTY, _emptyProof(), EMPTY);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -404,7 +408,7 @@ contract AttestationCoordinatorTest is Test {
 
         vm.recordLogs();
         vm.prank(seller1);
-        coordinator.attestAsSeller(c, c, EMISSIONS_CLAUSE, 1, "", _emptyProof(), ipfsContent);
+        coordinator.attestAsSeller(c, c, EMISSIONS_CLAUSE, 1, EMPTY, _emptyProof(), ipfsRef);
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
         bytes32 attSig = keccak256("Attestation(bytes32,bytes32,address,bytes32,uint8,bytes32)");
@@ -444,7 +448,7 @@ contract AttestationCoordinatorTest is Test {
         // The evidence window closes at resolve (orderStatus == 2)
         vm.prank(seller1);
         vm.expectRevert(AttestationCoordinator.OrderResolved.selector);
-        coordinator.attestAsSeller(c, c, LIFECYCLE_CLAUSE, 10, "", _emptyProof(), "");
+        coordinator.attestAsSeller(c, c, LIFECYCLE_CLAUSE, 10, EMPTY, _emptyProof(), EMPTY);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -462,7 +466,7 @@ contract AttestationCoordinatorTest is Test {
 
         vm.prank(buyer);
         vm.expectRevert(AttestationCoordinator.OrderResolved.selector);
-        coordinator.attestAsBuyer(c, LIFECYCLE_CLAUSE, 10, "", _emptyProof(), "");
+        coordinator.attestAsBuyer(c, LIFECYCLE_CLAUSE, 10, EMPTY, _emptyProof(), EMPTY);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -484,7 +488,7 @@ contract AttestationCoordinatorTest is Test {
 
         vm.prank(seller2);
         vm.expectRevert(AttestationCoordinator.UnknownOrder.selector);
-        coordinator.attestViaResolver(fake, LIFECYCLE_CLAUSE, 3, "", _emptyProof(), "");
+        coordinator.attestViaResolver(fake, LIFECYCLE_CLAUSE, 3, EMPTY, _emptyProof(), EMPTY);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -511,7 +515,7 @@ contract AttestationCoordinatorTest is Test {
 
         vm.prank(seller1);
         vm.expectRevert(AttestationCoordinator.UnknownOrder.selector);
-        coordinator.attestAsSeller(c, fakeTarget, LIFECYCLE_CLAUSE, 1, "", _emptyProof(), "");
+        coordinator.attestAsSeller(c, fakeTarget, LIFECYCLE_CLAUSE, 1, EMPTY, _emptyProof(), EMPTY);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -524,7 +528,7 @@ contract AttestationCoordinatorTest is Test {
         // seller1 tries to attest as buyer — they are not the commitment's buyer.
         vm.prank(seller1);
         vm.expectRevert(AttestationCoordinator.NotAuthorized.selector);
-        coordinator.attestAsBuyer(c, LIFECYCLE_CLAUSE, 1, "", _emptyProof(), "");
+        coordinator.attestAsBuyer(c, LIFECYCLE_CLAUSE, 1, EMPTY, _emptyProof(), EMPTY);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -551,7 +555,7 @@ contract AttestationCoordinatorTest is Test {
 
         vm.prank(buyer);
         vm.expectRevert(AttestationCoordinator.UnknownOrder.selector);
-        coordinator.attestAsBuyer(fake, LIFECYCLE_CLAUSE, 1, "", _emptyProof(), "");
+        coordinator.attestAsBuyer(fake, LIFECYCLE_CLAUSE, 1, EMPTY, _emptyProof(), EMPTY);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -587,7 +591,7 @@ contract AttestationCoordinatorTest is Test {
         // `buyer` (from our setUp) is NOT c2.buyer, so the call must revert NotAuthorized.
         vm.prank(buyer);
         vm.expectRevert(AttestationCoordinator.NotAuthorized.selector);
-        coordinator.attestAsBuyer(c2, LIFECYCLE_CLAUSE, 1, "", _emptyProof(), "");
+        coordinator.attestAsBuyer(c2, LIFECYCLE_CLAUSE, 1, EMPTY, _emptyProof(), EMPTY);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -635,32 +639,32 @@ contract AttestationCoordinatorTest is Test {
 
         // ── Stage 0: PreparationStarted (restaurant) ─────────────
         vm.prank(seller1);
-        coordinator.attestAsSeller(rootC, rootC, LIFECYCLE_CLAUSE, 0, "", proofLifecycle, "");
+        coordinator.attestAsSeller(rootC, rootC, LIFECYCLE_CLAUSE, 0, EMPTY, proofLifecycle, EMPTY);
 
         // ── Stage 1: ReadyForPickup (restaurant) ──────────────────
         vm.prank(seller1);
-        coordinator.attestAsSeller(rootC, rootC, LIFECYCLE_CLAUSE, 1, "", proofLifecycle, "");
+        coordinator.attestAsSeller(rootC, rootC, LIFECYCLE_CLAUSE, 1, EMPTY, proofLifecycle, EMPTY);
 
         // ── Stage 2: CourierEnRoute (courier, cross-order against root) ───
         vm.prank(seller2);
-        coordinator.attestAsSeller(driverC, rootC, LIFECYCLE_CLAUSE, 2, "", proofLifecycle, "");
+        coordinator.attestAsSeller(driverC, rootC, LIFECYCLE_CLAUSE, 2, EMPTY, proofLifecycle, EMPTY);
 
         // ── Stage 3: PickedUp (driver) + proximity proof (BLE) ────
         bytes memory pickupProofContent = "pickup-proximity-proof-band-2";
         vm.prank(seller2);
-        coordinator.attestAsSeller(driverC, rootC, PROXIMITY_CLAUSE, 2, "", proofProximity, pickupProofContent);
+        coordinator.attestAsSeller(driverC, rootC, PROXIMITY_CLAUSE, 2, EMPTY, proofProximity, keccak256(pickupProofContent));
         vm.prank(seller2);
-        coordinator.attestAsSeller(driverC, rootC, LIFECYCLE_CLAUSE, 3, "", proofLifecycle, pickupProofContent);
+        coordinator.attestAsSeller(driverC, rootC, LIFECYCLE_CLAUSE, 3, EMPTY, proofLifecycle, keccak256(pickupProofContent));
 
         // ── Stage 4: Delivered (driver) + proximity proof (NFC) ───
         bytes memory deliveryProofContent = "delivery-proximity-proof-band-3";
         bytes32 deliveryProofRef = keccak256(deliveryProofContent);
         vm.prank(seller2);
-        coordinator.attestAsSeller(driverC, rootC, PROXIMITY_CLAUSE, 3, "", proofProximity, deliveryProofContent);
+        coordinator.attestAsSeller(driverC, rootC, PROXIMITY_CLAUSE, 3, EMPTY, proofProximity, deliveryProofRef);
 
         vm.recordLogs();
         vm.prank(seller2);
-        coordinator.attestAsSeller(driverC, rootC, LIFECYCLE_CLAUSE, 4, "", proofLifecycle, deliveryProofContent);
+        coordinator.attestAsSeller(driverC, rootC, LIFECYCLE_CLAUSE, 4, EMPTY, proofLifecycle, deliveryProofRef);
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
         // ── Verify final Delivered attestation event ───────────────
@@ -701,7 +705,7 @@ contract AttestationCoordinatorTest is Test {
         vm.expectRevert(abi.encodeWithSelector(
             AttestationCoordinator.InvalidInclusionProof.selector, c.agreementHash, UNUSED_CLAUSE
         ));
-        coordinator.attestAsSeller(c, c, UNUSED_CLAUSE, 1, "", _emptyProof(), "");
+        coordinator.attestAsSeller(c, c, UNUSED_CLAUSE, 1, EMPTY, _emptyProof(), EMPTY);
     }
 
     /// @dev Same merkle gate from the buyer path: wrong sectionData (or wrong
@@ -714,7 +718,7 @@ contract AttestationCoordinatorTest is Test {
         ));
         // Signed sectionData was "" — attesting with non-empty sectionData
         // recomputes a different leaf that won't open against the root.
-        coordinator.attestAsBuyer(c, LIFECYCLE_CLAUSE, 1, "tampered", _emptyProof(), "");
+        coordinator.attestAsBuyer(c, LIFECYCLE_CLAUSE, 1, keccak256("tampered"), _emptyProof(), EMPTY);
     }
 
     function test_contentRefIsKeccakOfContent() public {
@@ -725,7 +729,7 @@ contract AttestationCoordinatorTest is Test {
         bytes32 attSig = keccak256("Attestation(bytes32,bytes32,address,bytes32,uint8,bytes32)");
         vm.recordLogs();
         vm.prank(seller1);
-        coordinator.attestAsSeller(c, c, LIFECYCLE_CLAUSE, 1, "", _emptyProof(), content);
+        coordinator.attestAsSeller(c, c, LIFECYCLE_CLAUSE, 1, EMPTY, _emptyProof(), keccak256(content));
 
         Vm.Log[] memory logs = vm.getRecordedLogs();
         bool found = false;
@@ -751,7 +755,7 @@ contract AttestationCoordinatorTest is Test {
         bytes32 attSig = keccak256("Attestation(bytes32,bytes32,address,bytes32,uint8,bytes32)");
         vm.recordLogs();
         vm.prank(seller1);
-        coordinator.attestAsSeller(c, c, LIFECYCLE_CLAUSE, 1, "", _emptyProof(), content);
+        coordinator.attestAsSeller(c, c, LIFECYCLE_CLAUSE, 1, EMPTY, _emptyProof(), keccak256(content));
 
         Vm.Log[] memory logs = vm.getRecordedLogs();
         bool found;

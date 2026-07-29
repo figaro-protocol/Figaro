@@ -4,6 +4,9 @@ import {
     computeAgreementHash,
     buildSectionInclusionProof,
     verifyInclusionProof,
+    getSectionDataBytes,
+    sectionDataHash,
+    withholdSectionContent,
     type Agreement,
     type AgreementSection,
 } from "../src/agreement.js";
@@ -147,5 +150,32 @@ describe("buildSectionInclusionProof + verifyInclusionProof", () => {
         const a = agreement([COMMERCE]);
         expect(() => buildSectionInclusionProof(a, "figaro-emissions"))
             .toThrow(/Section not found/);
+    });
+});
+
+describe("content-withheld sections (the private side of the data seam)", () => {
+    it("a withheld section yields the identical leaf — the plaintext is not needed to build it", () => {
+        const withheld = withholdSectionContent(GEO);
+        expect(withheld.data).toBeUndefined();
+        expect(withheld.dataHash).toBe(sectionDataHash(GEO));
+        expect(computeSectionLeaf(withheld)).toBe(computeSectionLeaf(GEO));
+    });
+
+    it("an agreement root is unchanged when a section is withheld", () => {
+        const full = agreement([COMMERCE, GEO, GHG]);
+        const partlyWithheld = agreement([COMMERCE, withholdSectionContent(GEO), GHG]);
+        expect(computeAgreementHash(partlyWithheld)).toBe(computeAgreementHash(full));
+    });
+
+    it("a withheld section still proves inclusion against the root", () => {
+        const a = agreement([COMMERCE, withholdSectionContent(GEO), GHG]);
+        const root = computeAgreementHash(a);
+        const { leaf, proof } = buildSectionInclusionProof(a, "figaro-geolocation");
+        expect(verifyInclusionProof(root, leaf, proof)).toBe(true);
+    });
+
+    it("getSectionDataBytes refuses a withheld section (only its fingerprint is known)", () => {
+        const withheld = withholdSectionContent(GEO);
+        expect(() => getSectionDataBytes(withheld)).toThrow(/content-withheld/);
     });
 });

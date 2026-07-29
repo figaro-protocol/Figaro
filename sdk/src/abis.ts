@@ -110,12 +110,16 @@ export const EV_PROCESS_RESOLVED = parseAbiItem(
 export const ATTESTATION_COORDINATOR_ABI = parseAbi([
     "function core() view returns (address)",
     // All three paths take the full Commitment(s) so the coordinator can
-    // recover `agreementHash` without new kernel state, and carry `sectionData`
-    // + merkle `proof` so the attestation's clause is provably part of the
-    // signed agreement. There is no on-chain clause-content validator.
-    `function attestAsSeller(${COMMITMENT_TUPLE} role, ${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content) external`,
-    `function attestAsBuyer(${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content) external`,
-    `function attestViaResolver(${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content) external`,
+    // recover `agreementHash` without new kernel state, and carry the section
+    // FINGERPRINT `sectionHash` (`keccak256(sectionData)`) + merkle `proof` so
+    // the clause is provably part of the signed agreement. The content
+    // FINGERPRINT `contentRef` (`keccak256(content)`) is supplied too — never the
+    // preimage, so a `private` section's plaintext never touches public calldata;
+    // it lives off-chain (encrypted IPFS) bound to this hash. There is no on-chain
+    // clause-content validator. Matches the batched path's bytes32 convention.
+    `function attestAsSeller(${COMMITMENT_TUPLE} role, ${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes32 sectionHash, bytes32[] proof, bytes32 contentRef) external`,
+    `function attestAsBuyer(${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes32 sectionHash, bytes32[] proof, bytes32 contentRef) external`,
+    `function attestViaResolver(${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes32 sectionHash, bytes32[] proof, bytes32 contentRef) external`,
     "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)",
     "error InvalidInclusionProof(bytes32 agreementHash, bytes32 clauseId)",
 ]);
@@ -245,13 +249,17 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 // Verified artifact usage, counted when it happens. `recordUsage` is
 // permissionless: it proves the order is RESOLVED (`core.orderStatus == 2`)
 // and that the artifact is merkle-included in the signed `agreementHash` —
-// the same leaf shape `computeSectionLeaf` builds. Accrual buckets into fixed
-// periods; a period's counts are final once `periodClosed` is true.
+// the same leaf shape `computeSectionLeaf` builds. It carries only the section
+// FINGERPRINT `sectionHash` (`keccak256` of the committed bytes), never the
+// preimage, so a `private` section's plaintext never touches public calldata.
+// `recordAssemblyUsage` takes no section at all — the provenance content is
+// fully determined by `compositionHash`, so the contract derives it. Accrual
+// buckets into fixed periods; a period's counts are final once `periodClosed`.
 
 export const USAGE_COUNTER_ABI = parseAbi([
     // ── Recording (permissionless) ──────────────────────────────────
-    `function recordUsage(${COMMITMENT_TUPLE} order, bytes32 artifact, bytes sectionData, bytes32[] proof) external`,
-    `function recordAssemblyUsage(${COMMITMENT_TUPLE} order, bytes32 compositionHash, bytes sectionData, bytes32[] proof) external`,
+    `function recordUsage(${COMMITMENT_TUPLE} order, bytes32 artifact, bytes32 sectionHash, bytes32[] proof) external`,
+    `function recordAssemblyUsage(${COMMITMENT_TUPLE} order, bytes32 compositionHash, bytes32[] proof) external`,
 
     // ── Composition + schedule ──────────────────────────────────────
     "function core() view returns (address)",

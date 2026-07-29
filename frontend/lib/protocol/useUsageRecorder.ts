@@ -27,14 +27,14 @@ export function useUsageRecorder() {
     const recordUsage = async (
         order: Commitment,
         artifact: `0x${string}`,
-        sectionData: `0x${string}`,
+        sectionHash: `0x${string}`,
         proof: readonly `0x${string}`[],
     ): Promise<`0x${string}`> =>
         writeContractAsync({
             address: CONTRACTS.usageCounter as `0x${string}`,
             abi: USAGE_COUNTER_ABI,
             functionName: "recordUsage",
-            args: [order, artifact, sectionData, [...proof]],
+            args: [order, artifact, sectionHash, [...proof]],
             account,
             chain: chainConfig,
         });
@@ -42,14 +42,13 @@ export function useUsageRecorder() {
     const recordAssemblyUsage = async (
         order: Commitment,
         compositionHash: `0x${string}`,
-        sectionData: `0x${string}`,
         proof: readonly `0x${string}`[],
     ): Promise<`0x${string}`> =>
         writeContractAsync({
             address: CONTRACTS.usageCounter as `0x${string}`,
             abi: USAGE_COUNTER_ABI,
             functionName: "recordAssemblyUsage",
-            args: [order, compositionHash, sectionData, [...proof]],
+            args: [order, compositionHash, [...proof]],
             account,
             chain: chainConfig,
         });

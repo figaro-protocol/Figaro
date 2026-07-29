@@ -34,8 +34,10 @@ interface ContractClause {
     clauseKey: string;
     /** Human-readable title. */
     title: string;
-    /** The clause's data payload — clause-specific structure. */
-    body: Record<string, unknown>;
+    /** The clause's data payload — clause-specific structure. Absent for a
+     *  content-withheld (`private`) section: only its fingerprint is public,
+     *  so there is no cleartext body to show; the `leafHash` still binds it. */
+    body?: Record<string, unknown>;
     /** Merkle leaf hash of this section under the agreementHash root.
      *  Auditor recomputes this from the body and verifies it appears in
      *  the agreementHash merkle tree. */

@@ -71,10 +71,12 @@ function composedClauseDeclaring(
  * checkout walk at the quoted price produce identical agreements.
  */
 export function derivePricedFields(
-    sections: readonly { clause: string; data: Record<string, unknown> }[],
+    sections: readonly { clause: string; data?: Record<string, unknown> }[],
     specs: SpecSource,
 ): { clause: string; path: string }[] {
-    const clauses = Object.fromEntries(sections.map((s) => [s.clause, s.data])) as ClauseFields;
+    // Commercial terms are PUBLIC (never a content-withheld section), so a
+    // section carrying only a fingerprint contributes no priced field.
+    const clauses = Object.fromEntries(sections.map((s) => [s.clause, s.data ?? {}])) as ClauseFields;
     const commerce = composedClauseDeclaring(clauses, "lineItems", specs);
     if (!commerce) return [];
     const lineItems = clauses[commerce]?.lineItems;

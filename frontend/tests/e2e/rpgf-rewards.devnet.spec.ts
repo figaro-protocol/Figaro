@@ -41,7 +41,7 @@ import {
     computeAgreementHash,
     computeClauseKey,
     generateSalt,
-    getSectionDataBytes,
+    sectionDataHash,
     type Agreement,
 } from '@figaro/sdk';
 import { localPublicClient, readLocalDeploymentConfig, LOCAL_ANVIL, RPC_URL } from './devnet-helpers';
@@ -183,10 +183,11 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
         //    the mirror-image gate to the one usage counting uses).
         const section = agreement.sections.find((s) => s.clause === USED_CLAUSE)!;
         const { proof } = buildSectionInclusionProof(agreement, USED_CLAUSE);
-        const sectionData = getSectionDataBytes(section);
+        // Only the section FINGERPRINT reaches calldata — never the preimage.
+        const sectionHash = sectionDataHash(section);
         await receipt(await buyerWallet.writeContract({
             address: coordinator, abi: ATTESTATION_COORDINATOR_ABI, functionName: 'attestAsBuyer',
-            args: [commitment, artifact, 0, sectionData, proof, sectionData],
+            args: [commitment, artifact, 0, sectionHash, proof, sectionHash],
         }));
 
         // 5. Resolve — usage is what a SETTLED process leaves behind.
@@ -202,7 +203,7 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
         try {
             await receipt(await buyerWallet.writeContract({
                 address: counter, abi: USAGE_COUNTER_ABI, functionName: 'recordUsage',
-                args: [commitment, artifact, sectionData, proof],
+                args: [commitment, artifact, sectionHash, proof],
             }));
         } catch (e) {
             // PairCapReached — breadth has to be real, so the same two wallets
