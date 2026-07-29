@@ -60,9 +60,9 @@ contract RpgfMinterTest is Test {
         assemblies = new AssemblyRegistry(0);
 
         vm.prank(alice);
-        clauses.registerClause(A_ID, 1, keccak256("a"), "ipfs://a", bytes32(0));
+        clauses.registerClause(A_ID, 1, keccak256("a"), "ipfs://a");
         vm.prank(bob);
-        clauses.registerClause(B_ID, 1, keccak256("b"), "ipfs://b", bytes32(0));
+        clauses.registerClause(B_ID, 1, keccak256("b"), "ipfs://b");
         vm.prank(carol);
         assemblies.registerAssembly(ASM, "ipfs://asm");
 
@@ -110,7 +110,7 @@ contract RpgfMinterTest is Test {
     function test_multipleArtifactsSumInOneClaim() public {
         // A wallet claims once per tranche and passes everything it authored.
         vm.prank(alice);
-        clauses.registerClause("clause-c", 1, keccak256("c"), "ipfs://c", bytes32(0));
+        clauses.registerClause("clause-c", 1, keccak256("c"), "ipfs://c");
         bytes32 cKey = keccak256(abi.encode("clause-c", uint64(1)));
 
         counter.setScore(A_KEY, 0, 50);

@@ -3,7 +3,6 @@
     "version": 1,
     "title": "Chain of custody",
     "description": "Goods-level custody and integrity regime for an order whose goods pass through identifiable custodians. Elective and NEVER default-on: composed when the parties need a single canonical custody record (sealed containers, tamper-evident packaging, bonded warehousing). Commits the integrity REGIME the parties agree at signing \u2014 the scheme (the external standard is the source of truth; this clause references it) and, when already assigned, the custody unit's identifier. The custody EVENTS produced while the goods move (seal applied, inspected intact, transferred, breached, removed) are filed as runtime attestations at stage 1 \u2014 one attestation per event, by whichever party witnessed it; the attesting wallet is recorded by the attestation itself and never duplicated as a field. Custody continuity, gaps, and breach exposure are derived at read time from the witnessed event sequence against the committed regime, never stored.",
-    "rpgfTag": null,
     "fields": [
         {
             "name": "custodyScheme",

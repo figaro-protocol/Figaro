@@ -3,7 +3,6 @@
     "version": 1,
     "title": "Freight class",
     "description": "Freight classification anchored to the National Motor Freight Classification (NMFC), published by the NMFTA. Elective and NEVER default-on: composed only when an LTL / road shipment needs a declared freight class. Carries the declared NMFC class \u2014 the parties' assertion, verified off-chain against the NMFC standard (density is the primary driver, alongside stowability, handling, and liability) \u2014 plus the optional NMFC item number. The external standard is the source of truth; this clause references it, it does not compute the class.",
-    "rpgfTag": null,
     "fields": [
         {
             "name": "nmfcClass",

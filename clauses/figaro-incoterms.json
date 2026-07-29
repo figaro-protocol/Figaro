@@ -3,7 +3,6 @@
     "version": 1,
     "title": "Incoterms 2020",
     "description": "Trade-delivery terms anchored to the ICC's Incoterms\u00ae 2020 (ICC publication 723E) \u2014 the named, versioned external standard allocating costs, transfer of risk, and carriage/insurance obligations between buyer and seller. Elective and NEVER default-on: composed only when a shipment's commercial terms name an Incoterms rule. Carries the declared rule (one of the standard's 11) plus the named place or port every rule requires, stated with the precision the rule demands. The external standard is the source of truth; this clause references it, it does not restate or compute its obligations. The FAS/FOB/CFR/CIF mode restriction (sea and inland waterway only) is the standard's, verified off-chain. A future ICC edition is new meaning \u2014 a new clauseId, never a mutation of this one. Compose figaro-geolocation alongside for the machine-readable origin/destination.",
-    "rpgfTag": null,
     "fields": [
         {
             "name": "incotermsRule",

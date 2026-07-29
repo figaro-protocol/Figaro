@@ -3,7 +3,6 @@
     "version": 1,
     "title": "Cold chain",
     "description": "Temperature-controlled handling requirement anchored to Good Distribution Practice (GDP) cold-chain classes. Elective and NEVER default-on: composed only when the goods require temperature control. Commits the cold-chain class, the agreed temperature window in whole degrees Celsius, and the agreed recording interval \u2014 no external standard mandates a single interval (GDP says continuous, EU 37/2005 says frequent and regular, WHO PQS allows 1\u201315 min), so the interval is a term the parties commit. The external standard is the source of truth; this clause references it. The temperature RECORD produced during custody is filed as a runtime attestation at stage 1 (one attestation per reporting period); excursion and MKT are derived at read time from the witnessed range against the committed window, never stored.",
-    "rpgfTag": null,
     "fields": [
         {
             "name": "tempClass",

@@ -3,7 +3,6 @@
     "version": 1,
     "title": "Geolocation",
     "description": "Origin and destination locality codes under a DECLARED geocode standard \u2014 where an order originates and terminates. Composed for ANY modality and BOTH physical and digital value chains: a shipment route (cell-grid codes: geohash, H3, S2, Open Location Code), a service jurisdiction or digital-delivery territory (jurisdiction codes: ISO 3166-1/-2, UN/LOCODE; endpoint territory in digital chains is evidenced per RFC 8805/9632 geofeeds). The standard is the source of truth \u2014 referenced, never restated; the axis is OPEN (any standard, existing or future). Carries no physical-shipment assumption; mass and volume live in the elective figaro-cargo clause.",
-    "rpgfTag": "geo",
     "fields": [
         {
             "name": "geocodeStandard",

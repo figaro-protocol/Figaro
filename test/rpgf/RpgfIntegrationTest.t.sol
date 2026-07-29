@@ -59,7 +59,7 @@ contract RpgfIntegrationTest is Test {
         florin = new FlorinToken();
 
         vm.prank(author);
-        clauses.registerClause(GEO_ID, 1, keccak256("geo-spec"), "ipfs://geo", keccak256("geo"));
+        clauses.registerClause(GEO_ID, 1, keccak256("geo-spec"), "ipfs://geo");
         vm.prank(designer);
         assemblies.registerAssembly(ASM, "ipfs://asm");
         // The seller-side live-stake gate: the seller-of-record must be staked

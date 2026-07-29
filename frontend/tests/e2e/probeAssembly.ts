@@ -20,7 +20,6 @@ import {
 } from 'viem';
 
 /** Untagged — the probe clause claims no RPGF incentive tag. */
-const ZERO_TAG = `0x${'0'.repeat(64)}` as Hex;
 import { privateKeyToAccount } from 'viem/accounts';
 import type { Page } from '@playwright/test';
 import { expect } from './devnet-multi-test';
@@ -146,7 +145,7 @@ export async function registerProbeClause(
     const { request } = await pub.simulateContract({
         account: registrar.address, address: registry, abi: CLAUSE_REGISTRY_ABI,
         functionName: 'registerClause',
-        args: [clauseId, BigInt(version), contentHash, uri, ZERO_TAG],
+        args: [clauseId, BigInt(version), contentHash, uri],
         value: deposit,
     });
     await pub.waitForTransactionReceipt({ hash: await wallet.writeContract(request) });

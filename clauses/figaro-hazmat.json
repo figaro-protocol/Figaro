@@ -3,7 +3,6 @@
     "version": 1,
     "title": "Dangerous goods (hazmat)",
     "description": "Dangerous-goods declaration anchored to the UN Recommendations on the Transport of Dangerous Goods (the \"Orange Book\"), as implemented by ADR (road), IMDG (sea), and IATA-DGR (air). Elective and NEVER default-on: composed only when the goods are regulated dangerous goods. Carries the UN number, the official proper shipping name, the UN hazard class, and the packing group. The external standard is the source of truth; this clause references it.",
-    "rpgfTag": null,
     "fields": [
         {
             "name": "unNumber",

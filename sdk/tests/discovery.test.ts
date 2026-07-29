@@ -18,10 +18,6 @@ const REGISTRAR = "0xdddddddddddddddddddddddddddddddddddddddd" as Address;
 const COMP_1 = "0x0000000000000000000000000000000000000000000000000000000000000011" as Hex;
 const COMP_2 = "0x0000000000000000000000000000000000000000000000000000000000000012" as Hex;
 const CONTENT_HASH = "0x0000000000000000000000000000000000000000000000000000000000000099" as Hex;
-/** An arbitrary non-zero rpgfTag value — the parser treats it as opaque bytes32,
- *  so the fixture does not need a real label digest. */
-const RPGF_TAG = "0x00000000000000000000000000000000000000000000000000000000000000aa" as Hex;
-
 function mkEvents(overrides: Partial<DiscoveryEvents> = {}): DiscoveryEvents {
     return {
         clauseRegistered: [],
@@ -183,9 +179,9 @@ describe("registry log parsers (decode round-trip — no chain)", () => {
 
     it("parses ClauseRegistered + DepositWithdrawn with the idHash key", () => {
         const idHash = computeClauseKey("figaro-cargo", 1);
-        const reg = mkLog("ClauseRegistered(string,uint64,bytes32,string,bytes32,address)", [addrTopic(REGISTRAR)],
-            [{ type: "string" }, { type: "uint64" }, { type: "bytes32" }, { type: "string" }, { type: "bytes32" }],
-            ["figaro-cargo", 1n, CONTENT_HASH, "ipfs://c", RPGF_TAG], 1n, 0);
+        const reg = mkLog("ClauseRegistered(string,uint64,bytes32,string,address)", [addrTopic(REGISTRAR)],
+            [{ type: "string" }, { type: "uint64" }, { type: "bytes32" }, { type: "string" }],
+            ["figaro-cargo", 1n, CONTENT_HASH, "ipfs://c"], 1n, 0);
         const wd = mkLog("DepositWithdrawn(bytes32,address,uint256)", [idHash, addrTopic(REGISTRAR)],
             [{ type: "uint256" }], [10n], 2n, 0);
         const parsed = parseClauseRegistryLogs([reg, wd]);

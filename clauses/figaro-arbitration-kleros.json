@@ -3,7 +3,6 @@
     "version": 1,
     "title": "Kleros decentralized arbitration",
     "description": "Off-chain dispute resolution via Kleros, the decentralized juror court. Selects a Kleros subcourt and a minimum juror count for any dispute escalated from this order. This clause covers one specific arbitration provider; sister `figaro-arbitration-<provider>` clauses would cover other decentralized ODR providers as they integrate with Figaro. Compose with `figaro-applicable-law` to add a state-law / ADR recourse layer. DESIGNER-AUTHORED AT DESIGN TIME (ruled 2026-07-28): both fields are design fills (block.design.fills) \u2014 the arbitration terms are part of the assembly's identity (compositionHash); a seller accepts them by subscribing the assembly; never buyer-authored. CONFORMANCE (ruled 2026-07-28): this clause's court set, value ordering, and position-as-index encoding CONFORM TO THE KLEROS DEVELOPER DOCUMENTATION, from which it was designed; the court enum is the declared conformant subset, extended by spec edit \u2014 do not re-flag the list against the live court tree.",
-    "rpgfTag": null,
     "fields": [
         {
             "name": "klerosCourt",

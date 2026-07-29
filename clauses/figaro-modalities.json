@@ -3,7 +3,6 @@
     "version": 1,
     "title": "Modalities",
     "description": "The buyer's request to the seller: consume-onsite, pickup, delivery, or virtual \u2014 the committed declaration of which coordination scenario the process runs. Single-select \u2014 an assembly composes exactly one modality; a seller offers variety by holding an array of assemblies, one per configuration. The transfers themselves are recorded by process clauses (attestations article) as timeline events. Coordination variants (how a courier edge is arranged) are separate assemblies; Hand-off (where a physical exchange happens) is its own composable clause, with proximity verification nesting under it.",
-    "rpgfTag": null,
     "fields": [
         {
             "name": "modality",

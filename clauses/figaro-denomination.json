@@ -3,7 +3,6 @@
     "version": 1,
     "title": "Denomination",
     "description": "The ONE token the whole assembly's processes are denominated in \u2014 every bond (2\u00d7) and every payment moves in it. Any ERC-20; the clause names no token. A SPECIFIC term: the designer composes the token address into the template, tailoring the generic assembly \u2014 the pin is part of the assembly's identity (compositionHash), so the same composition in another token is a different assembly. Composed on the ROOT order (denomination is process-scoped; the kernel enforces one currency per process). An assembly without this clause is denominated by the BUYER'S PICK from the seller's accepted tokens at checkout, else the seller's default.",
-    "rpgfTag": null,
     "fields": [
         {
             "name": "currency",

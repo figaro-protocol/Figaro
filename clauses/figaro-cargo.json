@@ -3,7 +3,6 @@
     "version": 1,
     "title": "Cargo",
     "description": "Physical shipment measure \u2014 the LOGISTIC-UNIT description of the goods as shipped (the package/shipment level, distinct from the per-item TRADE-ITEM measures a seller authors on its catalogue): gross/net mass, volume, packaged dimensions, and the kind / number / marks of the packages. Elective and NEVER default-on: composed only when an order moves physical goods. Density (mass \u00f7 volume) informs freight classification (declared NMFC class lives in figaro-freight-class); the packaged dimensions drive dimensional (billed) weight (figaro-dimweight).",
-    "rpgfTag": null,
     "fields": [
         {
             "name": "massGrams",

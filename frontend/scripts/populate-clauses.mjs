@@ -6,7 +6,7 @@
  * For each Layer-A clause spec in `clauses/*.json` (the canonical seed data,
  * the single origin pinned to IPFS and anchored on-chain):
  *   1. pin the spec JSON to IPFS (real CID), and
- *   2. `registerClause(clauseId, version, contentHash, contentURI, rpgfTag)` on
+ *   2. `registerClause(clauseId, version, contentHash, contentURI)` on
  *      ClauseRegistry — anchoring the IPFS document pointer (contentURI) + the
  *      spec integrity digest (contentHash), so any reader fetches the spec from
  *      chain state alone (the shape SellerRegistry / AssemblyRegistry already use).
@@ -28,7 +28,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-    createPublicClient, createWalletClient, defineChain, http, keccak256, stringToHex,
+    createPublicClient, createWalletClient, defineChain, http,
 } from 'viem';
 import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
 // Protocol canonicals come from the SDK (@figaro/sdk, file:../sdk — the
@@ -146,19 +146,15 @@ export async function populateClauses({ publicClient, walletClient, account, reg
         const deposit = await publicClient.readContract({
             address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registrationDeposit',
         });
-        // Incentive tag: declared in the spec's top-level `rpgfTag` (the one
-        // spec attribute that reaches the chain — registration data, outside
-        // `block`) so `contentHash` binds it. Null = untagged (bytes32(0)),
-        // the default for most clauses.
-        const rpgfTag = typeof spec.rpgfTag === 'string' && spec.rpgfTag.trim()
-            ? keccak256(stringToHex(spec.rpgfTag.trim()))
-            : `0x${'0'.repeat(64)}`;
+        // No reward tag: the 600M reward is UNIFORM (ratified 2026-07-29) — the
+        // registry stores no incentive input. The only classification a clause
+        // carries is block.design.article, a reader grouping that stays off-chain.
         const { request } = await publicClient.simulateContract({
             account: account.address,
             address: registry,
             abi: CLAUSE_REGISTRY_ABI,
             functionName: 'registerClause',
-            args: [clauseIdStr, version, contentHash, contentURI, rpgfTag],
+            args: [clauseIdStr, version, contentHash, contentURI],
             value: deposit,
         });
         const hash = await walletClient.writeContract(request);

@@ -3,7 +3,6 @@
     "version": 1,
     "title": "Order topology",
     "description": "Records the topology of an order within a process. The on-chain kernel stores only per-process accumulator state; parent-order edges are carried here and committed via agreementHash.",
-    "rpgfTag": null,
     "fields": [
         {
             "name": "parentOrderHashes",

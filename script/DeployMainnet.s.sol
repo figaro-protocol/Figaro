@@ -26,10 +26,6 @@ import "../src/protocol/verifier/FigaroBatchVerifier.sol";
 ///   SUPPORTERS_WALLET          — address receiving the 30M supporters (friends & family /
 ///                                early supporters) allocation at genesis
 ///   DAO_WALLET                 — address receiving the 300M DAO allocation at genesis
-///   RPGF_BOOSTED_TAG           — the label whose keccak earns the substrate-
-///                                broadening weight (e.g. "geo"). WHICH tag pays
-///                                is frozen here; membership stays permissionless
-///                                on ClauseRegistry.rpgfTagOf
 ///   RPGF_PERIOD_END_1/2/3      — ascending unix timestamps closing each accrual
 ///                                period. Tranche i pays for period i, so these
 ///                                are ONE schedule (testnet compresses years
@@ -92,7 +88,6 @@ contract DeployMainnet is Script {
         require(vm.envAddress("FOUNDER_WALLET") != address(0), "FOUNDER_WALLET not set");
         require(vm.envAddress("SUPPORTERS_WALLET") != address(0), "SUPPORTERS_WALLET not set");
         require(vm.envAddress("DAO_WALLET") != address(0), "DAO_WALLET not set");
-        require(bytes(vm.envString("RPGF_BOOSTED_TAG")).length > 0, "RPGF_BOOSTED_TAG not set");
         require(
             vm.envUint("RPGF_PERIOD_END_1") > block.timestamp
                 && vm.envUint("RPGF_PERIOD_END_2") > vm.envUint("RPGF_PERIOD_END_1")

@@ -3,7 +3,6 @@
     "version": 1,
     "title": "Commerce terms",
     "description": "Payment amount and itemized line items for the commercial half of an order. The process denomination is NOT here: it is signed in the kernel commitment itself, resolved at checkout as the assembly's figaro-denomination pin (the designer's tailoring, when composed on the root order), else the buyer's pick from the seller's accepted tokens, else the seller's default.",
-    "rpgfTag": null,
     "fields": [
         {
             "name": "payment",

@@ -3,7 +3,6 @@
     "version": 1,
     "title": "Dimensional weight",
     "description": "Dimensional (volumetric) billed weight for a PARCEL \u2014 a DERIVED value the checkout computes, not seller-authored: billed = max(actual gross mass, volumetric weight), where volumetric = packaged volume \u00f7 a divisor, with each packaged dimension rounded up before multiplying, and the divisor read from the seller's shipping profile. Elective and NEVER default-on: composed only when a parcel is billed by dimensional weight. Carries the computed billed weight plus the divisor applied, so a reader reproduces the calculation from the packaged dimensions on the same order's figaro-cargo leaf. PARCELS ONLY \u2014 transporting people (ride-hailing) is a different, per-mile future clause; dimensional weight is not its concern.",
-    "rpgfTag": null,
     "fields": [
         {
             "name": "billedMassGrams",

@@ -61,7 +61,7 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
     // the full attribute set.
     it.each(exampleFiles)("%s expresses every standard attribute (zero/empty/null, never absent)", (file) => {
         const spec = JSON.parse(readFileSync(join(examplesDir, file), "utf8"));
-        for (const key of ["clauseId", "version", "title", "description", "rpgfTag", "fields", "stages", "block"]) {
+        for (const key of ["clauseId", "version", "title", "description", "fields", "stages", "block"]) {
             expect(key in spec, `${file}: top-level ${key} must be expressed`).toBe(true);
         }
         for (const key of ["design", "checkout", "runtime"]) {

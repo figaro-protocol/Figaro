@@ -19,7 +19,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
-import { BaseError, ContractFunctionRevertedError, keccak256, stringToHex, type Log } from "viem";
+import { BaseError, ContractFunctionRevertedError, type Log } from "viem";
 import { computeClauseKey, parseClauseRegistryLogs } from "@figaro/sdk";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
@@ -27,7 +27,6 @@ import { publicClient } from "@/lib/shared/wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { canonicalContentHash } from "@/lib/shared/canonicalJson";
 import { toError } from "@/lib/shared/errors";
-import { ZERO_BYTES32 } from "@/lib/shared/evm";
 
 
 /** The ClauseRegistry address if it's a well-formed address, else null.
@@ -344,18 +343,11 @@ export function useRegisterClause() {
         const contentHash = canonicalContentHash(rawSpec);
         const { uri } = await DEFAULT_IPFS_SERVICE.publishJSON(rawSpec);
 
-        // The incentive tag is DECLARED IN THE SPEC (top-level `rpgfTag` — the
-        // one spec attribute that reaches the chain, so it sits with the other
-        // registration facts, outside `block`), not typed into a form — so
-        // `contentHash` binds it: the label the author published and the tag
-        // anchored on-chain cannot diverge. Null/absent = untagged, the
-        // default, which carries no penalty. Read by the RPGF reward formula
-        // and nothing else; NOT `block.design.article` (that groups clauses
-        // for readers and stays off-chain entirely).
-        const rawTag = (rawSpec as Record<string, unknown>).rpgfTag;
-        const tagLabel = typeof rawTag === "string" ? rawTag.trim() : "";
-        const rpgfTag = tagLabel ? keccak256(stringToHex(tagLabel)) : ZERO_BYTES32;
-
+        // No reward tag is anchored: the 600M reward is UNIFORM (ratified
+        // 2026-07-29) — every artifact scores on its real usage alone, with no
+        // category or weight — so the registry stores no incentive input. The
+        // only classification a clause carries is `block.design.article`, a
+        // reader grouping that stays off-chain entirely.
         const deposit = await client.readContract({
             address: registry,
             abi: CLAUSE_REGISTRY_ABI,
@@ -367,7 +359,7 @@ export function useRegisterClause() {
                 address: registry,
                 abi: CLAUSE_REGISTRY_ABI,
                 functionName: "registerClause",
-                args: [clauseId, BigInt(version), contentHash, uri, rpgfTag],
+                args: [clauseId, BigInt(version), contentHash, uri],
                 value: deposit,
                 account: address,
             });
@@ -379,7 +371,7 @@ export function useRegisterClause() {
             address: registry,
             abi: CLAUSE_REGISTRY_ABI,
             functionName: "registerClause",
-            args: [clauseId, BigInt(version), contentHash, uri, rpgfTag],
+            args: [clauseId, BigInt(version), contentHash, uri],
             value: deposit,
         });
 

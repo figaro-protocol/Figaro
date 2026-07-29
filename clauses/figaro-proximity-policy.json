@@ -3,7 +3,6 @@
     "version": 1,
     "title": "Proximity-verification policy",
     "description": "The proximity-detection bands accepted for verifying a physical hand-off on this order, committed at agreement signing. Each band corresponds to a standard short-range detection technology \u2014 Wi-Fi presence, Bluetooth Low Energy, ultra-wideband ranging, or NFC contact. Multi-valued: a transaction particular \u2014 the buyer authors the accepted set at checkout, like every field named in no fills list; an order carrying no proximity-policy clause requires no proximity verification. The runtime proof that a hand-off actually occurred within an accepted band is filed as a runtime attestation at stage 1 \u2014 by either party (a counterparty may be absent, e.g. a dead drop: the attester carries the device/network identifier as evidence in lieu of the counterparty). Sufficiency of witnessing is derived at read time against the committed bands, never enforced by the protocol.",
-    "rpgfTag": null,
     "fields": [
         {
             "name": "bands",

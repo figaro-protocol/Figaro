@@ -44,7 +44,7 @@ contract ClauseRegistryTest is Test {
 
     function test_registerClause() public {
         vm.prank(alice);
-        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, bytes32(0));
+        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
 
         assertTrue(registry.registered(MODALITIES_HASH));
         // The integrity anchor is stored, not just emitted — the batch
@@ -55,92 +55,40 @@ contract ClauseRegistryTest is Test {
         assertFalse(withdrawn);
     }
 
-    // ── rpgfTag (declared incentive input) ───────────────────────────
-    //
-    // The tag is a DIFFERENT AXIS from block.article: article groups clauses
-    // for readers and stays off-chain; this is read by the RPGF reward formula
-    // and nothing else. Its predecessor (`family`) was deleted as a duplicate
-    // of `article` and took the geolocation incentive with it — these tests
-    // pin the distinction so the merge cannot silently recur.
-
-    function test_rpgfTag_storedAndEmitted() public {
-        bytes32 geo = keccak256("geo");
-        vm.prank(alice);
-        vm.expectEmit(true, true, true, true);
-        emit ClauseRegistry.ClauseRegistered(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, geo, alice);
-        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, geo);
-
-        assertEq(registry.rpgfTagOf(MODALITIES_HASH), geo);
-    }
-
-    function test_rpgfTag_defaultsToUntagged() public {
-        vm.prank(alice);
-        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, bytes32(0));
-
-        // Untagged is the default and carries no penalty — most clauses are.
-        assertEq(registry.rpgfTagOf(MODALITIES_HASH), bytes32(0));
-    }
-
-    function test_rpgfTag_membershipIsPermissionless() public {
-        // The registry interprets NOTHING: which tags pay, and how much, lives
-        // in the reward formula. So anyone may register under an existing tag
-        // and inherit its treatment — no gate here, by design.
-        bytes32 geo = keccak256("geo");
-        vm.prank(alice);
-        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, geo);
-        vm.prank(bob);
-        registry.registerClause{value: DEPOSIT}(EMISSIONS_ID, 1, EMISSIONS_CONTENT, EMISSIONS_URI, geo);
-
-        assertEq(registry.rpgfTagOf(MODALITIES_HASH), geo);
-        assertEq(registry.rpgfTagOf(keccak256(abi.encode(EMISSIONS_ID, uint64(1)))), geo);
-    }
-
-    function test_rpgfTag_survivesDepositWithdrawal() public {
-        // Withdraw de-surfaces the clause but never clears its bindings —
-        // the tag outlives the stake, like contentHashOf.
-        bytes32 geo = keccak256("geo");
-        vm.startPrank(alice);
-        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, geo);
-        registry.withdrawDeposit(MODALITIES_HASH);
-        vm.stopPrank();
-
-        assertEq(registry.rpgfTagOf(MODALITIES_HASH), geo);
-    }
-
     function test_registerClause_permissionless() public {
         // Anyone can register — no owner gate
         vm.prank(alice);
-        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, bytes32(0));
+        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
 
         vm.prank(bob);
-        registry.registerClause{value: DEPOSIT}(EMISSIONS_ID, 1, EMISSIONS_CONTENT, EMISSIONS_URI, bytes32(0));
+        registry.registerClause{value: DEPOSIT}(EMISSIONS_ID, 1, EMISSIONS_CONTENT, EMISSIONS_URI);
 
         assertTrue(registry.registered(MODALITIES_HASH));
         assertTrue(registry.registered(EMISSIONS_HASH));
     }
 
     function test_registerClause_revertsOnDuplicate() public {
-        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, bytes32(0));
+        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
 
         vm.expectRevert(abi.encodeWithSelector(ClauseRegistry.AlreadyRegistered.selector, MODALITIES_HASH));
-        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, bytes32(0));
+        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
     }
 
     function test_registerClause_revertsWrongDeposit() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(ClauseRegistry.WrongDeposit.selector, DEPOSIT - 1, DEPOSIT));
-        registry.registerClause{value: DEPOSIT - 1}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, bytes32(0));
+        registry.registerClause{value: DEPOSIT - 1}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
 
         // Excess is also rejected — no sweep function exists.
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(ClauseRegistry.WrongDeposit.selector, DEPOSIT + 1, DEPOSIT));
-        registry.registerClause{value: DEPOSIT + 1}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, bytes32(0));
+        registry.registerClause{value: DEPOSIT + 1}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
     }
 
     function test_registerClause_zeroDepositDeploy() public {
         ClauseRegistry freeRegistry = new ClauseRegistry(0);
         vm.prank(alice);
-        freeRegistry.registerClause(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, bytes32(0));
+        freeRegistry.registerClause(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
         assertTrue(freeRegistry.registered(MODALITIES_HASH));
     }
 
@@ -153,8 +101,8 @@ contract ClauseRegistryTest is Test {
     function test_sameNameDifferentVersionIsDistinct() public {
         // Permissionless versioning — the (name, version) pair is the identity, so
         // a future figaro-geolocation-v3 registers without colliding with v2.
-        registry.registerClause{value: DEPOSIT}("figaro-geolocation", 2, keccak256("geo-v2-spec"), "ipfs://geo/v2", bytes32(0));
-        registry.registerClause{value: DEPOSIT}("figaro-geolocation", 3, keccak256("geo-v3-spec"), "ipfs://geo/v3", bytes32(0));
+        registry.registerClause{value: DEPOSIT}("figaro-geolocation", 2, keccak256("geo-v2-spec"), "ipfs://geo/v2");
+        registry.registerClause{value: DEPOSIT}("figaro-geolocation", 3, keccak256("geo-v3-spec"), "ipfs://geo/v3");
 
         assertTrue(registry.registered(keccak256(abi.encode("figaro-geolocation", uint64(2)))));
         assertTrue(registry.registered(keccak256(abi.encode("figaro-geolocation", uint64(3)))));
@@ -164,7 +112,7 @@ contract ClauseRegistryTest is Test {
 
     function test_withdrawDeposit_returnsStake_bindingStays() public {
         vm.prank(alice);
-        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, bytes32(0));
+        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
 
         uint256 balBefore = alice.balance;
         vm.prank(alice);
@@ -181,7 +129,7 @@ contract ClauseRegistryTest is Test {
 
     function test_withdrawDeposit_emitsEvent() public {
         vm.prank(alice);
-        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, bytes32(0));
+        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
 
         vm.prank(alice);
         vm.expectEmit(true, true, false, true);
@@ -191,7 +139,7 @@ contract ClauseRegistryTest is Test {
 
     function test_withdrawDeposit_registrarOnly() public {
         vm.prank(alice);
-        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, bytes32(0));
+        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
 
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(ClauseRegistry.NotRegistrar.selector, bob, alice));
@@ -200,7 +148,7 @@ contract ClauseRegistryTest is Test {
 
     function test_withdrawDeposit_onlyOnce() public {
         vm.prank(alice);
-        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, bytes32(0));
+        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
 
         vm.prank(alice);
         registry.withdrawDeposit(MODALITIES_HASH);
@@ -221,9 +169,9 @@ contract ClauseRegistryTest is Test {
         // the new version with it. The old binding stays permanent (its
         // committed agreements are untouched); it merely de-surfaces.
         vm.startPrank(alice);
-        registry.registerClause{value: DEPOSIT}("figaro-geolocation", 2, keccak256("geo-v2-spec"), "ipfs://geo/v2", bytes32(0));
+        registry.registerClause{value: DEPOSIT}("figaro-geolocation", 2, keccak256("geo-v2-spec"), "ipfs://geo/v2");
         registry.withdrawDeposit(keccak256(abi.encode("figaro-geolocation", uint64(2))));
-        registry.registerClause{value: DEPOSIT}("figaro-geolocation", 3, keccak256("geo-v3-spec"), "ipfs://geo/v3", bytes32(0));
+        registry.registerClause{value: DEPOSIT}("figaro-geolocation", 3, keccak256("geo-v3-spec"), "ipfs://geo/v3");
         vm.stopPrank();
 
         assertTrue(registry.registered(keccak256(abi.encode("figaro-geolocation", uint64(2)))));
@@ -239,22 +187,22 @@ contract ClauseRegistryTest is Test {
     function test_emitsClauseRegistered() public {
         vm.expectEmit(true, true, true, true);
         emit ClauseRegistry.ClauseRegistered(
-            MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, bytes32(0), address(this)
+            MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, address(this)
         );
-        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, bytes32(0));
+        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
     }
 
     function test_emitsClauseRegistered_withRegistrar() public {
         vm.prank(alice);
         vm.expectEmit(true, true, true, true);
-        emit ClauseRegistry.ClauseRegistered(EMISSIONS_ID, 1, EMISSIONS_CONTENT, EMISSIONS_URI, bytes32(0), alice);
-        registry.registerClause{value: DEPOSIT}(EMISSIONS_ID, 1, EMISSIONS_CONTENT, EMISSIONS_URI, bytes32(0));
+        emit ClauseRegistry.ClauseRegistered(EMISSIONS_ID, 1, EMISSIONS_CONTENT, EMISSIONS_URI, alice);
+        registry.registerClause{value: DEPOSIT}(EMISSIONS_ID, 1, EMISSIONS_CONTENT, EMISSIONS_URI);
     }
 
     // ── Mechanism self-declaration ───────────────────────────────────
 
     function test_setMechanismClause() public {
-        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, bytes32(0));
+        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
 
         vm.prank(mechanism);
         registry.setMechanismClause(MODALITIES_HASH);
@@ -268,7 +216,7 @@ contract ClauseRegistryTest is Test {
     }
 
     function test_setMechanismClause_emitsEvent() public {
-        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, bytes32(0));
+        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
 
         vm.prank(mechanism);
         vm.expectEmit(true, true, false, false);
@@ -277,8 +225,8 @@ contract ClauseRegistryTest is Test {
     }
 
     function test_mechanismCanDeclareMultipleClauses() public {
-        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, bytes32(0));
-        registry.registerClause{value: DEPOSIT}(EMISSIONS_ID, 1, EMISSIONS_CONTENT, EMISSIONS_URI, bytes32(0));
+        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
+        registry.registerClause{value: DEPOSIT}(EMISSIONS_ID, 1, EMISSIONS_CONTENT, EMISSIONS_URI);
 
         vm.startPrank(mechanism);
         registry.setMechanismClause(MODALITIES_HASH);
@@ -290,9 +238,9 @@ contract ClauseRegistryTest is Test {
     // ── Multiple clauses ─────────────────────────────────────────────
 
     function test_registerThreeClauses() public {
-        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI, bytes32(0));
-        registry.registerClause{value: DEPOSIT}(EMISSIONS_ID, 1, EMISSIONS_CONTENT, EMISSIONS_URI, bytes32(0));
-        registry.registerClause{value: DEPOSIT}(LIFECYCLE_ID, 1, LIFECYCLE_CONTENT, LIFECYCLE_URI, bytes32(0));
+        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, MODALITIES_URI);
+        registry.registerClause{value: DEPOSIT}(EMISSIONS_ID, 1, EMISSIONS_CONTENT, EMISSIONS_URI);
+        registry.registerClause{value: DEPOSIT}(LIFECYCLE_ID, 1, LIFECYCLE_CONTENT, LIFECYCLE_URI);
 
         assertTrue(registry.registered(MODALITIES_HASH));
         assertTrue(registry.registered(EMISSIONS_HASH));
@@ -302,19 +250,19 @@ contract ClauseRegistryTest is Test {
     function test_registerClause_revertsZeroContentHash() public {
         vm.prank(alice);
         vm.expectRevert(ClauseRegistry.ZeroContentHash.selector);
-        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, bytes32(0), MODALITIES_URI, bytes32(0));
+        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, bytes32(0), MODALITIES_URI);
     }
 
     function test_registerClause_revertsEmptyContentURI() public {
         vm.prank(alice);
         vm.expectRevert(ClauseRegistry.EmptyContentURI.selector);
-        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, "", bytes32(0));
+        registry.registerClause{value: DEPOSIT}(MODALITIES_ID, 1, MODALITIES_CONTENT, "");
     }
 
     function test_registerClause_revertsEmptyClauseId() public {
         vm.prank(alice);
         vm.expectRevert(ClauseRegistry.EmptyClauseId.selector);
-        registry.registerClause{value: DEPOSIT}("", 1, MODALITIES_CONTENT, MODALITIES_URI, bytes32(0));
+        registry.registerClause{value: DEPOSIT}("", 1, MODALITIES_CONTENT, MODALITIES_URI);
     }
 
     // ── No owner, no activate/deactivate ─────────────────────────────

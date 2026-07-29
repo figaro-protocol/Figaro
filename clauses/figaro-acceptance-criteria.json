@@ -3,7 +3,6 @@
     "version": 1,
     "title": "Acceptance criteria",
     "description": "The committed basis on which the goods or work of an order are accepted. Elective and NEVER default-on: composed when the parties need the acceptance basis as shared reference \u2014 what an inspection service attests against, and what the buyer's receipt references. Commits the acceptance basis (the external standard, specification, or purchase-order reference is the source of truth; this clause references it) and optionally affixes the full criteria document by content hash. Inspection and receipt outcomes are filed as runtime attestations at stage 1 \u2014 one attestation per inspection or acceptance event, by whichever party performed it. Whether the goods met the committed basis is what the attested outcomes evidence; the kernel's resolution stays the buyer's sovereign act and is never conditioned on this clause.",
-    "rpgfTag": null,
     "fields": [
         {
             "name": "acceptanceBasis",
