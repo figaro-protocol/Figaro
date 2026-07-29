@@ -273,10 +273,6 @@ contract Deploy is Script {
     ///      Logs its own address lines — deploy-local.sh parses the
     ///      "deployed at:" lines, and the NEXT_PUBLIC_ summary prints here
     ///      rather than in run().
-    ///
-    ///      There is no donation rail to deploy: a MatchPool IS its own rail,
-    ///      and a pool is NOT a genesis contract — one instance is one round,
-    ///      deployed by whoever opens it (the e2e suite deploys its own per run).
     function _deployRpgf(
         FlorinToken florin,
         FigaroCore core,

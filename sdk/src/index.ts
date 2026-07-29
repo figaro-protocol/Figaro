@@ -31,7 +31,7 @@ export {
     ERC20_ABI, SELLER_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI,
     FLORIN_TOKEN_ABI,
     WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI, SWAP_FUNDING_TUPLE,
-    USAGE_COUNTER_ABI, RPGF_MINTER_ABI, MATCH_POOL_ABI,
+    USAGE_COUNTER_ABI, RPGF_MINTER_ABI,
     BATCH_VERIFIER_ABI,
     // Kernel Commitment struct tuple — a core primitive, used by composition-layer
     // contract ABIs that take a Commitment as a calldata arg.
@@ -308,24 +308,3 @@ export type {
     UsageAccrual,
     UsagePeriodAccrual,
 } from "./rpgf/index.js";
-
-// Match mirror — the off-chain reference implementation of
-// sdk/src/match/formula.json. A MatchPool round is its own donation rail: it
-// accumulates the surplus-form quadratic-funding sums as each donation lands,
-// and this mirrors that arithmetic (and predicts a planned donation's effect).
-export {
-    computeMatchAllocations,
-    computeMatchAccruals,
-    fetchMatchDonationEvents,
-    isqrt,
-    MATCH_FORMULA,
-    MATCH_CAP_NUMERATOR,
-    MATCH_CAP_DENOMINATOR,
-} from "./match/index.js";
-export type {
-    MatchRoundConfig,
-    MatchDonationEvent,
-    MatchAllocation,
-    MatchRecipientAccrual,
-    MatchFormulaParameters,
-} from "./match/index.js";

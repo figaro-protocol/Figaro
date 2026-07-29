@@ -158,21 +158,14 @@ export default function Specifications() {
                         id="RpgfMinter"
                         title="RpgfMinter.sol"
                         href={`${GH}/rpgf/RpgfMinter.sol`}
-                        meta="600M cap · no owner"
-                        desc="The retroactive distribution: three declining tranches (300M / 200M / 100M) to clause authors and assembly designers of record. Tranche i pays for UsageCounter period i and claim() requires that period closed, so a share is score-over-total against numbers that stopped moving — no snapshot, no checkpoint array, no history walk. 15% per-wallet cap applied at claim time; the excess stays unminted (no water-filling). One claim per wallet per tranche, every artifact passed in that call and each verified against its own registry. No owner, no pause, no sweep, no claim expiry; the budget is bounded twice (minted[tranche] here, and the FlorinToken minter cap registered at genesis) (record key: rpgfMinter)."
+                        meta="600M · no owner"
+                        desc="The retroactive distribution: three declining tranches (300M / 200M / 100M) to clause authors and assembly designers of record. Tranche i pays for UsageCounter period i and claim() requires that period closed, so a share is score-over-total against numbers that stopped moving — no snapshot, no checkpoint array, no history walk. UNIFORM pro rata with no per-wallet cap; eligibility is a LIVE ETH stake — _isAuthor requires the artifact's registration deposit un-withdrawn, so you earn only while your stake stays live. One claim per wallet per tranche, every artifact passed in that call and each verified against its own registry. No owner, no pause, no sweep, no claim expiry; the budget is bounded twice (minted[tranche] here, and the FlorinToken minter cap registered at genesis) (record key: rpgfMinter)."
                     />
                     <ContractEntry
                         id="daoTreasury"
                         title="daoTreasury (multisig)"
                         meta="devnet mock · genesis custody"
                         desc="Holds the 300M-florin DAO genesis allocation. Mainnet is a canonical Safe at the DAO wallet — config, never code; devnet is MockTreasuryMultisig (2-of-3 anvil placeholders). The treasury never signs kernel commitments (the kernel is ECDSA-only); it buys through a per-procurement funded operator EOA (record key: daoTreasury)."
-                    />
-                    <ContractEntry
-                        id="MatchPool"
-                        title="MatchPool.sol"
-                        href={`${GH}/match/MatchPool.sol`}
-                        meta="one instance = one round · its own rail"
-                        desc="A Gitcoin-modelled matching round; Gitcoin/Allo is the MODEL, never a dependency. The pool IS its own donation rail: donate moves the donor's tokens straight through to the recipient — nothing is ever held on their behalf — while the round accumulates the quadratic-funding sums as each donation lands, so the match is arithmetic at claim time with nothing posted, bonded, or challenged. Weight is the coordination surplus sumSqrt² − sumOf, so a single donation earns no match; a donation floor prices each one in real capital and self-donation reverts. finalize() is permissionless once the window ends and snapshots the budget; claim pays budget·weight/totalWeight, capped at 15% per recipient. No owner, no pause, no sweep. Not a genesis contract and not in the deployment record — one instance is one round, deployed by whoever opens it."
                     />
                     <ContractEntry
                         id="multisender"

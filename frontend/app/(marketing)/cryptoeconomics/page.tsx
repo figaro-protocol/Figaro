@@ -153,10 +153,10 @@ export default function Cryptoeconomics() {
                     </div>
                     <div className="border-l-2 border-default pl-4">
                         <dt className="text-base font-semibold text-ink-heading">
-                            <Link href="/match-rounds" className="hover:underline">Match rounds</Link>
+                            DAO discretionary funding
                         </dt>
                         <dd className="text-ink-body leading-relaxed mt-1">
-                            The DAO funds a match in florins for work it wants done, and a crowd of donors steers who earns it by a quadratic-funding rule the round applies as each donation lands &mdash; no committee, no application, and nothing to submit or contest at the end. This is how the first florins reach strangers&apos; hands, and how the issuer funds work without ever touching a market.
+                            The 300M is the human-judgment layer the 600M deliberately avoids: the DAO funds public goods by DECIDING to &mdash; paying a third party, procuring through the protocol, or standing up a program &mdash; from its own treasury, without ever touching a market. There is no quadratic-funding round and no crowd mechanism; that discretion is the point.
                         </dd>
                     </div>
                     <div className="border-l-2 border-default pl-4">

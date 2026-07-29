@@ -328,51 +328,6 @@ export const RPGF_MINTER_ABI = parseAbi([
     "error TrancheBudgetExceeded(uint8 trancheId)",
 ]);
 
-// ── MatchPool ABI ─────────────────────────────────────────────────────────
-//
-// One instance IS one round, and the round IS its own donation rail:
-// `donate` passes the tokens straight through to the recipient while the
-// contract accumulates the quadratic-funding sums as each donation lands.
-// A recipient's weight is the coordination surplus `sumSqrt^2 - sumOf`;
-// the match is `budget * weight / totalWeight`, capped at 15%.
-
-export const MATCH_POOL_ABI = parseAbi([
-    "function donate(address recipient, uint256 amount) external",
-    "function finalize() external",
-    "function claim(address recipient) external",
-    "function matchOf(address recipient) view returns (uint256)",
-    "function weightOf(address recipient) view returns (uint256)",
-    "function sqrt(uint256 n) pure returns (uint256)",
-    "function recipientOf(address recipient) view returns (uint256 sumSqrt, uint256 sumOf, uint64 donors, bool claimed)",
-    "function hasDonated(address recipient, address donor) view returns (bool)",
-    "function totalWeight() view returns (uint256)",
-    "function budget() view returns (uint256)",
-    "function finalized() view returns (bool)",
-    "function paid() view returns (uint256)",
-    "function matchToken() view returns (address)",
-    "function donationToken() view returns (address)",
-    "function donationStart() view returns (uint64)",
-    "function donationEnd() view returns (uint64)",
-    "function donationFloor() view returns (uint256)",
-    "function CAP_NUMERATOR() view returns (uint256)",
-    "function CAP_DENOMINATOR() view returns (uint256)",
-    "event Donation(address indexed donor, address indexed recipient, uint256 amount, uint256 weightAfter)",
-    "event Finalized(uint256 budget, uint256 totalWeight)",
-    "event MatchClaimed(address indexed recipient, uint256 amount, uint256 weight)",
-    "error ZeroAddress()",
-    "error BadWindow()",
-    "error DonationsNotOpen()",
-    "error DonationsStillOpen()",
-    "error BelowFloor(uint256 amount, uint256 floor)",
-    "error SelfDonation()",
-    "error AmountMismatch(uint256 expected, uint256 received)",
-    "error AlreadyFinalized()",
-    "error NotFinalized()",
-    "error NothingToClaim()",
-    "error AlreadyClaimed()",
-    "error BudgetExceeded()",
-]);
-
 // ── FigaroBatchVerifier ABI ──────────────────────────────────────────────────
 // The batch-settlement verifier (proof-based scaling). settleBatch carries the
 // proof, the 7-word public values, net positions, and the event data — the

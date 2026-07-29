@@ -46,12 +46,6 @@ export default function ClauseRewards() {
                     <span className="text-ink-body"> &mdash; the live distribution surface: record a settled deal against the artifacts it used, read the running tallies, and claim a round once its period has closed.</span>
                 </li>
                 <li>
-                    <Link href="/match-rounds" className="text-ink-heading font-medium hover:underline">
-                        Match rounds
-                    </Link>
-                    <span className="text-ink-body"> &mdash; the other half: the prospective, crowd-steered way florins first reach strangers, before any adoption is on the record to reward.</span>
-                </li>
-                <li>
                     <Link href="/builders" className="text-ink-heading font-medium hover:underline">
                         Builders
                     </Link>
