@@ -21,8 +21,8 @@ mapping in `VERIFICATION_MAP.md`. Do not duplicate those here.
 │ anchors; first-write-wins.  Coordinators + verifier read the kernel.           │  ── protocol
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ UsageCounter → RpgfMinter.  Verified usage counted as it happens; the florin   │
-│ pays contribution from a closed accrual period.  MatchPool is the crowd's      │  ── protocol
-│ parallel: donations pass straight through, QF sums accrue as they land.        │
+│ pays each artifact UNIFORM pro-rata from a closed accrual period — real usage  │  ── protocol
+│ alone, no category or weight.  Neutrality is the two-sided live ETH stake.     │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ clause.fields  →  the verified substance                                       │
 │   • fields → ABI-encoded → validated (Layer A, off-chain) →                    │  ── protocol
@@ -56,10 +56,6 @@ Arrows point **up**: the UI reads the registries; the registries don't know the 
   which is what leaves nothing to post, bond, challenge, or adjudicate. `RpgfMinter` pays each
   tranche pro rata from a closed accrual period. It reads the registries and the kernel and is
   read by nothing: the arrows still point one way. (`PUBLIC_GRAPH_MODEL.md`, `FLORIN_TOKEN.md`.)
-- **Match rounds (`src/match/`).** The crowd's parallel to RPGF, funded by donors instead of
-  by issuance. One `MatchPool` instance IS one round — its own donation rail, quadratic-funding
-  sums accrued as each donation lands. Not part of the trade path; no buyer or seller touches
-  it. (`CONTRACTS.md`, `FLORIN_TOKEN.md`.)
 - **The clause** — the unit that straddles the seam (below).
 - **UI + IPFS.** One frontend that composes catalogues and renders network state. The signed
   agreement and the clause/assembly specs live in IPFS, pinned; the chain keeps only
@@ -74,7 +70,6 @@ the spec, not around it:
 |---|---|---|
 | **`fields`/`stages`** (the content; stage 0 IS the committed content) | Layer A (`validate.ts`, off-chain) | **Yes (off-chain)** — validated against the spec off-chain; the section is merkle-bound to `agreementHash` and the attestation is secured by bonds. The chain validates no content shape. |
 | **all of `block`** — sectioned by reader: `design` (`article`, `scope`, `nestsUnder`, `fills`, `composes`), `checkout` (`catalogueFills`, `profileFills`), `runtime` (`interaction`, `fields`) | the UI only (drawer grouping + editors, checkout folds, composition dispatch, runtime-input forms, the capability rail) | **No** — every on-chain and verification path ignores it |
-| **`rpgfTag`** (top-level) | the registration tooling — the ONE spec attribute that reaches the chain (`registerClause`) | anchored at registration; `UsageCounter` compares it to its deploy-frozen `boostedTag` |
 
 There is **no `block.tier`** (it was ripped from the block model). Verification is **uniform**:
 every clause section is a merkle leaf under the signed `agreementHash`, and that keccak binding

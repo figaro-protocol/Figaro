@@ -85,16 +85,15 @@ check. A malformed spec is caught here, at author time.
    surfaces. The IPFS add options (CID version, chunker) do NOT matter: the registry binds
    the keccak CONTENT HASH, not the CID, and verification is always
    fetch → re-canonicalize → re-hash.
-2. Register: `ClauseRegistry.registerClause(clauseId, version, contentHash, contentURI, rpgfTag)`
+2. Register: `ClauseRegistry.registerClause(clauseId, version, contentHash, contentURI)`
    with the deposit, signed by the **user's** key. First-write-wins: the id binds
    permanently. A behaviour change is a NEW `version` (never mutate a registered id).
-   `rpgfTag` is `keccak256(<lowercase label>)` declaring the KIND of contribution this
-   clause makes — `bytes32(0)` (untagged) is the default and carries no penalty. It is set
-   once, never cleared, and is NOT `block.article`: article groups clauses for readers, the
-   tag is read only by the reward path. A deployment's `UsageCounter` freezes which single
-   tag earns the substrate-broadening weight (3000 vs a base of 1000); membership is
-   permissionless, so read `UsageCounter.boostedTag()` from the chain before advising the
-   user on a tag — never assume a label from memory.
+   There is no reward tag, category or weight to declare — the spec carries no
+   `rpgfTag` field and `registerClause` takes no such argument. The 600M retroactive
+   reward is UNIFORM: an artifact's score is its real usage alone
+   (`icbrt(c·d²·10^18)`), with no per-wallet cap. The only eligibility gate is the
+   live ETH stake — the author earns only while the registration deposit stays
+   un-withdrawn, and a clause's usage counts only for a live-staked seller-of-record.
 3. If the user prefers to sign in their own wallet UI, hand them the exact calldata.
 
 ## Step 6 — Output (the user owns this)

@@ -76,7 +76,7 @@ Frontend wiring: `clauseSpecSource.ts` loads each spec live from `ClauseRegistry
 
 Two on-chain touch points remain:
 
-- **`ClauseRegistry.registerClause(clauseId, version, contentHash, contentURI, rpgfTag)`**
+- **`ClauseRegistry.registerClause(clauseId, version, contentHash, contentURI)`**
   — permissionless, first-write-wins, immutable. `clauseId` is the **bare
   human-readable name** (a string, e.g. `figaro-emissions`) and `version` is a separate
   `uint64`; the on-chain identity/dedup key is `keccak256(abi.encode(clauseId, version))`,
@@ -85,11 +85,10 @@ Two on-chain touch points remain:
   are edited **in place** and re-seeded fresh each `devup`. Do not bump `version` or
   mint a `-v2` to change a clause.) It anchors the clauseId, the spec's IPFS locator, and the spec's
   content hash (identity + integrity only — no group field; grouping is
-  `block.design.article` in the spec JSON). The `rpgfTag` argument is declared in
-  the spec as the top-level `rpgfTag` attribute — the ONE spec attribute that
-  reaches the chain (registration data, outside `block`; the seeder and the
-  /clauses register form hash it into the call). No validator is registered or
-  bound; a registered clause is immediately attestable.
+  `block.design.article` in the spec JSON, which stays off-chain). No RPGF tag
+  reaches the chain — the reward is uniform on real usage, with no per-clause
+  category (owner: memory `project_reward_mechanism_ratified_2026_07`). No validator
+  is registered or bound; a registered clause is immediately attestable.
   **Versioning convention (RULED 2026-07-21): `version` is an integer lineage counter,
   never semver.** Semver's three-part contract (MAJOR.MINOR.PATCH) is a compatibility
   promise for consumers that resolve version *ranges* and auto-upgrade within them —
@@ -123,8 +122,7 @@ ratified 2026-07-28; the published definition is
 `sdk/src/clauses/clause-spec.schema.json`):
 
 - **Top level = protocol + registration**: identity (`clauseId`, `version`,
-  `title`, `description`), `rpgfTag` (registration data — the one spec
-  attribute that reaches the chain), and the content `fields`/`stages`.
+  `title`, `description`) and the content `fields`/`stages`.
   **Stage 0 IS the committed content** (declared by `fields`); `stages[N≥1]`
   are the runtime-evidence shapes.
 - **`block` = the UI half**, organized into PHASE SECTIONS named for their
@@ -268,11 +266,10 @@ A clause is an *anchored artifact family*: an off-chain definition whose
 meaning must stay stable across parties, tools, and time, anchored on-chain by
 a minimal reference point — `clauseId` + `contentHash` + `contentURI` in
 `ClauseRegistry` (identity + integrity only). Not every value
-that flows through an order deserves one. The RPGF substrate-broadening weight
-reads neither the spec's block nor `block.design.article`: it reads the `rpgfTag` the registrar
-declared at registration, against the single `boostedTag` frozen at
-`UsageCounter`'s deploy. Rationale in `docs/PUBLIC_GRAPH_MODEL.md`; the
-article-vs-tag distinction in `docs/LEXICON.md`.
+that flows through an order deserves one. RPGF pays every clause uniformly on its
+real usage, with no category, tag, or weight — the registry anchors identity and
+integrity, nothing that tilts the reward. Rationale in
+`docs/PUBLIC_GRAPH_MODEL.md`.
 
 Separate two kinds of data:
 
@@ -368,7 +365,7 @@ generic and takes the spec as a witness input anchored by the registration's
 2. `populate-clauses.mjs` pins it to IPFS + anchors `(clauseId, version, contentHash, contentURI)` on `ClauseRegistry`; the frontend loads it chain→IPFS via `clauseSpecSource` (no frontend copy, no preload).
 3. **No per-clause encoder is needed** — `sdk/src/clauses/encode.ts` (`encodeContentFromSpec`) is the single generic, spec-driven encoder for ANY clause. A new clause adds a spec, not a code path.
 4. SDK conformance/examples test reads the new spec from `clauses/` as a fixture (e.g. `sdk/tests/clauses/examples.test.ts`); the off-chain validator (`validateContent`) is generic and needs no per-clause case.
-5. Registration via `frontend/scripts/populate-clauses.mjs` (NOT the Solidity deploy — `Deploy.s.sol`/`DeployMainnet.s.sol` deploy the registry but register no clauses): `registerClause(clauseId, version, contentHash, contentURI, rpgfTag)`. No `setValidator` step exists — registration alone makes the clause attestable. No frontend registration step either: the drawer, `/clauses` inventory, and every surface read the clause set live from `ClauseRegistry` events and the spec from IPFS (`clauseSpecSource`); titles and articles come from the spec.
+5. Registration via `frontend/scripts/populate-clauses.mjs` (NOT the Solidity deploy — `Deploy.s.sol`/`DeployMainnet.s.sol` deploy the registry but register no clauses): `registerClause(clauseId, version, contentHash, contentURI)`. No `setValidator` step exists — registration alone makes the clause attestable. No frontend registration step either: the drawer, `/clauses` inventory, and every surface read the clause set live from `ClauseRegistry` events and the spec from IPFS (`clauseSpecSource`); titles and articles come from the spec.
 
 **When to add a seller-process clause vs not** (kernel-participant vs off-chain-seller principle): an off-chain seller needs its own process clause if and only if its state transitions are off-chain. Off-chain sellers (merchants, couriers, locker sellers, etc.) need a process clause because their state transitions happen in physical reality and need a sovereign event log to be tamper-proof evidence. Kernel participants — most importantly the **buyer**, who acts via `commit` and `resolveProcess` — do NOT need a process clause; their evidence IS the kernel event log itself. `merchant-process` and `courier-process` are sovereign-log primitives in this sense. Don't add a `figaro-buyer-process` clause — it would duplicate kernel events.
 

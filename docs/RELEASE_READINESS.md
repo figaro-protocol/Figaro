@@ -2,7 +2,7 @@
 
 Status: canonical release gate note for the live V5 kernel, protocol, and runtime.
 
-Last updated: 2026-07-27 (the optimistic reward apparatus — posted roots, ETH bonds, challenge windows, the arbitrator seam and its mocks, the standalone donation rail — was DELETED and replaced by `UsageCounter` + a rewritten `RpgfMinter` and self-railed `MatchPool`; `CONTRACTS.md` § "Teardown state — CLOSED" owns the status. Earlier: the `cloudflare/` closed-beta apparatus was deleted — Task 7 is a plain testnet rehearsal now; `FigaroBatchVerifier` and the Rust `prover/` were rebuilt witness-based 2026-07-16, so Task 8 is live).
+Last updated: 2026-07-29 (the reward mechanism was ratified UNIFORM — `UsageCounter` + `RpgfMinter` pay each artifact pro-rata on real usage alone, gated by the two-sided live ETH stake; the per-clause weight (`BOOSTED_WEIGHT`/`BASE_WEIGHT`, `rpgfTag`), the 15% per-wallet cap, and the entire quadratic-funding/match-round apparatus (`MatchPool`) were DELETED. Owner: memory `project_reward_mechanism_ratified_2026_07`; `CONTRACTS.md` § "Teardown state — CLOSED" owns the contract status. Earlier: the optimistic reward apparatus — posted roots, ETH bonds, challenge windows, the arbitrator seam and its mocks — was deleted 2026-07-27 and replaced by the count-at-resolve `UsageCounter`; the `cloudflare/` closed-beta apparatus was deleted — Task 7 is a plain testnet rehearsal now; `FigaroBatchVerifier` and the Rust `prover/` were rebuilt witness-based 2026-07-16, so Task 8 is live).
 
 This note is the current answer to a simple question: what is ready now, what is still open, and what must happen before a public release is treated as complete.
 
@@ -12,10 +12,7 @@ Ruled by the operator 2026-07-17: the public deployment target is **Ethereum mai
 **Polygon** is a possible additional deployment. A **Cairo rewrite** of the contracts
 (Starknet) is planned as a later line of work. Testnet rehearses the mainnet deployment
 (testnet = mainnet rehearsal); chain-coupled compositions resolve against these targets —
-Kleros courts are live on Ethereum mainnet. The match rounds compose nothing external —
-Gitcoin/Allo is the MODEL, not a dependency (Allo is no longer maintained, so the tooling
-is ours: `src/match/` plus `sdk/src/match/`), which is why no third-party matching-pool
-deployment has to support the florin on the deployment chain.
+Kleros courts are live on Ethereum mainnet.
 
 ## Current Verdict
 
@@ -295,7 +292,7 @@ external-audit gates above:
 - `AttestationCoordinator.core` == the deployed `FigaroCore` address.
 - `SellerRegistry.registrationDeposit` and `ClauseRegistry.registrationDeposit` == the mainnet values picked per Task 3 (NOT the devnet `0.001 ether` placeholder).
 - `AssemblyRegistry.registrationDeposit` == the mainnet value picked per Task 3 (NOT the devnet `0.001 ether` placeholder).
-- `UsageCounter.boostedTag` == `keccak256(RPGF_BOOSTED_TAG)` for the intended label, and `UsageCounter.periodEnd(0..2)` == the intended `RPGF_PERIOD_END_1/2/3` — these are immutable and cannot be corrected after deploy. `RpgfMinter.counter` / `.clauses` / `.assemblies` point at the deployed instances, and `.trancheAmount` sums to 600M.
+- `UsageCounter.sellers` == the deployed `SellerRegistry` (the live-stake gate reads it), and `UsageCounter.periodEnd(0..2)` == the intended `RPGF_PERIOD_END_1/2/3` — these are immutable and cannot be corrected after deploy. `RpgfMinter.counter` / `.clauses` / `.assemblies` point at the deployed instances, and `.trancheAmount` sums to 600M.
 - All settlement tokens are non-rebasing and non-fee-on-transfer.
 - Kleros subcourt IDs in the deployed dispute config match the target chain on klerosboard.com (Gnosis subcourt IDs differ from Ethereum mainnet) — verify before the deployment is treated as live.
 - Agreement / assembly-template / profile content is pinned for durable retrieval per Task 6 — on mainnet via sovereign per-party pinning (Option 3), never only a single Kubo node — and is fetchable by CID across the 6-year (5 + 1) retrieval-availability floor.
@@ -329,7 +326,7 @@ directory IS the tier map); the frozen *contracts* are unchanged by the move.
 | `script/Deploy.s.sol` | Devnet deploy (defines the devnet surface) |
 | `script/DeployMainnet.s.sol` | Mainnet deploy (defines the audited mainnet surface) |
 
-`src/protocol/usage/`, `src/rpgf/`, `src/match/`, and `src/protocol/verifier/` are
+`src/protocol/usage/`, `src/rpgf/`, and `src/protocol/verifier/` are
 NOT yet in the frozen scope — extending it to cover them is the pre-mainnet
 re-establishment task noted under Task 8.
 

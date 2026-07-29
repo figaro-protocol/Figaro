@@ -18,16 +18,19 @@ npm install @figaro/sdk
 ### `@figaro/sdk` — Protocol Primitives
 
 Event parsing, state reconstruction, EIP-712 commitments, bond calculations,
-chain gas ceilings. Also home to the two distribution mirrors —
-`computeRpgfAllocations` (`src/rpgf/formula.json`) and
-`computeMatchAllocations` (`src/match/formula.json`): deterministic integer
-pipelines that reproduce, off chain, what `UsageCounter` + `RpgfMinter` and a
-`MatchPool` round compute on chain. Both mechanisms count as the facts happen —
-usage is recorded against a resolved order, donations accrue as they land — so
-**there is nothing to post, nothing to bond and nothing to dispute**. The
-mirrors exist to display a distribution, predict a claim, and verify a recorded
-accrual; the formula files are the normative prose statement of the mechanism
-and the source of every constant the mirrors use.
+chain gas ceilings. Also home to the distribution mirror —
+`computeRpgfAllocations` (`src/rpgf/formula.json`): a deterministic integer
+pipeline that reproduces, off chain, what `UsageCounter` + `RpgfMinter` compute
+on chain for the 600M retroactive distribution. Usage is counted as the facts
+happen — recorded against a resolved order — so **there is nothing to post,
+nothing to bond and nothing to dispute**. The reward is UNIFORM (no tag,
+category or weight — every artifact's score is `icbrt(c·d²·10^18)`, its real
+usage alone) and UNCAPPED; the only eligibility gate is a two-sided live ETH
+stake (usage counts only for a live-staked seller-of-record, and an author earns
+only while the artifact's registration deposit stays un-withdrawn). The mirror
+exists to display a distribution, predict a claim, and verify a recorded
+accrual; `formula.json` is the normative prose statement of the mechanism and
+the source of every constant the mirror uses.
 
 ```ts
 import {

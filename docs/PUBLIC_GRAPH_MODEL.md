@@ -138,15 +138,16 @@ participants that other agents learn from, without centralized orchestration.
 
 ---
 
-## Why the substrate-broadening weight exists — the geo/coordination incentive
+## Why the flow-map gets built — the geo/coordination incentive under a uniform reward
 
-This section is load-bearing. Without it, the RPGF substrate-broadening weight
-(`FLORIN_TOKEN.md`) reads as an unexplained category privilege in a
-neutrality-preaching system, is mistaken for closed-world cruft, and is removed.
-It is not cruft. (The `lint-substrate-broadening-weight.sh` guard that once kept
-parallel formula files in sync was retired with the RPGF prover; there is nothing
-left for it to guard — the weight now lives in exactly ONE artifact,
-`src/protocol/usage/UsageCounter.sol`, as two constants and one immutable tag.)
+This section is load-bearing: it explains why the geo/coordination clauses exist and
+get authored, now that the reward pays **no more for them than for any other clause.**
+The reward mechanism was ratified UNIFORM on 2026-07-29 (owner: memory
+`project_reward_mechanism_ratified_2026_07`): an artifact's score is its **real usage
+alone** — `icbrt(c·d²·1e18)` — with **no tag, no category, no weight multiplier.** The
+old "substrate-broadening weight" (`UsageCounter.BOOSTED_WEIGHT`/`BASE_WEIGHT`,
+`ClauseRegistry.rpgfTag`/`rpgfTagOf`, the counter's `boostedTag`) is **deleted.**
+Neutrality is now achieved by the **stake, not by weighting.**
 
 **The must-haves see value, not place.** Every Figaro agreement composes the core
 protocol plus two clauses present in essentially all of them: **topology** (the
@@ -163,36 +164,28 @@ signals actually moved. That flow-map is not derivable from payment and topology
 it must be *attested* by clauses that carry it — geolocation, proximity, hand-off.
 It is the Geo graph above, and nothing forces it into existence.
 
-**So the protocol pays more for the clauses that draw the map.** To make the
-flow-graph exist, `UsageCounter` weights a **category of work** — the
-physical/virtual-flow contributions — at `BOOSTED_WEIGHT = 3000` against a
-`BASE_WEIGHT` of 1000 for everything else and for every assembly.
+**So the flow-map is built the same way everything is: by being used.** The protocol
+does not pay a premium for the clauses that draw the map. It pays the same uniform
+pro-rata for every clause and assembly, keyed to real usage. A geo/coordination clause
+earns exactly when a real, staked seller's process invokes it — the demand for the
+flow-map is the demand of the assemblies that need it, and the reward follows that
+demand rather than a hardcoded category judgment. The map gets drawn because the
+commerce that needs it draws it, and the author of the clause that carries it is paid
+pro-rata for that real usage.
 
-**The category is a DECLARED TAG, not an article.** A clause names its
-contribution at registration through `ClauseRegistry.rpgfTagOf` (`rpgfTag =
-keccak256("geo")` and the like); the counter's `boostedTag` immutable names the
-one tag that pays. The split is deliberate and is the correction of the costliest
-naming failure in this repo (`LEXICON.md` § "Failure modes"): `block.design.article`
-groups clauses for READERS and stays off-chain; `rpgfTag` (declared top-level in
-the spec — the one spec attribute that reaches the chain) marks what the protocol
-pays more for and has exactly one consumer. Weighting by article instead — the
-2026-07-15 attempt — aimed a mechanism meant for a handful of clauses at 14 of 27.
-
-*Which* tag pays is frozen at the counter's deploy; *membership* stays
-permissionless on the registry, so anyone registering under it inherits the weight
-without touching the counter or the kernel. It is a deliberate incentive:
-contribute and use the clauses that emit physical/virtual-flow data, and earn more
-of the supply reserved for the substrate's contributors — clause authors and
-assembly designers of record.
-
-**This privileges a kind of public good, not a set of authors.** The weight attaches
-to the *declared kind of contribution*, never to a wallet: any author who registers a
-clause under the boosted tag inherits it — permissionlessly, no committee, no
-application. The rule is fixed and discretion-free — *the same rule for every author*
-— and it happens to reward the data the network most needs. Procedural neutrality
-(no one decides who deserves what) and a non-flat weighting (some work is worth more
-to the substrate) are not in tension. Conflating them is the **neutrality ≠
-flat-weighting error** — and the error that keeps getting this deleted.
+**Neutrality comes from the stake, not from the weight.** What keeps the uniform
+reward honest — Sybil-resistant, non-farmable — is the two-sided **live ETH stake**,
+not a per-category multiplier. Usage counts only when the process's seller-of-record
+holds a live `SellerRegistry` stake (`UsageCounter` reads `SellerRegistry.registered`,
+else `SellerNotStaked`), and an author is paid only while their registration deposit is
+un-withdrawn (`RpgfMinter._isAuthor` requires clause `depositOf.withdrawn == false`,
+assembly `bindings.depositWithdrawn == false`); withdraw and you forfeit future RPGF.
+The ETH stake is a **value loop, not a cost**: more trade means more base-currency
+demand for gas, so ETH appreciates in fiat for every registry staker — aligned upside,
+not a fee. That is why every registry stakes in ETH: **florin is the Schelling-point
+REWARD, ETH is the ALIGNMENT.** Procedural neutrality (the same uniform rule for every
+author, no committee, no category) and Sybil-resistance now live in the *same*
+mechanism — the stake — rather than being traded off against a non-flat weighting.
 
 **The objective is a public, verifiable god's-eye view.** Aggregated over time,
 these attestations form a heat-map of physical/virtual flows — demand clusters,

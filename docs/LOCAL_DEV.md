@@ -117,9 +117,9 @@ NEXT_PUBLIC_USAGE_COUNTER=0x...
 NEXT_PUBLIC_RPGF_MINTER=0x...
 NEXT_PUBLIC_DAO_TREASURY=0x...
 
-# No donation-rail address: a MatchPool IS its own rail, and a pool is not a
-# genesis contract — one instance is one round, deployed by whoever opens it and
-# addressed directly (`/rounds?pool=<address>`).
+# No match-pool / quadratic-funding address: MatchPool and all QF were deleted
+# (2026-07-29 — the 300M DAO funds public goods by discretionary decision, not a
+# crowd/match mechanism). The 600M RPGF pays uniform pro rata on real usage.
 
 # Batch-settlement proof path (FigaroBatchVerifier; MockSP1Verifier accepts
 # any proof on devnet — a real deployment wires Succinct's SP1 verifier

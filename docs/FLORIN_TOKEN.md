@@ -101,16 +101,18 @@ exist at deploy time), capped at exactly 600M by the FlorinToken minter registry
 
 **DAO governance is NOT kernel governance.** The kernel has no governance and never will —
 no admin, no owner, no vote decides a resolution. The DAO governs its own treasury: what
-the 300M is spent on, which match rounds get funded and how large, who gets paid for what.
-Those are two different objects at two different tiers, and collapsing them is the error
+the 300M is spent on — which public goods to fund, which programs to stand up, who gets
+paid for what — all by discretionary decision, the human-judgment layer the uniform 600M
+RPGF deliberately avoids. Those are two different objects at two different tiers, and collapsing them is the error
 this section exists to prevent. A DAO vote can move the DAO's money; nothing can move a
 bonded commitment except its buyer.
 
 **The DAO can spend its 300M three ways.** Nothing gates which — these are treasury acts,
 DAO-decided at any time, nothing hardcoded (ruled 2026-07-17):
 
-1. **Fund a match round** — an ordinary token transfer into a `MatchPool`.
-   Anyone may fund a round; the DAO is one funder among all.
+1. **Stand up a public-goods program** — fund a grant, a bounty, a commons initiative
+   by ordinary token transfer at its own discretion. There is no crowd, donation, or
+   match-round mechanism: the DAO decides and pays.
 2. **Pay a third party directly** for services rendered — marketing, design, audits,
    anything — as an ordinary token transfer. No protocol involvement, no bond: this is
    trust-based payment, the same as any organisation paying an invoice.
@@ -135,8 +137,10 @@ upgrade for the buyer key, rehearsed on testnet before adoption.
 The *intent* of this allocation is unchanged: 60% of the supply is reserved for
 the people whose artifacts broaden the protocol's substrate — clause authors
 and assembly designers of record (recipients widened by the 2026-07-09
-redesign) — weighted toward the kind of contribution that produces the public
-physical/virtual-flow graph dissolving platform value-capture.
+redesign). The reward was ratified UNIFORM on 2026-07-29 (owner: memory
+`project_reward_mechanism_ratified_2026_07`): every artifact earns by its **real
+usage alone**, with no category, tag, or weight tilting the split toward any kind
+of contribution.
 
 **The mechanism COUNTS USAGE WHEN IT HAPPENS** — see `UsageCounter` and
 `RpgfMinter` in `docs/CONTRACTS.md`. `UsageCounter.recordUsage` is permissionless
@@ -144,12 +148,12 @@ and proves, from data the chain already holds, that an order is RESOLVED and tha
 the artifact was merkle-committed in the agreement both parties signed. Accrual
 buckets into fixed **periods**; a period's counts are final once it ends. Tranche
 `i` then pays for period `i`: `claim(trancheId, artifacts)` mints
-`trancheAmount · yourScore / totalScoreInPeriod`, with authorship verified against
-`ClauseRegistry` / `AssemblyRegistry`. A 15% per-wallet cap applies at claim time
-and spans both recipient families; the excess stays unminted. Claims never expire —
-a closed period's arithmetic is stable forever. Three tranches (300M/200M/100M);
-devnet and testnet compress the years-2/5/9 schedule (time compresses when time is
-involved; ruled 2026-07-15).
+`trancheAmount · yourScore / totalScoreInPeriod` — **uniform pro rata, no
+per-wallet cap** — with authorship verified against `ClauseRegistry` /
+`AssemblyRegistry`. The 600M pool is fixed: a farmer only ever dilutes it, never
+inflates it. Claims never expire — a closed period's arithmetic is stable forever.
+Three tranches (300M/200M/100M); devnet and testnet compress the years-2/5/9
+schedule (time compresses when time is involved; ruled 2026-07-15).
 
 **Nothing is posted, bonded, challenged, or adjudicated.** The predecessor
 reconstructed usage after the fact, which forced someone to POST the answer, a BOND
@@ -157,16 +161,21 @@ to make posting costly, a CHALLENGE to contest it, and a FORUM to award the bond
 an entire apparatus for making the chain believe a claim about the past. It was
 deleted 2026-07-27 and does not return.
 
-**The weight is a DECLARED TAG, not an article.** A clause registered with the
-`rpgfTag` the counter's `boostedTag` names earns 3000 against a base of 1000;
-everything else, and every assembly, earns 1000. *Which* tag pays is frozen at the
-counter's deploy (`keccak256("geo")` on devnet); *membership* stays permissionless
-on `ClauseRegistry` — anyone registering under it inherits the weight without
-touching the counter or the kernel. A **pair cap of 5** drops further processes
-from the same (buyer, seller) pair entirely, so breadth has to be real.
+**Sybil-resistance is the STAKE, not a weight.** There is no per-clause multiplier:
+every artifact scores on real usage `icbrt(c·d²·1e18)` alone. What keeps that
+farm-proof is the two-sided **live ETH stake**. Usage counts only when the process's
+seller-of-record holds a live `SellerRegistry` stake (`UsageCounter` reads
+`SellerRegistry.registered`, else `SellerNotStaked`), and an author is paid only while
+their registration deposit is un-withdrawn (`RpgfMinter._isAuthor` requires clause
+`depositOf.withdrawn == false`, assembly `bindings.depositWithdrawn == false`) —
+withdraw and you forfeit future RPGF. The ETH stake is a **value loop, not a cost**:
+more trade means more base-currency demand for gas, so ETH appreciates in fiat for
+every registry staker. Florin is the Schelling-point REWARD; ETH is the ALIGNMENT. A
+**pair cap of 5** additionally drops further processes from the same (buyer, seller)
+pair per artifact per period, so breadth has to be real.
 
-The incentive rationale — why the substrate-broadening weight exists — lives in
-`docs/PUBLIC_GRAPH_MODEL.md` § "Why the substrate-broadening weight exists".
+The incentive rationale — why the flow-map gets built under a uniform reward — lives in
+`docs/PUBLIC_GRAPH_MODEL.md` § "Why the flow-map gets built — the geo/coordination incentive under a uniform reward".
 
 ### Rationale
 

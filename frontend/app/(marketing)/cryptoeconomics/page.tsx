@@ -142,9 +142,17 @@ export default function Cryptoeconomics() {
 
             <MarketingSection title="Grants &amp; capital sources">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    Work on the Figaro substrate &mdash; research, review, verification, assembly design, clause authoring, documentation &mdash; is funded through permissionless channels. No application committee. No curated budget.
+                    Work on the Figaro substrate &mdash; research, review, verification, assembly design, clause authoring, documentation &mdash; is funded three ways. The 600M retroactive pool pays authors automatically for the trade their work carries, with no gatekeeper between a contributor and the reward (<Link href="/clause-rewards" className="underline">How clause authors get paid</Link> walks through it). The DAO spends its own treasury at its discretion. And anyone can fund anyone directly, in the open.
                 </p>
                 <dl className="space-y-4 text-sm">
+                    <div className="border-l-2 border-default pl-4">
+                        <dt className="text-base font-semibold text-ink-heading">
+                            Retroactive reward (600M)
+                        </dt>
+                        <dd className="text-ink-body leading-relaxed mt-1">
+                            Sixty percent of all florins &mdash; the largest allocation by far &mdash; is reserved to pay clause authors and assembly designers for the trade their work actually carried: uniform pro rata by real, settled usage, with no per-wallet cap, no category weighting, and no application to file. Once a period closes, each share is fixed by formula and any author can claim it. Eligibility is a live registration deposit in the chain&apos;s base currency &mdash; earn while it is staked, forfeit future reward if you withdraw it. Detail on <Link href="/clause-rewards" className="underline">How clause authors get paid</Link>.
+                        </dd>
+                    </div>
                     <div className="border-l-2 border-default pl-4">
                         <dt className="text-base font-semibold text-ink-heading">DAO allocation</dt>
                         <dd className="text-ink-body leading-relaxed mt-1">
@@ -156,7 +164,7 @@ export default function Cryptoeconomics() {
                             DAO discretionary funding
                         </dt>
                         <dd className="text-ink-body leading-relaxed mt-1">
-                            The 300M is the human-judgment layer the 600M deliberately avoids: the DAO funds public goods by DECIDING to &mdash; paying a third party, procuring through the protocol, or standing up a program &mdash; from its own treasury, without ever touching a market. There is no quadratic-funding round and no crowd mechanism; that discretion is the point.
+                            Where the 600M pays out by formula, the 300M is the opposite by design: the human-judgment layer. The DAO funds public goods by choosing to &mdash; paying a third party, procuring through the protocol, standing up a program &mdash; from its own treasury, never through a market. There is no quadratic-funding round and no crowd-matching mechanism; the discretion is the point, not a stopgap.
                         </dd>
                     </div>
                     <div className="border-l-2 border-default pl-4">

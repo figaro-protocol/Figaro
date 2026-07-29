@@ -33,8 +33,8 @@ content. (This is the instruction-system form of "derive, don't store.")
 | The florin, allocations | `FLORIN_TOKEN.md` |
 | Batch-scaling design (BUILT — witness prover/verifier/sequencer beside the direct path) | `SCALING_STRATEGY.md` |
 | Release gates, frozen audit surface | `RELEASE_READINESS.md` |
-| Public-graph / RPGF incentive rationale (why the substrate-broadening weight exists) | `PUBLIC_GRAPH_MODEL.md` |
-| RPGF + match-round mechanics (UsageCounter, RpgfMinter, MatchPool) | `CONTRACTS.md` |
+| Public-graph / RPGF incentive rationale (why the flow-map gets built under a uniform reward) | `PUBLIC_GRAPH_MODEL.md` |
+| RPGF mechanics (UsageCounter, RpgfMinter — uniform reward, live ETH stake) | `CONTRACTS.md` |
 | Operator preferences, incidents, rulings | memory dir (`MEMORY.md` index) |
 | Open work | the punch-list (memory dir) |
 
