@@ -39,10 +39,31 @@ export type StringFormat =
     | "iso-datetime"
     | (string & {});
 
+/**
+ * Whether a field's committed value belongs to the PUBLIC coordination commons
+ * or is PRIVATE paid-edge data — the clause-spec side of the public/private data
+ * seam.
+ *   - "public"  (the default): learnable for free. The shared map that makes
+ *     coordination possible — topology, denominations, standards, localities.
+ *     Published in the open (plaintext IPFS), indexable.
+ *   - "private": the scarce edge an agent PAYS to learn from. Published only
+ *     behind the fingerprint (encrypted IPFS, or a content-withheld section);
+ *     the merkle leaf still binds it, but the plaintext is never public.
+ * The chain carries only the section HASH either way (calldata never holds a
+ * preimage — enforced at the contract tier). Disposition governs HOW a
+ * frontend/SDK publishes the value, and per-field grain policy (see
+ * figaro-geolocation's grain cap). Absent ⇒ "public": the commons is the norm,
+ * privacy the marked exception.
+ */
+export type FieldDisposition = "public" | "private";
+
 export interface BaseFieldSpec {
     name: string;
     required: boolean;
     description?: string;
+    /** The public/private disposition of this field's committed value. Absent
+     *  ⇒ "public". See {@link FieldDisposition}. */
+    disposition?: FieldDisposition;
     /** Build/UI default applied when the composing input omits this field.
      *  Purely composition metadata — the ABI encoder ignores it (an absent
      *  optional still encodes as the ABI zero-value), so Layers B/C are
@@ -245,6 +266,11 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
         errors.push({ path: `${path}.label`, message: "label must be a string when present" });
         return null;
     }
+    const disposition = raw.disposition;
+    if (disposition !== undefined && disposition !== "public" && disposition !== "private") {
+        errors.push({ path: `${path}.disposition`, message: 'disposition must be "public" or "private" when present' });
+        return null;
+    }
     const type = raw.type;
     if (typeof type !== "string" || !VALID_FIELD_TYPES.has(type)) {
         errors.push({ path: `${path}.type`, message: `type must be one of: ${[...VALID_FIELD_TYPES].join(", ")}` });
@@ -255,6 +281,7 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
         required,
         ...(description !== undefined && { description }),
         ...(label !== undefined && { label }),
+        ...(disposition !== undefined && { disposition: disposition as FieldDisposition }),
     };
 
     switch (type) {

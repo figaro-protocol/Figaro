@@ -64,6 +64,30 @@ describe("parseClauseSpec — meta-clause validation", () => {
         expect(empty.ok).toBe(false);
     });
 
+    it("parses a field disposition and rejects an unknown one", () => {
+        const priv = parseClauseSpec({
+            clauseId: "t", version: 1, title: "T", description: "D",
+            fields: [{ name: "coords", type: "string", required: true, disposition: "private" }],
+        });
+        expect(priv.ok).toBe(true);
+        if (priv.ok) expect(priv.spec.fields[0].disposition).toBe("private");
+
+        // Absent ⇒ carried as undefined; consumers default it to "public".
+        const bare = parseClauseSpec({
+            clauseId: "t", version: 1, title: "T", description: "D",
+            fields: [{ name: "loc", type: "string", required: true }],
+        });
+        expect(bare.ok).toBe(true);
+        if (bare.ok) expect(bare.spec.fields[0].disposition).toBeUndefined();
+
+        const bad = parseClauseSpec({
+            clauseId: "t", version: 1, title: "T", description: "D",
+            fields: [{ name: "x", type: "string", required: true, disposition: "secret" }],
+        });
+        expect(bad.ok).toBe(false);
+        if (!bad.ok) expect(bad.errors[0].path).toBe("$.fields[0].disposition");
+    });
+
     it("recursively parses array.items", () => {
         const result = parseClauseSpec({
             clauseId: "t", version: 1, title: "T", description: "D",

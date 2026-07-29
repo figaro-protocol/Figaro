@@ -12,6 +12,7 @@
 export type {
     FieldType,
     StringFormat,
+    FieldDisposition,
     BaseFieldSpec,
     StringFieldSpec,
     IntegerFieldSpec,

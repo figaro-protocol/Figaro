@@ -41,6 +41,7 @@
                 "required": { "type": "boolean" },
                 "description": { "type": "string" },
                 "label": { "type": "string", "description": "Cosmetic display label (Layer-A only; nothing on-chain reads it)." },
+                "disposition": { "enum": ["public", "private"], "description": "The public/private disposition of this field's committed value — the clause-spec side of the data seam. \"public\" (the default when absent): coordination commons, learnable free, published plaintext. \"private\": paid-edge data, published only behind the fingerprint (encrypted IPFS / content-withheld section). The chain carries only the section HASH either way; disposition governs publication and per-field grain policy (see figaro-geolocation)." },
                 "default": {
                     "type": ["string", "number", "boolean", "array"],
                     "description": "Build/UI default (composition metadata; the ABI encoder ignores it). Shape must match the field type."
