@@ -6,6 +6,7 @@ import { ProcessFinancialsView } from "../_components/ProcessFinancialsView";
 import { ProcessClauseEvidence } from "../_components/ProcessClauseEvidence";
 import { HashVerifier } from "../_components/HashVerifier";
 import { RecoursePanel } from "@/components/runtime/RecoursePanel";
+import { AgreementPinErasure } from "@/components/runtime/AgreementPinErasure";
 import { useProcessOrders } from "@/hooks/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import { deriveProcessRecourse } from "@/lib/semantic/processRecourse";
@@ -37,6 +38,7 @@ function ProcessDisputeSection({ processId }: { processId: string }) {
                 recourses={recourses}
                 orders={orders}
             />
+            <AgreementPinErasure agreementHashes={agreementHashes} />
         </div>
     );
 }

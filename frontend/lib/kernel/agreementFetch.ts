@@ -16,7 +16,7 @@
  */
 import type { Hex } from "viem";
 import { computeAgreementHash, type Agreement } from "@figaro/sdk";
-import { DEFAULT_IPFS_SERVICE, fetchCappedContent, type IpfsService } from "@/lib/shared/ipfsService";
+import { DEFAULT_IPFS_SERVICE, extractIpfsCid, fetchCappedContent, type IpfsService } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { hexEqual } from "@/lib/shared/evm";
 
@@ -47,6 +47,14 @@ function loadAgreementUri(agreementHash: Hex | string | undefined | null): strin
     } catch {
         return null;
     }
+}
+
+/** Drop the witnessed-URI pointer for a hash (the "forget" half of erasure). */
+function forgetAgreementUri(agreementHash: Hex | string): void {
+    if (!canUseStorage()) return;
+    try {
+        localStorage.removeItem(uriKey(agreementHash));
+    } catch { /* non-fatal */ }
 }
 
 const inflight = new Map<string, Promise<Agreement | null>>();
@@ -96,6 +104,39 @@ export interface PublishedAgreement {
     agreementHash: Hex;
     cid: string;
     uri: string;
+}
+
+/**
+ * Erase a witnessed agreement pin: best-effort unpin the body from this
+ * wallet's node and forget the local URI pointer (unpin + forget — the same
+ * erasure symmetry as the seller profile and device-evidence paths, and the
+ * controller-erasure half of "author pins → author erases"). The committed
+ * agreement carries the most participant-linkable content of any pin, and until
+ * now it was the one high-PII artifact with no erasure affordance.
+ *
+ * Controller-initiated, never automatic: the committed agreement is the Layer-3
+ * dispute record an off-chain forum receives, so it must outlive `resolveProcess`
+ * — a party erases it deliberately, once the record is no longer needed.
+ *
+ * Best-effort and idempotent by design: content addressing means this erases
+ * only THIS wallet's copy (a counterparty node or a gateway may still hold it);
+ * an unpin failure is logged and swallowed; unpinning an absent pin or forgetting
+ * an absent pointer is absence, not an error.
+ */
+export async function unpinAgreement(
+    agreementHash: Hex | string,
+    ipfs: Pick<IpfsService, "unpin"> = DEFAULT_IPFS_SERVICE,
+): Promise<void> {
+    const uri = loadAgreementUri(agreementHash);
+    const cid = uri ? extractIpfsCid(uri) : null;
+    if (cid) {
+        try {
+            await ipfs.unpin(cid);
+        } catch (err) {
+            console.warn(`[agreementFetch] unpin ${cid} failed (content stays pinned):`, err);
+        }
+    }
+    forgetAgreementUri(agreementHash);
 }
 
 /** Pin an agreement to IPFS (network SSoT) and remember its URI locally. */
