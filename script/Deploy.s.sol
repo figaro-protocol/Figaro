@@ -32,8 +32,9 @@ import "../src/protocol/registries/AssemblyRegistry.sol";
 ///         Clauses are populated post-deploy (populate-clauses.mjs). Mints test
 ///         tokens to Anvil accounts.
 ///
-///         Devnet florin allocation: 100M → deployer's wallet (stands in for founder
-///         + DAO on devnet; the mainnet split is in script/DeployMainnet.s.sol),
+///         Devnet florin allocation: 100M → deployer's wallet (stands in for
+///         founder + supporters on devnet; the mainnet split into FOUNDER_WALLET
+///         70M and SUPPORTERS_WALLET 30M is in script/DeployMainnet.s.sol),
 ///         plus UsageCounter + the RpgfMinter registered at 600M before
 ///         renounce. Nothing is posted, bonded, or challenged: the counter
 ///         records verified usage as it happens and the minter pays pro rata
@@ -242,8 +243,9 @@ contract Deploy is Script {
     }
 
     /// @dev Own frame: keeps run()'s stack shallow (via_ir=false by design).
-    ///      Devnet genesis mint, rehearsing the mainnet 10/30/60 custody
-    ///      shape: 100M founder stand-in to the deployer, 300M DAO to a
+    ///      Devnet genesis mint, rehearsing the mainnet 7/3/30/60 custody shape:
+    ///      100M founder + supporters stand-in to the deployer (mainnet splits
+    ///      this into 70M FOUNDER_WALLET + 30M SUPPORTERS_WALLET), 300M DAO to a
     ///      treasury MULTISIG (mainnet: a canonical Safe at DAO_WALLET —
     ///      config, never code; devnet: MockTreasuryMultisig with anvil[0..2]
     ///      as 2-of-3 placeholder owners, per the anvil-placeholder ruling).
@@ -259,7 +261,7 @@ contract Deploy is Script {
         console.log("MockTreasuryMultisig deployed at:", address(daoTreasury));
 
         florin.registerMinter(deployer, 400_000_000 ether);
-        florin.mint(deployer, 100_000_000 ether);
+        florin.mint(deployer, 100_000_000 ether); // 70M founder + 30M supporters, lumped on devnet
         florin.mint(address(daoTreasury), 300_000_000 ether);
 
         florin.renounceDeployerMint();

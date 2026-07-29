@@ -276,14 +276,15 @@ caps enforced not to exceed MAX_SUPPLY). Deployer registers capped minters, then
 **`src/florin/IFlorinMinter.sol`** — `mint(address, uint256)` interface florin minter modules implement; `FlorinToken.registerMinter` is where implementations attach (before renounce).
 
 **Florin allocation (canonical, 1B total):**
-- **100M (10%) founders** — genesis mint, no vesting, no unlock
+- **70M (7%) founders** — genesis mint, no vesting, no unlock
+- **30M (3%) supporters** — friends & family / early supporters; genesis mint, no vesting, no unlock
 - **300M (30%) DAO**       — genesis mint, no vesting, no unlock
 - **600M (60%) RPGF** — clause authors + assembly designers of record, distributed by
   `RpgfMinter` below. The incentive rationale lives in `docs/PUBLIC_GRAPH_MODEL.md`.
 
 Deploy flow: deployer deploys `RpgfMinter`, registers it with cap 600M, registers itself
-as a one-shot genesis minter with cap 400M, mints 100M+300M to the founder/DAO wallets,
-then renounces — the minter must exist at genesis because `registerMinter` precedes
+as a one-shot genesis minter with cap 400M, mints 70M+30M+300M to the founder/supporters/DAO
+wallets, then renounces — the minter must exist at genesis because `registerMinter` precedes
 `renounceDeployerMint`. No settlement-anchored emission.
 
 ## RPGF (`src/rpgf/`)
@@ -398,7 +399,7 @@ are a different object at a different tier and are untouched (`CLAUSES.md`,
 
 Also absent: `FigaroFactory.sol`, `FigaroRouter.sol`, `governance/`, `compliance/`,
 `FigEmission.sol`, `FigTimeLock.sol`, `MerkleAirdrop.sol`, `StagedMerkleAirdrop.sol`,
-`TrancheVesting.sol` (founder and DAO receive tokens at genesis with no vesting),
+`TrancheVesting.sol` (founder, supporters, and DAO receive tokens at genesis with no vesting),
 `ProximityTypes.sol`, `IRoleResolverV4.sol` (renamed to `IRoleResolver.sol`),
 upgradeable proxy, protocol fee, owner, or admin surface.
 The florin is not a governance token.

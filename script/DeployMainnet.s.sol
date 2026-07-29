@@ -22,7 +22,9 @@ import "../src/protocol/verifier/FigaroBatchVerifier.sol";
 ///
 /// Required environment variables:
 ///   PRIVATE_KEY                — deployer private key (or use hardware wallet via flags)
-///   FOUNDER_WALLET             — address receiving the 100M founder allocation at genesis
+///   FOUNDER_WALLET             — address receiving the 70M founder allocation at genesis
+///   SUPPORTERS_WALLET          — address receiving the 30M supporters (friends & family /
+///                                early supporters) allocation at genesis
 ///   DAO_WALLET                 — address receiving the 300M DAO allocation at genesis
 ///   RPGF_BOOSTED_TAG           — the label whose keccak earns the substrate-
 ///                                broadening weight (e.g. "geo"). WHICH tag pays
@@ -35,9 +37,10 @@ import "../src/protocol/verifier/FigaroBatchVerifier.sol";
 ///                                time is involved; ruled 2026-07-15)
 ///
 /// florin allocation (1B cap):
-///   100M  (10%)  founders — genesis mint to FOUNDER_WALLET (no vesting, no unlock)
-///   300M  (30%)  DAO      — genesis mint to DAO_WALLET     (no vesting, no unlock)
-///   600M  (60%)  RPGF     — RpgfMinter registered at genesis (registerMinter
+///    70M   (7%)  founders   — genesis mint to FOUNDER_WALLET    (no vesting, no unlock)
+///    30M   (3%)  supporters — genesis mint to SUPPORTERS_WALLET (no vesting, no unlock)
+///   300M  (30%)  DAO        — genesis mint to DAO_WALLET        (no vesting, no unlock)
+///   600M  (60%)  RPGF       — RpgfMinter registered at genesis (registerMinter
 ///                           precedes renounce, so the minter MUST exist here);
 ///                           paid pro rata from UsageCounter accrual to clause
 ///                           authors + assembly designers of record, capped at
@@ -52,7 +55,8 @@ import "../src/protocol/verifier/FigaroBatchVerifier.sol";
 /// @dev Deployer renounces minting rights at the end of this script. No new minters
 ///      can ever be registered afterward.
 contract DeployMainnet is Script {
-    uint256 constant FOUNDER_ALLOC = 100_000_000 ether; // 10%
+    uint256 constant FOUNDER_ALLOC = 70_000_000 ether; // 7%
+    uint256 constant SUPPORTERS_ALLOC = 30_000_000 ether; // 3% — friends & family / early supporters
     uint256 constant DAO_ALLOC = 300_000_000 ether; // 30%
     uint256 constant RPGF_ALLOC = 600_000_000 ether; // 60%
 
@@ -86,6 +90,7 @@ contract DeployMainnet is Script {
 
     function _validateEnv() internal view {
         require(vm.envAddress("FOUNDER_WALLET") != address(0), "FOUNDER_WALLET not set");
+        require(vm.envAddress("SUPPORTERS_WALLET") != address(0), "SUPPORTERS_WALLET not set");
         require(vm.envAddress("DAO_WALLET") != address(0), "DAO_WALLET not set");
         require(bytes(vm.envString("RPGF_BOOSTED_TAG")).length > 0, "RPGF_BOOSTED_TAG not set");
         require(
@@ -216,15 +221,16 @@ contract DeployMainnet is Script {
         console.log("RpgfMinter:             ", _rpgfMinter);
         florin.registerMinter(_rpgfMinter, RPGF_ALLOC);
 
-        // Genesis distribution: mint 100M + 300M directly to the founder and
-        // DAO wallets. Register the deployer as a one-shot genesis minter with
-        // cap exactly 400M so that this script is the ONLY entity that can ever
-        // exercise deployer-side minting, and only for these two transfers.
+        // Genesis distribution: mint 70M + 30M + 300M directly to the founder,
+        // supporters, and DAO wallets. Register the deployer as a one-shot genesis
+        // minter with cap exactly 400M so that this script is the ONLY entity that
+        // can ever exercise deployer-side minting, and only for these three transfers.
         address deployer = vm.addr(privateKey);
-        florin.registerMinter(deployer, FOUNDER_ALLOC + DAO_ALLOC);
+        florin.registerMinter(deployer, FOUNDER_ALLOC + SUPPORTERS_ALLOC + DAO_ALLOC);
         florin.mint(vm.envAddress("FOUNDER_WALLET"), FOUNDER_ALLOC);
+        florin.mint(vm.envAddress("SUPPORTERS_WALLET"), SUPPORTERS_ALLOC);
         florin.mint(vm.envAddress("DAO_WALLET"), DAO_ALLOC);
-        console.log("FlorinToken: genesis mint complete (founder + DAO)");
+        console.log("FlorinToken: genesis mint complete (founder + supporters + DAO)");
 
         // After renounce, no new minters can ever be registered and the
         // deployer cannot mint again. At this point the full 1B cap is

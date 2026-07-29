@@ -100,7 +100,7 @@ export default function Specifications() {
                     />
                 </ul>
                 <p className="text-xs text-ink-muted mt-4">
-                    Allocation: 100M founders (genesis), 300M DAO (genesis), 600M RPGF to clause authors + assembly designers of record (RpgfMinter &mdash; registered at genesis; three declining tranches, each paying pro rata from a UsageCounter period that has closed &mdash; nothing posted, bonded, or challenged). See <Link href="/papers/florin-schelling-point-token" className="underline">the florin</Link>.
+                    Allocation: 70M founders + 30M supporters (genesis), 300M DAO (genesis), 600M RPGF to clause authors + assembly designers of record (RpgfMinter &mdash; registered at genesis; three declining tranches, each paying pro rata from a UsageCounter period that has closed &mdash; nothing posted, bonded, or challenged). See <Link href="/papers/florin-schelling-point-token" className="underline">the florin</Link>.
                 </p>
             </MarketingSection>
 

@@ -86,12 +86,13 @@ the initial of Figaro — the visual protocol↔unit bridge.
 
 | Allocation | % | Tokens | Distribution |
 |---|---|---|---|
-| **Founders** | **10%** | **100,000,000** | Genesis mint to founder wallet — **no vesting, no unlock** |
+| **Founders** | **7%** | **70,000,000** | Genesis mint to founder wallet — **no vesting, no unlock** |
+| **Supporters** | **3%** | **30,000,000** | Genesis mint to supporters wallet (friends & family / early supporters) — **no vesting, no unlock** |
 | **DAO**      | **30%** | **300,000,000** | Genesis mint to DAO wallet — **no vesting, no unlock** |
 | **RPGF** | **60%** | **600,000,000** | `RpgfMinter` — three declining tranches (300M/200M/100M) claimed pro rata by clause authors + assembly designers of record |
 | **Total** | **100%** | **1,000,000,000** | |
 
-Founders and DAO receive tokens directly to their wallets at deploy time. The
+Founders, supporters, and DAO receive tokens directly to their wallets at deploy time. The
 600M mints only through the `RpgfMinter`'s per-tranche claims — the minter
 is registered at genesis (before `renounceDeployerMint`, which is why it must
 exist at deploy time), capped at exactly 600M by the FlorinToken minter registry.
@@ -167,8 +168,8 @@ The incentive rationale — why the substrate-broadening weight exists — lives
 
 ### Rationale
 
-- **No vesting for founders or DAO.** The code is already developed. Vesting
-  protects investors from founders abandoning a project, but there are no
+- **No vesting for founders, supporters, or DAO.** The code is already developed.
+  Vesting protects investors from founders abandoning a project, but there are no
   investors. Adding a vesting cliff would be theater. The DAO needs its tokens
   at genesis to perform its coordination function from day one.
 
@@ -176,8 +177,8 @@ The incentive rationale — why the substrate-broadening weight exists — lives
   the token to protocol activity invites gaming and complicates the trust surface.
 
 - **No token sale.** The florin is never sold — not in an ICO, IDO, SAFT, or
-  presale. There is no investment contract. The founders and DAO receive
-  their allocations at genesis.
+  presale. There is no investment contract. The founders, supporters, and DAO
+  receive their allocations at genesis.
 
 ---
 
@@ -213,9 +214,9 @@ no upgrade path.
 
 ### Mainnet — `script/DeployMainnet.s.sol`
 
-The deploy script registers the RPGF minter, mints the founder + DAO genesis
-allocation, then seals minting. `FOUNDER_ALLOC = 100M`, `DAO_ALLOC = 300M`,
-`RPGF_ALLOC = 600M`.
+The deploy script registers the RPGF minter, mints the founder + supporters + DAO
+genesis allocation, then seals minting. `FOUNDER_ALLOC = 70M`,
+`SUPPORTERS_ALLOC = 30M`, `DAO_ALLOC = 300M`, `RPGF_ALLOC = 600M`.
 
 ```
 1. Deploy FlorinToken (deployer becomes the constructor deployer).
@@ -223,10 +224,11 @@ allocation, then seals minting. `FOUNDER_ALLOC = 100M`, `DAO_ALLOC = 300M`,
    `RPGF_PERIOD_END_1/2/3`, `RPGF_BOOSTED_TAG`), then RpgfMinter over it
    (florin + counter + ClauseRegistry + AssemblyRegistry; tranches 300M/200M/100M).
 3. fig.registerMinter(rpgfMinter, 600M) — MUST precede renounce (irreversible).
-4. Register the deployer as a one-shot genesis minter with cap 400M (= FOUNDER_ALLOC + DAO_ALLOC).
-5. fig.mint(FOUNDER_WALLET, 100M)  — founder genesis mint.
-6. fig.mint(DAO_WALLET, 300M)      — DAO genesis mint.
-7. fig.renounceDeployerMint()      — permanent. No new minters. Deployer can never mint again.
+4. Register the deployer as a one-shot genesis minter with cap 400M (= FOUNDER_ALLOC + SUPPORTERS_ALLOC + DAO_ALLOC).
+5. fig.mint(FOUNDER_WALLET, 70M)     — founder genesis mint.
+6. fig.mint(SUPPORTERS_WALLET, 30M)  — supporters (friends & family) genesis mint.
+7. fig.mint(DAO_WALLET, 300M)        — DAO genesis mint.
+8. fig.renounceDeployerMint()        — permanent. No new minters. Deployer can never mint again.
 ```
 
 After renounce:
@@ -242,7 +244,8 @@ On devnet `Deploy.s.sol` stands up the UsageCounter with accrual periods
 compressed to +14d/+35d/+60d (so the e2e suite can close a period and claim in
 real time) and the boosted tag `keccak256("geo")`, registers the RpgfMinter over
 it at 600M, then registers itself with a 400M cap, mints 100M to its own wallet
-(founder stand-in) and 300M to `MockTreasuryMultisig` (DAO stand-in), and
+(founder + supporters stand-in; mainnet splits this into 70M FOUNDER_WALLET +
+30M SUPPORTERS_WALLET) and 300M to `MockTreasuryMultisig` (DAO stand-in), and
 renounces.
 
 ---
@@ -252,7 +255,7 @@ renounces.
 All resolved. Each item is a **decision**, not an open question.
 
 1. **Total supply: 1,000,000,000 florins.** Round, memorable.
-2. **Founder + DAO at genesis, no vesting.** See "Rationale" above.
+2. **Founder + supporters + DAO at genesis, no vesting.** See "Rationale" above.
 3. **Florin token standard: ERC-20 + EIP-2612 permit.**
 4. **No emission contract, no settlement-anchored minting.**
 5. **RPGF distribution counts usage on chain, as it happens** (2026-07-27,
