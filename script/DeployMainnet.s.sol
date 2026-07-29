@@ -229,7 +229,8 @@ contract DeployMainnet is Script {
         // After renounce, no new minters can ever be registered and the
         // deployer cannot mint again. At this point the full 1B cap is
         // spoken for: 400M exactly exhausted by the genesis mints, 600M
-        // mintable only through the RpgfMinter's finalized merkle claims.
+        // mintable only through the RpgfMinter's uniform pro-rata tranche
+        // claims (each from a closed accrual period).
         florin.renounceDeployerMint();
         console.log("FlorinToken: deployer mint renounced (permanent)");
     }

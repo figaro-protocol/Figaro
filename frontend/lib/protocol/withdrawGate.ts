@@ -17,8 +17,9 @@
  * agreement (no witnessed URI — bodies are PARTY-PRIVATE) — the SDK gate
  * counts that as unverified and SURFACES it as a caveat, never a block:
  * blocking on unverifiable foreign deals would dead-lock every author's
- * withdraw, and the on-chain inclusion-proof hardening (the RPGF prover)
- * doesn't lock the stake on unrevealed deals either. Only VERIFIED in-flight
+ * withdraw — and nothing on-chain locks the stake on unrevealed deals anyway
+ * (the kernel holds no composition provenance, so this gate has no on-chain
+ * enforcement). Only VERIFIED in-flight
  * deals block (`canWithdraw === (inFlightCount === 0)`). A chain-READ failure
  * is different — the chain state is genuinely unknown — so it yields a null
  * gate and the affordance stays disabled.

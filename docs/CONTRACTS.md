@@ -39,8 +39,9 @@ binding stays permanent, but readers DE-SURFACE the clause for new
 compositions (surfacing derives from the live stake; committed agreements
 keep resolving it). Version migration = withdraw the old version's stake +
 register the new. The commits == resolves withdraw gate is protocol-surface:
-the count lives in the indexer (the same count RPGF pays on) and hardens
-on-chain when the RPGF proof apparatus returns. There is **no on-chain
+the count lives in the indexer (the same count RPGF pays on), and the contract
+cannot hold it (the kernel is frozen, with no composition provenance), so the
+gate has no on-chain hardening. There is **no on-chain
 clause-content validation** — registration anchors the spec locator (IPFS) +
 content hash, and well-formedness is the off-chain Layer-A SDK's job
 (`@figaro/sdk/clauses` `validate.ts`/`encode.ts`) plus a read-time concern.

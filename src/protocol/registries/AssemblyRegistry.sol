@@ -54,10 +54,10 @@ pragma solidity 0.8.26;
 ///         withdraw while processes composed from the assembly are in
 ///         flight. The usage count lives in the indexer — the same count
 ///         the RPGF program pays on — so the gate is enforced at the
-///         protocol surface (SDK/frontend refuse while commits > resolves)
-///         and hardens on-chain when the RPGF proof apparatus returns.
+///         protocol surface (SDK/frontend refuse while commits > resolves).
 ///         The contract itself cannot hold the count: the kernel is frozen
-///         and carries no composition provenance.
+///         and carries no composition provenance, so there is no on-chain
+///         hardening of this gate.
 ///
 ///         Authorship is first-write-wins on the compositionHash: whoever
 ///         anchors a composition first is its author-of-record. Editorial
