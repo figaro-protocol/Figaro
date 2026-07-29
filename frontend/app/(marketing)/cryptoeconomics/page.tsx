@@ -150,21 +150,13 @@ export default function Cryptoeconomics() {
                             Retroactive reward (600M)
                         </dt>
                         <dd className="text-ink-body leading-relaxed mt-1">
-                            Sixty percent of all florins &mdash; the largest allocation by far &mdash; is reserved to pay clause authors and assembly designers for the trade their work actually carried: uniform pro rata by real, settled usage, with no per-wallet cap, no category weighting, and no application to file. Once a period closes, each share is fixed by formula and any author can claim it. Eligibility is a live registration deposit in the chain&apos;s base currency &mdash; earn while it is staked, forfeit future reward if you withdraw it. Detail on <Link href="/clause-rewards" className="underline">How clause authors get paid</Link>.
+                            Sixty percent of all florins &mdash; the largest allocation by far &mdash; pays clause authors and assembly designers for the real, settled trade their work carried, by a fixed formula with no application and no gatekeeper. Full mechanism: <Link href="/clause-rewards" className="underline">How clause authors get paid</Link>.
                         </dd>
                     </div>
                     <div className="border-l-2 border-default pl-4">
-                        <dt className="text-base font-semibold text-ink-heading">DAO allocation</dt>
+                        <dt className="text-base font-semibold text-ink-heading">DAO treasury (300M)</dt>
                         <dd className="text-ink-body leading-relaxed mt-1">
-                            300M florins (30% of supply) minted to the DAO wallet at genesis with no vesting. Allocation decisions will be made by the DAO&apos;s governance process; the DAO is not yet instantiated.
-                        </dd>
-                    </div>
-                    <div className="border-l-2 border-default pl-4">
-                        <dt className="text-base font-semibold text-ink-heading">
-                            DAO discretionary funding
-                        </dt>
-                        <dd className="text-ink-body leading-relaxed mt-1">
-                            Where the 600M pays out by formula, the 300M is the opposite by design: the human-judgment layer. The DAO funds public goods by choosing to &mdash; paying a third party, procuring through the protocol, standing up a program &mdash; from its own treasury, never through a market. There is no quadratic-funding round and no crowd-matching mechanism; the discretion is the point, not a stopgap.
+                            30% of supply, minted to the DAO wallet at genesis with no vesting (the DAO is not yet instantiated). Where the 600M pays out by formula, the 300M is the human-judgment layer by design: the DAO funds public goods by choosing to &mdash; paying a third party, procuring through the protocol, standing up a program &mdash; from its own treasury, never through a market. There is no quadratic-funding round and no crowd-matching mechanism; the discretion is the point.
                         </dd>
                     </div>
                     <div className="border-l-2 border-default pl-4">
