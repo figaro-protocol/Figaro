@@ -64,7 +64,7 @@ export interface PaperGroup {
      *  dedicated channel separate from the project-wide Telegram. Most
      *  entries leave this undefined and inherit the project default. */
     venue?: { label: string; href: string };
-    /** Grants received (DAO proposals, Gitcoin rounds, direct). */
+    /** Grants received (DAO proposals, direct contributions). */
     grants?: { label: string; href: string; amount?: string }[];
     /** Addresses or handles contributors choose to publish. */
     contributors?: string[];
