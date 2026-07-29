@@ -55,7 +55,10 @@ Arrows point **up**: the UI reads the registries; the registries don't know the 
   cannot look backwards, so the fact is recorded when it occurs rather than reconstructed,
   which is what leaves nothing to post, bond, challenge, or adjudicate. `RpgfMinter` pays each
   tranche pro rata from a closed accrual period. It reads the registries and the kernel and is
-  read by nothing: the arrows still point one way. (`PUBLIC_GRAPH_MODEL.md`, `FLORIN_TOKEN.md`.)
+  read by nothing: the arrows still point one way. **This funding subsystem ("System B") uses
+  NONE of the trade subsystem's ("System A") machinery** — no proof/SP1, no posted merkle root,
+  no bond, no Kleros referee; those three words each have a single trade-side referent
+  (`LEXICON.md` § "Distinct concepts that are NOT drift"). (`PUBLIC_GRAPH_MODEL.md`, `FLORIN_TOKEN.md`.)
 - **The clause** — the unit that straddles the seam (below).
 - **UI + IPFS.** One frontend that composes catalogues and renders network state. The signed
   agreement and the clause/assembly specs live in IPFS, pinned; the chain keeps only

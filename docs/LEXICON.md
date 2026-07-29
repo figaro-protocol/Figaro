@@ -52,6 +52,21 @@ naming one with another's word is the recurring drift):
 | Designer override | the **denomination pin** (`figaro-denomination`, assembly-scoped — `design.scope: "assembly"`, a designer fill folded into every agreement) | replaces the buyer's pick; the whole assembly is valued in the pinned token |
 | On-ramp | **swap-and-commit** (`WitnessSwapAndCommitCoordinator`, buyer and/or seller funding legs) | either party short of the process denomination converts what they hold INTO it, atomically at commit/accept. A funding input is never the order's denomination |
 | No structural role | the **florin** | one more ERC-20 on the network — may be accepted, picked, or pinned like any other; nothing is conditioned on it |
+
+**SYSTEM A (trade) ≠ SYSTEM B (funding) — three words the deleted optimistic/QF apparatus
+overloaded, now SINGLE-REFERENT** (the System-B meanings were deleted, so each word has ONE
+live sense — but an agent porting pre-07-29 text will re-conflate them, which cost most of the
+2026-07-27 session): **proof / SP1** = the KERNEL BATCH-SCALING path ONLY (`FigaroBatchVerifier`
++ the Rust `prover/` — a validity proof over batched settlements); the 600M RPGF has NO proof
+program — usage is counted at resolve and `sdk/src/rpgf` only MIRRORS chain state, never posts
+an answer. **merkle root** = ONE agreement's clauses (`agreementHash`, the root over its signed
+sections); the RPGF posts NO payout root — nothing is posted at all. **Kleros** = an optional
+TRADE-dispute forum a DESIGNER composes (the `figaro-arbitration-kleros` clause +
+`block.composes.forumUrl`, config only — the parties' own recourse); the RPGF has NO bond referee
+(the `KlerosRpgfAdapter` / bond-arbitrator apparatus was deleted). **The crease:** System B — the
+600M RPGF (`UsageCounter` → `RpgfMinter`) — is COUNT-AT-RESOLVE and uses NONE of System A's
+machinery: no proof, no posted root, no bond, no referee, gated only by the two-sided live ETH
+stake. Owner of the funding side: `CONTRACTS.md` § RPGF.
 | Doctrine, not machinery | the **privileged token** | VISION § "Value Capture After the Firm": an assembly-author's own ERC-20 doing the work of a corporate stock certificate, priced through USE — a strategy that may use the pin, never the pin itself |
 
 Resolution precedence: **pin ?? buyer's pick ?? seller default**. Every token decision happens at
