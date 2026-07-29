@@ -104,15 +104,19 @@ Contracts that compose the kernel without becoming a party to it — the coordin
 
 **`src/protocol/coordinators/AttestationCoordinator.sol`** — Unified zero-storage attestation,
 **merkle-only**, receipt-bound to the signed `agreementHash`. Three modes:
-- `attestAsSeller(Commitment role, Commitment target, bytes32 clauseId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content)` — role + target commitments; pass the same commitment twice for same-order attestation, or distinct commitments for cross-order within a process.
-- `attestAsBuyer(Commitment target, bytes32 clauseId, uint8 stage, bytes sectionData, bytes32[] proof, bytes content)` — caller must equal `target.buyer` (which equals rootBuyer by commit invariant).
+- `attestAsSeller(Commitment role, Commitment target, bytes32 clauseId, uint8 stage, bytes32 sectionHash, bytes32[] proof, bytes32 contentRef)` — role + target commitments; pass the same commitment twice for same-order attestation, or distinct commitments for cross-order within a process.
+- `attestAsBuyer(Commitment target, bytes32 clauseId, uint8 stage, bytes32 sectionHash, bytes32[] proof, bytes32 contentRef)` — caller must equal `target.buyer` (which equals rootBuyer by commit invariant).
 - `attestViaResolver(Commitment target, ...)` — caller authorized by `IRoleResolver(target.seller).isAuthorized`. **EIP-7702-only precondition**: kernel parties are ECDSA EOAs, so `target.seller` can expose `isAuthorized` code only via 7702 delegation — without it the staticcall finds no code and the path reverts.
 
+The call carries only **fingerprints, never preimages** (matching the batched
+path): `sectionHash = keccak256(sectionData)` and `contentRef = keccak256(content)`.
+Calldata is public and permanent, so a `private`-disposition section's plaintext
+never touches the chain — it lives off-chain (encrypted IPFS), bound to this hash.
 For every call, the coordinator verifies an OZ-style merkle inclusion proof of
-`leaf = keccak256(keccak256(clauseId || keccak256(sectionData)))` (double-hashed — leaf/node domain separation) against
+`leaf = keccak256(keccak256(clauseId || sectionHash))` (double-hashed — leaf/node domain separation) against
 `target.agreementHash`, then emits
 `Attestation(orderHash, processId, attester, clauseId, stage, contentRef)`
-where `contentRef = keccak256(content)`. It **validates no content shape** — it
+with the caller-supplied `contentRef` (emitted verbatim). It **validates no content shape** — it
 binds the attestation to the signed agreement (merkle inclusion) and content-hashes
 the evidence; well-formedness is an off-chain SDK + read-time concern. An
 attestation whose clause was not committed at contract-signing time cannot land —
@@ -126,7 +130,7 @@ the coordinator pattern — canonical statement in `ARCHITECTURE.md`
 § "Composing the kernel".
 
 4 Certora CVL rules in `certora/AttestationCoordinator.spec` (role-gate +
-parametric Core-immutability). Binding-integrity, `contentRef == keccak256(content)`,
+parametric Core-immutability). Binding-integrity, the `contentRef` emission,
 and the inclusion-proof revert path are covered by Foundry tests.
 
 `attestViaResolver` is a latent Level-3 path — no current production caller.
@@ -232,22 +236,26 @@ can learn an artifact's usage after the fact. Reconstructing it later is what fo
 the posting/bond/challenge/referee apparatus in the RPGF and match designs; recording
 the fact as it happens leaves no claim to believe and nothing to adjudicate.
 
-Two permissionless functions. `recordUsage(order, artifact, sectionData, proof)`
+Two permissionless functions. `recordUsage(order, artifact, sectionHash, proof)`
 proves two things from data the chain already holds: the order is real and **RESOLVED**
 (`core.orderStatus == 2`), and the artifact was committed in that order's signed
-agreement (merkle inclusion against `agreementHash`). Same check
+agreement (merkle inclusion against `agreementHash`). It carries only the section
+FINGERPRINT (`sectionHash = keccak256(sectionData)`), never the preimage — so a
+`private`-disposition section's plaintext never touches public calldata. Same check
 `AttestationCoordinator` performs, with the status gate inverted — attestation is
 evidence *during* an open process, usage is counted only once it has settled. Nobody is
 trusted; recording is opt-in and gas-paid by whoever benefits.
 
-`recordAssemblyUsage(order, compositionHash, sectionData, proof)` credits an **assembly**,
+`recordAssemblyUsage(order, compositionHash, proof)` credits an **assembly**,
 and it exists because the two families are proved differently: an agreement's merkle leaves
 are keyed by CLAUSE (`agreement.ts`), so a `compositionHash` is never itself a leaf key. What
 IS a leaf is `figaro-assembly-provenance`, whose committed section content is exactly the
-compositionHash — so the counter proves that leaf and matches its content against the assembly
-claimed. The provenance clause key is fixed at deploy, which stops a caller substituting some
-other clause whose 32-byte section happens to equal an assembly's hash. Without that clause in
-the agreement, no process can credit its designer.
+compositionHash — **fully determined by it**, so the contract *derives* the provenance
+section hash from `compositionHash` (no section arg is taken) and proves that one leaf. A
+wrong `compositionHash` derives a leaf that is simply not in the tree, collapsing the old
+two-step inclusion-plus-content-match into a single structural gate. The provenance clause
+key is fixed at deploy, which stops a caller substituting some other clause. Without that
+clause in the agreement, no process can credit its designer.
 
 Per artifact per period it keeps `c` (distinct settled processes), `d` (distinct
 (buyer, seller) pairs), and `score = weight · icbrt(c·d²·1e18)` — breadth weighted

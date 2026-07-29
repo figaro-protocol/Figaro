@@ -88,6 +88,25 @@ describe("parseClauseSpec — meta-clause validation", () => {
         if (!bad.ok) expect(bad.errors[0].path).toBe("$.fields[0].disposition");
     });
 
+    it("parses formatFromField (value-driven input format) and rejects a non-string", () => {
+        const ok = parseClauseSpec({
+            clauseId: "t", version: 1, title: "T", description: "D",
+            fields: [{ name: "origin", type: "string", required: true, formatFromField: "geocodeStandard" }],
+        });
+        expect(ok.ok).toBe(true);
+        if (ok.ok) {
+            const f = ok.spec.fields[0];
+            expect(f.type === "string" && f.formatFromField).toBe("geocodeStandard");
+        }
+
+        const bad = parseClauseSpec({
+            clauseId: "t", version: 1, title: "T", description: "D",
+            fields: [{ name: "x", type: "string", required: true, formatFromField: "" }],
+        });
+        expect(bad.ok).toBe(false);
+        if (!bad.ok) expect(bad.errors[0].path).toBe("$.fields[0].formatFromField");
+    });
+
     it("recursively parses array.items", () => {
         const result = parseClauseSpec({
             clauseId: "t", version: 1, title: "T", description: "D",

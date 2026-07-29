@@ -12,8 +12,9 @@ import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { FieldSpec } from "@figaro/sdk/clauses";
 import { FieldControl } from "@/components/runtime/FieldControl";
+import { resolveInputFormat } from "@/components/runtime/fieldFormatInputs";
 import { encodeGeohash } from "@figaro/sdk/derive";
-import { PUBLIC_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
+import { PUBLIC_GEOHASH_MAX_PRECISION, PRIVATE_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
 
 const geohashField: FieldSpec = {
     name: "origin",
@@ -22,6 +23,25 @@ const geohashField: FieldSpec = {
     pattern: "^[0123456789bcdefghjkmnpqrstuvwxyz]+$",
     format: "geohash",
 };
+
+/** The geolocation shape: a value-driven format that follows a sibling. */
+const geocodeStandardField: FieldSpec = {
+    name: "geocodeStandard", type: "string", required: true, default: "geohash",
+};
+const originByStandard: FieldSpec = {
+    name: "origin", type: "string", required: true, formatFromField: "geocodeStandard",
+    pattern: "^[0123456789bcdefghjkmnpqrstuvwxyz]+$",
+};
+
+function stubGeolocation(lat: number, lon: number) {
+    vi.stubGlobal("navigator", {
+        ...navigator,
+        geolocation: {
+            getCurrentPosition: (ok: PositionCallback) =>
+                ok({ coords: { latitude: lat, longitude: lon } } as GeolocationPosition),
+        },
+    });
+}
 
 afterEach(() => {
     cleanup();
@@ -75,6 +95,64 @@ describe("FieldControl format dispatch", () => {
         );
         await userEvent.type(screen.getByTestId("f-geo"), "9");
         expect(onChange).toHaveBeenLastCalledWith("9");
+    });
+});
+
+// Value-driven format (formatFromField): a field's input follows the committed
+// value of a sibling (geolocation's origin/destination follow geocodeStandard),
+// and the geohash grain cap is keyed on the field's disposition.
+describe("FieldControl value-driven format + disposition grain cap", () => {
+    it("resolveInputFormat follows the sibling VALUE, then the sibling DEFAULT, then static format", () => {
+        const siblings = [geocodeStandardField, originByStandard];
+        // live value wins
+        expect(resolveInputFormat(originByStandard, siblings, { geocodeStandard: "geohash" })).toBe("geohash");
+        // no live value ⇒ sibling default ("geohash")
+        expect(resolveInputFormat(originByStandard, siblings, {})).toBe("geohash");
+        // a non-geohash standard resolves to itself (→ no registered input → plain text)
+        expect(resolveInputFormat(originByStandard, siblings, { geocodeStandard: "iso3166-1" })).toBe("iso3166-1");
+    });
+
+    it("routes origin to the geohash input when the committed standard is geohash", () => {
+        render(
+            <FieldControl field={originByStandard} value={undefined} onChange={() => {}}
+                testId="f-o" resolvedFormat="geohash" />,
+        );
+        expect(screen.getByTestId("f-o-device")).toBeTruthy();
+    });
+
+    it("degrades origin to plain text for a standard with no registered input", () => {
+        render(
+            <FieldControl field={originByStandard} value={undefined} onChange={() => {}}
+                testId="f-o" resolvedFormat="iso3166-1" />,
+        );
+        expect(screen.getByTestId("f-o").tagName).toBe("INPUT");
+        expect(screen.queryByTestId("f-o-device")).toBeNull();
+    });
+
+    it("PUBLIC geo device-fill is coarse; PRIVATE geo device-fill is fine", async () => {
+        const lat = 37.7749, lon = -122.4194;
+        stubGeolocation(lat, lon);
+
+        const pub = vi.fn();
+        const { unmount } = render(
+            <FieldControl field={{ ...originByStandard, disposition: "public" }} value={undefined}
+                onChange={pub} testId="f-pub" resolvedFormat="geohash" />,
+        );
+        await userEvent.click(screen.getByTestId("f-pub-device"));
+        await waitFor(() => expect(pub).toHaveBeenCalled());
+        expect(pub.mock.calls.at(-1)![0]).toBe(encodeGeohash(lat, lon, PUBLIC_GEOHASH_MAX_PRECISION));
+        unmount();
+
+        const priv = vi.fn();
+        render(
+            <FieldControl field={{ ...originByStandard, disposition: "private" }} value={undefined}
+                onChange={priv} testId="f-priv" resolvedFormat="geohash" />,
+        );
+        await userEvent.click(screen.getByTestId("f-priv-device"));
+        await waitFor(() => expect(priv).toHaveBeenCalled());
+        const fine = priv.mock.calls.at(-1)![0] as string;
+        expect(fine).toBe(encodeGeohash(lat, lon, PRIVATE_GEOHASH_MAX_PRECISION));
+        expect(fine.length).toBe(PRIVATE_GEOHASH_MAX_PRECISION);
     });
 });
 

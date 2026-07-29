@@ -114,6 +114,7 @@ export function FieldControl({
     hideLabel = false,
     mode = "design",
     onCompanion,
+    resolvedFormat,
 }: {
     field: FieldSpec;
     value: unknown;
@@ -129,6 +130,10 @@ export function FieldControl({
      *  the enclosing object/repeater branch patches the first sibling field
      *  declaring that format. See `FieldFormatInputProps.onCompanion`. */
     onCompanion?: (format: string, next: string | undefined) => void;
+    /** The VALUE-DRIVEN input format, when a field-list renderer resolved one
+     *  from a sibling value (see `resolveInputFormat`). Overrides the field's
+     *  static `format` for input dispatch only. Absent ⇒ the static `format`. */
+    resolvedFormat?: string;
 }) {
     const label = hideLabel ? null : (
         <span
@@ -328,7 +333,10 @@ export function FieldControl({
         // open format axis. No mapping ⇒ the plain input below; the affordance
         // is progressive enhancement, never a requirement.
         if (field.type === "string") {
-            const FormatInput = getFieldFormatInput(field.format);
+            // Value-driven format (resolvedFormat) wins over the static one —
+            // e.g. geolocation's origin/destination follow the committed
+            // geocodeStandard. Absent ⇒ the field's own declared format.
+            const FormatInput = getFieldFormatInput(resolvedFormat ?? field.format);
             if (FormatInput) {
                 return (
                     <div data-testid={`${testId}-field`}>
@@ -338,6 +346,7 @@ export function FieldControl({
                             onChange={(next) => onChange(next)}
                             testId={testId}
                             pattern={field.pattern}
+                            disposition={field.disposition}
                             onCompanion={onCompanion}
                         />
                         {guidance}

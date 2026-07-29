@@ -80,6 +80,16 @@ export interface BaseFieldSpec {
 export interface StringFieldSpec extends BaseFieldSpec {
     type: "string";
     format?: StringFormat;
+    /** VALUE-DRIVEN input format: name a SIBLING field whose committed VALUE is
+     *  the format key, instead of the static `format` above. Lets one field's
+     *  richer input follow an open, per-composition standard axis — e.g.
+     *  figaro-geolocation's origin/destination declare
+     *  `formatFromField: "geocodeStandard"`, so the geohash picker (with its
+     *  grain cap) renders when the committed standard is `geohash` and degrades
+     *  to plain text for standards this frontend registered no input for. A
+     *  reader resolves it as `values[formatFromField] ?? <sibling default> ??
+     *  format`; unresolved ⇒ falls back to `format`. */
+    formatFromField?: string;
     minLength?: number;
     maxLength?: number;
     pattern?: string;
@@ -296,6 +306,13 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
                     return null;
                 }
                 spec.format = raw.format as StringFormat;
+            }
+            if (raw.formatFromField !== undefined) {
+                if (typeof raw.formatFromField !== "string" || raw.formatFromField.length === 0) {
+                    errors.push({ path: `${path}.formatFromField`, message: "formatFromField must be a non-empty string (a sibling field name)" });
+                    return null;
+                }
+                spec.formatFromField = raw.formatFromField;
             }
             if (raw.minLength !== undefined) {
                 if (typeof raw.minLength !== "number" || !Number.isInteger(raw.minLength) || raw.minLength < 0) {

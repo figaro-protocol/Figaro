@@ -17,6 +17,7 @@
  * never-seen format degrades to text.
  */
 import type { ComponentType } from "react";
+import type { FieldSpec, FieldDisposition } from "@figaro/sdk/clauses";
 import { GeohashFieldInput } from "@/components/runtime/GeohashFieldInput";
 import { ContentAnchorFieldInput } from "@/components/runtime/ContentAnchorFieldInput";
 import { EvidenceCaptureInput } from "@/components/runtime/EvidenceCaptureInput";
@@ -31,6 +32,10 @@ export interface FieldFormatInputProps {
     /** The declared pattern, when the spec carries one — inputs may use it
      *  for inline shape feedback. */
     pattern?: string;
+    /** The field's public/private disposition, so an input can apply
+     *  disposition-keyed policy (e.g. the geohash grain cap — coarse when
+     *  public, fine when private). Absent ⇒ public (the default). */
+    disposition?: FieldDisposition;
     /** Companion channel — a format input that DERIVES sibling values reports
      *  them keyed by the SIBLING's declared format (e.g. the content-anchor
      *  input pins the artifact and emits its locator under `"uri"`).
@@ -78,4 +83,29 @@ export function getFieldFormatInput(
 ): ComponentType<FieldFormatInputProps> | null {
     if (!format) return null;
     return REGISTRY.get(format) ?? null;
+}
+
+/**
+ * Resolve a string field's INPUT format — the static `format`, unless the field
+ * declares `formatFromField`, in which case its input follows the committed
+ * VALUE of the named sibling (falling back to that sibling's spec `default`,
+ * then to `format`). This is the frontend half of the value-driven format axis:
+ * figaro-geolocation's origin/destination resolve to `geohash` when the
+ * committed `geocodeStandard` is geohash (→ the geohash picker + grain cap), and
+ * degrade to plain text for standards no input was registered for. Clause-
+ * agnostic: it reads only spec-declared field names and sibling values, never a
+ * clause id.
+ */
+export function resolveInputFormat(
+    field: FieldSpec,
+    siblings: readonly FieldSpec[],
+    values: Record<string, unknown> | undefined,
+): string | undefined {
+    if (field.type !== "string") return undefined;
+    if (!field.formatFromField) return field.format;
+    const live = values?.[field.formatFromField];
+    if (typeof live === "string" && live.length > 0) return live;
+    const source = siblings.find((s) => s.name === field.formatFromField);
+    if (source && typeof source.default === "string" && source.default.length > 0) return source.default;
+    return field.format;
 }

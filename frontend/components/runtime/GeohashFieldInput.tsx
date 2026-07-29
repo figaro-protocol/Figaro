@@ -18,12 +18,16 @@ import { useState } from "react";
 import { getDeviceLocation } from "@/lib/shared/deviceLocation";
 import { encodeGeohash } from "@figaro/sdk/derive";
 import { safeRegexTest } from "@figaro/sdk/clauses";
-import { clampPublicGeohash, PUBLIC_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
+import { capGeohashGrain, geohashCapturePrecision, PUBLIC_GEOHASH_MAX_PRECISION, PRIVATE_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
 import type { FieldFormatInputProps } from "@/components/runtime/fieldFormatInputs";
 
-export function GeohashFieldInput({ value, onChange, testId, pattern }: FieldFormatInputProps) {
+export function GeohashFieldInput({ value, onChange, testId, pattern, disposition }: FieldFormatInputProps) {
     const [locating, setLocating] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    // Grain cap by disposition: a PUBLIC geohash is coarsened to neighborhood
+    // grain (it lands in a plaintext, pinned agreement); a PRIVATE one keeps
+    // fine grain (factory/machine — it lives encrypted / content-withheld).
+    const maxChars = disposition === "private" ? PRIVATE_GEOHASH_MAX_PRECISION : PUBLIC_GEOHASH_MAX_PRECISION;
 
     async function fillFromDevice() {
         setLocating(true);
@@ -34,8 +38,7 @@ export function GeohashFieldInput({ value, onChange, testId, pattern }: FieldFor
                 setError("Couldn't read device location. Permission denied or unavailable.");
                 return;
             }
-            // Public-surface cap: the field lands in a pinned agreement.
-            onChange(encodeGeohash(position.lat, position.lon, PUBLIC_GEOHASH_MAX_PRECISION));
+            onChange(encodeGeohash(position.lat, position.lon, geohashCapturePrecision(disposition)));
         } finally {
             setLocating(false);
         }
@@ -52,13 +55,13 @@ export function GeohashFieldInput({ value, onChange, testId, pattern }: FieldFor
                     type="text"
                     value={value}
                     onChange={(e) => {
-                        // Typed hashes are clamped too — the cap is about
-                        // where the value lands (a public artifact), not how
-                        // it was produced.
+                        // Typed hashes are capped too — the cap is about where
+                        // the value lands (public plaintext vs private/encrypted),
+                        // not how it was produced.
                         const raw = e.target.value;
-                        onChange(raw === "" ? undefined : clampPublicGeohash(raw));
+                        onChange(raw === "" ? undefined : capGeohashGrain(disposition, raw));
                     }}
-                    placeholder={`geohash (base32, ≤${PUBLIC_GEOHASH_MAX_PRECISION} chars)`}
+                    placeholder={`geohash (base32, ≤${maxChars} chars)`}
                     data-testid={testId}
                     className={`w-full rounded border bg-white px-2 py-1 text-xs font-mono text-black focus:outline-none focus:ring-1 focus:ring-accent ${
                         shapeOk ? "border-neutral-300" : "border-red-400"

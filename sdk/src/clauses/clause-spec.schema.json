@@ -47,6 +47,7 @@
                     "description": "Build/UI default (composition metadata; the ABI encoder ignores it). Shape must match the field type."
                 },
                 "format": { "type": "string", "minLength": 1, "description": "string only. An OPEN axis: any non-empty string is a valid declaration. Validators enforce the formats they know (bytes32-hex, address-hex, bytes-hex, iso-datetime) and treat the rest as plain strings; frontends may map known formats to richer inputs (e.g. geohash)." },
+                "formatFromField": { "type": "string", "minLength": 1, "description": "string only. VALUE-DRIVEN input format: name a SIBLING field whose committed VALUE is the format key, instead of the static `format`. Lets a field's richer input follow an open, per-composition standard axis (figaro-geolocation's origin/destination declare formatFromField:\"geocodeStandard\" — the geohash picker + grain cap render when the committed standard is geohash, degrading to plain text otherwise). Resolved as values[formatFromField] ?? sibling default ?? format." },
                 "minLength": { "type": "integer", "description": "string only." },
                 "maxLength": { "type": "integer", "description": "string only." },
                 "pattern": { "type": "string", "description": "string only (regex)." },

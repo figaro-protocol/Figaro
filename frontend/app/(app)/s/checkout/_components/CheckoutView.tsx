@@ -39,6 +39,7 @@ import { SwapFundingPanel } from "./SwapFundingPanel";
 import useTokenApproval from "@/hooks/useTokenApproval";
 import { maxUint256 } from "viem";
 import { FieldControl } from "@/components/runtime/FieldControl";
+import { resolveInputFormat } from "@/components/runtime/fieldFormatInputs";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { calculateBonds } from "@figaro/sdk";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -837,6 +838,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                                                     onChange={(v) => setClauseFill(group.key, clauseId, field.name, v)}
                                                                     testId={`checkout-field-${group.key}-${clauseId}-${field.name}`}
                                                                     hideLabel={field.name.toLowerCase() === (getClauseSpec(clauseId)?.title ?? "").toLowerCase()}
+                                                                    resolvedFormat={resolveInputFormat(field, getClauseSpec(clauseId)?.fields ?? [], clauseFills[group.key]?.[clauseId])}
                                                                 />
                                                             ))}
                                                         </div>

@@ -126,7 +126,14 @@ Y", not as an open-ended build.)
   cross-check everywhere, NFC tap on Android Chrome, BLE sighting on
   Chromium; browser and mobile, one surface — `lib/shared/deviceEvidence.ts`),
   capture pins the artifact and the URI fills the field, manual URI entry
-  stays; richer ranging arrives via the agent/operator seam, never the page) and
+  stays; richer ranging arrives via the agent/operator seam, never the page).
+  The format key may be VALUE-DRIVEN: a field declaring `formatFromField`
+  resolves its input from the committed VALUE of a named sibling
+  (`resolveInputFormat`) — `figaro-geolocation`'s origin/destination follow
+  `geocodeStandard`, so the geohash picker renders only when the committed
+  standard is geohash. The picker applies the `cap(disposition, geocodeStandard)`
+  grain cap — a `public` geohash is coarsened to neighborhood grain, a `private`
+  one keeps fine grain (`lib/shared/geohash.ts`)) and
   `components/runtime/interactionSurfaces.tsx`
   (`block.runtime.interaction.interface` — the party↔party runtime interaction
   standard, the sibling of `block.design.composes` — → order-page surfaces via
