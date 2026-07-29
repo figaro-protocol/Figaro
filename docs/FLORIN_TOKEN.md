@@ -89,8 +89,10 @@ the initial of Figaro — the visual protocol↔unit bridge.
 | **Founders** | **7%** | **70,000,000** | Genesis mint to founder wallet — **no vesting, no unlock** |
 | **Supporters** | **3%** | **30,000,000** | Genesis mint to supporters wallet (friends & family / early supporters) — **no vesting, no unlock** |
 | **DAO**      | **30%** | **300,000,000** | Genesis mint to DAO wallet — **no vesting, no unlock** |
-| **RPGF** | **60%** | **600,000,000** | `RpgfMinter` — three declining tranches (300M/200M/100M) claimed pro rata by clause authors + assembly designers of record |
+| **RPGF** | **60%** | **600,000,000** | `RpgfMinter` — three declining tranches summing to 600M (300M/200M/100M) claimed pro rata by clause authors + assembly designers of record |
 | **Total** | **100%** | **1,000,000,000** | |
+
+> **Note on the two 300Ms.** The DAO's 300M genesis allocation and RPGF tranche 1's 300M are *unrelated* numbers that happen to coincide: the first is a one-time treasury grant held by the DAO Safe; the second is the largest of three declining RPGF tranches (summing to 600M) minted lazily by usage claims. Different object, different tier, different mechanism — do not conflate them.
 
 Founders, supporters, and DAO receive tokens directly to their wallets at deploy time. The
 600M mints only through the `RpgfMinter`'s per-tranche claims — the minter
