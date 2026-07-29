@@ -111,11 +111,14 @@ export async function resolveProcess(
  * @param clauseId The `computeClauseKey(clause, version)` bytes32 HASH — NOT
  *               the raw clause name that `buildSectionInclusionProof` takes as
  *               its `clauseKey`. Same value used as the merkle leaf id.
- * @param sectionData The raw clause bytes committed in the agreement.
- *               Use `canonicalizeSectionData(section.data)` + encode to Hex.
+ * @param sectionHash The section FINGERPRINT — `sectionDataHash(section)` =
+ *               `keccak256` of the committed canonical bytes, NEVER the preimage.
+ *               The coordinator takes only the hash, so a `private`-disposition
+ *               section's plaintext never touches public calldata.
  * @param proof  Merkle inclusion proof produced by `buildSectionInclusionProof`.
- * @param content ABI-encoded content per the clause's encoding (use the
- *                encoders in `@figaro/sdk/clauses`).
+ * @param contentRef The content FINGERPRINT — `keccak256(content)` (the content
+ *                lives off-chain), or `sectionHash` to RE-ASSERT the committed
+ *                section. Never the content preimage.
  */
 export async function attestAsSeller(
     walletClient: WalletClient,
@@ -124,9 +127,9 @@ export async function attestAsSeller(
     target: Commitment,
     clauseId: Hex,
     stage: number,
-    sectionData: Hex,
+    sectionHash: Hex,
     proof: readonly Hex[],
-    content: Hex,
+    contentRef: Hex,
 ): Promise<TxResult> {
     const hash = await walletClient.writeContract({
         chain: walletClient.chain ?? null,
@@ -134,7 +137,7 @@ export async function attestAsSeller(
         address: coordinatorAddress,
         abi: ATTESTATION_COORDINATOR_ABI,
         functionName: "attestAsSeller",
-        args: [role, target, clauseId, stage, sectionData, proof, content],
+        args: [role, target, clauseId, stage, sectionHash, proof, contentRef],
     });
     return { hash };
 }
@@ -157,9 +160,9 @@ export async function attestAsBuyer(
     target: Commitment,
     clauseId: Hex,
     stage: number,
-    sectionData: Hex,
+    sectionHash: Hex,
     proof: readonly Hex[],
-    content: Hex,
+    contentRef: Hex,
 ): Promise<TxResult> {
     const hash = await walletClient.writeContract({
         chain: walletClient.chain ?? null,
@@ -167,7 +170,7 @@ export async function attestAsBuyer(
         address: coordinatorAddress,
         abi: ATTESTATION_COORDINATOR_ABI,
         functionName: "attestAsBuyer",
-        args: [target, clauseId, stage, sectionData, proof, content],
+        args: [target, clauseId, stage, sectionHash, proof, contentRef],
     });
     return { hash };
 }
@@ -200,9 +203,13 @@ export interface ActionExecutionInputs {
          *  clause name `buildSectionInclusionProof` takes as its `clauseKey`. */
         clauseId: Hex;
         stage: number;
-        sectionData: Hex;
+        /** The section FINGERPRINT — `sectionDataHash(section)` (keccak256 of the
+         *  committed bytes), never the preimage. */
+        sectionHash: Hex;
         proof: readonly Hex[];
-        content: Hex;
+        /** The content FINGERPRINT — `keccak256(content)` (content lives
+         *  off-chain), or `sectionHash` to re-assert. Never the preimage. */
+        contentRef: Hex;
     };
 }
 
@@ -265,7 +272,7 @@ export async function executeAction(
             if (!at) {
                 throw new Error(
                     `${action.type}: requires inputs.attestation ` +
-                    `{ target, clauseId, stage, sectionData, proof, content } built from the hydrated agreement.`,
+                    `{ target, clauseId, stage, sectionHash, proof, contentRef } built from the hydrated agreement.`,
                 );
             }
             if (!addresses.attestationCoordinator) {
@@ -274,11 +281,11 @@ export async function executeAction(
             return action.type === "attest-as-seller"
                 ? attestAsSeller(
                     walletClient, addresses.attestationCoordinator,
-                    at.role ?? at.target, at.target, at.clauseId, at.stage, at.sectionData, at.proof, at.content,
+                    at.role ?? at.target, at.target, at.clauseId, at.stage, at.sectionHash, at.proof, at.contentRef,
                 )
                 : attestAsBuyer(
                     walletClient, addresses.attestationCoordinator,
-                    at.target, at.clauseId, at.stage, at.sectionData, at.proof, at.content,
+                    at.target, at.clauseId, at.stage, at.sectionHash, at.proof, at.contentRef,
                 );
         }
         default:

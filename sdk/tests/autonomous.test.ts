@@ -84,7 +84,7 @@ describe("executeAction — honest input gates (never fabricate)", () => {
 
     it("throws on attest when the coordinator address is unconfigured", async () => {
         const action = { type: "attest-as-buyer", processId: "0x09" as Hex, attester: BUYER, orderHashes: [] } as AttestAction;
-        const attestation = { target: orderToCommitment(mkOrder()), clauseId: "0xdd" as Hex, stage: 1, sectionData: "0x" as Hex, proof: [], content: "0x" as Hex };
+        const attestation = { target: orderToCommitment(mkOrder()), clauseId: "0xdd" as Hex, stage: 1, sectionHash: `0x${"00".repeat(32)}` as Hex, proof: [], contentRef: `0x${"00".repeat(32)}` as Hex };
         await expect(executeAction(wallet, pub, addresses, action, { attestation })).rejects.toThrow(/attestationCoordinator/i);
     });
 });

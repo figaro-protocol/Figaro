@@ -84,8 +84,9 @@ export interface AttestAction extends BaseAction {
     clauseId?: Hex;
     /** Optional stage; executor default is 1. */
     stage?: number;
-    /** Optional ABI-encoded content. Omit to default to the committed
-     *  sectionData (when the attestation re-asserts the committed section). */
+    /** Optional ABI-encoded content the executor fingerprints into `contentRef`
+     *  (`keccak256`). Omit to RE-ASSERT the committed section — the executor then
+     *  defaults `contentRef` to the section's own fingerprint. */
     content?: Hex;
 }
 

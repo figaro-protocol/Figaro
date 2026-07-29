@@ -208,20 +208,25 @@ const result = await executeAction(walletClient, publicClient, addresses, approv
 
 // Attest one clause end-to-end from a hydrated Agreement. Pick the clause from
 // the agreement's OWN sections — never a bundled list.
-import { buildSectionInclusionProof, getSectionDataBytes, computeClauseKey } from "@figaro/sdk";
+import { buildSectionInclusionProof, sectionDataHash, computeClauseKey } from "@figaro/sdk";
 import { attestAsSeller } from "@figaro/sdk/agent";
 import { parseClauseSpec, encodeContentFromSpec } from "@figaro/sdk/clauses";
+import { keccak256 } from "viem";
 
 const section = agreement.sections[0]; // e.g. { clause: "figaro-assembly-provenance", version, data }
 
 // 1. Inclusion proof — buildSectionInclusionProof takes the RAW section name.
 const { proof } = buildSectionInclusionProof(agreement, section.clause);
-// 2. Section bytes — the canonical JSON that formed the leaf.
-const sectionData = getSectionDataBytes(section);
-// 3. Content — ABI-encoded per the clause spec (fetched from ClauseRegistry → IPFS).
+// 2. Section FINGERPRINT — keccak256 of the committed canonical bytes. The
+//    coordinator takes only the hash, never the preimage, so a `private`-
+//    disposition section's plaintext never touches public calldata.
+const sectionHash = sectionDataHash(section);
+// 3. Content FINGERPRINT — hash the ABI-encoded content (which lives OFF-chain).
+//    Omit content to RE-ASSERT the committed section: contentRef = sectionHash.
 const parsed = parseClauseSpec(specJson);
 if (!parsed.ok) throw new Error(parsed.errors[0].message);
 const content = encodeContentFromSpec(parsed.spec, section.data);
+const contentRef = keccak256(content);
 // 4. Attest. `clauseId` is the bytes32 HASH — NOT the raw name from step 1.
 // `stage` vocabulary: 0 = the clause's COMMITTED content (encode with no
 // stage option); N ≥ 1 = a runtime witness whose field shape is the spec's
@@ -236,7 +241,7 @@ const clauseId = computeClauseKey(section.clause, section.version);
 // cross-order case (seller attesting from a different order in the process).
 await attestAsSeller(
   walletClient, addresses.attestationCoordinator!,
-  roleCommitment, targetCommitment, clauseId, /* stage */ 0, sectionData, proof, content,
+  roleCommitment, targetCommitment, clauseId, /* stage */ 0, sectionHash, proof, contentRef,
 );
 // The coordinator has THREE attest entry points, all merkle-binding identically
 // to the signed agreement — they differ only in how caller authority is proven:
@@ -427,7 +432,8 @@ if (!result.ok) throw new Error(result.errors[0].message);
 // 3. Encode content to canonical ABI bytes straight from the parsed spec. ONE
 //    generic encoder drives every clause — there are no per-clause encoders.
 const bytes = encodeContentFromSpec(parsed.spec, { handoff: ["face-to-face"] });
-// Pass `bytes` as the `content` arg to AttestationCoordinator.attestAs{Seller,Buyer}.
+// The content lives OFF-chain; pass its FINGERPRINT `keccak256(bytes)` as the
+// `contentRef` arg to attestAs{Seller,Buyer} (never the preimage — calldata is public).
 // `decodeContentFromSpec(parsed.spec, bytes)` is the exact inverse (readers/audit).
 ```
 
