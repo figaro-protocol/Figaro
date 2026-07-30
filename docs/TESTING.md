@@ -98,8 +98,12 @@ directory; 11 encode vectors generated from the live TS encoder lock byte
 parity incl. signed int256, stage-scoped witnesses, tuple[] arrays, open
 formats), `figaro-kernel` (frozen Foundry parity vectors for commit/resolve +
 the witness-gate suite: spec-identity substitution, content-hash mismatch,
-inclusion failure, attest-after-resolve; bincode roundtrips fence the SP1
-stdin landmines), `figaro-prove-test` (SP1 mock-executor guest tests — guest
+inclusion failure, attest-after-resolve; the RPGF usage bridge in
+`prover/lib/tests/usage.rs` — same-batch credit against the post-state, cross-batch
+replay rejection (the reason the counted set rides the state root), breadth
+vs depth, the assembly leg via provenance reproduction, and the
+usage-hash vector asserted verbatim on the Solidity side; bincode roundtrips
+fence the SP1 stdin landmines), `figaro-prove-test` (SP1 mock-executor guest tests — guest
 PublicValues must equal host `apply_batch` field-for-field; in-VM Gate-S
 rejection; `SP1_REAL_PROOF=1` generates + verifies a real local Core proof),
 and `figaro-sequencer` (mempool runs the kernel's own witness gates at the

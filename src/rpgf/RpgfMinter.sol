@@ -7,7 +7,10 @@ import {IFlorinMinter} from "src/florin/IFlorinMinter.sol";
 interface IUsageCounter {
     function periodClosed(uint8 period) external view returns (bool);
     function totalScoreIn(uint8 period) external view returns (uint256);
-    function accrualOf(bytes32 artifact, uint8 period) external view returns (uint64 c, uint64 d, uint256 score);
+    /// @dev BOTH settlement paths, summed as SCORES — never `accrualOf`,
+    ///      which sees the direct path only and would under-pay every
+    ///      artifact whose trade moved to batches.
+    function scoreOf(bytes32 artifact, uint8 period) external view returns (uint256);
 }
 
 /// @notice Author of record for a clause — `ClauseRegistry.depositOf`.
@@ -196,8 +199,7 @@ contract RpgfMinter {
                 if (artifacts[j] == artifact) revert DuplicateArtifact(artifact);
             }
             if (!_isAuthor(artifact, account)) revert NotAuthorOfRecord(artifact, account);
-            (,, uint256 s) = counter.accrualOf(artifact, trancheId);
-            score += s;
+            score += counter.scoreOf(artifact, trancheId);
         }
         if (score == 0) return (0, 0);
 

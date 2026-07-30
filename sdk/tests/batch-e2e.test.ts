@@ -34,6 +34,7 @@ import {
     keccak256,
     encodePacked,
     encodeAbiParameters,
+    getContractAddress,
     hashTypedData,
     stringToHex,
     type Hex,
@@ -123,9 +124,13 @@ const SECTION_DATA = `{"modality":"delivery"}`;
 
 function computeGenesisRoot(): Hex {
     const emptyHash = keccak256("0x"); // keccak256("") = 0xc5d2460186...
+    // The fourth leg is the RPGF usage state — the counted set, the per-period
+    // pair set, and the running accrual. Each is length-prefixed, so on the
+    // empty state the leg is keccak over three zero-length sections.
+    const emptyUsage = keccak256(encodePacked(["uint64", "uint64", "uint64"], [0n, 0n, 0n]));
     const packed = encodePacked(
-        ["bytes32", "bytes32", "bytes32"],
-        [emptyHash, emptyHash, emptyHash],
+        ["bytes32", "bytes32", "bytes32", "bytes32"],
+        [emptyHash, emptyHash, emptyHash, emptyUsage],
     );
     return keccak256(packed);
 }
@@ -141,7 +146,7 @@ function sequencerBinaryExists(): boolean {
     return fs.existsSync(sequencerBinaryPath());
 }
 
-function startSequencer(batchVerifierAddress: Address): ChildProcess {
+function startSequencer(batchVerifierAddress: Address, usageCounterAddress: Address): ChildProcess {
     const binPath = sequencerBinaryPath();
     const child = spawn(binPath, [], {
         env: {
@@ -149,6 +154,11 @@ function startSequencer(batchVerifierAddress: Address): ChildProcess {
             RPC_URL: ANVIL_URL,
             CHAIN_ID: "31337",
             BATCH_VERIFIER_ADDRESS: batchVerifierAddress,
+            // The RPGF counter the sequencer reads the open period and the
+            // provenance clause from. No usage claims are submitted here, so
+            // the accrual settles empty — which is the path every batch takes
+            // once the reward's last period has closed.
+            USAGE_COUNTER_ADDRESS: usageCounterAddress,
             // The kernel uses this as the EIP-712 verifyingContract.
             // For the batch path, it must be the batch verifier address.
             FIGARO_CORE_ADDRESS: batchVerifierAddress,
@@ -247,6 +257,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
     let tokenAddress: Address;
     let clauseRegistryAddress: Address;
     let batchVerifierAddress: Address;
+    let usageCounterAddress: Address;
     let alive = false;
     let hasBinary = false;
     let sequencerProcess: ChildProcess | null = null;
@@ -368,8 +379,59 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
 
         // ── Deploy FigaroBatchVerifier ───────────────────────────
 
+        // ── Deploy the RPGF counter the verifier writes through ──
+        // The two reference each other, so the verifier's address is predicted
+        // from the deployer nonce and asserted after — the same dance the
+        // deploy scripts perform.
+        const coreHashForCounter = await deployerWallet.deployContract({
+            abi: parseAbi(["constructor()"]),
+            bytecode: loadBytecode("FigaroCore.sol/FigaroCore.json"),
+            args: [],
+        });
+        const coreAddress = (
+            await publicClient.waitForTransactionReceipt({ hash: coreHashForCounter })
+        ).contractAddress!;
+
+        const membersHash = await deployerWallet.deployContract({
+            abi: parseAbi(["constructor(uint256 _registrationDeposit, uint256 _withdrawalCooldown)"]),
+            bytecode: loadBytecode("MembersRegistry.sol/MembersRegistry.json"),
+            args: [0n, 0n],
+        });
+        const membersAddress = (
+            await publicClient.waitForTransactionReceipt({ hash: membersHash })
+        ).contractAddress!;
+
+        const deployerNonce = await publicClient.getTransactionCount({
+            address: deployerAccount.address,
+        });
+        const predictedVerifier = getContractAddress({
+            from: deployerAccount.address,
+            nonce: BigInt(deployerNonce) + 1n,
+        });
+
+        const usageCounterHash = await deployerWallet.deployContract({
+            abi: parseAbi([
+                "constructor(address _core, address _members, address _batchVerifier, bytes32 _provenanceClause, bytes32[] _excluded, uint64[] _periodEnd)",
+            ]),
+            bytecode: loadBytecode("UsageCounter.sol/UsageCounter.json"),
+            args: [
+                coreAddress,
+                membersAddress,
+                predictedVerifier,
+                keccak256(encodeAbiParameters(
+                    [{ type: "string" }, { type: "uint64" }],
+                    ["figaro-assembly-provenance", 1n],
+                )),
+                [],
+                [BigInt(Math.floor(Date.now() / 1000) + 3600)],
+            ],
+        });
+        usageCounterAddress = (
+            await publicClient.waitForTransactionReceipt({ hash: usageCounterHash })
+        ).contractAddress!;
+
         const BATCH_VERIFIER_DEPLOY_ABI = parseAbi([
-            "constructor(address _verifier, bytes32 _programVKey, address _clauseRegistry, bytes32 _initialRoot)",
+            "constructor(address _verifier, bytes32 _programVKey, address _clauseRegistry, address _usageCounter, bytes32 _initialRoot)",
         ]);
 
         const genesisRoot = computeGenesisRoot();
@@ -383,6 +445,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
                 mockVerifierAddress,
                 keccak256(encodePacked(["string"], ["figaro-kernel-dev"])),
                 clauseRegistryAddress,
+                usageCounterAddress,
                 genesisRoot,
             ],
         });
@@ -390,6 +453,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             hash: bvHash,
         });
         batchVerifierAddress = bvReceipt.contractAddress!;
+        expect(batchVerifierAddress.toLowerCase()).toBe(predictedVerifier.toLowerCase());
 
         // ── Verify genesis root matches ─────────────────────────
 
@@ -440,7 +504,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
 
         // ── Start sequencer ─────────────────────────────────────
 
-        sequencerProcess = startSequencer(batchVerifierAddress);
+        sequencerProcess = startSequencer(batchVerifierAddress, usageCounterAddress);
 
         sequencerProcess.stderr?.on("data", (chunk: Buffer) => {
             const line = chunk.toString().trim();

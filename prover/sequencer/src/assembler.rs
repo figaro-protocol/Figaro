@@ -1,9 +1,25 @@
 /// Batch assembler — drains the mempool and builds a BatchInput for
 /// the SP1 prover.
-use alloy_primitives::Address;
-use figaro_kernel::types::{BatchInput, KernelOp, KernelStateSnapshot};
+use alloy_primitives::{Address, B256};
+use figaro_kernel::types::{BatchInput, KernelOp, KernelStateSnapshot, UsageClaim};
 
 use crate::mempool::PendingOp;
+
+/// The RPGF context a batch settles under — the claims to credit, the
+/// period they land in, and the provenance clause key assembly claims
+/// prove against.
+///
+/// PERIOD AND PROVENANCE ARE CHAIN FACTS, read from `UsageCounter`
+/// (`currentPeriod()`, `provenanceClause()`), never guessed from a local
+/// clock: the counter re-checks both at settlement and rejects the batch
+/// on a mismatch. A batch assembled just before a period boundary and
+/// settled just after it must be re-proven for the new period.
+#[derive(Clone, Debug, Default)]
+pub struct UsageContext {
+    pub claims: Vec<UsageClaim>,
+    pub period: u8,
+    pub provenance_clause: B256,
+}
 
 /// Configuration for batch assembly triggers.
 #[derive(Clone, Debug)]
@@ -30,6 +46,7 @@ pub fn assemble_batch(
     block_timestamp: u64,
     operations: Vec<KernelOp>,
     prev_state: KernelStateSnapshot,
+    usage: UsageContext,
 ) -> BatchInput {
     BatchInput {
         chain_id,
@@ -37,6 +54,9 @@ pub fn assemble_batch(
         block_timestamp,
         operations,
         prev_state,
+        usage_claims: usage.claims,
+        usage_period: usage.period,
+        provenance_clause: usage.provenance_clause,
     }
 }
 
@@ -114,12 +134,18 @@ fn trial_apply(
     state: &KernelStateSnapshot,
     op: &KernelOp,
 ) -> Result<KernelStateSnapshot, String> {
+    // Ops only — a trial-apply asks "does this operation apply cleanly
+    // against the running state?", and usage claims answer a different
+    // question against the batch's POST-state.
     let trial = BatchInput {
         chain_id,
         verifying_contract,
         block_timestamp,
         operations: vec![op.clone()],
         prev_state: state.clone(),
+        usage_claims: vec![],
+        usage_period: 0,
+        provenance_clause: B256::ZERO,
     };
     figaro_kernel::kernel::apply_batch_with_state(&trial)
         .map(|(_, _, _, post)| post.to_snapshot())

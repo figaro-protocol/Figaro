@@ -467,6 +467,60 @@ the operator's framing: "no rage quitting."
 
 ---
 
+## 16. `UsageCounter.applyBatchAccrual` has one privileged caller — a proof-gated writer, not an admin
+
+**Pattern**: every other write in the protocol is permissionless. This one is
+not: `applyBatchAccrual` reverts unless `msg.sender == batchVerifier`, an
+address fixed at construction. A reviewer scanning for authority patterns
+finds a single hard-coded writer on a contract that governs a 600M-token
+distribution.
+
+**Why it looks wrong**: "no owner, no admin" is stated everywhere in this
+codebase, and a lone privileged caller on the reward path is exactly the shape
+an admin backdoor takes. The natural next question — can that address mint,
+re-weight, or seize? — is the right question to ask.
+
+**Why it is correct**: the verifier has **no discretion**. It may call this
+function only with numbers an SP1 proof committed under an IMMUTABLE
+verification key, against a state root that advances by that same proof. It
+cannot choose the accrual, cannot invent a process, cannot write twice for the
+same trade (the guest's counted set rides the batch state root, so idempotence
+holds across batches), and cannot be repointed — `batchVerifier` is
+`immutable` and no setter exists. What it can do is exactly what the direct
+path lets *anyone* do permissionlessly: present proof that settled trade used
+an artifact.
+
+The distinction that matters is **discretion, not permission**. An admin
+function is one whose outcome depends on who calls it. This one's outcome
+depends only on what the proof says; the caller is a courier. The reason it
+needs a named caller at all is that the accrual is proved OFF-chain — which is
+the entire point, since ~85% of a direct record's gas is storage plus `icbrt`
+— so the fact cannot be re-derived from calldata here. The contract trusts the
+vkey, and a named caller is how a vkey's authority reaches storage.
+
+**What the counter still enforces itself**, because the proof cannot see live
+chain state: the open period, each seller's live `MembersRegistry` stake, and
+the excluded-artifact set. The verifier deliberately checks none of these — it
+owns the proof, the counter owns the reward's gates.
+
+**Blast radius if the vkey were wrong**: a bad program could inflate
+batch-path accrual for artifacts of its choosing, diluting every honest
+author's pro-rata share of a tranche. It could not mint, could not touch
+direct-path accrual, could not reach bonds or settlement, and could not
+withdraw anything — `RpgfMinter` still pays only authors of record with a live
+stake. The mitigation is the same one the whole batch path already rests on:
+the vkey is immutable, and a program change means a NEW verifier deployment,
+reviewed as such.
+
+**Related**: the two settlement universes are DISJOINT — a batch-settled
+process never acquires kernel status, and a kernel-settled one is never in a
+batch. That is what makes guest-owned idempotence safe, and why the two
+accruals are merged as SCORES and never as components (`scoreOf`): the chain
+holds counts, not the pair sets needed to union them.
+
+
+---
+
 ## Summary Table
 
 | # | Pattern | Looks wrong because | Is correct because |
@@ -486,3 +540,4 @@ the operator's framing: "no rage quitting."
 | 13 | `deadline` alongside `salt` | Redundant / auction residue | Salt is identity, deadline is expiry of the unconsummated signature window; no-cancel kernel needs signatures to age out |
 | 14 | Committed `lineItems.name` / `cargo.marks` are public | Wallet-linkable purchase content leaks | Mechanism needs line items beyond the endpoints (invoices, disputes, price checks); mitigation is compositional (discreet catalogue naming, coded marks) + wallet pseudonymity |
 | 15 | `MembersRegistry` withdrawal cooldown holds ETH on a timer | Looks like stuck funds + a kernel-forbidden time lock | PROTOCOL tier, not kernel — no bond or commitment involved; without it one deposit is recycled across identities, so the stake priced nothing; bounded, immutable, and unconditionally claimable after `releaseAt` |
+| 16 | `applyBatchAccrual` has one privileged caller | A named writer on the reward path is the shape of an admin backdoor | Discretion, not permission, is the test: the caller may only relay numbers an immutable vkey committed; the counter still enforces period, seller stake and exclusions itself |

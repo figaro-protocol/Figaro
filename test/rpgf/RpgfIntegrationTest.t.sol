@@ -45,6 +45,9 @@ contract RpgfIntegrationTest is Test {
     bytes constant SECTION = hex"5eed";
 
     uint64 constant P0_END = 1_000_000;
+
+    /// @dev Stands in for FigaroBatchVerifier — see UsageCounterTest.
+    address constant batchVerifier = address(0xBA7C);
     uint256 constant T0 = 300_000_000 ether;
 
     function setUp() public {
@@ -71,7 +74,7 @@ contract RpgfIntegrationTest is Test {
         periods[0] = P0_END;
         periods[1] = P0_END * 2;
         periods[2] = P0_END * 3;
-        counter = new UsageCounter(address(core), address(members), PROV_KEY, _excluded(), periods);
+        counter = new UsageCounter(address(core), address(members), batchVerifier, PROV_KEY, _excluded(), periods);
 
         minter = new RpgfMinter(
             address(florin),

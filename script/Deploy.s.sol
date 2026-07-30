@@ -159,7 +159,7 @@ contract Deploy is Script {
         // settleBatch checks each proof's (clause key → spec hash)
         // binding against contentHashOf before settling.
         // Note: FigaroBatchVerifier is NOT a florin minter and never will be.
-        _deployBatchVerifier(address(clauses));
+        _deployUsageAndVerifier(address(clauses), address(core), address(members), vm.addr(deployerPrivateKey));
 
         // ── florin token + RPGF minter ─────────────────────────────────
         FlorinToken florin = new FlorinToken();
@@ -170,7 +170,7 @@ contract Deploy is Script {
         // the 600M distribution registers here, before any other genesis step.
         // Nothing is posted, bonded, or challenged: UsageCounter records verified
         // usage as it happens and the minter pays pro rata from a closed period.
-        _deployRpgf(florin, core, clauses, assemblies, members);
+        _deployRpgfMinter(florin, clauses, assemblies);
 
         _deployTreasuryGenesis(florin, vm.addr(deployerPrivateKey));
 
@@ -229,19 +229,44 @@ contract Deploy is Script {
     }
 
     address internal _batchVerifier;
+    address internal _usageCounter;
 
     /// @dev Own frame: keeps run()'s stack shallow (via_ir=false by design).
-    function _deployBatchVerifier(address clauseRegistry) internal {
+    ///
+    ///      The counter and the verifier REFERENCE EACH OTHER — the verifier
+    ///      writes the batch-path accrual, and the counter accepts that write
+    ///      from no other address — so one of the two must be predicted. They
+    ///      deploy as an ADJACENT PAIR with the prediction asserted: a wrong
+    ///      guess fails the deploy instead of silently producing a counter no
+    ///      verifier can write to, which would look healthy right up until the
+    ///      first batch settled.
+    function _deployUsageAndVerifier(address clauseRegistry, address core, address members, address deployer)
+        internal
+    {
         MockSP1Verifier mockSp1 = new MockSP1Verifier();
         console.log("MockSP1Verifier deployed at:", address(mockSp1));
+
+        // The next two CREATEs from this deployer, in order: the counter,
+        // then the verifier.
+        address predictedVerifier = vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1);
+
+        _deployUsageCounter(core, members, predictedVerifier);
+
+        // Genesis root is DERIVED — one keccak256("") per kernel state map
+        // (processes, orderStatus, orderProcessId) plus the usage leg, which
+        // is itself keccak over three zero-length sections, matching the Rust
+        // KernelState::compute_root on the empty state.
         bytes32 emptyMapHash = keccak256("");
+        bytes32 emptyUsageHash = keccak256(abi.encodePacked(uint64(0), uint64(0), uint64(0)));
         FigaroBatchVerifier batchVerifier = new FigaroBatchVerifier(
             address(mockSp1),
             keccak256(abi.encodePacked("figaro-kernel-dev")),
             clauseRegistry,
-            keccak256(abi.encodePacked(emptyMapHash, emptyMapHash, emptyMapHash))
+            _usageCounter,
+            keccak256(abi.encodePacked(emptyMapHash, emptyMapHash, emptyMapHash, emptyUsageHash))
         );
         _batchVerifier = address(batchVerifier);
+        require(_batchVerifier == predictedVerifier, "verifier address prediction failed");
         console.log("FigaroBatchVerifier deployed at:", _batchVerifier);
     }
 
@@ -276,15 +301,11 @@ contract Deploy is Script {
     ///      Logs its own address lines — deploy-local.sh parses the
     ///      "deployed at:" lines, and the NEXT_PUBLIC_ summary prints here
     ///      rather than in run().
-    function _deployRpgf(
-        FlorinToken florin,
-        FigaroCore core,
-        ClauseRegistry clauses,
-        AssemblyRegistry assemblies,
-        MembersRegistry members
-    )
-        internal
-    {
+    ///
+    ///      Deployed ahead of the RPGF minter and beside the batch verifier,
+    ///      because the two reference each other — see
+    ///      `_deployUsageAndVerifier`.
+    function _deployUsageCounter(address core, address members, address batchVerifier_) internal {
         // Accrual periods and RPGF tranches are ONE schedule, configured
         // consistently: tranche i pays for period i.
         //
@@ -320,18 +341,27 @@ contract Deploy is Script {
         excluded[2] = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
 
         UsageCounter counter = new UsageCounter(
-            address(core),
-            address(members), // seller-side live-stake gate: usage counts only for live-staked sellers
+            core,
+            members, // seller-side live-stake gate: usage counts only for live-staked sellers
+            batchVerifier_, // proof-gated writer of the batch-path accrual
             keccak256(abi.encode("figaro-assembly-provenance", uint64(1))), // proves the assembly leg
             excluded,
             periods
         );
+        _usageCounter = address(counter);
         console.log("UsageCounter deployed at:", address(counter));
         console.log("  NEXT_PUBLIC_USAGE_COUNTER=", address(counter));
+    }
 
+    /// @dev Own frame: keeps run()'s stack shallow (via_ir=false by design).
+    function _deployRpgfMinter(
+        FlorinToken florin,
+        ClauseRegistry clauses,
+        AssemblyRegistry assemblies
+    ) internal {
         RpgfMinter rpgfMinter = new RpgfMinter(
             address(florin),
-            address(counter),
+            _usageCounter,
             address(clauses),
             address(assemblies),
             [uint256(300_000_000 ether), 200_000_000 ether, 100_000_000 ether]

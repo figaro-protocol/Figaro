@@ -128,9 +128,11 @@ export function RewardsView() {
                                         <ul className="text-sm text-ink-muted space-y-1">
                                             {t.accruals.map((a) => (
                                                 <li key={a.artifact} className="font-mono break-all">
-                                                    {a.label} — {a.c.toString()} settled process
-                                                    {a.c === 1n ? "" : "es"}, {a.d.toString()} distinct pair
-                                                    {a.d === 1n ? "" : "s"}, score {a.score.toString()}
+                                                    {a.label} — {(a.c + a.batchC).toString()} settled process
+                                                    {a.c + a.batchC === 1n ? "" : "es"},{" "}
+                                                    {(a.d + a.batchD).toString()} distinct pair
+                                                    {a.d + a.batchD === 1n ? "" : "s"}, score{" "}
+                                                    {a.score.toString()}
                                                 </li>
                                             ))}
                                         </ul>

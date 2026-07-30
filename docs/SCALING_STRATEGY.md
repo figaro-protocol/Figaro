@@ -77,6 +77,51 @@ on devnet (Anvil, chain 31337).
 3. run the final external audit pass
 4. deploy on Ethereum mainnet as the canonical live settlement domain
 
+## Two settlement paths, two DISJOINT state universes
+
+**This is the crease.** It is the single most important thing to hold about the
+scaling path, and until 2026-07-30 it was stated nowhere — not in this document,
+not on a builder surface, not in an agent brief.
+
+`FigaroCore` and `FigaroBatchVerifier` do not share state and never call each
+other. A process settled through a batch advances the verifier's own
+`stateRoot`; it **never acquires kernel status**. `core.orderStatus(orderHash)`
+returns 0 — UNKNOWN — for it, permanently. And the converse holds: a
+kernel-settled process is never inside a batch.
+
+**What follows from it, mechanically:**
+
+- **Anything gated on `orderStatus` cannot see batched trade.** Not "sees it
+  late" — cannot see it at all. `AttestationCoordinator` requires an ACTIVE
+  order; `UsageCounter.recordClauseUsage` requires a RESOLVED one. A
+  batch-settled process satisfies neither, forever.
+- **That is why the RPGF counter silently missed batched trade**, and why the
+  bridge below exists. The gap was found by writing the soundness argument, not
+  by a test or a probe — no harness could see it, because both contracts were
+  individually correct.
+- **It is also why guest-owned idempotence is SAFE.** The batch guest keeps its
+  own counted set (under the state root) rather than consulting the counter's
+  `processCounted`. That would be unsound if a process could settle on both
+  paths — and it cannot.
+- **A reader must fold BOTH.** An indexer, a reward calculator, or a UI that
+  reads only `FigaroCore` events sees the direct path alone and under-reports
+  everything that scaled. The two event streams are deliberately distinguishable
+  (`FigaroBatchVerifier.Attestation` shares the coordinator's topic hash —
+  filter by contract address).
+
+**What crosses the crease, and what does not.** Exactly one thing crosses today:
+the RPGF usage accrual, carried by `settleBatch` into
+`UsageCounter.applyBatchAccrual` as proved numbers, never as kernel state. Money
+crosses as net token positions, which is settlement, not state. Nothing else
+does — no status, no process, no attestation record. Registry mutations never
+enter a batch at all (they are once-per-artifact ETH-staked intents on the
+direct path).
+
+**The direct path remains the fallback.** The sequencer is a liveness
+convenience, never a trust assumption — but "fall back to direct" means starting
+a NEW process on the kernel, not migrating a batched one. There is no migration
+between universes and none is planned; the crease is the design, not a gap in it.
+
 ## Track 2: Proof-Based Kernel Scaling
 
 This is the actual scaling question. Everything else — network choice,

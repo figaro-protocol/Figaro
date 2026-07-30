@@ -29,8 +29,11 @@ contract StubCounter {
         return closed[period];
     }
 
-    function accrualOf(bytes32 artifact, uint8 period) external view returns (uint64, uint64, uint256) {
-        return (0, 0, _score[artifact][period]);
+    /// @dev `scoreOf`, not `accrualOf`: the minter reads the sum of the direct
+    ///      and batch paths, so a stub exposing only the direct accrual would
+    ///      let a regression to the old read slip through silently.
+    function scoreOf(bytes32 artifact, uint8 period) external view returns (uint256) {
+        return _score[artifact][period];
     }
 }
 

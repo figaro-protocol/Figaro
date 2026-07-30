@@ -220,7 +220,7 @@ The proof-based settlement path that runs beside the direct kernel path (`SCALIN
 **`src/protocol/verifier/FigaroBatchVerifier.sol`** — Proof-based batch settlement (the Track-2
 scaling path, `SCALING_STRATEGY.md`; rebuilt 2026-07-16 from the pre-teardown
 prototype, upgraded to the witness model). One external function,
-`settleBatch(proof, publicValues, positions, events)`: verifies an SP1 proof of
+`settleBatch(proof, publicValues, positions, events, usage)`: verifies an SP1 proof of
 a batch of kernel operations (commits, resolves, witness-gated attestations)
 against the immutable `programVKey`, checks state-root continuity + chain
 binding, hash-verifies the calldata (positions / attestations / spec bindings,
@@ -233,9 +233,28 @@ changes while a permissive-spec substitution reverts
 (`test_permissionless_newClause_settlesWithZeroVerifierChanges`) — reconciles
 net token positions (pull net deposits / push net payouts;
 `FeeOnTransferDetected` guard), re-emits proven `Attestation` events (same
-topic as the coordinator's — indexers filter by address), and advances the
-state root. Immutable `verifier`/`programVKey`/`clauseRegistry`, no owner, no
-fee, no upgrade path — a program change is a fresh deploy. NOT a florin minter.
+topic as the coordinator's — indexers filter by address), **carries the RPGF
+usage accrual across to `UsageCounter`** (below), and advances the state root.
+Immutable `verifier`/`programVKey`/`clauseRegistry`/`usageCounter`, no owner,
+no fee, no upgrade path — a program change is a fresh deploy. NOT a florin
+minter.
+
+**The RPGF leg** exists because the two settlement paths are DISJOINT state
+universes: a batch-settled process never acquires kernel status, so
+`UsageCounter`'s direct path — which requires `FigaroCore.orderStatus ==
+RESOLVED` — can never see batched trade, and the 600M would measure a
+shrinking fraction of real adoption exactly as the protocol scales. The guest
+proves each artifact's cumulative `(c, d)`; an 8th public value
+(`usageAccrualHash`) commits the period, the provenance clause key, those
+accruals and the distinct sellers behind them; and `settleBatch` re-derives
+that hash from calldata before forwarding to `applyBatchAccrual`. **Both array
+lengths are in the hash preimage** — an accrual record is 48 bytes and a
+seller 20, so without them the same preimage could be re-split, presenting
+accruals whose sellers were never stake-checked. The gates the proof cannot
+see (open period, live seller stake, excluded artifacts) belong to the counter
+and are checked there, not here. A batch that credits no usage passes empty
+arrays; that call is a no-op, which is what lets trade keep settling after the
+reward's last period closes.
 The Rust side lives in `prover/` (kernel mirror, generic clause engine, SP1
 guest, sequencer); a real local SP1 Core proof of the canonical batch
 generates and verifies (`SP1_REAL_PROOF=1 cargo run -p figaro-prove-test
@@ -260,7 +279,8 @@ can learn an artifact's usage after the fact. Reconstructing it later is what fo
 the posting/bond/challenge/referee apparatus in the RPGF and match designs; recording
 the fact as it happens leaves no claim to believe and nothing to adjudicate.
 
-Two permissionless functions. `recordClauseUsage(order, artifact, sectionHash, proof)`
+Two permissionless functions, plus one proof-gated writer for the batch path.
+`recordClauseUsage(order, artifact, sectionHash, proof)`
 proves two things from data the chain already holds: the order is real and **RESOLVED**
 (`core.orderStatus == 2`), and the artifact was committed in that order's signed
 agreement (merkle inclusion against `agreementHash`). It carries only the section
@@ -309,6 +329,40 @@ once it ends, so a consumer paying out for it reads a number that can no longer 
 no snapshots, no checkpoint arrays, no history walk. Periods are generic: this contract
 knows nothing about tranches, rewards, or who pays. A running `totalScoreIn(period)` is
 maintained as an O(1) delta on every record.
+
+**The batch path — `applyBatchAccrual(period, provenanceClause, accruals, sellers)`.**
+Batch-settled trade never acquires kernel status, so it can never travel the two
+functions above; it arrives here instead, and only from `FigaroBatchVerifier`
+(`batchVerifier`, immutable). This is a **proof-gated writer, not an admin** — the
+caller has no discretion, only numbers an immutable vkey committed;
+`DESIGN_DECISIONS.md` §16 owns that argument and an auditor should read it before
+filing the finding. The write is an OVERWRITE of the artifact's CUMULATIVE `(c, d)`
+for the period, because the guest proves the running totals off-chain — so this
+contract keeps **no per-process storage for the batch path at all**, and cost is
+O(distinct artifacts in the batch) rather than O(records). That is the whole economy
+of the bridge: ~85% of a direct record's ~169k gas is storage plus `icbrt`, so
+batching only the authorisation would have saved nothing. Counts are asserted
+non-decreasing (`AccrualWentBackwards`) — free, since the previous score is read for
+the running total anyway, and it turns a guest regression into a revert rather than
+silently destroyed accrual. **What the proof cannot see is checked here**, because it
+is live chain state this contract owns: the open period (`PeriodMismatch` — the chain
+decides, never the sequencer's clock), each seller's live stake, and the excluded set.
+An EMPTY accrual returns before `currentPeriod()` is consulted, and must: otherwise
+every batch would revert `AccrualClosed` forever once the last period ended, and the
+reward path would brick the scaling path.
+
+**Merging the two paths: sum the SCORES, never the components.** `scoreOf(artifact,
+period)` returns `accrualOf.score + batchAccrualOf.score`, and `totalScoreIn` counts
+both. Adding `c` to `c` and `d` to `d` would over-count breadth for any (buyer, seller)
+pair active on both sides — the chain holds counts, not the pair SETS needed to union
+them, so an attacker splitting one relationship across the two universes would be paid
+twice for breadth they never had. Summing scores can never over-count: the score is
+concave and homogeneous of degree 1, so the component merge is superadditive, and the
+shortfall is EXACTLY ZERO when the split is proportional. No PROCESS is ever counted
+on both sides — the universes are disjoint. **`RpgfMinter` reads `scoreOf`**; a reader
+that reaches for `accrualOf` alone silently under-reports every artifact whose trade
+moved to batches, and the batch leg emits its own `BatchUsageRecorded` (cumulative,
+REPLACES rather than adds) which an indexer must fold differently from `UsageRecorded`.
 
 `icbrt` binary-searches the floor cube root with its ceiling clamped to
 `CUBE_MAX = floor(cbrt(2^256-1))`, so the cube cannot overflow. **The bound belongs to the

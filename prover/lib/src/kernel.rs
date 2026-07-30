@@ -586,6 +586,164 @@ pub fn compute_spec_bindings_hash(bindings: &[SpecBinding]) -> B256 {
     keccak256(&data)
 }
 
+// ── Usage accrual (the RPGF bridge) ───────────────────────────────
+
+/// Deterministic hash of the batch's usage accrual, mirrored byte for
+/// byte by `FigaroBatchVerifier._hashUsage`:
+///
+/// ```text
+/// period(1) ++ provenanceClause(32)
+///   ++ len(accruals)(8) ++ [artifact(32) ++ c(8) ++ d(8)]*
+///   ++ len(sellers)(8)  ++ [seller(20)]*
+/// ```
+///
+/// BOTH LENGTHS ARE PREFIXED, and they must be: an accrual record is 48
+/// bytes and a seller 20, so 5 accruals and 12 sellers occupy the same
+/// span. Without the prefixes a submitter could re-split the same
+/// preimage into a different (accruals, sellers) pair — writing accruals
+/// whose sellers were never stake-checked.
+pub fn compute_usage_accrual_hash(
+    period: u8,
+    provenance_clause: &B256,
+    accruals: &[UsageAccrual],
+    sellers: &[Address],
+) -> B256 {
+    let mut data = Vec::with_capacity(49 + accruals.len() * 48 + sellers.len() * 20);
+    data.push(period);
+    data.extend_from_slice(provenance_clause.as_slice());
+    data.extend_from_slice(&(accruals.len() as u64).to_be_bytes());
+    for a in accruals {
+        data.extend_from_slice(a.artifact.as_slice());
+        data.extend_from_slice(&a.c.to_be_bytes());
+        data.extend_from_slice(&a.d.to_be_bytes());
+    }
+    data.extend_from_slice(&(sellers.len() as u64).to_be_bytes());
+    for s in sellers {
+        data.extend_from_slice(s.as_slice());
+    }
+    keccak256(&data)
+}
+
+/// The canonical-JSON bytes of an assembly-provenance section,
+/// reproduced from the compositionHash alone — the Rust twin of
+/// `UsageCounter._toLowerHexString`'s use in `recordAssemblyUsage`.
+/// Reproduction, never parsing: a wrong compositionHash derives a leaf
+/// that is simply not in the tree.
+fn provenance_section_bytes(composition_hash: &B256) -> Vec<u8> {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut out = Vec::with_capacity(87);
+    out.extend_from_slice(b"{\"compositionHash\":\"0x");
+    for byte in composition_hash.as_slice() {
+        out.push(HEX[(byte >> 4) as usize]);
+        out.push(HEX[(byte & 0x0f) as usize]);
+    }
+    out.extend_from_slice(b"\"}");
+    out
+}
+
+/// Credit RPGF usage for orders the BATCH path has settled.
+///
+/// Every claim is proved, never trusted — the same two facts
+/// `UsageCounter.recordClauseUsage` proves on the direct path:
+///   1. the order is real and RESOLVED in this batch's post-state, and
+///   2. the artifact was committed in the agreement both parties signed
+///      (merkle inclusion against `agreement_hash`).
+///
+/// Two facts the guest CANNOT prove are declared and anchored on-chain
+/// instead: whether each seller holds a live MembersRegistry stake, and
+/// whether an artifact is excluded from scoring. Both are live chain
+/// state; the verifier checks them before writing, in the shape
+/// `_checkSpecBindings` already established.
+///
+/// Returns the touched artifacts' CUMULATIVE `(c, d)` and the distinct
+/// sellers behind them.
+fn apply_usage_claims(
+    state: &mut KernelState,
+    domain: &B256,
+    claims: &[UsageClaim],
+    period: u8,
+    provenance_clause: &B256,
+) -> Result<(Vec<UsageAccrual>, Vec<Address>), KernelError> {
+    let mut touched: BTreeSet<B256> = BTreeSet::new();
+    let mut sellers: BTreeSet<Address> = BTreeSet::new();
+
+    for claim in claims {
+        let (order_hash, process_id) = derive_commitment_ids(domain, &claim.order);
+
+        // 1. SETTLED, not merely known. Usage is what a finished process
+        //    leaves behind; an open process has not yet added value.
+        if state.order_status.get(&order_hash).copied().unwrap_or(0) != 2 {
+            return Err(KernelError::UsageOrderNotResolved(order_hash));
+        }
+
+        // 2. The artifact was committed in the signed agreement. A
+        //    clause proves its own leaf; an assembly proves the
+        //    PROVENANCE leaf whose section content IS the
+        //    compositionHash.
+        let (leaf_key, section_hash) = match &claim.kind {
+            UsageClaimKind::Clause { section_hash } => (claim.artifact, *section_hash),
+            UsageClaimKind::Assembly => (
+                *provenance_clause,
+                keccak256(provenance_section_bytes(&claim.artifact)),
+            ),
+        };
+        let mut leaf_preimage = [0u8; 64];
+        leaf_preimage[..32].copy_from_slice(leaf_key.as_slice());
+        leaf_preimage[32..].copy_from_slice(section_hash.as_slice());
+        let leaf = keccak256(keccak256(leaf_preimage));
+        if !crate::merkle::verify_inclusion(
+            &claim.inclusion_proof,
+            claim.order.agreement_hash,
+            leaf,
+        ) {
+            return Err(KernelError::UsageInvalidInclusionProof);
+        }
+
+        // 3. Once ever, whatever the period — the counted set rides the
+        //    state root, so this holds ACROSS batches, not just within
+        //    one. A duplicate is a sequencer fault and fails loudly
+        //    rather than being silently dropped.
+        if !state.usage_counted.insert((claim.artifact, process_id)) {
+            return Err(KernelError::UsageAlreadyCounted {
+                artifact: claim.artifact,
+                process_id,
+            });
+        }
+
+        // 4. Accrue. Every admitted claim feeds `c`; the first from each
+        //    pair in this period also feeds `d`.
+        let mut pair_preimage = [0u8; 40];
+        pair_preimage[..20].copy_from_slice(claim.order.buyer.as_slice());
+        pair_preimage[20..].copy_from_slice(claim.order.seller.as_slice());
+        let pair_key = keccak256(pair_preimage);
+        let first_from_pair = state
+            .usage_pair_seen
+            .insert((claim.artifact, period, pair_key));
+
+        let entry = state
+            .usage_accrual
+            .entry((claim.artifact, period))
+            .or_insert((0, 0));
+        entry.0 = entry.0.checked_add(1).ok_or(KernelError::Overflow)?;
+        if first_from_pair {
+            entry.1 = entry.1.checked_add(1).ok_or(KernelError::Overflow)?;
+        }
+
+        touched.insert(claim.artifact);
+        sellers.insert(claim.order.seller);
+    }
+
+    let accruals = touched
+        .into_iter()
+        .map(|artifact| {
+            let (c, d) = state.usage_accrual[&(artifact, period)];
+            UsageAccrual { artifact, c, d }
+        })
+        .collect();
+
+    Ok((accruals, sellers.into_iter().collect()))
+}
+
 // ── Batch execution ───────────────────────────────────────────────
 
 /// Execute a full batch of kernel operations and return the
@@ -697,16 +855,36 @@ fn apply_batch_inner(
         }
     }
 
+    // ── RPGF usage accrual ────────────────────────────────────────
+    // Runs AFTER every operation, against the post-state, so a process
+    // resolved by this very batch can be credited in the same batch.
+    let (usage_accruals, usage_sellers) = apply_usage_claims(
+        &mut state,
+        &domain,
+        &input.usage_claims,
+        input.usage_period,
+        &input.provenance_clause,
+    )?;
+
     let new_root = state.compute_root();
     let positions = tracker.net_positions();
     let ops_hash = compute_positions_hash(&positions);
     let att_hash = compute_attestation_events_hash(&attestation_events);
     let bindings: Vec<SpecBinding> = spec_bindings.into_iter().collect();
     let bindings_hash = compute_spec_bindings_hash(&bindings);
+    let usage_hash = compute_usage_accrual_hash(
+        input.usage_period,
+        &input.provenance_clause,
+        &usage_accruals,
+        &usage_sellers,
+    );
 
     let batch_events = BatchEvents {
         attestations: attestation_events,
         spec_bindings: bindings,
+        usage_accruals,
+        usage_sellers,
+        usage_period: input.usage_period,
     };
 
     Ok((
@@ -718,6 +896,7 @@ fn apply_batch_inner(
             token_ops_hash: ops_hash,
             attestation_events_hash: att_hash,
             spec_bindings_hash: bindings_hash,
+            usage_accrual_hash: usage_hash,
         },
         positions,
         batch_events,

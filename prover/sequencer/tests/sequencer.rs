@@ -20,7 +20,7 @@ use figaro_prove_test::{
     CHAIN_ID, CORE, SELLER1_KEY,
 };
 use figaro_sequencer::api::{self, AppState};
-use figaro_sequencer::assembler::{self, AssemblerConfig};
+use figaro_sequencer::assembler::{self, AssemblerConfig, UsageContext};
 use figaro_sequencer::mempool::{Mempool, PendingOp};
 use figaro_sequencer::state::StateMirror;
 
@@ -38,6 +38,9 @@ fn empty_snapshot() -> KernelStateSnapshot {
         processes: vec![],
         order_status: vec![],
         order_process_id: vec![],
+        usage_counted: vec![],
+        usage_pair_seen: vec![],
+        usage_accrual: vec![],
     }
 }
 
@@ -250,7 +253,7 @@ async fn state_mirror_advance_changes_root() {
 #[test]
 fn assembler_batch_preserves_fields() {
     let ops = canonical_ops();
-    let batch = assembler::assemble_batch(CHAIN_ID, CORE, 1234, ops.clone(), empty_snapshot());
+    let batch = assembler::assemble_batch(CHAIN_ID, CORE, 1234, ops.clone(), empty_snapshot(), UsageContext::default());
     assert_eq!(batch.chain_id, CHAIN_ID);
     assert_eq!(batch.verifying_contract, CORE);
     assert_eq!(batch.block_timestamp, 1234);
@@ -403,7 +406,7 @@ async fn e2e_mempool_to_kernel() {
     assert!(poison.is_empty());
 
     let ops: Vec<_> = valid.iter().map(|p| p.op.clone()).collect();
-    let batch = assembler::assemble_batch(CHAIN_ID, CORE, 1000, ops, prev);
+    let batch = assembler::assemble_batch(CHAIN_ID, CORE, 1000, ops, prev, UsageContext::default());
     let (pv, positions, events, post) = apply_batch_with_state(&batch).unwrap();
 
     assert_ne!(pv.prev_state_root, pv.new_state_root);
@@ -428,6 +431,7 @@ async fn e2e_two_sequential_batches_chain_roots() {
         1000,
         ops[..3].to_vec(),
         mirror.snapshot().await,
+        UsageContext::default(),
     );
     let (pv1, _, _, post1) = apply_batch_with_state(&batch1).unwrap();
     mirror.advance(post1).await;
@@ -438,6 +442,7 @@ async fn e2e_two_sequential_batches_chain_roots() {
         1001,
         ops[3..].to_vec(),
         mirror.snapshot().await,
+        UsageContext::default(),
     );
     let (pv2, positions2, _, post2) = apply_batch_with_state(&batch2).unwrap();
     mirror.advance(post2).await;

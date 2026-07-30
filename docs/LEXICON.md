@@ -64,10 +64,30 @@ sections); the RPGF posts NO payout root — nothing is posted at all. **Kleros*
 TRADE-dispute forum a DESIGNER composes (the `figaro-arbitration-kleros` clause +
 `block.composes.forumUrl`, config only — the parties' own recourse); the RPGF has NO bond referee
 (the `KlerosRpgfAdapter` / bond-arbitrator apparatus was deleted). **The crease:** System B — the
-600M RPGF (`UsageCounter` → `RpgfMinter`) — is COUNT-AT-RESOLVE and uses NONE of System A's
-machinery: no proof, no posted root, no bond, no referee, gated only by the two-sided live ETH
-stake. Owner of the funding side: `CONTRACTS.md` § RPGF.
+600M RPGF (`UsageCounter` → `RpgfMinter`) — is COUNT-AT-RESOLVE and has NO proof apparatus of its
+own: no posted payout root, no bond, no referee, gated only by the two-sided live ETH stake.
+Owner of the funding side: `CONTRACTS.md` § RPGF.
+
+⚠️ **One precise qualification, since 2026-07-30 (the batch-usage bridge):** batch-settled trade
+is counted by System A's proof, as a PASSENGER. The guest proves each artifact's cumulative
+`(c, d)` inside the batch it is already proving, and `FigaroBatchVerifier` writes it to
+`UsageCounter.applyBatchAccrual`. This does NOT give System B a proof apparatus — there is still
+no RPGF program, no payout root, no bond and no referee; the reward simply rides the settlement
+proof that already exists, because a batch-settled process never acquires kernel status and the
+counter's direct path could otherwise never see it (see the settlement-universes crease below).
+Say "the batch proof also carries usage", never "the RPGF is proved".
 | Doctrine, not machinery | the **privileged token** | VISION § "Value Capture After the Firm": an assembly-author's own ERC-20 doing the work of a corporate stock certificate, priced through USE — a strategy that may use the pin, never the pin itself |
+
+**TWO SETTLEMENT UNIVERSES — `FigaroCore` vs `FigaroBatchVerifier`** (crease stated 2026-07-30;
+owner: `SCALING_STRATEGY.md` § "Two settlement paths, two DISJOINT state universes"). The two
+share no state and never call each other: a batch-settled process NEVER acquires kernel status,
+so `core.orderStatus` returns UNKNOWN for it permanently, and anything gated on that status —
+`AttestationCoordinator`, `UsageCounter`'s direct path — cannot see batched trade at all. This is
+why the RPGF counter silently missed it (found by writing the soundness argument, not by any
+harness: both contracts were individually correct), why guest-owned idempotence in the batch is
+sound, and why every indexer must fold BOTH streams. Exactly one thing crosses the crease: the
+usage accrual, as proved numbers. Do not describe the direct path as a "migration" target — the
+fallback means starting a NEW process, never moving a batched one.
 
 Resolution precedence: **pin ?? buyer's pick ?? seller default**. Every token decision happens at
 or before `commit`; `resolveProcess` inherits what the commit recorded and decides nothing.

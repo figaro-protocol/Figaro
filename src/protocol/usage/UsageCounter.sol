@@ -72,6 +72,27 @@ contract UsageCounter {
     ///         privileged class, is what the 600M pays for.
     IMemberStake public immutable members;
 
+    /// @notice `FigaroBatchVerifier` — the ONLY address that may write the
+    ///         batch-path accrual, and a PROOF-GATED WRITER, not an owner.
+    /// @dev    Read this as an admin backdoor and you have it backwards. The
+    ///         verifier has no discretion: it may call `applyBatchAccrual` only
+    ///         with numbers an SP1 proof committed under an IMMUTABLE
+    ///         verification key, against a state root that advances by that
+    ///         same proof. It cannot choose the accrual, cannot write twice for
+    ///         the same trade (the guest's counted set rides the state root),
+    ///         and cannot be repointed — no setter exists. What it CAN do is
+    ///         exactly what the direct path lets anyone do permissionlessly:
+    ///         present proof that settled trade used an artifact. See
+    ///         `DESIGN_DECISIONS.md` § "A proof-gated writer is not an admin".
+    ///
+    ///         Why a privileged caller at all: the batched path's accrual is
+    ///         proved OFF-chain (that is the point — ~85% of a direct record is
+    ///         storage plus `icbrt`), so the fact this contract needs cannot be
+    ///         re-derived from calldata here. It trusts the vkey instead, which
+    ///         is why the address is immutable and the verifier is redeployed
+    ///         whenever the program changes.
+    address public immutable batchVerifier;
+
     /// @notice The clause key whose committed section names the assembly a
     ///         process ran under — `figaro-assembly-provenance`'s
     ///         `keccak256(abi.encode(clauseId, version))`.
@@ -125,8 +146,25 @@ contract UsageCounter {
     ///         own anchor uses, never a new identifier.
     mapping(bytes32 => mapping(uint8 => Accrual)) public accrualOf;
 
-    /// @notice period → summed score of every artifact in it. A consumer paying
-    ///         pro rata divides by this; it is final once the period ends.
+    /// @notice The same accrual for trade settled through `FigaroBatchVerifier`
+    ///         — kept in a SEPARATE slot, never merged into `accrualOf`.
+    /// @dev    THE TWO ARE SUMMED AS SCORES, never as components (`scoreOf`).
+    ///         Summing `c` and `d` would over-count breadth for any (buyer,
+    ///         seller) pair active on BOTH paths: the chain holds counts, not
+    ///         the pair sets, so it cannot union them — and an attacker who
+    ///         split one relationship across the two universes would be paid
+    ///         twice for the same breadth. Summing scores can never over-count,
+    ///         and because the score is homogeneous of degree 1 the shortfall
+    ///         is EXACTLY ZERO when the split is proportional, small otherwise.
+    ///         Safety first; the two are disjoint by construction anyway (a
+    ///         batch-settled process never acquires kernel status, and a
+    ///         kernel-settled one is never in a batch), so no PROCESS is ever
+    ///         counted on both sides.
+    mapping(bytes32 => mapping(uint8 => Accrual)) public batchAccrualOf;
+
+    /// @notice period → summed score of every artifact in it, across BOTH
+    ///         settlement paths. A consumer paying pro rata divides by this; it
+    ///         is final once the period ends.
     mapping(uint8 => uint256) public totalScoreIn;
 
     /// @notice artifact → processId → already counted. Idempotence is GLOBAL, not
@@ -184,6 +222,20 @@ contract UsageCounter {
         uint256 score
     );
 
+    /// @notice One artifact's batch-path accrual after a settled batch.
+    /// @dev    Deliberately NOT `UsageRecorded`: there is no processId and no
+    ///         pairKey to report, because the batch path proves per-process
+    ///         facts off-chain and writes only the totals. An indexer summing
+    ///         `UsageRecorded` alone sees the direct path only — it must fold
+    ///         both events, and this one REPLACES rather than adds (the values
+    ///         are cumulative, not deltas).
+    /// @param artifact Clause idHash or assembly compositionHash.
+    /// @param period   The accrual period.
+    /// @param c        Cumulative distinct settled processes, batch path.
+    /// @param d        Cumulative distinct pairs in this period, batch path.
+    /// @param score    The batch-path score after this write.
+    event BatchUsageRecorded(bytes32 indexed artifact, uint8 indexed period, uint64 c, uint64 d, uint256 score);
+
     // ── Errors ──────────────────────────────────────────────────────
 
     error ZeroAddress();
@@ -196,28 +248,44 @@ contract UsageCounter {
     error InvalidInclusionProof();
     error ArtifactExcluded(bytes32 artifact);
     error SellerNotStaked(address seller);
+    error NotBatchVerifier();
+    error PeriodMismatch(uint8 open, uint8 claimed);
+    error ProvenanceClauseMismatch(bytes32 expected, bytes32 claimed);
+    error AccrualWentBackwards(bytes32 artifact);
 
     // ── Constructor ─────────────────────────────────────────────────
 
     /// @param _core        FigaroCore — the order-status and domain source.
     /// @param _members     MembersRegistry — the seller-side live-stake gate.
+    /// @param _batchVerifier  FigaroBatchVerifier — the proof-gated writer of
+    ///                    the batch-path accrual. The verifier needs this
+    ///                    contract's address too, so one of the two must be
+    ///                    predicted at deploy time; the deploy scripts compute
+    ///                    the verifier's address from the deployer nonce and
+    ///                    deploy this contract FIRST. Immutable, so a wrong
+    ///                    prediction is caught by the deploy script's own
+    ///                    assertion, never silently tolerated.
     /// @param _provenanceClause  `figaro-assembly-provenance`'s clause key.
     /// @param _excluded    Artifacts that earn nothing — the mandatory clauses.
     /// @param _periodEnd   Strictly ascending period boundaries (unix seconds).
     constructor(
         address _core,
         address _members,
+        address _batchVerifier,
         bytes32 _provenanceClause,
         bytes32[] memory _excluded,
         uint64[] memory _periodEnd
     ) {
-        if (_core == address(0) || _members == address(0)) revert ZeroAddress();
+        if (_core == address(0) || _members == address(0) || _batchVerifier == address(0)) {
+            revert ZeroAddress();
+        }
         if (_periodEnd.length == 0) revert EmptyPeriods();
         for (uint256 i = 1; i < _periodEnd.length; ++i) {
             if (_periodEnd[i] <= _periodEnd[i - 1]) revert PeriodsNotAscending();
         }
         core = IFigaroCore(_core);
         members = IMemberStake(_members);
+        batchVerifier = _batchVerifier;
         provenanceClause = _provenanceClause;
         for (uint256 i = 0; i < _excluded.length; ++i) {
             excludedArtifact[_excluded[i]] = true;
@@ -245,6 +313,15 @@ contract UsageCounter {
     ///         A consumer paying out for a period should require this.
     function periodClosed(uint8 period) external view returns (bool) {
         return period < periodEnd.length && block.timestamp >= periodEnd[period];
+    }
+
+    /// @notice An artifact's TOTAL score for a period — direct-settled trade
+    ///         plus batch-settled trade, summed as SCORES. This is the number a
+    ///         reward consumer divides by `totalScoreIn`; reading `accrualOf`
+    ///         alone sees only the direct path and under-pays every artifact
+    ///         that scaled.
+    function scoreOf(bytes32 artifact, uint8 period) external view returns (uint256) {
+        return accrualOf[artifact][period].score + batchAccrualOf[artifact][period].score;
     }
 
     // ── Recording (permissionless) ──────────────────────────────────
@@ -324,6 +401,99 @@ contract UsageCounter {
         if (!MerkleProof.verify(proof, order.agreementHash, leaf)) revert InvalidInclusionProof();
 
         _accrue(compositionHash, period, processId, order.buyer, order.seller);
+    }
+
+    // ── Recording (batch path, proof-gated) ─────────────────────────
+
+    /// @notice One artifact's CUMULATIVE batch-path accrual for a period — not
+    ///         a delta. The guest proves the running totals, so the write here
+    ///         is an overwrite and this contract keeps NO per-process storage
+    ///         for the batch path at all. That is the whole economy of the
+    ///         bridge: cost is O(distinct artifacts in the batch), not
+    ///         O(records).
+    struct BatchAccrual {
+        bytes32 artifact;
+        uint64 c;
+        uint64 d;
+    }
+
+    /// @notice Write the accrual an SP1 proof committed for one batch.
+    ///
+    /// @dev    WHAT THE PROOF ALREADY ESTABLISHED, so this function does not
+    ///         re-check it: every credited order is real and RESOLVED in the
+    ///         batch path's state, every artifact was committed in the signed
+    ///         agreement (merkle inclusion against `agreementHash`), and no
+    ///         (artifact, process) pair is counted twice — the guest's counted
+    ///         set rides the batch state root, so idempotence holds ACROSS
+    ///         batches, not merely within one. `FigaroBatchVerifier` has
+    ///         already matched these numbers against `usageAccrualHash`.
+    ///
+    /// @dev    WHAT THE PROOF CANNOT SEE, and is therefore checked HERE — all
+    ///         three are live chain state this contract owns:
+    ///           1. which period is open,
+    ///           2. which sellers hold a live MembersRegistry stake,
+    ///           3. which artifacts are excluded from scoring.
+    ///         The verifier deliberately checks none of them: it owns the
+    ///         proof, this contract owns the reward's gates.
+    ///
+    /// @param period            The period the accrual lands in. Must be the
+    ///                          OPEN one — the chain decides, never the
+    ///                          sequencer's clock. A batch proven before a
+    ///                          boundary and submitted after it is rejected and
+    ///                          must be re-proven for the new period.
+    /// @param claimedProvenance The provenance clause key the guest proved
+    ///                          assembly claims against.
+    /// @param accruals          Per-artifact cumulative `(c, d)`.
+    /// @param sellers           Distinct sellers of record behind them.
+    function applyBatchAccrual(
+        uint8 period,
+        bytes32 claimedProvenance,
+        BatchAccrual[] calldata accruals,
+        address[] calldata sellers
+    ) external {
+        if (msg.sender != batchVerifier) revert NotBatchVerifier();
+
+        // An empty accrual is a no-op, and MUST be: batches carrying no usage
+        // claims have to keep settling after the last period ends, when
+        // `currentPeriod()` reverts `AccrualClosed`. Trade does not stop when
+        // the reward does.
+        if (accruals.length == 0) return;
+
+        uint8 open = currentPeriod();
+        if (period != open) revert PeriodMismatch(open, period);
+        if (claimedProvenance != provenanceClause) {
+            revert ProvenanceClauseMismatch(provenanceClause, claimedProvenance);
+        }
+
+        // SELLER-SIDE GATE, batch form. The direct path checks one seller per
+        // record; here the guest declares the distinct sellers its admitted
+        // claims rest on and every one must hold a LIVE stake. Same gate, same
+        // moment (request-time, not claim-time), O(distinct sellers).
+        for (uint256 i = 0; i < sellers.length; ++i) {
+            if (!members.registered(sellers[i])) revert SellerNotStaked(sellers[i]);
+        }
+
+        for (uint256 i = 0; i < accruals.length; ++i) {
+            BatchAccrual calldata a = accruals[i];
+            if (excludedArtifact[a.artifact]) revert ArtifactExcluded(a.artifact);
+
+            Accrual storage stored = batchAccrualOf[a.artifact][period];
+            // Cumulative counts can only grow. The state-root check in the
+            // verifier already guarantees it; asserting it costs nothing (both
+            // fields share a slot already being read) and it can never reject
+            // an honest batch, so a guest regression surfaces as a revert
+            // rather than as silently destroyed accrual.
+            if (a.c < stored.c || a.d < stored.d) revert AccrualWentBackwards(a.artifact);
+
+            uint256 previous = stored.score;
+            uint256 updated = _score(a.c, a.d);
+            stored.c = a.c;
+            stored.d = a.d;
+            stored.score = updated;
+            totalScoreIn[period] = totalScoreIn[period] + updated - previous;
+
+            emit BatchUsageRecorded(a.artifact, period, a.c, a.d, updated);
+        }
     }
 
     /// @dev 0x-prefixed lowercase hex of a bytes32 — the canonical-JSON

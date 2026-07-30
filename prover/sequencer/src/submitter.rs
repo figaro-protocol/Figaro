@@ -39,15 +39,41 @@ sol! {
             SpecBindingCall[] specBindings;
         }
 
+        struct BatchAccrualCall {
+            bytes32 artifact;
+            uint64 c;
+            uint64 d;
+        }
+
+        struct BatchUsageDataCall {
+            uint8 period;
+            bytes32 provenanceClause;
+            BatchAccrualCall[] accruals;
+            address[] sellers;
+        }
+
         function settleBatch(
             bytes calldata proof,
             bytes calldata publicValues,
             NetPositionCall[] calldata positions,
-            BatchEventDataCall calldata events
+            BatchEventDataCall calldata events,
+            BatchUsageDataCall calldata usage
         ) external;
 
         function stateRoot() external view returns (bytes32);
         function batchCount() external view returns (uint64);
+    }
+}
+
+// The two UsageCounter facts a batch's accrual must agree with. Both are
+// re-checked by the counter at settlement, so reading them here is an
+// optimisation (don't prove a batch that cannot settle), never a source of
+// authority.
+sol! {
+    #[sol(rpc)]
+    interface IUsageCounter {
+        function currentPeriod() external view returns (uint8);
+        function provenanceClause() external view returns (bytes32);
     }
 }
 
@@ -56,7 +82,31 @@ sol! {
 pub struct SubmitterConfig {
     pub rpc_url: String,
     pub verifier_address: Address,
+    /// The RPGF counter. `Address::ZERO` disables usage accrual — the
+    /// sequencer then settles trade without crediting it, which is exactly
+    /// what a deployment with no counter should do.
+    pub usage_counter_address: Address,
     pub private_key: String,
+}
+
+/// Read the accrual period and provenance clause a batch must commit to.
+///
+/// Returns `None` when there is no counter configured, or when accrual has
+/// CLOSED (`currentPeriod()` reverts `AccrualClosed` after the last period).
+/// A closed reward is not an error: trade goes on, it simply stops being
+/// credited, and the batch settles with an empty accrual.
+pub async fn read_usage_context(
+    rpc_url: &str,
+    usage_counter: Address,
+) -> Option<(u8, alloy::primitives::B256)> {
+    if usage_counter == Address::ZERO {
+        return None;
+    }
+    let provider = ProviderBuilder::new().on_http(rpc_url.parse().ok()?);
+    let contract = IUsageCounter::new(usage_counter, &provider);
+    let period = contract.currentPeriod().call().await.ok()?;
+    let provenance = contract.provenanceClause().call().await.ok()?;
+    Some((period._0, provenance._0))
 }
 
 /// Submit a proved batch to the on-chain FigaroBatchVerifier.
@@ -119,6 +169,25 @@ pub async fn submit_batch(
         specBindings: spec_bindings,
     };
 
+    // The RPGF accrual the proof committed. Empty arrays are normal and
+    // settle fine — the counter treats an empty accrual as a no-op, which
+    // is what lets trade keep settling after the reward's last period ends.
+    let usage_call = IFigaroBatchVerifier::BatchUsageDataCall {
+        period: result.events.usage_period,
+        provenanceClause: result.provenance_clause,
+        accruals: result
+            .events
+            .usage_accruals
+            .iter()
+            .map(|a| IFigaroBatchVerifier::BatchAccrualCall {
+                artifact: a.artifact,
+                c: a.c,
+                d: a.d,
+            })
+            .collect(),
+        sellers: result.events.usage_sellers.clone(),
+    };
+
     let contract =
         IFigaroBatchVerifier::new(config.verifier_address, &provider);
 
@@ -127,6 +196,7 @@ pub async fn submit_batch(
         Bytes::from(result.public_values_bytes.clone()),
         positions,
         events_call,
+        usage_call,
     );
 
     info!(verifier = ?config.verifier_address, "Submitting settleBatch transaction");

@@ -34,8 +34,17 @@ export interface RpgfArtifactAccrual {
     /** Human label: the clause id, or the truncated hash for an assembly. */
     label: string;
     family: "clause" | "assembly";
+    /** Distinct settled processes, DIRECT path (`accrualOf`). */
     c: bigint;
+    /** Distinct pairs in this period, DIRECT path. */
     d: bigint;
+    /** Distinct settled processes, BATCH path (`batchAccrualOf`). */
+    batchC: bigint;
+    /** Distinct pairs in this period, BATCH path. */
+    batchD: bigint;
+    /** `scoreOf` — the two paths' scores SUMMED, and the figure the payout
+     *  divides by. Reading `accrualOf.score` alone would show the wallet a
+     *  smaller number than the minter actually pays it. */
     score: bigint;
 }
 
@@ -169,12 +178,29 @@ export function useRpgfRewards() {
                                 : Promise.resolve(0n),
                             Promise.all(
                                 mine.map(async (m) => {
-                                    const [c, d, score] = await publicClient.readContract({
-                                        ...counterBase,
-                                        functionName: "accrualOf",
-                                        args: [m.artifact, period],
-                                    });
-                                    return { ...m, c, d, score };
+                                    // BOTH settlement paths. `scoreOf` is the
+                                    // merged figure the minter pays on; the
+                                    // components stay separate because they
+                                    // measure different universes and must
+                                    // never be added together.
+                                    const [[c, d], [batchC, batchD], score] = await Promise.all([
+                                        publicClient.readContract({
+                                            ...counterBase,
+                                            functionName: "accrualOf",
+                                            args: [m.artifact, period],
+                                        }),
+                                        publicClient.readContract({
+                                            ...counterBase,
+                                            functionName: "batchAccrualOf",
+                                            args: [m.artifact, period],
+                                        }),
+                                        publicClient.readContract({
+                                            ...counterBase,
+                                            functionName: "scoreOf",
+                                            args: [m.artifact, period],
+                                        }),
+                                    ]);
+                                    return { ...m, c, d, batchC, batchD, score };
                                 }),
                             ),
                         ]);

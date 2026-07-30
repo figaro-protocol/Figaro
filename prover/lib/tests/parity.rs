@@ -244,6 +244,9 @@ fn test_full_batch_commit_and_state() {
             },
         ],
         prev_state: empty_snapshot(),
+        usage_claims: vec![],
+        usage_period: 0,
+        provenance_clause: B256::ZERO,
     };
 
     let (pv, positions, _events) = apply_batch(&input).unwrap();
@@ -309,6 +312,9 @@ fn test_full_batch_commit_resolve_payouts() {
             },
         ],
         prev_state: empty_snapshot(),
+        usage_claims: vec![],
+        usage_period: 0,
+        provenance_clause: B256::ZERO,
     };
 
     let (_pv, positions, _events) = apply_batch(&input).unwrap();
@@ -368,6 +374,9 @@ fn empty_snapshot() -> KernelStateSnapshot {
         processes: vec![],
         order_status: vec![],
         order_process_id: vec![],
+        usage_counted: vec![],
+        usage_pair_seen: vec![],
+        usage_accrual: vec![],
     }
 }
 
@@ -464,6 +473,9 @@ fn run_attest_batch(
             op,
         ],
         prev_state: empty_snapshot(),
+        usage_claims: vec![],
+        usage_period: 0,
+        provenance_clause: B256::ZERO,
     };
     apply_batch(&input)
 }
@@ -688,6 +700,9 @@ fn attest_wrong_inclusion_proof_fails() {
             },
         ],
         prev_state: empty_snapshot(),
+        usage_claims: vec![],
+        usage_period: 0,
+        provenance_clause: B256::ZERO,
     };
 
     match apply_batch(&input) {
@@ -738,6 +753,9 @@ fn attest_on_resolved_order_fails() {
             },
         ],
         prev_state: empty_snapshot(),
+        usage_claims: vec![],
+        usage_period: 0,
+        provenance_clause: B256::ZERO,
     };
 
     match apply_batch(&input) {
@@ -798,6 +816,9 @@ fn attest_cross_order_same_process_passes() {
             },
         ],
         prev_state: empty_snapshot(),
+        usage_claims: vec![],
+        usage_period: 0,
+        provenance_clause: B256::ZERO,
     };
 
     let (_pv, _positions, events) = apply_batch(&input).unwrap();

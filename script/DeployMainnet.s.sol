@@ -74,7 +74,7 @@ contract DeployMainnet is Script {
 
         vm.startBroadcast(privateKey);
 
-        _deployProtocol();
+        _deployProtocol(privateKey);
         _deployFlorinEcosystem(privateKey);
 
         vm.stopBroadcast();
@@ -98,7 +98,7 @@ contract DeployMainnet is Script {
 
     // ── Protocol kernel + compositions ────────────────────────────────
 
-    function _deployProtocol() internal {
+    function _deployProtocol(uint256 privateKey) internal {
         FigaroCore core = new FigaroCore();
         _core = address(core);
         console.log("FigaroCore:             ", _core);
@@ -162,31 +162,37 @@ contract DeployMainnet is Script {
         // contentHashOf. Not a florin minter, never will be.
         require(vm.envAddress("SP1_VERIFIER_GATEWAY") != address(0), "SP1_VERIFIER_GATEWAY not set");
         require(vm.envBytes32("SP1_PROGRAM_VKEY") != bytes32(0), "SP1_PROGRAM_VKEY not set");
+
+        // The counter and the verifier reference each other, so they deploy as
+        // an ADJACENT PAIR with the verifier's address predicted and then
+        // asserted — a wrong guess fails the deploy rather than producing a
+        // counter no verifier can ever write to. Order: counter, then verifier.
+        address deployer = vm.addr(privateKey);
+        address predictedVerifier = vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1);
+        _deployUsageCounter(predictedVerifier);
+
+        // The genesis root is DERIVED: one keccak256("") per kernel state map
+        // plus the usage leg (itself keccak over three zero-length sections),
+        // matching the Rust KernelState::compute_root on the empty state.
         bytes32 emptyMapHash = keccak256("");
+        bytes32 emptyUsageHash = keccak256(abi.encodePacked(uint64(0), uint64(0), uint64(0)));
         FigaroBatchVerifier batchVerifier = new FigaroBatchVerifier(
             vm.envAddress("SP1_VERIFIER_GATEWAY"),
             vm.envBytes32("SP1_PROGRAM_VKEY"),
             _clauses,
-            keccak256(abi.encodePacked(emptyMapHash, emptyMapHash, emptyMapHash))
+            _usageCounter,
+            keccak256(abi.encodePacked(emptyMapHash, emptyMapHash, emptyMapHash, emptyUsageHash))
         );
         _batchVerifier = address(batchVerifier);
+        require(_batchVerifier == predictedVerifier, "verifier address prediction failed");
         console.log("FigaroBatchVerifier:    ", _batchVerifier);
     }
 
-    // ── florin token + genesis distribution ─────────────────────────
-
-    function _deployFlorinEcosystem(uint256 privateKey) internal {
-        FlorinToken florin = new FlorinToken();
-        _florin = address(florin);
-        console.log("FlorinToken:               ", _florin);
-
-        // The RPGF minter must exist at genesis: registerMinter only works
-        // before renounce, and renounce is irreversible. Accrual periods and
-        // tranches are ONE schedule — tranche i pays for period i — so the
-        // counter is deployed here from the same environment timestamps.
-        // Nothing is posted, bonded, or challenged: the counter records
-        // verified usage as it happens and the minter pays pro rata from a
-        // period that has closed.
+    /// @dev Accrual periods and RPGF tranches are ONE schedule — tranche i pays
+    ///      for period i. Deployed here, beside the verifier, because the two
+    ///      reference each other; the minter that reads it follows in
+    ///      `_deployFlorinEcosystem`.
+    function _deployUsageCounter(address batchVerifier_) internal {
         uint64[] memory periods = new uint64[](3);
         periods[0] = uint64(vm.envUint("RPGF_PERIOD_END_1"));
         periods[1] = uint64(vm.envUint("RPGF_PERIOD_END_2"));
@@ -203,13 +209,27 @@ contract DeployMainnet is Script {
         UsageCounter usageCounter = new UsageCounter(
             _core,
             _members, // seller-side live-stake gate: usage counts only for live-staked sellers
+            batchVerifier_, // proof-gated writer of the batch-path accrual
             keccak256(abi.encode("figaro-assembly-provenance", uint64(1))),
             excluded,
             periods
         );
         _usageCounter = address(usageCounter);
         console.log("UsageCounter:           ", _usageCounter);
+    }
 
+    // ── florin token + genesis distribution ─────────────────────────
+
+    function _deployFlorinEcosystem(uint256 privateKey) internal {
+        FlorinToken florin = new FlorinToken();
+        _florin = address(florin);
+        console.log("FlorinToken:               ", _florin);
+
+        // The RPGF minter must exist at genesis: registerMinter only works
+        // before renounce, and renounce is irreversible. Nothing is posted,
+        // bonded, or challenged: the counter (already deployed beside the
+        // batch verifier) records verified usage as it happens and the minter
+        // pays pro rata from a period that has closed.
         RpgfMinter rpgfMinter = new RpgfMinter(
             address(florin),
             _usageCounter,

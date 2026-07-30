@@ -9,6 +9,8 @@ import "src/protocol/verifier/FigaroBatchVerifier.sol";
 import "src/protocol/registries/ClauseRegistry.sol";
 import "src/mocks/MockSP1Verifier.sol";
 import "src/mocks/MockReentrantToken.sol";
+import {UsageCounter} from "src/protocol/usage/UsageCounter.sol";
+import {MembersRegistry} from "src/protocol/registries/MembersRegistry.sol";
 
 /// @title ReentrancyAdversarialTest — a malicious settlement token tries to
 ///        re-enter the kernel and the batch verifier during a token movement.
@@ -148,8 +150,21 @@ contract ReentrancyAdversarialTest is Test {
         MockSP1Verifier sp1 = new MockSP1Verifier();
         ClauseRegistry registry = new ClauseRegistry(0);
         bytes32 genesis = keccak256("genesis");
+        // A counter is required for construction; this batch credits no usage,
+        // so the verifier's call to it is a no-op and only the guard is under
+        // test here.
+        uint64[] memory periods = new uint64[](1);
+        periods[0] = type(uint64).max;
+        UsageCounter usageCounter = new UsageCounter(
+            address(new FigaroCore()),
+            address(new MembersRegistry(0, 0)),
+            vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1),
+            keccak256("prov"),
+            new bytes32[](0),
+            periods
+        );
         FigaroBatchVerifier verifier =
-            new FigaroBatchVerifier(address(sp1), bytes32(uint256(1)), address(registry), genesis);
+            new FigaroBatchVerifier(address(sp1), bytes32(uint256(1)), address(registry), address(usageCounter), genesis);
 
         // One payout position: the verifier pushes 10 tokens to `seller` from
         // its own balance. Fund the verifier and route the push through the
@@ -169,14 +184,19 @@ contract ReentrancyAdversarialTest is Test {
             address(verifier),
             _hashPositions(positions),
             keccak256(""), // empty attestations
-            keccak256("") // empty spec bindings
+            keccak256(""), // empty spec bindings
+            keccak256(abi.encodePacked(uint8(0), bytes32(0), uint64(0), uint64(0))) // empty usage accrual
         );
 
+        FigaroBatchVerifier.BatchUsageData memory usage;
+        usage.accruals = new IUsageCounter.BatchAccrual[](0);
+        usage.sellers = new address[](0);
+
         // Arm the token to re-enter settleBatch during the payout push.
-        token.arm(address(verifier), abi.encodeCall(verifier.settleBatch, (hex"", pv, positions, events)));
+        token.arm(address(verifier), abi.encodeCall(verifier.settleBatch, (hex"", pv, positions, events, usage)));
 
         uint256 sellerBefore = token.balanceOf(seller);
-        verifier.settleBatch(hex"", pv, positions, events);
+        verifier.settleBatch(hex"", pv, positions, events, usage);
 
         assertTrue(token.reentryAttempted(), "the token must have attempted re-entry");
         assertTrue(token.reentryBlocked(), "the nonReentrant guard must block the nested settleBatch");

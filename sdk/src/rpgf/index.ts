@@ -82,17 +82,53 @@ export interface UsageRecord {
     score: bigint;
 }
 
-/** An artifact's accrual in one period — `UsageCounter.accrualOf`. */
+/** One SETTLEMENT PATH's accrual for an artifact in one period —
+ *  `UsageCounter.accrualOf` or `batchAccrualOf`. */
 export interface UsageAccrual {
     c: bigint;
     d: bigint;
     score: bigint;
 }
 
-/** One period's accrual state — `accrualOf` per artifact plus `totalScoreIn`. */
+/** One batch's `BatchUsageRecorded` log. Unlike `UsageRecord` these are
+ *  CUMULATIVE for the artifact-period, not per-process increments: the guest
+ *  proves the running totals off-chain and the verifier writes them whole, so
+ *  a later record REPLACES an earlier one rather than adding to it. */
+export interface BatchUsageRecord {
+    blockNumber: bigint;
+    logIndex: number;
+    artifact: Hex;
+    period: number;
+    c: bigint;
+    d: bigint;
+    score: bigint;
+}
+
+/** An artifact's accrual across BOTH settlement paths.
+ *
+ *  The two are kept apart on purpose. A batch-settled process never acquires
+ *  kernel status and a kernel-settled one is never in a batch, so no PROCESS
+ *  is ever counted twice — but the same (buyer, seller) pair may trade on both
+ *  sides, and neither the chain nor this mirror holds the pair SETS needed to
+ *  union them. Adding `d` to `d` would therefore pay for breadth nobody had.
+ *  Scores are summed; components never are. */
+export interface ArtifactAccrual {
+    direct: UsageAccrual;
+    batch: UsageAccrual;
+    /** `direct.score + batch.score` — mirrors `UsageCounter.scoreOf`, and the
+     *  only figure a reward calculation may divide by. */
+    score: bigint;
+}
+
+/** One period's accrual state — every artifact's merged accrual plus the
+ *  period total, mirroring `totalScoreIn` (which counts both paths). */
 export interface UsagePeriodAccrual {
-    byArtifact: Map<Hex, UsageAccrual>;
+    byArtifact: Map<Hex, ArtifactAccrual>;
     totalScore: bigint;
+}
+
+function emptyAccrual(): UsageAccrual {
+    return { c: 0n, d: 0n, score: 0n };
 }
 
 /** Replay the counter's counting rules over a record stream: idempotence per
@@ -105,6 +141,7 @@ export interface UsagePeriodAccrual {
  *  (blockNumber, logIndex) order, the order the chain applied them in. */
 export function computeUsageAccruals(
     records: readonly UsageRecord[],
+    batchRecords: readonly BatchUsageRecord[] = [],
 ): Map<number, UsagePeriodAccrual> {
     const sorted = [...records].sort((a, b) =>
         a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : a.blockNumber < b.blockNumber ? -1 : 1,
@@ -129,14 +166,34 @@ export function computeUsageAccruals(
         pairs.add(pairKey);
         pairsSeen.set(scopeKey, pairs);
 
-        const period = periods.get(record.period) ?? { byArtifact: new Map<Hex, UsageAccrual>(), totalScore: 0n };
-        const accrual = period.byArtifact.get(artifact) ?? { c: 0n, d: 0n, score: 0n };
+        const period = periods.get(record.period) ?? { byArtifact: new Map<Hex, ArtifactAccrual>(), totalScore: 0n };
+        const entry = period.byArtifact.get(artifact) ?? { direct: emptyAccrual(), batch: emptyAccrual(), score: 0n };
+        const accrual = entry.direct;
         accrual.c += 1n;
         if (firstFromPair) accrual.d += 1n;
         const updated = usageScore(accrual.c, accrual.d);
         period.totalScore = period.totalScore + updated - accrual.score;
         accrual.score = updated;
-        period.byArtifact.set(artifact, accrual);
+        entry.score = accrual.score + entry.batch.score;
+        period.byArtifact.set(artifact, entry);
+        periods.set(record.period, period);
+    }
+
+    // The batch leg. Each record carries the artifact-period's CUMULATIVE
+    // (c, d), so the last one in log order wins outright — replay order only
+    // decides which record is last, never how much accumulates.
+    const batchSorted = [...batchRecords].sort((a, b) =>
+        a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : a.blockNumber < b.blockNumber ? -1 : 1,
+    );
+    for (const record of batchSorted) {
+        const artifact = record.artifact.toLowerCase() as Hex;
+        const period = periods.get(record.period) ?? { byArtifact: new Map<Hex, ArtifactAccrual>(), totalScore: 0n };
+        const entry = period.byArtifact.get(artifact) ?? { direct: emptyAccrual(), batch: emptyAccrual(), score: 0n };
+        const updated = usageScore(record.c, record.d);
+        period.totalScore = period.totalScore + updated - entry.batch.score;
+        entry.batch = { c: record.c, d: record.d, score: updated };
+        entry.score = entry.direct.score + entry.batch.score;
+        period.byArtifact.set(artifact, entry);
         periods.set(record.period, period);
     }
     return periods;
@@ -215,6 +272,42 @@ export async function fetchUsageRecords(
                 period: Number(a.period),
                 processId: a.processId as Hex,
                 pairKey: a.pairKey as Hex,
+                c: a.c as bigint,
+                d: a.d as bigint,
+                score: a.score as bigint,
+            });
+        } catch {
+            /* the counter emits nothing else */
+        }
+    }
+    return records.sort((a, b) =>
+        a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : a.blockNumber < b.blockNumber ? -1 : 1,
+    );
+}
+
+/** Fetch the BATCH-path record stream over `[0, toBlock]`.
+ *
+ *  A reader that folds only `fetchUsageRecords` sees the direct path alone and
+ *  silently under-reports every artifact whose trade moved to batches — which
+ *  is the whole failure the bridge exists to close. Pass both streams to
+ *  `computeUsageAccruals`. */
+export async function fetchBatchUsageRecords(
+    client: PublicClient,
+    usageCounter: Address,
+    toBlock: bigint,
+): Promise<BatchUsageRecord[]> {
+    const logs = await client.getLogs({ address: usageCounter, fromBlock: 0n, toBlock });
+    const records: BatchUsageRecord[] = [];
+    for (const log of logs) {
+        try {
+            const decoded = decodeEventLog({ abi: USAGE_COUNTER_ABI, data: log.data, topics: log.topics });
+            if (decoded.eventName !== "BatchUsageRecorded") continue;
+            const a = decoded.args as Record<string, unknown>;
+            records.push({
+                blockNumber: log.blockNumber ?? 0n,
+                logIndex: log.logIndex ?? 0,
+                artifact: a.artifact as Hex,
+                period: Number(a.period),
                 c: a.c as bigint,
                 d: a.d as bigint,
                 score: a.score as bigint,

@@ -12,6 +12,25 @@ interface IClauseRegistryAnchor {
     function contentHashOf(bytes32 idHash) external view returns (bytes32);
 }
 
+/// @notice Minimal UsageCounter surface the verifier writes — the RPGF
+///         bridge. Local-minimal binding per the coordinator exemplar,
+///         never a vendored dependency; the struct is re-declared here
+///         for the same reason the interface is.
+interface IUsageCounter {
+    struct BatchAccrual {
+        bytes32 artifact;
+        uint64 c;
+        uint64 d;
+    }
+
+    function applyBatchAccrual(
+        uint8 period,
+        bytes32 claimedProvenance,
+        BatchAccrual[] calldata accruals,
+        address[] calldata sellers
+    ) external;
+}
+
 /// @title FigaroBatchVerifier — Settles batched Figaro operations via SP1 proof
 /// @custom:security-contact figarosecurity@gmail.com
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
@@ -36,7 +55,18 @@ interface IClauseRegistryAnchor {
 ///         a never-seen clause settles through the proven path with zero code
 ///         changes, and a permissive-spec substitution cannot settle.
 ///
-///         Public values (ABI-encoded, 7 × 32-byte words):
+///         RPGF: a batch-settled process never acquires kernel status,
+///         so `UsageCounter`'s direct path — which requires
+///         `FigaroCore.orderStatus == RESOLVED` — can never see batched
+///         trade. Without a bridge the 600M would measure a shrinking
+///         fraction of real adoption exactly as the protocol scales, so
+///         this contract carries the accrual across: the guest proves
+///         each artifact's cumulative `(c, d)`, and one write per
+///         artifact per batch lands it. The gates the proof cannot see
+///         (open period, live seller stake, excluded artifacts) are the
+///         counter's own and are checked there, not here.
+///
+///         Public values (ABI-encoded, 8 × 32-byte words):
 ///           0: prevStateRoot     (bytes32)
 ///           1: newStateRoot      (bytes32)
 ///           2: chainId           (uint64, left-padded to 32 bytes)
@@ -44,6 +74,7 @@ interface IClauseRegistryAnchor {
 ///           4: tokenOpsHash      (bytes32)
 ///           5: attestationEventsHash (bytes32)
 ///           6: specBindingsHash  (bytes32)
+///           7: usageAccrualHash  (bytes32)
 contract FigaroBatchVerifier is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -52,6 +83,8 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     ISP1Verifier public immutable verifier;
     bytes32 public immutable programVKey;
     IClauseRegistryAnchor public immutable clauseRegistry;
+    /// @notice The RPGF counter this verifier is the proof-gated writer for.
+    IUsageCounter public immutable usageCounter;
 
     // ── State ─────────────────────────────────────────────────────
 
@@ -91,6 +124,26 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         SpecBinding[] specBindings;
     }
 
+    /// @dev The batch's RPGF accrual, hash-verified against
+    ///      `usageAccrualHash`. Kept as its own parameter rather than
+    ///      folded into `BatchEventData`: this is not event data, it is
+    ///      a state write to another contract, and the two stay
+    ///      separate. All four fields enter the hash preimage.
+    struct BatchUsageData {
+        /// @dev The period the accrual lands in. The COUNTER decides
+        ///      whether this is the open one — the sequencer's clock has
+        ///      no authority here.
+        uint8 period;
+        /// @dev The provenance clause key the guest proved assembly
+        ///      claims against; the counter matches it to its own.
+        bytes32 provenanceClause;
+        /// @dev Per-artifact CUMULATIVE (c, d) after this batch, sorted
+        ///      by artifact in the prover.
+        IUsageCounter.BatchAccrual[] accruals;
+        /// @dev Distinct sellers of record behind the accruals, sorted.
+        address[] sellers;
+    }
+
     // ── Events (protocol-compatible re-emissions) ─────────────────
 
     /// @notice Summary event emitted per settled batch.
@@ -117,6 +170,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     error PositionHashMismatch();
     error AttestationHashMismatch();
     error SpecBindingsHashMismatch();
+    error UsageAccrualHashMismatch();
     /// @dev The proof validated content against a spec the registry does
     ///      not anchor for this clause key — including the unregistered
     ///      case (`contentHashOf` returns zero, which never equals a
@@ -126,20 +180,30 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     error ZeroVerifier();
     error VerifierNotContract();
     error ZeroClauseRegistry();
+    error ZeroUsageCounter();
 
     // ── Constructor ───────────────────────────────────────────────
 
     /// @param _verifier       Address of the SP1 verifier gateway (or mock).
     /// @param _programVKey    The verification key of the Figaro kernel program.
     /// @param _clauseRegistry The live ClauseRegistry — the witness-spec anchor.
+    /// @param _usageCounter   The RPGF counter this verifier writes batch accrual to.
     /// @param _initialRoot    The initial state root (genesis or migrated from prior verifier).
-    constructor(address _verifier, bytes32 _programVKey, address _clauseRegistry, bytes32 _initialRoot) {
+    constructor(
+        address _verifier,
+        bytes32 _programVKey,
+        address _clauseRegistry,
+        address _usageCounter,
+        bytes32 _initialRoot
+    ) {
         if (_verifier == address(0)) revert ZeroVerifier();
         if (_verifier.code.length == 0) revert VerifierNotContract();
         if (_clauseRegistry == address(0)) revert ZeroClauseRegistry();
+        if (_usageCounter == address(0)) revert ZeroUsageCounter();
         verifier = ISP1Verifier(_verifier);
         programVKey = _programVKey;
         clauseRegistry = IClauseRegistryAnchor(_clauseRegistry);
+        usageCounter = IUsageCounter(_usageCounter);
         stateRoot = _initialRoot;
     }
 
@@ -153,21 +217,25 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         bytes32 tokenOpsHash;
         bytes32 attEventsHash;
         bytes32 specBindingsHash;
+        bytes32 usageAccrualHash;
     }
 
     // ── Batch settlement ──────────────────────────────────────────
 
     /// @notice Settle a batch of Figaro protocol operations.
     /// @param proof        The SP1 validity proof for the batch.
-    /// @param publicValues ABI-encoded public values (7 × 32-byte words).
+    /// @param publicValues ABI-encoded public values (8 × 32-byte words).
     /// @param positions    Net token positions to reconcile (hash-verified against proof).
     /// @param events       Attestation events to re-emit + spec bindings to
     ///                     check against the ClauseRegistry (both hash-verified).
+    /// @param usage        The batch's RPGF accrual (hash-verified). Pass empty
+    ///                     arrays for a batch that credits no usage.
     function settleBatch(
         bytes calldata proof,
         bytes calldata publicValues,
         NetPosition[] calldata positions,
-        BatchEventData calldata events
+        BatchEventData calldata events,
+        BatchUsageData calldata usage
     ) external nonReentrant {
         // ── 1. Verify the SP1 proof ───────────────────────────────
         verifier.verifyProof(programVKey, publicValues, proof);
@@ -195,6 +263,9 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         if (_hashSpecBindings(events.specBindings) != pv.specBindingsHash) {
             revert SpecBindingsHashMismatch();
         }
+        if (_hashUsage(usage) != pv.usageAccrualHash) {
+            revert UsageAccrualHashMismatch();
+        }
 
         // ── 4. Anchor every witness spec to the live registry ─────
         _checkSpecBindings(events.specBindings);
@@ -205,7 +276,15 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         // ── 6. Re-emit protocol events ────────────────────────────
         _emitAttestations(events.attestations);
 
-        // ── 7. Advance state ──────────────────────────────────────
+        // ── 7. Carry the RPGF accrual across the settlement crease ─
+        //    The numbers are the proof's; the reward's own gates (open
+        //    period, live seller stake, excluded artifacts) are the
+        //    counter's and are enforced there. A batch with no usage
+        //    claims passes empty arrays and the call is a no-op —
+        //    which is what keeps trade settling after accrual closes.
+        usageCounter.applyBatchAccrual(usage.period, usage.provenanceClause, usage.accruals, usage.sellers);
+
+        // ── 8. Advance state ──────────────────────────────────────
         stateRoot = pv.newRoot;
         uint64 newBatchId = ++batchCount;
 
@@ -222,8 +301,9 @@ contract FigaroBatchVerifier is ReentrancyGuard {
             pv.verifyingContract,
             pv.tokenOpsHash,
             pv.attEventsHash,
-            pv.specBindingsHash
-        ) = abi.decode(publicValues, (bytes32, bytes32, uint64, address, bytes32, bytes32, bytes32));
+            pv.specBindingsHash,
+            pv.usageAccrualHash
+        ) = abi.decode(publicValues, (bytes32, bytes32, uint64, address, bytes32, bytes32, bytes32, bytes32));
     }
 
     // ── Hash functions (byte-exact parity with Rust kernel) ───────
@@ -293,6 +373,74 @@ contract FigaroBatchVerifier is ReentrancyGuard {
                 mstore(add(dst, 32), specHash)
             }
             offset += 64;
+        }
+        return keccak256(packed);
+    }
+
+    /// @dev Pack: period(1) ++ provenanceClause(32)
+    ///            ++ len(accruals)(8) ++ [artifact(32) ++ c(8) ++ d(8)]*
+    ///            ++ len(sellers)(8)  ++ [seller(20)]*
+    ///      matching the Rust `compute_usage_accrual_hash`.
+    ///
+    ///      BOTH LENGTHS ARE PREFIXED, and they must be. An accrual
+    ///      record is 48 bytes and a seller 20, so five accruals and
+    ///      twelve sellers span the same 240 bytes: without the
+    ///      prefixes, one preimage could be re-split into a different
+    ///      (accruals, sellers) pair — letting a submitter present
+    ///      accruals whose sellers were never stake-checked while the
+    ///      hash still matched.
+    ///      Unlike the sibling hashers above, this layout's trailing
+    ///      fields are NARROWER than a word (`d` is 8 bytes, a seller
+    ///      20), so the final `mstore` of each would write past the
+    ///      buffer. The buffer therefore carries 32 bytes of slack and
+    ///      its length is truncated to the exact span before hashing —
+    ///      the overrun lands in the slack, and keccak sees only the
+    ///      packed bytes.
+    function _hashUsage(BatchUsageData calldata usage) internal pure returns (bytes32) {
+        uint256 accrualCount = usage.accruals.length;
+        uint256 sellerCount = usage.sellers.length;
+        uint256 span = 49 + accrualCount * 48 + sellerCount * 20;
+        bytes memory packed = new bytes(span + 32);
+
+        uint8 period = usage.period;
+        bytes32 provenance = usage.provenanceClause;
+        assembly {
+            let dst := add(packed, 32)
+            mstore8(dst, period)
+            mstore(add(dst, 1), provenance)
+            mstore(add(dst, 33), shl(192, accrualCount))
+        }
+
+        uint256 offset = 41;
+        for (uint256 i = 0; i < accrualCount; i++) {
+            bytes32 artifact = usage.accruals[i].artifact;
+            uint64 c = usage.accruals[i].c;
+            uint64 d = usage.accruals[i].d;
+            assembly {
+                let dst := add(add(packed, 32), offset)
+                mstore(dst, artifact)
+                mstore(add(dst, 32), shl(192, c))
+                mstore(add(dst, 40), shl(192, d))
+            }
+            offset += 48;
+        }
+
+        assembly {
+            mstore(add(add(packed, 32), offset), shl(192, sellerCount))
+        }
+        offset += 8;
+
+        for (uint256 i = 0; i < sellerCount; i++) {
+            address seller = usage.sellers[i];
+            assembly {
+                mstore(add(add(packed, 32), offset), shl(96, seller))
+            }
+            offset += 20;
+        }
+
+        // Drop the slack so keccak covers exactly the packed span.
+        assembly {
+            mstore(packed, span)
         }
         return keccak256(packed);
     }

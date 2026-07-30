@@ -32,6 +32,11 @@ pub struct Mempool {
 
 struct MempoolInner {
     pending: VecDeque<PendingOp>,
+    /// Usage claims awaiting the next batch. Kept in their OWN queue, not
+    /// interleaved with ops: a claim is not a kernel operation, it changes
+    /// no kernel state, and the guest applies every claim after every op
+    /// (against the post-state) so the two orderings are independent.
+    pending_usage: VecDeque<UsageClaim>,
     next_id: u64,
 }
 
@@ -40,6 +45,7 @@ impl Mempool {
         Self {
             inner: Arc::new(Mutex::new(MempoolInner {
                 pending: VecDeque::new(),
+                pending_usage: VecDeque::new(),
                 next_id: 1,
             })),
             chain_id,
@@ -59,10 +65,54 @@ impl Mempool {
         Ok(id)
     }
 
+    /// Submit an RPGF usage claim for an order the batch path has settled.
+    ///
+    /// Claims are SUBMITTED, never derived here — exactly as attestation
+    /// witnesses are. The sequencer holds no agreements: it sees commitment
+    /// structs, whose `agreement_hash` is a root, not the sections. Whoever
+    /// holds the agreement (the artifact's author, typically, since this is
+    /// how their work gets counted) supplies the section fingerprint and the
+    /// inclusion proof. Nothing is trusted either way — the guest re-proves
+    /// settlement and inclusion, and the counter enforces the reward's own
+    /// gates on chain.
+    ///
+    /// Only the two cheap stateless checks run here; everything else is
+    /// state-dependent and belongs to the proof.
+    pub async fn submit_usage_claim(&self, claim: UsageClaim) -> Result<usize, String> {
+        if claim.artifact == alloy_primitives::B256::ZERO {
+            return Err("usage claim artifact is zero".to_string());
+        }
+        if claim.order.agreement_hash == alloy_primitives::B256::ZERO {
+            return Err("usage claim order carries no agreement hash".to_string());
+        }
+        let mut inner = self.inner.lock().await;
+        inner.pending_usage.push_back(claim);
+        Ok(inner.pending_usage.len())
+    }
+
     /// Drain all pending operations for batch assembly.
     pub async fn drain(&self) -> Vec<PendingOp> {
         let mut inner = self.inner.lock().await;
         inner.pending.drain(..).collect()
+    }
+
+    /// Drain all pending usage claims for batch assembly.
+    pub async fn drain_usage(&self) -> Vec<UsageClaim> {
+        let mut inner = self.inner.lock().await;
+        inner.pending_usage.drain(..).collect()
+    }
+
+    /// Re-queue usage claims at the front (e.g. after a failed prove).
+    pub async fn requeue_usage(&self, claims: Vec<UsageClaim>) {
+        let mut inner = self.inner.lock().await;
+        for claim in claims.into_iter().rev() {
+            inner.pending_usage.push_front(claim);
+        }
+    }
+
+    /// Number of pending usage claims.
+    pub async fn usage_len(&self) -> usize {
+        self.inner.lock().await.pending_usage.len()
     }
 
     /// Re-queue operations at the front of the mempool (e.g. after a

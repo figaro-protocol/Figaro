@@ -41,6 +41,14 @@ contract UsageCounterTest is Test {
     uint64 constant P0_END = 1_000_000;
     uint64 constant P1_END = 2_000_000;
 
+    /// @dev Stands in for FigaroBatchVerifier — the batch-path accrual's only
+    ///      permitted writer. A plain EOA here on purpose: what the counter
+    ///      enforces is `msg.sender`, and using the real verifier would drag an
+    ///      SP1 proof into every test of a gate that has nothing to do with
+    ///      proving. The verifier's own leg is covered in
+    ///      FigaroBatchVerifierTest.
+    address constant batchVerifier = address(0xBA7C);
+
     function setUp() public {
         buyer = vm.addr(BUYER_KEY);
         buyer2 = vm.addr(BUYER2_KEY);
@@ -61,7 +69,7 @@ contract UsageCounterTest is Test {
         uint64[] memory periods = new uint64[](2);
         periods[0] = P0_END;
         periods[1] = P1_END;
-        counter = new UsageCounter(address(core), address(members), PROV_KEY, _excluded(), periods);
+        counter = new UsageCounter(address(core), address(members), batchVerifier, PROV_KEY, _excluded(), periods);
 
         address[4] memory ppl = [buyer, buyer2, seller1, seller2];
         for (uint256 i = 0; i < ppl.length; i++) {
@@ -521,14 +529,16 @@ contract UsageCounterTest is Test {
         uint64[] memory p = new uint64[](1);
         p[0] = P0_END;
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(0), address(members), PROV_KEY, _excluded(), p);
+        new UsageCounter(address(0), address(members), batchVerifier, PROV_KEY, _excluded(), p);
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(core), address(0), PROV_KEY, _excluded(), p);
+        new UsageCounter(address(core), address(0), batchVerifier, PROV_KEY, _excluded(), p);
+        vm.expectRevert(UsageCounter.ZeroAddress.selector);
+        new UsageCounter(address(core), address(members), address(0), PROV_KEY, _excluded(), p);
     }
 
     function test_constructor_rejectsEmptyPeriods() public {
         vm.expectRevert(UsageCounter.EmptyPeriods.selector);
-        new UsageCounter(address(core), address(members), PROV_KEY, _excluded(), new uint64[](0));
+        new UsageCounter(address(core), address(members), batchVerifier, PROV_KEY, _excluded(), new uint64[](0));
     }
 
     function test_constructor_rejectsUnorderedPeriods() public {
@@ -536,6 +546,163 @@ contract UsageCounterTest is Test {
         p[0] = P1_END;
         p[1] = P0_END;
         vm.expectRevert(UsageCounter.PeriodsNotAscending.selector);
-        new UsageCounter(address(core), address(members), PROV_KEY, _excluded(), p);
+        new UsageCounter(address(core), address(members), batchVerifier, PROV_KEY, _excluded(), p);
+    }
+
+    // ── The batch bridge: proof-gated accrual ───────────────────────
+    //
+    // A batch-settled process never acquires kernel status, so none of this
+    // can travel the direct path. What the counter still owns, and enforces
+    // here, is the reward's own gates: who may write, which period is open,
+    // which sellers are staked, which artifacts are excluded.
+
+    function _accrual(bytes32 artifact, uint64 c, uint64 d)
+        internal
+        pure
+        returns (UsageCounter.BatchAccrual[] memory a)
+    {
+        a = new UsageCounter.BatchAccrual[](1);
+        a[0] = UsageCounter.BatchAccrual(artifact, c, d);
+    }
+
+    function _sellers(address s) internal pure returns (address[] memory list) {
+        list = new address[](1);
+        list[0] = s;
+    }
+
+    function test_batchAccrualIsWrittenAndScored() public {
+        vm.prank(batchVerifier);
+        counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 4, 2), _sellers(seller1));
+
+        (uint64 c, uint64 d, uint256 score) = counter.batchAccrualOf(CARGO_KEY, 0);
+        assertEq(c, 4);
+        assertEq(d, 2);
+        assertEq(score, _score(4, 2));
+        assertEq(counter.totalScoreIn(0), score, "the batch score joins the period total");
+        // The direct slot is untouched — the two paths never share storage.
+        (uint64 dc,, uint256 dScore) = counter.accrualOf(CARGO_KEY, 0);
+        assertEq(dc, 0);
+        assertEq(dScore, 0);
+    }
+
+    function test_onlyTheBatchVerifierCanWriteBatchAccrual() public {
+        vm.expectRevert(UsageCounter.NotBatchVerifier.selector);
+        counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
+
+        // Not even a live-staked seller writing for their own trade.
+        vm.prank(seller1);
+        vm.expectRevert(UsageCounter.NotBatchVerifier.selector);
+        counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
+    }
+
+    /// THE MERGE RULE — `scoreOf` sums the two paths' SCORES, never their
+    /// components. The chain holds counts, not the pair SETS, so it cannot
+    /// union them; adding `d` to `d` would pay for breadth an attacker never
+    /// had, simply for splitting one relationship across the two universes.
+    function test_theTwoPathsSumAsScoresNeverAsComponents() public {
+        CommitmentTypes.Commitment memory c = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
+        _record(c, CARGO_KEY); // direct: c=1, d=1
+
+        vm.prank(batchVerifier);
+        counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 1, 1), _sellers(seller1)); // batch: c=1, d=1
+
+        assertEq(counter.scoreOf(CARGO_KEY, 0), _score(1, 1) * 2, "scores add");
+        assertEq(counter.totalScoreIn(0), counter.scoreOf(CARGO_KEY, 0), "the total tracks the sum");
+    }
+
+    /// The score is homogeneous of degree 1 and concave, so the component
+    /// merge is SUPERADDITIVE: summing scores can never exceed it, and the two
+    /// coincide EXACTLY when the split is proportional. Both halves are
+    /// asserted because both are load-bearing — the inequality is what closes
+    /// the split-across-universes farm, and the equality is why closing it
+    /// costs an honest artifact nothing when its trade divides evenly.
+    function test_summingScoresNeverExceedsTheComponentMerge() public view {
+        // Lopsided: depth on one path, breadth on the other.
+        assertLt(_score(4, 1) + _score(1, 4), _score(5, 5), "non-proportional split loses a little");
+        // Proportional: exactly equal, no shortfall at all.
+        assertEq(_score(1, 1) + _score(1, 1), _score(2, 2), "proportional split loses nothing");
+        assertEq(_score(2, 4) + _score(1, 2), _score(3, 6), "and again at another ratio");
+    }
+
+    function test_batchAccrualRequiresTheOpenPeriod() public {
+        vm.prank(batchVerifier);
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.PeriodMismatch.selector, 0, 1));
+        counter.applyBatchAccrual(1, PROV_KEY, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
+    }
+
+    function test_batchAccrualRequiresALiveSellerStake() public {
+        vm.prank(seller1);
+        members.requestWithdrawal(); // de-surfaces immediately
+
+        vm.prank(batchVerifier);
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.SellerNotStaked.selector, seller1));
+        counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
+    }
+
+    function test_batchAccrualRejectsAnExcludedArtifact() public {
+        bytes32 commerce = keccak256(abi.encode("figaro-commerce", uint64(1)));
+        vm.prank(batchVerifier);
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ArtifactExcluded.selector, commerce));
+        counter.applyBatchAccrual(0, PROV_KEY, _accrual(commerce, 9, 9), _sellers(seller1));
+    }
+
+    function test_batchAccrualRejectsAForeignProvenanceClause() public {
+        bytes32 impostor = keccak256(abi.encode("not-provenance", uint64(1)));
+        vm.prank(batchVerifier);
+        vm.expectRevert(
+            abi.encodeWithSelector(UsageCounter.ProvenanceClauseMismatch.selector, PROV_KEY, impostor)
+        );
+        counter.applyBatchAccrual(0, impostor, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
+    }
+
+    /// Cumulative counts are monotone. The state-root check upstream already
+    /// guarantees it; the assertion here means a guest regression surfaces as
+    /// a revert instead of silently destroying accrual (and, via the running
+    /// total, everyone else's share).
+    function test_batchAccrualCannotGoBackwards() public {
+        vm.startPrank(batchVerifier);
+        counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 5, 3), _sellers(seller1));
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.AccrualWentBackwards.selector, CARGO_KEY));
+        counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 4, 3), _sellers(seller1));
+        vm.stopPrank();
+    }
+
+    /// Writes are OVERWRITES of a cumulative total, not additions — so a
+    /// second batch reporting (6,4) leaves the artifact at (6,4), and the
+    /// period total moves by the DELTA of the scores, never by the new score.
+    function test_batchAccrualOverwritesRatherThanAccumulates() public {
+        vm.startPrank(batchVerifier);
+        counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 5, 3), _sellers(seller1));
+        counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 6, 4), _sellers(seller1));
+        vm.stopPrank();
+
+        (uint64 c, uint64 d, uint256 score) = counter.batchAccrualOf(CARGO_KEY, 0);
+        assertEq(c, 6);
+        assertEq(d, 4);
+        assertEq(score, _score(6, 4));
+        assertEq(counter.totalScoreIn(0), _score(6, 4), "total holds the latest score, not the sum of writes");
+    }
+
+    /// LIVENESS: trade must keep settling after the reward stops. An empty
+    /// accrual returns before `currentPeriod()` is consulted — otherwise every
+    /// batch would revert `AccrualClosed` forever once the last period ended,
+    /// and the scaling path would be bricked by the reward path.
+    function test_emptyBatchAccrualStillSettlesAfterAccrualCloses() public {
+        vm.warp(P1_END + 1);
+        vm.expectRevert(UsageCounter.AccrualClosed.selector);
+        counter.currentPeriod();
+
+        vm.prank(batchVerifier);
+        counter.applyBatchAccrual(0, bytes32(0), new UsageCounter.BatchAccrual[](0), new address[](0));
+        // No revert, nothing written.
+        (uint64 c,,) = counter.batchAccrualOf(CARGO_KEY, 0);
+        assertEq(c, 0);
+    }
+
+    function test_batchAccrualRevertsOnceAccrualClosesIfItCarriesClaims() public {
+        vm.warp(P1_END + 1);
+        vm.prank(batchVerifier);
+        vm.expectRevert(UsageCounter.AccrualClosed.selector);
+        counter.applyBatchAccrual(1, PROV_KEY, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
     }
 }

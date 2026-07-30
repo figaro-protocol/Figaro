@@ -57,6 +57,9 @@ fn empty_snapshot() -> KernelStateSnapshot {
         processes: vec![],
         order_status: vec![],
         order_process_id: vec![],
+        usage_counted: vec![],
+        usage_pair_seen: vec![],
+        usage_accrual: vec![],
     }
 }
 
@@ -96,6 +99,9 @@ fn bincode_roundtrip_full_batchinput() {
             },
         ],
         prev_state: empty_snapshot(),
+        usage_claims: vec![],
+        usage_period: 0,
+        provenance_clause: B256::ZERO,
     };
 
     let bytes = bincode::serialize(&input).expect("serialize");
@@ -138,6 +144,9 @@ fn bincode_roundtrip_single_attest_seller() {
             proof: dummy_proof(ContentKind::RuntimeWitness),
         }],
         prev_state: empty_snapshot(),
+        usage_claims: vec![],
+        usage_period: 0,
+        provenance_clause: B256::ZERO,
     };
     let bytes = bincode::serialize(&input).expect("serialize");
     eprintln!("serialized {} bytes", bytes.len());
@@ -156,6 +165,9 @@ fn bincode_roundtrip_single_commit() {
             seller_sig: dummy_sig(),
         }],
         prev_state: empty_snapshot(),
+        usage_claims: vec![],
+        usage_period: 0,
+        provenance_clause: B256::ZERO,
     };
     let bytes = bincode::serialize(&input).expect("serialize");
     eprintln!("serialized {} bytes", bytes.len());
@@ -172,6 +184,7 @@ fn bincode_roundtrip_public_values_and_events() {
         token_ops_hash: B256::repeat_byte(0x03),
         attestation_events_hash: B256::repeat_byte(0x04),
         spec_bindings_hash: B256::repeat_byte(0x05),
+        usage_accrual_hash: B256::repeat_byte(0x0a),
     };
     let bytes = bincode::serialize(&pv).expect("serialize");
     let _decoded: PublicValues = bincode::deserialize(&bytes).expect("deserialize");
@@ -189,6 +202,13 @@ fn bincode_roundtrip_public_values_and_events() {
             clause_id: B256::repeat_byte(0x0a),
             spec_hash: B256::repeat_byte(0x0b),
         }],
+        usage_accruals: vec![UsageAccrual {
+            artifact: B256::repeat_byte(0x0c),
+            c: 3,
+            d: 2,
+        }],
+        usage_sellers: vec![SELLER1],
+        usage_period: 1,
     };
     let bytes = bincode::serialize(&events).expect("serialize");
     let _decoded: BatchEvents = bincode::deserialize(&bytes).expect("deserialize");

@@ -20,6 +20,10 @@ pub struct ProveResult {
     pub public_values_bytes: Vec<u8>,
     /// Post-batch kernel state for advancing the state mirror.
     pub post_state: KernelState,
+    /// The provenance clause key the batch proved assembly claims
+    /// against. Echoed from the input because it is calldata the
+    /// verifier hash-checks, not something the guest returns.
+    pub provenance_clause: alloy_primitives::B256,
 }
 
 /// Prove a batch.
@@ -64,6 +68,7 @@ pub async fn prove_batch(batch: &BatchInput) -> Result<ProveResult, String> {
         proof_bytes,
         public_values_bytes,
         post_state,
+        provenance_clause: batch.provenance_clause,
     })
 }
 
@@ -123,12 +128,12 @@ fn check_state_roots(sp1: &PublicValues, local: &PublicValues) -> Result<(), Str
     Ok(())
 }
 
-/// ABI-encode PublicValues as 7 × 32-byte words for on-chain submission
+/// ABI-encode PublicValues as 8 × 32-byte words for on-chain submission
 /// (matches FigaroBatchVerifier._decodePV).
 fn encode_public_values(pv: &PublicValues) -> Vec<u8> {
     use alloy_primitives::U256;
 
-    let mut data = Vec::with_capacity(224);
+    let mut data = Vec::with_capacity(256);
     data.extend_from_slice(pv.prev_state_root.as_slice());
     data.extend_from_slice(pv.new_state_root.as_slice());
     data.extend_from_slice(&U256::from(pv.chain_id).to_be_bytes::<32>());
@@ -139,5 +144,6 @@ fn encode_public_values(pv: &PublicValues) -> Vec<u8> {
     data.extend_from_slice(pv.token_ops_hash.as_slice());
     data.extend_from_slice(pv.attestation_events_hash.as_slice());
     data.extend_from_slice(pv.spec_bindings_hash.as_slice());
+    data.extend_from_slice(pv.usage_accrual_hash.as_slice());
     data
 }

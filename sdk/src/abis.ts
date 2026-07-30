@@ -271,6 +271,14 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 // `recordAssemblyUsage` takes no section at all — the provenance content is
 // fully determined by `compositionHash`, so the contract derives it. Accrual
 // buckets into fixed periods; a period's counts are final once `periodClosed`.
+//
+// BATCH-SETTLED trade never touches the kernel, so it can never travel that
+// path. It arrives instead through `applyBatchAccrual`, which only
+// FigaroBatchVerifier may call and only with numbers an SP1 proof committed.
+// Its accrual is kept in a SEPARATE slot (`batchAccrualOf`) and merged by
+// SCORE, never by component — read `scoreOf` for an artifact's real total;
+// `accrualOf` alone sees the direct path and under-reports anything that
+// scaled.
 
 export const USAGE_COUNTER_ABI = parseAbi([
     // ── Recording (permissionless) ──────────────────────────────────
@@ -279,16 +287,19 @@ export const USAGE_COUNTER_ABI = parseAbi([
 
     // ── Composition + schedule ──────────────────────────────────────
     "function core() view returns (address)",
-    "function sellers() view returns (address)",
+    "function members() view returns (address)",
+    "function batchVerifier() view returns (address)",
+    "function provenanceClause() view returns (bytes32)",
+    "function excludedArtifact(bytes32 artifact) view returns (bool)",
     "function periodEnd(uint256) view returns (uint64)",
     "function periodCount() view returns (uint256)",
     "function currentPeriod() view returns (uint8)",
     "function periodClosed(uint8 period) view returns (bool)",
 
-    // ── Breadth cap ─────────────────────────────────────────────────
-
     // ── Accrual ─────────────────────────────────────────────────────
     "function accrualOf(bytes32 artifact, uint8 period) view returns (uint64 c, uint64 d, uint256 score)",
+    "function batchAccrualOf(bytes32 artifact, uint8 period) view returns (uint64 c, uint64 d, uint256 score)",
+    "function scoreOf(bytes32 artifact, uint8 period) view returns (uint256)",
     "function totalScoreIn(uint8 period) view returns (uint256)",
     "function processCounted(bytes32 artifact, bytes32 processId) view returns (bool)",
     "function pairSeen(bytes32 artifact, uint8 period, bytes32 pairKey) view returns (bool)",
@@ -296,6 +307,7 @@ export const USAGE_COUNTER_ABI = parseAbi([
 
     // ── Events ──────────────────────────────────────────────────────
     "event UsageRecorded(bytes32 indexed artifact, uint8 indexed period, bytes32 indexed processId, bytes32 pairKey, uint64 c, uint64 d, uint256 score)",
+    "event BatchUsageRecorded(bytes32 indexed artifact, uint8 indexed period, uint64 c, uint64 d, uint256 score)",
 
     // ── Errors ──────────────────────────────────────────────────────
     "error ZeroAddress()",
@@ -307,7 +319,20 @@ export const USAGE_COUNTER_ABI = parseAbi([
     "error AlreadyCounted()",
     "error InvalidInclusionProof()",
     "error SellerNotStaked(address seller)",
+    "error ArtifactExcluded(bytes32 artifact)",
+    "error NotBatchVerifier()",
+    "error PeriodMismatch(uint8 open, uint8 claimed)",
+    "error ProvenanceClauseMismatch(bytes32 expected, bytes32 claimed)",
+    "error AccrualWentBackwards(bytes32 artifact)",
 ]);
+
+/// The batch path's accrual event. An indexer summing adoption must fold BOTH
+/// this and `UsageRecorded` — and fold them differently: `UsageRecorded` is a
+/// per-process increment, while this carries an artifact's CUMULATIVE (c, d)
+/// for the period and REPLACES the previous value rather than adding to it.
+export const EV_BATCH_USAGE_RECORDED = parseAbiItem(
+    "event BatchUsageRecorded(bytes32 indexed artifact, uint8 indexed period, uint64 c, uint64 d, uint256 score)",
+);
 
 export const EV_USAGE_RECORDED = parseAbiItem(
     "event UsageRecorded(bytes32 indexed artifact, uint8 indexed period, bytes32 indexed processId, bytes32 pairKey, uint64 c, uint64 d, uint256 score)",
@@ -344,13 +369,16 @@ export const RPGF_MINTER_ABI = parseAbi([
 
 // ── FigaroBatchVerifier ABI ──────────────────────────────────────────────────
 // The batch-settlement verifier (proof-based scaling). settleBatch carries the
-// proof, the 7-word public values, net positions, and the event data — the
+// proof, the 8-word public values, net positions, the event data — the
 // attestations to re-emit plus the (clause key → witness-spec hash) bindings
-// the contract checks against ClauseRegistry.contentHashOf before settling.
+// the contract checks against ClauseRegistry.contentHashOf before settling —
+// and the RPGF usage accrual, which it forwards to UsageCounter. A batch that
+// credits no usage passes empty arrays; that call is a no-op, which is what
+// lets trade keep settling after the reward's last period closes.
 
 export const BATCH_VERIFIER_ABI = parseAbi([
     // ── Batch settlement ────────────────────────────────────────────
-    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId, bytes32 specHash)[] specBindings) events) external",
+    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId, bytes32 specHash)[] specBindings) events, (uint8 period, bytes32 provenanceClause, (bytes32 artifact, uint64 c, uint64 d)[] accruals, address[] sellers) usage) external",
 
     // ── Views ────────────────────────────────────────────────────────
     "function stateRoot() view returns (bytes32)",
@@ -358,6 +386,7 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     "function verifier() view returns (address)",
     "function programVKey() view returns (bytes32)",
     "function clauseRegistry() view returns (address)",
+    "function usageCounter() view returns (address)",
 
     // ── Events (Attestation shares its topic with the coordinator's —
     //    indexers filter by address) ─────────────────────────────────

@@ -7,6 +7,8 @@ import {
     usageScore,
     RPGF_SCORE_SCALE,
     type UsagePeriodAccrual,
+    type ArtifactAccrual,
+    type BatchUsageRecord,
     type UsageRecord,
 } from "../src/rpgf/index.js";
 
@@ -109,8 +111,8 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_B, "p1", p1),
         ]);
         const period = accruals.get(0)!;
-        expect(period.byArtifact.get(CLAUSE_A)).toMatchObject({ c: 2n, d: 2n });
-        expect(period.byArtifact.get(CLAUSE_B)).toMatchObject({ c: 1n, d: 1n });
+        expect(period.byArtifact.get(CLAUSE_A)!.direct).toMatchObject({ c: 2n, d: 2n });
+        expect(period.byArtifact.get(CLAUSE_B)!.direct).toMatchObject({ c: 1n, d: 1n });
         expect(period.totalScore).toBe(usageScore(2n, 2n) + usageScore(1n, 1n));
     });
 
@@ -130,7 +132,7 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "px-0", p1, { period: 0 }),
             record(CLAUSE_A, "px-0", p1, { period: 1 }),
         ]);
-        expect(accruals.get(0)!.byArtifact.get(CLAUSE_A)).toMatchObject({ c: 1n, d: 1n });
+        expect(accruals.get(0)!.byArtifact.get(CLAUSE_A)!.direct).toMatchObject({ c: 1n, d: 1n });
         expect(accruals.get(1)?.byArtifact.get(CLAUSE_A)).toBeUndefined();
     });
 
@@ -140,7 +142,7 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "py-old", pair("buyer1", "seller1"), { period: 1 }),
             record(CLAUSE_A, "py-new", pair("buyer2", "seller2"), { period: 1 }),
         ]);
-        expect(accruals.get(1)!.byArtifact.get(CLAUSE_A)).toMatchObject({ c: 1n, d: 1n });
+        expect(accruals.get(1)!.byArtifact.get(CLAUSE_A)!.direct).toMatchObject({ c: 1n, d: 1n });
     });
 
     it("counts every repeat process into c, but a pair is one unit of d", () => {
@@ -151,7 +153,7 @@ describe("computeUsageAccruals", () => {
         const accruals = computeUsageAccruals(
             Array.from({ length: 8 }, (_, i) => record(CLAUSE_A, `pc-${i}`, repeat)),
         );
-        expect(accruals.get(0)!.byArtifact.get(CLAUSE_A)).toEqual({
+        expect(accruals.get(0)!.byArtifact.get(CLAUSE_A)!.direct).toEqual({
             c: 8n,
             d: 1n,
             score: usageScore(8n, 1n),
@@ -167,7 +169,7 @@ describe("computeUsageAccruals", () => {
             ...Array.from({ length: 7 }, (_, i) => record(CLAUSE_A, `pe-${i}`, repeat)),
             record(CLAUSE_A, "pe-fresh", fresh),
         ]);
-        expect(accruals.get(0)!.byArtifact.get(CLAUSE_A)).toMatchObject({
+        expect(accruals.get(0)!.byArtifact.get(CLAUSE_A)!.direct).toMatchObject({
             c: 8n,
             d: 2n,
         });
@@ -179,8 +181,8 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "pf-0", p1, { period: 0 }),
             record(CLAUSE_A, "pf-1", p1, { period: 1 }),
         ]);
-        expect(accruals.get(0)!.byArtifact.get(CLAUSE_A)).toMatchObject({ c: 1n, d: 1n });
-        expect(accruals.get(1)!.byArtifact.get(CLAUSE_A)).toMatchObject({ c: 1n, d: 1n });
+        expect(accruals.get(0)!.byArtifact.get(CLAUSE_A)!.direct).toMatchObject({ c: 1n, d: 1n });
+        expect(accruals.get(1)!.byArtifact.get(CLAUSE_A)!.direct).toMatchObject({ c: 1n, d: 1n });
     });
 
     it("scores uniformly — equal usage gives equal score, clause or assembly", () => {
@@ -200,9 +202,68 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "ph-0", p1, { c: 1n, d: 1n, score: usageScore(1n, 1n) }),
             record(CLAUSE_A, "ph-1", p2, { c: 2n, d: 2n, score: usageScore(2n, 2n) }),
         ];
-        const accrual = computeUsageAccruals(emitted).get(0)!.byArtifact.get(CLAUSE_A)!;
+        const accrual = computeUsageAccruals(emitted).get(0)!.byArtifact.get(CLAUSE_A)!.direct;
         const last = emitted[emitted.length - 1];
         expect(accrual).toEqual({ c: last.c, d: last.d, score: last.score });
+    });
+
+    // ── The batch leg ───────────────────────────────────────────────
+
+    function batchRecord(
+        artifact: Hex,
+        c: bigint,
+        d: bigint,
+        over: Partial<BatchUsageRecord> = {},
+    ): BatchUsageRecord {
+        return {
+            blockNumber: 200n,
+            logIndex: 0,
+            artifact,
+            period: 0,
+            c,
+            d,
+            score: usageScore(c, d),
+            ...over,
+        };
+    }
+
+    it("folds batch-settled usage into the same period", () => {
+        const period = computeUsageAccruals([], [batchRecord(CLAUSE_A, 4n, 2n)]).get(0)!;
+        const entry = period.byArtifact.get(CLAUSE_A)!;
+        expect(entry.batch).toEqual({ c: 4n, d: 2n, score: usageScore(4n, 2n) });
+        expect(entry.direct).toEqual({ c: 0n, d: 0n, score: 0n });
+        expect(entry.score).toBe(usageScore(4n, 2n));
+        expect(period.totalScore).toBe(usageScore(4n, 2n));
+    });
+
+    // A reader folding only the direct stream misses every batch-settled
+    // trade, which is precisely the gap the bridge closes. The mirror must
+    // report the SAME total the chain's `totalScoreIn` holds.
+    it("sums the two paths as scores, never as components", () => {
+        const period = computeUsageAccruals(
+            [record(CLAUSE_A, "pj-0", pair("b", "s"))], // direct: c=1, d=1
+            [batchRecord(CLAUSE_A, 1n, 1n)], // batch:  c=1, d=1
+        ).get(0)!;
+        const entry = period.byArtifact.get(CLAUSE_A)!;
+
+        expect(entry.score).toBe(usageScore(1n, 1n) * 2n);
+        expect(entry.score).toBeLessThanOrEqual(usageScore(2n, 2n));
+        expect(period.totalScore).toBe(entry.score);
+    });
+
+    // Batch records carry CUMULATIVE values, so a later one replaces an
+    // earlier one. Folding them as increments would double-count every batch
+    // after the first.
+    it("replaces rather than accumulates successive batch records", () => {
+        const period = computeUsageAccruals(
+            [],
+            [
+                batchRecord(CLAUSE_A, 2n, 1n, { blockNumber: 200n }),
+                batchRecord(CLAUSE_A, 5n, 3n, { blockNumber: 201n }),
+            ],
+        ).get(0)!;
+        expect(period.byArtifact.get(CLAUSE_A)!.batch).toEqual({ c: 5n, d: 3n, score: usageScore(5n, 3n) });
+        expect(period.totalScore).toBe(usageScore(5n, 3n));
     });
 
     it("replays in (blockNumber, logIndex) order regardless of input order", () => {
@@ -220,10 +281,14 @@ describe("computeUsageAccruals", () => {
 // ── The payout (RpgfMinter.claim, mirrored) ──────────────────────────
 
 function periodOf(entries: Array<[Hex, bigint]>): UsagePeriodAccrual {
-    const byArtifact = new Map<Hex, { c: bigint; d: bigint; score: bigint }>();
+    const byArtifact = new Map<Hex, ArtifactAccrual>();
     let totalScore = 0n;
     for (const [artifact, score] of entries) {
-        byArtifact.set(artifact, { c: 1n, d: 1n, score });
+        byArtifact.set(artifact, {
+            direct: { c: 1n, d: 1n, score },
+            batch: { c: 0n, d: 0n, score: 0n },
+            score,
+        });
         totalScore += score;
     }
     return { byArtifact, totalScore };

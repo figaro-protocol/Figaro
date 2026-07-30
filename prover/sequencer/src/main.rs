@@ -44,6 +44,14 @@ async fn main() {
     )
     .parse()
     .expect("invalid BATCH_VERIFIER_ADDRESS");
+    // The RPGF counter the batch accrual is written to. Unset (zero) means
+    // this sequencer credits no usage — trade still settles.
+    let usage_counter_addr: Address = env_or(
+        "USAGE_COUNTER_ADDRESS",
+        "0x0000000000000000000000000000000000000000",
+    )
+    .parse()
+    .expect("invalid USAGE_COUNTER_ADDRESS");
     let verifying_contract: Address = env_or(
         "FIGARO_CORE_ADDRESS",
         "0x0000000000000000000000000000000000000000",
@@ -93,6 +101,7 @@ async fn main() {
     let submitter_config = SubmitterConfig {
         rpc_url: rpc_url.clone(),
         verifier_address: verifier_addr,
+        usage_counter_address: usage_counter_addr,
         private_key,
     };
 
@@ -159,6 +168,11 @@ async fn batch_loop(
             continue;
         }
 
+        // Drain the RPGF usage claims riding along with them. Claims are
+        // applied against the batch's POST-state, so a claim for an order
+        // this same batch resolves is credited by this same batch.
+        let usage_claims = mempool.drain_usage().await;
+
         // Get current state snapshot
         let prev_state = state_mirror.snapshot().await;
 
@@ -187,6 +201,31 @@ async fn batch_loop(
         let op_count = valid.len();
         info!(ops = op_count, dropped = poison.len(), "Assembling batch");
 
+        // The period and provenance clause are CHAIN facts — asked of the
+        // counter, never derived from the sequencer's clock. If there is no
+        // counter, or accrual has closed, the batch settles crediting nothing.
+        let usage = match submitter::read_usage_context(
+            &submitter_config.rpc_url,
+            submitter_config.usage_counter_address,
+        )
+        .await
+        {
+            Some((period, provenance_clause)) => assembler::UsageContext {
+                claims: usage_claims,
+                period,
+                provenance_clause,
+            },
+            None => {
+                if !usage_claims.is_empty() {
+                    warn!(
+                        claims = usage_claims.len(),
+                        "Dropping usage claims — no usage counter, or accrual has closed"
+                    );
+                }
+                assembler::UsageContext::default()
+            }
+        };
+
         let ops: Vec<_> = valid.iter().map(|p| p.op.clone()).collect();
         let batch = assembler::assemble_batch(
             chain_id,
@@ -194,6 +233,7 @@ async fn batch_loop(
             timestamp,
             ops,
             prev_state,
+            usage,
         );
 
         // Prove

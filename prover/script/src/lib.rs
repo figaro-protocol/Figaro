@@ -203,7 +203,7 @@ pub fn build_canonical_batch_input() -> BatchInput {
             },
             KernelOp::Resolve {
                 process_id,
-                commitments: vec![root],
+                commitments: vec![root.clone()],
                 buyer_sig: resolve_sig,
             },
         ],
@@ -211,6 +211,24 @@ pub fn build_canonical_batch_input() -> BatchInput {
             processes: vec![],
             order_status: vec![],
             order_process_id: vec![],
+            usage_counted: vec![],
+            usage_pair_seen: vec![],
+            usage_accrual: vec![],
         },
+        // RPGF: credit the clause for the process this batch just settled.
+        // The claim is proved against the POST-state, which is why an order
+        // committed and resolved inside one batch can still be counted by it.
+        // Single-section agreement, so the section leaf IS the agreement hash
+        // and the inclusion proof is empty.
+        usage_claims: vec![UsageClaim {
+            order: root,
+            artifact: clause_key,
+            kind: UsageClaimKind::Clause {
+                section_hash: re_assert_content_ref,
+            },
+            inclusion_proof: vec![],
+        }],
+        usage_period: 0,
+        provenance_clause: clause_id_hash("figaro-assembly-provenance", 1),
     }
 }

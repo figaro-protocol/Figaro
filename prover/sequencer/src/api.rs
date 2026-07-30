@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::mempool::Mempool;
 use crate::state::StateMirror;
-use figaro_kernel::types::KernelOp;
+use figaro_kernel::types::{KernelOp, UsageClaim};
 
 /// Shared application state for axum handlers.
 #[derive(Clone)]
@@ -28,6 +28,11 @@ pub struct SubmitRequest {
     pub operation: KernelOp,
 }
 
+#[derive(Deserialize)]
+pub struct SubmitUsageRequest {
+    pub claim: UsageClaim,
+}
+
 #[derive(Serialize)]
 pub struct SubmitResponse {
     pub id: u64,
@@ -42,6 +47,7 @@ pub struct ErrorResponse {
 pub struct StatusResponse {
     pub state_root: String,
     pub pending_ops: usize,
+    pub pending_usage_claims: usize,
     pub batches_settled: u64,
 }
 
@@ -50,6 +56,7 @@ pub struct StatusResponse {
 pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/submit", post(submit_op))
+        .route("/submit-usage", post(submit_usage))
         .route("/status", get(status))
         .with_state(state)
 }
@@ -69,14 +76,32 @@ async fn submit_op(
     }
 }
 
+/// Submit an RPGF usage claim for an order the batch path has settled.
+/// Separate from `/submit` because a claim is not a kernel operation — it
+/// changes no kernel state and is applied against the batch's post-state.
+async fn submit_usage(
+    State(state): State<AppState>,
+    Json(req): Json<SubmitUsageRequest>,
+) -> impl IntoResponse {
+    match state.mempool.submit_usage_claim(req.claim).await {
+        Ok(pending) => (StatusCode::OK, Json(serde_json::json!({ "pending": pending }))),
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": e })),
+        ),
+    }
+}
+
 async fn status(State(state): State<AppState>) -> impl IntoResponse {
     let root = state.state_mirror.state_root().await;
     let pending = state.mempool.len().await;
+    let pending_usage = state.mempool.usage_len().await;
     let batches = *state.batch_count.read().await;
 
     Json(StatusResponse {
         state_root: format!("{root:?}"),
         pending_ops: pending,
+        pending_usage_claims: pending_usage,
         batches_settled: batches,
     })
 }
