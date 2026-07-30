@@ -2,10 +2,10 @@
  * sellerCatalogue.ts — the seller CATALOGUE document (Layer-A).
  *
  * The catalogue is the volatile sales-context payload a seller pins to
- * IPFS and points to from `SellerProfileMetadata.catalogueURI`: the list
+ * IPFS and points to from `MemberProfileMetadata.catalogueURI`: the list
  * of items for sale plus a version and the subject wallet. Identity,
  * branding, location, accepted tokens, agent endpoints, and assembly
- * bindings all live on the seller profile (`sellerProfile.ts`) so an item
+ * bindings all live on the seller profile (`memberProfile.ts`) so an item
  * edit re-pins one small JSON instead of the whole identity envelope.
  *
  * This module owns the document TYPES and the strict PARSER. Discovery
@@ -117,7 +117,7 @@ export interface CatalogueItemMetadata {
  *
  * Identity, location, branding, accepted tokens, agent endpoints,
  * assembly bindings, and operational config all live on the seller
- * profile (`SellerProfileMetadata`); the catalogue carries only the
+ * profile (`MemberProfileMetadata`); the catalogue carries only the
  * volatile sales-context payload, so an item edit re-pins one small
  * JSON instead of the whole identity envelope.
  *

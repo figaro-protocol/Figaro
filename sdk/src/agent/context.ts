@@ -19,7 +19,7 @@ import type {
     Process,
     Order,
     RegisteredClause,
-    RegisteredSeller,
+    RegisteredMember,
     RegisteredAssembly,
 } from "../types.js";
 import { Topology } from "../state.js";
@@ -33,7 +33,7 @@ export interface SyncResult {
     newResolutions: number;
     /** Number of new ClauseRegistered events ingested. */
     newClauses: number;
-    /** Number of new SellerRegistered/SellerProfileUpdated events ingested. */
+    /** Number of new MemberRegistered/MemberProfileUpdated events ingested. */
     newSellers: number;
     /** Number of new AssemblyRegistered events ingested. */
     newAssemblies: number;
@@ -105,7 +105,7 @@ export class FigaroContext {
             newCommits: events.orderCommitted.length,
             newResolutions: events.orderResolved.length,
             newClauses: discoveryEvents.clauseRegistered.length,
-            newSellers: discoveryEvents.sellerRegistered.length,
+            newSellers: discoveryEvents.memberRegistered.length,
             newAssemblies: discoveryEvents.assemblyRegistered.length,
             syncedToBlock: currentBlock,
         };
@@ -164,8 +164,8 @@ export class FigaroContext {
     }
 
     /** All live-staked sellers on the network. */
-    getSellers(): RegisteredSeller[] {
-        return this.discovery.getSellers();
+    getMembers(): RegisteredMember[] {
+        return this.discovery.getMembers();
     }
 
     /** All live-staked assemblies on the network — the templates an agent can

@@ -5,14 +5,14 @@ import {
     reconstructDiscovery,
     computeClauseKey,
     parseClauseRegistryLogs,
-    parseSellerRegistryLogs,
+    parseMembersRegistryLogs,
     parseAssemblyRegistryLogs,
     type DiscoveryEvents,
 } from "../src/discovery.js";
 import type { Address, Hex } from "../src/types.js";
 
-const SELLER_A = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as Address;
-const SELLER_B = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as Address;
+const MEMBER_A = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as Address;
+const MEMBER_B = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as Address;
 const AUTHOR = "0xcccccccccccccccccccccccccccccccccccccccc" as Address;
 const REGISTRAR = "0xdddddddddddddddddddddddddddddddddddddddd" as Address;
 const COMP_1 = "0x0000000000000000000000000000000000000000000000000000000000000011" as Hex;
@@ -22,8 +22,8 @@ function mkEvents(overrides: Partial<DiscoveryEvents> = {}): DiscoveryEvents {
     return {
         clauseRegistered: [],
         clauseWithdrawn: [],
-        sellerRegistered: [],
-        sellerWithdrawn: [],
+        memberRegistered: [],
+        memberWithdrawn: [],
         assemblyRegistered: [],
         assemblyWithdrawn: [],
         ...overrides,
@@ -104,56 +104,56 @@ describe("DiscoveryGraph — assemblies", () => {
     });
 });
 
-describe("DiscoveryGraph — sellers (order-dependent liveness)", () => {
+describe("DiscoveryGraph — members (order-dependent liveness)", () => {
     it("current metadataURI is the most-recent register/update", () => {
         const g = reconstructDiscovery(mkEvents({
-            sellerRegistered: [
-                { seller: SELLER_A, metadataURI: "ipfs://old", updated: false, blockNumber: 1, logIndex: 0 },
-                { seller: SELLER_A, metadataURI: "ipfs://new", updated: true, blockNumber: 3, logIndex: 0 },
+            memberRegistered: [
+                { member: MEMBER_A, metadataURI: "ipfs://old", updated: false, blockNumber: 1, logIndex: 0 },
+                { member: MEMBER_A, metadataURI: "ipfs://new", updated: true, blockNumber: 3, logIndex: 0 },
             ],
         }));
-        expect(g.getSeller(SELLER_A)?.metadataURI).toBe("ipfs://new");
+        expect(g.getMember(MEMBER_A)?.metadataURI).toBe("ipfs://new");
     });
 
-    it("withdraw de-surfaces the seller", () => {
+    it("requesting withdrawal de-surfaces the member", () => {
         const g = reconstructDiscovery(mkEvents({
-            sellerRegistered: [{ seller: SELLER_A, metadataURI: "ipfs://x", updated: false, blockNumber: 1, logIndex: 0 }],
-            sellerWithdrawn: [{ seller: SELLER_A, blockNumber: 4, logIndex: 0 }],
+            memberRegistered: [{ member: MEMBER_A, metadataURI: "ipfs://x", updated: false, blockNumber: 1, logIndex: 0 }],
+            memberWithdrawn: [{ member: MEMBER_A, blockNumber: 4, logIndex: 0 }],
         }));
-        expect(g.getSellers()).toHaveLength(0);
-        expect(g.getSeller(SELLER_A)).toBeUndefined();
+        expect(g.getMembers()).toHaveLength(0);
+        expect(g.getMember(MEMBER_A)).toBeUndefined();
     });
 
-    it("re-registration after withdraw re-surfaces the seller (latest event wins, not raw counts)", () => {
+    it("re-registration after leaving re-surfaces the member (latest event wins, not raw counts)", () => {
         const g = reconstructDiscovery(mkEvents({
-            sellerRegistered: [
-                { seller: SELLER_A, metadataURI: "ipfs://first", updated: false, blockNumber: 1, logIndex: 0 },
-                { seller: SELLER_A, metadataURI: "ipfs://second", updated: false, blockNumber: 7, logIndex: 0 },
+            memberRegistered: [
+                { member: MEMBER_A, metadataURI: "ipfs://first", updated: false, blockNumber: 1, logIndex: 0 },
+                { member: MEMBER_A, metadataURI: "ipfs://second", updated: false, blockNumber: 7, logIndex: 0 },
             ],
-            sellerWithdrawn: [{ seller: SELLER_A, blockNumber: 4, logIndex: 0 }],
+            memberWithdrawn: [{ member: MEMBER_A, blockNumber: 4, logIndex: 0 }],
         }));
-        const live = g.getSellers();
+        const live = g.getMembers();
         expect(live).toHaveLength(1);
-        expect(g.getSeller(SELLER_A)?.metadataURI).toBe("ipfs://second");
+        expect(g.getMember(MEMBER_A)?.metadataURI).toBe("ipfs://second");
     });
 
-    it("orders a within-block withdraw AFTER a same-block registration by logIndex", () => {
+    it("orders a within-block withdrawal request AFTER a same-block registration by logIndex", () => {
         const g = reconstructDiscovery(mkEvents({
-            sellerRegistered: [{ seller: SELLER_B, metadataURI: "ipfs://y", updated: false, blockNumber: 2, logIndex: 0 }],
-            sellerWithdrawn: [{ seller: SELLER_B, blockNumber: 2, logIndex: 1 }],
+            memberRegistered: [{ member: MEMBER_B, metadataURI: "ipfs://y", updated: false, blockNumber: 2, logIndex: 0 }],
+            memberWithdrawn: [{ member: MEMBER_B, blockNumber: 2, logIndex: 1 }],
         }));
-        expect(g.getSeller(SELLER_B)).toBeUndefined();
+        expect(g.getMember(MEMBER_B)).toBeUndefined();
     });
 
     it("is idempotent under re-applied overlapping batches", () => {
         const g = new DiscoveryGraph();
         const batch = mkEvents({
-            sellerRegistered: [{ seller: SELLER_A, metadataURI: "ipfs://z", updated: false, blockNumber: 1, logIndex: 0 }],
+            memberRegistered: [{ member: MEMBER_A, metadataURI: "ipfs://z", updated: false, blockNumber: 1, logIndex: 0 }],
         });
         g.applyEvents(batch);
         g.applyEvents(batch);
-        expect(g.getSellers()).toHaveLength(1);
-        expect(g.getSeller(SELLER_A)?.metadataURI).toBe("ipfs://z");
+        expect(g.getMembers()).toHaveLength(1);
+        expect(g.getMember(MEMBER_A)?.metadataURI).toBe("ipfs://z");
     });
 });
 
@@ -173,7 +173,7 @@ describe("registry log parsers (decode round-trip — no chain)", () => {
     ): Log {
         const topics = [keccak256(toBytes(sig)), ...indexed] as [Hex, ...Hex[]];
         const data = dataTypes.length ? encodeAbiParameters(dataTypes, dataValues) : ("0x" as Hex);
-        return { data, topics, blockNumber, logIndex, address: SELLER_A, transactionHash: "0x" as Hex,
+        return { data, topics, blockNumber, logIndex, address: MEMBER_A, transactionHash: "0x" as Hex,
             transactionIndex: 0, blockHash: "0x" as Hex, removed: false } as unknown as Log;
     }
 
@@ -191,17 +191,26 @@ describe("registry log parsers (decode round-trip — no chain)", () => {
         expect(parsed.withdrawn[0].idHash).toBe(idHash);
     });
 
-    it("parses SellerRegistered, SellerProfileUpdated, and SellerWithdrawn", () => {
-        const reg = mkLog("SellerRegistered(address,string)", [addrTopic(SELLER_A)],
+    it("parses MemberRegistered, MemberProfileUpdated, and MemberWithdrawalRequested", () => {
+        const reg = mkLog("MemberRegistered(address,string)", [addrTopic(MEMBER_A)],
             [{ type: "string" }], ["ipfs://s"], 1n, 0);
-        const upd = mkLog("SellerProfileUpdated(address,string)", [addrTopic(SELLER_A)],
+        const upd = mkLog("MemberProfileUpdated(address,string)", [addrTopic(MEMBER_A)],
             [{ type: "string" }], ["ipfs://s2"], 2n, 0);
-        const wd = mkLog("SellerWithdrawn(address,uint256)", [addrTopic(SELLER_A)],
-            [{ type: "uint256" }], [10n], 3n, 0);
-        const parsed = parseSellerRegistryLogs([reg, upd, wd]);
+        const req = mkLog("MemberWithdrawalRequested(address,uint256,uint256)", [addrTopic(MEMBER_A)],
+            [{ type: "uint256" }, { type: "uint256" }], [10n, 99n], 3n, 0);
+        const parsed = parseMembersRegistryLogs([reg, upd, req]);
         expect(parsed.registered.map((r) => r.updated)).toEqual([false, true]);
         expect(parsed.registered[1].metadataURI).toBe("ipfs://s2");
-        expect(parsed.withdrawn[0].seller.toLowerCase()).toBe(SELLER_A.toLowerCase());
+        expect(parsed.withdrawn[0].member.toLowerCase()).toBe(MEMBER_A.toLowerCase());
+    });
+
+    it("de-surfaces on the REQUEST, not on the later ETH release", () => {
+        // MemberWithdrawn is the custody event and can land a whole cooldown after
+        // the member left. Folding it as the de-surfacing signal would keep a
+        // departed member in the live set for that entire window.
+        const claim = mkLog("MemberWithdrawn(address,uint256)", [addrTopic(MEMBER_A)],
+            [{ type: "uint256" }], [10n], 9n, 0);
+        expect(parseMembersRegistryLogs([claim]).withdrawn).toHaveLength(0);
     });
 
     it("parses AssemblyRegistered + DepositWithdrawn keyed by compositionHash", () => {
@@ -220,7 +229,7 @@ describe("registry log parsers (decode round-trip — no chain)", () => {
             [{ type: "string" }], ["ipfs://live"], 1n, 0);
         const { registered, withdrawn } = parseAssemblyRegistryLogs([regLog]);
         const g = reconstructDiscovery({
-            clauseRegistered: [], clauseWithdrawn: [], sellerRegistered: [], sellerWithdrawn: [],
+            clauseRegistered: [], clauseWithdrawn: [], memberRegistered: [], memberWithdrawn: [],
             assemblyRegistered: registered, assemblyWithdrawn: withdrawn,
         });
         expect(g.getAssemblies()).toHaveLength(1);
@@ -232,7 +241,7 @@ describe("DiscoveryGraph — empty", () => {
     it("returns empty views with no events", () => {
         const g = reconstructDiscovery(mkEvents());
         expect(g.getClauses()).toEqual([]);
-        expect(g.getSellers()).toEqual([]);
+        expect(g.getMembers()).toEqual([]);
         expect(g.getAssemblies()).toEqual([]);
     });
 });

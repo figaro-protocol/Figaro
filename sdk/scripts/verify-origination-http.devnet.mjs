@@ -34,7 +34,7 @@ const RPC = process.env.FIGARO_DEVNET_RPC_URL || "http://127.0.0.1:8545";
 const GATEWAY = "http://127.0.0.1:8080/ipfs/";
 const addresses = {
     core: env.NEXT_PUBLIC_FIGARO_CORE, clauseRegistry: env.NEXT_PUBLIC_CLAUSE_REGISTRY,
-    sellerRegistry: env.NEXT_PUBLIC_SELLER_REGISTRY, assemblyRegistry: env.NEXT_PUBLIC_ASSEMBLY_REGISTRY,
+    membersRegistry: env.NEXT_PUBLIC_SELLER_REGISTRY, assemblyRegistry: env.NEXT_PUBLIC_ASSEMBLY_REGISTRY,
 };
 const TOKEN = env.NEXT_PUBLIC_TOKEN_ADDRESS;
 const BUYER = privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"); // anvil[0]

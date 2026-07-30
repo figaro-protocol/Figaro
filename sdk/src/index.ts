@@ -28,7 +28,7 @@
 // ABIs
 export {
     CORE_ABI, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI,
-    ERC20_ABI, SELLER_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI,
+    ERC20_ABI, MEMBERS_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI,
     FLORIN_TOKEN_ABI,
     WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI, SWAP_FUNDING_TUPLE,
     USAGE_COUNTER_ABI, RPGF_MINTER_ABI,
@@ -76,12 +76,12 @@ export type {
     AgentOrderContext,
     ClauseRegisteredEvent,
     ClauseWithdrawnEvent,
-    SellerRegisteredEvent,
-    SellerWithdrawnEvent,
+    MemberRegisteredEvent,
+    MemberWithdrawnEvent,
     AssemblyRegisteredEvent,
     AssemblyWithdrawnEvent,
     RegisteredClause,
-    RegisteredSeller,
+    RegisteredMember,
     RegisteredAssembly,
 } from "./types.js";
 export { OrderState, addressesFromDeploymentRecord, type FigaroDeploymentRecord } from "./types.js";
@@ -103,7 +103,7 @@ export type { CoreEvents } from "./state.js";
 export {
     computeClauseKey,
     parseClauseRegistryLogs,
-    parseSellerRegistryLogs,
+    parseMembersRegistryLogs,
     parseAssemblyRegistryLogs,
     fetchDiscoveryEvents,
     reconstructDiscovery,
@@ -112,7 +112,7 @@ export {
 export type {
     DiscoveryEvents,
     ClauseRegistryEvents,
-    SellerRegistryEvents,
+    MembersRegistryEvents,
     AssemblyRegistryEvents,
 } from "./discovery.js";
 
@@ -259,27 +259,27 @@ export {
 export type { AssemblyTemplate, TemplateAgreement } from "./assembly.js";
 
 // Seller profile document — the identity envelope pinned to
-// SellerRegistry.metadataURI (discovery hands you the URI; this is the
+// MembersRegistry.metadataURI (discovery hands you the URI; this is the
 // natural next call). Types + strict/lenient parsers + the agent-service
 // projection.
 export {
-    parseSellerProfileDocument,
-    tryParseSellerProfileDocument,
+    parseMemberProfileDocument,
+    tryParseMemberProfileDocument,
     projectAgentServices,
-} from "./sellerProfile.js";
+} from "./memberProfile.js";
 export type {
-    SellerProfileMetadata,
+    MemberProfileMetadata,
     AcceptedTokenMetadata,
-    SellerBrandingMetadata,
-    SellerAgentServices,
-    SellerAssetReferences,
+    MemberBrandingMetadata,
+    MemberAgentServices,
+    MemberAssetReferences,
     CounterpartyBinding,
     AssemblyBindingRecord,
     AgentServiceInfo,
-} from "./sellerProfile.js";
+} from "./memberProfile.js";
 
 // Seller catalogue document — the volatile item list pinned to
-// SellerProfileMetadata.catalogueURI. Types + strict parser.
+// MemberProfileMetadata.catalogueURI. Types + strict parser.
 export { parseSellerCatalogueDocument } from "./sellerCatalogue.js";
 export type {
     UnitSystem,

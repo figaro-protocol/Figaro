@@ -167,7 +167,7 @@ import { commit, executeAction } from "@figaro/sdk/agent";
 const ctx = new FigaroContext(client, addresses);
 await ctx.sync();
 
-// Discover what exists (cold start): getAssemblies() / getSellers() / getClauses()
+// Discover what exists (cold start): getAssemblies() / getMembers() / getClauses()
 const assemblies = ctx.getAssemblies();
 
 // FigaroContext wraps the low-level discovery primitives, which are ROOT
@@ -727,16 +727,24 @@ import {
 Signatures and the exact fold rules live in the `dist/checkoutPlan.d.ts`
 docblocks — treat them as the contract; this list is the map, not the territory.
 
-## Seller Profile + Catalogue Documents
+## Member Profile + Catalogue Documents
 
-Two off-chain JSON documents describe a seller. Both are **Layer-A** — their
+Two off-chain JSON documents describe a participant. Both are **Layer-A** — their
 types and strict parsers are exported from the ROOT `@figaro/sdk` (next to
-`RegisteredSeller` / `reconstructDiscovery`), so an integrator reading a seller
-learns the shape from the SDK instead of the frontend bundle. Neither document
-is bundled — each is pinned to IPFS and read at runtime.
+`RegisteredMember` / `reconstructDiscovery`), so an integrator reading a
+participant learns the shape from the SDK instead of the frontend bundle. Neither
+document is bundled — each is pinned to IPFS and read at runtime.
 
-- **Profile** (`SellerProfileMetadata`) — the stable identity envelope pinned at
-  `SellerRegistry.metadataURI`. `name` is the ONLY required field; everything
+The profile is ONE document for every participant — there is no buyer half and no
+seller half. It is already split on stable↔volatile (identity envelope here, the
+volatile item list behind `catalogueURI`); a buyer/seller split would be a second,
+crossing axis, and the fields it would divide (`acceptedTokens`, `catalogueURI`,
+location, branding) serve either side unchanged. Registering is how a wallet
+PUBLISHES, never how it QUALIFIES — transacting through the kernel needs no
+registration at all.
+
+- **Profile** (`MemberProfileMetadata`) — the stable identity envelope pinned at
+  `MembersRegistry.metadataURI`. `name` is the ONLY required field; everything
   else is optional (`description`, `specialty`, `location`, `branding`, `assets`,
   `acceptedTokens`, `defaultTokenAddress`, `profileClauseValues`, `assemblyBindings`,
   `services`, and `catalogueURI` — the pointer to the catalogue). Token
@@ -765,20 +773,20 @@ is bundled — each is pinned to IPFS and read at runtime.
 ```ts
 import {
   reconstructDiscovery,
-  parseSellerProfileDocument,       // throws on malformed input
-  tryParseSellerProfileDocument,    // returns null on malformed input
+  parseMemberProfileDocument,       // throws on malformed input
+  tryParseMemberProfileDocument,    // returns null on malformed input
   parseSellerCatalogueDocument,
   projectAgentServices,             // pull ERC-8004 agent endpoints from a profile
 } from "@figaro/sdk";
-import type { SellerProfileMetadata, SellerCatalogueMetadata } from "@figaro/sdk";
+import type { MemberProfileMetadata, SellerCatalogueMetadata } from "@figaro/sdk";
 
 // 1. Discovery hands you the metadataURI for each registered seller.
 const graph = reconstructDiscovery(events);
-const seller = graph.getSellers()[0]; // → RegisteredSeller { seller, metadataURI }
+const seller = graph.getMembers()[0]; // → RegisteredMember { seller, metadataURI }
 
 // 2. Fetch + parse the profile document (IPFS/HTTP fetch is yours to make).
 const profileJson = await (await fetch(gateway(seller.metadataURI))).json();
-const profile: SellerProfileMetadata = parseSellerProfileDocument(profileJson);
+const profile: MemberProfileMetadata = parseMemberProfileDocument(profileJson);
 const { isAgent, services } = projectAgentServices(profileJson);
 
 // 3. Follow catalogueURI to the item list.
@@ -792,30 +800,47 @@ if (profile.catalogueURI) {
 it through the strict parser, pin it, then anchor the URI on-chain:
 
 ```ts
-import { SELLER_REGISTRY_ABI } from "@figaro/sdk";
+import { MEMBERS_REGISTRY_ABI } from "@figaro/sdk";
 
-const doc: SellerProfileMetadata = { name: "Bob Pizza", catalogueURI: "ipfs://Qm…" };
-parseSellerProfileDocument(doc);                 // throws if malformed — validate before pinning
+const doc: MemberProfileMetadata = { name: "Bob Pizza", catalogueURI: "ipfs://Qm…" };
+parseMemberProfileDocument(doc);                 // throws if malformed — validate before pinning
 const metadataURI = await pinJSON(doc);          // your IPFS pin → "ipfs://…"
 
 // First registration (payable — sends the registration deposit):
-//   SellerRegistry.register(metadataURI)
+//   MembersRegistry.register(metadataURI)
 // Subsequent profile edits (re-pin, then point the registry at the new URI):
-//   SellerRegistry.updateProfile(metadataURI)
+//   MembersRegistry.updateProfile(metadataURI)
 ```
 
-**All three registries take the same reclaimable ETH deposit.** `SellerRegistry`,
+**All three registries take the same reclaimable ETH deposit.** `MembersRegistry`,
 `ClauseRegistry`, and `AssemblyRegistry` each require a `registrationDeposit` on
 the registering call (`register` / `registerClause` / `registerAssembly`, all
 `payable`) — a spam-deterrent stake, not a fee: no party can seize it, and `msg.value`
 must equal it EXACTLY (there is no sweep). The amount is a deploy-time immutable;
 read it from the contract's `registrationDeposit()` view rather than hardcoding a
-figure. The depositor reclaims the exact amount by withdrawing (`withdraw` for a
-seller, `withdrawDeposit(idHash | compositionHash)` for a clause / assembly), which
-de-surfaces the artifact. Withdrawing a seller CLEARS its dedup guard so the wallet
-can register again; a clause's clauseId binding and an assembly's composition binding
-are permanent — never cleared — because agreements committed against them keep
+figure. Clause and assembly deposits come back in one call —
+`withdrawDeposit(idHash | compositionHash)`, which de-surfaces the artifact while
+leaving the binding permanent, because agreements committed against them keep
 resolving forever.
+
+**A member's deposit comes back in TWO calls**, and the split is load-bearing:
+
+```ts
+// 1. Leave the surface. Takes effect immediately: the dedup guard clears, the
+//    member disappears from discovery, and the wallet may register again at once.
+//    MembersRegistry.requestWithdrawal()
+// 2. Take the money, once `withdrawalCooldown` seconds have passed.
+//    MembersRegistry.withdraw()          // reverts CooldownActive(releaseAt) before then
+```
+
+Read the schedule from `withdrawalCooldown()`, `pendingDeposit(member)` and
+`releaseAt(member)`. The cooldown is what makes the deposit a real Sybil price:
+without it one deposit is recycled through identity after identity, so fabricating
+breadth costs no capital at all. De-surfacing and release are deliberately
+different moments — nobody is held on a surface they asked to leave, while the
+capital stays committed. **Anything tracking who is currently surfaced must fold
+`MemberWithdrawalRequested`, not `MemberWithdrawn`**; the latter is the custody
+event and can arrive a whole cooldown later. `reconstructDiscovery` already does.
 
 **Reading an assembly binding.** `AssemblyRegistry.bindings(compositionHash)` returns
 the tuple `(address author, uint64 registeredAt, bool depositWithdrawn, string contentURI)`.
@@ -830,9 +855,10 @@ The catalogue follows the same shape: `parseSellerCatalogueDocument(cat)` →
 `updateProfile`. First-write-wins binding means the wallet→profile edge is
 permanent; `updateProfile` swaps only the pointer.
 
-There is no on-chain getter for a profile — `SellerRegistry` has
-`register`/`updateProfile`/`withdraw` and no view returning a seller's current
-`metadataURI`, by design (state is event-derived; discovery reconstructs it).
+There is no on-chain getter for a profile — `MembersRegistry` exposes
+`register`/`updateProfile`/`requestWithdrawal`/`withdraw` and no view returning a
+member's current `metadataURI`, by design (state is event-derived; discovery
+reconstructs it). `registered(member)` answers only whether the stake is live.
 The event log is the read path: verify an update landed by re-running discovery
 (`reconstructDiscovery(await fetchDiscoveryEvents(client, addresses, 0n))`).
 

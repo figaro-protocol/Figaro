@@ -135,13 +135,13 @@ export interface ClauseWithdrawnEvent {
     logIndex: number;
 }
 
-/** SellerRegistry `SellerRegistered` OR `SellerProfileUpdated` — one shape, the
+/** MembersRegistry `MemberRegistered` OR `MemberProfileUpdated` — one shape, the
  *  `updated` flag distinguishing them. Current metadataURI = most-recent of the
- *  two for an address (SellerRegistry.sol:87-90). */
-export interface SellerRegisteredEvent {
-    seller: Address;
+ *  two for an address. */
+export interface MemberRegisteredEvent {
+    member: Address;
     metadataURI: string;
-    /** false = SellerRegistered; true = SellerProfileUpdated. */
+    /** false = MemberRegistered; true = MemberProfileUpdated. */
     updated: boolean;
     blockNumber: number;
     logIndex: number;
@@ -149,10 +149,12 @@ export interface SellerRegisteredEvent {
     transactionHash: Hex | null;
 }
 
-/** SellerRegistry `SellerWithdrawn`. Withdraw clears the dedup guard and
- *  de-surfaces the seller; a later re-registration re-surfaces it. */
-export interface SellerWithdrawnEvent {
-    seller: Address;
+/** MembersRegistry `MemberWithdrawalRequested` — the DE-SURFACING event, not
+ *  `MemberWithdrawn`. Requesting clears the dedup guard immediately (the deposit
+ *  stays locked for the cooldown), so this is what removes a member from the live
+ *  set; a later re-registration re-surfaces them. */
+export interface MemberWithdrawnEvent {
+    member: Address;
     blockNumber: number;
     logIndex: number;
 }
@@ -179,7 +181,7 @@ export interface AssemblyWithdrawnEvent {
 
 // ── Discovery: live views (deposit-withdrawn artifacts filtered out) ─────────
 //
-// What `getClauses/getSellers/getAssemblies` return: the LIVE-staked set, each
+// What `getClauses/getMembers/getAssemblies` return: the LIVE-staked set, each
 // a pointer (contentURI/metadataURI) the consumer hydrates from IPFS itself —
 // the SDK stays viem-only and never fetches off-chain documents.
 
@@ -193,9 +195,9 @@ export interface RegisteredClause {
     registrar: Address;
 }
 
-export interface RegisteredSeller {
-    seller: Address;
-    /** Current metadataURI — most-recent `SellerRegistered`/`SellerProfileUpdated`. */
+export interface RegisteredMember {
+    member: Address;
+    /** Current metadataURI — most-recent `MemberRegistered`/`MemberProfileUpdated`. */
     metadataURI: string;
 }
 
@@ -235,7 +237,7 @@ export interface FigaroAddresses {
     token?: Address;
     attestationCoordinator?: Address;
     clauseRegistry?: Address;
-    sellerRegistry?: Address;
+    membersRegistry?: Address;
     assemblyRegistry?: Address;
 }
 
@@ -251,7 +253,7 @@ export interface FigaroDeploymentRecord {
     tokenAddress?: Address;
     attestationCoordinator?: Address;
     clauseRegistry?: Address;
-    sellerRegistry?: Address;
+    membersRegistry?: Address;
     assemblyRegistry?: Address;
 }
 
@@ -268,7 +270,7 @@ export function addressesFromDeploymentRecord(record: FigaroDeploymentRecord): F
         ...(record.tokenAddress ? { token: record.tokenAddress } : {}),
         ...(record.attestationCoordinator ? { attestationCoordinator: record.attestationCoordinator } : {}),
         ...(record.clauseRegistry ? { clauseRegistry: record.clauseRegistry } : {}),
-        ...(record.sellerRegistry ? { sellerRegistry: record.sellerRegistry } : {}),
+        ...(record.membersRegistry ? { membersRegistry: record.membersRegistry } : {}),
         ...(record.assemblyRegistry ? { assemblyRegistry: record.assemblyRegistry } : {}),
     };
 }

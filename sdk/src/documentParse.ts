@@ -1,6 +1,6 @@
 /**
  * documentParse.ts — strict validation primitives for the seller-family
- * off-chain document parsers (`sellerProfile.ts`, `sellerCatalogue.ts`).
+ * off-chain document parsers (`memberProfile.ts`, `sellerCatalogue.ts`).
  *
  * These are the SDK-local copies of the `as*` primitives (the frontend
  * keeps its own `frontend/lib/seller/parseHelpers.ts` for its non-seller

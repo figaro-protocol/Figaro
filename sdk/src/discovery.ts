@@ -4,7 +4,7 @@
  * The cold-start half of an agent's state. Where `state.ts`/`Topology`
  * reconstructs the processes an agent is ALREADY in, this module reconstructs
  * what EXISTS on the network — the three artifact families a fresh-key agent
- * has never seen: clauses, sellers, assemblies.
+ * has never seen: clauses, members, assemblies.
  *
  * It is a PARALLEL family, deliberately not folded into `Topology`: the
  * registries have no on-chain edges among themselves or to FigaroCore
@@ -16,8 +16,9 @@
  * an artifact whose deposit has been withdrawn is de-surfaced. The three
  * families withdraw differently, and the reducer honours each:
  *   - clauses/assemblies — binding permanent, withdraw terminal ⇒ set-difference.
- *   - sellers — withdraw clears the guard and allows re-registration ⇒ the live
- *     state is order-dependent; the most-recent lifecycle event per address wins.
+ *   - members — requesting withdrawal clears the guard and allows re-registration
+ *     ⇒ the live state is order-dependent; the most-recent lifecycle event per
+ *     address wins. De-surfacing is the REQUEST, not the later ETH release.
  *
  * Every returned artifact is a POINTER (contentURI/metadataURI). Hydrating the
  * pinned document from IPFS is the consumer's job — the SDK is viem-only.
@@ -26,7 +27,7 @@
 import { type PublicClient, type Log, decodeEventLog, keccak256, encodeAbiParameters } from "viem";
 import {
     CLAUSE_REGISTRY_ABI,
-    SELLER_REGISTRY_ABI,
+    MEMBERS_REGISTRY_ABI,
     ASSEMBLY_REGISTRY_ABI,
 } from "./abis.js";
 import type {
@@ -35,12 +36,12 @@ import type {
     FigaroAddresses,
     ClauseRegisteredEvent,
     ClauseWithdrawnEvent,
-    SellerRegisteredEvent,
-    SellerWithdrawnEvent,
+    MemberRegisteredEvent,
+    MemberWithdrawnEvent,
     AssemblyRegisteredEvent,
     AssemblyWithdrawnEvent,
     RegisteredClause,
-    RegisteredSeller,
+    RegisteredMember,
     RegisteredAssembly,
 } from "./types.js";
 
@@ -102,30 +103,34 @@ export function parseClauseRegistryLogs(logs: Log[]): ClauseRegistryEvents {
     return { registered, withdrawn };
 }
 
-export interface SellerRegistryEvents {
-    registered: SellerRegisteredEvent[];
-    withdrawn: SellerWithdrawnEvent[];
+export interface MembersRegistryEvents {
+    registered: MemberRegisteredEvent[];
+    withdrawn: MemberWithdrawnEvent[];
 }
 
-export function parseSellerRegistryLogs(logs: Log[]): SellerRegistryEvents {
-    const registered: SellerRegisteredEvent[] = [];
-    const withdrawn: SellerWithdrawnEvent[] = [];
+export function parseMembersRegistryLogs(logs: Log[]): MembersRegistryEvents {
+    const registered: MemberRegisteredEvent[] = [];
+    const withdrawn: MemberWithdrawnEvent[] = [];
     for (const log of logs) {
         try {
-            const decoded = decodeEventLog({ abi: SELLER_REGISTRY_ABI, data: log.data, topics: log.topics });
+            const decoded = decodeEventLog({ abi: MEMBERS_REGISTRY_ABI, data: log.data, topics: log.topics });
             const a = decoded.args as Record<string, unknown>;
-            if (decoded.eventName === "SellerRegistered" || decoded.eventName === "SellerProfileUpdated") {
+            if (decoded.eventName === "MemberRegistered" || decoded.eventName === "MemberProfileUpdated") {
                 registered.push({
-                    seller: a.seller as Address,
+                    member: a.member as Address,
                     metadataURI: a.metadataURI as string,
-                    updated: decoded.eventName === "SellerProfileUpdated",
+                    updated: decoded.eventName === "MemberProfileUpdated",
                     blockNumber: Number(log.blockNumber ?? 0),
                     logIndex: Number(log.logIndex ?? 0),
                     transactionHash: (log.transactionHash ?? null) as Hex | null,
                 });
-            } else if (decoded.eventName === "SellerWithdrawn") {
+            } else if (decoded.eventName === "MemberWithdrawalRequested") {
+                // De-surfacing is at REQUEST, not at claim: the member leaves the
+                // surface the moment they ask to, while the deposit stays locked
+                // for the cooldown. Folding `MemberWithdrawn` instead would keep
+                // a departed member visible for the whole cooldown.
                 withdrawn.push({
-                    seller: a.seller as Address,
+                    member: a.member as Address,
                     blockNumber: Number(log.blockNumber ?? 0),
                     logIndex: Number(log.logIndex ?? 0),
                 });
@@ -178,8 +183,8 @@ export function parseAssemblyRegistryLogs(logs: Log[]): AssemblyRegistryEvents {
 export interface DiscoveryEvents {
     clauseRegistered: ClauseRegisteredEvent[];
     clauseWithdrawn: ClauseWithdrawnEvent[];
-    sellerRegistered: SellerRegisteredEvent[];
-    sellerWithdrawn: SellerWithdrawnEvent[];
+    memberRegistered: MemberRegisteredEvent[];
+    memberWithdrawn: MemberWithdrawnEvent[];
     assemblyRegistered: AssemblyRegisteredEvent[];
     assemblyWithdrawn: AssemblyWithdrawnEvent[];
 }
@@ -187,8 +192,8 @@ export interface DiscoveryEvents {
 const EMPTY_DISCOVERY: DiscoveryEvents = {
     clauseRegistered: [],
     clauseWithdrawn: [],
-    sellerRegistered: [],
-    sellerWithdrawn: [],
+    memberRegistered: [],
+    memberWithdrawn: [],
     assemblyRegistered: [],
     assemblyWithdrawn: [],
 };
@@ -208,9 +213,9 @@ export async function fetchDiscoveryEvents(
         addresses.clauseRegistry
             ? client.getLogs({ address: addresses.clauseRegistry, fromBlock, toBlock }).then(parseClauseRegistryLogs)
             : Promise.resolve({ registered: [], withdrawn: [] } as ClauseRegistryEvents),
-        addresses.sellerRegistry
-            ? client.getLogs({ address: addresses.sellerRegistry, fromBlock, toBlock }).then(parseSellerRegistryLogs)
-            : Promise.resolve({ registered: [], withdrawn: [] } as SellerRegistryEvents),
+        addresses.membersRegistry
+            ? client.getLogs({ address: addresses.membersRegistry, fromBlock, toBlock }).then(parseMembersRegistryLogs)
+            : Promise.resolve({ registered: [], withdrawn: [] } as MembersRegistryEvents),
         addresses.assemblyRegistry
             ? client.getLogs({ address: addresses.assemblyRegistry, fromBlock, toBlock }).then(parseAssemblyRegistryLogs)
             : Promise.resolve({ registered: [], withdrawn: [] } as AssemblyRegistryEvents),
@@ -219,8 +224,8 @@ export async function fetchDiscoveryEvents(
     return {
         clauseRegistered: clause.registered,
         clauseWithdrawn: clause.withdrawn,
-        sellerRegistered: seller.registered,
-        sellerWithdrawn: seller.withdrawn,
+        memberRegistered: seller.registered,
+        memberWithdrawn: seller.withdrawn,
         assemblyRegistered: assembly.registered,
         assemblyWithdrawn: assembly.withdrawn,
     };
@@ -231,7 +236,7 @@ export async function fetchDiscoveryEvents(
 /**
  * Reconstruct the live discovery view from a batch of registry events.
  *
- * A seller's current `metadataURI` is EVENT-DERIVED — `SellerRegistry` exposes
+ * A seller's current `metadataURI` is EVENT-DERIVED — `MembersRegistry` exposes
  * `register`/`updateProfile`/`withdraw` and NO view returning a seller's current
  * profile URI. There is no on-chain getter for a profile; the event log is the
  * read path — verify an `updateProfile` landed by re-running discovery (re-fetch
@@ -255,9 +260,9 @@ interface AssemblyEntry {
     withdrawn: boolean;
 }
 
-/** A seller's most-recent lifecycle event, folded in chronological order. */
-interface SellerEntry {
-    seller: Address;
+/** A member's most-recent lifecycle event, folded in chronological order. */
+interface MemberEntry {
+    member: Address;
     metadataURI: string;
     live: boolean;
     /** (block, logIndex) of the event that set this state — for latest-wins folding. */
@@ -271,13 +276,13 @@ interface SellerEntry {
 export class DiscoveryGraph {
     private readonly clauses = new Map<Hex, ClauseEntry>(); // key: idHash
     private readonly assemblies = new Map<Hex, AssemblyEntry>(); // key: compositionHash
-    private readonly sellers = new Map<string, SellerEntry>(); // key: lowercased address
+    private readonly members = new Map<string, MemberEntry>(); // key: lowercased address
 
     /** Apply a batch of registry events (e.g. from fetchDiscoveryEvents). */
     applyEvents(events: DiscoveryEvents): void {
         this.applyClauseEvents(events.clauseRegistered, events.clauseWithdrawn);
         this.applyAssemblyEvents(events.assemblyRegistered, events.assemblyWithdrawn);
-        this.applySellerEvents(events.sellerRegistered, events.sellerWithdrawn);
+        this.applyMemberEvents(events.memberRegistered, events.memberWithdrawn);
     }
 
     // ── Live views (deposit-withdrawn artifacts filtered out) ────────────────
@@ -292,11 +297,11 @@ export class DiscoveryGraph {
         return [...this.assemblies.values()].filter((e) => !e.withdrawn).map((e) => e.assembly);
     }
 
-    /** All live-staked sellers. */
-    getSellers(): RegisteredSeller[] {
-        return [...this.sellers.values()]
+    /** All live-staked members. */
+    getMembers(): RegisteredMember[] {
+        return [...this.members.values()]
             .filter((e) => e.live)
-            .map((e) => ({ seller: e.seller, metadataURI: e.metadataURI }));
+            .map((e) => ({ member: e.member, metadataURI: e.metadataURI }));
     }
 
     /** A single clause by its on-chain key; undefined if unknown or de-surfaced. */
@@ -311,10 +316,10 @@ export class DiscoveryGraph {
         return e && !e.withdrawn ? e.assembly : undefined;
     }
 
-    /** A single seller by address; undefined if unknown or de-surfaced. */
-    getSeller(seller: Address): RegisteredSeller | undefined {
-        const e = this.sellers.get(seller.toLowerCase());
-        return e && e.live ? { seller: e.seller, metadataURI: e.metadataURI } : undefined;
+    /** A single member by address; undefined if unknown or de-surfaced. */
+    getMember(member: Address): RegisteredMember | undefined {
+        const e = this.members.get(member.toLowerCase());
+        return e && e.live ? { member: e.member, metadataURI: e.metadataURI } : undefined;
     }
 
     // ── Internal event handlers ──────────────────────────────────────────────
@@ -364,20 +369,23 @@ export class DiscoveryGraph {
         }
     }
 
-    private applySellerEvents(registered: SellerRegisteredEvent[], withdrawn: SellerWithdrawnEvent[]): void {
-        // Sellers cycle: register → update → withdraw → re-register. Liveness is
-        // whichever lifecycle event is most recent, so fold the two streams
-        // together in (block, logIndex) order and let the latest event win.
-        type LC = { seller: Address; at: readonly [number, number]; live: boolean; metadataURI?: string };
+    private applyMemberEvents(registered: MemberRegisteredEvent[], withdrawn: MemberWithdrawnEvent[]): void {
+        // Members cycle: register → update → request withdrawal → re-register.
+        // Liveness is whichever lifecycle event is most recent, so fold the two
+        // streams together in (block, logIndex) order and let the latest win.
+        // Note the second stream is `MemberWithdrawalRequested`, not
+        // `MemberWithdrawn` — de-surfacing happens when the member asks to leave,
+        // not when the cooldown finally releases their deposit.
+        type LC = { member: Address; at: readonly [number, number]; live: boolean; metadataURI?: string };
         const timeline: LC[] = [
             ...registered.map((e) => ({
-                seller: e.seller,
+                member: e.member,
                 at: [e.blockNumber, e.logIndex] as const,
                 live: true,
                 metadataURI: e.metadataURI,
             })),
             ...withdrawn.map((e) => ({
-                seller: e.seller,
+                member: e.member,
                 at: [e.blockNumber, e.logIndex] as const,
                 live: false,
             })),
@@ -385,17 +393,18 @@ export class DiscoveryGraph {
         timeline.sort((a, b) => (a.at[0] - b.at[0]) || (a.at[1] - b.at[1]));
 
         for (const e of timeline) {
-            const key = e.seller.toLowerCase();
-            const existing = this.sellers.get(key);
+            const key = e.member.toLowerCase();
+            const existing = this.members.get(key);
             // Only advance state if this event is at-or-after the last one applied —
             // makes re-applying an overlapping batch idempotent.
             if (existing && !isAtOrAfter(e.at, existing.at)) continue;
             if (e.live) {
-                this.sellers.set(key, { seller: e.seller, metadataURI: e.metadataURI ?? "", live: true, at: e.at });
+                this.members.set(key, { member: e.member, metadataURI: e.metadataURI ?? "", live: true, at: e.at });
             } else {
-                // Withdraw de-surfaces; keep the last metadataURI for reference but mark dead.
-                this.sellers.set(key, {
-                    seller: e.seller,
+                // Requesting withdrawal de-surfaces; keep the last metadataURI for
+                // reference but mark dead.
+                this.members.set(key, {
+                    member: e.member,
                     metadataURI: existing?.metadataURI ?? "",
                     live: false,
                     at: e.at,

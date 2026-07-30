@@ -20,7 +20,7 @@ import { geohashCentroidDistanceKm } from "./derive/geo.js";
 import { specDeclaresField, specCatalogueFills, specProfileFills, type SpecSource } from "./projection.js";
 import { templateParentOrderHashes, type AssemblyTemplate, type TemplateAgreement } from "./assembly.js";
 import { topologicalOrder } from "./topology.js";
-import type { CounterpartyBinding } from "./sellerProfile.js";
+import type { CounterpartyBinding } from "./memberProfile.js";
 import type { CatalogueItemMetadata } from "./sellerCatalogue.js";
 
 /** An order's clause fields — the same map the agreement commits. */

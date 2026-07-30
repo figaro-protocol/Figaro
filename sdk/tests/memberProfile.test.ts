@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
-    parseSellerProfileDocument,
+    parseMemberProfileDocument,
     projectAgentServices,
-    tryParseSellerProfileDocument,
-} from "../src/sellerProfile.js";
+    tryParseMemberProfileDocument,
+} from "../src/memberProfile.js";
 
 describe("seller profile metadata parser", () => {
     const VALID_DOC = {
@@ -37,9 +37,9 @@ describe("seller profile metadata parser", () => {
         version: "1.0.0",
     };
 
-    describe("parseSellerProfileDocument (strict)", () => {
+    describe("parseMemberProfileDocument (strict)", () => {
         it("parses a fully-populated profile", () => {
-            const result = parseSellerProfileDocument(VALID_DOC);
+            const result = parseMemberProfileDocument(VALID_DOC);
 
             expect(result.name).toBe("Bob Pizza");
             expect(result.description).toBe("Authentic NY-style");
@@ -49,7 +49,7 @@ describe("seller profile metadata parser", () => {
         });
 
         it("parses a minimal profile with only name", () => {
-            const result = parseSellerProfileDocument({ name: "Minimal Seller" });
+            const result = parseMemberProfileDocument({ name: "Minimal Seller" });
 
             expect(result.name).toBe("Minimal Seller");
             expect(result.description).toBeUndefined();
@@ -58,31 +58,31 @@ describe("seller profile metadata parser", () => {
         });
 
         it("throws when name is missing", () => {
-            expect(() => parseSellerProfileDocument({}))
+            expect(() => parseMemberProfileDocument({}))
                 .toThrow(/name must be a string/);
         });
 
         it("throws when name is not a string", () => {
-            expect(() => parseSellerProfileDocument({ name: 42 }))
+            expect(() => parseMemberProfileDocument({ name: 42 }))
                 .toThrow(/name must be a string/);
         });
 
         it("throws when acceptedTokens carries a malformed address", () => {
-            expect(() => parseSellerProfileDocument({
+            expect(() => parseMemberProfileDocument({
                 name: "Bob",
                 acceptedTokens: [{ address: "not-an-address", symbol: "BAD" }],
             })).toThrow(/acceptedTokens\[0\]\.address must be a 20-byte hex address/);
         });
 
         it("throws when services is not an object", () => {
-            expect(() => parseSellerProfileDocument({
+            expect(() => parseMemberProfileDocument({
                 name: "Bob",
                 services: "not-an-object",
             })).toThrow(/services must be an object/);
         });
 
         it("parses services with only some fields", () => {
-            const result = parseSellerProfileDocument({
+            const result = parseMemberProfileDocument({
                 name: "Bob",
                 services: { mcp: "https://example.com/mcp" },
             });
@@ -92,31 +92,31 @@ describe("seller profile metadata parser", () => {
         });
 
         it("round-trips a parsed document back into the parser", () => {
-            const first = parseSellerProfileDocument(VALID_DOC);
-            const second = parseSellerProfileDocument(first);
+            const first = parseMemberProfileDocument(VALID_DOC);
+            const second = parseMemberProfileDocument(first);
 
             expect(second).toEqual(first);
         });
     });
 
-    describe("tryParseSellerProfileDocument (lenient)", () => {
+    describe("tryParseMemberProfileDocument (lenient)", () => {
         it("returns null on a missing name", () => {
-            expect(tryParseSellerProfileDocument({})).toBeNull();
+            expect(tryParseMemberProfileDocument({})).toBeNull();
         });
 
         it("returns null on non-object input", () => {
-            expect(tryParseSellerProfileDocument(null)).toBeNull();
-            expect(tryParseSellerProfileDocument("string")).toBeNull();
-            expect(tryParseSellerProfileDocument([])).toBeNull();
+            expect(tryParseMemberProfileDocument(null)).toBeNull();
+            expect(tryParseMemberProfileDocument("string")).toBeNull();
+            expect(tryParseMemberProfileDocument([])).toBeNull();
         });
 
         it("returns the parsed shape on a valid document", () => {
-            const result = tryParseSellerProfileDocument(VALID_DOC);
+            const result = tryParseMemberProfileDocument(VALID_DOC);
             expect(result?.name).toBe("Bob Pizza");
         });
 
         it("returns null when acceptedTokens is malformed (does not throw)", () => {
-            expect(tryParseSellerProfileDocument({
+            expect(tryParseMemberProfileDocument({
                 name: "Bob",
                 acceptedTokens: [{ address: "malformed", symbol: "BAD" }],
             })).toBeNull();

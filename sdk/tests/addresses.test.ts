@@ -15,7 +15,7 @@ const RECORD = {
     tokenAddress: "0x2C2a169Fb5aD5364205FE77DbbcFA24744c200b2",
     attestationCoordinator: "0xc66312DDc3CFe8e224C1904d05170226D650F159",
     clauseRegistry: "0x33599bF469bE8cB082919a22b6efFC46bD00F0Ba",
-    sellerRegistry: "0x6FbDc4b41Bc30713F08A4c82350e203934E97D3e",
+    membersRegistry: "0x6FbDc4b41Bc30713F08A4c82350e203934E97D3e",
     assemblyRegistry: "0x5dd25cb04a82590B4f5221eD489399DA02b37Eb2",
     permit2: "0x09D3bbF6fF8DC6567a9eCD92F6f38AB88be8070d",
     florinToken: "0xE62860dC192eB92f0b270aA8E46E17731c0Ad56e",
@@ -29,7 +29,7 @@ describe("addressesFromDeploymentRecord", () => {
             token: RECORD.tokenAddress,
             attestationCoordinator: RECORD.attestationCoordinator,
             clauseRegistry: RECORD.clauseRegistry,
-            sellerRegistry: RECORD.sellerRegistry,
+            membersRegistry: RECORD.membersRegistry,
             assemblyRegistry: RECORD.assemblyRegistry,
         });
         // Extra record keys (permit2, florinToken, chainId, …) never leak.

@@ -1,8 +1,8 @@
 /**
- * sellerProfile.ts — the seller PROFILE document (Layer-A).
+ * memberProfile.ts — the seller PROFILE document (Layer-A).
  *
  * The profile is the stable identity envelope a seller pins to IPFS and
- * points `SellerRegistry.metadataURI` at: name, branding, location,
+ * points `MembersRegistry.metadataURI` at: name, branding, location,
  * accepted-token list, default pricing token, assembly bindings, agent
  * endpoints, and the URI of the volatile catalogue document. Item lists
  * live in the catalogue (`sellerCatalogue.ts`) so item edits re-pin one
@@ -21,9 +21,9 @@
  * event-derived via the indexer.
  *
  * This module owns the document TYPES and the strict + lenient PARSERS.
- * After `reconstructDiscovery` hands you a `RegisteredSeller.metadataURI`,
- * fetch that JSON and call `parseSellerProfileDocument` (throwing) or
- * `tryParseSellerProfileDocument` (null on failure) to read it.
+ * After `reconstructDiscovery` hands you a `RegisteredMember.metadataURI`,
+ * fetch that JSON and call `parseMemberProfileDocument` (throwing) or
+ * `tryParseMemberProfileDocument` (null on failure) to read it.
  */
 
 import {
@@ -57,14 +57,14 @@ export interface AcceptedTokenMetadata {
  * The seller's branding (identity / presentation). A distinct concern from the
  * catalogue (the seller's items) and the rest of the profile.
  */
-export interface SellerBrandingMetadata {
+export interface MemberBrandingMetadata {
     logoURI?: string;
 }
 
 // ── Profile sub-types ─────────────────────────────────────────────────────────
 
 /** Service endpoints an autonomous agent declares (ERC-8004 interop). */
-export interface SellerAgentServices {
+export interface MemberAgentServices {
     mcp?: string;
     a2a?: string;
     rest?: string;
@@ -73,12 +73,12 @@ export interface SellerAgentServices {
 }
 
 /** Asset URIs associated with the seller's branding. */
-export interface SellerAssetReferences {
+export interface MemberAssetReferences {
     imageBaseURI?: string;
 }
 
 /** Geographic anchor for the seller. */
-interface SellerLocation {
+interface MemberLocation {
     geohash: string;
     addressText?: string;
 }
@@ -122,7 +122,7 @@ export interface AssemblyBindingRecord {
  * are address-shaped (`/s/<address>`) — the wallet is the seller's
  * canonical identifier, not a human-readable handle.
  */
-export interface SellerProfileMetadata {
+export interface MemberProfileMetadata {
     /**
      * Wallet address that owns this profile. Optional in the on-chain-pinned
      * shape (the kernel binds wallet → metadataURI; the profile does not
@@ -138,11 +138,11 @@ export interface SellerProfileMetadata {
     /** Free-form self-description ("Italian café", "immigration law", "bicycle repair"). Not a closed taxonomy. */
     specialty?: string;
     /** Geographic anchor — geohash plus optional human-readable address. */
-    location?: SellerLocation;
+    location?: MemberLocation;
     /** Branding (logo, hero, accent, theme class). Pinned on the profile so buyer frontends can skin against the seller's identity. */
-    branding?: SellerBrandingMetadata;
+    branding?: MemberBrandingMetadata;
     /** External asset references (CSS, image base URI). Pinned on the profile. */
-    assets?: SellerAssetReferences;
+    assets?: MemberAssetReferences;
     /**
      * The set of ERC-20s the seller accepts for settlement. Token
      * acceptance is an identity declaration: each token signals which
@@ -180,7 +180,7 @@ export interface SellerProfileMetadata {
      */
     assemblyBindings?: AssemblyBindingRecord[];
     /** ERC-8004 agent service endpoints (mcp, a2a, rest, did, ens). */
-    services?: SellerAgentServices;
+    services?: MemberAgentServices;
     /** IPFS URI of the wallet's catalogue document. */
     catalogueURI?: string;
 }
@@ -263,7 +263,7 @@ function parseAcceptedTokens(value: unknown, path: string): AcceptedTokenMetadat
     });
 }
 
-function parseLocation(value: unknown, path: string): SellerLocation | undefined {
+function parseLocation(value: unknown, path: string): MemberLocation | undefined {
     if (value === undefined) return undefined;
     // Tolerate legacy free-form string by wrapping into a stub geohash entry.
     if (typeof value === "string") {
@@ -276,7 +276,7 @@ function parseLocation(value: unknown, path: string): SellerLocation | undefined
     };
 }
 
-function parseAgentServicesField(value: unknown, path: string): SellerAgentServices | undefined {
+function parseAgentServicesField(value: unknown, path: string): MemberAgentServices | undefined {
     if (value === undefined) return undefined;
     const record = asRecord(value, path);
     return {
@@ -288,7 +288,7 @@ function parseAgentServicesField(value: unknown, path: string): SellerAgentServi
     };
 }
 
-function parseBrandingField(value: unknown, path: string): SellerBrandingMetadata | undefined {
+function parseBrandingField(value: unknown, path: string): MemberBrandingMetadata | undefined {
     if (value === undefined) return undefined;
     const record = asRecord(value, path);
     return {
@@ -296,7 +296,7 @@ function parseBrandingField(value: unknown, path: string): SellerBrandingMetadat
     };
 }
 
-function parseAssetsField(value: unknown, path: string): SellerAssetReferences | undefined {
+function parseAssetsField(value: unknown, path: string): MemberAssetReferences | undefined {
     if (value === undefined) return undefined;
     const record = asRecord(value, path);
     return {
@@ -321,10 +321,10 @@ function parseAssemblyBindings(value: unknown, path: string): AssemblyBindingRec
  * document should surface as an explicit error (e.g. round-trip
  * validation before pinning a profile).
  */
-export function parseSellerProfileDocument(
+export function parseMemberProfileDocument(
     value: unknown,
     sourceLabel = "seller profile metadata",
-): SellerProfileMetadata {
+): MemberProfileMetadata {
     const record = asRecord(value, sourceLabel);
 
     return {
@@ -351,12 +351,12 @@ export function parseSellerProfileDocument(
  * paths where a malformed seller should be silently dropped from the
  * surface (e.g. building a seller-catalogue list).
  */
-export function tryParseSellerProfileDocument(
+export function tryParseMemberProfileDocument(
     value: unknown,
     sourceLabel?: string,
-): SellerProfileMetadata | null {
+): MemberProfileMetadata | null {
     try {
-        return parseSellerProfileDocument(value, sourceLabel);
+        return parseMemberProfileDocument(value, sourceLabel);
     } catch {
         return null;
     }
@@ -365,7 +365,7 @@ export function tryParseSellerProfileDocument(
 // ── Convenience projections (used by call-sites that need a subset) ───────────
 
 export interface AgentServiceInfo {
-    services: SellerAgentServices;
+    services: MemberAgentServices;
     capabilities: string[];
     isAgent: boolean;
 }
@@ -389,7 +389,7 @@ export function projectAgentServices(value: unknown): AgentServiceInfo {
     }
 
     const s = rawServices as UnknownRecord;
-    const services: SellerAgentServices = {
+    const services: MemberAgentServices = {
         mcp: typeof s.mcp === "string" ? s.mcp : undefined,
         a2a: typeof s.a2a === "string" ? s.a2a : undefined,
         rest: typeof s.rest === "string" ? s.rest : undefined,

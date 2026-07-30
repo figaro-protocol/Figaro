@@ -193,19 +193,31 @@ export const ERC20_ABI = parseAbi([
     "function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external",
 ]);
 
-// ── SellerRegistry ABI ────────────────────────────────────────────────────
+// ── MembersRegistry ABI ────────────────────────────────────────────────────
 
-export const SELLER_REGISTRY_ABI = parseAbi([
+// Withdrawal is TWO calls: `requestWithdrawal` de-surfaces immediately and starts
+// the cooldown; `withdraw` releases the ETH once `releaseAt` has passed. Readers
+// that care about who is CURRENTLY surfaced fold `MemberWithdrawalRequested` —
+// `MemberWithdrawn` is only the custody event and can arrive much later.
+export const MEMBERS_REGISTRY_ABI = parseAbi([
     "function register(string metadataURI) external payable",
     "function updateProfile(string metadataURI) external",
+    "function requestWithdrawal() external",
     "function withdraw() external",
+    "function registered(address member) view returns (bool)",
     "function registrationDeposit() view returns (uint256)",
-    "event SellerRegistered(address indexed seller, string metadataURI)",
-    "event SellerProfileUpdated(address indexed seller, string metadataURI)",
-    "event SellerWithdrawn(address indexed seller, uint256 deposit)",
+    "function withdrawalCooldown() view returns (uint256)",
+    "function pendingDeposit(address member) view returns (uint256)",
+    "function releaseAt(address member) view returns (uint256)",
+    "event MemberRegistered(address indexed member, string metadataURI)",
+    "event MemberProfileUpdated(address indexed member, string metadataURI)",
+    "event MemberWithdrawalRequested(address indexed member, uint256 amount, uint256 releaseAt)",
+    "event MemberWithdrawn(address indexed member, uint256 amount)",
     "error AlreadyRegistered()",
     "error NotRegistered()",
     "error InsufficientDeposit()",
+    "error NothingPending()",
+    "error CooldownActive(uint256 releaseAt)",
     "error TransferFailed()",
 ]);
 
