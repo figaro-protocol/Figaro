@@ -7,7 +7,7 @@ set -e
 #   .deployments/local.json         (downstream/manual consumption)
 #
 # Stack: FigaroCore, AttestationCoordinator, ClauseRegistry, AssemblyRegistry,
-#        SellerRegistry, WitnessSwapAndCommitCoordinator (+ MockWitnessPermit2,
+#        MembersRegistry, WitnessSwapAndCommitCoordinator (+ MockWitnessPermit2,
 #        MockUniversalRouter), FlorinToken, MockERC20, MockPermitToken.
 #
 # Usage:
@@ -76,7 +76,7 @@ SWAP_COORD_ADDR=$(echo "$FORGE_OUT"  | grep 'WitnessSwapAndCommitCoordinator dep
 PERMIT2_ADDR=$(echo "$FORGE_OUT"     | grep 'MockWitnessPermit2 deployed at:'      | grep -oE '0x[0-9a-fA-F]+')
 SWAP_ROUTER_ADDR=$(echo "$FORGE_OUT" | grep 'MockUniversalRouter deployed at:'     | grep -oE '0x[0-9a-fA-F]+')
 CLAUSE_ADDR=$(echo "$FORGE_OUT"      | grep 'ClauseRegistry deployed at:'         | grep -oE '0x[0-9a-fA-F]+')
-SELLER_ADDR=$(echo "$FORGE_OUT"    | grep 'SellerRegistry deployed at:'       | grep -oE '0x[0-9a-fA-F]+')
+SELLER_ADDR=$(echo "$FORGE_OUT"    | grep 'MembersRegistry deployed at:'      | grep -oE '0x[0-9a-fA-F]+')
 ASSEMBLY_ADDR=$(echo "$FORGE_OUT"    | grep 'AssemblyRegistry deployed at:'       | grep -oE '0x[0-9a-fA-F]+')
 FLORIN_TOKEN_ADDR=$(echo "$FORGE_OUT"   | grep 'FlorinToken deployed at:'               | grep -oE '0x[0-9a-fA-F]+')
 RPGF_MINTER_ADDR=$(echo "$FORGE_OUT" | grep 'RpgfMinter deployed at:'             | grep -oE '0x[0-9a-fA-F]+')

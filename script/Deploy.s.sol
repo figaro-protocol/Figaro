@@ -7,7 +7,7 @@ import "forge-std/console.sol";
 import "../src/kernel/FigaroCore.sol";
 import "../src/protocol/coordinators/AttestationCoordinator.sol";
 import "../src/protocol/registries/ClauseRegistry.sol";
-import "../src/protocol/registries/SellerRegistry.sol";
+import "../src/protocol/registries/MembersRegistry.sol";
 import "../src/florin/FlorinToken.sol";
 import "../src/mocks/MockPermitToken.sol";
 import "../src/mocks/MockERC20.sol";
@@ -26,7 +26,7 @@ import "../src/protocol/registries/AssemblyRegistry.sol";
 
 /// @title Deploy — Full protocol stack to local Anvil
 /// @notice Deploys: FigaroCore, AttestationCoordinator, ClauseRegistry,
-///         AssemblyRegistry, SellerRegistry, WitnessSwapAndCommitCoordinator
+///         AssemblyRegistry, MembersRegistry, WitnessSwapAndCommitCoordinator
 ///         (+ MockWitnessPermit2 / MockUniversalRouter as its devnet Permit2 and
 ///         swap venue), FlorinToken, MockERC20, MockPermitToken.
 ///         Clauses are populated post-deploy (populate-clauses.mjs). Mints test
@@ -105,7 +105,7 @@ contract Deploy is Script {
 
         // ── AssemblyRegistry ────────────────────────────────────────
         // Permissionless first-write-wins anchor for designer-built
-        // assemblies. Parallel to ClauseRegistry and SellerRegistry —
+        // assemblies. Parallel to ClauseRegistry and MembersRegistry —
         // each artifact family has its own registry per the
         // separation-of-concerns doctrine. The registry takes no on-chain
         // claims about agreement content (agreements live off-chain on
@@ -113,7 +113,7 @@ contract Deploy is Script {
         // at attestation time.
         //
         // Spam protection via reclaimable deposit — same pattern
-        // SellerRegistry uses but adapted: withdraw returns the ETH and
+        // MembersRegistry uses but adapted: withdraw returns the ETH and
         // de-surfaces the assembly, but the composition binding stays
         // permanently because buyers and sellers rely on content stability.
         // No time lock (K4): pollution costs deposit × time-surfaced.
@@ -124,15 +124,18 @@ contract Deploy is Script {
         AssemblyRegistry assemblies = new AssemblyRegistry(0.001 ether);
         console.log("AssemblyRegistry deployed at:", address(assemblies));
 
-        // ── SellerRegistry ────────────────────────────────────────
+        // ── MembersRegistry ────────────────────────────────────────
         // Deposit chosen for devnet ergonomics: 0.001 ETH so test wallets
-        // can register without faucet drama. No time lock (K4): withdraw
-        // de-surfaces the seller, so recycling a deposit across identities
-        // costs surfacing time, not calendar time.
-        // Mainnet picks its own value via DeployMainnet.s.sol — record
-        // the reasoning there.
-        SellerRegistry sellers = new SellerRegistry(0.001 ether);
-        console.log("SellerRegistry deployed at:", address(sellers));
+        // can register without faucet drama.
+        // COOLDOWN 0 ON DEVNET, deliberately: a requested withdrawal is
+        // claimable in the same block, so e2e runs that register → leave →
+        // re-register do not have to warp a chain they share with the
+        // frontend. The cooldown's BEHAVIOUR is covered in Foundry against a
+        // non-zero parameter (MembersRegistryTest), not here.
+        // Mainnet picks both values via DeployMainnet.s.sol — record the
+        // reasoning there.
+        MembersRegistry members = new MembersRegistry(0.001 ether, 0);
+        console.log("MembersRegistry deployed at:", address(members));
 
         // ── Multisender (composition target; mock on devnet) ────────
         // Batch dispersal — one payment, many recipients, one transaction;
@@ -167,7 +170,7 @@ contract Deploy is Script {
         // the 600M distribution registers here, before any other genesis step.
         // Nothing is posted, bonded, or challenged: UsageCounter records verified
         // usage as it happens and the minter pays pro rata from a closed period.
-        _deployRpgf(florin, core, clauses, assemblies, sellers);
+        _deployRpgf(florin, core, clauses, assemblies, members);
 
         _deployTreasuryGenesis(florin, vm.addr(deployerPrivateKey));
 
@@ -219,7 +222,7 @@ contract Deploy is Script {
         console.log("  NEXT_PUBLIC_PERMIT2=", address(permit2));
         console.log("  NEXT_PUBLIC_SWAP_ROUTER=", address(router));
         console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=", address(clauses));
-        console.log("  NEXT_PUBLIC_SELLER_REGISTRY=", address(sellers));
+        console.log("  NEXT_PUBLIC_MEMBERS_REGISTRY=", address(members));
         console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=", address(assemblies));
         console.log("  NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=", address(florin));
         console.log("  NEXT_PUBLIC_BATCH_VERIFIER=", _batchVerifier);
@@ -278,7 +281,7 @@ contract Deploy is Script {
         FigaroCore core,
         ClauseRegistry clauses,
         AssemblyRegistry assemblies,
-        SellerRegistry sellers
+        MembersRegistry members
     )
         internal
     {
@@ -318,7 +321,7 @@ contract Deploy is Script {
 
         UsageCounter counter = new UsageCounter(
             address(core),
-            address(sellers), // seller-side live-stake gate: usage counts only for live-staked sellers
+            address(members), // seller-side live-stake gate: usage counts only for live-staked sellers
             keccak256(abi.encode("figaro-assembly-provenance", uint64(1))), // proves the assembly leg
             excluded,
             periods

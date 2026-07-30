@@ -7,7 +7,7 @@ import "forge-std/console.sol";
 import "../src/kernel/FigaroCore.sol";
 import "../src/protocol/coordinators/AttestationCoordinator.sol";
 import "../src/protocol/registries/ClauseRegistry.sol";
-import "../src/protocol/registries/SellerRegistry.sol";
+import "../src/protocol/registries/MembersRegistry.sol";
 import "../src/florin/FlorinToken.sol";
 import {RpgfMinter} from "../src/rpgf/RpgfMinter.sol";
 import {UsageCounter} from "../src/protocol/usage/UsageCounter.sol";
@@ -60,7 +60,7 @@ contract DeployMainnet is Script {
     address internal _core;
     address internal _attestation;
     address internal _clauses;
-    address internal _sellers;
+    address internal _members;
     address internal _florin;
     address internal _assemblies;
     address internal _usageCounter;
@@ -108,13 +108,13 @@ contract DeployMainnet is Script {
         console.log("AttestationCoordinator: ", _attestation);
 
         // PLACEHOLDER deposit — review before mainnet broadcast (the
-        // SellerRegistry reasoning below applies to clause stakes too).
+        // MembersRegistry reasoning below applies to clause stakes too).
         ClauseRegistry clauses = new ClauseRegistry(0.001 ether);
         _clauses = address(clauses);
         console.log("ClauseRegistry:         ", _clauses);
 
         // AssemblyRegistry — the assembly artifact family's anchor, parallel to
-        // ClauseRegistry and SellerRegistry. RpgfMinter reads it for the
+        // ClauseRegistry and MembersRegistry. RpgfMinter reads it for the
         // assembly author of record.
         AssemblyRegistry assemblies = new AssemblyRegistry(0.001 ether);
         _assemblies = address(assemblies);
@@ -128,20 +128,26 @@ contract DeployMainnet is Script {
         // the chain merkle-binds and content-hash-binds attestations and does not
         // validate content shape. Run populate-clauses.mjs after broadcast.
 
-        // ── SellerRegistry ────────────────────────────────────────
-        // PLACEHOLDER VALUE — DO NOT SHIP TO MAINNET WITHOUT REVIEW.
-        // The deposit is the Sybil-resistance stake (K4: no time lock —
-        // withdraw de-surfaces, so pollution costs deposit × time-surfaced).
-        // Picking the mainnet value needs explicit reasoning recorded here:
+        // ── MembersRegistry ────────────────────────────────────────
+        // PLACEHOLDER VALUES — DO NOT SHIP TO MAINNET WITHOUT REVIEW.
+        // These two parameters are ONE Sybil price and must be picked together:
         //   - registrationDeposit: $X target in ETH at deploy-time price?
-        //     Bonded participation cost is the floor of attacker
-        //     discouragement. Too low → cheap Sybil farms; too high →
-        //     locks out small sellers.
-        // Devnet uses 0.001 ether as an ergonomic default.
-        // Replace this before mainnet broadcast.
-        SellerRegistry sellers = new SellerRegistry(0.001 ether);
-        _sellers = address(sellers);
-        console.log("SellerRegistry:       ", _sellers);
+        //     Too low → cheap Sybil farms; too high → locks out small sellers.
+        //   - withdrawalCooldown: the deposit only prices identity if it cannot
+        //     be recycled. At cooldown 0 one deposit serves N identities in
+        //     sequence, so capital cost is O(1) however much breadth is
+        //     fabricated; at cooldown T the cost of sustaining N identities over
+        //     a reward period P is `deposit · N · T / P`. A cooldown at or above
+        //     one accrual period is what makes fabricated breadth cost capital
+        //     rather than gas.
+        // Both feed the RPGF Sybil bound, which the batch-usage bridge will move
+        // sharply: batched recording drops the per-fabricated-pair gas cost by
+        // roughly 15×, and the deposit/cooldown have to absorb that. Do not fix
+        // these before that lands.
+        // Devnet uses 0.001 ether / 0 as ergonomic defaults.
+        MembersRegistry members = new MembersRegistry(0.001 ether, 0);
+        _members = address(members);
+        console.log("MembersRegistry:       ", _members);
 
         // ── FigaroBatchVerifier (proof-based batch settlement) ─────
         // SP1_VERIFIER_GATEWAY: Succinct's canonical SP1 verifier gateway
@@ -196,7 +202,7 @@ contract DeployMainnet is Script {
 
         UsageCounter usageCounter = new UsageCounter(
             _core,
-            _sellers, // seller-side live-stake gate: usage counts only for live-staked sellers
+            _members, // seller-side live-stake gate: usage counts only for live-staked sellers
             keccak256(abi.encode("figaro-assembly-provenance", uint64(1))),
             excluded,
             periods
@@ -244,7 +250,7 @@ contract DeployMainnet is Script {
         console.log("  NEXT_PUBLIC_ATTESTATION_COORDINATOR=  ", _attestation);
         console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=          ", _clauses);
         console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=        ", _assemblies);
-        console.log("  NEXT_PUBLIC_SELLER_REGISTRY=        ", _sellers);
+        console.log("  NEXT_PUBLIC_MEMBERS_REGISTRY=       ", _members);
         console.log("  NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=        ", _florin);
         console.log("  NEXT_PUBLIC_USAGE_COUNTER=            ", _usageCounter);
         console.log("  NEXT_PUBLIC_RPGF_MINTER=              ", _rpgfMinter);

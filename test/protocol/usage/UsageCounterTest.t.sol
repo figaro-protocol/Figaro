@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import {FigaroCore} from "src/kernel/FigaroCore.sol";
 import {CommitmentTypes} from "src/kernel/CommitmentTypes.sol";
-import {SellerRegistry} from "src/protocol/registries/SellerRegistry.sol";
+import {MembersRegistry} from "src/protocol/registries/MembersRegistry.sol";
 import {UsageCounter} from "src/protocol/usage/UsageCounter.sol";
 import {MockERC20} from "src/mocks/MockERC20.sol";
 import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
@@ -18,7 +18,7 @@ contract UsageCounterTest is Test {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
     FigaroCore core;
-    SellerRegistry sellers;
+    MembersRegistry members;
     UsageCounter counter;
     MockERC20 token;
 
@@ -49,19 +49,19 @@ contract UsageCounterTest is Test {
 
         core = new FigaroCore();
         token = new MockERC20("Test", "TST");
-        sellers = new SellerRegistry(0);
+        members = new MembersRegistry(0, 0);
 
         // The seller-side live-stake gate: only a registered seller's settled
         // trades count. Both sellers stake here (zero deposit in this suite).
         vm.prank(seller1);
-        sellers.register("ipfs://seller1");
+        members.register("ipfs://seller1");
         vm.prank(seller2);
-        sellers.register("ipfs://seller2");
+        members.register("ipfs://seller2");
 
         uint64[] memory periods = new uint64[](2);
         periods[0] = P0_END;
         periods[1] = P1_END;
-        counter = new UsageCounter(address(core), address(sellers), PROV_KEY, _excluded(), periods);
+        counter = new UsageCounter(address(core), address(members), PROV_KEY, _excluded(), periods);
 
         address[4] memory ppl = [buyer, buyer2, seller1, seller2];
         for (uint256 i = 0; i < ppl.length; i++) {
@@ -212,7 +212,7 @@ contract UsageCounterTest is Test {
     // ── Seller-side live-stake gate ──────────────────────────────────
 
     function test_revertsWhenSellerNotStaked() public {
-        // Usage counts only if the seller-of-record holds a LIVE SellerRegistry
+        // Usage counts only if the seller-of-record holds a LIVE MembersRegistry
         // stake — the breadth Sybil defense. An unregistered seller's settled
         // trade cannot accrue, so fabricating pairs costs a stake per seller.
         uint256 strangerKey = 0x5757;
@@ -227,14 +227,16 @@ contract UsageCounterTest is Test {
         _record(c, CARGO_KEY);
     }
 
-    function test_withdrawnSellerStopsCounting() public {
-        // A seller who withdraws their stake de-surfaces AND stops conferring
-        // reward: a later trade of theirs no longer counts.
+    function test_sellerLeavingTheRegistryStopsCounting() public {
+        // A seller who asks to leave de-surfaces AND stops conferring reward: a
+        // later trade of theirs no longer counts. The gate closes at REQUEST —
+        // the ETH is still locked in the cooldown at this point, so eligibility
+        // and custody are deliberately not the same moment.
         CommitmentTypes.Commitment memory a = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         _record(a, CARGO_KEY);
 
         vm.prank(seller1);
-        sellers.withdraw();
+        members.requestWithdrawal();
 
         CommitmentTypes.Commitment memory b = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 2);
         vm.expectRevert(abi.encodeWithSelector(UsageCounter.SellerNotStaked.selector, seller1));
@@ -519,14 +521,14 @@ contract UsageCounterTest is Test {
         uint64[] memory p = new uint64[](1);
         p[0] = P0_END;
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(0), address(sellers), PROV_KEY, _excluded(), p);
+        new UsageCounter(address(0), address(members), PROV_KEY, _excluded(), p);
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
         new UsageCounter(address(core), address(0), PROV_KEY, _excluded(), p);
     }
 
     function test_constructor_rejectsEmptyPeriods() public {
         vm.expectRevert(UsageCounter.EmptyPeriods.selector);
-        new UsageCounter(address(core), address(sellers), PROV_KEY, _excluded(), new uint64[](0));
+        new UsageCounter(address(core), address(members), PROV_KEY, _excluded(), new uint64[](0));
     }
 
     function test_constructor_rejectsUnorderedPeriods() public {
@@ -534,6 +536,6 @@ contract UsageCounterTest is Test {
         p[0] = P1_END;
         p[1] = P0_END;
         vm.expectRevert(UsageCounter.PeriodsNotAscending.selector);
-        new UsageCounter(address(core), address(sellers), PROV_KEY, _excluded(), p);
+        new UsageCounter(address(core), address(members), PROV_KEY, _excluded(), p);
     }
 }

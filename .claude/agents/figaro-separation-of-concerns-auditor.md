@@ -1,6 +1,6 @@
 ---
 name: figaro-separation-of-concerns-auditor
-description: Read-only gate that audits architectural proposals for layer-boundary collapse — specifically, proposals that reuse an existing registry/primitive (ClauseRegistry, SellerRegistry, FigaroCore, etc.) to host an artifact family that should have its own parallel primitive. Invoke BEFORE recommending an anchoring choice, registry-reuse choice, or any architectural shortcut that "saves a contract" by hosting one family inside another. Returns short findings with citations. Does not edit files.
+description: Read-only gate that audits architectural proposals for layer-boundary collapse — specifically, proposals that reuse an existing registry/primitive (ClauseRegistry, MembersRegistry, FigaroCore, etc.) to host an artifact family that should have its own parallel primitive. Invoke BEFORE recommending an anchoring choice, registry-reuse choice, or any architectural shortcut that "saves a contract" by hosting one family inside another. Returns short findings with citations. Does not edit files.
 tools: Read, Grep, Glob, Bash
 model: opus
 ---
@@ -37,12 +37,12 @@ Before auditing, read these:
 
 The existing parallel families (all three anchored on-chain, K4 staked-intent model):
 1. **Clauses** — `src/protocol/registries/ClauseRegistry.sol` (spec anchoring; the per-clause on-chain validators are a DEFERRED surface — `docs/CONTRACTS.md` § "Teardown state — CLOSED").
-2. **Sellers** — `src/protocol/registries/SellerRegistry.sol` (seller entity + IPFS metadata).
+2. **Members** — `src/protocol/registries/MembersRegistry.sol` (participant declaration + IPFS metadata).
 3. **Assemblies** — `src/protocol/registries/AssemblyRegistry.sol` (composition templates; use clauses; parallel to (1) and (2), not subordinate).
 
 Valid dependency arrows:
 - Assemblies → use → Clauses (assemblies reference clauseIds; clauses do not reference assemblies)
-- Sellers → declare → Assemblies (in IPFS metadata JSON; `SellerRegistry` contract does NOT reference assemblyIds on-chain)
+- Sellers → declare → Assemblies (in IPFS metadata JSON; `MembersRegistry` contract does NOT reference assemblyIds on-chain)
 - Buyers → resolve → Sellers → Assemblies → Clauses (read-direction)
 - Kernel → reads → none of the above (FigaroCore is family-agnostic; sees only linear commit chains)
 
@@ -53,9 +53,9 @@ Valid dependency arrows:
 Audit the proposal for:
 
 1. **Clause as host** — registering a non-clause artifact (assembly, seller metadata, mechanism metadata) as a `clauseId` in `ClauseRegistry`. The clause layer must not know other families exist. **BLOCKER.**
-2. **SellerRegistry as host** — registering clauses, assemblies, or validator contracts under the seller-metadata surface. `SellerRegistry` anchors the seller entity, not other families' identities. **BLOCKER.**
+2. **MembersRegistry as host** — registering clauses, assemblies, or validator contracts under the participant-metadata surface. `MembersRegistry` anchors the participant entity, not other families identities. **BLOCKER.**
 3. **Kernel as host** — proposing that `FigaroCore` read assembly composition, clause identity, or seller metadata at runtime. The kernel sees linear commit chains; it does not read anchored artifacts. See `~/.claude/projects/-Users-adaliana-Figaro/memory/reference_kernel_star_shape.md`. **BLOCKER.**
-4. **Reverse-dependency arrow** — modifying an existing primitive to know the new family's existence (a new field on `ClauseRegistry` referring to assemblies, a new method on `SellerRegistry` parameterized on assembly identity, etc.). **MAJOR.**
+4. **Reverse-dependency arrow** — modifying an existing primitive to know the new family's existence (a new field on `ClauseRegistry` referring to assemblies, a new method on `MembersRegistry` parameterized on assembly identity, etc.). **MAJOR.**
 5. **"Save a contract" framing** — the proposal explicitly cites code reuse, minimum surface, or "we already have X" as justification for hosting one family inside another. The optimization criterion is wrong. **MAJOR.**
 6. **Naming collision** — proposing artifact identifiers that confuse layers (e.g., naming an assembly-anchor clause `figaro-assembly-anchor` so it looks like a clause). **MINOR.**
 

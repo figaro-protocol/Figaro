@@ -6,7 +6,7 @@ import {FigaroCore} from "src/kernel/FigaroCore.sol";
 import {CommitmentTypes} from "src/kernel/CommitmentTypes.sol";
 import {ClauseRegistry} from "src/protocol/registries/ClauseRegistry.sol";
 import {AssemblyRegistry} from "src/protocol/registries/AssemblyRegistry.sol";
-import {SellerRegistry} from "src/protocol/registries/SellerRegistry.sol";
+import {MembersRegistry} from "src/protocol/registries/MembersRegistry.sol";
 import {UsageCounter} from "src/protocol/usage/UsageCounter.sol";
 import {RpgfMinter} from "src/rpgf/RpgfMinter.sol";
 import {FlorinToken} from "src/florin/FlorinToken.sol";
@@ -25,7 +25,7 @@ contract RpgfIntegrationTest is Test {
     FigaroCore core;
     ClauseRegistry clauses;
     AssemblyRegistry assemblies;
-    SellerRegistry sellers;
+    MembersRegistry members;
     UsageCounter counter;
     RpgfMinter minter;
     FlorinToken florin;
@@ -55,7 +55,7 @@ contract RpgfIntegrationTest is Test {
         token = new MockERC20("Test", "TST");
         clauses = new ClauseRegistry(0);
         assemblies = new AssemblyRegistry(0);
-        sellers = new SellerRegistry(0);
+        members = new MembersRegistry(0, 0);
         florin = new FlorinToken();
 
         vm.prank(author);
@@ -65,13 +65,13 @@ contract RpgfIntegrationTest is Test {
         // The seller-side live-stake gate: the seller-of-record must be staked
         // for its settled trades to count toward the reward.
         vm.prank(seller);
-        sellers.register("ipfs://seller");
+        members.register("ipfs://seller");
 
         uint64[] memory periods = new uint64[](3);
         periods[0] = P0_END;
         periods[1] = P0_END * 2;
         periods[2] = P0_END * 3;
-        counter = new UsageCounter(address(core), address(sellers), PROV_KEY, _excluded(), periods);
+        counter = new UsageCounter(address(core), address(members), PROV_KEY, _excluded(), periods);
 
         minter = new RpgfMinter(
             address(florin),

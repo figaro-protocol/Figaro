@@ -5,7 +5,7 @@ pragma solidity 0.8.26;
 /// @custom:security-contact figarosecurity@gmail.com
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 /// @notice On-chain dedup guard + event emission for assembly registration.
-///         Parallel to `ClauseRegistry` (clauses) and `SellerRegistry`
+///         Parallel to `ClauseRegistry` (clauses) and `MembersRegistry`
 ///         (sellers) — each artifact family carries its own anchor per
 ///         the protocol's separation-of-concerns doctrine.
 ///

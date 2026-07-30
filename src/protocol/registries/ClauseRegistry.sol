@@ -99,7 +99,7 @@ contract ClauseRegistry {
     ///                    lets any reader FETCH the spec from chain state alone —
     ///                    the same role `contentURI` plays in AssemblyRegistry. (The
     ///                    pinned document IS the content, hence not "metadataURI" —
-    ///                    SellerRegistry keeps that name because its mutable profile
+    ///                    MembersRegistry keeps that name because its mutable profile
     ///                    genuinely is metadata about a wallet-keyed identity.)
     /// @param registrar   Address that registered the clause.
     event ClauseRegistered(

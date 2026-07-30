@@ -12,10 +12,10 @@ interface IFigaroCore {
     function DOMAIN_SEPARATOR() external view returns (bytes32);
 }
 
-/// @notice The one SellerRegistry field this contract reads — whether an
+/// @notice The one MembersRegistry field this contract reads — whether an
 ///         address holds a LIVE registration stake (the seller-side gate).
-interface ISellerStake {
-    function registered(address seller) external view returns (bool);
+interface IMemberStake {
+    function registered(address member) external view returns (bool);
 }
 
 /// @title UsageCounter — verified artifact usage, counted when it happens
@@ -61,7 +61,7 @@ contract UsageCounter {
 
     IFigaroCore public immutable core;
 
-    /// @notice SellerRegistry — the seller-side eligibility gate. A settled
+    /// @notice MembersRegistry — the seller-side eligibility gate. A settled
     ///         process's usage counts toward the reward only while its
     ///         seller-of-record holds a LIVE ETH stake here (registered and
     ///         un-withdrawn), which prices the seller IDENTITY. It does not price
@@ -70,7 +70,7 @@ contract UsageCounter {
     ///         category, no weight: every artifact's score is its real usage
     ///         alone (`icbrt(c·d²·1e18)`), and the network's own growth, not a
     ///         privileged class, is what the 600M pays for.
-    ISellerStake public immutable sellers;
+    IMemberStake public immutable members;
 
     /// @notice The clause key whose committed section names the assembly a
     ///         process ran under — `figaro-assembly-provenance`'s
@@ -200,24 +200,24 @@ contract UsageCounter {
     // ── Constructor ─────────────────────────────────────────────────
 
     /// @param _core        FigaroCore — the order-status and domain source.
-    /// @param _sellers     SellerRegistry — the seller-side live-stake gate.
+    /// @param _members     MembersRegistry — the seller-side live-stake gate.
     /// @param _provenanceClause  `figaro-assembly-provenance`'s clause key.
     /// @param _excluded    Artifacts that earn nothing — the mandatory clauses.
     /// @param _periodEnd   Strictly ascending period boundaries (unix seconds).
     constructor(
         address _core,
-        address _sellers,
+        address _members,
         bytes32 _provenanceClause,
         bytes32[] memory _excluded,
         uint64[] memory _periodEnd
     ) {
-        if (_core == address(0) || _sellers == address(0)) revert ZeroAddress();
+        if (_core == address(0) || _members == address(0)) revert ZeroAddress();
         if (_periodEnd.length == 0) revert EmptyPeriods();
         for (uint256 i = 1; i < _periodEnd.length; ++i) {
             if (_periodEnd[i] <= _periodEnd[i - 1]) revert PeriodsNotAscending();
         }
         core = IFigaroCore(_core);
-        sellers = ISellerStake(_sellers);
+        members = IMemberStake(_members);
         provenanceClause = _provenanceClause;
         for (uint256 i = 0; i < _excluded.length; ++i) {
             excludedArtifact[_excluded[i]] = true;
@@ -348,15 +348,17 @@ contract UsageCounter {
         // floor; counting it would pay for the floor rather than for adoption.
         if (excludedArtifact[artifact]) revert ArtifactExcluded(artifact);
         // SELLER-SIDE GATE: usage counts only if the process's seller-of-record
-        // holds a LIVE SellerRegistry stake. Withdrawing de-surfaces the seller
-        // AND stops its future trades conferring reward. Scope it honestly: this
-        // prices the SELLER identity, not breadth itself — `d` counts (buyer,
-        // seller) pairs and the buyer side is ungated by design, so a pair can
-        // still be fabricated for gas. Identity cost is the only place Sybil
-        // resistance can live (no scoring shape can separate a fabricated pair
-        // from a genuine one), which is why it is the registries' stake terms
-        // that carry it.
-        if (!sellers.registered(seller)) revert SellerNotStaked(seller);
+        // holds a LIVE MembersRegistry stake. Requesting withdrawal de-surfaces
+        // the seller AND stops its future trades conferring reward — at request
+        // time, not at claim time, so the gate closes the moment the member asks
+        // to leave. Scope it honestly: this prices the SELLER identity, not
+        // breadth itself — `d` counts (buyer, seller) pairs and the buyer side is
+        // ungated by design, so a pair can still be fabricated for gas. Identity
+        // cost is the only place Sybil resistance can live (no scoring shape can
+        // separate a fabricated pair from a genuine one), which is why it is the
+        // registries' stake terms — deposit AND withdrawal cooldown — that carry
+        // it.
+        if (!members.registered(seller)) revert SellerNotStaked(seller);
         // Once ever, not once per period — see `processCounted`.
         if (processCounted[artifact][processId]) revert AlreadyCounted();
 

@@ -56,27 +56,50 @@ Its `ClauseRegistry` entry anchors the clauseId as off-chain vocabulary; the DAG
 itself is reconstructed by indexers/frontend reading topology sections from the
 signed agreement.
 
-**`src/protocol/registries/SellerRegistry.sol`** — Permissionless seller self-registration with
-reclaimable ETH deposit (staked intent — K4, no time lock). Three external
-functions: `register(metadataURI)` (sets the dedup guard, consumes the
-deposit, emits `SellerRegistered`), `updateProfile(metadataURI)` (caller-only
-metadata replacement, no deposit movement, emits `SellerProfileUpdated`), and
-`withdraw()` (returns the deposit and clears the dedup guard — allowed at any
-time; withdrawing DE-SURFACES the seller, so pollution costs deposit ×
-time-surfaced rather than calendar time). Three events: `SellerRegistered`,
-`SellerProfileUpdated`, `SellerWithdrawn`. State is dedup-only
-(`_registered: address → bool`). **No `_active` flag, no role enum, no
-`deactivate` / `reactivate`**: seller availability is signal-by-availability
-off-chain, not registry state, and a seller's role is DERIVED from the orders
-it holds and the clauses they carry — never a stored field. The deposit is a
-spam-protection knob only; profile updates do not require withdrawing. The
-kernel does not gate any operation on seller state — this registry is
-advisory metadata for off-chain discovery surfaces.
+**`src/protocol/registries/MembersRegistry.sol`** — Permissionless participant
+self-registration with a reclaimable ETH deposit (staked intent — K4). **MEMBER, not
+seller:** the kernel is actor-neutral, but a seller-only registry left a pure buyer
+nowhere to publish a price, a whitelist, or a calendar. "Member" is registry-tier
+vocabulary for *a wallet that publishes a declaration* — **not a sixth noun and not a
+role**; role stays DERIVED from the orders a wallet holds and the clauses they carry.
+Registering is how a wallet PUBLISHES, never how it QUALIFIES: transacting through the
+kernel requires no registration at all.
+
+The declaration is **ONE document, no halves** (ruled 2026-07-30) — it is already split
+on stable↔volatile (identity envelope here, item list behind `catalogueURI`), and a
+buyer/seller split would be a second, crossing axis.
+
+Four external functions: `register(metadataURI)` (sets the dedup guard, consumes the
+deposit, emits `MemberRegistered`); `updateProfile(metadataURI)` (caller-only metadata
+replacement, no deposit movement, emits `MemberProfileUpdated`);
+`requestWithdrawal()` (clears the dedup guard **immediately** — the member de-surfaces
+and may re-register at once — schedules the ETH for release and emits
+`MemberWithdrawalRequested`); and `withdraw()` (transfers the pending deposit once
+`withdrawalCooldown` has elapsed, emits `MemberWithdrawn`).
+
+**The cooldown is what makes `registrationDeposit` a real Sybil price.** Without it one
+deposit is recyclable across N identities in sequence, so capital cost is O(1) however
+much breadth is fabricated; with it, sustaining N identities across a reward period `P`
+costs `deposit · N · T / P`. De-surfacing and release are deliberately different
+moments: nobody is held on a surface they asked to leave (discovery removal and erasure
+are immediate), while the capital stays committed. The two ID-keyed registries
+(`ClauseRegistry`, `AssemblyRegistry`) carry **no** cooldown — their withdrawal is
+one-shot per key and the binding is permanent, so there is nothing to recycle.
+
+Four events: `MemberRegistered`, `MemberProfileUpdated`, `MemberWithdrawalRequested`
+(**the de-surfacing signal discovery and erasure readers fold** — not `MemberWithdrawn`),
+`MemberWithdrawn`. State is the dedup guard plus the pending-release schedule
+(`_registered`, `pendingDeposit`, `releaseAt`). **No `_active` flag, no role enum, no
+`deactivate` / `reactivate`**: availability is signal-by-availability off-chain, not
+registry state. The deposit is a spam-protection knob only; profile updates do not
+require withdrawing. The kernel does not gate any operation on registry state — this is
+advisory metadata for off-chain discovery surfaces. `UsageCounter` reads exactly one
+field of it (`registered`) as the seller-side RPGF gate.
 
 **`src/protocol/registries/AssemblyRegistry.sol`** — Permissionless assembly anchoring with a
 reclaimable ETH deposit. An assembly is a composition template that USES
 clauses; this registry is the assembly artifact family's anchor, parallel to
-`ClauseRegistry` (clauses) and `SellerRegistry` (sellers) per the
+`ClauseRegistry` (clauses) and `MembersRegistry` (participants) per the
 separation-of-concerns doctrine. Two external functions:
 `registerAssembly(compositionHash, contentURI)` (first-write-wins, requires the
 immutable `registrationDeposit`, emits `AssemblyRegistered`) and
@@ -272,9 +295,14 @@ observation of a known one; **α = 1/3 exactly is a JUDGMENT, not a derivation**
 across artifacts, so it is not curation. It is **not** a Sybil defense and must not be
 described as one (2026-07-30): no scoring shape can separate a fabricated pair from a genuine
 one. **Seller-side live-stake gate:** a record counts only if
-the process's seller-of-record holds a live `SellerRegistry` stake
-(`sellers.registered(order.seller)`, else `SellerNotStaked`) — fabricating `d` distinct
-pairs costs one base-currency (ETH) stake per fake seller.
+the process's seller-of-record holds a live `MembersRegistry` stake
+(`members.registered(order.seller)`, else `SellerNotStaked`) — fabricating `d` distinct
+pairs costs one base-currency (ETH) stake per fake seller. The gate closes at
+`requestWithdrawal()`, not at `withdraw()`: eligibility ends when the member asks to
+leave, while the ETH is still locked. Scope it honestly — this prices the SELLER
+identity, not breadth itself (the buyer side is ungated by design), and the price is
+real only because the deposit carries a **withdrawal cooldown**; without one the same
+deposit is recycled through identity after identity.
 
 **Accrual buckets into fixed periods, not checkpoints.** A period's counts are final
 once it ends, so a consumer paying out for it reads a number that can no longer move —
