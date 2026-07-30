@@ -443,6 +443,39 @@ contract UsageCounterTest is Test {
         }
     }
 
+    // ── Gas anchor ──────────────────────────────────────────────────
+
+    /// @notice The canonical cost of ONE `recordUsage` call, all-in on a cold
+    ///         first record for an artifact (the shape an attacker or an author
+    ///         actually pays). Measured here because this is the only place it is
+    ///         measured — it is NOT in `sdk/src/gasCeilings.ts`, which exists to
+    ///         derive per-block/per-process CEILINGS and has no consumer for this
+    ///         figure; an unused export there would be dead code.
+    /// @dev    TWO figures exist and they are not interchangeable — say which:
+    ///         ~168,678 ALL-IN (`forge --gas-report` median, includes calldata)
+    ///         and ~162,642 in-test EXECUTION (what `gasleft()` sees; calldata is
+    ///         charged at the tx level, outside the call). This anchor is the
+    ///         all-in ceiling. ANY analysis quoting the cost of manufacturing
+    ///         usage (the RPGF soundness bound's `γ`) must cite the all-in figure
+    ///         plus the 21,000 tx base cost, never a re-derivation. If the band
+    ///         below breaks, the accrual path changed: re-measure, update this
+    ///         anchor, and revisit the bound — γ is what prices Sybil resistance.
+    uint256 internal constant RECORD_USAGE_GAS = 169_000;
+
+    function test_Gas_recordUsageStaysAtItsAnchor() public {
+        CommitmentTypes.Commitment memory c =
+            _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 0xA45);
+        uint256 before = gasleft();
+        counter.recordUsage(c, CARGO_KEY, keccak256(SECTION), new bytes32[](0));
+        uint256 used = before - gasleft();
+        emit log_named_uint("recordUsage_exec_gas", used);
+
+        // A wide band: this is a drift alarm, not a micro-benchmark. The in-test
+        // execution figure excludes the tx base cost and calldata charges.
+        assertGe(used, 60_000, "recordUsage got unexpectedly cheap - did a gate get dropped?");
+        assertLe(used, RECORD_USAGE_GAS, "recordUsage exceeded its anchor - re-measure and reprice the bound");
+    }
+
     /// `_score(c, d)` as the contract computes it — the scoring input, spelled out
     /// here rather than exposed as production surface for a test's convenience.
     function _score(uint64 c, uint64 d) internal view returns (uint256) {

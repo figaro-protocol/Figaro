@@ -305,6 +305,15 @@ score.** No scoring function can separate a fabricated pair from a genuine one �
 concavity that dampens fake breadth dampens real breadth identically — so it can only live in
 the cost of an identity, which is the registries' stake terms.
 
+**Gas anchor — `recordUsage` costs ~168,678 all-in** (`forge --gas-report` median; ~162,642
+in-test execution, which excludes calldata charged at the tx level). The anchor and its
+regression guard live in `UsageCounterTest.RECORD_USAGE_GAS`; it is deliberately NOT in
+`sdk/src/gasCeilings.ts`, which derives per-block/per-process CEILINGS and has no consumer for
+this figure. Any analysis costing manufactured usage (the RPGF soundness bound's `γ`) cites
+that anchor plus the 21,000 tx base cost — never a re-derivation. Same discipline as the
+kernel's `COMMIT_GAS_PER_ORDER`/`RESOLVE_GAS_PER_ORDER` pair: one measured home, everything
+else quotes it.
+
 No owner, no admin, no pause; records are idempotent per (artifact, process).
 Foundry tests in `test/protocol/usage/UsageCounterTest.t.sol` (28, incl. the fuzzed
 `icbrt` floor-cube-root property over all of `uint256`, and a no-saturation regression).
