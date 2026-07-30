@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { encodeAbiParameters, encodeEventTopics } from 'viem';
-import { SELLER_REGISTRY_ABI } from '@figaro/sdk';
-import { getSellerState } from '@/lib/protocol/sellerRegistryIndexer';
+import { MEMBERS_REGISTRY_ABI } from '@figaro/sdk';
+import { getMemberState } from '@/lib/protocol/membersRegistryIndexer';
 
 // ── Mock the event cache and contract addresses ───────────────────────────────
-// getSellerState calls getAllSellerRegistered + getAllSellerProfileUpdated
-// + getAllSellerWithdrawn, which call cachedGetLogsMulti, which in turn calls
+// getMemberState calls getAllMemberRegistered + getAllMemberProfileUpdated
+// + getAllMemberWithdrawalRequested, which call cachedGetLogsMulti, which in turn calls
 // cachedGetLogs from eventCache. Mocking at that layer lets us inject fake
 // event logs while running the real reconstruction logic.
 //
@@ -20,13 +20,13 @@ vi.mock('@/lib/kernel/eventCache', () => ({
     cachedGetLogs: (...args: unknown[]) => cachedGetLogsMock(...args),
 }));
 
-// Provide a non-null sellerRegistry so the event fetchers don't short-circuit.
+// Provide a non-null membersRegistry so the event fetchers don't short-circuit.
 // The indexer reads it from core's CONTRACTS (core/ never imports mechanisms/).
-// Everything else (SELLER_REGISTRY_ABI) passes through from the real barrel.
+// Everything else (MEMBERS_REGISTRY_ABI) passes through from the real barrel.
 vi.mock('@/lib/kernel/contracts', async (importOriginal) => ({
     ...(await importOriginal<typeof import('@/lib/kernel/contracts')>()),
     CONTRACTS: {
-        sellerRegistry: '0x1111111111111111111111111111111111111111',
+        membersRegistry: '0x1111111111111111111111111111111111111111',
     },
 }));
 
@@ -42,41 +42,42 @@ const CHAIN_ID = 31337;
 type MockLog = { blockNumber: bigint | number | null; logIndex: number; data: `0x${string}`; topics: [`0x${string}`, ...`0x${string}`[]] };
 
 function encodedLog(
-    eventName: 'SellerRegistered' | 'SellerProfileUpdated' | 'SellerWithdrawn',
-    args: { seller: string; metadataURI?: string; deposit?: bigint },
+    eventName: 'MemberRegistered' | 'MemberProfileUpdated' | 'MemberWithdrawalRequested',
+    args: { member: string; metadataURI?: string; deposit?: bigint },
     blockNumber: bigint | number | null,
 ): MockLog {
     const topics = encodeEventTopics({
-        abi: SELLER_REGISTRY_ABI,
+        abi: MEMBERS_REGISTRY_ABI,
         eventName,
-        args: { seller: args.seller as `0x${string}` },
+        args: { member: args.member as `0x${string}` },
     } as Parameters<typeof encodeEventTopics>[0]) as MockLog['topics'];
-    const data = eventName === 'SellerWithdrawn'
-        ? encodeAbiParameters([{ type: 'uint256' }], [args.deposit ?? 0n])
+    // MemberWithdrawalRequested carries TWO non-indexed words (amount, releaseAt).
+    const data = eventName === 'MemberWithdrawalRequested'
+        ? encodeAbiParameters([{ type: 'uint256' }, { type: 'uint256' }], [args.deposit ?? 0n, 0n])
         : encodeAbiParameters([{ type: 'string' }], [args.metadataURI ?? '']);
     return { blockNumber, logIndex: 0, data, topics };
 }
 
 function regLog(overrides?: Partial<{
-    seller: string; metadataURI: string; blockNumber: bigint | null;
+    member: string; metadataURI: string; blockNumber: bigint | null;
 }>): MockLog {
-    return encodedLog('SellerRegistered', {
-        seller: overrides?.seller ?? SELLER,
+    return encodedLog('MemberRegistered', {
+        member: overrides?.member ?? SELLER,
         metadataURI: overrides?.metadataURI ?? 'ipfs://QmProfile',
     }, overrides?.blockNumber === undefined ? 100n : overrides.blockNumber);
 }
 
 function profileUpdatedLog(overrides?: Partial<{
-    seller: string; metadataURI: string; blockNumber: bigint;
+    member: string; metadataURI: string; blockNumber: bigint;
 }>): MockLog {
-    return encodedLog('SellerProfileUpdated', {
-        seller: overrides?.seller ?? SELLER,
+    return encodedLog('MemberProfileUpdated', {
+        member: overrides?.member ?? SELLER,
         metadataURI: overrides?.metadataURI ?? 'ipfs://QmProfileV2',
     }, overrides?.blockNumber ?? 200n);
 }
 
-function withdrawLog(seller = SELLER, blockNumber: bigint = 500n): MockLog {
-    return encodedLog('SellerWithdrawn', { seller, deposit: 0n }, blockNumber);
+function withdrawLog(member = SELLER, blockNumber: bigint = 500n): MockLog {
+    return encodedLog('MemberWithdrawalRequested', { member, deposit: 0n }, blockNumber);
 }
 
 // Sets up cachedGetLogs to return specific logs per event name.
@@ -88,9 +89,9 @@ function mockEvents(events: {
     cachedGetLogsMock.mockImplementation(
         (_client: unknown, _chainId: unknown, opts: { eventName: string }) => {
             switch (opts.eventName) {
-                case 'SellerRegistered': return Promise.resolve(events.registered ?? []);
-                case 'SellerProfileUpdated': return Promise.resolve(events.profileUpdated ?? []);
-                case 'SellerWithdrawn': return Promise.resolve(events.withdrawn ?? []);
+                case 'MemberRegistered': return Promise.resolve(events.registered ?? []);
+                case 'MemberProfileUpdated': return Promise.resolve(events.profileUpdated ?? []);
+                case 'MemberWithdrawalRequested': return Promise.resolve(events.withdrawn ?? []);
                 default: return Promise.resolve([]);
             }
         },
@@ -99,7 +100,7 @@ function mockEvents(events: {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-describe('getSellerState', () => {
+describe('getMemberState', () => {
     beforeEach(() => {
         cachedGetLogsMock.mockReset();
     });
@@ -107,7 +108,7 @@ describe('getSellerState', () => {
     it('returns null for a seller that has never registered', async () => {
         mockEvents({ registered: [] });
 
-        const result = await getSellerState(CLIENT, CHAIN_ID, SELLER);
+        const result = await getMemberState(CLIENT, CHAIN_ID, SELLER);
 
         expect(result).toBeNull();
     });
@@ -115,7 +116,7 @@ describe('getSellerState', () => {
     it('returns the registered profile for a freshly registered seller', async () => {
         mockEvents({ registered: [regLog()] });
 
-        const result = await getSellerState(CLIENT, CHAIN_ID, SELLER);
+        const result = await getMemberState(CLIENT, CHAIN_ID, SELLER);
 
         expect(result).not.toBeNull();
         expect(result!.metadataURI).toBe('ipfs://QmProfile');
@@ -131,7 +132,7 @@ describe('getSellerState', () => {
             ],
         });
 
-        const result = await getSellerState(CLIENT, CHAIN_ID, SELLER);
+        const result = await getMemberState(CLIENT, CHAIN_ID, SELLER);
 
         expect(result).not.toBeNull();
         expect(result!.metadataURI).toBe('ipfs://QmV3');
@@ -147,21 +148,24 @@ describe('getSellerState', () => {
             withdrawn: [withdrawLog(SELLER, 500n)],
         });
 
-        const result = await getSellerState(CLIENT, CHAIN_ID, SELLER);
+        const result = await getMemberState(CLIENT, CHAIN_ID, SELLER);
 
         expect(result).not.toBeNull();
         expect(result!.metadataURI).toBe('ipfs://QmFresh');
     });
 
-    it('returns null after the seller withdraws', async () => {
+    it('returns null once the member REQUESTS withdrawal — not only once paid', async () => {
+        // De-surfacing is the request. The claim can be a whole cooldown later,
+        // and reading liveness off it would keep a departed member surfaced —
+        // and reported as RPGF-eligible — for that entire window.
         mockEvents({ registered: [regLog()], withdrawn: [withdrawLog()] });
 
-        const result = await getSellerState(CLIENT, CHAIN_ID, SELLER);
+        const result = await getMemberState(CLIENT, CHAIN_ID, SELLER);
 
         expect(result).toBeNull();
     });
 
-    it('returns the new profile after withdraw + re-register cycle', async () => {
+    it('returns the new profile after leave + re-register cycle', async () => {
         mockEvents({
             registered: [
                 regLog({ blockNumber: 100n, metadataURI: 'ipfs://QmFirst' }),
@@ -170,7 +174,7 @@ describe('getSellerState', () => {
             withdrawn: [withdrawLog(SELLER, 500n)],
         });
 
-        const result = await getSellerState(CLIENT, CHAIN_ID, SELLER);
+        const result = await getMemberState(CLIENT, CHAIN_ID, SELLER);
 
         expect(result).not.toBeNull();
         expect(result!.metadataURI).toBe('ipfs://QmSecond');
@@ -180,15 +184,15 @@ describe('getSellerState', () => {
     it('uses the registration metadataURI when no ProfileUpdated event exists', async () => {
         mockEvents({ registered: [regLog({ metadataURI: 'ipfs://QmOriginal' })] });
 
-        const result = await getSellerState(CLIENT, CHAIN_ID, SELLER);
+        const result = await getMemberState(CLIENT, CHAIN_ID, SELLER);
 
         expect(result!.metadataURI).toBe('ipfs://QmOriginal');
     });
 
     it('is case-insensitive for the seller address lookup', async () => {
-        mockEvents({ registered: [regLog({ seller: SELLER.toLowerCase() })] });
+        mockEvents({ registered: [regLog({ member: SELLER.toLowerCase() })] });
 
-        const result = await getSellerState(CLIENT, CHAIN_ID, SELLER.toUpperCase());
+        const result = await getMemberState(CLIENT, CHAIN_ID, SELLER.toUpperCase());
 
         expect(result).not.toBeNull();
         expect(result!.metadataURI).toBe('ipfs://QmProfile');
@@ -196,27 +200,27 @@ describe('getSellerState', () => {
 
     it('returns null when the registration belongs to a different seller', async () => {
         const OTHER = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
-        mockEvents({ registered: [regLog({ seller: OTHER })] });
+        mockEvents({ registered: [regLog({ member: OTHER })] });
 
-        const result = await getSellerState(CLIENT, CHAIN_ID, SELLER);
+        const result = await getMemberState(CLIENT, CHAIN_ID, SELLER);
 
         expect(result).toBeNull();
     });
 
     it('handles a number blockNumber in the registration log', async () => {
-        const log = encodedLog('SellerRegistered', { seller: SELLER, metadataURI: 'ipfs://QmNum' }, 100);
+        const log = encodedLog('MemberRegistered', { member: SELLER, metadataURI: 'ipfs://QmNum' }, 100);
         mockEvents({ registered: [log] });
 
-        const result = await getSellerState(CLIENT, CHAIN_ID, SELLER);
+        const result = await getMemberState(CLIENT, CHAIN_ID, SELLER);
 
         expect(result!.registeredBlock).toBe(100n);
     });
 
     it('returns null registeredBlock when blockNumber is null', async () => {
-        const log = encodedLog('SellerRegistered', { seller: SELLER, metadataURI: 'ipfs://QmNull' }, null);
+        const log = encodedLog('MemberRegistered', { member: SELLER, metadataURI: 'ipfs://QmNull' }, null);
         mockEvents({ registered: [log] });
 
-        const result = await getSellerState(CLIENT, CHAIN_ID, SELLER);
+        const result = await getMemberState(CLIENT, CHAIN_ID, SELLER);
 
         expect(result).not.toBeNull();
         expect(result!.registeredBlock).toBeNull();
@@ -229,7 +233,7 @@ describe('getSellerState', () => {
             withdrawn: [withdrawLog(OTHER, 500n)],
         });
 
-        const result = await getSellerState(CLIENT, CHAIN_ID, SELLER);
+        const result = await getMemberState(CLIENT, CHAIN_ID, SELLER);
 
         expect(result).not.toBeNull();
         expect(result!.metadataURI).toBe('ipfs://QmProfile');

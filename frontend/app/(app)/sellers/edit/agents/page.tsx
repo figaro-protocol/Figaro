@@ -3,7 +3,7 @@ import { SellerEditAgents } from "@/components/sellers/SellerEditAgents";
 
 export const metadata: Metadata = {
     title: "Edit agent endpoints — Figaro Protocol",
-    description: "Set or clear ERC-8004-compatible service endpoints (mcp / a2a / rest / did:web / ENS). Re-pins the profile JSON with the updated services field, then dispatches SellerRegistry.updateProfile.",
+    description: "Set or clear ERC-8004-compatible service endpoints (mcp / a2a / rest / did:web / ENS). Re-pins the profile JSON with the updated services field, then dispatches MembersRegistry.updateProfile.",
 };
 
 export default function EditAgentsPage() {

@@ -167,7 +167,7 @@ for (const [processId, process] of processes) {
   "permit2": "0x…",
   "swapRouter": "0x…",
   "clauseRegistry": "0x…",
-  "sellerRegistry": "0x…",
+  "membersRegistry": "0x…",
   "assemblyRegistry": "0x…",
   "florinToken": "0x…",
   "usageCounter": "0x…",
@@ -178,7 +178,7 @@ for (const [processId, process] of processes) {
 }`}</code>
                 </pre>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    The record&apos;s keys map onto the SDK&apos;s <code>FigaroAddresses</code> with one rename: <code>figaroCore</code> &rarr; <code>core</code>, <code>tokenAddress</code> &rarr; <code>token</code>, and <code>attestationCoordinator</code> / <code>clauseRegistry</code> / <code>sellerRegistry</code> / <code>assemblyRegistry</code> keep their names. Those six are the <em>only</em> keys <code>FigaroAddresses</code> carries &mdash; <code>addressesFromDeploymentRecord</code> reads them and ignores the rest. Every other key (<code>permitTokenAddress</code>, <code>florinToken</code>, and the composition/funding contracts below) is read directly by name when you compose against it; the SDK does not fold them into its address map.
+                    The record&apos;s keys map onto the SDK&apos;s <code>FigaroAddresses</code> with one rename: <code>figaroCore</code> &rarr; <code>core</code>, <code>tokenAddress</code> &rarr; <code>token</code>, and <code>attestationCoordinator</code> / <code>clauseRegistry</code> / <code>membersRegistry</code> / <code>assemblyRegistry</code> keep their names. Those six are the <em>only</em> keys <code>FigaroAddresses</code> carries &mdash; <code>addressesFromDeploymentRecord</code> reads them and ignores the rest. Every other key (<code>permitTokenAddress</code>, <code>florinToken</code>, and the composition/funding contracts below) is read directly by name when you compose against it; the SDK does not fold them into its address map.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
                     The composition and funding keys, one line each &mdash; catalogued in full on <Link href="/spec" className="underline">/spec</Link>:
@@ -309,7 +309,7 @@ for (const [processId, process] of processes) {
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed">
                     <li><strong>Repository:</strong> <a href="https://github.com/figaro-protocol/Figaro" target="_blank" rel="noopener noreferrer" className="underline">github.com/figaro-protocol/Figaro</a>. SDK lives at <code>sdk/</code>.</li>
                     <li><strong>SDK README:</strong> <code>sdk/README.md</code> in the repo. Covers every subpath export and the test-harness conventions.</li>
-                    <li><strong>ABIs:</strong> <code>CORE_ABI</code>, <code>ATTESTATION_COORDINATOR_ABI</code>, <code>CLAUSE_REGISTRY_ABI</code>, <code>ERC20_ABI</code>, <code>SELLER_REGISTRY_ABI</code>, <code>FLORIN_TOKEN_ABI</code>. All exported from <code>@figaro/sdk</code>; canonical contract surface at <Link href="/spec" className="underline">/spec</Link>.</li>
+                    <li><strong>ABIs:</strong> <code>CORE_ABI</code>, <code>ATTESTATION_COORDINATOR_ABI</code>, <code>CLAUSE_REGISTRY_ABI</code>, <code>ERC20_ABI</code>, <code>MEMBERS_REGISTRY_ABI</code>, <code>FLORIN_TOKEN_ABI</code>. All exported from <code>@figaro/sdk</code>; canonical contract surface at <Link href="/spec" className="underline">/spec</Link>.</li>
                     <li><strong>Type declarations as documentation:</strong> the package ships <code>dist/**/*.d.ts</code> and <code>src/</code>. Every exported primitive carries a docblock stating its invariants in plain arithmetic &mdash; <code>bonds.d.ts</code>, <code>agreement.d.ts</code>, and <code>commitments.d.ts</code> are the ones to read first. If the README is ambiguous, read the declaration.</li>
                 </ul>
                 <p className="mt-8 text-sm text-ink-muted leading-relaxed">

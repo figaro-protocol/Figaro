@@ -46,9 +46,9 @@ export interface CapabilityExecutorDeps {
     recordAssemblyUsage: (order: Commitment, compositionHash: Hex, proof: readonly Hex[]) => Promise<Hex | undefined>;
     submitBuyerAttestation: (args: AttestationSubmitArgs) => Promise<Hex | undefined>;
     submitSellerAttestation: (args: AttestationSubmitArgs) => Promise<Hex | undefined>;
-    registerSeller: (metadataURI: string) => Promise<Hex | undefined | void>;
-    updateSellerProfile: (metadataURI: string) => Promise<Hex | undefined | void>;
-    withdrawSellerDeposit: () => Promise<Hex | undefined | void>;
+    registerMember: (metadataURI: string) => Promise<Hex | undefined | void>;
+    updateMemberProfile: (metadataURI: string) => Promise<Hex | undefined | void>;
+    withdrawMemberDeposit: () => Promise<Hex | undefined | void>;
     /** UI-edge dialogs — the copy lives with the caller. */
     confirmResolve: () => boolean;
     confirmWithdraw: () => boolean;
@@ -220,11 +220,11 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             if (!deps.confirmResolve()) return;
             return resolveActiveProcess(processId);
         },
-        registerSeller: deps.registerSeller,
-        updateSellerProfile: deps.updateSellerProfile,
-        withdrawSellerDeposit: () => {
+        registerMember: deps.registerMember,
+        updateMemberProfile: deps.updateMemberProfile,
+        withdrawMemberDeposit: () => {
             if (!deps.confirmWithdraw()) return Promise.resolve(undefined);
-            return deps.withdrawSellerDeposit();
+            return deps.withdrawMemberDeposit();
         },
         submitClauseAttestation,
     };

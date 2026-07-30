@@ -12,7 +12,7 @@
  *   2. Seed `useOnboardingState.profile` with the fetched fields so
  *      the shared `OnboardingProfileForm` hydrates pre-populated.
  *   3. Render the form with `onSave` that calls
- *      `useUpdateSellerProfile.save(...)` — pin merged JSON,
+ *      `useUpdateMemberProfile.save(...)` — pin merged JSON,
  *      dispatch `updateProfile`.
  *   4. On success, redirect back to `/sellers`.
  *
@@ -26,11 +26,11 @@ import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/hooks/useMounted";
-import { useSellerProfile } from "@/lib/seller/useSellerRegistry";
+import { useMemberProfile } from "@/lib/seller/useMembersRegistry";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
-import { useUpdateSellerProfile } from "@/lib/seller/useUpdateSellerProfile";
-import { fetchSellerProfile } from "@/lib/seller/profileFetcher";
-import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
+import { useUpdateMemberProfile } from "@/lib/seller/useUpdateMemberProfile";
+import { fetchMemberProfile } from "@/lib/seller/profileFetcher";
+import type { MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
 import { OnboardingProfileForm } from "@/components/sellers/OnboardingProfileForm";
 import type { OnboardingProfileDraft } from "@/lib/seller/onboardingState";
 
@@ -38,19 +38,19 @@ export function SellerEditProfile() {
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
-    const { data: registryData, isLoading: registryLoading } = useSellerProfile(address);
+    const { data: registryData, isLoading: registryLoading } = useMemberProfile(address);
     const { update, loaded } = useOnboardingState(address);
 
-    const [existingProfile, setExistingProfile] = useState<SellerProfileMetadata | null>(null);
+    const [existingProfile, setExistingProfile] = useState<MemberProfileMetadata | null>(null);
     const [fetchError, setFetchError] = useState<string | null>(null);
     const [seeded, setSeeded] = useState(false);
 
-    const updater = useUpdateSellerProfile(existingProfile, registryData?.[0] ?? null);
+    const updater = useUpdateMemberProfile(existingProfile, registryData?.[0] ?? null);
     const saveInFlight = updater.isPending || updater.isConfirming;
 
     // Redirect unregistered wallets to onboarding — but only on SETTLED
     // state (`!registryLoading && !registryData` = a completed scan found
-    // nothing; isLoading starts true in useSellerProfile), and never
+    // nothing; isLoading starts true in useMemberProfile), and never
     // mid-save: the redirect unmounts the form and kills the in-flight
     // pin/tx (2026-07-09 e2e flake).
     useEffect(() => {
@@ -70,7 +70,7 @@ export function SellerEditProfile() {
         const [metadataURI] = registryData;
         let cancelled = false;
         // The ONE cached profile read path (lib/seller/profileFetcher).
-        fetchSellerProfile(metadataURI)
+        fetchMemberProfile(metadataURI)
             .then((parsed) => {
                 if (cancelled) return;
                 if (parsed) {
@@ -111,7 +111,7 @@ export function SellerEditProfile() {
     }, [seeded, loaded, existingProfile, update]);
 
     // Redirect back to /sellers on a confirmed update. No refetch here:
-    // `useSellerProfile` is per-call-site local state, so refetching this
+    // `useMemberProfile` is per-call-site local state, so refetching this
     // component's instance can't refresh /sellers (which has its own) —
     // and the synchronous re-render + re-fetch it kicked raced the
     // router.push navigation. /sellers reads fresh on mount regardless.
@@ -151,7 +151,7 @@ export function SellerEditProfile() {
 
     async function handleSave(draft: OnboardingProfileDraft): Promise<void> {
         // The draft shape lines up with the top-level
-        // SellerProfileMetadata fields it edits — pass through. The
+        // MemberProfileMetadata fields it edits — pass through. The
         // only structural difference is `location.geohash`: the draft
         // marks it optional, the on-chain shape requires a string.
         // Default to "" so the merge doesn't widen the on-chain type.

@@ -20,7 +20,7 @@
  *   checkout → the buyer orders from the merchant; the P&L's courier row
  *              reads "(choose below)"; the picker renders (unbound path);
  *              the buyer types the courier's address — itself DISCOVERED
- *              from SellerRegistry events + IPFS, never a roster — picks an
+ *              from MembersRegistry events + IPFS, never a roster — picks an
  *              item from that courier's live catalogue, and the P&L updates
  *              to the picked price. The buyer signs BOTH orders through the
  *              one confirm gate.
@@ -55,7 +55,7 @@ import {
     ensureDeliveryAssembly,
     fillDeliveryCheckout,
     readLocalDeploymentConfig,
-    sellerProfileBindings,
+    memberProfileBindings,
     waitForConnected,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
@@ -97,26 +97,26 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
         // ── BIND (idempotent): Aurora pins the assembly and designates NOBODY.
         //    The counterparty editor is left untouched — the ABSENCE of a
         //    designation is what makes this adoption buyer-assigned. ──
-        if (!(await sellerProfileBindings(MERCHANT)).some((b) => b.assemblySlug === deliverySlug)) {
+        if (!(await memberProfileBindings(MERCHANT)).some((b) => b.assemblySlug === deliverySlug)) {
             await gotoAsWallet(page, MERCHANT, '/sellers/edit/assemblies?e2e=devnet');
             const row = page.getByTestId(`seller-assembly-row-${deliverySlug}`);
             await row.waitFor({ state: 'visible', timeout: 30000 });
             await row.locator('input[type="checkbox"]').first().check();
             await page.getByRole('button', { name: 'Save changes' }).click();
             await expect.poll(async () =>
-                (await sellerProfileBindings(MERCHANT)).some((b) => b.assemblySlug === deliverySlug), {
+                (await memberProfileBindings(MERCHANT)).some((b) => b.assemblySlug === deliverySlug), {
                 timeout: 60000, message: "the merchant's re-pinned profile carries the (undesignated) binding",
             }).toBe(true);
         }
         // The scenario's precondition, verified out-of-band: the binding names
         // NO courier — the node is genuinely unbound.
-        const binding = (await sellerProfileBindings(MERCHANT)).find((b) => b.assemblySlug === deliverySlug);
+        const binding = (await memberProfileBindings(MERCHANT)).find((b) => b.assemblySlug === deliverySlug);
         expect(
             (binding?.counterpartyBindings ?? []).some((cb) => cb.clauseId === DELIVERY_CLAUSES.courier),
             'the merchant binding designates no courier (buyer-assigned adoption)',
         ).toBe(false);
 
-        // ── The COURIER the buyer will pick — DISCOVERED from SellerRegistry
+        // ── The COURIER the buyer will pick — DISCOVERED from MembersRegistry
         //    events + IPFS (never a roster): the first bound seller that is
         //    not the merchant (a binding is what admits a catalogue to every
         //    read — the even-surfacing rule). Filtered to anvil-held wallets:

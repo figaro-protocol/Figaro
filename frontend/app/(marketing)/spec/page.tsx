@@ -107,18 +107,18 @@ export default function Specifications() {
             <MarketingSection title="Optional protocol contracts">
                 <ul className="space-y-4">
                     <ContractEntry
-                        id="SellerRegistry"
-                        title="SellerRegistry.sol"
-                        href={`${GH}/SellerRegistry.sol`}
+                        id="MembersRegistry"
+                        title="MembersRegistry.sol"
+                        href={`${GH}/MembersRegistry.sol`}
                         meta="self-register · reclaimable deposit"
-                        desc="Permissionless seller self-registration with reclaimable ETH deposit. Two functions (register, withdraw); state is dedup-only. Seller availability is signal-by-availability off-chain, not registry state."
+                        desc="Permissionless participant self-registration with reclaimable ETH deposit — one declaration document per wallet, whichever side of a trade it takes. Four functions (register, updateProfile, requestWithdrawal, withdraw): leaving de-lists you immediately, and the deposit is released after a cooldown, so a stake cannot be recycled through identity after identity. Availability is signal-by-availability off-chain, not registry state."
                     />
                     <ContractEntry
                         id="AssemblyRegistry"
                         title="AssemblyRegistry.sol"
                         href={`${GH}/AssemblyRegistry.sol`}
                         meta="self-register · reclaimable deposit"
-                        desc="Permissionless assembly anchoring with reclaimable ETH deposit — the assembly artifact family's anchor, parallel to ClauseRegistry and SellerRegistry. Two functions (registerAssembly, withdrawDeposit); first-write-wins. Identity IS the composition: compositionHash = keccak256 of the template's canonical composition subset, so identical compositions collapse to one binding and the human slug is derived off-chain (deriveAssemblySlug). The binding is permanent — withdraw returns only the deposit and de-surfaces the assembly; no owner, no admin, no content validation."
+                        desc="Permissionless assembly anchoring with reclaimable ETH deposit — the assembly artifact family's anchor, parallel to ClauseRegistry and MembersRegistry. Two functions (registerAssembly, withdrawDeposit); first-write-wins. Identity IS the composition: compositionHash = keccak256 of the template's canonical composition subset, so identical compositions collapse to one binding and the human slug is derived off-chain (deriveAssemblySlug). The binding is permanent — withdraw returns only the deposit and de-surfaces the assembly; no owner, no admin, no content validation."
                     />
                 </ul>
             </MarketingSection>

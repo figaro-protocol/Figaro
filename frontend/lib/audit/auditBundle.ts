@@ -30,10 +30,10 @@ import { extractContract, type ContractDocument } from "./contractExtract";
 import { extractProcessLogs, type ProcessLogsDocument } from "./processLogsExtract";
 import { extractClauseData, type ClauseDataDocument } from "./clauseDataExtract";
 import {
-    extractSellerRegistry,
-    type SellerRegistryDocument,
-    type SellerRegisteredEvent,
-} from "./sellerRegistryExtract";
+    extractMembersRegistry,
+    type MembersRegistryDocument,
+    type MemberRegisteredEvent,
+} from "./membersRegistryExtract";
 import { buildHashAppendix, type HashAppendixDocument } from "./hashAppendix";
 
 export interface AuditBundle {
@@ -44,15 +44,15 @@ export interface AuditBundle {
      *  where a cargo leaf, a freight-class leaf, or a never-seen clause all
      *  surface — no genre document required. */
     clauseData: ClauseDataDocument;
-    sellerRegistry: SellerRegistryDocument;
+    membersRegistry: MembersRegistryDocument;
     hashAppendix: HashAppendixDocument;
 }
 
 export interface AuditBundleInputs {
-    /** SellerRegistered events filtered to events where the indexed
+    /** MemberRegistered events filtered to events where the indexed
      *  `seller` matches `order.seller`. Empty array if the seller is
      *  unregistered — the extractor surfaces that as an audit notice. */
-    sellerRegistrationEvents?: readonly SellerRegisteredEvent[];
+    sellerRegistrationEvents?: readonly MemberRegisteredEvent[];
 }
 
 export function buildAuditBundle(
@@ -66,7 +66,7 @@ export function buildAuditBundle(
         contract,
         processLogs: extractProcessLogs(order, attestations),
         clauseData: extractClauseData(order, agreement),
-        sellerRegistry: extractSellerRegistry(
+        membersRegistry: extractMembersRegistry(
             order,
             inputs.sellerRegistrationEvents ?? [],
         ),

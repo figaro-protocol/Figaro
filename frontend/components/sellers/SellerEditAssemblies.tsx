@@ -6,7 +6,7 @@
  * the `/sellers` manage-list "Assemblies" row.
  *
  * One-pin save sequence: re-pin the profile JSON with the updated
- * assemblyBindings array, dispatch SellerRegistry.updateProfile.
+ * assemblyBindings array, dispatch MembersRegistry.updateProfile.
  *
  * Removing an assembly (un-checking it in the multi-select) is
  * handled by the form's existing toggle. Whole-assemblies clearing
@@ -21,30 +21,30 @@ import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/hooks/useMounted";
-import { useSellerProfile } from "@/lib/seller/useSellerRegistry";
+import { useMemberProfile } from "@/lib/seller/useMembersRegistry";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
-import { useUpdateSellerProfile } from "@/lib/seller/useUpdateSellerProfile";
-import { fetchSellerProfile } from "@/lib/seller/profileFetcher";
-import type { AssemblyBindingRecord, SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
+import { useUpdateMemberProfile } from "@/lib/seller/useUpdateMemberProfile";
+import { fetchMemberProfile } from "@/lib/seller/profileFetcher";
+import type { AssemblyBindingRecord, MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
 import { OnboardingAssembliesForm } from "@/components/sellers/OnboardingAssembliesForm";
 
 export function SellerEditAssemblies() {
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
-    const { data: registryData, isLoading: registryLoading } = useSellerProfile(address);
+    const { data: registryData, isLoading: registryLoading } = useMemberProfile(address);
     const { update, loaded } = useOnboardingState(address);
 
-    const [existingProfile, setExistingProfile] = useState<SellerProfileMetadata | null>(null);
+    const [existingProfile, setExistingProfile] = useState<MemberProfileMetadata | null>(null);
     const [fetchError, setFetchError] = useState<string | null>(null);
     const [seeded, setSeeded] = useState(false);
 
-    const updater = useUpdateSellerProfile(existingProfile, registryData?.[0] ?? null);
+    const updater = useUpdateMemberProfile(existingProfile, registryData?.[0] ?? null);
     const saveInFlight = updater.isPending || updater.isConfirming;
 
     // Redirect unregistered wallets to onboarding — but only on SETTLED
     // state: `!registryLoading && !registryData` is a completed scan that
-    // found nothing (isLoading starts true in useSellerProfile), never a
+    // found nothing (isLoading starts true in useMemberProfile), never a
     // still-hydrating window. And never navigate away mid-save — the
     // redirect unmounts the form and kills the in-flight pin/tx (the
     // 2026-07-09 e2e flake fired on exactly this, between Save and the
@@ -65,7 +65,7 @@ export function SellerEditAssemblies() {
         const [metadataURI] = registryData;
         let cancelled = false;
         // The ONE cached profile read path (lib/seller/profileFetcher).
-        fetchSellerProfile(metadataURI)
+        fetchMemberProfile(metadataURI)
             .then((parsed) => {
                 if (cancelled) return;
                 if (parsed) setExistingProfile(parsed);

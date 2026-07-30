@@ -11,7 +11,7 @@ import { hexEqual } from "@/lib/shared/evm";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useMounted } from "@/hooks/useMounted";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
-import type { AssemblyBindingRecord, CounterpartyBinding } from "@/lib/seller/sellerProfileMetadata";
+import type { AssemblyBindingRecord, CounterpartyBinding } from "@/lib/seller/memberProfileMetadata";
 import {
     type AssemblyChoice,
     requiredCounterpartyClauses,
@@ -299,7 +299,7 @@ export function OnboardingAssembliesForm({
 /** Per-clause address editor — list of address inputs with add /
  *  remove. Maintains local "rows in progress" so the user can type
  *  partial values; the parent only sees validated addresses. Basic
- *  shape validation (viem `isAddress`) only; SellerRegistry-membership
+ *  shape validation (viem `isAddress`) only; MembersRegistry-membership
  *  lookup is deferred. */
 function CounterpartyClauseEditor({
     clauseId,

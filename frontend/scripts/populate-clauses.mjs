@@ -9,7 +9,7 @@
  *   2. `registerClause(clauseId, version, contentHash, contentURI)` on
  *      ClauseRegistry — anchoring the IPFS document pointer (contentURI) + the
  *      spec integrity digest (contentHash), so any reader fetches the spec from
- *      chain state alone (the shape SellerRegistry / AssemblyRegistry already use).
+ *      chain state alone (the shape MembersRegistry / AssemblyRegistry already use).
  *
  * This REPLACES the placeholder clause registration that used to live in the
  * deploy scripts (which anchored `keccak256("ipfs://figaro-x/v1")` — a hash of a

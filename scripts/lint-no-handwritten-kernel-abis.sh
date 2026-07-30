@@ -10,7 +10,7 @@
 # and a working flow read as red for hours (diagnosed as a product bug).
 # A fabricated ABI never errors; it just sees nothing. The canonical
 # sources are `CORE_ABI` / `ATTESTATION_COORDINATOR_ABI` /
-# `CLAUSE_REGISTRY_ABI` / `SELLER_REGISTRY_ABI` / `ASSEMBLY_REGISTRY_ABI`
+# `CLAUSE_REGISTRY_ABI` / `MEMBERS_REGISTRY_ABI` / `ASSEMBLY_REGISTRY_ABI`
 # from `@figaro/sdk` (the registry ABIs are complete since 2026-07-10 —
 # nothing hand-rolls them), and the test-tier view export
 # `CORE_PROCESS_VIEW_ABI` in `tests/e2e/devnet-helpers.ts` (the one
@@ -29,7 +29,7 @@
 set -euo pipefail
 
 # Kernel + coordinator + the three registry families; either quote style.
-BANNED="[\"']event OrderCommitted\(|[\"']event ProcessResolved\(|[\"']event ProcessCreated\(|[\"']event Attestation\(|[\"']event SellerRegistered\(|[\"']event SellerProfileUpdated\(|[\"']event SellerWithdrawn\(|[\"']event ClauseRegistered\(|[\"']event DepositWithdrawn\(|[\"']event AssemblyRegistered\(|[\"']function processes\(bytes32|[\"']function commit\(|[\"']function resolveProcess\(|[\"']function registerClause\(|[\"']function registerAssembly\(|[\"']function register\(string|[\"']function registrationDeposit\("
+BANNED="[\"']event OrderCommitted\(|[\"']event ProcessResolved\(|[\"']event ProcessCreated\(|[\"']event Attestation\(|[\"']event MemberRegistered\(|[\"']event MemberProfileUpdated\(|[\"']event MemberWithdrawn\(|[\"']event ClauseRegistered\(|[\"']event DepositWithdrawn\(|[\"']event AssemblyRegistered\(|[\"']function processes\(bytes32|[\"']function commit\(|[\"']function resolveProcess\(|[\"']function registerClause\(|[\"']function registerAssembly\(|[\"']function register\(string|[\"']function registrationDeposit\("
 
 violations=0
 

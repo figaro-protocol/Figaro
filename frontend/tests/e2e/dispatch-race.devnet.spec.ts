@@ -49,8 +49,8 @@ import {
     fillDeliveryCheckout,
     pinJSONToIPFS,
     readLocalDeploymentConfig,
-    seedRegisteredSeller,
-    sellerProfileBindings,
+    seedRegisteredMember,
+    memberProfileBindings,
     waitForConnected,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
@@ -104,18 +104,18 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
 
         // ── BIND (idempotent): Aurora pins the assembly, designating NOBODY —
         //    the absence IS what makes the courier node race-able. ──
-        if (!(await sellerProfileBindings(MERCHANT)).some((b) => b.assemblySlug === deliverySlug)) {
+        if (!(await memberProfileBindings(MERCHANT)).some((b) => b.assemblySlug === deliverySlug)) {
             await gotoAsWallet(page, MERCHANT, '/sellers/edit/assemblies?e2e=devnet');
             const row = page.getByTestId(`seller-assembly-row-${deliverySlug}`);
             await row.waitFor({ state: 'visible', timeout: 30000 });
             await row.locator('input[type="checkbox"]').first().check();
             await page.getByRole('button', { name: 'Save changes' }).click();
             await expect.poll(async () =>
-                (await sellerProfileBindings(MERCHANT)).some((b) => b.assemblySlug === deliverySlug), {
+                (await memberProfileBindings(MERCHANT)).some((b) => b.assemblySlug === deliverySlug), {
                 timeout: 60000, message: "the merchant's re-pinned profile carries the (undesignated) binding",
             }).toBe(true);
         }
-        const binding = (await sellerProfileBindings(MERCHANT)).find((b) => b.assemblySlug === deliverySlug);
+        const binding = (await memberProfileBindings(MERCHANT)).find((b) => b.assemblySlug === deliverySlug);
         expect(
             (binding?.counterpartyBindings ?? []).some((cb) => cb.clauseId === DELIVERY_CLAUSES.courier),
             'the merchant binding designates no courier — the node is genuinely unbound',
@@ -138,7 +138,7 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
                     available: true,
                 }],
             });
-            await seedRegisteredSeller({
+            await seedRegisteredMember({
                 walletKey,
                 profile: {
                     name,

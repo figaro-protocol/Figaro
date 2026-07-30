@@ -84,7 +84,7 @@ The most repeated reasoning failure on this project is firing a tier-scoped law 
 
 1. **List every doctrine the input cites** as grounds for an objection, finding, or "this breaks X" claim — `ADMITS` / "anyone who can sign and bond participates", no-escape-hatches, "no admin/owner", "role is derived never stored", "no gatekeeping", the 2× ratio, "meaning lives in clauses".
 2. **For each, name the tier it binds.** `CLAUDE.md` § "Common Misframings" tags each line with its tier; the spine limbs (HOLDS/COUPLES/EMERGES/ADMITS) bind the **kernel only**.
-3. **Name the tier of the artifact it is being fired at.** Look it up in the `LEXICON.md` grid — columns `core / kernel` · `registry / protocol` · `frontend / runtime`. Do not infer it from the artifact's name or from how "protocol-ish" it sounds. The grid places `ClauseRegistry`, `SellerRegistry`, and `AssemblyRegistry` at the **protocol** tier.
+3. **Name the tier of the artifact it is being fired at.** Look it up in the `LEXICON.md` grid — columns `core / kernel` · `registry / protocol` · `frontend / runtime`. Do not infer it from the artifact's name or from how "protocol-ish" it sounds. The grid places `ClauseRegistry`, `MembersRegistry`, and `AssemblyRegistry` at the **protocol** tier.
 4. **Mismatch ⇒ BLOCKER (pattern 11).** A kernel law cited against a protocol- or runtime-tier artifact is Folding. The fix text is: "strike the objection — <law> binds the kernel; <artifact> is <tier> tier per `LEXICON.md`, and that tier is permitted to be defined."
 5. **If the input cannot name a tier, that is itself the BLOCKER.** "Verify the tier before objecting."
 

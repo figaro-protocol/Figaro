@@ -1,11 +1,11 @@
 /**
- * components/modules/SellerBrandingModule.tsx — SellerLogo, the seller's
+ * components/modules/MemberBrandingModule.tsx — SellerLogo, the seller's
  * logo rendered from IPFS/HTTP with initials/emoji/neutral fallbacks.
  */
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSellerBranding } from "@/lib/seller/useSellerBranding";
+import { useMemberBranding } from "@/lib/seller/useMemberBranding";
 import { resolveImageUri } from "@/lib/shared/ipfsService";
 
 /**
@@ -36,7 +36,7 @@ export function SellerLogo({
     className,
     size = 48,
 }: SellerLogoProps) {
-    const { branding, isLoading } = useSellerBranding(sellerAddress);
+    const { branding, isLoading } = useMemberBranding(sellerAddress);
     // IPFS-only: a raw http(s) branding locator is attacker-authorable and
     // hotlinking it deanonymizes the viewer (finding 3). Non-IPFS logos resolve
     // to null and fall through to the initials / neutral placeholder below.

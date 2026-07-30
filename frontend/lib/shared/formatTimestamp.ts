@@ -2,7 +2,7 @@
  * formatTimestamp — the ONE home for rendering a moment for display.
  *
  * Chain time is unix SECONDS (block.timestamp, commitment deadlines,
- * SellerRegistry lock ends); wall-clock UI state (designer autosave, draft
+ * MembersRegistry lock ends); wall-clock UI state (designer autosave, draft
  * edits) is Date.now() MILLISECONDS. Each function names its domain so no
  * caller ever guesses with a magnitude heuristic — the OrderNode secs-vs-ms
  * guess this module replaces was unfalsifiable precisely because its input's

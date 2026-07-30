@@ -1,6 +1,6 @@
 /**
  * useAssemblyRegistry — on-chain hooks for the `AssemblyRegistry`. Parallel
- * to `useSellerRegistry` (sellers) and the clause-registry wiring (clauses)
+ * to `useMembersRegistry` (sellers) and the clause-registry wiring (clauses)
  * per the separation-of-concerns doctrine.
  *
  * This is the thin on-chain layer: the ABI, registry-address resolution, the

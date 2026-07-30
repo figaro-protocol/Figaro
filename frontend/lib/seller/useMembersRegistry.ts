@@ -1,7 +1,7 @@
 /**
- * lib/mechanisms/useSellerRegistry.ts
+ * lib/mechanisms/useMembersRegistry.ts
  *
- * Hooks for writing to the SellerRegistry contract — register, updateProfile,
+ * Hooks for writing to the MembersRegistry contract — register, updateProfile,
  * withdraw — and for reading event-derived seller state.
  *
  * The on-chain surface carries no role taxonomy and no categorization
@@ -14,34 +14,34 @@
 import { useCallback, useState, useEffect } from "react";
 import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId, useReadContract } from "wagmi";
-import { getSellerRegistry } from "@/lib/kernel/contracts";
-import { SELLER_REGISTRY_ABI } from "@figaro/sdk";
-import { getSellerState } from "@/lib/protocol/sellerRegistryIndexer";
+import { getMembersRegistry } from "@/lib/kernel/contracts";
+import { MEMBERS_REGISTRY_ABI } from "@figaro/sdk";
+import { getMemberState } from "@/lib/protocol/membersRegistryIndexer";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { fetchCappedContent, resolveContentUri } from "@/lib/shared/ipfsService";
-import { useAsyncSellerResource } from "@/lib/seller/useAsyncSellerResource";
+import { useAsyncMemberResource } from "@/lib/seller/useAsyncMemberResource";
 import {
     AgentServiceInfo,
-    SellerAgentServices,
+    MemberAgentServices,
     projectAgentServices,
-} from "@/lib/seller/sellerProfileMetadata";
+} from "@/lib/seller/memberProfileMetadata";
 
-const registry = getSellerRegistry();
+const registry = getMembersRegistry();
 
 // ── Agent service types (ERC-8004 interop) ───────────────────────────────────
 
 /**
  * Service endpoints an autonomous agent may declare in its metadataURI
  * JSON. Re-exported under the historical name; new code should import
- * `SellerAgentServices` from `sellerProfileMetadata`.
+ * `MemberAgentServices` from `memberProfileMetadata`.
  */
-type AgentServices = SellerAgentServices;
+type AgentServices = MemberAgentServices;
 
 export type { AgentServiceInfo };
 
 /**
  * Extract agent service endpoints from a fetched metadata JSON object.
- * Delegates to the canonical projection in `sellerProfileMetadata`;
+ * Delegates to the canonical projection in `memberProfileMetadata`;
  * retained as a thin wrapper so existing call-sites keep working.
  */
 export function parseAgentServices(metadata: Record<string, unknown>): AgentServiceInfo {
@@ -51,17 +51,17 @@ export function parseAgentServices(metadata: Record<string, unknown>): AgentServ
 // ── Read hooks (indexer-backed) ──────────────────────────────────────────────
 
 /** [metadataURI, registeredBlock] — derived from seller-registry events. */
-export type SellerProfileData = readonly [string, bigint | null];
+export type MemberProfileData = readonly [string, bigint | null];
 
 /**
  * Returns the seller's current metadataURI and registration block from
  * indexed events. Returns undefined if the address has never registered or
  * has withdrawn since (withdraw clears the dedup guard).
  */
-export function useSellerProfile(address: `0x${string}` | undefined) {
+export function useMemberProfile(address: `0x${string}` | undefined) {
     const client = usePublicClient();
     const chainId = useChainId();
-    const [data, setData] = useState<SellerProfileData | undefined>(undefined);
+    const [data, setData] = useState<MemberProfileData | undefined>(undefined);
     // "Not scanned yet" must not read as "scanned and absent": isLoading
     // starts TRUE and settles false only when a scan completes. The prior
     // false start left commit windows (wagmi client/address still hydrating
@@ -81,7 +81,7 @@ export function useSellerProfile(address: `0x${string}` | undefined) {
         let cancelled = false;
         setIsLoading(true);
 
-        getSellerState(client, chainId, address).then((state) => {
+        getMemberState(client, chainId, address).then((state) => {
             if (cancelled) return;
             if (state) {
                 // Only emit a fresh tuple ref when the underlying values
@@ -139,12 +139,12 @@ export function useRegisterSeller() {
     const isSuccess = receiptFetched && receipt?.status === "success";
 
     async function register(metadataURI: string, value?: bigint) {
-        if (!registry) throw new Error("SellerRegistry address not configured");
+        if (!registry) throw new Error("MembersRegistry address not configured");
         if (!client) throw new Error("No public client available");
         if (!account) throw new Error("Wallet not connected");
         await client.simulateContract({
             address: registry,
-            abi: SELLER_REGISTRY_ABI,
+            abi: MEMBERS_REGISTRY_ABI,
             functionName: "register",
             args: [metadataURI],
             value: value ?? 0n,
@@ -152,7 +152,7 @@ export function useRegisterSeller() {
         });
         const txHash = await writeContractAsync({
             address: registry,
-            abi: SELLER_REGISTRY_ABI,
+            abi: MEMBERS_REGISTRY_ABI,
             functionName: "register",
             args: [metadataURI],
             value: value ?? 0n,
@@ -176,19 +176,19 @@ export function useUpdateProfile() {
     const isSuccess = receiptFetched && receipt?.status === "success";
 
     async function updateProfile(metadataURI: string) {
-        if (!registry) throw new Error("SellerRegistry address not configured");
+        if (!registry) throw new Error("MembersRegistry address not configured");
         if (!client) throw new Error("No public client available");
         if (!account) throw new Error("Wallet not connected");
         await client.simulateContract({
             address: registry,
-            abi: SELLER_REGISTRY_ABI,
+            abi: MEMBERS_REGISTRY_ABI,
             functionName: "updateProfile",
             args: [metadataURI],
             account,
         });
         const txHash = await writeContractAsync({
             address: registry,
-            abi: SELLER_REGISTRY_ABI,
+            abi: MEMBERS_REGISTRY_ABI,
             functionName: "updateProfile",
             args: [metadataURI],
         });
@@ -199,6 +199,83 @@ export function useUpdateProfile() {
     return { updateProfile, isPending, isConfirming, isSuccess, error, hash };
 }
 
+/**
+ * Step 1 of leaving: de-surface NOW. Clears the dedup guard, so the member
+ * disappears from discovery and may re-register immediately — but the ETH stays
+ * locked until `withdrawalCooldown` has elapsed. This is the step that ends RPGF
+ * eligibility and the step profile erasure should follow, not the later claim.
+ */
+export function useRequestWithdrawal() {
+    const client = usePublicClient();
+    const { address: account } = useAccount();
+    const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
+    const {
+        isLoading: isConfirming,
+        isSuccess: receiptFetched,
+        data: receipt,
+    } = useWaitForTransactionReceipt({ hash });
+    const isSuccess = receiptFetched && receipt?.status === "success";
+
+    async function requestWithdrawal() {
+        if (!registry) throw new Error("MembersRegistry address not configured");
+        if (!client) throw new Error("No public client available");
+        if (!account) throw new Error("Wallet not connected");
+        await client.simulateContract({
+            address: registry,
+            abi: MEMBERS_REGISTRY_ABI,
+            functionName: "requestWithdrawal",
+            account,
+        });
+        const txHash = await writeContractAsync({
+            address: registry,
+            abi: MEMBERS_REGISTRY_ABI,
+            functionName: "requestWithdrawal",
+        });
+        await verifyTxSuccess(client, txHash, "The withdrawal was not requested.");
+        return txHash;
+    }
+
+    return { requestWithdrawal, isPending, isConfirming, isSuccess, error, hash };
+}
+
+/**
+ * The pending-withdrawal schedule for an address: how much is owed and when it
+ * unlocks. `pending === 0n` means nothing is in flight. Callers compare
+ * `releaseAt` against chain time, not wall-clock, when it matters.
+ */
+export function useWithdrawalStatus(address: `0x${string}` | undefined) {
+    const pending = useReadContract({
+        address: registry ?? undefined,
+        abi: MEMBERS_REGISTRY_ABI,
+        functionName: "pendingDeposit",
+        args: address ? [address] : undefined,
+        query: { enabled: Boolean(registry && address) },
+    });
+    const releaseAt = useReadContract({
+        address: registry ?? undefined,
+        abi: MEMBERS_REGISTRY_ABI,
+        functionName: "releaseAt",
+        args: address ? [address] : undefined,
+        query: { enabled: Boolean(registry && address) },
+    });
+    return {
+        pending: pending.data,
+        releaseAt: releaseAt.data,
+        isLoading: pending.isLoading || releaseAt.isLoading,
+        refetch: () => { void pending.refetch(); void releaseAt.refetch(); },
+    };
+}
+
+/** How long a requested withdrawal stays locked, in seconds. Deploy-time immutable. */
+export function useWithdrawalCooldown() {
+    return useReadContract({
+        address: registry ?? undefined,
+        abi: MEMBERS_REGISTRY_ABI,
+        functionName: "withdrawalCooldown",
+    });
+}
+
+/** Step 2 of leaving: claim the ETH, once the cooldown has elapsed. */
 export function useWithdrawDeposit() {
     const client = usePublicClient();
     const { address: account } = useAccount();
@@ -211,18 +288,18 @@ export function useWithdrawDeposit() {
     const isSuccess = receiptFetched && receipt?.status === "success";
 
     async function withdraw() {
-        if (!registry) throw new Error("SellerRegistry address not configured");
+        if (!registry) throw new Error("MembersRegistry address not configured");
         if (!client) throw new Error("No public client available");
         if (!account) throw new Error("Wallet not connected");
         await client.simulateContract({
             address: registry,
-            abi: SELLER_REGISTRY_ABI,
+            abi: MEMBERS_REGISTRY_ABI,
             functionName: "withdraw",
             account,
         });
         const txHash = await writeContractAsync({
             address: registry,
-            abi: SELLER_REGISTRY_ABI,
+            abi: MEMBERS_REGISTRY_ABI,
             functionName: "withdraw",
         });
         await verifyTxSuccess(client, txHash, "The deposit was not withdrawn.");
@@ -235,7 +312,7 @@ export function useWithdrawDeposit() {
 export function useRegistrationDeposit() {
     return useReadContract({
         address: registry ?? undefined,
-        abi: SELLER_REGISTRY_ABI,
+        abi: MEMBERS_REGISTRY_ABI,
         functionName: "registrationDeposit",
     });
 }
@@ -251,10 +328,10 @@ const NO_AGENT_SERVICES: AgentServiceInfo = { services: {}, capabilities: [], is
  * human-operated participants (no services key in metadata). Absence
  * semantics all the way down: a missing/unfetchable/unparsable document is
  * a human participant, never an error. Built on the ONE seller-resource
- * fetcher (`useAsyncSellerResource`).
+ * fetcher (`useAsyncMemberResource`).
  */
 export function useAgentServices(address: `0x${string}` | undefined) {
-    const { data, isLoading } = useAsyncSellerResource<AgentServiceInfo>(address, {
+    const { data, isLoading } = useAsyncMemberResource<AgentServiceInfo>(address, {
         fetcher: async (metadataURI) => {
             // The on-chain metadataURI is an `ipfs://` URI; the browser
             // cannot fetch that scheme directly — resolve it to the gateway

@@ -1,11 +1,11 @@
 /**
  * Seller-registry extractor — surfaces the seller's
- * `SellerRegistry.SellerRegistered(seller, metadataURI)` event (if any)
+ * `MembersRegistry.MemberRegistered(seller, metadataURI)` event (if any)
  * so the audit bundle includes the seller's claimed off-chain identity at
  * registration time.
  *
  * Note on kernel design: `src/kernel/FigaroCore.sol` does NOT enforce that
- * sellers be registered in the SellerRegistry — the kernel "does not
+ * sellers be registered in the MembersRegistry — the kernel "does not
  * gate any operation on seller state" (CLAUDE.md). Registration is an
  * off-chain discovery convention, not a settlement precondition.
  *
@@ -14,8 +14,8 @@
  * seller is itself an audit-significant flag (the bundle will surface
  * `registered: false` rather than silently omit).
  *
- * Pure function. Caller fetches `SellerRegistered` events from the
- * SellerRegistry contract (filtered by indexed `seller` topic ===
+ * Pure function. Caller fetches `MemberRegistered` events from the
+ * MembersRegistry contract (filtered by indexed `seller` topic ===
  * `order.seller`) and passes them in.
  */
 
@@ -23,15 +23,15 @@ import type { Order } from "@/lib/kernel/store";
 import type { ExtractedDocument } from "./types";
 import { hexEqual } from "@/lib/shared/evm";
 
-export interface SellerRegisteredEvent {
+export interface MemberRegisteredEvent {
     seller: string;
     metadataURI: string;
     blockNumber?: number;
     transactionHash?: string;
 }
 
-export interface SellerRegistryDocument extends ExtractedDocument {
-    /** Whether the seller has an `SellerRegistered` event on chain. */
+export interface MembersRegistryDocument extends ExtractedDocument {
+    /** Whether the seller has an `MemberRegistered` event on chain. */
     registered: boolean;
     /** IPFS / HTTPS URI pointing to the seller's metadata JSON, if registered. */
     metadataURI?: string;
@@ -48,18 +48,18 @@ export interface SellerRegistryDocument extends ExtractedDocument {
 /**
  * @param order        The committed order whose seller's registration we
  *                     want to surface.
- * @param events       `SellerRegistered` events filtered to events whose
+ * @param events       `MemberRegistered` events filtered to events whose
  *                     `seller === order.seller`. Caller fetches via
- *                     indexed-topic query against SellerRegistry. Pass
+ *                     indexed-topic query against MembersRegistry. Pass
  *                     an empty array if the seller has no registration.
  *                     If multiple events are passed (e.g. seller
  *                     re-registered after withdrawing the deposit), the
  *                     most recent block wins.
  */
-export function extractSellerRegistry(
+export function extractMembersRegistry(
     order: Order,
-    events: readonly SellerRegisteredEvent[],
-): SellerRegistryDocument {
+    events: readonly MemberRegisteredEvent[],
+): MembersRegistryDocument {
     const base = {
         title: "Seller registry record",
         orderHash: order.orderHash,
@@ -75,7 +75,7 @@ export function extractSellerRegistry(
             ...base,
             registered: false,
             notice:
-                "Seller is NOT registered in SellerRegistry. The kernel does not require registration, " +
+                "Seller is NOT registered in MembersRegistry. The kernel does not require registration, " +
                 "but every legitimate seller is expected to register (runtime convention). Audit-significant: " +
                 "investigate the seller's claimed identity through other channels.",
         };

@@ -48,7 +48,7 @@ Arrows point **up**: the UI reads the registries; the registries don't know the 
   monotonic cumulative-value accumulator and an opaque `agreementHash`; it takes no position
   on currency, identity, topology, or contribution. Frozen. (`THEORY.md`, `CONTRACTS.md`.)
 - **Registries.** Three parallel families, each its own anchor/identity/event stream
-  (never nested): `ClauseRegistry`, `SellerRegistry`, `AssemblyRegistry`. Permissionless,
+  (never nested): `ClauseRegistry`, `MembersRegistry`, `AssemblyRegistry`. Permissionless,
   first-write-wins, content-addressed. (`CONTRACTS.md`.)
 - **RPGF (`src/protocol/usage/` → `src/rpgf/`).** RPGF rewards how much a contribution helps
   the network evolve. `UsageCounter` counts verified artifact usage AS IT HAPPENS — the chain

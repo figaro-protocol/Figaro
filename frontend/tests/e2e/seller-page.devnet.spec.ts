@@ -9,7 +9,7 @@
  * Seed flow (no UI wizard):
  *   1. Pin a SellerCatalogueMetadata JSON to local Kubo.
  *   2. Register/update the seller through the canonical idempotent
- *      seeder (devnet-helpers.seedRegisteredSeller) with a profile
+ *      seeder (devnet-helpers.seedRegisteredMember) with a profile
  *      pointing at the catalogue AND binding an assembly DISCOVERED
  *      from the AssemblyRegistry (the devnet-authoring project anchors
  *      one first). The surfacing rule is applied EVENLY (operator
@@ -37,7 +37,7 @@ import { createPublicClient, defineChain, http, type Hex } from 'viem';
 import {
     pinJSONToIPFS,
     readLocalDeploymentConfig,
-    seedRegisteredSeller,
+    seedRegisteredMember,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { ASSEMBLY_REGISTRY_ABI } from '@figaro/sdk';
@@ -87,7 +87,7 @@ interface SeededSeller {
  * on-chain via the canonical seeder. Returns the seeded menu item's id/name
  * so the test can locate it via testid.
  */
-async function seedRegisteredSellerWithCatalogue(): Promise<SeededSeller> {
+async function seedRegisteredMemberWithCatalogue(): Promise<SeededSeller> {
     const config = readLocalDeploymentConfig();
     const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? config.tokenAddress) as Hex;
 
@@ -113,7 +113,7 @@ async function seedRegisteredSellerWithCatalogue(): Promise<SeededSeller> {
     const { uri: catalogueURI } = await pinJSONToIPFS(catalogue);
 
     const anchoredSlug = await discoverAnchoredAssemblySlug();
-    await seedRegisteredSeller({
+    await seedRegisteredMember({
         walletKey: SELLER_KEY,
         profile: {
             name: `Devnet Seller ${Date.now()}`,
@@ -138,7 +138,7 @@ test.describe('/s/view (devnet)', () => {
     test.setTimeout(120_000);
 
     test('renders the seller view, lists the seeded catalogue item, and adds it to the cart', async ({ page }) => {
-        const seeded = await seedRegisteredSellerWithCatalogue();
+        const seeded = await seedRegisteredMemberWithCatalogue();
 
         // Buyer wallet is anvil[0] by default — connect via ?e2e=devnet.
         await page.goto(`/s/view?seller=${seeded.address}&e2e=devnet`, { waitUntil: 'domcontentloaded' });

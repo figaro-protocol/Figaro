@@ -47,7 +47,7 @@ type DeploymentConfig = {
     swapRouter?: `0x${string}`;
     clauseRegistry?: `0x${string}`;
     clauseRegistrationHelper?: `0x${string}`;
-    sellerRegistry?: `0x${string}`;
+    membersRegistry?: `0x${string}`;
     assemblyRegistry?: `0x${string}`;
     florinToken?: `0x${string}`;
     usageCounter?: `0x${string}`;
@@ -78,7 +78,7 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
             if (key === 'NEXT_PUBLIC_SWAP_ROUTER') config.swapRouter = value;
             if (key === 'NEXT_PUBLIC_CLAUSE_REGISTRY') config.clauseRegistry = value;
             if (key === 'NEXT_PUBLIC_CLAUSE_REGISTRATION_HELPER') config.clauseRegistrationHelper = value;
-            if (key === 'NEXT_PUBLIC_SELLER_REGISTRY') config.sellerRegistry = value;
+            if (key === 'NEXT_PUBLIC_MEMBERS_REGISTRY') config.membersRegistry = value;
             if (key === 'NEXT_PUBLIC_ASSEMBLY_REGISTRY') config.assemblyRegistry = value;
             if (key === 'NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS') config.florinToken = value;
             if (key === 'NEXT_PUBLIC_USAGE_COUNTER') config.usageCounter = value;
@@ -94,7 +94,7 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
         config.attestationCoordinator = config.attestationCoordinator ?? (contents as any).attestationCoordinator;
         config.clauseRegistry = config.clauseRegistry ?? (contents as any).clauseRegistry;
         config.clauseRegistrationHelper = config.clauseRegistrationHelper ?? (contents as any).clauseRegistrationHelper;
-        config.sellerRegistry = config.sellerRegistry ?? contents.sellerRegistry;
+        config.membersRegistry = config.membersRegistry ?? contents.membersRegistry;
         config.assemblyRegistry = config.assemblyRegistry ?? (contents as any).assemblyRegistry;
     }
 
@@ -109,21 +109,23 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
 // no time-locked path remains to exercise.)
 
 
-/** SellerRegistry ABI fragment for seedRegisteredSeller. Local copy keeps
+/** MembersRegistry ABI fragment for seedRegisteredMember. Local copy keeps
  *  the seed helper independent of the frontend's full ABI export. */
-const SELLER_REGISTRY_REGISTER_ABI = parseAbi([
+const MEMBERS_REGISTRY_REGISTER_ABI = parseAbi([
     'function register(string metadataURI) external payable',
     'function updateProfile(string metadataURI) external',
-    'event SellerRegistered(address indexed seller, string metadataURI)',
-    'event SellerWithdrawn(address indexed seller, uint256 deposit)',
+    'event MemberRegistered(address indexed member, string metadataURI)',
+    // The DE-SURFACING event. `MemberWithdrawn` is the later custody event and
+    // must not be used to decide whether an address is currently registered.
+    'event MemberWithdrawalRequested(address indexed member, uint256 amount, uint256 releaseAt)',
 ]);
 
 const SELLER_REGISTRATION_DEPOSIT = parseEther('0.001');
 
-/** Minimal profile shape for `seedRegisteredSeller`. Mirrors the required
- *  + most-common fields of `SellerProfileMetadata` so callers can author
+/** Minimal profile shape for `seedRegisteredMember`. Mirrors the required
+ *  + most-common fields of `MemberProfileMetadata` so callers can author
  *  a registration JSON without pulling the full frontend metadata type. */
-export interface SeedSellerProfile {
+export interface SeedMemberProfile {
     name: string;
     description?: string;
     specialty?: string;
@@ -140,12 +142,12 @@ export interface SeedSellerProfile {
         assemblySlug: string;
         counterpartyBindings: Array<{ clauseId: string; addresses: string[] }>;
     }>;
-    /** Agent service endpoints (`SellerAgentServices`) — a declared `rest`
+    /** Agent service endpoints (`MemberAgentServices`) — a declared `rest`
      *  makes the wallet an AGENT candidate: race/quote drafts POST there. */
     services?: { mcp?: string; a2a?: string; rest?: string; did?: string; ens?: string };
 }
 
-/** Result of `seedRegisteredSeller`. Includes the on-chain address (derived
+/** Result of `seedRegisteredMember`. Includes the on-chain address (derived
  *  from the wallet key) and the IPFS URI of the pinned profile JSON. */
 export interface SeededSeller {
     address: `0x${string}`;
@@ -155,7 +157,7 @@ export interface SeededSeller {
 
 /**
  * Pin a fresh seller profile JSON to local Kubo and register the wallet
- * on `SellerRegistry`. Pairs with `merchant-page.devnet.spec.ts`'s
+ * on `MembersRegistry`. Pairs with `merchant-page.devnet.spec.ts`'s
  * inline seeder (which inlines this for the catalogue+merchant case); the
  * helper here is the generic "any registered seller" seed, used by
  * Phase 4 C4 to set up the `/sellers/edit/*` UI tests (those routes
@@ -164,23 +166,23 @@ export interface SeededSeller {
  *
  * Requires Kubo running at NEXT_PUBLIC_IPFS_API_URL (default
  * http://127.0.0.1:5001) and `./deploy-local.sh` having populated
- * NEXT_PUBLIC_SELLER_REGISTRY.
+ * NEXT_PUBLIC_MEMBERS_REGISTRY.
  */
-export async function seedRegisteredSeller(opts: {
+export async function seedRegisteredMember(opts: {
     walletKey: `0x${string}`;
-    profile: SeedSellerProfile;
+    profile: SeedMemberProfile;
 }): Promise<SeededSeller> {
     const localConfig = readLocalDeploymentConfig();
-    const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY
-        ?? localConfig.sellerRegistry) as `0x${string}` | undefined;
-    if (!sellerRegistry) {
-        throw new Error('NEXT_PUBLIC_SELLER_REGISTRY not set — run ./deploy-local.sh');
+    const membersRegistry = (process.env.NEXT_PUBLIC_MEMBERS_REGISTRY
+        ?? localConfig.membersRegistry) as `0x${string}` | undefined;
+    if (!membersRegistry) {
+        throw new Error('NEXT_PUBLIC_MEMBERS_REGISTRY not set — run ./deploy-local.sh');
     }
 
     const seller = privateKeyToAccount(opts.walletKey);
 
     // Pin the profile JSON. Frontend's SellerEditProfile.tsx fetches this
-    // URI via gateway and parses with `tryParseSellerProfileDocument`, so
+    // URI via gateway and parses with `tryParseMemberProfileDocument`, so
     // the shape must satisfy that parser. Required field: `name`.
     const profileDoc = {
         subjectAddress: seller.address,
@@ -198,17 +200,17 @@ export async function seedRegisteredSeller(opts: {
     // withdraw spec's wallet cycles register→withdraw every run).
     const [priorRegistrations, priorWithdrawals] = await Promise.all([
         publicClient.getContractEvents({
-            address: sellerRegistry,
-            abi: SELLER_REGISTRY_REGISTER_ABI,
-            eventName: 'SellerRegistered',
-            args: { seller: seller.address },
+            address: membersRegistry,
+            abi: MEMBERS_REGISTRY_REGISTER_ABI,
+            eventName: 'MemberRegistered',
+            args: { member: seller.address },
             fromBlock: 0n,
         }),
         publicClient.getContractEvents({
-            address: sellerRegistry,
-            abi: SELLER_REGISTRY_REGISTER_ABI,
-            eventName: 'SellerWithdrawn',
-            args: { seller: seller.address },
+            address: membersRegistry,
+            abi: MEMBERS_REGISTRY_REGISTER_ABI,
+            eventName: 'MemberWithdrawalRequested',
+            args: { member: seller.address },
             fromBlock: 0n,
         }),
     ]);
@@ -219,8 +221,8 @@ export async function seedRegisteredSeller(opts: {
         // for anvil's own unlocked (globally shared) accounts.
         const { request } = await publicClient.simulateContract({
             account: seller,
-            address: sellerRegistry,
-            abi: SELLER_REGISTRY_REGISTER_ABI,
+            address: membersRegistry,
+            abi: MEMBERS_REGISTRY_REGISTER_ABI,
             functionName: 'updateProfile',
             args: [profileURI],
         });
@@ -228,8 +230,8 @@ export async function seedRegisteredSeller(opts: {
     } else {
         const { request } = await publicClient.simulateContract({
             account: seller,
-            address: sellerRegistry,
-            abi: SELLER_REGISTRY_REGISTER_ABI,
+            address: membersRegistry,
+            abi: MEMBERS_REGISTRY_REGISTER_ABI,
             functionName: 'register',
             args: [profileURI],
             value: SELLER_REGISTRATION_DEPOSIT,
@@ -296,18 +298,18 @@ export async function assertPinnedInIpfs(cid: string): Promise<void> {
 
 // ── Mainnet-faithful seller discovery ───────────────────────────────────────
 // Runtime specs must consume sellers the way a mainnet client does: read
-// SellerRegistry events, fetch each seller's profile from IPFS, and match on the
+// MembersRegistry events, fetch each seller's profile from IPFS, and match on the
 // on-chain `assemblyBindings`. NO roster, NO hardcoded addresses/names/keys — a
 // spec that takes seller identity from a TS file is not testing mainnet usage.
 // (This mirrors what the indexer / `discoveryService` does; it additionally keeps
 // the `assemblyBindings` that the buyer-facing `SellerCatalogue` projection drops.)
 
-/** SellerRegistry registration events — carry the profile metadataURI. Internal
+/** MembersRegistry registration events — carry the profile metadataURI. Internal
  *  to discovery; read by `discoverSellers`. */
 const SELLER_REGISTERED_EVENT_ABI = parseAbi([
-    'event SellerRegistered(address indexed seller, string metadataURI)',
-    'event SellerProfileUpdated(address indexed seller, string metadataURI)',
-    'event SellerWithdrawn(address indexed seller, uint256 deposit)',
+    'event MemberRegistered(address indexed seller, string metadataURI)',
+    'event MemberProfileUpdated(address indexed seller, string metadataURI)',
+    'event MemberWithdrawn(address indexed seller, uint256 deposit)',
 ]);
 
 export interface DiscoveredSeller {
@@ -326,22 +328,22 @@ export interface DiscoveredSeller {
  *  (registrations must outnumber withdrawals), a profile that fails to
  *  fetch or parse is skipped rather than crashing discovery — anyone can
  *  register a garbage URI; consumers must tolerate it — and the live profile
- *  is the most recent `SellerProfileUpdated` post-dating the surviving
+ *  is the most recent `MemberProfileUpdated` post-dating the surviving
  *  registration (mirrors `lib/kernel/indexer.ts`; `updateProfile` is a
- *  by-design SellerRegistry surface). */
+ *  by-design MembersRegistry surface). */
 export async function discoverSellers(): Promise<DiscoveredSeller[]> {
     const publicClient = localPublicClient();
     const config = readLocalDeploymentConfig();
-    const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY ?? config.sellerRegistry) as `0x${string}`;
+    const membersRegistry = (process.env.NEXT_PUBLIC_MEMBERS_REGISTRY ?? config.membersRegistry) as `0x${string}`;
     const [events, updates, withdrawals] = await Promise.all([
         publicClient.getContractEvents({
-            address: sellerRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'SellerRegistered', fromBlock: 0n,
+            address: membersRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'MemberRegistered', fromBlock: 0n,
         }),
         publicClient.getContractEvents({
-            address: sellerRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'SellerProfileUpdated', fromBlock: 0n,
+            address: membersRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'MemberProfileUpdated', fromBlock: 0n,
         }),
         publicClient.getContractEvents({
-            address: sellerRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'SellerWithdrawn', fromBlock: 0n,
+            address: membersRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'MemberWithdrawn', fromBlock: 0n,
         }),
     ]);
     const withdrawnCount = new Map<string, number>();
@@ -401,20 +403,20 @@ export async function discoverSellers(): Promise<DiscoveredSeller[]> {
 
 
 
-/** The latest profile URI a seller anchored on SellerRegistry (registration
+/** The latest profile URI a seller anchored on MembersRegistry (registration
  *  or the most recent update), read from events — the out-of-band truth specs
  *  verify gate effects against. */
-export async function latestSellerProfileURI(seller: `0x${string}`): Promise<string | undefined> {
+export async function latestMemberProfileURI(seller: `0x${string}`): Promise<string | undefined> {
     const publicClient = localPublicClient();
     const config = readLocalDeploymentConfig();
-    const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY ?? config.sellerRegistry) as `0x${string}`;
+    const membersRegistry = (process.env.NEXT_PUBLIC_MEMBERS_REGISTRY ?? config.membersRegistry) as `0x${string}`;
     const [registrations, updates] = await Promise.all([
         publicClient.getContractEvents({
-            address: sellerRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'SellerRegistered',
+            address: membersRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'MemberRegistered',
             args: { seller }, fromBlock: 0n,
         }),
         publicClient.getContractEvents({
-            address: sellerRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'SellerProfileUpdated',
+            address: membersRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'MemberProfileUpdated',
             args: { seller }, fromBlock: 0n,
         }),
     ]);
@@ -425,10 +427,10 @@ export async function latestSellerProfileURI(seller: `0x${string}`): Promise<str
 
 /** A seller's live assembly bindings, read from its latest pinned profile
  *  (chain events → IPFS). Empty when unregistered or unresolvable. */
-export async function sellerProfileBindings(
+export async function memberProfileBindings(
     seller: `0x${string}`,
 ): Promise<DiscoveredSeller['assemblyBindings']> {
-    const uri = await latestSellerProfileURI(seller);
+    const uri = await latestMemberProfileURI(seller);
     if (!uri) return [];
     try {
         const doc = await (await fetch(resolveIpfsURI(uri))).json() as {

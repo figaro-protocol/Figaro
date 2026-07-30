@@ -3,7 +3,7 @@ import { SellerEditAssemblies } from "@/components/sellers/SellerEditAssemblies"
 
 export const metadata: Metadata = {
     title: "Edit assemblies — Figaro Protocol",
-    description: "Pick which assemblies the wallet participates in. Re-pins the profile JSON with the updated assemblyBindings array, then dispatches SellerRegistry.updateProfile.",
+    description: "Pick which assemblies the wallet participates in. Re-pins the profile JSON with the updated assemblyBindings array, then dispatches MembersRegistry.updateProfile.",
 };
 
 export default function EditAssembliesPage() {

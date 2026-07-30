@@ -2,7 +2,7 @@
  * lib/shared/uriFetcher.ts
  *
  * Generic fetch+parse+cache helper for IPFS / HTTP content-addressed
- * documents. Two lib modules (`catalogueFetcher`, `sellerBranding`)
+ * documents. Two lib modules (`catalogueFetcher`, `memberBranding`)
  * previously each rolled their own copy of the same pipeline:
  *
  *   if (!uri) return null;

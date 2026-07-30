@@ -48,13 +48,13 @@ state, never configured).
    `resolve-process` is self-contained; `commit`/`attest`/`initiate` take signed inputs
    (the counterparty's signature). Originating a chain: `originateProcess` /
    `originateChain` — build the offer, get it counter-signed, bond, submit.
-   To surface the wallet as a discoverable seller, `SellerRegistry.register(metadataURI)`
+   To surface the wallet as a discoverable seller, `MembersRegistry.register(metadataURI)`
    (a self-signed action, only the wallet's own key) — but if the wallet is already
    registered `register()` reverts `AlreadyRegistered`, so publish or refresh the profile
    with `updateProfile(metadataURI)` instead. `metadataURI` points at the seller-profile
    JSON document — its shape (required `name`; optional branding, accepted tokens,
-   `catalogueURI`, agent `services`) is `SellerProfileMetadata` in `@figaro/sdk`; parse
-   and validate it with `parseSellerProfileDocument` before pinning (see the SDK README's
+   `catalogueURI`, agent `services`) is `MemberProfileMetadata` in `@figaro/sdk`; parse
+   and validate it with `parseMemberProfileDocument` before pinning (see the SDK README's
    "Seller Profile + Catalogue Documents").
 
 ## Forming a market — the race and the RFQ

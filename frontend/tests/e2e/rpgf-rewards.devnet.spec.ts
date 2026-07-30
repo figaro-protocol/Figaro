@@ -33,7 +33,7 @@ import { createWalletClient, http, parseAbi, parseEther, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
     ATTESTATION_COORDINATOR_ABI,
-    SELLER_REGISTRY_ABI,
+    MEMBERS_REGISTRY_ABI,
     buildCommitment,
     buildDomain,
     buildSectionInclusionProof,
@@ -85,10 +85,10 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
         const core = config.figaroCore as Hex;
         const token = config.tokenAddress as Hex;
         const coordinator = config.attestationCoordinator as Hex;
-        const sellerRegistry = config.sellerRegistry as Hex;
+        const membersRegistry = config.membersRegistry as Hex;
         expect(minter, 'the RPGF minter is deployed (deploy-local.sh writes its address)').toBeTruthy();
         expect(counter, 'the UsageCounter is deployed (deploy-local.sh writes its address)').toBeTruthy();
-        expect(core && token && coordinator && sellerRegistry, 'full deployment record').toBeTruthy();
+        expect(core && token && coordinator && membersRegistry, 'full deployment record').toBeTruthy();
 
         const publicClient = localPublicClient();
         const chainId = LOCAL_ANVIL.id;
@@ -104,17 +104,17 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
         const receipt = (hash: Hex) => publicClient.waitForTransactionReceipt({ hash });
 
         // ── Real protocol history (never mocks) ──────────────────────────
-        // 1. The seller holds a live SellerRegistry stake. Idempotent across runs.
+        // 1. The seller holds a live MembersRegistry stake. Idempotent across runs.
         const priorRegistrations = await publicClient.getContractEvents({
-            address: sellerRegistry, abi: SELLER_REGISTRY_ABI, eventName: 'SellerRegistered',
-            args: { seller: sellerAccount.address }, fromBlock: 0n,
+            address: membersRegistry, abi: MEMBERS_REGISTRY_ABI, eventName: 'MemberRegistered',
+            args: { member: sellerAccount.address }, fromBlock: 0n,
         });
         if (priorRegistrations.length === 0) {
             const deposit = (await publicClient.readContract({
-                address: sellerRegistry, abi: SELLER_REGISTRY_ABI, functionName: 'registrationDeposit',
+                address: membersRegistry, abi: MEMBERS_REGISTRY_ABI, functionName: 'registrationDeposit',
             })) as bigint;
             await receipt(await sellerWallet.writeContract({
-                address: sellerRegistry, abi: SELLER_REGISTRY_ABI, functionName: 'register',
+                address: membersRegistry, abi: MEMBERS_REGISTRY_ABI, functionName: 'register',
                 args: ['ipfs://rpgf-e2e-trade-seller'], value: deposit,
             }));
         }

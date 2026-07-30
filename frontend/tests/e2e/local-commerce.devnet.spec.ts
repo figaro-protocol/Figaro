@@ -92,7 +92,7 @@ import {
     fillDeliveryCheckout,
     ladderLabelsFromChain,
     readLocalDeploymentConfig,
-    sellerProfileBindings,
+    memberProfileBindings,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -207,7 +207,7 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         //    assembly it participates in. Both verified out-of-band from the
         //    registry events + IPFS. ──
         const merchantConformant = async (): Promise<boolean> => {
-            const bindings = await sellerProfileBindings(MERCHANT);
+            const bindings = await memberProfileBindings(MERCHANT);
             const binding = bindings.find((b) => b.assemblySlug === deliverySlug);
             return !!binding && (binding.counterpartyBindings ?? []).some(
                 (cb) => cb.clauseId === COURIER_CLAUSE
@@ -227,14 +227,14 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
                 timeout: 60000, message: "the merchant's re-pinned profile carries the binding + courier designation",
             }).toBe(true);
         }
-        if (!(await sellerProfileBindings(COURIER)).some((b) => b.assemblySlug === deliverySlug)) {
+        if (!(await memberProfileBindings(COURIER)).some((b) => b.assemblySlug === deliverySlug)) {
             await gotoAsWallet(page, COURIER, '/sellers/edit/assemblies?e2e=devnet');
             const row = page.getByTestId(`seller-assembly-row-${deliverySlug}`);
             await row.waitFor({ state: 'visible', timeout: 30000 });
             await row.locator('input[type="checkbox"]').first().check();
             await page.getByRole('button', { name: 'Save changes' }).click();
             await expect.poll(async () =>
-                (await sellerProfileBindings(COURIER)).some((b) => b.assemblySlug === deliverySlug), {
+                (await memberProfileBindings(COURIER)).some((b) => b.assemblySlug === deliverySlug), {
                 timeout: 60000, message: "the courier's re-pinned profile carries the binding",
             }).toBe(true);
         }

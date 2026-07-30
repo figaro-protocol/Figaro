@@ -39,7 +39,7 @@ vi.mock("@/lib/seller/useSellerTrackRecord", () => ({
 vi.mock("@/components/sellers/TokenAddressInput", () => ({
     useTokenSymbol: () => ({ data: "" }),
 }));
-vi.mock("@/components/modules/SellerBrandingModule", () => ({
+vi.mock("@/components/modules/MemberBrandingModule", () => ({
     SellerLogo: () => React.createElement("div", { "data-testid": "seller-logo" }),
 }));
 vi.mock("@/components/sellers/SellerAgentIdentity", () => ({

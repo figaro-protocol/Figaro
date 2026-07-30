@@ -11,7 +11,7 @@ export default function OnboardingReviewPage() {
             title="Review and publish"
             description={
                 <p>
-                    A preview of how your wallet will appear on its <code>/m/&lt;address&gt;</code> page. Edit any section, then publish: we pin the catalogue to IPFS, pin the profile JSON (with the catalogue URI embedded), and call <code>register</code> (or <code>updateProfile</code> for a returning wallet) on <code>SellerRegistry</code> in one user action.
+                    A preview of how your wallet will appear on its <code>/m/&lt;address&gt;</code> page. Edit any section, then publish: we pin the catalogue to IPFS, pin the profile JSON (with the catalogue URI embedded), and call <code>register</code> (or <code>updateProfile</code> for a returning wallet) on <code>MembersRegistry</code> in one user action.
                 </p>
             }
         >

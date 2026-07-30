@@ -176,7 +176,7 @@ pro-rata for that real usage.
 **Neutrality comes from the stake, not from the weight.** What keeps the uniform
 reward honest is the two-sided **live ETH stake**, not a per-category multiplier.
 Usage counts only when the process's seller-of-record
-holds a live `SellerRegistry` stake (`UsageCounter` reads `SellerRegistry.registered`,
+holds a live `MembersRegistry` stake (`UsageCounter` reads `MembersRegistry.registered`,
 else `SellerNotStaked`), and an author is paid only while their registration deposit is
 un-withdrawn (`RpgfMinter._isAuthor` requires clause `depositOf.withdrawn == false`,
 assembly `bindings.depositWithdrawn == false`); withdraw and you forfeit future RPGF.

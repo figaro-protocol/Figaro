@@ -4,7 +4,7 @@
  * registries the e2e suite consumes from: clauses (ClauseRegistry + IPFS, reusing
  * populate-clauses), the seed assemblies (AssemblyRegistry + IPFS — the blank
  * mandatory-only composition sellers bind, plus the multi-order delivery chain
- * the multi-order e2e runs), AND sellers (SellerRegistry + IPFS).
+ * the multi-order e2e runs), AND sellers (MembersRegistry + IPFS).
  * Run after deploy, before the test suite. The runtime specs then discover everything from chain → IPFS.
  *
  * This is the single source of the test SELLERS — it replaces `seller-roster.ts`
@@ -15,7 +15,7 @@
  * Production sellers onboard themselves through the wizard; this script exists for
  * TESTING ONLY. For production clause population use populate-clauses.mjs.
  *
- * Env (frontend/.env.local): NEXT_PUBLIC_CLAUSE_REGISTRY, NEXT_PUBLIC_SELLER_REGISTRY,
+ * Env (frontend/.env.local): NEXT_PUBLIC_CLAUSE_REGISTRY, NEXT_PUBLIC_MEMBERS_REGISTRY,
  *   NEXT_PUBLIC_TOKEN_ADDRESS, NEXT_PUBLIC_IPFS_API_URL, RPC_URL.
  */
 import fs from 'node:fs';
@@ -26,7 +26,7 @@ import { mnemonicToAccount } from 'viem/accounts';
 // registry + ERC-20 ABIs, the canonical-JSON convention, and the assembly
 // identity (compositionHash + slug). Nothing is re-implemented here.
 import {
-    SELLER_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, ERC20_ABI,
+    MEMBERS_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, ERC20_ABI,
     canonicalize, templateCompositionHash, deriveAssemblySlug,
 } from '@figaro/sdk';
 import {
@@ -180,12 +180,12 @@ function seedTemplateChain() {
 async function main() {
     const env = readEnvLocal();
     const clauseRegistry = env.NEXT_PUBLIC_CLAUSE_REGISTRY;
-    const sellerRegistry = env.NEXT_PUBLIC_SELLER_REGISTRY;
+    const membersRegistry = env.NEXT_PUBLIC_MEMBERS_REGISTRY;
     const assemblyRegistry = env.NEXT_PUBLIC_ASSEMBLY_REGISTRY;
     const mockErc20 = env.NEXT_PUBLIC_TOKEN_ADDRESS;
     const ipfsApiUrl = env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
-    if (!clauseRegistry || !sellerRegistry || !assemblyRegistry || !mockErc20) {
-        throw new Error('NEXT_PUBLIC_CLAUSE_REGISTRY / NEXT_PUBLIC_SELLER_REGISTRY / NEXT_PUBLIC_ASSEMBLY_REGISTRY / NEXT_PUBLIC_TOKEN_ADDRESS missing — deploy first.');
+    if (!clauseRegistry || !membersRegistry || !assemblyRegistry || !mockErc20) {
+        throw new Error('NEXT_PUBLIC_CLAUSE_REGISTRY / NEXT_PUBLIC_MEMBERS_REGISTRY / NEXT_PUBLIC_ASSEMBLY_REGISTRY / NEXT_PUBLIC_TOKEN_ADDRESS missing — deploy first.');
     }
 
     const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
@@ -286,7 +286,7 @@ async function main() {
 
         try {
             const { request } = await publicClient.simulateContract({
-                account: account.address, address: sellerRegistry, abi: SELLER_REGISTRY_ABI,
+                account: account.address, address: membersRegistry, abi: MEMBERS_REGISTRY_ABI,
                 functionName: 'register', args: [metadataURI], value: REGISTRATION_DEPOSIT,
             });
             const hash = await sellerClient.writeContract(request);
@@ -296,7 +296,7 @@ async function main() {
             if (!isAlreadyRegistered(err)) throw err;
             // Already registered — refresh the pinned profile so a re-run repairs it.
             const { request } = await publicClient.simulateContract({
-                account: account.address, address: sellerRegistry, abi: SELLER_REGISTRY_ABI,
+                account: account.address, address: membersRegistry, abi: MEMBERS_REGISTRY_ABI,
                 functionName: 'updateProfile', args: [metadataURI],
             });
             const hash = await sellerClient.writeContract(request);

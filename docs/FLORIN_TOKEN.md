@@ -167,8 +167,8 @@ farming it is the two-sided **live ETH stake** — it aligns the honest majority
 than deterring a determined adversary, and the mechanism is not "farm-proof"; the honest
 bound and its residual are stated in `docs/PUBLIC_GRAPH_MODEL.md` § "What the stake does
 and does not do", which owns that rationale. Usage counts only when the process's
-seller-of-record holds a live `SellerRegistry` stake (`UsageCounter` reads
-`SellerRegistry.registered`, else `SellerNotStaked`), and an author is paid only while
+seller-of-record holds a live `MembersRegistry` stake (`UsageCounter` reads
+`MembersRegistry.registered`, else `SellerNotStaked`), and an author is paid only while
 their registration deposit is un-withdrawn (`RpgfMinter._isAuthor` requires clause
 `depositOf.withdrawn == false`, assembly `bindings.depositWithdrawn == false`) —
 withdraw and you forfeit future RPGF. The ETH stake is a **value loop, not a cost**:

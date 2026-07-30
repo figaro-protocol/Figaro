@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * usePublishSellerProfile — atomic publish flow for the seller
+ * usePublishMemberProfile — atomic publish flow for the seller
  * wizard's final step. Mirrors `usePublishAssembly` in shape:
  *
  *   1. Pin the catalogue document to IPFS (skipped if a cached
@@ -30,22 +30,22 @@ import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import { toError } from "@/lib/shared/errors";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import {
-    parseSellerProfileDocument,
-    type SellerProfileMetadata,
-} from "@/lib/seller/sellerProfileMetadata";
+    parseMemberProfileDocument,
+    type MemberProfileMetadata,
+} from "@/lib/seller/memberProfileMetadata";
 import { publishSellerCatalogue } from "@/lib/seller/cataloguePublisher";
 import type {
     CatalogueItemMetadata,
     SellerCatalogueMetadata,
     UnitSystem,
 } from "@/lib/seller/sellerCatalogueMetadata";
-import { getSellerRegistry } from "@/lib/kernel/contracts";
-import { SELLER_REGISTRY_ABI } from "@figaro/sdk";
+import { getMembersRegistry } from "@/lib/kernel/contracts";
+import { MEMBERS_REGISTRY_ABI } from "@figaro/sdk";
 
 export interface PublishSellerInput {
     /** Profile fields collected by the wizard, MINUS the catalogueURI
      *  (which the hook fills in after pinning the catalogue). */
-    profileTemplate: Omit<SellerProfileMetadata, "catalogueURI">;
+    profileTemplate: Omit<MemberProfileMetadata, "catalogueURI">;
     /** Catalogue items to pin. Must be non-empty — the kernel doesn't
      *  enforce this but the seller UX expects it (see Step 3 gate). */
     items: CatalogueItemMetadata[];
@@ -88,17 +88,17 @@ function translatePublishRevert(err: unknown): Error {
     return toError(err);
 }
 
-export function usePublishSellerProfile() {
+export function usePublishMemberProfile() {
     const client = usePublicClient();
     const { writeContractAsync, data: hash, isPending, error: writeError } =
         useWriteContract();
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
     async function publish(input: PublishSellerInput): Promise<PublishSellerOutcome> {
-        const registry = getSellerRegistry();
+        const registry = getMembersRegistry();
         if (!registry) {
             throw new Error(
-                "SellerRegistry address not configured (NEXT_PUBLIC_SELLER_REGISTRY).",
+                "MembersRegistry address not configured (NEXT_PUBLIC_MEMBERS_REGISTRY).",
             );
         }
         if (!client) {
@@ -122,11 +122,11 @@ export function usePublishSellerProfile() {
         }
 
         // (b) Build + validate the profile document with the catalogueURI embedded.
-        const profile: SellerProfileMetadata = {
+        const profile: MemberProfileMetadata = {
             ...input.profileTemplate,
             catalogueURI,
         };
-        parseSellerProfileDocument(profile, "onboarding-publish");
+        parseMemberProfileDocument(profile, "onboarding-publish");
 
         // (c) Pin the profile document.
         const profilePin = await DEFAULT_IPFS_SERVICE.publishJSON(
@@ -146,7 +146,7 @@ export function usePublishSellerProfile() {
             try {
                 await client.simulateContract({
                     address: registry,
-                    abi: SELLER_REGISTRY_ABI,
+                    abi: MEMBERS_REGISTRY_ABI,
                     functionName: "updateProfile",
                     args: [profileURI],
                     account: input.wallet,
@@ -156,20 +156,20 @@ export function usePublishSellerProfile() {
             }
             txHash = await writeContractAsync({
                 address: registry,
-                abi: SELLER_REGISTRY_ABI,
+                abi: MEMBERS_REGISTRY_ABI,
                 functionName: "updateProfile",
                 args: [profileURI],
             });
         } else {
             const deposit = (await client.readContract({
                 address: registry,
-                abi: SELLER_REGISTRY_ABI,
+                abi: MEMBERS_REGISTRY_ABI,
                 functionName: "registrationDeposit",
             })) as bigint;
             try {
                 await client.simulateContract({
                     address: registry,
-                    abi: SELLER_REGISTRY_ABI,
+                    abi: MEMBERS_REGISTRY_ABI,
                     functionName: "register",
                     args: [profileURI],
                     value: deposit,
@@ -180,7 +180,7 @@ export function usePublishSellerProfile() {
             }
             txHash = await writeContractAsync({
                 address: registry,
-                abi: SELLER_REGISTRY_ABI,
+                abi: MEMBERS_REGISTRY_ABI,
                 functionName: "register",
                 args: [profileURI],
                 value: deposit,

@@ -25,7 +25,7 @@
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
-import { calculateBonds, SELLER_REGISTRY_ABI } from '@figaro/sdk';
+import { calculateBonds, MEMBERS_REGISTRY_ABI } from '@figaro/sdk';
 import { discoverAnchoredAssemblies, readLocalDeploymentConfig, waitForConnected } from './devnet-helpers';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import type { Page } from '@playwright/test';
@@ -122,7 +122,7 @@ test.describe('checkout assembly choice — two bindings force the buyer to pick
         const config = readLocalDeploymentConfig();
         const core = config.figaroCore as Hex;
         const token = config.tokenAddress as Hex;
-        const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY ?? config.sellerRegistry) as Hex;
+        const membersRegistry = (process.env.NEXT_PUBLIC_MEMBERS_REGISTRY ?? config.membersRegistry) as Hex;
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const balanceOf = (who: Hex) =>
             publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
@@ -142,12 +142,12 @@ test.describe('checkout assembly choice — two bindings force the buyer to pick
         const latestProfileURI = async (): Promise<string | undefined> => {
             const [registrations, updates] = await Promise.all([
                 publicClient.getContractEvents({
-                    address: sellerRegistry, abi: SELLER_REGISTRY_ABI, eventName: 'SellerRegistered',
-                    args: { seller: SELLER.address }, fromBlock: 0n,
+                    address: membersRegistry, abi: MEMBERS_REGISTRY_ABI, eventName: 'MemberRegistered',
+                    args: { member: SELLER.address }, fromBlock: 0n,
                 }),
                 publicClient.getContractEvents({
-                    address: sellerRegistry, abi: SELLER_REGISTRY_ABI, eventName: 'SellerProfileUpdated',
-                    args: { seller: SELLER.address }, fromBlock: 0n,
+                    address: membersRegistry, abi: MEMBERS_REGISTRY_ABI, eventName: 'MemberProfileUpdated',
+                    args: { member: SELLER.address }, fromBlock: 0n,
                 }),
             ]);
             return [...registrations, ...updates]

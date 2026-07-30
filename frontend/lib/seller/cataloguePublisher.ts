@@ -5,8 +5,8 @@
  * Serializes a SellerCatalogueMetadata document → pins to IPFS → returns
  * the IPFS URI. The URI is then referenced from the seller's profile
  * document (as `catalogueURI`) which itself is pinned and registered
- * on-chain via `SellerRegistry.register(profileURI)` for first-time
- * sellers or `SellerRegistry.updateProfile(profileURI)` for already-
+ * on-chain via `MembersRegistry.register(profileURI)` for first-time
+ * sellers or `MembersRegistry.updateProfile(profileURI)` for already-
  * registered sellers (the latter does not consume the deposit or
  * restart the lock period). This module handles the off-chain pin only;
  * the caller orchestrates the on-chain call.
@@ -16,7 +16,7 @@ import type { SellerCatalogueMetadata } from "@/lib/seller/sellerCatalogueMetada
 import { parseSellerCatalogueDocument } from "@/lib/seller/sellerCatalogueMetadataParser";
 import { DEFAULT_IPFS_SERVICE, type IpfsService } from "@/lib/shared/ipfsService";
 import { invalidateCatalogueCache } from "@/lib/seller/catalogueFetcher";
-import { clearBrandingCache } from "@/lib/seller/sellerBranding";
+import { clearBrandingCache } from "@/lib/seller/memberBranding";
 
 export interface PublishResult {
     /** The IPFS CID of the pinned document */

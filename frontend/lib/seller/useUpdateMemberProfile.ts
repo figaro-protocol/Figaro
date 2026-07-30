@@ -1,17 +1,17 @@
 /**
- * lib/sellers/useUpdateSellerProfile.ts
+ * lib/sellers/useUpdateMemberProfile.ts
  *
  * Shared edit-side write path for the four seller-managed
  * surfaces (profile / catalogue-link / assemblies / agents).
  * Each of these resolves on-chain through one mechanism —
- * `SellerRegistry.updateProfile(metadataURI)` — so they share
+ * `MembersRegistry.updateProfile(metadataURI)` — so they share
  * the same workflow:
  *
  *   1. Take a partial draft of the fields the user just edited.
  *   2. Merge with the wallet's current on-chain profile so
  *      unchanged fields (catalogueURI, assemblyBindings,
  *      services, branding, etc.) survive the round-trip.
- *   3. Validate the merged document via `parseSellerProfileDocument`
+ *   3. Validate the merged document via `parseMemberProfileDocument`
  *      so a malformed update fails before it leaves the browser.
  *   4. Pin the new JSON to IPFS.
  *   5. Call `updateProfile(newURI)` on the registry. Deposit and
@@ -33,12 +33,12 @@ import { toError } from "@/lib/shared/errors";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { unpinSupersededProfileArtifacts } from "@/lib/seller/profileErasure";
 import {
-    parseSellerProfileDocument,
-    type SellerProfileMetadata,
-} from "@/lib/seller/sellerProfileMetadata";
-import { useUpdateProfile } from "@/lib/seller/useSellerRegistry";
+    parseMemberProfileDocument,
+    type MemberProfileMetadata,
+} from "@/lib/seller/memberProfileMetadata";
+import { useUpdateProfile } from "@/lib/seller/useMembersRegistry";
 
-type SellerProfilePatch = Partial<SellerProfileMetadata>;
+type MemberProfilePatch = Partial<MemberProfileMetadata>;
 
 interface SaveOptions {
     /**
@@ -50,16 +50,16 @@ interface SaveOptions {
      * `undefined` in `patch` means "leave existing alone"; this
      * `clear` list is the explicit "set to undefined" channel.
      */
-    clear?: Array<keyof SellerProfileMetadata>;
+    clear?: Array<keyof MemberProfileMetadata>;
 }
 
-export interface UseUpdateSellerProfileResult {
+export interface UseUpdateMemberProfileResult {
     /**
      * Build the merged profile, validate, pin, and dispatch
      * `updateProfile`. Resolves once the on-chain transaction has
      * confirmed; rejects with a typed error otherwise.
      */
-    save: (patch: SellerProfilePatch, options?: SaveOptions) => Promise<void>;
+    save: (patch: MemberProfilePatch, options?: SaveOptions) => Promise<void>;
     /** True while pinning OR while the on-chain transaction is in flight. */
     isPending: boolean;
     /** True only while the transaction is awaiting confirmation. */
@@ -72,13 +72,13 @@ export interface UseUpdateSellerProfileResult {
     publishedURI: string | null;
 }
 
-export function useUpdateSellerProfile(
-    existingProfile: SellerProfileMetadata | null,
+export function useUpdateMemberProfile(
+    existingProfile: MemberProfileMetadata | null,
     /** The registry metadataURI the save supersedes — its CID (and any
      *  authored artifact the successor drops) is unpinned after the
      *  on-chain update confirms. Omit when unknown; erasure is skipped. */
     priorProfileUri?: string | null,
-): UseUpdateSellerProfileResult {
+): UseUpdateMemberProfileResult {
     const {
         updateProfile,
         isPending: writePending,
@@ -99,7 +99,7 @@ export function useUpdateSellerProfile(
         setPublishedURI(null);
     }, [existingProfile]);
 
-    async function save(patch: SellerProfilePatch, options?: SaveOptions): Promise<void> {
+    async function save(patch: MemberProfilePatch, options?: SaveOptions): Promise<void> {
         if (!existingProfile) {
             throw new Error("Can't update profile: no existing profile loaded.");
         }
@@ -107,11 +107,11 @@ export function useUpdateSellerProfile(
         setPublishedURI(null);
         setPinning(true);
 
-        let merged: SellerProfileMetadata;
+        let merged: MemberProfileMetadata;
         try {
             merged = mergeProfile(existingProfile, patch, options?.clear);
             // Round-trip validation — throws if the document doesn't parse.
-            parseSellerProfileDocument(merged, "edit-profile");
+            parseMemberProfileDocument(merged, "edit-profile");
         } catch (err) {
             const e = toError(err);
             setPinError(e);
@@ -174,10 +174,10 @@ export function useUpdateSellerProfile(
  * blanking the on-chain identity.
  */
 function mergeProfile(
-    existing: SellerProfileMetadata,
-    patch: SellerProfilePatch,
-    clear: Array<keyof SellerProfileMetadata> = [],
-): SellerProfileMetadata {
+    existing: MemberProfileMetadata,
+    patch: MemberProfilePatch,
+    clear: Array<keyof MemberProfileMetadata> = [],
+): MemberProfileMetadata {
     const merged = {
         ...existing,
         ...Object.fromEntries(
@@ -185,7 +185,7 @@ function mergeProfile(
         ),
         // Preserve the wallet stamp — the patch never touches subjectAddress.
         subjectAddress: existing.subjectAddress,
-    } as SellerProfileMetadata;
+    } as MemberProfileMetadata;
 
     // Strip explicitly-cleared fields. `subjectAddress` is non-clearable
     // (it's the on-chain identity); silently drop attempts to clear it.

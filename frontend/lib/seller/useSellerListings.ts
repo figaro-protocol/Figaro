@@ -2,7 +2,7 @@
  * lib/mechanisms/useSellerListings.ts
  *
  * Discover-side counterpart to `useRegisteredCatalogues`. Reads
- * registered sellers from the on-chain `SellerRegistry` (via
+ * registered sellers from the on-chain `MembersRegistry` (via
  * event logs), fetches each seller's profile JSON from IPFS,
  * CROSS-CHECKS each profile's claimed assembly bindings against the
  * AssemblyRegistry (the registry is the authority — only sellers with
@@ -20,8 +20,8 @@ import {
     profileToListing,
     type Listing,
 } from "@/lib/seller/sellerListing";
-import { getActiveSellers } from "@/lib/protocol/sellerRegistryIndexer";
-import { fetchSellerProfile } from "@/lib/seller/profileFetcher";
+import { getActiveSellers } from "@/lib/protocol/membersRegistryIndexer";
+import { fetchMemberProfile } from "@/lib/seller/profileFetcher";
 import type { PublicClient } from "viem";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { usePublishedAssemblies } from "@/lib/protocol/useAssemblyRegistry";
@@ -37,8 +37,8 @@ const EMPTY_RESULT: UseSellerListingsResult = {
 };
 
 function isRegistryConfigured(): boolean {
-    return !!CONTRACTS.sellerRegistry
-        && CONTRACTS.sellerRegistry.length === 42;
+    return !!CONTRACTS.membersRegistry
+        && CONTRACTS.membersRegistry.length === 42;
 }
 
 async function fetchProfileAsListing(
@@ -46,7 +46,7 @@ async function fetchProfileAsListing(
     metadataURI: string,
     publishedSlugs: Set<string>,
 ): Promise<Listing | null> {
-    const profile = await fetchSellerProfile(metadataURI);
+    const profile = await fetchMemberProfile(metadataURI);
     if (!profile) return null;
     const listing = profileToListing(profile, address);
     // Cross-check the profile's CLAIMED bindings against the

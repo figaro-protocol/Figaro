@@ -63,18 +63,18 @@ Required output:
 
 ### Task 3: Resolve Mainnet Registry Parameters
 
-`script/DeployMainnet.s.sol` instantiates `SellerRegistry(0.001 ether)` and `ClauseRegistry(0.001 ether)` — the devnet defaults — with explicit "PLACEHOLDER VALUE — DO NOT SHIP TO MAINNET WITHOUT REVIEW" comments at the call sites. The deposit is the Sybil-resistance stake (K4: no time lock — withdraw de-surfaces the artifact, so pollution costs deposit × time-surfaced).
+`script/DeployMainnet.s.sol` instantiates `MembersRegistry(0.001 ether, 0)` and `ClauseRegistry(0.001 ether)` — the devnet defaults — with explicit "PLACEHOLDER VALUE — DO NOT SHIP TO MAINNET WITHOUT REVIEW" comments at the call sites. The deposit is the Sybil-resistance stake (K4: withdrawal de-surfaces the artifact, so pollution costs deposit × time-surfaced). **`MembersRegistry` takes TWO parameters that must be picked together** — the deposit and the `withdrawalCooldown`. A zero cooldown makes the deposit recyclable across identities in sequence, so its capital cost collapses to O(1) however much breadth is fabricated; the mainnet value must be chosen against the RPGF accrual period, and after the batch-usage bridge lands (it drops the per-fabricated-pair gas cost by roughly 15×, which the deposit/cooldown have to absorb). The clause and assembly registries carry no cooldown and need none — their withdrawal is one-shot per key with a permanent binding, so there is nothing to recycle.
 
 Required output:
 
 1. mainnet `registrationDeposit` chosen against an explicit deploy-time ETH/USD anchor — bonded-participation cost is the floor of attacker discouragement; too low enables cheap Sybil farms, too high locks out small sellers
 2. reasoning recorded inline in `DeployMainnet.s.sol` at the constructor call sites
 3. PLACEHOLDER comments removed from the script
-4. same exercise repeated for the `AssemblyRegistry` and `ClauseRegistry` deposits, both of which now deploy to mainnet (Task 4) with the devnet placeholder (the binding-permanence asymmetry — clause/assembly bindings are permanent, the SellerRegistry dedup guard clears on withdraw — should be reflected in the deposit choice)
+4. same exercise repeated for the `AssemblyRegistry` and `ClauseRegistry` deposits, both of which now deploy to mainnet (Task 4) with the devnet placeholder (the binding-permanence asymmetry — clause/assembly bindings are permanent, the MembersRegistry dedup guard clears on withdraw — should be reflected in the deposit choice)
 
 ### Task 4: AssemblyRegistry Mainnet-Parity Decision
 
-**Disposition taken: deploy it (2026-07-27).** `script/DeployMainnet.s.sol` now imports and deploys `AssemblyRegistry` alongside `ClauseRegistry` and `SellerRegistry` — the parity the separation-of-concerns rule requires, and a hard dependency of `RpgfMinter`, which reads it for the assembly author of record. The devnet/mainnet asymmetry is closed.
+**Disposition taken: deploy it (2026-07-27).** `script/DeployMainnet.s.sol` now imports and deploys `AssemblyRegistry` alongside `ClauseRegistry` and `MembersRegistry` — the parity the separation-of-concerns rule requires, and a hard dependency of `RpgfMinter`, which reads it for the assembly author of record. The devnet/mainnet asymmetry is closed.
 
 Remaining output:
 
@@ -290,9 +290,9 @@ external-audit gates above:
 
 - `FlorinToken.deployer` == the expected deployer EOA; `FlorinToken.deployerMintRenounced` == `true` after minter setup; `FlorinToken.totalSupply()` == the expected genesis allocation; every registered minter is an intended allocation contract.
 - `AttestationCoordinator.core` == the deployed `FigaroCore` address.
-- `SellerRegistry.registrationDeposit` and `ClauseRegistry.registrationDeposit` == the mainnet values picked per Task 3 (NOT the devnet `0.001 ether` placeholder).
+- `MembersRegistry.registrationDeposit` / `.withdrawalCooldown` and `ClauseRegistry.registrationDeposit` == the mainnet values picked per Task 3 (NOT the devnet `0.001 ether` / `0` placeholders). Both MembersRegistry values are immutable and cannot be corrected after deploy.
 - `AssemblyRegistry.registrationDeposit` == the mainnet value picked per Task 3 (NOT the devnet `0.001 ether` placeholder).
-- `UsageCounter.sellers` == the deployed `SellerRegistry` (the live-stake gate reads it), and `UsageCounter.periodEnd(0..2)` == the intended `RPGF_PERIOD_END_1/2/3` — these are immutable and cannot be corrected after deploy. `RpgfMinter.counter` / `.clauses` / `.assemblies` point at the deployed instances, and `.trancheAmount` sums to 600M.
+- `UsageCounter.members` == the deployed `MembersRegistry` (the live-stake gate reads it), and `UsageCounter.periodEnd(0..2)` == the intended `RPGF_PERIOD_END_1/2/3` — these are immutable and cannot be corrected after deploy. `RpgfMinter.counter` / `.clauses` / `.assemblies` point at the deployed instances, and `.trancheAmount` sums to 600M.
 - All settlement tokens are non-rebasing and non-fee-on-transfer.
 - Kleros subcourt IDs in the deployed dispute config match the target chain on klerosboard.com (Gnosis subcourt IDs differ from Ethereum mainnet) — verify before the deployment is treated as live.
 - Agreement / assembly-template / profile content is pinned for durable retrieval per Task 6 — on mainnet via sovereign per-party pinning (Option 3), never only a single Kubo node — and is fetchable by CID across the 6-year (5 + 1) retrieval-availability floor.
@@ -305,7 +305,7 @@ external-audit gates above:
 
 ## Freeze Notice — Solidity Surface Frozen for External Audit
 
-**Initial freeze**: 2026-04-20. Subsequent amendments landed a pre-audit findings batch (florin allocation restructured, `MerkleAirdrop`/`TrancheVesting` deleted, `DOMAIN_SEPARATOR()` getter, `totalRegisteredCap` enforcement); revised the `SellerRegistry` surface (dropped `role` from `register` + `SellerRegistered`, added `updateProfile`, removed `SellerRole` / `InvalidRole`, lockstep update to `FigaroBatchVerifier.SellerEventInput`); expanded the frozen-scope declaration to add `IClauseValidator.sol`, `AssemblyRegistry.sol`, `ProcessOffsetReceipt.sol`; and closed the post-resolve commit gate (`FigaroCore.commit`'s sub-order branch reverts `ProcessAlreadyResolved` when `ps.activeOrderCount == 0`; Rust prover mirrors; `DESIGN_DECISIONS.md` item #1 rewritten). A further amendment (2026-07-03) removed `ProcessOffsetReceipt.sol` from scope — the carbon-offset apparatus was deleted (no on-network retirement router exists on the deployment chain; see `CONTRACTS.md`). Amendment history is in `git log`; current frozen scope is below.
+**Initial freeze**: 2026-04-20. Subsequent amendments landed a pre-audit findings batch (florin allocation restructured, `MerkleAirdrop`/`TrancheVesting` deleted, `DOMAIN_SEPARATOR()` getter, `totalRegisteredCap` enforcement); revised the `MembersRegistry` surface (dropped `role` from `register` + `MemberRegistered`, added `updateProfile`, removed `SellerRole` / `InvalidRole`, lockstep update to `FigaroBatchVerifier.SellerEventInput`); expanded the frozen-scope declaration to add `IClauseValidator.sol`, `AssemblyRegistry.sol`, `ProcessOffsetReceipt.sol`; and closed the post-resolve commit gate (`FigaroCore.commit`'s sub-order branch reverts `ProcessAlreadyResolved` when `ps.activeOrderCount == 0`; Rust prover mirrors; `DESIGN_DECISIONS.md` item #1 rewritten). A further amendment (2026-07-03) removed `ProcessOffsetReceipt.sol` from scope — the carbon-offset apparatus was deleted (no on-network retirement router exists on the deployment chain; see `CONTRACTS.md`). Amendment history is in `git log`; current frozen scope is below.
 
 The following Solidity surface is declared frozen for external audit.
 No feature changes, refactors, or dependency upgrades will be made to
@@ -320,7 +320,7 @@ directory IS the tier map); the frozen *contracts* are unchanged by the move.
 | Directory / file | Contents |
 |---|---|
 | `src/kernel/` | `FigaroCore.sol`, `CommitmentTypes.sol` |
-| `src/protocol/registries/` | `ClauseRegistry.sol`, `SellerRegistry.sol`, `AssemblyRegistry.sol` |
+| `src/protocol/registries/` | `ClauseRegistry.sol`, `MembersRegistry.sol`, `AssemblyRegistry.sol` |
 | `src/protocol/coordinators/` | `AttestationCoordinator.sol`, `IRoleResolver.sol` |
 | `src/florin/` | `FlorinToken.sol`, `IFlorinMinter.sol` |
 | `script/Deploy.s.sol` | Devnet deploy (defines the devnet surface) |

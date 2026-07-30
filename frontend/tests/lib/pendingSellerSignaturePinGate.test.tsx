@@ -36,7 +36,7 @@ vi.mock("wagmi", () => ({
 vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));
 
 // A stable devnet core so the sig-verification gate has a domain (partial mock
-// — other modules import SELLER_REGISTRY_ABI etc. from here).
+// — other modules import MEMBERS_REGISTRY_ABI etc. from here).
 vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/kernel/contracts")>();
     return {

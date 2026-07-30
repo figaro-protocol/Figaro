@@ -3,7 +3,7 @@ import { SellerEditCatalogue } from "@/components/sellers/SellerEditCatalogue";
 
 export const metadata: Metadata = {
     title: "Edit catalogue — Figaro Protocol",
-    description: "Update the pinned catalogue document. Re-pins items to IPFS, then re-pins the seller profile pointing at the new catalogue CID, then dispatches SellerRegistry.updateProfile.",
+    description: "Update the pinned catalogue document. Re-pins items to IPFS, then re-pins the seller profile pointing at the new catalogue CID, then dispatches MembersRegistry.updateProfile.",
 };
 
 export default function EditCataloguePage() {

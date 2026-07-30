@@ -32,7 +32,7 @@ prohibition-only frame leaves a vacuum the base model fills with its default.
 
 2. **The SET is the live registry, read at runtime.** Clauses/sellers/assemblies
    are an UNBOUNDED set defined by the network — read from ClauseRegistry /
-   SellerRegistry / AssemblyRegistry via the indexer, fetched chain→IPFS; code
+   MembersRegistry / AssemblyRegistry via the indexer, fetched chain→IPFS; code
    operates on the spec it fetched, never on identity. *Test:* would this still hold
    if a never-seen clause dropped into the registry now? *Tell:* naming a fixed clause
    count ("the 17 clauses"), a fixed list treated as the world, or citing a fixture /
@@ -139,7 +139,7 @@ every composition.
   shipped-depth.
 
 - **Each artifact family gets its own anchor** (clauses → ClauseRegistry; sellers →
-  SellerRegistry; assemblies → AssemblyRegistry) — parallel, never nested. Arrows point
+  MembersRegistry; assemblies → AssemblyRegistry) — parallel, never nested. Arrows point
   one way: assemblies use clauses; clauses don't know assemblies exist.
 
 ### Where a composed contract may stand — the four placements
@@ -254,7 +254,7 @@ assets, and narrative applied to the shell.
 1. Clause meaning → solve in the agreement/metadata, not view composition.
 2. Repeated action logic → the action model, not a new module type.
 3. Provider variance → service bindings, not page code.
-4. Per-seller branding → `sellerBranding.ts` + `SellerBrandingModule`, not semantic derivation.
+4. Per-seller branding → `memberBranding.ts` + `MemberBrandingModule`, not semantic derivation.
 5. Mechanism structure → a mechanism package, not a bespoke route.
 
 ### Human + agent parity

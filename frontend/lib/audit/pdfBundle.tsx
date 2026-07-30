@@ -490,7 +490,7 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
 
 // ── Seller registry page ──────────────────────────────────────────────────
 
-function SellerRegistryPage({ doc }: { doc: AuditBundle["sellerRegistry"] }) {
+function MembersRegistryPage({ doc }: { doc: AuditBundle["membersRegistry"] }) {
     return (
         <Page size="A4" style={styles.page}>
             <View style={styles.header}>
@@ -530,7 +530,7 @@ function SellerRegistryPage({ doc }: { doc: AuditBundle["sellerRegistry"] }) {
             )}
             <Text style={styles.note}>
                 The Figaro kernel does not enforce seller registration —
-                SellerRegistry is advisory off-chain metadata. Every
+                MembersRegistry is advisory off-chain metadata. Every
                 legitimate seller is expected to register (runtime convention);
                 an unregistered seller is itself an audit-significant flag.
             </Text>
@@ -801,7 +801,7 @@ export function AuditBundlePdf({ data }: { data: AuditBundlePdfData }) {
                 <ProcessLogsPage key={`processlogs-${bundle.processLogs.orderHash}`} doc={bundle.processLogs} />
             ))}
             {data.perOrderBundles.map((bundle) => (
-                <SellerRegistryPage key={`opreg-${bundle.sellerRegistry.orderHash}`} doc={bundle.sellerRegistry} />
+                <MembersRegistryPage key={`opreg-${bundle.membersRegistry.orderHash}`} doc={bundle.membersRegistry} />
             ))}
             {/* Every recognizable document — invoice per seller, BoL per carriage
                 leg, financial statements per seller + consolidated — one generic

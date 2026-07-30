@@ -1,7 +1,7 @@
 /**
  * lib/mechanisms/useRegisteredCatalogues.ts
  *
- * Hook that discovers all registered sellers from SellerRegistry
+ * Hook that discovers all registered sellers from MembersRegistry
  * events (via the indexer), fetches their catalogues from IPFS, and
  * projects them to the buyer-side `SellerCatalogue` UI type for the
  * discovery module. Plural-of-wallets — each wallet has at most one

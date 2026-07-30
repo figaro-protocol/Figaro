@@ -26,7 +26,7 @@ import { formatEther, parseEther, type Hex } from 'viem';
 import {
     confirmAgreementPreviews,
     discoverAnchoredAssemblies,
-    sellerProfileBindings,
+    memberProfileBindings,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { geohashCentroidDistanceKm } from '@figaro/sdk/derive';
@@ -210,7 +210,7 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
         //    the hauler; the hauler (RATE item, entered through the wizard's
         //    pricing-policy fields) binds the assembly it hauls for. ──
         const leadConformant = async (): Promise<boolean> => {
-            const bindings = await sellerProfileBindings(LEAD);
+            const bindings = await memberProfileBindings(LEAD);
             const binding = bindings.find((b) => b.assemblySlug === slug);
             return !!binding && (binding.counterpartyBindings ?? []).some(
                 (cb) => cb.clauseId === PROCESS_CLAUSE
@@ -231,7 +231,7 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
                 timeout: 60000, message: "the lead's pinned profile carries the binding + hauler designation",
             }).toBe(true);
         }
-        if (!(await sellerProfileBindings(HAULER)).some((b) => b.assemblySlug === slug)) {
+        if (!(await memberProfileBindings(HAULER)).some((b) => b.assemblySlug === slug)) {
             await onboardSeller(page, {
                 wallet: HAULER,
                 name: 'Rate Test Haulage',
@@ -245,7 +245,7 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
                 },
             });
             await expect.poll(async () =>
-                (await sellerProfileBindings(HAULER)).some((b) => b.assemblySlug === slug), {
+                (await memberProfileBindings(HAULER)).some((b) => b.assemblySlug === slug), {
                 timeout: 60000, message: "the hauler's pinned profile carries the binding",
             }).toBe(true);
         }

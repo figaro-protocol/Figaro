@@ -26,7 +26,7 @@ import { formatEther, parseEther, type Hex } from 'viem';
 import {
     confirmAgreementPreviews,
     discoverAnchoredAssemblies,
-    sellerProfileBindings,
+    memberProfileBindings,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import type { Page } from '@playwright/test';
@@ -195,7 +195,7 @@ test.describe('BOOKING-WINDOW PRICING — a contributor prices per started hour 
         // ── ONBOARD (idempotent): the lead (fixed price) binds + designates the
         //    provider; the provider (RATE item, booking-window source) binds. ──
         const leadConformant = async (): Promise<boolean> => {
-            const bindings = await sellerProfileBindings(LEAD);
+            const bindings = await memberProfileBindings(LEAD);
             const binding = bindings.find((b) => b.assemblySlug === slug);
             return !!binding && (binding.counterpartyBindings ?? []).some(
                 (cb) => cb.clauseId === PROCESS_CLAUSE
@@ -216,7 +216,7 @@ test.describe('BOOKING-WINDOW PRICING — a contributor prices per started hour 
                 timeout: 60000, message: "the lead's pinned profile carries the binding + provider designation",
             }).toBe(true);
         }
-        if (!(await sellerProfileBindings(PROVIDER)).some((b) => b.assemblySlug === slug)) {
+        if (!(await memberProfileBindings(PROVIDER)).some((b) => b.assemblySlug === slug)) {
             await onboardSeller(page, {
                 wallet: PROVIDER,
                 name: 'Booking Test Consultancy',
@@ -230,7 +230,7 @@ test.describe('BOOKING-WINDOW PRICING — a contributor prices per started hour 
                 },
             });
             await expect.poll(async () =>
-                (await sellerProfileBindings(PROVIDER)).some((b) => b.assemblySlug === slug), {
+                (await memberProfileBindings(PROVIDER)).some((b) => b.assemblySlug === slug), {
                 timeout: 60000, message: "the provider's pinned profile carries the binding",
             }).toBe(true);
         }

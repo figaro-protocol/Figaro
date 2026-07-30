@@ -161,7 +161,7 @@ export interface OnboardingProfileFormProps {
      * When provided, the form's submit button calls this callback
      * with the assembled draft instead of routing to the next wizard
      * step. Used by the edit-identity page (`/sellers/edit/identity`)
-     * to wire submit through `SellerRegistry.updateProfile` rather
+     * to wire submit through `MembersRegistry.updateProfile` rather
      * than the wizard flow's `register`.
      *
      * Return a promise that rejects on failure; the form will surface

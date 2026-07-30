@@ -1,19 +1,19 @@
 /**
- * lib/shared/sellerBranding.ts
+ * lib/shared/memberBranding.ts
  *
  * Seller branding metadata fetcher.
- * Resolves IPFS/HTTP URIs from SellerRegistry.metadataURI, fetches the
+ * Resolves IPFS/HTTP URIs from MembersRegistry.metadataURI, fetches the
  * seller profile document, and extracts branding + asset fields.
  *
  * The metadata document the on-chain `metadataURI` points to is an
- * `SellerProfileMetadata` record; only its branding-relevant subset
+ * `MemberProfileMetadata` record; only its branding-relevant subset
  * (name, branding, assets) is extracted here. The profile pins the
  * branding payload (logo, hero, image base URI) so buyer
  * frontends can render the seller's identity.
  */
 
-import type { SellerBrandingMetadata } from "@/lib/seller/sellerBrandingMetadata";
-import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
+import type { MemberBrandingMetadata } from "@/lib/seller/memberBrandingMetadata";
+import type { MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
 import { createUriFetcher } from "@/lib/seller/uriFetcher";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -22,8 +22,8 @@ interface SellerAssets {
     imageBaseURI?: string;
 }
 
-export interface ResolvedSellerBranding {
-    branding: SellerBrandingMetadata;
+export interface ResolvedMemberBranding {
+    branding: MemberBrandingMetadata;
     assets: SellerAssets;
     /** Raw logo LOCATOR (e.g. `ipfs://…`) — the render layer resolves it once
      *  through `resolveImageUri` (ipfs→gateway, rejects raw http as an
@@ -36,15 +36,15 @@ export interface ResolvedSellerBranding {
 
 // ── Fetch + parse ─────────────────────────────────────────────────────────────
 
-function resolveSellerBrandingDocument(input: {
+function resolveMemberBrandingDocument(input: {
     name?: string;
-    branding?: Partial<SellerBrandingMetadata> | null;
+    branding?: Partial<MemberBrandingMetadata> | null;
     assets?: Partial<SellerAssets> | null;
-}): ResolvedSellerBranding {
+}): ResolvedMemberBranding {
     const branding = input.branding ?? {};
     const assets = input.assets ?? {};
 
-    const b: SellerBrandingMetadata = {
+    const b: MemberBrandingMetadata = {
         logoURI: typeof branding.logoURI === "string" ? branding.logoURI : undefined,
     };
 
@@ -60,9 +60,9 @@ function resolveSellerBrandingDocument(input: {
     };
 }
 
-export function resolveSellerBrandingFromSellerProfile(
-    metadata: Pick<SellerProfileMetadata, "name" | "branding" | "assets"> | null | undefined,
-): ResolvedSellerBranding | null {
+export function resolveMemberBrandingFromMemberProfile(
+    metadata: Pick<MemberProfileMetadata, "name" | "branding" | "assets"> | null | undefined,
+): ResolvedMemberBranding | null {
     if (!metadata) {
         return null;
     }
@@ -76,7 +76,7 @@ export function resolveSellerBrandingFromSellerProfile(
         return null;
     }
 
-    return resolveSellerBrandingDocument({
+    return resolveMemberBrandingDocument({
         name: metadata.name,
         branding: metadata.branding,
         assets: metadata.assets,
@@ -89,19 +89,19 @@ export function resolveSellerBrandingFromSellerProfile(
  *
  * @returns Resolved branding, or null if the URI is empty or fetch fails.
  */
-const brandingFetcher = createUriFetcher<ResolvedSellerBranding>({
+const brandingFetcher = createUriFetcher<ResolvedMemberBranding>({
     parse: (doc) => {
         if (!doc || typeof doc !== "object" || Array.isArray(doc)) return null;
         const record = doc as Record<string, unknown>;
-        return resolveSellerBrandingDocument({
+        return resolveMemberBrandingDocument({
             name: typeof record.name === "string" ? record.name : undefined,
-            branding: (record.branding ?? null) as Partial<SellerBrandingMetadata> | null,
+            branding: (record.branding ?? null) as Partial<MemberBrandingMetadata> | null,
             assets: (record.assets ?? null) as Partial<SellerAssets> | null,
         });
     },
 });
 
-export function fetchSellerBranding(metadataURI: string): Promise<ResolvedSellerBranding | null> {
+export function fetchMemberBranding(metadataURI: string): Promise<ResolvedMemberBranding | null> {
     return brandingFetcher.fetch(metadataURI);
 }
 

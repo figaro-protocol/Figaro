@@ -1,14 +1,14 @@
 import type { PublicClient } from 'viem';
-import { getActiveSellers } from '@/lib/protocol/sellerRegistryIndexer';
+import { getActiveSellers } from '@/lib/protocol/membersRegistryIndexer';
 import type { SellerCatalogue } from '@/lib/seller/types';
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { fetchCappedContent, resolveContentUri, type CappedContentResponse } from "@/lib/shared/ipfsService";
 import type { SellerCatalogueMetadata } from '@/lib/seller/sellerCatalogueMetadata';
 import {
-    SellerProfileMetadata,
-    tryParseSellerProfileDocument,
-} from '@/lib/seller/sellerProfileMetadata';
-import { tryParseCatalogueItems } from '@/lib/seller/sellerProfileAdapter';
+    MemberProfileMetadata,
+    tryParseMemberProfileDocument,
+} from '@/lib/seller/memberProfileMetadata';
+import { tryParseCatalogueItems } from '@/lib/seller/memberProfileAdapter';
 import { safeJsonFromResponse } from '@/lib/shared/safeJson';
 
 interface DiscoveryResult {
@@ -16,7 +16,7 @@ interface DiscoveryResult {
 }
 
 function profileToCatalogue(
-    profile: SellerProfileMetadata,
+    profile: MemberProfileMetadata,
     catalogue: SellerCatalogueMetadata | undefined,
 ): SellerCatalogue | null {
     // No address ⇒ no listing. The real path stamps the on-chain wallet onto
@@ -63,7 +63,7 @@ async function fetchSellerAsCatalogue(
     // The profile carries identity / branding / accepted tokens, plus a
     // catalogueURI pointing to the (separately-pinned) volatile items
     // list.
-    const profile = tryParseSellerProfileDocument(doc);
+    const profile = tryParseMemberProfileDocument(doc);
     if (!profile) return null;
 
     // The frontend's surfacing rule, applied EVENLY across every projection
@@ -79,7 +79,7 @@ async function fetchSellerAsCatalogue(
 
     // Stamp the wallet onto the profile so downstream renderers can
     // route from the listing back to /s/view?seller=<address>.
-    const stamped: SellerProfileMetadata = {
+    const stamped: MemberProfileMetadata = {
         ...profile,
         subjectAddress: profile.subjectAddress ?? (address as `0x${string}`),
     };
@@ -138,7 +138,7 @@ export function createDiscoveryService(
 
     const service: DiscoveryService = {
         isRegistryConfigured() {
-            return !!CONTRACTS.sellerRegistry && CONTRACTS.sellerRegistry.length === 42;
+            return !!CONTRACTS.membersRegistry && CONTRACTS.membersRegistry.length === 42;
         },
         async listCatalogues(client: PublicClient, chainId: number, publishedSlugs: ReadonlySet<string>) {
             if (!service.isRegistryConfigured()) {

@@ -42,7 +42,7 @@ vi.mock("wagmi", () => ({
     useWalletClient: () => useWalletClientMock(),
 }));
 
-vi.mock("@/lib/protocol/sellerRegistryIndexer", () => ({
+vi.mock("@/lib/protocol/membersRegistryIndexer", () => ({
     getSellerMetadataURI: (...args: unknown[]) => getSellerMetadataURIMock(...args),
 }));
 

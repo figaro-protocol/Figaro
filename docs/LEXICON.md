@@ -31,7 +31,7 @@ name at each tier* — these are PROJECTIONS, not synonyms. Translate across tie
 **Distinct concepts that are NOT drift** (do not collapse): `compositionHash` = the *assembly's*
 identity (AssemblyRegistry binding key) ≠ `contentHash` (the *clause spec's* integrity digest,
 ClauseRegistry) ≠ `agreementHash` (the *signed agreement's* EIP-712 fingerprint); `contentURI` =
-IPFS document *location* (Clause/Assembly registries; SellerRegistry keeps `metadataURI` — its
+IPFS document *location* (Clause/Assembly registries; MembersRegistry keeps `metadataURI` — its
 mutable profile IS metadata) ≠ a hash; `contentRef` = the *attestation's* fingerprint ≠ any of
 them. Verify-after-fetch: readers recompute `contentHash`/`compositionHash` from the fetched
 document (`canonicalJson.ts` — one canonical form, sorted keys) — a mismatched pin is absence.

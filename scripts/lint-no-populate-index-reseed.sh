@@ -3,7 +3,7 @@
 # lint-no-populate-index-reseed.sh — DEVNET SEED-ISOLATION FLOOR.
 #
 # The persisted devnet is SHARED world-state across specs, and
-# seedRegisteredSeller FULL-REPLACES a profile. populate-test-data.mjs owns
+# seedRegisteredMember FULL-REPLACES a profile. populate-test-data.mjs owns
 # anvil indices 5-12 (Kiosk 5, Aurora 6, Rosa's 7, Cardinal 8, Saffron 9,
 # Pomodoro 10, Harbor 11, Sterling 12) — specs ADOPT those read-only. A spec
 # that SELF-SEEDS a 5-12 index stomps the shared catalogue, and every adopter

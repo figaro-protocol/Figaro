@@ -2,7 +2,7 @@
  * useSellerBoundAssemblies — resolves a seller's on-chain bound assemblies
  * into the buyer-facing choice set at checkout.
  *
- * Seller-domain composition: reads the seller's profile (SellerRegistry →
+ * Seller-domain composition: reads the seller's profile (MembersRegistry →
  * IPFS), intersects the profile's `assemblyBindings[].assemblySlug` with the
  * published assembly events, and fetches each matched assemblyTemplate. The
  * on-chain reads come from `@/lib/protocol/useAssemblyRegistry` (a legal
@@ -13,11 +13,11 @@ import { useEffect, useState } from "react";
 import { fetchCappedContent, resolveContentUri } from "@/lib/shared/ipfsService";
 import { safeJsonParse } from "@/lib/shared/safeJson";
 import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
-import { useSellerProfile } from "@/lib/seller/useSellerRegistry";
+import { useMemberProfile } from "@/lib/seller/useMembersRegistry";
 import {
-    tryParseSellerProfileDocument,
+    tryParseMemberProfileDocument,
     type CounterpartyBinding,
-} from "@/lib/seller/sellerProfileMetadata";
+} from "@/lib/seller/memberProfileMetadata";
 import {
     useAllPublishedAssemblies,
     fetchAssemblyTemplate,
@@ -50,7 +50,7 @@ export interface SellerBoundAssemblies {
 
 /**
  * Resolves a seller's on-chain bound assemblies into the buyer-facing
- * choice set. Reads the seller's profile (SellerRegistry →
+ * choice set. Reads the seller's profile (MembersRegistry →
  * IPFS), intersects the profile's `assemblyBindings[].assemblySlug` with
  * the published assembly events, and fetches each matched assemblyTemplate.
  *
@@ -61,7 +61,7 @@ export interface SellerBoundAssemblies {
 export function useSellerBoundAssemblies(
     sellerAddress: `0x${string}` | undefined,
 ): SellerBoundAssemblies {
-    const { data: registryData, isLoading: registryLoading } = useSellerProfile(sellerAddress);
+    const { data: registryData, isLoading: registryLoading } = useMemberProfile(sellerAddress);
     const { data: publishedEvents, isLoading: eventsLoading } = useAllPublishedAssemblies();
     const [result, setResult] = useState<SellerBoundAssemblies>({
         assemblies: [],
@@ -103,7 +103,7 @@ export function useSellerBoundAssemblies(
                 // external-party-pinned document; the stripping reviver drops
                 // __proto__/constructor keys before any downstream record copy.
                 const doc = safeJsonParse(await response.text());
-                const profile = tryParseSellerProfileDocument(doc);
+                const profile = tryParseMemberProfileDocument(doc);
                 if (cancelled) return;
                 if (!profile?.assemblyBindings || profile.assemblyBindings.length === 0) {
                     setResult({ assemblies: [], isLoading: false, hasOnChainBinding: false });

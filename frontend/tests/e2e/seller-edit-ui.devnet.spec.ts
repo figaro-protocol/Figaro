@@ -2,8 +2,8 @@
  * seller-edit-ui.devnet.spec.ts
  *
  * Phase 4 C4a-d of the e2e remediation plan: UI coverage of the four
- * `/sellers/edit/<route>` surfaces. The `SellerRegistry.updateProfile`
- * contract path lives in Foundry (SellerRegistryTest — the viem-tier
+ * `/sellers/edit/<route>` surfaces. The `MembersRegistry.updateProfile`
+ * contract path lives in Foundry (MembersRegistryTest — the viem-tier
  * Playwright spec was retired as a misfiled contract test); this spec
  * drives the path through the UI forms so the round-trip
  * (fetch → hydrate → edit → re-pin → tx → redirect) is covered as a
@@ -17,7 +17,7 @@
  *
  * Each test seeds anvil[0] as a registered seller with a fresh
  * profile pinned to IPFS, then drives the edit form. Each assertion
- * verifies exactly one new `SellerProfileUpdated` event with a
+ * verifies exactly one new `MemberProfileUpdated` event with a
  * metadataURI distinct from the initial registration URI.
  *
  * Requires: Anvil + ./deploy-local.sh + Kubo daemon at NEXT_PUBLIC_IPFS_API_URL.
@@ -32,9 +32,9 @@ import {
 import {
     pinJSONToIPFS,
     readLocalDeploymentConfig,
-    seedRegisteredSeller,
+    seedRegisteredMember,
 } from './devnet-helpers';
-import { ASSEMBLY_REGISTRY_ABI, SELLER_REGISTRY_ABI } from '@figaro/sdk';
+import { ASSEMBLY_REGISTRY_ABI, MEMBERS_REGISTRY_ABI } from '@figaro/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 import { ANVIL_KEYS } from '../anvilAccounts';
 
@@ -54,9 +54,9 @@ function requireEnv(name: string): Hex {
     return v;
 }
 
-function getSellerRegistry(): Hex {
+function getMembersRegistry(): Hex {
     const config = readLocalDeploymentConfig();
-    return (process.env.NEXT_PUBLIC_SELLER_REGISTRY ?? config.sellerRegistry ?? '') as Hex;
+    return (process.env.NEXT_PUBLIC_MEMBERS_REGISTRY ?? config.membersRegistry ?? '') as Hex;
 }
 
 function getAssemblyRegistry(): Hex {
@@ -65,7 +65,7 @@ function getAssemblyRegistry(): Hex {
 }
 
 /**
- * Poll the chain for one SellerProfileUpdated event with a metadataURI
+ * Poll the chain for one MemberProfileUpdated event with a metadataURI
  * different from the seeded one. Decoupled from any UI redirect path —
  * the contract event is the system-of-record for "the edit shipped".
  *
@@ -82,7 +82,7 @@ async function waitForOneUpdateEvent(
     initialURI: string,
     timeoutMs = 60_000,
 ): Promise<{ metadataURI: string }> {
-    const registry = getSellerRegistry();
+    const registry = getMembersRegistry();
     const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
     // eth_getLogs is fromBlock-INCLUSIVE, and `blockBefore` (the pre-test
     // head) is usually the exact block carrying the PREVIOUS test's or
@@ -96,9 +96,9 @@ async function waitForOneUpdateEvent(
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
         const events = await publicClient.getContractEvents({
-            address: registry, abi: SELLER_REGISTRY_ABI,
-            eventName: 'SellerProfileUpdated',
-            args: { seller },
+            address: registry, abi: MEMBERS_REGISTRY_ABI,
+            eventName: 'MemberProfileUpdated',
+            args: { member: seller },
             fromBlock,
         });
         // On the PERSISTED devnet the idempotent seeder itself emits an
@@ -112,13 +112,13 @@ async function waitForOneUpdateEvent(
             // A genuine double-fire is a failure NOW, not a poll condition —
             // waiting can never un-emit an event.
             throw new Error(
-                `Expected exactly one SellerProfileUpdated distinct from ${initialURI}, found ${uiUpdates.length}`,
+                `Expected exactly one MemberProfileUpdated distinct from ${initialURI}, found ${uiUpdates.length}`,
             );
         }
         await new Promise((r) => setTimeout(r, 1000));
     }
     throw new Error(
-        `Timed out after ${timeoutMs}ms waiting for SellerProfileUpdated event distinct from ${initialURI}`,
+        `Timed out after ${timeoutMs}ms waiting for MemberProfileUpdated event distinct from ${initialURI}`,
     );
 }
 
@@ -136,10 +136,10 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
     // IPFS pin + register + form mount + tx + receipt + IPFS re-pin add up.
     test.setTimeout(180_000);
 
-    test('/sellers/edit/identity — change name, submit, SellerProfileUpdated emits', async ({ page }) => {
+    test('/sellers/edit/identity — change name, submit, MemberProfileUpdated emits', async ({ page }) => {
         const seller = ANVIL_ACCOUNTS[0] as Hex;
         const tokenAddress = requireEnv('NEXT_PUBLIC_TOKEN_ADDRESS');
-        const seeded = await seedRegisteredSeller({
+        const seeded = await seedRegisteredMember({
             walletKey: SELLER_KEY,
             profile: {
                 name: 'Initial Name',
@@ -186,7 +186,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
             }],
             version: '1.0.0',
         });
-        const seeded = await seedRegisteredSeller({
+        const seeded = await seedRegisteredMember({
             walletKey: SELLER_KEY,
             profile: {
                 name: 'Seller with Catalogue',
@@ -214,14 +214,14 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         await expect(page).toHaveURL(/\/sellers$/, { timeout: 30_000 });
     });
 
-    test('/sellers/edit/agents — set MCP endpoint, submit, SellerProfileUpdated emits', async ({ page }) => {
+    test('/sellers/edit/agents — set MCP endpoint, submit, MemberProfileUpdated emits', async ({ page }) => {
         const consoleErrors: string[] = [];
         page.on('console', (m) => {
             if (m.type() === 'error') consoleErrors.push(m.text());
         });
         const seller = ANVIL_ACCOUNTS[0] as Hex;
         const tokenAddress = requireEnv('NEXT_PUBLIC_TOKEN_ADDRESS');
-        const seeded = await seedRegisteredSeller({
+        const seeded = await seedRegisteredMember({
             walletKey: SELLER_KEY,
             profile: {
                 name: 'Agent Seller',
@@ -244,12 +244,12 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         // Diagnostic: confirm the render-loop bug is fixed. Pre-fix, the
         // `SellerEditAgents` component fired "Maximum update depth
         // exceeded" repeatedly after click. Post-fix (memoized refetch +
-        // setData dedupe in `useSellerProfile`), no such warning.
+        // setData dedupe in `useMemberProfile`), no such warning.
         const loopErrors = consoleErrors.filter((e) => /Maximum update depth/i.test(e));
         expect(loopErrors, `Expected no Maximum-update-depth warnings; saw: ${loopErrors.join(' | ')}`).toEqual([]);
     });
 
-    test('/sellers/edit/assemblies — toggle published assembly on, submit, SellerProfileUpdated emits', async ({ page }) => {
+    test('/sellers/edit/assemblies — toggle published assembly on, submit, MemberProfileUpdated emits', async ({ page }) => {
         const seller = ANVIL_ACCOUNTS[0] as Hex;
         const tokenAddress = requireEnv('NEXT_PUBLIC_TOKEN_ADDRESS');
 
@@ -272,7 +272,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
 
         // 2. Register the seller (separate from the assembly author —
         //    same key here, fine). Seller starts with no bindings.
-        const seeded = await seedRegisteredSeller({
+        const seeded = await seedRegisteredMember({
             walletKey: SELLER_KEY,
             profile: {
                 name: 'Assemblies Seller',

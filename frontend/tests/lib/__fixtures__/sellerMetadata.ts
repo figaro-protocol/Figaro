@@ -1,6 +1,6 @@
 /**
  * Synthetic example payloads for `SellerCatalogueMetadata` and
- * `SellerProfileMetadata`. Test-only — production code does not consume
+ * `MemberProfileMetadata`. Test-only — production code does not consume
  * these. Moved out of `lib/shared/` so the runtime bundle no longer carries
  * fixture data.
  *
@@ -10,9 +10,9 @@
  * and any address-validating reader would reject the whole fixture.
  */
 
-import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
+import type { MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
 
-export const SELLER_PROFILE_METADATA_EXAMPLE: SellerProfileMetadata = {
+export const SELLER_PROFILE_METADATA_EXAMPLE: MemberProfileMetadata = {
     subjectAddress: "0x00000000000000000000000000000000000e0001",
     name: "Example Seller",
     description: "Synthetic seller profile used as a documentation example.",

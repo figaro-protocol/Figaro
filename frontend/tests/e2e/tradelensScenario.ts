@@ -17,11 +17,11 @@ import { mnemonicToAccount } from 'viem/accounts';
 import { parseUnits, type Hex } from 'viem';
 import {
     discoverAnchoredAssemblies,
-    latestSellerProfileURI,
+    latestMemberProfileURI,
     pinJSONToIPFS,
     resolveIpfsURI,
-    seedRegisteredSeller,
-    sellerProfileBindings,
+    seedRegisteredMember,
+    memberProfileBindings,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
 
@@ -169,7 +169,7 @@ export async function seedTradelensSellers(slug: string, token: Hex): Promise<vo
                 ...(itemProps ?? {}),
             }],
         });
-        await seedRegisteredSeller({
+        await seedRegisteredMember({
             walletKey: ANVIL_KEYS[keyIndex] as Hex,
             profile: {
                 name,
@@ -188,13 +188,13 @@ export async function seedTradelensSellers(slug: string, token: Hex): Promise<vo
     };
 
     const conformant = async (): Promise<boolean> => {
-        const bindings = await sellerProfileBindings(SHIPPER.address as Hex);
+        const bindings = await memberProfileBindings(SHIPPER.address as Hex);
         const b = bindings.find((x) => x.assemblySlug === slug);
         if (!b || !(b.counterpartyBindings ?? []).some((cb) => cb.clauseId === C.merchant && cb.addresses.length === 3)) return false;
         // The cargo master data must ride the ITEM level (massGrams/volumeMl)
         // — the channel figaro-cargo folds from; a clauseValues copy does NOT
         // fold. Re-seed a stale catalogue.
-        const profileURI = await latestSellerProfileURI(SHIPPER.address as Hex);
+        const profileURI = await latestMemberProfileURI(SHIPPER.address as Hex);
         if (!profileURI) return false;
         const profile = await (await fetch(resolveIpfsURI(profileURI))).json() as { catalogueURI?: string };
         if (!profile.catalogueURI) return false;

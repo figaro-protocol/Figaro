@@ -38,7 +38,7 @@ import {
     confirmAgreementPreviews,
     discoverAnchoredAssemblies,
     readLocalDeploymentConfig,
-    sellerProfileBindings,
+    memberProfileBindings,
     waitForConnected,
 } from './devnet-helpers';
 import {
@@ -179,7 +179,7 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
         //    shipper's designations — a cursor mismatch stalls checkout with
         //    no visible error, so fail HERE with names instead. ──
         const anchored = (await discoverAnchoredAssemblies()).find((t) => t.slug === slug)!;
-        const shipperBindings = await sellerProfileBindings(SHIPPER.address as Hex);
+        const shipperBindings = await memberProfileBindings(SHIPPER.address as Hex);
         const plan = planSubOrderSellers({
             assemblyTemplate: anchored as never,
             counterpartyBindings: (shipperBindings.find((b) => b.assemblySlug === slug)?.counterpartyBindings ?? [])

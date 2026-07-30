@@ -1,9 +1,9 @@
 /**
- * lib/seller/sellerProfileAdapter.ts
+ * lib/seller/memberProfileAdapter.ts
  *
  * Catalogue-items reader for the separately-pinned catalogue document at
  * `profile.catalogueURI`. Profile parsing is delegated to the canonical
- * strict parser in `sellerProfileMetadata.ts`.
+ * strict parser in `memberProfileMetadata.ts`.
  */
 
 import type { CatalogueItemMetadata } from "@/lib/seller/sellerCatalogueMetadata";

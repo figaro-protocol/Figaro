@@ -11,7 +11,7 @@
 #   kernel/    — the FigaroCore seam (commit/resolve writes, order events,
 #                commitment/agreement hashing, chain config). May import only
 #                shared/.
-#   protocol/  — the registry tier (ClauseRegistry, SellerRegistry,
+#   protocol/  — the registry tier (ClauseRegistry, MembersRegistry,
 #                AssemblyRegistry readers). May import kernel/ and shared/.
 #   feature layers (checkout, composition, semantic, designer, seller,
 #                handoff, audit, agent) — build on all of the above.

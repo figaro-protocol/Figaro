@@ -7,14 +7,14 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { unpinSupersededProfileArtifacts } from "@/lib/seller/profileErasure";
-import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
+import type { MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
 
-function profile(overrides: Partial<SellerProfileMetadata>): SellerProfileMetadata {
+function profile(overrides: Partial<MemberProfileMetadata>): MemberProfileMetadata {
     return {
         name: "Rosa's Kitchen",
         subjectAddress: "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f",
         ...overrides,
-    } as SellerProfileMetadata;
+    } as MemberProfileMetadata;
 }
 
 describe("unpinSupersededProfileArtifacts", () => {

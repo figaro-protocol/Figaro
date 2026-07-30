@@ -13,7 +13,7 @@
 import type { PublicClient } from "viem";
 import type { Order } from "@/lib/kernel/store";
 import type { Agreement } from "@figaro/sdk";
-import { getAllSellerRegistered } from "@/lib/protocol/sellerRegistryIndexer";
+import { getAllMemberRegistered } from "@/lib/protocol/membersRegistryIndexer";
 import {
     getAttestationsByOrder,
     parseAttestationLog,
@@ -21,8 +21,8 @@ import {
 } from "@/lib/composition/indexer";
 import { buildAuditBundle, type AuditBundle } from "@/lib/audit/auditBundle";
 import type {
-    SellerRegisteredEvent,
-} from "@/lib/audit/sellerRegistryExtract";
+    MemberRegisteredEvent,
+} from "@/lib/audit/membersRegistryExtract";
 import { projectDocuments, projectAllFinancialStatements } from "@/lib/audit/documentProjection";
 import { DOCUMENT_TEMPLATES } from "@/lib/audit/documentTemplates";
 import type { AttestationRecord } from "@/lib/composition/indexer";
@@ -62,13 +62,13 @@ export async function buildAuditBundlePdfBlob(
 ): Promise<Blob> {
     const perOrderBundles: AuditBundle[] = [];
 
-    let sellerRegisteredAll: SellerRegisteredEvent[] = [];
+    let sellerRegisteredAll: MemberRegisteredEvent[] = [];
     if (publicClient) {
         try {
             // SDK-decoded rows; project to the audit extractor's shape.
-            const rows = await getAllSellerRegistered(publicClient, chainId);
+            const rows = await getAllMemberRegistered(publicClient, chainId);
             sellerRegisteredAll = rows.map((row) => ({
-                seller: row.seller,
+                seller: row.member,
                 metadataURI: row.metadataURI,
                 blockNumber: row.blockNumber,
                 transactionHash: row.transactionHash ?? undefined,

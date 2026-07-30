@@ -1,15 +1,15 @@
 /**
- * lib/seller/useAsyncSellerResource.ts
+ * lib/seller/useAsyncMemberResource.ts
  *
  * Generic shape for "seller address → resolved metadataURI → fetched
- * resource" hooks (e.g. useSellerBranding → resolved branding). Each caller
+ * resource" hooks (e.g. useMemberBranding → resolved branding). Each caller
  * wraps this with a typed result alias and a fixed fetcher.
  */
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { usePublicClient, useChainId } from "wagmi";
-import { getSellerMetadataURI } from "@/lib/protocol/sellerRegistryIndexer";
+import { getSellerMetadataURI } from "@/lib/protocol/membersRegistryIndexer";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
 export interface UseAsyncSellerResourceResult<T> {
@@ -29,7 +29,7 @@ export interface UseAsyncSellerResourceOptions<T> {
     extraDeps?: ReadonlyArray<unknown>;
 }
 
-export function useAsyncSellerResource<T>(
+export function useAsyncMemberResource<T>(
     address: `0x${string}` | undefined,
     options: UseAsyncSellerResourceOptions<T>,
 ): UseAsyncSellerResourceResult<T> {

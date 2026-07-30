@@ -76,7 +76,7 @@ SWAP_COORD_ADDR=$(echo "$FORGE_OUT"  | grep 'WitnessSwapAndCommitCoordinator dep
 PERMIT2_ADDR=$(echo "$FORGE_OUT"     | grep 'MockWitnessPermit2 deployed at:'      | grep -oE '0x[0-9a-fA-F]+')
 SWAP_ROUTER_ADDR=$(echo "$FORGE_OUT" | grep 'MockUniversalRouter deployed at:'     | grep -oE '0x[0-9a-fA-F]+')
 CLAUSE_ADDR=$(echo "$FORGE_OUT"      | grep 'ClauseRegistry deployed at:'         | grep -oE '0x[0-9a-fA-F]+')
-SELLER_ADDR=$(echo "$FORGE_OUT"    | grep 'MembersRegistry deployed at:'      | grep -oE '0x[0-9a-fA-F]+')
+MEMBERS_ADDR=$(echo "$FORGE_OUT"    | grep 'MembersRegistry deployed at:'      | grep -oE '0x[0-9a-fA-F]+')
 ASSEMBLY_ADDR=$(echo "$FORGE_OUT"    | grep 'AssemblyRegistry deployed at:'       | grep -oE '0x[0-9a-fA-F]+')
 FLORIN_TOKEN_ADDR=$(echo "$FORGE_OUT"   | grep 'FlorinToken deployed at:'               | grep -oE '0x[0-9a-fA-F]+')
 RPGF_MINTER_ADDR=$(echo "$FORGE_OUT" | grep 'RpgfMinter deployed at:'             | grep -oE '0x[0-9a-fA-F]+')
@@ -152,7 +152,7 @@ update_env "$CORE_ENV" "NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR" "$SWAP_
 update_env "$CORE_ENV" "NEXT_PUBLIC_PERMIT2"                    "$PERMIT2_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_SWAP_ROUTER"                "$SWAP_ROUTER_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_CLAUSE_REGISTRY"           "$CLAUSE_ADDR"
-update_env "$CORE_ENV" "NEXT_PUBLIC_SELLER_REGISTRY"         "$SELLER_ADDR"
+update_env "$CORE_ENV" "NEXT_PUBLIC_MEMBERS_REGISTRY"         "$MEMBERS_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_ASSEMBLY_REGISTRY"         "$ASSEMBLY_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS"         "$FLORIN_TOKEN_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_USAGE_COUNTER"             "$USAGE_COUNTER_ADDR"
@@ -180,7 +180,7 @@ cat > "$CORE_DEPLOYMENT" <<EOF
   "permit2": "$PERMIT2_ADDR",
   "swapRouter": "$SWAP_ROUTER_ADDR",
   "clauseRegistry": "$CLAUSE_ADDR",
-  "sellerRegistry": "$SELLER_ADDR",
+  "membersRegistry": "$MEMBERS_ADDR",
   "assemblyRegistry": "$ASSEMBLY_ADDR",
   "florinToken": "$FLORIN_TOKEN_ADDR",
   "usageCounter": "$USAGE_COUNTER_ADDR",
@@ -202,7 +202,7 @@ echo "   NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR=$SWAP_COORD_ADDR"
 echo "   NEXT_PUBLIC_PERMIT2=$PERMIT2_ADDR"
 echo "   NEXT_PUBLIC_SWAP_ROUTER=$SWAP_ROUTER_ADDR"
 echo "   NEXT_PUBLIC_CLAUSE_REGISTRY=$CLAUSE_ADDR"
-echo "   NEXT_PUBLIC_SELLER_REGISTRY=$SELLER_ADDR"
+echo "   NEXT_PUBLIC_MEMBERS_REGISTRY=$MEMBERS_ADDR"
 echo "   NEXT_PUBLIC_ASSEMBLY_REGISTRY=$ASSEMBLY_ADDR"
 echo "   NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=$FLORIN_TOKEN_ADDR"
 echo "   NEXT_PUBLIC_USAGE_COUNTER=$USAGE_COUNTER_ADDR"

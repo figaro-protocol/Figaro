@@ -33,8 +33,8 @@ import {
     fillDeliveryCheckout,
     pinJSONToIPFS,
     readLocalDeploymentConfig,
-    seedRegisteredSeller,
-    sellerProfileBindings,
+    seedRegisteredMember,
+    memberProfileBindings,
     waitForConnected,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
@@ -81,14 +81,14 @@ test.describe('RFQ AT CHECKOUT — the candidates author the price (devnet)', ()
         // ── GATES shared with dispatch-race (all idempotent): the assembly,
         //    Aurora's undesignated binding, the two couriers, funding. ──
         const deliverySlug = await ensureDeliveryAssembly(page);
-        if (!(await sellerProfileBindings(MERCHANT)).some((b) => b.assemblySlug === deliverySlug)) {
+        if (!(await memberProfileBindings(MERCHANT)).some((b) => b.assemblySlug === deliverySlug)) {
             await gotoAsWallet(page, MERCHANT, '/sellers/edit/assemblies?e2e=devnet');
             const row = page.getByTestId(`seller-assembly-row-${deliverySlug}`);
             await row.waitFor({ state: 'visible', timeout: 30000 });
             await row.locator('input[type="checkbox"]').first().check();
             await page.getByRole('button', { name: 'Save changes' }).click();
             await expect.poll(async () =>
-                (await sellerProfileBindings(MERCHANT)).some((b) => b.assemblySlug === deliverySlug), {
+                (await memberProfileBindings(MERCHANT)).some((b) => b.assemblySlug === deliverySlug), {
                 timeout: 60000, message: "the merchant's binding lands",
             }).toBe(true);
         }
@@ -107,7 +107,7 @@ test.describe('RFQ AT CHECKOUT — the candidates author the price (devnet)', ()
                     available: true,
                 }],
             });
-            await seedRegisteredSeller({
+            await seedRegisteredMember({
                 walletKey,
                 profile: {
                     name,

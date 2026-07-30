@@ -10,7 +10,7 @@ import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
 import { useMounted } from "@/hooks/useMounted";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
-import type { SellerAgentServices } from "@/lib/seller/sellerProfileMetadata";
+import type { MemberAgentServices } from "@/lib/seller/memberProfileMetadata";
 
 /**
  * Step 6 of the onboarding wizard. Collects ERC-8004-compatible
@@ -25,7 +25,7 @@ import type { SellerAgentServices } from "@/lib/seller/sellerProfileMetadata";
  * explicit.
  */
 
-type ServiceKey = keyof SellerAgentServices;
+type ServiceKey = keyof MemberAgentServices;
 
 interface FieldDef {
     key: ServiceKey;
@@ -74,7 +74,7 @@ export interface OnboardingAgentsFormProps {
      * step. The caller re-pins the seller profile with the
      * updated `services` field and dispatches `updateProfile`.
      */
-    onSave?: (services: SellerAgentServices | undefined) => Promise<void>;
+    onSave?: (services: MemberAgentServices | undefined) => Promise<void>;
     /** Submit-button label override. Defaults to "Next →". */
     submitLabel?: string;
     /** Back-link href override. Defaults to "/sellers/assemblies". */
@@ -100,7 +100,7 @@ export function OnboardingAgentsForm({
     const { address, isConnected } = useAccount();
     const { state, loaded, update } = useOnboardingState(address);
 
-    const [services, setServices] = useState<SellerAgentServices>({});
+    const [services, setServices] = useState<MemberAgentServices>({});
     const [hydrated, setHydrated] = useState(false);
 
     // Hydrate once `loaded === true` — see OnboardingProfileForm for
@@ -115,7 +115,7 @@ export function OnboardingAgentsForm({
         if (!hydrated || !isConnected) return;
         const nonEmpty = Object.fromEntries(
             Object.entries(services).filter(([, v]) => Boolean(v?.trim())),
-        ) as SellerAgentServices;
+        ) as MemberAgentServices;
         update({
             services: Object.keys(nonEmpty).length > 0 ? nonEmpty : undefined,
         });
@@ -134,7 +134,7 @@ export function OnboardingAgentsForm({
             // `undefined` so the field gets stripped from the JSON.
             const nonEmpty = Object.fromEntries(
                 Object.entries(services).filter(([, v]) => Boolean(v?.trim())),
-            ) as SellerAgentServices;
+            ) as MemberAgentServices;
             const payload = Object.keys(nonEmpty).length > 0 ? nonEmpty : undefined;
             onSave(payload).catch(() => {
                 // Caller surfaces failures via `externalError`.

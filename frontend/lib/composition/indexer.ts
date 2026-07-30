@@ -18,7 +18,7 @@ import {
     getAllOrderResolved,
     type IndexedLog,
 } from "@/lib/kernel/indexer";
-import { getAllSellerRegistered } from "@/lib/protocol/sellerRegistryIndexer";
+import { getAllMemberRegistered } from "@/lib/protocol/membersRegistryIndexer";
 import { hexEqual, isEmptyHex } from "@/lib/shared/evm";
 import { ATTESTATION_COORDINATOR_ABI, EV_ATTESTATION, parseAttestationLogs } from "@figaro/sdk";
 import { getAttestationCoordinator } from "@/lib/composition/contracts";
@@ -211,7 +211,7 @@ export async function getSellerTrackRecord(
             getOrderCommittedBySeller(client, chainId, seller),
             getOrderCommittedByBuyer(client, chainId, seller),
             getAllOrderResolved(client, chainId),
-            getAllSellerRegistered(client, chainId),
+            getAllMemberRegistered(client, chainId),
             getAllAttestations(client, chainId),
         ]);
 
@@ -244,7 +244,7 @@ export async function getSellerTrackRecord(
     );
 
     const ownRegistrations = registrations
-        .filter((row) => hexEqual(row.seller, seller))
+        .filter((row) => hexEqual(row.member, seller))
         .sort((a, b) => a.blockNumber - b.blockNumber);
     const firstBlock = ownRegistrations[0]?.blockNumber;
     // The SDK parser coerces a pending log's null blockNumber to 0 — treat

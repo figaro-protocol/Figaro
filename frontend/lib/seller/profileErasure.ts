@@ -13,10 +13,10 @@
  * same erasure is idempotent (unpinning an absent pin is absence).
  */
 import { extractIpfsCid, type IpfsService } from "@/lib/shared/ipfsService";
-import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
+import type { MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
 
 /** The URI-valued fields a profile document can reference on IPFS. */
-function referencedUris(profile: SellerProfileMetadata | null | undefined): string[] {
+function referencedUris(profile: MemberProfileMetadata | null | undefined): string[] {
     if (!profile) return [];
     return [
         profile.catalogueURI,
@@ -30,9 +30,9 @@ export async function unpinSupersededProfileArtifacts(params: {
     /** The registry's metadataURI being superseded (or cleared by withdraw). */
     priorProfileUri: string | null | undefined;
     /** The document that URI pointed at — its references are erasure candidates. */
-    priorProfile: SellerProfileMetadata | null | undefined;
+    priorProfile: MemberProfileMetadata | null | undefined;
     /** The successor document; pass null for withdraw — nothing survives. */
-    nextProfile: SellerProfileMetadata | null;
+    nextProfile: MemberProfileMetadata | null;
 }): Promise<void> {
     const surviving = new Set(
         referencedUris(params.nextProfile)

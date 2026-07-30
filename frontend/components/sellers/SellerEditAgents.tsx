@@ -6,7 +6,7 @@
  * from the `/sellers` manage-list "Agents" row.
  *
  * One-pin save sequence: re-pin profile JSON with updated
- * `services` field, dispatch SellerRegistry.updateProfile.
+ * `services` field, dispatch MembersRegistry.updateProfile.
  *
  * Per-endpoint clearing is handled in the form (blank a field to
  * remove that endpoint). Whole-services clearing is implicit when
@@ -25,33 +25,33 @@ import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/hooks/useMounted";
-import { useSellerProfile } from "@/lib/seller/useSellerRegistry";
+import { useMemberProfile } from "@/lib/seller/useMembersRegistry";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
-import { useUpdateSellerProfile } from "@/lib/seller/useUpdateSellerProfile";
-import { fetchSellerProfile } from "@/lib/seller/profileFetcher";
+import { useUpdateMemberProfile } from "@/lib/seller/useUpdateMemberProfile";
+import { fetchMemberProfile } from "@/lib/seller/profileFetcher";
 import type {
-    SellerAgentServices,
-    SellerProfileMetadata,
-} from "@/lib/seller/sellerProfileMetadata";
+    MemberAgentServices,
+    MemberProfileMetadata,
+} from "@/lib/seller/memberProfileMetadata";
 import { OnboardingAgentsForm } from "@/components/sellers/OnboardingAgentsForm";
 
 export function SellerEditAgents() {
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
-    const { data: registryData, isLoading: registryLoading } = useSellerProfile(address);
+    const { data: registryData, isLoading: registryLoading } = useMemberProfile(address);
     const { update, loaded } = useOnboardingState(address);
 
-    const [existingProfile, setExistingProfile] = useState<SellerProfileMetadata | null>(null);
+    const [existingProfile, setExistingProfile] = useState<MemberProfileMetadata | null>(null);
     const [fetchError, setFetchError] = useState<string | null>(null);
     const [seeded, setSeeded] = useState(false);
 
-    const updater = useUpdateSellerProfile(existingProfile, registryData?.[0] ?? null);
+    const updater = useUpdateMemberProfile(existingProfile, registryData?.[0] ?? null);
     const saveInFlight = updater.isPending || updater.isConfirming;
 
     // Redirect unregistered wallets to onboarding — but only on SETTLED
     // state (`!registryLoading && !registryData` = a completed scan found
-    // nothing; isLoading starts true in useSellerProfile), and never
+    // nothing; isLoading starts true in useMemberProfile), and never
     // mid-save: the redirect unmounts the form and kills the in-flight
     // pin/tx (2026-07-09 e2e flake).
     useEffect(() => {
@@ -70,7 +70,7 @@ export function SellerEditAgents() {
         const [metadataURI] = registryData;
         let cancelled = false;
         // The ONE cached profile read path (lib/seller/profileFetcher).
-        fetchSellerProfile(metadataURI)
+        fetchMemberProfile(metadataURI)
             .then((parsed) => {
                 if (cancelled) return;
                 if (parsed) setExistingProfile(parsed);
@@ -126,7 +126,7 @@ export function SellerEditAgents() {
         return <Card className="p-8 text-sm text-ink-faint">Setting up editor…</Card>;
     }
 
-    async function handleSave(services: SellerAgentServices | undefined): Promise<void> {
+    async function handleSave(services: MemberAgentServices | undefined): Promise<void> {
         if (services === undefined) {
             // Caller blanked every field — clear the field entirely
             // from the on-chain profile rather than leaving an empty

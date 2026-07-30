@@ -33,7 +33,7 @@ import {
     discoverAnchoredAssemblies,
     pinJSONToIPFS,
     readLocalDeploymentConfig,
-    seedRegisteredSeller,
+    seedRegisteredMember,
     waitForConnected,
 } from './devnet-helpers';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -112,7 +112,7 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
                     available: true,
                 }],
             });
-            await seedRegisteredSeller({
+            await seedRegisteredMember({
                 walletKey: ANVIL_KEYS[s.index] as Hex,
                 profile: {
                     name: `Chain ${s.label}`,

@@ -19,7 +19,7 @@ const requiredContracts = [
 
 const optionalContracts = [
     { key: 'NEXT_PUBLIC_CLAUSE_REGISTRY', label: 'ClauseRegistry' },
-    { key: 'NEXT_PUBLIC_SELLER_REGISTRY', label: 'SellerRegistry' },
+    { key: 'NEXT_PUBLIC_MEMBERS_REGISTRY', label: 'MembersRegistry' },
     { key: 'NEXT_PUBLIC_ASSEMBLY_REGISTRY', label: 'AssemblyRegistry' },
     { key: 'NEXT_PUBLIC_DAO_TREASURY', label: 'MockTreasuryMultisig' },
 ];

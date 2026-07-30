@@ -98,7 +98,7 @@ Agents — human-driven or autonomous — have bounded write scope. These are ha
 
 - **`src/kernel/FigaroCore.sol`** — the kernel is frozen. The `.claude/hooks/kernel-warn.sh` hook surfaces this at edit time; do not bypass.
 - **`src/kernel/CommitmentTypes.sol`** — kernel structs and EIP-712 hashing.
-- **Any deployed contract on a chain anyone is using.** First-write-wins binding in `SellerRegistry`, `ClauseRegistry`, and the validator-contract pattern means redeployment is incompatible with prior state. To change behavior, write a *new* contract with a *new* identifier; never mutate the existing one.
+- **Any deployed contract on a chain anyone is using.** First-write-wins binding in `MembersRegistry`, `ClauseRegistry`, and the validator-contract pattern means redeployment is incompatible with prior state. To change behavior, write a *new* contract with a *new* identifier; never mutate the existing one.
 - **Reference assemblies** in the runtime that are shared infrastructure. New assemblies go in new files; treat existing reference assemblies as immutable for any agent.
 
 **Nothing is frozen but the kernel** (`FigaroCore.sol`, `CommitmentTypes.sol`). The "deployed contract" bullet is a **live-chain** rule — this repo is **device-only**, redeployed fresh every `devup` with no persistent on-chain state. So contracts, registries, clauses, and clause IDs (`figaro-*`) are **freely edited in place**: to change a clause, **edit its spec in `clauses/` directly** — do NOT bump `version` / mint a `-v2` / "register a new version". (`version` stays a hashed field in the id — structural, not an edit lever.) Do **not** invoke "frozen / registered / for safety" to stop short of finishing an edit or rename. Only the kernel is sacrosanct.
@@ -200,7 +200,7 @@ Use the correct tier. "Add yield to locked bonds" → kernel concern. "Add a new
 
 ### Separation of Concerns — Artifact Families
 
-Each protocol artifact family (clauses → `ClauseRegistry`; sellers → `SellerRegistry`; assemblies → `AssemblyRegistry`) has its own anchor — **parallel, not nested.** (Verified in Solidity: the registries have zero on-chain edges among themselves; assembly→clause and seller→assembly are off-chain.)
+Each protocol artifact family (clauses → `ClauseRegistry`; sellers → `MembersRegistry`; assemblies → `AssemblyRegistry`) has its own anchor — **parallel, not nested.** (Verified in Solidity: the registries have zero on-chain edges among themselves; assembly→clause and seller→assembly are off-chain.)
 
 **The rule.** Each family gets its own registry/anchor, identity scheme, evolution path, indexer event stream. Do not nest one inside another, even when an existing primitive could host it.
 
@@ -260,7 +260,7 @@ Adapted from `andrej-karpathy-skills` CLAUDE.md, minus its YAGNI bullets (which 
 
 ### Before Raising Any Finding
 
-Read `DESIGN_DECISIONS.md` before flagging anything as a vulnerability. It documents 13 patterns that look like vulnerabilities but are correct by design. Common false positives: missing lifecycle guards, resolved-process re-entry, cross-order attestation, buyer==seller, no admin/owner, no stuck-fund recovery.
+Read `DESIGN_DECISIONS.md` before flagging anything as a vulnerability. It documents 14 patterns that look like vulnerabilities but are correct by design. Common false positives: missing lifecycle guards, resolved-process re-entry, cross-order attestation, buyer==seller, no admin/owner, no stuck-fund recovery.
 
 ### The Core Question for Any Proposed Change
 

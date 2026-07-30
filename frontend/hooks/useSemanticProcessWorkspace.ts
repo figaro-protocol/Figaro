@@ -14,7 +14,7 @@ import { useUsageRecorder } from "@/lib/protocol/useUsageRecorder";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
-import { useRegisterSeller, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/seller/useSellerRegistry";
+import { useRegisterSeller, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/seller/useMembersRegistry";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
 import { createCapabilityExecutors } from "@/lib/semantic/createCapabilityExecutors";
 import { getAttestationsByProcess, type RuntimeAttestation } from "@/lib/composition/indexer";
@@ -65,9 +65,9 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     const { resolveProcess, hash, isPending } = useFigaroActions();
     const { recordUsage, recordAssemblyUsage } = useUsageRecorder();
     const attestationActions = useAttestationCoordinatorActions();
-    const registerSeller = useRegisterSeller();
-    const updateSellerProfile = useUpdateProfile();
-    const withdrawSellerDeposit = useWithdrawDeposit();
+    const registerMember = useRegisterSeller();
+    const updateMemberProfile = useUpdateProfile();
+    const withdrawMemberDeposit = useWithdrawDeposit();
     const registrationDeposit = useRegistrationDeposit();
     const {
         needsApproval,
@@ -81,19 +81,19 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
     const isActionPending = isPending
         || attestationActions.isPending
-        || registerSeller.isPending
-        || updateSellerProfile.isPending
-        || withdrawSellerDeposit.isPending;
+        || registerMember.isPending
+        || updateMemberProfile.isPending
+        || withdrawMemberDeposit.isPending;
     const isActionConfirming = isConfirming
         || attestationActions.isConfirming
-        || registerSeller.isConfirming
-        || updateSellerProfile.isConfirming
-        || withdrawSellerDeposit.isConfirming;
+        || registerMember.isConfirming
+        || updateMemberProfile.isConfirming
+        || withdrawMemberDeposit.isConfirming;
     const isActionSuccess = isSuccess
         || attestationActions.isSuccess
-        || registerSeller.isSuccess
-        || updateSellerProfile.isSuccess
-        || withdrawSellerDeposit.isSuccess;
+        || registerMember.isSuccess
+        || updateMemberProfile.isSuccess
+        || withdrawMemberDeposit.isSuccess;
 
     const selectedSummary = walletProcesses.find((summary) => summary.processId === effectiveProcessId) ?? null;
 
@@ -185,9 +185,9 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         recordAssemblyUsage,
         submitBuyerAttestation: attestationActions.submitBuyerAttestation,
         submitSellerAttestation: attestationActions.submitSellerAttestation,
-        registerSeller: (metadataURI) => registerSeller.register(metadataURI, (registrationDeposit.data as bigint | undefined) ?? 0n),
-        updateSellerProfile: (metadataURI) => updateSellerProfile.updateProfile(metadataURI),
-        withdrawSellerDeposit: () => withdrawSellerDeposit.withdraw(),
+        registerMember: (metadataURI) => registerMember.register(metadataURI, (registrationDeposit.data as bigint | undefined) ?? 0n),
+        updateMemberProfile: (metadataURI) => updateMemberProfile.updateProfile(metadataURI),
+        withdrawMemberDeposit: () => withdrawMemberDeposit.withdraw(),
         confirmResolve: () => window.confirm("This will settle the entire process and release all bonds. Continue?"),
         confirmWithdraw: () => window.confirm("Withdraw your seller deposit and clear the registry binding for this address? You'll need to re-register (with a fresh deposit and a new lock period) to operate again."),
     });

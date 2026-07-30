@@ -61,9 +61,9 @@ import { mnemonicToAccount } from 'viem/accounts';
 import {
     confirmAgreementPreviews,
     discoverAnchoredAssemblies,
-    latestSellerProfileURI,
+    latestMemberProfileURI,
     readLocalDeploymentConfig,
-    sellerProfileBindings,
+    memberProfileBindings,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -156,7 +156,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         //    chain counterparties THROUGH THE WIZARD. Mainnet semantics: register
         //    once, persist — skip when the lead's latest profile already carries
         //    the conformant bindings. ──
-        type ProfileBindings = Awaited<ReturnType<typeof sellerProfileBindings>>;
+        type ProfileBindings = Awaited<ReturnType<typeof memberProfileBindings>>;
         const isConformant = (bindings: ProfileBindings): boolean => {
             const chainBinding = bindings.find((b) => b.assemblySlug === chainSlug);
             const designated = (clauseId: string, addr: Hex) =>
@@ -169,7 +169,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
                 && designated(COURIER_CLAUSE, COURIER)
                 && designated(SUPPLIER_CLAUSE, SUPPLIER);
         };
-        const conformant = isConformant(await sellerProfileBindings(LEAD.address));
+        const conformant = isConformant(await memberProfileBindings(LEAD.address));
 
         if (!conformant) {
             await gotoAsWallet(page, LEAD.address, '/sellers');
@@ -215,10 +215,10 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
                 .toBeVisible({ timeout: 60000 });
 
             // The published profile — chain-verified out-of-band, not from the UI.
-            const uriAfter = await latestSellerProfileURI(LEAD.address);
-            expect(uriAfter, 'the lead profile is anchored on SellerRegistry').toMatch(/^ipfs:\/\//);
+            const uriAfter = await latestMemberProfileURI(LEAD.address);
+            expect(uriAfter, 'the lead profile is anchored on MembersRegistry').toMatch(/^ipfs:\/\//);
             expect(
-                isConformant(await sellerProfileBindings(LEAD.address)),
+                isConformant(await memberProfileBindings(LEAD.address)),
                 'the pinned profile carries both bindings + the chain counterparty designations',
             ).toBe(true);
         }
@@ -230,14 +230,14 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         //    binding — a participating seller binds the assembly it participates
         //    in. Verified out-of-band from the registry events + IPFS. ──
         const ensureBound = async (seller: Hex, label: string) => {
-            if ((await sellerProfileBindings(seller)).some((b) => b.assemblySlug === chainSlug)) return;
+            if ((await memberProfileBindings(seller)).some((b) => b.assemblySlug === chainSlug)) return;
             await gotoAsWallet(page, seller, '/sellers/edit/assemblies?e2e=devnet');
             const row = page.getByTestId(`seller-assembly-row-${chainSlug}`);
             await row.waitFor({ state: 'visible', timeout: 30000 });
             await row.locator('input[type="checkbox"]').first().check();
             await page.getByRole('button', { name: 'Save changes' }).click();
             await expect.poll(async () =>
-                (await sellerProfileBindings(seller)).some((b) => b.assemblySlug === chainSlug), {
+                (await memberProfileBindings(seller)).some((b) => b.assemblySlug === chainSlug), {
                 timeout: 60000, message: `${label}'s re-pinned profile carries the chain binding`,
             }).toBe(true);
         };

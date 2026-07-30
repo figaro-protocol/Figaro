@@ -3,7 +3,7 @@
  *
  * SELLER REGISTRATION WIZARD (lifecycle Phase 2) — the UI test that a wallet can
  * register as a seller through the real 6-step wizard: identity → catalogue →
- * assemblies → agents → review → publish, ending anchored on `SellerRegistry`,
+ * assemblies → agents → review → publish, ending anchored on `MembersRegistry`,
  * pinned to IPFS, and surfacing on `/s/view` and `/discover`.
  *
  * Scope: ONE seller, the wizard, the on-chain registration. Nothing else. It uses
@@ -16,7 +16,7 @@
  * orders from it); a multi-order or second binding would gate its checkout
  * behind counterparty designation / the method picker. This test has nothing
  * to do with how other tests get sellers on-chain: runtime specs DISCOVER
- * sellers from SellerRegistry → IPFS, never from here.
+ * sellers from MembersRegistry → IPFS, never from here.
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server.
  */
@@ -24,7 +24,7 @@ import { expect } from "@playwright/test";
 import { test, gotoAsWallet } from "./devnet-multi-test";
 import { createPublicClient, defineChain, http, type Hex } from "viem";
 import { assertPinnedInIpfs, discoverAnchoredAssemblies, discoverSellers, readLocalDeploymentConfig } from "./devnet-helpers";
-import { ASSEMBLY_REGISTRY_ABI, SELLER_REGISTRY_ABI } from '@figaro/sdk';
+import { ASSEMBLY_REGISTRY_ABI, MEMBERS_REGISTRY_ABI } from '@figaro/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 
 const RPC_URL = "http://127.0.0.1:8545";
@@ -132,9 +132,9 @@ async function onboardViaWizard(page: import("@playwright/test").Page, assemblyS
 test.setTimeout(240_000);
 
 test.describe("seller registration wizard (devnet)", () => {
-    test("a wallet registers through the wizard — anchored on SellerRegistry, pinned, surfacing", async ({ page }) => {
+    test("a wallet registers through the wizard — anchored on MembersRegistry, pinned, surfacing", async ({ page }) => {
         const config = readLocalDeploymentConfig();
-        const sellerRegistry = (process.env.NEXT_PUBLIC_SELLER_REGISTRY ?? config.sellerRegistry) as Hex;
+        const membersRegistry = (process.env.NEXT_PUBLIC_MEMBERS_REGISTRY ?? config.membersRegistry) as Hex;
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
         // The single-order seed assembly, discovered from the live registry by
@@ -152,12 +152,12 @@ test.describe("seller registration wizard (devnet)", () => {
         const latestProfileURI = async (): Promise<string | undefined> => {
             const [registrations, updates] = await Promise.all([
                 publicClient.getContractEvents({
-                    address: sellerRegistry, abi: SELLER_REGISTRY_ABI, eventName: "SellerRegistered",
-                    args: { seller: SELLER.address }, fromBlock: 0n,
+                    address: membersRegistry, abi: MEMBERS_REGISTRY_ABI, eventName: "MemberRegistered",
+                    args: { member: SELLER.address }, fromBlock: 0n,
                 }),
                 publicClient.getContractEvents({
-                    address: sellerRegistry, abi: SELLER_REGISTRY_ABI, eventName: "SellerProfileUpdated",
-                    args: { seller: SELLER.address }, fromBlock: 0n,
+                    address: membersRegistry, abi: MEMBERS_REGISTRY_ABI, eventName: "MemberProfileUpdated",
+                    args: { member: SELLER.address }, fromBlock: 0n,
                 }),
             ]);
             return [...registrations, ...updates]
@@ -183,7 +183,7 @@ test.describe("seller registration wizard (devnet)", () => {
             await onboardViaWizard(page, singleOrderSlug!);
         }
 
-        // ── Anchored on SellerRegistry, profile URI on IPFS ─────────────────
+        // ── Anchored on MembersRegistry, profile URI on IPFS ─────────────────
         const profileURI = await latestProfileURI();
         expect(profileURI).toMatch(/^ipfs:\/\//);
 

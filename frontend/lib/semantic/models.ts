@@ -53,17 +53,17 @@ interface ResolveProcessCapabilityAction {
 
 interface RegisterSellerCapabilityAction {
     executionType: "transaction";
-    kind: "register-seller";
+    kind: "register-member";
 }
 
-interface UpdateSellerProfileCapabilityAction {
+interface UpdateMemberProfileCapabilityAction {
     executionType: "transaction";
-    kind: "update-seller-profile";
+    kind: "update-member-profile";
 }
 
 interface WithdrawSellerDepositCapabilityAction {
     executionType: "transaction";
-    kind: "withdraw-seller-deposit";
+    kind: "withdraw-member-deposit";
 }
 
 /** Generic runtime attestation — one descriptor for every runtime-attestable
@@ -125,7 +125,7 @@ interface PrototypeCapabilityAction {
 export type CapabilityActionDescriptor =
     | ResolveProcessCapabilityAction
     | RegisterSellerCapabilityAction
-    | UpdateSellerProfileCapabilityAction
+    | UpdateMemberProfileCapabilityAction
     | WithdrawSellerDepositCapabilityAction
     | SubmitClauseAttestationCapabilityAction
     | ClaimAirdropCapabilityAction
@@ -133,17 +133,17 @@ export type CapabilityActionDescriptor =
     | PrototypeCapabilityAction;
 
 interface RegisterSellerCapabilityInput {
-    kind: "register-seller";
+    kind: "register-member";
     metadataURI?: string;
 }
 
-interface UpdateSellerProfileCapabilityInput {
-    kind: "update-seller-profile";
+interface UpdateMemberProfileCapabilityInput {
+    kind: "update-member-profile";
     metadataURI?: string;
 }
 
 interface WithdrawSellerDepositCapabilityInput {
-    kind: "withdraw-seller-deposit";
+    kind: "withdraw-member-deposit";
 }
 
 /** Values a party filled into a witness capability's generic form — keyed by
@@ -155,7 +155,7 @@ interface SubmitClauseAttestationCapabilityInput {
 
 export type CapabilityExecutionInput =
     | RegisterSellerCapabilityInput
-    | UpdateSellerProfileCapabilityInput
+    | UpdateMemberProfileCapabilityInput
     | WithdrawSellerDepositCapabilityInput
     | SubmitClauseAttestationCapabilityInput;
 

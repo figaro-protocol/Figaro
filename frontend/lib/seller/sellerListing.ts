@@ -1,6 +1,6 @@
 import { geohashCommonPrefix } from "@figaro/sdk/derive";
 import type { AcceptedTokenMetadata } from "@/lib/seller/acceptedTokenMetadata";
-import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
+import type { MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
 import { hexEqual } from "@/lib/shared/evm";
 
 /**
@@ -58,7 +58,7 @@ function safeURI(uri: string | undefined): string | undefined {
  * profile (see `feedback_state_from_events`).
  */
 export function profileToListing(
-    profile: SellerProfileMetadata,
+    profile: MemberProfileMetadata,
     address: string,
 ): Listing {
     const bindings: ListingBinding[] = (profile.assemblyBindings ?? []).map((b) => ({

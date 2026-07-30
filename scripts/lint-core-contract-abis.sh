@@ -24,7 +24,7 @@ CORE_DIR="$ROOT/frontend/lib/kernel"
 
 # The ONLY ABIs allowed anywhere in lib/kernel/: the five core Figaro contracts
 # plus the generic ERC-20 standard they are agnostic over.
-ALLOWED="CORE_ABI CLAUSE_REGISTRY_ABI SELLER_REGISTRY_ABI ASSEMBLY_REGISTRY_ABI FLORIN_TOKEN_ABI ERC20_ABI"
+ALLOWED="CORE_ABI CLAUSE_REGISTRY_ABI MEMBERS_REGISTRY_ABI ASSEMBLY_REGISTRY_ABI FLORIN_TOKEN_ABI ERC20_ABI"
 
 in_list() { local needle="$1"; shift; for x in "$@"; do [[ "$x" == "$needle" ]] && return 0; done; return 1; }
 
@@ -51,7 +51,7 @@ done < <(grep -rnE "const[[:space:]]+[A-Z0-9_]+_ABI[[:space:]]*=[[:space:]]*pars
 
 if [[ $fail -ne 0 ]]; then
   echo ""
-  echo "Core is five Figaro contracts: FigaroCore, ClauseRegistry, SellerRegistry, AssemblyRegistry, florin token"
+  echo "Core is five Figaro contracts: FigaroCore, ClauseRegistry, MembersRegistry, AssemblyRegistry, florin token"
   echo "— plus the generic ERC-20 they're agnostic over. Nothing else."
   echo "Contracts the frontend composes with live in lib/composition/, not core."
   exit 1

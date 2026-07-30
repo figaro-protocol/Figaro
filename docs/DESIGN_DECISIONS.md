@@ -91,7 +91,7 @@ is a choice, not an exploit.
 ## 4. No owner, no admin, no escape hatch — by design
 
 **Pattern**: FigaroCore, AttestationCoordinator, ClauseRegistry,
-SellerRegistry, and AssemblyRegistry have no owner, no
+MembersRegistry, and AssemblyRegistry have no owner, no
 pause function, no upgrade path, and no admin recovery. FlorinToken has a one-shot
 deployer who registers minter contracts then renounces (`deployerMintRenounced`)
 — a bounded privileged actor, documented separately in `CONTRACTS.md`.
@@ -416,6 +416,57 @@ description says so). Pseudonymity of the wallet does the rest. Ruled ACCEPT
 
 ---
 
+## 15. `MembersRegistry` time-locks a requested withdrawal — that ETH is not stuck
+
+**Pattern**: `requestWithdrawal()` clears the registration guard and schedules the
+deposit; the ETH itself is only claimable via `withdraw()` once the immutable
+`withdrawalCooldown` has elapsed. Between the two calls the contract holds ETH that
+its owner has explicitly asked for and cannot yet take. There is no admin path, no
+early release, and no way for anyone — including the depositor — to shorten it.
+
+**Why it looks wrong**: it reads as two separate red flags. First, held funds with a
+timer look like §5's stuck-fund shape, and this file is emphatic that the kernel has
+no time locks. Second, a mandatory waiting period on someone's own capital looks like
+the "escape hatch in reverse" — a protocol asserting custody it has no business
+asserting.
+
+**Why it is correct**: the tier is the whole answer. **This is the PROTOCOL tier, not
+the kernel** — `LEXICON.md`'s grid places all three registries there, and the
+no-time-lock rule is a *kernel* law about bonded commitments, where any timer would
+hand a party a unilateral exit and break the MAD equilibrium. Nothing here touches a
+bond, a commitment, or a settlement. Citing the kernel rule at this contract is the
+Folding error.
+
+What the cooldown does is make the deposit *mean* something. Withdrawal used to be a
+single call that cleared the guard and paid out at once, which made one deposit
+recyclable through identity after identity: register → transact → withdraw →
+re-register from a fresh address. The capital cost of sustaining N fabricated
+identities was therefore `deposit`, not `N · deposit` — O(1) no matter how much
+breadth was manufactured. Since the RPGF reward counts distinct (buyer, seller) pairs
+and **no scoring shape can distinguish a fabricated pair from a genuine one**, the
+identity stake is the only place Sybil resistance can live — and an instantly
+recyclable stake is not a stake. With the cooldown, sustaining N identities across a
+reward period `P` costs `deposit · N · T / P`.
+
+The funds are not stuck, on any reading:
+- **Bounded and known.** `withdrawalCooldown` is an immutable constructor parameter,
+  readable on-chain before anyone deposits. Nobody is surprised by it.
+- **Unconditionally claimable.** After `releaseAt`, `withdraw()` succeeds with no
+  counterparty, no signature, and no cooperation required. The fuzz test
+  `everyDepositIsEventuallyClaimable` asserts exactly this across arbitrary
+  deposit/cooldown pairs, and that the contract ends at zero balance.
+- **Not a lock on participation.** De-surfacing is immediate, and so is
+  re-registration — coming back needs a *second* deposit, which is the point. The
+  member is never held on a surface they asked to leave, so discovery removal and
+  erasure of the published declaration are unaffected.
+
+**Scope**: `MembersRegistry` only. `ClauseRegistry` and `AssemblyRegistry` deliberately
+have no cooldown and need none — their withdrawal is one-shot per key and the key's
+binding is permanent, so there is nothing to recycle. Ruled ACCEPT 2026-07-30, with
+the operator's framing: "no rage quitting."
+
+---
+
 ## Summary Table
 
 | # | Pattern | Looks wrong because | Is correct because |
@@ -434,3 +485,4 @@ description says so). Pseudonymity of the wallet does the rest. Ruled ACCEPT
 | 12 | No `transferTitle` / `endorse` / `nominate` for BoLs | Industry-standard MLETR-aligned eBLs are negotiable; CargoX / TradeTrust / TradeLens all implement this | Single-buyer invariant + parties-fixed-at-commit + no-escape-hatches each separately rule it out; cargo doesn't carry rights, the commitment does |
 | 13 | `deadline` alongside `salt` | Redundant / auction residue | Salt is identity, deadline is expiry of the unconsummated signature window; no-cancel kernel needs signatures to age out |
 | 14 | Committed `lineItems.name` / `cargo.marks` are public | Wallet-linkable purchase content leaks | Mechanism needs line items beyond the endpoints (invoices, disputes, price checks); mitigation is compositional (discreet catalogue naming, coded marks) + wallet pseudonymity |
+| 15 | `MembersRegistry` withdrawal cooldown holds ETH on a timer | Looks like stuck funds + a kernel-forbidden time lock | PROTOCOL tier, not kernel — no bond or commitment involved; without it one deposit is recycled across identities, so the stake priced nothing; bounded, immutable, and unconditionally claimable after `releaseAt` |

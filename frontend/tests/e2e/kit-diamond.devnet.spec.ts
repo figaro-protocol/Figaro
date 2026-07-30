@@ -76,7 +76,7 @@ import {
     DELIVERY_CLAUSES,
     discoverAnchoredAssemblies,
     readLocalDeploymentConfig,
-    sellerProfileBindings,
+    memberProfileBindings,
     waitForConnected,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
@@ -231,7 +231,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
 
         // ── BIND (idempotent): the lead registers through the wizard, binds the
         //    diamond, and designates the seeded counterparties per clause. ──
-        type ProfileBindings = Awaited<ReturnType<typeof sellerProfileBindings>>;
+        type ProfileBindings = Awaited<ReturnType<typeof memberProfileBindings>>;
         const isConformant = (bindings: ProfileBindings): boolean => {
             const b = bindings.find((x) => x.assemblySlug === kitSlug);
             const designated = (clauseId: string, addr: Hex) =>
@@ -243,7 +243,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
                 && designated(DELIVERY_CLAUSES.merchant, SUPPLIER_C)
                 && designated(DELIVERY_CLAUSES.courier, SUPPLIER_D);
         };
-        if (!isConformant(await sellerProfileBindings(LEAD.address))) {
+        if (!isConformant(await memberProfileBindings(LEAD.address))) {
             await gotoAsWallet(page, LEAD.address, '/sellers');
             await page.goto('/sellers/identity', { waitUntil: 'domcontentloaded' });
             await expect(page.locator('#profile-name')).toBeVisible({ timeout: 30000 });
@@ -283,21 +283,21 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             await page.getByTestId('review-confirm-publish').click();
             await expect(page.getByRole('heading', { name: /Registered\.|Profile updated/i })).toBeVisible({ timeout: 60000 });
             expect(
-                isConformant(await sellerProfileBindings(LEAD.address)),
+                isConformant(await memberProfileBindings(LEAD.address)),
                 'the pinned lead profile carries the binding + all three designations',
             ).toBe(true);
         }
 
         // Each counterparty pins the assembly it participates in (even-surfacing).
         const ensureBound = async (seller: Hex, label: string) => {
-            if ((await sellerProfileBindings(seller)).some((b) => b.assemblySlug === kitSlug)) return;
+            if ((await memberProfileBindings(seller)).some((b) => b.assemblySlug === kitSlug)) return;
             await gotoAsWallet(page, seller, '/sellers/edit/assemblies?e2e=devnet');
             const r = page.getByTestId(`seller-assembly-row-${kitSlug}`);
             await r.waitFor({ state: 'visible', timeout: 30000 });
             await r.locator('input[type="checkbox"]').first().check();
             await page.getByRole('button', { name: 'Save changes' }).click();
             await expect.poll(async () =>
-                (await sellerProfileBindings(seller)).some((b) => b.assemblySlug === kitSlug), {
+                (await memberProfileBindings(seller)).some((b) => b.assemblySlug === kitSlug), {
                 timeout: 60000, message: `${label}'s re-pinned profile carries the diamond binding`,
             }).toBe(true);
         };

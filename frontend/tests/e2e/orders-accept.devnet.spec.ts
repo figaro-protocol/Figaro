@@ -27,8 +27,8 @@ import {
     discoverAnchoredAssemblies,
     pinJSONToIPFS,
     readLocalDeploymentConfig,
-    seedRegisteredSeller,
-    sellerProfileBindings,
+    seedRegisteredMember,
+    memberProfileBindings,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -76,7 +76,7 @@ async function findPosAssembly(): Promise<string> {
 }
 async function ensurePosSeller(token: Hex): Promise<Hex> {
     const slug = await findPosAssembly();
-    const bound = (await sellerProfileBindings(POS_SELLER)).some((b) => b.assemblySlug === slug);
+    const bound = (await memberProfileBindings(POS_SELLER)).some((b) => b.assemblySlug === slug);
     if (!bound) {
         const { uri: catalogueURI } = await pinJSONToIPFS({
             subjectAddress: POS_SELLER,
@@ -92,7 +92,7 @@ async function ensurePosSeller(token: Hex): Promise<Hex> {
                 available: true,
             }],
         });
-        await seedRegisteredSeller({
+        await seedRegisteredMember({
             walletKey: ANVIL_KEYS[31] as Hex,
             profile: {
                 name: 'Corner Counter',
@@ -109,7 +109,7 @@ async function ensurePosSeller(token: Hex): Promise<Hex> {
             },
         });
         await expect.poll(async () =>
-            (await sellerProfileBindings(POS_SELLER)).some((b) => b.assemblySlug === slug), {
+            (await memberProfileBindings(POS_SELLER)).some((b) => b.assemblySlug === slug), {
             timeout: 60000, message: "the POS seller's pinned profile carries the pos binding",
         }).toBe(true);
     }

@@ -12,11 +12,11 @@ import { useMounted } from "@/hooks/useMounted";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import {
-    useSellerProfile,
+    useMemberProfile,
     useRegistrationDeposit,
-} from "@/lib/seller/useSellerRegistry";
-import { type SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
-import { usePublishSellerProfile } from "@/lib/seller/usePublishSellerProfile";
+} from "@/lib/seller/useMembersRegistry";
+import { type MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
+import { usePublishMemberProfile } from "@/lib/seller/usePublishMemberProfile";
 
 /**
  * Step 6 — review and publish.
@@ -31,7 +31,7 @@ import { usePublishSellerProfile } from "@/lib/seller/usePublishSellerProfile";
  * Publish is one user action; three serial operations under the hood:
  * (a) pin catalogue to IPFS (cached on retry), (b) pin profile JSON
  * with the catalogue URI embedded, (c) dispatch
- * `SellerRegistry.register(profileURI)` (first-time) or
+ * `MembersRegistry.register(profileURI)` (first-time) or
  * `updateProfile(profileURI)` (returning seller). On success the
  * router redirects to /sellers — the registered-dashboard view
  * lives there.
@@ -39,7 +39,7 @@ import { usePublishSellerProfile } from "@/lib/seller/usePublishSellerProfile";
 
 interface DraftSummary {
     /** Profile shape before the catalogueURI is pinned. Submit fills in `catalogueURI`. */
-    profileTemplate: Omit<SellerProfileMetadata, "catalogueURI">;
+    profileTemplate: Omit<MemberProfileMetadata, "catalogueURI">;
 }
 
 function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], wallet: `0x${string}`): DraftSummary | { error: string } {
@@ -52,7 +52,7 @@ function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], walle
     // stale drafts land here too). User rule 2026-06-12.
     if ((state.assemblies ?? []).length === 0) return { error: "Step 4 (Assemblies) is incomplete: bind at least one published assembly — a seller profile without one cannot be ordered from." };
 
-    const profileTemplate: Omit<SellerProfileMetadata, "catalogueURI"> = {
+    const profileTemplate: Omit<MemberProfileMetadata, "catalogueURI"> = {
         subjectAddress: wallet,
         name: state.profile.name,
         description: state.profile.description,
@@ -81,7 +81,7 @@ export function OnboardingReview() {
     const { address, isConnected } = useAccount();
     const { state, update, clear } = useOnboardingState(address);
 
-    const { data: profileData } = useSellerProfile(address);
+    const { data: profileData } = useMemberProfile(address);
     const isRegistered = !!profileData;
 
     const { data: depositRaw } = useRegistrationDeposit();
@@ -93,7 +93,7 @@ export function OnboardingReview() {
         isConfirming: publishConfirming,
         isSuccess: publishSuccess,
         error: publishWriteError,
-    } = usePublishSellerProfile();
+    } = usePublishMemberProfile();
 
     const [pinning, setPinning] = useState(false);
     const [pinError, setPinError] = useState<string | null>(null);
@@ -193,7 +193,7 @@ export function OnboardingReview() {
                     <p className="text-sm text-ink-body">
                         {isRegistered
                             ? "Your seller profile has been re-pinned to IPFS and the new metadataURI is on-chain."
-                            : "Your wallet is now a seller on this network. The deposit is reclaimable via withdraw after the one-year lock."}
+                            : "Your wallet is now registered on this network. You get the deposit back when you leave the registry, after a cooldown."}
                     </p>
                     <dl className="text-xs text-ink-body space-y-2 pt-2 border-t border-default">
                         <div>
@@ -377,7 +377,7 @@ export function OnboardingReview() {
                         <>
                             Publishing pins your catalogue to IPFS, then pins your
                             profile (with the catalogue URI embedded), then calls{" "}
-                            <code>register(profileURI)</code> on the SellerRegistry,
+                            <code>register(profileURI)</code> on the MembersRegistry,
                             posting the reclaimable ETH deposit. One user action; three
                             serial operations.
                         </>
@@ -389,7 +389,7 @@ export function OnboardingReview() {
                         <span className="font-semibold text-ink-heading">
                             {formatToken(deposit)} ETH
                         </span>
-                        {" "}— reclaimable via <code>withdraw</code> at any time.
+                        {" "}— you get it back when you leave the registry, after a cooldown.
                         Withdrawing de-lists you from discovery; the stake is what
                         keeps you surfaced.
                     </p>

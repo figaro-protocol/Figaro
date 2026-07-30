@@ -1,12 +1,12 @@
 import type { CatalogueItemMetadata, UnitSystem } from "@/lib/seller/sellerCatalogueMetadata";
 import type { AcceptedTokenMetadata } from "@/lib/seller/acceptedTokenMetadata";
-import type { SellerAgentServices } from "@/lib/seller/sellerProfileMetadata";
+import type { MemberAgentServices } from "@/lib/seller/memberProfileMetadata";
 
 /**
  * Buyer-side projection of a seller's profile + catalogue.
  *
  * Sources:
- *  - profile (`SellerProfileMetadata`): name, slug, description,
+ *  - profile (`MemberProfileMetadata`): name, slug, description,
  *    specialty, location (geohash + addressText), branding, accepted
  *    tokens, default token, agent services.
  *  - catalogue (`SellerCatalogueMetadata`): items.
@@ -42,7 +42,7 @@ export interface SellerCatalogue {
      *  profile-sourced leaves. */
     profileClauseValues?: Readonly<Record<string, Record<string, unknown>>>;
     /** ERC-8004-compatible service endpoints (optional, for agent-driven sellers). */
-    agentServices?: SellerAgentServices;
+    agentServices?: MemberAgentServices;
     /** Seller's preferred display unit system for mass / volume. Storage
      *  is always metric; this field only governs UI formatting. */
     unitSystem?: UnitSystem;

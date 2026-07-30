@@ -42,7 +42,7 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by `s
 
 - **`shared/`** — the generic leaf: EVM helpers (`evm.ts`), wagmi/chain config (`wagmi.ts`, `chains.ts`, `connectors.ts`), IPFS (`ipfsService.ts`), clause-spec cache source (`clauseSpecSource.ts`), assembly-template reading vocabulary (`assemblyTemplate.ts`, `clauseFields.ts`), errors/formatting/json. Imports no other `lib/` layer; the one sanctioned exception is the runtime-services DI seam (`runtimeServices.ts` + `runtimeServicesContext.tsx`), which assembles feature-layer service implementations.
 - **`kernel/`** — the FigaroCore seam: commit/resolve writes (`useFigaroActions.ts`, `orderCommitted.ts`), order-event reads (`indexer.ts`, `walletProcessQueries.ts`, `eventCache.ts`), the deployment-curried hash wrappers + agreement fetch (`signedCommitment.ts`, `agreementFetch.ts`), chain config (`contracts.ts` — the five core contract ABIs + ERC20, SDK-sourced), the `Order` domain types + UI store (`store.ts`). Imports only `shared/`. (The agreement projection itself — `buildOrderAgreement`, the Layer-A sign gate, `sectionByField` — is `@figaro/sdk`; `sdk/README.md` owns it.)
-- **`protocol/`** — the registry tier: `useClauseRegistry.ts`, `useClauseSpecs.ts`, `useAssemblyRegistry.ts`, `assemblyChoices.ts`, `sellerRegistryIndexer.ts`. Reads ClauseRegistry / SellerRegistry / AssemblyRegistry; imports `kernel/` + `shared/`.
+- **`protocol/`** — the registry tier: `useClauseRegistry.ts`, `useClauseSpecs.ts`, `useAssemblyRegistry.ts`, `assemblyChoices.ts`, `membersRegistryIndexer.ts`. Reads ClauseRegistry / MembersRegistry / AssemblyRegistry; imports `kernel/` + `shared/`.
 - **`agent/`** — did:web identity for agents acting for wallets (`useDidWeb.ts`)
 - **`audit/`** — audit-bundle assembly + dispute evidence (read path for `/audit/view?process=<id>`)
 - **`checkout/`** — the Checkout lifecycle phase: cart (`cartStore.ts`, `CommerceProvider.tsx`, `useCheckout.ts`), the thin checkout wrapper driving the SDK's ONE template→orders walk (`assemblyCheckout.ts` — per-node fills/selections/compositions via the shared `checkoutNodes` resolution, root signed last; `planAssemblyOrders` is the DRY walk the dispatch race drafts with; the planning vocabulary itself — fills, sub-order seller plan, live pricing, the rate-quantity registry — is `@figaro/sdk` `checkoutPlan`), the dispatch race (`dispatchRace.ts` — `useDispatchRace` + the race relay legs; an unbound sub-order filled by racing every priceable discovered catalogue instead of the manual pick: unsigned drafts out, countersignatures back — or QUOTES back under the buyer's ceiling — cheapest valid reply wins with buyer override; per-candidate transport: a candidate whose profile declares `services.rest` is an AGENT candidate and exchanges the same artifacts over HTTP (`postToAgentEndpoint`, the HttpChannel wire — mixed human×agent races are this branch), wallet candidates ride the coordination channel; rendered by `components/runtime/DispatchRacePanel.tsx` beside the picker), and the commitment choreography (`draftOrders.ts`, `orderPreview.ts` — the confirm gate (before every sign AND the standalone commit broadcast) + chain-time deadline, `orderCommitmentFlow.ts` — buyer sign/share, the counter-party accept, the race candidate's `counterSignAndReturn`, and the fully-signed `commitOrder` broadcast, `orderSignedAndShared.ts`, `orderPendingSellerSignature.ts` — the pending predicates incl. `awaitsMyBroadcast`, the race winner's ready-to-submit lane on `/orders`; the gate's terms rendering is `components/runtime/AgreementReview.tsx` — the ONE shared agreement-terms surface, composed by `AgreementPreviewModal` and rendered inline on `/sign`)
@@ -88,7 +88,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 
 - **`core/`** — order flows, bond/token, builder/assembly, semantic. Assembly rendering shell: `AssemblyProcessWorkspace` (all `Institution*` names have been renamed)
 - **`marketing/`** — marketing-route layout primitives (`MarketingHeader`, `MarketingHero`, `MarketingSection`)
-- **`modules/`** — feature modules (e.g. `SellerBrandingModule`). The prior module registry and the `/i/[slug]` runtime that rendered registered modules were retired in the V4→V5 narrowing; consumer surfaces are now purpose-shaped pages (`/s/view?seller=<addr>`, `/orders`, `/orders/view?process=<id>`).
+- **`modules/`** — feature modules (e.g. `MemberBrandingModule`). The prior module registry and the `/i/[slug]` runtime that rendered registered modules were retired in the V4→V5 narrowing; consumer surfaces are now purpose-shaped pages (`/s/view?seller=<addr>`, `/orders`, `/orders/view?process=<id>`).
 - **`shared/`** — shell/utility; **`ui/`** — design primitives; **`icons/`** — SVGs; **`sellers/`** — route-specific panels (onboarding shell + edit forms)
 
 ## Canonical exemplars — copy these shapes
@@ -151,7 +151,7 @@ Y", not as an open-ended build.)
   two-message core in `lib/handoff/ceremony.ts`)).
 - **Clause-composition UI** — `app/(builders)/builders/designer/_components/AgreementDrawer.tsx`
   (reads ClauseRegistry live; grouping word is `block.design.article`).
-- **On-chain write flow** — `lib/seller/usePublishSellerProfile.ts`
+- **On-chain write flow** — `lib/seller/usePublishMemberProfile.ts`
   (`simulateContract` → write → `waitForTransactionReceipt` → verify
   `status === "success"` before navigating).
 - **IPFS-hydrated reads** — `hooks/useProcessAgreements.ts` over
@@ -165,7 +165,7 @@ Y", not as an open-ended build.)
   consumes from chain + IPFS — discovers, never imports a roster). The old
   seeded `scenario-*`/`*-runtime` pairs were deleted with the fixture
   migration; open-world rebuilds of 2–3 scenarios are punch-listed.
-- **Network reads** — `lib/kernel/indexer.ts` (order events) + `lib/protocol/sellerRegistryIndexer.ts` (registry events) (the canonical read side; reconstructs
+- **Network reads** — `lib/kernel/indexer.ts` (order events) + `lib/protocol/membersRegistryIndexer.ts` (registry events) (the canonical read side; reconstructs
   process/clause/seller state from chain events).
 
 ## Wallet-provider scope per route

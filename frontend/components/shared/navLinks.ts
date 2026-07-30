@@ -48,7 +48,7 @@ export const NAV_LINKS_APP_PRIMARY: NavLink[] = [
     // The buyer's start-order verb — the wallet browses bonded sellers and opens
     // the chosen seller's assembly runtime, where a commitment begins. NOT
     // interchangeable with `/sellers`, which is the seller's own registration
-    // surface (register a wallet in SellerRegistry, or manage that entry). Both
+    // surface (register a wallet in MembersRegistry, or manage that entry). Both
     // read a registry; they serve opposite roles, so both are listed.
     { href: "/discover", label: "Discover" },
     { href: "/sellers", label: "Sellers" },

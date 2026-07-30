@@ -1,18 +1,25 @@
 /**
  * seller-withdraw.devnet.spec.ts
  *
- * SellerRegistry.withdraw — the reclaim path on the staked-intent
- * deposit (devnet deploy: `new SellerRegistry(0.001 ether)`). No time
- * lock (K4): withdraw is allowed at any time; the round-trip is priced
- * by de-surfacing — a withdrawn seller vanishes from discovery.
+ * MembersRegistry's reclaim path on the staked-intent deposit, which is TWO
+ * steps and this spec drives both through the UI:
  *
- * `sellers-onboarding.devnet.spec.ts` covers the register path; this
- * spec covers the matching withdraw path: register → /sellers dashboard
- * → click Begin → Confirm withdraw → receipt rendered → registration
- * cleared.
+ *   requestWithdrawal()  de-surfaces IMMEDIATELY — the guard clears, discovery
+ *                        drops the member, re-registration is allowed at once
+ *   withdraw()           releases the ETH, once `withdrawalCooldown` has passed
+ *
+ * The split is the anti-rage-quit mechanism: a deposit reclaimable the instant
+ * you left would price nothing, because one deposit would serve identity after
+ * identity. Devnet deploys cooldown 0 (`new MembersRegistry(0.001 ether, 0)`)
+ * so both steps run in one test without warping a chain the frontend shares;
+ * the cooldown's own behaviour is covered in Foundry against a non-zero value.
+ *
+ * `sellers-onboarding.devnet.spec.ts` covers the register path; this covers
+ * leave → claim: /sellers dashboard → Begin → Confirm and leave → receipt →
+ * Continue → pending-deposit notice → Claim deposit → ETH actually moves.
  *
  * Requires: Anvil + ./deploy-local.sh
- *   NEXT_PUBLIC_SELLER_REGISTRY must be set in .env.local.
+ *   NEXT_PUBLIC_MEMBERS_REGISTRY must be set in .env.local.
  */
 import { test, expect, gotoAsWallet, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import {
@@ -21,12 +28,11 @@ import {
     http,
     type Hex,
 } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
 import {
     readLocalDeploymentConfig,
-    seedRegisteredSeller,
+    seedRegisteredMember,
 } from './devnet-helpers';
-import { SELLER_REGISTRY_ABI } from '@figaro/sdk';
+import { MEMBERS_REGISTRY_ABI } from '@figaro/sdk';
 import { ANVIL_KEYS } from '../anvilAccounts';
 
 const RPC_URL = 'http://127.0.0.1:8545';
@@ -39,103 +45,94 @@ const LOCAL_ANVIL = defineChain({
 
 // gotoAsWallet connects the page as the dedicated anvil[3] wallet
 // with the on-chain registration we seed below.
-// anvil[3] — a wallet DEDICATED to this spec: it ends each run WITHDRAWN,
+// anvil[3] — a wallet DEDICATED to this spec: it ends each run de-surfaced,
 // which would sabotage any spec that keeps its wallet persistently
 // registered (anvil[0] is seller-edit-ui's, anvil[1] place-order's).
 const SELLER_KEY = ANVIL_KEYS[3];
 const SELLER_ADDR = ANVIL_ACCOUNTS[3];
 
-// SellerRegistry exposes NO read functions for registration state —
-// off-chain consumers reconstruct it from the three events. The tests below
-// count Registered − Withdrawn events for the address; > 0 == currently
-// registered. ABI comes from the SDK canonical (never hand-rolled).
-
 function getRegistryAddress(): Hex {
     const config = readLocalDeploymentConfig();
-    const addr = (process.env.NEXT_PUBLIC_SELLER_REGISTRY
-        ?? config.sellerRegistry
+    const addr = (process.env.NEXT_PUBLIC_MEMBERS_REGISTRY
+        ?? config.membersRegistry
         ?? '') as Hex;
     if (!addr || addr.length !== 42) {
-        throw new Error('NEXT_PUBLIC_SELLER_REGISTRY not set — run ./deploy-local.sh');
+        throw new Error('NEXT_PUBLIC_MEMBERS_REGISTRY not set — run ./deploy-local.sh');
     }
     return addr;
 }
 
-async function isRegistered(): Promise<boolean> {
-    const registry = getRegistryAddress();
-    const seller = privateKeyToAccount(SELLER_KEY);
-    const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const [registered, withdrawn] = await Promise.all([
-        publicClient.getContractEvents({
-            address: registry,
-            abi: SELLER_REGISTRY_ABI,
-            eventName: 'SellerRegistered',
-            args: { seller: seller.address as Hex },
-            fromBlock: 0n,
-        }),
-        publicClient.getContractEvents({
-            address: registry,
-            abi: SELLER_REGISTRY_ABI,
-            eventName: 'SellerWithdrawn',
-            args: { seller: seller.address as Hex },
-            fromBlock: 0n,
-        }),
-    ]);
-    return registered.length > withdrawn.length;
+const publicClient = () => createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+
+/** The live-stake guard the RPGF path reads — true only while surfaced. */
+async function isSurfaced(): Promise<boolean> {
+    return await publicClient().readContract({
+        address: getRegistryAddress(),
+        abi: MEMBERS_REGISTRY_ABI,
+        functionName: 'registered',
+        args: [SELLER_ADDR as Hex],
+    }) as boolean;
 }
 
+test.describe('MembersRegistry leave + claim (devnet)', () => {
 
-test.describe('SellerRegistry.withdraw (devnet)', () => {
-
-    test('withdraw — UI clicks through, receipt renders, registration cleared', async ({ page }) => {
-        // Canonical idempotent seeder: this wallet ends each run withdrawn,
-        // so the helper's event-diff check (registrations vs withdrawals)
-        // routes re-runs through `register`; a crashed run that left it
-        // registered routes through `updateProfile` instead.
-        await seedRegisteredSeller({
+    test('leaving de-surfaces at once; the deposit is claimed separately', async ({ page }) => {
+        // Canonical idempotent seeder: this wallet ends each run de-surfaced,
+        // so the helper's event-diff check routes re-runs through `register`;
+        // a crashed run that left it registered routes through `updateProfile`.
+        await seedRegisteredMember({
             walletKey: SELLER_KEY,
             profile: { name: 'Withdraw Spec Seller' },
         });
 
-        // Hit /sellers — RegisteredCard renders when profileOf().registeredAt > 0,
-        // showing the seeded (IPFS-pinned) profile; the WithdrawRow renders
-        // alongside it.
         await gotoAsWallet(page, SELLER_ADDR, '/sellers?e2e=devnet');
 
-        // Wait for the WithdrawRow's idle text — proves the dashboard
-        // (not the welcome view) is on screen.
-        const withdrawRow = page.getByText('Withdraw deposit').first();
-        await withdrawRow.waitFor({ timeout: 30000 });
+        // The idle row's text proves the dashboard (not the welcome view) is up.
+        await page.getByText('Leave the registry').first().waitFor({ timeout: 30000 });
+        await page.getByRole('button', { name: /^Begin$/ }).click();
 
-        // The idle row has a plain `<button>Begin</button>` inside the same <li>.
-        const beginBtn = page.getByRole('button', { name: /^Begin$/ });
-        await beginBtn.click();
-
-        // Balance baseline: the registry escrows the deposit in ETH — the
-        // withdraw must move exactly `registrationDeposit()` out of it. The
-        // registry side is gas-free, so the delta is exact; the seller's own
-        // ETH delta is deposit − gas, so it is not asserted.
         const registry = getRegistryAddress();
-        const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-        const deposit = await publicClient.readContract({
-            address: registry, abi: SELLER_REGISTRY_ABI, functionName: 'registrationDeposit',
+        const client = publicClient();
+        const deposit = await client.readContract({
+            address: registry, abi: MEMBERS_REGISTRY_ABI, functionName: 'registrationDeposit',
         }) as bigint;
-        const registryBefore = await publicClient.getBalance({ address: registry });
+        const registryBefore = await client.getBalance({ address: registry });
 
-        // Confirm withdraw button appears.
-        const confirmBtn = page.getByRole('button', { name: /^Confirm withdraw$/ });
+        expect(await isSurfaced(), 'surfaced before leaving').toBe(true);
+
+        // ── Step 1: leave ────────────────────────────────────────────────
+        const confirmBtn = page.getByRole('button', { name: /^Confirm and leave$/ });
         await confirmBtn.waitFor({ timeout: 10000 });
         await confirmBtn.click();
 
-        // Receipt: "Withdrew 0.001 ETH." headline. Tx hash row visible.
-        await expect(page.getByText(/Withdrew\s+0\.001\s+ETH/)).toBeVisible({ timeout: 30000 });
+        await expect(page.getByText(/You have left the registry/)).toBeVisible({ timeout: 30000 });
         await expect(page.getByText(/^Tx:\s+0x[0-9a-fA-F]+/)).toBeVisible();
 
-        // On-chain: registration cleared (registeredAt === 0).
-        expect(await isRegistered()).toBe(false);
+        // De-surfaced IMMEDIATELY — this is what ends discovery and RPGF
+        // eligibility, and it happens while the ETH is still held.
+        expect(await isSurfaced(), 'de-surfaced at request, not at claim').toBe(false);
+        expect(
+            await client.getBalance({ address: registry }),
+            'the deposit has NOT moved yet — leaving is not being paid',
+        ).toBe(registryBefore);
+        expect(await client.readContract({
+            address: registry, abi: MEMBERS_REGISTRY_ABI,
+            functionName: 'pendingDeposit', args: [SELLER_ADDR as Hex],
+        })).toBe(deposit);
 
-        // On-chain: the deposit actually left the registry's escrow.
-        const registryAfter = await publicClient.getBalance({ address: registry });
-        expect(registryBefore - registryAfter, 'registry escrow decreased by exactly the deposit').toBe(deposit);
+        // ── Step 2: claim ────────────────────────────────────────────────
+        // Dismissing the receipt drops the wallet to the unregistered view —
+        // where the pending-deposit notice must still be reachable, or the ETH
+        // would be stranded behind a screen this wallet can no longer see.
+        await page.getByRole('button', { name: /^Continue$/ }).click();
+
+        const claimBtn = page.getByRole('button', { name: /^Claim deposit$/ });
+        await claimBtn.waitFor({ timeout: 30000 });
+        await expect(claimBtn).toBeEnabled(); // devnet cooldown is 0
+        await claimBtn.click();
+
+        await expect
+            .poll(async () => (await client.getBalance({ address: registry })).toString(), { timeout: 30000 })
+            .toBe((registryBefore - deposit).toString());
     });
 });

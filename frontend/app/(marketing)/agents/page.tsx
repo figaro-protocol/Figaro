@@ -50,7 +50,7 @@ export default function Agents() {
 
             <MarketingSection title="ERC-8004 interop, by metadata convention.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Autonomous agents that want cross-protocol discoverability declare ERC-8004-compatible service endpoints in their <code>SellerRegistry.metadataURI</code> JSON. The clause can be anchored as <code>erc8004-agent-services-v1</code> in <Link href="/clauses" className="underline">ClauseRegistry</Link> for reference integrity. No new contract is needed; the registry already supports arbitrary metadata.
+                    Autonomous agents that want cross-protocol discoverability declare ERC-8004-compatible service endpoints in their <code>MembersRegistry.metadataURI</code> JSON. The clause can be anchored as <code>erc8004-agent-services-v1</code> in <Link href="/clauses" className="underline">ClauseRegistry</Link> for reference integrity. No new contract is needed; the registry already supports arbitrary metadata.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     An agent&apos;s <code>did:web</code> identifier resolves to a DID Document whose verification methods name the agent&apos;s on-chain Ethereum address in CAIP-10 form &mdash; a consistency check, not proof of control, since a DID Document is self-published. The SDK ships <code>resolveDidWeb</code>, <code>didDocumentMatchesAddress</code>, and <code>buildSellerDidDocument</code> in <code>@figaro/sdk/agent</code> for the round-trip.

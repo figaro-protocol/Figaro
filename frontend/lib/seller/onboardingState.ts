@@ -25,15 +25,15 @@
 import { useCallback, useEffect, useState } from "react";
 import type {
     AssemblyBindingRecord,
-    SellerAgentServices,
-    SellerAssetReferences,
-} from "@/lib/seller/sellerProfileMetadata";
+    MemberAgentServices,
+    MemberAssetReferences,
+} from "@/lib/seller/memberProfileMetadata";
 import type {
     CatalogueItemMetadata,
     UnitSystem,
 } from "@/lib/seller/sellerCatalogueMetadata";
 import type { AcceptedTokenMetadata } from "@/lib/seller/acceptedTokenMetadata";
-import type { SellerBrandingMetadata } from "@/lib/seller/sellerBrandingMetadata";
+import type { MemberBrandingMetadata } from "@/lib/seller/memberBrandingMetadata";
 
 // ── Shape ────────────────────────────────────────────────────────────────────
 
@@ -45,8 +45,8 @@ export interface OnboardingProfileDraft {
         geohash?: string;
         addressText?: string;
     };
-    branding?: SellerBrandingMetadata;
-    assets?: SellerAssetReferences;
+    branding?: MemberBrandingMetadata;
+    assets?: MemberAssetReferences;
     acceptedTokens?: AcceptedTokenMetadata[];
     defaultTokenAddress?: `0x${string}`;
     /** PROFILE-authored clause values (seller master data: dimweight's
@@ -71,7 +71,7 @@ interface OnboardingState {
     /** Per-assembly bindings declared on screen 5. */
     assemblies?: AssemblyBindingRecord[];
     /** Agent endpoints declared on screen 6 (advanced; optional). */
-    services?: SellerAgentServices;
+    services?: MemberAgentServices;
     /** IPFS URI of the published profile, set on screen 4 success. */
     publishedProfileURI?: string;
     /** IPFS URI of the published catalogue, set on screen 3 success. */

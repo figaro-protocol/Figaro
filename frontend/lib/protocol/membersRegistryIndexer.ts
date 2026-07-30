@@ -1,13 +1,13 @@
 /**
- * SellerRegistry event reader — the protocol-layer half of the cached indexer.
+ * MembersRegistry event reader — the protocol-layer half of the cached indexer.
  *
- * Reads the three surviving SellerRegistry events (registration, profile
+ * Reads the three surviving MembersRegistry events (registration, profile
  * update, withdrawal) and derives current seller state from them. Kernel
  * order events (OrderCommitted/OrderResolved) live in the kernel indexer;
  * this module reads a REGISTRY, which is protocol tier, not kernel tier.
  *
  * Fetching goes through the cached indexer (`cachedGetLogsMulti`); DECODING is
- * the SDK's (`parseSellerRegistryLogs` — the one parse per family). The
+ * the SDK's (`parseMembersRegistryLogs` — the one parse per family). The
  * liveness fold below stays here: it is this reader's own derived view.
  *
  * Lifecycle flags (deactivate/reactivate) and on-chain role tracking remain
@@ -19,64 +19,69 @@
 
 import type { Log, PublicClient } from "viem";
 import { getAbiItem } from "viem";
-import { parseSellerRegistryLogs, type SellerRegisteredEvent, type SellerWithdrawnEvent } from "@figaro/sdk";
+import { parseMembersRegistryLogs, type MemberRegisteredEvent, type MemberWithdrawnEvent } from "@figaro/sdk";
 import { hexEqual } from "@/lib/shared/evm";
-import { CONTRACTS, SELLER_REGISTRY_ABI } from "@/lib/kernel/contracts";
+import { CONTRACTS, MEMBERS_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import { cachedGetLogsMulti } from "@/lib/kernel/indexer";
 
 // Event defs come from the canonical SDK ABI, like the clause/assembly readers.
-const EV_SELLER_REGISTERED = getAbiItem({ abi: SELLER_REGISTRY_ABI, name: "SellerRegistered" });
-const EV_SELLER_PROFILE_UPDATED = getAbiItem({ abi: SELLER_REGISTRY_ABI, name: "SellerProfileUpdated" });
-const EV_SELLER_WITHDRAWN = getAbiItem({ abi: SELLER_REGISTRY_ABI, name: "SellerWithdrawn" });
+const EV_MEMBER_REGISTERED = getAbiItem({ abi: MEMBERS_REGISTRY_ABI, name: "MemberRegistered" });
+const EV_MEMBER_PROFILE_UPDATED = getAbiItem({ abi: MEMBERS_REGISTRY_ABI, name: "MemberProfileUpdated" });
+// The DE-SURFACING event, deliberately NOT `MemberWithdrawn`. Withdrawal is two
+// calls now: the request clears the guard immediately while the ETH stays locked
+// for the cooldown, and the claim can land much later. Folding the claim here
+// would keep a member who has already left showing as registered — and, because
+// the RPGF gate reads the same liveness, would misreport eligibility too.
+const EV_MEMBER_WITHDRAWAL_REQUESTED = getAbiItem({ abi: MEMBERS_REGISTRY_ABI, name: "MemberWithdrawalRequested" });
 
 /** Fetch one event stream through the cache and decode it with the SDK parser.
  *  The cache stores the full log objects (data/topics survive the IDB
  *  round-trip), so the SDK's raw-log decoder runs directly over cached rows. */
-async function fetchSellerEvents(
+async function fetchMemberEvents(
     client: PublicClient,
     chainId: number,
     event: Parameters<typeof cachedGetLogsMulti>[3]["event"],
     eventName: string,
 ) {
-    if (!CONTRACTS.sellerRegistry) return { registered: [], withdrawn: [] };
-    const logs = await cachedGetLogsMulti(client, chainId, [CONTRACTS.sellerRegistry], { event, eventName });
-    return parseSellerRegistryLogs(logs as unknown as Log[]);
+    if (!CONTRACTS.membersRegistry) return { registered: [], withdrawn: [] };
+    const logs = await cachedGetLogsMulti(client, chainId, [CONTRACTS.membersRegistry], { event, eventName });
+    return parseMembersRegistryLogs(logs as unknown as Log[]);
 }
 
-/** All `SellerRegistered` rows (SDK-decoded; `updated === false`). */
-export async function getAllSellerRegistered(client: PublicClient, chainId: number): Promise<SellerRegisteredEvent[]> {
-    return (await fetchSellerEvents(client, chainId, EV_SELLER_REGISTERED, "SellerRegistered")).registered;
+/** All `MemberRegistered` rows (SDK-decoded; `updated === false`). */
+export async function getAllMemberRegistered(client: PublicClient, chainId: number): Promise<MemberRegisteredEvent[]> {
+    return (await fetchMemberEvents(client, chainId, EV_MEMBER_REGISTERED, "MemberRegistered")).registered;
 }
 
-async function getAllSellerProfileUpdated(client: PublicClient, chainId: number): Promise<SellerRegisteredEvent[]> {
-    return (await fetchSellerEvents(client, chainId, EV_SELLER_PROFILE_UPDATED, "SellerProfileUpdated")).registered;
+async function getAllMemberProfileUpdated(client: PublicClient, chainId: number): Promise<MemberRegisteredEvent[]> {
+    return (await fetchMemberEvents(client, chainId, EV_MEMBER_PROFILE_UPDATED, "MemberProfileUpdated")).registered;
 }
 
-async function getAllSellerWithdrawn(client: PublicClient, chainId: number): Promise<SellerWithdrawnEvent[]> {
-    return (await fetchSellerEvents(client, chainId, EV_SELLER_WITHDRAWN, "SellerWithdrawn")).withdrawn;
+async function getAllMemberWithdrawalRequested(client: PublicClient, chainId: number): Promise<MemberWithdrawnEvent[]> {
+    return (await fetchMemberEvents(client, chainId, EV_MEMBER_WITHDRAWAL_REQUESTED, "MemberWithdrawalRequested")).withdrawn;
 }
 
 /**
  * Derive the current seller roster: latest metadataURI per address,
  * filtered to only those currently registered (Registered minus Withdrawn).
  *
- * "Current metadataURI" is the most recent SellerRegistered or
- * SellerProfileUpdated event for an address, provided no Withdrawn
+ * "Current metadataURI" is the most recent MemberRegistered or
+ * MemberProfileUpdated event for an address, provided no Withdrawn
  * event sits at or after the registration block (withdraw clears the
  * dedup guard, voiding any subsequent profile updates from a stale
  * registration).
  */
 export async function getActiveSellers(client: PublicClient, chainId: number) {
     const [registered, profileUpdated, withdrawn] = await Promise.all([
-        getAllSellerRegistered(client, chainId),
-        getAllSellerProfileUpdated(client, chainId),
-        getAllSellerWithdrawn(client, chainId),
+        getAllMemberRegistered(client, chainId),
+        getAllMemberProfileUpdated(client, chainId),
+        getAllMemberWithdrawalRequested(client, chainId),
     ]);
 
     // Latest withdraw block per address (re-registration after withdraw is allowed)
     const latestWithdraw = new Map<string, number>();
     for (const row of withdrawn) {
-        const addr = row.seller.toLowerCase();
+        const addr = row.member.toLowerCase();
         const prev = latestWithdraw.get(addr) ?? 0;
         if (row.blockNumber > prev) latestWithdraw.set(addr, row.blockNumber);
     }
@@ -84,7 +89,7 @@ export async function getActiveSellers(client: PublicClient, chainId: number) {
     // Latest Registered event per address that survives Withdrawn.
     const sellers = new Map<string, { metadataURI: string; registeredBlock: number; latestBlock: number }>();
     for (const row of registered) {
-        const addr = row.seller.toLowerCase();
+        const addr = row.member.toLowerCase();
         const withdrawnAfter = (latestWithdraw.get(addr) ?? 0) >= row.blockNumber;
         if (withdrawnAfter) continue;
         const prev = sellers.get(addr);
@@ -99,7 +104,7 @@ export async function getActiveSellers(client: PublicClient, chainId: number) {
 
     // Apply ProfileUpdated events that post-date the surviving Registered event.
     for (const row of profileUpdated) {
-        const entry = sellers.get(row.seller.toLowerCase());
+        const entry = sellers.get(row.member.toLowerCase());
         if (!entry) continue;
         if (row.blockNumber < entry.registeredBlock) continue;
         if (row.blockNumber > entry.latestBlock) {
@@ -133,16 +138,16 @@ export async function getSellerMetadataURI(client: PublicClient, chainId: number
  * expiry computation; `metadataURI` is the most recent value carried by
  * either the surviving Registered event or any subsequent ProfileUpdated.
  */
-export async function getSellerState(
+export async function getMemberState(
     client: PublicClient,
     chainId: number,
     seller: string,
 ): Promise<{ metadataURI: string; registeredBlock: bigint | null } | null> {
 
     const [registered, profileUpdated, withdrawn] = await Promise.all([
-        getAllSellerRegistered(client, chainId),
-        getAllSellerProfileUpdated(client, chainId),
-        getAllSellerWithdrawn(client, chainId),
+        getAllMemberRegistered(client, chainId),
+        getAllMemberProfileUpdated(client, chainId),
+        getAllMemberWithdrawalRequested(client, chainId),
     ]);
 
     // Most recent Registered for this address. Track the latest by block;
@@ -150,10 +155,10 @@ export async function getSellerState(
     // candidate (test indexers occasionally return blockNumber=null for the
     // very latest tx — the SDK parser coerces those to 0; picking it is still
     // the right answer).
-    let regRow: SellerRegisteredEvent | undefined;
+    let regRow: MemberRegisteredEvent | undefined;
     let regBlock = 0;
     for (const row of registered) {
-        if (!hexEqual(row.seller, seller)) continue;
+        if (!hexEqual(row.member, seller)) continue;
         if (!regRow || row.blockNumber > regBlock) {
             regBlock = row.blockNumber;
             regRow = row;
@@ -166,7 +171,7 @@ export async function getSellerState(
     // Only enforce the comparison when at least one withdraw exists for this
     // seller — otherwise a registration with blockNumber=null (regBlock=0)
     // would spuriously look "withdrawn" against a default lastWithdrawBlock.
-    const sellerWithdraws = withdrawn.filter((row) => hexEqual(row.seller, seller));
+    const sellerWithdraws = withdrawn.filter((row) => hexEqual(row.member, seller));
     if (sellerWithdraws.length > 0) {
         const lastWithdrawBlock = sellerWithdraws
             .map((row) => row.blockNumber)
@@ -179,7 +184,7 @@ export async function getSellerState(
     let metadataURI = regRow.metadataURI;
     let metadataBlock = regBlock;
     for (const row of profileUpdated) {
-        if (!hexEqual(row.seller, seller)) continue;
+        if (!hexEqual(row.member, seller)) continue;
         if (row.blockNumber < regBlock) continue;
         if (row.blockNumber > metadataBlock) {
             metadataURI = row.metadataURI || metadataURI;

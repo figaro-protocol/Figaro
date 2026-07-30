@@ -30,7 +30,7 @@ import { toError } from "@/lib/shared/errors";
 
 
 /** The ClauseRegistry address if it's a well-formed address, else null.
- *  Mirrors `getAssemblyRegistry` / `getSellerRegistry`. Internal — the write
+ *  Mirrors `getAssemblyRegistry` / `getMembersRegistry`. Internal — the write
  *  hooks below are the only callers. */
 function getClauseRegistry(): `0x${string}` | null {
     const a = CONTRACTS.clauseRegistry;

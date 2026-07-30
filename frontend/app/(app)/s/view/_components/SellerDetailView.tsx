@@ -19,7 +19,7 @@ import Link from "next/link";
 import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
 import { ContentImage } from "@/components/shared/ContentImage";
-import { SellerLogo } from "@/components/modules/SellerBrandingModule";
+import { SellerLogo } from "@/components/modules/MemberBrandingModule";
 import { SellerAgentIdentity } from "@/components/sellers/SellerAgentIdentity";
 import { useCommerce } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
@@ -88,7 +88,7 @@ export function SellerDetailView({ sellerAddress }: Props) {
                 <p className="text-xs font-semibold text-neutral-500 mb-3">Seller not found</p>
                 <h1 className="text-3xl font-bold text-black">No seller registered for {truncateHex(sellerAddressLower, { head: 10, tail: 0 })}</h1>
                 <p className="text-sm text-neutral-600">
-                    This wallet hasn&apos;t registered itself in <code className="text-xs">SellerRegistry</code> on the network
+                    This wallet hasn&apos;t registered itself in <code className="text-xs">MembersRegistry</code> on the network
                     you&apos;re connected to, or hasn&apos;t pinned a catalogue. If this is your wallet, you can complete the registration through the onboarding flow.
                 </p>
                 <div className="flex items-center gap-3 pt-2">

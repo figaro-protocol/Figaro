@@ -41,7 +41,7 @@ src/                        Solidity contracts (0.8.26, Foundry)
   CommitmentTypes.sol       EIP-712 commitment structs + hashing
   AttestationCoordinator.sol  Zero-storage role-gated attestation
   ClauseRegistry.sol        Permissionless clause anchoring
-  SellerRegistry.sol        On-chain seller registration
+  MembersRegistry.sol        On-chain seller registration
   AssemblyRegistry.sol      Permissionless assembly anchoring
   WitnessSwapAndCommitCoordinator.sol  Off-protocol multi-token bond funding (Permit2 witness-bound swap route + Uniswap Universal Router)
   IRoleResolver.sol         Role-authorization interface for delegated attestation

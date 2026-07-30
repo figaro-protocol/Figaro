@@ -1,14 +1,14 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
-    fetchSellerBranding,
+    fetchMemberBranding,
     clearBrandingCache,
-    resolveSellerBrandingFromSellerProfile,
-} from '@/lib/seller/sellerBranding';
+    resolveMemberBrandingFromMemberProfile,
+} from '@/lib/seller/memberBranding';
 import { SELLER_PROFILE_METADATA_EXAMPLE } from './__fixtures__/sellerMetadata';
 
-describe('sellerBranding', () => {
+describe('memberBranding', () => {
 
-    describe('fetchSellerBranding', () => {
+    describe('fetchMemberBranding', () => {
         beforeEach(() => {
             clearBrandingCache();
         });
@@ -18,7 +18,7 @@ describe('sellerBranding', () => {
         });
 
         it('returns null for an empty URI', async () => {
-            const result = await fetchSellerBranding('');
+            const result = await fetchMemberBranding('');
             expect(result).toBeNull();
         });
 
@@ -43,7 +43,7 @@ describe('sellerBranding', () => {
                 text: () => Promise.resolve(JSON.stringify(mockDoc)),
             } as Response);
 
-            const result = await fetchSellerBranding('ipfs://QmMetadata');
+            const result = await fetchMemberBranding('ipfs://QmMetadata');
 
             expect(result).not.toBeNull();
             expect(result!.branding.logoURI).toBe('ipfs://QmLogo123');
@@ -65,7 +65,7 @@ describe('sellerBranding', () => {
                 text: () => Promise.resolve(JSON.stringify(mockDoc)),
             } as Response);
 
-            const result = await fetchSellerBranding('http://example.com/metadata.json');
+            const result = await fetchMemberBranding('http://example.com/metadata.json');
 
             expect(result).not.toBeNull();
             expect(result!.assets.imageBaseURI).toBe('ipfs://QmBase');
@@ -80,14 +80,14 @@ describe('sellerBranding', () => {
                 statusText: 'Not Found',
             } as Response);
 
-            const result = await fetchSellerBranding('ipfs://QmMissing');
+            const result = await fetchMemberBranding('ipfs://QmMissing');
             expect(result).toBeNull();
         });
 
         it('returns null when fetch throws', async () => {
             vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network error'));
 
-            const result = await fetchSellerBranding('ipfs://QmUnreachable');
+            const result = await fetchMemberBranding('ipfs://QmUnreachable');
             expect(result).toBeNull();
         });
 
@@ -98,7 +98,7 @@ describe('sellerBranding', () => {
                 text: () => Promise.resolve(JSON.stringify('not an object')),
             } as Response);
 
-            const result = await fetchSellerBranding('ipfs://QmNotJson');
+            const result = await fetchMemberBranding('ipfs://QmNotJson');
             expect(result).toBeNull();
         });
 
@@ -109,7 +109,7 @@ describe('sellerBranding', () => {
                 text: () => Promise.resolve(JSON.stringify([1, 2, 3])),
             } as Response);
 
-            const result = await fetchSellerBranding('ipfs://QmArray');
+            const result = await fetchMemberBranding('ipfs://QmArray');
             expect(result).toBeNull();
         });
 
@@ -121,8 +121,8 @@ describe('sellerBranding', () => {
                 text: () => Promise.resolve(JSON.stringify(mockDoc)),
             } as Response);
 
-            await fetchSellerBranding('ipfs://QmCached');
-            await fetchSellerBranding('ipfs://QmCached');
+            await fetchMemberBranding('ipfs://QmCached');
+            await fetchMemberBranding('ipfs://QmCached');
 
             // Only one fetch despite two calls
             expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -136,9 +136,9 @@ describe('sellerBranding', () => {
                 text: () => Promise.resolve(JSON.stringify(mockDoc)),
             } as Response);
 
-            await fetchSellerBranding('ipfs://QmClearTest');
+            await fetchMemberBranding('ipfs://QmClearTest');
             clearBrandingCache();
-            await fetchSellerBranding('ipfs://QmClearTest');
+            await fetchMemberBranding('ipfs://QmClearTest');
 
             expect(fetchSpy).toHaveBeenCalledTimes(2);
         });
@@ -152,7 +152,7 @@ describe('sellerBranding', () => {
                 text: () => Promise.resolve(JSON.stringify(mockDoc)),
             } as Response);
 
-            const result = await fetchSellerBranding('http://example.com/bare.json');
+            const result = await fetchMemberBranding('http://example.com/bare.json');
 
             expect(result).not.toBeNull();
             expect(result!.branding).toEqual({
@@ -169,7 +169,7 @@ describe('sellerBranding', () => {
         });
 
         it('resolves branding directly from seller catalogue metadata', () => {
-            const result = resolveSellerBrandingFromSellerProfile(SELLER_PROFILE_METADATA_EXAMPLE);
+            const result = resolveMemberBrandingFromMemberProfile(SELLER_PROFILE_METADATA_EXAMPLE);
 
             expect(result).not.toBeNull();
             expect(result!.logoURI).toBe('ipfs://example/logo.png');

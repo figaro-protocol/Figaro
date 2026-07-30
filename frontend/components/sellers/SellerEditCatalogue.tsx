@@ -9,8 +9,8 @@
  *   1. Pin the new catalogue JSON via `publishSellerCatalogue`,
  *      yielding a fresh `ipfs://<catalogueCID>` URI.
  *   2. Re-pin the profile JSON with the updated `catalogueURI`
- *      field via `useUpdateSellerProfile.save({ catalogueURI })`,
- *      then dispatch `SellerRegistry.updateProfile(newProfileURI)`.
+ *      field via `useUpdateMemberProfile.save({ catalogueURI })`,
+ *      then dispatch `MembersRegistry.updateProfile(newProfileURI)`.
  *
  * Per-item delete is handled inside the form (each item row has a
  * Remove control). Whole-catalogue clearing isn't currently a
@@ -29,10 +29,10 @@ import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/hooks/useMounted";
-import { useSellerProfile } from "@/lib/seller/useSellerRegistry";
+import { useMemberProfile } from "@/lib/seller/useMembersRegistry";
 import { useOnboardingState } from "@/lib/seller/onboardingState";
-import { useUpdateSellerProfile } from "@/lib/seller/useUpdateSellerProfile";
-import { fetchSellerProfile } from "@/lib/seller/profileFetcher";
+import { useUpdateMemberProfile } from "@/lib/seller/useUpdateMemberProfile";
+import { fetchMemberProfile } from "@/lib/seller/profileFetcher";
 import { fetchSellerCatalogue } from "@/lib/seller/catalogueFetcher";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type {
@@ -40,7 +40,7 @@ import type {
     UnitSystem,
     CatalogueItemMetadata,
 } from "@/lib/seller/sellerCatalogueMetadata";
-import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
+import type { MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
 import { publishSellerCatalogue } from "@/lib/seller/cataloguePublisher";
 import { OnboardingCatalogueForm } from "@/components/sellers/OnboardingCatalogueForm";
 
@@ -48,22 +48,22 @@ export function SellerEditCatalogue() {
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
-    const { data: registryData, isLoading: registryLoading } = useSellerProfile(address);
+    const { data: registryData, isLoading: registryLoading } = useMemberProfile(address);
     const { update, loaded } = useOnboardingState(address);
 
-    const [existingProfile, setExistingProfile] = useState<SellerProfileMetadata | null>(null);
+    const [existingProfile, setExistingProfile] = useState<MemberProfileMetadata | null>(null);
     const [existingCatalogue, setExistingCatalogue] = useState<SellerCatalogueMetadata | null>(null);
     const [fetchError, setFetchError] = useState<string | null>(null);
     const [seeded, setSeeded] = useState(false);
     const [pinningCatalogue, setPinningCatalogue] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
 
-    const updater = useUpdateSellerProfile(existingProfile, registryData?.[0] ?? null);
+    const updater = useUpdateMemberProfile(existingProfile, registryData?.[0] ?? null);
     const saveInFlight = updater.isPending || updater.isConfirming || pinningCatalogue;
 
     // Redirect unregistered wallets to onboarding — but only on SETTLED
     // state (`!registryLoading && !registryData` = a completed scan found
-    // nothing; isLoading starts true in useSellerProfile), and never
+    // nothing; isLoading starts true in useMemberProfile), and never
     // mid-save: the redirect unmounts the form and kills the in-flight
     // pin/tx (2026-07-09 e2e flake).
     useEffect(() => {
@@ -89,7 +89,7 @@ export function SellerEditCatalogue() {
         (async () => {
             try {
                 // The ONE cached profile read path (lib/seller/profileFetcher).
-                const profile = await fetchSellerProfile(profileURI);
+                const profile = await fetchMemberProfile(profileURI);
                 if (cancelled) return;
                 if (!profile) {
                     setFetchError("Couldn't fetch or parse the seller profile.");

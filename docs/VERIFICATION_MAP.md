@@ -23,7 +23,7 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 ### In-scope (this document)
 
 - **Kernel**: `src/kernel/FigaroCore.sol` — 2 external functions, 3 mappings, no owner, no fee
-- **Protocol compositions**: `AttestationCoordinator`, `ClauseRegistry`, `SellerRegistry`, `AssemblyRegistry`, `WitnessSwapAndCommitCoordinator`
+- **Protocol compositions**: `AttestationCoordinator`, `ClauseRegistry`, `MembersRegistry`, `AssemblyRegistry`, `WitnessSwapAndCommitCoordinator`
 - **Florin ecosystem**: `FlorinToken` (`IFlorinMinter` interface; no implementation wired)
 - **Formal model**: `formal/FigaroCore.tla`, `formal/MC.tla`, `formal/MC.cfg`
 - **Tests**: the Foundry, Halmos, Certora, Echidna, and TLA+ harnesses, plus the SDK suite — suite, file, property, and rule counts are in `TESTING.md` (the single source)
@@ -65,7 +65,7 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 
 - `E-1` **Attestation role gating**: only verified role-holder (buyer/seller/resolver) can attest
 - `E-2` **Clause immutability**: registered clauses cannot be overwritten
-- `E-4` **Seller deposit lock**: withdrawal only after deactivation + lock period
+- `E-4` **Member deposit reclaim**: de-surfacing is immediate on request; the ETH releases only after the cooldown
 - `E-6` **Florin supply cap**: total minted ≤ 1,000,000,000 florins (enforced on every mint path)
 
 ---
@@ -106,7 +106,7 @@ The V3 map (archived at `archive-v5/V3_VERIFICATION_MAP.md`) covered Theory → 
 |---|---|---|---|---|
 | E-1 | Only verified role-holder can attest | `attestAsSeller`: verifies seller via commitment orderHash lookup; `attestAsBuyer`: verifies via ProcessState.rootBuyer; `attestViaResolver`: delegates to IRoleResolver | `AttestationCoordinatorTest`: all 3 paths + cross-order same-process | `/papers/on-chain-evidence` → evidentiary properties; `/local-commerce` → Attestation Coordinator; `/builders` → Clause validation |
 | E-2 | Registered clauses cannot be overwritten | `registerClause`: event-only anchoring (no storage to overwrite); dedup guard on re-registration | `ClauseRegistryTest`: registration, dedup, deposit + withdraw paths | `/builders` → Clause validation; `/local-commerce` → clause-typed events |
-| E-4 | Seller deposit = staked intent (K4): withdraw allowed at ANY time (no lock), returns the deposit and clears the dedup guard — de-surfacing is the price; re-registration allowed after | `register()`: deposit-bound match + dedup guard; `withdraw()`: requires registered, pays back the deposit, clears the guard. `updateProfile()` is a separate caller-only path that emits `SellerProfileUpdated` without touching the deposit | `SellerRegistryTest`: register, deposit-bound match, dedup, withdraw-any-time, re-registration, updateProfile (only-self, no deposit movement); e2e `seller-withdraw` (UI round-trip + exact registry ETH delta) | `/local-commerce` → Seller Registry; `/sellers`; `/builders` → Seller identity |
+| E-4 | Member deposit = staked intent (K4), reclaimed in TWO steps: `requestWithdrawal()` de-surfaces IMMEDIATELY (guard cleared, re-registration allowed at once), `withdraw()` releases the ETH only after `withdrawalCooldown`. The cooldown is what makes the deposit price identity rather than rent it — without it one deposit serves N identities in sequence | `register()`: deposit-bound match + dedup guard; `requestWithdrawal()`: requires registered, clears the guard, accrues `pendingDeposit` + sets `releaseAt`; `withdraw()`: requires something pending and `block.timestamp >= releaseAt`, else `NothingPending` / `CooldownActive`. `updateProfile()` is a separate caller-only path that emits `MemberProfileUpdated` without touching the deposit | `MembersRegistryTest`: register, deposit-bound match, dedup, de-surface-at-request, cooldown-gates-the-claim, immediate re-registration costs a SECOND deposit, repeated requests accumulate + restart the clock, double-claim refused, zero-cooldown and zero-deposit degenerate cases, fuzz `everyDepositIsEventuallyClaimable` (no strandable funds); e2e `seller-withdraw` (UI drives BOTH steps + exact registry ETH delta, and asserts the ETH does NOT move at step 1) | `/local-commerce` → Seller Registry; `/sellers`; `/builders` → Seller identity |
 | E-6 | Florin supply cap: $\leq$ 1B on every mint | `mint()`: `if (totalSupply() + amount > MAX_SUPPLY) revert SupplyCapExceeded()` + reentrancy guard | `FlorinToken.t.sol`: cap enforcement, multi-minter, renounce | `/papers/florin-schelling-point-token` → supply integrity |
 
 ---

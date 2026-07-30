@@ -8,7 +8,7 @@ The test tree mirrors `src/` (`test/kernel/`, `test/protocol/{registries,coordin
 `test/florin/`, `test/rpgf/`, `test/mocks/`); audit by `find test -name '*.t.sol'`,
 not by this paragraph. Current: `FigaroCoreTest`, `FigaroCoreRevertBranchTest`,
 `FigaroCoreEventEmissionTest`, `AttestationCoordinatorTest`, `ClauseRegistryTest`,
-`AssemblyRegistryTest`, `SellerRegistryTest`, `GasCeilingTest`,
+`AssemblyRegistryTest`, `MembersRegistryTest`, `GasCeilingTest`,
 `WitnessSwapAndCommitCoordinatorTest`, `WitnessSwapAndCommitCoordinatorForkTest`,
 `FigaroBatchVerifierTest`, `UsageCounterTest`, `RpgfMinterTest`, `RpgfIntegrationTest`,
 `TreasuryProcurementTest`, `MockDisperseTest`, `ReentrancyAdversarialTest`,

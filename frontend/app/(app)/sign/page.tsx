@@ -30,9 +30,9 @@ import { SwapFundingPanel } from "@/app/(app)/s/checkout/_components/SwapFunding
 import { resolveSwapFundingContracts } from "@/lib/composition/swapFunding";
 import useTokenApproval from "@/hooks/useTokenApproval";
 import { ERC20_ABI } from "@/lib/kernel/contracts";
-import { useSellerProfile } from "@/lib/seller/useSellerRegistry";
-import { fetchSellerProfile } from "@/lib/seller/profileFetcher";
-import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
+import { useMemberProfile } from "@/lib/seller/useMembersRegistry";
+import { fetchMemberProfile } from "@/lib/seller/profileFetcher";
+import type { MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
 import { AgreementReview } from "@/components/runtime/AgreementReview";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import useProcessResolveCapacity from "@/hooks/useProcessResolveCapacity";
@@ -262,18 +262,18 @@ function SignPageContent() {
     // minus the denomination itself; available only where the swap
     // composition is configured. The witness-signed leg is built at accept.
     const swapContracts = resolveSwapFundingContracts();
-    const { data: sellerRegistryData } = useSellerProfile(isSeller ? address : undefined);
-    const [ownProfile, setOwnProfile] = useState<SellerProfileMetadata | null>(null);
+    const { data: memberProfileData } = useMemberProfile(isSeller ? address : undefined);
+    const [ownProfile, setOwnProfile] = useState<MemberProfileMetadata | null>(null);
     useEffect(() => {
         let cancelled = false;
         setOwnProfile(null);
-        const metadataURI = sellerRegistryData?.[0];
+        const metadataURI = memberProfileData?.[0];
         if (!metadataURI) return;
-        fetchSellerProfile(metadataURI)
+        fetchMemberProfile(metadataURI)
             .then((parsed_) => { if (!cancelled && parsed_) setOwnProfile(parsed_); })
             .catch(() => { /* absence — the funding panel simply doesn't render */ });
         return () => { cancelled = true; };
-    }, [sellerRegistryData]);
+    }, [memberProfileData]);
     const sellerFundingCandidates = useMemo(
         () => (swapContracts && approvalCurrency && isSeller
             ? (ownProfile?.acceptedTokens ?? []).filter((t) => !hexEqual(t.address, approvalCurrency))

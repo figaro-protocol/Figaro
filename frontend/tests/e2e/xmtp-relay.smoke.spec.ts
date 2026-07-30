@@ -25,7 +25,7 @@
  *    signTypedData / sendTransaction for announced local accounts to a
  *    `context.exposeFunction` handler) — XMTP's identity signature included.
  *    Chromium is Playwright's bundled browser; no extension wallet is needed.
- *  - The seller is onboarded IN-SPEC from chain state: `seedRegisteredSeller`
+ *  - The seller is onboarded IN-SPEC from chain state: `seedRegisteredMember`
  *    (the dispatch-race pattern) pins a catalogue + profile bound to the
  *    simplest anchored assembly; `anvil_setBalance` funds the registration
  *    deposit. Idempotent — re-runs route through updateProfile.
@@ -58,7 +58,7 @@ import {
     discoverAnchoredAssemblies,
     pinJSONToIPFS,
     readLocalDeploymentConfig,
-    seedRegisteredSeller,
+    seedRegisteredMember,
     waitForConnected,
 } from './devnet-helpers';
 
@@ -128,7 +128,7 @@ function makeLocalSignHandler(accounts: PrivateKeyAccount[]) {
 }
 
 /** Fund a device-unique wallet with ETH (anvil cheatcode) — the seller pays
- *  the SellerRegistry registration deposit; both parties stay funded so no
+ *  the MembersRegistry registration deposit; both parties stay funded so no
  *  future gas-bearing step starts from zero. */
 async function fundWithEth(address: Hex): Promise<void> {
     const res = await fetch(RPC_URL, {
@@ -202,7 +202,7 @@ test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev netwo
                 available: true,
             }],
         });
-        await seedRegisteredSeller({
+        await seedRegisteredMember({
             walletKey: keys.seller,
             profile: {
                 name: 'XMTP Smoke Seller',

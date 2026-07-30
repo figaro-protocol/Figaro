@@ -24,17 +24,20 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/hooks/useMounted";
 import {
-    useSellerProfile,
+    useMemberProfile,
     useRegistrationDeposit,
     useWithdrawDeposit,
-} from "@/lib/seller/useSellerRegistry";
-import { getSellerRegistry } from "@/lib/kernel/contracts";
-import { SELLER_REGISTRY_ABI } from "@figaro/sdk";
+    useRequestWithdrawal,
+    useWithdrawalStatus,
+    useWithdrawalCooldown,
+} from "@/lib/seller/useMembersRegistry";
+import { getMembersRegistry } from "@/lib/kernel/contracts";
+import { MEMBERS_REGISTRY_ABI } from "@figaro/sdk";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
-import { fetchSellerProfile } from "@/lib/seller/profileFetcher";
+import { fetchMemberProfile } from "@/lib/seller/profileFetcher";
 import { unpinSupersededProfileArtifacts } from "@/lib/seller/profileErasure";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import type { SellerProfileMetadata } from "@/lib/seller/sellerProfileMetadata";
+import type { MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
 import { formatEther } from "viem";
 import { OnboardingWelcome } from "@/components/sellers/OnboardingWelcome";
 import { OnboardingShell } from "@/components/sellers/OnboardingShell";
@@ -46,7 +49,7 @@ function WelcomeView() {
             title="Register as a seller."
             description={
                 <p>
-                    As a seller you register a wallet that represents your real-world asset or service. Register a wallet in <code>SellerRegistry</code> and pin a profile + catalogue to IPFS. Six steps. The deposit is 0.001 ETH on devnet, reclaimable after a one-year lock — Sybil-resistance, not a fee.
+                    As a seller you register a wallet that represents your real-world asset or service. Register a wallet in <code>MembersRegistry</code> and pin a profile + catalogue to IPFS. Six steps. The deposit is 0.001 ETH on devnet and you get it back when you leave, after a cooldown — Sybil-resistance, not a fee.
                 </p>
             }
         >
@@ -58,7 +61,7 @@ function WelcomeView() {
 export function SellerLanding() {
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
-    const { data: profileData, isLoading: profileLoading, refetch } = useSellerProfile(address);
+    const { data: profileData, isLoading: profileLoading, refetch } = useMemberProfile(address);
     const { data: deposit } = useRegistrationDeposit();
 
     if (!mounted) {
@@ -73,9 +76,17 @@ export function SellerLanding() {
         return <WelcomeView />;
     }
 
-    // Connected but not registered → show the welcome flow inline.
+    // Connected but not registered → show the welcome flow inline. A wallet
+    // that has LEFT is unregistered but may still be owed its deposit, so the
+    // claim surface renders here too — otherwise leaving would strand the ETH
+    // behind a screen the wallet can no longer reach.
     if (!profileData) {
-        return <WelcomeView />;
+        return (
+            <>
+                <PendingDepositNotice address={address} />
+                <WelcomeView />
+            </>
+        );
     }
 
     const [metadataURI, registeredBlock] = profileData;
@@ -107,7 +118,7 @@ function RegisteredCard({
     deposit,
     onWithdrawn,
 }: RegisteredCardProps) {
-    const [profile, setProfile] = useState<SellerProfileMetadata | null>(null);
+    const [profile, setProfile] = useState<MemberProfileMetadata | null>(null);
     const [profileError, setProfileError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -118,7 +129,7 @@ function RegisteredCard({
         // hand-rolled fetch+JSON.parse (audit 2026-07-23): a seller profile is
         // permissionless untrusted network JSON, so it routes through the same
         // prototype-pollution-stripping path every other profile read uses.
-        fetchSellerProfile(metadataURI)
+        fetchMemberProfile(metadataURI)
             .then((parsed) => {
                 if (cancelled) return;
                 if (parsed) setProfile(parsed);
@@ -151,6 +162,8 @@ function RegisteredCard({
                     <p className="text-sm text-red-600 mt-2" role="alert">{profileError}</p>
                 )}
             </header>
+
+            <PendingDepositNotice address={address} />
 
             <ManageList
                 deposit={deposit}
@@ -200,7 +213,7 @@ function ManageList({
     registeredBlock: bigint | null;
     onWithdrawn: () => void;
     metadataURI: string;
-    profile: SellerProfileMetadata | null;
+    profile: MemberProfileMetadata | null;
 }) {
     const items: Array<{ label: string; description: string; href: string | null }> = [
         { label: "Identity", description: "Name, description, tokens, location.", href: "/sellers/edit/identity" },
@@ -248,6 +261,56 @@ function ManageList({
     );
 }
 
+/**
+ * The deposit a wallet is owed after leaving, and the claim once its cooldown
+ * has elapsed. Rendered in BOTH the registered and the left state — leaving
+ * de-surfaces immediately, so this is the only surface a departed wallet has.
+ */
+function PendingDepositNotice({ address }: { address: `0x${string}` | undefined }) {
+    const { pending, releaseAt, refetch } = useWithdrawalStatus(address);
+    const { withdraw, isPending, isConfirming, error } = useWithdrawDeposit();
+    const [claimError, setClaimError] = useState<string | null>(null);
+    const [claimed, setClaimed] = useState(false);
+
+    if (claimed || !pending || pending === 0n) return null;
+
+    const unlockAt = releaseAt ? Number(releaseAt) * 1000 : 0;
+    const unlocked = Date.now() >= unlockAt;
+    const busy = isPending || isConfirming;
+
+    async function handleClaim() {
+        setClaimError(null);
+        try {
+            await withdraw();
+            setClaimed(true);
+            refetch();
+        } catch (e: unknown) {
+            setClaimError(extractErrorMessage(e, String(e)));
+        }
+    }
+
+    return (
+        <Card className="p-4 mb-4 text-sm space-y-2">
+            <p className="text-ink-body">
+                <span className="font-semibold text-ink-heading">
+                    {formatEther(pending)} ETH held for you.
+                </span>{" "}
+                {unlocked
+                    ? "The cooldown has passed — you can take it back now."
+                    : `Released ${new Date(unlockAt).toLocaleString()}. You are already de-listed; only the ETH is still waiting.`}
+            </p>
+            <Button variant="outline" size="sm" onClick={handleClaim} disabled={!unlocked || busy}>
+                {busy ? "Claiming…" : "Claim deposit"}
+            </Button>
+            {(claimError || error) && (
+                <p className="text-xs text-red-600" role="alert">
+                    {claimError ?? extractErrorMessage(error, String(error))}
+                </p>
+            )}
+        </Card>
+    );
+}
+
 function WithdrawRow({
     deposit,
     onWithdrawn,
@@ -257,11 +320,12 @@ function WithdrawRow({
     deposit: bigint | undefined;
     onWithdrawn: () => void;
     metadataURI: string;
-    profile: SellerProfileMetadata | null;
+    profile: MemberProfileMetadata | null;
 }) {
     const { address } = useAccount();
     const client = usePublicClient();
-    const { withdraw, isPending, isConfirming, isSuccess, hash, error } = useWithdrawDeposit();
+    const { requestWithdrawal, isPending, isConfirming, isSuccess, hash, error } = useRequestWithdrawal();
+    const { data: cooldown } = useWithdrawalCooldown();
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [confirming, setConfirming] = useState(false);
     const [receiptHash, setReceiptHash] = useState<`0x${string}` | null>(null);
@@ -282,20 +346,19 @@ function WithdrawRow({
             setSubmitError("No public client / wallet — reload and retry.");
             return;
         }
-        const registry = getSellerRegistry();
+        const registry = getMembersRegistry();
         if (!registry) {
-            setSubmitError("SellerRegistry not configured.");
+            setSubmitError("MembersRegistry not configured.");
             return;
         }
         // Pre-flight simulate — surfaces a typed revert (e.g. NotRegistered)
-        // before opening the wallet, so the seller doesn't waste a
-        // signature on a tx that will fail. No time lock exists (K4):
-        // withdraw is allowed at any time and de-surfaces the seller.
+        // before opening the wallet, so the seller doesn't waste a signature on
+        // a tx that will fail.
         try {
             await client.simulateContract({
                 address: registry,
-                abi: SELLER_REGISTRY_ABI,
-                functionName: "withdraw",
+                abi: MEMBERS_REGISTRY_ABI,
+                functionName: "requestWithdrawal",
                 account: address,
             });
         } catch (e: unknown) {
@@ -303,11 +366,12 @@ function WithdrawRow({
             return;
         }
         try {
-            await withdraw();
+            await requestWithdrawal();
             setConfirming(false);
-            // De-surfaced on-chain — complete the erasure locally: unpin the
-            // profile document and everything it referenced (nothing
-            // survives a withdraw). Best-effort; never fails the withdraw.
+            // De-surfaced on-chain — complete the erasure locally NOW, at the
+            // request, not at the later claim: the member has left, so nothing
+            // of theirs should stay published while the cooldown runs.
+            // Best-effort; never fails the request.
             await unpinSupersededProfileArtifacts({
                 ipfs: DEFAULT_IPFS_SERVICE,
                 priorProfileUri: metadataURI,
@@ -324,8 +388,13 @@ function WithdrawRow({
         return (
             <li className="py-3 border-b border-default space-y-2 text-sm text-ink-body">
                 <p>
-                    <span className="font-semibold text-ink-heading">Withdrew {deposit !== undefined ? formatEther(deposit) : "…"} ETH.</span>
-                    {" "}Registration cleared.
+                    <span className="font-semibold text-ink-heading">You have left the registry.</span>
+                    {" "}You are de-listed from discovery straight away. Your
+                    {" "}{deposit !== undefined ? formatEther(deposit) : "…"} ETH
+                    {" "}deposit is claimable
+                    {cooldown !== undefined && cooldown > 0n
+                        ? " once the cooldown has passed — come back to this page for it."
+                        : " now — come back to this page for it."}
                 </p>
                 <p className="text-xs text-ink-faint font-mono break-all">
                     Tx: {receiptHash}
@@ -349,8 +418,8 @@ function WithdrawRow({
         return (
             <li className="flex items-baseline justify-between gap-4 py-3 border-b border-default text-ink-faint">
                 <div>
-                    <span className="text-ink-body">Withdraw deposit</span>
-                    <span className="ml-2 text-xs">De-register and reclaim {depositLabel}. Withdrawing de-lists you from discovery.</span>
+                    <span className="text-ink-body">Leave the registry</span>
+                    <span className="ml-2 text-xs">De-lists you from discovery straight away; the {depositLabel} deposit follows after a cooldown.</span>
                 </div>
                 <button
                     type="button"
@@ -366,11 +435,11 @@ function WithdrawRow({
     return (
         <li className="py-3 border-b border-default space-y-2 text-sm text-ink-body">
             <p className="text-xs">
-                Returns the {deposit !== undefined ? formatEther(deposit) : "…"} ETH deposit and clears the registration. Withdrawing de-lists you from discovery — the stake is what keeps you surfaced. Catalogue and profile pins on IPFS are not affected.
+                Two steps, deliberately. This one clears your registration and de-lists you from discovery immediately — the stake is what keeps you surfaced — and you can register again at once. The {deposit !== undefined ? formatEther(deposit) : "…"} ETH deposit is released separately{cooldown !== undefined && cooldown > 0n ? ", after a cooldown" : ""}; a deposit that could be recycled the moment you left would not price anything. Your profile and catalogue pins are unpinned as part of this step.
             </p>
             <div className="flex items-center gap-3">
                 <Button variant="outline" size="sm" onClick={handleWithdraw} disabled={isProcessing}>
-                    {isProcessing ? "Withdrawing…" : "Confirm withdraw"}
+                    {isProcessing ? "Leaving…" : "Confirm and leave"}
                 </Button>
                 <button
                     type="button"

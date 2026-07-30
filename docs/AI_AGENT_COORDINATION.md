@@ -224,16 +224,16 @@ depend on ERC-8004 — the bonding mechanism already provides trust, and the
 public, derived settlement history already provides the track record (never
 a score, never a gate). However, autonomous agents
 that want cross-protocol discoverability can declare ERC-8004-compatible
-service endpoints in their `SellerRegistry.metadataURI` JSON.
+service endpoints in their `MembersRegistry.metadataURI` JSON.
 
 ### Why This Is a Metadata Convention, Not a Contract Change
 
-Figaro's `SellerRegistry` already stores an arbitrary `metadataURI` per
+Figaro's `MembersRegistry` already stores an arbitrary `metadataURI` per
 seller. The URI resolves to a JSON file for the relevant participant
 surface. Agents simply include a `services` key in that JSON.
 
 No new contracts are needed:
-- **Identity** → `SellerRegistry` already handles this (metadataURI)
+- **Identity** → `MembersRegistry` already handles this (metadataURI)
 - **Reputation** → Bond-weighted settlement history is strictly superior to
   ERC-8004's permissionless feedback (which has Sybil vulnerability)
 - **Validation** → Buyer dominance + 2× bond asymmetry already enforces
@@ -333,7 +333,7 @@ origination offer is routed. The frontend provides the `useDidVerification()` ho
 
 | Concern | ERC-8004 | Figaro |
 |---------|----------|--------|
-| Identity | ERC-721 mint | SellerRegistry event + bond history |
+| Identity | ERC-721 mint | MembersRegistry event + bond history |
 | Trust | Permissionless feedback (Sybil-vulnerable) | 2× bonding equilibrium (MAD) |
 | Reputation | Arbitrary int128 ratings | Settlement volume + token acceptance |
 | Validation | External provers (zkML, TEE) | Buyer dominance + on-chain evidence |

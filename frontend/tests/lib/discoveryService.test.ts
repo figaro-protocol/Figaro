@@ -6,13 +6,13 @@ import {
 const getActiveSellersMock = vi.fn();
 const fetchDocumentMock = vi.fn();
 
-vi.mock('@/lib/protocol/sellerRegistryIndexer', () => ({
+vi.mock('@/lib/protocol/membersRegistryIndexer', () => ({
     getActiveSellers: (...args: unknown[]) => getActiveSellersMock(...args),
 }));
 
 vi.mock('@/lib/kernel/contracts', () => ({
     CONTRACTS: {
-        sellerRegistry: '0x1111111111111111111111111111111111111111',
+        membersRegistry: '0x1111111111111111111111111111111111111111',
     },
 }));
 
