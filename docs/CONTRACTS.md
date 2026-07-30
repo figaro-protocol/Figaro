@@ -262,9 +262,16 @@ Per artifact per period it keeps `c` (distinct settled processes), `d` (distinct
 (buyer, seller) pairs), and `score = icbrt(c·d²·1e18)` — **UNIFORM**, breadth weighted
 twice as heavily as volume, value deliberately not a term. There is **no tag, category, or
 weight multiplier**: every artifact's score is its real usage alone (ratified 2026-07-29 —
-the substrate-broadening weight and `boostedTag`/`rpgfTagOf` read are deleted). A **pair
-cap of 5** drops further processes from the same pair entirely, so repeat trade between two
-wallets cannot farm an artifact. **Seller-side live-stake gate:** a record counts only if
+the substrate-broadening weight and `boostedTag`/`rpgfTagOf` read are deleted).
+
+**Reading the exponent.** `score = d·(c/d)^(1/3)` — distinct relationships, times average
+repeat depth raised to α. So **α is the elasticity of reward to repeat depth** (8× the depth
+earns 2× the score), and when every pair trades once (`c = d`) the score is the count itself
+for any α at all. `α < 1/2` is justified because a new relationship informs more than another
+observation of a known one; **α = 1/3 exactly is a JUDGMENT, not a derivation** — uniform
+across artifacts, so it is not curation. It is **not** a Sybil defense and must not be
+described as one (2026-07-30): no scoring shape can separate a fabricated pair from a genuine
+one. **Seller-side live-stake gate:** a record counts only if
 the process's seller-of-record holds a live `SellerRegistry` stake
 (`sellers.registered(order.seller)`, else `SellerNotStaked`) — fabricating `d` distinct
 pairs costs one base-currency (ETH) stake per fake seller.
