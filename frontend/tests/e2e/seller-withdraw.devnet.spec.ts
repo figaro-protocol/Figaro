@@ -97,6 +97,10 @@ test.describe('MembersRegistry leave + claim (devnet)', () => {
             address: registry, abi: MEMBERS_REGISTRY_ABI, functionName: 'registrationDeposit',
         }) as bigint;
         const registryBefore = await client.getBalance({ address: registry });
+        const pendingBefore = (await client.readContract({
+            address: registry, abi: MEMBERS_REGISTRY_ABI,
+            functionName: 'pendingDeposit', args: [SELLER_ADDR as Hex],
+        })) as bigint;
 
         expect(await isSurfaced(), 'surfaced before leaving').toBe(true);
 
@@ -115,10 +119,16 @@ test.describe('MembersRegistry leave + claim (devnet)', () => {
             await client.getBalance({ address: registry }),
             'the deposit has NOT moved yet — leaving is not being paid',
         ).toBe(registryBefore);
-        expect(await client.readContract({
-            address: registry, abi: MEMBERS_REGISTRY_ABI,
-            functionName: 'pendingDeposit', args: [SELLER_ADDR as Hex],
-        })).toBe(deposit);
+        // DELTA, not absolute: a prior run that left a request unclaimed leaves a
+        // balance behind (requests accumulate by design), so an absolute assert
+        // would fail on a re-used chain for the wrong reason.
+        expect(
+            (await client.readContract({
+                address: registry, abi: MEMBERS_REGISTRY_ABI,
+                functionName: 'pendingDeposit', args: [SELLER_ADDR as Hex],
+            })) as bigint - pendingBefore,
+            'exactly this registration\'s deposit became pending',
+        ).toBe(deposit);
 
         // ── Step 2: claim ────────────────────────────────────────────────
         // Dismissing the receipt drops the wallet to the unregistered view —

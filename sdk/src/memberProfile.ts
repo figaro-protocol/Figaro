@@ -1,22 +1,23 @@
 /**
- * memberProfile.ts — the seller PROFILE document (Layer-A).
+ * memberProfile.ts — the member PROFILE document (Layer-A).
  *
- * The profile is the stable identity envelope a seller pins to IPFS and
+ * The profile is the stable identity envelope a member pins to IPFS and
  * points `MembersRegistry.metadataURI` at: name, branding, location,
  * accepted-token list, default pricing token, assembly bindings, agent
  * endpoints, and the URI of the volatile catalogue document. Item lists
- * live in the catalogue (`sellerCatalogue.ts`) so item edits re-pin one
+ * live in the catalogue (`sellerCatalogue.ts` — what a member OFFERS, hence
+ * the seller noun there) so item edits re-pin one
  * small JSON instead of the whole identity envelope.
  *
  * Token acceptance is an identity declaration: each token signals which
- * value system the seller coordinates with — legal-system alignment
+ * value system the member coordinates with — legal-system alignment
  * (stablecoins), community membership (DAO tokens), settlement-layer
  * alignment (ETH), or value anchoring (commodity-backed). It is not a
  * financial-market position.
  *
  * Carries no role / archetype / category / cuisine taxonomy field —
  * `specialty` below is free PROSE (a self-description), never a closed
- * vocabulary, and nothing dispatches on it. Buyers infer what the seller
+ * vocabulary, and nothing dispatches on it. Buyers infer what a seller
  * does from the items in the catalogue; protocol-tier role attribution is
  * event-derived via the indexer.
  *
@@ -38,9 +39,9 @@ import {
 // ── Dependent identity types ──────────────────────────────────────────────────
 
 /**
- * The tokens a seller accepts for settlement. Token acceptance IS identity —
- * the set of tokens a seller bonds in defines their coordination surface and
- * value system. Distinct from the catalogue (the seller's items).
+ * The tokens a member accepts for settlement. Token acceptance IS identity —
+ * the set of tokens a member bonds in defines their coordination surface and
+ * value system. Distinct from the catalogue (the items they offer).
  */
 export interface AcceptedTokenMetadata {
     /** ERC-20 contract address. */
@@ -54,8 +55,8 @@ export interface AcceptedTokenMetadata {
 }
 
 /**
- * The seller's branding (identity / presentation). A distinct concern from the
- * catalogue (the seller's items) and the rest of the profile.
+ * The member's branding (identity / presentation). A distinct concern from the
+ * catalogue (the items they offer) and the rest of the profile.
  */
 export interface MemberBrandingMetadata {
     logoURI?: string;
@@ -72,27 +73,27 @@ export interface MemberAgentServices {
     ens?: string;
 }
 
-/** Asset URIs associated with the seller's branding. */
+/** Asset URIs associated with the member's branding. */
 export interface MemberAssetReferences {
     imageBaseURI?: string;
 }
 
-/** Geographic anchor for the seller. */
+/** Geographic anchor for the member. */
 interface MemberLocation {
     geohash: string;
     addressText?: string;
 }
 
 /**
- * Designates the wallets the seller entrusts as counterparties on
+ * Designates the wallets the member entrusts as counterparties on
  * this assembly's sub-orders, keyed by the sub-order's process clause.
  *
- * Example: a seller bound to `local-commerce-merchant-delivery` has
+ * Example: a member bound to `local-commerce-merchant-delivery` has
  * a `counterpartyBindings[{ clauseId: "figaro-courier-process",
  * addresses: [0xA, 0xB] }]` entry. At checkout, the cart fills the
  * courier sub-order's seller field from this list. Without this field
  * the cart has nowhere to read the counterparty's wallet from — the
- * assembly defines the topology, but the seller's profile binds it
+ * assembly defines the topology, but the member's profile binds it
  * to concrete wallets.
  */
 export interface CounterpartyBinding {
@@ -101,7 +102,7 @@ export interface CounterpartyBinding {
      *  structural marker for what kind of off-chain seller the
      *  sub-order needs. */
     clauseId: string;
-    /** Wallets the seller is willing to designate. Order is
+    /** Wallets the member is willing to designate. Order is
      *  significant — checkout picks the first reachable one (or
      *  surfaces the list to the buyer). */
     addresses: `0x${string}`[];
@@ -115,11 +116,11 @@ export interface AssemblyBindingRecord {
 }
 
 /**
- * The seller profile document.
+ * The member profile document.
  *
  * `name` is required; everything else is optional. The form's submit
- * path writes only the fields the seller filled in. Discovery URLs
- * are address-shaped (`/s/<address>`) — the wallet is the seller's
+ * path writes only the fields the member filled in. Discovery URLs
+ * are address-shaped (`/s/<address>`) — the wallet is the member's
  * canonical identifier, not a human-readable handle.
  */
 export interface MemberProfileMetadata {
@@ -139,14 +140,14 @@ export interface MemberProfileMetadata {
     specialty?: string;
     /** Geographic anchor — geohash plus optional human-readable address. */
     location?: MemberLocation;
-    /** Branding (logo, hero, accent, theme class). Pinned on the profile so buyer frontends can skin against the seller's identity. */
+    /** Branding (logo, hero, accent, theme class). Pinned on the profile so buyer frontends can skin against the member's identity. */
     branding?: MemberBrandingMetadata;
     /** External asset references (CSS, image base URI). Pinned on the profile. */
     assets?: MemberAssetReferences;
     /**
-     * The set of ERC-20s the seller accepts for settlement. Token
+     * The set of ERC-20s the member accepts for settlement. Token
      * acceptance is an identity declaration: each token signals which
-     * value system the seller coordinates with — stablecoins for
+     * value system the member coordinates with — stablecoins for
      * legal-system alignment, DAO governance tokens for community
      * membership in that DAO, ETH for settlement-layer alignment,
      * commodity-backed tokens for value anchoring. It is not a
@@ -162,13 +163,13 @@ export interface MemberProfileMetadata {
     defaultTokenAddress?: `0x${string}`;
     /**
      * PROFILE-authored clause values — SELLER master data for any registered
-     * clause declaring `block.checkout.profileFills` (the seller-level sibling of the
+     * clause declaring `block.checkout.profileFills` (the member-level sibling of the
      * catalogue's per-item `clauseValues`): keyed clauseId → field → value,
      * restricted by each spec's declared profile-authored subset. Examples:
-     * `figaro-dimweight`'s `divisor` (the seller's shipping convention, e.g.
+     * `figaro-dimweight`'s `divisor` (the member's shipping convention, e.g.
      * ~5000 metric), `figaro-credential`'s `credentialId` (a declared license
      * number). Checkout folds these onto composed profile-sourced leaves.
-     * Absent when the seller authors none.
+     * Absent when the member authors none.
      */
     profileClauseValues?: Record<string, Record<string, unknown>>;
     /**
@@ -323,7 +324,7 @@ function parseAssemblyBindings(value: unknown, path: string): AssemblyBindingRec
  */
 export function parseMemberProfileDocument(
     value: unknown,
-    sourceLabel = "seller profile metadata",
+    sourceLabel = "member profile metadata",
 ): MemberProfileMetadata {
     const record = asRecord(value, sourceLabel);
 
@@ -348,7 +349,7 @@ export function parseMemberProfileDocument(
 
 /**
  * Lenient parse — returns null instead of throwing. Use in discovery
- * paths where a malformed seller should be silently dropped from the
+ * paths where a malformed profile should be silently dropped from the
  * surface (e.g. building a seller-catalogue list).
  */
 export function tryParseMemberProfileDocument(

@@ -6,7 +6,7 @@
  * IPFS), intersects the profile's `assemblyBindings[].assemblySlug` with the
  * published assembly events, and fetches each matched assemblyTemplate. The
  * on-chain reads come from `@/lib/protocol/useAssemblyRegistry` (a legal
- * downward arrow); the seller-profile parsing stays intra-seller.
+ * downward arrow); the member-profile parsing stays intra-seller.
  */
 
 import { useEffect, useState } from "react";
@@ -31,7 +31,7 @@ export interface BoundAssembly {
     assemblyTemplate: AssemblyTemplate;
     /** The seller's designated counterparty wallets for this assembly,
      *  keyed by sub-order process clause (the runtime ladder clause the
-     *  sub-order carries). Sourced from the seller profile's
+     *  sub-order carries). Sourced from the member profile's
      *  AssemblyBindingRecord — checkout reads it to fill a delegated
      *  order's seller. */
     counterpartyBindings: CounterpartyBinding[];
@@ -42,7 +42,7 @@ export interface SellerBoundAssemblies {
      *  the buyer-facing choice set at checkout. Each bound assembly is
      *  one option the seller offers; the buyer picks one. */
     assemblies: BoundAssembly[];
-    /** True while either the seller-profile or the assemblyTemplate fetches are in flight. */
+    /** True while either the member-profile or the assemblyTemplate fetches are in flight. */
     isLoading: boolean;
     /** True when at least one of the seller's bindings matched a published assembly. */
     hasOnChainBinding: boolean;
@@ -98,7 +98,7 @@ export function useSellerBoundAssemblies(
                 // Size-capped fetch (F4): the seller-pinned profile document is
                 // external-party-controlled — oversize throws → the catch below.
                 const response = await fetchCappedContent(url);
-                if (!response.ok) throw new Error("seller profile fetch failed");
+                if (!response.ok) throw new Error("member profile fetch failed");
                 // Prototype-pollution-safe parse (finding 7): the profile is an
                 // external-party-pinned document; the stripping reviver drops
                 // __proto__/constructor keys before any downstream record copy.

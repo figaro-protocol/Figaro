@@ -209,6 +209,10 @@ export const MEMBERS_REGISTRY_ABI = parseAbi([
     "function withdrawalCooldown() view returns (uint256)",
     "function pendingDeposit(address member) view returns (uint256)",
     "function releaseAt(address member) view returns (uint256)",
+    // Ask the CHAIN whether a claim is due — never compare `releaseAt` against a
+    // client clock; block time and wall time drift, and the comparison silently
+    // disables a legitimate claim. Mirrors `UsageCounter.periodClosed`.
+    "function withdrawable(address member) view returns (bool)",
     "event MemberRegistered(address indexed member, string metadataURI)",
     "event MemberProfileUpdated(address indexed member, string metadataURI)",
     "event MemberWithdrawalRequested(address indexed member, uint256 amount, uint256 releaseAt)",
@@ -258,7 +262,7 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 
 // ── UsageCounter ABI ──────────────────────────────────────────────────────
 //
-// Verified artifact usage, counted when it happens. `recordUsage` is
+// Verified artifact usage, counted when it happens. `recordClauseUsage` is
 // permissionless: it proves the order is RESOLVED (`core.orderStatus == 2`)
 // and that the artifact is merkle-included in the signed `agreementHash` —
 // the same leaf shape `computeSectionLeaf` builds. It carries only the section
@@ -270,7 +274,7 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 
 export const USAGE_COUNTER_ABI = parseAbi([
     // ── Recording (permissionless) ──────────────────────────────────
-    `function recordUsage(${COMMITMENT_TUPLE} order, bytes32 artifact, bytes32 sectionHash, bytes32[] proof) external`,
+    `function recordClauseUsage(${COMMITMENT_TUPLE} order, bytes32 artifact, bytes32 sectionHash, bytes32[] proof) external`,
     `function recordAssemblyUsage(${COMMITMENT_TUPLE} order, bytes32 compositionHash, bytes32[] proof) external`,
 
     // ── Composition + schedule ──────────────────────────────────────

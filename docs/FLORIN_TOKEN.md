@@ -143,7 +143,7 @@ usage alone**, with no category, tag, or weight tilting the split toward any kin
 of contribution.
 
 **The mechanism COUNTS USAGE WHEN IT HAPPENS** — see `UsageCounter` and
-`RpgfMinter` in `docs/CONTRACTS.md`. `UsageCounter.recordUsage` is permissionless
+`RpgfMinter` in `docs/CONTRACTS.md`. `UsageCounter.recordClauseUsage` is permissionless
 and proves, from data the chain already holds, that an order is RESOLVED and that
 the artifact was merkle-committed in the agreement both parties signed. Accrual
 buckets into fixed **periods**; a period's counts are final once it ends. Tranche

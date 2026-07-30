@@ -20,7 +20,7 @@ import {
     profileToListing,
     type Listing,
 } from "@/lib/seller/sellerListing";
-import { getActiveSellers } from "@/lib/protocol/membersRegistryIndexer";
+import { getActiveMembers } from "@/lib/protocol/membersRegistryIndexer";
 import { fetchMemberProfile } from "@/lib/seller/profileFetcher";
 import type { PublicClient } from "viem";
 import { CONTRACTS } from "@/lib/kernel/contracts";
@@ -64,7 +64,7 @@ async function listFromRegistry(
     chainId: number,
     publishedSlugs: Set<string>,
 ): Promise<Listing[]> {
-    const sellers = await getActiveSellers(client, chainId);
+    const sellers = await getActiveMembers(client, chainId);
     if (sellers.length === 0) return [];
     const results = await Promise.all(
         sellers.map((op) => fetchProfileAsListing(op.address, op.metadataURI, publishedSlugs)),

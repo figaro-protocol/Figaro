@@ -8,7 +8,7 @@ import { truncateHex } from "@/lib/shared/formatHex";
 /**
  * The `/assemblies` inventory, read live from `AssemblyRegistry`.
  *
- * Reuses `useAssemblyChoices` — the same composition the seller profile
+ * Reuses `useAssemblyChoices` — the same composition the member profile
  * and the designer's published-list consume. Each row's identity (slug,
  * author, content hash) is on-chain; the assembly template (name, order count,
  * clauses) fetches lazily from IPFS per row.

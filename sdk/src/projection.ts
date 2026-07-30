@@ -21,7 +21,7 @@
  * DESIGNER composes into the template — the tailoring; every other clause's
  * template values are `{}` and the fields fill at checkout →
  * compositionHash), and the `checkout` fills (`catalogueFills` /
- * `profileFills` — which sections the catalogue and seller-profile folds
+ * `profileFills` — which sections the catalogue and member-profile folds
  * write → agreementHash). `parseProjectionHints` extracts exactly those from
  * a raw spec document; everything else in `block` remains presentation the
  * SDK never reads.

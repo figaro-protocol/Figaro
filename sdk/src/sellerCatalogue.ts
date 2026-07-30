@@ -5,7 +5,7 @@
  * IPFS and points to from `MemberProfileMetadata.catalogueURI`: the list
  * of items for sale plus a version and the subject wallet. Identity,
  * branding, location, accepted tokens, agent endpoints, and assembly
- * bindings all live on the seller profile (`memberProfile.ts`) so an item
+ * bindings all live on the member profile (`memberProfile.ts`) so an item
  * edit re-pins one small JSON instead of the whole identity envelope.
  *
  * This module owns the document TYPES and the strict PARSER. Discovery

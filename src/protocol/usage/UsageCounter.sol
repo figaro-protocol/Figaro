@@ -32,7 +32,7 @@ interface IMemberStake {
 ///         the past*. Record the fact as it happens and there is no claim to
 ///         believe, nothing to bond, and nothing to adjudicate.
 ///
-/// @dev    HOW A RECORD IS VERIFIED — nobody is trusted. `recordUsage` proves,
+/// @dev    HOW A RECORD IS VERIFIED — nobody is trusted. `recordClauseUsage` proves,
 ///         from data the chain already holds:
 ///           1. the order is real and RESOLVED (`core.orderStatus == 2`), and
 ///           2. the artifact was committed in that order's signed agreement
@@ -265,7 +265,7 @@ contract UsageCounter {
     ///                    the chain sees the fingerprint alone. Matches the
     ///                    batched path's `bytes32` convention, byte for byte.
     /// @param proof       Merkle proof of the section against `order.agreementHash`.
-    function recordUsage(
+    function recordClauseUsage(
         CommitmentTypes.Commitment calldata order,
         bytes32 artifact,
         bytes32 sectionHash,
@@ -289,7 +289,7 @@ contract UsageCounter {
     }
 
     /// @notice Record one settled process's use of an ASSEMBLY. Same guarantees
-    ///         as `recordUsage`, proved one step differently: an agreement's
+    ///         as `recordClauseUsage`, proved one step differently: an agreement's
     ///         leaves are keyed by CLAUSE, so a compositionHash is never a leaf
     ///         key. What IS a leaf is the provenance clause, whose committed
     ///         section content is exactly the compositionHash — so proving that

@@ -75,45 +75,6 @@ export function parseAttestationLog(log: IndexedAttestationLog): AttestationReco
     return row ?? null;
 }
 
-/**
- * Fetch the `bytes content` argument the seller/buyer attestation was called
- * with. The on-chain `Attestation` event records `keccak256(content)`, not the
- * content itself, so any value-recovery (grams, addresses, structured data)
- * has to read transaction calldata.
- *
- * Returns `null` on missing tx, missing input, or a non-attestation function
- * call. Errors during fetch/decode swallow to `null` — callers that need
- * provenance should compare `keccak256(content)` against the event's contentRef.
- *
- * @public — pending consumer: the measured-grams channel (attestation content
- * against the committed emissions section) recovers grams through this.
- */
-export async function getAttestationContent(
-    client: PublicClient,
-    txHash: Hex,
-): Promise<Hex | null> {
-    try {
-        const tx = await client.getTransaction({ hash: txHash });
-        if (isEmptyHex(tx?.input)) return null;
-        const decoded = decodeFunctionData({
-            abi: ATTESTATION_COORDINATOR_ABI,
-            data: tx.input,
-        });
-        if (
-            decoded.functionName !== "attestAsSeller"
-            && decoded.functionName !== "attestAsBuyer"
-        ) {
-            return null;
-        }
-        const args = decoded.args ?? [];
-        const content = args[args.length - 1];
-        return typeof content === "string" && content.startsWith("0x")
-            ? (content as Hex)
-            : null;
-    } catch {
-        return null;
-    }
-}
 
 /** Attestation logs filtered by orderHash (hex case never matters). */
 export async function getAttestationsByOrder(client: PublicClient, chainId: number, orderHash: string) {

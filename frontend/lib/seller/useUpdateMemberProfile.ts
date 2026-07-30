@@ -1,7 +1,7 @@
 /**
- * lib/sellers/useUpdateMemberProfile.ts
+ * lib/seller/useUpdateMemberProfile.ts
  *
- * Shared edit-side write path for the four seller-managed
+ * Shared edit-side write path for the four member-managed
  * surfaces (profile / catalogue-link / assemblies / agents).
  * Each of these resolves on-chain through one mechanism —
  * `MembersRegistry.updateProfile(metadataURI)` — so they share

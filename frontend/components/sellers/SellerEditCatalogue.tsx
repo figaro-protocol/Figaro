@@ -92,7 +92,7 @@ export function SellerEditCatalogue() {
                 const profile = await fetchMemberProfile(profileURI);
                 if (cancelled) return;
                 if (!profile) {
-                    setFetchError("Couldn't fetch or parse the seller profile.");
+                    setFetchError("Couldn't fetch or parse the member profile.");
                     return;
                 }
                 setExistingProfile(profile);

@@ -148,7 +148,7 @@ export async function postToAgentEndpoint(
     payload: CommitmentPayload,
 ): Promise<CommitmentPayload | null> {
     // `endpoint` is an attacker-authorable `services.rest` from a permissionless
-    // seller profile — the buyer's browser POSTs to it. Restrict to https so it
+    // member profile — the buyer's browser POSTs to it. Restrict to https so it
     // can't be aimed at an internal/loopback/link-local host or a non-http
     // scheme (audit 2026-07-23, SSRF-shaped fan-out). new URL() rejects
     // malformed values; the CORS preflight already blocks reading a cross-origin

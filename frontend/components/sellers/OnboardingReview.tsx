@@ -50,7 +50,7 @@ function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], walle
     // A profile without assembly bindings cannot be ordered from — the
     // register is refused, not just the step navigation (deep links and
     // stale drafts land here too). User rule 2026-06-12.
-    if ((state.assemblies ?? []).length === 0) return { error: "Step 4 (Assemblies) is incomplete: bind at least one published assembly — a seller profile without one cannot be ordered from." };
+    if ((state.assemblies ?? []).length === 0) return { error: "Step 4 (Assemblies) is incomplete: bind at least one published assembly — a member profile without one cannot be ordered from." };
 
     const profileTemplate: Omit<MemberProfileMetadata, "catalogueURI"> = {
         subjectAddress: wallet,
@@ -192,7 +192,7 @@ export function OnboardingReview() {
                     </h2>
                     <p className="text-sm text-ink-body">
                         {isRegistered
-                            ? "Your seller profile has been re-pinned to IPFS and the new metadataURI is on-chain."
+                            ? "Your profile has been re-pinned to IPFS and the new metadataURI is on-chain."
                             : "Your wallet is now registered on this network. You get the deposit back when you leave the registry, after a cooldown."}
                     </p>
                     <dl className="text-xs text-ink-body space-y-2 pt-2 border-t border-default">

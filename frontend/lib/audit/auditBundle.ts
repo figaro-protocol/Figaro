@@ -52,7 +52,7 @@ export interface AuditBundleInputs {
     /** MemberRegistered events filtered to events where the indexed
      *  `seller` matches `order.seller`. Empty array if the seller is
      *  unregistered — the extractor surfaces that as an audit notice. */
-    sellerRegistrationEvents?: readonly MemberRegisteredEvent[];
+    memberRegistrationEvents?: readonly MemberRegisteredEvent[];
 }
 
 export function buildAuditBundle(
@@ -68,7 +68,7 @@ export function buildAuditBundle(
         clauseData: extractClauseData(order, agreement),
         membersRegistry: extractMembersRegistry(
             order,
-            inputs.sellerRegistrationEvents ?? [],
+            inputs.memberRegistrationEvents ?? [],
         ),
         hashAppendix: buildHashAppendix(order, agreement, attestations),
     };

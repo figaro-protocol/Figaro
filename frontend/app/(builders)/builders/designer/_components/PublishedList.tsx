@@ -5,7 +5,7 @@
  *
  * Reads from `useAssemblyChoices(address)` which combines the
  * `AssemblyRegistered` event log with lazy assemblyTemplate enrichment (name,
- * order count, clause set). The same hook backs the seller-profile
+ * order count, clause set). The same hook backs the member-profile
  * assembly picker, so the two surfaces can't drift on what they show
  * about an assembly.
  *

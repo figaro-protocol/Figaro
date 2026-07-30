@@ -57,7 +57,7 @@ What makes this more than a clever escrow:
 
 4. **Composable institutions** — the protocol provides settlement security;
    additional mechanisms (auctions, attestation coordinators, disclosure
-   modules, seller registries) layer on top without weakening the bonding
+   modules, member registries) layer on top without weakening the bonding
    guarantee.
    An institution is a composition of mechanisms, not a monolithic application.
 
@@ -381,7 +381,7 @@ coordination network.
 The singleton stays safe because of a critical architectural separation:
 **bonds are deterrents; payments are income.** The core bonding mechanism locks
 and releases bonds — that is all it does. Compositions (attestation
-coordinators, auctions, disclosure modules, seller registries) operate on
+coordinators, auctions, disclosure modules, member registries) operate on
 coordination, discovery, and evidence surfaces around the process. They can
 inform routing, allocation, and attestations, but they do not alter the bond
 mechanism or buyer-only resolution. This is how the protocol scales
@@ -395,7 +395,7 @@ confuse tiers (e.g., "add yield to locked bonds") misidentify what they touch.
 | Tier | What it is | Boundary |
 |---|---|---|
 | **Kernel** | `FigaroCore`. The irreducible settlement primitive: 2 external functions, 3 mappings, no owner, no fee, no escape hatches. Secures the process graph via asymmetric bonding. | Nothing modifies the kernel's payoff matrix. |
-| **Protocol** | Kernel + composition doctrine + public graphs. Attestation, clause registry, mechanism modules (auctions, lifecycle coordinators, seller registry), five semantic graphs. | Compositions read kernel state but never weaken its guarantees. |
+| **Protocol** | Kernel + composition doctrine + public graphs. Attestation, clause registry, mechanism modules (auctions, lifecycle coordinators, members registry), five semantic graphs. | Compositions read kernel state but never weaken its guarantees. |
 | **Runtime** | Protocol + semantic derivation layer + institution assembly clause + builder surfaces + UI. The complete operational environment. | Institutions grow on top; they can wither or be replaced without shaking the kernel. |
 
 The kernel is bedrock; the protocol is law; the runtime is the shared workshop;

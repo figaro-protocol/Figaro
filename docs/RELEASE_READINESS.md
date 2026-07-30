@@ -85,7 +85,7 @@ Remaining output:
 
 **Decided (2026-06-03): no pre-seeding on either surface.** The devnet seeder
 `frontend/scripts/seed-devnet.mjs` was **deleted** — the devnet no longer
-direct-call-registers assemblies or sellers. Both devnet and mainnet now rely on
+direct-call-registers assemblies or members. Both devnet and mainnet now rely on
 permissionless on-chain publication: assemblies are authored through the designer
 UI (the `local-commerce` e2e is the live exemplar) and sellers onboarded through
 the registration wizard (`sellers-onboarding`), exactly as a real participant
@@ -386,7 +386,7 @@ record below is retained for history.
 Solidity external audit above, which excludes these surfaces by declaration.
 Open-world places the trust boundary in the client — the frontend is a static
 export with zero server routes; it renders permissionless, attacker-authored
-network state (clause specs, seller metadata, agreements, XMTP messages) and is
+network state (clause specs, member metadata, agreements, XMTP messages) and is
 the what-you-see-is-what-you-sign surface. The audit covers eight domains:
 signing integrity, dispatch-race/RFQ market formation, untrusted-content
 rendering, IPFS content-integrity, the ECDH/XMTP coordination channel,

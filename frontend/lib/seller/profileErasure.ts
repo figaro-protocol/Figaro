@@ -1,7 +1,7 @@
 /**
  * profileErasure — best-effort unpin of profile-authored IPFS artifacts.
  *
- * The erasure half of the seller's publish story (author pins → author pays
+ * The erasure half of the member's publish story (author pins → author pays
  * → author erases): when a profile is superseded, the prior document — and
  * any authored artifact the successor no longer references (catalogue,
  * branding assets) — is unpinned from the author's node so it stops being

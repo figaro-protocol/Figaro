@@ -5,7 +5,6 @@ import { usePublicClient } from "wagmi";
 import { useProcessOrders } from "@/hooks/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import {
-    getAttestationContent,
     getAttestationsByOrder,
     parseAttestationLog,
     type AttestationRecord,
@@ -14,10 +13,8 @@ import {
 import { extractClauseData } from "@/lib/audit/clauseDataExtract";
 import { CredentialVerifyButton } from "@/components/runtime/CredentialVerifyButton";
 import { extractProcessLogs } from "@/lib/audit/processLogsExtract";
-import { clauseIdForHash, clauseWitnessStages, describeAttestation, describeWitness, getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { describeAttestation } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { decodeContentFromSpec } from "@figaro/sdk/clauses";
-import type { Hex } from "viem";
 
 /**
  * Clause evidence — the on-page rendering of the same `clauseData` +
@@ -74,45 +71,15 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [ordersKey, chainId, publicClient]);
 
-    // Witness content, recovered from transaction calldata: an attestation at
-    // a DECLARED witness stage (spec.stages[N]) carries structured values (a
-    // temperature record, measured grams, a detected band) — decode them
-    // through the same spec that declared them and render via the generic
-    // field reader. Keyed by transactionHash; failures stay undecoded (the
-    // receipt row still renders).
-    const [witnessValues, setWitnessValues] = useState<Map<string, Record<string, unknown>>>(new Map());
-    useEffect(() => {
-        if (!publicClient) return;
-        let cancelled = false;
-        (async () => {
-            const next = new Map<string, Record<string, unknown>>();
-            const jobs: Promise<void>[] = [];
-            for (const records of attestationsByOrder.values()) {
-                for (const att of records) {
-                    if (!att.transactionHash) continue;
-                    // The event carries the clauseId HASH; spec reads key on the
-                    // readable id — resolve through the cache first.
-                    const clauseId = clauseIdForHash(att.clauseId) ?? att.clauseId;
-                    if (!clauseWitnessStages(clauseId).some((w) => w.stage === att.stage)) continue;
-                    const witnessSpec = getClauseSpec(clauseId);
-                    if (!witnessSpec) continue;
-                    jobs.push((async () => {
-                        const content = await getAttestationContent(publicClient, att.transactionHash as Hex);
-                        if (!content) return;
-                        try {
-                            next.set(att.transactionHash!, decodeContentFromSpec(witnessSpec, content, { stage: att.stage }));
-                        } catch {
-                            // Garbage content — leave undecoded; the receipt row still renders.
-                        }
-                    })());
-                }
-            }
-            await Promise.all(jobs);
-            if (!cancelled) setWitnessValues(next);
-        })();
-        return () => { cancelled = true; };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [attestationsByOrder, publicClient, clauseSpecsVersion]);
+    // NOTE: witness VALUES are not recoverable here, by design. The
+    // coordinator takes `bytes32 contentRef` — a fingerprint — and the preimage
+    // never enters calldata (the WS2 seam: a private value's plaintext never
+    // touches public, permanent calldata). This reader therefore shows the
+    // fingerprint the chain actually holds; a party holding the preimage proves
+    // it by recomputing keccak256 and comparing. Publishing public-disposition
+    // witness content so a reader could render the values is a separate,
+    // punch-listed capability — NOT something to fake by decoding calldata,
+    // which is what the removed path silently failed at.
 
     // Per-order evidence: committed clause data (from the agreement) + the
     // sovereign process-log timelines (from the attestations). Both via the
@@ -180,36 +147,29 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
                                 <div key={`log-${group.clauseId}`} className="space-y-2">
                                     <h3 className="text-sm font-semibold text-ink-heading">{group.title}</h3>
                                     <ul className="space-y-1 text-sm">
-                                        {group.events.map((event, i) => {
-                                            const decoded = event.transactionHash ? witnessValues.get(event.transactionHash) : undefined;
-                                            const witness = decoded ? describeWitness(group.clauseId, event.stage, decoded) : null;
-                                            return (
-                                                <li key={`${group.clauseId}-${i}`} className="text-ink-body">
-                                                    <div className="flex flex-wrap gap-x-3">
-                                                        <span className="text-ink-heading">
-                                                            {describeAttestation(group.clauseId, event.stage).eventLabel}
-                                                        </span>
-                                                        <span className="text-ink-muted font-mono text-xs break-all">
-                                                            {event.attester}
-                                                        </span>
-                                                        <span className="text-ink-muted text-xs">block {event.blockNumber}</span>
-                                                    </div>
-                                                    {witness && witness.fields.length > 0 && (
-                                                        <dl
-                                                            className="mt-1 ml-4 grid grid-cols-[max-content_1fr] gap-x-6 gap-y-0.5 text-xs"
-                                                            data-testid={`audit-witness-${group.clauseId}-${event.stage}`}
-                                                        >
-                                                            {witness.fields.map((field) => (
-                                                                <div key={field.name} className="contents">
-                                                                    <dt className="text-ink-muted">{field.label}</dt>
-                                                                    <dd className="text-ink-body">{field.values.join(", ")}</dd>
-                                                                </div>
-                                                            ))}
-                                                        </dl>
-                                                    )}
-                                                </li>
-                                            );
-                                        })}
+                                        {group.events.map((event, i) => (
+                                            <li key={`${group.clauseId}-${i}`} className="text-ink-body">
+                                                <div className="flex flex-wrap gap-x-3">
+                                                    <span className="text-ink-heading">
+                                                        {describeAttestation(group.clauseId, event.stage).eventLabel}
+                                                    </span>
+                                                    <span className="text-ink-muted font-mono text-xs break-all">
+                                                        {event.attester}
+                                                    </span>
+                                                    <span className="text-ink-muted text-xs">block {event.blockNumber}</span>
+                                                </div>
+                                                {/* The evidence the chain actually carries: a fingerprint of
+                                                    what was attested, timestamped and tamper-proof. Anyone
+                                                    holding the preimage proves the match off-chain. */}
+                                                <dl
+                                                    className="mt-1 ml-4 grid grid-cols-[max-content_1fr] gap-x-6 gap-y-0.5 text-xs"
+                                                    data-testid={`audit-content-ref-${group.clauseId}-${event.stage}`}
+                                                >
+                                                    <dt className="text-ink-muted">Content fingerprint</dt>
+                                                    <dd className="text-ink-body font-mono break-all">{event.contentRef}</dd>
+                                                </dl>
+                                            </li>
+                                        ))}
                                     </ul>
                                 </div>
                             ))}

@@ -65,7 +65,7 @@ export async function executeTransactionCapabilityAction(
                 : "";
             txHash = await ensureExecutor(
                 executors.registerMember,
-                "Seller registration is unavailable.",
+                "Member registration is unavailable.",
             )(metadataURI);
             break;
         }
@@ -75,7 +75,7 @@ export async function executeTransactionCapabilityAction(
                 : "";
             txHash = await ensureExecutor(
                 executors.updateMemberProfile,
-                "Seller profile update is unavailable.",
+                "Member profile update is unavailable.",
             )(metadataURI);
             break;
         }

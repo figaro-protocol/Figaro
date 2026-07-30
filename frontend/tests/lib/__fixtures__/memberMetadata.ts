@@ -12,10 +12,10 @@
 
 import type { MemberProfileMetadata } from "@/lib/seller/memberProfileMetadata";
 
-export const SELLER_PROFILE_METADATA_EXAMPLE: MemberProfileMetadata = {
+export const MEMBER_PROFILE_METADATA_EXAMPLE: MemberProfileMetadata = {
     subjectAddress: "0x00000000000000000000000000000000000e0001",
     name: "Example Seller",
-    description: "Synthetic seller profile used as a documentation example.",
+    description: "Synthetic member profile used as a documentation example.",
     specialty: "Example specialty",
     location: {
         geohash: "dr5reg",

@@ -23,7 +23,7 @@
  *   resolve   one signature pays the whole chain; net settlement per wallet.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { calculateBonds } from '@figaro/sdk';
+import { ATTESTATION_COORDINATOR_ABI, calculateBonds } from '@figaro/sdk';
 import { mnemonicToAccount } from 'viem/accounts';
 import { createPublicClient, createWalletClient, http, parseAbi, parseUnits, type Hex } from 'viem';
 import {
@@ -44,9 +44,6 @@ const CONTENT_CLAUSE = 'figaro-content-handoff';
 const ERC20_ABI = parseAbi([
     'function balanceOf(address) view returns (uint256)',
     'function mint(address to, uint256 amount) external',
-]);
-const ATTESTATION_EVENT_ABI = parseAbi([
-    'event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)',
 ]);
 
 const BUYER = ANVIL_ACCOUNTS[0] as Hex;
@@ -222,7 +219,7 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
         //    answers through the ecdh-content ceremony — encrypt → channel →
         //    stage-1 attestation, verified on the coordinator. ──
         const attestationCount = async () => (await publicClient.getContractEvents({
-            address: coordinator, abi: ATTESTATION_EVENT_ABI, eventName: 'Attestation',
+            address: coordinator, abi: ATTESTATION_COORDINATOR_ABI, eventName: 'Attestation',
             args: { processId }, fromBlock: 0n,
         })).length;
 
@@ -283,15 +280,19 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
         expect(await balanceOf(core), 'FigaroCore escrow returned to its baseline')
             .toBe(base.get(core.toLowerCase())!);
 
-        // ── AUDIT: three decoded content-hand-off witnesses in the bundle. ──
+        // ── AUDIT: three content-hand-off witness RECEIPTS in the bundle. ──
+        // Fingerprints, not decoded values: the coordinator takes bytes32 and the
+        // preimage never enters calldata, so this is the evidence the chain
+        // actually carries. Rendering the values needs public-disposition witness
+        // content to be published — punch-listed, not faked here.
         await page.goto(`/audit/view?process=${processId}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const evidence = page.getByTestId('audit-clause-evidence');
         await evidence.waitFor({ state: 'visible', timeout: 30000 });
         await expect(
-            evidence.locator(`[data-testid="audit-witness-${CONTENT_CLAUSE}-1"]`),
-            'every deliverable\'s completion evidence decodes in the audit',
+            evidence.locator(`[data-testid="audit-content-ref-${CONTENT_CLAUSE}-1"]`),
+            'every deliverable\'s completion is receipted in the audit',
         ).toHaveCount(3, { timeout: 60000 });
     });
 });

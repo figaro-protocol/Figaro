@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * usePublishMemberProfile — atomic publish flow for the seller
+ * usePublishMemberProfile — atomic publish flow for the member
  * wizard's final step. Mirrors `usePublishAssembly` in shape:
  *
  *   1. Pin the catalogue document to IPFS (skipped if a cached
@@ -42,14 +42,14 @@ import type {
 import { getMembersRegistry } from "@/lib/kernel/contracts";
 import { MEMBERS_REGISTRY_ABI } from "@figaro/sdk";
 
-export interface PublishSellerInput {
+export interface PublishMemberInput {
     /** Profile fields collected by the wizard, MINUS the catalogueURI
      *  (which the hook fills in after pinning the catalogue). */
     profileTemplate: Omit<MemberProfileMetadata, "catalogueURI">;
     /** Catalogue items to pin. Must be non-empty — the kernel doesn't
-     *  enforce this but the seller UX expects it (see Step 3 gate). */
+     *  enforce this but the onboarding UX expects it (see Step 3 gate). */
     items: CatalogueItemMetadata[];
-    /** Seller's preferred unit system; goes onto the catalogue doc. */
+    /** The member's preferred unit system; goes onto the catalogue doc. */
     unitSystem?: UnitSystem;
     /** Subject wallet — used as the catalogue's `subjectAddress`. */
     wallet: `0x${string}`;
@@ -62,7 +62,7 @@ export interface PublishSellerInput {
     cachedCatalogueURI?: string;
 }
 
-export interface PublishSellerOutcome {
+export interface PublishMemberOutcome {
     hash: `0x${string}`;
     profileURI: string;
     catalogueURI: string;
@@ -94,7 +94,7 @@ export function usePublishMemberProfile() {
         useWriteContract();
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-    async function publish(input: PublishSellerInput): Promise<PublishSellerOutcome> {
+    async function publish(input: PublishMemberInput): Promise<PublishMemberOutcome> {
         const registry = getMembersRegistry();
         if (!registry) {
             throw new Error(

@@ -29,7 +29,7 @@
  * devnet-authoring gate.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { createWalletClient, http, parseAbi, parseEther, type Hex } from 'viem';
+import { createWalletClient, http, parseAbi, parseEther, parseUnits, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
     ATTESTATION_COORDINATOR_ABI,
@@ -204,7 +204,7 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
         //    discounted by the exponent, never refused, so a run that keeps
         //    trading between the same two wallets simply keeps accruing.)
         await receipt(await buyerWallet.writeContract({
-            address: counter, abi: USAGE_COUNTER_ABI, functionName: 'recordUsage',
+            address: counter, abi: USAGE_COUNTER_ABI, functionName: 'recordClauseUsage',
             args: [commitment, artifact, sectionHash, proof],
         }));
 
@@ -226,8 +226,19 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
             .toContainText(USED_CLAUSE, { timeout: 60000 });
         await expect(page.getByTestId(`tranche-accruals-${period}`), 'with the counts the chain recorded')
             .toContainText(`score ${score.toString()}`);
-        await expect(page.getByTestId(`tranche-total-score-${period}`), 'and the period total it divides by')
-            .toContainText(score.toString());
+        // The period total is the sum over EVERY artifact that accrued in this
+        // period, so it equals this artifact's score only on a chain where
+        // nothing else traded — which is never true inside the full suite (this
+        // spec runs after ~28 others on the same chain). Assert the real
+        // relationship instead: the divisor is present and is at least this
+        // artifact's share of it.
+        const totalText = await page.getByTestId(`tranche-total-score-${period}`).innerText();
+        const totalMatch = totalText.match(/period score across all artifacts:\s*(\d+)/);
+        expect(totalMatch, `the period total renders (got: ${totalText})`).not.toBeNull();
+        expect(
+            BigInt(totalMatch![1]),
+            'the period total it divides by covers this artifact',
+        ).toBeGreaterThanOrEqual(score);
 
         // ── The tranche is honestly ACCRUING: no claim is offered ─────────
         const periodClosed = (await publicClient.readContract({
@@ -294,7 +305,18 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
         const after = (await publicClient.readContract({
             address: florin, abi: ERC20_ABI, functionName: 'balanceOf', args: [AUTHOR],
         })) as bigint;
-        expect(after - before, 'the payout matches what the minter quoted').toBe(quoted);
+        // The UI claims EVERY artifact this wallet authored in the period, not the
+        // single one quoted above (on devnet one wallet registers every clause, so
+        // that is the whole tranche). Assert against what the UI actually PROMISED
+        // the user — the claimable figure it rendered — which is the property that
+        // matters: the number on screen is the number that moves.
+        const promised = parseUnits(
+            (await page.getByTestId(`tranche-claimable-${period}`).innerText())
+                .replace(/[^0-9.]/g, ''),
+            18,
+        );
+        expect(after - before, 'the payout matches what the UI promised').toBe(promised);
+        expect(after - before, 'and covers the single-artifact quote').toBeGreaterThanOrEqual(quoted);
         await expect(page.getByTestId(`tranche-status-${period}`)).toHaveText('claimed');
 
         test.info().annotations.push({

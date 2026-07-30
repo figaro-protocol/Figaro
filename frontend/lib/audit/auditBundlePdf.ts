@@ -62,12 +62,12 @@ export async function buildAuditBundlePdfBlob(
 ): Promise<Blob> {
     const perOrderBundles: AuditBundle[] = [];
 
-    let sellerRegisteredAll: MemberRegisteredEvent[] = [];
+    let memberRegisteredAll: MemberRegisteredEvent[] = [];
     if (publicClient) {
         try {
             // SDK-decoded rows; project to the audit extractor's shape.
             const rows = await getAllMemberRegistered(publicClient, chainId);
-            sellerRegisteredAll = rows.map((row) => ({
+            memberRegisteredAll = rows.map((row) => ({
                 seller: row.member,
                 metadataURI: row.metadataURI,
                 blockNumber: row.blockNumber,
@@ -104,7 +104,7 @@ export async function buildAuditBundlePdfBlob(
 
         perOrderBundles.push(
             buildAuditBundle(order, agreement, attestations, {
-                sellerRegistrationEvents: sellerRegisteredAll,
+                memberRegistrationEvents: memberRegisteredAll,
             }),
         );
     }

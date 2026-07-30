@@ -299,7 +299,7 @@ contract Deploy is Script {
         // RECORDING (ruled 2026-07-28: the resolve capability records every
         // committed artifact) needs accrual OPEN for every money-legs spec in
         // a full suite run — a 3×10-minute schedule closed the book ~30
-        // minutes after deploy and every later recordUsage reverted
+        // minutes after deploy and every later recordClauseUsage reverted
         // AccrualClosed (measured, not guessed: the tradelens batch). Thirty
         // -minute periods give a 90-minute accrual life; the rewards spec
         // still advances the chain past its own period boundary rather than

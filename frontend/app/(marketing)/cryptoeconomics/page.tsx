@@ -142,7 +142,7 @@ export default function Cryptoeconomics() {
 
             <MarketingSection title="Grants &amp; capital sources">
                 <p className="text-base text-ink-body leading-relaxed mb-4">
-                    Work on the Figaro substrate &mdash; research, review, verification, assembly design, clause authoring, documentation &mdash; is funded three ways. The 600M retroactive pool pays authors automatically for the trade their work carries, with no gatekeeper between a contributor and the reward (<Link href="/clause-rewards" className="underline">How clause authors get paid</Link> walks through it). The DAO spends its own treasury at its discretion. And anyone can fund anyone directly, in the open.
+                    Work on the Figaro substrate &mdash; research, review, verification, assembly design, clause authoring, documentation &mdash; is funded three ways. The 600M retroactive pool pays authors automatically for the trade their work carries, with no gatekeeper between a contributor and the reward (<Link href="/artifact-rewards" className="underline">How clause authors and assembly designers get paid</Link> walks through it). The DAO spends its own treasury at its discretion. And anyone can fund anyone directly, in the open.
                 </p>
                 <dl className="space-y-4 text-sm">
                     <div className="border-l-2 border-default pl-4">
@@ -150,7 +150,7 @@ export default function Cryptoeconomics() {
                             Retroactive reward (600M)
                         </dt>
                         <dd className="text-ink-body leading-relaxed mt-1">
-                            Sixty percent of all florins &mdash; the largest allocation by far &mdash; pays clause authors and assembly designers for the real, settled trade their work carried, by a fixed formula with no application and no gatekeeper. Full mechanism: <Link href="/clause-rewards" className="underline">How clause authors get paid</Link>.
+                            Sixty percent of all florins &mdash; the largest allocation by far &mdash; pays clause authors and assembly designers for the real, settled trade their work carried, by a fixed formula with no application and no gatekeeper. Full mechanism: <Link href="/artifact-rewards" className="underline">How clause authors and assembly designers get paid</Link>.
                         </dd>
                     </div>
                     <div className="border-l-2 border-default pl-4">

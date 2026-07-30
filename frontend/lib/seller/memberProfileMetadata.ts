@@ -1,7 +1,7 @@
 /**
  * lib/seller/memberProfileMetadata.ts
  *
- * The seller PROFILE document shape (types + strict/lenient parsers +
+ * The member PROFILE document shape (types + strict/lenient parsers +
  * the agent-service projection) is owned by `@figaro/sdk` — Layer-A,
  * published across the public seam so an integrator reading
  * `MembersRegistry.metadataURI` learns the shape from the SDK. This module

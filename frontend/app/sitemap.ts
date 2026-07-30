@@ -20,7 +20,7 @@ const PUBLIC_ROUTES: { path: string; changeFrequency: MetadataRoute.Sitemap[numb
     { path: "/agents", changeFrequency: "weekly", priority: 0.8 },
     { path: "/local-commerce", changeFrequency: "weekly", priority: 0.8 },
     { path: "/papers/florin-schelling-point-token", changeFrequency: "weekly", priority: 0.8 },
-    { path: "/clause-rewards", changeFrequency: "monthly", priority: 0.7 },
+    { path: "/artifact-rewards", changeFrequency: "monthly", priority: 0.7 },
     { path: "/clauses", changeFrequency: "weekly", priority: 0.7 },
     { path: "/integrate", changeFrequency: "weekly", priority: 0.7 },
     { path: "/sellers", changeFrequency: "weekly", priority: 0.7 },

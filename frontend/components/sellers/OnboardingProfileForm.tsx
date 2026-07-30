@@ -34,7 +34,7 @@ import { hexEqual } from "@/lib/shared/evm";
 
 /**
  * Step 2 of the onboarding wizard. Collects the stable identity fields
- * that live on the seller profile document: name, description,
+ * that live on the member profile document: name, description,
  * specialty, location, logo, accepted-token list, default-pricing token.
  *
  * State is wallet-scoped and persisted to localStorage on every change

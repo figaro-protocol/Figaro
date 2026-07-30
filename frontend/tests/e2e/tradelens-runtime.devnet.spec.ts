@@ -29,7 +29,7 @@
  *   audit     the new clauses' evidence surfaces in the audit bundle.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { USAGE_COUNTER_ABI, calculateBonds } from '@figaro/sdk';
+import { ATTESTATION_COORDINATOR_ABI, USAGE_COUNTER_ABI, calculateBonds } from '@figaro/sdk';
 import { mnemonicToAccount } from 'viem/accounts';
 import { createPublicClient, createWalletClient, http, parseAbi, parseUnits, type Hex } from 'viem';
 import type { Page } from '@playwright/test';
@@ -63,9 +63,6 @@ const ANVIL_MNEMONIC = 'test test test test test test test test test test test j
 const ERC20_ABI = parseAbi([
     'function balanceOf(address) view returns (uint256)',
     'function mint(address to, uint256 amount) external',
-]);
-const ATTESTATION_EVENT_ABI = parseAbi([
-    'event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)',
 ]);
 
 test.describe('TRADELENS RUNTIME — six sellers bond, the container story attests, one resolve pays the chain (devnet)', () => {
@@ -185,7 +182,7 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         // ── WITNESSES: the container's story, each filed by the party that
         //    lived it, each verified out-of-band via the coordinator event. ──
         const attestationCount = async () => (await publicClient.getContractEvents({
-            address: coordinator, abi: ATTESTATION_EVENT_ABI, eventName: 'Attestation',
+            address: coordinator, abi: ATTESTATION_COORDINATOR_ABI, eventName: 'Attestation',
             args: { processId }, fromBlock: 0n,
         })).length;
 

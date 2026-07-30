@@ -17,7 +17,7 @@ The organizational consequence: each process assembles a temporary institution o
 `Figaro` is the canonical runtime. It owns:
 
 - **Kernel** — `FigaroCore.sol`: 2 external functions, 3 mappings, no owner
-- **Mechanism modules** — attestation, clause registry, seller registry, assembly registry, swap-and-commit coordinator, usage counter, batch verifier
+- **Mechanism modules** — attestation, clause registry, members registry, assembly registry, swap-and-commit coordinator, usage counter, batch verifier
 - **The florin** — 1B fixed supply, 10/30/60 split (founders / DAO / RPGF); founder + DAO mint at genesis with no vesting; the 600M RPGF is wired and registered at genesis — `UsageCounter` counts verified artifact usage on chain as it happens, and `RpgfMinter` pays clause authors + assembly designers of record pro rata across three declining tranches (see `docs/CONTRACTS.md` § RPGF)
 - **SDK** — `@figaro/sdk`: TypeScript, event-sourced state, agent coordination
 - **Runtime frontend** — Next.js 14, institution assembly, builder surfaces, reference assemblies
@@ -41,7 +41,7 @@ src/                        Solidity contracts (0.8.26, Foundry)
   CommitmentTypes.sol       EIP-712 commitment structs + hashing
   AttestationCoordinator.sol  Zero-storage role-gated attestation
   ClauseRegistry.sol        Permissionless clause anchoring
-  MembersRegistry.sol        On-chain seller registration
+  MembersRegistry.sol       On-chain participant registration
   AssemblyRegistry.sol      Permissionless assembly anchoring
   WitnessSwapAndCommitCoordinator.sol  Off-protocol multi-token bond funding (Permit2 witness-bound swap route + Uniswap Universal Router)
   IRoleResolver.sol         Role-authorization interface for delegated attestation

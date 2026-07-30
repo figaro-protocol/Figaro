@@ -258,7 +258,7 @@ export {
 } from "./assembly.js";
 export type { AssemblyTemplate, TemplateAgreement } from "./assembly.js";
 
-// Seller profile document — the identity envelope pinned to
+// Member profile document — the identity envelope pinned to
 // MembersRegistry.metadataURI (discovery hands you the URI; this is the
 // natural next call). Types + strict/lenient parsers + the agent-service
 // projection.

@@ -1,7 +1,7 @@
 /**
  * lib/seller/useAsyncMemberResource.ts
  *
- * Generic shape for "seller address → resolved metadataURI → fetched
+ * Generic shape for "member address → resolved metadataURI → fetched
  * resource" hooks (e.g. useMemberBranding → resolved branding). Each caller
  * wraps this with a typed result alias and a fixed fetcher.
  */
@@ -9,10 +9,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { usePublicClient, useChainId } from "wagmi";
-import { getSellerMetadataURI } from "@/lib/protocol/membersRegistryIndexer";
+import { getMemberMetadataURI } from "@/lib/protocol/membersRegistryIndexer";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
-export interface UseAsyncSellerResourceResult<T> {
+export interface UseAsyncMemberResourceResult<T> {
     data: T | null;
     isLoading: boolean;
     error: string | null;
@@ -20,8 +20,8 @@ export interface UseAsyncSellerResourceResult<T> {
     refetch: () => void;
 }
 
-export interface UseAsyncSellerResourceOptions<T> {
-    /** Fetch a `T` from the resolved seller-metadata URI. */
+export interface UseAsyncMemberResourceOptions<T> {
+    /** Fetch a `T` from the resolved member-metadata URI. */
     fetcher: (metadataURI: string) => Promise<T>;
     /** Fallback toast/error string when the fetcher throws. */
     failureMessage: string;
@@ -31,8 +31,8 @@ export interface UseAsyncSellerResourceOptions<T> {
 
 export function useAsyncMemberResource<T>(
     address: `0x${string}` | undefined,
-    options: UseAsyncSellerResourceOptions<T>,
-): UseAsyncSellerResourceResult<T> {
+    options: UseAsyncMemberResourceOptions<T>,
+): UseAsyncMemberResourceResult<T> {
     const { fetcher, failureMessage, extraDeps } = options;
     const client = usePublicClient();
     const chainId = useChainId();
@@ -52,7 +52,7 @@ export function useAsyncMemberResource<T>(
         setIsLoading(true);
         setError(null);
 
-        getSellerMetadataURI(client, chainId, address)
+        getMemberMetadataURI(client, chainId, address)
             .then(async (metadataURI) => {
                 if (cancelled) return;
                 if (!metadataURI) {

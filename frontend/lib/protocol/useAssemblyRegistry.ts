@@ -6,7 +6,7 @@
  * This is the thin on-chain layer: the ABI, registry-address resolution, the
  * event-derived read hooks, the revert translator, and the IPFS template
  * fetch. The publish-build + template-enrichment orchestration lives one
- * layer up in `@/lib/protocol/assemblyChoices`; the seller-profile
+ * layer up in `@/lib/protocol/assemblyChoices`; the member-profile
  * resolution lives in `@/lib/seller/useSellerBoundAssemblies`. This file
  * imports only viem / wagmi / `@/lib/shared/*` / `@/lib/kernel/*`.
  */

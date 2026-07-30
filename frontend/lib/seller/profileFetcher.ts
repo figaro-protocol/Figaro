@@ -1,9 +1,9 @@
 /**
  * lib/seller/profileFetcher.ts
  *
- * Fetches the MemberProfileMetadata document from a seller's on-chain
+ * Fetches the MemberProfileMetadata document from a member's on-chain
  * metadataURI (pointer → IPFS/HTTP → parsed profile) — the ONE cached
- * profile read path, shared by the listings hook and every seller-edit
+ * profile read path, shared by the listings hook and every profile-edit
  * surface (the surfaces previously each hand-rolled `fetch(url).json()`).
  * The write path (pin + updateProfile) lives in `useUpdateMemberProfile`.
  * Backed by the generic `createUriFetcher` pipeline, sibling of
@@ -21,7 +21,7 @@ const profileFetcher = createUriFetcher<MemberProfileMetadata>({
     parse: (doc) => tryParseMemberProfileDocument(doc),
 });
 
-/** Fetch and parse a seller profile document from a content URI. Null on
+/** Fetch and parse a member profile document from a content URI. Null on
  *  empty URI, fetch failure, or unrecognised shape. Cached by URI — a
  *  profile update re-pins to a NEW URI, so no invalidation surface is
  *  needed (or exported). */

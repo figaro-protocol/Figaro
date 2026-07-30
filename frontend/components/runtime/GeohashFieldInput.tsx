@@ -6,7 +6,7 @@
  *
  * A text input plus a "Use device location" affordance: the browser's
  * geolocation reading is encoded to a geohash (the same
- * `getDeviceLocation` + `encodeGeohash` pair the seller-profile form uses)
+ * `getDeviceLocation` + `encodeGeohash` pair the member-profile form uses)
  * and written into the field. Typing stays first-class — the device path is
  * assistance, not a requirement, and the page never sees coordinates, only
  * the geohash the party chose to commit.

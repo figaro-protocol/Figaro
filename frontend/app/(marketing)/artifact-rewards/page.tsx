@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-    title: "How clause authors get paid — Figaro Protocol",
+    title: "How clause authors and assembly designers get paid — Figaro Protocol",
     description:
         "Platforms own the map of who-moves-what-where. Figaro makes that map a public good — and pays the people who draw it, by a published formula anyone can check, no committee.",
 };
 
-export default function ClauseRewards() {
+export default function ArtifactRewards() {
     return (
         <section className="container mx-auto px-6 pt-24 pb-16 max-w-2xl">
             <h1 className="text-heading-h1 text-ink-heading mb-3">

@@ -210,6 +210,31 @@ contract MembersRegistryTest is Test {
         reg.withdraw();
     }
 
+    function test_withdrawableIsTheChainsOwnAnswer() public {
+        // The claim affordance must read this, never compare `releaseAt`
+        // against a wall clock — the two drift, and a UI that compares them
+        // disables a legitimate claim (or offers one that reverts).
+        assertFalse(reg.withdrawable(alice), "nothing pending");
+
+        vm.prank(alice);
+        reg.register{value: REG_DEPOSIT}("ipfs://w");
+        assertFalse(reg.withdrawable(alice), "registered, nothing requested");
+
+        vm.prank(alice);
+        reg.requestWithdrawal();
+        assertFalse(reg.withdrawable(alice), "requested, cooldown running");
+
+        vm.warp(reg.releaseAt(alice) - 1);
+        assertFalse(reg.withdrawable(alice), "one second short");
+
+        vm.warp(reg.releaseAt(alice));
+        assertTrue(reg.withdrawable(alice), "cooldown elapsed");
+
+        vm.prank(alice);
+        reg.withdraw();
+        assertFalse(reg.withdrawable(alice), "claimed");
+    }
+
     // ── The anti-rage-quit property this parameter exists for ───────────
 
     function test_reregistrationIsImmediateButCostsASecondDeposit() public {

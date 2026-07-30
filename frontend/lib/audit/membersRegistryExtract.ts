@@ -1,5 +1,5 @@
 /**
- * Seller-registry extractor — surfaces the seller's
+ * Members-registry extractor — surfaces the member's
  * `MembersRegistry.MemberRegistered(seller, metadataURI)` event (if any)
  * so the audit bundle includes the seller's claimed off-chain identity at
  * registration time.
@@ -61,7 +61,7 @@ export function extractMembersRegistry(
     events: readonly MemberRegisteredEvent[],
 ): MembersRegistryDocument {
     const base = {
-        title: "Seller registry record",
+        title: "Members registry record",
         orderHash: order.orderHash,
         processId: order.processId,
         agreementHash: order.agreementHash ?? "0x",

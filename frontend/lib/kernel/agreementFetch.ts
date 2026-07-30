@@ -109,7 +109,7 @@ export interface PublishedAgreement {
 /**
  * Erase a witnessed agreement pin: best-effort unpin the body from this
  * wallet's node and forget the local URI pointer (unpin + forget — the same
- * erasure symmetry as the seller profile and device-evidence paths, and the
+ * erasure symmetry as the member profile and device-evidence paths, and the
  * controller-erasure half of "author pins → author erases"). The committed
  * agreement carries the most participant-linkable content of any pin, and until
  * now it was the one high-PII artifact with no erasure affordance.

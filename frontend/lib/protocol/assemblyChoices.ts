@@ -5,7 +5,7 @@
  * (`@/lib/protocol/useAssemblyRegistry`): every published assembly, enriched with
  * its lazily-fetched template (name, agreement count, clause set), projected into
  * the selectable/inspectable `AssemblyChoice` shape. Consumed by every
- * reading surface — the designer's published list, the seller-profile
+ * reading surface — the designer's published list, the member-profile
  * assembly picker, the marketing `/assemblies` inventory. AUTHORING (build /
  * pin / anchor) lives in `lib/designer/` — design is design; this module
  * only reads.
@@ -124,7 +124,7 @@ export interface AssemblyChoice {
  *
  * Composes `usePublishedAssemblies` (event log) with a lazy per-row
  * assemblyTemplate fetch. Both `PublishedList` (designer index) and the
- * seller-profile assembly picker consume this — keeping one fetch
+ * member-profile assembly picker consume this — keeping one fetch
  * strategy and one enriched shape means they can't drift apart.
  */
 export function useAssemblyChoices(

@@ -1,8 +1,8 @@
 /**
  * lib/mechanisms/useMemberBranding.ts
  *
- * React hook for resolving seller branding from MembersRegistry events.
- * Uses the indexer to find the latest metadataURI for a seller address,
+ * React hook for resolving member branding from MembersRegistry events.
+ * Uses the indexer to find the latest metadataURI for a member address,
  * fetches the metadata document, and returns resolved branding.
  */
 "use client";
@@ -20,9 +20,9 @@ export interface UseMemberBrandingResult {
 }
 
 export function useMemberBranding(
-    sellerAddress: `0x${string}` | undefined
+    memberAddress: `0x${string}` | undefined
 ): UseMemberBrandingResult {
-    const { data, isLoading, error } = useAsyncMemberResource(sellerAddress, {
+    const { data, isLoading, error } = useAsyncMemberResource(memberAddress, {
         fetcher: fetchMemberBranding,
         failureMessage: "Failed to fetch branding",
     });

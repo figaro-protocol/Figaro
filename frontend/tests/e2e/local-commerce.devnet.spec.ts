@@ -696,19 +696,15 @@ test.describe('LOCAL COMMERCE — meal delivery: canvas → bind → order → a
         }
 
         // The two hand-off witnesses (the courier's + the buyer's co-witness),
-        // their detected band DECODED from transaction calldata against the
-        // declared stage and rendered with the spec's own labels.
-        const witnessDl = evidence.locator(`[data-testid="audit-witness-${PROXIMITY_CLAUSE}-1"]`);
-        await expect(witnessDl, 'every witness record decodes in the audit').toHaveCount(2, { timeout: 60000 });
-        await expect(witnessDl.first().getByText('Detected band')).toBeVisible();
-        await expect(witnessDl.first().getByText('Zone (Wi-Fi)')).toBeVisible();
-        // The DEVICE-CAPTURED evidence URI — pinned at the buyer's co-witness
-        // click — is recovered from the attestation calldata and rendered in
-        // the audit: the courier market's device layer is audit-captured.
-        await expect(
-            evidence.getByText(evidenceUri).first(),
-            "the captured evidence artifact's URI surfaces in the audit",
-        ).toBeVisible({ timeout: 30000 });
+        // each receipted by the FINGERPRINT the chain carries. The detected band
+        // and the device-captured evidence URI are part of the witness preimage,
+        // which never enters calldata (WS2) — so neither is renderable from chain
+        // data alone, and asserting them here asserted a decode that could only
+        // ever fail silently. Restoring those two readings needs published
+        // public-disposition witness content; punch-listed.
+        const witnessRef = evidence.locator(`[data-testid="audit-content-ref-${PROXIMITY_CLAUSE}-1"]`);
+        await expect(witnessRef, 'every witness record is receipted in the audit').toHaveCount(2, { timeout: 60000 });
+        await expect(witnessRef.first().getByText(/^0x[0-9a-fA-F]{64}$/)).toBeVisible();
 
         // ── EVERY MONEY EVENT: one cash-flow row per kernel ERC-20 transfer —
         //    each commit pulls both deposits, the resolve refunds the buyer and

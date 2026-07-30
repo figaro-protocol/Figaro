@@ -1,15 +1,15 @@
 /**
  * lib/shared/memberBranding.ts
  *
- * Seller branding metadata fetcher.
+ * Member branding metadata fetcher.
  * Resolves IPFS/HTTP URIs from MembersRegistry.metadataURI, fetches the
- * seller profile document, and extracts branding + asset fields.
+ * member profile document, and extracts branding + asset fields.
  *
  * The metadata document the on-chain `metadataURI` points to is an
  * `MemberProfileMetadata` record; only its branding-relevant subset
  * (name, branding, assets) is extracted here. The profile pins the
  * branding payload (logo, hero, image base URI) so buyer
- * frontends can render the seller's identity.
+ * frontends can render the member's identity.
  */
 
 import type { MemberBrandingMetadata } from "@/lib/seller/memberBrandingMetadata";
@@ -18,19 +18,19 @@ import { createUriFetcher } from "@/lib/seller/uriFetcher";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface SellerAssets {
+interface MemberAssets {
     imageBaseURI?: string;
 }
 
 export interface ResolvedMemberBranding {
     branding: MemberBrandingMetadata;
-    assets: SellerAssets;
+    assets: MemberAssets;
     /** Raw logo LOCATOR (e.g. `ipfs://…`) — the render layer resolves it once
      *  through `resolveImageUri` (ipfs→gateway, rejects raw http as an
      *  anti-tracking gate). NOT pre-resolved here: pre-resolving to a gateway
      *  http URL made the render gate reject legitimate ipfs logos. */
     logoURI?: string;
-    /** Raw seller name (top-level). */
+    /** Raw member name (top-level). */
     name?: string;
 }
 
@@ -39,7 +39,7 @@ export interface ResolvedMemberBranding {
 function resolveMemberBrandingDocument(input: {
     name?: string;
     branding?: Partial<MemberBrandingMetadata> | null;
-    assets?: Partial<SellerAssets> | null;
+    assets?: Partial<MemberAssets> | null;
 }): ResolvedMemberBranding {
     const branding = input.branding ?? {};
     const assets = input.assets ?? {};
@@ -48,7 +48,7 @@ function resolveMemberBrandingDocument(input: {
         logoURI: typeof branding.logoURI === "string" ? branding.logoURI : undefined,
     };
 
-    const a: SellerAssets = {
+    const a: MemberAssets = {
         imageBaseURI: typeof assets.imageBaseURI === "string" ? assets.imageBaseURI : undefined,
     };
 
@@ -84,7 +84,7 @@ export function resolveMemberBrandingFromMemberProfile(
 }
 
 /**
- * Fetch seller metadata from a content URI and extract branding fields.
+ * Fetch member metadata from a content URI and extract branding fields.
  * Results are cached in-memory by URI.
  *
  * @returns Resolved branding, or null if the URI is empty or fetch fails.
@@ -96,7 +96,7 @@ const brandingFetcher = createUriFetcher<ResolvedMemberBranding>({
         return resolveMemberBrandingDocument({
             name: typeof record.name === "string" ? record.name : undefined,
             branding: (record.branding ?? null) as Partial<MemberBrandingMetadata> | null,
-            assets: (record.assets ?? null) as Partial<SellerAssets> | null,
+            assets: (record.assets ?? null) as Partial<MemberAssets> | null,
         });
     },
 });

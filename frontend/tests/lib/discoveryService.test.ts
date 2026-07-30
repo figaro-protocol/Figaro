@@ -3,11 +3,11 @@ import {
     createDiscoveryService,
 } from '@/lib/seller/discoveryService';
 
-const getActiveSellersMock = vi.fn();
+const getActiveMembersMock = vi.fn();
 const fetchDocumentMock = vi.fn();
 
 vi.mock('@/lib/protocol/membersRegistryIndexer', () => ({
-    getActiveSellers: (...args: unknown[]) => getActiveSellersMock(...args),
+    getActiveMembers: (...args: unknown[]) => getActiveMembersMock(...args),
 }));
 
 vi.mock('@/lib/kernel/contracts', () => ({
@@ -41,13 +41,13 @@ describe('discoveryService', () => {
     let discoveryService: ReturnType<typeof createDiscoveryService>;
 
     beforeEach(() => {
-        getActiveSellersMock.mockReset();
+        getActiveMembersMock.mockReset();
         fetchDocumentMock.mockReset();
         discoveryService = createDiscoveryService({ fetchDocument: fetchDocumentMock });
     });
 
     it('returns an empty result when the registry has no sellers', async () => {
-        getActiveSellersMock.mockResolvedValueOnce([]);
+        getActiveMembersMock.mockResolvedValueOnce([]);
 
         const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
 
@@ -55,7 +55,7 @@ describe('discoveryService', () => {
     });
 
     it('maps a SellerCatalogueMetadata document into a discovery restaurant', async () => {
-        getActiveSellersMock.mockResolvedValueOnce([
+        getActiveMembersMock.mockResolvedValueOnce([
             {
                 address: '0x70997970c51812dc3a010c7d01b50e0d17dc79c8',
                 role: 1,
@@ -91,15 +91,15 @@ describe('discoveryService', () => {
         }));
     });
 
-    it('maps a seller profile document into a discovery restaurant and follows catalogueURI', async () => {
-        getActiveSellersMock.mockResolvedValueOnce([
+    it('maps a member profile document into a discovery restaurant and follows catalogueURI', async () => {
+        getActiveMembersMock.mockResolvedValueOnce([
             {
                 address: '0xaabbccddaabbccddaabbccddaabbccddaabbccdd',
                 role: 1,
                 metadataURI: 'ipfs://op-profile',
             },
         ]);
-        // First fetch: seller profile
+        // First fetch: member profile
         fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
             name: 'Street Tacos',
             description: 'Local taco stand',
@@ -125,8 +125,8 @@ describe('discoveryService', () => {
         expect(result.catalogues[0].items[0].name).toBe('Al Pastor');
     });
 
-    it('maps a seller profile without a catalogueURI into a restaurant with an empty menu', async () => {
-        getActiveSellersMock.mockResolvedValueOnce([
+    it('maps a member profile without a catalogueURI into a restaurant with an empty menu', async () => {
+        getActiveMembersMock.mockResolvedValueOnce([
             {
                 address: '0xaabbccddaabbccddaabbccddaabbccddaabbccdd',
                 role: 1,
@@ -145,7 +145,7 @@ describe('discoveryService', () => {
     });
 
     it('returns an empty result when the seller-event lookup fails', async () => {
-        getActiveSellersMock.mockRejectedValueOnce(new Error('indexer offline'));
+        getActiveMembersMock.mockRejectedValueOnce(new Error('indexer offline'));
 
         const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
 
@@ -153,7 +153,7 @@ describe('discoveryService', () => {
     });
 
     it('excludes sellers without an anchored assembly binding (surfacing rule, applied evenly)', async () => {
-        getActiveSellersMock.mockResolvedValueOnce([
+        getActiveMembersMock.mockResolvedValueOnce([
             {
                 address: '0x70997970c51812dc3a010c7d01b50e0d17dc79c8',
                 role: 1,
@@ -179,7 +179,7 @@ describe('discoveryService', () => {
     });
 
     it('excludes sellers whose documents cannot be fetched', async () => {
-        getActiveSellersMock.mockResolvedValueOnce([
+        getActiveMembersMock.mockResolvedValueOnce([
             {
                 address: '0x70997970c51812dc3a010c7d01b50e0d17dc79c8',
                 role: 1,

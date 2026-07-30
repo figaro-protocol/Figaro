@@ -14,7 +14,7 @@ import { useUsageRecorder } from "@/lib/protocol/useUsageRecorder";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
-import { useRegisterSeller, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/seller/useMembersRegistry";
+import { useRegisterMember, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/seller/useMembersRegistry";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
 import { createCapabilityExecutors } from "@/lib/semantic/createCapabilityExecutors";
 import { getAttestationsByProcess, type RuntimeAttestation } from "@/lib/composition/indexer";
@@ -63,9 +63,9 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     // specs warm; reading it here re-renders + re-derives processModel below.
     const { version: clauseSpecsVersion } = useClauseSpecs();
     const { resolveProcess, hash, isPending } = useFigaroActions();
-    const { recordUsage, recordAssemblyUsage } = useUsageRecorder();
+    const { recordClauseUsage, recordAssemblyUsage } = useUsageRecorder();
     const attestationActions = useAttestationCoordinatorActions();
-    const registerMember = useRegisterSeller();
+    const registerMember = useRegisterMember();
     const updateMemberProfile = useUpdateProfile();
     const withdrawMemberDeposit = useWithdrawDeposit();
     const registrationDeposit = useRegistrationDeposit();
@@ -181,7 +181,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         processOrders,
         processAgreements,
         resolveProcess,
-        recordUsage,
+        recordClauseUsage,
         recordAssemblyUsage,
         submitBuyerAttestation: attestationActions.submitBuyerAttestation,
         submitSellerAttestation: attestationActions.submitSellerAttestation,
@@ -189,7 +189,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         updateMemberProfile: (metadataURI) => updateMemberProfile.updateProfile(metadataURI),
         withdrawMemberDeposit: () => withdrawMemberDeposit.withdraw(),
         confirmResolve: () => window.confirm("This will settle the entire process and release all bonds. Continue?"),
-        confirmWithdraw: () => window.confirm("Withdraw your seller deposit and clear the registry binding for this address? You'll need to re-register (with a fresh deposit and a new lock period) to operate again."),
+        confirmWithdraw: () => window.confirm("Leave the registry for this address? You are de-listed from discovery straight away and can register again at once — but the deposit is released only after the cooldown, so coming back costs a fresh one."),
     });
 
     const executeCapabilityAction = async (

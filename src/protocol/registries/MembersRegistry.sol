@@ -118,6 +118,17 @@ contract MembersRegistry {
         return _registered[member];
     }
 
+    /// @notice Whether `member` can claim a pending deposit right now.
+    /// @dev    THE CHAIN ANSWERS THIS, never a client clock. `releaseAt` is a
+    ///         block timestamp; a reader comparing it against wall-clock time is
+    ///         wrong whenever the two drift — and on a chain they routinely do,
+    ///         which silently disables (or wrongly enables) a claim affordance.
+    ///         Same shape as `UsageCounter.periodClosed`: a time-dependent fact
+    ///         is a view, so every reader gets the chain's own answer.
+    function withdrawable(address member) external view returns (bool) {
+        return releaseAt[member] != 0 && block.timestamp >= releaseAt[member];
+    }
+
     // ── Registration ────────────────────────────────────────────────────
 
     /// @notice Register as a member. Requires msg.value == registrationDeposit.

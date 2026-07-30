@@ -2,7 +2,7 @@
  * PDF renderer for the audit bundle (Phase D).
  *
  * Composes the audit-bundle extracts (Contract, per-clause data, process
- * logs, seller registry, Hash appendix) plus every projected document —
+ * logs, members registry, Hash appendix) plus every projected document —
  * invoice, bill of lading, financial statements — into one
  * cryptographically-verifiable PDF. Every page footer carries the
  * `agreementHash` (or `processId`) so a reader lands on each page already
@@ -20,7 +20,7 @@
  *   pre-rendered bundles.
  *
  * - For multi-order processes the bundle iterates orders, emitting
- *   per-order Contract / Clause-data / Process-logs / Seller-registry
+ *   per-order Contract / Clause-data / Process-logs / Members-registry
  *   pages. The documents (invoice, BoL, financial statements) and hash
  *   appendix aggregate across the whole process.
  */
@@ -245,7 +245,7 @@ function CoverPage({ processId, buyer, generatedAt }: {
                 Sections: Process timeline (FigaroCore lifecycle, once for the
                 whole process). Then per order, repeated: Contract · Clause
                 data (every committed clause, rendered from its spec) ·
-                Process logs · Seller registry. Then once for the whole
+                Process logs · Members registry. Then once for the whole
                 process: Documents (invoice, bill of lading, financial
                 statements) · Hash appendix.
             </Text>
@@ -488,13 +488,13 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
     );
 }
 
-// ── Seller registry page ──────────────────────────────────────────────────
+// ── Members registry page ─────────────────────────────────────────────────
 
 function MembersRegistryPage({ doc }: { doc: AuditBundle["membersRegistry"] }) {
     return (
         <Page size="A4" style={styles.page}>
             <View style={styles.header}>
-                <Text style={styles.label}>Seller registry</Text>
+                <Text style={styles.label}>Members registry</Text>
                 <Text style={styles.h1}>{doc.title}</Text>
             </View>
             <View style={styles.section}>
@@ -529,7 +529,7 @@ function MembersRegistryPage({ doc }: { doc: AuditBundle["membersRegistry"] }) {
                 <Text style={[styles.sectionBody, styles.badgeBad]}>{doc.notice}</Text>
             )}
             <Text style={styles.note}>
-                The Figaro kernel does not enforce seller registration —
+                The Figaro kernel does not enforce registration —
                 MembersRegistry is advisory off-chain metadata. Every
                 legitimate seller is expected to register (runtime convention);
                 an unregistered seller is itself an audit-significant flag.

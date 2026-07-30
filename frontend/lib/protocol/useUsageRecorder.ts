@@ -24,7 +24,7 @@ export function useUsageRecorder() {
     const { address: account } = useAccount();
     const chainConfig = activeChain;
 
-    const recordUsage = async (
+    const recordClauseUsage = async (
         order: Commitment,
         artifact: `0x${string}`,
         sectionHash: `0x${string}`,
@@ -33,7 +33,7 @@ export function useUsageRecorder() {
         writeContractAsync({
             address: CONTRACTS.usageCounter as `0x${string}`,
             abi: USAGE_COUNTER_ABI,
-            functionName: "recordUsage",
+            functionName: "recordClauseUsage",
             args: [order, artifact, sectionHash, [...proof]],
             account,
             chain: chainConfig,
@@ -53,5 +53,5 @@ export function useUsageRecorder() {
             chain: chainConfig,
         });
 
-    return { recordUsage, recordAssemblyUsage };
+    return { recordClauseUsage, recordAssemblyUsage };
 }

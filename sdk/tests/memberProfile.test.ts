@@ -6,7 +6,7 @@ import {
     tryParseMemberProfileDocument,
 } from "../src/memberProfile.js";
 
-describe("seller profile metadata parser", () => {
+describe("member profile metadata parser", () => {
     const VALID_DOC = {
         name: "Bob Pizza",
         description: "Authentic NY-style",

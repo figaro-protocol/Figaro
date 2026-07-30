@@ -126,14 +126,14 @@ function RegisteredCard({
         setProfile(null);
         setProfileError(null);
         // The shared reviver-backed, size-capped, cached fetcher — NOT a
-        // hand-rolled fetch+JSON.parse (audit 2026-07-23): a seller profile is
+        // hand-rolled fetch+JSON.parse (audit 2026-07-23): a member profile is
         // permissionless untrusted network JSON, so it routes through the same
         // prototype-pollution-stripping path every other profile read uses.
         fetchMemberProfile(metadataURI)
             .then((parsed) => {
                 if (cancelled) return;
                 if (parsed) setProfile(parsed);
-                else setProfileError("Couldn't load a seller profile from that URI.");
+                else setProfileError("Couldn't load a member profile from that URI.");
             })
             .catch(() => {
                 if (!cancelled) setProfileError("Couldn't fetch profile from IPFS.");
@@ -267,15 +267,19 @@ function ManageList({
  * de-surfaces immediately, so this is the only surface a departed wallet has.
  */
 function PendingDepositNotice({ address }: { address: `0x${string}` | undefined }) {
-    const { pending, releaseAt, refetch } = useWithdrawalStatus(address);
+    const { pending, releaseAt, withdrawable, refetch } = useWithdrawalStatus(address);
     const { withdraw, isPending, isConfirming, error } = useWithdrawDeposit();
     const [claimError, setClaimError] = useState<string | null>(null);
     const [claimed, setClaimed] = useState(false);
 
     if (claimed || !pending || pending === 0n) return null;
 
+    // `withdrawable` is the CHAIN's answer. Do not reintroduce a
+    // `Date.now() >= releaseAt` comparison here: `releaseAt` is a block
+    // timestamp, the two clocks drift, and the comparison disabled a
+    // legitimate claim outright (e2e 2026-07-30). `releaseAt` is still shown,
+    // as human-readable context only.
     const unlockAt = releaseAt ? Number(releaseAt) * 1000 : 0;
-    const unlocked = Date.now() >= unlockAt;
     const busy = isPending || isConfirming;
 
     async function handleClaim() {
@@ -295,11 +299,11 @@ function PendingDepositNotice({ address }: { address: `0x${string}` | undefined 
                 <span className="font-semibold text-ink-heading">
                     {formatEther(pending)} ETH held for you.
                 </span>{" "}
-                {unlocked
+                {withdrawable
                     ? "The cooldown has passed — you can take it back now."
                     : `Released ${new Date(unlockAt).toLocaleString()}. You are already de-listed; only the ETH is still waiting.`}
             </p>
-            <Button variant="outline" size="sm" onClick={handleClaim} disabled={!unlocked || busy}>
+            <Button variant="outline" size="sm" onClick={handleClaim} disabled={!withdrawable || busy}>
                 {busy ? "Claiming…" : "Claim deposit"}
             </Button>
             {(claimError || error) && (

@@ -27,9 +27,11 @@ interface ProcessLogEntry {
     attester: string;
     /** Lifecycle stage the event was attested at (uint8). */
     stage: number;
-    /** keccak256 of the (uint8 eventType, string evidenceUri) content.
-     *  The original eventType + evidenceUri sit in the transaction
-     *  calldata. */
+    /** The attestation's `contentRef` — a keccak256 FINGERPRINT of what was
+     *  attested. The preimage is NOT recoverable from chain data: the
+     *  coordinator takes bytes32 and the plaintext never enters calldata, so a
+     *  reader shows the fingerprint and a holder of the preimage proves the
+     *  match off-chain. */
     contentRef: string;
     blockNumber: number;
     transactionHash?: string;

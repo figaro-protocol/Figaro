@@ -131,7 +131,7 @@ export function getSectionDataBytes(section: AgreementSection): Hex {
 /**
  * The section's data FINGERPRINT — `keccak256` of its canonical-JSON bytes.
  * This is the ONLY thing the merkle leaf (and the on-chain `sectionHash`
- * argument to `recordUsage` / the attest calls) needs, so a `private` section's
+ * argument to `recordClauseUsage` / the attest calls) needs, so a `private` section's
  * plaintext never has to be present to build or verify the agreement root. For
  * a content-withheld section the fingerprint is carried directly (`dataHash`);
  * otherwise it is computed from the plaintext.

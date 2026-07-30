@@ -41,6 +41,11 @@ bash scripts/lint-sdk-dist-freshness.sh
 # swept over the WHOLE tracked tree, not just the staged diff — the structural
 # fix for guards that only policed diffs and so never certified repo state.
 bash scripts/lint-no-network-fallbacks.sh
+# MembersRegistry liveness: `MemberWithdrawn` is the CUSTODY event, not the
+# de-surfacing signal — folding it keeps a departed member in discovery, and
+# RPGF-eligible, for the whole withdrawal cooldown. Missed three times in one
+# migration (SDK reducer, frontend indexer, e2e helper), hence a guard.
+bash scripts/lint-desurfacing-event.sh
 # Dead-code guard: knip fails the commit on any orphaned frontend file, unused
 # export, or unused type. The tool is the source of truth for what's dead — not
 # prose, not memory. ~3s; ignores in frontend/knip.json; namespace-access

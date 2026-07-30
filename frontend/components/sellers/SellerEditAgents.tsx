@@ -74,7 +74,7 @@ export function SellerEditAgents() {
             .then((parsed) => {
                 if (cancelled) return;
                 if (parsed) setExistingProfile(parsed);
-                else setFetchError("Couldn't fetch or parse the seller profile.");
+                else setFetchError("Couldn't fetch or parse the member profile.");
             })
             .catch(() => {
                 if (!cancelled) setFetchError("Couldn't fetch profile from IPFS.");

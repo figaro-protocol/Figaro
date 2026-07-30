@@ -1,11 +1,11 @@
 /**
- * lib/mechanisms/useMembersRegistry.ts
+ * lib/seller/useMembersRegistry.ts
  *
  * Hooks for writing to the MembersRegistry contract — register, updateProfile,
- * withdraw — and for reading event-derived seller state.
+ * requestWithdrawal/withdraw — and for reading event-derived member state.
  *
  * The on-chain surface carries no role taxonomy and no categorization
- * field. A seller's business is inferred from their catalogue items
+ * field. A member's business is inferred from their catalogue items
  * (referenced by `metadataURI`); role attribution at the runtime tier
  * comes from event-derived state via the indexer, never from a metadata
  * field. Lifecycle / availability is signal-by-availability off-chain,
@@ -50,13 +50,13 @@ export function parseAgentServices(metadata: Record<string, unknown>): AgentServ
 
 // ── Read hooks (indexer-backed) ──────────────────────────────────────────────
 
-/** [metadataURI, registeredBlock] — derived from seller-registry events. */
+/** [metadataURI, registeredBlock] — derived from members-registry events. */
 export type MemberProfileData = readonly [string, bigint | null];
 
 /**
- * Returns the seller's current metadataURI and registration block from
+ * Returns the member's current metadataURI and registration block from
  * indexed events. Returns undefined if the address has never registered or
- * has withdrawn since (withdraw clears the dedup guard).
+ * has left since (requestWithdrawal clears the dedup guard).
  */
 export function useMemberProfile(address: `0x${string}` | undefined) {
     const client = usePublicClient();
@@ -127,7 +127,7 @@ export function useMemberProfile(address: `0x${string}` | undefined) {
 // own `isSuccess` flag fires on receipt-fetched, which is true even when
 // the transaction reverted.
 
-export function useRegisterSeller() {
+export function useRegisterMember() {
     const client = usePublicClient();
     const { address: account } = useAccount();
     const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
@@ -157,7 +157,7 @@ export function useRegisterSeller() {
             args: [metadataURI],
             value: value ?? 0n,
         });
-        await verifyTxSuccess(client, txHash, "The seller was not registered.");
+        await verifyTxSuccess(client, txHash, "The member was not registered.");
         return txHash;
     }
 
@@ -258,11 +258,23 @@ export function useWithdrawalStatus(address: `0x${string}` | undefined) {
         args: address ? [address] : undefined,
         query: { enabled: Boolean(registry && address) },
     });
+    // Whether the claim is DUE is the chain's answer, not a clock comparison:
+    // `releaseAt` is a block timestamp, and comparing it against `Date.now()`
+    // breaks whenever block time and wall time drift — which disabled a
+    // legitimate claim outright (caught by e2e 2026-07-30).
+    const withdrawable = useReadContract({
+        address: registry ?? undefined,
+        abi: MEMBERS_REGISTRY_ABI,
+        functionName: "withdrawable",
+        args: address ? [address] : undefined,
+        query: { enabled: Boolean(registry && address), refetchInterval: 5_000 },
+    });
     return {
         pending: pending.data,
         releaseAt: releaseAt.data,
+        withdrawable: withdrawable.data === true,
         isLoading: pending.isLoading || releaseAt.isLoading,
-        refetch: () => { void pending.refetch(); void releaseAt.refetch(); },
+        refetch: () => { void pending.refetch(); void releaseAt.refetch(); void withdrawable.refetch(); },
     };
 }
 
@@ -323,11 +335,11 @@ export function useRegistrationDeposit() {
 const NO_AGENT_SERVICES: AgentServiceInfo = { services: {}, capabilities: [], isAgent: false };
 
 /**
- * Fetches a seller's metadataURI and parses ERC-8004-compatible
+ * Fetches a member's metadataURI and parses ERC-8004-compatible
  * agent service endpoints if present. Returns { isAgent: false } for
  * human-operated participants (no services key in metadata). Absence
  * semantics all the way down: a missing/unfetchable/unparsable document is
- * a human participant, never an error. Built on the ONE seller-resource
+ * a human participant, never an error. Built on the ONE member-resource
  * fetcher (`useAsyncMemberResource`).
  */
 export function useAgentServices(address: `0x${string}` | undefined) {
@@ -340,7 +352,7 @@ export function useAgentServices(address: `0x${string}` | undefined) {
             const url = resolveContentUri(metadataURI);
             if (!url) return NO_AGENT_SERVICES;
             try {
-                // Size-capped fetch (F4): the seller-pinned metadata document
+                // Size-capped fetch (F4): the member-pinned metadata document
                 // is external-party-controlled — oversize throws → absence.
                 const json = await fetchCappedContent(url).then((r) => safeJsonFromResponse(r));
                 return json && typeof json === "object"

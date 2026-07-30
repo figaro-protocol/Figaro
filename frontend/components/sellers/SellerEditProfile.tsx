@@ -76,7 +76,7 @@ export function SellerEditProfile() {
                 if (parsed) {
                     setExistingProfile(parsed);
                 } else {
-                    setFetchError("Couldn't fetch or parse the seller profile.");
+                    setFetchError("Couldn't fetch or parse the member profile.");
                 }
             })
             .catch(() => {

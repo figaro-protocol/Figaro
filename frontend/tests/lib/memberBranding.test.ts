@@ -4,7 +4,7 @@ import {
     clearBrandingCache,
     resolveMemberBrandingFromMemberProfile,
 } from '@/lib/seller/memberBranding';
-import { SELLER_PROFILE_METADATA_EXAMPLE } from './__fixtures__/sellerMetadata';
+import { MEMBER_PROFILE_METADATA_EXAMPLE } from './__fixtures__/memberMetadata';
 
 describe('memberBranding', () => {
 
@@ -169,7 +169,7 @@ describe('memberBranding', () => {
         });
 
         it('resolves branding directly from seller catalogue metadata', () => {
-            const result = resolveMemberBrandingFromMemberProfile(SELLER_PROFILE_METADATA_EXAMPLE);
+            const result = resolveMemberBrandingFromMemberProfile(MEMBER_PROFILE_METADATA_EXAMPLE);
 
             expect(result).not.toBeNull();
             expect(result!.logoURI).toBe('ipfs://example/logo.png');

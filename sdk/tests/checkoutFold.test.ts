@@ -91,7 +91,7 @@ describe("fillClassSections — catalogue-sourced values folded onto their leave
 const CREDENTIAL = specSourceFromFixtures(["figaro-credential"]);
 const REGISTER = "https://data.cityofnewyork.us/resource/xjfq-wh2d.json?license_number={id}";
 
-describe("fillProfileSections — seller profile master data folded onto their leaves", () => {
+describe("fillProfileSections — member profile master data folded onto their leaves", () => {
     it("folds the declared profile-authored subset onto a composed leaf", () => {
         const out = fillProfileSections(
             { "figaro-credential": { credentialRegisterUri: REGISTER } },

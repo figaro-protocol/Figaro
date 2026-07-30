@@ -174,7 +174,7 @@ contract RpgfIntegrationTest is Test {
     function test_settledTradeBecomesAFlorinPayout() public {
         // Two settled processes use the clause; one uses the assembly.
         CommitmentTypes.Commitment memory p1 = _settle(GEO_KEY, 1);
-        counter.recordUsage(p1, GEO_KEY, keccak256(SECTION), new bytes32[](0));
+        counter.recordClauseUsage(p1, GEO_KEY, keccak256(SECTION), new bytes32[](0));
         (CommitmentTypes.Commitment memory p2,) = _settleUnderAssembly(ASM, 2);
         counter.recordAssemblyUsage(p2, ASM, new bytes32[](0));
 
@@ -219,11 +219,11 @@ contract RpgfIntegrationTest is Test {
 
     function test_usageInALaterPeriodPaysTheLaterTranche() public {
         CommitmentTypes.Commitment memory p1 = _settle(GEO_KEY, 1);
-        counter.recordUsage(p1, GEO_KEY, keccak256(SECTION), new bytes32[](0));
+        counter.recordClauseUsage(p1, GEO_KEY, keccak256(SECTION), new bytes32[](0));
 
         vm.warp(P0_END + 1);
         CommitmentTypes.Commitment memory p2 = _settle(GEO_KEY, 2);
-        counter.recordUsage(p2, GEO_KEY, keccak256(SECTION), new bytes32[](0));
+        counter.recordClauseUsage(p2, GEO_KEY, keccak256(SECTION), new bytes32[](0));
 
         vm.warp(P0_END * 2 + 1);
         vm.startPrank(author);
@@ -264,7 +264,7 @@ contract RpgfIntegrationTest is Test {
 
     function test_nonAuthorCannotClaimSomeoneElsesArtifact() public {
         CommitmentTypes.Commitment memory p1 = _settle(GEO_KEY, 1);
-        counter.recordUsage(p1, GEO_KEY, keccak256(SECTION), new bytes32[](0));
+        counter.recordClauseUsage(p1, GEO_KEY, keccak256(SECTION), new bytes32[](0));
         vm.warp(P0_END + 1);
 
         vm.prank(designer);

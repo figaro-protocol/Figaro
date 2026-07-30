@@ -98,7 +98,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // The buyer's chosen assembly slug, when the seller offers more than one.
     const [selectedSlug, setSelectedSlug] = useState<string | undefined>(undefined);
 
-    // The assembly the buyer is ordering from attaches to the seller PROFILE. One
+    // The assembly the buyer is ordering from attaches to the member PROFILE. One
     // bound assembly -> use it; several -> the buyer's selected slug disambiguates which.
     // Every order commits against a published assembly — there is no fallback.
     const pickedAssembly = boundAssemblies.length === 1

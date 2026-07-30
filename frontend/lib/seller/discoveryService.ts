@@ -1,5 +1,5 @@
 import type { PublicClient } from 'viem';
-import { getActiveSellers } from '@/lib/protocol/membersRegistryIndexer';
+import { getActiveMembers } from '@/lib/protocol/membersRegistryIndexer';
 import type { SellerCatalogue } from '@/lib/seller/types';
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { fetchCappedContent, resolveContentUri, type CappedContentResponse } from "@/lib/shared/ipfsService";
@@ -59,7 +59,7 @@ async function fetchSellerAsCatalogue(
     const doc = await safeJsonFromResponse<unknown>(res);
     if (!doc) return null;
 
-    // The on-chain metadataURI points to the seller profile document.
+    // The on-chain metadataURI points to the member profile document.
     // The profile carries identity / branding / accepted tokens, plus a
     // catalogueURI pointing to the (separately-pinned) volatile items
     // list.
@@ -146,7 +146,7 @@ export function createDiscoveryService(
             }
 
             try {
-                const sellers = await getActiveSellers(client, chainId);
+                const sellers = await getActiveMembers(client, chainId);
                 if (sellers.length === 0) return EMPTY_RESULT;
 
                 // The catalogue's items signal what business the seller is

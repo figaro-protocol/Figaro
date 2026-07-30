@@ -2,7 +2,7 @@
  * MembersRegistry event reader — the protocol-layer half of the cached indexer.
  *
  * Reads the three surviving MembersRegistry events (registration, profile
- * update, withdrawal) and derives current seller state from them. Kernel
+ * update, withdrawal) and derives current member state from them. Kernel
  * order events (OrderCommitted/OrderResolved) live in the kernel indexer;
  * this module reads a REGISTRY, which is protocol tier, not kernel tier.
  *
@@ -11,7 +11,7 @@
  * liveness fold below stays here: it is this reader's own derived view.
  *
  * Lifecycle flags (deactivate/reactivate) and on-chain role tracking remain
- * stripped — seller availability is signal-by-availability, and there is no
+ * stripped — availability is signal-by-availability, and there is no
  * categorization field at any layer (no archetype, no role, no serviceType).
  * What an address does is reconstructed from the events it has emitted
  * (registrations, clause attestations, signed commitments).
@@ -62,7 +62,7 @@ async function getAllMemberWithdrawalRequested(client: PublicClient, chainId: nu
 }
 
 /**
- * Derive the current seller roster: latest metadataURI per address,
+ * Derive the current member roster: latest metadataURI per address,
  * filtered to only those currently registered (Registered minus Withdrawn).
  *
  * "Current metadataURI" is the most recent MemberRegistered or
@@ -71,7 +71,7 @@ async function getAllMemberWithdrawalRequested(client: PublicClient, chainId: nu
  * dedup guard, voiding any subsequent profile updates from a stale
  * registration).
  */
-export async function getActiveSellers(client: PublicClient, chainId: number) {
+export async function getActiveMembers(client: PublicClient, chainId: number) {
     const [registered, profileUpdated, withdrawn] = await Promise.all([
         getAllMemberRegistered(client, chainId),
         getAllMemberProfileUpdated(client, chainId),
@@ -87,14 +87,14 @@ export async function getActiveSellers(client: PublicClient, chainId: number) {
     }
 
     // Latest Registered event per address that survives Withdrawn.
-    const sellers = new Map<string, { metadataURI: string; registeredBlock: number; latestBlock: number }>();
+    const members = new Map<string, { metadataURI: string; registeredBlock: number; latestBlock: number }>();
     for (const row of registered) {
         const addr = row.member.toLowerCase();
         const withdrawnAfter = (latestWithdraw.get(addr) ?? 0) >= row.blockNumber;
         if (withdrawnAfter) continue;
-        const prev = sellers.get(addr);
+        const prev = members.get(addr);
         if (!prev || row.blockNumber > prev.registeredBlock) {
-            sellers.set(addr, {
+            members.set(addr, {
                 metadataURI: row.metadataURI,
                 registeredBlock: row.blockNumber,
                 latestBlock: row.blockNumber,
@@ -104,7 +104,7 @@ export async function getActiveSellers(client: PublicClient, chainId: number) {
 
     // Apply ProfileUpdated events that post-date the surviving Registered event.
     for (const row of profileUpdated) {
-        const entry = sellers.get(row.member.toLowerCase());
+        const entry = members.get(row.member.toLowerCase());
         if (!entry) continue;
         if (row.blockNumber < entry.registeredBlock) continue;
         if (row.blockNumber > entry.latestBlock) {
@@ -113,27 +113,27 @@ export async function getActiveSellers(client: PublicClient, chainId: number) {
         }
     }
 
-    return Array.from(sellers.entries()).map(([address, op]) => ({
+    return Array.from(members.entries()).map(([address, op]) => ({
         address,
         metadataURI: op.metadataURI,
     }));
 }
 
 /**
- * Get the latest metadataURI for a specific seller address.
+ * Get the latest metadataURI for a specific member address.
  * Returns null if not currently registered (never registered, or withdrawn
  * after most recent registration).
  */
-export async function getSellerMetadataURI(client: PublicClient, chainId: number, seller: string) {
-    const active = await getActiveSellers(client, chainId);
-    const lc = seller.toLowerCase();
+export async function getMemberMetadataURI(client: PublicClient, chainId: number, member: string) {
+    const active = await getActiveMembers(client, chainId);
+    const lc = member.toLowerCase();
     const match = active.find((op) => op.address === lc);
     return match?.metadataURI ?? null;
 }
 
 /**
- * Full state for a single seller, derived from events.
- * Returns null if the seller has never registered or has withdrawn after
+ * Full state for a single member, derived from events.
+ * Returns null if the member has never registered or has left after
  * the most recent registration. `registeredBlock` backs the deposit lock-
  * expiry computation; `metadataURI` is the most recent value carried by
  * either the surviving Registered event or any subsequent ProfileUpdated.
@@ -141,7 +141,7 @@ export async function getSellerMetadataURI(client: PublicClient, chainId: number
 export async function getMemberState(
     client: PublicClient,
     chainId: number,
-    seller: string,
+    member: string,
 ): Promise<{ metadataURI: string; registeredBlock: bigint | null } | null> {
 
     const [registered, profileUpdated, withdrawn] = await Promise.all([
@@ -158,7 +158,7 @@ export async function getMemberState(
     let regRow: MemberRegisteredEvent | undefined;
     let regBlock = 0;
     for (const row of registered) {
-        if (!hexEqual(row.member, seller)) continue;
+        if (!hexEqual(row.member, member)) continue;
         if (!regRow || row.blockNumber > regBlock) {
             regBlock = row.blockNumber;
             regRow = row;
@@ -167,13 +167,13 @@ export async function getMemberState(
     if (!regRow) return null;
 
     // If a Withdrawn event exists at or after the most recent Registered,
-    // the seller has cleared the dedup guard and is no longer current.
+    // the member has cleared the dedup guard and is no longer current.
     // Only enforce the comparison when at least one withdraw exists for this
-    // seller — otherwise a registration with blockNumber=null (regBlock=0)
+    // member — otherwise a registration with blockNumber=null (regBlock=0)
     // would spuriously look "withdrawn" against a default lastWithdrawBlock.
-    const sellerWithdraws = withdrawn.filter((row) => hexEqual(row.member, seller));
-    if (sellerWithdraws.length > 0) {
-        const lastWithdrawBlock = sellerWithdraws
+    const memberWithdraws = withdrawn.filter((row) => hexEqual(row.member, member));
+    if (memberWithdraws.length > 0) {
+        const lastWithdrawBlock = memberWithdraws
             .map((row) => row.blockNumber)
             .reduce((max, b) => (b > max ? b : max), 0);
         if (lastWithdrawBlock >= regBlock) return null;
@@ -184,7 +184,7 @@ export async function getMemberState(
     let metadataURI = regRow.metadataURI;
     let metadataBlock = regBlock;
     for (const row of profileUpdated) {
-        if (!hexEqual(row.member, seller)) continue;
+        if (!hexEqual(row.member, member)) continue;
         if (row.blockNumber < regBlock) continue;
         if (row.blockNumber > metadataBlock) {
             metadataURI = row.metadataURI || metadataURI;

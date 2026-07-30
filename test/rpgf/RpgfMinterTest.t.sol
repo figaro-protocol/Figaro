@@ -168,6 +168,23 @@ contract RpgfMinterTest is Test {
         minter.claim(0, _one(A_KEY));
     }
 
+    function test_withdrawnAssemblyDesignerForfeitsTheReward() public {
+        // THE SAME GATE ON THE ASSEMBLY BRANCH. Kept beside the clause case on
+        // purpose: `_isAuthor` has two arms and the 600M pays through BOTH — a
+        // clause author and an assembly designer of record earn on identical
+        // terms. Testing only the clause arm is the same asymmetry that let the
+        // assembly-credit leg sit dead end-to-end (fixed 2026-07-30); the arms
+        // get covered together or the next reader learns the wrong lesson.
+        counter.setScore(ASM, 0, 100);
+        counter.setClosed(0, true);
+        vm.prank(carol);
+        assemblies.withdrawDeposit(ASM);
+
+        vm.prank(carol);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, ASM, carol));
+        minter.claim(0, _one(ASM));
+    }
+
     // ── Once per wallet per tranche ─────────────────────────────────
 
     function test_claimsOncePerTranche() public {

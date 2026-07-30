@@ -109,13 +109,13 @@ The protocol is actor-neutral: any wallet can hold the same role any other walle
 
 An agent acting for wallet `W` may write:
 
-- W's own off-chain metadata (seller-registry entries, ENS/`did:web` documents, agent service descriptions).
+- W's own off-chain metadata (members-registry entries, ENS/`did:web` documents, agent service descriptions).
 - Assemblies where W is `rootBuyer` or seller-of-record.
 - New artifacts W is authoring — new clauses, new assemblies, W's own UI.
 
 An agent may NOT:
 
-- Edit assemblies, attestations, or seller-registry entries belonging to other wallets — even if reading them is fine.
+- Edit assemblies, attestations, or members-registry entries belonging to other wallets — even if reading them is fine.
 - Modify shared infrastructure (kernel, registries, reference assemblies) under the framing of "fixing it for everyone." That is a maintainer decision, not an agent decision.
 - Submit transactions that affect another wallet's bond, attestation, or settlement state without that wallet's signature.
 
@@ -200,7 +200,7 @@ Use the correct tier. "Add yield to locked bonds" → kernel concern. "Add a new
 
 ### Separation of Concerns — Artifact Families
 
-Each protocol artifact family (clauses → `ClauseRegistry`; sellers → `MembersRegistry`; assemblies → `AssemblyRegistry`) has its own anchor — **parallel, not nested.** (Verified in Solidity: the registries have zero on-chain edges among themselves; assembly→clause and seller→assembly are off-chain.)
+Each protocol artifact family (clauses → `ClauseRegistry`; participants → `MembersRegistry`; assemblies → `AssemblyRegistry`) has its own anchor — **parallel, not nested.** (Verified in Solidity: the registries have zero on-chain edges among themselves; assembly→clause and seller→assembly are off-chain.)
 
 **The rule.** Each family gets its own registry/anchor, identity scheme, evolution path, indexer event stream. Do not nest one inside another, even when an existing primitive could host it.
 

@@ -260,7 +260,7 @@ can learn an artifact's usage after the fact. Reconstructing it later is what fo
 the posting/bond/challenge/referee apparatus in the RPGF and match designs; recording
 the fact as it happens leaves no claim to believe and nothing to adjudicate.
 
-Two permissionless functions. `recordUsage(order, artifact, sectionHash, proof)`
+Two permissionless functions. `recordClauseUsage(order, artifact, sectionHash, proof)`
 proves two things from data the chain already holds: the order is real and **RESOLVED**
 (`core.orderStatus == 2`), and the artifact was committed in that order's signed
 agreement (merkle inclusion against `agreementHash`). It carries only the section
@@ -340,7 +340,7 @@ score.** No scoring function can separate a fabricated pair from a genuine one �
 concavity that dampens fake breadth dampens real breadth identically — so it can only live in
 the cost of an identity, which is the registries' stake terms.
 
-**Gas anchor — `recordUsage` costs ~168,678 all-in** (`forge --gas-report` median; ~162,642
+**Gas anchor — `recordClauseUsage` costs ~168,678 all-in** (`forge --gas-report` median; ~162,642
 in-test execution, which excludes calldata charged at the tx level). The anchor and its
 regression guard live in `UsageCounterTest.RECORD_USAGE_GAS`; it is deliberately NOT in
 `sdk/src/gasCeilings.ts`, which derives per-block/per-process CEILINGS and has no consumer for

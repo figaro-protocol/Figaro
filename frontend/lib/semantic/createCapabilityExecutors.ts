@@ -42,7 +42,7 @@ export interface CapabilityExecutorDeps {
     /** RPGF usage recording (permissionless; UsageCounter re-verifies every
      *  fact, so a revert is bookkeeping, not failure). Fired after resolve —
      *  count usage when it happens. */
-    recordUsage: (order: Commitment, artifact: Hex, sectionHash: Hex, proof: readonly Hex[]) => Promise<Hex | undefined>;
+    recordClauseUsage: (order: Commitment, artifact: Hex, sectionHash: Hex, proof: readonly Hex[]) => Promise<Hex | undefined>;
     recordAssemblyUsage: (order: Commitment, compositionHash: Hex, proof: readonly Hex[]) => Promise<Hex | undefined>;
     submitBuyerAttestation: (args: AttestationSubmitArgs) => Promise<Hex | undefined>;
     submitSellerAttestation: (args: AttestationSubmitArgs) => Promise<Hex | undefined>;
@@ -117,12 +117,16 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
                 }
                 for (const section of agreement.sections) {
                     attempted++;
+                    const { proof } = buildSectionInclusionProof(agreement, section.clause);
+
+                    // CLAUSE leg. Excluded artifacts (the two order-mandatory
+                    // clauses + assembly-provenance) revert ArtifactExcluded by
+                    // design, so this leg failing is routine, not a fault.
                     try {
-                        const { proof } = buildSectionInclusionProof(agreement, section.clause);
                         // Only the section FINGERPRINT reaches calldata — never
                         // the plaintext, so a private section stays off-chain.
                         const fingerprint = sectionDataHash(section);
-                        const tx = await deps.recordUsage(
+                        const tx = await deps.recordClauseUsage(
                             commitments[i] as Commitment,
                             computeClauseKey(section.clause, section.version) as Hex,
                             fingerprint as Hex,
@@ -130,26 +134,37 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
                         );
                         await waitForTransactionConfirmation(tx);
                         recorded++;
-                        const composition = (section.data as Record<string, unknown> | undefined)?.compositionHash;
-                        if (!assemblyRecorded && composition !== undefined
-                            && !(typeof composition === "string" && /^0x[0-9a-fA-F]{64}$/.test(composition))) {
-                            // Loud: a committed compositionHash that fails the
-                            // shape check means the assembly leg silently dies.
-                            console.error(`[usage-recording] ${section.clause}: compositionHash present but malformed: ${JSON.stringify(composition)}`);
-                        }
-                        if (!assemblyRecorded && typeof composition === "string" && /^0x[0-9a-fA-F]{64}$/.test(composition)) {
-                            // recordAssemblyUsage takes no section — the provenance
-                            // content is derived on-chain from the compositionHash.
-                            const atx = await deps.recordAssemblyUsage(
-                                commitments[i] as Commitment,
-                                composition as Hex,
-                                proof as readonly Hex[],
-                            );
-                            await waitForTransactionConfirmation(atx);
-                            assemblyRecorded = true;
-                        }
                     } catch (error) {
                         console.error(`[usage-recording] ${section.clause} on order ${activeOrders[i].orderHash}: ${error instanceof Error ? error.message : String(error)}`);
+                    }
+
+                    // ASSEMBLY leg — INDEPENDENT of the clause leg above, and
+                    // that independence is the whole point. The section that
+                    // carries a compositionHash is `figaro-assembly-provenance`,
+                    // which is EXCLUDED from scoring, so its clause record always
+                    // reverts. Sequencing the assembly credit after it (inside the
+                    // same try) made the designer-credit leg unreachable for every
+                    // assembly-composed process — dead end-to-end, silently.
+                    const composition = (section.data as Record<string, unknown> | undefined)?.compositionHash;
+                    if (assemblyRecorded || composition === undefined) continue;
+                    if (typeof composition !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(composition)) {
+                        // Loud: a committed compositionHash that fails the
+                        // shape check means the assembly leg silently dies.
+                        console.error(`[usage-recording] ${section.clause}: compositionHash present but malformed: ${JSON.stringify(composition)}`);
+                        continue;
+                    }
+                    try {
+                        // recordAssemblyUsage takes no section — the provenance
+                        // content is derived on-chain from the compositionHash.
+                        const atx = await deps.recordAssemblyUsage(
+                            commitments[i] as Commitment,
+                            composition as Hex,
+                            proof as readonly Hex[],
+                        );
+                        await waitForTransactionConfirmation(atx);
+                        assemblyRecorded = true;
+                    } catch (error) {
+                        console.error(`[usage-recording] assembly ${composition} on order ${activeOrders[i].orderHash}: ${error instanceof Error ? error.message : String(error)}`);
                     }
                 }
             }

@@ -7,7 +7,7 @@
  * per candidate.
  *
  *   - The AGENT courier (anvil[12]) is a Node HTTP service run BY THIS SPEC —
- *     real key, real signatures, no browser, no UI. Its seller profile
+ *     real key, real signatures, no browser, no UI. Its member profile
  *     declares `services.rest`, which is what makes it an agent candidate:
  *     the buyer's race POSTs the unsigned draft to the endpoint (the
  *     HttpChannel wire: 200 = countersigned, 204 = declined) and the HTTP

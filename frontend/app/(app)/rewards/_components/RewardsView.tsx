@@ -7,7 +7,7 @@
  * signed), a period's counts stop moving the moment it ends, and the wallet
  * then claims its artifacts' UNIFORM pro-rata share of that period's tranche —
  * no cap. There is nothing to post, bond, challenge or adjudicate. The
- * marketing telling lives at /clause-rewards; this page is the doing surface.
+ * marketing telling lives at /artifact-rewards; this page is the doing surface.
  */
 
 import { useEffect, useState } from "react";

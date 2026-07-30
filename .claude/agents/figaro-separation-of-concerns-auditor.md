@@ -52,9 +52,9 @@ Valid dependency arrows:
 
 Audit the proposal for:
 
-1. **Clause as host** — registering a non-clause artifact (assembly, seller metadata, mechanism metadata) as a `clauseId` in `ClauseRegistry`. The clause layer must not know other families exist. **BLOCKER.**
+1. **Clause as host** — registering a non-clause artifact (assembly, member metadata, mechanism metadata) as a `clauseId` in `ClauseRegistry`. The clause layer must not know other families exist. **BLOCKER.**
 2. **MembersRegistry as host** — registering clauses, assemblies, or validator contracts under the participant-metadata surface. `MembersRegistry` anchors the participant entity, not other families identities. **BLOCKER.**
-3. **Kernel as host** — proposing that `FigaroCore` read assembly composition, clause identity, or seller metadata at runtime. The kernel sees linear commit chains; it does not read anchored artifacts. See `~/.claude/projects/-Users-adaliana-Figaro/memory/reference_kernel_star_shape.md`. **BLOCKER.**
+3. **Kernel as host** — proposing that `FigaroCore` read assembly composition, clause identity, or member metadata at runtime. The kernel sees linear commit chains; it does not read anchored artifacts. See `~/.claude/projects/-Users-adaliana-Figaro/memory/reference_kernel_star_shape.md`. **BLOCKER.**
 4. **Reverse-dependency arrow** — modifying an existing primitive to know the new family's existence (a new field on `ClauseRegistry` referring to assemblies, a new method on `MembersRegistry` parameterized on assembly identity, etc.). **MAJOR.**
 5. **"Save a contract" framing** — the proposal explicitly cites code reuse, minimum surface, or "we already have X" as justification for hosting one family inside another. The optimization criterion is wrong. **MAJOR.**
 6. **Naming collision** — proposing artifact identifiers that confuse layers (e.g., naming an assembly-anchor clause `figaro-assembly-anchor` so it looks like a clause). **MINOR.**

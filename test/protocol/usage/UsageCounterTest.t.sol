@@ -145,7 +145,7 @@ contract UsageCounterTest is Test {
     function _record(CommitmentTypes.Commitment memory c, bytes32 artifact) internal {
         // The section FINGERPRINT (keccak256 of the committed bytes) — never the
         // preimage — is what the merkle leaf needs and all the calldata carries.
-        counter.recordUsage(c, artifact, keccak256(SECTION), new bytes32[](0));
+        counter.recordClauseUsage(c, artifact, keccak256(SECTION), new bytes32[](0));
     }
 
     // ── What a record proves ────────────────────────────────────────
@@ -206,7 +206,7 @@ contract UsageCounterTest is Test {
     function test_revertsOnWrongSectionHash() public {
         CommitmentTypes.Commitment memory c = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         vm.expectRevert(UsageCounter.InvalidInclusionProof.selector);
-        counter.recordUsage(c, CARGO_KEY, keccak256(hex"dead"), new bytes32[](0));
+        counter.recordClauseUsage(c, CARGO_KEY, keccak256(hex"dead"), new bytes32[](0));
     }
 
     // ── Seller-side live-stake gate ──────────────────────────────────
@@ -447,7 +447,7 @@ contract UsageCounterTest is Test {
 
     // ── Gas anchor ──────────────────────────────────────────────────
 
-    /// @notice The canonical cost of ONE `recordUsage` call, all-in on a cold
+    /// @notice The canonical cost of ONE `recordClauseUsage` call, all-in on a cold
     ///         first record for an artifact (the shape an attacker or an author
     ///         actually pays). Measured here because this is the only place it is
     ///         measured — it is NOT in `sdk/src/gasCeilings.ts`, which exists to
@@ -468,14 +468,14 @@ contract UsageCounterTest is Test {
         CommitmentTypes.Commitment memory c =
             _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 0xA45);
         uint256 before = gasleft();
-        counter.recordUsage(c, CARGO_KEY, keccak256(SECTION), new bytes32[](0));
+        counter.recordClauseUsage(c, CARGO_KEY, keccak256(SECTION), new bytes32[](0));
         uint256 used = before - gasleft();
         emit log_named_uint("recordUsage_exec_gas", used);
 
         // A wide band: this is a drift alarm, not a micro-benchmark. The in-test
         // execution figure excludes the tx base cost and calldata charges.
-        assertGe(used, 60_000, "recordUsage got unexpectedly cheap - did a gate get dropped?");
-        assertLe(used, RECORD_USAGE_GAS, "recordUsage exceeded its anchor - re-measure and reprice the bound");
+        assertGe(used, 60_000, "recordClauseUsage got unexpectedly cheap - did a gate get dropped?");
+        assertLe(used, RECORD_USAGE_GAS, "recordClauseUsage exceeded its anchor - re-measure and reprice the bound");
     }
 
     /// `_score(c, d)` as the contract computes it — the scoring input, spelled out

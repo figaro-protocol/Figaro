@@ -151,7 +151,7 @@ export function OnboardingAssembliesForm({
         // from (checkout enables only for a bound profile) — neither the
         // wizard nor the edit surface may produce one (user rule 2026-06-12).
         if (selected.size === 0) {
-            setSubmitError("Bind at least one published assembly — a seller profile without one cannot be ordered from.");
+            setSubmitError("Bind at least one published assembly — a member profile without one cannot be ordered from.");
             return;
         }
         setSubmitError(null);

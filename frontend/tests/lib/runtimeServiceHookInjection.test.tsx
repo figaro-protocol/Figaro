@@ -16,7 +16,7 @@ const usePublicClientMock = vi.fn();
 const useChainIdMock = vi.fn();
 const useAccountMock = vi.fn();
 const useWalletClientMock = vi.fn();
-const getSellerMetadataURIMock = vi.fn();
+const getMemberMetadataURIMock = vi.fn();
 const getBlockNumberMock = vi.fn();
 const watchContractEventMock = vi.fn();
 const defaultFetchSellerCatalogueMock = vi.fn();
@@ -43,7 +43,7 @@ vi.mock("wagmi", () => ({
 }));
 
 vi.mock("@/lib/protocol/membersRegistryIndexer", () => ({
-    getSellerMetadataURI: (...args: unknown[]) => getSellerMetadataURIMock(...args),
+    getMemberMetadataURI: (...args: unknown[]) => getMemberMetadataURIMock(...args),
 }));
 
 // The surfacing rule's AssemblyRegistry cross-check gate — resolved (empty)
@@ -158,7 +158,7 @@ describe("runtime service hook injection", () => {
         useChainIdMock.mockReset();
         useAccountMock.mockReset();
         useWalletClientMock.mockReset();
-        getSellerMetadataURIMock.mockReset();
+        getMemberMetadataURIMock.mockReset();
         getBlockNumberMock.mockReset();
         watchContractEventMock.mockReset();
         defaultFetchSellerCatalogueMock.mockReset();

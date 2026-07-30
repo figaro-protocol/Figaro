@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ProfileClauseValues — the seller-profile authoring section for
+ * ProfileClauseValues — the member-profile authoring section for
  * PROFILE-authored clause values (seller master data: dimweight's divisor, a
  * declared credential id). The seller-level sibling of the catalogue item's
  * clause-values editor (`OnboardingCatalogueForm`): one spec-driven group per

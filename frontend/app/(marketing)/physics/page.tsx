@@ -93,7 +93,7 @@ export default function Physics() {
                     </p>
                     <p>
                         And that is what the network&apos;s token funds &mdash; not the core, which runs itself, but the clauses, agreements, and assemblies built on it, and the authors the protocol{" "}
-                        <Link href="/clause-rewards" className="text-ink-heading font-medium hover:underline">
+                        <Link href="/artifact-rewards" className="text-ink-heading font-medium hover:underline">
                             pays for the ones it comes to rely on
                         </Link>
                         .

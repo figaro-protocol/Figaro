@@ -71,7 +71,7 @@ export interface OnboardingAgentsFormProps {
     /**
      * Edit-mode override. When provided, the submit handler calls
      * `onSave(services)` instead of routing to the wizard's done
-     * step. The caller re-pins the seller profile with the
+     * step. The caller re-pins the member profile with the
      * updated `services` field and dispatches `updateProfile`.
      */
     onSave?: (services: MemberAgentServices | undefined) => Promise<void>;

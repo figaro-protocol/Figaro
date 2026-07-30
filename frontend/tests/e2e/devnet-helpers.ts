@@ -156,7 +156,7 @@ export interface SeededSeller {
 }
 
 /**
- * Pin a fresh seller profile JSON to local Kubo and register the wallet
+ * Pin a fresh member profile JSON to local Kubo and register the wallet
  * on `MembersRegistry`. Pairs with `merchant-page.devnet.spec.ts`'s
  * inline seeder (which inlines this for the catalogue+merchant case); the
  * helper here is the generic "any registered seller" seed, used by
@@ -251,7 +251,7 @@ export async function seedRegisteredMember(opts: {
  *
  * Mirrors what `ipfsService.publishJSON` does in the browser, but talks to
  * Kubo from Node directly. Used by devnet tests that need to seed an
- * seller profile or catalogue document in IPFS without walking the
+ * member profile or catalogue document in IPFS without walking the
  * full onboarding wizard.
  */
 export async function pinJSONToIPFS(data: unknown): Promise<{ cid: string; uri: string }> {
@@ -306,10 +306,14 @@ export async function assertPinnedInIpfs(cid: string): Promise<void> {
 
 /** MembersRegistry registration events — carry the profile metadataURI. Internal
  *  to discovery; read by `discoverSellers`. */
-const SELLER_REGISTERED_EVENT_ABI = parseAbi([
-    'event MemberRegistered(address indexed seller, string metadataURI)',
-    'event MemberProfileUpdated(address indexed seller, string metadataURI)',
-    'event MemberWithdrawn(address indexed seller, uint256 deposit)',
+const MEMBER_REGISTERED_EVENT_ABI = parseAbi([
+    'event MemberRegistered(address indexed member, string metadataURI)',
+    'event MemberProfileUpdated(address indexed member, string metadataURI)',
+    // De-surfacing is the REQUEST, not the later ETH release: a member who has
+    // left is gone from discovery immediately while their deposit is still in
+    // cooldown. Counting `MemberWithdrawn` here would keep them discoverable for
+    // that whole window.
+    'event MemberWithdrawalRequested(address indexed member, uint256 amount, uint256 releaseAt)',
 ]);
 
 export interface DiscoveredSeller {
@@ -324,8 +328,8 @@ export interface DiscoveredSeller {
 }
 
 /** Every LIVE registered seller, discovered from chain → IPFS (events +
- *  profile docs). Mainnet-realistic tolerance: a withdrawn wallet is skipped
- *  (registrations must outnumber withdrawals), a profile that fails to
+ *  profile docs). Mainnet-realistic tolerance: a wallet that has left is skipped
+ *  (registrations must outnumber withdrawal REQUESTS), a profile that fails to
  *  fetch or parse is skipped rather than crashing discovery — anyone can
  *  register a garbage URI; consumers must tolerate it — and the live profile
  *  is the most recent `MemberProfileUpdated` post-dating the surviving
@@ -337,23 +341,23 @@ export async function discoverSellers(): Promise<DiscoveredSeller[]> {
     const membersRegistry = (process.env.NEXT_PUBLIC_MEMBERS_REGISTRY ?? config.membersRegistry) as `0x${string}`;
     const [events, updates, withdrawals] = await Promise.all([
         publicClient.getContractEvents({
-            address: membersRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'MemberRegistered', fromBlock: 0n,
+            address: membersRegistry, abi: MEMBER_REGISTERED_EVENT_ABI, eventName: 'MemberRegistered', fromBlock: 0n,
         }),
         publicClient.getContractEvents({
-            address: membersRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'MemberProfileUpdated', fromBlock: 0n,
+            address: membersRegistry, abi: MEMBER_REGISTERED_EVENT_ABI, eventName: 'MemberProfileUpdated', fromBlock: 0n,
         }),
         publicClient.getContractEvents({
-            address: membersRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'MemberWithdrawn', fromBlock: 0n,
+            address: membersRegistry, abi: MEMBER_REGISTERED_EVENT_ABI, eventName: 'MemberWithdrawalRequested', fromBlock: 0n,
         }),
     ]);
     const withdrawnCount = new Map<string, number>();
     for (const w of withdrawals) {
-        const a = ((w.args as { seller?: string }).seller ?? '').toLowerCase();
+        const a = ((w.args as { member?: string }).member ?? '').toLowerCase();
         withdrawnCount.set(a, (withdrawnCount.get(a) ?? 0) + 1);
     }
     const updatesByAddr = new Map<string, Array<{ uri: string; block: bigint; logIndex: number }>>();
     for (const u of updates) {
-        const a = ((u.args as { seller?: string }).seller ?? '').toLowerCase();
+        const a = ((u.args as { member?: string }).member ?? '').toLowerCase();
         const list = updatesByAddr.get(a) ?? [];
         list.push({
             uri: (u.args as { metadataURI?: string }).metadataURI ?? '',
@@ -365,7 +369,7 @@ export async function discoverSellers(): Promise<DiscoveredSeller[]> {
     const registeredCount = new Map<string, number>();
     const out: DiscoveredSeller[] = [];
     for (const ev of events) {
-        const address = (ev.args as { seller: `0x${string}` }).seller;
+        const address = (ev.args as { member: `0x${string}` }).member;
         const key = address.toLowerCase();
         registeredCount.set(key, (registeredCount.get(key) ?? 0) + 1);
         if ((registeredCount.get(key) ?? 0) <= (withdrawnCount.get(key) ?? 0)) continue;
@@ -403,21 +407,21 @@ export async function discoverSellers(): Promise<DiscoveredSeller[]> {
 
 
 
-/** The latest profile URI a seller anchored on MembersRegistry (registration
+/** The latest profile URI a member anchored on MembersRegistry (registration
  *  or the most recent update), read from events — the out-of-band truth specs
  *  verify gate effects against. */
-export async function latestMemberProfileURI(seller: `0x${string}`): Promise<string | undefined> {
+export async function latestMemberProfileURI(member: `0x${string}`): Promise<string | undefined> {
     const publicClient = localPublicClient();
     const config = readLocalDeploymentConfig();
     const membersRegistry = (process.env.NEXT_PUBLIC_MEMBERS_REGISTRY ?? config.membersRegistry) as `0x${string}`;
     const [registrations, updates] = await Promise.all([
         publicClient.getContractEvents({
-            address: membersRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'MemberRegistered',
-            args: { seller }, fromBlock: 0n,
+            address: membersRegistry, abi: MEMBER_REGISTERED_EVENT_ABI, eventName: 'MemberRegistered',
+            args: { member }, fromBlock: 0n,
         }),
         publicClient.getContractEvents({
-            address: membersRegistry, abi: SELLER_REGISTERED_EVENT_ABI, eventName: 'MemberProfileUpdated',
-            args: { seller }, fromBlock: 0n,
+            address: membersRegistry, abi: MEMBER_REGISTERED_EVENT_ABI, eventName: 'MemberProfileUpdated',
+            args: { member }, fromBlock: 0n,
         }),
     ]);
     return [...registrations, ...updates]
