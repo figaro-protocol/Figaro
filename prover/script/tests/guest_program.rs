@@ -66,10 +66,19 @@ async fn guest_output_matches_host_apply_batch_exactly() {
     assert_eq!(guest_pv.token_ops_hash, host_pv.token_ops_hash);
     assert_eq!(guest_pv.attestation_events_hash, host_pv.attestation_events_hash);
     assert_eq!(guest_pv.spec_bindings_hash, host_pv.spec_bindings_hash);
+    assert_eq!(guest_pv.usage_accrual_hash, host_pv.usage_accrual_hash);
 
     // The batch carried one clause across both attestations → exactly one
     // deduplicated spec binding.
     assert_eq!(host_events.spec_bindings.len(), 1);
+
+    // And it credited the clause for the process it settled — asserted here
+    // because "field for field" above is only as strong as the batch it runs
+    // on: an empty accrual would make `usage_accrual_hash` agree trivially.
+    assert_eq!(host_events.usage_accruals.len(), 1, "the canonical batch credits one artifact");
+    assert_eq!(host_events.usage_accruals[0].c, 1);
+    assert_eq!(host_events.usage_accruals[0].d, 1);
+    assert_eq!(host_events.usage_sellers.len(), 1, "one seller to stake-check");
 }
 
 #[tokio::test]
