@@ -162,16 +162,20 @@ async fn batch_loop(
     loop {
         ticker.tick().await;
 
-        // Drain pending operations
+        // Drain pending operations AND the RPGF usage claims together.
+        //
+        // Claims are applied against the batch's POST-state, so a claim for an
+        // order this same batch resolves is credited by this same batch. But a
+        // claim ALONE is also a valid batch: it changes the usage state, which
+        // is under the state root, so the transition is real and provable.
+        // Draining before the empty-check (and admitting a claims-only batch
+        // below) is what stops a claim submitted after the last trade from
+        // sitting in the mempool forever.
         let pending = mempool.drain().await;
-        if pending.is_empty() {
+        let usage_claims = mempool.drain_usage().await;
+        if pending.is_empty() && usage_claims.is_empty() {
             continue;
         }
-
-        // Drain the RPGF usage claims riding along with them. Claims are
-        // applied against the batch's POST-state, so a claim for an order
-        // this same batch resolves is credited by this same batch.
-        let usage_claims = mempool.drain_usage().await;
 
         // Get current state snapshot
         let prev_state = state_mirror.snapshot().await;
@@ -194,12 +198,20 @@ async fn batch_loop(
         for (p, reason) in &poison {
             warn!(id = p.id, %reason, "Dropped poison op — would abort the batch");
         }
-        if valid.is_empty() {
+        if valid.is_empty() && usage_claims.is_empty() {
             continue;
         }
+        // Falling through with `valid` empty and claims present is deliberate:
+        // the claims prove against state that already settled, so they are
+        // independent of whatever poisoned the ops.
 
         let op_count = valid.len();
-        info!(ops = op_count, dropped = poison.len(), "Assembling batch");
+        info!(
+            ops = op_count,
+            usage_claims = usage_claims.len(),
+            dropped = poison.len(),
+            "Assembling batch"
+        );
 
         // The period and provenance clause are CHAIN facts — asked of the
         // counter, never derived from the sequencer's clock. If there is no

@@ -53,6 +53,11 @@ import {
     buildDomain,
     calculateBonds,
     computeOrderHash,
+    USAGE_COUNTER_ABI,
+    buildUsageClaims,
+    fetchUsageClaimContext,
+    computeAgreementHash,
+    type Agreement,
 } from "../src/index.js";
 import { parseClauseSpec, encodeContentFromSpec } from "../src/clauses/index.js";
 import { SequencerClient } from "../src/agent/sequencer.js";
@@ -85,8 +90,15 @@ async function anvilReachable(): Promise<boolean> {
 
 // ── Anvil pre-funded accounts ───────────────────────────────────────────────
 
+// anvil[4] — a DEDICATED deployer, and it has to be dedicated. The counter and
+// the verifier reference each other, so this suite predicts the verifier's
+// address from the deployer's nonce; any other transaction from the same
+// account landing in between makes the prediction wrong. anvil[0] is
+// `integration.test.ts`'s buyer and vitest runs the two files concurrently, so
+// sharing it turned a correct deploy dance into a race. (The deploy SCRIPTS are
+// unaffected — forge broadcasts sequentially from one key.)
 const DEPLOYER_KEY =
-    "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" as Hex;
+    "0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a" as Hex;
 const BUYER_KEY =
     "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d" as Hex;
 const SELLER_KEY =
@@ -401,6 +413,17 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             await publicClient.waitForTransactionReceipt({ hash: membersHash })
         ).contractAddress!;
 
+        // The counter counts a settled process only while its seller-of-record
+        // holds a LIVE MembersRegistry stake. Zero deposit here — the gate
+        // under test is the stake's EXISTENCE, not its size.
+        const registerHash = await sellerWallet.writeContract({
+            address: membersAddress,
+            abi: parseAbi(["function register(string metadataURI) payable"]),
+            functionName: "register",
+            args: ["ipfs://batch-e2e-seller"],
+        });
+        await publicClient.waitForTransactionReceipt({ hash: registerHash });
+
         const deployerNonce = await publicClient.getTransactionCount({
             address: deployerAccount.address,
         });
@@ -665,7 +688,66 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         );
         expect(typeof resolveResult.id).toBe("number");
 
+        // ── 5b. Claim the RPGF usage for the process this batch settles ──
+        // Claims apply against the batch's POST-state, so a claim for an order
+        // resolved by this very batch is credited by it. The artifact set and
+        // the exclusion list are asked of the CHAIN, never assumed.
+        const agreement: Agreement = {
+            version: "a1",
+            buyer: buyerAccount.address,
+            seller: sellerAccount.address,
+            sections: [
+                {
+                    clause: parsedSpec.clauseId,
+                    version: parsedSpec.version,
+                    data: JSON.parse(SECTION_DATA),
+                },
+            ],
+        };
+        // The SDK's agreement hash must equal the leaf this test signed by hand;
+        // if it did not, the inclusion proof below would be proving a different
+        // agreement than the one on chain.
+        expect(computeAgreementHash(agreement)).toBe(sectionLeaf);
+
+        const claimContext = await fetchUsageClaimContext(
+            publicClient,
+            usageCounterAddress,
+            agreement,
+        );
+        const claims = buildUsageClaims(commitment, agreement, claimContext);
+        expect(claims).toHaveLength(1);
+        expect(claims[0].artifact).toBe(clauseKey);
+
+        const submitted = await sequencerClient.submitUsageClaim(claims[0]);
+        expect(submitted.pending).toBe(1);
+
         await waitForBatchCount(sequencerClient, 2);
+
+        // ── 5c. THE CHAIN FACT: the accrual landed on the COUNTER ──
+        // Read from the counter's own storage — not from the sequencer's
+        // report, and not from the verifier that claims to have written it.
+        // A batch can settle perfectly while crediting nothing, and that is
+        // exactly the failure this bridge exists to prevent.
+        const batchAccrual = (await publicClient.readContract({
+            address: usageCounterAddress,
+            abi: USAGE_COUNTER_ABI,
+            functionName: "batchAccrualOf",
+            args: [clauseKey, 0],
+        })) as readonly [bigint, bigint, bigint];
+
+        expect(batchAccrual[0], "one distinct settled process").toBe(1n);
+        expect(batchAccrual[1], "one distinct (buyer, seller) pair").toBe(1n);
+        expect(batchAccrual[2], "and it is scored").toBeGreaterThan(0n);
+
+        // The reward reads the MERGED score; nothing settled on the direct
+        // path, so here it equals the batch score alone.
+        const merged = (await publicClient.readContract({
+            address: usageCounterAddress,
+            abi: USAGE_COUNTER_ABI,
+            functionName: "scoreOf",
+            args: [clauseKey, 0],
+        })) as bigint;
+        expect(merged).toBe(batchAccrual[2]);
 
         // ── 6. Verify final token balances ──────────────────────
 

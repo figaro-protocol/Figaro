@@ -296,6 +296,8 @@ export {
     computeUsageAccruals,
     fetchUsageRecords,
     fetchBatchUsageRecords,
+    buildUsageClaims,
+    fetchUsageClaimContext,
     usageScore,
     icbrt,
     RPGF_FORMULA,
@@ -309,4 +311,5 @@ export type {
     UsagePeriodAccrual,
     ArtifactAccrual,
     BatchUsageRecord,
+    UsageClaimContext,
 } from "./rpgf/index.js";

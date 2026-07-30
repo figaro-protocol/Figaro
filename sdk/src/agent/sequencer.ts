@@ -97,6 +97,24 @@ export interface SequencerCommitment {
     deadline: string;
 }
 
+/**
+ * A claim that one SETTLED BATCH order used one artifact — the wire form of the
+ * Rust guest's `UsageClaim`. Build these with `buildUsageClaims` (rpgf), which
+ * knows which artifacts the counter excludes; never hand-roll one.
+ *
+ * Nothing here is trusted. The guest re-proves that the order settled and that
+ * the artifact was in the signed agreement; the counter then applies the
+ * reward's own gates on chain. A claim is a REQUEST to be counted, never an
+ * assertion that counts.
+ */
+export interface SequencerUsageClaim {
+    order: SequencerCommitment;
+    artifact: Hex;
+    /** serde's externally-tagged encoding of the Rust `UsageClaimKind`. */
+    kind: { Clause: { section_hash: Hex } } | "Assembly";
+    inclusion_proof: Hex[];
+}
+
 // ── Response types ──────────────────────────────────────────────────────────
 
 export interface SubmitResult {
@@ -106,6 +124,8 @@ export interface SubmitResult {
 export interface SequencerStatus {
     state_root: string;
     pending_ops: number;
+    /** Usage claims waiting to ride the next batch. */
+    pending_usage_claims: number;
     batches_settled: number;
 }
 
@@ -263,6 +283,34 @@ export class SequencerClient {
     }
 
     /** Query sequencer status: state root, pending ops, batches settled. */
+    /**
+     * Submit an RPGF usage claim for an order the BATCH path has settled.
+     *
+     * Its own endpoint, not `/submit`, because a claim is not a kernel
+     * operation: it changes no kernel state and the guest applies it against
+     * the batch's POST-state, so a claim for an order the same batch resolves
+     * is still credited by that batch.
+     *
+     * Build claims with `buildUsageClaims` — never hand-roll one, and never
+     * include an artifact the counter excludes: `applyBatchAccrual` reverts on
+     * it and takes the whole batch, every other party's settlement included.
+     */
+    async submitUsageClaim(claim: SequencerUsageClaim): Promise<{ pending: number }> {
+        const res = await this._fetch(`${this.url}/submit-usage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ claim }),
+        });
+        if (!res.ok) {
+            const body = await res.json().catch(() => ({ error: res.statusText }));
+            throw new SequencerError(
+                body.error ?? `Sequencer returned ${res.status}`,
+                res.status,
+            );
+        }
+        return { pending: (await res.json()).pending };
+    }
+
     async status(): Promise<SequencerStatus> {
         const res = await this._fetch(`${this.url}/status`, {
             method: "GET",

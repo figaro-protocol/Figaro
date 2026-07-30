@@ -174,6 +174,7 @@ export type {
     SequencerClientConfig,
     SequencerOp,
     SequencerCommitment,
+    SequencerUsageClaim,
     SequencerSignature,
     SequencerContentProof,
     SequencerContentKind,

@@ -456,3 +456,81 @@ async fn e2e_two_sequential_batches_chain_roots() {
         .expect("a payout leg");
     assert!(seller_payout.payout > alloy_primitives::U256::ZERO);
 }
+
+// ── RPGF usage claims through the sequencer ───────────────────────
+
+#[tokio::test]
+async fn mempool_queues_usage_claims_separately_from_ops() {
+    let input = build_canonical_batch_input();
+    let mp = mempool();
+
+    assert_eq!(mp.usage_len().await, 0);
+    let pending = mp
+        .submit_usage_claim(input.usage_claims[0].clone())
+        .await
+        .expect("a well-formed claim is accepted");
+    assert_eq!(pending, 1);
+
+    // Its own queue: a claim is not a kernel operation and must not be
+    // counted as one.
+    assert_eq!(mp.len().await, 0, "claims do not enter the op queue");
+    assert_eq!(mp.usage_len().await, 1);
+
+    assert_eq!(mp.drain_usage().await.len(), 1);
+    assert_eq!(mp.usage_len().await, 0, "draining empties the queue");
+}
+
+#[tokio::test]
+async fn mempool_rejects_a_claim_with_no_artifact() {
+    let input = build_canonical_batch_input();
+    let mut claim = input.usage_claims[0].clone();
+    claim.artifact = B256::ZERO;
+    let err = mempool().submit_usage_claim(claim).await.unwrap_err();
+    assert!(err.contains("artifact"), "{err}");
+}
+
+/// A batch carrying ONLY usage claims is a real state transition — the usage
+/// state rides the state root, so crediting an already-settled process moves
+/// the root without any kernel operation. The sequencer must be able to form
+/// such a batch, or a claim submitted after the last trade of a period would
+/// sit in the mempool forever waiting for an op that never comes.
+#[tokio::test]
+async fn a_claims_only_batch_is_a_valid_state_transition() {
+    let input = build_canonical_batch_input();
+
+    // Settle the process first, WITHOUT crediting it.
+    let ops_only = assembler::assemble_batch(
+        CHAIN_ID,
+        CORE,
+        1000,
+        input.operations.clone(),
+        empty_snapshot(),
+        UsageContext::default(),
+    );
+    let (_, _, events_before, post) =
+        apply_batch_with_state(&ops_only).expect("ops-only batch applies");
+    assert!(events_before.usage_accruals.is_empty(), "nothing credited yet");
+
+    // Now a batch with NO operations, carrying only the claim.
+    let claims_only = assembler::assemble_batch(
+        CHAIN_ID,
+        CORE,
+        1001,
+        vec![],
+        post.to_snapshot(),
+        UsageContext {
+            claims: input.usage_claims.clone(),
+            period: input.usage_period,
+            provenance_clause: input.provenance_clause,
+        },
+    );
+    let (pv, positions, events, _) =
+        apply_batch_with_state(&claims_only).expect("claims-only batch applies");
+
+    assert!(positions.is_empty(), "no money moves — nothing was traded");
+    assert_eq!(events.usage_accruals.len(), 1, "the artifact is credited");
+    assert_ne!(
+        pv.prev_state_root, pv.new_state_root,
+        "and the root advances, because usage state is under it"
+    );
+}

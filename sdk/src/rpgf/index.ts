@@ -20,6 +20,12 @@
 import type { Address, Hex, PublicClient } from "viem";
 import { decodeEventLog } from "viem";
 import { USAGE_COUNTER_ABI } from "../abis.js";
+import type { Agreement } from "../agreement.js";
+import { buildSectionInclusionProof, sectionDataHash } from "../agreement.js";
+import { computeClauseKey } from "../discovery.js";
+import type { SequencerUsageClaim } from "../agent/sequencer.js";
+import { toSequencerCommitment } from "../agent/sequencer.js";
+import type { Commitment } from "../types.js";
 import formula from "./formula.json" with { type: "json" };
 
 // ── Formula constants — derived from the canonical artifact, never
@@ -319,4 +325,120 @@ export async function fetchBatchUsageRecords(
     return records.sort((a, b) =>
         a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : a.blockNumber < b.blockNumber ? -1 : 1,
     );
+}
+
+// ── Usage claims (the batch path's input) ────────────────────────────
+
+/** What the pure builder needs from chain. Fetch with `fetchUsageClaimContext`. */
+export interface UsageClaimContext {
+    /** `UsageCounter.provenanceClause()` — the leaf key an assembly claim
+     *  proves against. Read from chain, never hardcoded: it is a deploy-time
+     *  choice of the counter, not a constant of the protocol. */
+    provenanceClause: Hex;
+    /** Artifact keys the counter refuses (`excludedArtifact`). */
+    excludedArtifacts: readonly Hex[];
+}
+
+/**
+ * Build every usage claim a settled batch order supports.
+ *
+ * PURE — takes the chain facts as input so it can be tested and reasoned about
+ * without a client. `fetchUsageClaimContext` gets them.
+ *
+ * TWO INDEPENDENT LEGS, and the independence is the whole point:
+ *
+ *  - the CLAUSE leg emits one claim per agreement section, minus the excluded
+ *    ones. Dropping them is mandatory, not an optimisation: an excluded
+ *    artifact reverts `applyBatchAccrual` and takes the ENTIRE BATCH with it,
+ *    including every other party's settlement.
+ *  - the ASSEMBLY leg credits the assembly's DESIGNER, and it must survive the
+ *    clause leg dropping things. `figaro-assembly-provenance` is itself
+ *    excluded — it rides every assembly-composed process, so scoring it would
+ *    pay its author for the protocol's floor — which means the section that
+ *    carries the compositionHash is exactly the one the clause leg discards.
+ *    Sequencing the assembly credit behind the clause credit is how the
+ *    designer half of the 600M recorded nothing on the direct path for months
+ *    (fixed 2026-07-30). Here the two legs never touch.
+ */
+export function buildUsageClaims(
+    order: Commitment,
+    agreement: Agreement,
+    context: UsageClaimContext,
+): SequencerUsageClaim[] {
+    const excluded = new Set(context.excludedArtifacts.map((a) => a.toLowerCase()));
+    const wireOrder = toSequencerCommitment(order);
+    const claims: SequencerUsageClaim[] = [];
+
+    // ── Clause leg ──
+    for (const section of agreement.sections) {
+        const artifact = computeClauseKey(section.clause, section.version);
+        if (excluded.has(artifact.toLowerCase())) continue;
+        claims.push({
+            order: wireOrder,
+            artifact,
+            kind: { Clause: { section_hash: sectionDataHash(section) } },
+            inclusion_proof: buildSectionInclusionProof(agreement, section.clause).proof,
+        });
+    }
+
+    // ── Assembly leg — INDEPENDENT of the loop above ──
+    const provenance = agreement.sections.find(
+        (s) => computeClauseKey(s.clause, s.version).toLowerCase() === context.provenanceClause.toLowerCase(),
+    );
+    if (provenance) {
+        const compositionHash = provenance.data?.compositionHash;
+        if (typeof compositionHash === "string" && compositionHash.startsWith("0x")) {
+            claims.push({
+                order: wireOrder,
+                artifact: compositionHash as Hex,
+                kind: "Assembly",
+                inclusion_proof: buildSectionInclusionProof(agreement, provenance.clause).proof,
+            });
+        }
+        // A content-WITHHELD provenance section carries only `dataHash`, so the
+        // compositionHash cannot be recovered and the designer cannot be
+        // credited from this agreement alone. Silently skipped rather than
+        // thrown: the clause claims are still valid and the batch should still
+        // settle. (Provenance is public by construction today, so this is a
+        // guard against a future disposition change, not a live case.)
+    }
+
+    return claims;
+}
+
+/**
+ * Read the two chain facts `buildUsageClaims` needs.
+ *
+ * `excludedArtifact` is a mapping with no enumeration, so exclusion can only be
+ * TESTED per candidate — this asks about exactly the artifacts the agreement
+ * could claim, which is the complete set that matters.
+ */
+export async function fetchUsageClaimContext(
+    client: PublicClient,
+    usageCounter: Address,
+    agreement: Agreement,
+): Promise<UsageClaimContext> {
+    const candidates = agreement.sections.map((s) => computeClauseKey(s.clause, s.version));
+
+    const [provenanceClause, ...flags] = await Promise.all([
+        client.readContract({
+            address: usageCounter,
+            abi: USAGE_COUNTER_ABI,
+            functionName: "provenanceClause",
+        }) as Promise<Hex>,
+        ...candidates.map(
+            (artifact) =>
+                client.readContract({
+                    address: usageCounter,
+                    abi: USAGE_COUNTER_ABI,
+                    functionName: "excludedArtifact",
+                    args: [artifact],
+                }) as Promise<boolean>,
+        ),
+    ]);
+
+    return {
+        provenanceClause,
+        excludedArtifacts: candidates.filter((_, i) => flags[i]),
+    };
 }

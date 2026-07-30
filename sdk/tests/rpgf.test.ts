@@ -10,7 +10,17 @@ import {
     type ArtifactAccrual,
     type BatchUsageRecord,
     type UsageRecord,
+    buildUsageClaims,
 } from "../src/rpgf/index.js";
+import {
+    computeAgreementHash,
+    computeSectionLeaf,
+    sectionDataHash,
+    verifyInclusionProof,
+    type Agreement,
+} from "../src/agreement.js";
+import { computeClauseKey } from "../src/discovery.js";
+import type { Commitment } from "../src/types.js";
 
 // ── Integer math ─────────────────────────────────────────────────────
 
@@ -376,5 +386,142 @@ describe("computeRpgfAllocations", () => {
         const out = computeRpgfAllocations(period, authors, 100n);
         const minted = out.reduce((sum, x) => sum + x.amount, 0n);
         expect(minted).toBeLessThanOrEqual(100n);
+    });
+});
+
+// ── Usage claims (the batch path's input) ────────────────────────────
+
+describe("buildUsageClaims", () => {
+    const PROVENANCE = computeClauseKey("figaro-assembly-provenance", 1);
+    const COMMERCE = computeClauseKey("figaro-commerce", 1);
+    const COMPOSITION = keccak256(encodePacked(["string"], ["an-assembly"]));
+
+    const order: Commitment = {
+        processId: `0x${"0".repeat(64)}` as Hex,
+        buyer: "0x0000000000000000000000000000000000000B0B" as Address,
+        seller: "0x0000000000000000000000000000000000005E11" as Address,
+        currency: "0x00000000000000000000000000000000000007ED" as Address,
+        payment: 100n,
+        expectedCumulativeValue: 100n,
+        agreementHash: `0x${"a".repeat(64)}` as Hex,
+        salt: 1n,
+        deadline: 2n,
+    };
+
+    function agreementWith(sections: Agreement["sections"]): Agreement {
+        return { version: "a1", buyer: order.buyer, seller: order.seller, sections };
+    }
+
+    const modalities = { clause: "figaro-modalities", version: 1, data: { modality: "pickup" } };
+    const commerce = { clause: "figaro-commerce", version: 1, data: { payment: "100" } };
+    const provenance = {
+        clause: "figaro-assembly-provenance",
+        version: 1,
+        data: { compositionHash: COMPOSITION },
+    };
+
+    it("claims every section, and carries the section FINGERPRINT not the preimage", () => {
+        const agreement = agreementWith([modalities, commerce]);
+        const claims = buildUsageClaims(order, agreement, {
+            provenanceClause: PROVENANCE,
+            excludedArtifacts: [],
+        });
+
+        expect(claims).toHaveLength(2);
+        const modalityClaim = claims.find(
+            (c) => c.artifact === computeClauseKey("figaro-modalities", 1),
+        )!;
+        expect(modalityClaim.kind).toEqual({
+            Clause: { section_hash: sectionDataHash(modalities) },
+        });
+        // Wire shape: snake_case, string-encoded bigints — what Rust deserializes.
+        expect(modalityClaim.order.expected_cumulative_value).toBe("100");
+        expect(modalityClaim.order.agreement_hash).toBe(order.agreementHash);
+    });
+
+    // Not an optimisation. `applyBatchAccrual` reverts `ArtifactExcluded` and
+    // takes the ENTIRE batch with it — every other party's settlement included.
+    it("drops excluded artifacts, because one would revert the whole batch", () => {
+        const claims = buildUsageClaims(order, agreementWith([modalities, commerce]), {
+            provenanceClause: PROVENANCE,
+            excludedArtifacts: [COMMERCE],
+        });
+
+        expect(claims.map((c) => c.artifact)).toEqual([computeClauseKey("figaro-modalities", 1)]);
+    });
+
+    it("is case-insensitive about the excluded set", () => {
+        const claims = buildUsageClaims(order, agreementWith([commerce]), {
+            provenanceClause: PROVENANCE,
+            excludedArtifacts: [COMMERCE.toUpperCase() as Hex],
+        });
+        expect(claims).toHaveLength(0);
+    });
+
+    // THE REGRESSION THAT COST THE DESIGNER HALF OF THE 600M. The provenance
+    // clause is itself excluded — it rides every assembly-composed process — so
+    // the section carrying the compositionHash is exactly the one the clause leg
+    // discards. The assembly claim must survive that.
+    it("still credits the DESIGNER when the provenance clause is excluded", () => {
+        const claims = buildUsageClaims(
+            order,
+            agreementWith([modalities, commerce, provenance]),
+            { provenanceClause: PROVENANCE, excludedArtifacts: [COMMERCE, PROVENANCE] },
+        );
+
+        const assembly = claims.find((c) => c.kind === "Assembly");
+        expect(assembly, "the assembly leg must not be coupled to the clause leg").toBeDefined();
+        expect(assembly!.artifact).toBe(COMPOSITION);
+        // And it credits the compositionHash — never the provenance clause key.
+        expect(claims.map((c) => c.artifact)).not.toContain(PROVENANCE);
+    });
+
+    it("emits no assembly claim when the process ran under no assembly", () => {
+        const claims = buildUsageClaims(order, agreementWith([modalities]), {
+            provenanceClause: PROVENANCE,
+            excludedArtifacts: [],
+        });
+        expect(claims.some((c) => c.kind === "Assembly")).toBe(false);
+    });
+
+    // A content-withheld provenance section carries only `dataHash`, so the
+    // compositionHash cannot be recovered. Skip the designer credit; do NOT
+    // throw — the clause claims are still valid and the batch must still settle.
+    it("skips the assembly leg when provenance content is withheld, without failing the rest", () => {
+        const withheld = {
+            clause: "figaro-assembly-provenance",
+            version: 1,
+            dataHash: sectionDataHash(provenance),
+        };
+        const claims = buildUsageClaims(order, agreementWith([modalities, withheld]), {
+            provenanceClause: PROVENANCE,
+            excludedArtifacts: [PROVENANCE],
+        });
+
+        expect(claims.some((c) => c.kind === "Assembly")).toBe(false);
+        expect(claims).toHaveLength(1);
+        expect(claims[0].artifact).toBe(computeClauseKey("figaro-modalities", 1));
+    });
+
+    it("produces inclusion proofs that verify against the signed agreement hash", () => {
+        const agreement = agreementWith([modalities, commerce, provenance]);
+        const root = computeAgreementHash(agreement);
+        const claims = buildUsageClaims(order, agreement, {
+            provenanceClause: PROVENANCE,
+            excludedArtifacts: [],
+        });
+
+        for (const claim of claims) {
+            const section =
+                claim.kind === "Assembly"
+                    ? provenance
+                    : agreement.sections.find(
+                          (s) => computeClauseKey(s.clause, s.version) === claim.artifact,
+                      )!;
+            expect(
+                verifyInclusionProof(root, computeSectionLeaf(section), claim.inclusion_proof),
+                `proof for ${claim.artifact}`,
+            ).toBe(true);
+        }
     });
 });
