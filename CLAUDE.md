@@ -308,6 +308,8 @@ One test layer per concern. These boundaries are hard; respect them when writing
 
 **e2e means end-to-end: action → reaction, both in the UI** — either end broken (viem-driven action, chain-only assertion, mock-backed reaction) and it is not e2e. Canonical definition → `TESTING.md` § Playwright.
 
+**And assert CHAIN FACTS the UI is responsible for producing** — read the state back out-of-band, never from the screen that claims to have written it. **A contract can be provably correct and still be fed nothing**, and that seam is invisible to Foundry, tsc, knip and review alike (four instances, 2026-07-30). Doctrine + the six anti-patterns → `TESTING.md` § "Assert CHAIN FACTS".
+
 ---
 
 ## Pointers

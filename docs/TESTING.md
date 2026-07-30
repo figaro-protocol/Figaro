@@ -180,6 +180,62 @@ misfiled; it belongs in Foundry. A mock-backed test cannot be e2e — the
 reaction is fabricated. The `mock` Playwright project was retired 2026-05-20;
 do not recreate it.
 
+### Assert CHAIN FACTS the UI is responsible for producing (doctrine, 2026-07-30)
+
+The action→reaction rule above says where an e2e test *acts* and where it *reads*.
+This says what it must **assert**: the state the UI was supposed to write to the
+chain — read back **out-of-band**, from the chain, never from the screen that
+claims to have written it.
+
+**The failure class it exists for.** A contract can be provably correct and still
+be fed nothing. Every layer below can be green — Foundry, Halmos, tsc, knip, unit
+tests, review — while the product does nothing, because the fault is that a call
+never happens, or happens and reverts, or happens and its result is never read.
+None of that appears in a diff, and none of it errors. Four instances, all found
+in one day (2026-07-30) and *only* by chain-fact assertions:
+
+| what was broken | what it looked like | the assertion that caught it |
+|---|---|---|
+| `recordAssemblyUsage` unreachable — sequenced after a call that always reverts for excluded artifacts, so the **assembly-designer half of the 600M recorded nothing, on every deployment** | clause authors accrued normally; the reward looked fine | `compositionHash` ∈ the `UsageRecorded` artifacts, read from chain |
+| the audit's witness decode read calldata for a preimage WS2 had removed; the throw landed in a swallowed `catch` | the page rendered, just with zero evidence rows | witness receipts `toHaveCount(3)` |
+| the claim button compared `Date.now()` to a **block** timestamp | button simply disabled; no error anywhere | drive the claim, assert the ETH moves |
+| `UsageCounter` itself | — | *correct throughout; that is the point* |
+
+**The recipe.** Act through the UI. Then read the fact back with your own client:
+`publicClient.readContract` / `getContractEvents` / `getBalance` — the same way a
+stranger auditing the chain would. Assert on that. The UI's own display is a
+*separate* assertion, and a valuable one (see below), never the primary evidence.
+
+**Anti-patterns, each one caught in the same day:**
+
+- **Asserting your own setup.** A spec that seeds state and then asserts the seed
+  proves nothing. Assert what the *product* wrote.
+- **Absolute where the design accumulates.** `pendingDeposit == deposit` fails on a
+  re-used chain because withdrawal requests accumulate BY DESIGN. Assert the
+  **delta** across the action.
+- **Totals that are only true in isolation.** `periodTotal == thisArtifact.score`
+  holds only on a chain where nothing else traded; inside a suite ~28 specs have
+  already accrued. Assert the real relationship (`>=`), not the isolated case.
+- **Quoting a different set than the UI acts on.** The rewards page claims EVERY
+  artifact the wallet authored; quoting one and asserting equality is a category
+  error. Prefer asserting **what the UI promised the user** — the rendered figure
+  — against what the chain moved: the number on screen is the number that moves.
+- **Running a consumer spec without its producer.** `tradelens-runtime` consumes
+  the assembly `scenario-tradelens` anchors and says so in its own assertion
+  message. A subset run that omits the producer fails for a reason that has
+  nothing to do with the code under test — and the failure MOVING between runs
+  (a different line) is the tell that the cause changed.
+- **Reading a swallowed failure as absence.** A `catch` that logs nothing turns a
+  broken read into an empty section. If a surface can render empty, assert the
+  populated case explicitly — `toHaveCount(n)`, never `not.toHaveCount(0)`.
+
+**Where it stops.** This does not replace Foundry: contract behaviour belongs
+there and is cheaper to prove there. Chain-fact e2e covers the seam Foundry
+cannot see — *whether the product actually calls the contract, with the right
+arguments, and reads the answer back*. The two are complements, and the seam
+between them is where the 2026-07-30 defects lived.
+
+
 The webServer is a **production build** by default (`next build` → static
 export served by `serve` on :3100, ~90 s build — there is no `next start` under
 `output: export`): the dev server degrades after ~25 min of compile-on-demand
