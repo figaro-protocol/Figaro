@@ -375,18 +375,38 @@ contract UsageCounterTest is Test {
         counter.currentPeriod();
     }
 
-    function test_sameProcessMayCountInASecondPeriod() public {
-        // Idempotence is per (artifact, period): a process settled in period 0
-        // is not double-counted there, and periods are independent ledgers.
+    function test_sameProcessCannotCountInASecondPeriod() public {
+        // Idempotence is GLOBAL per (artifact, process): one settled trade is
+        // counted once ever. A resolved order stays resolved and its struct is
+        // public, so a per-period key would let the same trade be re-presented
+        // in every period — paying for recording gas instead of adoption, and
+        // letting one fabricated farm earn from all three tranches.
         CommitmentTypes.Commitment memory a = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         _record(a, CARGO_KEY);
         vm.warp(P0_END + 1);
+
+        vm.expectRevert(UsageCounter.AlreadyCounted.selector);
         _record(a, CARGO_KEY);
 
         (uint64 c0,,) = counter.accrualOf(CARGO_KEY, 0);
         (uint64 c1,,) = counter.accrualOf(CARGO_KEY, 1);
-        assertEq(c0, 1);
-        assertEq(c1, 1);
+        assertEq(c0, 1, "counted in the period it was recorded");
+        assertEq(c1, 0, "never counted again in a later period");
+    }
+
+    /// A period pays only for usage NEW to it — the property the declining
+    /// 300M/200M/100M tranche schedule assumes.
+    function test_laterPeriodCountsOnlyNewTrade() public {
+        CommitmentTypes.Commitment memory old_ = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
+        _record(old_, CARGO_KEY);
+        vm.warp(P0_END + 1);
+
+        CommitmentTypes.Commitment memory fresh = _settledOrder(CARGO_KEY, buyer2, BUYER2_KEY, seller2, SELLER2_KEY, 2);
+        _record(fresh, CARGO_KEY);
+
+        (uint64 c1, uint64 d1,) = counter.accrualOf(CARGO_KEY, 1);
+        assertEq(c1, 1, "only the new trade");
+        assertEq(d1, 1, "and only its pair");
     }
 
     // ── Scoring maths ───────────────────────────────────────────────

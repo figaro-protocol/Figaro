@@ -284,7 +284,18 @@ sampled `uint64` only, the one domain where the wrong bound is coincidentally ex
 fuzzes the whole `uint256` domain, and the fix was corroborated against solady's audited
 `FixedPointMathLib.cbrt` over 512 runs.
 
-No owner, no admin, no pause; records are idempotent per (artifact, period, process).
+**Idempotence is GLOBAL — a process counts ONCE EVER per artifact** (ruled 2026-07-30),
+in whichever period it is first recorded. A resolved order stays resolved and its struct is
+public in the commit event, so a per-period key let the same trade be re-presented in every
+period: rational play became "re-record everything each period," which pays for *recording
+gas* rather than adoption (an author who records once and moves on collects nothing later,
+while one who knows to re-record collects three times on the same trades) and let a
+fabricated period-0 farm be milked across all three tranches. Each period now counts only
+usage NEW to it — what the declining 300M/200M/100M schedule already assumes. The **pair cap
+stays per period**: it bounds repeat trade inside one reward window, and a global cap would
+permanently freeze out a genuine repeat relationship over the schedule's nine years.
+
+No owner, no admin, no pause; records are idempotent per (artifact, process).
 Foundry tests in `test/protocol/usage/UsageCounterTest.t.sol` (27, incl. the fuzzed
 `icbrt` floor-cube-root property over all of `uint256`, and a no-saturation regression).
 

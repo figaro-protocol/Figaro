@@ -98,10 +98,11 @@ export interface UsagePeriodAccrual {
 }
 
 /** Replay the counter's counting rules over a record stream: idempotence per
- *  (artifact, period, process), the pair cap (a capped process is dropped
- *  entirely — it feeds neither `c` nor `d`), then the uniform score. Records are
- *  replayed in (blockNumber, logIndex) order, which is the order the chain
- *  applied them in. */
+ *  (artifact, process) — GLOBAL, so a process counts once ever and a later
+ *  period is never paid for an earlier period's trade — the pair cap PER PERIOD
+ *  (a capped process is dropped entirely: it feeds neither `c` nor `d`), then
+ *  the uniform score. Records are replayed in (blockNumber, logIndex) order,
+ *  which is the order the chain applied them in. */
 export function computeUsageAccruals(
     records: readonly UsageRecord[],
 ): Map<number, UsagePeriodAccrual> {
@@ -110,14 +111,14 @@ export function computeUsageAccruals(
     );
 
     const periods = new Map<number, UsagePeriodAccrual>();
-    const countedProcesses = new Map<string, Set<string>>(); // artifact|period → processIds
+    const countedProcesses = new Map<Hex, Set<string>>(); // artifact → processIds (GLOBAL)
     const pairCounts = new Map<string, Map<string, number>>(); // artifact|period → pairKey → n
 
     for (const record of sorted) {
         const artifact = record.artifact.toLowerCase() as Hex;
         const scopeKey = `${artifact}|${record.period}`;
 
-        const seenProcesses = countedProcesses.get(scopeKey) ?? new Set<string>();
+        const seenProcesses = countedProcesses.get(artifact) ?? new Set<string>();
         if (seenProcesses.has(record.processId.toLowerCase())) continue; // AlreadyCounted
         const pairs = pairCounts.get(scopeKey) ?? new Map<string, number>();
         const pairKey = record.pairKey.toLowerCase();
@@ -125,7 +126,7 @@ export function computeUsageAccruals(
         if (seen >= RPGF_PAIR_CAP) continue; // PairCapReached — dropped entirely
 
         seenProcesses.add(record.processId.toLowerCase());
-        countedProcesses.set(scopeKey, seenProcesses);
+        countedProcesses.set(artifact, seenProcesses);
         pairs.set(pairKey, seen + 1);
         pairCounts.set(scopeKey, pairs);
 

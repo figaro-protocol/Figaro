@@ -15,7 +15,9 @@ not by this paragraph. Current: `FigaroCoreTest`, `FigaroCoreRevertBranchTest`,
 `Eip712ParityTest`, `HalmosFigaroCore`, `FlorinToken.t.sol`.
 
 `UsageCounterTest` (25) covers the reward-accrual counter: the RESOLVED-order gate, merkle
-inclusion against the signed `agreementHash`, per-(artifact, period, process) idempotence, the
+inclusion against the signed `agreementHash`, per-(artifact, process) GLOBAL idempotence (a
+process counts once ever — re-recording it in a later period reverts, and a later period
+counts only trade new to it), the
 pair cap of 5, the **live-seller-stake gate** (`SellerNotStaked` when the seller-of-record is
 not registered; a withdrawn seller stops counting), **uniform scoring across artifacts** (no
 category, tag, or weight), period boundaries and `periodClosed`, `totalScoreIn` delta

@@ -46,11 +46,14 @@ interface ISellerStake {
 ///         paying out for period `i` reads a number that can no longer move —
 ///         no snapshots, no checkpoint arrays, no history walk. Periods are
 ///         generic here: this contract knows nothing about tranches, rewards, or
-///         who pays. A consumer maps its own schedule onto them.
+///         who pays. A consumer maps its own schedule onto them. Each period
+///         counts only usage NEW to it: a process counts once ever (see
+///         `processCounted`), so a later period cannot be paid for an earlier
+///         period's trade.
 ///
 /// @dev    NO OWNER, NO ADMIN, NO PAUSE. Recording is permissionless and
-///         idempotent per (artifact, period, process). Nothing here can be
-///         revoked, re-weighted, or swept.
+///         idempotent per (artifact, process) — ONCE EVER, in whichever period
+///         the record lands. Nothing here can be revoked, re-weighted, or swept.
 ///
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
 contract UsageCounter {
@@ -134,8 +137,23 @@ contract UsageCounter {
     ///         pro rata divides by this; it is final once the period ends.
     mapping(uint8 => uint256) public totalScoreIn;
 
-    /// @dev artifact → period → processId → already counted (idempotence).
-    mapping(bytes32 => mapping(uint8 => mapping(bytes32 => bool))) public processCounted;
+    /// @notice artifact → processId → already counted. Idempotence is GLOBAL, not
+    ///         per period: a settled process counts ONCE EVER toward an artifact,
+    ///         in whichever period it is first recorded.
+    /// @dev    Why not per period (ruled 2026-07-30). A resolved order stays
+    ///         resolved and its struct is public in the commit event, so anyone
+    ///         can re-present it forever; the chain cannot see WHEN a process
+    ///         resolved (no timestamp it can read), so a per-period key let the
+    ///         same trade count again in every period. Rational play was then
+    ///         "re-record everything each period", which pays for RECORDING GAS
+    ///         rather than adoption: an author whose clause is widely used but
+    ///         who recorded once and moved on collects nothing later, while a
+    ///         wallet that knows to re-record collects three times on the same
+    ///         trades — and a fabricated period-0 farm is milked across all three
+    ///         tranches at record-gas only. Counting once ever makes each tranche
+    ///         pay for usage that is NEW to it, which is what the declining
+    ///         300M/200M/100M schedule already assumes.
+    mapping(bytes32 => mapping(bytes32 => bool)) public processCounted;
 
     /// @dev artifact → period → pairKey → processes counted so far (the cap).
     mapping(bytes32 => mapping(uint8 => mapping(bytes32 => uint8))) public pairCount;
@@ -316,8 +334,8 @@ contract UsageCounter {
     }
 
     /// @dev The counting itself, shared by both routes. Idempotent per (artifact,
-    ///      period, process); the pair cap drops a process entirely once reached,
-    ///      so it feeds neither `c` nor `d`.
+    ///      process) — once ever, whatever the period; the pair cap (per period)
+    ///      drops a process entirely once reached, so it feeds neither `c` nor `d`.
     function _accrue(bytes32 artifact, uint8 period, bytes32 processId, address buyer, address seller) internal {
         // An excluded artifact — a mandatory clause on every order, or the
         // provenance clause on every assembly-composed process — is protocol
@@ -329,13 +347,18 @@ contract UsageCounter {
         // per fake seller. Withdrawing the stake de-surfaces the seller AND stops
         // its future trades conferring reward.
         if (!sellers.registered(seller)) revert SellerNotStaked(seller);
-        if (processCounted[artifact][period][processId]) revert AlreadyCounted();
+        // Once ever, not once per period — see `processCounted`.
+        if (processCounted[artifact][processId]) revert AlreadyCounted();
 
+        // The pair cap stays PER PERIOD: its job is bounding repeat trade inside
+        // one reward window. Global, it would permanently freeze out a genuine
+        // repeat relationship over the schedule's nine years; per period, every
+        // period still demands new real trade to earn.
         bytes32 pairKey = keccak256(abi.encodePacked(buyer, seller));
         uint8 seen = pairCount[artifact][period][pairKey];
         if (seen >= PAIR_CAP) revert PairCapReached();
 
-        processCounted[artifact][period][processId] = true;
+        processCounted[artifact][processId] = true;
         pairCount[artifact][period][pairKey] = seen + 1;
 
         Accrual storage a = accrualOf[artifact][period];

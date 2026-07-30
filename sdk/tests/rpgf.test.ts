@@ -101,7 +101,7 @@ function record(
 }
 
 describe("computeUsageAccruals", () => {
-    it("counts distinct processes and distinct pairs per artifact per period", () => {
+    it("counts distinct processes and distinct pairs per artifact, bucketed by period", () => {
         const p1 = pair("buyer1", "seller1");
         const p2 = pair("buyer2", "seller1");
         const accruals = computeUsageAccruals([
@@ -115,11 +115,33 @@ describe("computeUsageAccruals", () => {
         expect(period.totalScore).toBe(usageScore(2n, 2n) + usageScore(1n, 1n));
     });
 
-    it("is idempotent per (artifact, period, process) — a replay adds nothing", () => {
+    it("is idempotent per (artifact, process) — a replay adds nothing", () => {
         const p1 = pair("buyer1", "seller1");
         const once = computeUsageAccruals([record(CLAUSE_A, "p1", p1)]);
         const twice = computeUsageAccruals([record(CLAUSE_A, "p1", p1), record(CLAUSE_A, "p1", p1)]);
         expect(twice.get(0)!.byArtifact.get(CLAUSE_A)).toEqual(once.get(0)!.byArtifact.get(CLAUSE_A));
+    });
+
+    it("counts a process ONCE EVER — re-recording it in a later period adds nothing", () => {
+        // Global idempotence (ruled 2026-07-30): a resolved order stays resolved
+        // and its struct is public, so a per-period key would let the same trade
+        // be re-presented every period — paying for recording gas, not adoption.
+        const p1 = pair("buyer1", "seller1");
+        const accruals = computeUsageAccruals([
+            record(CLAUSE_A, "px-0", p1, { period: 0 }),
+            record(CLAUSE_A, "px-0", p1, { period: 1 }),
+        ]);
+        expect(accruals.get(0)!.byArtifact.get(CLAUSE_A)).toMatchObject({ c: 1n, d: 1n });
+        expect(accruals.get(1)?.byArtifact.get(CLAUSE_A)).toBeUndefined();
+    });
+
+    it("a later period counts only trade that is NEW to it", () => {
+        const accruals = computeUsageAccruals([
+            record(CLAUSE_A, "py-old", pair("buyer1", "seller1"), { period: 0 }),
+            record(CLAUSE_A, "py-old", pair("buyer1", "seller1"), { period: 1 }),
+            record(CLAUSE_A, "py-new", pair("buyer2", "seller2"), { period: 1 }),
+        ]);
+        expect(accruals.get(1)!.byArtifact.get(CLAUSE_A)).toMatchObject({ c: 1n, d: 1n });
     });
 
     it("drops a process entirely once its pair hits PAIR_CAP", () => {

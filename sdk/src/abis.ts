@@ -275,7 +275,7 @@ export const USAGE_COUNTER_ABI = parseAbi([
     // ── Accrual ─────────────────────────────────────────────────────
     "function accrualOf(bytes32 artifact, uint8 period) view returns (uint64 c, uint64 d, uint256 score)",
     "function totalScoreIn(uint8 period) view returns (uint256)",
-    "function processCounted(bytes32 artifact, uint8 period, bytes32 processId) view returns (bool)",
+    "function processCounted(bytes32 artifact, bytes32 processId) view returns (bool)",
     "function pairCount(bytes32 artifact, uint8 period, bytes32 pairKey) view returns (uint8)",
     "function icbrt(uint256 n) pure returns (uint256)",
 
