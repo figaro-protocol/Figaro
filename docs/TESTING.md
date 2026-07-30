@@ -51,11 +51,24 @@ canonical Permit2 deployment and that a substituted swap route is rejected by re
 Permit2's own signature check — the one claim the mocked suite proves only against
 our own digest reconstruction (`MockWitnessPermit2`).
 
-## Halmos (`test/`) — 1 harness, 7 properties
+## Halmos (`test/`) — 2 harnesses, 14 properties
 
 | Harness | Properties | Key invariants |
 |---|---|---|
 | `HalmosFigaroCore.t.sol` | 7 | Token conservation, bond amounts, resolution payouts, status transitions, buyer dominance, monotonicity |
+| `HalmosMembersRegistry.t.sol` | 7 | The stake mechanics the RPGF Sybil bound assumes: solvency, no deposit recycling, de-surfacing at request, the counter reads that gate |
+
+Run with `scripts/test-halmos.sh` (three passes). **Halmos does not model
+`expectRevert`** — assert on a low-level call's own success flag instead. It
+also needs the compiler AST, so a build made without it silently yields "no
+tests found"; the runner's `forge build --ast` handles that, but a manual
+`forge build` in between will overwrite the artifact and reproduce it.
+
+**A passing symbolic property can still be vacuous.** The two anti-recycling
+properties are mutation-checked: a deliberate recycling bug in
+`MembersRegistry.register` makes both produce counterexamples. Do the same for
+any new property whose failure mode matters — "it proved" is not evidence that
+it *could* fail.
 
 ## Certora (`certora/`) — 5 specs
 

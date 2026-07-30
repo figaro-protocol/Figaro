@@ -73,7 +73,7 @@ CORE_ARGS=(
 
 # ── Pass 1: six fast properties, batched ───────────────────────────────────
 
-echo "▶ Pass 1/2 — 6 batched FigaroCore properties (fast)"
+echo "▶ Pass 1/3 — 6 batched FigaroCore properties (fast)"
 echo ""
 
 FOUNDRY_PROFILE=halmos halmos \
@@ -82,7 +82,7 @@ FOUNDRY_PROFILE=halmos halmos \
     "$@"
 
 echo ""
-echo "▶ Pass 2/2 — check_resolutionPayouts (run in isolation)"
+echo "▶ Pass 2/3 — check_resolutionPayouts (run in isolation)"
 echo ""
 
 # ── Pass 2: the one heavy property, in a fresh halmos process ──────────────
@@ -93,4 +93,23 @@ FOUNDRY_PROFILE=halmos halmos \
     "$@"
 
 echo ""
-echo "✅ All 7 Halmos properties proved (FigaroCore)."
+echo "▶ Pass 3/3 — MembersRegistry: the state machine the RPGF Sybil bound rests on"
+echo ""
+
+# ── Pass 3: the stake mechanics the economic bound assumes ────────────────
+#
+# The Sybil price `deposit · N · T / P` is a PAPER claim. These prove it is a
+# claim about THIS contract: solvency (the deposit is a stake, not a fee),
+# no deposit recycling (or the `N` term vanishes), de-surfacing at request
+# time (or the `T` term does), and that the counter reads exactly that gate
+# (an unread gate prices nothing). What they do NOT prove is that the deposit
+# is big enough — that stays paper work.
+
+FOUNDRY_PROFILE=halmos halmos \
+    --contract HalmosMembersRegistry \
+    --solver z3 \
+    --solver-timeout-assertion "$HALMOS_SOLVER_TIMEOUT_MS" \
+    "$@"
+
+echo ""
+echo "✅ All 14 Halmos properties proved (7 FigaroCore + 7 MembersRegistry)."
