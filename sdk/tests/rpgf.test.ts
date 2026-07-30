@@ -27,14 +27,20 @@ describe("icbrt", () => {
         expect(icbrt(big * big * big - 1n)).toBe(big - 1n);
     });
 
-    it("agrees with UsageCounter.icbrt's binary search at its overflow guard", () => {
-        // The Solidity side clamps candidates at 2642245 (the largest x whose
-        // cube fits a uint256). At and around that bound the two must agree.
-        const bound = 2642245n;
+    it("agrees with UsageCounter.icbrt at its uint256 search ceiling", () => {
+        // The Solidity side clamps its search ceiling at floor(cbrt(2^256-1)) —
+        // the largest x whose cube fits a uint256. At and around that bound the
+        // two must agree. (A prior revision clamped at floor(cbrt(2^64-1)) =
+        // 2642245, which saturated every score above c * d^2 >= 19; these cases
+        // are the regression.)
+        const bound = 48740834812604276470692694n;
         expect(icbrt(bound * bound * bound)).toBe(bound);
         expect(icbrt(bound * bound * bound - 1n)).toBe(bound - 1n);
-        // The counter's own inputs are c * d^2 * 1e18 — well inside the bound
-        // for any realistic accrual, and exact for a perfect cube.
+        const oldWrongBound = 2642245n;
+        expect(icbrt(oldWrongBound ** 3n + 1n)).toBe(oldWrongBound);
+        expect(icbrt(20n * RPGF_SCORE_SCALE)).toBe(2714417n); // c=5, d=2
+        expect(icbrt(10000n * RPGF_SCORE_SCALE)).toBe(21544346n); // c=100, d=10
+        // The counter's own inputs are c * d^2 * 1e18 — exact for a perfect cube.
         expect(icbrt(8n * RPGF_SCORE_SCALE)).toBe(2n * 10n ** 6n);
     });
 });

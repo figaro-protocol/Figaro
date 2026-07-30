@@ -370,16 +370,28 @@ contract UsageCounter {
         return icbrt(uint256(c) * uint256(d) * uint256(d) * 1e18);
     }
 
+    /// @notice The largest x whose cube fits a uint256 — the search ceiling, so
+    ///         `mid * mid * mid` below can never overflow.
+    /// @dev    floor(cbrt(2^256 - 1)). An earlier revision guarded the cube with
+    ///         floor(cbrt(2^64 - 1)) = 2642245 instead, which SATURATED every
+    ///         score above `c * d^2 >= 19` at that constant and collapsed the
+    ///         pro-rata split toward equal shares. The bound belongs to the type
+    ///         the arithmetic is done in.
+    uint256 internal constant CUBE_MAX = 48740834812604276470692694;
+
     /// @notice Floor integer cube root. Mirrors the SDK's `icbrt` so the on-chain
     ///         score and any off-chain recompute agree exactly.
     function icbrt(uint256 n) public pure returns (uint256) {
         if (n < 8) return n > 0 ? 1 : 0;
         uint256 lo = 1;
-        uint256 hi = n;
-        // Binary search the largest x with x^3 <= n, guarding the cube overflow.
+        // Clamping the CEILING (rather than rejecting candidates inside the loop)
+        // is what keeps the cube in range: every `mid` considered is <= CUBE_MAX.
+        // It also keeps `lo + hi + 1` from overflowing when `n` is near 2^256.
+        uint256 hi = n < CUBE_MAX ? n : CUBE_MAX;
+        // Binary search the largest x with x^3 <= n.
         while (lo < hi) {
             uint256 mid = (lo + hi + 1) >> 1;
-            if (mid <= 2642245 && mid * mid * mid <= n) {
+            if (mid * mid * mid <= n) {
                 lo = mid;
             } else {
                 hi = mid - 1;

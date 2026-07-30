@@ -399,12 +399,49 @@ contract UsageCounterTest is Test {
         assertEq(counter.icbrt(26), 2);
         assertEq(counter.icbrt(27), 3);
         assertEq(counter.icbrt(1e18), 1e6);
+        // The ceiling itself, and the value one past it: a wrong bound here is
+        // what saturated every real score. floor(cbrt(2^256-1)).
+        assertEq(counter.icbrt(type(uint256).max), 48740834812604276470692694);
     }
 
-    function testFuzz_icbrtIsFloorCubeRoot(uint64 n) public view {
+    /// The defining property, over the WHOLE uint256 domain the function accepts.
+    /// An earlier version of this test fuzzed `uint64 n` only — inside uint64 the
+    /// old (wrong) uint64-sized cube guard is coincidentally exact, so the bug it
+    /// was meant to catch was invisible to it. Never bound a fuzz domain to less
+    /// than the function's own.
+    function testFuzz_icbrtIsFloorCubeRoot(uint256 n) public view {
         uint256 root = counter.icbrt(n);
-        assertLe(root * root * root, uint256(n));
-        assertGt((root + 1) * (root + 1) * (root + 1), uint256(n));
+        assertLe(root * root * root, n);
+        // Only assert the upper side while (root+1)^3 is still representable.
+        if (root + 1 <= 48740834812604276470692694) {
+            assertGt((root + 1) * (root + 1) * (root + 1), n);
+        }
+    }
+
+    /// `_score(c, d)` as the contract computes it — the scoring input, spelled out
+    /// here rather than exposed as production surface for a test's convenience.
+    function _score(uint64 c, uint64 d) internal view returns (uint256) {
+        if (c == 0 || d == 0) return 0;
+        return counter.icbrt(uint256(c) * uint256(d) * uint256(d) * 1e18);
+    }
+
+    /// Real usage must not saturate: the score has to keep separating artifacts
+    /// far beyond `c * d^2 = 19`, where the old bound flattened everything to
+    /// 2642245 and turned the pro-rata split into an equal split.
+    function test_scoreDoesNotSaturateAtRealUsage() public view {
+        assertEq(_score(4, 2), 2519842);
+        assertEq(_score(5, 2), 2714417);
+        assertEq(_score(100, 10), 21544346);
+        assertEq(_score(1000, 50), 135720880);
+        assertEq(_score(10000, 1000), 2154434690);
+    }
+
+    /// Strict separation: a thousandfold difference in real usage must show up in
+    /// the score, or pro rata pays adoption and farming the same.
+    function testFuzz_scoreSeparatesRealUsage(uint32 c, uint32 d) public view {
+        vm.assume(c > 0 && d > 0);
+        assertGe(_score(uint64(c) + 1, d), _score(c, d));
+        assertGt(_score(uint64(c) * 1000 + 1, d), _score(c, d));
     }
 
     function test_totalScoreIsTheSumOfArtifactScores() public {

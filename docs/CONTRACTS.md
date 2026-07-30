@@ -275,9 +275,18 @@ no snapshots, no checkpoint arrays, no history walk. Periods are generic: this c
 knows nothing about tranches, rewards, or who pays. A running `totalScoreIn(period)` is
 maintained as an O(1) delta on every record.
 
+`icbrt` binary-searches the floor cube root with its ceiling clamped to
+`CUBE_MAX = floor(cbrt(2^256-1))`, so the cube cannot overflow. **The bound belongs to the
+type the arithmetic is done in:** until 2026-07-30 it was `floor(cbrt(2^64-1)) = 2642245`,
+which SATURATED every score above `c·d² ≥ 19` at that constant — flattening real usage and
+collapsing the pro-rata split toward equal shares. The fuzz test that should have caught it
+sampled `uint64` only, the one domain where the wrong bound is coincidentally exact; it now
+fuzzes the whole `uint256` domain, and the fix was corroborated against solady's audited
+`FixedPointMathLib.cbrt` over 512 runs.
+
 No owner, no admin, no pause; records are idempotent per (artifact, period, process).
-Foundry tests in `test/protocol/usage/UsageCounterTest.t.sol` (22, incl. a fuzzed
-`icbrt` floor-cube-root property).
+Foundry tests in `test/protocol/usage/UsageCounterTest.t.sol` (27, incl. the fuzzed
+`icbrt` floor-cube-root property over all of `uint256`, and a no-saturation regression).
 
 ## The florin (`src/florin/`)
 

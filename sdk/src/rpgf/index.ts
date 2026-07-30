@@ -37,9 +37,13 @@ export const RPGF_TRANCHE_COUNT: number = formula.parameters.trancheCount;
 // ── Integer math ─────────────────────────────────────────────────────
 
 /** Floor cube root over non-negative bigints (binary search). Mirrors
- *  `UsageCounter.icbrt` exactly — the Solidity side guards the cube against
- *  uint256 overflow, which arbitrary-precision bigints cannot hit, so the two
- *  agree for every input the chain can represent. */
+ *  `UsageCounter.icbrt` exactly. The Solidity side clamps its search ceiling to
+ *  floor(cbrt(2^256 - 1)) so its cube cannot overflow; bigints have no such
+ *  limit, so the two agree for every input the chain can represent. (Until
+ *  2026-07-30 the Solidity ceiling was floor(cbrt(2^64 - 1)) and the two
+ *  DISAGREED for every score above `c * d^2 >= 19` — the on-chain value
+ *  saturated. If you are changing either side, the invariant is that both are
+ *  the true floor cube root; test the property, never a bounded domain.) */
 export function icbrt(n: bigint): bigint {
     if (n < 0n) throw new Error("icbrt: negative input");
     if (n < 8n) return n > 0n ? 1n : 0n;
