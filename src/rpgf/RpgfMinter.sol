@@ -95,6 +95,7 @@ contract RpgfMinter {
     error TrancheStillAccruing(uint8 trancheId);
     error AlreadyClaimed(uint8 trancheId, address account);
     error NoArtifacts();
+    error DuplicateArtifact(bytes32 artifact);
     error NotAuthorOfRecord(bytes32 artifact, address caller);
     error NothingToClaim();
     error TrancheBudgetExceeded(uint8 trancheId);
@@ -166,12 +167,21 @@ contract RpgfMinter {
     // ── Internals ───────────────────────────────────────────────────
 
     /// @dev Sum the caller's artifacts' scores for the period and take the
-    ///      pro-rata share of the tranche. A repeated artifact in the list cannot
-    ///      inflate the result — each is verified to the caller and scores are
-    ///      read from the counter — and the period's total-score denominator
-    ///      makes aggregate over-allocation impossible. UNIFORM pro rata: no
-    ///      per-wallet cap. The reward tracks real usage directly, and the fixed
-    ///      600M pool is one a farmer DILUTES, never inflates.
+    ///      pro-rata share of the tranche. UNIFORM pro rata: no per-wallet cap.
+    ///      The reward tracks real usage directly, and the fixed 600M pool is one
+    ///      a farmer DILUTES, never inflates.
+    ///
+    ///      THE LIST MUST BE DUPLICATE-FREE, and that is enforced here rather
+    ///      than assumed. Until 2026-07-30 this loop summed each entry as given
+    ///      and then CLAMPED `score` to `total` — so an author of record for any
+    ///      artifact with a non-zero score could repeat it until the sum reached
+    ///      the period total and mint the ENTIRE tranche, leaving every other
+    ///      author to revert on `TrancheBudgetExceeded`. The clamp is what made
+    ///      it maximal: it silently rounded a malformed claim UP to the whole
+    ///      pool instead of letting the budget backstop reject it. Both are gone
+    ///      — duplicates revert, and with distinct artifacts `score <= total`
+    ///      holds structurally (`totalScoreIn` is the sum over ALL artifacts, of
+    ///      which the caller's are a subset), so there is nothing left to clamp.
     function _entitlement(uint8 trancheId, address account, bytes32[] calldata artifacts)
         internal
         view
@@ -182,12 +192,14 @@ contract RpgfMinter {
 
         for (uint256 i = 0; i < artifacts.length; ++i) {
             bytes32 artifact = artifacts[i];
+            for (uint256 j = 0; j < i; ++j) {
+                if (artifacts[j] == artifact) revert DuplicateArtifact(artifact);
+            }
             if (!_isAuthor(artifact, account)) revert NotAuthorOfRecord(artifact, account);
             (,, uint256 s) = counter.accrualOf(artifact, trancheId);
             score += s;
         }
         if (score == 0) return (0, 0);
-        if (score > total) score = total;
 
         amount = (trancheAmount[trancheId] * score) / total;
     }

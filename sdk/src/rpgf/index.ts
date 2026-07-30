@@ -177,9 +177,15 @@ export function computeRpgfAllocations(
         walletScores.set(key, (walletScores.get(key) ?? 0n) + accrual.score);
     }
 
+    // No clamp to `totalScore`: scores are summed per author over DISTINCT
+    // artifacts (`byArtifact` is keyed by artifact), so `score <= totalScore`
+    // holds structurally. The chain dropped its equivalent clamp on 2026-07-30 —
+    // there it was reachable via a duplicate-stuffed artifact list, and clamping
+    // silently rounded such a claim UP to the entire tranche instead of
+    // rejecting it. Mirror the contract: nothing to clamp, and a violation
+    // should surface, not be smoothed over.
     const allocations: RpgfAllocation[] = [];
-    for (const [account, raw] of walletScores) {
-        const score = raw > period.totalScore ? period.totalScore : raw;
+    for (const [account, score] of walletScores) {
         const amount = (trancheAmount * score) / period.totalScore;
         if (amount === 0n) continue;
         allocations.push({ account, amount, score });

@@ -327,6 +327,16 @@ The **600M retroactive distribution** — three declining tranches (300M / 200M 
 
 **There is nothing to post, nothing to bond, and nothing to dispute.** `UsageCounter` (above) records verified usage as it happens, so a tranche is arithmetic over numbers that are already final. Tranche `i` pays for accrual period `i` — the counter's periods and these tranches are ONE schedule, configured consistently at deploy — and `claim` requires `counter.periodClosed(trancheId)`, which is why no snapshot, checkpoint array, or history walk is needed.
 
+**The caller's list must be duplicate-free** — a repeat reverts `DuplicateArtifact`. Until
+2026-07-30 duplicates were summed and the sum then CLAMPED to the period total, so an author
+of record for ANY artifact with a non-zero score could repeat it until the sum reached the
+denominator and mint the entire tranche, leaving every other author to revert on
+`TrancheBudgetExceeded`; the clamp was what made it maximal, silently rounding a malformed
+claim up to the whole pool rather than letting the budget backstop reject it. Both are gone —
+with distinct artifacts `score ≤ total` holds structurally, so there is nothing to clamp.
+(The test that was supposed to cover this passed a SOLE artifact, where taking 100% is the
+correct answer either way — a case that cannot distinguish inflation from correctness.)
+
 Each artifact in the caller's list is verified against its own registry **with a live stake** — `ClauseRegistry.depositOf` (registrar == caller AND `withdrawn == false`) for a clause, `AssemblyRegistry.bindings` (author == caller AND `depositWithdrawn == false`) for an assembly — so the list is a lookup key, never a claim of ownership (the families are parallel; both anchors are consulted because neither knows the other exists). This `!withdrawn` requirement is the **author-side** half of the two-sided live-ETH-stake gate (its seller-side half is `UsageCounter`'s stake check above): you earn RPGF only while your artifact's stake stays live. Payout is **UNIFORM pro rata with no cap** — `trancheAmount · score / total`, straight; the fixed 600M pool is one a farmer dilutes, never inflates (the old 15% cap was arbitrary and is deleted).
 
 No owner, no pause, no sweep, no claim expiry — a closed period's arithmetic is stable forever. The budget is enforced twice: `minted` per tranche here, and the outer FlorinToken minter cap (600M registered at genesis before `renounceDeployerMint`, which is why this contract must exist at florin genesis). Foundry: `test/rpgf/RpgfMinterTest.t.sol` + `test/rpgf/RpgfIntegrationTest.t.sol` (no stubs — real process → real counter → real mint).

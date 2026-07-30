@@ -210,18 +210,58 @@ contract RpgfMinterTest is Test {
     }
 
     function test_duplicateArtifactCannotInflateTheShare() public {
-        // Passing an artifact repeatedly cannot inflate the score past the
-        // period total (`score > total` clamps to `total`), so a sole recipient
-        // still takes exactly the tranche, never more.
+        // The case that DISTINGUISHES inflation from correctness: alice owns a
+        // 100/1000 minority of the period, so her honest share is a tenth. A
+        // sole-artifact setup cannot detect this — there, 100% is the correct
+        // answer either way, which is why the earlier version of this test
+        // passed against a contract that let her take everything.
         counter.setScore(A_KEY, 0, 100);
+        counter.setScore(B_KEY, 0, 900);
         counter.setClosed(0, true);
-        bytes32[] memory dupes = new bytes32[](3);
+
+        bytes32[] memory dupes = new bytes32[](10);
+        for (uint256 i = 0; i < 10; ++i) {
+            dupes[i] = A_KEY;
+        }
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.DuplicateArtifact.selector, A_KEY));
+        minter.claim(0, dupes);
+
+        // And the honest claim still pays exactly the minority share.
+        vm.prank(alice);
+        minter.claim(0, _one(A_KEY));
+        assertEq(florin.balanceOf(alice), (T0 * 100) / 1000);
+    }
+
+    /// `claimable` must refuse the same malformed list the state-changing path
+    /// refuses — a view that answered "the whole tranche" would be a quoting bug
+    /// even with `claim` safe.
+    function test_claimableRejectsDuplicatesToo() public {
+        counter.setScore(A_KEY, 0, 100);
+        counter.setScore(B_KEY, 0, 900);
+        counter.setClosed(0, true);
+        bytes32[] memory dupes = new bytes32[](2);
         dupes[0] = A_KEY;
         dupes[1] = A_KEY;
-        dupes[2] = A_KEY;
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.DuplicateArtifact.selector, A_KEY));
+        minter.claimable(0, alice, dupes);
+    }
+
+    /// Bob's entitlement must survive alice claiming first — the budget is not
+    /// a race that a malformed claim can win.
+    function test_oneAuthorCannotStarveAnother() public {
+        counter.setScore(A_KEY, 0, 100);
+        counter.setScore(B_KEY, 0, 900);
+        counter.setClosed(0, true);
+
         vm.prank(alice);
-        minter.claim(0, dupes);
-        assertEq(florin.balanceOf(alice), T0);
+        minter.claim(0, _one(A_KEY));
+        vm.prank(bob);
+        minter.claim(0, _one(B_KEY));
+
+        assertEq(florin.balanceOf(alice), (T0 * 100) / 1000);
+        assertEq(florin.balanceOf(bob), (T0 * 900) / 1000);
     }
 
     // ── Nothing to claim ────────────────────────────────────────────
