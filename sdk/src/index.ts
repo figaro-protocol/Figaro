@@ -298,7 +298,6 @@ export {
     usageScore,
     icbrt,
     RPGF_FORMULA,
-    RPGF_PAIR_CAP,
     RPGF_SCORE_SCALE,
     RPGF_TRANCHE_COUNT,
 } from "./rpgf/index.js";

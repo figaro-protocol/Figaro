@@ -196,20 +196,17 @@ test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => 
         }));
 
         // 6. Record the usage. Permissionless — the proof is what is trusted,
-        //    never the caller — and idempotent per (artifact, period, process).
-        //    A repeat run past PAIR_CAP for this buyer/seller pair reverts by
-        //    design; the accrual from earlier runs still stands, which is what
-        //    the UI assertion below reads.
-        try {
-            await receipt(await buyerWallet.writeContract({
-                address: counter, abi: USAGE_COUNTER_ABI, functionName: 'recordUsage',
-                args: [commitment, artifact, sectionHash, proof],
-            }));
-        } catch (e) {
-            // PairCapReached — breadth has to be real, so the same two wallets
-            // stop contributing after five processes in a period.
-            expect(String(e), 'the only tolerated refusal is the pair cap').toContain('PairCapReached');
-        }
+        //    never the caller — and idempotent per (artifact, process), once
+        //    ever. The salt is fresh per run (`generateSalt()`), so this is a new
+        //    process and the record must SUCCEED; a repeat of the same process
+        //    would be the only by-design refusal. (The per-pair cap that used to
+        //    be tolerated here was deleted 2026-07-30 — repeat trade is now
+        //    discounted by the exponent, never refused, so a run that keeps
+        //    trading between the same two wallets simply keeps accruing.)
+        await receipt(await buyerWallet.writeContract({
+            address: counter, abi: USAGE_COUNTER_ABI, functionName: 'recordUsage',
+            args: [commitment, artifact, sectionHash, proof],
+        }));
 
         const [c, d, score] = (await publicClient.readContract({
             address: counter, abi: USAGE_COUNTER_ABI, functionName: 'accrualOf', args: [artifact, period],

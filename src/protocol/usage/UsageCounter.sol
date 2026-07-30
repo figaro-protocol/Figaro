@@ -64,8 +64,9 @@ contract UsageCounter {
     /// @notice SellerRegistry — the seller-side eligibility gate. A settled
     ///         process's usage counts toward the reward only while its
     ///         seller-of-record holds a LIVE ETH stake here (registered and
-    ///         un-withdrawn), so fabricating breadth costs one base-currency
-    ///         stake per Sybil seller. The reward itself is UNIFORM — no tag, no
+    ///         un-withdrawn), which prices the seller IDENTITY. It does not price
+    ///         breadth on its own: `d` counts (buyer, seller) pairs and buyers are
+    ///         ungated by design. The reward itself is UNIFORM — no tag, no
     ///         category, no weight: every artifact's score is its real usage
     ///         alone (`icbrt(c·d²·1e18)`), and the network's own growth, not a
     ///         privileged class, is what the 600M pays for.
@@ -105,15 +106,6 @@ contract UsageCounter {
     ///         in the first period whose end is still in the future; after the
     ///         last one, accrual is closed forever.
     uint64[] public periodEnd;
-
-    /// @notice One (buyer, seller) pair contributes at most this many processes
-    ///         to a single artifact in a period. Beyond it the process is
-    ///         dropped entirely — it feeds neither `c` nor `d`. This is what
-    ///         stops an artifact being farmed by repeat trade between two
-    ///         wallets; breadth has to be real. (Orthogonal to the seller-stake
-    ///         gate: the cap bounds repeat trade within a live pair, the stake
-    ///         gate prices fabricating NEW pairs.)
-    uint8 public constant PAIR_CAP = 5;
 
     // ── Accrual ─────────────────────────────────────────────────────
 
@@ -155,8 +147,23 @@ contract UsageCounter {
     ///         300M/200M/100M schedule already assumes.
     mapping(bytes32 => mapping(bytes32 => bool)) public processCounted;
 
-    /// @dev artifact → period → pairKey → processes counted so far (the cap).
-    mapping(bytes32 => mapping(uint8 => mapping(bytes32 => uint8))) public pairCount;
+    /// @notice artifact → period → pairKey → has this pair already contributed to
+    ///         `d` in this period. Its only job is the distinct-pair count.
+    /// @dev    This was a counter enforcing a per-pair cap of 5 processes, deleted
+    ///         2026-07-30. The cap was introduced as a farming defense and does not
+    ///         work as one: an attacker maximising score per unit cost always
+    ///         chooses ONE trade per fabricated pair (score per cost falls as
+    ///         `t^(-2/3)` in trades-per-pair `t`), so the cap sat at 5 and never
+    ///         bound. What it did bind was honest repeat trade. The `c^(1/3)`
+    ///         exponent already discounts repetition smoothly and far more
+    ///         steeply than the cliff did — a million trades between one pair
+    ///         score the same as a hundred distinct pairs trading once, at ten
+    ///         thousand times the cost — so the cap was redundant where it was
+    ///         real and ineffective where it was claimed. Sybil resistance comes
+    ///         from the cost of an identity (the registries' stakes), never from
+    ///         the shape of the score: no scoring function can separate a
+    ///         fabricated pair from a genuine one.
+    mapping(bytes32 => mapping(uint8 => mapping(bytes32 => bool))) public pairSeen;
 
     // ── Events ──────────────────────────────────────────────────────
 
@@ -186,7 +193,6 @@ contract UsageCounter {
     error UnknownOrder();
     error OrderNotResolved();
     error AlreadyCounted();
-    error PairCapReached();
     error InvalidInclusionProof();
     error ArtifactExcluded(bytes32 artifact);
     error SellerNotStaked(address seller);
@@ -334,37 +340,38 @@ contract UsageCounter {
     }
 
     /// @dev The counting itself, shared by both routes. Idempotent per (artifact,
-    ///      process) — once ever, whatever the period; the pair cap (per period)
-    ///      drops a process entirely once reached, so it feeds neither `c` nor `d`.
+    ///      process) — once ever, whatever the period. Every admitted process
+    ///      feeds `c`; the first from each pair in the period also feeds `d`.
     function _accrue(bytes32 artifact, uint8 period, bytes32 processId, address buyer, address seller) internal {
         // An excluded artifact — a mandatory clause on every order, or the
         // provenance clause on every assembly-composed process — is protocol
         // floor; counting it would pay for the floor rather than for adoption.
         if (excludedArtifact[artifact]) revert ArtifactExcluded(artifact);
         // SELLER-SIDE GATE: usage counts only if the process's seller-of-record
-        // holds a LIVE SellerRegistry stake. This is the breadth Sybil defense —
-        // fabricating `d` distinct pairs now costs one base-currency (ETH) stake
-        // per fake seller. Withdrawing the stake de-surfaces the seller AND stops
-        // its future trades conferring reward.
+        // holds a LIVE SellerRegistry stake. Withdrawing de-surfaces the seller
+        // AND stops its future trades conferring reward. Scope it honestly: this
+        // prices the SELLER identity, not breadth itself — `d` counts (buyer,
+        // seller) pairs and the buyer side is ungated by design, so a pair can
+        // still be fabricated for gas. Identity cost is the only place Sybil
+        // resistance can live (no scoring shape can separate a fabricated pair
+        // from a genuine one), which is why it is the registries' stake terms
+        // that carry it.
         if (!sellers.registered(seller)) revert SellerNotStaked(seller);
         // Once ever, not once per period — see `processCounted`.
         if (processCounted[artifact][processId]) revert AlreadyCounted();
 
-        // The pair cap stays PER PERIOD: its job is bounding repeat trade inside
-        // one reward window. Global, it would permanently freeze out a genuine
-        // repeat relationship over the schedule's nine years; per period, every
-        // period still demands new real trade to earn.
+        // Breadth is counted PER PERIOD: a pair that trades again in a later
+        // period is new breadth for that period's tally.
         bytes32 pairKey = keccak256(abi.encodePacked(buyer, seller));
-        uint8 seen = pairCount[artifact][period][pairKey];
-        if (seen >= PAIR_CAP) revert PairCapReached();
+        bool firstFromPair = !pairSeen[artifact][period][pairKey];
 
         processCounted[artifact][processId] = true;
-        pairCount[artifact][period][pairKey] = seen + 1;
+        if (firstFromPair) pairSeen[artifact][period][pairKey] = true;
 
         Accrual storage a = accrualOf[artifact][period];
         unchecked {
             a.c += 1;
-            if (seen == 0) a.d += 1; // first process from this pair
+            if (firstFromPair) a.d += 1;
         }
 
         uint256 previous = a.score;

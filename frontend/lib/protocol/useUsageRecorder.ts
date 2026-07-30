@@ -10,7 +10,7 @@
  * against the signed agreementHash), so nothing about the caller is trusted.
  * The resolve capability fires these right after settlement — count usage
  * when it happens (ruled 2026-07-28). Best-effort by contract design: a
- * revert (AlreadyCounted, PairCapReached) is bookkeeping, not failure —
+ * revert (AlreadyCounted) is bookkeeping, not failure —
  * callers catch and move on, and anyone can redo a missed record.
  */
 

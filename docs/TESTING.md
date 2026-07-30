@@ -14,18 +14,17 @@ not by this paragraph. Current: `FigaroCoreTest`, `FigaroCoreRevertBranchTest`,
 `TreasuryProcurementTest`, `MockDisperseTest`, `ReentrancyAdversarialTest`,
 `Eip712ParityTest`, `HalmosFigaroCore`, `FlorinToken.t.sol`.
 
-`UsageCounterTest` (25) covers the reward-accrual counter: the RESOLVED-order gate, merkle
+`UsageCounterTest` (28) covers the reward-accrual counter: the RESOLVED-order gate, merkle
 inclusion against the signed `agreementHash`, per-(artifact, process) GLOBAL idempotence (a
 process counts once ever — re-recording it in a later period reverts, and a later period
-counts only trade new to it), the
-pair cap of 5, the **live-seller-stake gate** (`SellerNotStaked` when the seller-of-record is
+counts only trade new to it), the **live-seller-stake gate** (`SellerNotStaked` when the seller-of-record is
 not registered; a withdrawn seller stops counting), **uniform scoring across artifacts** (no
 category, tag, or weight), period boundaries and `periodClosed`, `totalScoreIn` delta
 maintenance, and a fuzzed floor-cube-root property on `icbrt` **over the whole `uint256`
 domain** plus a no-saturation regression (the earlier version of that fuzz sampled `uint64`
 only — the one domain where a wrong cube bound was coincidentally exact, which is how the
 score-saturation bug survived; never bound a fuzz domain to less than the function's own).
-`RpgfMinterTest` (17) exercises
+`RpgfMinterTest` (19) exercises
 the payout maths against a counter stub — uniform pro-rata share (**no per-wallet cap**: a
 dominant wallet takes its full pro-rata share), a withdrawn author forfeiting the reward,
 author-of-record verification against both registries, the closed-period requirement, and the

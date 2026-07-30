@@ -5,7 +5,6 @@ import {
     computeUsageAccruals,
     icbrt,
     usageScore,
-    RPGF_PAIR_CAP,
     RPGF_SCORE_SCALE,
     type UsagePeriodAccrual,
     type UsageRecord,
@@ -144,32 +143,32 @@ describe("computeUsageAccruals", () => {
         expect(accruals.get(1)!.byArtifact.get(CLAUSE_A)).toMatchObject({ c: 1n, d: 1n });
     });
 
-    it("drops a process entirely once its pair hits PAIR_CAP", () => {
+    it("counts every repeat process into c, but a pair is one unit of d", () => {
+        // The per-pair cap of 5 was deleted 2026-07-30: it never bound for an
+        // attacker optimising score per unit cost, and only bound honest repeat
+        // trade. Repetition is discounted by the exponent instead of refused.
         const repeat = pair("buyer1", "seller1");
-        const capped = computeUsageAccruals(
-            Array.from({ length: RPGF_PAIR_CAP + 3 }, (_, i) => record(CLAUSE_A, `pc-${i}`, repeat)),
+        const accruals = computeUsageAccruals(
+            Array.from({ length: 8 }, (_, i) => record(CLAUSE_A, `pc-${i}`, repeat)),
         );
-        const five = computeUsageAccruals(
-            Array.from({ length: RPGF_PAIR_CAP }, (_, i) => record(CLAUSE_A, `pd-${i}`, repeat)),
-        );
-        // Beyond the cap the process feeds NEITHER c NOR d.
-        expect(capped.get(0)!.byArtifact.get(CLAUSE_A)).toEqual({
-            c: BigInt(RPGF_PAIR_CAP),
+        expect(accruals.get(0)!.byArtifact.get(CLAUSE_A)).toEqual({
+            c: 8n,
             d: 1n,
-            score: usageScore(BigInt(RPGF_PAIR_CAP), 1n),
+            score: usageScore(8n, 1n),
         });
-        expect(capped.get(0)!.totalScore).toBe(five.get(0)!.totalScore);
+        // ...and eight trades on ONE pair must score below eight distinct pairs.
+        expect(usageScore(8n, 1n)).toBeLessThan(usageScore(8n, 8n));
     });
 
-    it("caps per pair, not per artifact — a fresh pair keeps counting", () => {
+    it("counts breadth per artifact — a fresh pair adds a unit of d", () => {
         const repeat = pair("buyer1", "seller1");
         const fresh = pair("buyer9", "seller9");
         const accruals = computeUsageAccruals([
-            ...Array.from({ length: RPGF_PAIR_CAP + 2 }, (_, i) => record(CLAUSE_A, `pe-${i}`, repeat)),
+            ...Array.from({ length: 7 }, (_, i) => record(CLAUSE_A, `pe-${i}`, repeat)),
             record(CLAUSE_A, "pe-fresh", fresh),
         ]);
         expect(accruals.get(0)!.byArtifact.get(CLAUSE_A)).toMatchObject({
-            c: BigInt(RPGF_PAIR_CAP + 1),
+            c: 8n,
             d: 2n,
         });
     });
@@ -208,7 +207,7 @@ describe("computeUsageAccruals", () => {
 
     it("replays in (blockNumber, logIndex) order regardless of input order", () => {
         const repeat = pair("buyer1", "seller1");
-        const records = Array.from({ length: RPGF_PAIR_CAP + 2 }, (_, i) =>
+        const records = Array.from({ length: 7 }, (_, i) =>
             record(CLAUSE_A, `pi-${i}`, repeat, { blockNumber: BigInt(100 + i) }),
         );
         const forward = computeUsageAccruals(records).get(0)!;

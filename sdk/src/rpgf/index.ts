@@ -11,7 +11,7 @@
  * `UsageCounter.icbrt` value for value.
  *
  * Pipeline: `fetchUsageRecords` (UsageRecorded logs) → `computeUsageAccruals`
- * (pure: idempotence, pair cap, uniform score) → `computeRpgfAllocations`
+ * (pure: idempotence, uniform score) → `computeRpgfAllocations`
  * (pure: author-of-record aggregation, uniform pro-rata share — no cap).
  * The seller-side live-stake gate is applied ON CHAIN before a UsageRecorded
  * log exists, so replaying the emitted stream needs no stake check here.
@@ -27,8 +27,6 @@ import formula from "./formula.json" with { type: "json" };
 //    this module only executes what the spec declares. ─────────────────
 
 export const RPGF_FORMULA = formula;
-/** `UsageCounter.PAIR_CAP` — processes one (buyer, seller) pair contributes. */
-export const RPGF_PAIR_CAP: number = formula.parameters.pairCap;
 /** The fixed-point scale inside the cube root (10^18). */
 export const RPGF_SCORE_SCALE = BigInt(formula.parameters.scoreScale);
 /** `RpgfMinter.TRANCHE_COUNT` — tranche `i` pays for accrual period `i`. */
@@ -99,10 +97,12 @@ export interface UsagePeriodAccrual {
 
 /** Replay the counter's counting rules over a record stream: idempotence per
  *  (artifact, process) — GLOBAL, so a process counts once ever and a later
- *  period is never paid for an earlier period's trade — the pair cap PER PERIOD
- *  (a capped process is dropped entirely: it feeds neither `c` nor `d`), then
- *  the uniform score. Records are replayed in (blockNumber, logIndex) order,
- *  which is the order the chain applied them in. */
+ *  period is never paid for an earlier period's trade — then the distinct-pair
+ *  count PER PERIOD and the uniform score. (A per-pair cap of 5 was deleted
+ *  2026-07-30: it never bound for an attacker optimising score per unit cost,
+ *  who always trades once per fabricated pair, and the `c^(1/3)` exponent
+ *  already discounts repeat trade far more steeply.) Records are replayed in
+ *  (blockNumber, logIndex) order, the order the chain applied them in. */
 export function computeUsageAccruals(
     records: readonly UsageRecord[],
 ): Map<number, UsagePeriodAccrual> {
@@ -112,7 +112,7 @@ export function computeUsageAccruals(
 
     const periods = new Map<number, UsagePeriodAccrual>();
     const countedProcesses = new Map<Hex, Set<string>>(); // artifact → processIds (GLOBAL)
-    const pairCounts = new Map<string, Map<string, number>>(); // artifact|period → pairKey → n
+    const pairsSeen = new Map<string, Set<string>>(); // artifact|period → pairKeys
 
     for (const record of sorted) {
         const artifact = record.artifact.toLowerCase() as Hex;
@@ -120,20 +120,19 @@ export function computeUsageAccruals(
 
         const seenProcesses = countedProcesses.get(artifact) ?? new Set<string>();
         if (seenProcesses.has(record.processId.toLowerCase())) continue; // AlreadyCounted
-        const pairs = pairCounts.get(scopeKey) ?? new Map<string, number>();
+        const pairs = pairsSeen.get(scopeKey) ?? new Set<string>();
         const pairKey = record.pairKey.toLowerCase();
-        const seen = pairs.get(pairKey) ?? 0;
-        if (seen >= RPGF_PAIR_CAP) continue; // PairCapReached — dropped entirely
+        const firstFromPair = !pairs.has(pairKey);
 
         seenProcesses.add(record.processId.toLowerCase());
         countedProcesses.set(artifact, seenProcesses);
-        pairs.set(pairKey, seen + 1);
-        pairCounts.set(scopeKey, pairs);
+        pairs.add(pairKey);
+        pairsSeen.set(scopeKey, pairs);
 
         const period = periods.get(record.period) ?? { byArtifact: new Map<Hex, UsageAccrual>(), totalScore: 0n };
         const accrual = period.byArtifact.get(artifact) ?? { c: 0n, d: 0n, score: 0n };
         accrual.c += 1n;
-        if (seen === 0) accrual.d += 1n; // first process from this pair
+        if (firstFromPair) accrual.d += 1n;
         const updated = usageScore(accrual.c, accrual.d);
         period.totalScore = period.totalScore + updated - accrual.score;
         accrual.score = updated;

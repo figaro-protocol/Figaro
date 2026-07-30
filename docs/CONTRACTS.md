@@ -291,12 +291,22 @@ period: rational play became "re-record everything each period," which pays for 
 gas* rather than adoption (an author who records once and moves on collects nothing later,
 while one who knows to re-record collects three times on the same trades) and let a
 fabricated period-0 farm be milked across all three tranches. Each period now counts only
-usage NEW to it — what the declining 300M/200M/100M schedule already assumes. The **pair cap
-stays per period**: it bounds repeat trade inside one reward window, and a global cap would
-permanently freeze out a genuine repeat relationship over the schedule's nine years.
+usage NEW to it — what the declining 300M/200M/100M schedule already assumes.
+
+**The per-pair cap of 5 was DELETED 2026-07-30.** It was introduced as a farming defense and
+did not work as one: an attacker maximising score per unit cost always chooses ONE trade per
+fabricated pair (score per cost falls as `t^(-2/3)` in trades-per-pair), so the cap sat at 5
+and never bound — while it did bind honest repeat trade. The `c^(1/3)` exponent already
+discounts repetition far more steeply than the cliff did: a million trades between one pair
+score the same as a hundred distinct pairs trading once, at ten thousand times the cost.
+`pairCount` is now a boolean `pairSeen`, whose only job is the distinct-pair count.
+**The general rule this instance teaches: Sybil resistance cannot live in the shape of the
+score.** No scoring function can separate a fabricated pair from a genuine one — any
+concavity that dampens fake breadth dampens real breadth identically — so it can only live in
+the cost of an identity, which is the registries' stake terms.
 
 No owner, no admin, no pause; records are idempotent per (artifact, process).
-Foundry tests in `test/protocol/usage/UsageCounterTest.t.sol` (27, incl. the fuzzed
+Foundry tests in `test/protocol/usage/UsageCounterTest.t.sol` (28, incl. the fuzzed
 `icbrt` floor-cube-root property over all of `uint256`, and a no-saturation regression).
 
 ## The florin (`src/florin/`)

@@ -274,21 +274,26 @@ contract UsageCounterTest is Test {
         assertEq(d, 1);
     }
 
-    function test_pairCapStopsFarming() public {
-        // Five processes from one pair count; the sixth is refused outright, so
-        // repeat trade between two wallets cannot inflate an artifact.
-        for (uint256 i = 0; i < 5; i++) {
+    /// Repeat trade is bounded by the SCORE, not by a cliff. The per-pair cap of
+    /// 5 was deleted 2026-07-30 — it never bound for an attacker optimising score
+    /// per unit cost (optimum: one trade per fabricated pair) and only ever bound
+    /// honest repeat trade. What does the work is `c^(1/3)`: a pair trading many
+    /// times adds volume that is discounted far more steeply than the cap's cliff.
+    function test_repeatTradeIsDiscountedNotRefused() public {
+        for (uint256 i = 0; i < 8; i++) {
             CommitmentTypes.Commitment memory c =
                 _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, i + 1);
             _record(c, CARGO_KEY);
         }
-        (uint64 cCount,,) = counter.accrualOf(CARGO_KEY, 0);
-        assertEq(cCount, 5);
+        (uint64 cCount, uint64 d, uint256 repeatScore) = counter.accrualOf(CARGO_KEY, 0);
+        assertEq(cCount, 8, "every settled process counts");
+        assertEq(d, 1, "one pair is one unit of breadth, however often it trades");
 
-        CommitmentTypes.Commitment memory sixth =
-            _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 6);
-        vm.expectRevert(UsageCounter.PairCapReached.selector);
-        _record(sixth, CARGO_KEY);
+        // Eight trades between ONE pair must score below eight DISTINCT pairs
+        // trading once each — breadth outweighs volume, which is the whole point
+        // of the exponent split.
+        assertLt(repeatScore, _score(8, 8), "repeat trade must not rival real breadth");
+        assertEq(repeatScore, _score(8, 1));
     }
 
     // ── Exclusions ──────────────────────────────────────────────────

@@ -173,9 +173,10 @@ their registration deposit is un-withdrawn (`RpgfMinter._isAuthor` requires clau
 `depositOf.withdrawn == false`, assembly `bindings.depositWithdrawn == false`) —
 withdraw and you forfeit future RPGF. The ETH stake is a **value loop, not a cost**:
 more trade means more base-currency demand for gas, so ETH appreciates in fiat for
-every registry staker. Florin is the Schelling-point REWARD; ETH is the ALIGNMENT. A
-**pair cap of 5** additionally drops further processes from the same (buyer, seller)
-pair per artifact per period, so breadth has to be real.
+every registry staker. Florin is the Schelling-point REWARD; ETH is the ALIGNMENT. Repeat trade between
+one pair is discounted by the `c^(1/3)` exponent rather than refused: a per-pair
+cap of 5 was deleted 2026-07-30 because it never bound an attacker optimising
+score per unit cost, and only ever bound honest repeat trade.
 
 The incentive rationale — why the flow-map gets built under a uniform reward — lives in
 `docs/PUBLIC_GRAPH_MODEL.md` § "Why the flow-map gets built — the geo/coordination incentive under a uniform reward".
