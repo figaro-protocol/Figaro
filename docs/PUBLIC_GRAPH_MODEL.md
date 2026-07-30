@@ -174,8 +174,8 @@ commerce that needs it draws it, and the author of the clause that carries it is
 pro-rata for that real usage.
 
 **Neutrality comes from the stake, not from the weight.** What keeps the uniform
-reward honest — Sybil-resistant, non-farmable — is the two-sided **live ETH stake**,
-not a per-category multiplier. Usage counts only when the process's seller-of-record
+reward honest is the two-sided **live ETH stake**, not a per-category multiplier.
+Usage counts only when the process's seller-of-record
 holds a live `SellerRegistry` stake (`UsageCounter` reads `SellerRegistry.registered`,
 else `SellerNotStaked`), and an author is paid only while their registration deposit is
 un-withdrawn (`RpgfMinter._isAuthor` requires clause `depositOf.withdrawn == false`,
@@ -186,6 +186,23 @@ not a fee. That is why every registry stakes in ETH: **florin is the Schelling-p
 REWARD, ETH is the ALIGNMENT.** Procedural neutrality (the same uniform rule for every
 author, no committee, no category) and Sybil-resistance now live in the *same*
 mechanism — the stake — rather than being traded off against a non-flat weighting.
+
+**What the stake does and does not do — state it this way, never stronger.** The stake
+ALIGNS the honest majority; it does not DETER a determined Sybil, and the mechanism is
+not "non-farmable". Appreciation accrues to anyone who stakes, a free-rider included.
+What actually bounds farming is: live-stake-to-earn on both sides, the automatic
+EIP-1559 per-trade base-fee burn (the one non-recoverable per-trade cost, in base
+currency, that scales with fabricated volume — and it accrues to every base-currency
+holder, so farming pressure feeds the alignment asset), and the 600M being a FIXED pool
+a farmer DILUTES rather than inflates. Formally: farming is unprofitable exactly when the
+cost of replicating the honest score exceeds the tranche's market value; below that the
+damage is bounded and sub-linear, never a money pump, and honest authors always retain a
+positive share. Sizing the stake against that threshold is DELIBERATELY not attempted —
+the florin has no protocol-set price and base-currency appreciation is a forecast, so a
+precise optimum would be false precision. A sane spam floor is the stated posture, and
+the break-even is checkable at each tranche when both terms are observable.
+[[project_reward_mechanism_ratified_2026_07]] owns the ruling; the derivation and the
+closed forms live in the 2026-07-30 soundness proof.
 
 **The objective is a public, verifiable god's-eye view.** Aggregated over time,
 these attestations form a heat-map of physical/virtual flows — demand clusters,

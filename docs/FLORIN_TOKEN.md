@@ -162,8 +162,11 @@ an entire apparatus for making the chain believe a claim about the past. It was
 deleted 2026-07-27 and does not return.
 
 **Sybil-resistance is the STAKE, not a weight.** There is no per-clause multiplier:
-every artifact scores on real usage `icbrt(c·d²·1e18)` alone. What keeps that
-farm-proof is the two-sided **live ETH stake**. Usage counts only when the process's
+every artifact scores on real usage `icbrt(c·d²·1e18)` alone. What raises the cost of
+farming it is the two-sided **live ETH stake** — it aligns the honest majority rather
+than deterring a determined adversary, and the mechanism is not "farm-proof"; the honest
+bound and its residual are stated in `docs/PUBLIC_GRAPH_MODEL.md` § "What the stake does
+and does not do", which owns that rationale. Usage counts only when the process's
 seller-of-record holds a live `SellerRegistry` stake (`UsageCounter` reads
 `SellerRegistry.registered`, else `SellerNotStaked`), and an author is paid only while
 their registration deposit is un-withdrawn (`RpgfMinter._isAuthor` requires clause
