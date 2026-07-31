@@ -1,0 +1,23 @@
+{
+    "name": "Data stream subscription",
+    "summary": "A period of access to someone's live records — licensed, delivered privately, provable point by point.",
+    "description": "A subscriber buys a window of access to records another member's trade produces — a drone's flight telemetry, a sensor's readings, a merchant's settlement history. The license terms are co-signed: what is licensed, what it may be used for, whether it may be passed on. Access arrives over the encrypted hand-off as a credential or a snapshot, and every record it unlocks is self-authenticating — a leaf provable against the settled agreement that produced it, so the buyer never has to trust the seller's word about provenance. The subscription window is a committed schedule; renewing is a new bonded process, which is what keeps both sides honest: a seller who degrades the stream loses the renewal, and gas is paid once per subscription, not per data point.",
+    "assemblyClauses": {
+        "figaro-assembly-provenance": {}
+    },
+    "agreements": [
+        {
+            "id": "order-0",
+            "clauses": {
+                "figaro-commerce": {},
+                "figaro-topology": {
+                    "parentOrderHashes": []
+                },
+                "figaro-modalities": {},
+                "figaro-schedule": {},
+                "figaro-data-license": {},
+                "figaro-content-handoff": {}
+            }
+        }
+    ]
+}

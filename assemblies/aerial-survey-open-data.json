@@ -1,0 +1,26 @@
+{
+    "name": "Aerial survey flight — open record",
+    "summary": "The same flight, composed for the commons: either party may publish the flight record.",
+    "description": "Identical to the aerial survey flight in every clause but one: the disclosure regime is open, so either party may publish the process record — position at committed neighborhood grain feeding the shared airspace map the way transponder broadcasts feed aviation's. That one changed field is a different composition hash, so this is a sibling assembly, not a setting: a market or a jurisdiction that wants open flight records converges on this composition, one that does not converges on its sibling, and the protocol itself takes no side. Whether a drone market flies open or closed is decided by which sibling gets adopted — by designers competing on rules, not by the kernel.",
+    "assemblyClauses": {
+        "figaro-assembly-provenance": {}
+    },
+    "agreements": [
+        {
+            "id": "order-0",
+            "clauses": {
+                "figaro-commerce": {},
+                "figaro-topology": {
+                    "parentOrderHashes": []
+                },
+                "figaro-modalities": {},
+                "figaro-schedule": {},
+                "figaro-geolocation": {},
+                "figaro-credential": {},
+                "figaro-data-terms": {
+                    "disclosure": "open"
+                }
+            }
+        }
+    ]
+}

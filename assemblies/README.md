@@ -20,6 +20,9 @@ the scenario driven end to end, money legs included:
 | `freelancer.json` | 1 order | A digital deliverable over the encrypted hand-off — no marketplace fee | `content-delivery.devnet.spec.ts` |
 | `freelancer-value-chain.json` | 3 orders | A lead freelancer + contributors, one settlement | `freelancer-chain.devnet.spec.ts` (full cycle: three encrypted deliveries, one settlement) |
 | `tradelens.json` | 6 orders | The containerised import chain: shipper → inspection → forwarder → reefer carrier → customs → drayage | `scenario-tradelens` + `tradelens-runtime` |
+| `aerial-survey.json` | 1 order | A credentialed drone operator flies a committed window and route; the flight's co-produced record is part of the service (each party holds its copy) | `data-market.devnet.spec.ts` (in progress — punch-list §2) |
+| `aerial-survey-open-data.json` | 1 order | The SAME flight with the disclosure regime `open` — one changed design fill, a different compositionHash: regime variants are sibling assemblies, and whether a market flies open or closed is decided by adoption, never by the protocol | sibling of the above (hash-distinctness in the conformance suite) |
+| `data-stream-subscription.json` | 1 order | A window of licensed access to another member's live records — credential over the encrypted hand-off, every record a leaf provable against the settled agreement that produced it; gas is paid once per subscription, never per data point | `data-market.devnet.spec.ts` (in progress — punch-list §2) |
 
 `documents/` ships the raw bytes of every document a template affixes (consent
 anchors commit the document's keccak256 and `ipfs://` locator INSIDE the

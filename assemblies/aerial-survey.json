@@ -1,0 +1,26 @@
+{
+    "name": "Aerial survey flight",
+    "summary": "A licensed drone operator flies for you — and the flight's own record is part of what you buy.",
+    "description": "A buyer commissions a flight — a survey, an inspection, a delivery run — from an independent drone operator whose authorization is verified against a credential register, not taken on trust. The flight window is committed up front, the route's localities are committed at neighborhood grain, and the flight's co-produced record travels with the service: under this composition's disclosure regime, each party holds and may disclose its own copy. Both sides are bonded, so payment and performance secure each other with no platform in the middle; the operator's catalogue can price a fixed fee, by the hour, or by distance.",
+    "assemblyClauses": {
+        "figaro-assembly-provenance": {}
+    },
+    "agreements": [
+        {
+            "id": "order-0",
+            "clauses": {
+                "figaro-commerce": {},
+                "figaro-topology": {
+                    "parentOrderHashes": []
+                },
+                "figaro-modalities": {},
+                "figaro-schedule": {},
+                "figaro-geolocation": {},
+                "figaro-credential": {},
+                "figaro-data-terms": {
+                    "disclosure": "each-own"
+                }
+            }
+        }
+    ]
+}
