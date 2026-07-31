@@ -23,7 +23,13 @@ chain gas ceilings. Also home to the distribution mirror —
 pipeline that reproduces, off chain, what `UsageCounter` + `RpgfMinter` compute
 on chain for the 600M retroactive distribution. Usage is counted as the facts
 happen — recorded against a resolved order — so **there is nothing to post,
-nothing to bond and nothing to dispute**. The reward is UNIFORM (no tag,
+nothing to bond and nothing to dispute**. Trade settled through
+`FigaroBatchVerifier` never acquires kernel status, so it reaches the counter by
+a second route: `buildUsageClaims` turns a settled batch order plus its
+agreement into the claims a sequencer proves, and the mirror folds BOTH event
+streams (`fetchUsageRecords` + `fetchBatchUsageRecords`). Reading only the first
+under-reports every artifact whose trade moved to batches, and the two merge as
+SCORES, never as components. The reward is UNIFORM (no tag,
 category or weight — every artifact's score is `icbrt(c·d²·10^18)`, its real
 usage alone) and UNCAPPED; the only eligibility gate is a two-sided live ETH
 stake (usage counts only for a live-staked seller-of-record, and an author earns
