@@ -26,11 +26,17 @@
  *     the runtime input.
  *
  * enum / array-of-enum / boolean / object render identically in both modes.
+ *
+ * Enum OPTIONS display through the spec's own `valueLabels` (`labelEnumValue`,
+ * the same humanizer `describeClause` uses on the read side) — the raw token
+ * remains the committed value, the testid, and the option's tooltip. A clause
+ * whose spec declares no labels renders its raw tokens, unchanged.
  */
 
 import { useRef } from "react";
 import type { FieldSpec } from "@figaro/sdk/clauses";
 import { safeRegexTest } from "@figaro/sdk/clauses";
+import { labelEnumValue } from "@/lib/shared/clauseSpecSource";
 import { getFieldFormatInput } from "@/components/runtime/fieldFormatInputs";
 
 export type FieldControlMode = "design" | "runtime";
@@ -160,7 +166,13 @@ export function FieldControl({
                                 data-testid={`${testId}-${opt}`}
                                 className="accent-accent"
                             />
-                            <span>{opt}</span>
+                            {/* The spec's own `valueLabels` is the display text;
+                                the raw token stays the value, the testid, and the
+                                tooltip. Same `labelEnumValue` the READ surfaces
+                                use (describeClause → the canvas node chips), so a
+                                choice reads identically where it is MADE and where
+                                it is REPORTED. Unlabelled ⇒ the raw token. */}
+                            <span title={opt}>{labelEnumValue(field, opt)}</span>
                         </label>
                     ))}
                 </div>
@@ -234,7 +246,8 @@ export function FieldControl({
     // composition declares the whole set; stored as the array the field expects.
     if (field.type === "array" && field.items.type === "enum") {
         const arr = Array.isArray(value) ? (value as string[]) : [];
-        const options = field.items.values;
+        const items = field.items;
+        const options = items.values;
         return (
             <div data-testid={`${testId}-group`}>
                 {label && <div className="mb-1">{label}</div>}
@@ -250,7 +263,7 @@ export function FieldControl({
                                 data-testid={`${testId}-${opt}`}
                                 className="accent-accent"
                             />
-                            <span>{opt}</span>
+                            <span title={opt}>{labelEnumValue(items, opt)}</span>
                         </label>
                     ))}
                 </div>

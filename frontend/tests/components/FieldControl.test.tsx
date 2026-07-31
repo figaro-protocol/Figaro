@@ -264,3 +264,70 @@ describe("FieldControl array-of-object repeater", () => {
         expect(screen.queryByTestId("f-att-add")).toBeNull();
     });
 });
+
+// An enum option is DISPLAYED through the spec's own `valueLabels` — the same
+// humanizer the read surfaces use — while the raw token stays the committed
+// value, the testid, and the tooltip. This is what makes a regime choice (the
+// disclosure enum's `closed` / `each-own` / `open`) read as a labelled choice
+// at the point it is MADE, not just where it is later reported. No clause is
+// named: the labels come off whatever spec is passed in.
+describe("FieldControl enum labelling", () => {
+    const labelled: FieldSpec = {
+        name: "disclosure",
+        type: "enum",
+        required: true,
+        values: ["closed", "each-own", "open"],
+        valueLabels: {
+            closed: "Closed — parties only",
+            "each-own": "Each party may disclose its own copy",
+            open: "Open — either party may publish",
+        },
+    } as unknown as FieldSpec;
+
+    it("renders each option's declared label, keeping the raw token as value + testid + tooltip", async () => {
+        const onChange = vi.fn();
+        render(<FieldControl field={labelled} value={undefined} onChange={onChange} testId="f-reg" />);
+        expect(screen.getByText("Each party may disclose its own copy")).toBeTruthy();
+        expect(screen.getByText("Open — either party may publish")).toBeTruthy();
+        // The raw token is never the display text…
+        expect(screen.queryByText("each-own")).toBeNull();
+        // …but it IS the tooltip, the testid, and the value written back.
+        expect(screen.getByText("Each party may disclose its own copy").getAttribute("title")).toBe("each-own");
+        await userEvent.click(screen.getByTestId("f-reg-open"));
+        expect(onChange).toHaveBeenLastCalledWith("open");
+    });
+
+    it("an UNLABELLED enum degrades to its raw tokens — labels are optional in the spec", () => {
+        const bare = { ...labelled, valueLabels: undefined } as unknown as FieldSpec;
+        render(<FieldControl field={bare} value="closed" onChange={() => {}} testId="f-bare" />);
+        expect(screen.getByText("closed")).toBeTruthy();
+        expect(screen.getByText("open")).toBeTruthy();
+    });
+
+    it("a PARTIALLY labelled enum labels what it can and leaves the rest raw", () => {
+        const partial = {
+            ...labelled,
+            valueLabels: { open: "Open — either party may publish" },
+        } as unknown as FieldSpec;
+        render(<FieldControl field={partial} value={undefined} onChange={() => {}} testId="f-part" />);
+        expect(screen.getByText("Open — either party may publish")).toBeTruthy();
+        expect(screen.getByText("each-own")).toBeTruthy();
+    });
+
+    it("array-of-enum options label through the ITEMS spec", () => {
+        const multi = {
+            name: "bands",
+            type: "array",
+            required: true,
+            items: {
+                type: "enum",
+                values: ["zone-wifi", "contact-nfc"],
+                valueLabels: { "zone-wifi": "Zone (Wi-Fi)" },
+            },
+        } as unknown as FieldSpec;
+        render(<FieldControl field={multi} value={[]} onChange={() => {}} testId="f-bands" />);
+        expect(screen.getByText("Zone (Wi-Fi)")).toBeTruthy();
+        expect(screen.getByText("contact-nfc")).toBeTruthy();
+        expect(screen.getByTestId("f-bands-zone-wifi")).toBeTruthy();
+    });
+});

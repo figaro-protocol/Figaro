@@ -24,8 +24,8 @@
 
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
-import { buildAssemblyTemplate, serializeAssemblyTemplate } from "@figaro/sdk";
-import { specSource } from "@/lib/shared/clauseSpecSource";
+import { serializeAssemblyTemplate } from "@figaro/sdk";
+import { snapshotToAssemblyTemplate } from "@/lib/designer/draftToAssemblyTemplate";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
@@ -49,16 +49,11 @@ interface CompositionAssistProps {
 function serializeDraft(snapshot: DesignSnapshot | null): { json: string | null; error: string | null } {
     if (!snapshot) return { json: null, error: "Add at least one order to the canvas first." };
     try {
-        const template = buildAssemblyTemplate({
-            name: snapshot.name.trim() || undefined,
-            summary: snapshot.summary?.trim() || undefined,
-            description: snapshot.description?.trim() || undefined,
-            orders: snapshot.orders,
-            clausesByOrderId: snapshot.clausesByOrderId ?? {},
-            clauseVersionsByOrderId: snapshot.clauseVersionsByOrderId,
-            specs: specSource(),
-        });
-        const { json } = serializeAssemblyTemplate(template);
+        // The ONE draft→template walk publish uses — so the hand-off artifact
+        // is byte-identical to what publish would anchor. (It previously
+        // rebuilt the walk inline and dropped `assemblyClauses`, silently
+        // handing out a template missing the assembly-level terms.)
+        const { json } = serializeAssemblyTemplate(snapshotToAssemblyTemplate(snapshot));
         return { json: JSON.stringify(JSON.parse(json), null, 2), error: null };
     } catch (cause) {
         return { json: null, error: extractErrorMessage(cause, "Could not serialize the draft.") };

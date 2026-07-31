@@ -51,6 +51,7 @@ import {
 import { AgreementDrawer } from "./AgreementDrawer";
 import { AssemblyTermsPanel } from "./AssemblyTermsPanel";
 import { CompositionAssist } from "./CompositionAssist";
+import { CompositionIdentity } from "./CompositionIdentity";
 import { assemblyTemplateToDraft } from "@/lib/designer/assemblyTemplateToDraft";
 import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
@@ -563,6 +564,13 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         : null;
     const canPublish = publishBlockedReason === null;
 
+    // The composition as publish would build it — the input to the live
+    // identity readout. Null while the canvas is empty (nothing to identify).
+    const identitySnapshot = useMemo(() => {
+        const result = buildSnapshot();
+        return result.ok ? result.snapshot : null;
+    }, [buildSnapshot]);
+
     const savedHint = useMemo(() => {
         if (!savedAt) return null;
         if (slug) return `Saved "${name || slug}" · ${formatRelative(savedAt)}`;
@@ -736,6 +744,12 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                             </p>
                         )}
                     </div>
+
+                    {/* The live composition identity — derived from the same
+                        walk publish anchors, so a composed value's change
+                        (a disclosure regime, a pinned token) is VISIBLY a
+                        different assembly, not a silent mutation of this one. */}
+                    <CompositionIdentity snapshot={identitySnapshot} />
 
                     {/* Assembly-level composition — clauses declaring
                         design.scope: "assembly"; the drawer excludes them, so

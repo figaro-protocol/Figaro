@@ -22,6 +22,13 @@
  *   5. Uncheck it, save, reload — STILL UNCHECKED. Both directions of a
  *      user-driven clause edit persist.
  *
+ * A second test covers what a design fill's VALUE does to the composition:
+ * the enum options render through the spec's own valueLabels (a labelled
+ * choice, not a raw token), and changing the chosen value MOVES the canvas's
+ * live composition identity — the designer sees that a regime variant is a
+ * SIBLING assembly, not a setting on the one they are editing. Every enum
+ * value is DISCOVERED from the rendered spec; nothing is hardcoded.
+ *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server.
  */
 import { test, expect } from './devnet-multi-test';
@@ -29,6 +36,11 @@ import type { Page } from '@playwright/test';
 
 const GEO_CLAUSE_KEY = 'figaro-geolocation';
 const CONSENT_CLAUSE_KEY = 'figaro-consent';
+// A clause naming a design fill whose field is an ENUM — the disclosure regime.
+// The clause + field are named (as the other design-fill specs name theirs);
+// the VALUES are read off the live spec the drawer rendered.
+const REGIME_CLAUSE_KEY = 'figaro-data-terms';
+const REGIME_FIELD = 'disclosure';
 
 /** Open the (sole) root order's drawer on its registry tab and return the
  *  geo checkbox, awaited into existence (chain→IPFS spec warm). */
@@ -117,5 +129,79 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         await reopenDraft(page, slug);
         const geoAfterOff = await openGeoToggle(page);
         await expect(geoAfterOff, 'the removed geo clause stays removed after reload').not.toBeChecked();
+    });
+
+    test('an enum design fill renders its spec labels, and changing its value moves the composition identity', async ({ page }) => {
+        await page.goto('/builders/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
+
+        // The canvas states its composition identity as soon as there is a
+        // composition to identify — derived from the same walk publish anchors.
+        const hashReadout = page.getByTestId('designer-composition-hash');
+        await expect(hashReadout).toBeVisible({ timeout: 30000 });
+        const before = await hashReadout.getAttribute('title');
+        expect(before, 'the identity readout carries the full composition hash').toMatch(/^0x[0-9a-f]{64}$/);
+
+        // Compose the regime clause on the root order.
+        const rootNode = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])').first();
+        await rootNode.waitFor({ state: 'visible', timeout: 10000 });
+        await rootNode.click();
+        await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
+        await page.getByTestId('drawer-tab-registry').click();
+        const regimeToggle = page.getByTestId(`drawer-registry-clause-${REGIME_CLAUSE_KEY}`);
+        await expect(regimeToggle, 'the drawer surfaces the regime clause').toHaveCount(1, { timeout: 20000 });
+        await regimeToggle.check();
+
+        // The design fill renders as a LABELLED choice. Its options — and their
+        // raw tokens — come off the live spec: each radio's testid carries the
+        // token, and the option's label span titles it.
+        const group = page.getByTestId(`drawer-field-${REGIME_CLAUSE_KEY}-${REGIME_FIELD}-group`);
+        await expect(group, 'the enum design fill renders a choice').toBeVisible({ timeout: 10000 });
+        const radios = group.locator('input[type="radio"]');
+        const optionCount = await radios.count();
+        expect(optionCount, 'the regime offers a choice').toBeGreaterThan(1);
+
+        const tokens: string[] = [];
+        let humanized = 0;
+        for (let i = 0; i < optionCount; i++) {
+            const testId = await radios.nth(i).getAttribute('data-testid');
+            const token = testId!.replace(`drawer-field-${REGIME_CLAUSE_KEY}-${REGIME_FIELD}-`, '');
+            tokens.push(token);
+            // The DISPLAY is the spec's valueLabels; the raw token survives as
+            // the tooltip (and as the committed value).
+            const option = group.locator(`label:has([data-testid="${testId}"]) span[title="${token}"]`);
+            await expect(option, `${token} labels through the spec`).toHaveCount(1);
+            const shown = (await option.innerText()).trim();
+            expect(shown.length, `${token} renders some display text`).toBeGreaterThan(0);
+            if (shown !== token) humanized++;
+        }
+        // At least one option reads as prose rather than its wire token — the
+        // spec's labels are actually applied, not just declared. (A spec MAY
+        // label a value with its own token, so this is a set-level assertion,
+        // not per-option.)
+        expect(humanized, 'the spec valueLabels reach the designer').toBeGreaterThan(0);
+
+        // Pick the first regime — the identity moves off the fill-less baseline.
+        await page.getByTestId(`drawer-field-${REGIME_CLAUSE_KEY}-${REGIME_FIELD}-${tokens[0]}`).check();
+        await expect(hashReadout).not.toHaveAttribute('title', before!, { timeout: 10000 });
+        const first = await hashReadout.getAttribute('title');
+
+        // Pick a DIFFERENT regime — same clauses, same topology, one changed
+        // design fill: a different composition hash, i.e. a sibling assembly.
+        await page.getByTestId(`drawer-field-${REGIME_CLAUSE_KEY}-${REGIME_FIELD}-${tokens[1]}`).check();
+        await expect(
+            hashReadout,
+            'flipping a design fill is a DIFFERENT assembly, visibly — not a silent mutation of the same one',
+        ).not.toHaveAttribute('title', first!, { timeout: 10000 });
+
+        // Editorial prose is excluded from the composition subset — renaming
+        // must leave the identity exactly where it is.
+        const afterRegime = await hashReadout.getAttribute('title');
+        await page.getByTestId('designer-name-input').fill('A completely different name');
+        await expect(page.getByTestId('designer-name-input')).toHaveValue('A completely different name');
+        await expect(
+            hashReadout,
+            'editorial prose is hash-excluded — renaming never forks identity',
+        ).toHaveAttribute('title', afterRegime!);
     });
 });

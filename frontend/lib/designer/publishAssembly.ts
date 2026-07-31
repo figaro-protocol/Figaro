@@ -29,8 +29,8 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicCl
 import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
-import { buildAssemblyTemplate, serializeAssemblyTemplate } from "@figaro/sdk";
-import { specSource } from "@/lib/shared/clauseSpecSource";
+import { serializeAssemblyTemplate } from "@figaro/sdk";
+import { snapshotToAssemblyTemplate } from "@/lib/designer/draftToAssemblyTemplate";
 import { deriveAssemblySlug } from "@/lib/shared/assemblyTemplate";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { ASSEMBLY_REGISTRY_ABI } from "@/lib/kernel/contracts";
@@ -86,20 +86,12 @@ export function usePublishAssembly() {
         // Publish the no-hash assembly template: per order, who's bound, its
         // topology parents, and the selected clauses. The fingerprint forms later
         // at checkout when the parties fill the clause fields.
-        // buildAssemblyTemplate VERIFIES scope placement (ruled 2026-07-28):
-        // an assembly-scoped clause on an order, or an agreement-scoped one at
-        // assembly level, throws here — publish refuses, never a silent no-op.
-        const template = buildAssemblyTemplate({
-            name: snapshot.name.trim() || undefined,
-            summary: snapshot.summary?.trim() || undefined,
-            description: snapshot.description?.trim() || undefined,
-            orders: snapshot.orders,
-            clausesByOrderId: snapshot.clausesByOrderId ?? {},
-            clauseVersionsByOrderId: snapshot.clauseVersionsByOrderId,
-            assemblyClauses: snapshot.assemblyClauses,
-            assemblyClauseVersions: snapshot.assemblyClauseVersions,
-            specs: specSource(),
-        });
+        // The ONE draft→template walk (`draftToAssemblyTemplate`), shared with
+        // the hand-off panel and the canvas identity readout. It VERIFIES scope
+        // placement (ruled 2026-07-28): an assembly-scoped clause on an order,
+        // or an agreement-scoped one at assembly level, throws here — publish
+        // refuses, never a silent no-op.
+        const template = snapshotToAssemblyTemplate(snapshot);
         const { json, compositionHash } = serializeAssemblyTemplate(template);
         // The slug is presentation, derived from the composition hash —
         // identical compositions collapse to one on-chain binding (the
