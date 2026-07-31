@@ -43,6 +43,9 @@ import "../src/protocol/registries/AssemblyRegistry.sol";
 contract Deploy is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        // Hoisted once: run() compiles at the legacy-codegen stack limit, and
+        // evaluating vm.addr() inside deep call sites is what tips it over.
+        address deployer = vm.addr(deployerPrivateKey);
 
         vm.startBroadcast(deployerPrivateKey);
 
@@ -145,8 +148,12 @@ contract Deploy is Script {
         // (0xD152f549545093347A162Dce210e7293f1452150, same address across
         // 16 chains, ownerless since 2018). MockDisperse mirrors its
         // verified interface so devnet rehearses the composition.
-        MockDisperse multisender = new MockDisperse();
-        console.log("MockDisperse deployed at:", address(multisender));
+        // Scoped block: the address is only logged, and run() compiles at the
+        // stack limit under the legacy codegen (via_ir=false by design).
+        {
+            MockDisperse multisender = new MockDisperse();
+            console.log("MockDisperse deployed at:", address(multisender));
+        }
 
         // ── Batch-settlement proof path (mock verifier on devnet) ──
         // MockSP1Verifier accepts any proof; the real deployment wires
@@ -159,7 +166,7 @@ contract Deploy is Script {
         // settleBatch checks each proof's (clause key → spec hash)
         // binding against contentHashOf before settling.
         // Note: FigaroBatchVerifier is NOT a florin minter and never will be.
-        _deployUsageAndVerifier(address(clauses), address(core), address(members), vm.addr(deployerPrivateKey));
+        _deployUsageAndVerifier(address(clauses), address(core), address(members), deployer);
 
         // ── florin token + RPGF minter ─────────────────────────────────
         FlorinToken florin = new FlorinToken();
@@ -172,7 +179,7 @@ contract Deploy is Script {
         // usage as it happens and the minter pays pro rata from a closed period.
         _deployRpgfMinter(florin, clauses, assemblies);
 
-        _deployTreasuryGenesis(florin, vm.addr(deployerPrivateKey));
+        _deployTreasuryGenesis(florin, deployer);
 
 
         // ── Mint test tokens to Anvil accounts ──────────────────────

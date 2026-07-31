@@ -109,16 +109,26 @@ contract DeployMainnet is Script {
         _attestation = address(attestation);
         console.log("AttestationCoordinator: ", _attestation);
 
-        // PLACEHOLDER deposit — review before mainnet broadcast (the
-        // MembersRegistry reasoning below applies to clause stakes too).
-        ClauseRegistry clauses = new ClauseRegistry(0.001 ether);
+        // ── Author-side stakes (Clause / Assembly) — sized 2026-07-31 ──
+        // 0.05 ETH per artifact, NO cooldown (withdrawal is one-shot per key
+        // with a permanent binding — nothing can be recycled). What sizes it:
+        // author-side RPGF eligibility requires the deposit LIVE AT CLAIM
+        // (RpgfMinter._isAuthor), so unlike the seller stake this capital is
+        // held for the WHOLE accrual period, undiscounted — and it is the
+        // price of the artifact-REPLICATION lever: an adversary multiplying
+        // score across m self-authored clauses committed into the same
+        // fabricated agreements holds m of these for the full period. The
+        // spam floor is cleared ~100× over registration gas. Derivation:
+        // RELEASE_READINESS "Resolve Mainnet Registry Parameters"; the bound
+        // itself is the RPGF paper §7.
+        ClauseRegistry clauses = new ClauseRegistry(0.05 ether);
         _clauses = address(clauses);
         console.log("ClauseRegistry:         ", _clauses);
 
         // AssemblyRegistry — the assembly artifact family's anchor, parallel to
         // ClauseRegistry and MembersRegistry. RpgfMinter reads it for the
-        // assembly author of record.
-        AssemblyRegistry assemblies = new AssemblyRegistry(0.001 ether);
+        // assembly author of record. Same stake, same reasoning as above.
+        AssemblyRegistry assemblies = new AssemblyRegistry(0.05 ether);
         _assemblies = address(assemblies);
         console.log("AssemblyRegistry:       ", _assemblies);
 
@@ -130,24 +140,29 @@ contract DeployMainnet is Script {
         // the chain merkle-binds and content-hash-binds attestations and does not
         // validate content shape. Run populate-clauses.mjs after broadcast.
 
-        // ── MembersRegistry ────────────────────────────────────────
-        // PLACEHOLDER VALUES — DO NOT SHIP TO MAINNET WITHOUT REVIEW.
-        // These two parameters are ONE Sybil price and must be picked together:
-        //   - registrationDeposit: $X target in ETH at deploy-time price?
-        //     Too low → cheap Sybil farms; too high → locks out small sellers.
-        //   - withdrawalCooldown: the deposit only prices identity if it cannot
-        //     be recycled. At cooldown 0 one deposit serves N identities in
-        //     sequence, so capital cost is O(1) however much breadth is
-        //     fabricated; at cooldown T the cost of sustaining N identities over
-        //     a reward period P is `deposit · N · T / P`. A cooldown at or above
-        //     one accrual period is what makes fabricated breadth cost capital
-        //     rather than gas.
-        // Both feed the RPGF Sybil bound, which the batch-usage bridge will move
-        // sharply: batched recording drops the per-fabricated-pair gas cost by
-        // roughly 15×, and the deposit/cooldown have to absorb that. Do not fix
-        // these before that lands.
-        // Devnet uses 0.001 ether / 0 as ergonomic defaults.
-        MembersRegistry members = new MembersRegistry(0.001 ether, 0);
+        // ── MembersRegistry — sized 2026-07-31 from the published bound ──
+        // The two parameters are ONE Sybil price (RPGF paper §7 is the proof;
+        // RELEASE_READINESS "Resolve Mainnet Registry Parameters" the working):
+        // a fabricated staked-seller identity costs δ = D·T/P of committed
+        // capital per annual period (one deposit recycles through at most P/T
+        // identities), and the attacker's committed capital per unit of
+        // fabricated score is γ = δ + g below δ = 2g, else ≈1.89·δ^(2/3)·g^(1/3)
+        // — linear in score, published, recomputable by anyone.
+        //   - D = 0.05 ether: ~100× the registration gas (the spam floor) while
+        //     staying inside what a genuine small seller commits to be
+        //     discoverable at all; denominated in ETH only — no fiat anchor,
+        //     per the 2026-07-30 ruling.
+        //   - T = 28 days: against P = 365 days this makes P/T ≈ 13, so
+        //     δ = D/13 ≈ 3.8e-3 ETH per identity-period. De-surfacing stays
+        //     immediate at request; only the ETH release waits. Costless to a
+        //     seller who stays; only identity churn pays it.
+        // Stated honestly, as §7 does: above δ = 2g the deposit's bite grows
+        // only as δ^(2/3) (gas-bought volume substitutes under the cube root),
+        // so these values buy a published, convex capture-cost curve — not
+        // farm-proofness, which no scoring shape can buy.
+        // Devnet uses 0.001 ether / 0 as ergonomic defaults (cooldown behavior
+        // is proven by Halmos, not rehearsed by e2e).
+        MembersRegistry members = new MembersRegistry(0.05 ether, 28 days);
         _members = address(members);
         console.log("MembersRegistry:       ", _members);
 

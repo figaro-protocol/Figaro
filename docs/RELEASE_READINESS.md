@@ -61,16 +61,50 @@ Required output:
 3. resolve findings or explicitly accept non-critical findings in writing
 4. record the final audit outcome in the release docs
 
-### Task 3: Resolve Mainnet Registry Parameters
+### Task 3: Resolve Mainnet Registry Parameters — RESOLVED 2026-07-31 (reference values landed; operator ratifies before broadcast)
 
-`script/DeployMainnet.s.sol` instantiates `MembersRegistry(0.001 ether, 0)` and `ClauseRegistry(0.001 ether)` — the devnet defaults — with explicit "PLACEHOLDER VALUE — DO NOT SHIP TO MAINNET WITHOUT REVIEW" comments at the call sites. The deposit is the Sybil-resistance stake (K4: withdrawal de-surfaces the artifact, so pollution costs deposit × time-surfaced). **`MembersRegistry` takes TWO parameters that must be picked together** — the deposit and the `withdrawalCooldown`. A zero cooldown makes the deposit recyclable across identities in sequence, so its capital cost collapses to O(1) however much breadth is fabricated; the mainnet value must be chosen against the RPGF accrual period, and after the batch-usage bridge lands (it drops the per-fabricated-pair gas cost by roughly 15×, which the deposit/cooldown have to absorb). The clause and assembly registries carry no cooldown and need none — their withdrawal is one-shot per key with a permanent binding, so there is nothing to recycle.
+The RPGF paper's §7 turned this from a judgment into arithmetic, and the reference values
+are now in `script/DeployMainnet.s.sol` with the reasoning inline (placeholders removed).
+The working, so the choice is auditable:
 
-Required output:
+**The formula (proof in the paper; constants below are the deploy's).** A fabricated
+staked-seller identity costs `δ = D·T/P` of committed capital per accrual period — one
+deposit `D` recycles through at most `P/T` sequential identities under cooldown `T`. With
+`g` the measured marginal cost of one fabricated settled process (batch path), the
+attacker's committed capital per unit of fabricated score is `γ = δ + g` when `δ ≤ 2g`,
+else `≈ 1.89·δ^(2/3)·g^(1/3)` — linear in score either way, which the staked-seller
+breadth statistic is what makes possible. Capturing a share `φ` of a period costs
+`γ·S_h·φ/(1−φ)`: convex, unbounded at `φ → 1`.
 
-1. mainnet `registrationDeposit` chosen against an explicit deploy-time ETH/USD anchor — bonded-participation cost is the floor of attacker discouragement; too low enables cheap Sybil farms, too high locks out small sellers
-2. reasoning recorded inline in `DeployMainnet.s.sol` at the constructor call sites
-3. PLACEHOLDER comments removed from the script
-4. same exercise repeated for the `AssemblyRegistry` and `ClauseRegistry` deposits, both of which now deploy to mainnet (Task 4) with the devnet placeholder (the binding-permanence asymmetry — clause/assembly bindings are permanent, the MembersRegistry dedup guard clears on withdraw — should be reflected in the deposit choice)
+**The chosen values and their anchors (each anchor named for what it is):**
+
+1. **`MembersRegistry(0.05 ether, 28 days)`.** `D = 0.05 ETH` clears the spam floor
+   ~100× over registration gas while staying inside what a genuine small seller commits
+   to be discoverable — the honest-ceiling half is a judgment and is labeled as one.
+   `T = 28 days` against annual periods gives `P/T ≈ 13`, so `δ ≈ 3.8e-3 ETH` per
+   identity-period; de-surfacing stays immediate at request, only the ETH release waits,
+   and a seller who stays pays nothing. Denominated in ETH only — the deploy-time
+   fiat-anchor approach was declined 2026-07-30 (florin unpriced by design; appreciation
+   is a forecast).
+2. **`ClauseRegistry(0.05 ether)` / `AssemblyRegistry(0.05 ether)`, no cooldown** —
+   withdrawal is one-shot per key with a permanent binding, so nothing recycles. These
+   stakes do MORE work than the seller stake per unit: author-side RPGF eligibility
+   requires the deposit live AT CLAIM, so the capital is held for the whole period,
+   undiscounted — and it prices the artifact-replication lever (an adversary multiplying
+   score across `m` self-authored clauses in the same fabricated agreements holds `m`
+   full deposits for the period; portfolio cost stays linear in score with the clause
+   deposit entering under a square root — paper §7.3 scopes this).
+
+**Stated honestly, as the paper does:** above `δ = 2g` the deposit's bite grows only as
+`δ^(2/3)` — gas-bought volume substitutes for identities under the cube root — so these
+values buy a published, recomputable, convex capture-cost curve, not farm-proofness; the
+ratified posture ("aligns the honest majority, does not deter a determined Sybil";
+dilution, never theft) is unchanged. The state machine under all of it is Halmos-proved
+(cooldown unskippable, no deposit recycling, counter admits usage iff the stake is live).
+
+**Remaining before broadcast:** operator ratification of the two judgment anchors (the
+0.05 ETH honest-ceiling and the 28-day cooldown), and re-measuring `g` on the target
+chain to place the deployment on the γ curve in the release record.
 
 ### Task 4: AssemblyRegistry Mainnet-Parity Decision
 
