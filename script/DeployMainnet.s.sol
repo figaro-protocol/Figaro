@@ -26,11 +26,14 @@ import "../src/protocol/verifier/FigaroBatchVerifier.sol";
 ///   SUPPORTERS_WALLET          — address receiving the 30M supporters (friends & family /
 ///                                early supporters) allocation at genesis
 ///   DAO_WALLET                 — address receiving the 300M DAO allocation at genesis
-///   RPGF_PERIOD_END_1/2/3      — ascending unix timestamps closing each accrual
-///                                period. Tranche i pays for period i, so these
-///                                are ONE schedule (testnet compresses years
-///                                2/5/9 to weeks 2/5/9 — time compresses when
-///                                time is involved; ruled 2026-07-15)
+///   RPGF_GENESIS               — unix timestamp anchoring the reward schedule.
+///                                Nine ANNUAL accrual periods are derived from
+///                                it (ends at years 1..9); per-period budgets
+///                                group into three RISING tranches — 15% over
+///                                years 1–2, 30% over 3–5, 55% over 6–9, equal
+///                                slices within each (ruled 2026-07-31; testnet
+///                                compresses years to weeks — time compresses
+///                                when time is involved, ruled 2026-07-15)
 ///
 /// florin allocation (1B cap):
 ///    70M   (7%)  founders   — genesis mint to FOUNDER_WALLET    (no vesting, no unlock)
@@ -89,10 +92,8 @@ contract DeployMainnet is Script {
         require(vm.envAddress("SUPPORTERS_WALLET") != address(0), "SUPPORTERS_WALLET not set");
         require(vm.envAddress("DAO_WALLET") != address(0), "DAO_WALLET not set");
         require(
-            vm.envUint("RPGF_PERIOD_END_1") > block.timestamp
-                && vm.envUint("RPGF_PERIOD_END_2") > vm.envUint("RPGF_PERIOD_END_1")
-                && vm.envUint("RPGF_PERIOD_END_3") > vm.envUint("RPGF_PERIOD_END_2"),
-            "RPGF_PERIOD_END_1/2/3 must be ascending future timestamps"
+            vm.envUint("RPGF_GENESIS") + 365 days > block.timestamp,
+            "RPGF_GENESIS must place the first annual period end in the future"
         );
     }
 
@@ -188,15 +189,16 @@ contract DeployMainnet is Script {
         console.log("FigaroBatchVerifier:    ", _batchVerifier);
     }
 
-    /// @dev Accrual periods and RPGF tranches are ONE schedule — tranche i pays
-    ///      for period i. Deployed here, beside the verifier, because the two
-    ///      reference each other; the minter that reads it follows in
-    ///      `_deployFlorinEcosystem`.
+    /// @dev Accrual periods and per-period RPGF budgets are ONE schedule (the
+    ///      minter validates its budget array against `periodCount()`).
+    ///      Deployed here, beside the verifier, because the two reference each
+    ///      other; the minter that reads it follows in `_deployFlorinEcosystem`.
     function _deployUsageCounter(address batchVerifier_) internal {
-        uint64[] memory periods = new uint64[](3);
-        periods[0] = uint64(vm.envUint("RPGF_PERIOD_END_1"));
-        periods[1] = uint64(vm.envUint("RPGF_PERIOD_END_2"));
-        periods[2] = uint64(vm.envUint("RPGF_PERIOD_END_3"));
+        uint64 genesis = uint64(vm.envUint("RPGF_GENESIS"));
+        uint64[] memory periods = new uint64[](9);
+        for (uint256 i = 0; i < 9; ++i) {
+            periods[i] = genesis + uint64((i + 1) * 365 days);
+        }
 
         // Protocol floor earns nothing — the two order-mandatory clauses plus the
         // assembly-provenance clause (see UsageCounter.excludedArtifact). Assembly
@@ -231,13 +233,19 @@ contract DeployMainnet is Script {
         // bonded, or challenged: the counter (already deployed beside the
         // batch verifier) records verified usage as it happens and the minter
         // pays pro rata from a period that has closed.
-        RpgfMinter rpgfMinter = new RpgfMinter(
-            address(florin),
-            _usageCounter,
-            _clauses,
-            _assemblies,
-            [uint256(300_000_000 ether), 200_000_000 ether, 100_000_000 ether]
-        );
+        // Nine annual slices, three rising tranches (ruled 2026-07-31):
+        // 15% over years 1-2, 30% over 3-5, 55% over 6-9, equal within each.
+        uint256[] memory amounts = new uint256[](9);
+        amounts[0] = 45_000_000 ether;
+        amounts[1] = 45_000_000 ether;
+        amounts[2] = 60_000_000 ether;
+        amounts[3] = 60_000_000 ether;
+        amounts[4] = 60_000_000 ether;
+        amounts[5] = 82_500_000 ether;
+        amounts[6] = 82_500_000 ether;
+        amounts[7] = 82_500_000 ether;
+        amounts[8] = 82_500_000 ether;
+        RpgfMinter rpgfMinter = new RpgfMinter(address(florin), _usageCounter, _clauses, _assemblies, amounts);
         _rpgfMinter = address(rpgfMinter);
         console.log("RpgfMinter:             ", _rpgfMinter);
         florin.registerMinter(_rpgfMinter, RPGF_ALLOC);
@@ -256,7 +264,7 @@ contract DeployMainnet is Script {
         // After renounce, no new minters can ever be registered and the
         // deployer cannot mint again. At this point the full 1B cap is
         // spoken for: 400M exactly exhausted by the genesis mints, 600M
-        // mintable only through the RpgfMinter's uniform pro-rata tranche
+        // mintable only through the RpgfMinter's uniform pro-rata per-period
         // claims (each from a closed accrual period).
         florin.renounceDeployerMint();
         console.log("FlorinToken: deployer mint renounced (permanent)");

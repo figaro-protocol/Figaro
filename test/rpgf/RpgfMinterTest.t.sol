@@ -9,12 +9,17 @@ import {AssemblyRegistry} from "src/protocol/registries/AssemblyRegistry.sol";
 
 /// @notice Stand-in for UsageCounter so payout maths can be exercised directly,
 ///         including shapes a real accrual would take many settled processes to
-///         reach (a wallet over the cap, an empty period). The counter's own
+///         reach (a dominant wallet, an empty period). The counter's own
 ///         verification is proven in UsageCounterTest.
 contract StubCounter {
     mapping(uint8 => bool) public closed;
     mapping(uint8 => uint256) public totalScoreIn;
     mapping(bytes32 => mapping(uint8 => uint256)) internal _score;
+
+    /// @dev The minter validates its budget array against this at deploy.
+    function periodCount() external pure returns (uint256) {
+        return 3;
+    }
 
     function setClosed(uint8 period, bool v) external {
         closed[period] = v;
@@ -54,7 +59,19 @@ contract RpgfMinterTest is Test {
     bytes32 constant B_KEY = keccak256(abi.encode("clause-b", uint64(1)));
     bytes32 constant ASM = keccak256("an-assembly");
 
-    uint256 constant T0 = 300_000_000 ether;
+    // The reference per-year slices (ruled 2026-07-31): a first-tranche year,
+    // a second-tranche year, a third-tranche year. The grouping itself is
+    // deploy-script data; the minter sees only per-period budgets.
+    uint256 constant T0 = 45_000_000 ether;
+    uint256 constant T1 = 60_000_000 ether;
+    uint256 constant T2 = 82_500_000 ether;
+
+    function _amounts() internal pure returns (uint256[] memory a) {
+        a = new uint256[](3);
+        a[0] = T0;
+        a[1] = T1;
+        a[2] = T2;
+    }
 
     function setUp() public {
         florin = new FlorinToken();
@@ -69,13 +86,7 @@ contract RpgfMinterTest is Test {
         vm.prank(carol);
         assemblies.registerAssembly(ASM, "ipfs://asm");
 
-        minter = new RpgfMinter(
-            address(florin),
-            address(counter),
-            address(clauses),
-            address(assemblies),
-            [T0, uint256(200_000_000 ether), 100_000_000 ether]
-        );
+        minter = new RpgfMinter(address(florin), address(counter), address(clauses), address(assemblies), _amounts());
         florin.registerMinter(address(minter), 600_000_000 ether);
     }
 
@@ -107,11 +118,11 @@ contract RpgfMinterTest is Test {
         counter.setClosed(0, true);
         vm.prank(carol);
         minter.claim(0, _one(ASM));
-        assertEq(florin.balanceOf(carol), T0); // sole recipient → whole tranche (no cap)
+        assertEq(florin.balanceOf(carol), T0); // sole recipient → the whole period budget (no cap)
     }
 
     function test_multipleArtifactsSumInOneClaim() public {
-        // A wallet claims once per tranche and passes everything it authored.
+        // A wallet claims once per period and passes everything it authored.
         vm.prank(alice);
         clauses.registerClause("clause-c", 1, keccak256("c"), "ipfs://c");
         bytes32 cKey = keccak256(abi.encode("clause-c", uint64(1)));
@@ -132,11 +143,11 @@ contract RpgfMinterTest is Test {
     // ── The period must be closed ───────────────────────────────────
 
     function test_revertsWhileThePeriodIsStillAccruing() public {
-        // This is what removes the need for a snapshot: a tranche only pays
+        // This is what removes the need for a snapshot: a period only pays
         // from numbers that can no longer move.
         counter.setScore(A_KEY, 0, 100);
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.TrancheStillAccruing.selector, uint8(0)));
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.PeriodStillAccruing.selector, uint8(0)));
         minter.claim(0, _one(A_KEY));
     }
 
@@ -188,9 +199,9 @@ contract RpgfMinterTest is Test {
         minter.claim(0, _one(ASM));
     }
 
-    // ── Once per wallet per tranche ─────────────────────────────────
+    // ── Once per wallet per period ──────────────────────────────────
 
-    function test_claimsOncePerTranche() public {
+    function test_claimsOncePerPeriod() public {
         counter.setScore(A_KEY, 0, 100);
         counter.setClosed(0, true);
         vm.startPrank(alice);
@@ -200,7 +211,7 @@ contract RpgfMinterTest is Test {
         vm.stopPrank();
     }
 
-    function test_tranchesAreIndependent() public {
+    function test_periodsAreIndependent() public {
         counter.setScore(A_KEY, 0, 100);
         counter.setScore(B_KEY, 0, 900);
         counter.setScore(A_KEY, 1, 100);
@@ -211,7 +222,7 @@ contract RpgfMinterTest is Test {
         minter.claim(0, _one(A_KEY));
         minter.claim(1, _one(A_KEY));
         vm.stopPrank();
-        assertEq(florin.balanceOf(alice), (T0 / 10) + (200_000_000 ether / 10));
+        assertEq(florin.balanceOf(alice), (T0 / 10) + (T1 / 10));
     }
 
     // ── Uniform pro rata (no cap) ────────────────────────────────────
@@ -255,7 +266,7 @@ contract RpgfMinterTest is Test {
     }
 
     /// `claimable` must refuse the same malformed list the state-changing path
-    /// refuses — a view that answered "the whole tranche" would be a quoting bug
+    /// refuses — a view that answered "the whole budget" would be a quoting bug
     /// even with `claim` safe.
     function test_claimableRejectsDuplicatesToo() public {
         counter.setScore(A_KEY, 0, 100);
@@ -300,9 +311,9 @@ contract RpgfMinterTest is Test {
         minter.claim(0, new bytes32[](0));
     }
 
-    function test_revertsOnUnknownTranche() public {
+    function test_revertsOnUnknownPeriod() public {
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.UnknownTranche.selector, uint8(3)));
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.UnknownPeriod.selector, uint8(3)));
         minter.claim(3, _one(A_KEY));
     }
 
@@ -322,7 +333,7 @@ contract RpgfMinterTest is Test {
 
     // ── Budget backstop ─────────────────────────────────────────────
 
-    function test_mintedTracksTheTrancheSpend() public {
+    function test_mintedTracksThePeriodSpend() public {
         counter.setScore(A_KEY, 0, 100);
         counter.setScore(B_KEY, 0, 900);
         counter.setClosed(0, true);
@@ -335,7 +346,7 @@ contract RpgfMinterTest is Test {
     // ── Constructor ─────────────────────────────────────────────────
 
     function test_constructor_rejectsZeroAddresses() public {
-        uint256[3] memory amts = [T0, uint256(1), 1];
+        uint256[] memory amts = _amounts();
         vm.expectRevert(RpgfMinter.ZeroAddress.selector);
         new RpgfMinter(address(0), address(counter), address(clauses), address(assemblies), amts);
         vm.expectRevert(RpgfMinter.ZeroAddress.selector);
@@ -344,5 +355,15 @@ contract RpgfMinterTest is Test {
         new RpgfMinter(address(florin), address(counter), address(0), address(assemblies), amts);
         vm.expectRevert(RpgfMinter.ZeroAddress.selector);
         new RpgfMinter(address(florin), address(counter), address(clauses), address(0), amts);
+    }
+
+    /// The budget array and the counter's period schedule are ONE schedule —
+    /// a mismatch is a deploy fault and must fail at deploy, not at claim.
+    function test_constructor_rejectsAmountsPeriodsMismatch() public {
+        uint256[] memory tooFew = new uint256[](2);
+        tooFew[0] = T0;
+        tooFew[1] = T1;
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.AmountsPeriodsMismatch.selector, 2, 3));
+        new RpgfMinter(address(florin), address(counter), address(clauses), address(assemblies), tooFew);
     }
 }

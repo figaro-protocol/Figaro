@@ -423,7 +423,7 @@ contract UsageCounterTest is Test {
         // counted once ever. A resolved order stays resolved and its struct is
         // public, so a per-period key would let the same trade be re-presented
         // in every period — paying for recording gas instead of adoption, and
-        // letting one fabricated farm earn from all three tranches.
+        // letting one fabricated farm earn from every later period.
         CommitmentTypes.Commitment memory a = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         _record(a, CARGO_KEY);
         vm.warp(P0_END + 1);
@@ -437,8 +437,8 @@ contract UsageCounterTest is Test {
         assertEq(c1, 0, "never counted again in a later period");
     }
 
-    /// A period pays only for usage NEW to it — the property the declining
-    /// 300M/200M/100M tranche schedule assumes.
+    /// A period pays only for usage NEW to it — the property any fixed
+    /// per-period budget schedule assumes.
     function test_laterPeriodCountsOnlyNewTrade() public {
         CommitmentTypes.Commitment memory old_ = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         _record(old_, CARGO_KEY);

@@ -48,7 +48,11 @@ contract RpgfIntegrationTest is Test {
 
     /// @dev Stands in for FigaroBatchVerifier — see UsageCounterTest.
     address constant batchVerifier = address(0xBA7C);
-    uint256 constant T0 = 300_000_000 ether;
+    // Reference per-year slices (ruled 2026-07-31); the tranche grouping is
+    // deploy-script data, the minter sees only per-period budgets.
+    uint256 constant T0 = 45_000_000 ether;
+    uint256 constant T1 = 60_000_000 ether;
+    uint256 constant T2 = 82_500_000 ether;
 
     function setUp() public {
         buyer = vm.addr(BUYER_KEY);
@@ -76,13 +80,11 @@ contract RpgfIntegrationTest is Test {
         periods[2] = P0_END * 3;
         counter = new UsageCounter(address(core), address(members), batchVerifier, PROV_KEY, _excluded(), 1, periods);
 
-        minter = new RpgfMinter(
-            address(florin),
-            address(counter),
-            address(clauses),
-            address(assemblies),
-            [T0, uint256(200_000_000 ether), 100_000_000 ether]
-        );
+        uint256[] memory amounts = new uint256[](3);
+        amounts[0] = T0;
+        amounts[1] = T1;
+        amounts[2] = T2;
+        minter = new RpgfMinter(address(florin), address(counter), address(clauses), address(assemblies), amounts);
         florin.registerMinter(address(minter), 600_000_000 ether);
 
         token.mint(buyer, 1_000_000 ether);
@@ -183,7 +185,7 @@ contract RpgfIntegrationTest is Test {
 
         // Nothing is claimable while the period can still move.
         vm.prank(author);
-        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.TrancheStillAccruing.selector, uint8(0)));
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.PeriodStillAccruing.selector, uint8(0)));
         minter.claim(0, _one(GEO_KEY));
 
         vm.warp(P0_END + 1);
@@ -200,8 +202,8 @@ contract RpgfIntegrationTest is Test {
         vm.prank(designer);
         minter.claim(0, _one(ASM));
 
-        // No cap: each takes its pro-rata share. Equal scores ⇒ half the tranche
-        // each, and the whole tranche is minted (nothing stranded by a cap).
+        // No cap: each takes its pro-rata share. Equal scores ⇒ half the period
+        // budget each, and the whole budget is minted (nothing stranded by a cap).
         assertEq(florin.balanceOf(author), T0 / 2);
         assertEq(florin.balanceOf(designer), T0 / 2);
         assertEq(minter.minted(0), T0);
@@ -220,7 +222,7 @@ contract RpgfIntegrationTest is Test {
         minter.claim(0, _one(GEO_KEY));
     }
 
-    function test_usageInALaterPeriodPaysTheLaterTranche() public {
+    function test_usageInALaterPeriodPaysTheLaterBudget() public {
         CommitmentTypes.Commitment memory p1 = _settle(GEO_KEY, 1);
         counter.recordClauseUsage(p1, GEO_KEY, keccak256(SECTION), new bytes32[](0));
 
@@ -235,10 +237,10 @@ contract RpgfIntegrationTest is Test {
         minter.claim(1, _one(GEO_KEY));
         vm.stopPrank();
 
-        // Sole recipient in both periods → takes the WHOLE tranche (no cap), and
-        // the second tranche is the smaller budget.
+        // Sole recipient in both periods → takes each period's WHOLE budget
+        // (no cap), each period paying only the usage NEW to it.
         assertEq(afterFirst, T0);
-        assertEq(florin.balanceOf(author) - afterFirst, 200_000_000 ether);
+        assertEq(florin.balanceOf(author) - afterFirst, T1);
     }
 
     /// @dev The provenance section's canonical-JSON bytes for a composition.

@@ -5,6 +5,7 @@ import {IFlorinMinter} from "src/florin/IFlorinMinter.sol";
 
 /// @notice The accrual surface this minter pays from. Local-minimal binding.
 interface IUsageCounter {
+    function periodCount() external view returns (uint256);
     function periodClosed(uint8 period) external view returns (bool);
     function totalScoreIn(uint8 period) external view returns (uint256);
     /// @dev BOTH settlement paths, summed as SCORES — never `accrualOf`,
@@ -31,7 +32,18 @@ interface IAssemblyAuthor {
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 ///
 /// @notice Pays clause authors and assembly designers for the trade their work
-///         actually carried, in three declining tranches (300M / 200M / 100M).
+///         actually carried, one claim per accrual period. The reference
+///         schedule (ruled 2026-07-31): nine ANNUAL periods whose budgets
+///         group into three RISING tranches — 15% of the reserve over years
+///         1–2, 30% over years 3–5, 55% over years 6–9, each tranche split
+///         equally across its years. Rising, because the largest share should
+///         pay on the most-measured evidence: the early network is the
+///         thinnest, most manipulable denominator, and early evidence-poor
+///         funding is the DAO treasury's job, not this mechanism's. Annual,
+///         because a professional author cannot price a multi-year lag in an
+///         unpriced token — and shorter periods also shrink the deposit
+///         recycling window. The grouping is deploy-script data; this
+///         contract knows only periods and their budgets.
 ///
 ///         There is NOTHING TO POST, NOTHING TO BOND, AND NOTHING TO DISPUTE.
 ///         Usage is counted on chain as it happens by `UsageCounter`, so a
@@ -45,18 +57,19 @@ interface IAssemblyAuthor {
 ///
 /// @dev    WHY NO SNAPSHOT IS NEEDED. Pro rata over a growing denominator would
 ///         need one — early claimants would take more than their share. The
-///         counter buckets accrual into fixed PERIODS instead, and a tranche
-///         pays for its own period, whose counts stop moving the moment it ends.
-///         `claim` therefore requires `periodClosed` and reads a number no later
-///         record can change. No checkpoints, no history walk.
+///         counter buckets accrual into fixed PERIODS instead, and each period's
+///         budget pays for that period alone, whose counts stop moving the
+///         moment it ends. `claim` therefore requires `periodClosed` and reads
+///         a number no later record can change. No checkpoints, no history walk.
 ///
 /// @dev    UNIFORM PRO RATA — no per-wallet cap. A wallet's share is its
 ///         artifacts' score over the period's total, paid straight. Sybil
 ///         resistance is the two-sided LIVE ETH STAKE (author eligibility here,
-///         seller-gated usage in `UsageCounter`), not a cap: fabricating breadth
-///         costs one base-currency stake per fake identity, and the 600M is a
-///         FIXED pool a farmer DILUTES, never inflates. The old 15% cap was
-///         arbitrary and left florins unminted; it is gone.
+///         seller-gated usage in `UsageCounter`), not a cap: breadth counts
+///         distinct staked sellers, so every unit of the score's dominant term
+///         costs one base-currency stake, and the 600M is a FIXED pool a
+///         farmer DILUTES, never inflates. The old 15% cap was arbitrary and
+///         left florins unminted; it is gone.
 ///
 /// @dev    No owner, no pause, no sweep, no claim expiry. Claims never expire
 ///         because a closed period's arithmetic is stable forever. The budget is
@@ -73,35 +86,35 @@ contract RpgfMinter {
     IClauseAuthor public immutable clauses;
     IAssemblyAuthor public immutable assemblies;
 
-    uint8 public constant TRANCHE_COUNT = 3;
+    /// @notice Florin budget per accrual period — one entry per `UsageCounter`
+    ///         period, fixed at deploy and validated against the counter's own
+    ///         schedule, so the two cannot drift. The reference values encode
+    ///         the tranche grouping: 45M/45M · 60M/60M/60M · 82.5M×4.
+    uint256[] public periodAmount;
 
-    /// @notice Florin budget per tranche. Tranche `i` pays for accrual period
-    ///         `i` — the counter's periods and these tranches are one schedule,
-    ///         configured consistently at deploy.
-    uint256[TRANCHE_COUNT] public trancheAmount;
-
-    /// @notice Florins already minted per tranche — the budget backstop.
+    /// @notice Florins already minted per period — the budget backstop.
     mapping(uint8 => uint256) public minted;
 
-    /// @notice tranche → wallet → claimed. One claim per wallet per tranche; a
+    /// @notice period → wallet → claimed. One claim per wallet per period; a
     ///         wallet passes all of its artifacts in that single call.
     mapping(uint8 => mapping(address => bool)) public claimed;
 
     // ── Events ──────────────────────────────────────────────────────
 
-    event Claimed(uint8 indexed trancheId, address indexed account, uint256 amount, uint256 score);
+    event Claimed(uint8 indexed periodId, address indexed account, uint256 amount, uint256 score);
 
     // ── Errors ──────────────────────────────────────────────────────
 
     error ZeroAddress();
-    error UnknownTranche(uint8 trancheId);
-    error TrancheStillAccruing(uint8 trancheId);
-    error AlreadyClaimed(uint8 trancheId, address account);
+    error UnknownPeriod(uint8 periodId);
+    error AmountsPeriodsMismatch(uint256 amounts, uint256 periods);
+    error PeriodStillAccruing(uint8 periodId);
+    error AlreadyClaimed(uint8 periodId, address account);
     error NoArtifacts();
     error DuplicateArtifact(bytes32 artifact);
     error NotAuthorOfRecord(bytes32 artifact, address caller);
     error NothingToClaim();
-    error TrancheBudgetExceeded(uint8 trancheId);
+    error PeriodBudgetExceeded(uint8 periodId);
 
     // ── Constructor ─────────────────────────────────────────────────
 
@@ -109,60 +122,61 @@ contract RpgfMinter {
     /// @param _counter     UsageCounter — the accrual this pays from.
     /// @param _clauses     ClauseRegistry — clause author of record.
     /// @param _assemblies  AssemblyRegistry — assembly author of record.
-    /// @param _amounts     Per-tranche florin budgets (300M / 200M / 100M).
-    constructor(
-        address _florin,
-        address _counter,
-        address _clauses,
-        address _assemblies,
-        uint256[TRANCHE_COUNT] memory _amounts
-    ) {
+    /// @param _amounts     Per-period florin budgets, one per counter period.
+    constructor(address _florin, address _counter, address _clauses, address _assemblies, uint256[] memory _amounts) {
         if (_florin == address(0) || _counter == address(0) || _clauses == address(0) || _assemblies == address(0)) {
             revert ZeroAddress();
         }
+        uint256 periods = IUsageCounter(_counter).periodCount();
+        if (_amounts.length != periods) revert AmountsPeriodsMismatch(_amounts.length, periods);
         florin = IFlorinMinter(_florin);
         counter = IUsageCounter(_counter);
         clauses = IClauseAuthor(_clauses);
         assemblies = IAssemblyAuthor(_assemblies);
-        trancheAmount = _amounts;
+        periodAmount = _amounts;
     }
 
     // ── Views ───────────────────────────────────────────────────────
 
-    /// @notice What `account` could claim for `trancheId` with `artifacts`,
+    /// @notice Number of claimable periods — mirrors the counter's schedule.
+    function periodCount() external view returns (uint256) {
+        return periodAmount.length;
+    }
+
+    /// @notice What `account` could claim for `periodId` with `artifacts`,
     ///         without sending a transaction. Zero once claimed.
-    function claimable(uint8 trancheId, address account, bytes32[] calldata artifacts) external view returns (uint256) {
-        if (trancheId >= TRANCHE_COUNT) revert UnknownTranche(trancheId);
-        if (claimed[trancheId][account]) return 0;
-        (uint256 amount,) = _entitlement(trancheId, account, artifacts);
+    function claimable(uint8 periodId, address account, bytes32[] calldata artifacts) external view returns (uint256) {
+        if (periodId >= periodAmount.length) revert UnknownPeriod(periodId);
+        if (claimed[periodId][account]) return 0;
+        (uint256 amount,) = _entitlement(periodId, account, artifacts);
         return amount;
     }
 
     // ── Claim ───────────────────────────────────────────────────────
 
-    /// @notice Mint your share of a tranche. Once per wallet per tranche; pass
-    ///         every artifact you authored in one call.
-    /// @param trancheId The tranche (and accrual period) being claimed.
+    /// @notice Mint your share of a closed period. Once per wallet per period;
+    ///         pass every artifact you authored in one call.
+    /// @param periodId  The accrual period being claimed.
     /// @param artifacts Clause idHashes and/or assembly compositionHashes the
     ///                  caller is author of record for. Each is verified against
     ///                  its own registry — the caller's list is a lookup key,
     ///                  never a claim of ownership.
-    function claim(uint8 trancheId, bytes32[] calldata artifacts) external {
-        if (trancheId >= TRANCHE_COUNT) revert UnknownTranche(trancheId);
-        if (!counter.periodClosed(trancheId)) revert TrancheStillAccruing(trancheId);
-        if (claimed[trancheId][msg.sender]) revert AlreadyClaimed(trancheId, msg.sender);
+    function claim(uint8 periodId, bytes32[] calldata artifacts) external {
+        if (periodId >= periodAmount.length) revert UnknownPeriod(periodId);
+        if (!counter.periodClosed(periodId)) revert PeriodStillAccruing(periodId);
+        if (claimed[periodId][msg.sender]) revert AlreadyClaimed(periodId, msg.sender);
         if (artifacts.length == 0) revert NoArtifacts();
 
-        (uint256 amount, uint256 score) = _entitlement(trancheId, msg.sender, artifacts);
+        (uint256 amount, uint256 score) = _entitlement(periodId, msg.sender, artifacts);
         if (amount == 0) revert NothingToClaim();
 
-        uint256 spent = minted[trancheId] + amount;
-        if (spent > trancheAmount[trancheId]) revert TrancheBudgetExceeded(trancheId);
+        uint256 spent = minted[periodId] + amount;
+        if (spent > periodAmount[periodId]) revert PeriodBudgetExceeded(periodId);
 
-        claimed[trancheId][msg.sender] = true;
-        minted[trancheId] = spent;
+        claimed[periodId][msg.sender] = true;
+        minted[periodId] = spent;
 
-        emit Claimed(trancheId, msg.sender, amount, score);
+        emit Claimed(periodId, msg.sender, amount, score);
 
         florin.mint(msg.sender, amount);
     }
@@ -170,7 +184,7 @@ contract RpgfMinter {
     // ── Internals ───────────────────────────────────────────────────
 
     /// @dev Sum the caller's artifacts' scores for the period and take the
-    ///      pro-rata share of the tranche. UNIFORM pro rata: no per-wallet cap.
+    ///      pro-rata share of its budget. UNIFORM pro rata: no per-wallet cap.
     ///      The reward tracks real usage directly, and the fixed 600M pool is one
     ///      a farmer DILUTES, never inflates.
     ///
@@ -185,12 +199,12 @@ contract RpgfMinter {
     ///      — duplicates revert, and with distinct artifacts `score <= total`
     ///      holds structurally (`totalScoreIn` is the sum over ALL artifacts, of
     ///      which the caller's are a subset), so there is nothing left to clamp.
-    function _entitlement(uint8 trancheId, address account, bytes32[] calldata artifacts)
+    function _entitlement(uint8 periodId, address account, bytes32[] calldata artifacts)
         internal
         view
         returns (uint256 amount, uint256 score)
     {
-        uint256 total = counter.totalScoreIn(trancheId);
+        uint256 total = counter.totalScoreIn(periodId);
         if (total == 0) return (0, 0);
 
         for (uint256 i = 0; i < artifacts.length; ++i) {
@@ -199,11 +213,11 @@ contract RpgfMinter {
                 if (artifacts[j] == artifact) revert DuplicateArtifact(artifact);
             }
             if (!_isAuthor(artifact, account)) revert NotAuthorOfRecord(artifact, account);
-            score += counter.scoreOf(artifact, trancheId);
+            score += counter.scoreOf(artifact, periodId);
         }
         if (score == 0) return (0, 0);
 
-        amount = (trancheAmount[trancheId] * score) / total;
+        amount = (periodAmount[periodId] * score) / total;
     }
 
     /// @dev Author of record with a LIVE stake — the clause registrar or the

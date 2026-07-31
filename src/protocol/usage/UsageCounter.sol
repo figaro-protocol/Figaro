@@ -197,11 +197,11 @@ contract UsageCounter {
     ///         "re-record everything each period", which pays for RECORDING GAS
     ///         rather than adoption: an author whose clause is widely used but
     ///         who recorded once and moved on collects nothing later, while a
-    ///         wallet that knows to re-record collects three times on the same
-    ///         trades — and a fabricated period-0 farm is milked across all three
-    ///         tranches at record-gas only. Counting once ever makes each tranche
-    ///         pay for usage that is NEW to it, which is what the declining
-    ///         300M/200M/100M schedule already assumes.
+    ///         wallet that knows to re-record collects again and again on the
+    ///         same trades — and a fabricated period-0 farm is milked across
+    ///         every later period at record-gas only. Counting once ever makes
+    ///         each period pay for usage that is NEW to it, which is what a
+    ///         fixed per-period budget schedule assumes.
     mapping(bytes32 => mapping(bytes32 => bool)) public processCounted;
 
     /// @notice artifact → period → seller → has this seller already contributed

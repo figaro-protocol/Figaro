@@ -38,8 +38,8 @@ import "../src/protocol/registries/AssemblyRegistry.sol";
 ///         plus UsageCounter + the RpgfMinter registered at 600M before
 ///         renounce. Nothing is posted, bonded, or challenged: the counter
 ///         records verified usage as it happens and the minter pays pro rata
-///         from a period that has closed. Devnet compresses the tranche
-///         schedule to +14d/+35d/+60d so a period can close in a test run.
+///         from a period that has closed. Devnet compresses the nine-period
+///         annual schedule to 30-minute periods so one can close in a test run.
 contract Deploy is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -306,13 +306,16 @@ contract Deploy is Script {
     ///      because the two reference each other — see
     ///      `_deployUsageAndVerifier`.
     function _deployUsageCounter(address core, address members, address batchVerifier_) internal {
-        // Accrual periods and RPGF tranches are ONE schedule, configured
-        // consistently: tranche i pays for period i.
+        // Accrual periods and per-period RPGF budgets are ONE schedule (the
+        // minter validates its budget array against `periodCount()` at
+        // deploy). The reference shape (ruled 2026-07-31) is NINE ANNUAL
+        // periods whose budgets group into three rising tranches; devnet
+        // rehearses the same nine-period structure.
         //
         // TIME IS COMPRESSED ON DEVNET — minutes, not years. The claim path
         // gates on `periodClosed`, so a schedule measured in days makes the
         // whole reward leg undrivable in a test run: usage accrues and nothing
-        // can ever be claimed. (Testnet compresses years 2/5/9 to weeks; this
+        // can ever be claimed. (Testnet compresses years to weeks; this
         // compresses further.)
         //
         // Thirty-minute periods, not seconds or ten minutes: deploy + clause
@@ -322,14 +325,14 @@ contract Deploy is Script {
         // a full suite run — a 3×10-minute schedule closed the book ~30
         // minutes after deploy and every later recordClauseUsage reverted
         // AccrualClosed (measured, not guessed: the tradelens batch). Thirty
-        // -minute periods give a 90-minute accrual life; the rewards spec
+        // -minute periods give a 4.5-hour accrual life; the rewards spec
         // still advances the chain past its own period boundary rather than
         // sleeping through it, and its minutes-scale jump cannot expire the
         // hour-scale deadlines other specs sign with.
-        uint64[] memory periods = new uint64[](3);
-        periods[0] = uint64(block.timestamp + 30 minutes);
-        periods[1] = uint64(block.timestamp + 60 minutes);
-        periods[2] = uint64(block.timestamp + 90 minutes);
+        uint64[] memory periods = new uint64[](9);
+        for (uint256 i = 0; i < 9; ++i) {
+            periods[i] = uint64(block.timestamp + (i + 1) * 30 minutes);
+        }
 
         // Protocol floor earns nothing: the two order-mandatory clauses plus the
         // assembly-provenance clause — their count is the process count and
@@ -360,14 +363,27 @@ contract Deploy is Script {
         ClauseRegistry clauses,
         AssemblyRegistry assemblies
     ) internal {
-        RpgfMinter rpgfMinter = new RpgfMinter(
-            address(florin),
-            _usageCounter,
-            address(clauses),
-            address(assemblies),
-            [uint256(300_000_000 ether), 200_000_000 ether, 100_000_000 ether]
-        );
+        RpgfMinter rpgfMinter =
+            new RpgfMinter(address(florin), _usageCounter, address(clauses), address(assemblies), _rpgfAmounts());
         console.log("RpgfMinter deployed at:", address(rpgfMinter));
         florin.registerMinter(address(rpgfMinter), 600_000_000 ether);
+    }
+
+    /// @dev The 600M split into nine annual slices (ruled 2026-07-31): three
+    ///      RISING tranches — 15% over years 1–2, 30% over years 3–5, 55% over
+    ///      years 6–9 — each split equally across its years. Rising, so the
+    ///      largest share pays on the most-measured evidence; the cold-start
+    ///      years carry the smallest budgets. 45+45+60·3+82.5·4 = 600M.
+    function _rpgfAmounts() internal pure returns (uint256[] memory a) {
+        a = new uint256[](9);
+        a[0] = 45_000_000 ether;
+        a[1] = 45_000_000 ether;
+        a[2] = 60_000_000 ether;
+        a[3] = 60_000_000 ether;
+        a[4] = 60_000_000 ether;
+        a[5] = 82_500_000 ether;
+        a[6] = 82_500_000 ether;
+        a[7] = 82_500_000 ether;
+        a[8] = 82_500_000 ether;
     }
 }
