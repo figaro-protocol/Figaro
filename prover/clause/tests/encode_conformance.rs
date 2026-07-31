@@ -15,10 +15,13 @@
 //!   - object-arrays encode as `tuple[]`
 //!   - `stages[n]` overrides the field set when the encode targets stage n
 //!
-//! Vectors are generated from the live Layer A encoder (the generator
-//! script validates each payload first, so every vector is validated
-//! content). When a clause's spec changes, regenerate the vector from
-//! Layer A in the same commit.
+//! Vectors are generated from the live Layer A encoder by
+//! `scripts/generate-encode-conformance-vectors.mjs` (repo root, with
+//! sdk/dist built: `node scripts/generate-encode-conformance-vectors.mjs`).
+//! This file stays the single source of the vector INPUTS; the script
+//! validates each payload, then re-derives the expected hex from Layer A —
+//! NEVER from the Rust side under test. When a clause's spec changes, edit
+//! the content payload here and rerun the script in the same commit.
 
 use figaro_clause::{
     encode_content_from_spec, parse_clause_spec, EncodeOptions, ParseClauseSpecResult,
@@ -152,10 +155,15 @@ fn denomination_address() {
 
 #[test]
 fn geolocation_unknown_format_encodes_as_string() {
+    // The format axis is OPEN: `geocodeStandard` admits any non-empty
+    // standard token, and `origin`/`destination` resolve their format
+    // from its VALUE (`formatFromField`) — a standard the engine has
+    // never seen ("maidenhead" is real but outside the spec's known
+    // examples) must still encode as plain strings.
     assert_encode(
         "figaro-geolocation",
-        json!({ "originGeohash": "u4pruyd", "destinationGeohash": "u4pruyf" }),
-        "0x000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000007753470727579640000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000077534707275796600000000000000000000000000000000000000000000000000",
+        json!({ "geocodeStandard": "maidenhead", "origin": "JN47uv", "destination": "FN31pr" }),
+        "0x000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000a6d616964656e686561640000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000064a4e3437757600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006464e333170720000000000000000000000000000000000000000000000000000",
     );
 }
 
