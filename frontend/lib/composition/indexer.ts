@@ -8,7 +8,7 @@
  * reverse). Reads are clause-agnostic — clauseId is DATA off the event, never
  * hardcoded.
  */
-import { decodeFunctionData, type Hex, type Log, type PublicClient } from "viem";
+import { decodeFunctionData, getAbiItem, type Hex, type Log, type PublicClient } from "viem";
 import { cachedGetLogs } from "@/lib/kernel/eventCache";
 import {
     cachedGetLogsMulti,
@@ -20,8 +20,8 @@ import {
 } from "@/lib/kernel/indexer";
 import { getAllMemberRegistered } from "@/lib/protocol/membersRegistryIndexer";
 import { hexEqual, isEmptyHex } from "@/lib/shared/evm";
-import { ATTESTATION_COORDINATOR_ABI, EV_ATTESTATION, parseAttestationLogs } from "@figaro/sdk";
-import { getAttestationCoordinator } from "@/lib/composition/contracts";
+import { ATTESTATION_COORDINATOR_ABI, BATCH_VERIFIER_ABI, EV_ATTESTATION, parseAttestationLogs } from "@figaro/sdk";
+import { getAttestationCoordinator, getBatchVerifier } from "@/lib/composition/contracts";
 
 // ── AttestationCoordinator ────────────────────────────────────────────────────
 
@@ -81,6 +81,53 @@ export async function getAttestationsByOrder(client: PublicClient, chainId: numb
     const all = await getAllAttestations(client, chainId);
     const wanted = orderHash.toLowerCase();
     return all.filter((log) => getStringArg(log, "orderHash")?.toLowerCase() === wanted);
+}
+
+// ── FigaroBatchVerifier — the SECOND settlement universe ─────────────────────
+//
+// These reads are deliberately NOT merged into `getAllAttestations` above. The
+// `Attestation` topic hash is shared by the coordinator and the verifier
+// (FigaroBatchVerifier.sol:154 warns of exactly this), so the EMITTING ADDRESS
+// is the only thing that says which universe a row came from — and that
+// distinction is the whole evidentiary difference between "re-verifiable from
+// calldata" and "proved once inside a batch". Merging the two streams would
+// erase it. Callers that only want a timeline use the coordinator read; callers
+// that must attribute evidence use these.
+
+/** `Attestation` logs re-emitted BY THE BATCH VERIFIER (never the coordinator's).
+ *  Empty when no verifier address is configured — absence, not "not settled". */
+async function getAllBatchAttestations(client: PublicClient, chainId: number): Promise<IndexedLog[]> {
+    const verifier = getBatchVerifier();
+    if (!verifier) return [];
+    return cachedGetLogs(client, chainId, {
+        address: verifier,
+        event: EV_ATTESTATION,
+        eventName: "Attestation",
+    });
+}
+
+/** Verifier-re-emitted `Attestation` logs for one order (hex case never matters). */
+export async function getBatchAttestationsByOrder(
+    client: PublicClient,
+    chainId: number,
+    orderHash: string,
+): Promise<IndexedLog[]> {
+    const all = await getAllBatchAttestations(client, chainId);
+    const wanted = orderHash.toLowerCase();
+    return all.filter((log) => getStringArg(log, "orderHash")?.toLowerCase() === wanted);
+}
+
+/** `BatchSettled` logs from the verifier. The event item comes off the SDK's
+ *  `BATCH_VERIFIER_ABI` rather than a new `EV_*` constant — the same pattern
+ *  /integrate documents for outside integrators. */
+export async function getAllBatchSettled(client: PublicClient, chainId: number): Promise<IndexedLog[]> {
+    const verifier = getBatchVerifier();
+    if (!verifier) return [];
+    return cachedGetLogs(client, chainId, {
+        address: verifier,
+        event: getAbiItem({ abi: BATCH_VERIFIER_ABI, name: "BatchSettled" }),
+        eventName: "BatchSettled",
+    });
 }
 
 /** A process attestation flattened to the fields the runtime model needs:

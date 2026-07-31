@@ -31,10 +31,19 @@ import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
  * No clause is named here and no field is assumed — a clause the protocol
  * has never seen surfaces from its own spec, with zero per-clause code.
  */
-/** The per-party verdict rows beside an order's hash row. Signature bytes are
- *  re-verified from the commit transaction's calldata against the EXACT struct
- *  it carried (`lib/audit/signatureVerdicts`) — presentation only; the kernel
- *  verified the same signatures at commit time. */
+/** The per-party verdict rows beside an order's hash row.
+ *
+ *  DIRECT path — signature bytes are re-verified here from the commit
+ *  transaction's calldata against the EXACT struct it carried
+ *  (`lib/audit/signatureVerdicts`); the kernel verified the same signatures at
+ *  commit time.
+ *
+ *  BATCH path — there are no signature bytes on chain to re-verify, so the
+ *  verdict is "proved": the guest checked both signatures inside the SP1 proof.
+ *  It is deliberately styled apart from the green direct-path verdict and
+ *  carries a provenance line, because the reader is trusting a proof they can
+ *  independently check — not a signature they recomputed. Never merge the two
+ *  presentations. */
 function OrderSignatureRows({
     orderHash,
     verdicts,
@@ -66,6 +75,11 @@ function OrderSignatureRows({
                                 &#10007; Invalid &mdash; does not recover to the committed {party}
                             </span>
                         )}
+                        {verdict === "proved" && (
+                            <span className="text-blue-700 font-semibold">
+                                &#9670; Proved in a batch &mdash; checked inside the proof, not recomputed here
+                            </span>
+                        )}
                         {verdict === "unavailable" && (
                             <span className="text-ink-muted">
                                 Unavailable &mdash; no readable commit calldata for this order
@@ -74,6 +88,23 @@ function OrderSignatureRows({
                     </dd>
                 </div>
             ))}
+            {verdicts.batch && (
+                <div
+                    className="col-span-2 mt-1 text-[11px] text-ink-muted"
+                    data-testid={`audit-sig-batch-${orderHash}`}
+                >
+                    {verdicts.batch.batchId !== null
+                        ? `Batch #${verdicts.batch.batchId} re-emitted this order's attestation, so both signatures were verified inside that proof or an earlier one in the same state-root chain. `
+                        : "No log binds this order to a specific batch, so the statement is the weaker one: both signatures were verified inside some proof this verifier accepted. "}
+                    You are trusting that proof rather than a signature recomputed here &mdash; check it against verifier{" "}
+                    <span className="font-mono break-all">{verdicts.batch.verifier}</span>
+                    {verdicts.batch.programVKey && (
+                        <>
+                            {" "}and program vkey <span className="font-mono break-all">{verdicts.batch.programVKey}</span>
+                        </>
+                    )}.
+                </div>
+            )}
         </dl>
     );
 }

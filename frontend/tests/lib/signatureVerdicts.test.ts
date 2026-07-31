@@ -43,6 +43,26 @@ vi.mock("@/lib/kernel/indexer", async (importOriginal) => {
     };
 });
 
+// The batch universe. Only the two verifier log reads and the address resolver
+// are faked — the crease logic under test (which universe answered, how tightly
+// the order binds to a batch) is real.
+const BATCH_VERIFIER = "0xfE9A08Cbd38397E2b8f96BC49Bd8d4cd9e622e50" as const;
+const getBatchVerifierMock = vi.fn();
+const getBatchAttestationsByOrderMock = vi.fn();
+const getAllBatchSettledMock = vi.fn();
+vi.mock("@/lib/composition/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/composition/contracts")>();
+    return { ...actual, getBatchVerifier: () => getBatchVerifierMock() };
+});
+vi.mock("@/lib/composition/indexer", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/composition/indexer")>();
+    return {
+        ...actual,
+        getBatchAttestationsByOrder: (...args: unknown[]) => getBatchAttestationsByOrderMock(...args),
+        getAllBatchSettled: (...args: unknown[]) => getAllBatchSettledMock(...args),
+    };
+});
+
 // Deterministic anvil test keys (devnet-only, publicly known).
 const buyerAccount = privateKeyToAccount(
     "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
@@ -83,6 +103,11 @@ let commitInput: Hex;
 
 beforeEach(async () => {
     getAllOrderCommittedMock.mockReset();
+    // Default: the batch universe knows nothing, so every pre-existing
+    // direct-path expectation keeps its exact meaning.
+    getBatchVerifierMock.mockReset().mockReturnValue(null);
+    getBatchAttestationsByOrderMock.mockReset().mockResolvedValue([]);
+    getAllBatchSettledMock.mockReset().mockResolvedValue([]);
     buyerSig = await signCommitment(buyerAccount);
     sellerSig = await signCommitment(sellerAccount);
     commitInput = encodeFunctionData({
@@ -173,7 +198,7 @@ describe("verifyOrderCommitSignatures", () => {
             return { input: commitInput };
         });
         const verdicts = await verifyOrderCommitSignatures(client, CHAIN_ID, orderHash);
-        expect(verdicts).toEqual({ buyer: "valid", seller: "valid", transactionHash: TX_HASH });
+        expect(verdicts).toEqual({ buyer: "valid", seller: "valid", transactionHash: TX_HASH, batch: null });
     });
 
     it("reports unavailable when the order has no committed log", async () => {
@@ -182,7 +207,7 @@ describe("verifyOrderCommitSignatures", () => {
             throw new Error("must not be called");
         });
         const verdicts = await verifyOrderCommitSignatures(client, CHAIN_ID, orderHash);
-        expect(verdicts).toEqual({ buyer: "unavailable", seller: "unavailable", transactionHash: null });
+        expect(verdicts).toEqual({ buyer: "unavailable", seller: "unavailable", transactionHash: null, batch: null });
     });
 
     it("reports unavailable when the log carries no transaction hash", async () => {
@@ -193,7 +218,7 @@ describe("verifyOrderCommitSignatures", () => {
             throw new Error("must not be called");
         });
         const verdicts = await verifyOrderCommitSignatures(client, CHAIN_ID, orderHash);
-        expect(verdicts).toEqual({ buyer: "unavailable", seller: "unavailable", transactionHash: null });
+        expect(verdicts).toEqual({ buyer: "unavailable", seller: "unavailable", transactionHash: null, batch: null });
     });
 
     it("reports unavailable when the transaction cannot be fetched", async () => {
@@ -204,7 +229,7 @@ describe("verifyOrderCommitSignatures", () => {
             throw new Error("rpc down");
         });
         const verdicts = await verifyOrderCommitSignatures(client, CHAIN_ID, orderHash);
-        expect(verdicts).toEqual({ buyer: "unavailable", seller: "unavailable", transactionHash: null });
+        expect(verdicts).toEqual({ buyer: "unavailable", seller: "unavailable", transactionHash: null, batch: null });
     });
 
     it("reports unavailable (keeping the tx hash) for undecodable calldata", async () => {
@@ -213,6 +238,120 @@ describe("verifyOrderCommitSignatures", () => {
         ]);
         const client = clientWith(async () => ({ input: "0xdeadbeef" as Hex }));
         const verdicts = await verifyOrderCommitSignatures(client, CHAIN_ID, orderHash);
-        expect(verdicts).toEqual({ buyer: "unavailable", seller: "unavailable", transactionHash: TX_HASH });
+        expect(verdicts).toEqual({ buyer: "unavailable", seller: "unavailable", transactionHash: TX_HASH, batch: null });
+    });
+});
+
+/**
+ * The batch universe. A batch-settled order emits no `OrderCommitted` and
+ * `settleBatch` carries no signature bytes, so the direct walk finds nothing —
+ * but the guest verified both signatures inside the proof, and the verifier's
+ * re-emitted `Attestation` is the one public per-order trace that says so.
+ */
+describe("verifyOrderCommitSignatures — batch path", () => {
+    const VKEY = `0x${"aa".repeat(32)}` as Hex;
+    const SETTLE_TX = `0x${"22".repeat(32)}` as Hex;
+    const COMMIT_TX = `0x${"11".repeat(32)}` as Hex;
+
+    /** A client that answers the vkey read; `getTransaction` must not be hit on
+     *  the batch path (there is no commit transaction to fetch). */
+    const batchClient = (readContract = async () => VKEY as unknown) =>
+        ({
+            readContract,
+            getTransaction: async () => {
+                throw new Error("must not be called on the batch path");
+            },
+        } as unknown as PublicClient);
+
+    beforeEach(() => {
+        getAllOrderCommittedMock.mockResolvedValue([]);
+        getBatchVerifierMock.mockReturnValue(BATCH_VERIFIER);
+    });
+
+    it("reports PROVED, naming the batch, for a batch-settled order", async () => {
+        getBatchAttestationsByOrderMock.mockResolvedValue([
+            { args: { orderHash }, transactionHash: SETTLE_TX },
+        ]);
+        getAllBatchSettledMock.mockResolvedValue([
+            { args: { batchId: 7n }, transactionHash: SETTLE_TX },
+        ]);
+        const verdicts = await verifyOrderCommitSignatures(batchClient(), CHAIN_ID, orderHash);
+        expect(verdicts).toEqual({
+            buyer: "proved",
+            seller: "proved",
+            transactionHash: null,
+            batch: { batchId: 7n, transactionHash: SETTLE_TX, verifier: BATCH_VERIFIER, programVKey: VKEY },
+        });
+    });
+
+    it("falls back to the weaker statement when no BatchSettled binds the order", async () => {
+        getBatchAttestationsByOrderMock.mockResolvedValue([
+            { args: { orderHash }, transactionHash: SETTLE_TX },
+        ]);
+        // A settlement from a DIFFERENT transaction must never be borrowed.
+        getAllBatchSettledMock.mockResolvedValue([
+            { args: { batchId: 99n }, transactionHash: `0x${"33".repeat(32)}` },
+        ]);
+        const verdicts = await verifyOrderCommitSignatures(batchClient(), CHAIN_ID, orderHash);
+        expect(verdicts.buyer).toBe("proved");
+        expect(verdicts.batch).toEqual({
+            batchId: null,
+            transactionHash: SETTLE_TX,
+            verifier: BATCH_VERIFIER,
+            programVKey: VKEY,
+        });
+    });
+
+    it("still reports PROVED when the vkey cannot be read", async () => {
+        getBatchAttestationsByOrderMock.mockResolvedValue([
+            { args: { orderHash }, transactionHash: SETTLE_TX },
+        ]);
+        getAllBatchSettledMock.mockResolvedValue([
+            { args: { batchId: 3n }, transactionHash: SETTLE_TX },
+        ]);
+        const client = batchClient(async () => {
+            throw new Error("rpc down");
+        });
+        const verdicts = await verifyOrderCommitSignatures(client, CHAIN_ID, orderHash);
+        expect(verdicts.buyer).toBe("proved");
+        expect(verdicts.batch?.batchId).toBe(3n);
+        expect(verdicts.batch?.programVKey).toBeNull();
+    });
+
+    it("reports unavailable — never proved — for an order no batch attested", async () => {
+        getBatchAttestationsByOrderMock.mockResolvedValue([]);
+        const verdicts = await verifyOrderCommitSignatures(batchClient(), CHAIN_ID, orderHash);
+        expect(verdicts).toEqual({
+            buyer: "unavailable", seller: "unavailable", transactionHash: null, batch: null,
+        });
+    });
+
+    it("reports unavailable when no batch verifier is configured", async () => {
+        getBatchVerifierMock.mockReturnValue(null);
+        getBatchAttestationsByOrderMock.mockResolvedValue([
+            { args: { orderHash }, transactionHash: SETTLE_TX },
+        ]);
+        const verdicts = await verifyOrderCommitSignatures(batchClient(), CHAIN_ID, orderHash);
+        expect(verdicts.buyer).toBe("unavailable");
+        expect(verdicts.batch).toBeNull();
+    });
+
+    it("does NOT weaken the direct path when the batch universe is live", async () => {
+        // Same order present on the direct path AND attested by the verifier:
+        // the calldata re-verification must win, with no batch provenance.
+        getAllOrderCommittedMock.mockResolvedValue([
+            { args: { orderHash }, transactionHash: COMMIT_TX },
+        ]);
+        getBatchAttestationsByOrderMock.mockResolvedValue([
+            { args: { orderHash }, transactionHash: SETTLE_TX },
+        ]);
+        const client = {
+            readContract: async () => VKEY as unknown,
+            getTransaction: async () => ({ input: commitInput }),
+        } as unknown as PublicClient;
+        const verdicts = await verifyOrderCommitSignatures(client, CHAIN_ID, orderHash);
+        expect(verdicts).toEqual({
+            buyer: "valid", seller: "valid", transactionHash: COMMIT_TX, batch: null,
+        });
     });
 });

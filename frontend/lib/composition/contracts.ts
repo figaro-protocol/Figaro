@@ -19,6 +19,7 @@ const COMPOSITION_CONTRACTS = {
     swapRouter: (process.env.NEXT_PUBLIC_SWAP_ROUTER || "") as `0x${string}`,
     rpgfMinter: (process.env.NEXT_PUBLIC_RPGF_MINTER || "") as `0x${string}`,
     usageCounter: (process.env.NEXT_PUBLIC_USAGE_COUNTER || "") as `0x${string}`,
+    batchVerifier: (process.env.NEXT_PUBLIC_BATCH_VERIFIER || "") as `0x${string}`,
 };
 
 function resolveAddress(addr: `0x${string}`): `0x${string}` | null {
@@ -66,4 +67,15 @@ export function getRpgfMinter(): `0x${string}` | null {
  *  Resolved-empty: null = accrual is unreadable on this network. */
 export function getUsageCounter(): `0x${string}` | null {
     return resolveAddress(COMPOSITION_CONTRACTS.usageCounter);
+}
+
+/** The FigaroBatchVerifier — the SECOND settlement universe. It shares no state
+ *  with FigaroCore and never calls it, so it is not a kernel contract and does
+ *  not belong in `lib/kernel/contracts.ts`: a batch-settled process never
+ *  acquires kernel status (docs/SCALING_STRATEGY.md § "Two settlement paths, two
+ *  DISJOINT state universes"). Readers that fold both universes resolve the
+ *  address here. Resolved-empty: null = the batch path is unreadable on this
+ *  network, which is absence, never "not settled". */
+export function getBatchVerifier(): `0x${string}` | null {
+    return resolveAddress(COMPOSITION_CONTRACTS.batchVerifier);
 }
