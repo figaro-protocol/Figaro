@@ -53,7 +53,7 @@ const BUYER = ANVIL_ACCOUNTS[0] as Hex;
 // (5-12) and every other spec's self-seeded range. Self-seeding a
 // populate-owned index (this spec once used 9/10/11 = Saffron/Pomodoro/Harbor)
 // STOMPS the shared catalogue that adopters like assembly-chain read
-// read-only — the wallet-index-collision class. anvil runs --accounts 34.
+// read-only — the wallet-index-collision class. anvil runs --accounts 38.
 const CHAIN_SELLERS: Array<{ index: number; label: string; item: string; price: string }> = [
     { index: 22, label: 'lead', item: 'Lead deliverable', price: '2' },
     { index: 23, label: 'contributor-1', item: 'Edit pass', price: '0.5' },

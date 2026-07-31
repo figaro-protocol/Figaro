@@ -74,7 +74,7 @@ async function waitForConnected(page: Page) {
 // view shows the accrual.
 const AUTHOR = ANVIL_ACCOUNTS[0] as Hex;
 // Scenario-dedicated wallets: buyer anvil[18]; the three floor sellers are
-// anvil[19] plus the spec-dedicated 34/35 (the --accounts 36 bump exists for
+// anvil[19] plus the spec-dedicated 34/35 (the accounts bump past 34 exists for
 // them; past index 19 they carry launch ETH but no tokens, so the cycle
 // self-mints their MOCK bond).
 const TRADE_BUYER_KEY = ANVIL_KEYS[18];
