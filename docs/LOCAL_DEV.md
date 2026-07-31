@@ -127,6 +127,15 @@ NEXT_PUBLIC_DAO_TREASURY=0x...
 # SP1_PROGRAM_VKEY env)
 NEXT_PUBLIC_BATCH_VERIFIER=0x...
 
+# Batch-settlement RELAY the frontend READS batched trade from (prover/sequencer,
+# or any other relay). Deliberately EMPTY: settling a batch is permissionless, so
+# a relay is one publisher among any number and there is no default endpoint of
+# ours. Unset = batched trade is unreadable here, which /audit states plainly.
+# Readers can override it per-browser in /settings. Nothing a relay publishes is
+# trusted: lib/audit/batchRelay.ts re-derives every struct, signature and payout
+# and anchors the batch's state root on chain before rendering it.
+NEXT_PUBLIC_BATCH_RELAY_URL=
+
 # Wallet + dev helpers
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=...
 NEXT_PUBLIC_ENABLE_TEST_HELPERS=true   # devnet only

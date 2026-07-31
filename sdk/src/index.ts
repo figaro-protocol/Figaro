@@ -128,6 +128,8 @@ export {
     buildCommitmentSafe,
     hashCommitmentStruct,
     verifyCommitmentSignature,
+    RESOLVE_PROCESS_TYPES,
+    verifyResolveProcessSignature,
     computeCommitmentProcessId,
     computeOrderHash,
     orderToCommitment,

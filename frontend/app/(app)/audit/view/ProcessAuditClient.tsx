@@ -7,7 +7,8 @@ import { ProcessClauseEvidence } from "../_components/ProcessClauseEvidence";
 import { HashVerifier } from "../_components/HashVerifier";
 import { RecoursePanel } from "@/components/runtime/RecoursePanel";
 import { AgreementPinErasure } from "@/components/runtime/AgreementPinErasure";
-import { useProcessOrders } from "@/hooks/useProcessOrders";
+import { useAuditProcessOrders } from "@/hooks/useAuditProcessOrders";
+import { BatchUniversePanel } from "../_components/BatchUniversePanel";
 import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import { deriveProcessRecourse } from "@/lib/semantic/processRecourse";
 
@@ -20,7 +21,7 @@ import { deriveProcessRecourse } from "@/lib/semantic/processRecourse";
  * process — not one per order.
  */
 function ProcessDisputeSection({ processId }: { processId: string }) {
-    const orders = useProcessOrders(processId);
+    const { orders } = useAuditProcessOrders(processId);
     const agreementHashes = useMemo(
         () => orders.map((o) => o.agreementHash).filter((h): h is string => Boolean(h)),
         [orders],
@@ -41,6 +42,14 @@ function ProcessDisputeSection({ processId }: { processId: string }) {
             <AgreementPinErasure agreementHashes={agreementHashes} />
         </div>
     );
+}
+
+/** The batch universe's own section: relay provenance and the per-check
+ *  verdict for every record it published. Separate from the panels above
+ *  because that data is RELAY-sourced and verified, never chain-read. */
+function BatchUniverseSection({ processId }: { processId: string }) {
+    const { batch } = useAuditProcessOrders(processId);
+    return <BatchUniversePanel batch={batch} />;
 }
 
 export function ProcessAuditClient() {
@@ -73,6 +82,10 @@ export function ProcessAuditClient() {
 
             <div className="border-t border-default pt-12">
                 <ProcessClauseEvidence processId={processId} />
+            </div>
+
+            <div className="border-t border-default pt-12">
+                <BatchUniverseSection processId={processId} />
             </div>
 
             <div className="border-t border-default pt-12">

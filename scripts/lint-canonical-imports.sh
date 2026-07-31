@@ -64,10 +64,24 @@ DECL_BANNED=(
 
 violations=0
 
+# A file cannot import a canonical it has no path to. `sdk/` is a STANDALONE
+# package that ships to consumers and must never import from `frontend/` (the
+# dependency runs the other way), so a frontend-homed canonical is unfollowable
+# advice there — the SDK declares its own (e.g. `ZERO_PROCESS_ID` in
+# sdk/src/commitments.ts). Skip that pair rather than emit a violation no one
+# can fix. Same-package canonicals still apply everywhere.
+unreachable_canonical() {
+    local file="$1" canonical="$2"
+    [[ "$file" == sdk/* || "$file" == */sdk/* ]] && [[ "$canonical" == frontend/* ]]
+}
+
 check_literal() {
     local file="$1" literal="$2" canonical="$3" name="$4"
 
     if [[ "$file" == */"$canonical" || "$file" == "$canonical" ]]; then
+        return 0
+    fi
+    if unreachable_canonical "$file" "$canonical"; then
         return 0
     fi
 
@@ -84,6 +98,9 @@ check_computed() {
     local file="$1" count="$2" canonical="$3" name="$4"
 
     if [[ "$file" == */"$canonical" || "$file" == "$canonical" ]]; then
+        return 0
+    fi
+    if unreachable_canonical "$file" "$canonical"; then
         return 0
     fi
 

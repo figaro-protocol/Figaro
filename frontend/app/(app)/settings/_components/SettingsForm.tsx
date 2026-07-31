@@ -43,6 +43,7 @@ export function SettingsForm() {
         ipfsApiUrl: "",
         ipfsGatewayUrl: "",
         geocodeUrl: "",
+        batchRelayUrl: "",
     });
     const [transport, setTransport] = useState<CoordinationTransport>(DEFAULT_TRANSPORT);
     const [saved, setSaved] = useState(false);
@@ -55,6 +56,7 @@ export function SettingsForm() {
             ipfsApiUrl: current.ipfsApiUrl ?? "",
             ipfsGatewayUrl: current.ipfsGatewayUrl ?? "",
             geocodeUrl: current.geocodeUrl ?? "",
+            batchRelayUrl: current.batchRelayUrl ?? "",
         });
         setTransport(readUserTransport());
     }, [mounted]);
@@ -137,6 +139,26 @@ export function SettingsForm() {
                         Nominatim-compatible search endpoint typed addresses resolve
                         through — called directly from your browser, only when you use
                         &ldquo;From address&rdquo;. Applies immediately.
+                    </p>
+                </FormField>
+
+                <FormField label="Batch relay" inputId="settings-batch-relay-url">
+                    <Input
+                        id="settings-batch-relay-url"
+                        type="text"
+                        placeholder="http://127.0.0.1:3001 (any relay, or your own)"
+                        value={form.batchRelayUrl}
+                        onChange={(e) => setField("batchRelayUrl", e.target.value)}
+                        data-testid="settings-batch-relay-url"
+                    />
+                    <p className="text-xs text-ink-faint mt-1">
+                        Where batch-settled trade is read from. Settling a batch is
+                        permissionless, so a relay is one publisher among any number —
+                        point this at whichever you like, or at your own. Nothing it
+                        says is trusted: every struct, signature and payout is
+                        re-derived and anchored on chain before it is shown. Unset
+                        means batched trade is simply unreadable here. Applies
+                        immediately.
                     </p>
                 </FormField>
 

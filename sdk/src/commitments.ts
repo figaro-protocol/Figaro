@@ -120,6 +120,49 @@ export async function verifyCommitmentSignature(
     }
 }
 
+// ── Batch-path resolve authorization ────────────────────────────────────────
+//
+// Not a kernel type. On the direct path the kernel enforces buyer dominance
+// with `msg.sender == rootBuyer`; there is no signature to check. The BATCH
+// path has no sender, so the buyer signs this instead, and the proof checks it
+// (`prover/lib/src/eip712.rs::resolve_struct_hash`). Its domain is the
+// VERIFIER's — pass the verifier address as `core`.
+
+/** EIP-712 types for the batch path's `ResolveProcess` authorization —
+ *  the signed form of the kernel's `msg.sender == rootBuyer`. */
+export const RESOLVE_PROCESS_TYPES = {
+    ResolveProcess: [{ name: "processId", type: "bytes32" }],
+} as const;
+
+/**
+ * Does `signature` authorize resolving `processId`, from `signer`? The
+ * batch-path counterpart of {@link verifyCommitmentSignature}: a reader of a
+ * relay's published resolution uses it to check that the buyer really did
+ * authorize the resolution before believing the payouts.
+ *
+ * `ctx.core` is the EIP-712 `verifyingContract` — for batched trade that is
+ * the FigaroBatchVerifier, NOT FigaroCore.
+ */
+export async function verifyResolveProcessSignature(
+    processId: Hex,
+    signature: Hex,
+    signer: Address,
+    ctx: { chainId: number; core: Address },
+): Promise<boolean> {
+    try {
+        return await verifyTypedData({
+            address: signer,
+            domain: buildDomain(ctx.chainId, ctx.core),
+            types: RESOLVE_PROCESS_TYPES,
+            primaryType: "ResolveProcess",
+            message: { processId },
+            signature,
+        });
+    } catch {
+        return false;
+    }
+}
+
 /** The order's process id: a root order (processId == 0) uses the full EIP-712
  *  digest the kernel derives; a sub-order keeps its target processId. */
 export function computeCommitmentProcessId(

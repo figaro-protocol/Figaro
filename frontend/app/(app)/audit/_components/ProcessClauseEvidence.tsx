@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePublicClient } from "wagmi";
-import { useProcessOrders } from "@/hooks/useProcessOrders";
+import { useAuditProcessOrders } from "@/hooks/useAuditProcessOrders";
 import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import {
     getAttestationsByOrder,
@@ -110,7 +110,10 @@ function OrderSignatureRows({
 }
 
 export function ProcessClauseEvidence({ processId }: { processId: string }) {
-    const orders = useProcessOrders(processId);
+    // BOTH settlement universes: a batch-settled order emits no OrderCommitted,
+    // so reading only the kernel would render no evidence and make the "proved"
+    // signature verdict below unreachable.
+    const { orders } = useAuditProcessOrders(processId);
     const publicClient = usePublicClient();
     const chainId = publicClient?.chain?.id ?? 0;
     // Warm the chain→IPFS clause-spec cache at this surface's boundary, so the

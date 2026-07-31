@@ -25,6 +25,13 @@ export interface UserEndpointOverrides {
      *  between); OpenStreetMap's public instance by default, the user's
      *  own instance if set. */
     geocodeUrl?: string;
+    /** A batch-settlement RELAY to read batched trade through. Multiple relays
+     *  are legal by construction — settlement is permissionless, so anyone can
+     *  run one — and nothing published by a relay is trusted: `/audit`
+     *  re-derives every struct, signature and payout and anchors the batch on
+     *  chain before showing it. So pointing this at any relay, or at your own,
+     *  is safe by construction rather than by reputation. */
+    batchRelayUrl?: string;
 }
 
 function sanitize(value: unknown): string | undefined {
@@ -43,6 +50,7 @@ export function readUserEndpoints(): UserEndpointOverrides {
         ipfsApiUrl: sanitize(raw.ipfsApiUrl),
         ipfsGatewayUrl: sanitize(raw.ipfsGatewayUrl),
         geocodeUrl: sanitize(raw.geocodeUrl),
+        batchRelayUrl: sanitize(raw.batchRelayUrl),
     };
 }
 
@@ -52,5 +60,6 @@ export function writeUserEndpoints(next: UserEndpointOverrides): void {
         ipfsApiUrl: sanitize(next.ipfsApiUrl),
         ipfsGatewayUrl: sanitize(next.ipfsGatewayUrl),
         geocodeUrl: sanitize(next.geocodeUrl),
+        batchRelayUrl: sanitize(next.batchRelayUrl),
     });
 }

@@ -169,7 +169,15 @@ export type {
 } from "./did.js";
 
 // Sequencer client (batch path)
-export { SequencerClient, SequencerError, toSequencerCommitment, toSequencerSig } from "./sequencer.js";
+export {
+    SequencerClient,
+    SequencerError,
+    toSequencerCommitment,
+    toSequencerSig,
+    fromSequencerCommitment,
+    fromSequencerSig,
+    parseWireQuantity,
+} from "./sequencer.js";
 export type {
     SequencerClientConfig,
     SequencerOp,
@@ -180,4 +188,13 @@ export type {
     SequencerContentKind,
     SequencerStatus,
     SubmitResult,
+    SequencerRetentionWindow,
+    SequencerBatchRef,
+    SequencerCommitView,
+    SequencerResolutionView,
+    SequencerOrderView,
+    SequencerProcessResolutionView,
+    SequencerProcessView,
+    SequencerBatchRecord,
+    SequencerBatchPage,
 } from "./sequencer.js";

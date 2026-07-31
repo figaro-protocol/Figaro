@@ -15,7 +15,7 @@
  * Used by `/audit/view?process=<processId>`.
  */
 
-import { useProcessOrders } from "@/hooks/useProcessOrders";
+import { useAuditProcessOrders } from "@/hooks/useAuditProcessOrders";
 import { projectAllFinancialStatements } from "@/lib/audit/documentProjection";
 import { DownloadAuditBundleButton } from "@/components/runtime/DownloadAuditBundleButton";
 import { DocumentView } from "./DocumentView";
@@ -25,7 +25,7 @@ interface Props {
 }
 
 export function ProcessFinancialsView({ processId }: Props) {
-    const orders = useProcessOrders(processId);
+    const { orders, batch } = useAuditProcessOrders(processId);
     const statements = projectAllFinancialStatements(orders, processId);
     const buyer = orders[0]?.buyer;
 
@@ -69,7 +69,15 @@ export function ProcessFinancialsView({ processId }: Props) {
 
             {orders.length === 0 ? (
                 <p className="text-sm text-neutral-500" data-testid="financials-empty">
-                    No orders found for this process. The chain has no record of any commitment under this processId.
+                    No orders found for this process. The kernel published no
+                    commitment under this processId
+                    {batch?.status === "found"
+                        ? ", and the batch relay published none that verified."
+                        : batch?.status === "no-relay"
+                            ? " — and batch-settled trade cannot be read here, because no relay is configured. See the batch section below."
+                            : batch?.status === "not-in-archive"
+                                ? ", and the configured relay does not hold it either. See the batch section below."
+                                : "."}
                 </p>
             ) : (
                 statements.map((document, i) => (

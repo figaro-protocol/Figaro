@@ -21,6 +21,7 @@
  */
 
 import type { Hex, Address, Commitment } from "../types.js";
+import { readCappedResponseText } from "./httpChannel.js";
 
 // ── Sequencer operation types (match Rust KernelOp variants) ────────────────
 
@@ -121,12 +122,131 @@ export interface SubmitResult {
     id: number;
 }
 
+/** The relay's retention window. A relay is bounded, so a cursor older than
+ *  `first_batch` means the gap has already been dropped — read this BEFORE
+ *  replaying so eviction is visible rather than silent. */
+export interface SequencerRetentionWindow {
+    first_batch: number | null;
+    last_batch: number | null;
+    retained_batches: number;
+    max_batches: number;
+}
+
 export interface SequencerStatus {
     state_root: string;
     pending_ops: number;
     /** Usage claims waiting to ride the next batch. */
     pending_usage_claims: number;
     batches_settled: number;
+    /** The publication window. Absent on a relay predating the read routes. */
+    archive?: SequencerRetentionWindow;
+}
+
+// ── Publication reads — the kernel's events, for the batch universe ─────────
+//
+// `FigaroCore` both SETTLES an order and PUBLISHES it (OrderCommitted /
+// OrderSeller / OrderCurrency carry the struct; the signatures sit in the
+// commit calldata). The batch path settles the same trade and publishes none
+// of it — `FigaroBatchVerifier`'s public values carry no order hashes and
+// `BatchSettled` names no order — so a batched order's buyer, seller, payment
+// and agreementHash exist only under the proven state root. These read types
+// mirror the relay's publication routes, which close that gap.
+//
+// NOTHING HERE IS AUTHORITY. A relay can omit or delay, never forge: every
+// field is checkable by the reader (the struct hashes to `order_hash` under
+// the VERIFIER's EIP-712 domain, the signatures recover to the parties named
+// inside that struct, the payouts are a pure function of the struct, and the
+// batch is anchored on chain by its state-root transition). Consumers MUST
+// verify before displaying — see `frontend/lib/audit/batchRelay.ts`.
+
+/** Where a published fact was settled, so the reader can anchor it on chain.
+ *  `batch` is THIS relay's own sequence number — a cursor, not a protocol
+ *  identity; another relay numbers differently. The chain-anchored identity is
+ *  `new_state_root` + `settlement_tx`. */
+export interface SequencerBatchRef {
+    batch: number;
+    chain_id: number;
+    /** The EIP-712 `verifyingContract` for this batch's signatures — the
+     *  VERIFIER, not FigaroCore. */
+    verifying_contract: Address;
+    prev_state_root: Hex;
+    new_state_root: Hex;
+    /** null on a dry run: the batch proved but was never settled on chain. */
+    settlement_tx: Hex | null;
+    block_timestamp: number;
+}
+
+export interface SequencerCommitView {
+    /** The 9-field struct exactly as signed — `process_id` is zero for a root
+     *  order. Amounts are hex quantities; use `fromSequencerCommitment`. */
+    commitment: SequencerCommitment;
+    buyer_signature: SequencerSignature;
+    seller_signature: SequencerSignature;
+    batch: SequencerBatchRef;
+}
+
+export interface SequencerResolutionView {
+    seller: Address;
+    /** Hex quantity. `2 × expectedCumulativeValue + payment`. */
+    seller_payout: string;
+    /** Hex quantity. `payment`. */
+    buyer_payout: string;
+    batch: SequencerBatchRef;
+}
+
+/** One published order. Either leg may be absent: `commit` is null when the
+ *  committing batch aged out of retention, `resolution` is null while the
+ *  process is still open. */
+export interface SequencerOrderView {
+    order_hash: Hex;
+    process_id: Hex;
+    commit: SequencerCommitView | null;
+    resolution: SequencerResolutionView | null;
+}
+
+export interface SequencerProcessResolutionView {
+    buyer: Address;
+    order_count: number;
+    /** The signature that authorized resolution — the batched form of the
+     *  kernel's `msg.sender == rootBuyer`. */
+    buyer_signature: SequencerSignature;
+    batch: SequencerBatchRef;
+}
+
+export interface SequencerProcessView {
+    process_id: Hex;
+    orders: SequencerOrderView[];
+    resolution: SequencerProcessResolutionView | null;
+}
+
+export interface SequencerBatchRecord extends SequencerBatchRef {
+    commits: Array<{
+        order_hash: Hex;
+        process_id: Hex;
+        commitment: SequencerCommitment;
+        buyer_signature: SequencerSignature;
+        seller_signature: SequencerSignature;
+    }>;
+    resolutions: Array<{
+        process_id: Hex;
+        buyer: Address;
+        order_count: number;
+        buyer_signature: SequencerSignature;
+        orders: Array<{
+            order_hash: Hex;
+            seller: Address;
+            seller_payout: string;
+            buyer_payout: string;
+        }>;
+    }>;
+}
+
+export interface SequencerBatchPage {
+    batches: SequencerBatchRecord[];
+    /** Pass as `from` to continue; null means the end of what this relay has
+     *  settled. */
+    next_cursor: number | null;
+    retained: SequencerRetentionWindow;
 }
 
 // ── Conversion helpers ──────────────────────────────────────────────────────
@@ -157,6 +277,77 @@ export function toSequencerSig(sig: Hex): SequencerSignature {
         s: `0x${clean.slice(64, 128)}` as Hex,
         v: parseInt(clean.slice(128, 130), 16),
     };
+}
+
+/** The wire's unsigned-integer grammar for READS: a hex quantity (`"0x7d0"`),
+ *  which is what alloy's `U256` serializes to. Deliberately TIGHTER than bare
+ *  `BigInt()` — which coerces `""` to `0n` and tolerates padded whitespace, so
+ *  a truncated or empty amount would silently read as ZERO rather than as a
+ *  parse failure. Decimal is also accepted because `toSequencerCommitment`
+ *  WRITES decimal (alloy deserializes both), so a caller round-tripping its own
+ *  submission must not be rejected. */
+const WIRE_QUANTITY_RE = /^(0x[0-9a-fA-F]+|[0-9]+)$/;
+
+/**
+ * Parse a wire quantity into a bigint, or throw.
+ *
+ * THE LANDMINE THIS EXISTS FOR: the relay serializes `U256` as a HEX QUANTITY
+ * (`"0x7d0"`), while `toSequencerCommitment` sends DECIMAL. Reading a hex
+ * quantity as decimal (or vice versa) silently corrupts every amount — a
+ * payment of `0x7d0` read as decimal is 0, and `"2000"` read as hex is 8192.
+ * `BigInt()` handles both prefixed-hex and decimal correctly; the regex is what
+ * stops `""`/`" "`/`"0x"` from becoming a plausible-looking zero.
+ */
+export function parseWireQuantity(value: string, field: string): bigint {
+    if (typeof value !== "string" || !WIRE_QUANTITY_RE.test(value)) {
+        throw new SequencerError(
+            `malformed quantity for ${field}: expected a hex quantity ("0x7d0") or decimal string, got ${JSON.stringify(value)}`,
+            0,
+        );
+    }
+    return BigInt(value);
+}
+
+/**
+ * Convert a wire commitment back to an SDK `Commitment` — the inverse of
+ * `toSequencerCommitment`, and the ONLY sanctioned way to read one. Amounts go
+ * through {@link parseWireQuantity}, so a malformed field throws instead of
+ * defaulting to zero.
+ *
+ * The result is the struct EXACTLY as signed: a root order keeps
+ * `processId == 0`, which is what the parties' signatures cover. Pass it to
+ * `computeCommitmentProcessId`/`computeOrderHash` to derive the ids.
+ */
+export function fromSequencerCommitment(c: SequencerCommitment): Commitment {
+    return {
+        processId: c.process_id,
+        buyer: c.buyer,
+        seller: c.seller,
+        currency: c.currency,
+        payment: parseWireQuantity(c.payment, "payment"),
+        expectedCumulativeValue: parseWireQuantity(
+            c.expected_cumulative_value,
+            "expected_cumulative_value",
+        ),
+        agreementHash: c.agreement_hash,
+        salt: parseWireQuantity(c.salt, "salt"),
+        deadline: parseWireQuantity(c.deadline, "deadline"),
+    };
+}
+
+/** Convert a wire `{v, r, s}` back to the 65-byte signature hex the EIP-712
+ *  verifiers take. Inverse of `toSequencerSig`. */
+export function fromSequencerSig(sig: SequencerSignature): Hex {
+    const strip = (h: string) => (h.startsWith("0x") ? h.slice(2) : h);
+    const r = strip(sig.r).padStart(64, "0");
+    const s = strip(sig.s).padStart(64, "0");
+    if (r.length !== 64 || s.length !== 64 || !Number.isInteger(sig.v)) {
+        throw new SequencerError(
+            `malformed signature: r/s must be 32 bytes and v an integer`,
+            0,
+        );
+    }
+    return `0x${r}${s}${sig.v.toString(16).padStart(2, "0")}` as Hex;
 }
 
 // ── Sequencer client ────────────────────────────────────────────────────────
@@ -323,6 +514,82 @@ export class SequencerClient {
             );
         }
         return res.json();
+    }
+
+    // ── Publication reads ───────────────────────────────────────────────────
+
+    /**
+     * GET a publication route, returning null on `404`.
+     *
+     * The null is load-bearing and MUST NOT be widened: `404` from a relay
+     * means "not in THIS relay's archive" — settled by another relay, settled
+     * directly against FigaroCore, or aged out of retention (check
+     * `status().archive`). It NEVER means the trade did not happen. Every other
+     * failure throws, because an unreachable or broken relay is a different
+     * fact from an absent record and callers must be able to tell them apart.
+     */
+    private async read<T>(path: string): Promise<T | null> {
+        let res: Response;
+        try {
+            res = await this._fetch(`${this.url}${path}`, {
+                method: "GET",
+                headers: { "Accept": "application/json" },
+            });
+        } catch (e) {
+            throw new SequencerError(
+                `relay unreachable at ${this.url}${path}: ${e instanceof Error ? e.message : String(e)}`,
+                0,
+            );
+        }
+        if (res.status === 404) return null;
+        if (!res.ok) {
+            const body = await res.json().catch(() => ({ error: res.statusText }));
+            throw new SequencerError(
+                body.error ?? `Relay returned ${res.status}`,
+                res.status,
+            );
+        }
+        // A relay is untrusted transport, so its body is attacker-influenceable:
+        // read it under a hard byte ceiling rather than letting `res.json()`
+        // buffer whatever arrives.
+        const text = await readCappedResponseText(res);
+        try {
+            return JSON.parse(text) as T;
+        } catch {
+            throw new SequencerError(`relay returned malformed JSON for ${path}`, res.status);
+        }
+    }
+
+    /** One published order by its order hash, or null when this relay has no
+     *  leg of it. Verify before displaying — the relay is transport. */
+    async order(orderHash: Hex): Promise<SequencerOrderView | null> {
+        return this.read<SequencerOrderView>(`/orders/${orderHash}`);
+    }
+
+    /** A published process — its orders and its resolution facts — or null when
+     *  this relay has none of it. The primary route for reading batched trade. */
+    async process(processId: Hex): Promise<SequencerProcessView | null> {
+        return this.read<SequencerProcessView>(`/processes/${processId}`);
+    }
+
+    /**
+     * A bounded page of settled batches, for replaying the batch universe the
+     * way an indexer replays kernel logs. `limit` is clamped to 50 by the relay
+     * whatever is asked; follow `next_cursor` until it is null, and check
+     * `retained` against your cursor first — a cursor older than `first_batch`
+     * means this relay already dropped the gap.
+     */
+    async batches(range?: { from?: number; limit?: number }): Promise<SequencerBatchPage> {
+        const params = new URLSearchParams();
+        if (range?.from !== undefined) params.set("from", String(range.from));
+        if (range?.limit !== undefined) params.set("limit", String(range.limit));
+        const query = params.toString();
+        const page = await this.read<SequencerBatchPage>(
+            `/batches${query ? `?${query}` : ""}`,
+        );
+        // /batches has no 404: an empty relay returns an empty page.
+        if (!page) throw new SequencerError("relay returned no batch page", 404);
+        return page;
     }
 
     /** Check if the sequencer is reachable (returns true/false, never throws). */
